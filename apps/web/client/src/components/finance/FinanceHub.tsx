@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Loader2, ReceiptText, Upload, CheckCircle2, ArrowDownRight, ArrowUpRight, Pause, Play, FileText, Wallet, Sparkles, Search, Mic, MicOff, RotateCcw } from "lucide-react";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FinanceCounterpartyAutocomplete } from "@/components/finance/FinanceCounterpartyAutocomplete";
 import {
   DashboardCard,
   DashboardKpiCard,
@@ -154,6 +155,8 @@ type FinanceDraftPayload = {
   amountMinor?: number;
   currency?: string;
   categoryCode?: string;
+  counterpartyId?: number | null;
+  counterpartyName?: string | null;
   merchantName?: string | null;
   note?: string | null;
   occurredAt?: string;
@@ -162,6 +165,7 @@ type FinanceDraftPayload = {
 type DraftEditState = {
   date: string;
   time: string;
+  counterpartyName: string;
   status: QuickActionStatus;
 };
 
@@ -184,6 +188,33 @@ function getDraftDateTimeInputState(value: string | Date | null | undefined): { 
     date: toDateInputValue(candidate),
     time: toTimeInputValue(candidate),
   };
+}
+
+function getFinanceCounterpartyLabel(type: "income" | "expense" | "transfer", counterpartyName: string | null | undefined, merchantName: string | null | undefined): string {
+  const name = (counterpartyName ?? merchantName ?? "").trim();
+  if (name) {
+    return name;
+  }
+
+  switch (type) {
+    case "income":
+      return "Unspecified payer";
+    case "expense":
+      return "Unspecified payee";
+    default:
+      return "Unspecified counterparty";
+  }
+}
+
+function getFinanceFlowLabel(type: "income" | "expense" | "transfer", t: (key: string, fallback?: string) => string): string {
+  switch (type) {
+    case "income":
+      return t("dashboard:finance.labels.receivedFrom", "Received from");
+    case "expense":
+      return t("dashboard:finance.labels.paidTo", "Paid to");
+    default:
+      return t("dashboard:finance.labels.transferWith", "Transfer with");
+  }
 }
 
 const QUICK_DRAFT_INTENT_PREFIX = /^\s*(?:Expense|Income|Transfer):\s*/i;
@@ -210,6 +241,7 @@ export function FinanceHub({
   const draftTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [draftText, setDraftText] = useState("");
   const [draftCategoryHint, setDraftCategoryHint] = useState("");
+  const [draftCounterpartyName, setDraftCounterpartyName] = useState("");
   const [draftTypeHint, setDraftTypeHint] = useState<"auto" | "income" | "expense" | "transfer">("auto");
   const initialDraftDateTime = useMemo(() => getCurrentDraftDateTime(), []);
   const [draftDate, setDraftDate] = useState(initialDraftDateTime.date);
@@ -219,6 +251,7 @@ export function FinanceHub({
   const [selectedEvidenceTransactionId, setSelectedEvidenceTransactionId] = useState<number | null>(null);
   const [evidenceSearchText, setEvidenceSearchText] = useState("");
   const quickActionModeRef = useRef<"manual" | "quick" | null>(null);
+  const deferredCounterpartySearch = useDeferredValue(draftCounterpartyName.trim());
 
   const { isRecording, isTranscribing, startRecording, stopRecording } = usePushToTalk({
     onTranscription: (text) => {
@@ -267,6 +300,14 @@ export function FinanceHub({
     { conversationId: conversationId ?? 0, status: "active", limit: recurringLimit },
     { enabled: financeReady },
   );
+  const counterpartiesQuery = trpc.finance.listCounterparties.useQuery(
+    {
+      conversationId: conversationId ?? 0,
+      query: deferredCounterpartySearch || undefined,
+      limit: 8,
+    },
+    { enabled: financeReady },
+  );
   const monthlyTransactionsQuery = trpc.finance.listTransactions.useQuery(
     {
       conversationId: conversationId ?? 0,
@@ -309,6 +350,7 @@ export function FinanceHub({
     onSuccess: async () => {
       setDraftText("");
       setDraftCategoryHint("");
+      setDraftCounterpartyName("");
       setDraftTypeHint("auto");
       const next = getCurrentDraftDateTime();
       setDraftDate(next.date);
@@ -455,14 +497,20 @@ export function FinanceHub({
         conversationId,
         text: draftText.trim(),
         categoryHint: draftCategoryHint.trim() || null,
+        counterpartyName: draftCounterpartyName.trim() || null,
         typeHint: draftTypeHint === "auto" ? null : draftTypeHint,
         occurredAt,
       });
       const draftPayload = getDraftPayload(draft);
+      const counterpartyLabel = getFinanceCounterpartyLabel(
+        draft.type,
+        draftPayload.counterpartyName,
+        draftPayload.merchantName,
+      );
       if (onMirrorFinanceActivity) {
         try {
           await onMirrorFinanceActivity({
-            content: `Created a finance draft from chat text: ${draftPayload.merchantName ?? draftPayload.categoryCode ?? "draft"} · occurred ${formatDateTime(draftPayload.occurredAt)}`,
+            content: `Created a finance draft from chat text: ${counterpartyLabel} · occurred ${formatDateTime(draftPayload.occurredAt)}`,
             artifacts: [
               {
                 id: `finance-draft-${draft.id}`,
@@ -471,6 +519,7 @@ export function FinanceHub({
                 content: [
                   `Type: ${getTransactionTypeLabel(draft.type)}`,
                   `Amount: ${formatMoneyMinor(draftPayload.amountMinor, draftPayload.currency)}`,
+                  `Counterparty: ${counterpartyLabel}`,
                   `Category: ${draftPayload.categoryCode ?? "uncategorized"}`,
                   `Occurred: ${formatDateTime(draftPayload.occurredAt)}`,
                   `Source: ${getFinanceSourceLabel(draft.source)}`,
@@ -483,6 +532,7 @@ export function FinanceHub({
                     amountMinor: draftPayload.amountMinor ?? null,
                     currency: draftPayload.currency ?? DEFAULT_CURRENCY,
                     categoryCode: draftPayload.categoryCode ?? "uncategorized",
+                    counterpartyName: draftPayload.counterpartyName ?? draftPayload.merchantName ?? null,
                     merchantName: draftPayload.merchantName ?? null,
                     source: draft.source,
                     status: draft.status,
@@ -546,10 +596,16 @@ export function FinanceHub({
         conversationId,
         text: preparedText.trim(),
         categoryHint: draftCategoryHint.trim() || null,
+        counterpartyName: draftCounterpartyName.trim() || null,
         typeHint: nextType,
         occurredAt,
       });
       const draftPayload = getDraftPayload(draft);
+      const counterpartyLabel = getFinanceCounterpartyLabel(
+        draft.type,
+        draftPayload.counterpartyName,
+        draftPayload.merchantName,
+      );
 
       if (draft.needsClarification) {
         setQuickActionStatus({
@@ -584,7 +640,7 @@ export function FinanceHub({
       if (onMirrorFinanceActivity) {
         try {
           await onMirrorFinanceActivity({
-            content: `Saved a ${draft.type} transaction from quick capture: ${draftPayload.merchantName ?? draftPayload.categoryCode ?? "transaction"} · occurred ${formatDateTime(draftPayload.occurredAt)}.`,
+            content: `Saved a ${draft.type} transaction from quick capture: ${counterpartyLabel} · occurred ${formatDateTime(draftPayload.occurredAt)}.`,
             artifacts: [
               {
                 id: `finance-transaction-${draft.id}`,
@@ -593,6 +649,7 @@ export function FinanceHub({
                 content: [
                   `Type: ${getTransactionTypeLabel(draft.type)}`,
                   `Amount: ${formatMoneyMinor(draftPayload.amountMinor, draftPayload.currency)}`,
+                  `Counterparty: ${counterpartyLabel}`,
                   `Category: ${draftPayload.categoryCode ?? "uncategorized"}`,
                   `Occurred: ${formatDateTime(draftPayload.occurredAt)}`,
                   `Status: confirmed`,
@@ -605,6 +662,7 @@ export function FinanceHub({
                     amountMinor: draftPayload.amountMinor ?? null,
                     currency: draftPayload.currency ?? DEFAULT_CURRENCY,
                     categoryCode: draftPayload.categoryCode ?? "uncategorized",
+                    counterpartyName: draftPayload.counterpartyName ?? draftPayload.merchantName ?? null,
                     merchantName: draftPayload.merchantName ?? null,
                     source: draft.source,
                     status: "confirmed",
@@ -667,14 +725,20 @@ export function FinanceHub({
     const result = await ingestDocumentMutation.mutateAsync({
       conversationId,
       libraryItemId,
+      counterpartyName: draftCounterpartyName.trim() || null,
       idempotencyKey: `finance-ocr:${conversationId}:${libraryItemId}`,
     });
     const draft = (result as { draft?: { id: number; type: string; source?: string; status?: string; confidence?: string | number | null; payloadJson: Record<string, unknown> } | null } | null)?.draft;
     if (draft && onMirrorFinanceActivity) {
       const draftPayload = getDraftPayload(draft);
+      const counterpartyLabel = getFinanceCounterpartyLabel(
+        draft.type as "income" | "expense" | "transfer",
+        draftPayload.counterpartyName,
+        draftPayload.merchantName,
+      );
       try {
         await onMirrorFinanceActivity({
-          content: `Receipt OCR created a ${draft.type} draft for ${draftPayload.merchantName ?? draftPayload.categoryCode ?? "draft"} · occurred ${formatDateTime(draftPayload.occurredAt)}.`,
+          content: `Receipt OCR created a ${draft.type} draft for ${counterpartyLabel} · occurred ${formatDateTime(draftPayload.occurredAt)}.`,
           artifacts: [
             {
               id: `finance-ocr-${libraryItemId}`,
@@ -684,6 +748,7 @@ export function FinanceHub({
                 `Receipt: ${file.name}`,
                 `Draft type: ${getTransactionTypeLabel(draft.type)}`,
                 `Amount: ${formatMoneyMinor(draftPayload.amountMinor, draftPayload.currency)}`,
+                `Counterparty: ${counterpartyLabel}`,
                 `Category: ${draftPayload.categoryCode ?? "uncategorized"}`,
                 `Occurred: ${formatDateTime(draftPayload.occurredAt)}`,
                 `Source: OCR receipt`,
@@ -696,6 +761,7 @@ export function FinanceHub({
                   amountMinor: draftPayload.amountMinor ?? null,
                   currency: draftPayload.currency ?? DEFAULT_CURRENCY,
                   categoryCode: draftPayload.categoryCode ?? "uncategorized",
+                  counterpartyName: draftPayload.counterpartyName ?? draftPayload.merchantName ?? null,
                   merchantName: draftPayload.merchantName ?? null,
                   source: draft.source ?? "ocr_document",
                   status: draft.status ?? "draft",
@@ -838,6 +904,7 @@ export function FinanceHub({
     setDraftTime(next.time);
     setDraftText("");
     setDraftCategoryHint("");
+    setDraftCounterpartyName("");
     setDraftTypeHint("auto");
     setQuickActionStatus({ kind: "idle", message: null });
     setDraftEditStates({});
@@ -847,10 +914,16 @@ export function FinanceHub({
   }, [conversationId]);
 
   useEffect(() => {
+    const draftList = draftsQuery.data;
+    if (!draftList) {
+      return;
+    }
+
     setDraftEditStates((current) => {
+      let changed = Object.keys(current).length !== draftList.length;
       const next: Record<number, DraftEditState> = {};
 
-      for (const draft of openDrafts) {
+      for (const draft of draftList) {
         const existing = current[draft.id];
         if (existing) {
           next[draft.id] = existing;
@@ -862,13 +935,19 @@ export function FinanceHub({
         next[draft.id] = {
           date: nextDateTime.date,
           time: nextDateTime.time,
+          counterpartyName: (payload.counterpartyName ?? payload.merchantName ?? "").trim(),
           status: { kind: "idle", message: null },
         };
+        changed = true;
+      }
+
+      if (!changed) {
+        return current;
       }
 
       return next;
     });
-  }, [openDrafts]);
+  }, [draftsQuery.data]);
 
   const lockedState = (
     <div className="space-y-4">
@@ -961,6 +1040,23 @@ export function FinanceHub({
                       )}
                       className="bg-white"
                     />
+                    <FinanceCounterpartyAutocomplete
+                      value={draftCounterpartyName}
+                      placeholder={t(
+                        "dashboard:finance.quick.counterpartyPlaceholder",
+                        "Counterparty / payee / payer, e.g. Starbucks or ACME",
+                      )}
+                      onValueChange={setDraftCounterpartyName}
+                      items={counterpartiesQuery.data ?? []}
+                      helperText={t(
+                        "dashboard:finance.quick.counterpartyHelper",
+                        "Pick a canonical name from the dropdown to avoid duplicate spellings later.",
+                      )}
+                      className="bg-white"
+                      inputClassName="bg-white"
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <Select
                       value={draftTypeHint}
                       onValueChange={(value) => setDraftTypeHint(value as typeof draftTypeHint)}
@@ -1184,10 +1280,17 @@ export function FinanceHub({
                   <div className="space-y-3">
                     {openDrafts.map((draft) => {
                       const payload = getDraftPayload(draft);
+                      const counterpartyLabel = getFinanceCounterpartyLabel(
+                        draft.type,
+                        payload.counterpartyName,
+                        payload.merchantName,
+                      );
+                      const flowLabel = getFinanceFlowLabel(draft.type, t);
                       const fallbackDraftEditState = getDraftDateTimeInputState(payload.occurredAt ?? draft.createdAt);
                       const draftEditState = draftEditStates[draft.id] ?? {
                         date: fallbackDraftEditState.date,
                         time: fallbackDraftEditState.time,
+                        counterpartyName: (payload.counterpartyName ?? payload.merchantName ?? "").trim(),
                         status: { kind: "idle", message: null },
                       };
                       const draftEditStatus = draftEditState.status;
@@ -1202,7 +1305,7 @@ export function FinanceHub({
                                 </span>
                               </p>
                               <p className="mt-1 text-xs leading-5 text-slate-500">
-                                {payload.merchantName ?? t("dashboard:finance.drafts.empty")}
+                                {flowLabel}: {counterpartyLabel}
                               </p>
                               <p className={dashboardMetaLineClass}>
                                 <span>{payload.categoryCode ?? "uncategorized"}</span>
@@ -1243,12 +1346,12 @@ export function FinanceHub({
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
                                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
-                                  {t("dashboard:finance.drafts.editSectionTitle", "Edit date and time")}
+                                  {t("dashboard:finance.drafts.editSectionTitle", "Edit date, time, and counterparty")}
                                 </p>
                                 <p className="mt-1 text-xs leading-5 text-slate-500">
                                   {t(
                                     "dashboard:finance.drafts.editDescription",
-                                    "Adjust the OCR date or time before confirming this draft.",
+                                    "Adjust the OCR date, time, or counterparty before confirming this draft.",
                                   )}
                                 </p>
                               </div>
@@ -1275,6 +1378,34 @@ export function FinanceHub({
                               </Badge>
                             </div>
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                              <label className="space-y-1.5 sm:col-span-2">
+                                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                  {t("dashboard:finance.drafts.editCounterpartyLabel", "Counterparty")}
+                                </span>
+                                <Input
+                                  aria-label={t("dashboard:finance.drafts.editCounterpartyLabel", "Counterparty")}
+                                  value={draftEditState.counterpartyName}
+                                  onChange={(event) => {
+                                    const nextCounterparty = event.target.value;
+                                    setDraftEditStates((current) => {
+                                      const previous = current[draft.id] ?? draftEditState;
+                                      return {
+                                        ...current,
+                                        [draft.id]: {
+                                          ...previous,
+                                          counterpartyName: nextCounterparty,
+                                          status: { kind: "idle", message: null },
+                                        },
+                                      };
+                                    });
+                                  }}
+                                  placeholder={t(
+                                    "dashboard:finance.drafts.editCounterpartyPlaceholder",
+                                    "Who was paid or who paid you?",
+                                  )}
+                                  className="bg-white"
+                                />
+                              </label>
                               <label className="space-y-1.5">
                                 <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                                   {t("dashboard:finance.drafts.editDateLabel", "Date")}
@@ -1339,6 +1470,7 @@ export function FinanceHub({
                                     [draft.id]: {
                                       date: resetState.date,
                                       time: resetState.time,
+                                      counterpartyName: (payload.counterpartyName ?? payload.merchantName ?? "").trim(),
                                       status: { kind: "idle", message: null },
                                     },
                                   }));
@@ -1375,7 +1507,7 @@ export function FinanceHub({
 
                                   const savingMessage = t(
                                     "dashboard:finance.drafts.editSaving",
-                                    "Saving draft date and time...",
+                                    "Saving draft changes...",
                                   );
                                   setDraftEditStates((current) => ({
                                     ...current,
@@ -1392,19 +1524,21 @@ export function FinanceHub({
                                       expectedVersion: draft.version,
                                       patch: {
                                         occurredAt,
+                                        counterpartyName: draftEditState.counterpartyName.trim() || null,
                                       },
                                     });
                                     const updatedPayload = getDraftPayload(updatedDraft);
                                     const resolvedDraftTime = getDraftDateTimeInputState(updatedPayload.occurredAt ?? occurredAt);
                                     const successMessage = t(
                                       "dashboard:finance.drafts.editSaved",
-                                      "Draft date and time saved.",
+                                      "Draft changes saved.",
                                     );
                                     setDraftEditStates((current) => ({
                                       ...current,
                                       [draft.id]: {
                                         date: resolvedDraftTime.date,
                                         time: resolvedDraftTime.time,
+                                        counterpartyName: (updatedPayload.counterpartyName ?? updatedPayload.merchantName ?? "").trim(),
                                         status: { kind: "saved", message: successMessage },
                                       },
                                     }));
@@ -1412,7 +1546,7 @@ export function FinanceHub({
                                   } catch (error) {
                                     const message = error instanceof Error ? error.message : t(
                                       "dashboard:finance.drafts.editError",
-                                      "Could not save draft date and time.",
+                                      "Could not save draft changes.",
                                     );
                                     setDraftEditStates((current) => ({
                                       ...current,
@@ -1476,57 +1610,66 @@ export function FinanceHub({
               >
                 {recentTransactions.length > 0 ? (
                   <div className="space-y-3">
-                    {recentTransactions.map((transaction) => (
-                      <div key={transaction.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-900">
-                              {getTransactionTypeLabel(transaction.type)}
-                              <span className="ml-2 text-xs text-slate-500">
-                                {formatMoneyMinor(transaction.amountMinor, transaction.currency)}
-                              </span>
-                            </p>
-                            <p className="mt-1 text-xs leading-5 text-slate-500">
-                              {transaction.merchantName ?? transaction.categoryCode}
-                            </p>
-                            <p className={dashboardMetaLineClass}>
-                              <span>{formatDateTime(transaction.occurredAt)}</span>
-                              <span className="text-slate-300">|</span>
-                              <span>{transaction.status}</span>
-                              <span className="text-slate-300">|</span>
-                              <span>{getFinanceSourceLabel(transaction.source)}</span>
-                            </p>
-                          </div>
-                          <div className="flex shrink-0 flex-col items-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 gap-1.5 text-slate-600"
-                              onClick={() => setSelectedEvidenceTransactionId(transaction.id)}
-                            >
-                              <Search className="h-3.5 w-3.5" />
-                              {t("dashboard:finance.report.inspect")}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 gap-1.5 text-slate-600"
-                              onClick={() => {
-                                if (!conversationId) return;
-                                void voidTransactionMutation.mutateAsync({
-                                  conversationId,
-                                  transactionId: transaction.id,
-                                });
-                              }}
-                              disabled={!financeReady || voidTransactionMutation.isPending}
-                            >
-                              <FileText className="h-3.5 w-3.5" />
-                              {t("dashboard:finance.actions.void")}
-                            </Button>
+                    {recentTransactions.map((transaction) => {
+                      const transactionCounterparty = getFinanceCounterpartyLabel(
+                        transaction.type,
+                        transaction.counterpartyName ?? null,
+                        transaction.merchantName ?? null,
+                      );
+                      const transactionFlowLabel = getFinanceFlowLabel(transaction.type, t);
+
+                      return (
+                        <div key={transaction.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-slate-900">
+                                {getTransactionTypeLabel(transaction.type)}
+                                <span className="ml-2 text-xs text-slate-500">
+                                  {formatMoneyMinor(transaction.amountMinor, transaction.currency)}
+                                </span>
+                              </p>
+                              <p className="mt-1 text-xs leading-5 text-slate-500">
+                                {transactionFlowLabel}: {transactionCounterparty}
+                              </p>
+                              <p className={dashboardMetaLineClass}>
+                                <span>{formatDateTime(transaction.occurredAt)}</span>
+                                <span className="text-slate-300">|</span>
+                                <span>{transaction.status}</span>
+                                <span className="text-slate-300">|</span>
+                                <span>{getFinanceSourceLabel(transaction.source)}</span>
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 flex-col items-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1.5 text-slate-600"
+                                onClick={() => setSelectedEvidenceTransactionId(transaction.id)}
+                              >
+                                <Search className="h-3.5 w-3.5" />
+                                {t("dashboard:finance.report.inspect")}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 gap-1.5 text-slate-600"
+                                onClick={() => {
+                                  if (!conversationId) return;
+                                  void voidTransactionMutation.mutateAsync({
+                                    conversationId,
+                                    transactionId: transaction.id,
+                                  });
+                                }}
+                                disabled={!financeReady || voidTransactionMutation.isPending}
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                                {t("dashboard:finance.actions.void")}
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="py-4 text-sm text-slate-500">
@@ -1542,8 +1685,13 @@ export function FinanceHub({
               >
                 {recurringRules.length > 0 ? (
                   <div className="space-y-3">
-                    {recurringRules.map((rule) => {
+                      {recurringRules.map((rule) => {
                       const isActive = rule.status === "active";
+                      const ruleCounterparty = getFinanceCounterpartyLabel(
+                        rule.type,
+                        rule.counterpartyName ?? null,
+                        rule.merchantName ?? null,
+                      );
                       return (
                         <div key={rule.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                           <div className="flex items-start justify-between gap-3">
@@ -1558,7 +1706,7 @@ export function FinanceHub({
                                 {parseRecurringRuleSummary(rule.rrule, rule.nextRunAt, rule.timezone)}
                               </p>
                               <p className={dashboardMetaLineClass}>
-                                <span>{rule.merchantName ?? t("dashboard:finance.recurring.title")}</span>
+                                <span>{getFinanceFlowLabel(rule.type, t)}: {ruleCounterparty}</span>
                                 <span className="text-slate-300">|</span>
                                 <span>{rule.autoConfirm ? "Auto-confirm" : "Draft first"}</span>
                               </p>

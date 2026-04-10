@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { addDays, endOfMonth, format, startOfMonth } from "date-fns";
+import { addDays, endOfMonth, endOfYear, format, startOfMonth, startOfYear } from "date-fns";
 import { motion } from "framer-motion";
 import {
   BarChart3,
@@ -41,6 +41,7 @@ import { HelpButton } from "@/components/help";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { DashboardCard, DashboardKpiCard, dashboardCardDescriptionClass, dashboardMetaLineClass } from "@/components/dashboard";
 import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
+import { FinanceCounterpartyAutocomplete } from "@/components/finance/FinanceCounterpartyAutocomplete";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { cn } from "@/lib/utils";
 
@@ -70,6 +71,7 @@ type DraftPayload = {
   amountMinor?: number;
   currency?: string;
   categoryCode?: string;
+  counterpartyName?: string | null;
   merchantName?: string | null;
   note?: string | null;
   occurredAt?: string;
@@ -119,6 +121,42 @@ function formatDateLabel(value: string | Date | null | undefined): string {
   return format(parsed, "MMM d");
 }
 
+function formatMonthLabel(value: string | Date | null | undefined): string {
+  if (!value) return "—";
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "—";
+  return format(parsed, "MMM yyyy");
+}
+
+function getCounterpartyLabel(type: "income" | "expense" | "transfer", counterpartyName: string | null | undefined, merchantName: string | null | undefined): string {
+  const name = (counterpartyName ?? merchantName ?? "").trim();
+  if (name) {
+    return name;
+  }
+  if (type === "income") return "Unspecified payer";
+  if (type === "expense") return "Unspecified payee";
+  return "Unspecified counterparty";
+}
+
+function getFlowLabel(type: "income" | "expense" | "transfer"): string {
+  if (type === "income") return "Received from";
+  if (type === "expense") return "Paid to";
+  return "Transfer with";
+}
+
+function getPresetRange(preset: "month" | "year", now = new Date()): { from: string; to: string } {
+  if (preset === "year") {
+    return {
+      from: toDateInputValue(startOfYear(now)),
+      to: toDateInputValue(endOfYear(now)),
+    };
+  }
+  return {
+    from: toDateInputValue(startOfMonth(now)),
+    to: toDateInputValue(endOfMonth(now)),
+  };
+}
+
 function resolveConversationId(search: string, fallbackId: number | null): number | null {
   const params = new URLSearchParams(search);
   const raw = params.get("c");
@@ -134,13 +172,15 @@ export default function FinanceReportsPage() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const search = useSearch();
+  const [reportPreset, setReportPreset] = useState<"month" | "year" | "custom">("month");
   const [transactionType, setTransactionType] = useState<"all" | "income" | "expense" | "transfer">("all");
   const [categoryCode, setCategoryCode] = useState("");
-  const [merchant, setMerchant] = useState("");
-  const [dateFrom, setDateFrom] = useState(() => toDateInputValue(startOfMonth(new Date())));
-  const [dateTo, setDateTo] = useState(() => toDateInputValue(endOfMonth(new Date())));
+  const [counterparty, setCounterparty] = useState("");
+  const [dateFrom, setDateFrom] = useState(() => getPresetRange("month").from);
+  const [dateTo, setDateTo] = useState(() => getPresetRange("month").to);
   const [selectedTransactionId, setSelectedTransactionId] = useState<number | null>(null);
   const [evidenceQuery, setEvidenceQuery] = useState("");
+  const deferredCounterpartySearch = useDeferredValue(counterparty.trim());
 
   const personalConversationQuery = trpc.chat.getPersonalConversation.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -163,23 +203,15 @@ export default function FinanceReportsPage() {
       status: "confirmed" as const,
       type: transactionType === "all" ? undefined : transactionType,
       categoryCode: categoryCode.trim() || undefined,
-      merchant: merchant.trim() || undefined,
+      counterparty: counterparty.trim() || undefined,
       fromDate: new Date(`${dateFrom}T00:00:00`),
       toDate: toExclusiveDate(dateTo),
       limit: 100,
       offset: 0,
     }),
-    [categoryCode, conversationId, dateFrom, dateTo, merchant, transactionType],
+    [categoryCode, conversationId, counterparty, dateFrom, dateTo, transactionType],
   );
 
-  const dailySummaryQuery = trpc.finance.getDailySummary.useQuery(
-    { conversationId: conversationId ?? 0 },
-    { enabled: Boolean(conversationId) },
-  );
-  const monthlySummaryQuery = trpc.finance.getMonthlySummary.useQuery(
-    { conversationId: conversationId ?? 0 },
-    { enabled: Boolean(conversationId) },
-  );
   const draftsQuery = trpc.finance.listDrafts.useQuery(
     { conversationId: conversationId ?? 0, limit: 10 },
     { enabled: Boolean(conversationId) },
@@ -191,6 +223,16 @@ export default function FinanceReportsPage() {
   const transactionsQuery = trpc.finance.listTransactions.useQuery(transactionFilters, {
     enabled: Boolean(conversationId),
   });
+  const counterpartiesQuery = trpc.finance.listCounterparties.useQuery(
+    {
+      conversationId: conversationId ?? 0,
+      query: deferredCounterpartySearch || undefined,
+      limit: 8,
+    },
+    {
+      enabled: Boolean(conversationId),
+    },
+  );
   const selectedTransaction = transactionsQuery.data?.find((transaction) => transaction.id === selectedTransactionId)
     ?? transactionsQuery.data?.[0]
     ?? null;
@@ -220,6 +262,15 @@ export default function FinanceReportsPage() {
       setSelectedTransactionId(transactionsQuery.data[0].id);
     }
   }, [selectedTransactionId, transactionsQuery.data]);
+
+  useEffect(() => {
+    if (reportPreset === "custom") {
+      return;
+    }
+    const range = getPresetRange(reportPreset);
+    setDateFrom(range.from);
+    setDateTo(range.to);
+  }, [reportPreset]);
 
   const categoryBreakdown = useMemo(() => {
     const buckets = new Map<string, { categoryCode: string; count: number; totalMinor: number; incomeMinor: number; expenseMinor: number }>();
@@ -255,16 +306,64 @@ export default function FinanceReportsPage() {
     return Array.from(buckets.values()).sort((a, b) => a.date.localeCompare(b.date));
   }, [transactionsQuery.data]);
 
-  const merchantBreakdown = useMemo(() => {
-    const buckets = new Map<string, { merchantName: string; count: number; totalMinor: number }>();
+  const counterpartyBreakdown = useMemo(() => {
+    const buckets = new Map<string, {
+      counterpartyName: string;
+      count: number;
+      paidMinor: number;
+      receivedMinor: number;
+      transferMinor: number;
+      lastSeenAt: string | null;
+    }>();
+
     for (const tx of transactionsQuery.data ?? []) {
-      const name = tx.merchantName?.trim() || "Unspecified";
-      const bucket = buckets.get(name) ?? { merchantName: name, count: 0, totalMinor: 0 };
+      const name = getCounterpartyLabel(tx.type, tx.counterpartyName ?? null, tx.merchantName ?? null);
+      const bucket = buckets.get(name) ?? {
+        counterpartyName: name,
+        count: 0,
+        paidMinor: 0,
+        receivedMinor: 0,
+        transferMinor: 0,
+        lastSeenAt: null,
+      };
       bucket.count += 1;
-      bucket.totalMinor += tx.amountMinor;
+      bucket.lastSeenAt = tx.occurredAt ? tx.occurredAt.toString() : bucket.lastSeenAt;
+      if (tx.type === "expense") {
+        bucket.paidMinor += tx.amountMinor;
+      } else if (tx.type === "income") {
+        bucket.receivedMinor += tx.amountMinor;
+      } else {
+        bucket.transferMinor += tx.amountMinor;
+      }
       buckets.set(name, bucket);
     }
-    return Array.from(buckets.values()).sort((a, b) => b.totalMinor - a.totalMinor).slice(0, 8);
+
+    return Array.from(buckets.values())
+      .sort((a, b) => (b.paidMinor + b.receivedMinor + b.transferMinor) - (a.paidMinor + a.receivedMinor + a.transferMinor))
+      .slice(0, 8);
+  }, [transactionsQuery.data]);
+
+  const rangeSummary = useMemo(() => {
+    let incomeMinor = 0;
+    let expenseMinor = 0;
+    let transferMinor = 0;
+    const transactions = transactionsQuery.data ?? [];
+    for (const tx of transactions) {
+      if (tx.type === "income") {
+        incomeMinor += tx.amountMinor;
+      } else if (tx.type === "expense") {
+        expenseMinor += tx.amountMinor;
+      } else {
+        transferMinor += tx.amountMinor;
+      }
+    }
+    return {
+      incomeMinor,
+      expenseMinor,
+      transferMinor,
+      balanceMinor: incomeMinor - expenseMinor,
+      transactionCount: transactions.length,
+    };
   }, [transactionsQuery.data]);
 
   const exportReportPdfMutation = trpc.finance.exportReportPdf.useMutation();
@@ -272,9 +371,11 @@ export default function FinanceReportsPage() {
   const reportMarkdown = useMemo(() => {
     const title = t("dashboard:finance.report.pageTitle", "Finance reports");
     const summaryRows = [
-      [t("dashboard:finance.summary.todayIncome"), formatMoneyMinor(dailySummaryQuery.data?.incomeMinor ?? 0)],
-      [t("dashboard:finance.summary.todayExpense"), formatMoneyMinor(dailySummaryQuery.data?.expenseMinor ?? 0)],
-      [t("dashboard:finance.summary.monthBalance"), formatMoneyMinor(monthlySummaryQuery.data?.balanceMinor ?? 0)],
+      [t("dashboard:finance.report.rangeIncome", "Income in range"), formatMoneyMinor(rangeSummary.incomeMinor)],
+      [t("dashboard:finance.report.rangeExpense", "Expense in range"), formatMoneyMinor(rangeSummary.expenseMinor)],
+      [t("dashboard:finance.report.rangeTransfers", "Transfers in range"), formatMoneyMinor(rangeSummary.transferMinor)],
+      [t("dashboard:finance.report.rangeNet", "Net in range"), formatMoneyMinor(rangeSummary.balanceMinor)],
+      [t("dashboard:finance.report.rangeTransactions", "Transactions in range"), String(rangeSummary.transactionCount)],
       [t("dashboard:finance.summary.openDrafts"), String(draftsQuery.data?.length ?? 0)],
     ];
 
@@ -282,7 +383,8 @@ export default function FinanceReportsPage() {
       ["Conversation", conversationId ? String(conversationId) : "—"],
       ["Type", transactionType],
       ["Category", categoryCode.trim() || "—"],
-      ["Merchant", merchant.trim() || "—"],
+      ["Counterparty", counterparty.trim() || "—"],
+      ["Range preset", reportPreset],
       ["Date from", dateFrom],
       ["Date to", dateTo],
     ];
@@ -290,7 +392,7 @@ export default function FinanceReportsPage() {
     const transactionRows = (transactionsQuery.data ?? []).slice(0, 100).map((transaction) => [
       formatDateLabel(transaction.occurredAt),
       transaction.type,
-      transaction.merchantName ?? transaction.categoryCode,
+      getCounterpartyLabel(transaction.type, transaction.counterpartyName ?? null, transaction.merchantName ?? null),
       transaction.categoryCode,
       formatMoneyMinor(transaction.amountMinor, transaction.currency),
       transaction.source,
@@ -303,10 +405,19 @@ export default function FinanceReportsPage() {
       formatMoneyMinor(entry.totalMinor),
     ]);
 
+    const counterpartyRows = counterpartyBreakdown.map((entry) => [
+      entry.counterpartyName,
+      formatMoneyMinor(entry.paidMinor),
+      formatMoneyMinor(entry.receivedMinor),
+      formatMoneyMinor(entry.receivedMinor - entry.paidMinor),
+      String(entry.count),
+    ]);
+
     const draftRows = (draftsQuery.data ?? []).map((draft) => {
       const payload = getDraftPayload(draft);
+      const counterpartyLabel = getCounterpartyLabel(draft.type, payload.counterpartyName, payload.merchantName);
       return [
-        payload.merchantName ?? payload.categoryCode ?? "Draft",
+        counterpartyLabel,
         draft.type,
         payload.categoryCode ?? "uncategorized",
         formatMoneyMinor(payload.amountMinor, payload.currency),
@@ -317,7 +428,7 @@ export default function FinanceReportsPage() {
     });
 
     const recurringRows = (recurringRulesQuery.data ?? []).map((rule) => [
-      rule.merchantName ?? rule.categoryCode,
+      getCounterpartyLabel(rule.type, rule.counterpartyName ?? null, rule.merchantName ?? null),
       formatMoneyMinor(rule.amountMinor, rule.currency),
       rule.categoryCode,
       rule.status,
@@ -366,6 +477,9 @@ export default function FinanceReportsPage() {
       "",
       "## Categories",
       buildMarkdownTable(["Category", "Count", "Total"], categoryRows),
+      "",
+      "## Counterparties",
+      buildMarkdownTable(["Counterparty", "Paid to", "Received from", "Net", "Transactions"], counterpartyRows),
     ];
 
     if (transactionRows.length > 0) {
@@ -373,7 +487,7 @@ export default function FinanceReportsPage() {
         "",
         "## Transactions",
         buildMarkdownTable(
-          ["Date", "Type", "Merchant", "Category", "Amount", "Source", "Status"],
+          ["Date", "Type", "Counterparty", "Category", "Amount", "Source", "Status"],
           transactionRows,
         ),
       );
@@ -384,7 +498,7 @@ export default function FinanceReportsPage() {
         "",
         "## Drafts",
         buildMarkdownTable(
-          ["Merchant", "Type", "Category", "Amount", "Source", "Status", "Created"],
+          ["Counterparty", "Type", "Category", "Amount", "Source", "Status", "Created"],
           draftRows,
         ),
       );
@@ -395,7 +509,7 @@ export default function FinanceReportsPage() {
         "",
         "## Recurring",
         buildMarkdownTable(
-          ["Merchant", "Amount", "Category", "Status", "Auto", "Next run"],
+          ["Counterparty", "Amount", "Category", "Status", "Auto", "Next run"],
           recurringRows,
         ),
       );
@@ -416,7 +530,7 @@ export default function FinanceReportsPage() {
         buildMarkdownTable(
           ["Field", "Value"],
           [
-            ["Merchant", selectedTransaction.merchantName ?? selectedTransaction.categoryCode],
+            ["Counterparty", getCounterpartyLabel(selectedTransaction.type, selectedTransaction.counterpartyName ?? null, selectedTransaction.merchantName ?? null)],
             ["Type", selectedTransaction.type],
             ["Category", selectedTransaction.categoryCode],
             ["Amount", formatMoneyMinor(selectedTransaction.amountMinor, selectedTransaction.currency)],
@@ -435,19 +549,19 @@ export default function FinanceReportsPage() {
     dailySeries,
     dateFrom,
     dateTo,
-    dailySummaryQuery.data?.expenseMinor,
-    dailySummaryQuery.data?.incomeMinor,
     draftsQuery.data,
     evidenceQueryResult.data?.linkedDocuments,
     linkedDocumentsQuery.data,
-    merchant,
-    monthlySummaryQuery.data?.balanceMinor,
+    counterparty,
     recurringRulesQuery.data,
     selectedTransaction,
     t,
     transactionType,
     transactionsQuery.data,
     conversationId,
+    counterpartyBreakdown,
+    rangeSummary,
+    reportPreset,
   ]);
 
   const handleCreatePersonalChat = async () => {
@@ -507,6 +621,10 @@ export default function FinanceReportsPage() {
               )}
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
+              <Button variant="ghost" className="gap-2 px-0 text-slate-600 hover:bg-transparent hover:text-slate-900" onClick={() => setLocation("/dashboard")}>
+                <ChevronLeft className="h-4 w-4" />
+                {t("dashboard:finance.page.backToDashboard", "Back to dashboard")}
+              </Button>
               <Button className="gap-2" onClick={() => void handleCreatePersonalChat()}>
                 <Sparkles className="h-4 w-4" />
                 {t("dashboard:finance.locked.createPersonal")}
@@ -532,6 +650,15 @@ export default function FinanceReportsPage() {
         >
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mb-3 -ml-2 gap-2 px-0 text-slate-600 hover:bg-transparent hover:text-slate-900"
+                onClick={() => setLocation("/dashboard")}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                {t("dashboard:finance.page.backToDashboard", "Back to dashboard")}
+              </Button>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="rounded-full bg-sky-100 px-3 py-1 text-sky-800 hover:bg-sky-100">
                   <BarChart3 className="mr-1 h-3.5 w-3.5" />
@@ -591,29 +718,29 @@ export default function FinanceReportsPage() {
             <div className="space-y-4">
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <DashboardKpiCard
-                  label={t("dashboard:finance.summary.todayIncome")}
-                  value={formatMoneyMinor(dailySummaryQuery.data?.incomeMinor ?? 0)}
+                  label={t("dashboard:finance.report.rangeIncome", "Income in range")}
+                  value={formatMoneyMinor(rangeSummary.incomeMinor)}
                   icon={ArrowUpRight}
                   iconClassName="text-emerald-600"
                   iconContainerClassName="bg-emerald-50"
                 />
                 <DashboardKpiCard
-                  label={t("dashboard:finance.summary.todayExpense")}
-                  value={formatMoneyMinor(dailySummaryQuery.data?.expenseMinor ?? 0)}
+                  label={t("dashboard:finance.report.rangeExpense", "Expense in range")}
+                  value={formatMoneyMinor(rangeSummary.expenseMinor)}
                   icon={ArrowDownRight}
                   iconClassName="text-rose-600"
                   iconContainerClassName="bg-rose-50"
                 />
                 <DashboardKpiCard
-                  label={t("dashboard:finance.summary.monthBalance")}
-                  value={formatMoneyMinor(monthlySummaryQuery.data?.balanceMinor ?? 0)}
+                  label={t("dashboard:finance.report.rangeNet", "Net in range")}
+                  value={formatMoneyMinor(rangeSummary.balanceMinor)}
                   icon={Wallet}
                   iconClassName="text-sky-600"
                   iconContainerClassName="bg-sky-50"
                 />
                 <DashboardKpiCard
-                  label={t("dashboard:finance.summary.openDrafts")}
-                  value={String(draftsQuery.data?.length ?? 0)}
+                  label={t("dashboard:finance.report.rangeTransactions", "Transactions in range")}
+                  value={String(rangeSummary.transactionCount)}
                   icon={ReceiptText}
                   iconClassName="text-amber-600"
                   iconContainerClassName="bg-amber-50"
@@ -690,6 +817,16 @@ export default function FinanceReportsPage() {
                 >
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
+                      <Select value={reportPreset} onValueChange={(value) => setReportPreset(value as typeof reportPreset)}>
+                        <SelectTrigger className="h-10 w-[150px] rounded-2xl bg-white">
+                          <SelectValue placeholder={t("dashboard:finance.report.rangePreset", "Range")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="month">{t("dashboard:finance.report.rangeThisMonth", "This month")}</SelectItem>
+                          <SelectItem value="year">{t("dashboard:finance.report.rangeThisYear", "This year")}</SelectItem>
+                          <SelectItem value="custom">{t("dashboard:finance.report.rangeCustom", "Custom")}</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <Select value={transactionType} onValueChange={(value) => setTransactionType(value as typeof transactionType)}>
                         <SelectTrigger className="h-10 w-[140px] rounded-2xl bg-white">
                           <SelectValue placeholder="Type" />
@@ -702,11 +839,38 @@ export default function FinanceReportsPage() {
                         </SelectContent>
                       </Select>
                       <Input value={categoryCode} onChange={(event) => setCategoryCode(event.target.value)} placeholder="Category code" className="h-10 rounded-2xl" />
-                      <Input value={merchant} onChange={(event) => setMerchant(event.target.value)} placeholder="Merchant" className="h-10 rounded-2xl" />
+                      <FinanceCounterpartyAutocomplete
+                        value={counterparty}
+                        onValueChange={setCounterparty}
+                        items={counterpartiesQuery.data ?? []}
+                        placeholder={t("dashboard:finance.report.counterpartyPlaceholder", "Counterparty")}
+                        helperText={t(
+                          "dashboard:finance.report.counterpartyHelper",
+                          "Pick a canonical name from the dropdown to keep monthly and yearly totals grouped correctly.",
+                        )}
+                        inputClassName="h-10 rounded-2xl"
+                        className="min-w-[260px] flex-1"
+                      />
                     </div>
                     <div className="grid gap-2 md:grid-cols-2">
-                      <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="h-10 rounded-2xl" />
-                      <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="h-10 rounded-2xl" />
+                      <Input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(event) => {
+                          setDateFrom(event.target.value);
+                          setReportPreset("custom");
+                        }}
+                        className="h-10 rounded-2xl"
+                      />
+                      <Input
+                        type="date"
+                        value={dateTo}
+                        onChange={(event) => {
+                          setDateTo(event.target.value);
+                          setReportPreset("custom");
+                        }}
+                        className="h-10 rounded-2xl"
+                      />
                     </div>
 
                     <div className="space-y-2">
@@ -725,12 +889,16 @@ export default function FinanceReportsPage() {
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-slate-950">{transaction.merchantName ?? transaction.categoryCode}</span>
+                                <span className="text-sm font-semibold text-slate-950">
+                                  {getCounterpartyLabel(transaction.type, transaction.counterpartyName ?? null, transaction.merchantName ?? null)}
+                                </span>
                                 <Badge variant="outline" className="rounded-full text-[10px] uppercase tracking-[0.18em]">
                                   {transaction.type}
                                 </Badge>
                               </div>
                               <p className={cn("mt-1 text-xs", dashboardMetaLineClass)}>
+                                <span>{`${getFlowLabel(transaction.type)}: ${getCounterpartyLabel(transaction.type, transaction.counterpartyName ?? null, transaction.merchantName ?? null)}`}</span>
+                                <span className="text-slate-300">|</span>
                                 <span>{formatDateLabel(transaction.occurredAt)}</span>
                                 <span className="text-slate-300">|</span>
                                 <span>{transaction.categoryCode}</span>
@@ -795,7 +963,7 @@ export default function FinanceReportsPage() {
                     {selectedTransaction ? (
                       <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
                         <p className="text-sm font-semibold text-slate-950">
-                          {selectedTransaction.merchantName ?? selectedTransaction.categoryCode}
+                          {getFlowLabel(selectedTransaction.type)}: {getCounterpartyLabel(selectedTransaction.type, selectedTransaction.counterpartyName ?? null, selectedTransaction.merchantName ?? null)}
                         </p>
                         <p className="mt-1 text-sm text-slate-600">
                           {formatMoneyMinor(selectedTransaction.amountMinor, selectedTransaction.currency)}
@@ -859,7 +1027,7 @@ export default function FinanceReportsPage() {
                       return (
                         <div key={draft.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                           <p className="text-sm font-semibold text-slate-950">
-                            {payload.merchantName ?? payload.categoryCode ?? "Draft"}
+                            {getCounterpartyLabel(draft.type, payload.counterpartyName, payload.merchantName)}
                           </p>
                           <p className="mt-1 text-xs text-slate-500">
                             {draft.type} · {formatMoneyMinor(payload.amountMinor, payload.currency)} · {draft.source}
@@ -901,20 +1069,27 @@ export default function FinanceReportsPage() {
               </DashboardCard>
 
               <DashboardCard
-                eyebrow={t("dashboard:finance.report.categoryBreakdown")}
-                title={t("dashboard:finance.report.categoryBreakdown")}
-                description={t("dashboard:finance.page.categoryNotes", "Most common merchant groups in the current filter.")}
+                eyebrow={t("dashboard:finance.report.counterpartyBreakdown", "Counterparties")}
+                title={t("dashboard:finance.report.counterpartyBreakdown", "Counterparties")}
+                description={t("dashboard:finance.report.counterpartyBreakdownDescription", "Who you paid and who paid you in the current filter.")}
               >
                 <div className="space-y-3">
-                  {merchantBreakdown.length > 0 ? (
-                    merchantBreakdown.map((entry) => (
-                      <div key={entry.merchantName} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                  {counterpartyBreakdown.length > 0 ? (
+                    counterpartyBreakdown.map((entry) => (
+                      <div key={entry.counterpartyName} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <p className="text-sm font-semibold text-slate-950">{entry.merchantName}</p>
+                            <p className="text-sm font-semibold text-slate-950">{entry.counterpartyName}</p>
                             <p className="mt-1 text-xs text-slate-500">{entry.count} transactions</p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              <span>{t("dashboard:finance.labels.paidTo", "Paid to")} {formatMoneyMinor(entry.paidMinor)}</span>
+                              <span className="text-slate-300"> · </span>
+                              <span>{t("dashboard:finance.labels.receivedFrom", "Received from")} {formatMoneyMinor(entry.receivedMinor)}</span>
+                            </p>
                           </div>
-                          <p className="text-sm font-semibold text-slate-950">{formatMoneyMinor(entry.totalMinor)}</p>
+                          <p className="text-sm font-semibold text-slate-950">
+                            {formatMoneyMinor(entry.receivedMinor - entry.paidMinor)}
+                          </p>
                         </div>
                       </div>
                     ))
