@@ -115,6 +115,8 @@ describe("WorkpackDetail", () => {
             laneDetails: {
               lane: "browser",
               stage: "navigate_queue",
+              sessionId: "lbs_demo_123",
+              browserState: "review_required",
               connectorFamilies: ["crm"],
               sourceCount: 1,
             },
@@ -150,6 +152,8 @@ describe("WorkpackDetail", () => {
     expect(screen.getByText(/Browser automation lane/i)).toBeInTheDocument();
     expect(screen.getByText(/Latest event navigation_completed/i)).toBeInTheDocument();
     expect(screen.getByText(/Stage navigate_queue/i)).toBeInTheDocument();
+    expect(screen.getByText(/Session Id lbs_demo_123/i)).toBeInTheDocument();
+    expect(screen.getByText(/Browser State review_required/i)).toBeInTheDocument();
     expect(screen.getByText(/Connector Families crm/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /refresh executor status/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /process due schedules/i })).toBeInTheDocument();

@@ -161,4 +161,64 @@ describe("workerCallbackService", () => {
       roomMessageId: "message-1",
     }));
   });
+
+  it("normalizes typed callback metadata into room updates and callback events", async () => {
+    const repo = {
+      getJobById: vi.fn().mockResolvedValue({
+        id: "job-browser-1",
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        requestedByUserId: 7,
+        inputJson: { roomId: "room-1", runId: "run-1", teamId: "team-1" },
+      }),
+      getRunContext: vi.fn(),
+      findCallbackEvent: vi.fn().mockResolvedValue(null),
+      insertCallbackEvent: vi.fn().mockResolvedValue({ id: "evt-browser-1" }),
+    };
+
+    await publishWorkerCallback({
+      tenantId: "tenant-1",
+      jobId: "job-browser-1",
+      channel: "room_update",
+      idempotencyKey: "cb-browser-typed",
+      payload: {
+        summary: "Browser queue requires review",
+        metadataJson: {
+          lane: "browser",
+          sessionId: "lbs_demo_123",
+          currentUrl: "https://example.com/checkout",
+          pageTitle: "Checkout",
+          browserSession: {
+            sessionId: "lbs_demo_123",
+            state: "review_required",
+            pageTitle: "Checkout",
+            url: "https://example.com/checkout",
+          },
+          browserPayload: {
+            stage: "review_gate",
+            sessionId: "lbs_demo_123",
+            currentUrl: "https://example.com/checkout",
+          },
+        },
+      },
+    }, { repo });
+
+    expect(mockSendMessage).toHaveBeenCalledWith(expect.objectContaining({
+      metadataJson: expect.objectContaining({
+        callbackMetadata: expect.objectContaining({
+          lane: "browser",
+          sessionId: "lbs_demo_123",
+          browserSession: expect.objectContaining({
+            state: "review_required",
+          }),
+        }),
+      }),
+    }));
+    expect(repo.insertCallbackEvent).toHaveBeenCalledWith("job-browser-1", "room_update", expect.objectContaining({
+      metadataJson: expect.objectContaining({
+        lane: "browser",
+        sessionId: "lbs_demo_123",
+      }),
+    }));
+  });
 });

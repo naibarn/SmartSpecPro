@@ -9,6 +9,8 @@ const nullableIntSchema = z.number().int().nonnegative().nullable().default(null
 export const workpackBrowserLaneDetailSchema = z.object({
   lane: z.literal("browser"),
   stage: nullableStringSchema,
+  sessionId: nullableStringSchema,
+  browserState: nullableStringSchema,
   sourceCount: nullableIntSchema,
   connectorFamilies: stringListSchema,
   fallbackPaths: stringListSchema,
@@ -26,6 +28,7 @@ export const workpackWorkflowLaneDetailSchema = z.object({
   fallbackPaths: stringListSchema,
   publishedArtifacts: stringListSchema,
   intent: nullableStringSchema,
+  resultSummary: nullableStringSchema,
 });
 
 export const workpackDesktopLocalLaneDetailSchema = z.object({

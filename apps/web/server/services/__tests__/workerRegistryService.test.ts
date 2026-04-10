@@ -661,6 +661,47 @@ describe("workerRegistryService", () => {
     });
   });
 
+  it("enforces structured browser automation payloads for openclaw jobs", async () => {
+    const { recordWorkerJobEvent } = await import("../workerRegistryService");
+
+    const repo = {
+      getJobById: vi.fn().mockResolvedValue({
+        id: "job-browser-1",
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "openclaw_gateway",
+        jobType: "browser_automation_task",
+        status: "running",
+        leaseOwnerToken: "lease-1",
+        leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+      }),
+      listJobEvents: vi.fn().mockResolvedValue([]),
+      insertJobEvent: vi.fn(),
+      updateJob: vi.fn(),
+    };
+
+    await expect(recordWorkerJobEvent({
+      auth: {
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "openclaw_gateway",
+      } as any,
+      jobId: "job-browser-1",
+      payload: {
+        eventType: "job.progress",
+        payloadJson: {
+          sessionId: "lbs_demo_123",
+          publishedArtifacts: ["invalid-shape"],
+        },
+        sequenceNumber: 1,
+        leaseOwnerToken: "lease-1",
+      },
+    }, { repo } as any)).rejects.toMatchObject({
+      code: "invalid_request",
+      statusCode: 400,
+    });
+  });
+
   it("enforces the canonical local_folder_ingest progress taxonomy", async () => {
     const { recordWorkerJobEvent } = await import("../workerRegistryService");
 

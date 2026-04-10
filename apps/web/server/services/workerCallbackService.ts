@@ -1,5 +1,9 @@
 import { and, eq, sql } from "drizzle-orm";
 
+import {
+  workerCallbackMetadataSchema,
+  type WorkerCallbackMetadata,
+} from "../../shared/workerOpenClawPayloads";
 import { getDb } from "../db";
 import { teamRooms, teamRuns, workerJobEvents, workerJobs } from "../../drizzle/schema";
 import { createRateLimiter } from "./rateLimiter";
@@ -33,7 +37,7 @@ export interface WorkerCallbackPayload {
   summary: string;
   links?: WorkerCallbackLinkInput[];
   publishArtifacts?: boolean;
-  metadataJson?: Record<string, unknown>;
+  metadataJson?: WorkerCallbackMetadata;
 }
 
 export interface WorkerCallbackResult {
@@ -159,6 +163,21 @@ function normalizeLinks(links: WorkerCallbackLinkInput[] | undefined): Array<Req
   });
 }
 
+function normalizeMetadata(
+  metadata: WorkerCallbackMetadata | Record<string, unknown> | undefined,
+): WorkerCallbackMetadata {
+  const result = workerCallbackMetadataSchema.safeParse(metadata ?? {});
+  if (result.success) {
+    return result.data;
+  }
+
+  throw new WorkerCallbackError(
+    "invalid_request",
+    400,
+    result.error.issues.map((issue) => issue.message).join("; ") || "Invalid callback metadata",
+  );
+}
+
 function callbackEventType(channel: WorkerCallbackChannel): string {
   return `worker_callback_${channel}`;
 }
@@ -271,6 +290,7 @@ async function publishRoomUpdate(
   job: WorkerJobRecord,
   summary: string,
   links: Array<Required<WorkerCallbackLinkInput>>,
+  metadata: WorkerCallbackMetadata,
 ): Promise<string> {
   const context = extractJobContext(job);
   if (!context.roomId) {
@@ -296,6 +316,7 @@ async function publishRoomUpdate(
       source: "worker_callback",
       workerJobId: job.id,
       workerId: job.workerId,
+      callbackMetadata: metadata,
     },
   });
 
@@ -306,6 +327,7 @@ async function publishWorkflowUpdate(
   job: WorkerJobRecord,
   summary: string,
   links: Array<Required<WorkerCallbackLinkInput>>,
+  metadata: WorkerCallbackMetadata,
   repo: WorkerCallbackRepository,
 ): Promise<void> {
   const context = extractJobContext(job);
@@ -336,6 +358,7 @@ async function publishWorkflowUpdate(
       workerJobId: job.id,
       workerId: job.workerId,
       links,
+      callbackMetadata: metadata,
     },
   });
 }
@@ -344,6 +367,7 @@ async function publishUserNotification(
   job: WorkerJobRecord,
   summary: string,
   links: Array<Required<WorkerCallbackLinkInput>>,
+  metadata: WorkerCallbackMetadata,
 ): Promise<number | null> {
   if (!job.requestedByUserId) {
     throw new WorkerCallbackError(
@@ -372,6 +396,7 @@ async function publishUserNotification(
         acc[`link_${index + 1}`] = link.url;
         return acc;
       }, {}),
+      callbackMetadata: metadata,
     } as any,
   });
 
@@ -423,6 +448,7 @@ export async function publishWorkerCallback(
 
   const summary = normalizeSummary(input.payload.summary);
   const links = normalizeLinks(input.payload.links);
+  const metadata = normalizeMetadata(input.payload.metadataJson);
   const artifactLinks = input.payload.publishArtifacts ? await buildPublishedArtifactLinks(job) : [];
   const mergedLinks = [...links, ...artifactLinks].slice(0, MAX_LINKS);
 
@@ -431,12 +457,12 @@ export async function publishWorkerCallback(
   let notificationId: number | null = null;
 
   if (input.channel === "room_update") {
-    roomMessageId = await publishRoomUpdate(job, summary, mergedLinks);
+    roomMessageId = await publishRoomUpdate(job, summary, mergedLinks, metadata);
   } else if (input.channel === "workflow_update") {
-    await publishWorkflowUpdate(job, summary, mergedLinks, repo);
+    await publishWorkflowUpdate(job, summary, mergedLinks, metadata, repo);
     workflowEventRecorded = true;
   } else {
-    notificationId = await publishUserNotification(job, summary, mergedLinks);
+    notificationId = await publishUserNotification(job, summary, mergedLinks, metadata);
   }
 
   await repo.insertCallbackEvent(job.id, input.channel, {
@@ -447,7 +473,7 @@ export async function publishWorkerCallback(
     roomMessageId,
     workflowEventRecorded,
     notificationId,
-    metadataJson: input.payload.metadataJson ?? {},
+    metadataJson: metadata,
   });
 
   auditLogger.log({

@@ -38,6 +38,10 @@ import {
   evaluateWorkerCompatibility,
   getWorkerRuntimeDefinition,
 } from "../../shared/workerRuntime";
+import {
+  openClawBrowserJobPayloadSchema,
+  openClawWorkflowJobPayloadSchema,
+} from "../../shared/workerOpenClawPayloads";
 import type {
   WorkerAccessAuthContext,
   WorkerRegistrationAuthContext,
@@ -372,6 +376,23 @@ function assertRuntimeSpecificJobEventContract(
   job: WorkerJobRecord,
   payload: WorkerJobEventPayload,
 ): void {
+  const openClawSchema = job.jobType === "browser_automation_task"
+    ? openClawBrowserJobPayloadSchema
+    : job.jobType === "plugin_workflow_task"
+      ? openClawWorkflowJobPayloadSchema
+      : null;
+
+  if (openClawSchema) {
+    const result = openClawSchema.safeParse(payload.payloadJson ?? {});
+    if (!result.success) {
+      throw new WorkerRuntimeServiceError(
+        "invalid_request",
+        400,
+        result.error.issues.map((issue) => issue.message).join("; ") || `${job.jobType} payload is invalid`,
+      );
+    }
+  }
+
   const progressStages = job.jobType === "video_assembly"
     ? VIDEO_ASSEMBLY_PROGRESS_STAGES
     : job.jobType === "local_folder_ingest"

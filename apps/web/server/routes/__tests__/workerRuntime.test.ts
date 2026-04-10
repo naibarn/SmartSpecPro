@@ -553,8 +553,42 @@ describe("workerRuntime routes", () => {
         summary: "Presentation deck published",
         publishArtifacts: true,
         links: [{ label: "Deck", url: "/library?itemId=88" }],
-        metadataJson: {},
+        metadataJson: {
+          connectorFamilies: [],
+          publishedArtifacts: [],
+        },
       },
     });
+  });
+
+  it("rejects malformed typed callback metadata at the route boundary", async () => {
+    const { issueWorkerAccessTokens } = await import("../../services/workerAuthService");
+    const publishWorkerCallback = vi.fn();
+    const app = await makeApp({
+      workerCallbacks: { publishWorkerCallback },
+    });
+
+    const tokens = issueWorkerAccessTokens({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+    });
+
+    const res = await request(app)
+      .post("/api/worker-jobs/job-1/publish-room-update")
+      .set("Authorization", `Bearer ${tokens.executionToken}`)
+      .set("Idempotency-Key", "callback-invalid")
+      .send({
+        summary: "Browser progress update",
+        metadataJson: {
+          lane: "browser",
+          sessionId: "lbs_demo_123",
+          publishedArtifacts: ["invalid-shape"],
+        },
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("invalid_request");
+    expect(publishWorkerCallback).not.toHaveBeenCalled();
   });
 });

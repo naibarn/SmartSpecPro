@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { workerCallbackMetadataSchema } from "./workerOpenClawPayloads";
 import { workerRuntimeTypeSchema } from "./workerRuntime";
 
 export const DELEGATED_WORKER_AUDIENCE = "smartspec-worker-gateway";
@@ -229,7 +230,7 @@ export const delegatedWorkerCallbackPayloadSchema = z.object({
   summary: z.string().min(1).max(4000),
   links: z.array(delegatedWorkerCallbackLinkSchema).max(10).default([]),
   publishArtifacts: z.boolean().default(false),
-  metadataJson: z.record(z.string(), z.unknown()).default({}),
+  metadataJson: workerCallbackMetadataSchema.default({}),
 });
 
 export type DelegatedCapabilityManifest = z.infer<typeof delegatedCapabilityManifestSchema>;

@@ -23,6 +23,10 @@ import {
   workpackGenericLaneDetailSchema,
   workpackWorkflowLaneDetailSchema,
 } from "../../shared/workpackExecutorLaneDetails";
+import {
+  openClawBrowserJobPayloadSchema,
+  openClawWorkflowJobPayloadSchema,
+} from "../../shared/workerOpenClawPayloads";
 import { getDb } from "../db";
 import { sanitizeWorkerPayload } from "./workerPayloadSanitizer";
 import { compileWorkpackExecutionPlan } from "./workpackCompilerService";
@@ -754,6 +758,57 @@ function readStageFromEvents(events: WorkpackExecutorEventSnapshot[]): string | 
   return readFirstStringFromEvents(events, ["stage"]);
 }
 
+function readFirstStringFromPayloads(
+  payloads: Array<Record<string, unknown> | null>,
+  keys: string[],
+): string | null {
+  for (const payload of payloads) {
+    for (const key of keys) {
+      const value = readStringFromRecord(payload, key);
+      if (value) return value;
+    }
+  }
+  return null;
+}
+
+function parseBrowserPayload(value: unknown): Record<string, unknown> | null {
+  const result = openClawBrowserJobPayloadSchema.safeParse(value);
+  return result.success ? result.data : null;
+}
+
+function parseWorkflowPayload(value: unknown): Record<string, unknown> | null {
+  const result = openClawWorkflowJobPayloadSchema.safeParse(value);
+  return result.success ? result.data : null;
+}
+
+function readFirstBrowserSessionId(payloads: Array<Record<string, unknown> | null>): string | null {
+  for (const payload of payloads) {
+    const directSessionId = readStringFromRecord(payload, "sessionId");
+    if (directSessionId) return directSessionId;
+    const nestedSessionId = readStringFromRecord(isRecord(payload) ? payload.browserSession : null, "sessionId");
+    if (nestedSessionId) return nestedSessionId;
+  }
+  return null;
+}
+
+function readFirstBrowserState(payloads: Array<Record<string, unknown> | null>): string | null {
+  for (const payload of payloads) {
+    const directState = readStringFromRecord(payload, "browserState");
+    if (directState) return directState;
+    const nestedState = readStringFromRecord(isRecord(payload) ? payload.browserSession : null, "state");
+    if (nestedState) return nestedState;
+  }
+  return null;
+}
+
+function readPublishedArtifactLabelsFromTypedPayload(payload: Record<string, unknown> | null): string[] {
+  const publishedArtifacts = Array.isArray(payload?.publishedArtifacts) ? payload.publishedArtifacts : [];
+  return publishedArtifacts
+    .map((artifact) => readStringFromRecord(artifact, "label") ?? readStringFromRecord(artifact, "artifactId"))
+    .filter((value): value is string => Boolean(value))
+    .slice(0, 4);
+}
+
 function readArtifactMetadataValue(
   artifacts: WorkpackExecutorArtifactSnapshot[],
   key: string,
@@ -845,16 +900,46 @@ function deriveLaneDetails(input: {
   const stage = readStageFromEvents(input.recentEvents);
   const publishedArtifactLabels = readPublishedArtifactLabels(input.outputJson);
   const capabilityFamilies = readStringArrayFromRecord(input.capabilityRequirementsJson, "capabilityFamilies");
+  const browserOutput = parseBrowserPayload(input.outputJson);
+  const workflowOutput = parseWorkflowPayload(input.outputJson);
+  const browserEventPayloads = input.recentEvents.map((event) => parseBrowserPayload(event.payload));
+  const workflowEventPayloads = input.recentEvents.map((event) => parseWorkflowPayload(event.payload));
+  const browserPublishedArtifactLabels = readPublishedArtifactLabelsFromTypedPayload(browserOutput);
+  const workflowPublishedArtifactLabels = readPublishedArtifactLabelsFromTypedPayload(workflowOutput);
 
   if (input.runtimePathHint === "browser" || input.jobType === "browser_automation_task") {
     return validateLaneDetails(compactLaneDetails({
-      stage,
-      sourceCount,
-      connectorFamilies,
-      fallbackPaths,
-      currentUrl: readFirstStringFromEvents(input.recentEvents, ["currentUrl", "url", "pageUrl", "targetUrl"]),
-      pageTitle: readFirstStringFromEvents(input.recentEvents, ["pageTitle", "title"]),
-      publishedArtifacts: publishedArtifactLabels,
+      stage:
+        readStringFromRecord(browserOutput, "stage")
+        ?? readFirstStringFromPayloads(browserEventPayloads, ["stage"])
+        ?? stage,
+      sessionId:
+        readFirstBrowserSessionId([browserOutput, ...browserEventPayloads]),
+      browserState:
+        readFirstBrowserState([browserOutput, ...browserEventPayloads]),
+      sourceCount:
+        readNumberFromRecord(browserOutput, "sourceCount")
+        ?? sourceCount,
+      connectorFamilies:
+        readStringArrayFromRecord(browserOutput, "connectorFamilies").length > 0
+          ? readStringArrayFromRecord(browserOutput, "connectorFamilies")
+          : connectorFamilies,
+      fallbackPaths:
+        readStringArrayFromRecord(browserOutput, "fallbackPaths").length > 0
+          ? readStringArrayFromRecord(browserOutput, "fallbackPaths")
+          : fallbackPaths,
+      currentUrl:
+        readFirstStringFromPayloads([browserOutput, ...browserEventPayloads], ["currentUrl", "url", "pageUrl", "targetUrl"])
+        ?? readStringFromRecord(browserOutput?.browserSession, "url")
+        ?? readFirstStringFromEvents(input.recentEvents, ["currentUrl", "url", "pageUrl", "targetUrl"]),
+      pageTitle:
+        readFirstStringFromPayloads([browserOutput, ...browserEventPayloads], ["pageTitle", "title"])
+        ?? readStringFromRecord(browserOutput?.browserSession, "pageTitle")
+        ?? readFirstStringFromEvents(input.recentEvents, ["pageTitle", "title"]),
+      publishedArtifacts:
+        browserPublishedArtifactLabels.length > 0
+          ? browserPublishedArtifactLabels
+          : publishedArtifactLabels,
     }), "browser");
   }
 
@@ -864,13 +949,37 @@ function deriveLaneDetails(input: {
     || input.jobType === "plugin_workflow_task"
   ) {
     return validateLaneDetails(compactLaneDetails({
-      stage,
-      workflowRunId: input.workflowRunId,
-      connectorFamilies,
-      sourceCount,
-      fallbackPaths,
-      publishedArtifacts: publishedArtifactLabels,
-      intent: readStringFromRecord(input.instructionsJson, "intent"),
+      stage:
+        readStringFromRecord(workflowOutput, "stage")
+        ?? readFirstStringFromPayloads(workflowEventPayloads, ["stage"])
+        ?? stage,
+      workflowRunId:
+        readStringFromRecord(workflowOutput, "workflowRunId")
+        ?? readFirstStringFromPayloads(workflowEventPayloads, ["workflowRunId"])
+        ?? input.workflowRunId,
+      connectorFamilies:
+        readStringArrayFromRecord(workflowOutput, "connectorFamilies").length > 0
+          ? readStringArrayFromRecord(workflowOutput, "connectorFamilies")
+          : connectorFamilies,
+      sourceCount:
+        readNumberFromRecord(workflowOutput, "sourceCount")
+        ?? sourceCount,
+      fallbackPaths:
+        readStringArrayFromRecord(workflowOutput, "fallbackPaths").length > 0
+          ? readStringArrayFromRecord(workflowOutput, "fallbackPaths")
+          : fallbackPaths,
+      publishedArtifacts:
+        workflowPublishedArtifactLabels.length > 0
+          ? workflowPublishedArtifactLabels
+          : publishedArtifactLabels,
+      intent:
+        readStringFromRecord(workflowOutput, "intent")
+        ?? readFirstStringFromPayloads(workflowEventPayloads, ["intent"])
+        ?? readStringFromRecord(input.instructionsJson, "intent"),
+      resultSummary:
+        readStringFromRecord(workflowOutput, "resultSummary")
+        ?? readStringFromRecord(workflowOutput, "summary")
+        ?? readFirstStringFromPayloads(workflowEventPayloads, ["resultSummary", "summary"]),
     }), "workflow");
   }
 
