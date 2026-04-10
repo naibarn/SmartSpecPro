@@ -1,4 +1,4 @@
-# SmartSpecPro Web
+# SmartSpec Pro
 
 [![CI](https://github.com/naibarn/SmartSpecPro/actions/workflows/ci.yml/badge.svg)](https://github.com/naibarn/SmartSpecPro/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
@@ -7,12 +7,18 @@
 [![Node](https://img.shields.io/badge/Node.js-20+-green)](https://nodejs.org/)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
 
-SmartSpecPro Web is an end-to-end AI productivity platform for teams that need more than a chat UI.  
-It combines agent skills, media creation, presentation editing, document intelligence (RAG + vector search), and virtual workflow automation in one product.
+Today this alpha codebase spans:
 
-Production showcase: deploy to your own tenant domain.
+- SmartSpec Pro on the web as the main control plane and product surface
+- SmartSpec Pro Desktop as a Tauri-based managed desktop host for local execution
+- multi-model chat and LLM workspaces
+- image, video, and audio generation flows
+- library, document intelligence, RAG, and vector search
+- agent skills, reusable automation, and agency workflow orchestration
+- early worker/runtime fabric support for hybrid local and external execution
 
-![SmartAIHub Production Showcase](docs/assets/SmartAIHub.png)
+This is no longer just a chat UI or a thin automation shell.
+It is an evolving alpha platform for AI-native products that need product UX, media workflows, knowledge systems, automation, desktop-side execution, and runtime interoperability in one monorepo.
 
 ## Alpha Release Notice
 
@@ -22,12 +28,33 @@ Current version status: **Alpha**.
 - Feature behavior, APIs, schemas, UI flows, and infrastructure defaults may change.
 - Additional modules may be introduced before the Beta milestone.
 - Breaking changes can happen between alpha updates.
+- Desktop, worker/runtime, and hybrid execution surfaces are now present, but several lanes are still feature-gated or hardening.
 
 If you plan to use SmartSpecPro in production during alpha, pin commits/tags and test upgrades in staging first.
+
+## Current Alpha Scope
+
+The project supports substantially more than earlier iterations, while still remaining **Alpha**.
+
+Current repo highlights:
+
+- **Chat + LLM**: multi-conversation AI chat, embedded skill execution, context/memory helpers, and model-routed AI interactions
+- **Media creation**: image, video, and audio generation with prompt enhancement, model inputs, async task lifecycle, and artifact history
+- **Knowledge systems**: document management, versioning, connectors, library workflows, RAG, and vector search across multiple providers
+- **Automation**: agent skills, workflow builder, agency-oriented orchestration, workpack lifecycle/readiness surfaces, and workflow-to-skill conversion flows
+- **SmartSpec Pro Desktop**: `apps/tauri-shell` now gives the repo a governed desktop foundation for local execution, device enrollment, package sync, local roots, and web-to-desktop handoff
+- **Runtime expansion**: the codebase includes worker/runtime fabric primitives for `openclaw_gateway`, `desktop_zeroclaw_managed`, `nemoclaw_sandbox`, and `hiclaw_cluster`
+- **Admin and ops**: multi-tenant controls, audit/search, billing and budget policy surfaces, infrastructure monitoring, and health/readiness endpoints
+
+The platform map below is a concise view of the **current alpha shape** of the repo.
+It should be read as "implemented foundation plus active hardening", not as a Beta-stable compatibility promise.
+
+![SmartSpec Pro Alpha Ecosystem Map](docs/assets/06-smartspec-pro-alpha-ecosystem-map.svg)
 
 ## Table of Contents
 
 - [Alpha Release Notice](#alpha-release-notice)
+- [Current Alpha Scope](#current-alpha-scope)
 - [1. What This Project Delivers](#1-what-this-project-delivers)
 - [2. Core Product Areas](#2-core-product-areas)
 - [3. Architecture](#3-architecture)
@@ -43,13 +70,13 @@ If you plan to use SmartSpecPro in production during alpha, pin commits/tags and
 
 ## 1. What This Project Delivers
 
-SmartSpecPro Web is designed to be a complete open-source foundation for modern AI-first SaaS products.
+SmartSpec Pro is designed to be a complete open-source alpha foundation for modern AI-first SaaS products that need more than a single chat screen.
 
 It is built for:
 
-- Product teams that need AI chat + automation + media workflows in one system.
+- Product teams that need AI chat + automation + media workflows + knowledge systems in one platform.
 - Organizations that need tenant/domain controls, auditability, and role-based administration.
-- Builders who want a production-grade base that can be customized, rebranded, and extended.
+- Builders who want a customizable base that can grow from web-only delivery into hybrid local and external runtime orchestration.
 
 ![SmartSpecPro Platform At A Glance](docs/assets/01-platform-at-a-glance.png)
 
@@ -146,19 +173,23 @@ Key modules:
 - `apps/web/server/routers/systemSettings.ts`
 - `python-backend/app/orchestrator/vector_store/`
 
-### F. Virtual Workflow Automation
+### F. Virtual Workflow Automation and Workpacks
 
 - Visual workflow builder (React Flow) with registry-driven node architecture.
 - Compile, execute, monitor status, resume, and dead-letter reprocessing.
 - Workflow templates and version history/restore.
 - AI-assisted auto-generate and auto-edit.
 - Workflow-to-skill conversion pipeline (`analyzeConversion` and `convertToSkill`).
+- Workpack intake, lifecycle, readiness, and rollout-gate surfaces for supervised and autonomous operations.
+- Readiness signals cover evidence completeness, connector health, trust status, exception severity, and rollback availability.
 
 Key modules:
 
 - `apps/web/client/src/pages/WorkflowEditor.tsx`
 - `apps/web/server/routers/workflow.ts`
 - `python-backend/app/orchestrator/`
+- `apps/web/shared/workpackContracts.ts`
+- `apps/web/server/services/workpackReadinessService.ts`
 
 ### G. Admin, Multi-Tenant, and Operations
 
@@ -175,28 +206,69 @@ Key modules:
 - `apps/web/server/routers/infrastructure.ts`
 - `apps/web/server/services/scaleTier.ts`
 
+### H. SmartSpec Pro Desktop, Desktop Host, and Worker Runtime Fabric (Alpha)
+
+- `apps/tauri-shell` now acts as a managed desktop host for local execution, local roots, package materialization, and web-to-desktop handoff.
+- The web side provides the desktop control plane: device registry, rollout-gate evaluation, policy snapshots, package feeds, revocation feeds, workspace profiles, and offboarding plans.
+- Managed desktop posture now includes:
+  - device-bound enrollment and proof-of-possession checks
+  - signed package sync with trust classes and revocation states
+  - governed local roots instead of whole-disk discovery by default
+  - truthful run labels for local, hybrid, server, and external execution
+  - tenant-visible health, presence, workspace profile, and network posture
+- Desktop runtime boundaries are more explicit than before:
+  - Pi and Agency Swarm are the internal desktop-side runtime labels for managed local execution
+  - `desktop_zeroclaw_managed` is the projection identity used when the desktop host joins the worker fabric
+  - `openclaw_gateway` is the external delegated runtime path in the current alpha surface
+- Runtime family vocabulary currently present in the repo:
+  - `openclaw_gateway`
+  - `desktop_zeroclaw_managed`
+  - `nemoclaw_sandbox`
+  - `hiclaw_cluster`
+- These runtime and hybrid execution surfaces are still alpha:
+  - they expand what the project can do today
+  - they are not yet a Beta-stable interoperability contract
+
+Key modules:
+
+- `apps/tauri-shell/src-tauri/src/*`
+- `apps/web/shared/desktopHost.ts`
+- `apps/web/server/routes/desktopHost.ts`
+- `apps/web/shared/workerRuntime.ts`
+- `apps/web/server/routes/workerRuntime.ts`
+- `apps/web/server/services/workerRegistryService.ts`
+- `apps/web/server/services/workerDelegationService.ts`
+
 ## 3. Architecture
 
 ```mermaid
 flowchart LR
-    U[Web Browser / Tenant Domain] --> W[SmartSpecPro Web\nReact + Node + tRPC]
+    U[Web Browser / Tenant Domain] --> W[SmartSpec Pro Web\nReact + Node + tRPC]
+    D[SmartSpec Pro Desktop\nTauri + Rust] --> W
+    D --> LX[Local Files and Workspaces]
     W --> PG[(PostgreSQL)]
     W --> RD[(Redis)]
     W --> PY[Python Backend\nFastAPI + Orchestration]
     W --> CT[Cloud Tasks / Queue Layer]
-    PY --> VP[LLM & Media Providers]
+    W --> WF[Worker Runtime Fabric]
+    WF --> OC[OpenClaw Gateway]
+    WF --> DZ[Desktop + ZeroClaw Managed]
+    WF --> NM[NemoClaw Sandbox]
+    WF --> HC[HiClaw Cluster]
+    PY --> VP[LLM and Media Providers]
     PY --> OBJ[Object Storage\nS3 / R2]
     PY --> VDB[Vector DB\nChroma / pgvector / Vectorize]
     W --> OBS[PostHog + Sentry]
 ```
 
-![SmartSpecPro Web Architecture](docs/assets/04-web-architecture.png)
-
 Design highlights:
 
 - Single web app package hosts frontend and Node API in `apps/web`.
+- Desktop Host foundation lives in `apps/tauri-shell`, while web remains the governance and policy control plane.
 - Type-safe API layer via tRPC routers.
 - Python backend handles heavy orchestration/media/vector operations.
+- Worker/runtime fabric adds the current alpha path toward hybrid local and external execution.
+- Managed desktop execution separates internal desktop runtimes (Pi and Agency Swarm) from worker-fabric projection/runtime identities such as `desktop_zeroclaw_managed` and `openclaw_gateway`.
 - Queue-based execution model for background and long-running workloads.
 - Storage abstraction supports local and cloud object backends.
 
@@ -205,9 +277,11 @@ Design highlights:
 | Layer | Primary Tools |
 | --- | --- |
 | Frontend | React 19, Vite 7, Wouter, TanStack Query, Tailwind CSS, Radix UI, Framer Motion |
+| Desktop | Tauri, Rust, desktop execution primitives, local PTY/file/Docker adapters |
 | Node API | Express, tRPC, Zod, Drizzle ORM, PostgreSQL, Redis |
 | Python Services | FastAPI, Celery, orchestration modules, media pipelines |
 | AI Integration | Multi-provider LLM routing, skill runtime, media model routing |
+| Runtime Fabric | Typed worker runtime registry, delegated worker sessions, artifact publication, runtime policy |
 | Workflow | React Flow, registry-driven node system, execution state store |
 | RAG / Search | ChromaDB, pgvector, Cloudflare Vectorize, indexing/reindex pipeline |
 | Storage | Local filesystem, S3-compatible storage, Cloudflare R2 |
@@ -220,7 +294,7 @@ Design highlights:
 SmartSpecPro/
 |- apps/
 |  |- web/                   # Main web product (client + server)
-|  `- desktop/               # Desktop app (optional companion)
+|  `- tauri-shell/           # SmartSpec Pro Desktop / Desktop Host shell
 |- python-backend/           # FastAPI + orchestration + media engine
 |- control-plane/            # Control plane services
 |- docker-status/            # Infra/ops monitoring UI
@@ -306,6 +380,28 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+### Desktop / Hybrid Execution (Alpha)
+
+Desktop and hybrid runtime lanes are present in this repo, but they are still rollout-gated during alpha.
+
+Useful commands:
+
+```bash
+cd apps/tauri-shell
+npm test
+```
+
+```bash
+cd apps/tauri-shell
+npm run tauri:dev
+```
+
+Reference docs:
+
+- `apps/web/docs/help/en/desktop-host.md`
+- `apps/web/docs/help/en/desktop-host-managed-mode.md`
+- `apps/web/docs/help/en/desktop-releases.md`
+
 ## 7. Configuration
 
 Minimum required variables for a usable setup:
@@ -330,6 +426,12 @@ Reference files:
 - Root: `.env.example`
 - Web: `apps/web/.env.example`
 - Python: `python-backend/.env.example`
+
+Feature-flagged alpha surfaces:
+
+- Tenant-scoped rollout flags live in `apps/web/shared/featureFlags.ts`.
+- Desktop/runtime flags such as `desktopHostEnabled`, `desktopPackageSync`, `desktopAgencyRuntime`, `desktopWorkerProjection`, `openClawExternalRuntime`, `nemoClawSecureWorkerPool`, and `hiClawClusterRuntime` stay explicitly gated during alpha rollout.
+- Workpack rollout is also gated through `workpacksEnabled`, `workpackAutonomousPilot`, and `workpackOpsConsole`.
 
 ## 8. Recommended Hosting Specs
 
@@ -374,6 +476,13 @@ Security controls already present in the codebase:
 - Role-based protected procedures (`protectedProcedure`, `adminProcedure`, domain-admin procedures).
 - Audit logging and operational search endpoints.
 - Readiness/liveness endpoints (`/healthz`, `/readyz`) for orchestrators.
+- Proof-of-possession desktop enrollment with shared-secret and Ed25519-backed verification paths.
+- Desktop device posture reporting for storage protection and attestation mode.
+- Signed desktop package sync, trust classification, package revocation, and restricted/quarantined states.
+- Signed desktop update verification and rollout-gate checks for managed desktop releases.
+- Governed local roots, device disable/quarantine actions, and offboarding cleanup planning for desktop execution.
+
+Managed desktop security posture is intentionally conservative during alpha: web remains the control plane, managed desktop traffic can stay gateway-bound, and high-power local capabilities are feature-gated until rollout evidence is ready.
 
 Operational docs:
 
@@ -401,10 +510,24 @@ pytest
 ruff check app/
 ```
 
+Desktop:
+
+```bash
+cd apps/tauri-shell
+npm test
+```
+
+Cross-stack alpha verification:
+
+```bash
+npm --prefix apps/web test && npm --prefix apps/tauri-shell test && pytest python-backend/tests -q
+```
+
 Repository CI:
 
 - Workflow file: `.github/workflows/ci.yml`
 - Includes Python tests, web tests, coverage artifacts, and Turbo build/typecheck.
+- Desktop/Tauri quality gates also exist locally and should be run for desktop host or hybrid runtime changes.
 
 ## 11. Open Source Contribution Guide
 
