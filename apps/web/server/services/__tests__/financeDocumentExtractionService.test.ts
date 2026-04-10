@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const financeDocumentHarness = vi.hoisted(() => {
   function createDbMock() {
@@ -58,6 +58,29 @@ const financeDocumentHarness = vi.hoisted(() => {
   const mockAuditLog = vi.fn();
   const mockCheckRateLimit = vi.fn();
   const mockCheckAbuseGuard = vi.fn();
+  const mockEnrichLibraryUploadContent = vi.fn(async () => ({
+    extractedText: null,
+    extractor: "fallback-mock",
+    warnings: [],
+    searchQuality: "metadata_only",
+    stageMessage: "mocked",
+    extraMetadata: {},
+  }));
+  const mockExtractDocumentOccurredAtIso = vi.fn((text: string) => {
+    const match = text.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
+    if (!match) {
+      return null;
+    }
+
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    const year = Number(match[3]);
+    if (!day || !month || !year) {
+      return null;
+    }
+
+    return new Date(`${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}T00:00:00+07:00`).toISOString();
+  });
 
   return {
     mockGetDb,
@@ -68,6 +91,8 @@ const financeDocumentHarness = vi.hoisted(() => {
     mockAuditLog,
     mockCheckRateLimit,
     mockCheckAbuseGuard,
+    mockEnrichLibraryUploadContent,
+    mockExtractDocumentOccurredAtIso,
     resetDb() {
       currentDb = createDbMock();
       return currentDb;
@@ -92,6 +117,10 @@ vi.mock("../libraryService", () => ({
   getLibraryItemById: financeDocumentHarness.mockGetLibraryItemById,
 }));
 
+vi.mock("../libraryUploadPipeline", () => ({
+  enrichLibraryUploadContent: financeDocumentHarness.mockEnrichLibraryUploadContent,
+}));
+
 vi.mock("../callLLMStructured", () => ({
   callLLMStructured: financeDocumentHarness.mockCallLLMStructured,
 }));
@@ -113,6 +142,7 @@ vi.mock("../auditLogger", () => ({
 
 vi.mock("../financeService", () => ({
   parseDocumentToDraft: financeDocumentHarness.mockParseDocumentToDraft,
+  extractDocumentOccurredAtIso: financeDocumentHarness.mockExtractDocumentOccurredAtIso,
 }));
 
 import { financeRouter } from "../../routers/finance";
@@ -236,6 +266,10 @@ beforeEach(() => {
   });
 });
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe("financeDocumentExtractionService", () => {
   it("ingests a finance document into extraction + draft flow", async () => {
     const db = financeDocumentHarness.getDbState();
@@ -313,6 +347,192 @@ describe("financeDocumentExtractionService", () => {
       mimeType: "application/pdf",
     });
     expect((db.state.lastInsertValues[0].confidenceJson as Record<string, unknown>).needsClarification).toBe(true);
+  });
+
+  it("uses the receipt date from OCR text and defaults missing time to midnight", async () => {
+    const db = financeDocumentHarness.getDbState();
+    db.queueSelectResult([]);
+    db.queueInsertResult({
+      id: 32,
+      tenantId: "tenant-1",
+      projectId: "personal",
+      ownerUserId: 7,
+      libraryItemId: 22,
+      source: "ocr_document",
+      idempotencyKey: "finance-document:tenant-1:personal:22",
+      sourceHash: "abc123",
+      ocrProvider: "library_upload_pipeline",
+      ocrText: "วันที่ 09/04/2026 ร้านอาหาร ABC ยอดรวม 180 บาท",
+      ocrJson: {},
+      extractedJson: {},
+      confidenceJson: {},
+      mimeType: "application/pdf",
+      fileHash: "abc123",
+      pageCount: 1,
+      sourceMessageId: null,
+      sourceLibraryItemId: null,
+      allowedScopes: ["user:7"],
+      financeDraftId: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    });
+
+    financeDocumentHarness.mockGetLibraryItemById.mockResolvedValueOnce({
+      id: 22,
+      tenantId: "tenant-1",
+      ownerUserId: 7,
+      projectId: "personal",
+      itemType: "pdf",
+      source: "document_upload",
+      title: "receipt.pdf",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: {
+        file_type: "application/pdf",
+        file_name: "receipt.pdf",
+        extracted_text: "วันที่ 09/04/2026 ร้านอาหาร ABC ยอดรวม 180 บาท",
+        content_checksum_sha256: "abc123",
+        file_size_bytes: 120_000,
+        extractor: "library_upload_pipeline",
+        page_count: 1,
+        upload_pipeline: {
+          stage: "ready",
+        },
+      },
+      sourceUrl: null,
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    } as any);
+
+    const result = await ingestFinanceDocumentFromLibraryItem({
+      conversationId: 91,
+      libraryItemId: 22,
+      userId: 7,
+      tenantId: "tenant-1",
+      idempotencyKey: "finance-document:tenant-1:personal:22",
+    });
+
+    const expectedOccurredAt = new Date("2026-04-09T00:00:00+07:00").toISOString();
+    expect(result.extraction.id).toBe(32);
+    expect(result.draft.id).toBe(55);
+    expect(db.state.lastInsertValues[0].extractedJson).toMatchObject({
+      occurredAt: expectedOccurredAt,
+      documentOccurredAt: expectedOccurredAt,
+    });
+    expect(financeDocumentHarness.mockParseDocumentToDraft).toHaveBeenCalledWith({
+      conversationId: 91,
+      userId: 7,
+      tenantId: "tenant-1",
+      documentExtractionId: 32,
+      idempotencyKey: "finance-document:tenant-1:personal:22",
+    });
+  });
+
+  it("re-extracts from the original upload when library metadata is missing OCR text", async () => {
+    const db = financeDocumentHarness.getDbState();
+    db.queueSelectResult([]);
+    db.queueInsertResult({
+      id: 33,
+      tenantId: "tenant-1",
+      projectId: "personal",
+      ownerUserId: 7,
+      libraryItemId: 22,
+      source: "ocr_document",
+      idempotencyKey: "finance-document:tenant-1:personal:22",
+      sourceHash: "abc123",
+      ocrProvider: "library_upload_pipeline",
+      ocrText: "ร้านกาแฟ XYZ โอน 250 บาท",
+      ocrJson: {},
+      extractedJson: {},
+      confidenceJson: {},
+      mimeType: "application/pdf",
+      fileHash: "abc123",
+      pageCount: 1,
+      sourceMessageId: null,
+      sourceLibraryItemId: null,
+      allowedScopes: ["user:7"],
+      financeDraftId: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    });
+
+    financeDocumentHarness.mockGetLibraryItemById.mockResolvedValueOnce({
+      id: 22,
+      tenantId: "tenant-1",
+      ownerUserId: 7,
+      projectId: "personal",
+      itemType: "pdf",
+      source: "document_upload",
+      title: "transfer-slip.pdf",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: {
+        file_type: "application/pdf",
+        file_name: "transfer-slip.pdf",
+        content_checksum_sha256: "abc123",
+        file_size_bytes: 120_000,
+        extractor: "library_upload_pipeline",
+        page_count: 1,
+      },
+      sourceUrl: "https://cdn.example.com/library/uploads/tenant-1/7/transfer-slip.pdf",
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    } as any);
+
+    financeDocumentHarness.mockEnrichLibraryUploadContent.mockResolvedValueOnce({
+      extractedText: "ร้านกาแฟ XYZ โอน 250 บาท",
+      extractor: "image_document_ocr",
+      warnings: [],
+      searchQuality: "full_text",
+      stageMessage: "fallback ocr",
+      extraMetadata: {},
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === "https://cdn.example.com/library/uploads/tenant-1/7/transfer-slip.pdf") {
+          const bytes = Buffer.from("%PDF-1.7 scanned slip", "utf8");
+          return {
+            ok: true,
+            arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+          } as Response;
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
+      }),
+    );
+
+    const result = await ingestFinanceDocumentFromLibraryItem({
+      conversationId: 91,
+      libraryItemId: 22,
+      userId: 7,
+      tenantId: "tenant-1",
+      idempotencyKey: "finance-document:tenant-1:personal:22",
+    });
+
+    expect(result.extraction.id).toBe(33);
+    expect(financeDocumentHarness.mockEnrichLibraryUploadContent).toHaveBeenCalledTimes(1);
+    expect(financeDocumentHarness.mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "finance_document_ocr_completed",
+        metadata: expect.objectContaining({
+          textSource: "storage_fallback",
+          ocrTextLength: expect.any(Number),
+        }),
+      }),
+    );
+    expect(db.state.lastInsertValues[0]).toMatchObject({
+      ocrText: "ร้านกาแฟ XYZ โอน 250 บาท",
+    });
+    expect((db.state.lastInsertValues[0].ocrJson as Record<string, unknown>).text_source).toBe("storage_fallback");
   });
 
   it("rejects library items without project scope", async () => {
