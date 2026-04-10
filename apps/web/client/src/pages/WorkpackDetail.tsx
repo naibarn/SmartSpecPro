@@ -70,6 +70,7 @@ export default function WorkpackDetail() {
 
   const activeRuns = (data.runs ?? []).filter((run: any) => run.status === "queued" || run.status === "running");
   const recentRuns = (data.runs ?? []).slice(0, 3);
+  const executorSnapshotById = new Map((data.executorSnapshots ?? []).map((snapshot: any) => [snapshot.executionId, snapshot]));
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -199,6 +200,7 @@ export default function WorkpackDetail() {
             <p>Active runs: {activeRuns.length}</p>
             <p>Recent runs: {recentRuns.length}</p>
             <p>Queued/running steps: {recentRuns.flatMap((run: any) => run.actualSteps ?? []).filter((step: any) => step.status === "queued" || step.status === "running").length}</p>
+            <p>Tracked executors: {(data.executorSnapshots ?? []).length}</p>
           </div>
           {recentRuns.length === 0 ? (
             <p className="text-sm text-slate-500">No launches have been recorded yet.</p>
@@ -221,29 +223,56 @@ export default function WorkpackDetail() {
                     {(run.actualSteps ?? []).length === 0 ? (
                       <p className="text-xs text-slate-500">No actual steps captured yet.</p>
                     ) : (
-                      (run.actualSteps ?? []).map((step: any) => (
-                        <div key={`${run.id}-${step.stepId}`} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <p className="text-sm font-medium text-slate-900">{step.title}</p>
-                            <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-600">
-                              {step.status}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-xs text-slate-500">
-                            Runtime {step.runtimePath} • Side effect {step.sideEffectClass}
-                          </p>
-                          {step.executionRef ? (
-                            <p className="mt-1 text-xs text-sky-700">
-                              {step.executionRef.provider} {step.executionRef.executionId}
-                              {step.executionRef.status ? ` • ${step.executionRef.status}` : ""}
-                              {step.executionRef.runtimeType ? ` • ${step.executionRef.runtimeType}` : ""}
+                      (run.actualSteps ?? []).map((step: any) => {
+                        const snapshot = step.executionRef
+                          ? executorSnapshotById.get(step.executionRef.executionId)
+                          : null;
+
+                        return (
+                          <div key={`${run.id}-${step.stepId}`} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-medium text-slate-900">{step.title}</p>
+                              <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-600">
+                                {step.status}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-xs text-slate-500">
+                              Runtime {step.runtimePath} • Side effect {step.sideEffectClass}
                             </p>
-                          ) : null}
-                          {step.outputSummary ? (
-                            <p className="mt-1 text-xs text-slate-600">{step.outputSummary}</p>
-                          ) : null}
-                        </div>
-                      ))
+                            {step.executionRef ? (
+                              <p className="mt-1 text-xs text-sky-700">
+                                {step.executionRef.provider} {step.executionRef.executionId}
+                                {step.executionRef.status ? ` • ${step.executionRef.status}` : ""}
+                                {step.executionRef.runtimeType ? ` • ${step.executionRef.runtimeType}` : ""}
+                              </p>
+                            ) : null}
+                            {snapshot ? (
+                              <div className="mt-2 rounded-xl border border-sky-100 bg-sky-50/70 px-3 py-2 text-xs text-sky-900">
+                                <p className="font-medium">
+                                  {snapshot.laneLabel} • {snapshot.runtimeType ?? "runtime pending"} • {snapshot.jobType ?? "job pending"}
+                                </p>
+                                <p className="mt-1 text-sky-800">
+                                  Worker {snapshot.workerId ?? "unassigned"} • Status reason {snapshot.statusReason ?? "n/a"} • Resource {snapshot.resourceProfile ?? "n/a"}
+                                </p>
+                                <p className="mt-1 text-sky-800">
+                                  Artifacts {snapshot.artifactCount} • Published {snapshot.publishedArtifactCount} • Latest event {snapshot.latestEventType ?? "n/a"}
+                                </p>
+                                {snapshot.failureReason ? (
+                                  <p className="mt-1 text-rose-700">Failure: {snapshot.failureReason}</p>
+                                ) : null}
+                                {(snapshot.recentEvents ?? []).slice(0, 2).map((event: any) => (
+                                  <p key={event.eventId} className="mt-1 text-sky-700">
+                                    {event.eventType ?? "event"} • {event.createdAt ?? "pending"}
+                                  </p>
+                                ))}
+                              </div>
+                            ) : null}
+                            {step.outputSummary ? (
+                              <p className="mt-1 text-xs text-slate-600">{step.outputSummary}</p>
+                            ) : null}
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </div>

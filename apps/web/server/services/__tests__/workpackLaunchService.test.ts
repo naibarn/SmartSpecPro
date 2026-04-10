@@ -32,7 +32,11 @@ import {
   updateWorkpackVersion,
 } from "../workpackPersistence";
 import { compileWorkpackExecutionPlan } from "../workpackCompilerService";
-import { launchWorkpack, reconcileDispatchedWorkpackRuns } from "../workpackLaunchService";
+import {
+  launchWorkpack,
+  listWorkpackExecutorSnapshots,
+  reconcileDispatchedWorkpackRuns,
+} from "../workpackLaunchService";
 
 describe("workpackLaunchService", () => {
   beforeEach(() => {
@@ -247,5 +251,96 @@ describe("workpackLaunchService", () => {
     expect(updatedDetail?.runs[0]?.status).toBe("succeeded");
     expect(updatedDetail?.runs[0]?.actualSteps[0]?.status).toBe("succeeded");
     expect(updatedDetail?.runs[0]?.artifactReferences.some((artifact) => artifact.label === "Dispatch plugin workflow published artifacts")).toBe(true);
+  });
+
+  it("returns lane-aware executor monitor snapshots for recent workpack runs", async () => {
+    const draft = seedWorkpack();
+    const detail = getWorkpackDetail(draft.workpack.id);
+    expect(detail).not.toBeNull();
+
+    updateWorkpackVersion(detail!.version.id, (version) => ({
+      ...version,
+      executionPlan: {
+        ...version.executionPlan!,
+        steps: [{
+          ...version.executionPlan!.steps[0]!,
+          id: "step_browser_monitor",
+          title: "Inspect browser queue",
+          objective: "Open the browser queue and classify the next task.",
+          expectedOutcome: "Queued task inspected",
+          preferredRuntimePath: "browser",
+          allowedFallbackPaths: [],
+          requiredConnectorFamilies: [],
+          sideEffectClass: "read_only",
+          requiresApproval: false,
+        }],
+      },
+    }));
+
+    await launchWorkpack({
+      workpackId: draft.workpack.id,
+      requestedBy: 7,
+      autonomyMode: "supervised",
+    }, {
+      queueWorkerJobByRuntime: vi.fn().mockResolvedValue({
+        created: true,
+        job: {
+          id: "worker-job-monitor",
+          status: "running",
+          runtimeType: "openclaw_gateway",
+          jobType: "browser_automation_task",
+        },
+      }) as any,
+    });
+
+    const snapshots = await listWorkpackExecutorSnapshots({
+      tenantId: "tenant-1",
+      workpackId: draft.workpack.id,
+    }, {
+      loadExecutorSnapshotsById: vi.fn().mockResolvedValue({
+        "worker-job-monitor": {
+          executionId: "worker-job-monitor",
+          provider: "worker_job",
+          runtimeType: "openclaw_gateway",
+          jobType: "browser_automation_task",
+          runtimePathHint: "browser",
+          laneLabel: "Browser automation lane",
+          status: "running",
+          statusReason: "navigating_queue",
+          failureReason: null,
+          workerId: "worker-alpha",
+          resourceProfile: "network_heavy",
+          terminal: false,
+          artifactCount: 1,
+          publishedArtifactCount: 0,
+          latestEventType: "navigation_completed",
+          startedAt: "2026-04-10T00:00:00.000Z",
+          finishedAt: null,
+          recentEvents: [{
+            eventId: "evt-1",
+            eventType: "navigation_completed",
+            createdAt: "2026-04-10T00:01:00.000Z",
+            payload: { page: "queue" },
+          }],
+          artifacts: [{
+            artifactId: "artifact-1",
+            artifactType: "summary",
+            storageRef: "library://artifact-1",
+            publishedItemId: null,
+            createdAt: "2026-04-10T00:01:10.000Z",
+            metadata: { label: "Queue summary" },
+          }],
+        },
+      }),
+    });
+
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]).toMatchObject({
+      executionId: "worker-job-monitor",
+      laneLabel: "Browser automation lane",
+      workerId: "worker-alpha",
+      latestEventType: "navigation_completed",
+      artifactCount: 1,
+    });
   });
 });

@@ -34,6 +34,7 @@ import { listWorkpackExceptionInbox, resolveWorkpackException } from "../service
 import {
   createWorkpackSchedule,
   launchWorkpack,
+  listWorkpackExecutorSnapshots,
   reconcileDispatchedWorkpackRuns,
   runDueWorkpackSchedules,
   triggerWorkpackSchedule,
@@ -145,6 +146,10 @@ export const workpackRouter = router({
       promotionEligibility: evaluateWorkpackPromotionEligibility(detail.workpack.id),
       exceptionInbox: listWorkpackExceptionInbox(detail.workpack.id),
       latestMetricSnapshot: detail.metricSnapshots[0] ?? captureWorkpackMetricSnapshot(detail.workpack.id),
+      executorSnapshots: await listWorkpackExecutorSnapshots({
+        tenantId,
+        workpackId: detail.workpack.id,
+      }),
     };
   }),
 

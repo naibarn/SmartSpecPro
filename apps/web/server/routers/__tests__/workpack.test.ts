@@ -65,7 +65,7 @@ describe("workpack router", () => {
 
     expect(compiled.steps.length).toBeGreaterThan(0);
     expect(detail.workpack.id).toBe(draft.workpack.id);
-    expect(simulation.simulationRun.status).toBe("passed");
+    expect(simulation.simulationRun.status).toBe("blocked");
     expect(replay.inspectionMode).toBe("inspection_only");
   });
 

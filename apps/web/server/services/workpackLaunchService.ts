@@ -1,7 +1,7 @@
 import path from "path";
-import { inArray } from "drizzle-orm";
+import { desc, inArray } from "drizzle-orm";
 
-import { workerJobs } from "../../drizzle/schema";
+import { workerArtifacts, workerJobEvents, workerJobs } from "../../drizzle/schema";
 import {
   type AutonomyMode,
   type WorkpackApprovalCheckpoint,
@@ -12,9 +12,11 @@ import {
   type WorkpackRuntimePath,
   type WorkpackSchedule,
   type WorkpackStep,
+  workpackRuntimePathValues,
   workpackScheduleSchema,
 } from "../../shared/workpackContracts";
 import { getDb } from "../db";
+import { sanitizeWorkerPayload } from "./workerPayloadSanitizer";
 import { compileWorkpackExecutionPlan } from "./workpackCompilerService";
 import { validateConnectorMaps } from "./workpackConnectorService";
 import { normalizeWorkpackException } from "./workpackExceptionService";
@@ -40,6 +42,7 @@ import { type QueueWorkerJobByRuntimeInput, queueWorkerJobByRuntime } from "./wo
 const WORKER_QUEUED_STATUSES = new Set(["queued", "claimed", "preparing"]);
 const WORKER_RUNNING_STATUSES = new Set(["running", "uploading", "publishing", "indexing"]);
 const WORKER_FAILED_STATUSES = new Set(["failed", "canceled", "expired"]);
+const WORKER_TERMINAL_STATUSES = new Set(["completed", "failed", "canceled", "expired"]);
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -564,9 +567,48 @@ export interface WorkpackExecutorJobSnapshot {
   outputJson: Record<string, unknown> | null;
 }
 
+export interface WorkpackExecutorArtifactSnapshot {
+  artifactId: string;
+  artifactType: string | null;
+  storageRef: string | null;
+  publishedItemId: number | null;
+  createdAt: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface WorkpackExecutorEventSnapshot {
+  eventId: string;
+  eventType: string | null;
+  createdAt: string | null;
+  payload: Record<string, unknown> | null;
+}
+
+export interface WorkpackExecutorMonitorSnapshot {
+  executionId: string;
+  provider: "worker_job";
+  runtimeType: string | null;
+  jobType: string | null;
+  runtimePathHint: WorkpackRuntimePath | null;
+  laneLabel: string;
+  status: string | null;
+  statusReason: string | null;
+  failureReason: string | null;
+  workerId: string | null;
+  resourceProfile: string | null;
+  terminal: boolean;
+  artifactCount: number;
+  publishedArtifactCount: number;
+  latestEventType: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  recentEvents: WorkpackExecutorEventSnapshot[];
+  artifacts: WorkpackExecutorArtifactSnapshot[];
+}
+
 interface WorkpackLaunchDeps {
   queueWorkerJobByRuntime?: typeof queueWorkerJobByRuntime;
   loadWorkerJobsById?: (jobIds: string[]) => Promise<Record<string, WorkpackExecutorJobSnapshot>>;
+  loadExecutorSnapshotsById?: (jobIds: string[]) => Promise<Record<string, WorkpackExecutorMonitorSnapshot>>;
 }
 
 async function defaultLoadWorkerJobsById(jobIds: string[]): Promise<Record<string, WorkpackExecutorJobSnapshot>> {
@@ -594,6 +636,167 @@ async function defaultLoadWorkerJobsById(jobIds: string[]): Promise<Record<strin
     failureReason: row.failureReason ?? null,
     outputJson: (row.outputJson ?? null) as Record<string, unknown> | null,
   }]));
+}
+
+function serializeDate(value: unknown): string | null {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string" && value.trim()) return value;
+  return null;
+}
+
+function normalizeRuntimePathHint(value: unknown): WorkpackRuntimePath | null {
+  if (typeof value !== "string") return null;
+  return workpackRuntimePathValues.includes(value as WorkpackRuntimePath)
+    ? value as WorkpackRuntimePath
+    : null;
+}
+
+function deriveExecutorLaneLabel(
+  runtimePathHint: WorkpackRuntimePath | null,
+  runtimeType: string | null,
+  jobType: string | null,
+): string {
+  switch (runtimePathHint) {
+    case "browser":
+      return "Browser automation lane";
+    case "workflow":
+      return "Workflow automation lane";
+    case "skill":
+      return "Skill execution lane";
+    case "desktop_local":
+      return "Desktop-local lane";
+    case "worker_fabric":
+      return "Worker fabric lane";
+    case "hybrid":
+      return "Hybrid orchestration lane";
+    case "agency":
+      return "Agency swarm lane";
+    default:
+      break;
+  }
+
+  if (jobType === "browser_automation_task") return "Browser automation lane";
+  if (jobType === "plugin_workflow_task") return "Workflow automation lane";
+  if (jobType === "local_folder_ingest") return "Desktop-local lane";
+  if (jobType === "workpack_worker_fabric_step") return "Worker fabric lane";
+  if (jobType === "workpack_agency_step") return "Agency swarm lane";
+  if (jobType === "workpack_hybrid_step") return "Hybrid orchestration lane";
+  if (runtimeType === "desktop_zeroclaw_managed") return "Desktop managed lane";
+  if (runtimeType === "hiclaw_cluster") return "Cluster orchestration lane";
+  if (runtimeType === "openclaw_gateway") return "Gateway automation lane";
+  return "Executor lane";
+}
+
+async function defaultLoadExecutorSnapshotsById(
+  jobIds: string[],
+): Promise<Record<string, WorkpackExecutorMonitorSnapshot>> {
+  if (jobIds.length === 0) {
+    return {};
+  }
+
+  const db = await getDb();
+  if (!db) {
+    return {};
+  }
+
+  const [jobs, artifacts, events] = await Promise.all([
+    db
+      .select({
+        id: workerJobs.id,
+        workerId: workerJobs.workerId,
+        runtimeType: workerJobs.runtimeType,
+        jobType: workerJobs.jobType,
+        status: workerJobs.status,
+        statusReason: workerJobs.statusReason,
+        resourceProfile: workerJobs.resourceProfile,
+        failureReason: workerJobs.failureReason,
+        instructionsJson: workerJobs.instructionsJson,
+        startedAt: workerJobs.startedAt,
+        finishedAt: workerJobs.finishedAt,
+      })
+      .from(workerJobs)
+      .where(inArray(workerJobs.id, jobIds)),
+    db
+      .select({
+        workerJobId: workerArtifacts.workerJobId,
+        artifactId: workerArtifacts.id,
+        artifactType: workerArtifacts.artifactType,
+        storageRef: workerArtifacts.storageRef,
+        publishedItemId: workerArtifacts.publishedItemId,
+        createdAt: workerArtifacts.createdAt,
+        metadataJson: workerArtifacts.metadataJson,
+      })
+      .from(workerArtifacts)
+      .where(inArray(workerArtifacts.workerJobId, jobIds)),
+    db
+      .select({
+        workerJobId: workerJobEvents.workerJobId,
+        eventId: workerJobEvents.id,
+        eventType: workerJobEvents.eventType,
+        createdAt: workerJobEvents.createdAt,
+        payloadJson: workerJobEvents.payloadJson,
+      })
+      .from(workerJobEvents)
+      .where(inArray(workerJobEvents.workerJobId, jobIds))
+      .orderBy(desc(workerJobEvents.createdAt)),
+  ]);
+
+  const artifactsByJobId = new Map<string, WorkpackExecutorArtifactSnapshot[]>();
+  for (const artifact of artifacts) {
+    const entries = artifactsByJobId.get(artifact.workerJobId) ?? [];
+    entries.push({
+      artifactId: String(artifact.artifactId),
+      artifactType: artifact.artifactType ?? null,
+      storageRef: artifact.storageRef ?? null,
+      publishedItemId:
+        typeof artifact.publishedItemId === "number" && Number.isInteger(artifact.publishedItemId)
+          ? artifact.publishedItemId
+          : null,
+      createdAt: serializeDate(artifact.createdAt),
+      metadata: sanitizeWorkerPayload(artifact.metadataJson ?? {}) as Record<string, unknown>,
+    });
+    artifactsByJobId.set(artifact.workerJobId, entries);
+  }
+
+  const eventsByJobId = new Map<string, WorkpackExecutorEventSnapshot[]>();
+  for (const event of events) {
+    const entries = eventsByJobId.get(event.workerJobId) ?? [];
+    if (entries.length >= 5) continue;
+    entries.push({
+      eventId: String(event.eventId),
+      eventType: event.eventType ?? null,
+      createdAt: serializeDate(event.createdAt),
+      payload: sanitizeWorkerPayload(event.payloadJson ?? {}) as Record<string, unknown>,
+    });
+    eventsByJobId.set(event.workerJobId, entries);
+  }
+
+  return Object.fromEntries(jobs.map((job) => {
+    const runtimePathHint = normalizeRuntimePathHint(job.instructionsJson?.workpackRuntimePath);
+    const jobArtifacts = artifactsByJobId.get(job.id) ?? [];
+    const jobEvents = eventsByJobId.get(job.id) ?? [];
+    return [job.id, {
+      executionId: String(job.id),
+      provider: "worker_job" as const,
+      runtimeType: job.runtimeType ?? null,
+      jobType: job.jobType ?? null,
+      runtimePathHint,
+      laneLabel: deriveExecutorLaneLabel(runtimePathHint, job.runtimeType ?? null, job.jobType ?? null),
+      status: job.status ?? null,
+      statusReason: job.statusReason ?? null,
+      failureReason: job.failureReason ?? null,
+      workerId: job.workerId ?? null,
+      resourceProfile: job.resourceProfile ?? null,
+      terminal: WORKER_TERMINAL_STATUSES.has(job.status),
+      artifactCount: jobArtifacts.length,
+      publishedArtifactCount: jobArtifacts.filter((artifact) => artifact.publishedItemId !== null).length,
+      latestEventType: jobEvents[0]?.eventType ?? null,
+      startedAt: serializeDate(job.startedAt),
+      finishedAt: serializeDate(job.finishedAt),
+      recentEvents: jobEvents,
+      artifacts: jobArtifacts,
+    } satisfies WorkpackExecutorMonitorSnapshot];
+  }));
 }
 
 export async function launchWorkpack(
@@ -1035,6 +1238,48 @@ export async function reconcileDispatchedWorkpackRuns(
   }
 
   return reconciledRunIds;
+}
+
+export async function listWorkpackExecutorSnapshots(
+  input: {
+    tenantId: string;
+    workpackId: string;
+    runLimit?: number;
+  },
+  deps: Pick<WorkpackLaunchDeps, "loadExecutorSnapshotsById"> = {},
+): Promise<WorkpackExecutorMonitorSnapshot[]> {
+  const detail = getWorkpackDetail(input.workpackId);
+  if (!detail || detail.workpack.tenantId !== input.tenantId) {
+    return [];
+  }
+
+  const runLimit = Math.max(1, input.runLimit ?? 3);
+  const executionIds = Array.from(new Set(
+    detail.runs
+      .slice(0, runLimit)
+      .flatMap((run) => run.actualSteps)
+      .map((step) => step.executionRef?.provider === "worker_job" ? step.executionRef.executionId : null)
+      .filter((value): value is string => Boolean(value)),
+  ));
+
+  if (executionIds.length === 0) {
+    return [];
+  }
+
+  const loadSnapshots = deps.loadExecutorSnapshotsById ?? defaultLoadExecutorSnapshotsById;
+  const snapshotsById = await loadSnapshots(executionIds);
+
+  return executionIds
+    .map((executionId) => snapshotsById[executionId])
+    .filter((snapshot): snapshot is WorkpackExecutorMonitorSnapshot => Boolean(snapshot))
+    .sort((left, right) => {
+      if (left.terminal !== right.terminal) {
+        return left.terminal ? 1 : -1;
+      }
+      const leftTime = left.finishedAt ?? left.startedAt ?? "";
+      const rightTime = right.finishedAt ?? right.startedAt ?? "";
+      return rightTime.localeCompare(leftTime);
+    });
 }
 
 export function createWorkpackSchedule(input: {

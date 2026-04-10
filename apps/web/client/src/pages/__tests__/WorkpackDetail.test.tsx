@@ -100,6 +100,27 @@ describe("WorkpackDetail", () => {
             ],
           },
         ],
+        executorSnapshots: [
+          {
+            executionId: "worker-job-1",
+            laneLabel: "Browser automation lane",
+            runtimeType: "openclaw_gateway",
+            jobType: "browser_automation_task",
+            workerId: "worker-a",
+            statusReason: "navigating_queue",
+            resourceProfile: "network_heavy",
+            artifactCount: 1,
+            publishedArtifactCount: 0,
+            latestEventType: "navigation_completed",
+            recentEvents: [
+              {
+                eventId: "evt-1",
+                eventType: "navigation_completed",
+                createdAt: "2026-04-10T00:01:00.000Z",
+              },
+            ],
+          },
+        ],
         exceptions: [],
         promotionRecords: [],
       },
@@ -120,6 +141,8 @@ describe("WorkpackDetail", () => {
     expect(screen.getByText("History Timeline")).toBeInTheDocument();
     expect(screen.getByText("Live Executor Status")).toBeInTheDocument();
     expect(screen.getAllByText(/worker-job-1/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Browser automation lane/i)).toBeInTheDocument();
+    expect(screen.getByText(/Latest event navigation_completed/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /refresh executor status/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /process due schedules/i })).toBeInTheDocument();
   });
