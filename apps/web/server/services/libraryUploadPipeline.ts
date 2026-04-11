@@ -1,6 +1,8 @@
 import crypto from "crypto";
 
+import { debugLog } from "../_core/logger";
 import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
+import { getTraceId } from "./traceContext";
 import { MAX_AUDIO_BYTES, transcribe } from "./sttService";
 const INTERNAL_REQUEST_TIMEOUT_MS = 30_000;
 
@@ -51,6 +53,7 @@ interface ExtractTextResponse {
   char_count?: number;
   method?: string;
   warning?: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 interface MediaEnrichmentResponse {
@@ -83,12 +86,47 @@ function resolveUploadAnalysisProfile(metadata: Record<string, unknown> | undefi
   }
 }
 
+function resolveCaptureIntent(
+  metadata: Record<string, unknown> | undefined,
+): "receipt" | "transfer_slip" | "statement" | null {
+  const candidates = [
+    metadata?.capture_intent,
+    metadata?.finance_capture_intent,
+    metadata?.document_role,
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate === "receipt" || candidate === "transfer_slip" || candidate === "statement") {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
 function nowIsoString(): string {
   return new Date().toISOString();
 }
 
+function resolveFinanceOcrTraceId(explicitTraceId?: string | null): string {
+  const candidate = String(explicitTraceId ?? getTraceId() ?? "").trim();
+  if (candidate) {
+    return candidate.replace(/[^A-Za-z0-9._:-]+/g, "").slice(0, 128) || crypto.randomUUID();
+  }
+  return crypto.randomUUID();
+}
+
+function fingerprintToken(token: string | null | undefined): string | null {
+  const value = String(token ?? "").trim();
+  if (!value) {
+    return null;
+  }
+  return crypto.createHash("sha256").update(value).digest("hex").slice(0, 12);
+}
+
 async function getInternalProxyToken(): Promise<string> {
-  return getPreferredInternalToken();
+  const runtime = await getAppRuntimeConfig();
+  return runtime.proxyToken || runtime.webGatewayToken || "";
 }
 
 export function buildUploadPipelineState(
@@ -217,6 +255,7 @@ export function computeLibraryUploadChecksum(fileBuffer: Buffer): string {
 async function postInternalJson<TResponse>(
   path: string,
   body: Record<string, unknown>,
+  traceId?: string | null,
 ): Promise<TResponse> {
   const [internalProxyToken, runtime] = await Promise.all([
     getInternalProxyToken(),
@@ -228,12 +267,26 @@ async function postInternalJson<TResponse>(
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), INTERNAL_REQUEST_TIMEOUT_MS);
+  const resolvedTraceId = resolveFinanceOcrTraceId(traceId);
+  const tokenSource = runtime.proxyToken
+    ? "SMARTSPEC_PROXY_TOKEN"
+    : runtime.webGatewayToken
+      ? "SMARTSPEC_WEB_GATEWAY_TOKEN"
+      : "none";
+  debugLog("finance_ocr", "internal auth token selected", {
+    traceId: resolvedTraceId,
+    tokenSource,
+    tokenFingerprint: fingerprintToken(internalProxyToken),
+    runtimeProxyTokenFingerprint: fingerprintToken(runtime.proxyToken),
+    runtimeGatewayTokenFingerprint: fingerprintToken(runtime.webGatewayToken),
+  });
   try {
     const response = await fetch(`${runtime.pythonBackendUrl}${path}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-proxy-token": internalProxyToken,
+        "x-trace-id": resolvedTraceId,
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -255,23 +308,38 @@ async function extractComplexDocumentText(params: {
   fileName: string;
   fileType: string;
   analysisProfile: UploadAnalysisProfile;
+  captureIntent: "receipt" | "transfer_slip" | "statement" | null;
+  externalProcessingAllowed: boolean;
+  sourceUrl?: string | null;
+  traceId?: string | null;
 }): Promise<LibraryUploadEnrichmentResult> {
+  const traceId = resolveFinanceOcrTraceId(params.traceId);
+  debugLog("finance_ocr", "extract-text start", {
+    traceId,
+    fileName: params.fileName,
+    fileType: params.fileType,
+    analysisProfile: params.analysisProfile,
+    captureIntent: params.captureIntent,
+    contentBytes: params.fileBuffer.byteLength,
+  });
   const payload = await postInternalJson<ExtractTextResponse>(
     "/api/internal/library/extract-text",
     {
       file_name: params.fileName,
       mime_type: params.fileType,
       content_base64: params.fileBuffer.toString("base64"),
+      ...(params.sourceUrl ? { source_url: params.sourceUrl } : {}),
       analysis_profile: params.analysisProfile,
+      ...(params.captureIntent ? { capture_intent: params.captureIntent } : {}),
     },
+    traceId,
   );
 
   const extractedText = typeof payload.text === "string" && payload.text.trim()
     ? payload.text.trim()
     : null;
   const warnings = payload.warning ? [payload.warning] : [];
-
-  return {
+  const result: LibraryUploadEnrichmentResult = {
     extractedText,
     extractor: payload.method ?? null,
     warnings,
@@ -279,8 +347,18 @@ async function extractComplexDocumentText(params: {
     stageMessage: extractedText
       ? "Document text extracted and queued for semantic indexing."
       : "File uploaded, but only metadata is currently searchable for this format.",
-    extraMetadata: {},
+    extraMetadata: payload.metadata ?? {},
   };
+  debugLog("finance_ocr", "extract-text result", {
+    traceId,
+    fileName: params.fileName,
+    method: payload.method ?? null,
+    charCount: payload.char_count ?? 0,
+    hasText: Boolean(extractedText),
+    warning: payload.warning ?? null,
+  });
+
+  return result;
 }
 
 async function transcribeAudioUpload(params: {
@@ -334,9 +412,24 @@ async function enrichMediaUpload(params: {
   fileName: string;
   fileType: string;
   analysisProfile: UploadAnalysisProfile;
+  captureIntent: "receipt" | "transfer_slip" | "statement" | null;
   enableVision: boolean;
   enableTranscript: boolean;
+  externalProcessingAllowed: boolean;
+  sourceUrl?: string | null;
+  traceId?: string | null;
 }): Promise<LibraryUploadEnrichmentResult> {
+  const traceId = resolveFinanceOcrTraceId(params.traceId);
+  debugLog("finance_ocr", "enrich-media start", {
+    traceId,
+    fileName: params.fileName,
+    fileType: params.fileType,
+    analysisProfile: params.analysisProfile,
+    captureIntent: params.captureIntent,
+    enableVision: params.enableVision,
+    enableTranscript: params.enableTranscript,
+    contentBytes: params.fileBuffer.byteLength,
+  });
   try {
     const payload = await postInternalJson<MediaEnrichmentResponse>(
       "/api/internal/library/enrich-media",
@@ -344,10 +437,13 @@ async function enrichMediaUpload(params: {
         file_name: params.fileName,
         mime_type: params.fileType,
         content_base64: params.fileBuffer.toString("base64"),
+        ...(params.sourceUrl ? { source_url: params.sourceUrl } : {}),
         analysis_profile: params.analysisProfile,
+        ...(params.captureIntent ? { capture_intent: params.captureIntent } : {}),
         enable_vision: params.enableVision,
         enable_transcript: params.enableTranscript,
       },
+      traceId,
     );
 
     const extractedParts = [
@@ -356,8 +452,7 @@ async function enrichMediaUpload(params: {
       typeof payload.transcript === "string" ? payload.transcript.trim() : "",
     ].filter(Boolean);
     const dedupedText = Array.from(new Set(extractedParts)).join("\n\n").trim();
-
-    return {
+    const result: LibraryUploadEnrichmentResult = {
       extractedText: dedupedText || null,
       extractor: payload.method ?? "media_enrichment",
       warnings: payload.warning ? [payload.warning] : [],
@@ -367,7 +462,26 @@ async function enrichMediaUpload(params: {
         : "Media uploaded. Search currently falls back to metadata because enrichment did not return searchable text.",
       extraMetadata: payload.metadata ?? {},
     };
+    debugLog("finance_ocr", "enrich-media result", {
+      traceId,
+      fileName: params.fileName,
+      method: payload.method ?? null,
+      charCount: payload.char_count ?? 0,
+      hasText: Boolean(dedupedText),
+      searchQuality: payload.search_quality ?? null,
+      warning: payload.warning ?? null,
+      metadataKeys: payload.metadata ? Object.keys(payload.metadata).slice(0, 16) : [],
+    });
+    return result;
   } catch (error) {
+    debugLog("finance_ocr", "enrich-media failed", {
+      traceId,
+      fileName: params.fileName,
+      fileType: params.fileType,
+      analysisProfile: params.analysisProfile,
+      captureIntent: params.captureIntent,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
     return {
       extractedText: null,
       extractor: "media_enrichment_error",
@@ -385,11 +499,32 @@ export async function enrichLibraryUploadContent(params: {
   fileType: string;
   extension: string;
   fallbackText: string | null;
+  sourceUrl?: string | null;
   metadata?: Record<string, unknown>;
+  traceId?: string | null;
+  externalProcessingAllowed?: boolean;
 }): Promise<LibraryUploadEnrichmentResult> {
+  const traceId = resolveFinanceOcrTraceId(params.traceId);
   const analysisProfile = resolveUploadAnalysisProfile(params.metadata);
+  const captureIntent = resolveCaptureIntent(params.metadata);
+  const externalProcessingAllowed = params.externalProcessingAllowed ?? true;
+  debugLog("finance_ocr", "pipeline route", {
+    traceId,
+    fileName: params.fileName,
+    fileType: params.fileType,
+    extension: params.extension,
+    analysisProfile,
+    captureIntent,
+    externalProcessingAllowed,
+    hasFallbackText: Boolean(params.fallbackText),
+  });
 
   if (params.fallbackText) {
+    debugLog("finance_ocr", "pipeline inline text", {
+      traceId,
+      fileName: params.fileName,
+      textLength: params.fallbackText.length,
+    });
     return {
       extractedText: params.fallbackText,
       extractor: "inline_text",
@@ -400,13 +535,40 @@ export async function enrichLibraryUploadContent(params: {
     };
   }
 
+  if (analysisProfile === "document_ocr" && !externalProcessingAllowed) {
+    return {
+      extractedText: null,
+      extractor: "document_ocr_policy_blocked",
+      warnings: ["External document OCR processing is disabled for this tenant."],
+      searchQuality: "metadata_only",
+      stageMessage: "Document uploaded. External OCR is disabled for this tenant, so search uses metadata only.",
+      extraMetadata: {
+        ocr_policy_blocked: true,
+        analysis_profile: analysisProfile,
+      },
+    };
+  }
+
   if (COMPLEX_DOCUMENT_EXTENSIONS.has(params.extension)) {
     try {
       return await extractComplexDocumentText({
         ...params,
         analysisProfile,
+        captureIntent,
+        externalProcessingAllowed,
+        sourceUrl: params.sourceUrl,
+        traceId,
       });
     } catch (error) {
+      debugLog("finance_ocr", "pipeline complex document failed", {
+        traceId,
+        fileName: params.fileName,
+        fileType: params.fileType,
+        extension: params.extension,
+        analysisProfile,
+        captureIntent,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
       return {
         extractedText: null,
         extractor: "extract_error",
@@ -427,8 +589,11 @@ export async function enrichLibraryUploadContent(params: {
       fileName: params.fileName,
       fileType: params.fileType,
       analysisProfile: analysisProfile === "video_transcript" ? "video_transcript" : "metadata_only",
+      captureIntent: null,
       enableVision: false,
       enableTranscript: true,
+      externalProcessingAllowed,
+      traceId,
     });
   }
 
@@ -439,11 +604,22 @@ export async function enrichLibraryUploadContent(params: {
         fileName: params.fileName,
         fileType: params.fileType,
         analysisProfile,
+        captureIntent,
         enableVision: true,
         enableTranscript: false,
+        externalProcessingAllowed,
+        sourceUrl: params.sourceUrl,
+        traceId,
       });
     }
 
+    debugLog("finance_ocr", "pipeline image metadata only", {
+      traceId,
+      fileName: params.fileName,
+      fileType: params.fileType,
+      extension: params.extension,
+      analysisProfile,
+    });
     return {
       extractedText: null,
       extractor: "image_metadata_only",
@@ -456,6 +632,13 @@ export async function enrichLibraryUploadContent(params: {
     };
   }
 
+  debugLog("finance_ocr", "pipeline unsupported", {
+    traceId,
+    fileName: params.fileName,
+    fileType: params.fileType,
+    extension: params.extension,
+    analysisProfile,
+  });
   return {
     extractedText: null,
     extractor: null,

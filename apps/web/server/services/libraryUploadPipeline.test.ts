@@ -3,8 +3,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("./appRuntimeConfig", () => ({
   getAppRuntimeConfig: vi.fn(async () => ({
     pythonBackendUrl: "http://python.test",
+    proxyToken: "proxy-token",
+    webGatewayToken: "gateway-token",
   })),
   getPreferredInternalToken: vi.fn(async () => "proxy-token"),
+}));
+
+vi.mock("./traceContext", () => ({
+  getTraceId: vi.fn(() => "trace-ocr-123"),
 }));
 
 import {
@@ -91,14 +97,57 @@ describe("libraryUploadPipeline", () => {
       fileType: "image/jpeg",
       extension: "jpg",
       fallbackText: null,
+      externalProcessingAllowed: true,
       metadata: {
         analysis_profile: "document_ocr",
+        finance_capture_intent: "transfer_slip",
       },
     });
 
     expect(result.extractor).toBe("image_document_ocr");
     expect(result.searchQuality).toBe("full_text");
     expect(result.extractedText).toContain("White modern house");
+    const fetchCall = (global.fetch as any).mock.calls[0];
+    const init = fetchCall?.[1] as RequestInit;
+    const body = JSON.parse(String(init.body));
+    expect(body.capture_intent).toBe("transfer_slip");
+    expect((init.headers as Record<string, string>)["x-trace-id"]).toBe("trace-ocr-123");
+    expect((init.headers as Record<string, string>)["x-proxy-token"]).toBe("proxy-token");
+  });
+
+  it("forwards sourceUrl to internal media enrichment when provided", async () => {
+    process.env.SMARTSPEC_PROXY_TOKEN = "proxy-token";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        text: "Krungthai transfer slip",
+        method: "image_document_ocr",
+        search_quality: "full_text",
+        metadata: {
+          ocr_text: "Krungthai transfer slip",
+        },
+      }),
+    }));
+
+    const result = await enrichLibraryUploadContent({
+      fileBuffer: Buffer.from([0xff, 0xd8, 0xff, 0xdb]),
+      fileName: "transfer-slip.jpg",
+      fileType: "image/jpeg",
+      extension: "jpg",
+      fallbackText: null,
+      sourceUrl: "https://cdn.example.com/library/uploads/tenant-1/7/transfer-slip.jpg",
+      externalProcessingAllowed: true,
+      metadata: {
+        analysis_profile: "document_ocr",
+        finance_capture_intent: "transfer_slip",
+      },
+    });
+
+    expect(result.extractor).toBe("image_document_ocr");
+    const fetchCall = (global.fetch as any).mock.calls[0];
+    const init = fetchCall?.[1] as RequestInit;
+    const body = JSON.parse(String(init.body));
+    expect(body.source_url).toBe("https://cdn.example.com/library/uploads/tenant-1/7/transfer-slip.jpg");
   });
 
   it("forwards document OCR analysis profile for scanned PDF uploads", async () => {
@@ -109,6 +158,11 @@ describe("libraryUploadPipeline", () => {
         text: "โอนเงิน 250 บาท ไป SCB Main",
         method: "pdf_document_ocr",
         warning: null,
+        metadata: {
+          ocr_provider: "landingai_ade",
+          provider_request_id: "job-ade-123",
+          source_url_kind: "public_url",
+        },
       }),
     });
     vi.stubGlobal("fetch", fetchSpy);
@@ -119,8 +173,10 @@ describe("libraryUploadPipeline", () => {
       fileType: "application/pdf",
       extension: "pdf",
       fallbackText: null,
+      externalProcessingAllowed: true,
       metadata: {
         analysis_profile: "document_ocr",
+        finance_capture_intent: "transfer_slip",
       },
     });
 
@@ -130,9 +186,16 @@ describe("libraryUploadPipeline", () => {
     const init = fetchCall?.[1] as RequestInit;
     const body = JSON.parse(String(init.body));
     expect(body.analysis_profile).toBe("document_ocr");
+    expect(body.capture_intent).toBe("transfer_slip");
+    expect((init.headers as Record<string, string>)["x-trace-id"]).toBe("trace-ocr-123");
     expect(result.extractor).toBe("pdf_document_ocr");
     expect(result.searchQuality).toBe("full_text");
     expect(result.extractedText).toContain("SCB Main");
+    expect(result.extraMetadata).toMatchObject({
+      ocr_provider: "landingai_ade",
+      provider_request_id: "job-ade-123",
+      source_url_kind: "public_url",
+    });
   });
 
   it("creates pipeline states with timestamps", () => {

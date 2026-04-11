@@ -1,6 +1,9 @@
+import { randomUUID } from "node:crypto";
+import { URL } from "node:url";
 import { TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, lt, ne, sql } from "drizzle-orm";
 
+import { debugLog } from "../_core/logger";
 import { getDb } from "../db";
 import { documentExtractions, type DocumentExtraction } from "../../drizzle/schema";
 import { financeStructuredDraftSchema, type FinanceStructuredDraft } from "../../shared/finance";
@@ -13,12 +16,14 @@ import { getLibraryItemById, type LibraryItemDto } from "./libraryService";
 import { enrichLibraryUploadContent } from "./libraryUploadPipeline";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
 import { storageGet } from "../storage";
+import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import {
   extractDocumentOccurredAtIso,
   parseDocumentToDraft,
   type FinanceDraftRecord,
   type FinanceScope,
 } from "./financeService";
+import { getTraceId } from "./traceContext";
 import { resolveTenantIdVarchar } from "./tenantContext";
 
 type FinanceDb = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -53,6 +58,26 @@ const FINANCE_OCR_MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 const FINANCE_OCR_MAX_PAGE_COUNT = 25;
 const FINANCE_OCR_BURST_LIMIT = 5;
 const FINANCE_OCR_DAILY_LIMIT = 30;
+const DEFAULT_FINANCE_OCR_RAW_RETENTION_DAYS = 30;
+const MIN_FINANCE_OCR_RAW_RETENTION_DAYS = 7;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function resolveFinanceOcrRawRetentionDays(): number {
+  const raw = process.env.FINANCE_OCR_RAW_RETENTION_DAYS;
+  if (!raw) return DEFAULT_FINANCE_OCR_RAW_RETENTION_DAYS;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) return DEFAULT_FINANCE_OCR_RAW_RETENTION_DAYS;
+  if (parsed <= 0) return 0;
+  return Math.max(parsed, MIN_FINANCE_OCR_RAW_RETENTION_DAYS);
+}
+
+function resolveFinanceOcrTraceId(explicitTraceId?: string | null): string {
+  const candidate = String(explicitTraceId ?? getTraceId() ?? "").trim();
+  if (candidate) {
+    return candidate.replace(/[^A-Za-z0-9._:-]+/g, "").slice(0, 128) || randomUUID();
+  }
+  return randomUUID();
+}
 
 function buildAllowedScopes(userId: number): string[] {
   return [`user:${userId}`];
@@ -177,6 +202,43 @@ async function ensureLibraryItemMatchesScope(
   }
 }
 
+export async function sweepDocumentExtractionOcrRetention(): Promise<{
+  retentionDays: number;
+  redacted: number;
+}> {
+  const retentionDays = resolveFinanceOcrRawRetentionDays();
+  if (retentionDays <= 0) {
+    return { retentionDays, redacted: 0 };
+  }
+
+  const db = await getDb();
+  if (!db) {
+    return { retentionDays, redacted: 0 };
+  }
+
+  const cutoff = new Date(Date.now() - retentionDays * MS_PER_DAY);
+  const redactedAt = new Date().toISOString();
+  const rows = await db
+    .update(documentExtractions)
+    .set({
+      ocrText: "",
+      ocrJson: sql`${documentExtractions.ocrJson} || ${JSON.stringify({
+        ocr_text_redacted_at: redactedAt,
+        ocr_text_retention_days: retentionDays,
+      })}::jsonb`,
+    })
+    .where(and(
+      lt(documentExtractions.createdAt, cutoff),
+      ne(documentExtractions.ocrText, ""),
+    ))
+    .returning({ id: documentExtractions.id });
+
+  return {
+    retentionDays,
+    redacted: rows.length,
+  };
+}
+
 function ensureAllowedFinanceMime(mimeType: string | null): string {
   if (!mimeType || !FINANCE_MIME_ALLOWLIST.has(mimeType)) {
     throw new TRPCError({
@@ -186,6 +248,105 @@ function ensureAllowedFinanceMime(mimeType: string | null): string {
   }
 
   return mimeType;
+}
+
+function isPublicSourceUrl(value: string | null | undefined): boolean {
+  const candidate = String(value ?? "").trim();
+  if (!candidate) {
+    return false;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    return false;
+  }
+
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    return false;
+  }
+
+  const hostname = parsed.hostname.trim().toLowerCase();
+  if (!hostname) {
+    return false;
+  }
+
+  if (hostname === "localhost" || hostname === "0.0.0.0" || hostname === "127.0.0.1" || hostname === "::1") {
+    return false;
+  }
+  if (hostname.endsWith(".localhost") || hostname.endsWith(".local")) {
+    return false;
+  }
+
+  const ipv4 = hostname.match(/^(\d{1,3}\.){3}\d{1,3}$/);
+  if (ipv4) {
+    const [a, b] = hostname.split(".").map((part) => Number(part));
+    if (a === 10) return false;
+    if (a === 127) return false;
+    if (a === 169 && b === 254) return false;
+    if (a === 192 && b === 168) return false;
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    return true;
+  }
+
+  if (hostname.includes(":")) {
+    if (hostname === "::1" || hostname.startsWith("fe80:") || hostname.startsWith("fc") || hostname.startsWith("fd")) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function redactSourceUrlHost(value: string | null | undefined): string | null {
+  const candidate = String(value ?? "").trim();
+  if (!candidate) {
+    return null;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    return null;
+  }
+
+  const hostname = parsed.hostname.trim().toLowerCase();
+  if (!hostname) {
+    return null;
+  }
+
+  if (hostname === "localhost" || hostname === "0.0.0.0" || hostname === "127.0.0.1" || hostname === "::1") {
+    return "localhost";
+  }
+  if (hostname.endsWith(".localhost") || hostname.endsWith(".local")) {
+    return hostname;
+  }
+
+  const ipv4 = hostname.match(/^(\d{1,3}\.){3}\d{1,3}$/);
+  if (ipv4) {
+    const [a, b] = hostname.split(".").map((part) => Number(part));
+    if (a === 10 || a === 127 || (a === 169 && b === 254) || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31)) {
+      return "private-ip";
+    }
+    return hostname;
+  }
+
+  if (hostname.includes(":")) {
+    if (hostname === "::1" || hostname.startsWith("fe80:") || hostname.startsWith("fc") || hostname.startsWith("fd")) {
+      return "private-ip";
+    }
+    return hostname;
+  }
+
+  const labels = hostname.split(".").filter(Boolean);
+  if (labels.length <= 2) {
+    return hostname;
+  }
+  const firstLabel = labels[0] ?? "";
+  const firstLabelRedacted = firstLabel.length > 3 ? `${firstLabel.slice(0, 3)}…` : `${firstLabel}…`;
+  return [firstLabelRedacted, ...labels.slice(1)].join(".");
 }
 
 async function resolveLibraryItemDownloadUrl(libraryItem: LibraryItemDto): Promise<string | null> {
@@ -222,9 +383,32 @@ async function resolveLibraryItemDownloadUrl(libraryItem: LibraryItemDto): Promi
 async function reextractLibraryItemTextFromSource(
   libraryItem: LibraryItemDto,
   fileType: string,
+  captureIntent: "receipt" | "transfer_slip" | "statement" | null,
+  traceId?: string | null,
+  externalProcessingAllowed?: boolean,
 ): Promise<{ text: string | null; extractor: string | null; warnings: string[]; sourceUrl: string | null }> {
   const sourceUrl = await resolveLibraryItemDownloadUrl(libraryItem);
+  const sourceUrlPublic = isPublicSourceUrl(sourceUrl);
+  const sourceUrlHostRedacted = redactSourceUrlHost(sourceUrl);
+  debugLog("finance_ocr", "reextract source start", {
+    traceId: traceId ?? "unknown",
+    libraryItemId: libraryItem.id,
+    fileType,
+    captureIntent,
+    hasSourceKey: Boolean((libraryItem.metadata ?? {}).source_key),
+    hasSourceUrl: Boolean(libraryItem.sourceUrl),
+    sourceUrlPresent: Boolean(sourceUrl),
+    sourceUrlPublic,
+    sourceUrlHostRedacted,
+  });
   if (!sourceUrl) {
+    debugLog("finance_ocr", "reextract source missing", {
+      traceId: traceId ?? "unknown",
+      libraryItemId: libraryItem.id,
+      fileType,
+      sourceUrlPublic,
+      sourceUrlHostRedacted,
+    });
     return {
       text: null,
       extractor: null,
@@ -233,8 +417,26 @@ async function reextractLibraryItemTextFromSource(
     };
   }
 
+  if (externalProcessingAllowed === false) {
+    return {
+      text: null,
+      extractor: "document_ocr_policy_blocked",
+      warnings: ["External document OCR processing is disabled for this tenant."],
+      sourceUrl,
+    };
+  }
+
   const response = await fetch(sourceUrl);
   if (!response.ok) {
+    debugLog("finance_ocr", "reextract source download failed", {
+      traceId: traceId ?? "unknown",
+      libraryItemId: libraryItem.id,
+      fileType,
+      captureIntent,
+      status: response.status,
+      sourceUrlPublic,
+      sourceUrlHostRedacted,
+    });
     return {
       text: null,
       extractor: null,
@@ -245,6 +447,15 @@ async function reextractLibraryItemTextFromSource(
 
   const arrayBuffer = await response.arrayBuffer();
   if (!arrayBuffer.byteLength) {
+    debugLog("finance_ocr", "reextract source empty", {
+      traceId: traceId ?? "unknown",
+      libraryItemId: libraryItem.id,
+      fileType,
+      captureIntent,
+      sourceUrlPresent: Boolean(sourceUrl),
+      sourceUrlPublic,
+      sourceUrlHostRedacted,
+    });
     return {
       text: null,
       extractor: null,
@@ -263,9 +474,24 @@ async function reextractLibraryItemTextFromSource(
     fileType,
     extension: extractFileExtension(fileName),
     fallbackText: null,
+    sourceUrl,
     metadata: {
       analysis_profile: "document_ocr",
+      ...(captureIntent ? { finance_capture_intent: captureIntent } : {}),
     },
+    traceId,
+    externalProcessingAllowed,
+  });
+  debugLog("finance_ocr", "reextract source result", {
+    traceId: traceId ?? "unknown",
+    libraryItemId: libraryItem.id,
+    fileType,
+    captureIntent,
+    extractor: enrichment.extractor,
+    textLength: enrichment.extractedText?.length ?? 0,
+    warningCount: enrichment.warnings.length,
+    sourceUrlPublic,
+    sourceUrlHostRedacted,
   });
 
   return {
@@ -365,6 +591,16 @@ async function selectExistingExtraction(db: FinanceDb, params: {
 export async function ingestFinanceDocumentFromLibraryItem(
   input: IngestFinanceDocumentInput,
 ): Promise<FinanceDocumentExtractionResult> {
+  const traceId = resolveFinanceOcrTraceId();
+  debugLog("finance_ocr", "ingest start", {
+    traceId,
+    conversationId: input.conversationId,
+    libraryItemId: input.libraryItemId,
+    userId: input.userId,
+    tenantId: input.tenantId ?? null,
+    captureIntent: input.captureIntent ?? null,
+    hasIdempotencyKey: Boolean(input.idempotencyKey),
+  });
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available");
@@ -393,6 +629,11 @@ export async function ingestFinanceDocumentFromLibraryItem(
   });
 
   if (!libraryItem) {
+    debugLog("finance_ocr", "ingest library item missing", {
+      traceId,
+      conversationId: input.conversationId,
+      libraryItemId: input.libraryItemId,
+    });
     throw new TRPCError({ code: "NOT_FOUND", message: "Library item not found" });
   }
 
@@ -402,11 +643,67 @@ export async function ingestFinanceDocumentFromLibraryItem(
     metadata.file_type ?? metadata.fileType ?? metadata.mime_type ?? metadata.mimeType,
   ));
   await enforceFinanceOcrRequestBudget(scope, libraryItem, fileType);
+  const featureFlags = await getTenantFeatureFlags(scope.tenantId);
+  const externalProcessingAllowed = featureFlags.documentOcrExternalProcessing;
+  const captureIntent = normalizeCaptureIntent(
+    input.captureIntent
+    ?? (typeof metadata.finance_capture_intent === "string" ? metadata.finance_capture_intent : null)
+    ?? (typeof metadata.capture_intent === "string" ? metadata.capture_intent : null)
+    ?? (typeof metadata.document_role === "string" ? metadata.document_role : null),
+  );
   const directOcrText = extractLibraryText(metadata);
-  const ocrFallback = directOcrText ? null : await reextractLibraryItemTextFromSource(libraryItem, fileType);
+  debugLog("finance_ocr", "ingest metadata inspected", {
+    traceId,
+    libraryItemId: libraryItem.id,
+    fileType,
+    captureIntent,
+    hasDirectOcrText: Boolean(directOcrText),
+    directTextLength: directOcrText?.length ?? 0,
+    metadataKeys: Object.keys(metadata).slice(0, 20),
+  });
+  if (!directOcrText && !externalProcessingAllowed) {
+    debugLog("finance_ocr", "ingest external processing blocked", {
+      traceId,
+      libraryItemId: libraryItem.id,
+      fileType,
+      captureIntent,
+    });
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "External document OCR processing is disabled for this tenant.",
+    });
+  }
+  const ocrFallback = directOcrText
+    ? null
+    : await reextractLibraryItemTextFromSource(
+      libraryItem,
+      fileType,
+      captureIntent,
+      traceId,
+      externalProcessingAllowed,
+    );
   const ocrText = directOcrText ?? ocrFallback?.text ?? null;
   const ocrSource = directOcrText ? "library_metadata" : ocrFallback?.text ? "storage_fallback" : null;
+  if (ocrFallback) {
+    debugLog("finance_ocr", "ingest fallback resolved", {
+      traceId,
+      libraryItemId: libraryItem.id,
+      fileType,
+      captureIntent,
+      fallbackExtractor: ocrFallback.extractor,
+      fallbackTextLength: ocrFallback.text?.length ?? 0,
+      fallbackWarningCount: ocrFallback.warnings.length,
+    });
+  }
   if (!ocrText) {
+    debugLog("finance_ocr", "ingest no ocr text", {
+      traceId,
+      libraryItemId: libraryItem.id,
+      fileType,
+      captureIntent,
+      ocrSource,
+      fallbackWarnings: ocrFallback?.warnings ?? [],
+    });
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "Finance OCR could not extract text from this upload. Try a clearer photo, a PDF, or upload the receipt / transfer slip again.",
@@ -421,12 +718,6 @@ export async function ingestFinanceDocumentFromLibraryItem(
         ? metadata.file_hash
         : null;
   const documentOccurredAt = extractDocumentOccurredAtIso(ocrText);
-  const captureIntent = normalizeCaptureIntent(
-    input.captureIntent
-    ?? (typeof metadata.finance_capture_intent === "string" ? metadata.finance_capture_intent : null)
-    ?? (typeof metadata.capture_intent === "string" ? metadata.capture_intent : null)
-    ?? (typeof metadata.document_role === "string" ? metadata.document_role : null),
-  );
   const documentRole = captureIntent ?? "receipt";
 
   const idempotencyKey = input.idempotencyKey ?? `finance-document:${scope.tenantId}:${scope.projectId}:${libraryItem.id}`;
@@ -453,6 +744,13 @@ export async function ingestFinanceDocumentFromLibraryItem(
     });
 
     if (existingExtraction) {
+      debugLog("finance_ocr", "ingest existing extraction reused", {
+        traceId,
+        libraryItemId: libraryItem.id,
+        extractionId: existingExtraction.id,
+        documentOccurredAt,
+        captureIntent,
+      });
       const draft = await parseDocumentToDraft({
         conversationId: input.conversationId,
         userId: input.userId,
@@ -483,6 +781,15 @@ export async function ingestFinanceDocumentFromLibraryItem(
       };
     }
 
+    debugLog("finance_ocr", "ingest llm draft extraction start", {
+      traceId,
+      libraryItemId: libraryItem.id,
+      fileType,
+      captureIntent,
+      documentOccurredAt,
+      ocrSource,
+      ocrTextLength: ocrText.length,
+    });
     const extracted = await callLLMStructured<FinanceStructuredDraft>({
       systemPrompt: [
         "You extract a single finance transaction from OCR text.",
@@ -532,8 +839,15 @@ export async function ingestFinanceDocumentFromLibraryItem(
         libraryItemId: libraryItem.id,
         source: "ocr_document",
         idempotencyKey,
-        sourceHash,
-        ocrProvider: String(metadata.extractor ?? metadata.extraction_method ?? "library_upload_pipeline"),
+    sourceHash,
+        ocrProvider: String(
+          metadata.ocr_provider
+          ?? metadata.ocrProvider
+          ?? metadata.provider
+          ?? metadata.extractor
+          ?? metadata.extraction_method
+          ?? "library_upload_pipeline",
+        ),
         ocrText,
         ocrJson: {
           source: "library_upload_pipeline",
@@ -544,6 +858,9 @@ export async function ingestFinanceDocumentFromLibraryItem(
           capture_intent: captureIntent,
           document_role: documentRole,
           text_source: ocrSource,
+          ocr_provider: metadata.ocr_provider ?? metadata.ocrProvider ?? metadata.provider ?? null,
+          ocr_provider_request_id: metadata.provider_request_id ?? metadata.providerRequestId ?? null,
+          ocr_model_version: metadata.model_version ?? metadata.modelVersion ?? null,
           fallback_warnings: ocrFallback?.warnings ?? [],
           fallback_extractor: ocrFallback?.extractor ?? null,
         },
@@ -579,6 +896,16 @@ export async function ingestFinanceDocumentFromLibraryItem(
       ...(input.counterpartyName ? { counterpartyName: input.counterpartyName } : {}),
       idempotencyKey,
     });
+    debugLog("finance_ocr", "ingest completed", {
+      traceId,
+      libraryItemId: libraryItem.id,
+      extractionId: extraction.id,
+      draftId: draft.id,
+      ocrSource,
+      ocrTextLength: ocrText.length,
+      documentOccurredAt,
+      captureIntent,
+    });
 
     auditLogger.log({
       eventType: "finance_document_ocr_completed",
@@ -596,12 +923,20 @@ export async function ingestFinanceDocumentFromLibraryItem(
         },
       });
 
-    return {
-      extraction,
-      draft,
-      libraryItem,
-    };
+      return {
+        extraction,
+        draft,
+        libraryItem,
+      };
   } catch (error) {
+    debugLog("finance_ocr", "ingest failed", {
+      traceId,
+      libraryItemId: libraryItem.id,
+      fileType,
+      captureIntent,
+      ocrSource,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
     auditLogger.log({
       eventType: "finance_document_ocr_failed",
       userId: input.userId,

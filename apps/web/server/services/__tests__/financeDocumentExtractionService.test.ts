@@ -66,6 +66,7 @@ const financeDocumentHarness = vi.hoisted(() => {
     stageMessage: "mocked",
     extraMetadata: {},
   }));
+  const mockDebugLog = vi.fn();
   const mockExtractDocumentOccurredAtIso = vi.fn((text: string) => {
     const match = text.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
     if (!match) {
@@ -92,7 +93,11 @@ const financeDocumentHarness = vi.hoisted(() => {
     mockCheckRateLimit,
     mockCheckAbuseGuard,
     mockEnrichLibraryUploadContent,
+    mockDebugLog,
     mockExtractDocumentOccurredAtIso,
+    mockGetTenantFeatureFlags: vi.fn(async () => ({
+      documentOcrExternalProcessing: true,
+    })),
     resetDb() {
       currentDb = createDbMock();
       return currentDb;
@@ -140,9 +145,17 @@ vi.mock("../auditLogger", () => ({
   },
 }));
 
+vi.mock("../../_core/logger", () => ({
+  debugLog: financeDocumentHarness.mockDebugLog,
+}));
+
 vi.mock("../financeService", () => ({
   parseDocumentToDraft: financeDocumentHarness.mockParseDocumentToDraft,
   extractDocumentOccurredAtIso: financeDocumentHarness.mockExtractDocumentOccurredAtIso,
+}));
+
+vi.mock("../tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: financeDocumentHarness.mockGetTenantFeatureFlags,
 }));
 
 import { financeRouter } from "../../routers/finance";
@@ -185,6 +198,7 @@ beforeEach(() => {
   financeDocumentHarness.mockCheckAbuseGuard.mockResolvedValue({
     allowed: true,
   });
+  financeDocumentHarness.mockDebugLog.mockReset();
   financeDocumentHarness.mockGetConversationById.mockResolvedValue({
     id: 91,
     userId: 7,
@@ -477,6 +491,7 @@ describe("financeDocumentExtractionService", () => {
         file_size_bytes: 120_000,
         extractor: "library_upload_pipeline",
         page_count: 1,
+        finance_capture_intent: "transfer_slip",
       },
       sourceUrl: "https://cdn.example.com/library/uploads/tenant-1/7/transfer-slip.pdf",
       thumbnailUrl: null,
@@ -520,6 +535,15 @@ describe("financeDocumentExtractionService", () => {
 
     expect(result.extraction.id).toBe(33);
     expect(financeDocumentHarness.mockEnrichLibraryUploadContent).toHaveBeenCalledTimes(1);
+    expect(financeDocumentHarness.mockEnrichLibraryUploadContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceUrl: "https://cdn.example.com/library/uploads/tenant-1/7/transfer-slip.pdf",
+        metadata: expect.objectContaining({
+          analysis_profile: "document_ocr",
+          finance_capture_intent: "transfer_slip",
+        }),
+      }),
+    );
     expect(financeDocumentHarness.mockAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: "finance_document_ocr_completed",
@@ -533,6 +557,242 @@ describe("financeDocumentExtractionService", () => {
       ocrText: "ร้านกาแฟ XYZ โอน 250 บาท",
     });
     expect((db.state.lastInsertValues[0].ocrJson as Record<string, unknown>).text_source).toBe("storage_fallback");
+
+    const reextractStartCall = financeDocumentHarness.mockDebugLog.mock.calls.find(
+      ([category, message, payload]) =>
+        category === "finance_ocr"
+        && message === "reextract source start"
+        && payload?.libraryItemId === 22,
+    );
+    expect(reextractStartCall?.[2]).toMatchObject({
+      sourceUrlPresent: true,
+      sourceUrlPublic: true,
+      sourceUrlHostRedacted: "cdn….example.com",
+    });
+    const reextractResultCall = financeDocumentHarness.mockDebugLog.mock.calls.find(
+      ([category, message, payload]) =>
+        category === "finance_ocr"
+        && message === "reextract source result"
+        && payload?.libraryItemId === 22,
+    );
+    expect(reextractResultCall?.[2]).toMatchObject({
+      sourceUrlPublic: true,
+      sourceUrlHostRedacted: "cdn….example.com",
+    });
+  });
+
+  it("logs a redacted local host when the fallback source url is private", async () => {
+    const db = financeDocumentHarness.getDbState();
+    db.queueSelectResult([]);
+    db.queueInsertResult({
+      id: 34,
+      tenantId: "tenant-1",
+      projectId: "personal",
+      ownerUserId: 7,
+      libraryItemId: 22,
+      source: "ocr_document",
+      idempotencyKey: "finance-document:tenant-1:personal:22",
+      sourceHash: "abc123",
+      ocrProvider: "library_upload_pipeline",
+      ocrText: "ร้านกาแฟ XYZ โอน 250 บาท",
+      ocrJson: {},
+      extractedJson: {},
+      confidenceJson: {},
+      mimeType: "application/pdf",
+      fileHash: "abc123",
+      pageCount: 1,
+      sourceMessageId: null,
+      sourceLibraryItemId: null,
+      allowedScopes: ["user:7"],
+      financeDraftId: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    });
+
+    financeDocumentHarness.mockGetLibraryItemById.mockResolvedValueOnce({
+      id: 22,
+      tenantId: "tenant-1",
+      ownerUserId: 7,
+      projectId: "personal",
+      itemType: "pdf",
+      source: "document_upload",
+      title: "transfer-slip.pdf",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: {
+        file_type: "application/pdf",
+        file_name: "transfer-slip.pdf",
+        content_checksum_sha256: "abc123",
+        file_size_bytes: 120_000,
+        extractor: "library_upload_pipeline",
+        page_count: 1,
+        finance_capture_intent: "transfer_slip",
+      },
+      sourceUrl: "http://localhost:3000/uploads/library/tenant-1/7/transfer-slip.pdf",
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    } as any);
+
+    financeDocumentHarness.mockEnrichLibraryUploadContent.mockResolvedValueOnce({
+      extractedText: "ร้านกาแฟ XYZ โอน 250 บาท",
+      extractor: "image_document_ocr",
+      warnings: [],
+      searchQuality: "full_text",
+      stageMessage: "fallback ocr",
+      extraMetadata: {},
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === "http://localhost:3000/uploads/library/tenant-1/7/transfer-slip.pdf") {
+          const bytes = Buffer.from("%PDF-1.7 scanned slip", "utf8");
+          return {
+            ok: true,
+            arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+          } as Response;
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
+      }),
+    );
+
+    await ingestFinanceDocumentFromLibraryItem({
+      conversationId: 91,
+      libraryItemId: 22,
+      userId: 7,
+      tenantId: "tenant-1",
+      idempotencyKey: "finance-document:tenant-1:personal:22",
+    });
+
+    const reextractStartCall = financeDocumentHarness.mockDebugLog.mock.calls.find(
+      ([category, message, payload]) =>
+        category === "finance_ocr"
+        && message === "reextract source start"
+        && payload?.libraryItemId === 22,
+    );
+    expect(reextractStartCall?.[2]).toMatchObject({
+      sourceUrlPresent: true,
+      sourceUrlPublic: false,
+      sourceUrlHostRedacted: "localhost",
+    });
+    const gatewayCall = financeDocumentHarness.mockDebugLog.mock.calls.find(
+      ([category, message, payload]) =>
+        category === "finance_ocr"
+        && message === "ingest fallback resolved"
+        && payload?.libraryItemId === 22,
+    );
+    expect(gatewayCall?.[2]).toMatchObject({
+      fallbackExtractor: "image_document_ocr",
+      fallbackTextLength: expect.any(Number),
+    });
+  });
+
+  it("persists OCR provider lineage from upload metadata when available", async () => {
+    const db = financeDocumentHarness.getDbState();
+    db.queueSelectResult([]);
+    db.queueInsertResult({
+      id: 35,
+      tenantId: "tenant-1",
+      projectId: "personal",
+      ownerUserId: 7,
+      libraryItemId: 22,
+      source: "ocr_document",
+      idempotencyKey: "finance-document:tenant-1:personal:22",
+      sourceHash: "abc123",
+      ocrProvider: "landingai_ade",
+      ocrText: "ร้านกาแฟ XYZ โอน 250 บาท",
+      ocrJson: {},
+      extractedJson: {},
+      confidenceJson: {},
+      mimeType: "application/pdf",
+      fileHash: "abc123",
+      pageCount: 1,
+      sourceMessageId: null,
+      sourceLibraryItemId: null,
+      allowedScopes: ["user:7"],
+      financeDraftId: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    });
+
+    financeDocumentHarness.mockGetLibraryItemById.mockResolvedValueOnce({
+      id: 22,
+      tenantId: "tenant-1",
+      ownerUserId: 7,
+      projectId: "personal",
+      itemType: "pdf",
+      source: "document_upload",
+      title: "transfer-slip.pdf",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: {
+        file_type: "application/pdf",
+        file_name: "transfer-slip.pdf",
+        extracted_text: "ร้านกาแฟ XYZ โอน 250 บาท",
+        content_checksum_sha256: "abc123",
+        file_size_bytes: 120_000,
+        extractor: "pdf_document_ocr",
+        ocr_provider: "landingai_ade",
+        provider_request_id: "job-ade-123",
+        page_count: 1,
+        finance_capture_intent: "transfer_slip",
+      },
+      sourceUrl: "https://cdn.example.com/library/uploads/tenant-1/7/transfer-slip.pdf",
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    } as any);
+
+    financeDocumentHarness.mockEnrichLibraryUploadContent.mockResolvedValueOnce({
+      extractedText: "ร้านกาแฟ XYZ โอน 250 บาท",
+      extractor: "pdf_document_ocr",
+      warnings: [],
+      searchQuality: "full_text",
+      stageMessage: "fallback ocr",
+      extraMetadata: {
+        ocr_provider: "landingai_ade",
+        provider_request_id: "job-ade-123",
+      },
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === "https://cdn.example.com/library/uploads/tenant-1/7/transfer-slip.pdf") {
+          const bytes = Buffer.from("%PDF-1.7 scanned slip", "utf8");
+          return {
+            ok: true,
+            arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+          } as Response;
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
+      }),
+    );
+
+    await ingestFinanceDocumentFromLibraryItem({
+      conversationId: 91,
+      libraryItemId: 22,
+      userId: 7,
+      tenantId: "tenant-1",
+      idempotencyKey: "finance-document:tenant-1:personal:22",
+    });
+
+    expect(db.state.lastInsertValues[0]).toMatchObject({
+      ocrProvider: "landingai_ade",
+    });
+    expect((db.state.lastInsertValues[0].ocrJson as Record<string, unknown>)).toMatchObject({
+      ocr_provider: "landingai_ade",
+      ocr_provider_request_id: "job-ade-123",
+    });
   });
 
   it("rejects library items without project scope", async () => {
