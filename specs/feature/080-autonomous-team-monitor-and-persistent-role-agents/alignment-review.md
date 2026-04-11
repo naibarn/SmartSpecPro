@@ -61,6 +61,11 @@ This review considers that boundary healthy after the latest edits.
 - Added a rule that role-level emergency stop must fan into existing workpack incident controls.
 - Added an integration requirement that the role monitor aggregates workpack readiness, telemetry, replay, and exception evidence rather than duplicating that state.
 - Added rollout-phase and acceptance-criteria language so the first build of Feature 080 stays grounded in existing workpack control-plane surfaces.
+- Locked routine-to-workpack resolution policy so role routines cannot drift across versions without audit, rollback, and rollout inheritance.
+- Locked canonical scheduler posture around durable queue items, lease claims, idempotency keys, and routine concurrency policy.
+- Added a delegation authorization matrix so inter-role handoff cannot bypass connector, side-effect, or workpack-family boundaries.
+- Added a minimum role autonomy gate table so downgrade, promotion block, and quarantine semantics are explicit.
+- Added `role_routine_run` and `role_workpack_binding` as projection objects so the monitor can explain current role state from durable records.
 
 ---
 
@@ -131,15 +136,19 @@ The most important implementation-aware decision after Feature 079 is now:
 
 ## 7. Remaining additions worth planning before implementation
 
-These are not blockers for spec acceptance, but they should be planned before build-out:
+The earlier planning gaps have now been folded into the deep-plan package for Feature 080:
 
-1. Canonical scheduler and durable queue design for routine triggers and wake conditions.
-2. Database persistence strategy for role contracts, checkpoints, handoffs, and promotion gates.
-3. Tenant-level incident workflow for emergency stop, postmortem, and safe resume layered on top of existing workpack incident controls.
-4. Role KPI evaluation harness so quality is measured by outcomes, not only activity.
-5. Connector delegation matrix to prevent cross-role policy smuggling.
-6. Recovery and archival policy for long-lived memory versus hot operational context.
-7. A clear projection layer from workpack telemetry/readiness into role-monitor aggregates so the monitor remains explainable.
+1. Migration and coexistence strategy between legacy team ownership and activated role-agent ownership.
+2. Role data-visibility matrix for memory, thread, artifact, checkpoint, and exception access.
+3. Scheduler capacity and SLO envelope for wake latency, checkpoint freshness, stale-lease thresholds, and backpressure.
+4. Approval workflow matrix for contract expansion, safe resume, promotion review, and delegated approvals.
+5. Retention, archival, purge, and legal-hold policy for long-lived role memory and summaries.
+
+The main implementation-detail questions still left open are narrower:
+
+1. Exact default threshold values for the role autonomy gate table by tier and role family.
+2. Which scheduler backend and partitioning strategy should ship first in production.
+3. Which role families beyond the initial operational set should be included in the first rollout wave.
 
 ---
 

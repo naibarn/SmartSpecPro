@@ -32,6 +32,26 @@ export const monitoringRouter = router({
     return listWorkpackReadinessSummaries(tenantId);
   }),
 
+  getRoleAutonomySummary: adminProcedure
+    .input(z.object({
+      roleId: z.string().min(1).optional(),
+      departmentLabel: z.string().min(1).optional(),
+      routineId: z.string().min(1).optional(),
+      workpackFamily: z.string().min(1).optional(),
+      runtimeFamily: z.string().min(1).optional(),
+      connectorFamily: z.string().min(1).optional(),
+      riskTier: z.enum(["low", "medium", "high", "critical"]).optional(),
+    }).optional())
+    .query(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      const { getRoleRosterSummary } = await import("../services/roleMonitorService");
+      const { listRoleTelemetrySnapshots } = await import("../services/roleTelemetryService");
+      return {
+        roster: await getRoleRosterSummary(tenantId),
+        telemetry: await listRoleTelemetrySnapshots(tenantId, input ?? {}),
+      };
+    }),
+
   getRunEvents: protectedProcedure
     .input(z.object({
       runId: z.string().min(1),

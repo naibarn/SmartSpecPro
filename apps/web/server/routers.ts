@@ -106,6 +106,7 @@ import { billingRouter } from "./routers/billing";
 import { adminBillingRouter } from "./routers/adminBilling";
 import { localAiRouter } from "./routers/localAi";
 import { workpackRouter } from "./routers/workpack";
+import { roleMonitorRouter } from "./routers/roleMonitor";
 import {
   clearPendingTwoFactorCookie,
   readPendingTwoFactorCookie,
@@ -181,6 +182,7 @@ export const appRouter = router({
   adminBilling: adminBillingRouter,
   localAi: localAiRouter,
   workpack: workpackRouter,
+  roleMonitor: roleMonitorRouter,
   
   auth: router({
     me: publicProcedure.query(opts => {

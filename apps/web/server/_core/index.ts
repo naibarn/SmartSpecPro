@@ -102,6 +102,10 @@ import {
   initializeWorkpackScheduleJob,
   shutdownWorkpackScheduleJob,
 } from "../jobs/workpackScheduleJob";
+import {
+  initializeRoleRoutineSchedulerJob,
+  shutdownRoleRoutineSchedulerJob,
+} from "../jobs/roleRoutineSchedulerJob";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { startHistoryCollection } from "../services/llmQueue";
 import { recoverActiveRunsOnStartup } from "../services/runEngine";
@@ -1545,6 +1549,12 @@ async function main() {
     console.error("[Startup] Failed to initialize workpack schedule job:", error);
   }
 
+  try {
+    await initializeRoleRoutineSchedulerJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize role routine scheduler job:", error);
+  }
+
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
@@ -1650,6 +1660,7 @@ process.on("SIGTERM", async () => {
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});
   await shutdownWorkpackScheduleJob().catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
+  await shutdownRoleRoutineSchedulerJob().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
 
   // 3b. Shut down channel adapters
@@ -1710,6 +1721,7 @@ process.on("SIGINT", async () => {
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});
   await shutdownWorkpackScheduleJob().catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
+  await shutdownRoleRoutineSchedulerJob().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
   await Promise.all(
     adapterRegistry.getAll()

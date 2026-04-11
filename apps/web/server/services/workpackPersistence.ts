@@ -1298,6 +1298,13 @@ export async function listMetricSnapshotsByTenant(
   tenantId: string,
   session?: WorkpackPersistenceSession,
 ): Promise<MetricSnapshot[]> {
+export async function listVersionsForWorkpack(
+  workpackId: string,
+  session?: WorkpackPersistenceSession,
+): Promise<WorkpackVersion[]> {
+  return listRecordsByWorkpack("workpack_version", workpackId, session?.db ?? null);
+}
+
   return listRecordsByTenant("metric_snapshot", tenantId, session?.db ?? null);
 }
 

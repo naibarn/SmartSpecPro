@@ -89,6 +89,10 @@ const SocialInbox = lazy(() => import("./pages/SocialInbox"));
 const SocialPublishing = lazy(() => import("./pages/SocialPublishing"));
 const SocialModeration = lazy(() => import("./pages/SocialModeration"));
 const SocialAutomation = lazy(() => import("./pages/SocialAutomation"));
+const AutonomousTeamMonitor = lazy(() => import("./pages/AutonomousTeamMonitor"));
+const RoleAgentDetail = lazy(() => import("./pages/RoleAgentDetail"));
+const RoleMissionPlanner = lazy(() => import("./pages/RoleMissionPlanner"));
+const RoleRoutineScheduler = lazy(() => import("./pages/RoleRoutineScheduler"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Generate = lazy(() => import("./pages/Generate"));
 const MediaStudio = lazy(() => import("./pages/MediaStudio"));
@@ -403,6 +407,10 @@ function Router() {
         <Route path="/agencies/:id/review"><RequireAuth><AgencyChat /></RequireAuth></Route>
         <Route path="/agencies/:id"><RequireAuth><AgencyChat /></RequireAuth></Route>
         <Route path="/workflows"><RequireAuth><Workflows /></RequireAuth></Route>
+        <Route path="/role-monitor"><RequireAuth><AutonomousTeamMonitor /></RequireAuth></Route>
+        <Route path="/role-monitor/:roleId/mission"><RequireAuth><RoleMissionPlanner /></RequireAuth></Route>
+        <Route path="/role-monitor/:roleId/routines"><RequireAuth><RoleRoutineScheduler /></RequireAuth></Route>
+        <Route path="/role-monitor/:roleId"><RequireAuth><RoleAgentDetail /></RequireAuth></Route>
         <Route path="/workflows/editor"><RequireAuth><WorkflowEditor /></RequireAuth></Route>
         <Route path="/workflows/gallery"><RequireAuth><WorkflowGallery /></RequireAuth></Route>
         <Route path="/workflows/editor/:id"><RequireAuth><WorkflowEditor /></RequireAuth></Route>

@@ -4,10 +4,12 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, protectedProcedure } from "../_core/trpc";
+import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import * as roomService from "../services/roomService";
 import { routeRoomIntent } from "../services/roomIntentRouter";
+import { getRoleAgentDetailForTenant, listRoleMessagesForRole } from "../services/rolePersistence";
+import { sendTypedRoleMessage } from "../services/roleDelegationService";
 
 function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: number | null } | null }): string {
   const tid = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
@@ -121,5 +123,52 @@ export const teamRoomRouter = router({
         cursor: input.cursor,
         limit: input.limit,
       });
+    }),
+
+  sendRoleMessage: adminProcedure
+    .input(z.object({
+      senderRoleId: z.string().min(1),
+      recipientRoleId: z.string().min(1).optional(),
+      recipientGroup: z.string().optional(),
+      roomId: z.string().min(1).optional(),
+      relatedRoutineId: z.string().optional(),
+      relatedRoutineRunId: z.string().optional(),
+      relatedWorkpackFamily: z.string().optional(),
+      relatedWorkpackRunId: z.string().optional(),
+      intentType: z.enum(["request", "handoff", "escalate", "dependency_block", "status_summary", "approval_request", "shared_finding"]),
+      priority: z.enum(["low", "normal", "high", "critical"]).optional(),
+      dueState: z.enum(["none", "pending", "due_soon", "overdue"]).optional(),
+      contentSummary: z.string().min(1).max(2000),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return sendTypedRoleMessage({
+        tenantId,
+        senderRoleId: input.senderRoleId,
+        recipientRoleId: input.recipientRoleId ?? null,
+        recipientGroup: input.recipientGroup ?? null,
+        roomId: input.roomId ?? null,
+        relatedRoutineId: input.relatedRoutineId ?? null,
+        relatedRoutineRunId: input.relatedRoutineRunId ?? null,
+        relatedWorkpackFamily: input.relatedWorkpackFamily ?? null,
+        relatedWorkpackRunId: input.relatedWorkpackRunId ?? null,
+        intentType: input.intentType,
+        priority: input.priority,
+        dueState: input.dueState,
+        contentSummary: input.contentSummary,
+      });
+    }),
+
+  getRoleMessages: adminProcedure
+    .input(z.object({
+      roleId: z.string().min(1),
+    }))
+    .query(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      const detail = await getRoleAgentDetailForTenant(tenantId, input.roleId);
+      if (!detail) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Role belongs to another tenant" });
+      }
+      return listRoleMessagesForRole(input.roleId);
     }),
 });

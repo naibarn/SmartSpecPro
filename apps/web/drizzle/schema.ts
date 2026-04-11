@@ -3696,6 +3696,52 @@ export const workpackRecords = pgTable("workpack_records", {
 export type WorkpackRecord = typeof workpackRecords.$inferSelect;
 export type InsertWorkpackRecord = typeof workpackRecords.$inferInsert;
 
+export const roleRecordTypeEnum = pgEnum("role_record_type", [
+  "role_blueprint",
+  "role_agent",
+  "role_contract",
+  "role_workpack_binding",
+  "role_routine",
+  "role_routine_run",
+  "role_checkpoint",
+  "role_message",
+  "role_handoff",
+  "role_metric_snapshot",
+  "role_exception_binding",
+  "role_improvement_proposal",
+  "role_promotion_gate",
+  "role_telemetry_event",
+  "role_incident_record",
+  "role_routine_queue_item",
+  "role_approval_request",
+  "role_memory_item",
+]);
+
+export const roleRecords = pgTable("role_records", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  recordType: roleRecordTypeEnum("recordType").notNull(),
+  recordId: varchar("recordId", { length: 128 }).notNull(),
+  roleId: varchar("roleId", { length: 128 }),
+  routineId: varchar("routineId", { length: 128 }),
+  routineRunId: varchar("routineRunId", { length: 128 }),
+  sortTimestamp: timestamp("sortTimestamp", { withTimezone: true }),
+  payloadJson: jsonb("payloadJson").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("role_records_tenant_type_record_unique").on(t.tenantId, t.recordType, t.recordId),
+  index("role_records_type_record_idx").on(t.recordType, t.recordId),
+  index("role_records_tenant_type_idx").on(t.tenantId, t.recordType),
+  index("role_records_tenant_role_idx").on(t.tenantId, t.roleId),
+  index("role_records_tenant_routine_idx").on(t.tenantId, t.routineId),
+  index("role_records_tenant_routine_run_idx").on(t.tenantId, t.routineRunId),
+  index("role_records_tenant_type_sort_idx").on(t.tenantId, t.recordType, t.sortTimestamp),
+]);
+
+export type RoleRecord = typeof roleRecords.$inferSelect;
+export type InsertRoleRecord = typeof roleRecords.$inferInsert;
+
 // ============================================================
 // Invoice Configuration - Per-tenant or global invoice settings
 // ============================================================

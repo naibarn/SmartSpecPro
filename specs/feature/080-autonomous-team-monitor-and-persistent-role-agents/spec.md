@@ -268,6 +268,21 @@ The monitor should feel like an AI operations center, not just a prettier run lo
 - The system must support different autonomy by routine, not only one autonomy flag for the whole role.
 - A role contract may only approve workpack families that are already available to the tenant's workpack rollout posture.
 - A role routine may request lower autonomy than the underlying workpack allows, but it may never request higher autonomy than the underlying workpack readiness state permits.
+- Every routine must declare a workpack resolution policy:
+  - `pinned_version`
+  - `follow_benchmark_track`
+  - `follow_latest_ready_in_family`
+- Resolution must fail closed if no eligible workpack version satisfies:
+  - tenant rollout posture
+  - role contract authority envelope
+  - current workpack readiness and incident state
+  - trust and benchmark requirements
+- A routine must not auto-adopt a newly promoted workpack version if the new version expands:
+  - connector scope needs
+  - side-effect class ceiling
+  - budget envelope
+  - regulated boundary exposure
+- Every routine must define a rollback baseline so version resolution can return to the last safe workpack version or benchmark track after freeze, regression, or incident.
 
 ### 10.3 Routine programs, schedules, and triggers
 
@@ -281,6 +296,18 @@ The monitor should feel like an AI operations center, not just a prettier run lo
 - Each routine must bind to one or more workpack families.
 - The scheduler must prevent duplicate or overlapping unsafe executions.
 - Long-running daily operations should be modeled as many resumable routine cycles, not one infinite monolithic run.
+- The canonical scheduler posture must be:
+  - durable and persisted, not in-memory only
+  - queue-backed, not dependent on one immortal process
+  - lease-based for multi-node safety
+  - idempotent for duplicate trigger delivery
+- Every schedule or event wake must materialize a durable routine-cycle queue item before execution begins.
+- Each routine must declare a concurrency policy:
+  - `singleton`
+  - `allow_overlap`
+  - `partitioned_by_key`
+- Duplicate wake events must coalesce through an idempotency key derived from role, routine, trigger window or event key, and selected workpack target.
+- Multi-node deployment must rely on lease claiming or equivalent durable ownership semantics so only one worker owns a given routine cycle at a time.
 
 ### 10.4 Persistent execution model
 
@@ -299,6 +326,16 @@ The monitor should feel like an AI operations center, not just a prettier run lo
   - stale-run quarantine
   - idempotent retry
 - A role agent must be considered healthy only if its checkpoint freshness, queue progress, and error rate remain within policy.
+- Every routine cycle must create a durable `role_routine_run` record that captures:
+  - trigger source
+  - selected workpack family
+  - resolved workpack version
+  - current cycle state
+  - linked workpack run ids
+  - checkpoint pointer
+  - recovery status
+- A checkpoint must always point to the active or last completed `role_routine_run`, not float independently of execution context.
+- The system must be able to answer "what is this role doing now?" from `role_routine_run`, `role_checkpoint`, and linked workpack runs without reconstructing state from raw logs alone.
 
 ### 10.5 Autonomous Team Monitor
 
@@ -338,6 +375,15 @@ The monitor should feel like an AI operations center, not just a prettier run lo
   - due state
   - provenance
 - Freeform discussion is allowed, but actions may only be taken from attributable, typed messages or owned routines.
+- Before delegated work can execute, the platform must evaluate a delegation authorization matrix that confirms:
+  - the sender role is allowed to issue that delegation intent
+  - the recipient role contract allows that class of work
+  - the referenced workpack family is approved for the recipient routine
+  - the resulting connector scopes do not exceed either role envelope
+  - the resulting side-effect class does not exceed either role ceiling
+  - the action remains attributable to a concrete typed message or owned routine
+- If any delegation authorization check fails, execution must fail closed into an exception, approval, or incident path.
+- Delegation transfers responsibility for one bounded task or routine cycle, not permanent authority expansion.
 
 ### 10.7 Memory and continuity
 
@@ -372,6 +418,7 @@ The monitor should feel like an AI operations center, not just a prettier run lo
   - authority envelope is unchanged
   - tenant policy allows auto-apply
 - Role agents must not self-promote to broader authority without a promotion gate.
+- Auto-applied improvements must not change the routine resolution policy, rollback baseline, or approved workpack family set without explicit review.
 
 ### 10.9 Human-in-the-loop minimization
 
@@ -428,6 +475,18 @@ The monitor should feel like an AI operations center, not just a prettier run lo
   - runtime
   - connector
   - risk tier
+- Role autonomy gates must distinguish:
+  - hard blocks that prevent autonomous execution
+  - downgrade triggers that reduce autonomy tier
+  - promotion minima that must be met before expanding autonomy
+- The minimum gate table must include:
+  - workpack readiness blocked -> autonomous execution blocked
+  - active workpack incident or promotion freeze -> routine paused or downgraded
+  - replay pass rate below policy threshold over a rolling window -> downgrade one autonomy tier
+  - exception rate above policy threshold over a rolling window -> promotion blocked and review required
+  - repeated KPI misses over a policy-defined streak -> downgrade to supervised review
+  - checkpoint freshness outside heartbeat policy -> quarantine until safe resume review
+- Threshold values may be tenant-configurable, but these gate categories must exist in product defaults and remain audit-visible.
 
 ### 10.13 Workpack rollout inheritance
 
@@ -442,6 +501,16 @@ The monitor should feel like an AI operations center, not just a prettier run lo
   - current workpack incident state
   - replay and benchmark posture for the routines a role depends on
 - Role-level emergency stop must fan into existing workpack incident controls rather than creating a disconnected kill-switch path.
+- Workpack family resolution for a role routine must follow this order:
+  - contract-pinned version when present
+  - approved benchmark track when configured
+  - latest readiness-approved version in family
+  - otherwise fail closed
+- Any automatic change in resolved workpack version must:
+  - create a new routine-cycle boundary
+  - be audit-logged
+  - preserve a rollback target
+  - inherit the lower of the role routine autonomy and resolved workpack autonomy posture
 
 ---
 
@@ -452,8 +521,10 @@ The monitor should feel like an AI operations center, not just a prettier run lo
 | `role_blueprint` | Reusable role starter | Defines category, scope, and default envelopes |
 | `role_agent` | Persistent AI worker identity | One logical worker for one business function |
 | `role_contract` | Authority and mission definition | Versioned, reviewable, and auditable |
+| `role_workpack_binding` | Version-resolution policy | Binds family, resolution mode, and rollback baseline |
 | `role_routine` | Recurring responsibility | Binds schedule or event trigger to workpack family |
-| `role_checkpoint` | Resume state | Used for recovery and long-horizon continuity |
+| `role_routine_run` | One routine cycle | Links trigger, resolved workpack version, and current cycle state |
+| `role_checkpoint` | Resume state | Used for recovery and long-horizon continuity and points to routine-run context |
 | `role_message` | Structured internal communication | Typed, attributable, and linked to work context |
 | `role_handoff` | Cross-role delegation record | Tracks ownership transfer and outcome |
 | `role_metric_snapshot` | KPI and health telemetry | Used by the monitor and promotion logic |
@@ -469,6 +540,7 @@ The monitor should feel like an AI operations center, not just a prettier run lo
 
 - Feature 079 workpacks must be the default execution substrate for recurring role work.
 - Role agents should select from approved workpack families instead of inventing freeform execution paths for routine work.
+- `role_routine_run` records must preserve the selected workpack version and linked workpack run ids so the role layer stays explainable and auditable.
 
 ### 12.2 Team rooms and messaging
 
@@ -597,8 +669,8 @@ Exit criteria:
 
 1. Which role families should be first-wave production defaults after executive support, HR ops, sales ops, and storekeeping?
 2. Should role contracts live as first-class persisted entities, or be layered on top of existing team records initially?
-3. What durable scheduler and queue posture should be canonical for month-scale continuity?
-4. Which KPI families should block autonomy promotion automatically?
+3. Which implementation backend should host the canonical durable scheduler first, given that lease, idempotency, and durable queue semantics are now locked?
+4. Which default threshold values should ship first for KPI misses, replay pass rate, exception rate, and checkpoint freshness?
 5. How much role-to-role communication should be retained in hot context versus archived with checkpoints?
 
 ---
