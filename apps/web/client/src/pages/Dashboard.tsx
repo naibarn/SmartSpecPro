@@ -728,14 +728,15 @@ export default function Dashboard() {
   const nextBestActions = useMemo<DashboardShortcut[]>(() => {
     const actions: DashboardShortcut[] = [];
 
+    actions.push({
+      label: t("dashboard:nextBestActions.startWork"),
+      href: "/work/request",
+      icon: ClipboardList,
+      description: t("dashboard:nextBestActions.startWorkDetail"),
+      color: "from-slate-700 to-sky-700",
+    });
+
     if (user.role !== "admin" && user.role !== "domain_admin") {
-      actions.push({
-        label: t("dashboard:nextBestActions.startWork"),
-        href: "/work/request",
-        icon: ClipboardList,
-        description: t("dashboard:nextBestActions.startWorkDetail"),
-        color: "from-slate-700 to-sky-700",
-      });
       actions.push({
         label: t("dashboard:nextBestActions.myRequests"),
         href: "/work/requests",

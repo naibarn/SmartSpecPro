@@ -31,6 +31,7 @@ const {
   mockGetWorkerDiagnosticsSnapshot,
   mockGetWorkerMcpInsights,
   mockGetTenantWorkerMcpOverview,
+  mockGetWorkOsOverview,
   mockUpdateWorkerFleetState,
   mockCleanupWorkerFleetRetention,
   mockRedactLegacyWorkerData,
@@ -39,6 +40,7 @@ const {
   mockGetWorkerDiagnosticsSnapshot: vi.fn(),
   mockGetWorkerMcpInsights: vi.fn(),
   mockGetTenantWorkerMcpOverview: vi.fn(),
+  mockGetWorkOsOverview: vi.fn(),
   mockUpdateWorkerFleetState: vi.fn(),
   mockCleanupWorkerFleetRetention: vi.fn(),
   mockRedactLegacyWorkerData: vi.fn(),
@@ -80,6 +82,10 @@ vi.mock("../../services/monitoringService", () => ({
   getCurrentStatus: vi.fn(),
   getOpsOverview: vi.fn(),
   getOpsIncidentTimeline: vi.fn(),
+}));
+
+vi.mock("../../services/workOsService", () => ({
+  getOverview: mockGetWorkOsOverview,
 }));
 
 vi.mock("../../services/orchestratorNotificationService", () => ({
@@ -379,6 +385,33 @@ describe("monitoringRouter worker fleet", () => {
     });
     expect(result).toEqual(expect.objectContaining({
       workerId: "worker-1",
+    }));
+  });
+
+  it("returns work os overview for admins", async () => {
+    mockGetWorkOsOverview.mockResolvedValue({
+      byState: {
+        open: 2,
+        in_progress: 1,
+        completed: 3,
+      },
+      openExceptions: 1,
+      overdueSla: 2,
+      completed: 3,
+    });
+
+    const result = await monitoringRouter.getWorkOsOverview({
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 18, role: "admin", currentTenantId: 1 },
+      },
+    } as any);
+
+    expect(mockGetWorkOsOverview).toHaveBeenCalledWith("tenant-1");
+    expect(result).toEqual(expect.objectContaining({
+      openExceptions: 1,
+      overdueSla: 2,
+      completed: 3,
     }));
   });
 });

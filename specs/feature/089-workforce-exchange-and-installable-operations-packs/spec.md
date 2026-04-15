@@ -23,6 +23,7 @@ Feature 089 evolves the marketplace into a **Workforce Exchange** for installabl
 - benchmark packs
 
 This feature intentionally combines these pack types because they must version, install, validate, and roll out together.
+The exchange should also carry post-install memory so each pack improves based on how it actually performed in tenant environments.
 
 The exchange is tenant-aware:
 
@@ -54,6 +55,7 @@ Without this feature:
 3. Show compatibility, prerequisites, trust labels, and evaluation posture before install.
 4. Support staged rollout and rollback of installed packs.
 5. Reuse the existing marketplace foundations where possible.
+6. Preserve outcome memory so future installations can see what worked, what regressed, and what should be tuned before the next rollout.
 
 ---
 
@@ -62,6 +64,7 @@ Without this feature:
 1. This feature does not remove the existing skill marketplace.
 2. This feature does not allow third-party packs to bypass trust or policy review.
 3. This feature does not promise instant cross-tenant sharing for all pack types.
+4. This feature does not own runtime orchestration; it distributes packs that Feature 095 and related runtimes can execute.
 
 ---
 
@@ -116,6 +119,7 @@ Without this feature:
 - evaluation scorecard
 - maintenance status
 - compatible workpack or role families
+- operational memory summary
 
 ---
 
@@ -149,6 +153,19 @@ Without this feature:
   - freeze
   - rollback
 
+### 8.4 Deployment memory and pack evolution
+
+- After installation or rollout, the exchange should retain machine-readable memory about:
+  - tenant or environment class
+  - supported workload family
+  - outcome quality
+  - support incidents
+  - required manual interventions
+  - useful operator tuning notes
+- Packs with stronger outcome memory should surface their proven deployment patterns before newer but less proven variants.
+- Rollout feedback should be reusable for future pack revisions, benchmark packs, and policy pack tuning.
+- Compatibility checks should consider not only static requirements but also whether a pack has historically performed well in the target environment.
+
 ---
 
 ## 9. Acceptance criteria
@@ -158,3 +175,4 @@ Without this feature:
 3. Pack installation can fail closed when connectors, policies, or rollout capabilities are missing.
 4. Stable workpack and role-blueprint assets can be distributed together as one workforce pack.
 5. The marketplace remains compatible with single-skill discovery while adding the broader workforce model.
+6. Tenants can see which packs performed best in prior deployments and what adjustments were suggested for the next rollout.

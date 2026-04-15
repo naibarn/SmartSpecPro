@@ -82,6 +82,7 @@ import { widgetRouter } from "./routers/widget";
 import { webhookTriggersRouter } from "./routers/webhookTriggers";
 import { channelRouterRouter } from "./routers/channelRouter";
 import { tenantFeatureFlagsRouter } from "./routers/tenantFeatureFlags";
+import { agentRegistryRouter } from "./routers/agentRegistry";
 import { contentArtifactsRouter } from "./routers/contentArtifacts";
 import { contentQualityRouter } from "./routers/contentQuality";
 import { apiKeysRouter } from "./routers/apiKeys";
@@ -184,6 +185,7 @@ export const appRouter = router({
   localAi: localAiRouter,
   workpack: workpackRouter,
   roleMonitor: roleMonitorRouter,
+  agentRegistry: agentRegistryRouter,
   
   auth: router({
     me: publicProcedure.query(opts => {

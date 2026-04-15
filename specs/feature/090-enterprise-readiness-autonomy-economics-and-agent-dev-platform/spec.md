@@ -26,6 +26,8 @@ These belong together because a production workforce platform needs to be:
 - standardized enough for internal developers to build safely
 - operable enough for real customer rollout
 
+It also needs to learn from every rollout so better models, stronger prompts, and safer policies can be adopted automatically when evidence supports them.
+
 This enterprise layer must still respect the platform hierarchy:
 
 - system admins can govern cross-tenant defaults and platform-wide controls
@@ -62,6 +64,7 @@ Without this feature:
 3. Provide an internal developer platform for building and testing new agents safely.
 4. Standardize rollout, migration, and operator onboarding practices.
 5. Keep these capabilities grounded in the same policy, registry, and evaluation model established by prior features.
+6. Capture outcome memory and improvement plans so the platform gets better with each release.
 
 ---
 
@@ -70,6 +73,7 @@ Without this feature:
 1. This feature does not itself certify SmartSpecPro for every compliance regime.
 2. This feature does not replace existing billing or auth features; it extends them into workforce economics and enterprise control.
 3. This feature does not make change-management training optional; it productizes the support layer around it.
+4. This feature does not replace the canonical execution fabric; it layers enterprise controls, economics, and developer tooling on top of the shared registry, ledger, action, memory, and evaluation contracts.
 
 ---
 
@@ -144,6 +148,32 @@ Without this feature:
   - exception-handling training
   - supervisor onboarding
 
+### 7.5 Learning, optimization, and model evolution
+
+- The platform must persist a machine-readable memory trail for each important workload family, including:
+  - work performed
+  - result achieved
+  - model version used
+  - prompt or policy version used
+  - context bundle version
+  - manual interventions
+  - measured outcome quality
+  - next-step improvement ideas
+- New LLM model candidates should be compared against current production models on the same benchmark family before being promoted to broader use.
+- When a newer model is better on quality, speed, or cost, the platform should expose that as a recommendation with the evidence behind it, not as an opaque replacement.
+- Regression or drift should generate an improvement plan that can be tracked, reviewed, and re-tested in the next release cycle.
+
+### 7.6 Automated improvement workflow
+
+- The developer platform should be able to turn learning memory into actionable follow-up work:
+  - create regression tasks
+  - propose prompt or policy updates
+  - suggest context pruning or promotion
+  - recommend safer action mappings
+  - schedule re-evaluation against the same workload class
+- Improvement items must remain tenant-scoped and audit-friendly.
+- Automatic improvement suggestions must never bypass release gates or enterprise controls.
+
 ---
 
 ## 8. Acceptance criteria
@@ -153,3 +183,4 @@ Without this feature:
 3. Internal teams can create a new governed agent using one standard manifest and test workflow.
 4. Tenant rollout can be staged through safe-launch posture with explicit pilot and rollback controls.
 5. Product, security, finance, and developer-experience stakeholders can all reason about the same workforce platform using one shared operating model.
+6. The platform can show what work was done, what result it produced, and what should be improved in the next cycle, with evidence tied to model and policy versions.

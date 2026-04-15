@@ -86,6 +86,7 @@ import { clearPrivateVaultAccessToken, getPrivateVaultAccessToken, setPrivateVau
 import { LocaleToggle } from '@/components/LocaleToggle';
 import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 import { useTenantFeatureFlag } from '@/hooks/useTenantFeatureFlag';
+import { useTenant } from '@/contexts/TenantContext';
 
 type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'preferences' | 'localAi' | 'desktopHost' | 'notifications' | 'automation' | 'workers' | 'api' | 'billing' | 'integrations' | 'personas';
 
@@ -451,6 +452,7 @@ export function DisplayLanguageDropdown({ defaultValue, onLanguageChange }: Disp
 
 export default function Settings() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const { tenant } = useTenant();
   const { t, i18n } = useScopedTranslation(['settings', 'common']);
   const [, setLocation] = useLocation();
   const search = useSearch();
@@ -2006,7 +2008,7 @@ export default function Settings() {
 
               {activeTab === 'workers' && (
                 <div className="space-y-6">
-                  <WorkerAccessKeysPanel />
+              <WorkerAccessKeysPanel tenantName={tenant?.name ?? null} />
                 </div>
               )}
 

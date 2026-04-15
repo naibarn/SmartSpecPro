@@ -245,6 +245,7 @@ Each surface must deep-link into the existing workpack, team run, approval, and 
   - related workpack runs
   - related role routine runs
   - generated artifacts
+- The case timeline must surface those related runs and artifacts through direct links or join fields, not by reconstructing them from raw logs.
 
 ### 9.5 Outcome capture
 
@@ -272,12 +273,14 @@ Each surface must deep-link into the existing workpack, team run, approval, and 
 - Desktop Host should be able to render assigned local work slices and truthful execution posture for work that is currently being executed through Pi, Agency Swarm, or governed local connectors.
 - Desktop should support local artifact staging, governed local-file attachment flows, and local-progress reporting back to the case and task timeline.
 - If a queue or task requires local execution capability, Desktop Host should expose that it is the current execution-rich surface without becoming a second source of truth for case ownership or SLA state.
+- When Desktop is offline, stale, or quarantined, it must preserve a truthful degraded posture and queue local progress, artifacts, and worklog entries for later upload instead of mutating server-canonical ownership or SLA state.
 
 ### 10.3 Shared contracts and sync
 
 - Web and desktop must share one `work item identity` contract so a locally executed task still points to the same request, case, assignment, and exception records.
 - Sync must preserve truthful degraded posture when desktop is offline, stale, or quarantined; local progress may queue for upload, but queue ownership and SLA calculation remain server-canonical.
 - Any local worklog, artifact, or exception evidence generated on desktop must sync back as attributed records on the shared case timeline instead of remaining desktop-only state.
+- Sync must keep the shared timeline authoritative even when uploads are delayed, and local evidence must retain actor attribution and upload provenance.
 
 ---
 

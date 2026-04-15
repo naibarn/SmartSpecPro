@@ -1,4 +1,5 @@
 import type { RoleAutonomyTier } from "../../shared/roleAgentContracts";
+import { syncRoleRegistry } from "./agentRegistryAdapterService";
 import {
   createRoleId,
   getRoleAgentForTenant,
@@ -106,6 +107,12 @@ export async function createRoleAgentFromBlueprint(input: {
     createdAt: timestamp,
   });
 
+  try {
+    await syncRoleRegistry(input.tenantId, role.id);
+  } catch (error) {
+    console.warn("[roleConfigurationService] agent registry sync failed during role creation", error);
+  }
+
   return { blueprint, role, contract };
 }
 
@@ -125,7 +132,7 @@ export async function updateRoleMission(input: {
   const activeContract = detail.activeContract;
 
   const timestamp = nowIso();
-  return saveRoleContract({
+  const contract = await saveRoleContract({
     id: createRoleId("rc"),
     tenantId: role.tenantId,
     roleId: role.id,
@@ -149,6 +156,14 @@ export async function updateRoleMission(input: {
     supersededByContractId: role.activeContractId,
     createdAt: timestamp,
   });
+
+  try {
+    await syncRoleRegistry(input.tenantId, role.id);
+  } catch (error) {
+    console.warn("[roleConfigurationService] agent registry sync failed during mission update", error);
+  }
+
+  return contract;
 }
 
 export async function upsertRoleWorkpackBinding(input: {
@@ -178,7 +193,7 @@ export async function upsertRoleWorkpackBinding(input: {
     if (!existing || existing.roleId !== role.id) {
       throw new Error(`Unknown binding: ${input.bindingId}`);
     }
-    return updateRoleWorkpackBinding(existing.id, (binding) => ({
+    const updated = await updateRoleWorkpackBinding(existing.id, (binding) => ({
       ...binding,
       label: input.label,
       workpackFamily: input.workpackFamily,
@@ -189,9 +204,15 @@ export async function upsertRoleWorkpackBinding(input: {
       budgetCeiling: input.budgetCeiling ?? binding.budgetCeiling,
       createdAt: binding.createdAt,
     }));
+    try {
+      await syncRoleRegistry(input.tenantId, role.id);
+    } catch (error) {
+      console.warn("[roleConfigurationService] agent registry sync failed during workpack binding update", error);
+    }
+    return updated;
   }
 
-  return saveRoleWorkpackBinding({
+  const binding = await saveRoleWorkpackBinding({
     id: createRoleId("bind"),
     tenantId: role.tenantId,
     roleId: role.id,
@@ -209,6 +230,12 @@ export async function upsertRoleWorkpackBinding(input: {
     active: true,
     createdAt: timestamp,
   });
+  try {
+    await syncRoleRegistry(input.tenantId, role.id);
+  } catch (error) {
+    console.warn("[roleConfigurationService] agent registry sync failed during workpack binding creation", error);
+  }
+  return binding;
 }
 
 export async function upsertRoleRoutineDefinition(input: {
@@ -241,7 +268,7 @@ export async function upsertRoleRoutineDefinition(input: {
     if (!routine || routine.roleId !== role.id) {
       throw new Error(`Unknown routine: ${input.routineId}`);
     }
-    return updateRoleRoutine(routine.id, (current) => ({
+    const updatedRoutine = await updateRoleRoutine(routine.id, (current) => ({
       ...current,
       title: input.title,
       description: input.description ?? current.description,
@@ -257,9 +284,15 @@ export async function upsertRoleRoutineDefinition(input: {
       slaMinutes: input.slaMinutes,
       updatedAt: timestamp,
     }));
+    try {
+      await syncRoleRegistry(input.tenantId, role.id);
+    } catch (error) {
+      console.warn("[roleConfigurationService] agent registry sync failed during routine update", error);
+    }
+    return updatedRoutine;
   }
 
-  return saveRoleRoutine({
+  const routine = await saveRoleRoutine({
     id: createRoleId("routine"),
     tenantId: role.tenantId,
     roleId: role.id,
@@ -288,4 +321,10 @@ export async function upsertRoleRoutineDefinition(input: {
     createdAt: timestamp,
     updatedAt: timestamp,
   });
+  try {
+    await syncRoleRegistry(input.tenantId, role.id);
+  } catch (error) {
+    console.warn("[roleConfigurationService] agent registry sync failed during routine creation", error);
+  }
+  return routine;
 }

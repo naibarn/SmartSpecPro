@@ -28,6 +28,7 @@ import {
   type DelegatedSessionResponse,
   type DelegatedWorkerScope,
 } from "../../shared/workerDelegation";
+import type { AgentRegistryVersionStatus } from "../../shared/agentRegistryContracts";
 import {
   getWorkerRuntimeDefinition,
   isWorkerLoopbackUrl,
@@ -41,6 +42,7 @@ import {
   type WorkerAccessPermissionPreset,
   type WorkerAccessPermissionScope,
 } from "../../shared/workerAccessKeys";
+import { getOwnerRegistrySnapshot } from "./agentRegistryAdapterService";
 
 const ACTIVE_JOB_STATUSES = new Set([
   "claimed",
@@ -493,7 +495,7 @@ function getRequiredDelegatedSessionScopes(
   job?: WorkerJobRecord | null,
 ): WorkerAccessPermissionScope[] {
   const profileDefinition = getProfileDefinition(scopeProfile);
-  const required = new Set<WorkerAccessPermissionScope>(profileDefinition.scopes);
+  const required = new Set<WorkerAccessPermissionScope>(profileDefinition.scopes as WorkerAccessPermissionScope[]);
 
   if (grants.skills.length > 0) {
     required.add("skills:execute");
@@ -564,8 +566,8 @@ function assertWorkerAccessPolicyAllowsDelegatedSession(
       : null;
   const allowedScopes = new Set<WorkerAccessPermissionScope>(
     configuredPreset && configuredPreset !== "custom"
-      ? getWorkerAccessPermissionScopesForPreset(configuredPreset)
-      : policy.permissionScopes,
+      ? getWorkerAccessPermissionScopesForPreset(configuredPreset) as WorkerAccessPermissionScope[]
+      : policy.permissionScopes as WorkerAccessPermissionScope[],
   );
   const requiredScopes = getRequiredDelegatedSessionScopes(scopeProfile, grants, runtimeCapabilities, job);
   const missingScopes = requiredScopes.filter((scope) => !allowedScopes.has(scope));
@@ -831,6 +833,14 @@ async function buildManifest(
     activeMode: ReturnType<typeof summarizeHermesTaskMode>;
     grantedScopes: DelegatedWorkerScope[];
     expiresAt: Date;
+    agentRegistry: {
+      registryId: string;
+      registryKey: string;
+      versionId: string | null;
+      versionStatus: AgentRegistryVersionStatus | null;
+      stableVersionId: string | null;
+      resolutionReason: string | null;
+    } | null;
   },
   grants: GrantRecord[],
   runtimeCapabilities: RuntimeDelegationCapabilities,
@@ -865,6 +875,7 @@ async function buildManifest(
     allowedMcpNamespaces,
     allowedModelAliases: profile.allowedModelAliases,
     allowedProviderProfiles: profile.allowedProviderProfiles,
+    agentRegistry: session.agentRegistry,
     knowledgeAccess: {
       libraryRead: session.grantedScopes.includes("library:read"),
       librarySearch: hasLibrarySearch,
@@ -1235,6 +1246,7 @@ export async function createDelegatedWorkerSession(
       activeMode,
       grantedScopes,
       expiresAt,
+      agentRegistry: await getOwnerRegistrySnapshot(input.auth.tenantId, Number(aligned.worker.registeredByUserId)),
     },
     grantRows as GrantRecord[],
     runtimeCapabilities,
@@ -1347,6 +1359,7 @@ export async function getDelegatedWorkerManifest(
       activeMode: summarizeHermesTaskMode(session.scopeProfile as DelegatedScopeProfile),
       grantedScopes: normalizeScopes(Array.isArray(session.grantedScopesJson) ? session.grantedScopesJson : []),
       expiresAt: new Date(session.expiresAt),
+      agentRegistry: await getOwnerRegistrySnapshot(String(session.tenantId), Number(session.ownerUserId)),
     },
     sessionGrants,
     runtimeCapabilities,
@@ -1413,6 +1426,7 @@ export async function getDelegatedWorkerManifestBySessionId(
       activeMode: summarizeHermesTaskMode(session.scopeProfile as DelegatedScopeProfile),
       grantedScopes: normalizeScopes(Array.isArray(session.grantedScopesJson) ? session.grantedScopesJson : []),
       expiresAt: new Date(session.expiresAt),
+      agentRegistry: await getOwnerRegistrySnapshot(String(session.tenantId), Number(session.ownerUserId)),
     },
     grants,
     runtimeCapabilities,

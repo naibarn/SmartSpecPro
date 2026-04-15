@@ -68,5 +68,5 @@
   "helper.step1": "ระบบจะสร้าง record ของคำขอก่อน แล้วจึงเปิด case สำหรับติดตามงาน",
   "helper.step2": "ถ้าควรให้ทีมหรือคิวไหนรับผิดชอบ สามารถมอบหมายต่อหลังสร้างได้",
   "helper.step3": "แอดมินจะดู approvals, exceptions, SLA และ timeline ของเคสได้ใน Work OS Console",
-  "helper.guide": "อ่านคู่มือ Work OS"
+  "helper.guide": "เปิดคู่มือ"
 }

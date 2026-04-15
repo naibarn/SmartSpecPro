@@ -32,6 +32,14 @@ import {
   type WorkSla,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { describeStatusBridge, mapTeamRunStatusToWorkOsState } from "./workStatusBridge";
+import {
+  buildAutomationTimelineEntries,
+  getAutomationProjectionForCase,
+  type CaseAutomationProjection,
+} from "./workAutomationFabricService";
+import { buildBrowserAutomationTimelineEntries } from "./workAutomationBrowserTaskService";
+import { getRoleRoutineRun, listRoleRoutineRunsForRoutine } from "./rolePersistence";
 import * as workItemService from "./workItemService";
 
 export interface CreateWorkRequestInput {
@@ -154,7 +162,7 @@ export interface RecordAssignmentInput {
 
 export interface WorkTimelineEntry {
   id: string;
-  source: "work_os" | "legacy_work_item" | "workpack_record" | "team_run";
+  source: "work_os" | "legacy_work_item" | "workpack_record" | "team_run" | "role_routine" | "browser_automation";
   eventType: string;
   createdAt: Date;
   requestId: string | null;
@@ -167,6 +175,7 @@ export interface WorkCaseProjection {
   request: WorkRequest | null;
   case: WorkCase;
   task: TeamWorkItem | null;
+  automation: CaseAutomationProjection;
   assignments: WorkAssignment[];
   approvals: WorkApproval[];
   exceptions: WorkException[];
@@ -181,6 +190,13 @@ function now(): Date {
 
 function eventPayload(detailJson: Record<string, unknown> | null | undefined): Record<string, unknown> | null {
   return detailJson && Object.keys(detailJson).length > 0 ? detailJson : null;
+}
+
+function toDate(value: string | Date | null | undefined): Date {
+  if (!value) return new Date(0);
+  if (value instanceof Date) return value;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
 }
 
 async function insertWorkOsEvent(input: InsertWorkOsEvent): Promise<void> {
@@ -441,6 +457,8 @@ async function buildTeamRunTimelineEntries(
       teamId: run.teamId,
       roomId: run.roomId,
       status: run.status,
+      workOsState: mapTeamRunStatusToWorkOsState(run.status, run.stopReason),
+      statusBridge: describeStatusBridge(run.status, run.stopReason),
       executionMode: run.executionMode,
       objective: run.objective,
       startedAt: run.startedAt ? run.startedAt.toISOString() : null,
@@ -450,6 +468,62 @@ async function buildTeamRunTimelineEntries(
       summaryArtifactId: run.summaryArtifactId ?? null,
     },
   }));
+}
+
+async function buildRoleRoutineTimelineEntries(
+  tenantId: string,
+  request: WorkRequest | null,
+  workCase: WorkCase,
+  task: TeamWorkItem | null,
+): Promise<WorkTimelineEntry[]> {
+  type RoleRoutineRunRecord = NonNullable<Awaited<ReturnType<typeof getRoleRoutineRun>>>;
+  const linkedRunIds = uniqueIds([
+    ...(request?.linkedRoleRoutineRunIdsJson ?? []),
+    ...(workCase.linkedRoleRoutineRunIdsJson ?? []),
+  ]);
+
+  const runs = new Map<string, RoleRoutineRunRecord>();
+
+  await Promise.all(linkedRunIds.map(async (runId) => {
+    const run = await getRoleRoutineRun(runId);
+    if (run && run.tenantId === tenantId) {
+      runs.set(run.id, run);
+    }
+  }));
+
+  if (runs.size === 0 && task?.routineId) {
+    const routineRuns = await listRoleRoutineRunsForRoutine(task.routineId);
+    for (const run of routineRuns) {
+      if (run.tenantId === tenantId) {
+        runs.set(run.id, run);
+      }
+    }
+  }
+
+  return Array.from(runs.values())
+    .map((run) => ({
+      id: `role-routine-${run.id}`,
+      source: "role_routine" as const,
+      eventType: `role_routine_${run.status}`,
+      createdAt: toDate(run.updatedAt ?? run.createdAt ?? run.startedAt),
+      requestId: request?.id ?? null,
+      caseId: workCase.id,
+      taskId: task?.id ?? null,
+      detailJson: {
+        routineId: run.routineId,
+        routineRunId: run.id,
+        status: run.status,
+        triggerSource: run.triggerSource,
+        selectedWorkpackFamily: run.selectedWorkpackFamily ?? null,
+        resolvedWorkpackVersionId: run.resolvedWorkpackVersionId ?? null,
+        linkedWorkpackRunIds: run.linkedWorkpackRunIds ?? [],
+        recoveryState: run.recoveryState,
+        blockerCodes: run.blockerCodes ?? [],
+        currentObjectiveSummary: run.currentObjectiveSummary ?? "",
+        checkpointId: run.checkpointId ?? null,
+      },
+    }))
+    .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
 }
 
 export async function createWorkRequest(input: CreateWorkRequestInput): Promise<{ request: WorkRequest; case: WorkCase }> {
@@ -1016,14 +1090,20 @@ export async function getWorkCaseProjection(caseId: string, tenantId: string): P
   const outcomes = await db.select().from(workOutcomes).where(and(eq(workOutcomes.caseId, workCase.id), eq(workOutcomes.tenantId, tenantId))).orderBy(desc(workOutcomes.createdAt));
   const slas = await db.select().from(workSlas).where(and(eq(workSlas.caseId, workCase.id), eq(workSlas.tenantId, tenantId))).orderBy(desc(workSlas.createdAt));
 
-  const [osEvents, legacyEvents, workpackEvidence, teamRunEvidence] = await Promise.all([
+  const [osEvents, legacyEvents, workpackEvidence, teamRunEvidence, roleRoutineEvidence] = await Promise.all([
     db.select().from(workOsEvents).where(and(eq(workOsEvents.caseId, workCase.id), eq(workOsEvents.tenantId, tenantId))).orderBy(desc(workOsEvents.createdAt)),
     task
       ? db.select().from(workItemEvents).where(eq(workItemEvents.workItemId, task.id)).orderBy(desc(workItemEvents.createdAt))
       : Promise.resolve([]),
     buildWorkpackTimelineEntries(tenantId, request, workCase),
     buildTeamRunTimelineEntries(tenantId, request, workCase, task),
+    buildRoleRoutineTimelineEntries(tenantId, request, workCase, task),
   ]);
+  const [automationEvidence, automation] = await Promise.all([
+    buildAutomationTimelineEntries(workCase.id, tenantId),
+    getAutomationProjectionForCase(workCase.id, tenantId),
+  ]);
+  const browserAutomationEvidence = await buildBrowserAutomationTimelineEntries(workCase.id, tenantId);
 
   const timeline: WorkTimelineEntry[] = [
     ...osEvents.map((entry) => ({
@@ -1048,9 +1128,12 @@ export async function getWorkCaseProjection(caseId: string, tenantId: string): P
     })),
     ...workpackEvidence,
     ...teamRunEvidence,
+    ...roleRoutineEvidence,
+    ...automationEvidence,
+    ...browserAutomationEvidence,
   ].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
 
-  return { request, case: workCase, task, assignments, approvals, exceptions, outcomes, slas, timeline };
+  return { request, case: workCase, task, automation, assignments, approvals, exceptions, outcomes, slas, timeline };
 }
 
 export async function getInbox(tenantId: string, ownerType?: string | null, ownerId?: string | null): Promise<WorkCase[]> {
@@ -1127,6 +1210,17 @@ export async function projectTaskAsCase(taskId: string, tenantId: string): Promi
     riskLevel: task.riskClass,
     dataClassification: "internal",
     currentState: mapTaskStatusToCaseState(task.status),
+    automationRunId: null,
+    automationMode: "manual_assist",
+    automationTemplateKey: null,
+    automationTemplateFamily: "content-production",
+    automationTemplateSource: "case_intake",
+    automationPolicyJson: {},
+    automationStepId: null,
+    automationCheckpointId: null,
+    automationDisposition: null,
+    automationSummary: null,
+    automationUpdatedAt: null,
     linkedConversationIdsJson: null,
     linkedWorkpackRunIdsJson: null,
     linkedRoleRoutineRunIdsJson: null,
@@ -1135,21 +1229,31 @@ export async function projectTaskAsCase(taskId: string, tenantId: string): Promi
   } as unknown as WorkCase;
 
   const legacyEvents = await db.select().from(workItemEvents).where(eq(workItemEvents.workItemId, task.id)).orderBy(desc(workItemEvents.createdAt));
-  const timeline: WorkTimelineEntry[] = legacyEvents.map((entry) => ({
+  const roleRoutineEvidence = await buildRoleRoutineTimelineEntries(tenantId, null, syntheticCase, task);
+  const automation = await getAutomationProjectionForCase(syntheticCase.id, tenantId);
+  const automationEvidence = await buildAutomationTimelineEntries(syntheticCase.id, tenantId);
+  const browserAutomationEvidence = await buildBrowserAutomationTimelineEntries(syntheticCase.id, tenantId);
+  const timeline: WorkTimelineEntry[] = [
+    ...legacyEvents.map((entry) => ({
     id: entry.id,
-    source: "legacy_work_item",
+    source: "legacy_work_item" as const,
     eventType: entry.eventType,
     createdAt: entry.createdAt,
     requestId: null,
     caseId: syntheticCase.id,
     taskId: task.id,
     detailJson: (entry.detailJson as Record<string, unknown> | null) ?? null,
-  }));
+    })),
+    ...roleRoutineEvidence,
+    ...automationEvidence,
+    ...browserAutomationEvidence,
+  ].sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime());
 
   return {
     request: null,
     case: syntheticCase,
     task,
+    automation,
     assignments: [],
     approvals: [],
     exceptions: [],

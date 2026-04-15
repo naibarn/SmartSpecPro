@@ -2,8 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   STUCK_THRESHOLD_MS,
   SNAPSHOT_INTERVAL_MS,
+  buildOpsAlertDedupeKey,
   deriveOpsOverview,
   buildOpsIncidentTimeline,
+  shouldSkipOpsAlertEmission,
 } from "../monitoringService";
 
 describe("monitoringService", () => {
@@ -130,6 +132,58 @@ describe("monitoringService", () => {
       expect(overview.anomalies.find((anomaly) => anomaly.type === "alert_backlog")?.signal).toContain("latest unresolved");
       expect(overview.leadingSignals.maxRestartDelta).toBe(4);
       expect(overview.leadingSignals.llmErrorRate).toBeCloseTo(0.24);
+    });
+
+    it("keeps alert backlog dedupe stable for the same unresolved incident", () => {
+      const anomaly = {
+        id: "monitoring:alert_backlog",
+        severity: "critical",
+        category: "monitoring",
+        type: "alert_backlog",
+        title: "Critical monitoring alerts are still unacknowledged",
+        message: "1 high-severity alert is pending acknowledgement. Latest unresolved alert: LLM tail latency is critically high - Recent LLM p95 latency is 21.4s.",
+        recommendation: "Triage LLM tail latency is critically high first, then acknowledge the backlog once ownership and the root cause note are clear.",
+        signal: "1 pending · latest unresolved: LLM tail latency is critically high",
+        observedAt: "2026-04-15T00:00:00.000Z",
+        source: "monitoring_alerts",
+      } as const;
+
+      const overviewA = {
+        unackedAlerts: { critical: 1, warning: 0, error: 0, info: 0 },
+        latestOpenAlert: {
+          title: "LLM tail latency is critically high",
+          message: "Recent LLM p95 latency is 21.4s.",
+          anomalyType: "llm_latency_spike",
+        },
+      } as const;
+
+      const overviewB = {
+        unackedAlerts: { critical: 1, warning: 0, error: 0, info: 0 },
+        latestOpenAlert: {
+          title: "LLM tail latency is critically high",
+          message: "Recent LLM p95 latency is 21.4s.",
+          anomalyType: "llm_latency_spike",
+        },
+      } as const;
+
+      const overviewC = {
+        unackedAlerts: { critical: 2, warning: 0, error: 0, info: 0 },
+        latestOpenAlert: {
+          title: "LLM error rate spiked",
+          message: "8 of 26 recent LLM calls failed.",
+          anomalyType: "llm_error_spike",
+        },
+      } as const;
+
+      expect(buildOpsAlertDedupeKey(anomaly as any, overviewA as any)).toBe(buildOpsAlertDedupeKey(anomaly as any, overviewB as any));
+      expect(buildOpsAlertDedupeKey(anomaly as any, overviewA as any)).not.toBe(buildOpsAlertDedupeKey(anomaly as any, overviewC as any));
+    });
+
+    it("suppresses emission when an alert is still open or recently emitted", () => {
+      expect(shouldSkipOpsAlertEmission(true, false)).toBe(true);
+      expect(shouldSkipOpsAlertEmission(false, true)).toBe(true);
+      expect(shouldSkipOpsAlertEmission(true, true)).toBe(true);
+      expect(shouldSkipOpsAlertEmission(false, false)).toBe(false);
     });
 
     it("stays healthy when signals are stable", () => {

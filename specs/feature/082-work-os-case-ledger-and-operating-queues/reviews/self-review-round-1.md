@@ -15,4 +15,5 @@
 ## Residual risk
 
 - The rollout still depends on the exact schema details of the new tables and any compatibility backfill scripts, which will need to be validated during implementation.
+- Desktop/offline sync, role-routine timeline joins, and external-agent triage fallback are now specified more explicitly, but they still need implementation-level verification to make sure the attributed timeline stays authoritative.
 - The approval integration path will need close attention during implementation because the current router still proxies to the Python backend.

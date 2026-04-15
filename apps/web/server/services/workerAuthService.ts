@@ -232,7 +232,7 @@ export function createWorkerRegistrationToken(
       quotaMonthly: input.quotaMonthly ?? null,
       jti: input.jti ?? randomJti("worker_register"),
     },
-    expiresIn,
+    expiresIn ?? undefined,
   );
 }
 

@@ -33,6 +33,7 @@ import type { WorkItemStatus } from "./workItemService";
 import { routeRoomIntent } from "./roomIntentRouter";
 import { executeTeamRunSkillTurn } from "./teamRunSkillExecutor";
 import { sanitizeMessageRuntimeMetadata } from "./localAiRuntimeMetadata";
+import { describeStatusBridge, type StatusBridge } from "./workStatusBridge";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -42,6 +43,8 @@ export interface StopEvaluation {
   shouldStop: boolean;
   reason: string | null;
 }
+
+export interface RunStatusBridge extends StatusBridge {}
 
 export interface StartRunInput {
   roomId: string;
@@ -1436,11 +1439,16 @@ export async function stopRun(
   return updated;
 }
 
-export async function getRun(runId: string, tenantId?: string): Promise<TeamRun | null> {
+export async function getRun(runId: string, tenantId?: string): Promise<(TeamRun & { statusBridge: RunStatusBridge }) | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return loadRunWithTenantCheck(db, runId, tenantId);
+  const run = await loadRunWithTenantCheck(db, runId, tenantId);
+  if (!run) return null;
+  return {
+    ...run,
+    statusBridge: describeStatusBridge(run.status, run.stopReason),
+  };
 }
 
 // ─── Auto-Stop Policy Checker ───────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import {
   ArrowLeft,
+  Copy,
   Save,
   Upload,
   LayoutGrid,
@@ -41,6 +42,7 @@ interface AgencyToolbarProps {
   onHistory?: () => void;
   onRunHistory?: () => void;
   onAutoCreate?: () => void;
+  onCopyAgencyLink?: () => void;
   readOnly?: boolean;
 }
 
@@ -71,6 +73,7 @@ export function AgencyToolbar({
   onHistory,
   onRunHistory,
   onAutoCreate,
+  onCopyAgencyLink,
   readOnly = false,
 }: AgencyToolbarProps) {
   const { t } = useScopedTranslation("agency");
@@ -166,6 +169,11 @@ export function AgencyToolbar({
       {/* Right side */}
       <div className="flex items-center gap-1.5 ml-auto">
         <LocaleToggle className="hidden xl:inline-flex" />
+        {onCopyAgencyLink && (
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onCopyAgencyLink} title={t("builder.toolbar.copyAgencyLink")}>
+            <Copy className="h-4 w-4" />
+          </Button>
+        )}
         {onAutoCreate && (
           <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-purple-600 hover:text-purple-700 hover:bg-purple-50" onClick={onAutoCreate} title={t("builder.toolbar.aiCreator")}>
             <Sparkles className="h-3.5 w-3.5" />

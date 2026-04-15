@@ -1,0 +1,29 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/083-agent-registry-and-organization-model/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/083-agent-registry-and-organization-model/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-schema-foundation",
+    "section-02-registry-contracts-and-validation",
+    "section-03-registry-services-and-resolution",
+    "section-04-rollout-and-policy-enforcement",
+    "section-05-outcome-memory-and-promotion",
+    "section-06-admin-api-and-tenant-controls",
+    "section-07-runtime-integration-and-adapters",
+    "section-08-observability-security-and-rollout-gates"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-15T11:59:56.770003+00:00"
+}

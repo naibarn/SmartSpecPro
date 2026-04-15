@@ -68,5 +68,5 @@
   "helper.step1": "A request record is created first, then a case is opened for tracking.",
   "helper.step2": "If a team or queue should own it, the case can be assigned after creation.",
   "helper.step3": "Admins can review approvals, exceptions, SLA changes, and the case timeline in Work OS Console.",
-  "helper.guide": "Read the Work OS guide"
+  "helper.guide": "Open guide"
 }

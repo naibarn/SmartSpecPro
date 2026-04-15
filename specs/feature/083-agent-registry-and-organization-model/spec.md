@@ -23,6 +23,7 @@ The registry should describe:
 - what budget and autonomy it may consume
 - what rollout ring it belongs to
 - which tenants, teams, queues, or workpack families may use it
+- what outcome memory and improvement signals it has accumulated over time
 
 This feature intentionally covers both:
 
@@ -30,6 +31,7 @@ This feature intentionally covers both:
 - persistent business-facing role agents defined in Feature 080
 
 The product outcome is a governed workforce registry instead of a loose pile of prompts, skills, and runtime labels.
+It should also become the place where the platform learns which agent versions, model families, and policy envelopes perform best for each workload class.
 
 Governance follows the SmartSpecPro tenant model:
 
@@ -74,6 +76,7 @@ Without a registry model, SmartAIHub risks shipping impressive agents with weak 
 4. Provide version promotion, shadow mode, canary, freeze, and rollback semantics.
 5. Let tenants and teams choose approved agent families without editing raw runtime definitions.
 6. Keep role agents from Feature 080 inside the same registry model as planner and reviewer style agents.
+7. Capture outcome memory so future agent selection can be driven by evidence instead of only static labels.
 
 ---
 
@@ -83,6 +86,7 @@ Without a registry model, SmartAIHub risks shipping impressive agents with weak 
 2. This feature does not replace workpacks as the execution unit.
 3. This feature does not require every agent to be long-lived.
 4. This feature does not promise arbitrary user-created agents can skip policy review.
+5. This feature does not own workflow orchestration or step routing; Feature 095 consumes the registry and executes the run.
 
 ---
 
@@ -133,6 +137,7 @@ Without a registry model, SmartAIHub risks shipping impressive agents with weak 
 | `agent_budget_policy` | Cost, time, and concurrency limits |
 | `agent_escalation_policy` | Fail-closed escalation targets and triggers |
 | `agent_rollout_binding` | Tenant, queue, team, and workpack-family targeting |
+| `agent_performance_memory` | Historical outcome summaries, model comparisons, and improvement notes for an agent version |
 
 ### 7.2 First-wave agent kinds
 
@@ -160,6 +165,9 @@ Every registered agent version must declare:
 - escalation triggers
 - rollout posture
 - owning team
+- model family or prompt family compatibility
+- evaluation targets and comparison benchmarks
+- learning hook for capturing outcome memory after runs
 
 ---
 
@@ -197,6 +205,20 @@ Every registered agent version must declare:
   - which version was resolved
   - why that version was eligible
   - which policies and budgets were attached
+
+### 8.5 Outcome memory and version guidance
+
+- The registry must retain machine-readable outcome memory for completed runs, including:
+  - workload class
+  - selected agent version
+  - selected model family
+  - success outcome
+  - failure mode or friction point
+  - operator edits or overrides
+  - next-step improvement notes
+- When policy permits, registry resolution should prefer versions with better recent evidence for the same workload class.
+- Promotion of a new agent version must compare it with the previous stable version on comparable workloads before widening rollout.
+- The registry should expose "what improved" and "what regressed" so future runs can choose stronger defaults without hiding the underlying evidence.
 
 ---
 
@@ -237,3 +259,4 @@ Every registered agent version must declare:
 3. Tool scope, memory scope, budget policy, and escalation rules are inspectable from the registry.
 4. Shadow and canary rollout can be targeted without cloning separate agent definitions by hand.
 5. The platform can fail closed when no registry-approved agent version matches the requested workload.
+6. Operators can inspect outcome memory and see why a newer version or model family is recommended for a workload class.

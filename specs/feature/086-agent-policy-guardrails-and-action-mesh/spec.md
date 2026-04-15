@@ -26,6 +26,7 @@ The key product rule is simple:
 
 agents should never call integrations, external APIs, browser actions, desktop actions, or MCP tools as ad hoc side effects.
 They should act through a governed action mesh.
+The action mesh should also remember which action patterns produced good outcomes so future runs can favor safer or more effective paths.
 
 The action mesh follows the same tenant hierarchy as the rest of the platform:
 
@@ -65,6 +66,7 @@ Without a unified action mesh:
 4. Bind actions to approval, budget, and policy rules consistently.
 5. Support dry-run, simulation, and compensation metadata for side-effecting actions.
 6. Keep existing browser policy concepts but extend them beyond the browser-only scope.
+7. Capture action outcome memory so repeated failures or strong successes can inform future action selection and policy tuning.
 
 ---
 
@@ -73,6 +75,7 @@ Without a unified action mesh:
 1. This feature does not implement every connector the platform may ever support.
 2. This feature does not replace workpacks or role agents.
 3. This feature does not remove the browser-specific protections from Feature 033; it builds on them.
+4. This feature does not own work orchestration or autonomy mode selection; it supplies the governed action layer that Feature 095 and Feature 085 consume.
 
 ---
 
@@ -119,6 +122,7 @@ Without a unified action mesh:
 | `action_policy_binding` | Policy and approval rules for an action |
 | `action_execution_record` | Audited execution attempt |
 | `action_compensation_profile` | Rollback, cleanup, or no-compensation posture |
+| `action_feedback_record` | Outcome memory for post-execution quality, validation, and improvement notes |
 
 ### 7.2 Required action contract fields
 
@@ -133,6 +137,8 @@ Without a unified action mesh:
 - `compensation_profile`
 - `data_sensitivity_flags`
 - `latency_expectation`
+- `post_execution_validation`
+- `learning_tags`
 
 ### 7.3 First-wave action families
 
@@ -176,6 +182,13 @@ Without a unified action mesh:
   - whether it ran live or dry-run
   - what compensation posture exists
 
+### 8.4 Outcome feedback and policy tuning
+
+- After execution, the platform must record whether the action result satisfied the expected contract.
+- Failed or reversed actions should produce machine-readable feedback about whether the issue came from input quality, output quality, policy fit, or surface compatibility.
+- Repeated failures should surface candidate action replacements, stricter policy bindings, or safer defaults for future runs.
+- Strong success patterns should be visible to the registry and evaluation layers so the platform can prefer better action paths over time.
+
 ---
 
 ## 9. Web and desktop responsibilities
@@ -205,3 +218,4 @@ Without a unified action mesh:
 3. The system can show whether an action was blocked before execution or rejected after output validation.
 4. Delegated and external runtime paths cannot bypass the action mesh.
 5. Operators can explain why a run was allowed, denied, or stepped up from the action record alone.
+6. Operators can also see which action patterns repeatedly improve outcomes and which ones should be tightened or retired.

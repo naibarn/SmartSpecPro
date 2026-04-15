@@ -27,6 +27,7 @@ This feature intentionally combines:
 - release gates
 
 These concerns should ship together because rollout without measurement is unsafe, and measurement without rollout hooks is operationally weak.
+The same trace spine should also retain learning memory so future runs, models, and policies can improve from proven outcomes instead of rediscovering the same failures.
 
 AgentOps must preserve the SmartSpecPro tenant model:
 
@@ -65,6 +66,7 @@ Without this layer:
 3. Measure both technical and business outcomes.
 4. Enforce release gates before broader autonomy rollout.
 5. Help operators debug failure clusters and quality drift quickly.
+6. Feed outcome memory back into future model, prompt, context, and policy decisions.
 
 ---
 
@@ -73,6 +75,7 @@ Without this layer:
 1. This feature does not replace low-level infrastructure logs.
 2. This feature does not guarantee zero hallucinations.
 3. This feature does not remove human review from high-risk changes.
+4. This feature does not own workflow orchestration; Feature 095 uses the trace and evaluation layer to run cases.
 
 ---
 
@@ -115,6 +118,7 @@ Without this layer:
 | `agent_span` | Timed nested execution unit |
 | `agent_eval_run` | Evaluation or simulation pass |
 | `agent_release_gate` | Readiness decision with thresholds and evidence |
+| `agent_learning_digest` | Machine-readable memory of what worked, what regressed, and what to try next |
 
 ### 7.2 Required event types
 
@@ -128,6 +132,9 @@ Without this layer:
 - exception opened
 - outcome recorded
 - release gate decision
+- improvement suggested
+- model variant compared
+- regression detected
 
 ---
 
@@ -159,6 +166,24 @@ Without this layer:
 - hallucination or invalid-action rate
 - cost per successful outcome
 - SLA attainment
+- best model by workload family
+- improvement delta after rollout
+- learning adoption rate
+
+### 8.4 Learning loop and model comparison
+
+- Every evaluated run should produce a machine-readable learning summary that captures:
+  - workload family
+  - model or prompt version
+  - context bundle version
+  - policy version
+  - outcome quality
+  - failure mode
+  - intervention count
+  - improvement candidate
+- The platform should compare candidate model versions and prompt variants on the same workload class before promotion.
+- When newer LLM models become available, the release-gate layer should be able to test them against the same benchmark family and surface whether they are actually better, faster, or more reliable.
+- Regression findings should become actionable follow-up items rather than dead-end dashboards.
 
 ---
 
@@ -189,3 +214,4 @@ Without this layer:
 3. Release gates can block promotion when intervention, policy, or outcome thresholds regress.
 4. The system can compare human baseline and agent baseline for selected workloads.
 5. Drift and repeated failure patterns can be clustered and surfaced to operators.
+6. Operators can see which model, prompt, or policy variant produced the best outcome for a workload family and what to try next.

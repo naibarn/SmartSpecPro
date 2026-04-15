@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { addDays, endOfMonth, endOfYear, format, startOfMonth, startOfYear } from "date-fns";
+import { addDays, endOfMonth, endOfYear, format, startOfMonth, startOfYear, subDays } from "date-fns";
 import { motion } from "framer-motion";
 import {
   BarChart3,
@@ -176,7 +176,10 @@ function resolveAutocompleteSelection(
   }) ?? null;
 }
 
-function getPresetRange(preset: "month" | "year", now = new Date()): { from: string; to: string } {
+function getPresetRange(preset: "last30" | "month" | "year", now = new Date()): { from: string; to: string } {
+  if (preset === "last30") {
+    return getDefaultReportRange(now);
+  }
   if (preset === "year") {
     return {
       from: toDateInputValue(startOfYear(now)),
@@ -186,6 +189,13 @@ function getPresetRange(preset: "month" | "year", now = new Date()): { from: str
   return {
     from: toDateInputValue(startOfMonth(now)),
     to: toDateInputValue(endOfMonth(now)),
+  };
+}
+
+function getDefaultReportRange(now = new Date()): { from: string; to: string } {
+  return {
+    from: toDateInputValue(subDays(now, 29)),
+    to: toDateInputValue(now),
   };
 }
 
@@ -205,7 +215,8 @@ export default function FinanceReportsPage() {
   const [, setLocation] = useLocation();
   const search = useSearch();
   const financeVaultAccess = useFinanceVaultAccess();
-  const [reportPreset, setReportPreset] = useState<"month" | "year" | "custom">("month");
+  const initialReportRange = useMemo(() => getDefaultReportRange(), []);
+  const [reportPreset, setReportPreset] = useState<"last30" | "month" | "year" | "custom">("last30");
   const [cashflowGranularity, setCashflowGranularity] = useState<"day" | "month" | "year">("day");
   const [transactionType, setTransactionType] = useState<"all" | "income" | "expense" | "transfer">("all");
   const [searchText, setSearchText] = useState("");
@@ -218,8 +229,8 @@ export default function FinanceReportsPage() {
   const [paymentAccount, setPaymentAccount] = useState("");
   const [paymentMethodKind, setPaymentMethodKind] = useState<"all" | "bank_account" | "credit_card" | "cash" | "unknown">("all");
   const [paymentDirection, setPaymentDirection] = useState<"all" | "outbound" | "inbound" | "both" | "unknown">("all");
-  const [dateFrom, setDateFrom] = useState(() => getPresetRange("month").from);
-  const [dateTo, setDateTo] = useState(() => getPresetRange("month").to);
+  const [dateFrom, setDateFrom] = useState(() => initialReportRange.from);
+  const [dateTo, setDateTo] = useState(() => initialReportRange.to);
   const [selectedTransactionId, setSelectedTransactionId] = useState<number | null>(null);
   const [evidenceQuery, setEvidenceQuery] = useState("");
   const deferredSearchText = useDeferredValue(searchText.trim());
@@ -879,7 +890,7 @@ export default function FinanceReportsPage() {
 
   const renderLockedView = () => (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.10),_transparent_28%),linear-gradient(180deg,_#f8fbff_0%,_#f7fafc_45%,_#eef2ff_100%)]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-4 py-4 md:px-6 md:py-6">
+      <div className="flex min-h-screen w-full flex-col px-4 py-4 md:px-6 md:py-6">
         <FinanceAccessGateContent
           access={financeVaultAccess}
           className="flex-1"
@@ -950,7 +961,7 @@ export default function FinanceReportsPage() {
 
   const renderUnlockedView = () => (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.10),_transparent_28%),linear-gradient(180deg,_#f8fbff_0%,_#f7fafc_45%,_#eef2ff_100%)]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-4 py-4 md:px-6 md:py-6">
+      <div className="flex min-h-screen w-full flex-col px-4 py-4 md:px-6 md:py-6">
         <motion.header
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1238,6 +1249,7 @@ export default function FinanceReportsPage() {
                           <SelectValue placeholder={t("dashboard:finance.report.rangePreset", "Range")} />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="last30">{t("dashboard:finance.report.rangeLast30Days", "Last 30 days")}</SelectItem>
                           <SelectItem value="month">{t("dashboard:finance.report.rangeThisMonth", "This month")}</SelectItem>
                           <SelectItem value="year">{t("dashboard:finance.report.rangeThisYear", "This year")}</SelectItem>
                           <SelectItem value="custom">{t("dashboard:finance.report.rangeCustom", "Custom")}</SelectItem>

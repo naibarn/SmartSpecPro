@@ -663,7 +663,7 @@ async function reextractLibraryItemTextFromSource(
     },
     traceId,
     externalProcessingAllowed,
-    tenantId: tenantId ? resolveTenantIdVarchar(tenantId) : undefined,
+    tenantId: tenantId ? resolveTenantIdVarchar(tenantId, null) : undefined,
   });
   debugLog("finance_ocr", "reextract source result", {
     traceId: traceId ?? "unknown",

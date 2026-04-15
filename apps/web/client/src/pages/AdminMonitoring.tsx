@@ -39,6 +39,8 @@ import {
   BellRing,
   CheckCheck,
   ClipboardList,
+  Copy,
+  BookOpen,
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -129,6 +131,12 @@ type OpsIncidentTimelineItem = {
     occurrenceCount: number;
     latestTitle: string | null;
   };
+};
+type WorkOsOverview = {
+  byState: Record<string, number>;
+  openExceptions: number;
+  overdueSla: number;
+  completed: number;
 };
 type AlertMetadata = {
   source?: string;
@@ -644,7 +652,7 @@ function buildMonitoringPath(tab: Tab, incidentKey?: string | null): string {
 
 function incidentKeyFromAnomaly(anomaly: OpsOverview["anomalies"][number] | null | undefined): string | null {
   if (!anomaly) return null;
-  return `ops-overview:${anomaly.id}`;
+  return anomaly.dedupeKey ?? `ops-overview:${anomaly.id}`;
 }
 
 function incidentImpactSummary(
@@ -1823,6 +1831,27 @@ function MetricsTab() {
 
 type Tab = "checks" | "alerts" | "metrics";
 
+function buildWorkOsPath(timelineSource?: "role_routine" | "team_run" | "workpack_record" | "browser_automation"): string {
+  const params = new URLSearchParams();
+  if (timelineSource) {
+    params.set("timelineSource", timelineSource);
+  }
+  const query = params.toString();
+  return query ? `/admin/work-os?${query}` : "/admin/work-os";
+}
+
+function copyWorkOsLink(path: string, successMessage: string): void {
+  const url = `${window.location.origin}${path}`;
+  void navigator.clipboard
+    .writeText(url)
+    .then(() => {
+      toast.success(successMessage);
+    })
+    .catch(() => {
+      toast.error("Could not copy the Work OS link");
+    });
+}
+
 export default function AdminMonitoring() {
   const { user, loading: authLoading } = useAuth();
   const hermesFlags = useTenantFeatureFlags();
@@ -1849,6 +1878,34 @@ export default function AdminMonitoring() {
   const opsOverviewQuery = trpc.monitoring.getOpsOverview.useQuery(undefined, {
     refetchInterval: 30000,
     refetchOnWindowFocus: false,
+  });
+  const workOsOverviewQuery = trpc.monitoring.getWorkOsOverview.useQuery(undefined, {
+    refetchInterval: 30000,
+    refetchOnWindowFocus: false,
+  });
+  const browserAutomationHealthQuery = trpc.workOs.getBrowserAutomationHealth.useQuery(undefined, {
+    refetchInterval: 30000,
+    refetchOnWindowFocus: false,
+  });
+  const reconcileBrowserAutomationTasksMutation = trpc.workOs.reconcileBrowserAutomationTasks.useMutation({
+    onSuccess: async (result: {
+      processed: number;
+      completed: number;
+      failed: number;
+      cancelled: number;
+      pending: number;
+    }) => {
+      await Promise.all([
+        browserAutomationHealthQuery.refetch(),
+        workOsOverviewQuery.refetch(),
+      ]);
+      toast.success(
+        `Reconciled ${result.processed} browser claims (${result.completed} completed, ${result.failed} failed, ${result.cancelled} cancelled, ${result.pending} pending)`,
+      );
+    },
+    onError: (error: { message: string }) => {
+      toast.error(error.message || "Failed to reconcile browser automation tasks");
+    },
   });
   const focusedIncidentQuery = trpc.monitoring.getOpsIncidentTimeline.useQuery(
     routeState.incidentKey ? { limit: 1, groupKey: routeState.incidentKey } : undefined,
@@ -1899,6 +1956,7 @@ export default function AdminMonitoring() {
     },
   );
   const selectedWorkerBudget = (workerBudgetQuery.data as WorkerBudgetSummary | undefined) ?? null;
+  const browserAutomationHealth = browserAutomationHealthQuery.data ?? null;
   const [workerBudgetDrafts, setWorkerBudgetDrafts] = useState<Record<string, WorkerBudgetDraft>>({});
   const updateWorkerStateMutation = trpc.monitoring.updateWorkerState.useMutation({
     onSuccess: async () => {
@@ -2024,6 +2082,7 @@ export default function AdminMonitoring() {
   const lastCheck = statusQuery.data?.lastCheck ?? null;
   const focusedIncident = ((focusedIncidentQuery.data?.items as OpsIncidentTimelineItem[] | undefined) ?? [])[0] ?? null;
   const anomalies = opsOverviewQuery.data?.anomalies ?? [];
+  const workOsOverview = (workOsOverviewQuery.data as WorkOsOverview | undefined) ?? null;
   const workerFleet = (workerFleetQuery.data as WorkerFleetRow[] | undefined) ?? [];
   const tenantWorkerMcpOverview = (tenantWorkerMcpOverviewQuery.data as TenantWorkerMcpOverview | undefined) ?? null;
   const selectedWorkerDiagnostics = (workerDiagnosticsQuery.data as WorkerDiagnosticsSnapshot | undefined) ?? null;
@@ -2393,7 +2452,149 @@ export default function AdminMonitoring() {
           isLoading={opsOverviewQuery.isLoading}
           showMonitoringLink={false}
           description="Normalized anomaly feed across service metrics, alert backlog, audit failures, and orchestration fallback patterns."
+          workOsOverview={workOsOverview ?? undefined}
+          browserAutomationHealth={browserAutomationHealth ? {
+            ...browserAutomationHealth,
+            latestClaimedAt: browserAutomationHealth.latestClaimedAt ? new Date(browserAutomationHealth.latestClaimedAt).toISOString() : null,
+            latestPolledAt: browserAutomationHealth.latestPolledAt ? new Date(browserAutomationHealth.latestPolledAt).toISOString() : null,
+            latestUpdatedAt: browserAutomationHealth.latestUpdatedAt ? new Date(browserAutomationHealth.latestUpdatedAt).toISOString() : null,
+            latestCompletedAt: browserAutomationHealth.latestCompletedAt ? new Date(browserAutomationHealth.latestCompletedAt).toISOString() : null,
+            nextPollAt: browserAutomationHealth.nextPollAt ? new Date(browserAutomationHealth.nextPollAt).toISOString() : null,
+          } : undefined}
         />
+
+        <DashboardCard
+          title="Work OS Coverage"
+          description="Case ledger health, open exceptions, and SLA pressure for requests flowing through the Work OS pipeline."
+          leading={<ClipboardList className="h-5 w-5 text-sky-600" />}
+          trailing={(
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setLocation("/help/work-os")}>
+                <BookOpen className="mr-1 h-4 w-4" />
+                Open guide
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setLocation(buildWorkOsPath())}>
+                Open Work OS
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => copyWorkOsLink(buildWorkOsPath(), "Work OS link copied")}>
+                <Copy className="mr-1 h-4 w-4" />
+                Copy permalink
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setLocation(buildWorkOsPath("role_routine"))}>
+                Role Routine
+              </Button>
+              <Button variant="outline" size="sm" aria-label="Copy role evidence" onClick={() => copyWorkOsLink(buildWorkOsPath("role_routine"), "Role Routine link copied")}>
+                <Copy className="mr-1 h-4 w-4" />
+                Copy role evidence
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setLocation(buildWorkOsPath("team_run"))}>
+                Team Run
+              </Button>
+              <Button variant="outline" size="sm" aria-label="Copy team evidence" onClick={() => copyWorkOsLink(buildWorkOsPath("team_run"), "Team Run link copied")}>
+                <Copy className="mr-1 h-4 w-4" />
+                Copy team evidence
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setLocation(buildWorkOsPath("workpack_record"))}>
+                Workpack
+              </Button>
+              <Button variant="outline" size="sm" aria-label="Copy workpack evidence" onClick={() => copyWorkOsLink(buildWorkOsPath("workpack_record"), "Workpack link copied")}>
+                <Copy className="mr-1 h-4 w-4" />
+                Copy workpack evidence
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setLocation(buildWorkOsPath("browser_automation"))}>
+                Browser Automation
+              </Button>
+              <Button variant="outline" size="sm" aria-label="Copy browser evidence" onClick={() => copyWorkOsLink(buildWorkOsPath("browser_automation"), "Browser automation link copied")}>
+                <Copy className="mr-1 h-4 w-4" />
+                Copy browser evidence
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => reconcileBrowserAutomationTasksMutation.mutate({ limit: 50 })}
+                disabled={reconcileBrowserAutomationTasksMutation.isPending}
+              >
+                {reconcileBrowserAutomationTasksMutation.isPending ? (
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-1 h-4 w-4" />
+                )}
+                Reconcile browser
+              </Button>
+            </div>
+          )}
+        >
+          {workOsOverviewQuery.isLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading Work OS overview…
+            </div>
+          ) : workOsOverview ? (
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-4">
+                <DashboardKpiCard icon={AlertTriangle} label="Open Exceptions" value={workOsOverview.openExceptions} />
+                <DashboardKpiCard icon={Clock} label="Overdue SLA" value={workOsOverview.overdueSla} />
+                <DashboardKpiCard icon={CheckCircle} label="Completed Cases" value={workOsOverview.completed} />
+                <DashboardKpiCard
+                  icon={ClipboardList}
+                  label="Case States"
+                  value={Object.values(workOsOverview.byState).reduce((sum, count) => sum + count, 0)}
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(workOsOverview.byState)
+                  .sort(([left], [right]) => left.localeCompare(right))
+                  .map(([state, count]) => (
+                    <Badge key={state} variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
+                      {state}: {count}
+                    </Badge>
+                  ))}
+              </div>
+              <div className="rounded-2xl border border-cyan-100 bg-cyan-50/50 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Browser automation health</p>
+                    <p className="text-xs text-slate-600">
+                      Browser claims are reconciled in the background; use the button above to force a refresh.
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="border-cyan-200 bg-white text-cyan-700">
+                    {browserAutomationHealth ? `${browserAutomationHealth.pendingClaims} pending` : "loading…"}
+                  </Badge>
+                </div>
+                {browserAutomationHealth ? (
+                  <>
+                    <div className="mt-3 grid gap-3 md:grid-cols-4">
+                      <DashboardKpiCard icon={Clock} label="Pending" value={browserAutomationHealth.pendingClaims} />
+                      <DashboardKpiCard icon={RefreshCw} label="Stale" value={browserAutomationHealth.staleClaims} />
+                      <DashboardKpiCard icon={CheckCircle} label="Running" value={browserAutomationHealth.runningClaims} />
+                      <DashboardKpiCard icon={ClipboardList} label="Cases" value={browserAutomationHealth.distinctCases} />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
+                      <span>Total claims: {browserAutomationHealth.totalClaims}</span>
+                      <span>Completed: {browserAutomationHealth.completedClaims}</span>
+                      <span>Failed: {browserAutomationHealth.failedClaims}</span>
+                      <span>Cancelled: {browserAutomationHealth.cancelledClaims}</span>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">
+                      Latest polled at {browserAutomationHealth.latestPolledAt ? new Date(browserAutomationHealth.latestPolledAt).toLocaleString() : "n/a"} ·
+                      next poll {browserAutomationHealth.nextPollAt ? new Date(browserAutomationHealth.nextPollAt).toLocaleString() : "n/a"} ·
+                      updated {browserAutomationHealth.latestUpdatedAt ? new Date(browserAutomationHealth.latestUpdatedAt).toLocaleString() : "n/a"}
+                    </p>
+                  </>
+                ) : null}
+              </div>
+              <p className="text-xs text-slate-500">
+                Work OS links are bookmarkable. `timelineSource=work_os` keeps the main case view, while
+                source-specific links jump straight to the corresponding evidence slice.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-200 px-4 py-4 text-sm text-muted-foreground">
+              Work OS overview is not available yet.
+            </div>
+          )}
+        </DashboardCard>
 
         <DashboardCard
           title="Claw Workers"

@@ -59,6 +59,7 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set([
   "agencyHybridAdk",
   "agencyHybridAdkKillSwitch",
   "documentOcrExternalProcessing",
+  "agentRegistryEnabled",
 ]);
 
 /**

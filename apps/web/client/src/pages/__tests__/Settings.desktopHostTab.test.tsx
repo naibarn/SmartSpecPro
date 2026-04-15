@@ -105,6 +105,16 @@ vi.mock("@/hooks/useTenantFeatureFlag", () => ({
   useTenantFeatureFlag: (flag: keyof typeof featureFlagsState) => featureFlagsState[flag] ?? false,
 }));
 
+vi.mock("@/contexts/TenantContext", () => ({
+  useTenant: () => ({
+    tenant: {
+      name: "Acme Labs",
+    },
+    isLoading: false,
+    refreshTenant: vi.fn(),
+  }),
+}));
+
 vi.mock("@/lib/trpc", () => ({
   trpc: trpcRoot,
 }));

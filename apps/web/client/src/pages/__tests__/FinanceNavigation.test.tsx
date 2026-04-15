@@ -3,7 +3,7 @@
  */
 
 import { render, screen, fireEvent } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const setLocationMock = vi.fn();
 let mockPath = "/finance";
@@ -152,7 +152,13 @@ import FinanceReportsPage from "../FinanceReports";
 describe("Finance navigation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-15T12:00:00Z"));
     mockPath = "/finance";
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("shows a visible back button on the finance workspace", () => {
@@ -189,5 +195,8 @@ describe("Finance navigation", () => {
     expect(screen.getAllByText(/counterparties/i).length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: /payment accounts/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /payment institutions/i })).toBeInTheDocument();
+    expect(screen.getByText(/last 30 days/i)).toBeInTheDocument();
+    expect(screen.getAllByDisplayValue("2026-03-17")).toHaveLength(1);
+    expect(screen.getAllByDisplayValue("2026-04-15")).toHaveLength(1);
   });
 });

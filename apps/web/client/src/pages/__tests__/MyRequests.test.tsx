@@ -5,6 +5,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const mockNavigate = vi.fn();
+const mockClipboardWriteText = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/work/requests", mockNavigate],
@@ -12,7 +13,7 @@ vi.mock("wouter", () => ({
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
-    user: { id: 42, role: "user" },
+    user: { id: 42, role: "admin" },
   }),
 }));
 
@@ -75,6 +76,13 @@ import MyRequestsPage from "../MyRequests";
 describe("MyRequestsPage", () => {
   beforeEach(() => {
     mockNavigate.mockClear();
+    mockClipboardWriteText.mockClear();
+    Object.defineProperty(window.navigator, "clipboard", {
+      value: {
+        writeText: mockClipboardWriteText,
+      },
+      configurable: true,
+    });
   });
 
   it("shows a summary of the user's requests and routes to work creation", () => {
@@ -96,5 +104,72 @@ describe("MyRequestsPage", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: /open chat/i })[0]);
     expect(mockNavigate).toHaveBeenCalledWith("/chat");
+  });
+
+  it("opens the Work OS guide from the page header", () => {
+    render(<MyRequestsPage />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /open guide/i })[0]);
+    expect(mockNavigate).toHaveBeenCalledWith("/help/work-os");
+  });
+
+  it("opens the linked work case in Work OS with a bookmarkable source filter", () => {
+    render(<MyRequestsPage />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /open work os console/i })[1]);
+
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/work-os?caseId=case-1&timelineSource=work_os");
+  });
+
+  it("opens source-specific Work OS shortcuts from a request row", () => {
+    render(<MyRequestsPage />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /role routine/i })[0]);
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/work-os?caseId=case-1&timelineSource=role_routine");
+
+    fireEvent.click(screen.getAllByRole("button", { name: /team run/i })[0]);
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/work-os?caseId=case-1&timelineSource=team_run");
+
+    fireEvent.click(screen.getAllByRole("button", { name: /workpack/i })[0]);
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/work-os?caseId=case-1&timelineSource=workpack_record");
+  });
+
+  it("copies a bookmarkable Work OS link from a request row", () => {
+    render(<MyRequestsPage />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /copy permalink/i })[1]);
+
+    expect(mockClipboardWriteText).toHaveBeenCalledWith(
+      `${window.location.origin}/admin/work-os?caseId=case-1&timelineSource=work_os`,
+    );
+  });
+
+  it("copies source-specific Work OS links from a request row", () => {
+    render(<MyRequestsPage />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /copy role evidence/i })[0]);
+    expect(mockClipboardWriteText).toHaveBeenCalledWith(
+      `${window.location.origin}/admin/work-os?caseId=case-1&timelineSource=role_routine`,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: /copy team evidence/i })[0]);
+    expect(mockClipboardWriteText).toHaveBeenCalledWith(
+      `${window.location.origin}/admin/work-os?caseId=case-1&timelineSource=team_run`,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: /copy workpack evidence/i })[0]);
+    expect(mockClipboardWriteText).toHaveBeenCalledWith(
+      `${window.location.origin}/admin/work-os?caseId=case-1&timelineSource=workpack_record`,
+    );
+  });
+
+  it("copies the Work OS console link from the page header", () => {
+    render(<MyRequestsPage />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /copy permalink/i })[0]);
+
+    expect(mockClipboardWriteText).toHaveBeenCalledWith(
+      `${window.location.origin}/admin/work-os?timelineSource=work_os`,
+    );
   });
 });
