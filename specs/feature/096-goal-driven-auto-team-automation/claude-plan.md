@@ -350,4 +350,5 @@ The core model and control logic need to be defined before broadening test cover
 - The system escalates immediately only for explicitly safety-critical or policy-gated cases.
 - Async worker tasks are polled until completion and then resume the workflow automatically.
 - The user can see clear runtime states and reasons instead of a vague paused/running split.
+- Work OS projection failures surface a blocked or exception state instead of silently diverging from the run overlay.
 - Existing run lifecycle behavior remains compatible for current callers and historical data.
