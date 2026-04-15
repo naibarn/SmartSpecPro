@@ -1016,6 +1016,13 @@
       "when": 1776000010000,
       "tag": "0148_private_personal_finance_semantic_duplicate_fingerprint",
       "breakpoints": true
+    },
+    {
+      "idx": 145,
+      "version": "7",
+      "when": 1776215251253,
+      "tag": "0149_private_personal_finance_search_tsvector",
+      "breakpoints": true
     }
   ]
 }

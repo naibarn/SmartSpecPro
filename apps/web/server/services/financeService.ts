@@ -6145,15 +6145,11 @@ export async function listTransactions(input: ListTransactionsInput): Promise<Fi
       COALESCE(${financeTransactions.note}, '') || ' ' ||
       COALESCE(${financeTransactions.counterpartyName}, '') || ' ' ||
       COALESCE(${financeTransactions.merchantName}, '') || ' ' ||
+      COALESCE(${financeTransactions.categoryCode}, '') || ' ' ||
       COALESCE(${financeTransactions.slipReference}, '') || ' ' ||
       COALESCE(${financeTransactions.merchantId}, '') || ' ' ||
       COALESCE(${financeTransactions.paymentSourceName}, '') || ' ' ||
-      COALESCE(${financeTransactions.paymentDestinationName}, '') || ' ' ||
-      COALESCE(${financeTransactions.paymentSourceInstitutionName}, '') || ' ' ||
-      COALESCE(${financeTransactions.paymentDestinationInstitutionName}, '') || ' ' ||
-      COALESCE(${financeTransactions.paymentInstitutionName}, '') || ' ' ||
-      COALESCE(${financeTransactions.paymentAccountNickname}, '') || ' ' ||
-      COALESCE(${financeTransactions.paymentAccountMaskedIdentifier}, '')
+      COALESCE(${financeTransactions.paymentDestinationName}, '')
     )`;
     if (trimmed.length <= 2) {
       const term = `%${trimmed}%`;
@@ -6166,11 +6162,6 @@ export async function listTransactions(input: ListTransactionsInput): Promise<Fi
         ilike(financeTransactions.merchantId, term),
         ilike(financeTransactions.paymentSourceName, term),
         ilike(financeTransactions.paymentDestinationName, term),
-        ilike(financeTransactions.paymentSourceInstitutionName, term),
-        ilike(financeTransactions.paymentDestinationInstitutionName, term),
-        ilike(financeTransactions.paymentInstitutionName, term),
-        ilike(financeTransactions.paymentAccountNickname, term),
-        ilike(financeTransactions.paymentAccountMaskedIdentifier, term),
       ));
     } else {
       conditions.push(sql`${searchVector} @@ plainto_tsquery('simple', ${trimmed})`);

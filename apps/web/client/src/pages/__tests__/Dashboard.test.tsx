@@ -12,6 +12,7 @@ const tenantFeatureFlagsState = {
 const {
   chatListConversationsUseQuery,
   getPersonalConversationUseQuery,
+  reviewDashboardUseQuery,
 } = vi.hoisted(() => ({
   chatListConversationsUseQuery: vi.fn(() => ({
     data: {
@@ -45,6 +46,57 @@ const {
       totalCreditsUsed: 0,
       updatedAt: "2026-04-09T10:00:00.000Z",
       projectId: "personal",
+    },
+    isLoading: false,
+  })),
+  reviewDashboardUseQuery: vi.fn(() => ({
+    data: {
+      overview: {
+        totalAgencies: 4,
+        reviewedAgencies: 3,
+        reviewCount: 6,
+        averageRating: 4.3,
+        averageObjectiveAlignment: 0.82,
+        reviewCoverage: 0.75,
+      },
+      recentReviews: [
+        {
+          id: 11,
+          agencyId: "agency-1",
+          agencyName: "Growth Agency",
+          rating: 5,
+          suggestionsCount: 2,
+          overallAssessment: "Strong output quality and good instruction coverage.",
+          createdAt: "2026-03-23T12:00:00.000Z",
+        },
+        {
+          id: 12,
+          agencyId: "agency-2",
+          agencyName: "Support Agency",
+          rating: 3,
+          suggestionsCount: 1,
+          overallAssessment: "Needs more model diversity.",
+          createdAt: "2026-03-23T11:00:00.000Z",
+        },
+      ],
+      recentImprovements: [
+        {
+          id: 21,
+          agencyId: "agency-1",
+          agencyName: "Growth Agency",
+          changeType: "node_instructions",
+          description: "Applied: tightened the content brief.",
+          createdAt: "2026-03-23T13:00:00.000Z",
+        },
+        {
+          id: 22,
+          agencyId: "agency-2",
+          agencyName: "Support Agency",
+          changeType: "model_selection",
+          description: "Dismissed: keep the current model.",
+          createdAt: "2026-03-23T09:00:00.000Z",
+        },
+      ],
     },
     isLoading: false,
   })),
@@ -186,6 +238,9 @@ const translationMap: Record<string, string> = {
   "dashboard:review.recentReviews": "Recent Reviews",
   "dashboard:review.agencies": "Agencies",
   "dashboard:review.center": "Open Review Center",
+  "dashboard:notices.openAgencies": "Open agencies",
+  "dashboard:notices.reviewCoverage": "Agency review coverage",
+  "dashboard:notices.reviewCoverageDetail": "Review the agencies list and open any agency review that needs attention.",
   "dashboard:allAgencies": "All Agencies",
   "dashboard:sections.documents": "Documents",
   "dashboard:review.coverage": "{{percent}}% coverage",
@@ -438,6 +493,21 @@ vi.mock("@tanstack/react-query", () => ({
 
 vi.mock("@/hooks/useTenantFeatureFlag", () => ({
   useTenantFeatureFlags: () => tenantFeatureFlagsState,
+}));
+
+vi.mock("@/components/finance/FinanceAccessGate", () => ({
+  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock("@/components/finance/FinanceHub", () => ({
+  FinanceHub: () => (
+    <section>
+      <h2>Personal Finance</h2>
+      <p>Today income</p>
+      <h3>Recent Transactions</h3>
+      <button type="button">Open Finance Panel</button>
+    </section>
+  ),
 }));
 
 vi.mock("@/features/desktop-host/useDesktopHostStatus", () => ({
@@ -753,57 +823,7 @@ vi.mock("@/lib/trpc", () => ({
     },
     agency: {
       reviewDashboard: {
-        useQuery: vi.fn(() => ({
-          data: {
-            overview: {
-              totalAgencies: 4,
-              reviewedAgencies: 3,
-              reviewCount: 6,
-              averageRating: 4.3,
-              averageObjectiveAlignment: 0.82,
-              reviewCoverage: 0.75,
-            },
-            recentReviews: [
-              {
-                id: 11,
-                agencyId: "agency-1",
-                agencyName: "Growth Agency",
-                rating: 5,
-                suggestionsCount: 2,
-                overallAssessment: "Strong output quality and good instruction coverage.",
-                createdAt: "2026-03-23T12:00:00.000Z",
-              },
-              {
-                id: 12,
-                agencyId: "agency-2",
-                agencyName: "Support Agency",
-                rating: 3,
-                suggestionsCount: 1,
-                overallAssessment: "Needs more model diversity.",
-                createdAt: "2026-03-23T11:00:00.000Z",
-              },
-            ],
-            recentImprovements: [
-              {
-                id: 21,
-                agencyId: "agency-1",
-                agencyName: "Growth Agency",
-                changeType: "node_instructions",
-                description: "Applied: tightened the content brief.",
-                createdAt: "2026-03-23T13:00:00.000Z",
-              },
-              {
-                id: 22,
-                agencyId: "agency-2",
-                agencyName: "Support Agency",
-                changeType: "model_selection",
-                description: "Dismissed: keep the current model.",
-                createdAt: "2026-03-23T09:00:00.000Z",
-              },
-            ],
-          },
-          isLoading: false,
-        })),
+        useQuery: reviewDashboardUseQuery,
       },
     },
     systemSettings: {
@@ -856,6 +876,42 @@ describe("Dashboard", () => {
     expect(screen.getByText("82%")).toBeInTheDocument();
     expect(screen.getAllByText("Growth Agency").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("node_instructions")).toBeInTheDocument();
+  });
+
+  it("routes the review coverage notice to the agencies list", () => {
+    reviewDashboardUseQuery.mockReturnValueOnce({
+      data: {
+        overview: {
+          totalAgencies: 4,
+          reviewedAgencies: 2,
+          reviewCount: 6,
+          averageRating: 4.3,
+          averageObjectiveAlignment: 0.82,
+          reviewCoverage: 0.5,
+        },
+        recentReviews: [
+          {
+            id: 11,
+            agencyId: "agency-1",
+            agencyName: "Growth Agency",
+            rating: 5,
+            suggestionsCount: 2,
+            overallAssessment: "Strong output quality and good instruction coverage.",
+            createdAt: "2026-03-23T12:00:00.000Z",
+          },
+        ],
+        recentImprovements: [],
+      },
+      isLoading: false,
+    });
+
+    render(<Dashboard />);
+
+    expect(screen.getByText("Agency review coverage")).toBeInTheDocument();
+    expect(screen.getByText("Open agencies")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /open agencies/i }));
+    expect(setLocationMock).toHaveBeenCalledWith("/agencies");
   });
 
   it("filters the review center by agency and opens the selected review center", () => {

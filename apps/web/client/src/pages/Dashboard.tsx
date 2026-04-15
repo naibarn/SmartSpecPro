@@ -702,7 +702,7 @@ export default function Dashboard() {
         title: t("dashboard:notices.reviewCoverage"),
         detail: t("dashboard:notices.reviewCoverageDetail"),
         tone: "warning",
-        ctaLabel: t("dashboard:notices.openReviewCenter"),
+        ctaLabel: t("dashboard:notices.openAgencies"),
         ctaHref: "/agencies",
       });
     }
