@@ -99,3 +99,11 @@ The section should not require a destructive migration of historical run rows.
 - Older runs still load and behave correctly.
 - Snapshot capture includes enough information for downstream orchestration and UI rendering.
 - The evidence model is durable enough to support step verification and review in later sections.
+
+## Implementation Notes (Current Slice)
+
+- `apps/web/server/services/monitoringService.ts` now builds a durable `runtimeState` overlay into `run_snapshots.artifactCountJson` and exposes helpers to derive it from the latest snapshot.
+- `apps/web/server/services/runEngine.ts` now includes the latest derived `runtimeState` on `teamRun.get` responses so read paths can consume one canonical runtime contract.
+- `apps/web/server/services/__tests__/monitoringService.test.ts` now covers the runtime overlay builder and snapshot extractor, including a legacy bridge-only fallback.
+- `apps/web/server/services/__tests__/teamRoomRunSchema.test.ts` now asserts that `runSnapshots` still includes `artifactCountJson` as the durable overlay slot.
+- No destructive schema migration was required for this slice; the runtime overlay lives in the existing snapshot JSON payload for backward compatibility.

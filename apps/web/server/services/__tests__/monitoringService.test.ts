@@ -7,6 +7,8 @@ import {
   buildOpsIncidentTimeline,
   shouldSkipOpsAlertEmission,
   describeRunStatusBridge,
+  buildRunRuntimeState,
+  extractRunRuntimeState,
 } from "../monitoringService";
 
 describe("monitoringService", () => {
@@ -293,6 +295,72 @@ describe("monitoringService", () => {
       expect(describeRunStatusBridge("stopped", "user_requested")).toEqual(expect.objectContaining({
         teamRunStatus: "stopped",
         workOsState: "cancelled",
+      }));
+    });
+
+    it("builds a durable runtime overlay from the current run shape", () => {
+      const runtimeState = buildRunRuntimeState({
+        status: "running",
+        stopReason: null,
+        summaryArtifactId: "summary-1",
+        roomId: "room-1",
+        teamId: "team-1",
+      } as any);
+
+      expect(runtimeState).toEqual(expect.objectContaining({
+        currentPhase: "running",
+        waitingReason: null,
+        verificationState: "unknown",
+        evidenceRefs: ["summary:summary-1"],
+      }));
+      expect(runtimeState.statusBridge.workOsState).toBe("in_progress");
+      expect(runtimeState.workOsLinkage).toEqual(expect.objectContaining({
+        teamId: "team-1",
+        roomId: "room-1",
+        projectedWorkOsState: "in_progress",
+      }));
+    });
+
+    it("extracts the runtime overlay from newer or legacy snapshot payloads", () => {
+      const runtimeState = {
+        currentPhase: "awaiting_human_approval",
+        waitingReason: "awaiting_human_approval",
+        nextPollAt: null,
+        riskClass: "high",
+        reviewerPersona: "safety-reviewer",
+        verificationState: "pending",
+        evidenceRefs: ["summary:summary-1"],
+        jobHandle: { provider: "hermes" },
+        statusBridge: describeRunStatusBridge("paused", "awaiting_human_approval"),
+        workOsLinkage: {
+          teamId: "team-1",
+          roomId: "room-1",
+          projectedWorkOsState: "waiting_for_approval",
+        },
+      };
+
+      expect(extractRunRuntimeState({
+        artifactCountJson: {
+          statusBridge: describeRunStatusBridge("paused", "awaiting_human_approval"),
+          runtimeState,
+        },
+      } as any)).toEqual(expect.objectContaining({
+        currentPhase: "awaiting_human_approval",
+        waitingReason: "awaiting_human_approval",
+        riskClass: "high",
+        reviewerPersona: "safety-reviewer",
+        verificationState: "pending",
+      }));
+
+      expect(extractRunRuntimeState({
+        artifactCountJson: {
+          statusBridge: describeRunStatusBridge("running"),
+        },
+      } as any)).toEqual(expect.objectContaining({
+        currentPhase: "running",
+        statusBridge: expect.objectContaining({
+          workOsState: "in_progress",
+        }),
       }));
     });
 

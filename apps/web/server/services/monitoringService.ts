@@ -34,7 +34,7 @@ import {
 import crypto from "crypto";
 import { auditLogger, type AuditLogEntry } from "./auditLogger";
 import { getQueueHealthStatus } from "./queueHealthMonitor";
-import { describeStatusBridge } from "./workStatusBridge";
+import { describeStatusBridge, type StatusBridge } from "./workStatusBridge";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -63,6 +63,164 @@ export interface StuckAgentCheck {
 
 export function describeRunStatusBridge(status: "queued" | "running" | "paused" | "completed" | "failed" | "stopped", stopReason?: string | null) {
   return describeStatusBridge(status, stopReason);
+}
+
+export type RunRuntimePhase =
+  | "planned"
+  | "running"
+  | "waiting_for_worker"
+  | "waiting_for_poll"
+  | "awaiting_human_approval"
+  | "blocked"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface RunRuntimeState {
+  currentPhase: RunRuntimePhase;
+  waitingReason: string | null;
+  nextPollAt: string | null;
+  riskClass: "low" | "medium" | "high" | "critical" | null;
+  reviewerPersona: string | null;
+  verificationState: "pending" | "passed" | "failed" | "unknown";
+  evidenceRefs: string[];
+  jobHandle: Record<string, unknown> | null;
+  statusBridge: StatusBridge;
+  workOsLinkage: {
+    teamId: string;
+    roomId: string;
+    projectedWorkOsState: StatusBridge["workOsState"];
+  } | null;
+}
+
+function deriveRunRuntimePhase(
+  status: "queued" | "running" | "paused" | "completed" | "failed" | "stopped",
+  stopReason?: string | null,
+): RunRuntimePhase {
+  switch (status) {
+    case "queued":
+      return "planned";
+    case "running":
+      return "running";
+    case "paused":
+      if (stopReason === "awaiting_human_approval") return "awaiting_human_approval";
+      if (stopReason === "awaiting_external_member") return "waiting_for_worker";
+      if (stopReason === "user_paused") return "blocked";
+      return "blocked";
+    case "completed":
+      return "completed";
+    case "failed":
+      return "failed";
+    case "stopped":
+      return stopReason === "user_requested" ? "cancelled" : "blocked";
+    default:
+      return "blocked";
+  }
+}
+
+export function buildRunRuntimeState(run: Pick<TeamRun, "status" | "stopReason" | "summaryArtifactId" | "roomId" | "teamId">): RunRuntimeState {
+  const statusBridge = describeRunStatusBridge(run.status, run.stopReason);
+  return {
+    currentPhase: deriveRunRuntimePhase(run.status, run.stopReason),
+    waitingReason: run.stopReason ?? null,
+    nextPollAt: null,
+    riskClass: null,
+    reviewerPersona: null,
+    verificationState: run.status === "completed" ? "passed" : run.status === "failed" ? "failed" : "unknown",
+    evidenceRefs: run.summaryArtifactId ? [`summary:${run.summaryArtifactId}`] : [],
+    jobHandle: null,
+    statusBridge,
+    workOsLinkage: {
+      teamId: run.teamId,
+      roomId: run.roomId,
+      projectedWorkOsState: statusBridge.workOsState,
+    },
+  };
+}
+
+export function extractRunRuntimeState(snapshot: Pick<RunSnapshot, "artifactCountJson"> | null | undefined): RunRuntimeState | null {
+  const payload = snapshot?.artifactCountJson as Record<string, unknown> | null | undefined;
+  if (!payload) return null;
+
+  const runtimeState = payload.runtimeState as Partial<RunRuntimeState> | undefined;
+  const statusBridge = payload.statusBridge as StatusBridge | undefined;
+
+  if (runtimeState) {
+    return {
+      currentPhase: (runtimeState.currentPhase as RunRuntimePhase | undefined) ?? "blocked",
+      waitingReason: (runtimeState.waitingReason as string | null | undefined) ?? null,
+      nextPollAt: (runtimeState.nextPollAt as string | null | undefined) ?? null,
+      riskClass: (runtimeState.riskClass as RunRuntimeState["riskClass"] | undefined) ?? null,
+      reviewerPersona: (runtimeState.reviewerPersona as string | null | undefined) ?? null,
+      verificationState: (runtimeState.verificationState as RunRuntimeState["verificationState"] | undefined) ?? "unknown",
+      evidenceRefs: Array.isArray(runtimeState.evidenceRefs) ? runtimeState.evidenceRefs.filter((item): item is string => typeof item === "string") : [],
+      jobHandle: (runtimeState.jobHandle as Record<string, unknown> | null | undefined) ?? null,
+      statusBridge: (runtimeState.statusBridge as StatusBridge | undefined) ?? statusBridge ?? describeRunStatusBridge("queued"),
+      workOsLinkage: (runtimeState.workOsLinkage as RunRuntimeState["workOsLinkage"] | undefined) ?? null,
+    };
+  }
+
+  if (statusBridge) {
+    const phase: RunRuntimePhase = (() => {
+      switch (statusBridge.workOsState) {
+        case "planned":
+        case "triaged":
+          return "planned";
+        case "in_progress":
+          return "running";
+        case "waiting_for_approval":
+          return "awaiting_human_approval";
+        case "waiting_for_input":
+          return "blocked";
+        case "completed":
+          return "completed";
+        case "failed":
+          return "failed";
+        case "cancelled":
+          return "cancelled";
+        case "blocked":
+        case "escalated":
+        default:
+          return "blocked";
+      }
+    })();
+
+    return {
+      currentPhase: phase,
+      waitingReason: null,
+      nextPollAt: null,
+      riskClass: null,
+      reviewerPersona: null,
+      verificationState: "unknown",
+      evidenceRefs: [],
+      jobHandle: null,
+      statusBridge,
+      workOsLinkage: null,
+    };
+  }
+
+  return null;
+}
+
+export async function getLatestRunSnapshot(runId: string): Promise<RunSnapshot | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [snapshot] = await db
+    .select()
+    .from(runSnapshots)
+    .where(eq(runSnapshots.runId, runId))
+    .orderBy(desc(runSnapshots.capturedAt))
+    .limit(1);
+
+  return snapshot ?? null;
+}
+
+function buildRunSnapshotArtifactPayload(run: Pick<TeamRun, "status" | "stopReason" | "summaryArtifactId" | "roomId" | "teamId">) {
+  return {
+    statusBridge: describeRunStatusBridge(run.status, run.stopReason),
+    runtimeState: buildRunRuntimeState(run),
+  } satisfies Record<string, unknown>;
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -144,9 +302,7 @@ export async function captureSnapshot(
       costJson: Object.fromEntries(
         Object.entries(perAgent).map(([id, d]) => [id, d.creditsUsed]),
       ),
-      artifactCountJson: {
-        statusBridge: describeRunStatusBridge(run.status, run.stopReason),
-      },
+      artifactCountJson: buildRunSnapshotArtifactPayload(run),
     })
     .returning();
 

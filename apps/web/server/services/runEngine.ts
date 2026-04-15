@@ -1439,15 +1439,21 @@ export async function stopRun(
   return updated;
 }
 
-export async function getRun(runId: string, tenantId?: string): Promise<(TeamRun & { statusBridge: RunStatusBridge }) | null> {
+export async function getRun(
+  runId: string,
+  tenantId?: string,
+): Promise<(TeamRun & { statusBridge: RunStatusBridge; runtimeState: monitoringService.RunRuntimeState | null }) | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   const run = await loadRunWithTenantCheck(db, runId, tenantId);
   if (!run) return null;
+  const latestSnapshot = await monitoringService.getLatestRunSnapshot(runId);
+  const runtimeState = monitoringService.extractRunRuntimeState(latestSnapshot) ?? monitoringService.buildRunRuntimeState(run);
   return {
     ...run,
     statusBridge: describeStatusBridge(run.status, run.stopReason),
+    runtimeState,
   };
 }
 
