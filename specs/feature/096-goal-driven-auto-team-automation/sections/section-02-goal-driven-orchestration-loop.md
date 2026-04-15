@@ -76,3 +76,9 @@ Do not collapse every non-running condition into the same coarse paused state un
 - The run can switch between active and waiting states without losing context.
 - Existing pause/resume/stop behavior still works for user-driven intervention.
 - Loop continuation decisions are explainable and testable.
+
+## Implementation Notes (Current Slice)
+
+- `apps/web/server/services/runEngine.ts` now treats actionable goal progress as a valid continuation signal even before the turn counter has warmed up.
+- `evaluateAutoTeamLoopDecision()` still pauses for true human or external dependencies, but it no longer depends only on the initial burst of turns to keep the loop alive.
+- `apps/web/server/services/__tests__/runEngine.test.ts` now includes a regression for continuation when goal progress exists at turn zero.

@@ -87,6 +87,16 @@ describe("RunEngine", () => {
       })).toBe(false);
     });
 
+    it("lets actionable goal progress continue the loop before the turn counter warms up", () => {
+      expect(runEngine.shouldContinueAutoTeamLoop({
+        runStatus: "running",
+        executionMode: "auto_team",
+        completedTurns: 0,
+        shouldStop: false,
+        hasGoalProgress: true,
+      })).toBe(true);
+    });
+
     it("keeps looping when assistant-owned work remains actionable", () => {
       expect(runEngine.evaluateAutoTeamLoopDecision({
         runStatus: "running",

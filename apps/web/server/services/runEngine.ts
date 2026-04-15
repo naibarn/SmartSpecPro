@@ -160,12 +160,13 @@ export function shouldContinueAutoTeamLoop(params: {
   executionMode: StartRunInput["executionMode"] | TeamRun["executionMode"];
   completedTurns: number;
   shouldStop: boolean;
+  hasGoalProgress?: boolean;
 }): boolean {
   return (
     params.runStatus === "running" &&
     params.executionMode === "auto_team" &&
-    params.completedTurns > 0 &&
-    !params.shouldStop
+    !params.shouldStop &&
+    (params.completedTurns > 0 || params.hasGoalProgress === true)
   );
 }
 
@@ -234,6 +235,7 @@ export function evaluateAutoTeamLoopDecision(params: {
     executionMode: params.executionMode,
     completedTurns: params.completedTurns,
     shouldStop: params.shouldStop,
+    hasGoalProgress: params.openWorkItems.some((workItem) => isAssistantActionableWorkItem(workItem)),
   });
 
   if (!baseContinuation) {
