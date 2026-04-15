@@ -2097,6 +2097,7 @@ export default function Teams() {
                             teamName={selectedTeam?.name}
                             runStatus={runStatus as any}
                             runStatusReason={activeRunStatusReason}
+                            statusBridge={(activeRunDetail as any)?.statusBridge ?? null}
                             agents={(teamDetail?.members ?? [])
                               .filter((m: any) => m.memberKind === "assistant")
                               .map((m: any) => ({
@@ -2126,6 +2127,7 @@ export default function Teams() {
                         teamName={selectedTeam?.name}
                         runStatus={runStatus as any}
                         runStatusReason={activeRunStatusReason}
+                        statusBridge={(activeRunDetail as any)?.statusBridge ?? null}
                         agents={(teamDetail?.members ?? [])
                           .filter((m: any) => m.memberKind === "assistant")
                           .map((m: any) => ({

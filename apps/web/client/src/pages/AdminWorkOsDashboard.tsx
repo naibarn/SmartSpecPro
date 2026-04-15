@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { getStatusBridgeBadgeClass, mapWorkOsStateToTeamRunStatus } from "../../../shared/workStatusBridge";
 
 function formatDate(value: string | Date | null | undefined): string {
   if (!value) return "n/a";
@@ -320,6 +321,7 @@ export default function AdminWorkOsDashboard() {
   const automationLatestCheckpoint = automation?.checkpoints?.[0] ?? null;
   const automationLatestEvent = automation?.events?.[0] ?? null;
   const timeline = caseQuery.data?.timeline ?? [];
+  const selectedCaseBridgeStatus = selectedCase ? mapWorkOsStateToTeamRunStatus(selectedCase.currentState) : null;
   const timelineSourceOptions = useMemo(
     () => Array.from(new Set(timeline.map((entry) => entry.source))).sort(),
     [timeline],
@@ -431,6 +433,9 @@ export default function AdminWorkOsDashboard() {
                       <div>
                         <p className="font-semibold text-slate-900">{item.title}</p>
                         <p className="text-sm text-slate-600">Case {item.id}</p>
+                        <p className={cn("mt-1 text-[10px] font-medium", getStatusBridgeBadgeClass(item.currentState as any))}>
+                          Bridge: {mapWorkOsStateToTeamRunStatus(item.currentState)}
+                        </p>
                       </div>
                       <Badge variant="outline" className={cn("capitalize", stateBadgeClass(item.currentState))}>
                         {item.currentState}
@@ -463,6 +468,11 @@ export default function AdminWorkOsDashboard() {
                       <Badge variant="outline" className={stateBadgeClass(selectedCase.currentState)}>
                         {selectedCase.currentState}
                       </Badge>
+                      {selectedCaseBridgeStatus ? (
+                        <Badge variant="secondary" className={cn("capitalize", getStatusBridgeBadgeClass(selectedCase.currentState))}>
+                          Bridge: {selectedCaseBridgeStatus}
+                        </Badge>
+                      ) : null}
                       <Button
                         variant="outline"
                         size="sm"

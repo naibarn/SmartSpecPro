@@ -55,6 +55,13 @@ This is not a new workflow engine. It is a control-model upgrade for the existin
 - Prefer splitting work by persona, dependency, and surface before execution begins.
 - Record the plan durably so execution can be audited and resumed from it.
 
+### Decision: plan source-of-truth and read contract
+
+- The durable plan artifact is the canonical plan record for the run or case.
+- The UI and runtime must consume the plan through one normalized read helper or service, not by reconstructing it ad hoc from scattered work items.
+- The plan read contract must merge the durable decomposition artifact with the latest execution status, evidence references, and reviewer / owner assignments for each step.
+- The plan record should remain versioned so retries and repairs can update the same plan identity without losing history.
+
 ### Why this is first
 
 The stakeholder explicitly wants the system to stop treating incoming work as one giant prompt. A plan-first step is required so the system can split the work, assign personas, and establish review/evidence rules before any execution begins.
@@ -86,6 +93,14 @@ The stakeholder explicitly wants the system to stop treating incoming work as on
   - job handle metadata
 - Preserve the existing terminal lifecycle on `team_runs.status` (`queued`, `running`, `paused`, `completed`, `failed`, `stopped`) for compatibility.
 - Make snapshot capture include the new runtime state so the current run can always be reconstructed from durable records.
+
+### Decision: Work OS sync failure policy
+
+- Work OS remains the business-facing mirror for intake-originated work, but the system must not silently diverge if a mirror write fails.
+- If a Work OS projection update fails, the runtime must record a sync failure state and keep the execution overlay authoritative for the run itself.
+- The bridge should retry idempotently on the next meaningful transition, snapshot, or polling cycle.
+- If the same transition repeatedly fails to project, the run should surface a blocked or exception state with the sync error attached instead of claiming the business projection is current.
+- A terminal run transition must not be considered fully settled in the operator surface until the corresponding Work OS write-back has either succeeded or been explicitly marked as blocked or escalated.
 
 ### Why this is first
 
@@ -237,6 +252,7 @@ The spec asks for visible status clarity. If the engine changes but the UI still
 - Keep the visual language consistent with the existing team/workflow UI instead of inventing a new product shell.
 - Use the snapshot overlay as the source of truth for transient runtime state.
 - When work originates in Work OS, derive the Team plan from the Work OS case/request objective and preserve the same case identity through planning, execution, repair, and completion.
+- If Work OS write-back or status mirroring fails, surface a sync warning and keep the run in a blocked or exception-friendly state until the bridge recovers or a human overrides the failure.
 - Likely files:
   - `apps/web/client/src/pages/Teams.tsx`
   - `apps/web/client/src/components/orchestrator/TeamRoomView.tsx`
@@ -280,6 +296,7 @@ The stakeholder wants the system to be inspectable at all times. The team must b
   - waiting on worker result
   - blocked
   - ready for next step
+- The plan panel should also show whether the latest Work OS mirror write is synced, pending, or failed when the work originated from intake.
 - Likely files:
   - `apps/web/client/src/pages/Teams.tsx`
   - `apps/web/client/src/components/orchestrator/TeamRoomView.tsx`
@@ -318,6 +335,7 @@ The core model and control logic need to be defined before broadening test cover
 - `apps/web/client/src/pages/__tests__/Teams.test.tsx`
 - `apps/web/client/src/pages/__tests__/AutonomousTeamMonitor.test.tsx`
 - `apps/web/client/src/pages/__tests__/Teams.planVisibility.test.tsx` or the existing Teams test suite
+- Work OS sync failure handling should be rolled out together with the runtime overlay so operators never see a state that looks settled when the mirror write failed.
 
 ## Acceptance Criteria
 

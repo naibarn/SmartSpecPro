@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   describeStatusBridge,
+  getStatusBridgeBadgeClass,
+  getStatusBridgeTone,
   mapTeamRunStatusToWorkOsState,
   mapWorkOsStateToTeamRunStatus,
 } from "../workStatusBridge";
@@ -30,5 +32,16 @@ describe("workStatusBridge", () => {
       teamRunStatus: "running",
       workOsState: "in_progress",
     }));
+  });
+
+  it("assigns bridge tone and badge class by outcome family", () => {
+    expect(getStatusBridgeTone("in_progress")).toBe("sky");
+    expect(getStatusBridgeTone("waiting_for_approval")).toBe("amber");
+    expect(getStatusBridgeTone("completed")).toBe("emerald");
+    expect(getStatusBridgeTone("blocked")).toBe("rose");
+    expect(getStatusBridgeBadgeClass("in_progress")).toContain("sky");
+    expect(getStatusBridgeBadgeClass("waiting_for_approval")).toContain("amber");
+    expect(getStatusBridgeBadgeClass("completed")).toContain("emerald");
+    expect(getStatusBridgeBadgeClass("blocked")).toContain("rose");
   });
 });
