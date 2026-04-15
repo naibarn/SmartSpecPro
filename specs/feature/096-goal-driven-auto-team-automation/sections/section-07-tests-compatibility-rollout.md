@@ -32,6 +32,7 @@ Add tests that prove:
 - Teams can still open and render the plan panel for in-flight runs
 - Work OS projections keep the same case identity and history even when the run is repaired or resumed
 - Work OS-originated work does not create a disconnected duplicate plan or case during retries or repairs
+- Work OS projection failures surface a blocked or exception state instead of being treated as a settled terminal outcome
 
 ### 3. Rollout safety
 

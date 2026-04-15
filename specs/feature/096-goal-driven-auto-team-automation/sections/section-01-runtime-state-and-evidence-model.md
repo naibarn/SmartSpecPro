@@ -60,6 +60,8 @@ The capture path should remain additive:
 
 Add or update helpers that can read the latest snapshot for a run and derive the current runtime overlay from it.
 
+The read helper should be the canonical consumer contract for the runtime overlay so UI and orchestration code do not reconstruct the plan or runtime state independently.
+
 The reader should be able to answer:
 
 - what state is the run in right now
