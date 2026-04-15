@@ -546,15 +546,15 @@ function buildReadableSlipSummary(input: {
   currency: string;
   counterpartyName: string | null;
   note: string | null;
-  occurredAt: string | null;
-  paymentSourceInstitutionName: string | null;
-  paymentDestinationInstitutionName: string | null;
-  paymentSourceLabel: string | null;
-  paymentDestinationLabel: string | null;
-  paymentSourceName: string | null;
-  paymentDestinationName: string | null;
-  paymentInstitutionName: string | null;
-  paymentDirection: "outbound" | "inbound" | "both" | "unknown" | null;
+  occurredAt: string | Date | null | undefined;
+  paymentSourceInstitutionName: string | null | undefined;
+  paymentDestinationInstitutionName: string | null | undefined;
+  paymentSourceLabel: string | null | undefined;
+  paymentDestinationLabel: string | null | undefined;
+  paymentSourceName: string | null | undefined;
+  paymentDestinationName: string | null | undefined;
+  paymentInstitutionName: string | null | undefined;
+  paymentDirection: "outbound" | "inbound" | "both" | "unknown" | null | undefined;
   slipReference: string | null;
   merchantId: string | null;
   paymentFeeMinor: number | null;
@@ -777,6 +777,38 @@ type ReceiptUploadStatus =
   | { phase: "drafting"; message: string; provider: string | null; fileName: string }
   | { phase: "completed"; message: string; provider: string | null; fileName: string }
   | { phase: "error"; message: string; provider: string | null; fileName: string };
+
+type FinanceTransactionPreviewRecord = {
+  id: number;
+  type: "income" | "expense" | "transfer";
+  amountMinor: number;
+  currency: string;
+  occurredAt: Date;
+  categoryCode: string;
+  counterpartyName: string | null;
+  merchantName: string | null;
+  note: string | null;
+  status: string;
+  source: string;
+  paymentMethodKind: "bank_account" | "credit_card" | "cash" | "unknown" | null;
+  paymentDirection: "outbound" | "inbound" | "both" | "unknown" | null;
+  paymentFeeMinor: number | null;
+  paymentSourceLabel?: string | null;
+  paymentDestinationLabel?: string | null;
+  paymentSourceName?: string | null;
+  paymentDestinationName?: string | null;
+  paymentSourceInstitutionName?: string | null;
+  paymentDestinationInstitutionName?: string | null;
+  paymentInstitutionName?: string | null;
+  paymentAccountNickname?: string | null;
+  paymentAccountLast4?: string | null;
+  paymentAccountMaskedIdentifier?: string | null;
+  slipReference?: string | null;
+  merchantId?: string | null;
+  sourceUrl?: string | null;
+  sourceFileName?: string | null;
+  paymentInstrumentConfidence?: number | null;
+};
 
 function getFinanceErrorMessage(error: unknown, fallback: string): string {
   const candidates: string[] = [];
@@ -2006,7 +2038,7 @@ export function FinanceHub({
   ] : [];
 
   const openDrafts = draftsQuery.data ?? [];
-  const recentTransactions = transactionsQuery.data ?? [];
+  const recentTransactions = (transactionsQuery.data ?? []) as FinanceTransactionPreviewRecord[];
   const recurringRules = recurringRulesQuery.data ?? [];
   const monthlyTransactions = monthlyTransactionsQuery.data ?? [];
   const receiptUploadPreviewAmount = receiptUploadPreview?.amountMinor !== null && receiptUploadPreview?.amountMinor !== undefined
@@ -2361,7 +2393,7 @@ export function FinanceHub({
 
   const evidenceResults = financeEvidenceQuery.data?.searchResults?.results ?? [];
   const linkedDocuments = financeEvidenceQuery.data?.linkedDocuments ?? [];
-  const activeEvidenceTransaction = useMemo(
+  const activeEvidenceTransaction = useMemo<FinanceTransactionPreviewRecord | null>(
     () => recentTransactions.find((transaction) => transaction.id === selectedEvidenceTransactionId) ?? recentTransactions[0] ?? null,
     [recentTransactions, selectedEvidenceTransactionId],
   );
@@ -2438,7 +2470,7 @@ export function FinanceHub({
         },
         {
           label: "ความมั่นใจ",
-          value: transaction.paymentInstrumentConfidence !== null
+          value: transaction.paymentInstrumentConfidence != null
             ? `${Math.round(transaction.paymentInstrumentConfidence * 100)}%`
             : "—",
         },
@@ -2610,7 +2642,7 @@ export function FinanceHub({
 
     const appliedDraft = applyFinanceSlipMappingPresetToDraft(baseDraft, preset);
     const nextSummary = buildReadableSlipSummary({
-      humanReadableSummary: appliedDraft.humanReadableSummary,
+      humanReadableSummary: appliedDraft.humanReadableSummary ?? null,
       type: appliedDraft.type,
       amountLabel: formatMoneyMinor(appliedDraft.amountMinor, appliedDraft.currency),
       currency: appliedDraft.currency,
@@ -2674,14 +2706,18 @@ export function FinanceHub({
       setDraftPaymentAccountNickname((updatedPayload.paymentAccountNickname ?? "").trim());
       setDraftPaymentAccountLast4((updatedPayload.paymentAccountLast4 ?? "").trim());
       setDraftPaymentAccountMaskedIdentifier((updatedPayload.paymentAccountMaskedIdentifier ?? "").trim());
-        setReceiptUploadPreview({
-          ...receiptUploadPreview,
-          type: updatedDraft.type,
-          categoryCode: updatedPayload.categoryCode ?? receiptUploadPreview.categoryCode,
-          counterpartyName: updatedPayload.counterpartyName ?? updatedPayload.merchantName ?? receiptUploadPreview.counterpartyName,
-          merchantName: updatedPayload.merchantName ?? receiptUploadPreview.merchantName,
-          note: updatedPayload.note ?? receiptUploadPreview.note,
-          humanReadableSummary: updatedPayload.humanReadableSummary ?? nextSummary,
+      const currentPreview = receiptUploadPreview;
+      if (!currentPreview) {
+        return;
+      }
+      setReceiptUploadPreview({
+        ...currentPreview,
+        type: updatedDraft.type,
+        categoryCode: updatedPayload.categoryCode ?? currentPreview.categoryCode,
+        counterpartyName: updatedPayload.counterpartyName ?? updatedPayload.merchantName ?? currentPreview.counterpartyName,
+        merchantName: updatedPayload.merchantName ?? currentPreview.merchantName,
+        note: updatedPayload.note ?? currentPreview.note,
+        humanReadableSummary: updatedPayload.humanReadableSummary ?? nextSummary,
         evidence: Array.isArray(updatedPayload.evidence)
           ? updatedPayload.evidence.filter((item): item is FinanceEvidenceItem => Boolean(
             item
@@ -2690,17 +2726,17 @@ export function FinanceHub({
             && item.field.trim().length > 0
             && item.snippet.trim().length > 0,
           ))
-          : receiptUploadPreview.evidence,
-        paymentSourceLabel: updatedPayload.paymentSourceLabel ?? receiptUploadPreview.paymentSourceLabel,
-        paymentDestinationLabel: updatedPayload.paymentDestinationLabel ?? receiptUploadPreview.paymentDestinationLabel,
-        paymentSourceName: updatedPayload.paymentSourceName ?? receiptUploadPreview.paymentSourceName,
-        paymentDestinationName: updatedPayload.paymentDestinationName ?? receiptUploadPreview.paymentDestinationName,
-        paymentSourceInstitutionName: updatedPayload.paymentSourceInstitutionName ?? receiptUploadPreview.paymentSourceInstitutionName,
-        paymentDestinationInstitutionName: updatedPayload.paymentDestinationInstitutionName ?? receiptUploadPreview.paymentDestinationInstitutionName,
-        paymentInstitutionName: updatedPayload.paymentInstitutionName ?? receiptUploadPreview.paymentInstitutionName,
-        paymentAccountNickname: updatedPayload.paymentAccountNickname ?? receiptUploadPreview.paymentAccountNickname,
-        paymentAccountLast4: updatedPayload.paymentAccountLast4 ?? receiptUploadPreview.paymentAccountLast4,
-        paymentAccountMaskedIdentifier: updatedPayload.paymentAccountMaskedIdentifier ?? receiptUploadPreview.paymentAccountMaskedIdentifier,
+          : currentPreview.evidence,
+        paymentSourceLabel: updatedPayload.paymentSourceLabel ?? currentPreview.paymentSourceLabel,
+        paymentDestinationLabel: updatedPayload.paymentDestinationLabel ?? currentPreview.paymentDestinationLabel,
+        paymentSourceName: updatedPayload.paymentSourceName ?? currentPreview.paymentSourceName,
+        paymentDestinationName: updatedPayload.paymentDestinationName ?? currentPreview.paymentDestinationName,
+        paymentSourceInstitutionName: updatedPayload.paymentSourceInstitutionName ?? currentPreview.paymentSourceInstitutionName,
+        paymentDestinationInstitutionName: updatedPayload.paymentDestinationInstitutionName ?? currentPreview.paymentDestinationInstitutionName,
+        paymentInstitutionName: updatedPayload.paymentInstitutionName ?? currentPreview.paymentInstitutionName,
+        paymentAccountNickname: updatedPayload.paymentAccountNickname ?? currentPreview.paymentAccountNickname,
+        paymentAccountLast4: updatedPayload.paymentAccountLast4 ?? currentPreview.paymentAccountLast4,
+        paymentAccountMaskedIdentifier: updatedPayload.paymentAccountMaskedIdentifier ?? currentPreview.paymentAccountMaskedIdentifier,
       });
     } else {
       setDraftTypeHint(appliedDraft.type);
@@ -2728,14 +2764,18 @@ export function FinanceHub({
       setDraftPaymentAccountNickname((appliedDraft.paymentAccountNickname ?? "").trim());
       setDraftPaymentAccountLast4((appliedDraft.paymentAccountLast4 ?? "").trim());
       setDraftPaymentAccountMaskedIdentifier((appliedDraft.paymentAccountMaskedIdentifier ?? "").trim());
-        setReceiptUploadPreview({
-          ...receiptUploadPreview,
-          type: appliedDraft.type,
-          categoryCode: appliedDraft.categoryCode,
-          counterpartyName: appliedDraft.counterpartyName ?? appliedDraft.merchantName ?? receiptUploadPreview.counterpartyName,
-          merchantName: appliedDraft.merchantName ?? receiptUploadPreview.merchantName,
-          note: appliedDraft.note,
-          humanReadableSummary: nextSummary,
+      const currentPreview = receiptUploadPreview;
+      if (!currentPreview) {
+        return;
+      }
+      setReceiptUploadPreview({
+        ...currentPreview,
+        type: appliedDraft.type,
+        categoryCode: appliedDraft.categoryCode,
+        counterpartyName: appliedDraft.counterpartyName ?? appliedDraft.merchantName ?? currentPreview.counterpartyName,
+        merchantName: appliedDraft.merchantName ?? currentPreview.merchantName,
+        note: appliedDraft.note ?? null,
+        humanReadableSummary: nextSummary,
         evidence: appliedDraft.evidence,
       });
     }
@@ -2759,7 +2799,7 @@ export function FinanceHub({
     const merchantLabel = preset.merchantName?.trim() || preset.label.trim();
     const appliedDraft = applyFinancePinnedMerchantPresetToDraft(baseDraft, preset);
     const nextSummary = buildReadableSlipSummary({
-      humanReadableSummary: appliedDraft.humanReadableSummary,
+      humanReadableSummary: appliedDraft.humanReadableSummary ?? null,
       type: appliedDraft.type,
       amountLabel: formatMoneyMinor(appliedDraft.amountMinor, appliedDraft.currency),
       currency: appliedDraft.currency,
@@ -2840,13 +2880,17 @@ export function FinanceHub({
       setDraftPaymentAccountNickname((updatedPayload.paymentAccountNickname ?? "").trim());
       setDraftPaymentAccountLast4((updatedPayload.paymentAccountLast4 ?? "").trim());
       setDraftPaymentAccountMaskedIdentifier((updatedPayload.paymentAccountMaskedIdentifier ?? "").trim());
+      const currentPreview = receiptUploadPreview;
+      if (!currentPreview) {
+        return;
+      }
       setReceiptUploadPreview({
-        ...receiptUploadPreview,
+        ...currentPreview,
         type: updatedDraft.type,
-        categoryCode: updatedPayload.categoryCode ?? receiptUploadPreview.categoryCode,
-        counterpartyName: updatedPayload.counterpartyName ?? updatedPayload.merchantName ?? receiptUploadPreview.counterpartyName,
-        merchantName: updatedPayload.merchantName ?? receiptUploadPreview.merchantName,
-        note: updatedPayload.note ?? receiptUploadPreview.note,
+        categoryCode: updatedPayload.categoryCode ?? currentPreview.categoryCode,
+        counterpartyName: updatedPayload.counterpartyName ?? updatedPayload.merchantName ?? currentPreview.counterpartyName,
+        merchantName: updatedPayload.merchantName ?? currentPreview.merchantName,
+        note: updatedPayload.note ?? currentPreview.note,
         humanReadableSummary: updatedPayload.humanReadableSummary ?? nextSummary,
         evidence: Array.isArray(updatedPayload.evidence)
           ? updatedPayload.evidence.filter((item): item is FinanceEvidenceItem => Boolean(
@@ -2856,17 +2900,17 @@ export function FinanceHub({
             && item.field.trim().length > 0
             && item.snippet.trim().length > 0,
           ))
-          : receiptUploadPreview.evidence,
-        paymentSourceLabel: updatedPayload.paymentSourceLabel ?? receiptUploadPreview.paymentSourceLabel,
-        paymentDestinationLabel: updatedPayload.paymentDestinationLabel ?? receiptUploadPreview.paymentDestinationLabel,
-        paymentSourceName: updatedPayload.paymentSourceName ?? receiptUploadPreview.paymentSourceName,
-        paymentDestinationName: updatedPayload.paymentDestinationName ?? receiptUploadPreview.paymentDestinationName,
-        paymentSourceInstitutionName: updatedPayload.paymentSourceInstitutionName ?? receiptUploadPreview.paymentSourceInstitutionName,
-        paymentDestinationInstitutionName: updatedPayload.paymentDestinationInstitutionName ?? receiptUploadPreview.paymentDestinationInstitutionName,
-        paymentInstitutionName: updatedPayload.paymentInstitutionName ?? receiptUploadPreview.paymentInstitutionName,
-        paymentAccountNickname: updatedPayload.paymentAccountNickname ?? receiptUploadPreview.paymentAccountNickname,
-        paymentAccountLast4: updatedPayload.paymentAccountLast4 ?? receiptUploadPreview.paymentAccountLast4,
-        paymentAccountMaskedIdentifier: updatedPayload.paymentAccountMaskedIdentifier ?? receiptUploadPreview.paymentAccountMaskedIdentifier,
+          : currentPreview.evidence,
+        paymentSourceLabel: updatedPayload.paymentSourceLabel ?? currentPreview.paymentSourceLabel,
+        paymentDestinationLabel: updatedPayload.paymentDestinationLabel ?? currentPreview.paymentDestinationLabel,
+        paymentSourceName: updatedPayload.paymentSourceName ?? currentPreview.paymentSourceName,
+        paymentDestinationName: updatedPayload.paymentDestinationName ?? currentPreview.paymentDestinationName,
+        paymentSourceInstitutionName: updatedPayload.paymentSourceInstitutionName ?? currentPreview.paymentSourceInstitutionName,
+        paymentDestinationInstitutionName: updatedPayload.paymentDestinationInstitutionName ?? currentPreview.paymentDestinationInstitutionName,
+        paymentInstitutionName: updatedPayload.paymentInstitutionName ?? currentPreview.paymentInstitutionName,
+        paymentAccountNickname: updatedPayload.paymentAccountNickname ?? currentPreview.paymentAccountNickname,
+        paymentAccountLast4: updatedPayload.paymentAccountLast4 ?? currentPreview.paymentAccountLast4,
+        paymentAccountMaskedIdentifier: updatedPayload.paymentAccountMaskedIdentifier ?? currentPreview.paymentAccountMaskedIdentifier,
       });
     } else {
       setDraftTypeHint(appliedWithSummary.type);
@@ -2894,13 +2938,17 @@ export function FinanceHub({
       setDraftPaymentAccountNickname((appliedWithSummary.paymentAccountNickname ?? "").trim());
       setDraftPaymentAccountLast4((appliedWithSummary.paymentAccountLast4 ?? "").trim());
       setDraftPaymentAccountMaskedIdentifier((appliedWithSummary.paymentAccountMaskedIdentifier ?? "").trim());
+      const currentPreview = receiptUploadPreview;
+      if (!currentPreview) {
+        return;
+      }
       setReceiptUploadPreview({
-        ...receiptUploadPreview,
+        ...currentPreview,
         type: appliedWithSummary.type,
         categoryCode: appliedWithSummary.categoryCode,
-        counterpartyName: appliedWithSummary.counterpartyName ?? appliedWithSummary.merchantName ?? receiptUploadPreview.counterpartyName,
-        merchantName: appliedWithSummary.merchantName ?? receiptUploadPreview.merchantName,
-        note: appliedWithSummary.note,
+        counterpartyName: appliedWithSummary.counterpartyName ?? appliedWithSummary.merchantName ?? currentPreview.counterpartyName,
+        merchantName: appliedWithSummary.merchantName ?? currentPreview.merchantName,
+        note: appliedWithSummary.note ?? null,
         humanReadableSummary: nextSummary,
         evidence: appliedWithSummary.evidence,
       });
@@ -3005,13 +3053,17 @@ export function FinanceHub({
       setDraftPaymentAccountNickname((updatedPayload.paymentAccountNickname ?? "").trim());
       setDraftPaymentAccountLast4((updatedPayload.paymentAccountLast4 ?? "").trim());
       setDraftPaymentAccountMaskedIdentifier((updatedPayload.paymentAccountMaskedIdentifier ?? "").trim());
+      const currentPreview = receiptUploadPreview;
+      if (!currentPreview) {
+        return;
+      }
       setReceiptUploadPreview({
-        ...receiptUploadPreview,
+        ...currentPreview,
         type: updatedDraft.type,
-        categoryCode: updatedPayload.categoryCode ?? receiptUploadPreview.categoryCode,
-        counterpartyName: updatedPayload.counterpartyName ?? updatedPayload.merchantName ?? receiptUploadPreview.counterpartyName,
-        merchantName: updatedPayload.merchantName ?? receiptUploadPreview.merchantName,
-        note: updatedPayload.note ?? receiptUploadPreview.note,
+        categoryCode: updatedPayload.categoryCode ?? currentPreview.categoryCode,
+        counterpartyName: updatedPayload.counterpartyName ?? updatedPayload.merchantName ?? currentPreview.counterpartyName,
+        merchantName: updatedPayload.merchantName ?? currentPreview.merchantName,
+        note: updatedPayload.note ?? currentPreview.note,
         humanReadableSummary: updatedPayload.humanReadableSummary ?? nextSummary,
         evidence: Array.isArray(updatedPayload.evidence)
           ? updatedPayload.evidence.filter((item): item is FinanceEvidenceItem => Boolean(
@@ -3021,17 +3073,17 @@ export function FinanceHub({
             && item.field.trim().length > 0
             && item.snippet.trim().length > 0,
           ))
-          : receiptUploadPreview.evidence,
-        paymentSourceLabel: updatedPayload.paymentSourceLabel ?? receiptUploadPreview.paymentSourceLabel,
-        paymentDestinationLabel: updatedPayload.paymentDestinationLabel ?? receiptUploadPreview.paymentDestinationLabel,
-        paymentSourceName: updatedPayload.paymentSourceName ?? receiptUploadPreview.paymentSourceName,
-        paymentDestinationName: updatedPayload.paymentDestinationName ?? receiptUploadPreview.paymentDestinationName,
-        paymentSourceInstitutionName: updatedPayload.paymentSourceInstitutionName ?? receiptUploadPreview.paymentSourceInstitutionName,
-        paymentDestinationInstitutionName: updatedPayload.paymentDestinationInstitutionName ?? receiptUploadPreview.paymentDestinationInstitutionName,
-        paymentInstitutionName: updatedPayload.paymentInstitutionName ?? receiptUploadPreview.paymentInstitutionName,
-        paymentAccountNickname: updatedPayload.paymentAccountNickname ?? receiptUploadPreview.paymentAccountNickname,
-        paymentAccountLast4: updatedPayload.paymentAccountLast4 ?? receiptUploadPreview.paymentAccountLast4,
-        paymentAccountMaskedIdentifier: updatedPayload.paymentAccountMaskedIdentifier ?? receiptUploadPreview.paymentAccountMaskedIdentifier,
+          : currentPreview.evidence,
+        paymentSourceLabel: updatedPayload.paymentSourceLabel ?? currentPreview.paymentSourceLabel,
+        paymentDestinationLabel: updatedPayload.paymentDestinationLabel ?? currentPreview.paymentDestinationLabel,
+        paymentSourceName: updatedPayload.paymentSourceName ?? currentPreview.paymentSourceName,
+        paymentDestinationName: updatedPayload.paymentDestinationName ?? currentPreview.paymentDestinationName,
+        paymentSourceInstitutionName: updatedPayload.paymentSourceInstitutionName ?? currentPreview.paymentSourceInstitutionName,
+        paymentDestinationInstitutionName: updatedPayload.paymentDestinationInstitutionName ?? currentPreview.paymentDestinationInstitutionName,
+        paymentInstitutionName: updatedPayload.paymentInstitutionName ?? currentPreview.paymentInstitutionName,
+        paymentAccountNickname: updatedPayload.paymentAccountNickname ?? currentPreview.paymentAccountNickname,
+        paymentAccountLast4: updatedPayload.paymentAccountLast4 ?? currentPreview.paymentAccountLast4,
+        paymentAccountMaskedIdentifier: updatedPayload.paymentAccountMaskedIdentifier ?? currentPreview.paymentAccountMaskedIdentifier,
       });
     } else {
       setDraftTypeHint(appliedDraft.type);
@@ -3059,13 +3111,17 @@ export function FinanceHub({
       setDraftPaymentAccountNickname((appliedDraft.paymentAccountNickname ?? "").trim());
       setDraftPaymentAccountLast4((appliedDraft.paymentAccountLast4 ?? "").trim());
       setDraftPaymentAccountMaskedIdentifier((appliedDraft.paymentAccountMaskedIdentifier ?? "").trim());
+      const currentPreview = receiptUploadPreview;
+      if (!currentPreview) {
+        return;
+      }
       setReceiptUploadPreview({
-        ...receiptUploadPreview,
+        ...currentPreview,
         type: appliedDraft.type,
         categoryCode: appliedDraft.categoryCode,
-        counterpartyName: appliedDraft.counterpartyName ?? appliedDraft.merchantName ?? receiptUploadPreview.counterpartyName,
-        merchantName: appliedDraft.merchantName ?? receiptUploadPreview.merchantName,
-        note: appliedDraft.note,
+        counterpartyName: appliedDraft.counterpartyName ?? appliedDraft.merchantName ?? currentPreview.counterpartyName,
+        merchantName: appliedDraft.merchantName ?? currentPreview.merchantName,
+        note: appliedDraft.note ?? null,
         humanReadableSummary: nextSummary,
         evidence: appliedDraft.evidence,
       });
@@ -4455,9 +4511,9 @@ export function FinanceHub({
                     <p className="mt-1 text-sm font-medium text-slate-900">
                       #{conversationId ?? "n/a"} · {conversationQuery.data?.title ?? "No conversation"} · {conversationQuery.data?.projectId ?? "no project"}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      tenant: {conversationQuery.data?.tenantId ?? "n/a"} · personal: {financeReady ? "yes" : "no"}
-                    </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        tenant: {(conversationQuery.data as { tenantId?: string | null } | undefined)?.tenantId ?? "n/a"} · personal: {financeReady ? "yes" : "no"}
+                      </p>
                   </div>
                   <div className="rounded-xl bg-white/80 p-3">
                     <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">คิวรีฉบับร่าง</p>

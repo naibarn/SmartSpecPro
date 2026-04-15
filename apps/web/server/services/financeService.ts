@@ -6154,7 +6154,7 @@ export async function listTransactions(input: ListTransactionsInput): Promise<Fi
     )`;
     if (trimmed.length <= 2) {
       const term = `%${trimmed}%`;
-      conditions.push(or(
+      const shortQueryCondition = or(
         ilike(financeTransactions.counterpartyName, term),
         ilike(financeTransactions.merchantName, term),
         ilike(financeTransactions.note, term),
@@ -6163,7 +6163,10 @@ export async function listTransactions(input: ListTransactionsInput): Promise<Fi
         ilike(financeTransactions.merchantId, term),
         ilike(financeTransactions.paymentSourceName, term),
         ilike(financeTransactions.paymentDestinationName, term),
-      ));
+      );
+      if (shortQueryCondition) {
+        conditions.push(shortQueryCondition);
+      }
     } else {
       conditions.push(sql`${searchVector} @@ plainto_tsquery('simple', ${trimmed})`);
     }
