@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# SmartSpecPro - Database Configuration Validator
+# SmartAIHub - Database Configuration Validator
 # ตรวจสอบว่า credentials ใน .env ตรงกับ docker-compose.yml หรือไม่
 
 RED='\033[0;31m'

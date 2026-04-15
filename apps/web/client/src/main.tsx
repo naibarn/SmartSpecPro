@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/react";
+import { assertJsonApiResponse } from "@/lib/apiResponseDiagnostics";
 import { trpc } from "@/lib/trpc";
 import { getPrivateVaultAccessToken } from "@/lib/privateVault";
 import { parseSampleRate, shouldEnableBrowserSentry } from "@/lib/sentryConfig";
@@ -11,6 +12,7 @@ import superjson from "superjson";
 import { toast } from "sonner";
 import App from "./App";
 import { getLoginUrl } from "./const";
+import { setupAuthInterceptor } from "@/services/authService";
 import "./index.css";
 import { i18nReady } from "@/i18n";
 
@@ -194,6 +196,8 @@ initPostHog();
 
 const queryClient = new QueryClient();
 
+setupAuthInterceptor();
+
 let isRedirectingToLogin = false;
 let authRecheckInFlight: Promise<boolean> | null = null;
 let lastUnauthorizedAt = 0;
@@ -301,6 +305,7 @@ const trpcClient = trpc.createClient({
           headers,
           credentials: "include",
         });
+          await assertJsonApiResponse(response, requestUrl);
           console.log("[tRPC Response]", response.status, response.statusText);
           return response;
         } catch (err) {

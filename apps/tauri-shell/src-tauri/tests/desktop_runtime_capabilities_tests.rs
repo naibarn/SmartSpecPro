@@ -33,7 +33,21 @@ fn builds_runtime_capabilities_from_device_identity_and_parser_support() {
     assert_eq!(capability.device_identity.storage_provider, "filesystem");
     assert!(!capability.device_identity.os_attested);
     assert!(!capability.device_identity.hardware_backed);
+    assert_eq!(capability.device_identity.attestation_provider, "derived_runtime");
+    assert!(capability.device_identity.attestation_evidence_sha256.is_none());
+    assert!(capability
+        .device_identity
+        .attestation_claims
+        .contains(&"storage_backend:file_store".to_string()));
     assert_eq!(capability.device_identity.proof_kind, "ed25519_signature");
+    assert_eq!(
+        capability.device_attestation_support.evidence_source,
+        "derived_runtime"
+    );
+    assert_eq!(
+        capability.device_attestation_support.provider_hint,
+        "derived_runtime"
+    );
     assert_eq!(
         capability.local_file_service.isolation_mode,
         "python_subprocess_bounded"
@@ -48,6 +62,12 @@ fn builds_runtime_capabilities_from_device_identity_and_parser_support() {
         capability.local_file_service.complex_document_support,
         "text_extraction_only"
     );
+    assert!(capability.local_file_service.macro_inspection_supported);
+    assert!(capability.local_file_service.embedded_media_inspection_supported);
+    assert_eq!(capability.local_file_service.layout_analysis_mode, "none");
+    assert!(!capability.local_file_service.multi_page_rendering_supported);
+    assert_eq!(capability.local_file_service.max_rendered_pages, 0);
+    assert_eq!(capability.local_file_service.ocr_layout_mode, "plain_text");
     assert!(!capability.local_file_service.full_rendering_supported);
     assert_eq!(
         capability.worker_toolchain.media_pipeline_ready,
@@ -69,6 +89,20 @@ fn builds_worker_doctor_summary_with_workspace_and_identity_checks() {
         .checks
         .iter()
         .any(|check| check.id == "device_identity" && check.status == "ok"));
+    assert!(summary.checks.iter().any(|check| {
+        check.id == "device_attestation_support"
+            && check.status == "ok"
+            && check.message.contains("derived_runtime")
+    }));
+    assert!(summary.checks.iter().any(|check| {
+        check.id == "local_file_parser"
+            && check.status == "ok"
+            && check
+                .details_json
+                .get("macroInspectionSupported")
+                .and_then(|value| value.as_bool())
+                == Some(true)
+    }));
     assert!(summary
         .checks
         .iter()

@@ -6,9 +6,9 @@ import path from "path";
 
 const LOG_FILE = path.resolve(process.cwd(), "server-debug.log");
 
-// Clear log file on startup
+// Append a startup marker so debug history survives restarts.
 try {
-  fs.writeFileSync(LOG_FILE, `=== Server started at ${new Date().toISOString()} ===\n`);
+  fs.appendFileSync(LOG_FILE, `=== Server started at ${new Date().toISOString()} ===\n`);
 } catch (e) {
   // Ignore if can't write
 }

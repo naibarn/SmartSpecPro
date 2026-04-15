@@ -2383,7 +2383,10 @@ export interface SuggestedMemory {
 
 export async function processConversationMemory(
   conversationId: number,
-  userId: number
+  userId: number,
+  options?: {
+    memoryMode?: "full" | "no_long" | "off";
+  }
 ): Promise<{
   summarized: boolean;
   entitiesExtracted: number;
@@ -2397,6 +2400,18 @@ export async function processConversationMemory(
   let compacted = false;
   let compactedMessageCount = 0;
   const suggestedMemories: SuggestedMemory[] = [];
+  const memoryMode = options?.memoryMode ?? "full";
+
+  if (memoryMode === "off") {
+    return {
+      summarized: false,
+      entitiesExtracted: 0,
+      suggestedMemories,
+      compacted: false,
+      compactedMessageCount: 0,
+      consolidated: false,
+    };
+  }
 
   const db = await getDb();
   let conversationTenantId: string | null = null;
@@ -2464,8 +2479,10 @@ export async function processConversationMemory(
 
         if (conversationMessages.length > 0) {
           let extractedFactIds: string[] = [];
+          const shouldArchiveRawTurns = memoryMode === "full";
+          const shouldChunkAndExtract = memoryMode === "full";
 
-          if (chatFlags.chat_archive_enabled) {
+          if (shouldArchiveRawTurns && chatFlags.chat_archive_enabled) {
             const archivePayload = conversationMessages.map((message) => ({
               tenantId: conversationTenantId || "",
               userId,
@@ -2481,7 +2498,7 @@ export async function processConversationMemory(
             await archiveMessages(archivePayload);
           }
 
-          if (chatFlags.chat_chunk_index_enabled) {
+          if (shouldChunkAndExtract && chatFlags.chat_chunk_index_enabled) {
             await chunkConversationMessages({
               tenantId: conversationTenantId,
               userId,
@@ -2492,7 +2509,7 @@ export async function processConversationMemory(
             });
           }
 
-          if (chatFlags.chat_fact_extraction_enabled) {
+          if (shouldChunkAndExtract && chatFlags.chat_fact_extraction_enabled) {
             const factResult = await extractFacts(
               conversationMessages
                 .filter(

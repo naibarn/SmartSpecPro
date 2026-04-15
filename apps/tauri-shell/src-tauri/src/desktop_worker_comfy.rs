@@ -413,7 +413,7 @@ fn submit_prompt(
         .post(url)
         .header("Accept", "application/json")
         .header("Content-Type", "application/json")
-        .header("User-Agent", "SmartSpecPro-Tauri/0.1")
+        .header("User-Agent", "SmartAIHub-Tauri/0.1")
         .body(serde_json::to_vec(&body).map_err(|error| {
             ComfyExecutionError::new(
                 "adapter_contract_violation",
@@ -479,7 +479,7 @@ fn poll_history_until_outputs(
         let response = client
             .get(history_url.clone())
             .header("Accept", "application/json")
-            .header("User-Agent", "SmartSpecPro-Tauri/0.1")
+            .header("User-Agent", "SmartAIHub-Tauri/0.1")
             .send()
             .map_err(|error| {
                 ComfyExecutionError::new(
@@ -679,7 +679,7 @@ fn download_output_descriptor(
 
         let response = client
             .get(view_url)
-            .header("User-Agent", "SmartSpecPro-Tauri/0.1")
+            .header("User-Agent", "SmartAIHub-Tauri/0.1")
             .send()
             .map_err(|error| {
                 ComfyExecutionError::new(

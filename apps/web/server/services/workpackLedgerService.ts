@@ -30,7 +30,7 @@ function buildRunEventName(status: WorkpackRunStatus): "run_started" | "run_bloc
   return "run_started";
 }
 
-export function openLedgerRun(input: {
+export async function openLedgerRun(input: {
   workpack: Workpack;
   versionId: string;
   plannedSteps: WorkpackRun["plannedSteps"];
@@ -40,7 +40,7 @@ export function openLedgerRun(input: {
   scheduleId?: string | null;
   status?: WorkpackRunStatus;
   notes?: string;
-}): WorkpackRun {
+}): Promise<WorkpackRun> {
   const startedAt = nowIso();
   const run = workpackRunSchema.parse({
     id: createWorkpackId("wpr"),
@@ -62,8 +62,8 @@ export function openLedgerRun(input: {
     notes: input.notes ?? "",
   });
 
-  saveWorkpackRun(run);
-  saveTelemetryEvent({
+  await saveWorkpackRun(run);
+  await saveTelemetryEvent({
     id: createWorkpackId("evt"),
     tenantId: input.workpack.tenantId,
     workpackId: input.workpack.id,
@@ -76,7 +76,7 @@ export function openLedgerRun(input: {
   return run;
 }
 
-export function finalizeLedgerRun(input: {
+export async function finalizeLedgerRun(input: {
   runId: string;
   status: WorkpackRunStatus;
   actualSteps: WorkpackRunStep[];
@@ -84,8 +84,8 @@ export function finalizeLedgerRun(input: {
   artifactReferences?: WorkpackArtifactReference[];
   connectorSummaries?: WorkpackConnectorSummary[];
   notes?: string;
-}): WorkpackRun {
-  const existing = getWorkpackRun(input.runId);
+}): Promise<WorkpackRun> {
+  const existing = await getWorkpackRun(input.runId);
   if (!existing) {
     throw new Error(`Unknown workpack run: ${input.runId}`);
   }
@@ -101,9 +101,9 @@ export function finalizeLedgerRun(input: {
     connectorSummaries: input.connectorSummaries ?? existing.connectorSummaries,
     notes: input.notes ?? existing.notes,
   });
-  saveWorkpackRun(next);
+  await saveWorkpackRun(next);
 
-  saveTelemetryEvent({
+  await saveTelemetryEvent({
     id: createWorkpackId("evt"),
     tenantId: next.tenantId,
     workpackId: next.workpackId,
@@ -116,8 +116,8 @@ export function finalizeLedgerRun(input: {
   return next;
 }
 
-export function appendLedgerArtifacts(runId: string, artifacts: WorkpackArtifactReference[]): WorkpackRun {
-  const updated = updateWorkpackRun(runId, (run) => ({
+export async function appendLedgerArtifacts(runId: string, artifacts: WorkpackArtifactReference[]): Promise<WorkpackRun> {
+  const updated = await updateWorkpackRun(runId, (run) => ({
     ...run,
     artifactReferences: [...run.artifactReferences, ...artifacts.map((artifact) => workpackArtifactReferenceSchema.parse(artifact))],
   }));
@@ -127,8 +127,8 @@ export function appendLedgerArtifacts(runId: string, artifacts: WorkpackArtifact
   return updated;
 }
 
-export function appendConnectorSummaries(runId: string, connectorSummaries: WorkpackConnectorSummary[]): WorkpackRun {
-  const updated = updateWorkpackRun(runId, (run) => ({
+export async function appendConnectorSummaries(runId: string, connectorSummaries: WorkpackConnectorSummary[]): Promise<WorkpackRun> {
+  const updated = await updateWorkpackRun(runId, (run) => ({
     ...run,
     connectorSummaries: [
       ...run.connectorSummaries,
@@ -156,15 +156,15 @@ export function buildArtifactReference(input: {
   });
 }
 
-export function createReplayGradeLedger(input: {
+export async function createReplayGradeLedger(input: {
   workpackId: string;
   autonomyMode?: WorkpackRun["autonomyMode"];
   trigger?: WorkpackRun["trigger"];
   triggerSource?: string;
   scheduleId?: string | null;
   notes?: string;
-}): WorkpackRun {
-  const detail = getWorkpackDetail(input.workpackId);
+}): Promise<WorkpackRun> {
+  const detail = await getWorkpackDetail(input.workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${input.workpackId}`);
   }

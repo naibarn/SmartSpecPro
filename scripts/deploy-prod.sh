@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SmartSpecPro Production Deployment Script
+# SmartAIHub Production Deployment Script
 # สคริปต์สำหรับ Deploy ระบบขึ้น Production (Build, Security Check, Deploy)
 
 RED='\033[0;31m'
@@ -18,7 +18,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 print_banner() {
     echo -e "${CYAN}"
     echo "╔═══════════════════════════════════════════════════════════════╗"
-    echo "║                SmartSpecPro Production Deploy                 ║"
+    echo "║                SmartAIHub Production Deploy                 ║"
     echo "║          Preparing System for Production Environment          ║"
     echo "╚═══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"

@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { eq, and } from "drizzle-orm";
 import { getDb } from "../db";
 import { modelProviderMap, llmProviders, routingRules } from "../../drizzle/schema";
@@ -20,6 +21,8 @@ export interface ProviderCandidate {
   baseUrl: string;
   apiKey: string;
   providerModelId: string;
+  apiStyle?: "chat-completions" | "responses" | "messages" | "gemini";
+  supportsResponses?: boolean;
   pricingInput: number;
   pricingOutput: number;
   isFree: boolean;
@@ -142,6 +145,7 @@ async function resolveProvidersWithRule(modelId: string): Promise<ResolveResult>
       apiKeyEncrypted: llmProviders.apiKeyEncrypted,
       availableModels: llmProviders.availableModels,
       providerModelId: modelProviderMap.providerModelId,
+      apiStyle: modelProviderMap.apiStyle,
       pricingInput: modelProviderMap.pricingInput,
       pricingOutput: modelProviderMap.pricingOutput,
       isFree: modelProviderMap.isFree,
@@ -191,6 +195,8 @@ async function resolveProvidersWithRule(modelId: string): Promise<ResolveResult>
       baseUrl: r.baseUrl ?? "",
       apiKey: r.apiKeyEncrypted ? decrypt(r.apiKeyEncrypted) : "",
       providerModelId: r.providerModelId,
+      apiStyle: r.apiStyle ?? undefined,
+      supportsResponses: r.supportsResponses ?? undefined,
       pricingInput: effectivePricing.pricingInput,
       pricingOutput: effectivePricing.pricingOutput,
       isFree: effectivePricing.isFree,
@@ -262,6 +268,282 @@ function resolveChatUrl(baseUrl: string): string {
   return `${base}/v1/chat/completions`;
 }
 
+function resolveResponsesUrl(baseUrl: string, providerName: string, modelId: string): string {
+  const base = baseUrl.replace(/\/+$/, "");
+  const providerLower = providerName.toLowerCase();
+
+  if (providerLower === "kie_ai") {
+    if (modelId === "gpt-5-4") {
+      return `${base}/codex/v1/responses`;
+    }
+    return `${base}/api/v1/responses`;
+  }
+
+  if (base.includes("/v1")) return `${base}/responses`;
+  return `${base}/v1/responses`;
+}
+
+function normalizeResponsesInputContent(
+  content: unknown,
+): string | Array<Record<string, unknown>> {
+  if (typeof content === "string") {
+    const text = content.trim();
+    return text;
+  }
+
+  if (Array.isArray(content)) {
+    const parts = content
+      .map((part) => {
+        if (typeof part === "string") {
+          const text = part.trim();
+          return text ? { type: "input_text", text } : null;
+        }
+        if (!part || typeof part !== "object") {
+          return null;
+        }
+        const record = part as Record<string, unknown>;
+        if (record.type === "text" && typeof record.text === "string") {
+          return { type: "input_text", text: record.text };
+        }
+        if (record.type === "input_text" && typeof record.text === "string") {
+          return { type: "input_text", text: record.text };
+        }
+        if (record.type === "image_url" && record.image_url && typeof record.image_url === "object") {
+          const imageUrl = (record.image_url as Record<string, unknown>).url;
+          if (typeof imageUrl === "string" && imageUrl.trim()) {
+            return {
+              type: "input_image",
+              image_url: imageUrl,
+              ...(typeof (record.image_url as Record<string, unknown>).detail === "string"
+                ? { detail: (record.image_url as Record<string, unknown>).detail }
+                : {}),
+            };
+          }
+        }
+        if (record.type === "file_url" && record.file_url && typeof record.file_url === "object") {
+          const fileUrl = (record.file_url as Record<string, unknown>).url;
+          if (typeof fileUrl === "string" && fileUrl.trim()) {
+            return {
+              type: "input_file",
+              file_url: fileUrl,
+            };
+          }
+        }
+        return null;
+      })
+      .filter((part): part is Record<string, unknown> => Boolean(part));
+
+    if (parts.length === 0) {
+      return "";
+    }
+
+    if (parts.every((part) => part.type === "input_text")) {
+      return parts
+        .map((part) => (typeof part.text === "string" ? part.text : ""))
+        .filter((part) => part.length > 0)
+        .join("\n");
+    }
+    return parts;
+  }
+
+  if (content && typeof content === "object") {
+    return normalizeResponsesInputContent([content]);
+  }
+
+  return "";
+}
+
+function extractResponsesTextFromContent(content: unknown): string {
+  const normalized = normalizeResponsesInputContent(content);
+  if (typeof normalized === "string") {
+    return normalized;
+  }
+  return normalized
+    .map((part) => (part.type === "input_text" && typeof part.text === "string" ? part.text : ""))
+    .filter((part) => part.length > 0)
+    .join("\n");
+}
+
+function extractPlainTextContent(content: unknown): string {
+  if (typeof content === "string") {
+    return content.trim();
+  }
+
+  if (!Array.isArray(content)) {
+    if (content && typeof content === "object") {
+      const record = content as Record<string, unknown>;
+      if (typeof record.text === "string") {
+        return record.text.trim();
+      }
+      if (typeof record.content === "string") {
+        return record.content.trim();
+      }
+    }
+    return "";
+  }
+
+  return content
+    .map((part) => {
+      if (typeof part === "string") {
+        return part.trim();
+      }
+      if (!part || typeof part !== "object") {
+        return "";
+      }
+      const record = part as Record<string, unknown>;
+      if (typeof record.text === "string") {
+        return record.text.trim();
+      }
+      if (typeof record.content === "string") {
+        return record.content.trim();
+      }
+      return "";
+    })
+    .filter((part) => part.length > 0)
+    .join("\n");
+}
+
+function toAnthropicTextBlocks(content: unknown): Array<Record<string, unknown>> {
+  const text = extractPlainTextContent(content);
+  return text.length > 0 ? [{ type: "text", text }] : [];
+}
+
+function buildAnthropicMessages(messages: Array<{ role?: string; content?: unknown }>): Array<Record<string, unknown>> {
+  return messages
+    .filter((message) => message.role !== "system")
+    .map((message) => ({
+      role: message.role === "assistant" ? "assistant" : "user",
+      content: toAnthropicTextBlocks(message.content),
+    }))
+    .filter((message) => Array.isArray(message.content) && message.content.length > 0);
+}
+
+function resolveMessagesUrl(baseUrl: string, providerName: string): string {
+  const base = baseUrl.replace(/\/+$/, "");
+  const providerLower = providerName.toLowerCase();
+
+  if (providerLower === "kie_ai") {
+    return `${base}/claude/v1/messages`;
+  }
+  if (providerLower === "anthropic") {
+    return base.includes("/v1") ? `${base}/messages` : `${base}/v1/messages`;
+  }
+  return base.includes("/v1") ? `${base}/messages` : `${base}/v1/messages`;
+}
+
+function resolveGeminiUrl(baseUrl: string, modelId: string): string {
+  const base = baseUrl.replace(/\/+$/, "");
+  return `${base}/models/${modelId}:generateContent`;
+}
+
+function extractResponsesOutputText(output: unknown): string {
+  if (!Array.isArray(output)) {
+    return "";
+  }
+
+  return output
+    .flatMap((item) => {
+      if (!item || typeof item !== "object") {
+        return [];
+      }
+      const record = item as Record<string, unknown>;
+      if (record.type === "message" && Array.isArray(record.content)) {
+        return record.content.flatMap((part) => {
+          if (!part || typeof part !== "object") {
+            return [];
+          }
+          const contentPart = part as Record<string, unknown>;
+          if (typeof contentPart.text === "string") {
+            return [contentPart.text];
+          }
+          if (typeof contentPart.content === "string") {
+            return [contentPart.content];
+          }
+          return [];
+        });
+      }
+      if (record.type === "message" && typeof record.content === "string") {
+        return [record.content];
+      }
+      if (record.type === "output_text" && typeof record.text === "string") {
+        return [record.text];
+      }
+      return [];
+    })
+    .join("");
+}
+
+function extractAnyAssistantText(rawData: any): string {
+  const directOutputText = typeof rawData?.output_text === "string"
+    ? rawData.output_text
+    : typeof rawData?.response?.output_text === "string"
+      ? rawData.response.output_text
+      : "";
+  if (directOutputText) {
+    return directOutputText;
+  }
+
+  const responsesOutputText = extractResponsesOutputText(rawData?.output ?? rawData?.response?.output);
+  if (responsesOutputText) {
+    return responsesOutputText;
+  }
+
+  const chatLikeMessageContent = rawData?.choices?.[0]?.message?.content;
+  if (typeof chatLikeMessageContent === "string") {
+    return chatLikeMessageContent;
+  }
+  if (Array.isArray(chatLikeMessageContent)) {
+    return chatLikeMessageContent
+      .flatMap((part) => {
+        if (typeof part === "string") return [part];
+        if (!part || typeof part !== "object") return [];
+        const record = part as Record<string, unknown>;
+        if (typeof record.text === "string") return [record.text];
+        if (typeof record.content === "string") return [record.content];
+        return [];
+      })
+      .join("");
+  }
+
+  if (typeof rawData?.content === "string") {
+    return rawData.content;
+  }
+  if (typeof rawData?.response?.content === "string") {
+    return rawData.response.content;
+  }
+
+  return "";
+}
+
+function normalizeResponsesApiResponseToChatCompletion(rawData: any, requestedModelId: string) {
+  const inputTokens = Number(rawData?.usage?.input_tokens ?? rawData?.usage?.prompt_tokens ?? 0);
+  const outputTokens = Number(rawData?.usage?.output_tokens ?? rawData?.usage?.completion_tokens ?? 0);
+  const totalTokens = Number(rawData?.usage?.total_tokens ?? (inputTokens + outputTokens));
+
+  return {
+    id: rawData?.id ?? `chatcmpl-${crypto.randomUUID()}`,
+    object: "chat.completion",
+    created: Math.floor(Date.now() / 1000),
+    model: rawData?.model ?? requestedModelId,
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: "assistant",
+          content: extractAnyAssistantText(rawData),
+        },
+        finish_reason: "stop",
+      },
+    ],
+    usage: {
+      prompt_tokens: inputTokens,
+      completion_tokens: outputTokens,
+      total_tokens: totalTokens,
+      ...(rawData?.usage?.cost !== undefined ? { cost: rawData.usage.cost } : {}),
+    },
+  };
+}
+
 function compactText(text: string, max = 180): string {
   return text.replace(/\s+/g, " ").trim().slice(0, max);
 }
@@ -291,6 +573,23 @@ function parseProviderErrorMessage(raw: string): { code?: string; message: strin
   } catch {
     return { message: compactText(trimmed, 240) };
   }
+}
+
+function buildProviderErrorSummary(args: {
+  statusCode: number;
+  contentType: string;
+  rawErrorText: string;
+  parsedErrorMessage: string;
+}): string {
+  const preview = compactText(args.rawErrorText.replace(/\s+/g, " "), 240);
+  const parsed = compactText(args.parsedErrorMessage, 240);
+
+  if (parsed && parsed !== "Provider returned error") {
+    return parsed;
+  }
+
+  const previewPart = preview ? `: ${preview}` : "";
+  return `HTTP ${args.statusCode} from provider${previewPart}`;
 }
 
 function buildAggregatedFailureMessage(details: AttemptFailureDetail[]): string {
@@ -388,7 +687,145 @@ export async function executeWithFallback(params: {
     const startTime = Date.now();
 
     try {
-      const url = resolveChatUrl(candidate.baseUrl);
+      const requestApiStyle = candidate.apiStyle ?? "chat-completions";
+      const shouldUseResponses =
+        requestApiStyle === "responses" && candidate.supportsResponses !== false;
+      const shouldUseMessages =
+        requestApiStyle === "messages" || candidate.providerName.toLowerCase() === "anthropic";
+      const shouldUseGemini =
+        requestApiStyle === "gemini"
+        || candidate.providerName.toLowerCase() === "google"
+        || candidate.providerName.toLowerCase().includes("gemini");
+      const url = shouldUseResponses
+        ? resolveResponsesUrl(candidate.baseUrl, candidate.providerName, candidate.providerModelId)
+        : shouldUseMessages
+          ? resolveMessagesUrl(candidate.baseUrl, candidate.providerName)
+          : shouldUseGemini
+            ? resolveGeminiUrl(candidate.baseUrl, candidate.providerModelId)
+            : resolveChatUrl(candidate.baseUrl);
+
+      const requestBody = shouldUseResponses
+        ? {
+            model: candidate.providerModelId,
+            input: params.messages
+              .filter((message) => message.role !== "system")
+              .map((message) => ({
+                role: message.role === "assistant" ? "assistant" : "user",
+                content: normalizeResponsesInputContent(message.content),
+              })),
+            ...(params.messages
+              .filter((message) => message.role === "system")
+              .length > 0
+              ? {
+                  instructions: params.messages
+                    .filter((message) => message.role === "system")
+                    .map((message) => extractResponsesTextFromContent(message.content))
+                    .filter((part) => part.length > 0)
+                    .join("\n\n"),
+                }
+              : {}),
+            stream: params.stream,
+            ...(params.maxTokens != null ? { max_output_tokens: params.maxTokens } : {}),
+            ...(params.temperature != null ? { temperature: params.temperature } : {}),
+            ...(params.enableThinking ? { reasoning: { effort: "high" } } : {}),
+            ...(() => {
+              const incomingText =
+                params.extraBodyParams?.text !== undefined
+                && typeof params.extraBodyParams.text === "object"
+                && !Array.isArray(params.extraBodyParams.text)
+                  ? { ...(params.extraBodyParams.text as Record<string, unknown>) }
+                  : undefined;
+
+              if (params.extraBodyParams?.response_format !== undefined) {
+                return {
+                  text: {
+                    ...(incomingText ?? {}),
+                    format: params.extraBodyParams.response_format,
+                  },
+                };
+              }
+
+              return incomingText ? { text: incomingText } : {};
+            })(),
+          }
+        : shouldUseMessages
+          ? {
+              model: candidate.providerModelId,
+              max_tokens: params.maxTokens != null ? params.maxTokens : 4096,
+              stream: params.stream,
+              ...(params.messages
+                .filter((message) => message.role === "system")
+                .length > 0
+                ? {
+                    system: params.messages
+                      .filter((message) => message.role === "system")
+                      .map((message) => extractPlainTextContent(message.content))
+                      .filter((part) => part.length > 0)
+                      .join("\n\n"),
+                  }
+                : {}),
+              messages: buildAnthropicMessages(params.messages),
+              ...(params.temperature != null ? { temperature: params.temperature } : {}),
+              ...(params.extraBodyParams?.metadata !== undefined ? { metadata: params.extraBodyParams.metadata } : {}),
+              ...(params.extraBodyParams?.tools !== undefined ? { tools: params.extraBodyParams.tools } : {}),
+              ...(params.extraBodyParams?.tool_choice !== undefined ? { tool_choice: params.extraBodyParams.tool_choice } : {}),
+              ...(params.enableThinking ? { thinkingFlag: true } : {}),
+            }
+          : shouldUseGemini
+            ? {
+                contents: params.messages
+                  .filter((message) => message.role !== "system")
+                  .map((message) => ({
+                    role: message.role === "assistant" ? "model" : "user",
+                    parts: [{ text: extractPlainTextContent(message.content) }],
+                  })),
+                ...(params.messages
+                  .filter((message) => message.role === "system")
+                  .length > 0
+                  ? {
+                      systemInstruction: {
+                        parts: [{
+                          text: params.messages
+                            .filter((message) => message.role === "system")
+                            .map((message) => extractPlainTextContent(message.content))
+                            .filter((part) => part.length > 0)
+                            .join("\n\n"),
+                        }],
+                      },
+                    }
+                  : {}),
+                generationConfig: {
+                  maxOutputTokens: params.maxTokens != null ? params.maxTokens : 8192,
+                  temperature: params.temperature ?? 1.0,
+                },
+              }
+            : {
+                model: candidate.providerModelId,
+                messages: params.messages,
+                stream: params.stream,
+                ...(params.maxTokens != null ? { max_tokens: params.maxTokens } : {}),
+                ...(params.temperature != null ? { temperature: params.temperature } : {}),
+                ...(params.enableThinking ? { reasoning: { effort: "high" } } : {}),
+                ...(() => {
+                  const extraBodyParams = params.extraBodyParams ?? {};
+                  const { provider: providerFromExtra, ...restExtraBodyParams } = extraBodyParams as Record<string, unknown>;
+                  const openRouterNeedsProviderGuard =
+                    candidate.providerName.toLowerCase() === "openrouter"
+                    && restExtraBodyParams.response_format !== undefined;
+                  const providerFromRequest =
+                    providerFromExtra && typeof providerFromExtra === "object" && !Array.isArray(providerFromExtra)
+                      ? (providerFromExtra as Record<string, unknown>)
+                      : undefined;
+                  const provider = openRouterNeedsProviderGuard
+                    ? { ...(providerFromRequest ?? {}), require_parameters: true }
+                    : providerFromRequest;
+
+                  return {
+                    ...(provider ? { provider } : {}),
+                    ...restExtraBodyParams,
+                  };
+                })(),
+              };
 
       // Log LLM request to JSONL audit trail (scrub message content for PII safety)
       auditLogger.log({
@@ -422,15 +859,7 @@ export async function executeWithFallback(params: {
           Authorization: `Bearer ${candidate.apiKey}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model: candidate.providerModelId,
-          messages: params.messages,
-          stream: params.stream,
-          ...(params.maxTokens != null ? { max_tokens: params.maxTokens } : {}),
-          ...(params.temperature != null ? { temperature: params.temperature } : {}),
-          ...(params.enableThinking ? { reasoning: { effort: "high" } } : {}),
-          ...(params.extraBodyParams ?? {}),
-        }),
+        body: JSON.stringify(requestBody),
         signal: abortController.signal,
       });
       clearTimeout(fetchTimeout);
@@ -457,6 +886,9 @@ export async function executeWithFallback(params: {
           throw new Error(
             `Provider returned ${contentType.includes("json") ? "malformed JSON" : "non-JSON response"} (${contentType})${responsePreview ? `: ${responsePreview}` : ""}`,
           );
+        }
+        if (requestApiStyle === "responses") {
+          data = normalizeResponsesApiResponseToChatCompletion(data, candidate.providerModelId);
         }
         const parseMs = Date.now() - parseStart;
         const inputTokens = data?.usage?.prompt_tokens ?? 0;
@@ -523,19 +955,25 @@ export async function executeWithFallback(params: {
       // Error handling
       const statusCode = response.status;
       const errorText = await response.text().catch(() => "Unknown error");
+      const contentType = response.headers?.get?.("content-type") || "unknown";
       const parsedProviderError = parseProviderErrorMessage(errorText);
       const parsedErrorMessage = parsedProviderError.code
         ? `${parsedProviderError.code}: ${parsedProviderError.message}`
         : parsedProviderError.message;
+      const detailedErrorMessage = buildProviderErrorSummary({
+        statusCode,
+        contentType,
+        rawErrorText: errorText,
+        parsedErrorMessage,
+      });
 
-      recordFailure(candidate.providerId, `http_${statusCode}`);
       failureDetails.push({
         providerId: candidate.providerId,
         providerName: candidate.providerName,
         providerModelId: candidate.providerModelId,
         statusCode,
         errorType: `http_${statusCode}`,
-        errorMessage: parsedErrorMessage,
+        errorMessage: detailedErrorMessage,
       });
 
       logRequest({
@@ -563,17 +1001,24 @@ export async function executeWithFallback(params: {
         model: candidate.providerModelId,
         statusCode,
         errorType: `http_${statusCode}`,
-        errorMessage: parsedErrorMessage.slice(0, 500),
+        errorMessage: detailedErrorMessage.slice(0, 500),
         timing: { networkMs, totalMs: Date.now() - startTime },
         wasFallback: i > 0,
         fallbackAttempt: i,
         fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
+        responsePayload: {
+          contentType,
+          bodyPreview: compactText(errorText.replace(/\s+/g, " "), 400),
+          bodyLength: errorText.length,
+        },
       });
 
       // Non-retriable client error — truncate error text to avoid leaking provider internals
       if (!isFallbackEligible(statusCode)) {
-        return { type: "error", error: parsedErrorMessage.slice(0, 500), statusCode };
+        return { type: "error", error: detailedErrorMessage.slice(0, 500), statusCode };
       }
+
+      recordFailure(candidate.providerId, `http_${statusCode}`);
 
       // Check free->paid boundary before fallback
       const nextCandidate = targets[i + 1];

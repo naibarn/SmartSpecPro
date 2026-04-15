@@ -1,5 +1,5 @@
 import type { TenantFeatureFlagKey } from "@shared/featureFlags";
-import { FEATURE_FLAG_DEFAULTS } from "@shared/featureFlags";
+import { FEATURE_FLAG_DEFAULTS } from "@shared/featureFlags.ts";
 
 export interface TenantFlagInfo {
   key: TenantFeatureFlagKey;
@@ -90,12 +90,25 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
     ],
   },
   {
+    title: "Hermes Runtime",
+    icon: "🕊️",
+    flags: [
+      { key: "hermesAgentRuntime", label: "Hermes Runtime", description: "Allow registered Hermes bridge workers for this tenant" },
+      { key: "hermesProfileExperience", label: "Hermes Profile Experience", description: "Show Hermes persona and profile summaries in team and admin views" },
+      { key: "hermesChannelWorkflowExpansion", label: "Hermes Channel Workflow", description: "Enable Hermes channel companion workflow surfaces" },
+      { key: "hermesMemoryContextSync", label: "Hermes Memory Sync", description: "Enable opt-in Hermes memory and context synchronization" },
+      { key: "hermesTaskModes", label: "Hermes Task Modes", description: "Show Hermes task-mode summaries and mode mapping" },
+      { key: "hermesVisibilitySummaries", label: "Hermes Visibility Summaries", description: "Show Hermes progress and observability summaries" },
+    ],
+  },
+  {
     title: "Integration & API",
     icon: "🔗",
     flags: [
       { key: "responsesApi", label: "Responses API Gateway", description: "OpenAI-compatible proxy" },
       { key: "publicApi", label: "Public API", description: "External API access" },
       { key: "openClawExternalRuntime", label: "OpenClaw External Workers", description: "Allow registered external Claw workers for this tenant" },
+      { key: "documentOcrExternalProcessing", label: "Document OCR External Processing", description: "Allow outbound document OCR to external providers (ADE/gateway)" },
       { key: "webhookTriggers", label: "Webhook Triggers", description: "Inbound webhook triggers" },
       { key: "costDisplay", label: "Cost Display", description: "Show per-response costs" },
       { key: "multimodalMemory", label: "Multimodal Memory", description: "Image/audio in memory" },
@@ -110,9 +123,9 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
       { key: "desktopPackageSync", label: "Desktop Package Sync", description: "Signed package sync and local materialization" },
       { key: "desktopAgencyRuntime", label: "Desktop Agency Runtime", description: "Agency Swarm runtime on managed desktop" },
       { key: "desktopWorkerProjection", label: "Desktop Worker Projection", description: "Project Desktop Host into the worker fabric" },
-      { key: "desktopZeroClawWorker", label: "Desktop ZeroClaw Worker", description: "Compatibility rollout for managed desktop workers" },
-      { key: "nemoClawSecureWorkerPool", label: "NemoClaw Secure Workers", description: "Secure worker pool runtime family" },
-      { key: "hiClawClusterRuntime", label: "HiClaw Cluster Runtime", description: "Collaborative cluster runtime family" },
+      { key: "desktopZeroClawWorker", label: "Desktop + ZeroClaw Managed Runtime", description: "Compatibility rollout for the managed Desktop + ZeroClaw runtime" },
+      { key: "nemoClawSecureWorkerPool", label: "NemoClaw Secure Sandbox", description: "Admin-gated secure sandbox runtime family" },
+      { key: "hiClawClusterRuntime", label: "HiClaw Collaborative Cluster", description: "Admin-gated collaborative cluster runtime family" },
     ],
   },
   {

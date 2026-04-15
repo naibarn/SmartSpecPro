@@ -15,6 +15,7 @@ import {
   agentActivityEvents,
   agentRunSummaries,
   teamWorkItems,
+  workers,
   type TeamRun,
   type StopPolicy,
   type BudgetSnapshot,
@@ -25,6 +26,7 @@ import * as workItemService from "./workItemService";
 import * as roomService from "./roomService";
 import * as monitoringService from "./monitoringService";
 import { queueWorkerJobByRuntime } from "./workerSchedulerService";
+import type { QueueWorkerJobByRuntimeInput } from "./workerSchedulerService";
 import { agencyAgents, personaTemplates } from "../../drizzle/schema";
 import { getNextSpeaker, type TurnStrategy } from "./turnOrderEngine";
 import type { WorkItemStatus } from "./workItemService";
@@ -88,6 +90,7 @@ export interface AutoTeamLoopDecision {
 export interface ExternalConnectorDispatchCandidate {
   workItemId: string;
   externalWorkerId: string;
+  runtimeType: "openclaw_gateway" | "hermes_agent_gateway";
   memberId: string;
   title: string;
   objective: string | null;
@@ -266,7 +269,11 @@ export function resolveExternalConnectorDispatchCandidates(params: {
     reviewerMemberId: string | null;
     approverMemberId: string | null;
   }>;
-  memberBindings: Record<string, { memberKind: "assistant" | "human" | "external_connector"; externalWorkerId: string | null }>;
+  memberBindings: Record<string, {
+    memberKind: "assistant" | "human" | "external_connector";
+    externalWorkerId: string | null;
+    externalWorkerRuntimeType?: string | null;
+  }>;
 }): ExternalConnectorDispatchCandidate[] {
   const candidates: ExternalConnectorDispatchCandidate[] = [];
   const seen = new Set<string>();
@@ -280,6 +287,15 @@ export function resolveExternalConnectorDispatchCandidates(params: {
       continue;
     }
 
+    const runtimeType = binding.externalWorkerRuntimeType === "hermes_agent_gateway"
+      ? "hermes_agent_gateway"
+      : binding.externalWorkerRuntimeType === "openclaw_gateway" || binding.externalWorkerRuntimeType == null
+        ? "openclaw_gateway"
+        : null;
+    if (!runtimeType) {
+      continue;
+    }
+
     const dedupeKey = `${workItem.id}:${binding.externalWorkerId}`;
     if (seen.has(dedupeKey)) {
       continue;
@@ -289,6 +305,7 @@ export function resolveExternalConnectorDispatchCandidates(params: {
     candidates.push({
       workItemId: workItem.id,
       externalWorkerId: binding.externalWorkerId,
+      runtimeType,
       memberId,
       title: workItem.title,
       objective: workItem.objective ?? null,
@@ -298,6 +315,54 @@ export function resolveExternalConnectorDispatchCandidates(params: {
   }
 
   return candidates;
+}
+
+export function buildExternalConnectorDispatchJobInput(params: {
+  tenantId: string;
+  run: Pick<TeamRun, "id" | "roomId" | "teamId" | "initiatedByUserId">;
+  candidate: ExternalConnectorDispatchCandidate;
+}): QueueWorkerJobByRuntimeInput {
+  const { tenantId, run, candidate } = params;
+  const sharedInput = {
+    tenantId,
+    teamId: run.teamId,
+    workflowRunId: run.id,
+    requestedByUserId: run.initiatedByUserId,
+    requestedBySystemComponent: "run_engine" as const,
+    jobType: "external_agent_task" as const,
+    title: candidate.title,
+    description: candidate.objective ?? `External connector follow-up for ${candidate.title}`,
+    priority: 50,
+    inputJson: {
+      roomId: run.roomId,
+      runId: run.id,
+      teamId: run.teamId,
+      workItemId: candidate.workItemId,
+      threadRootMessageId: candidate.threadRootMessageId,
+      workItemStatus: candidate.status,
+    },
+    instructionsJson: {
+      intent: "external_connector_follow_up",
+      externalWorkerId: candidate.externalWorkerId,
+    },
+    idempotencyKey: `run:${run.id}:work-item:${candidate.workItemId}:worker:${candidate.externalWorkerId}`,
+    preferredWorkerId: candidate.externalWorkerId,
+    reservedCredits: 10,
+  };
+
+  if (candidate.runtimeType === "hermes_agent_gateway") {
+    return {
+      runtimeType: "hermes_agent_gateway",
+      capabilityFamilies: ["artifact-producing-session"],
+      ...sharedInput,
+    };
+  }
+
+  return {
+    runtimeType: "openclaw_gateway",
+    capabilityFamilies: ["artifact-producing-session"],
+    ...sharedInput,
+  };
 }
 
 function normalizeAssistantTurnContent(content: string | null | undefined): string {
@@ -678,8 +743,16 @@ async function autoPauseRunForDependency(params: {
               id: assistantProfiles.id,
               memberKind: assistantProfiles.memberKind,
               externalWorkerId: assistantProfiles.externalWorkerId,
+              externalWorkerRuntimeType: workers.runtimeType,
             })
             .from(assistantProfiles)
+            .leftJoin(
+              workers,
+              and(
+                eq(workers.id, assistantProfiles.externalWorkerId),
+                eq(workers.tenantId, params.tenantId),
+              ),
+            )
             .where(
               and(
                 eq(assistantProfiles.tenantId, params.tenantId),
@@ -693,46 +766,24 @@ async function autoPauseRunForDependency(params: {
           status: workItem.status as WorkItemStatus,
         })),
         memberBindings: Object.fromEntries(
-          memberBindings.map((member) => [
-            member.id,
-            {
-              memberKind: member.memberKind as "assistant" | "human" | "external_connector",
-              externalWorkerId: member.externalWorkerId ?? null,
-            },
-          ]),
+            memberBindings.map((member) => [
+              member.id,
+              {
+                memberKind: member.memberKind as "assistant" | "human" | "external_connector",
+                externalWorkerId: member.externalWorkerId ?? null,
+                externalWorkerRuntimeType: member.externalWorkerRuntimeType ?? null,
+              },
+            ]),
         ),
       });
 
       await Promise.all(
         dispatchCandidates.map((candidate) =>
-          queueWorkerJobByRuntime({
-            runtimeType: "openclaw_gateway",
+          queueWorkerJobByRuntime(buildExternalConnectorDispatchJobInput({
             tenantId: params.tenantId,
-            teamId: params.run.teamId,
-            workflowRunId: params.run.id,
-            requestedByUserId: params.run.initiatedByUserId,
-            requestedBySystemComponent: "run_engine",
-            jobType: "external_agent_task",
-            title: candidate.title,
-            description: candidate.objective ?? `External connector follow-up for ${candidate.title}`,
-            priority: 50,
-            capabilityFamilies: ["artifact-producing-session"],
-            inputJson: {
-              roomId: params.run.roomId,
-              runId: params.run.id,
-              teamId: params.run.teamId,
-              workItemId: candidate.workItemId,
-              threadRootMessageId: candidate.threadRootMessageId,
-              workItemStatus: candidate.status,
-            },
-            instructionsJson: {
-              intent: "external_connector_follow_up",
-              externalWorkerId: candidate.externalWorkerId,
-            },
-            idempotencyKey: `run:${params.run.id}:work-item:${candidate.workItemId}:worker:${candidate.externalWorkerId}`,
-            preferredWorkerId: candidate.externalWorkerId,
-            reservedCredits: 10,
-          }).catch((error) => {
+            run: params.run,
+            candidate,
+          })).catch((error) => {
             console.warn("External connector worker dispatch failed", {
               runId: params.run.id,
               workItemId: candidate.workItemId,

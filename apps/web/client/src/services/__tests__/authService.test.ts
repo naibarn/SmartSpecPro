@@ -153,7 +153,7 @@ describe("authService — browser context (hasTauri=false)", () => {
       });
     });
 
-    it("calls logout on 403 response", async () => {
+    it("does not force logout on 403 response", async () => {
       const originalLocation = window.location;
       const mockLocation = { ...originalLocation, href: "/dashboard", pathname: "/dashboard" };
       Object.defineProperty(window, "location", {
@@ -164,7 +164,7 @@ describe("authService — browser context (hasTauri=false)", () => {
       mockFetch.mockResolvedValueOnce(makeResponse(403));
       const result = await authService.verifyToken();
       expect(result).toBe(false);
-      expect(mockLocation.href).toBe("/login");
+      expect(mockLocation.href).toBe("/dashboard");
 
       Object.defineProperty(window, "location", {
         writable: true,
@@ -211,7 +211,7 @@ describe("authService — browser context (hasTauri=false)", () => {
       expect(window.fetch).toBe(first);
     });
 
-    it("triggers logout on 401 response for non-auth URLs", async () => {
+    it("triggers logout on 401 response for non-auth URLs when the session is invalid", async () => {
       const originalLocation = window.location;
       const mockLocation = { ...originalLocation, href: "/dashboard", pathname: "/dashboard" };
       Object.defineProperty(window, "location", {
@@ -219,8 +219,17 @@ describe("authService — browser context (hasTauri=false)", () => {
         value: mockLocation,
       });
 
-      // Set up the underlying fetch to return 401
-      const underlyingFetch = vi.fn().mockResolvedValue(makeResponse(401));
+      const underlyingFetch = vi.fn((input: RequestInfo | URL) => {
+        const url = input instanceof Request
+          ? input.url
+          : input instanceof URL
+            ? input.href
+            : String(input);
+        if (url === "/api/auth/me") {
+          return Promise.resolve(makeResponse(401));
+        }
+        return Promise.resolve(makeResponse(401));
+      });
       vi.stubGlobal("fetch", underlyingFetch);
       delete (window as any).__authInterceptorSetup;
 
@@ -241,7 +250,7 @@ describe("authService — browser context (hasTauri=false)", () => {
       });
     });
 
-    it("triggers logout on 403 response for non-auth URLs", async () => {
+    it("does not log out on 403 when the session is still valid", async () => {
       const originalLocation = window.location;
       const mockLocation = { ...originalLocation, href: "/dashboard", pathname: "/dashboard" };
       Object.defineProperty(window, "location", {
@@ -249,7 +258,17 @@ describe("authService — browser context (hasTauri=false)", () => {
         value: mockLocation,
       });
 
-      const underlyingFetch = vi.fn().mockResolvedValue(makeResponse(403));
+      const underlyingFetch = vi.fn((input: RequestInfo | URL) => {
+        const url = input instanceof Request
+          ? input.url
+          : input instanceof URL
+            ? input.href
+            : String(input);
+        if (url === "/api/auth/me") {
+          return Promise.resolve(makeResponse(200, { id: "1", email: "a@b.com", is_admin: false }));
+        }
+        return Promise.resolve(makeResponse(403));
+      });
       vi.stubGlobal("fetch", underlyingFetch);
       delete (window as any).__authInterceptorSetup;
 
@@ -257,7 +276,7 @@ describe("authService — browser context (hasTauri=false)", () => {
       freshModule.setupAuthInterceptor();
 
       await window.fetch("/api/some-endpoint");
-      expect(mockLocation.href).toBe("/login");
+      expect(mockLocation.href).toBe("/dashboard");
 
       Object.defineProperty(window, "location", {
         writable: true,
@@ -451,6 +470,26 @@ describe("authService — Tauri context (hasTauri=true)", () => {
           headers: { Authorization: "Bearer tauri-token" },
         }),
       );
+    });
+  });
+
+  describe("setupAuthInterceptor()", () => {
+    it("attaches the stored bearer token to internal requests in Tauri", async () => {
+      tauriInvoke.mockResolvedValueOnce(undefined);
+      await authService.setAuthToken("desktop-token");
+
+      const underlyingFetch = vi.fn().mockResolvedValue(makeResponse(200));
+      vi.stubGlobal("fetch", underlyingFetch);
+      delete (window as any).__authInterceptorSetup;
+
+      const freshModule = await import("../../services/authService");
+      freshModule.setupAuthInterceptor();
+
+      await window.fetch("/trpc/auth.me");
+
+      const call = underlyingFetch.mock.calls[0];
+      expect(call?.[0]).toBe("/trpc/auth.me");
+      expect(new Headers(call?.[1]?.headers as HeadersInit).get("Authorization")).toBe("Bearer desktop-token");
     });
   });
 

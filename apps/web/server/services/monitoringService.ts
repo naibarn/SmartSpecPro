@@ -15,6 +15,7 @@ import {
   monitoringChecks,
   monitoringAlerts,
   systemMetricsHistory,
+  llmProviders,
   providerUsageLog,
   apiAuditEvents,
   userNotifications,
@@ -617,6 +618,17 @@ type AlertCounts = {
   info: number;
 };
 
+type OpenAlertContext = {
+  title: string;
+  message: string;
+  signal: string | null;
+  recommendation: string | null;
+  source: string | null;
+  anomalyType: string | null;
+  severity: string;
+  createdAt: string;
+};
+
 type AuditSignalStats = {
   total: number;
   errorCount: number;
@@ -626,6 +638,7 @@ type AuditSignalStats = {
   p95LatencyMs: number | null;
   avgLatencyMs: number | null;
   lastSeenAt: string | null;
+  topFailureSummary?: string | null;
 };
 
 type OrchestrationSignalStats = {
@@ -706,6 +719,7 @@ export interface OpsOverviewInput {
   lastCheckAt: Date | null;
   services: ServiceStatus[];
   unackedAlerts: AlertCounts;
+  latestOpenAlert?: OpenAlertContext | null;
   llmStats: AuditSignalStats;
   mediaStats: AuditSignalStats;
   orchestrationStats: OrchestrationSignalStats;
@@ -1476,14 +1490,21 @@ export function deriveOpsOverview(input: OpsOverviewInput): OpsOverview {
 
   const criticalLikeAlerts = input.unackedAlerts.critical + input.unackedAlerts.error;
   if (criticalLikeAlerts > 0) {
+    const latestOpenAlert = input.latestOpenAlert ?? null;
     anomalies.push(buildAnomaly({
       severity: "critical",
       category: "monitoring",
       type: "alert_backlog",
       title: "Critical monitoring alerts are still unacknowledged",
-      message: `${criticalLikeAlerts} high-severity alerts are pending acknowledgement.`,
-      recommendation: "Triage the outstanding alerts now so the same failure does not silently compound.",
-      signal: `${criticalLikeAlerts} pending`,
+      message: latestOpenAlert
+        ? `${criticalLikeAlerts} high-severity alerts are pending acknowledgement. Latest unresolved alert: ${latestOpenAlert.title}${latestOpenAlert.message ? ` - ${latestOpenAlert.message}` : ""}.`
+        : `${criticalLikeAlerts} high-severity alerts are pending acknowledgement.`,
+      recommendation: latestOpenAlert
+        ? `Triage ${latestOpenAlert.title} first, then acknowledge the backlog once ownership and the root cause note are clear.`
+        : "Triage the outstanding alerts now so the same failure does not silently compound.",
+      signal: latestOpenAlert
+        ? `${criticalLikeAlerts} pending · latest unresolved: ${latestOpenAlert.title}`
+        : `${criticalLikeAlerts} pending`,
       observedAt: toIsoString(input.lastCheckAt),
       source: "monitoring_alerts",
     }));
@@ -1536,14 +1557,21 @@ export function deriveOpsOverview(input: OpsOverviewInput): OpsOverview {
     input.llmStats.total >= 20 &&
     ((llmErrorRate ?? 0) >= 0.2 || input.llmStats.serverErrorCount >= 5 || input.llmStats.timeoutCount >= 3)
   ) {
+    const topFailureSummary = input.llmStats.topFailureSummary?.trim();
     anomalies.push(buildAnomaly({
       severity: "critical",
       category: "audit",
       type: "llm_error_spike",
       title: "LLM error rate spiked",
-      message: `${input.llmStats.errorCount} of ${input.llmStats.total} recent LLM calls failed.`,
-      recommendation: "Check provider health, rate limits, and fallback routing before chat traffic degrades broadly.",
-      signal: llmErrorRate != null ? `${(llmErrorRate * 100).toFixed(0)}% error rate` : null,
+      message: topFailureSummary
+        ? `${input.llmStats.errorCount} of ${input.llmStats.total} recent LLM calls failed. Top failures: ${topFailureSummary}.`
+        : `${input.llmStats.errorCount} of ${input.llmStats.total} recent LLM calls failed.`,
+      recommendation: topFailureSummary
+        ? "Check provider health, model routing, and fallback paths before chat traffic degrades broadly. The failure pattern points to a provider/model mismatch or endpoint rejection."
+        : "Check provider health, rate limits, and fallback routing before chat traffic degrades broadly.",
+      signal: topFailureSummary && llmErrorRate != null
+        ? `${(llmErrorRate * 100).toFixed(0)}% error rate · ${topFailureSummary}`
+        : (llmErrorRate != null ? `${(llmErrorRate * 100).toFixed(0)}% error rate` : null),
       observedAt: input.llmStats.lastSeenAt,
       source: "provider_usage_log",
     }));
@@ -1819,6 +1847,76 @@ async function getAlertCounts(db: Awaited<ReturnType<typeof getDb>>): Promise<Al
   return counts;
 }
 
+async function getLatestOpenAlertContext(db: Awaited<ReturnType<typeof getDb>>): Promise<OpenAlertContext | null> {
+  const rows = await db
+    .select({
+      id: monitoringAlerts.id,
+      severity: monitoringAlerts.severity,
+      title: monitoringAlerts.title,
+      message: monitoringAlerts.message,
+      source: sql<string | null>`${monitoringAlerts.metadata}->>'source'`,
+      anomalyType: sql<string | null>`${monitoringAlerts.metadata}->>'anomalyType'`,
+      signal: sql<string | null>`${monitoringAlerts.metadata}->>'signal'`,
+      recommendation: sql<string | null>`${monitoringAlerts.metadata}->>'recommendation'`,
+      createdAt: monitoringAlerts.createdAt,
+    })
+    .from(monitoringAlerts)
+    .where(and(
+      eq(monitoringAlerts.acknowledged, false),
+      sql`coalesce(${monitoringAlerts.metadata}->>'anomalyType', '') <> 'alert_backlog'`,
+    ))
+    .orderBy(desc(monitoringAlerts.createdAt))
+    .limit(50);
+
+  const latest = rows
+    .sort((left, right) => {
+      const severityDelta = severityRank(right.severity) - severityRank(left.severity);
+      if (severityDelta !== 0) {
+        return severityDelta;
+      }
+      return right.createdAt.getTime() - left.createdAt.getTime();
+    })[0];
+
+  if (!latest) {
+    return null;
+  }
+
+  return {
+    title: latest.title,
+    message: latest.message,
+    signal: latest.signal,
+    recommendation: latest.recommendation,
+    source: latest.source,
+    anomalyType: latest.anomalyType,
+    severity: latest.severity,
+    createdAt: latest.createdAt.toISOString(),
+  };
+}
+
+function formatFailureSummaryRows(rows: Array<{
+  providerName: string;
+  displayName: string;
+  modelUsed: string;
+  errorType: string | null;
+  statusCode: number | null;
+  count: number;
+}>): string | null {
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return rows
+    .slice(0, 3)
+    .map((row) => {
+      const providerLabel = row.displayName || row.providerName;
+      const codeLabel = row.statusCode != null
+        ? `HTTP ${row.statusCode}`
+        : (row.errorType ? row.errorType.replace(/_/g, " ") : "error");
+      return `${providerLabel}/${row.modelUsed} → ${codeLabel} (${row.count})`;
+    })
+    .join("; ");
+}
+
 async function getAuditSignalStats(
   db: Awaited<ReturnType<typeof getDb>>,
   hours: number,
@@ -1838,6 +1936,41 @@ async function getAuditSignalStats(
     })
     .from(providerUsageLog)
     .where(gte(providerUsageLog.createdAt, since));
+
+  const llmFailureRows = await db
+    .select({
+      providerName: llmProviders.providerName,
+      displayName: llmProviders.displayName,
+      modelUsed: providerUsageLog.modelUsed,
+      errorType: providerUsageLog.errorType,
+      statusCode: providerUsageLog.statusCode,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(providerUsageLog)
+    .innerJoin(llmProviders, eq(providerUsageLog.providerId, llmProviders.id))
+    .where(and(
+      gte(providerUsageLog.createdAt, since),
+      sql`(${providerUsageLog.errorType} is not null or coalesce(${providerUsageLog.statusCode}, 0) >= 400)`,
+    ))
+    .groupBy(
+      llmProviders.providerName,
+      llmProviders.displayName,
+      providerUsageLog.modelUsed,
+      providerUsageLog.errorType,
+      providerUsageLog.statusCode,
+    );
+
+  llmFailureRows.sort((left, right) => {
+    const countDelta = Number(right.count ?? 0) - Number(left.count ?? 0);
+    if (countDelta !== 0) {
+      return countDelta;
+    }
+    const providerDelta = left.displayName.localeCompare(right.displayName);
+    if (providerDelta !== 0) {
+      return providerDelta;
+    }
+    return left.modelUsed.localeCompare(right.modelUsed);
+  });
 
   const [mediaRow] = await db
     .select({
@@ -1862,6 +1995,7 @@ async function getAuditSignalStats(
       p95LatencyMs: toFiniteNumber(llmRow?.p95LatencyMs),
       avgLatencyMs: toFiniteNumber(llmRow?.avgLatencyMs),
       lastSeenAt: llmRow?.lastSeenAt ?? null,
+      topFailureSummary: formatFailureSummaryRows(llmFailureRows),
     },
     media: {
       total: Number(mediaRow?.total ?? 0),
@@ -1872,6 +2006,7 @@ async function getAuditSignalStats(
       p95LatencyMs: toFiniteNumber(mediaRow?.p95LatencyMs),
       avgLatencyMs: toFiniteNumber(mediaRow?.avgLatencyMs),
       lastSeenAt: mediaRow?.lastSeenAt ?? null,
+      topFailureSummary: null,
     },
   };
 }
@@ -1995,7 +2130,7 @@ export async function getOpsOverview(opts?: {
   const orchestrationHours = opts?.orchestrationHours ?? 6;
   const since = new Date(Date.now() - metricsHours * 60 * 60 * 1000);
 
-  const [metricRows, latestCheck, alertCounts, auditStats, orchestrationStats] = await Promise.all([
+  const [metricRows, latestCheck, alertCounts, latestOpenAlert, auditStats, orchestrationStats] = await Promise.all([
     db
       .select()
       .from(systemMetricsHistory)
@@ -2009,6 +2144,7 @@ export async function getOpsOverview(opts?: {
       .limit(1)
       .then((rows) => rows[0] ?? null),
     getAlertCounts(db),
+    getLatestOpenAlertContext(db),
     getAuditSignalStats(db, auditHours),
     getOrchestrationSignalStats(orchestrationHours),
   ]);
@@ -2023,6 +2159,7 @@ export async function getOpsOverview(opts?: {
     lastCheckAt: latestCheck?.checkedAt ?? null,
     services: extractServices((latestMetrics?.serviceStatuses as Record<string, unknown> | null | undefined) ?? null),
     unackedAlerts: alertCounts,
+    latestOpenAlert,
     llmStats: auditStats.llm,
     mediaStats: auditStats.media,
     orchestrationStats,

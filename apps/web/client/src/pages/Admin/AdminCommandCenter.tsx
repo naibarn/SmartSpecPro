@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
+import { useDesktopHostStatus } from "@/features/desktop-host/useDesktopHostStatus";
+import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import {
   OpsEarlyWarningPanel,
   type OpsOverview,
@@ -23,6 +25,7 @@ import {
   ExternalLink,
   Gauge,
   Loader2,
+  MonitorPlay,
   RefreshCw,
   Server,
   ShieldAlert,
@@ -269,6 +272,12 @@ export default function AdminCommandCenter() {
   const [location, setLocation] = useLocation();
   const [refreshInterval, setRefreshInterval] = useState<number | null>(30_000);
   const incidentRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const desktopHostEnabled = useTenantFeatureFlag("desktopHostEnabled");
+  const desktopGovernanceStatus = useDesktopHostStatus(desktopHostEnabled, "tenant");
+  const desktopGovernancePath =
+    user?.role === "admin"
+      ? "/admin/desktop-host/governance"
+      : "/domain-admin/desktop-host/governance";
 
   const queryOptions = {
     refetchInterval: refreshInterval ?? false,
@@ -431,6 +440,18 @@ export default function AdminCommandCenter() {
       badge: `${queueSummary.combined} queued`,
     },
     {
+      title: "Desktop Governance",
+      description:
+        "See enrolled desktop devices, owner posture, local roots, package trust, and remote access controls.",
+      path: desktopGovernancePath,
+      icon: MonitorPlay,
+      badge: !desktopHostEnabled
+        ? "disabled"
+        : desktopGovernanceStatus.isLoading
+          ? "loading"
+          : `${desktopGovernanceStatus.status?.devices.length ?? 0} devices`,
+    },
+    {
       title: "Audit Logs",
       description:
         "Trace failures, provider errors, and request anomalies in detail.",
@@ -466,6 +487,7 @@ export default function AdminCommandCenter() {
       notificationsQuery.refetch(),
       queueSystemQuery.refetch(),
     ]);
+    desktopGovernanceStatus.refresh();
   };
 
   useEffect(() => {

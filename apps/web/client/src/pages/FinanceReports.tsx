@@ -6,6 +6,8 @@ import {
   BarChart3,
   ArrowDownRight,
   ArrowUpRight,
+  Landmark,
+  CreditCard,
   ChevronLeft,
   Download,
   Filter,
@@ -40,8 +42,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { HelpButton } from "@/components/help";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { DashboardCard, DashboardKpiCard, dashboardCardDescriptionClass, dashboardMetaLineClass } from "@/components/dashboard";
-import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
+import { FinanceAccessGateContent } from "@/components/finance/FinanceAccessGate";
 import { FinanceCounterpartyAutocomplete } from "@/components/finance/FinanceCounterpartyAutocomplete";
+import { useFinanceVaultAccess } from "@/components/finance/useFinanceVaultAccess";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { cn } from "@/lib/utils";
 
@@ -128,6 +131,19 @@ function formatMonthLabel(value: string | Date | null | undefined): string {
   return format(parsed, "MMM yyyy");
 }
 
+function formatYearLabel(value: string | Date | null | undefined): string {
+  if (!value) return "—";
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "—";
+  return format(parsed, "yyyy");
+}
+
+function formatCashflowLabel(value: string | Date | null | undefined, granularity: "day" | "month" | "year"): string {
+  if (granularity === "month") return formatMonthLabel(value);
+  if (granularity === "year") return formatYearLabel(value);
+  return formatDateLabel(value);
+}
+
 function getCounterpartyLabel(type: "income" | "expense" | "transfer", counterpartyName: string | null | undefined, merchantName: string | null | undefined): string {
   const name = (counterpartyName ?? merchantName ?? "").trim();
   if (name) {
@@ -142,6 +158,22 @@ function getFlowLabel(type: "income" | "expense" | "transfer"): string {
   if (type === "income") return "Received from";
   if (type === "expense") return "Paid to";
   return "Transfer with";
+}
+
+function resolveAutocompleteSelection(
+  value: string,
+  items: Array<{ id: number; displayName: string; aliases?: string[] }>,
+): { id: number; displayName: string; aliases?: string[] } | null {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+
+  return items.find((item) => {
+    const displayName = item.displayName.trim().toLowerCase();
+    return displayName === normalized
+      || item.aliases?.some((alias) => alias.trim().toLowerCase() === normalized) === true;
+  }) ?? null;
 }
 
 function getPresetRange(preset: "month" | "year", now = new Date()): { from: string; to: string } {
@@ -172,18 +204,34 @@ export default function FinanceReportsPage() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const search = useSearch();
+  const financeVaultAccess = useFinanceVaultAccess();
   const [reportPreset, setReportPreset] = useState<"month" | "year" | "custom">("month");
+  const [cashflowGranularity, setCashflowGranularity] = useState<"day" | "month" | "year">("day");
   const [transactionType, setTransactionType] = useState<"all" | "income" | "expense" | "transfer">("all");
+  const [searchText, setSearchText] = useState("");
   const [categoryCode, setCategoryCode] = useState("");
   const [counterparty, setCounterparty] = useState("");
+  const [merchant, setMerchant] = useState("");
+  const [amountMin, setAmountMin] = useState("");
+  const [amountMax, setAmountMax] = useState("");
+  const [paymentInstitution, setPaymentInstitution] = useState("");
+  const [paymentAccount, setPaymentAccount] = useState("");
+  const [paymentMethodKind, setPaymentMethodKind] = useState<"all" | "bank_account" | "credit_card" | "cash" | "unknown">("all");
+  const [paymentDirection, setPaymentDirection] = useState<"all" | "outbound" | "inbound" | "both" | "unknown">("all");
   const [dateFrom, setDateFrom] = useState(() => getPresetRange("month").from);
   const [dateTo, setDateTo] = useState(() => getPresetRange("month").to);
   const [selectedTransactionId, setSelectedTransactionId] = useState<number | null>(null);
   const [evidenceQuery, setEvidenceQuery] = useState("");
+  const deferredSearchText = useDeferredValue(searchText.trim());
   const deferredCounterpartySearch = useDeferredValue(counterparty.trim());
+  const deferredMerchantSearch = useDeferredValue(merchant.trim());
+  const deferredPaymentInstitutionSearch = useDeferredValue(paymentInstitution.trim());
+  const deferredPaymentAccountSearch = useDeferredValue(paymentAccount.trim());
+  const normalizedAmountMin = Number.isFinite(Number(amountMin)) ? Math.round(Number(amountMin) * 100) : undefined;
+  const normalizedAmountMax = Number.isFinite(Number(amountMax)) ? Math.round(Number(amountMax) * 100) : undefined;
 
   const personalConversationQuery = trpc.chat.getPersonalConversation.useQuery(undefined, {
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && financeVaultAccess.hasAccess,
   });
 
   const createPersonalConversationMutation = trpc.chat.createPersonalConversation.useMutation({
@@ -197,32 +245,14 @@ export default function FinanceReportsPage() {
     [personalConversationQuery.data?.id, search],
   );
 
-  const transactionFilters = useMemo(
-    () => ({
-      conversationId: conversationId ?? 0,
-      status: "confirmed" as const,
-      type: transactionType === "all" ? undefined : transactionType,
-      categoryCode: categoryCode.trim() || undefined,
-      counterparty: counterparty.trim() || undefined,
-      fromDate: new Date(`${dateFrom}T00:00:00`),
-      toDate: toExclusiveDate(dateTo),
-      limit: 100,
-      offset: 0,
-    }),
-    [categoryCode, conversationId, counterparty, dateFrom, dateTo, transactionType],
-  );
-
   const draftsQuery = trpc.finance.listDrafts.useQuery(
     { conversationId: conversationId ?? 0, limit: 10 },
-    { enabled: Boolean(conversationId) },
+    { enabled: financeVaultAccess.hasAccess && Boolean(conversationId) },
   );
   const recurringRulesQuery = trpc.finance.listRecurringRules.useQuery(
     { conversationId: conversationId ?? 0, status: "active", limit: 10 },
-    { enabled: Boolean(conversationId) },
+    { enabled: financeVaultAccess.hasAccess && Boolean(conversationId) },
   );
-  const transactionsQuery = trpc.finance.listTransactions.useQuery(transactionFilters, {
-    enabled: Boolean(conversationId),
-  });
   const counterpartiesQuery = trpc.finance.listCounterparties.useQuery(
     {
       conversationId: conversationId ?? 0,
@@ -230,9 +260,95 @@ export default function FinanceReportsPage() {
       limit: 8,
     },
     {
-      enabled: Boolean(conversationId),
+      enabled: financeVaultAccess.hasAccess && Boolean(conversationId),
     },
   );
+  const paymentInstitutionsQuery = trpc.finance.listPaymentInstitutions.useQuery(
+    {
+      conversationId: conversationId ?? 0,
+      query: deferredPaymentInstitutionSearch || undefined,
+      limit: 8,
+    },
+    {
+      enabled: financeVaultAccess.hasAccess && Boolean(conversationId),
+    },
+  );
+  const paymentAccountsQuery = trpc.finance.listPaymentAccounts.useQuery(
+    {
+      conversationId: conversationId ?? 0,
+      query: deferredPaymentAccountSearch || undefined,
+      limit: 8,
+    },
+    {
+      enabled: financeVaultAccess.hasAccess && Boolean(conversationId),
+    },
+  );
+  const paymentInstitutionItems = useMemo(
+    () => (paymentInstitutionsQuery.data ?? []).map((item) => ({
+      id: item.id,
+      displayName: item.displayName,
+      aliases: item.aliases,
+      usageCount: item.usageCount,
+    })),
+    [paymentInstitutionsQuery.data],
+  );
+  const paymentAccountItems = useMemo(
+    () => (paymentAccountsQuery.data ?? []).map((item) => ({
+      id: item.id,
+      displayName: item.displayLabel,
+      aliases: item.aliases,
+      usageCount: item.usageCount,
+    })),
+    [paymentAccountsQuery.data],
+  );
+  const selectedPaymentInstitution = useMemo(
+    () => resolveAutocompleteSelection(paymentInstitution, paymentInstitutionItems),
+    [paymentInstitution, paymentInstitutionItems],
+  );
+  const selectedPaymentAccount = useMemo(
+    () => resolveAutocompleteSelection(paymentAccount, paymentAccountItems),
+    [paymentAccount, paymentAccountItems],
+  );
+  const transactionFilters = useMemo(
+    () => ({
+      conversationId: conversationId ?? 0,
+      status: "confirmed" as const,
+      type: transactionType === "all" ? undefined : transactionType,
+      query: deferredSearchText || undefined,
+      categoryCode: categoryCode.trim() || undefined,
+      counterparty: counterparty.trim() || undefined,
+      merchant: deferredMerchantSearch || undefined,
+      amountMinMinor: normalizedAmountMin,
+      amountMaxMinor: normalizedAmountMax,
+      paymentMethodKind: paymentMethodKind === "all" ? undefined : paymentMethodKind,
+      paymentDirection: paymentDirection === "all" ? undefined : paymentDirection,
+      paymentAccountId: selectedPaymentAccount?.id ?? undefined,
+      paymentInstitutionId: selectedPaymentInstitution?.id ?? undefined,
+      fromDate: new Date(`${dateFrom}T00:00:00`),
+      toDate: toExclusiveDate(dateTo),
+      limit: 100,
+      offset: 0,
+    }),
+    [
+      deferredSearchText,
+      categoryCode,
+      conversationId,
+      counterparty,
+      dateFrom,
+      dateTo,
+      deferredMerchantSearch,
+      normalizedAmountMax,
+      normalizedAmountMin,
+      paymentDirection,
+      paymentMethodKind,
+      selectedPaymentAccount?.id,
+      selectedPaymentInstitution?.id,
+      transactionType,
+    ],
+  );
+  const transactionsQuery = trpc.finance.listTransactions.useQuery(transactionFilters, {
+    enabled: financeVaultAccess.hasAccess && Boolean(conversationId),
+  });
   const selectedTransaction = transactionsQuery.data?.find((transaction) => transaction.id === selectedTransactionId)
     ?? transactionsQuery.data?.[0]
     ?? null;
@@ -242,7 +358,7 @@ export default function FinanceReportsPage() {
       transactionId: selectedTransaction?.id ?? 0,
     },
     {
-      enabled: Boolean(conversationId && selectedTransaction?.id),
+      enabled: financeVaultAccess.hasAccess && Boolean(conversationId && selectedTransaction?.id),
     },
   );
   const evidenceQueryResult = trpc.finance.searchFinanceEvidence.useQuery(
@@ -253,7 +369,7 @@ export default function FinanceReportsPage() {
       limit: 8,
     },
     {
-      enabled: Boolean(conversationId && selectedTransaction?.id),
+      enabled: financeVaultAccess.hasAccess && Boolean(conversationId && selectedTransaction?.id),
     },
   );
 
@@ -286,10 +402,16 @@ export default function FinanceReportsPage() {
     return Array.from(buckets.values()).sort((a, b) => b.totalMinor - a.totalMinor);
   }, [transactionsQuery.data]);
 
-  const dailySeries = useMemo(() => {
+  const cashflowSeries = useMemo(() => {
     const buckets = new Map<string, { date: string; incomeMinor: number; expenseMinor: number; transferMinor: number; balanceMinor: number; count: number }>();
     for (const tx of transactionsQuery.data ?? []) {
-      const key = format(new Date(tx.occurredAt), "yyyy-MM-dd");
+      const occurredAt = new Date(tx.occurredAt);
+      let key = format(occurredAt, "yyyy-MM-dd");
+      if (cashflowGranularity === "month") {
+        key = format(occurredAt, "yyyy-MM-01");
+      } else if (cashflowGranularity === "year") {
+        key = format(occurredAt, "yyyy-01-01");
+      }
       const bucket = buckets.get(key) ?? { date: key, incomeMinor: 0, expenseMinor: 0, transferMinor: 0, balanceMinor: 0, count: 0 };
       bucket.count += 1;
       if (tx.type === "income") {
@@ -304,7 +426,7 @@ export default function FinanceReportsPage() {
       buckets.set(key, bucket);
     }
     return Array.from(buckets.values()).sort((a, b) => a.date.localeCompare(b.date));
-  }, [transactionsQuery.data]);
+  }, [cashflowGranularity, transactionsQuery.data]);
 
   const counterpartyBreakdown = useMemo(() => {
     const buckets = new Map<string, {
@@ -366,6 +488,112 @@ export default function FinanceReportsPage() {
     };
   }, [transactionsQuery.data]);
 
+  const paymentAccountBreakdown = useMemo(() => {
+    const accountMap = new Map((paymentAccountsQuery.data ?? []).map((account) => [account.id, account] as const));
+    const buckets = new Map<number, {
+      id: number;
+      displayLabel: string;
+      institutionName: string;
+      institutionKind: string;
+      kind: string;
+      count: number;
+      paidMinor: number;
+      receivedMinor: number;
+      lastSeenAt: string | null;
+    }>();
+
+    for (const tx of transactionsQuery.data ?? []) {
+      const sourceAccount = tx.paymentSourceAccountId ? accountMap.get(tx.paymentSourceAccountId) ?? null : null;
+      const destinationAccount = tx.paymentDestinationAccountId ? accountMap.get(tx.paymentDestinationAccountId) ?? null : null;
+      const pushBucket = (
+        account: typeof sourceAccount,
+        amountRole: "paid" | "received",
+      ) => {
+        if (!account) {
+          return;
+        }
+        const existing = buckets.get(account.id) ?? {
+          id: account.id,
+          displayLabel: account.displayLabel,
+          institutionName: account.institutionName,
+          institutionKind: account.institutionKind,
+          kind: account.kind,
+          count: 0,
+          paidMinor: 0,
+          receivedMinor: 0,
+          lastSeenAt: null,
+        };
+        existing.count += 1;
+        if (amountRole === "paid") {
+          existing.paidMinor += tx.amountMinor;
+        } else {
+          existing.receivedMinor += tx.amountMinor;
+        }
+        existing.lastSeenAt = tx.occurredAt ? tx.occurredAt.toString() : existing.lastSeenAt;
+        buckets.set(account.id, existing);
+      };
+
+      if (tx.type === "income") {
+        pushBucket(destinationAccount, "received");
+      } else if (tx.type === "expense") {
+        pushBucket(sourceAccount, "paid");
+      } else {
+        pushBucket(sourceAccount, "paid");
+        pushBucket(destinationAccount, "received");
+      }
+    }
+
+    return Array.from(buckets.values())
+      .sort((left, right) => (right.paidMinor + right.receivedMinor) - (left.paidMinor + left.receivedMinor))
+      .slice(0, 8);
+  }, [paymentAccountsQuery.data, transactionsQuery.data]);
+
+  const paymentInstitutionBreakdown = useMemo(() => {
+    const accountMap = new Map((paymentAccountsQuery.data ?? []).map((account) => [account.id, account] as const));
+    const buckets = new Map<string, {
+      institutionName: string;
+      institutionKind: string;
+      count: number;
+      paidMinor: number;
+      receivedMinor: number;
+    }>();
+
+    for (const tx of transactionsQuery.data ?? []) {
+      const accountIds = [
+        tx.paymentSourceAccountId,
+        tx.paymentDestinationAccountId,
+      ].filter((value): value is number => typeof value === "number");
+      for (const accountId of accountIds) {
+        const account = accountMap.get(accountId);
+        if (!account) {
+          continue;
+        }
+        const key = `${account.institutionName}::${account.institutionKind}`;
+        const existing = buckets.get(key) ?? {
+          institutionName: account.institutionName,
+          institutionKind: account.institutionKind,
+          count: 0,
+          paidMinor: 0,
+          receivedMinor: 0,
+        };
+        existing.count += 1;
+        if (tx.type === "income") {
+          existing.receivedMinor += tx.amountMinor;
+        } else if (tx.type === "expense") {
+          existing.paidMinor += tx.amountMinor;
+        } else {
+          existing.paidMinor += tx.amountMinor;
+          existing.receivedMinor += tx.amountMinor;
+        }
+        buckets.set(key, existing);
+      }
+    }
+
+    return Array.from(buckets.values())
+      .sort((left, right) => (right.paidMinor + right.receivedMinor) - (left.paidMinor + left.receivedMinor))
+      .slice(0, 6);
+  }, [paymentAccountsQuery.data, transactionsQuery.data]);
+
   const exportReportPdfMutation = trpc.finance.exportReportPdf.useMutation();
 
   const reportMarkdown = useMemo(() => {
@@ -382,8 +610,17 @@ export default function FinanceReportsPage() {
     const filterRows = [
       ["Conversation", conversationId ? String(conversationId) : "—"],
       ["Type", transactionType],
+      ["Search", searchText.trim() || "—"],
       ["Category", categoryCode.trim() || "—"],
       ["Counterparty", counterparty.trim() || "—"],
+      ["Merchant", merchant.trim() || "—"],
+      ["Amount min", amountMin.trim() || "—"],
+      ["Amount max", amountMax.trim() || "—"],
+      ["Payment method", paymentMethodKind],
+      ["Payment direction", paymentDirection],
+      ["Payment account", paymentAccount.trim() || "—"],
+      ["Payment institution", paymentInstitution.trim() || "—"],
+      ["Cashflow granularity", cashflowGranularity],
       ["Range preset", reportPreset],
       ["Date from", dateFrom],
       ["Date to", dateTo],
@@ -407,6 +644,25 @@ export default function FinanceReportsPage() {
 
     const counterpartyRows = counterpartyBreakdown.map((entry) => [
       entry.counterpartyName,
+      formatMoneyMinor(entry.paidMinor),
+      formatMoneyMinor(entry.receivedMinor),
+      formatMoneyMinor(entry.receivedMinor - entry.paidMinor),
+      String(entry.count),
+    ]);
+
+    const paymentAccountRows = paymentAccountBreakdown.map((entry) => [
+      entry.displayLabel,
+      entry.institutionName,
+      entry.kind,
+      formatMoneyMinor(entry.paidMinor),
+      formatMoneyMinor(entry.receivedMinor),
+      formatMoneyMinor(entry.receivedMinor - entry.paidMinor),
+      String(entry.count),
+    ]);
+
+    const paymentInstitutionRows = paymentInstitutionBreakdown.map((entry) => [
+      entry.institutionName,
+      entry.institutionKind,
       formatMoneyMinor(entry.paidMinor),
       formatMoneyMinor(entry.receivedMinor),
       formatMoneyMinor(entry.receivedMinor - entry.paidMinor),
@@ -465,11 +721,11 @@ export default function FinanceReportsPage() {
       "## Filters",
       buildMarkdownTable(["Filter", "Value"], filterRows),
       "",
-      "## Cashflow",
+      `## Cashflow (${cashflowGranularity})`,
       buildMarkdownTable(
         ["Date", "Income", "Expense"],
-        dailySeries.map((entry) => [
-          formatDateLabel(entry.date),
+        cashflowSeries.map((entry) => [
+          formatCashflowLabel(entry.date, cashflowGranularity),
           formatMoneyMinor(entry.incomeMinor),
           formatMoneyMinor(entry.expenseMinor),
         ]),
@@ -523,6 +779,28 @@ export default function FinanceReportsPage() {
       );
     }
 
+    if (paymentAccountRows.length > 0) {
+      lines.push(
+        "",
+        "## Payment accounts",
+        buildMarkdownTable(
+          ["Account", "Institution", "Type", "Paid", "Received", "Net", "Transactions"],
+          paymentAccountRows,
+        ),
+      );
+    }
+
+    if (paymentInstitutionRows.length > 0) {
+      lines.push(
+        "",
+        "## Payment institutions",
+        buildMarkdownTable(
+          ["Institution", "Type", "Paid", "Received", "Net", "Transactions"],
+          paymentInstitutionRows,
+        ),
+      );
+    }
+
     if (selectedTransaction) {
       lines.push(
         "",
@@ -546,22 +824,33 @@ export default function FinanceReportsPage() {
   }, [
     categoryBreakdown,
     categoryCode,
-    dailySeries,
+    cashflowGranularity,
+    cashflowSeries,
     dateFrom,
     dateTo,
     draftsQuery.data,
     evidenceQueryResult.data?.linkedDocuments,
     linkedDocumentsQuery.data,
     counterparty,
+    merchant,
     recurringRulesQuery.data,
     selectedTransaction,
     t,
+    searchText,
     transactionType,
     transactionsQuery.data,
     conversationId,
     counterpartyBreakdown,
+    paymentAccountBreakdown,
+    paymentInstitutionBreakdown,
     rangeSummary,
     reportPreset,
+    paymentMethodKind,
+    paymentDirection,
+    paymentAccount,
+    paymentInstitution,
+    amountMin,
+    amountMax,
   ]);
 
   const handleCreatePersonalChat = async () => {
@@ -587,6 +876,25 @@ export default function FinanceReportsPage() {
       toast.error(error instanceof Error ? error.message : t("dashboard:finance.report.exportFailed", "Failed to export PDF"));
     }
   };
+
+  const renderLockedView = () => (
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.10),_transparent_28%),linear-gradient(180deg,_#f8fbff_0%,_#f7fafc_45%,_#eef2ff_100%)]">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-4 py-4 md:px-6 md:py-6">
+        <FinanceAccessGateContent
+          access={financeVaultAccess}
+          className="flex-1"
+          backHref="/dashboard"
+          backLabel={t("dashboard:finance.page.backToDashboard", "Back to dashboard")}
+        >
+          <div />
+        </FinanceAccessGateContent>
+      </div>
+    </div>
+  );
+
+  if (!financeVaultAccess.hasAccess) {
+    return renderLockedView();
+  }
 
   if (!conversationId && personalConversationQuery.isLoading) {
     return (
@@ -640,7 +948,7 @@ export default function FinanceReportsPage() {
     );
   }
 
-  return (
+  const renderUnlockedView = () => (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.10),_transparent_28%),linear-gradient(180deg,_#f8fbff_0%,_#f7fafc_45%,_#eef2ff_100%)]">
       <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col px-4 py-4 md:px-6 md:py-6">
         <motion.header
@@ -708,13 +1016,12 @@ export default function FinanceReportsPage() {
           </div>
         </motion.header>
 
-        <FinanceAccessGate className="flex-1">
-          <motion.section
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.06 }}
-            className="grid flex-1 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(340px,0.86fr)]"
-          >
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.06 }}
+          className="grid flex-1 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(340px,0.86fr)]"
+        >
             <div className="space-y-4">
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <DashboardKpiCard
@@ -753,16 +1060,31 @@ export default function FinanceReportsPage() {
                   title={t("dashboard:finance.report.cashflow")}
                   description={t("dashboard:finance.report.cashflowDescription", "Daily flow across the selected range.")}
                 >
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs text-slate-500">
+                      {t("dashboard:finance.report.cashflowGranularity", "Granularity")}
+                    </span>
+                    <Select value={cashflowGranularity} onValueChange={(value) => setCashflowGranularity(value as typeof cashflowGranularity)}>
+                      <SelectTrigger className="h-9 w-[160px] rounded-2xl bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="day">{t("dashboard:finance.report.cashflowByDay", "By day")}</SelectItem>
+                        <SelectItem value="month">{t("dashboard:finance.report.cashflowByMonth", "By month")}</SelectItem>
+                        <SelectItem value="year">{t("dashboard:finance.report.cashflowByYear", "By year")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="h-[320px]">
-                    {dailySeries.length > 0 ? (
+                    {cashflowSeries.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={dailySeries}>
+                        <AreaChart data={cashflowSeries}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                          <XAxis dataKey="date" tickFormatter={formatDateLabel} stroke="#94a3b8" />
+                          <XAxis dataKey="date" tickFormatter={(value) => formatCashflowLabel(value, cashflowGranularity)} stroke="#94a3b8" />
                           <YAxis stroke="#94a3b8" />
                           <Tooltip
                             formatter={(value: number) => formatMoneyMinor(Number(value))}
-                            labelFormatter={(label) => `Date: ${label}`}
+                            labelFormatter={(label) => `Date: ${formatCashflowLabel(label, cashflowGranularity)}`}
                           />
                           <Legend />
                           <Area type="monotone" dataKey="incomeMinor" name="Income" stroke="#10b981" fill="#a7f3d0" fillOpacity={0.55} />
@@ -811,6 +1133,100 @@ export default function FinanceReportsPage() {
 
               <div className="grid gap-4 xl:grid-cols-2">
                 <DashboardCard
+                  eyebrow={t("dashboard:finance.report.paymentAccounts", "Payment accounts")}
+                  title={t("dashboard:finance.report.paymentAccounts", "Payment accounts")}
+                  description={t(
+                    "dashboard:finance.report.paymentAccountsDescription",
+                    "See how much was paid from each account or card, and how much was received into it.",
+                  )}
+                >
+                  <div className="space-y-3">
+                    {paymentAccountBreakdown.length > 0 ? (
+                      paymentAccountBreakdown.map((entry) => (
+                        <div key={entry.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                {entry.kind === "credit_card" ? (
+                                  <CreditCard className="h-4 w-4 text-sky-600" />
+                                ) : (
+                                  <Landmark className="h-4 w-4 text-sky-600" />
+                                )}
+                                <p className="truncate text-sm font-semibold text-slate-950">{entry.displayLabel}</p>
+                              </div>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {entry.institutionName}
+                                <span className="text-slate-300"> · </span>
+                                {entry.institutionKind}
+                                <span className="text-slate-300"> · </span>
+                                {entry.kind}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {t("dashboard:finance.report.paymentAccountPaid", "Paid")}: {formatMoneyMinor(entry.paidMinor)}
+                                <span className="text-slate-300"> · </span>
+                                {t("dashboard:finance.report.paymentAccountReceived", "Received")}: {formatMoneyMinor(entry.receivedMinor)}
+                              </p>
+                            </div>
+                            <p className="text-sm font-semibold text-slate-950">
+                              {formatMoneyMinor(entry.receivedMinor - entry.paidMinor)}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-500">
+                        {t("dashboard:finance.report.paymentAccountsEmpty", "No payment account data yet")}
+                      </div>
+                    )}
+                  </div>
+                </DashboardCard>
+
+                <DashboardCard
+                  eyebrow={t("dashboard:finance.report.paymentInstitutions", "Payment institutions")}
+                  title={t("dashboard:finance.report.paymentInstitutions", "Payment institutions")}
+                  description={t(
+                    "dashboard:finance.report.paymentInstitutionsDescription",
+                    "See totals grouped by bank or card issuer.",
+                  )}
+                >
+                  <div className="space-y-3">
+                    {paymentInstitutionBreakdown.length > 0 ? (
+                      paymentInstitutionBreakdown.map((entry) => (
+                        <div key={`${entry.institutionName}-${entry.institutionKind}`} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <Landmark className="h-4 w-4 text-emerald-600" />
+                                <p className="truncate text-sm font-semibold text-slate-950">{entry.institutionName}</p>
+                              </div>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {entry.institutionKind}
+                                <span className="text-slate-300"> · </span>
+                                {`${entry.count} ${entry.count === 1 ? "transaction" : "transactions"}`}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {t("dashboard:finance.report.paymentAccountPaid", "Paid")}: {formatMoneyMinor(entry.paidMinor)}
+                                <span className="text-slate-300"> · </span>
+                                {t("dashboard:finance.report.paymentAccountReceived", "Received")}: {formatMoneyMinor(entry.receivedMinor)}
+                              </p>
+                            </div>
+                            <p className="text-sm font-semibold text-slate-950">
+                              {formatMoneyMinor(entry.receivedMinor - entry.paidMinor)}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-500">
+                        {t("dashboard:finance.report.paymentInstitutionsEmpty", "No institution data yet")}
+                      </div>
+                    )}
+                  </div>
+                </DashboardCard>
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-2">
+                <DashboardCard
                   eyebrow={t("dashboard:finance.transactions.title")}
                   title={t("dashboard:finance.transactions.title")}
                   description={t("dashboard:finance.report.drilldownDescription", "Pick a transaction to inspect linked evidence.")}
@@ -838,7 +1254,15 @@ export default function FinanceReportsPage() {
                           <SelectItem value="transfer">Transfer</SelectItem>
                         </SelectContent>
                       </Select>
+                      <Input
+                        value={searchText}
+                        onChange={(event) => setSearchText(event.target.value)}
+                        placeholder={t("dashboard:finance.report.searchTransactionsPlaceholder", "Search keywords, references, or banks")}
+                        className="h-10 min-w-[220px] flex-1 rounded-2xl"
+                      />
                       <Input value={categoryCode} onChange={(event) => setCategoryCode(event.target.value)} placeholder="Category code" className="h-10 rounded-2xl" />
+                    </div>
+                    <div className="grid gap-3 lg:grid-cols-2">
                       <FinanceCounterpartyAutocomplete
                         value={counterparty}
                         onValueChange={setCounterparty}
@@ -851,6 +1275,96 @@ export default function FinanceReportsPage() {
                         inputClassName="h-10 rounded-2xl"
                         className="min-w-[260px] flex-1"
                       />
+                      <Input
+                        value={merchant}
+                        onChange={(event) => setMerchant(event.target.value)}
+                        placeholder={t("dashboard:finance.report.merchantPlaceholder", "Merchant / vendor")}
+                        className="h-10 rounded-2xl"
+                      />
+                    </div>
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      <FinanceCounterpartyAutocomplete
+                        value={paymentInstitution}
+                        onValueChange={setPaymentInstitution}
+                        items={paymentInstitutionItems}
+                        placeholder={t("dashboard:finance.report.paymentInstitutionPlaceholder", "Bank or issuer")}
+                        helperText={t(
+                          "dashboard:finance.report.paymentInstitutionHelper",
+                          "Filter by the institution that owns the bank account or credit card.",
+                        )}
+                        inputClassName="h-10 rounded-2xl"
+                        className="min-w-[260px] flex-1"
+                      />
+                      <FinanceCounterpartyAutocomplete
+                        value={paymentAccount}
+                        onValueChange={setPaymentAccount}
+                        items={paymentAccountItems}
+                        placeholder={t("dashboard:finance.report.paymentAccountPlaceholder", "Nickname / account / card")}
+                        helperText={t(
+                          "dashboard:finance.report.paymentAccountHelper",
+                          "Filter by the account or card nickname so you can see monthly and yearly totals per instrument.",
+                        )}
+                        inputClassName="h-10 rounded-2xl"
+                        className="min-w-[260px] flex-1"
+                      />
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        value={amountMin}
+                        onChange={(event) => setAmountMin(event.target.value)}
+                        placeholder={t("dashboard:finance.report.amountMinPlaceholder", "Minimum amount")}
+                        className="h-10 rounded-2xl"
+                      />
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        value={amountMax}
+                        onChange={(event) => setAmountMax(event.target.value)}
+                        placeholder={t("dashboard:finance.report.amountMaxPlaceholder", "Maximum amount")}
+                        className="h-10 rounded-2xl"
+                      />
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <Select value={paymentMethodKind} onValueChange={(value) => setPaymentMethodKind(value as typeof paymentMethodKind)}>
+                        <SelectTrigger className="h-10 rounded-2xl bg-white">
+                          <SelectValue placeholder={t("dashboard:finance.report.paymentMethodKind", "Payment method")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">{t("dashboard:finance.report.paymentMethodAll", "All methods")}</SelectItem>
+                          <SelectItem value="bank_account">{t("dashboard:finance.report.paymentMethodBank", "Bank account")}</SelectItem>
+                          <SelectItem value="credit_card">{t("dashboard:finance.report.paymentMethodCard", "Credit card")}</SelectItem>
+                          <SelectItem value="cash">{t("dashboard:finance.report.paymentMethodCash", "Cash")}</SelectItem>
+                          <SelectItem value="unknown">{t("dashboard:finance.report.paymentMethodUnknown", "Unknown")}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={paymentDirection} onValueChange={(value) => setPaymentDirection(value as typeof paymentDirection)}>
+                        <SelectTrigger className="h-10 rounded-2xl bg-white">
+                          <SelectValue placeholder={t("dashboard:finance.report.paymentDirection", "Payment direction")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">{t("dashboard:finance.report.paymentDirectionAll", "All directions")}</SelectItem>
+                          <SelectItem value="outbound">{t("dashboard:finance.report.paymentDirectionOutbound", "Paid from")}</SelectItem>
+                          <SelectItem value="inbound">{t("dashboard:finance.report.paymentDirectionInbound", "Received into")}</SelectItem>
+                          <SelectItem value="both">{t("dashboard:finance.report.paymentDirectionBoth", "Transfer")}</SelectItem>
+                          <SelectItem value="unknown">{t("dashboard:finance.report.paymentDirectionUnknown", "Unknown")}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="gap-2 rounded-2xl"
+                        onClick={() => {
+                          setPaymentInstitution("");
+                          setPaymentAccount("");
+                          setPaymentMethodKind("all");
+                          setPaymentDirection("all");
+                        }}
+                      >
+                        <Filter className="h-4 w-4" />
+                        {t("dashboard:finance.report.clearPaymentFilters", "Clear payment filters")}
+                      </Button>
                     </div>
                     <div className="grid gap-2 md:grid-cols-2">
                       <Input
@@ -1101,8 +1615,7 @@ export default function FinanceReportsPage() {
                 </div>
               </DashboardCard>
             </div>
-          </motion.section>
-        </FinanceAccessGate>
+        </motion.section>
 
         <div className="mt-4 flex items-center justify-between text-xs text-slate-500 print:hidden">
           <Button variant="ghost" size="sm" className="gap-2 px-0 text-slate-600" onClick={() => setLocation("/finance")}>
@@ -1115,4 +1628,6 @@ export default function FinanceReportsPage() {
       </div>
     </div>
   );
+
+  return renderUnlockedView();
 }

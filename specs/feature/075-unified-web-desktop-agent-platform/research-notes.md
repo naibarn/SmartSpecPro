@@ -18,7 +18,7 @@ Implication:
 
 Key findings:
 
-- Agency Swarm is already a defined SmartSpecPro runtime family on the web side
+- Agency Swarm is already a defined SmartAIHub runtime family on the web side
 - the spec is deep on agency capabilities, but not on bundled desktop materialization or local runtime governance
 
 Implication:
@@ -40,7 +40,7 @@ Implication:
 
 Key findings:
 
-- SmartSpecPro already has a local AI track for Gemma 4 browser and Tauri inference
+- SmartAIHub already has a local AI track for Gemma 4 browser and Tauri inference
 - Feature 070 is intentionally compatibility-first and off-by-default
 - it focuses on lightweight local inference, not full local agent execution
 
@@ -168,7 +168,7 @@ Implication:
 Keep this feature focused on the platform-level integration layer that turns current pieces into one coherent product:
 
 - unify web and desktop semantics
-- elevate the existing Tauri shell into SmartSpecPro Desktop Host
+- elevate the existing Tauri shell into SmartAIHub Desktop Host
 - define package trust, device identity, runtime routing, and local-file intelligence
 - integrate Pi and Agency Swarm as desktop runtimes
 - preserve and integrate the existing OpenClaw worker family instead of replacing it

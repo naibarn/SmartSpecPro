@@ -37,6 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import verify_token
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.system_settings_loader import get_google_ai_api_key
 from app.models.library import LibraryIndexJob
 from app.models.user import User
 from app.orchestrator.rag.scope_engine import propagate_scopes_to_vector_stores
@@ -51,9 +52,16 @@ from app.services.landingai_ade_document_service import (
     UnsupportedDocumentError,
     get_landingai_ade_document_service,
 )
+from app.services.typhoon_ocr_document_service import (
+    TyphoonDocumentAdapterError,
+    TyphoonDocumentProviderUnavailableError,
+    TyphoonUnsupportedDocumentError,
+    get_typhoon_ocr_document_service,
+)
 from app.services.r2_storage_service import get_r2_storage_service
 from app.services.onedrive_content_extractor import OneDriveContentExtractor
 from app.services.library_pgvector_service import search_library_pgvector_scores
+from app.services.unified_payin_slip_parser_service import parse_and_summarize_payin_slip
 
 logger = structlog.get_logger(__name__)
 
@@ -65,6 +73,8 @@ MAX_PDF_OCR_PAGES = 3
 REINDEX_TASK_ID_KEY = "vectordb:reindex:task_id"
 REINDEX_BATCH_KEY = "vectordb:reindex:batch"
 REINDEX_BATCH_TTL_SECONDS = 24 * 60 * 60
+GOOGLE_AI_VISION_MODEL = "gemini-2.5-flash"
+GOOGLE_AI_VISION_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GOOGLE_AI_VISION_MODEL}:generateContent"
 VISION_PROMPT = """Analyze this media frame and return a JSON object with EXACTLY these fields:
 {
   "shortCaption": "One sentence description (max 20 words)",
@@ -79,6 +89,64 @@ VISION_PROMPT = """Analyze this media frame and return a JSON object with EXACTL
   "safetyLabels": []
 }
 Return ONLY valid JSON, no markdown or explanation."""
+
+PAYIN_SLIP_LLM_PROMPT = """Analyze this Thai transfer slip and return a JSON object with EXACTLY these fields:
+{
+  "shortCaption": "One short sentence naming the slip type",
+  "detailedCaption": "2-3 sentences summarizing the slip",
+  "ocrText": "Full transcription of every readable word, number, date, time, amount, bank name, person name, reference, and account hint visible in the slip",
+  "objects": ["list", "of", "visible", "objects"],
+  "styles": [],
+  "materials": [],
+  "colors": [],
+  "rooms": [],
+  "architectureTags": [],
+  "safetyLabels": []
+}
+Rules:
+- Treat the image as a payment slip or bank transfer slip first.
+- The slip may be from a Thai bank, wallet app, or government payment app.
+- Never infer the amount, date, time, reference, or merchant code from the filename, upload timestamp, QR payload metadata, or any non-visible metadata.
+- Prefer values that are visibly printed on the slip itself, especially labels such as amount, fee, date, time, reference, merchant code, payer, and payee.
+- If an amount or date is unclear, leave it empty rather than guessing from context.
+- Common bank layouts may repeat the same content in headers, footers, QR areas, or receipt panels. Keep the reading order but avoid obvious duplicate blocks when a cleaner transcription is possible.
+- If sender and receiver details are visible, preserve both sides separately in the transcription.
+- If the slip is a self-transfer between the user's own accounts, keep both accounts distinct rather than collapsing them.
+- Preserve bank names, masked account numbers, last 4 digits, reference IDs, merchant codes, merchant names, and transaction timestamps exactly as visible.
+- Preserve Thai and English exactly as visible.
+- Keep the reading order top-to-bottom, left-to-right.
+- Do not summarize, translate, or omit readable text in ocrText.
+- Keep duplicate text regions only when they improve legibility.
+Return ONLY valid JSON, no markdown or explanation."""
+
+PAYIN_SLIP_JSON_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "shortCaption": {"type": "string"},
+        "detailedCaption": {"type": "string"},
+        "ocrText": {"type": "string"},
+        "objects": {"type": "array", "items": {"type": "string"}},
+        "styles": {"type": "array", "items": {"type": "string"}},
+        "materials": {"type": "array", "items": {"type": "string"}},
+        "colors": {"type": "array", "items": {"type": "string"}},
+        "rooms": {"type": "array", "items": {"type": "string"}},
+        "architectureTags": {"type": "array", "items": {"type": "string"}},
+        "safetyLabels": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": [
+        "shortCaption",
+        "detailedCaption",
+        "ocrText",
+        "objects",
+        "styles",
+        "materials",
+        "colors",
+        "rooms",
+        "architectureTags",
+        "safetyLabels",
+    ],
+    "additionalProperties": False,
+}
 
 DOCUMENT_OCR_BASE_PROMPT = """You are a document transcription engine for finance uploads.
 Return a JSON object with EXACTLY these fields:
@@ -354,6 +422,98 @@ async def render_markdown_pdf_internal(
     return Response(content=pdf_bytes, media_type="application/pdf")
 
 
+@router.post("/document-ocr/test-connection")
+async def test_document_ocr_connection_internal(
+    payload: DocumentOcrTestConnectionRequest,
+    request: Request,
+    x_proxy_token: Optional[str] = Header(None),
+    x_typhoon_ocr_api_key: Optional[str] = Header(None),
+    x_landingai_ade_api_key: Optional[str] = Header(None),
+):
+    """Run a lightweight OCR connection test against the configured provider."""
+    _require_localhost(request)
+    await _verify_proxy_token(request, x_proxy_token)
+
+    provider_id = str(payload.provider_id or "").strip()
+    start_time = datetime.utcnow()
+    sample_image = _build_document_ocr_test_image()
+    prompt = _build_document_ocr_prompt("receipt")
+
+    try:
+        if provider_id == "typhoon_ocr_1_5":
+            result = await _call_typhoon_document_ocr(
+                sample_image,
+                "image/png",
+                file_name="document-ocr-test.png",
+                prompt=prompt,
+                capture_intent="receipt",
+                source_url=None,
+                trace_id=None,
+                session=None,
+                api_key_override=(x_typhoon_ocr_api_key or "").strip() or None,
+            )
+            analysis, provider_name, warnings = result
+        elif provider_id == "landingai_ade":
+            result = await _call_landingai_ade_document_ocr(
+                sample_image,
+                "image/png",
+                file_name="document-ocr-test.png",
+                prompt=prompt,
+                capture_intent="receipt",
+                source_url=None,
+                trace_id=None,
+                session=None,
+                api_key_override=(x_landingai_ade_api_key or "").strip() or None,
+            )
+            analysis, provider_name, warnings = result
+        elif provider_id == "google_ai_vision":
+            result = await _call_google_ai_document_ocr(
+                sample_image,
+                "image/png",
+                file_name="document-ocr-test.png",
+                prompt=prompt,
+                capture_intent="receipt",
+                source_url=None,
+                trace_id=None,
+                session=None,
+                api_key_override=(payload.api_key or "").strip() or None,
+            )
+            analysis, provider_name, warnings = result
+        else:
+            return DocumentOcrTestConnectionResponse(
+                success=False,
+                provider_id=provider_id,
+                message="Unsupported OCR provider",
+            )
+    except (TyphoonDocumentAdapterError, DocumentAdapterError, DocumentProviderUnavailableError) as exc:
+        return DocumentOcrTestConnectionResponse(
+            success=False,
+            provider_id=provider_id,
+            message=str(exc),
+        )
+    except Exception as exc:
+        return DocumentOcrTestConnectionResponse(
+            success=False,
+            provider_id=provider_id,
+            message=f"Document OCR test failed: {exc}",
+        )
+
+    elapsed_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+    text = str(analysis.get("ocrText") or "").strip()
+    rate_limit_notice = None
+    if provider_id == "typhoon_ocr_1_5":
+        rate_limit_notice = "Typhoon OCR is capped at 20 requests per minute system-wide."
+    return DocumentOcrTestConnectionResponse(
+        success=bool(text),
+        provider_id=provider_name,
+        message="Connection successful" if text else "OCR returned empty text",
+        ocr_text=text or None,
+        model_version=str((analysis.get("metadata") or {}).get("model_version") or "") or None,
+        elapsed_ms=elapsed_ms,
+        rate_limit_notice=rate_limit_notice,
+    )
+
+
 async def _verify_reindex_auth(
     request: Request,
     x_proxy_token: Optional[str] = Header(None),
@@ -469,6 +629,7 @@ class LibraryExtractTextRequest(BaseModel):
     file_name: str = Field(..., min_length=1, max_length=255)
     mime_type: str = Field(..., min_length=1, max_length=255)
     content_base64: str = Field(..., min_length=1)
+    ocr_provider: Optional[str] = Field(default=None, max_length=64)
     source_url: Optional[str] = Field(default=None, max_length=2048)
     analysis_profile: Optional[str] = Field(default=None, max_length=64)
     capture_intent: Optional[str] = Field(default=None, max_length=64)
@@ -488,6 +649,7 @@ class LibraryMediaEnrichmentRequest(BaseModel):
     file_name: str = Field(..., min_length=1, max_length=255)
     mime_type: str = Field(..., min_length=1, max_length=255)
     content_base64: str = Field(..., min_length=1)
+    ocr_provider: Optional[str] = Field(default=None, max_length=64)
     source_url: Optional[str] = Field(default=None, max_length=2048)
     analysis_profile: Optional[str] = Field(default=None, max_length=64)
     capture_intent: Optional[str] = Field(default=None, max_length=64)
@@ -508,6 +670,21 @@ class LibraryMediaEnrichmentResponse(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class DocumentOcrTestConnectionRequest(BaseModel):
+    provider_id: str = Field(..., min_length=1, max_length=64)
+    api_key: Optional[str] = Field(default=None, max_length=8192)
+
+
+class DocumentOcrTestConnectionResponse(BaseModel):
+    success: bool
+    provider_id: str
+    message: str
+    ocr_text: Optional[str] = None
+    model_version: Optional[str] = None
+    elapsed_ms: Optional[int] = None
+    rate_limit_notice: Optional[str] = None
+
+
 def _decode_base64_content(encoded: str) -> bytes:
     try:
         content = base64.b64decode(encoded, validate=True)
@@ -516,6 +693,41 @@ def _decode_base64_content(encoded: str) -> bytes:
     if len(content) > MAX_MEDIA_ENRICH_BYTES:
         raise HTTPException(status_code=413, detail="Media payload exceeds upload enrichment limit")
     return content
+
+
+def _build_document_ocr_test_image() -> bytes:
+    from PIL import Image, ImageDraw, ImageFont
+
+    image = Image.new("RGB", (1600, 900), color="white")
+    draw = ImageDraw.Draw(image)
+
+    font_candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ]
+    font = None
+    for candidate in font_candidates:
+        try:
+            font = ImageFont.truetype(candidate, 64)
+            break
+        except Exception:
+            continue
+    if font is None:
+        font = ImageFont.load_default()
+
+    lines = [
+        "OCR TEST",
+        "12345",
+        "Typhoon LandingAI",
+    ]
+    y = 120
+    for line in lines:
+        draw.text((120, y), line, fill="black", font=font)
+        y += 140
+
+    output = io.BytesIO()
+    image.save(output, format="PNG")
+    return output.getvalue()
 
 
 def _normalize_source_url(value: str | None) -> str | None:
@@ -630,10 +842,14 @@ async def _resolve_gateway_image_url(
     mime_type: str,
     *,
     source_url: str | None,
+    force_inline: bool = False,
     trace_id: str | None = None,
     session: AsyncSession | None = None,
 ) -> tuple[str, str, bool]:
     resolved_source_url = _normalize_source_url(source_url)
+    if force_inline:
+        image_data_url = f"data:{mime_type};base64,{base64.b64encode(content).decode('ascii')}"
+        return image_data_url, "data_url", False
     if _is_public_source_url(resolved_source_url):
         return resolved_source_url or "", "absolute_url", True
 
@@ -645,8 +861,8 @@ async def _resolve_gateway_image_url(
             ext=_mime_type_to_extension(mime_type),
         )
         public_url = await r2_service.upload_bytes(
-            content,
             temp_key,
+            content,
             content_type=mime_type,
             db_session=session,
         )
@@ -665,8 +881,8 @@ async def _resolve_gateway_image_url(
             trace_id=trace_id,
         )
 
-    if resolved_source_url:
-        return resolved_source_url, "absolute_url", _is_public_source_url(resolved_source_url)
+    if resolved_source_url and _is_public_source_url(resolved_source_url):
+        return resolved_source_url, "absolute_url", True
 
     image_data_url = f"data:{mime_type};base64,{base64.b64encode(content).decode('ascii')}"
     return image_data_url, "data_url", False
@@ -788,6 +1004,132 @@ def _should_use_landingai_ade_document_path(
     )
 
 
+def _normalize_document_ocr_provider_id(provider_id: str | None) -> str:
+    normalized = str(provider_id or "").strip().lower().replace("-", "_")
+    if normalized in {"legacy", "landingai_ade", "typhoon_ocr_1_5", "google_ai_vision"}:
+        return normalized
+    if normalized in {"landing_ai_ade", "landingai", "ade"}:
+        return "landingai_ade"
+    if normalized in {"typhoon_ocr", "typhoonocr", "typhoonocr15"}:
+        return "typhoon_ocr_1_5"
+    if normalized in {"googleaivision", "google_ai", "google_vision", "gemini_vision", "gemini_ocr", "geminiocr"}:
+        return "google_ai_vision"
+    return ""
+
+
+def _extract_gemini_content_text(response: dict[str, Any]) -> str:
+    candidates = response.get("candidates")
+    if not isinstance(candidates, list) or not candidates:
+        return ""
+
+    first_candidate = candidates[0] if isinstance(candidates[0], dict) else {}
+    content = first_candidate.get("content") if isinstance(first_candidate, dict) else None
+    parts = content.get("parts") if isinstance(content, dict) else None
+    if not isinstance(parts, list):
+        return ""
+
+    texts: list[str] = []
+    for part in parts:
+        if not isinstance(part, dict):
+            continue
+        text = part.get("text")
+        if isinstance(text, str) and text.strip():
+            texts.append(text.strip())
+    return "\n".join(texts).strip()
+
+
+async def _call_google_ai_document_ocr(
+    content: bytes,
+    mime_type: str,
+    *,
+    file_name: str,
+    prompt: str,
+    capture_intent: str | None = None,
+    source_url: str | None = None,
+    trace_id: str | None = None,
+    session: AsyncSession | None = None,
+    api_key_override: str | None = None,
+) -> tuple[dict[str, Any], str, list[str]]:
+    api_key = (api_key_override or "").strip()
+    if not api_key:
+        api_key = (await get_google_ai_api_key(session) or "").strip()
+    if not api_key:
+        raise DocumentProviderUnavailableError("Google AI OCR is not configured")
+
+    _trace_finance_ocr(
+        "finance_ocr.document_ocr.google_start",
+        {
+            "file_name": file_name,
+            "mime_type": mime_type,
+            "content_bytes": len(content),
+            "capture_intent": capture_intent,
+            "source_url_present": bool(_normalize_source_url(source_url)),
+            "source_url_host_redacted": _redact_source_url_host(_normalize_source_url(source_url)),
+        },
+        trace_id=trace_id,
+    )
+
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt},
+                    {
+                        "inlineData": {
+                            "mimeType": mime_type,
+                            "data": base64.b64encode(content).decode("ascii"),
+                        }
+                    },
+                ]
+            }
+        ],
+        "generationConfig": {
+            "response_mime_type": "application/json",
+            "temperature": 0.0,
+        },
+    }
+
+    async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
+        response = await client.post(
+            GOOGLE_AI_VISION_URL,
+            params={"key": api_key},
+            json=payload,
+        )
+
+    if response.status_code != 200:
+        raise DocumentAdapterError(
+            f"Google AI OCR error ({response.status_code}): {response.text[:240]}"
+        )
+
+    try:
+        data = response.json()
+    except Exception as exc:
+        raise DocumentAdapterError("Google AI OCR returned invalid JSON") from exc
+    text = _extract_gemini_content_text(data)
+    analysis = _parse_json_object_text(text)
+    if not analysis:
+        raise DocumentAdapterError("Google AI OCR returned non-JSON content")
+
+    metadata = analysis.get("metadata")
+    if isinstance(metadata, dict):
+        metadata.setdefault("model_version", GOOGLE_AI_VISION_MODEL)
+    else:
+        analysis["metadata"] = {"model_version": GOOGLE_AI_VISION_MODEL}
+
+    warnings: list[str] = []
+    _trace_finance_ocr(
+        "finance_ocr.document_ocr.google_success",
+        {
+            "file_name": file_name,
+            "mime_type": mime_type,
+            "warning_count": len(warnings),
+            "capture_intent": capture_intent,
+        },
+        trace_id=trace_id,
+    )
+    return analysis, "google_ai_vision", warnings
+
+
 async def _call_landingai_ade_document_ocr(
     content: bytes,
     mime_type: str,
@@ -798,8 +1140,9 @@ async def _call_landingai_ade_document_ocr(
     source_url: str | None = None,
     trace_id: str | None = None,
     session: AsyncSession | None = None,
+    api_key_override: str | None = None,
 ) -> tuple[dict[str, Any], str, list[str]]:
-    service = get_landingai_ade_document_service()
+    service = get_landingai_ade_document_service(api_key_override=api_key_override)
     if not service.is_configured():
         raise DocumentProviderUnavailableError("LandingAI ADE is not configured")
 
@@ -814,6 +1157,8 @@ async def _call_landingai_ade_document_ocr(
         content=content,
         mime_type=mime_type,
         file_name=file_name,
+        prompt=prompt,
+        capture_intent=capture_intent,
         source_url=source_url,
         trace_id=trace_id,
         session=session,
@@ -836,6 +1181,51 @@ async def _call_landingai_ade_document_ocr(
         trace_id=trace_id,
     )
     return analysis, "landingai_ade", warnings
+
+
+async def _call_typhoon_document_ocr(
+    content: bytes,
+    mime_type: str,
+    *,
+    file_name: str,
+    prompt: str,
+    capture_intent: str | None = None,
+    source_url: str | None = None,
+    trace_id: str | None = None,
+    session: AsyncSession | None = None,
+    api_key_override: str | None = None,
+) -> tuple[dict[str, Any], str, list[str]]:
+    service = get_typhoon_ocr_document_service(api_key_override=api_key_override)
+    if not service.is_configured():
+        raise TyphoonDocumentProviderUnavailableError("Typhoon OCR is not configured")
+
+    result = await service.parse_and_extract_document(
+        content=content,
+        mime_type=mime_type,
+        file_name=file_name,
+        source_url=source_url,
+        trace_id=trace_id,
+        session=session,
+        allow_temp_url=True,
+        extract_schema=DEFAULT_DOCUMENT_EXTRACTION_SCHEMA,
+    )
+    analysis = result.to_legacy_analysis()
+    warnings = list(result.warnings)
+    _trace_finance_ocr(
+        "finance_ocr.document_ocr.typhoon_success",
+        {
+            "file_name": file_name,
+            "mime_type": mime_type,
+            "source_url_kind": result.source_url_kind,
+            "source_url_public": bool(result.source_url_public),
+            "provider_request_id": result.provider_request_id,
+            "page_count": result.page_count,
+            "warning_count": len(warnings),
+            "capture_intent": capture_intent,
+        },
+        trace_id=trace_id,
+    )
+    return analysis, "typhoon_ocr_1_5", warnings
 
 
 def _extract_chat_completion_text(response: dict[str, Any]) -> str:
@@ -957,6 +1347,11 @@ async def _call_gateway_multimodal_vision_bytes(
     prompt: str,
     temperature: float,
     source_url: str | None = None,
+    response_schema: dict[str, Any] | None = None,
+    response_schema_name: str | None = None,
+    chat_model_id: str | None = None,
+    force_inline_image: bool = False,
+    tenant_id: str | None = None,
     trace_id: str | None = None,
     session: AsyncSession | None = None,
 ) -> dict[str, Any]:
@@ -990,6 +1385,7 @@ async def _call_gateway_multimodal_vision_bytes(
         content,
         mime_type,
         source_url=resolved_source_url,
+        force_inline=force_inline_image,
         trace_id=trace_id,
         session=session,
     )
@@ -1012,39 +1408,90 @@ async def _call_gateway_multimodal_vision_bytes(
             "featureModes": ["photo_search", "structured_output", "responses"],
         },
     }
+    chat_messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": resolved_image_url}},
+            ],
+        }
+    ]
+    chat_response_format = None
+    if response_schema is not None:
+        chat_response_format = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": response_schema_name or "finance_transfer_slip_ocr",
+                "schema": response_schema,
+                "strict": True,
+            },
+        }
 
     try:
-        _trace_finance_ocr(
-            "finance_ocr.gateway.request",
-            {
-                "mime_type": mime_type,
-                "request_shape": "responses",
-                "feature_modes": ["photo_search", "structured_output", "responses"],
-                "content_bytes": len(content),
-                "source_url_present": bool(resolved_source_url),
-                "source_url_public": resolved_source_url_public,
-                "source_url_host_redacted": _redact_source_url_host(resolved_source_url),
-                "source_url_kind": resolved_image_url_kind,
-                "resolved_image_url_public": resolved_image_url_public,
-                "resolved_image_url_host_redacted": _redact_source_url_host(resolved_image_url),
-                "model": "__auto",
-                "extra_body_keys": sorted(list(responses_extra_body.keys())),
-            },
-            trace_id=trace_id,
-        )
-        response = await gateway.responses_completion(
-            input=responses_input,
-            model="__auto",
-            reasoning={"effort": "high"},
-            max_output_tokens=4096,
-            extra_body=responses_extra_body,
-            trace_id=trace_id,
-            timeout=90,
-        )
+        if chat_response_format is not None:
+            model_id = chat_model_id or "__auto"
+            _trace_finance_ocr(
+                "finance_ocr.gateway.request",
+                {
+                    "mime_type": mime_type,
+                    "request_shape": "chat",
+                    "feature_modes": ["photo_search", "structured_output", "chat_completions"],
+                    "content_bytes": len(content),
+                    "source_url_present": bool(resolved_source_url),
+                    "source_url_public": resolved_source_url_public,
+                    "source_url_host_redacted": _redact_source_url_host(resolved_source_url),
+                    "source_url_kind": resolved_image_url_kind,
+                    "resolved_image_url_public": resolved_image_url_public,
+                    "resolved_image_url_host_redacted": _redact_source_url_host(resolved_image_url),
+                    "model": model_id,
+                    "response_format": "json_schema",
+                },
+                trace_id=trace_id,
+            )
+            response = await gateway.chat_completion(
+                messages=chat_messages,
+                model=model_id,
+                tenant_id=tenant_id,
+                response_format=chat_response_format,
+                temperature=temperature,
+                trace_id=trace_id,
+                timeout=90,
+            )
+            text = _extract_chat_completion_text(response)
+        else:
+            _trace_finance_ocr(
+                "finance_ocr.gateway.request",
+                {
+                    "mime_type": mime_type,
+                    "request_shape": "responses",
+                    "feature_modes": ["photo_search", "structured_output", "responses"],
+                    "content_bytes": len(content),
+                    "source_url_present": bool(resolved_source_url),
+                    "source_url_public": resolved_source_url_public,
+                    "source_url_host_redacted": _redact_source_url_host(resolved_source_url),
+                    "source_url_kind": resolved_image_url_kind,
+                    "resolved_image_url_public": resolved_image_url_public,
+                    "resolved_image_url_host_redacted": _redact_source_url_host(resolved_image_url),
+                    "model": "__auto",
+                    "extra_body_keys": sorted(list(responses_extra_body.keys())),
+                },
+                trace_id=trace_id,
+            )
+            response = await gateway.responses_completion(
+                input=responses_input,
+                model="__auto",
+                tenant_id=tenant_id,
+                reasoning={"effort": "high"},
+                max_output_tokens=4096,
+                extra_body=responses_extra_body,
+                trace_id=trace_id,
+                timeout=90,
+            )
+            text = _extract_llm_response_text(response)
         if not isinstance(response, dict):
             raise RuntimeError("Gateway OCR returned an invalid response")
 
-        text = _extract_llm_response_text(response)
         analysis = _parse_json_object_text(text)
         if analysis:
             _trace_finance_ocr(
@@ -1098,8 +1545,11 @@ async def _call_document_ocr_with_fallback(
     temperature: float,
     capture_intent: str | None = None,
     source_url: str | None = None,
+    tenant_id: str | None = None,
     trace_id: str | None = None,
     session: AsyncSession | None = None,
+    typhoon_api_key_override: str | None = None,
+    landingai_api_key_override: str | None = None,
 ) -> tuple[dict[str, Any], str, list[str]]:
     warnings: list[str] = []
     gateway_analysis: dict[str, Any] | None = None
@@ -1123,6 +1573,45 @@ async def _call_document_ocr_with_fallback(
         trace_id=trace_id,
     )
 
+    if typhoon_api_key_override:
+        try:
+            typhoon_analysis, typhoon_provider, typhoon_warnings = await _call_typhoon_document_ocr(
+                content,
+                mime_type,
+                file_name=file_name,
+                prompt=prompt,
+                capture_intent=capture_intent,
+                source_url=source_url,
+                trace_id=trace_id,
+                session=session,
+                api_key_override=typhoon_api_key_override,
+            )
+            typhoon_text = str(typhoon_analysis.get("ocrText") or "").strip()
+            if typhoon_text or _build_media_search_text(typhoon_analysis, None, None).strip():
+                warnings.extend(typhoon_warnings)
+                return typhoon_analysis, typhoon_provider, warnings
+
+            warnings.extend(typhoon_warnings)
+            warnings.append("Typhoon OCR returned empty OCR text")
+            _trace_finance_ocr(
+                "finance_ocr.document_ocr.typhoon_empty",
+                {
+                    "mime_type": mime_type,
+                    "warning_count": len(warnings),
+                },
+                trace_id=trace_id,
+            )
+        except (TyphoonUnsupportedDocumentError, TyphoonDocumentProviderUnavailableError, TyphoonDocumentAdapterError) as exc:
+            warnings.append(str(exc))
+            _trace_finance_ocr(
+                "finance_ocr.document_ocr.typhoon_failed",
+                {
+                    "mime_type": mime_type,
+                    "error": str(exc)[:240],
+                },
+                trace_id=trace_id,
+            )
+
     if _should_use_landingai_ade_document_path(
         mime_type=mime_type,
         prompt=prompt,
@@ -1138,6 +1627,7 @@ async def _call_document_ocr_with_fallback(
                 source_url=source_url,
                 trace_id=trace_id,
                 session=session,
+                api_key_override=landingai_api_key_override,
             )
             ade_ocr_text = str(ade_analysis.get("ocrText") or "").strip()
             if ade_ocr_text or _build_media_search_text(ade_analysis, None, None).strip():
@@ -1193,6 +1683,7 @@ async def _call_document_ocr_with_fallback(
                 prompt=prompt,
                 temperature=temperature,
                 source_url=source_url,
+                tenant_id=tenant_id,
                 trace_id=trace_id,
                 session=session,
             )
@@ -1246,7 +1737,7 @@ async def _call_document_ocr_with_fallback(
         )
         return gateway_analysis, "gateway_auto", warnings
 
-    error = RuntimeError("; ".join(warnings) or "Document OCR unavailable")
+    error = DocumentProviderUnavailableError("; ".join(warnings) or "Document OCR unavailable")
     _trace_finance_ocr(
         "finance_ocr.document_ocr.failed",
         {
@@ -1316,6 +1807,7 @@ async def _extract_pdf_ocr_text(
     file_name: str,
     capture_intent: str | None = None,
     source_url: str | None = None,
+    tenant_id: str | None = None,
     trace_id: str | None = None,
     session: AsyncSession | None = None,
 ) -> tuple[str, list[str]]:
@@ -1379,6 +1871,7 @@ async def _extract_pdf_ocr_text(
                 temperature=0.0,
                 capture_intent=capture_intent,
                 source_url=source_url,
+                tenant_id=tenant_id,
                 trace_id=trace_id,
                 session=session,
             )
@@ -1550,6 +2043,9 @@ async def extract_library_text_endpoint(
 ):
     """Extract searchable text from direct library uploads."""
     trace_id = _resolve_finance_ocr_trace_id(http_request, payload.trace_id)
+    tenant_id = (http_request.headers.get("x-tenant-id") or "").strip() or None
+    landingai_api_key_override = (http_request.headers.get("x-landingai-ade-api-key") or "").strip() or None
+    typhoon_api_key_override = (http_request.headers.get("x-typhoon-ocr-api-key") or "").strip() or None
     content = _decode_base64_content(payload.content_base64)
     source_url = _normalize_source_url(payload.source_url)
     analysis_profile = _normalize_analysis_profile(payload.analysis_profile)
@@ -1563,6 +2059,8 @@ async def extract_library_text_endpoint(
             "capture_intent": capture_intent,
             "content_bytes": len(content),
             "source_url_present": bool(source_url),
+            "has_typhoon_api_key": bool(typhoon_api_key_override),
+            "tenant_id_present": bool(tenant_id),
         },
         trace_id=trace_id,
     )
@@ -1573,9 +2071,121 @@ async def extract_library_text_endpoint(
         "analysis_profile": analysis_profile or "metadata_only",
         "capture_intent": capture_intent,
     }
+    requested_ocr_provider = _normalize_document_ocr_provider_id(payload.ocr_provider)
 
     try:
-        ade_service = get_landingai_ade_document_service()
+        if requested_ocr_provider == "google_ai_vision":
+            try:
+                analysis, ocr_provider, ocr_warnings = await _call_google_ai_document_ocr(
+                    content,
+                    payload.mime_type,
+                    file_name=payload.file_name,
+                    prompt=_build_document_ocr_prompt(capture_intent),
+                    capture_intent=capture_intent,
+                    source_url=source_url,
+                    trace_id=trace_id,
+                    session=session,
+                )
+                text = str(analysis.get("ocrText") or "").strip() or _build_media_search_text(analysis, None, None).strip()
+                if text:
+                    warning_parts.extend(ocr_warnings)
+                    response_metadata.update({
+                        "ocr_provider": ocr_provider,
+                        "ocr_text": str(analysis.get("ocrText") or "").strip() or None,
+                    })
+                    analysis_metadata = analysis.get("metadata") if isinstance(analysis.get("metadata"), dict) else {}
+                    if isinstance(analysis_metadata, dict):
+                        response_metadata.update(analysis_metadata)
+                    response_metadata.setdefault("provider", ocr_provider)
+                    response_metadata.setdefault(
+                        "extraction_method",
+                        "pdf_document_ocr" if payload.mime_type.lower().endswith("pdf") else "image_document_ocr",
+                    )
+                    method = response_metadata["extraction_method"]
+                    warning = "; ".join(part for part in warning_parts if part) or None
+                    _trace_finance_ocr(
+                        "finance_ocr.extract_text.result",
+                        {
+                            "file_name": payload.file_name,
+                            "mime_type": payload.mime_type,
+                            "analysis_profile": analysis_profile,
+                            "capture_intent": capture_intent,
+                            "method": method,
+                            "text_length": len(text),
+                            "warning_count": len(warning_parts),
+                            "ocr_provider": ocr_provider,
+                        },
+                        trace_id=trace_id,
+                    )
+
+                    return LibraryExtractTextResponse(
+                        success=True,
+                        text=text,
+                        char_count=len(text),
+                        method=method,
+                        warning=warning,
+                        metadata=response_metadata,
+                    )
+                warning_parts.extend(ocr_warnings)
+                warning_parts.append("Google AI OCR returned empty OCR text")
+            except (DocumentProviderUnavailableError, DocumentAdapterError) as exc:
+                warning_parts.append(str(exc))
+
+        ade_service = get_landingai_ade_document_service(api_key_override=landingai_api_key_override)
+        if typhoon_api_key_override:
+            analysis, ocr_provider, ocr_warnings = await _call_document_ocr_with_fallback(
+                content,
+                payload.mime_type,
+                file_name=payload.file_name,
+                prompt=_build_document_ocr_prompt(capture_intent),
+                temperature=0.0,
+                capture_intent=capture_intent,
+                source_url=source_url,
+                tenant_id=tenant_id,
+                trace_id=trace_id,
+                session=session,
+                typhoon_api_key_override=typhoon_api_key_override,
+                landingai_api_key_override=landingai_api_key_override,
+            )
+            text = str(analysis.get("ocrText") or "").strip() or _build_media_search_text(analysis, None, None).strip()
+            if text:
+                warning_parts.extend(ocr_warnings)
+                response_metadata.update({
+                    "ocr_provider": ocr_provider,
+                    "ocr_text": str(analysis.get("ocrText") or "").strip() or None,
+                })
+                analysis_metadata = analysis.get("metadata") if isinstance(analysis.get("metadata"), dict) else {}
+                if isinstance(analysis_metadata, dict):
+                    response_metadata.update(analysis_metadata)
+                response_metadata.setdefault("provider", ocr_provider)
+                response_metadata.setdefault("extraction_method", "pdf_document_ocr" if payload.mime_type.lower().endswith("pdf") else "image_document_ocr")
+                method = response_metadata["extraction_method"]
+                warning = "; ".join(part for part in warning_parts if part) or None
+                _trace_finance_ocr(
+                    "finance_ocr.extract_text.result",
+                    {
+                        "file_name": payload.file_name,
+                        "mime_type": payload.mime_type,
+                        "analysis_profile": analysis_profile,
+                        "capture_intent": capture_intent,
+                        "method": method,
+                        "text_length": len(text),
+                        "warning_count": len(warning_parts),
+                        "ocr_provider": ocr_provider,
+                    },
+                    trace_id=trace_id,
+                )
+
+                return LibraryExtractTextResponse(
+                    success=True,
+                    text=text,
+                    char_count=len(text),
+                    method=method,
+                    warning=warning,
+                    metadata=response_metadata,
+                )
+            warning_parts.extend(ocr_warnings)
+            warning_parts.append("Typhoon OCR returned empty OCR text")
         if ade_service.is_configured() and _should_use_landingai_ade_document_path(
             mime_type=payload.mime_type,
             prompt=_build_document_ocr_prompt(capture_intent),
@@ -1590,6 +2200,7 @@ async def extract_library_text_endpoint(
                 source_url=source_url,
                 trace_id=trace_id,
                 session=session,
+                api_key_override=landingai_api_key_override,
             )
             text = str(analysis.get("ocrText") or "").strip() or _build_media_search_text(analysis, None, None).strip()
             if text:
@@ -1662,6 +2273,7 @@ async def extract_library_text_endpoint(
             file_name=payload.file_name,
             capture_intent=capture_intent,
             source_url=source_url,
+            tenant_id=tenant_id,
             trace_id=trace_id,
             session=session,
         )
@@ -1723,11 +2335,17 @@ async def enrich_library_media_endpoint(
 ):
     """Extract searchable metadata/transcripts from image and video uploads."""
     trace_id = _resolve_finance_ocr_trace_id(http_request, payload.trace_id)
+    tenant_id = (http_request.headers.get("x-tenant-id") or "").strip() or None
+    llm_model_id = (http_request.headers.get("x-llm-model-id") or "").strip() or None
     content = _decode_base64_content(payload.content_base64)
+    landingai_api_key_override = (http_request.headers.get("x-landingai-ade-api-key") or "").strip() or None
+    typhoon_api_key_override = (http_request.headers.get("x-typhoon-ocr-api-key") or "").strip() or None
     source_url = _normalize_source_url(payload.source_url)
     mime_type = payload.mime_type.lower()
     file_name = payload.file_name
     capture_intent = _normalize_capture_intent(payload.capture_intent)
+    requested_ocr_provider = _normalize_document_ocr_provider_id(payload.ocr_provider)
+    warning_parts: list[str] = []
     _trace_finance_ocr(
         "finance_ocr.enrich_media.start",
         {
@@ -1766,6 +2384,206 @@ async def enrich_library_media_endpoint(
                     "analysis_profile": payload.analysis_profile or "metadata_only",
                 },
             )
+        if payload.analysis_profile == "finance_payin_llm_parser" and capture_intent == "transfer_slip":
+            try:
+                _trace_finance_ocr(
+                    "finance_ocr.unified_payin_slip.vision.start",
+                    {
+                        "file_name": file_name,
+                        "mime_type": mime_type,
+                        "source_url_present": bool(source_url),
+                        "prompt_length": len(PAYIN_SLIP_LLM_PROMPT),
+                        "llm_model_id": llm_model_id,
+                    },
+                    trace_id=trace_id,
+                )
+                analysis = await _call_gateway_multimodal_vision_bytes(
+                    content,
+                    payload.mime_type,
+                    prompt=PAYIN_SLIP_LLM_PROMPT,
+                    temperature=0.0,
+                    source_url=source_url,
+                    response_schema=PAYIN_SLIP_JSON_SCHEMA,
+                    response_schema_name="finance_transfer_slip_ocr",
+                    chat_model_id=llm_model_id,
+                    force_inline_image=True,
+                    tenant_id=tenant_id,
+                    trace_id=trace_id,
+                    session=session,
+                )
+                gateway_ocr_text = str(analysis.get("ocrText") or "").strip()
+                _trace_finance_ocr(
+                    "finance_ocr.unified_payin_slip.vision.result",
+                    {
+                        "file_name": file_name,
+                        "mime_type": mime_type,
+                        "ocr_text_length": len(gateway_ocr_text),
+                        "short_caption_length": len(str(analysis.get("shortCaption") or "").strip()),
+                        "detailed_caption_length": len(str(analysis.get("detailedCaption") or "").strip()),
+                        "metadata_keys": sorted(list((analysis.get("metadata") or {}).keys()))[:20]
+                        if isinstance(analysis.get("metadata"), dict)
+                        else [],
+                    },
+                    trace_id=trace_id,
+                )
+                source_payload = {
+                    "raw_ocr_text": gateway_ocr_text or _build_media_search_text(analysis, None, None).strip(),
+                    "short_caption": str(analysis.get("shortCaption") or "").strip(),
+                    "detailed_caption": str(analysis.get("detailedCaption") or "").strip(),
+                    "filename": file_name,
+                    "image_path": "",
+                }
+                _trace_finance_ocr(
+                    "finance_ocr.unified_payin_slip.parser.start",
+                    {
+                        "file_name": file_name,
+                        "mime_type": mime_type,
+                        "raw_ocr_text_length": len(source_payload["raw_ocr_text"]),
+                        "short_caption_length": len(source_payload["short_caption"]),
+                        "detailed_caption_length": len(source_payload["detailed_caption"]),
+                    },
+                    trace_id=trace_id,
+                )
+                parsed_result = parse_and_summarize_payin_slip({
+                    "trace_id": trace_id,
+                    "source": source_payload,
+                    "parse_options": {
+                        "mode": "auto",
+                        "return_detection_evidence": True,
+                    },
+                })
+                summary_text = str(parsed_result.get("summary") or "").strip()
+                structured_result = parsed_result.get("parsed") if isinstance(parsed_result.get("parsed"), dict) else {}
+                _trace_finance_ocr(
+                    "finance_ocr.unified_payin_slip.parser.result",
+                    {
+                        "file_name": file_name,
+                        "mime_type": mime_type,
+                        "summary_length": len(summary_text),
+                        "parsed_keys": sorted(list(structured_result.keys()))[:40] if isinstance(structured_result, dict) else [],
+                        "transaction_type": (structured_result.get("transaction") or {}).get("transaction_type")
+                        if isinstance(structured_result.get("transaction"), dict)
+                        else None,
+                        "amount": (structured_result.get("transaction") or {}).get("amount")
+                        if isinstance(structured_result.get("transaction"), dict)
+                        else None,
+                        "currency": (structured_result.get("transaction") or {}).get("currency")
+                        if isinstance(structured_result.get("transaction"), dict)
+                        else None,
+                        "raw_date_text": (structured_result.get("transaction") or {}).get("raw_date_text")
+                        if isinstance(structured_result.get("transaction"), dict)
+                        else None,
+                        "warnings": (structured_result.get("validation") or {}).get("warnings")
+                        if isinstance(structured_result.get("validation"), dict)
+                        else [],
+                        "missing_fields": (structured_result.get("validation") or {}).get("missing_fields")
+                        if isinstance(structured_result.get("validation"), dict)
+                        else [],
+                    },
+                    trace_id=trace_id,
+                )
+                warning_parts = []
+                if not summary_text:
+                    summary_text = gateway_ocr_text or str(source_payload["raw_ocr_text"] or "").strip()
+                if not summary_text:
+                    summary_text = str(analysis.get("shortCaption") or "").strip()
+                metadata = {
+                    "analysis_profile": "finance_payin_llm_parser",
+                    "capture_intent": capture_intent,
+                    "ocr_provider": "gateway_auto",
+                    "ocr_text": gateway_ocr_text or None,
+                    "unified_payin_slip_summary": summary_text,
+                    "unified_payin_slip_result": structured_result,
+                    "short_caption": str(analysis.get("shortCaption") or "").strip() or None,
+                    "detailed_caption": str(analysis.get("detailedCaption") or "").strip() or None,
+                    "source_url_kind": "public_url" if _is_public_source_url(source_url) else "unresolved",
+                }
+                analysis_metadata = analysis.get("metadata") if isinstance(analysis.get("metadata"), dict) else {}
+                if isinstance(analysis_metadata, dict):
+                    metadata.update(analysis_metadata)
+                _trace_finance_ocr(
+                    "finance_ocr.unified_payin_slip.result",
+                    {
+                        "file_name": file_name,
+                        "mime_type": mime_type,
+                        "summary_length": len(summary_text),
+                        "ocr_text_length": len(gateway_ocr_text),
+                        "has_structured_result": bool(structured_result),
+                        "transaction_type": (structured_result.get("transaction") or {}).get("transaction_type")
+                        if isinstance(structured_result.get("transaction"), dict)
+                        else None,
+                    },
+                    trace_id=trace_id,
+                )
+                return LibraryMediaEnrichmentResponse(
+                    success=True,
+                    text=summary_text,
+                    char_count=len(summary_text),
+                    method="image_unified_llm_parser",
+                    search_quality="full_text" if summary_text else "metadata_only",
+                    caption=str(analysis.get("shortCaption") or "").strip() or None,
+                    warning=None,
+                    metadata=metadata,
+                )
+            except Exception as exc:
+                _trace_finance_ocr(
+                    "finance_ocr.enrich_media.failed",
+                    {
+                        "file_name": file_name,
+                        "mime_type": mime_type,
+                        "analysis_profile": payload.analysis_profile or "finance_payin_llm_parser",
+                        "error": str(exc)[:240],
+                    },
+                    trace_id=trace_id,
+                )
+                return LibraryMediaEnrichmentResponse(
+                    success=False,
+                    text="",
+                    char_count=0,
+                    method="image_unified_llm_parser_failed",
+                    search_quality="metadata_only",
+                    warning=f"Unified transfer slip parsing failed: {exc}",
+                    metadata={
+                        "analysis_profile": "finance_payin_llm_parser",
+                        "capture_intent": capture_intent,
+                    },
+                )
+        if requested_ocr_provider == "google_ai_vision":
+            try:
+                analysis, ocr_provider, ocr_warnings = await _call_google_ai_document_ocr(
+                    content,
+                    payload.mime_type,
+                    file_name=file_name,
+                    prompt=_build_document_ocr_prompt(capture_intent)
+                    if payload.analysis_profile == "document_ocr"
+                    else VISION_PROMPT,
+                    capture_intent=capture_intent,
+                    source_url=source_url,
+                    trace_id=trace_id,
+                    session=session,
+                )
+                searchable_text = _build_media_search_text(analysis, None, None).strip()
+                if searchable_text:
+                    warning_parts.extend(ocr_warnings)
+                    return LibraryMediaEnrichmentResponse(
+                        success=True,
+                        text=searchable_text,
+                        char_count=len(searchable_text),
+                        method="image_document_ocr" if payload.analysis_profile == "document_ocr" else "image_vision",
+                        search_quality="full_text",
+                        caption=str(analysis.get("shortCaption") or "").strip() or None,
+                        warning="; ".join(warning_parts) if warning_parts else None,
+                        metadata={
+                            **(analysis.get("metadata") if isinstance(analysis.get("metadata"), dict) else {}),
+                            "analysis_profile": payload.analysis_profile or "real_world_vision",
+                            "ocr_provider": ocr_provider,
+                            "ocr_text": str(analysis.get("ocrText") or "").strip() or None,
+                        },
+                    )
+                warning_parts.extend(ocr_warnings)
+                warning_parts.append("Google AI OCR returned empty OCR text")
+            except (DocumentProviderUnavailableError, DocumentAdapterError) as exc:
+                warning_parts.append(str(exc))
         try:
             analysis, ocr_provider, ocr_warnings = await _call_document_ocr_with_fallback(
                 content,
@@ -1777,8 +2595,11 @@ async def enrich_library_media_endpoint(
                 temperature=0.0 if payload.analysis_profile == "document_ocr" else 0.1,
                 capture_intent=capture_intent,
                 source_url=source_url,
+                tenant_id=tenant_id,
                 trace_id=trace_id,
                 session=session,
+                typhoon_api_key_override=typhoon_api_key_override,
+                landingai_api_key_override=landingai_api_key_override,
             )
         except Exception as exc:
             _trace_finance_ocr(
@@ -1873,6 +2694,7 @@ async def enrich_library_media_endpoint(
                         "image/jpeg",
                         prompt=VISION_PROMPT,
                         temperature=0.1,
+                        tenant_id=tenant_id,
                         session=session,
                     )
               except Exception as exc:

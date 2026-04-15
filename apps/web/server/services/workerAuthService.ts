@@ -10,6 +10,12 @@ import {
   type WorkerRuntimeType,
   type WorkerScope,
 } from "../../shared/workerRuntime";
+import {
+  getWorkerAccessPermissionScopesForPreset,
+  normalizeWorkerAccessPermissionScopes,
+  type WorkerAccessPermissionPreset,
+  type WorkerAccessPermissionScope,
+} from "../../shared/workerAccessKeys";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 
 export const WORKER_REGISTRATION_AUDIENCE = "smartspec-worker-registration";
@@ -20,6 +26,15 @@ export type WorkerTokenUse = "worker_registration" | "worker_execution" | "worke
 export interface WorkerRegistrationAuthContext {
   audience: string;
   externalReference: string | null;
+  llmRoutingMode: "auto" | "pinned_provider";
+  preferredProviderId: number | null;
+  preferredProviderName: string | null;
+  permissionPreset: WorkerAccessPermissionPreset;
+  permissionScopes: WorkerAccessPermissionScope[];
+  quotaHourly: number | null;
+  quotaDaily: number | null;
+  quotaWeekly: number | null;
+  quotaMonthly: number | null;
   registeredByUserId: number | null;
   runtimeType: WorkerRuntimeType | null;
   scopes: string[];
@@ -42,6 +57,16 @@ export interface WorkerAccessAuthContext {
 
 export interface CreateWorkerRegistrationTokenInput {
   externalReference?: string | null;
+  llmRoutingMode?: "auto" | "pinned_provider";
+  preferredProviderId?: number | null;
+  preferredProviderName?: string | null;
+  permissionPreset?: WorkerAccessPermissionPreset;
+  permissionScopes?: WorkerAccessPermissionScope[];
+  quotaHourly?: number | null;
+  quotaDaily?: number | null;
+  quotaWeekly?: number | null;
+  quotaMonthly?: number | null;
+  jti?: string;
   registeredByUserId?: number | null;
   runtimeType?: WorkerRuntimeType | null;
   scopes?: WorkerScope[];
@@ -166,8 +191,24 @@ export function extractBearerTokenFromRequest(
 
 export function createWorkerRegistrationToken(
   input: CreateWorkerRegistrationTokenInput,
-  expiresIn: WorkerTokenExpiresIn = "30m",
+  expiresIn: WorkerTokenExpiresIn | null = "30m",
 ): string {
+  const llmRoutingMode = input.llmRoutingMode ?? "auto";
+  const preferredProviderId = input.preferredProviderId ?? null;
+  const preferredProviderName = input.preferredProviderName ?? null;
+  const permissionPreset = input.permissionPreset ?? "readonly";
+  const permissionScopes = permissionPreset === "custom"
+    ? normalizeWorkerAccessPermissionScopes(input.permissionScopes)
+    : getWorkerAccessPermissionScopesForPreset(permissionPreset);
+  if (llmRoutingMode === "pinned_provider" && !preferredProviderId) {
+    throw new Error("preferredProviderId is required when llmRoutingMode is pinned_provider");
+  }
+  if (preferredProviderId != null && llmRoutingMode !== "pinned_provider") {
+    throw new Error("llmRoutingMode must be pinned_provider when preferredProviderId is set");
+  }
+  if (permissionPreset === "custom" && permissionScopes.length === 0) {
+    throw new Error("permissionScopes are required when permissionPreset is custom");
+  }
   return signBearerToken(
     {
       sub: input.subject ?? `worker-bootstrap:${input.tenantId}`,
@@ -180,7 +221,16 @@ export function createWorkerRegistrationToken(
       runtimeType: input.runtimeType ?? undefined,
       registeredByUserId: input.registeredByUserId ?? undefined,
       externalReference: input.externalReference ?? undefined,
-      jti: randomJti("worker_register"),
+      llmRoutingMode,
+      preferredProviderId: preferredProviderId ?? undefined,
+      preferredProviderName: preferredProviderName ?? undefined,
+      permissionPreset,
+      permissionScopes,
+      quotaHourly: input.quotaHourly ?? null,
+      quotaDaily: input.quotaDaily ?? null,
+      quotaWeekly: input.quotaWeekly ?? null,
+      quotaMonthly: input.quotaMonthly ?? null,
+      jti: input.jti ?? randomJti("worker_register"),
     },
     expiresIn,
   );
@@ -258,6 +308,44 @@ export async function verifyWorkerRegistrationToken(
   return {
     audience,
     externalReference: claims.externalReference ? String(claims.externalReference) : null,
+    llmRoutingMode: claims.llmRoutingMode === "pinned_provider" ? "pinned_provider" : "auto",
+    preferredProviderId: typeof claims.preferredProviderId === "number" ? claims.preferredProviderId : null,
+    preferredProviderName: typeof claims.preferredProviderName === "string" ? claims.preferredProviderName : null,
+    permissionPreset:
+      typeof claims.permissionPreset === "string"
+        && (claims.permissionPreset === "custom"
+          || claims.permissionPreset === "readonly"
+          || claims.permissionPreset === "operator_basic"
+          || claims.permissionPreset === "content_worker"
+          || claims.permissionPreset === "knowledge_worker"
+          || claims.permissionPreset === "work_os_worker"
+          || claims.permissionPreset === "full_personal_worker")
+        ? claims.permissionPreset
+        : "readonly",
+    permissionScopes: (() => {
+      const preset =
+        typeof claims.permissionPreset === "string"
+          && (claims.permissionPreset === "custom"
+            || claims.permissionPreset === "readonly"
+            || claims.permissionPreset === "operator_basic"
+            || claims.permissionPreset === "content_worker"
+            || claims.permissionPreset === "knowledge_worker"
+            || claims.permissionPreset === "work_os_worker"
+            || claims.permissionPreset === "full_personal_worker")
+          ? claims.permissionPreset
+          : "readonly";
+      const scopes = normalizeWorkerAccessPermissionScopes(claims.permissionScopes);
+      if (scopes.length > 0) {
+        return scopes;
+      }
+      return preset === "custom"
+        ? []
+        : getWorkerAccessPermissionScopesForPreset(preset);
+    })(),
+    quotaHourly: Number.isFinite(Number(claims.quotaHourly)) ? Number(claims.quotaHourly) : null,
+    quotaDaily: Number.isFinite(Number(claims.quotaDaily)) ? Number(claims.quotaDaily) : null,
+    quotaWeekly: Number.isFinite(Number(claims.quotaWeekly)) ? Number(claims.quotaWeekly) : null,
+    quotaMonthly: Number.isFinite(Number(claims.quotaMonthly)) ? Number(claims.quotaMonthly) : null,
     registeredByUserId:
       typeof claims.registeredByUserId === "number" ? claims.registeredByUserId : null,
     runtimeType,

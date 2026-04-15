@@ -36,7 +36,16 @@ export interface HybridAttachmentAssistResult {
   localReplyContext: string | null;
   localOnlyCompatible: boolean;
   runtimeMetadataHint: Partial<MessageRuntimeMetadata> | null;
+  ocrResult: {
+    extractedText: string;
+    caption: string | null;
+    warning: string | null;
+    extractor: string | null;
+    metadata: Record<string, unknown>;
+  } | null;
 }
+
+type DocumentCaptureIntent = "receipt" | "transfer_slip" | "statement";
 
 interface AttachmentAssistServerResult {
   kind: "vision" | "document_ocr" | "extract_text";
@@ -67,13 +76,55 @@ function shouldAttemptAttachmentAssist(input: {
   preferences: LocalAiSyncedPreferences;
   forceCloudOnly: boolean;
   attachments: AttachmentAssistAttachment[];
+  userText: string;
 }): boolean {
-  return (
-    input.preferences.enabled &&
-    input.preferences.useForImageTasks &&
-    !input.forceCloudOnly &&
-    input.attachments.length > 0
+  if (input.forceCloudOnly) return false;
+  if (input.attachments.length === 0) return false;
+
+  const wantsOcr = input.attachments.some((attachment) =>
+    looksLikeDocumentAttachment({ attachment, userText: input.userText }),
   );
+  return (
+    wantsOcr ||
+    (input.preferences.enabled && input.preferences.useForImageTasks)
+  );
+}
+
+function inferDocumentCaptureIntent(input: {
+  attachment: AttachmentAssistAttachment;
+  userText: string;
+}): DocumentCaptureIntent | null {
+  const normalized = `${input.attachment.fileName} ${input.userText}`.toLowerCase();
+  if (
+    normalized.includes("statement") ||
+    normalized.includes("ยอดคงเหลือ") ||
+    normalized.includes("ยอดบัญชี")
+  ) {
+    return "statement";
+  }
+  if (
+    normalized.includes("slip") ||
+    normalized.includes("transfer") ||
+    normalized.includes("transfer_slip") ||
+    normalized.includes("สลิป") ||
+    normalized.includes("โอน") ||
+    normalized.includes("promptpay") ||
+    normalized.includes("พร้อมเพย์")
+  ) {
+    return "transfer_slip";
+  }
+  if (
+    normalized.includes("receipt") ||
+    normalized.includes("invoice") ||
+    normalized.includes("bill") ||
+    normalized.includes("ใบเสร็จ") ||
+    normalized.includes("ใบกำกับ") ||
+    normalized.includes("บิล") ||
+    normalized.includes("ใบแจ้งหนี้")
+  ) {
+    return "receipt";
+  }
+  return null;
 }
 
 function pickInstalledBrowserTextProfile(input: {
@@ -188,7 +239,7 @@ async function attachmentToBase64(
   };
 }
 
-function looksLikeDocumentAttachment(input: {
+export function looksLikeDocumentAttachment(input: {
   attachment: AttachmentAssistAttachment;
   userText: string;
 }): boolean {
@@ -213,7 +264,7 @@ function looksLikeDocumentAttachment(input: {
 
 function buildLocalImagePrompt(userText: string): string {
   return [
-    "You are SmartSpecPro running locally with Gemma 4.",
+    "You are SmartAIHub running locally with Gemma 4.",
     "Describe the attached image for chat assistance.",
     "Focus on screenshot explanation, receipt pre-read, scene understanding, visible UI, and any clearly visible text.",
     "Keep the result concise and factual.",
@@ -229,7 +280,7 @@ function buildHybridOcrPrompt(input: {
   caption: string | null;
 }): string {
   return [
-    "You are SmartSpecPro running locally with Gemma 4.",
+    "You are SmartAIHub running locally with Gemma 4.",
     "Interpret OCR or document extraction results for chat assistance.",
     "If this looks like a receipt or invoice, highlight merchant, date, total, tax, and payment clues when visible.",
     "If it looks like a screenshot or document, summarize the purpose and most important facts.",
@@ -264,7 +315,7 @@ async function summarizeWithLocalTextRuntime(input: {
       maxTokens: 384,
       temperature: 0.15,
       systemPrompt:
-        "You are SmartSpecPro using a local multimodal backend. Summarize the provided OCR or extracted text faithfully in concise plain text.",
+        "You are SmartAIHub using a local multimodal backend. Summarize the provided OCR or extracted text faithfully in concise plain text.",
     });
     const text = response.text.trim();
     if (!text) {
@@ -346,6 +397,8 @@ export async function buildHybridAttachmentAssist(input: {
   platform: LocalAiPlatform;
   preferences: LocalAiSyncedPreferences;
   forceCloudOnly: boolean;
+  preferRawDocumentOcr?: boolean;
+  forceDocumentOcr?: boolean;
   catalog: LocalAiCatalogEntry[];
   capability?: CapabilityResult | null;
   scope?: LocalAiDeviceStateScope | null;
@@ -357,6 +410,8 @@ export async function buildHybridAttachmentAssist(input: {
     mimeType: string;
     contentBase64: string;
     mode: AttachmentAssistServerMode;
+    analysisProfile?: "document_ocr" | "real_world_vision" | "extract_text";
+    captureIntent?: DocumentCaptureIntent | null;
   }) => Promise<AttachmentAssistServerResult>;
 }): Promise<HybridAttachmentAssistResult | null> {
   if (
@@ -364,6 +419,7 @@ export async function buildHybridAttachmentAssist(input: {
       preferences: input.preferences,
       forceCloudOnly: input.forceCloudOnly,
       attachments: input.attachments,
+      userText: input.userText,
     })
   ) {
     return null;
@@ -387,6 +443,7 @@ export async function buildHybridAttachmentAssist(input: {
   let localOnlyCompatible = true;
   let lastProfileId: string | null = null;
   let taskClass: MessageRuntimeMetadata["taskClass"] | null = null;
+  let ocrResult: HybridAttachmentAssistResult["ocrResult"] = null;
   const localEnginePreference = readLocalAiLocalEnginePreference(input.scope);
 
   const ensureAttachmentContent = async () => {
@@ -418,7 +475,7 @@ export async function buildHybridAttachmentAssist(input: {
           {
             role: "system",
             content:
-              "You are SmartSpecPro using a local multimodal backend. Describe the attached image for local chat assistance. Focus on screenshot explanation, receipt pre-read, scene understanding, visible UI, and any clearly visible text. Keep the result concise and factual.",
+              "You are SmartAIHub using a local multimodal backend. Describe the attached image for local chat assistance. Focus on screenshot explanation, receipt pre-read, scene understanding, visible UI, and any clearly visible text. Keep the result concise and factual.",
           },
           {
             role: "user",
@@ -486,17 +543,32 @@ export async function buildHybridAttachmentAssist(input: {
     }
   }
 
-  if (looksLikeDocumentAttachment({ attachment: targetAttachment, userText: input.userText })) {
+  if (
+    input.forceDocumentOcr ||
+    looksLikeDocumentAttachment({ attachment: targetAttachment, userText: input.userText })
+  ) {
     try {
       const content = await ensureAttachmentContent();
+      const inferredCaptureIntent = inferDocumentCaptureIntent({
+        attachment: targetAttachment,
+        userText: input.userText,
+      });
+      const captureIntent =
+        inferredCaptureIntent ??
+        (input.forceDocumentOcr && content.mimeType.toLowerCase().startsWith("image/")
+          ? "transfer_slip"
+          : null);
+      const ocrMode =
+        content.mimeType.toLowerCase() === "application/pdf"
+          ? "extract_text"
+          : "document_ocr";
       const ocrAssist = await input.analyzeAttachmentAssist({
         fileName: targetAttachment.fileName,
         mimeType: content.mimeType,
         contentBase64: content.contentBase64,
-        mode:
-          content.mimeType.toLowerCase() === "application/pdf"
-            ? "extract_text"
-            : "document_ocr",
+        mode: ocrMode,
+        analysisProfile: "document_ocr",
+        captureIntent,
       });
 
       const extractedText =
@@ -504,35 +576,52 @@ export async function buildHybridAttachmentAssist(input: {
         ocrAssist.extractedText?.trim() ||
         "";
       if (extractedText) {
-        const localSummary = await summarizeWithLocalTextRuntime({
-          platform: input.platform,
-          preferredProfileId: input.preferences.defaultModelId,
-          catalog: input.catalog,
-          capability: input.capability,
-          scope: input.scope,
-          tauriRuntimeStatus: input.tauriRuntimeStatus,
-          prompt: buildHybridOcrPrompt({
-            userText: input.userText,
-            extractedText,
-            caption: ocrAssist.caption,
-          }),
-        }).catch(() => null);
+        ocrResult = {
+          extractedText,
+          caption: ocrAssist.caption,
+          warning: ocrAssist.warning,
+          extractor: ocrAssist.extractor,
+          metadata: ocrAssist.metadata,
+        };
 
-        const summaryText =
-          localSummary?.text ||
-          [
+        let resolvedSummaryText = "";
+        if (input.preferRawDocumentOcr) {
+          resolvedSummaryText = [
             ocrAssist.caption ? `Caption: ${ocrAssist.caption}` : null,
             trimText(extractedText, 1_800),
           ]
             .filter(Boolean)
             .join("\n\n");
+        } else {
+          const localSummary = await summarizeWithLocalTextRuntime({
+            platform: input.platform,
+            preferredProfileId: input.preferences.defaultModelId,
+            catalog: input.catalog,
+            capability: input.capability,
+            scope: input.scope,
+            tauriRuntimeStatus: input.tauriRuntimeStatus,
+            prompt: buildHybridOcrPrompt({
+              userText: input.userText,
+              extractedText,
+              caption: ocrAssist.caption,
+            }),
+          }).catch(() => null);
+          resolvedSummaryText =
+            localSummary?.text ||
+            [
+              ocrAssist.caption ? `Caption: ${ocrAssist.caption}` : null,
+              trimText(extractedText, 1_800),
+            ]
+              .filter(Boolean)
+              .join("\n\n");
+          lastProfileId = localSummary?.profileId ?? lastProfileId;
+        }
 
-        if (summaryText.trim()) {
+        if (resolvedSummaryText.trim()) {
           providerContextSections.push(
-            `[Hybrid OCR pre-read]\n${trimText(summaryText, 2_200)}`,
+            `[Hybrid OCR pre-read]\n${trimText(resolvedSummaryText, 2_200)}`,
           );
           localOnlyCompatible = false;
-          lastProfileId = localSummary?.profileId ?? lastProfileId;
           taskClass = "document_ocr";
         }
       }
@@ -562,5 +651,6 @@ export async function buildHybridAttachmentAssist(input: {
           profileId: lastProfileId,
         }
       : null,
+    ocrResult,
   };
 }

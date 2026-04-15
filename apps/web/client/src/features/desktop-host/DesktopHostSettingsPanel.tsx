@@ -1,11 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type {
+  DesktopDeviceActionRequest,
   DesktopDeviceControlPlaneState,
   DesktopHostDeviceStatusResponse,
   DesktopHostFeatureFlags,
   DesktopPackageCatalogResponse,
+  DesktopDevicePolicyOverrides,
   DesktopRegisteredDeviceSummary,
+  DesktopRootWritebackMode,
   DesktopRolloutGateState,
   DesktopWorkspaceProfile,
 } from "@shared/desktopHost";
@@ -13,6 +16,13 @@ import type {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -165,6 +175,85 @@ function formatWorkspaceProfile(profile: DesktopWorkspaceProfile | null | undefi
   return `${profile.profileName} / ${profile.networkClass}`;
 }
 
+function formatStateLabel(value: string) {
+  return value.replace(/_/g, " ");
+}
+
+function formatPresence(device: DesktopRegisteredDeviceSummary) {
+  const presence = device.presence ?? {
+    status: device.healthStatus === "disabled" ? "disabled" : "offline",
+    lastSeenAgeSeconds: null,
+  };
+  if (presence.status === "disabled") {
+    return "Disabled";
+  }
+  if (presence.lastSeenAgeSeconds == null) {
+    return presence.status === "offline" ? "Offline" : "Not reported yet";
+  }
+  if (presence.lastSeenAgeSeconds < 60) {
+    return `Seen ${presence.lastSeenAgeSeconds}s ago`;
+  }
+  const minutes = Math.round(presence.lastSeenAgeSeconds / 60);
+  if (minutes < 60) {
+    return `Seen ${minutes}m ago`;
+  }
+  const hours = Math.round(minutes / 60);
+  return `Seen ${hours}h ago`;
+}
+
+type PolicyToggleChoice = "inherit" | "allow" | "restrict";
+
+function overrideToChoice(value: boolean | null | undefined): PolicyToggleChoice {
+  if (value === true) {
+    return "allow";
+  }
+  if (value === false) {
+    return "restrict";
+  }
+  return "inherit";
+}
+
+function choiceToOverride(value: PolicyToggleChoice): boolean | null {
+  if (value === "allow") {
+    return true;
+  }
+  if (value === "restrict") {
+    return false;
+  }
+  return null;
+}
+
+function buildPolicyFormState(overrides: DesktopDevicePolicyOverrides | null | undefined) {
+  return {
+    allowAdvancedLocalMode: overrideToChoice(overrides?.allowAdvancedLocalMode),
+    allowPackageSync: overrideToChoice(overrides?.allowPackageSync),
+    allowAgencyRuntime: overrideToChoice(overrides?.allowAgencyRuntime),
+    allowWorkerProjection: overrideToChoice(overrides?.allowWorkerProjection),
+    maxLocalRoots: overrides?.maxLocalRoots != null ? String(overrides.maxLocalRoots) : "",
+    outputWritebackMode: overrides?.outputWritebackMode ?? "inherit",
+  };
+}
+
+function buildPolicyOverridePayload(state: ReturnType<typeof buildPolicyFormState>): DesktopDevicePolicyOverrides {
+  const parsedMaxLocalRoots = Number.parseInt(state.maxLocalRoots, 10);
+  return {
+    allowAdvancedLocalMode: choiceToOverride(state.allowAdvancedLocalMode),
+    allowPackageSync: choiceToOverride(state.allowPackageSync),
+    allowAgencyRuntime: choiceToOverride(state.allowAgencyRuntime),
+    allowWorkerProjection: choiceToOverride(state.allowWorkerProjection),
+    maxLocalRoots: Number.isInteger(parsedMaxLocalRoots) && parsedMaxLocalRoots > 0
+      ? parsedMaxLocalRoots
+      : null,
+    outputWritebackMode: state.outputWritebackMode === "inherit"
+      ? null
+      : state.outputWritebackMode as DesktopRootWritebackMode,
+  };
+}
+
+function isTenantContextMissingError(error: string | null | undefined): boolean {
+  return error === "desktop_host_tenant_required" || error === "desktop_host_tenant_mismatch";
+}
+
 export function DesktopHostSettingsPanel(props: {
   featureFlags: DesktopHostFeatureFlags;
   status?: DesktopHostDeviceStatusResponse | null;
@@ -186,6 +275,16 @@ export function DesktopHostSettingsPanel(props: {
     actionType: "reindex_root" | "purge_root_derived_store" | "revoke_root",
   ) => Promise<void> | void;
   rootActionInFlightKey?: string | null;
+  onRequestDeviceAction?: (
+    deviceId: string,
+    actionType: DesktopDeviceActionRequest["actionType"],
+  ) => Promise<void> | void;
+  deviceActionInFlightKey?: string | null;
+  onSavePolicyOverrides?: (
+    deviceId: string,
+    overrides: DesktopDevicePolicyOverrides,
+  ) => Promise<void> | void;
+  policyOverrideInFlightDeviceId?: string | null;
   adminConsoleHref?: string | null;
   scopeLabel?: "user" | "tenant";
 }) {
@@ -206,6 +305,10 @@ export function DesktopHostSettingsPanel(props: {
     disableInFlightDeviceId = null,
     onRequestRootAction,
     rootActionInFlightKey = null,
+    onRequestDeviceAction,
+    deviceActionInFlightKey = null,
+    onSavePolicyOverrides,
+    policyOverrideInFlightDeviceId = null,
     adminConsoleHref = null,
     scopeLabel = "user",
   } = props;
@@ -236,13 +339,18 @@ export function DesktopHostSettingsPanel(props: {
     trustClass: "org_verified" as const,
   };
   const parserCapability = selectedDevice?.capabilities.localFileService ?? null;
+  const attestationSupport = selectedDevice?.capabilities.deviceAttestationSupport ?? null;
   const [disableCandidateId, setDisableCandidateId] = useState<string | null>(null);
   const [deviceFilter, setDeviceFilter] = useState("");
+  const [policyForm, setPolicyForm] = useState(() => buildPolicyFormState(selectedDevice?.policyOverrides));
+  useEffect(() => {
+    setPolicyForm(buildPolicyFormState(selectedDevice?.policyOverrides));
+  }, [selectedDevice?.deviceId, selectedDevice?.policyOverrides]);
   const normalizedDeviceFilter = deviceFilter.trim().toLowerCase();
   const visibleDevices = normalizedDeviceFilter.length === 0
     ? devices
     : devices.filter((device) =>
-      `${device.displayName} ${device.deviceId} ${device.machineName ?? ""}`
+      `${device.displayName} ${device.deviceId} ${device.machineName ?? ""} ${device.owner?.name ?? ""} ${device.owner?.email ?? ""}`
         .toLowerCase()
         .includes(normalizedDeviceFilter)
     );
@@ -329,6 +437,12 @@ export function DesktopHostSettingsPanel(props: {
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-xs text-slate-500">
               Loading enrolled device posture...
             </div>
+          ) : isTenantContextMissingError(statusError) ? (
+            <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-4 text-xs text-sky-700">
+              {scopeLabel === "tenant"
+                ? "Select a tenant to load live Desktop Host posture."
+                : "Desktop Host posture requires a selected tenant."}
+            </div>
           ) : statusError ? (
             <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-4 text-xs text-rose-700">
               Unable to load device posture: {statusError}
@@ -351,6 +465,12 @@ export function DesktopHostSettingsPanel(props: {
                         <div className="text-xs text-slate-500">
                           {device.deviceId} • {device.platform.os} {device.platform.arch}
                         </div>
+                        {(device.owner?.name || device.owner?.email) && (
+                          <div className="mt-1 text-xs text-slate-500">
+                            Owner: {device.owner?.name ?? "Unknown user"}
+                            {device.owner?.email ? ` • ${device.owner.email}` : ""}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge
@@ -360,6 +480,26 @@ export function DesktopHostSettingsPanel(props: {
                             : "border-emerald-200 bg-white text-emerald-700"}
                         >
                           {device.healthStatus}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={(device.accessState ?? "active") === "active"
+                            ? "border-sky-200 bg-white text-sky-700"
+                            : (device.accessState ?? "active") === "quarantined" || (device.accessState ?? "active") === "disabled"
+                              ? "border-rose-200 bg-white text-rose-700"
+                              : "border-amber-200 bg-white text-amber-700"}
+                        >
+                          {formatStateLabel(device.accessState ?? "active")}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={(device.presence?.status ?? "offline") === "online"
+                            ? "border-emerald-200 bg-white text-emerald-700"
+                            : (device.presence?.status ?? "offline") === "stale"
+                              ? "border-amber-200 bg-white text-amber-700"
+                              : "border-slate-200 bg-white text-slate-700"}
+                        >
+                          {formatStateLabel(device.presence?.status ?? "offline")}
                         </Badge>
                         <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">
                           Sync {syncState}
@@ -396,7 +536,15 @@ export function DesktopHostSettingsPanel(props: {
                       </div>
                       <div>
                         <dt className="font-medium text-slate-700">Last seen</dt>
-                        <dd>{formatTimestamp(device.lastSeenAt)}</dd>
+                        <dd>{formatPresence(device)}{device.lastSeenAt ? ` • ${formatTimestamp(device.lastSeenAt)}` : ""}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-slate-700">Access state</dt>
+                        <dd>{formatStateLabel(device.accessState ?? "active")}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-slate-700">Owner</dt>
+                        <dd>{device.owner?.name ?? device.owner?.email ?? "Not reported yet"}</dd>
                       </div>
                       <div>
                         <dt className="font-medium text-slate-700">PoP posture</dt>
@@ -431,6 +579,22 @@ export function DesktopHostSettingsPanel(props: {
                         </dd>
                       </div>
                       <div>
+                        <dt className="font-medium text-slate-700">Attestation provider</dt>
+                        <dd>
+                          {device.capabilities.deviceIdentity
+                            ? device.capabilities.deviceIdentity.attestationProvider ?? "derived_runtime"
+                            : "Not reported yet"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-slate-700">Attestation claims</dt>
+                        <dd>
+                          {device.capabilities.deviceIdentity?.attestationClaims?.length
+                            ? device.capabilities.deviceIdentity.attestationClaims.slice(0, 3).join(", ")
+                            : "No claims reported"}
+                        </dd>
+                      </div>
+                      <div>
                         <dt className="font-medium text-slate-700">Roots</dt>
                         <dd>{device.localRoots.length}</dd>
                       </div>
@@ -439,6 +603,21 @@ export function DesktopHostSettingsPanel(props: {
                         <dd>{formatWorkspaceProfile(device.currentWorkspaceProfile)}</dd>
                       </div>
                     </dl>
+                    {device.pendingActions.some((action) => action.rootId == null) && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {device.pendingActions
+                          .filter((action) => action.rootId == null)
+                          .map((action) => (
+                            <Badge
+                              key={action.actionId}
+                              variant="outline"
+                              className="border-amber-200 bg-white text-amber-700"
+                            >
+                              {formatStateLabel(action.actionType)}
+                            </Badge>
+                          ))}
+                      </div>
+                    )}
                   </article>
                 );
               })}
@@ -464,6 +643,12 @@ export function DesktopHostSettingsPanel(props: {
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-xs text-slate-500">
               Loading control plane state...
             </div>
+          ) : isTenantContextMissingError(controlPlaneError) ? (
+            <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-4 text-xs text-sky-700">
+              {scopeLabel === "tenant"
+                ? "Select a tenant and a device to inspect its control plane snapshot."
+                : "A selected tenant is required to inspect the control plane."}
+            </div>
           ) : controlPlaneError ? (
             <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-4 text-xs text-rose-700">
               Unable to load control plane state: {controlPlaneError}
@@ -471,6 +656,23 @@ export function DesktopHostSettingsPanel(props: {
           ) : selectedDevice ? (
             <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
               <dl className="grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+                <div>
+                  <dt className="font-medium text-slate-700">Owner</dt>
+                  <dd>
+                    {selectedDevice.owner?.name ?? selectedDevice.owner?.email ?? "Not reported yet"}
+                    {selectedDevice.owner?.email && selectedDevice.owner?.name
+                      ? ` • ${selectedDevice.owner.email}`
+                      : ""}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-700">Presence</dt>
+                  <dd>{formatPresence(selectedDevice)}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-700">Access state</dt>
+                  <dd>{formatStateLabel(selectedDevice.accessState ?? "active")}</dd>
+                </div>
                 <div>
                   <dt className="font-medium text-slate-700">Policy version</dt>
                   <dd>{policySnapshot?.policyVersion ?? "Not reported yet"}</dd>
@@ -518,6 +720,169 @@ export function DesktopHostSettingsPanel(props: {
           )}
         </section>
       </div>
+
+      {(selectedDevice && (onSavePolicyOverrides || onRequestDeviceAction)) && (
+        <div className="grid gap-4 xl:grid-cols-2">
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <header className="mb-3">
+              <h3 className="text-sm font-semibold text-slate-900">Device Policy Overrides</h3>
+              <p className="text-xs text-slate-500">
+                Per-device restrictions can narrow tenant policy without changing the tenant-wide default.
+              </p>
+            </header>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              {([
+                ["allowAdvancedLocalMode", "Advanced local mode"],
+                ["allowPackageSync", "Package sync"],
+                ["allowAgencyRuntime", "Agency runtime"],
+                ["allowWorkerProjection", "Worker projection"],
+              ] as const).map(([key, label]) => (
+                <div key={key} className="space-y-1">
+                  <div className="text-xs font-medium text-slate-700">{label}</div>
+                  <Select
+                    value={policyForm[key]}
+                    onValueChange={(value) =>
+                      setPolicyForm((current) => ({
+                        ...current,
+                        [key]: value as PolicyToggleChoice,
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inherit">Inherit tenant default</SelectItem>
+                      <SelectItem value="allow">Allow on this device</SelectItem>
+                      <SelectItem value="restrict">Restrict on this device</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-slate-700">Max local roots</div>
+                <Input
+                  inputMode="numeric"
+                  value={policyForm.maxLocalRoots}
+                  onChange={(event) =>
+                    setPolicyForm((current) => ({
+                      ...current,
+                      maxLocalRoots: event.target.value.replace(/[^\d]/g, ""),
+                    }))
+                  }
+                  placeholder="Inherit tenant limit"
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-slate-700">Writeback ceiling</div>
+                <Select
+                  value={policyForm.outputWritebackMode}
+                  onValueChange={(value) =>
+                    setPolicyForm((current) => ({
+                      ...current,
+                      outputWritebackMode: value as ReturnType<typeof buildPolicyFormState>["outputWritebackMode"],
+                    }))
+                  }
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="inherit">Inherit tenant default</SelectItem>
+                    <SelectItem value="read_search_only">Read/search only</SelectItem>
+                    <SelectItem value="managed_output_only">Managed output only</SelectItem>
+                    <SelectItem value="user_confirmed_root_write">User-confirmed root write</SelectItem>
+                    <SelectItem value="advanced_local_override">Advanced local override</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-xs text-slate-500">
+                These overrides are reflected in the next policy snapshot and can only reduce access unless the tenant already allows the feature.
+              </div>
+              {onSavePolicyOverrides && (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() =>
+                    void onSavePolicyOverrides(
+                      selectedDevice.deviceId,
+                      buildPolicyOverridePayload(policyForm),
+                    )
+                  }
+                  disabled={policyOverrideInFlightDeviceId === selectedDevice.deviceId}
+                >
+                  {policyOverrideInFlightDeviceId === selectedDevice.deviceId ? "Saving..." : "Save overrides"}
+                </Button>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <header className="mb-3">
+              <h3 className="text-sm font-semibold text-slate-900">Remote Actions</h3>
+              <p className="text-xs text-slate-500">
+                Use these controls to trigger re-auth, token revocation, run cancellation, or temporary quarantine without disabling the device completely.
+              </p>
+            </header>
+
+            <div className="flex flex-wrap gap-2">
+              {([
+                ["force_reauth", "Force re-auth"],
+                ["revoke_runtime_tokens", "Revoke runtime tokens"],
+                ["cancel_active_runs", "Cancel active runs"],
+              ] as const).map(([actionType, label]) => (
+                <Button
+                  key={actionType}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={!onRequestDeviceAction || deviceActionInFlightKey === actionType}
+                  onClick={() => onRequestDeviceAction?.(selectedDevice.deviceId, actionType)}
+                >
+                  {deviceActionInFlightKey === actionType ? "Submitting..." : label}
+                </Button>
+              ))}
+
+              {selectedDevice.accessState === "quarantined" || selectedDevice.accessState === "reauth_required" ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"
+                  disabled={!onRequestDeviceAction || deviceActionInFlightKey === "resume_device_access"}
+                  onClick={() => onRequestDeviceAction?.(selectedDevice.deviceId, "resume_device_access")}
+                >
+                  {deviceActionInFlightKey === "resume_device_access" ? "Submitting..." : "Resume device access"}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
+                  disabled={!onRequestDeviceAction || deviceActionInFlightKey === "quarantine_device" || selectedDevice.accessState === "disabled"}
+                  onClick={() => onRequestDeviceAction?.(selectedDevice.deviceId, "quarantine_device")}
+                >
+                  {deviceActionInFlightKey === "quarantine_device" ? "Submitting..." : "Quarantine device"}
+                </Button>
+              )}
+            </div>
+
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-600">
+              Current access posture: <span className="font-medium text-slate-900">{formatStateLabel(selectedDevice.accessState ?? "active")}</span>
+              {" • "}
+              {selectedDevice.warningFlags.length > 0
+                ? `Warnings: ${selectedDevice.warningFlags.join(", ")}`
+                : "No warning flags reported"}
+            </div>
+          </section>
+        </div>
+      )}
 
       <div className="grid gap-4 xl:grid-cols-2">
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -574,6 +939,14 @@ export function DesktopHostSettingsPanel(props: {
                   <dd>{parserCapability.ocrProvider}</dd>
                 </div>
                 <div>
+                  <dt className="font-medium text-slate-700">Macro inspection</dt>
+                  <dd>{parserCapability.macroInspectionSupported ? "Supported" : "Unavailable"}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-700">Embedded media</dt>
+                  <dd>{parserCapability.embeddedMediaInspectionSupported ? "Supported" : "Unavailable"}</dd>
+                </div>
+                <div>
                   <dt className="font-medium text-slate-700">Office renderer</dt>
                   <dd>{parserCapability.officeRenderer ?? "none"}</dd>
                 </div>
@@ -586,10 +959,57 @@ export function DesktopHostSettingsPanel(props: {
                   <dd>{parserCapability.complexDocumentSupport ?? "text_extraction_only"}</dd>
                 </div>
                 <div>
+                  <dt className="font-medium text-slate-700">Multi-page rendering</dt>
+                  <dd>{parserCapability.multiPageRenderingSupported ? `Up to ${parserCapability.maxRenderedPages ?? 0} pages` : "Single-page or extraction only"}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-700">OCR layout mode</dt>
+                  <dd>{parserCapability.ocrLayoutMode ?? "plain_text"}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-slate-700">Layout analysis</dt>
+                  <dd>{parserCapability.layoutAnalysisMode ?? "none"}</dd>
+                </div>
+                <div>
                   <dt className="font-medium text-slate-700">Rendered preview</dt>
                   <dd>{parserCapability.fullRenderingSupported ? "Rendering + extraction" : "Extraction only"}</dd>
                 </div>
               </dl>
+
+              {attestationSupport && (
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-3">
+                  <div className="mb-2 text-xs font-medium text-slate-700">Attestation Broker</div>
+                  <dl className="grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+                    <div>
+                      <dt className="font-medium text-slate-700">Evidence source</dt>
+                      <dd>{attestationSupport.evidenceSource}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-slate-700">Default mode</dt>
+                      <dd>{attestationSupport.defaultMode}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-slate-700">Provider hint</dt>
+                      <dd>{attestationSupport.providerHint}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-slate-700">Helper status</dt>
+                      <dd>
+                        {attestationSupport.helperConfigured
+                          ? attestationSupport.helperReachable
+                            ? "Configured and reachable"
+                            : "Configured but unreachable"
+                          : "Not configured"}
+                      </dd>
+                    </div>
+                  </dl>
+                  {!!attestationSupport.notes.length && (
+                    <div className="mt-2 text-xs text-slate-500">
+                      {attestationSupport.notes.join(" ")}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-xs text-slate-500">
@@ -613,6 +1033,12 @@ export function DesktopHostSettingsPanel(props: {
           {packageCatalogLoading ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-xs text-slate-500">
               Loading package catalog...
+            </div>
+          ) : isTenantContextMissingError(packageCatalogError) ? (
+            <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-4 text-xs text-sky-700">
+              {scopeLabel === "tenant"
+                ? "Select a tenant to load the package catalog."
+                : "Desktop package sync requires a selected tenant."}
             </div>
           ) : packageCatalogError ? (
             <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-4 text-xs text-rose-700">
@@ -647,6 +1073,9 @@ export function DesktopHostSettingsPanel(props: {
                   <div className="mt-2 text-xs text-slate-600">
                     Signer {pkg.signerId} / {pkg.signerKeyVersion}
                     {pkg.summary ? ` • ${pkg.summary}` : ""}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    Source {pkg.source} • {pkg.availableOnDesktop ? "Desktop-ready" : "Server-only"}
                   </div>
                 </article>
               ))}

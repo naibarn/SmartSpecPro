@@ -1,0 +1,87 @@
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Group",
+      "label": "Source",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/source/properties/raw_ocr_text",
+          "options": {
+            "format": "textarea",
+            "rows": 12,
+            "multi": true
+          }
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/source/properties/short_caption",
+          "options": {
+            "format": "textarea",
+            "rows": 8,
+            "multi": true
+          }
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/source/properties/image_path"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/source/properties/filename"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/source/properties/mime_type"
+        }
+      ]
+    },
+    {
+      "type": "Group",
+      "label": "Options",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/parse_options/properties/mode"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/parse_options/properties/auto_detect_issuer"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/parse_options/properties/auto_detect_transaction_type"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/parse_options/properties/normalize_buddhist_year"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/parse_options/properties/normalize_currency"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/parse_options/properties/mask_sensitive_values"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/parse_options/properties/return_detection_evidence"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/parse_options/properties/strict_validation"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/parse_options/properties/min_confidence",
+          "options": {
+            "slider": true,
+            "step": 0.05
+          }
+        }
+      ]
+    }
+  ]
+}

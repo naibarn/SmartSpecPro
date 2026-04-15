@@ -1603,9 +1603,14 @@ class LLMGateway:
         normalized_model = self._normalize_model_id(normalized_request.model)
 
         from app.llm_proxy.providers.uvoice_provider import UVoiceProvider
+        from app.llm_proxy.providers.omnivoice_provider import OmniVoiceProvider
         uvoice_audio_models = {
             self._normalize_model_id(model_name)
             for model_name in UVoiceProvider.AUDIO_MODELS
+        }
+        omnivoice_audio_models = {
+            self._normalize_model_id(model_name)
+            for model_name in OmniVoiceProvider.AUDIO_MODELS
         }
         route_to_uvoice = (
             resolved_provider == "uvoice"
@@ -1778,6 +1783,102 @@ class LLMGateway:
                         await client.aclose()
                     except Exception:
                         pass
+
+        route_to_omnivoice = (
+            resolved_provider == "omnivoice"
+            or normalized_model in omnivoice_audio_models
+        )
+        if route_to_omnivoice:
+            from app.services.media_provider_service import initialize_omnivoice_client
+
+            if not self.unified_client.omnivoice_client:
+                self.unified_client.omnivoice_client = await initialize_omnivoice_client()
+
+            if not self.unified_client.omnivoice_client:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="OmniVoice not configured. Please add base URL and API key in Admin > Media Providers.",
+                )
+
+            client = self.unified_client.omnivoice_client
+            extra_params = normalized_request.extra_params if isinstance(normalized_request.extra_params, dict) else {}
+            selected_voice = (
+                normalized_request.voice
+                or normalized_request.voice_id
+                or extra_params.get("voice")
+                or extra_params.get("voice_id")
+                or extra_params.get("voiceId")
+                or extra_params.get("voiceID")
+            )
+            instruct = (
+                extra_params.get("instruct")
+                or extra_params.get("instruction")
+                or extra_params.get("system_prompt")
+                or extra_params.get("systemPrompt")
+            )
+            reference_audio_base64 = (
+                extra_params.get("reference_audio_base64")
+                or extra_params.get("referenceAudioBase64")
+            )
+            reference_audio_url = (
+                extra_params.get("reference_audio_url")
+                or extra_params.get("referenceAudioUrl")
+            )
+            reference_text = (
+                extra_params.get("reference_text")
+                or extra_params.get("referenceText")
+            )
+            output_format = (
+                normalized_request.output_format
+                or self._get_api_config_string(
+                    normalized_request.api_config,
+                    "output_format",
+                    "outputFormat",
+                    "format",
+                )
+                or "mp3"
+            )
+            try:
+                audio_bytes = await client.generate_speech(
+                    text=normalized_request.text,
+                    voice=str(selected_voice).strip() if isinstance(selected_voice, str) and selected_voice.strip() else None,
+                    speed=normalized_request.speed or 1.0,
+                    response_format=str(output_format),
+                    instruct=str(instruct).strip() if isinstance(instruct, str) and instruct.strip() else None,
+                    reference_audio_base64=str(reference_audio_base64).strip() if isinstance(reference_audio_base64, str) and reference_audio_base64.strip() else None,
+                    reference_audio_url=str(reference_audio_url).strip() if isinstance(reference_audio_url, str) and reference_audio_url.strip() else None,
+                    reference_text=str(reference_text).strip() if isinstance(reference_text, str) and reference_text.strip() else None,
+                )
+                ext = str(output_format).lower()
+                if ext == "pcm16":
+                    ext = "pcm"
+                elif ext not in {"mp3", "opus", "aac", "flac", "wav", "pcm"}:
+                    ext = "mp3"
+                content_type = "audio/wav" if ext == "wav" else f"audio/{ext}"
+                uploaded_url = await self._upload_generated_media_bytes(
+                    user_id=user.id,
+                    job_id=f"{normalized_request.model}-{uuid4().hex}",
+                    media_type="audio",
+                    payload=audio_bytes,
+                    content_type=content_type,
+                    ext=ext,
+                )
+                response = AudioGenerationResponse(
+                    id=f"omnivoice-{uuid4().hex}",
+                    model=normalized_request.model,
+                    provider="omnivoice",
+                    created=0,
+                    data=[{"url": uploaded_url}],
+                )
+                transaction = await self._deduct_credits(user, estimated_cost, normalized_request, response, estimated_cost, False)
+                response.credits_used = abs(transaction.amount)
+                response.credits_balance = transaction.balance_after
+                return response
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error("omnivoice_audio_generation_failed", user_id=user.id, model=normalized_request.model, error=str(e))
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"OmniVoice audio generation failed: {str(e)}")
 
         # --- fal.ai audio routing ---
         from app.llm_proxy.providers.fal_ai_provider import FalAIProvider as FalAIAudioProvider

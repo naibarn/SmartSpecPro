@@ -1,4 +1,7 @@
-import { getWorkerRuntimeDefinition } from "../../shared/workerRuntime";
+import {
+  getWorkerRuntimeDefinition,
+  summarizeHermesProviderRouting,
+} from "../../shared/workerRuntime";
 import type { WorkerAccessAuthContext } from "./workerAuthService";
 import {
   WorkerRuntimeServiceError,
@@ -48,6 +51,9 @@ export async function getWorkerPolicySnapshot(
   const runtimeMetadata = worker.capabilitiesJson && typeof worker.capabilitiesJson === "object"
     ? (worker.capabilitiesJson as Record<string, unknown>).runtimeMetadata ?? null
     : null;
+  const providerRouting = worker.runtimeType === "hermes_agent_gateway"
+    ? summarizeHermesProviderRouting(runtimeMetadata as Record<string, unknown> | null | undefined)
+    : null;
 
   return {
     workerId: worker.id,
@@ -73,6 +79,7 @@ export async function getWorkerPolicySnapshot(
       registrationSupport: runtimeDefinition.registrationSupport,
       dispatchSupport: runtimeDefinition.dispatchSupport,
       runtimeMetadata,
+      providerRouting,
     },
   };
 }

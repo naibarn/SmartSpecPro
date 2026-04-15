@@ -60,6 +60,21 @@ vi.mock("./libraryUploadPipeline", async (importOriginal) => {
   };
 });
 
+vi.mock("./documentOcrSettings", () => ({
+  calculateOcrCredits: (pageCount: number, creditsPerPage: number) => Math.max(0, Math.round(pageCount) * creditsPerPage),
+  getDocumentOcrSettings: vi.fn().mockResolvedValue({
+    landingAiApiKey: "",
+    googleAiApiKey: "",
+    creditsPerPage: 1,
+  }),
+  isOcrExtractor: () => false,
+  resolveOcrPageCount: () => 1,
+  resolveOcrProvider: (_metadata: Record<string, unknown>, extractor: string | null) => extractor || null,
+  classifyOcrFileClass: (params: { mimeType?: string | null }) =>
+    String(params.mimeType ?? "").toLowerCase() === "application/pdf" ? "pdf" : "image",
+  getDocumentOcrCreditsPerUnit: (_settings: any, _providerId: string | null | undefined, _fileClass: string) => 1,
+}));
+
 const groupsServiceMocks = vi.hoisted(() => ({
   getUserGroups: vi.fn().mockResolvedValue([]),
 }));
@@ -580,6 +595,7 @@ describe("uploadLibraryFile", () => {
       expect.objectContaining({
         fileType: "image/jpeg",
         fileName: "slip.jpg",
+        sourceUrl: "https://cdn.example.com/slip.jpg",
       }),
     );
     expect(result.item.itemType).toBe("image");

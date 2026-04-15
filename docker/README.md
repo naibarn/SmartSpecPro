@@ -97,6 +97,72 @@ docker/
 | chromadb | 8000 | Vector database for embeddings |
 | ollama | 11434 | Local LLM (optional) |
 
+## Hermes Agent Runtime
+
+Hermes agents are supported through a dedicated compose file that does not publish
+any host ports. This keeps the runtime from colliding with the rest of the stack
+and forces all LLM / tool calls through the SmartSpec Pro web gateway.
+
+### Files
+
+- `docker-compose.hermes.yml`
+- `docker/hermes.env.example`
+- `docker/hermes.multi.env.example`
+- `docker/scripts/hermes.sh`
+- `systemd/smartspec-hermes.service`
+
+### First-time setup
+
+```bash
+cp docker/hermes.env.example docker/hermes.env
+# edit docker/hermes.env and set SMARTSPEC_WEB_GATEWAY_TOKEN
+mkdir -p data/hermes
+./docker/scripts/hermes.sh setup
+```
+
+### Run Hermes
+
+```bash
+./docker/scripts/hermes.sh up
+./docker/scripts/hermes.sh logs -f
+```
+
+### Notes
+
+- No `ports:` block is used, so Hermes will not claim a host port.
+- The compose file maps `host.docker.internal` to `host-gateway` for Linux hosts.
+- If you need multiple Hermes agents, run separate compose projects with separate
+  `HERMES_DATA_DIR` values so each agent keeps its own local state.
+- This stack is self-contained; it reaches the SmartSpec Pro gateway through the
+  host's published `3000` port instead of depending on an existing Docker network.
+- If your SmartSpec Pro gateway is not published on `localhost:3000`, override
+  `SMARTSPEC_WEB_GATEWAY_URL` in `docker/hermes.env` before starting Hermes.
+
+### Multiple Instances
+
+Use `docker/hermes.multi.env.example` as a reference when you want to run more
+than one Hermes agent on the same machine. Create one env file per agent, then
+start each one with its own project name and data directory:
+
+```bash
+HERMES_ENV_FILE=docker/hermes-a.env ./docker/scripts/hermes.sh up
+HERMES_ENV_FILE=docker/hermes-b.env ./docker/scripts/hermes.sh up
+```
+
+### systemd Autostart
+
+For production boxes or always-on dev machines, install the systemd unit:
+
+```bash
+sudo cp systemd/smartspec-hermes.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now smartspec-hermes.service
+sudo systemctl status smartspec-hermes.service
+```
+
+This unit reuses the same compose stack, waits for the container healthcheck to
+pass, and keeps Hermes under the existing `smartspec.target` lifecycle.
+
 ## Configuration
 
 ### Environment Variables

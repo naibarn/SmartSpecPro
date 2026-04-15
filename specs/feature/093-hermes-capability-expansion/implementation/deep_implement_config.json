@@ -1,0 +1,27 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/093-hermes-capability-expansion/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/093-hermes-capability-expansion/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-persona-profile-and-selection",
+    "section-02-channel-companion-and-webhook-workflows",
+    "section-03-opt-in-memory-and-context-sync",
+    "section-04-task-specialization-and-work-dispatch",
+    "section-05-visibility-observability-and-rollout",
+    "section-06-future-hermes-to-work-os-integration"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-14T06:37:42.932545+00:00"
+}

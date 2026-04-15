@@ -1,5 +1,5 @@
 @echo off
-REM SSL Certificate Generation Script for SmartSpec Pro (Windows)
+REM SSL Certificate Generation Script for SmartAIHub (Windows)
 REM Generates self-signed SSL certificates for local HTTPS development
 
 setlocal enabledelayedexpansion
@@ -12,7 +12,7 @@ set PROJECT_ROOT=%SCRIPT_DIR%..
 cd /d "%PROJECT_ROOT%"
 
 echo ================================
-echo SmartSpec Pro SSL Setup
+echo SmartAIHub SSL Setup
 echo ================================
 echo.
 

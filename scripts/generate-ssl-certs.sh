@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SSL Certificate Generation Script for SmartSpec Pro
+# SSL Certificate Generation Script for SmartAIHub
 # Generates self-signed SSL certificates for local HTTPS development
 
 set -e
@@ -15,7 +15,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${GREEN}================================${NC}"
-echo -e "${GREEN}SmartSpec Pro SSL Setup${NC}"
+echo -e "${GREEN}SmartAIHub SSL Setup${NC}"
 echo -e "${GREEN}================================${NC}"
 echo ""
 

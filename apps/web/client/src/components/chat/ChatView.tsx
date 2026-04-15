@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
 import { useLocation } from "wouter";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import { trpc } from "@/lib/trpc";
@@ -15,6 +15,7 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import {
+  AlertTriangle,
   Check,
   Loader2,
   MonitorPlay,
@@ -28,6 +29,8 @@ import {
   Video,
   Code2,
   FileText,
+  ClipboardList,
+  ArrowRight,
   Search,
   Sparkles,
   Bot,
@@ -39,6 +42,7 @@ import {
   ChevronDown,
   ChevronsUp,
   ChevronsDown,
+  GripVertical,
 } from "lucide-react";
 import {
   Tooltip,
@@ -86,6 +90,7 @@ import { compactMessagesForProviderSubmission } from "@/features/local-ai/chat/l
 import {
   buildHybridAttachmentAssist,
   type AttachmentAssistAttachment,
+  looksLikeDocumentAttachment,
 } from "@/features/local-ai/chat/localAttachmentAssist";
 import {
   EXTERNAL_LOCAL_TEXT_BACKEND_PROVIDER,
@@ -166,6 +171,7 @@ import { FinanceActivityCard } from "@/components/finance/FinanceActivityCard";
 import { PersonaSelector } from "./PersonaSelector";
 import type { BrowserSessionLaunchSuggestion } from "@/lib/browserSessionInvocation";
 import type { LocalAiDeviceStateScope } from "@/features/local-ai/types/deviceState";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import {
   appendLibraryContextToMessage,
   extractRetrievalQueryText,
@@ -293,6 +299,18 @@ function normalizeWakePhrase(value: string | null | undefined): string | null {
   const normalized = normalizeVoiceLookup(value);
   return normalized.length > 0 ? normalized : null;
 }
+
+type WorkStartCardPosition = {
+  x: number;
+  y: number;
+};
+
+type WorkStartDragState = {
+  startX: number;
+  startY: number;
+  originX: number;
+  originY: number;
+};
 
 function getTeamRoomActionIcon(
   kind: "approval" | "reply" | "workflow" | "open"
@@ -505,6 +523,22 @@ function looksLikeScheduleIntent(text: string): boolean {
   );
 }
 
+function getOcrRoutingShortLabel(providerLabel: string): "Typhoon" | "Google AI" | "LandingAI" | "Native" {
+  const normalized = providerLabel.toLowerCase();
+  if (normalized.includes("typhoon")) {
+    return "Typhoon";
+  }
+  if (normalized.includes("google")) {
+    return "Google AI";
+  }
+  if (normalized.includes("landingai")) {
+    return "LandingAI";
+  }
+  return "Native";
+}
+
+const TYPHOON_OCR_RATE_LIMIT_PER_MINUTE = 20;
+
 function toMediaModelOption(value: unknown): MediaModelOption | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Record<string, unknown>;
@@ -612,6 +646,7 @@ export function ChatView({
   onOpenFinancePanel,
 }: ChatViewProps) {
   const [, navigate] = useLocation();
+  const { t } = useScopedTranslation("chat");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [showSlashMenu, setShowSlashMenu] = useState(false);
@@ -635,6 +670,10 @@ export function ChatView({
     useState<ClientVoiceCommandResult | null>(null);
   const [handsFreeListening, setHandsFreeListening] = useState(false);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
+  const [ocrOnlyMode, setOcrOnlyMode] = useState(false);
+  const [workStartDismissed, setWorkStartDismissed] = useState(false);
+  const [workStartPosition, setWorkStartPosition] = useState<WorkStartCardPosition>({ x: 0, y: 0 });
+  const [isWorkStartDragging, setIsWorkStartDragging] = useState(false);
   // Track when we last added a local message to prevent useEffect from overwriting
   const lastLocalAddTime = useRef<number>(0);
   const lastLocalAddConversationId = useRef<number | null>(conversationId);
@@ -650,6 +689,22 @@ export function ChatView({
   const bottomRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const workStartDragStateRef = useRef<WorkStartDragState | null>(null);
+  const workStartStorageKey = useMemo(() => {
+    const tenantId = user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
+    const userId = user?.id != null ? String(user.id) : "anonymous";
+    return `smartspec_chat_workstart_hidden:${tenantId}:${userId}`;
+  }, [user?.currentTenantId, user?.id]);
+  const workStartPositionStorageKey = useMemo(() => {
+    const tenantId = user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
+    const userId = user?.id != null ? String(user.id) : "anonymous";
+    return `smartspec_chat_workstart_position:${tenantId}:${userId}`;
+  }, [user?.currentTenantId, user?.id]);
+  const ocrOnlyModeStorageKey = useMemo(() => {
+    const tenantId = user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
+    const userId = user?.id != null ? String(user.id) : "anonymous";
+    return `smartspec_chat_ocr_only_mode:${tenantId}:${userId}`;
+  }, [user?.currentTenantId, user?.id]);
 
   useEffect(() => {
     return () => {
@@ -657,6 +712,112 @@ export function ChatView({
       activeLocalReplyAbortControllerRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const stored = window.localStorage.getItem(workStartStorageKey);
+    setWorkStartDismissed(stored === "1");
+  }, [workStartStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(workStartStorageKey, workStartDismissed ? "1" : "0");
+  }, [workStartDismissed, workStartStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      const stored = window.localStorage.getItem(workStartPositionStorageKey);
+      if (!stored) {
+        return;
+      }
+      const parsed = JSON.parse(stored) as Partial<WorkStartCardPosition>;
+      if (typeof parsed.x === "number" && typeof parsed.y === "number") {
+        setWorkStartPosition({ x: parsed.x, y: parsed.y });
+      }
+    } catch {
+      // Ignore malformed storage and keep the default position.
+    }
+  }, [workStartPositionStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      window.localStorage.setItem(workStartPositionStorageKey, JSON.stringify(workStartPosition));
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [workStartPosition, workStartPositionStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const stored = window.localStorage.getItem(ocrOnlyModeStorageKey);
+    setOcrOnlyMode(stored === "1");
+  }, [ocrOnlyModeStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(ocrOnlyModeStorageKey, ocrOnlyMode ? "1" : "0");
+  }, [ocrOnlyMode, ocrOnlyModeStorageKey]);
+
+  useEffect(() => {
+    if (!isWorkStartDragging) {
+      return;
+    }
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const dragState = workStartDragStateRef.current;
+      if (!dragState) {
+        return;
+      }
+      setWorkStartPosition({
+        x: dragState.originX + (event.clientX - dragState.startX),
+        y: dragState.originY + (event.clientY - dragState.startY),
+      });
+    };
+
+    const handleMouseUp = () => {
+      workStartDragStateRef.current = null;
+      setIsWorkStartDragging(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isWorkStartDragging]);
+
+  const handleWorkStartDragStart = useCallback(
+    (event: ReactMouseEvent<HTMLElement>) => {
+      if (event.button !== 0) {
+        return;
+      }
+
+      workStartDragStateRef.current = {
+        startX: event.clientX,
+        startY: event.clientY,
+        originX: workStartPosition.x,
+        originY: workStartPosition.y,
+      };
+      setIsWorkStartDragging(true);
+      event.preventDefault();
+    },
+    [workStartPosition.x, workStartPosition.y],
+  );
 
   const utils = trpc.useUtils();
   const librarySourcePickerEnabled = isChatLibrarySourcePickerEnabled(
@@ -744,6 +905,10 @@ export function ChatView({
   const localAiCatalogQuery = trpc.localAi.getPolicyAndCatalog.useQuery(
     { platform: localAiRuntimePlatform },
     { enabled: localClientLlmModeEnabled }
+  );
+  const { data: documentOcrPreview } = trpc.localAi.getDocumentOcrPreview.useQuery(
+    undefined,
+    { enabled: !!user },
   );
   const analyzeAttachmentAssistMutation =
     trpc.localAi.analyzeAttachmentAssist.useMutation();
@@ -834,6 +999,59 @@ export function ChatView({
     },
     [conversationForcesLocalOnly, conversationLocalAiOverride, localAiPreferences],
   );
+
+  const attachmentOcrBadges = useMemo(() => {
+    if (!documentOcrPreview || attachments.length === 0) {
+      return [] as Array<{
+        key: string;
+        shortLabel: string;
+        detailLabel: string;
+        className: string;
+      }>;
+    }
+
+    const hasImageAttachments = attachments.some((attachment) =>
+      attachment.fileType.toLowerCase().startsWith("image/"),
+    );
+    const hasPdfAttachments = attachments.some((attachment) =>
+      attachment.fileType.toLowerCase() === "application/pdf",
+    );
+    const badges: Array<{
+      key: string;
+      shortLabel: string;
+      detailLabel: string;
+      className: string;
+    }> = [];
+
+    if (hasImageAttachments) {
+      badges.push({
+        key: "image",
+        shortLabel: getOcrRoutingShortLabel(documentOcrPreview.image.providerLabel),
+        detailLabel: `Image OCR · ${documentOcrPreview.image.providerLabel}`,
+        className: documentOcrPreview.image.ready
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-amber-200 bg-amber-50 text-amber-700",
+      });
+    }
+
+    if (hasPdfAttachments) {
+      badges.push({
+        key: "pdf",
+        shortLabel: getOcrRoutingShortLabel(documentOcrPreview.pdf.providerLabel),
+        detailLabel: `PDF OCR · ${documentOcrPreview.pdf.providerLabel}`,
+        className: documentOcrPreview.pdf.ready
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-amber-200 bg-amber-50 text-amber-700",
+      });
+    }
+
+    return badges;
+  }, [attachments, documentOcrPreview]);
+  const attachmentOcrRateLimitNote = attachmentOcrBadges.some(
+    (badge) => badge.shortLabel === "Typhoon",
+  )
+    ? `Typhoon OCR is capped at ${TYPHOON_OCR_RATE_LIMIT_PER_MINUTE} requests per minute across the system.`
+    : null;
   const localAiCapability = useLocalAiCapability({
     catalog: localAiCatalogQuery.data?.catalog ?? [],
   });
@@ -4409,12 +4627,22 @@ export function ChatView({
 
     // Execution mode determines skill behavior (from DB, no hardcoded patterns)
     const executionMode = resolvedSkill?.executionMode || "llm-only";
+    const shouldForceOcrAssist = messageAttachments.some((attachment) =>
+      looksLikeDocumentAttachment({
+        attachment: {
+          url: attachment.url,
+          fileType: attachment.fileType,
+          fileName: attachment.fileName,
+        },
+        userText: text,
+      }),
+    ) || (ocrOnlyMode && messageAttachments.length > 0);
     let attachmentAssistContext:
       | Awaited<ReturnType<typeof buildHybridAttachmentAssist>>
       | null = null;
     if (
-      executionMode === "llm-only" &&
-      !currentSkillId &&
+      messageAttachments.length > 0 &&
+      (shouldForceOcrAssist || (executionMode === "llm-only" && !currentSkillId)) &&
       messageAttachments.length > 0
     ) {
       try {
@@ -4423,6 +4651,8 @@ export function ChatView({
           preferences: chatSessionLocalAiPreferences,
           forceCloudOnly:
             localAiCatalogQuery.data?.policy.forceCloudOnly === true,
+          preferRawDocumentOcr: shouldForceOcrAssist,
+          forceDocumentOcr: ocrOnlyMode,
           catalog: localAiCatalogQuery.data?.catalog ?? [],
           capability: localAiCapability,
           scope: localAiDeviceScope,
@@ -4441,6 +4671,65 @@ export function ChatView({
       } catch {
         attachmentAssistContext = null;
       }
+    }
+
+    if (shouldForceOcrAssist) {
+      const ocrText = attachmentAssistContext?.ocrResult?.extractedText?.trim() || "";
+      const ocrCaption = attachmentAssistContext?.ocrResult?.caption?.trim() || "";
+      const ocrWarning = attachmentAssistContext?.ocrResult?.warning?.trim() || "";
+      const ocrFileName = messageAttachments[0]?.fileName || "attachment";
+      const ocrContent = ocrText
+        ? [
+            `OCR result for ${ocrFileName}`,
+            ocrCaption ? `Caption: ${ocrCaption}` : null,
+            `Extracted text:\n${ocrText}`,
+            ocrWarning ? `Warning: ${ocrWarning}` : null,
+          ]
+            .filter(Boolean)
+            .join("\n\n")
+        : [
+            `OCR result for ${ocrFileName}`,
+            ocrWarning || "Could not extract readable text from this attachment.",
+          ]
+            .filter(Boolean)
+            .join("\n\n");
+
+      const saved = await saveAssistantMessageMutation
+        .mutateAsync({
+          conversationId: conversationId!,
+          content: ocrContent,
+          runtimeMetadata: {
+            source: "hybrid",
+            taskClass: "document_ocr",
+            profileId: attachmentAssistContext?.runtimeMetadataHint?.profileId ?? undefined,
+          },
+        })
+        .catch(() => null);
+
+      markLocalAdd();
+      setMessages(prev => [
+        ...prev,
+        {
+          id: saved?.id ?? Date.now(),
+          role: "assistant" as const,
+          content: ocrContent,
+          runtimeMetadata: saved?.runtimeMetadata ?? {
+            source: "hybrid",
+            taskClass: "document_ocr",
+            profileId: attachmentAssistContext?.runtimeMetadataHint?.profileId ?? undefined,
+          },
+          createdAt: new Date(),
+        },
+      ]);
+      setStreamingContent("");
+      setIsStreaming(false);
+      utils.chat.getMessages.invalidate({ conversationId });
+      utils.chat.listConversations.invalidate();
+      utils.chat.getConversation.invalidate({ id: conversationId });
+      void processMemoryMutation
+        .mutateAsync({ conversationId })
+        .catch(() => {});
+      return;
     }
 
     const providerSideUserText =
@@ -5459,6 +5748,138 @@ export function ChatView({
                   />
                 </div>
               ) : null}
+              {!workStartDismissed ? (
+                <div
+                  className={cn(
+                    "mt-4 w-full max-w-xl rounded-2xl border border-sky-200 bg-sky-50/70 p-4 text-left shadow-sm select-none",
+                    isWorkStartDragging ? "cursor-grabbing" : "cursor-grab",
+                  )}
+                  style={
+                    {
+                      transform: `translate(${workStartPosition.x}px, ${workStartPosition.y}px)`,
+                      transition: isWorkStartDragging ? "none" : "transform 180ms ease",
+                      zIndex: isWorkStartDragging ? 30 : 1,
+                      position: "relative",
+                    } as CSSProperties
+                  }
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-sky-600 shadow-sm">
+                      <ClipboardList className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div
+                          className="flex flex-wrap items-center gap-2"
+                          onMouseDown={handleWorkStartDragStart}
+                        >
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 rounded-full text-sky-600 hover:bg-white"
+                            onMouseDown={handleWorkStartDragStart}
+                            aria-label={t("workStart.move")}
+                            title={t("workStart.move")}
+                          >
+                            <GripVertical className="h-4 w-4" />
+                          </Button>
+                          <h4 className="font-semibold text-slate-900">
+                            {t("workStart.title")}
+                          </h4>
+                          <Badge variant="outline" className="text-[10px]">
+                            {t("workStart.badge")}
+                          </Badge>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 rounded-full text-slate-500 hover:bg-white hover:text-slate-900"
+                          onClick={() => setWorkStartDismissed(true)}
+                          aria-label={t("workStart.hide")}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {t("workStart.body")}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-600">
+                        {t("workStart.userBody")}
+                      </p>
+                      {user?.role === "admin" || user?.role === "domain_admin" ? (
+                        <p className="mt-2 text-sm text-slate-600">
+                          {t("workStart.adminBody")}
+                        </p>
+                      ) : null}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => navigate("/work/request")}
+                        >
+                          {t("workStart.openRequest")}
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => navigate("/work/requests")}
+                        >
+                          <ClipboardList className="h-4 w-4" />
+                          {t("workStart.openRequests")}
+                        </Button>
+                        {(user?.role === "admin" || user?.role === "domain_admin") ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => navigate("/admin/work-os")}
+                          >
+                            <ClipboardList className="h-4 w-4" />
+                            {t("workStart.openConsole")}
+                          </Button>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => navigate("/help/work-os")}
+                        >
+                          {t("workStart.openGuide")}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 flex w-full max-w-xl items-center justify-between rounded-2xl border border-dashed border-slate-200 bg-white/70 px-4 py-3 text-left shadow-sm">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-900">
+                      {t("workStart.hiddenTitle")}
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      {t("workStart.hiddenBody")}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => setWorkStartDismissed(false)}
+                  >
+                    {t("workStart.show")}
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -6195,32 +6616,61 @@ export function ChatView({
 
         {/* Attachment Previews */}
         {attachments.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2">
-            {attachments.map(a => (
-              <div key={a.key} className="relative">
-                {a.fileType.startsWith("image/") ? (
-                  <img
-                    src={a.url}
-                    alt={a.fileName}
-                    className="h-16 w-16 rounded-md border object-cover"
-                  />
-                ) : a.fileType.startsWith("video/") ? (
-                  <div className="h-16 w-16 rounded-md border bg-muted flex items-center justify-center">
-                    <Video className="h-6 w-6 text-muted-foreground" />
+          <div className="mb-3 space-y-2">
+            {attachmentOcrBadges.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {attachmentOcrBadges.map((badge) => (
+                  <div
+                    key={badge.key}
+                    className={cn(
+                      "rounded-2xl border px-3 py-2 text-xs shadow-sm",
+                      badge.className,
+                    )}
+                  >
+                    <div className="flex items-center gap-2 font-medium">
+                      <FileText className="h-3.5 w-3.5" />
+                      {badge.shortLabel}
+                    </div>
+                    <div className="mt-1 text-[11px] opacity-80">
+                      {badge.detailLabel}
+                    </div>
                   </div>
-                ) : (
-                  <Badge variant="secondary" className="gap-2 pr-6">
-                    {a.fileName}
-                  </Badge>
-                )}
-                <button
-                  className="absolute -right-1 -top-1 rounded-full bg-destructive p-1 text-destructive-foreground"
-                  onClick={() => removeAttachment(a.key)}
-                >
-                  <X className="h-3 w-3" />
-                </button>
+                ))}
               </div>
-            ))}
+            )}
+            {attachmentOcrRateLimitNote && (
+              <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>{attachmentOcrRateLimitNote}</span>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {attachments.map(a => (
+                <div key={a.key} className="relative">
+                  {a.fileType.startsWith("image/") ? (
+                    <img
+                      src={a.url}
+                      alt={a.fileName}
+                      className="h-16 w-16 rounded-md border object-cover"
+                    />
+                  ) : a.fileType.startsWith("video/") ? (
+                    <div className="h-16 w-16 rounded-md border bg-muted flex items-center justify-center">
+                      <Video className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <Badge variant="secondary" className="gap-2 pr-6">
+                      {a.fileName}
+                    </Badge>
+                  )}
+                  <button
+                    className="absolute -right-1 -top-1 rounded-full bg-destructive p-1 text-destructive-foreground"
+                    onClick={() => removeAttachment(a.key)}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -6269,6 +6719,34 @@ export function ChatView({
               </TooltipTrigger>
               <TooltipContent>
                 <p>Attach image or file</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={ocrOnlyMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setOcrOnlyMode(current => !current)}
+                  disabled={isStreaming}
+                  className={cn(
+                    "shrink-0 gap-2",
+                    ocrOnlyMode
+                      ? "bg-amber-500 text-white hover:bg-amber-600"
+                      : "text-amber-600 hover:bg-amber-50 hover:text-amber-700",
+                  )}
+                  aria-pressed={ocrOnlyMode}
+                >
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden sm:inline">OCR only</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  {ocrOnlyMode
+                    ? "OCR only is enabled. Attached documents and photos will be read directly."
+                    : "Turn on OCR only to read attached documents and photos directly."}
+                </p>
               </TooltipContent>
             </Tooltip>
 

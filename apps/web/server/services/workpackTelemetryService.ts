@@ -16,6 +16,8 @@ import {
   saveTelemetryEvent,
 } from "./workpackPersistence";
 
+type WorkpackDetail = NonNullable<Awaited<ReturnType<typeof getWorkpackDetail>>>;
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -30,7 +32,7 @@ function unique(values: Array<string | null | undefined>): string[] {
 }
 
 function buildSlices(
-  detail: NonNullable<ReturnType<typeof getWorkpackDetail>>,
+  detail: WorkpackDetail,
   rates: {
     completionRate: number;
     interventionRate: number;
@@ -69,7 +71,7 @@ function buildSlices(
 }
 
 function buildRecommendations(
-  detail: NonNullable<ReturnType<typeof getWorkpackDetail>>,
+  detail: WorkpackDetail,
   metrics: {
     completionRate: number;
     interventionRate: number;
@@ -123,21 +125,21 @@ function buildRecommendations(
   return recommendations;
 }
 
-export function recordWorkpackTelemetryEvent(event: Omit<WorkpackTelemetryEvent, "id" | "createdAt"> & {
+export async function recordWorkpackTelemetryEvent(event: Omit<WorkpackTelemetryEvent, "id" | "createdAt"> & {
   id?: string;
   createdAt?: string;
-}): WorkpackTelemetryEvent {
+}): Promise<WorkpackTelemetryEvent> {
   const parsed = workpackTelemetryEventSchema.parse({
     ...event,
     id: event.id ?? createWorkpackId("evt"),
     createdAt: event.createdAt ?? nowIso(),
   });
-  saveTelemetryEvent(parsed);
+  await saveTelemetryEvent(parsed);
   return parsed;
 }
 
-export function captureWorkpackMetricSnapshot(workpackId: string): MetricSnapshot {
-  const detail = getWorkpackDetail(workpackId);
+export async function captureWorkpackMetricSnapshot(workpackId: string): Promise<MetricSnapshot> {
+  const detail = await getWorkpackDetail(workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${workpackId}`);
   }
@@ -196,11 +198,11 @@ export function captureWorkpackMetricSnapshot(workpackId: string): MetricSnapsho
     }),
   });
 
-  saveMetricSnapshot(snapshot);
+  await saveMetricSnapshot(snapshot);
   return snapshot;
 }
 
-export function getWorkpackTelemetrySummary(tenantId: string): {
+export async function getWorkpackTelemetrySummary(tenantId: string): Promise<{
   recentEvents: WorkpackTelemetryEvent[];
   latestSnapshots: MetricSnapshot[];
   totals: {
@@ -208,10 +210,13 @@ export function getWorkpackTelemetrySummary(tenantId: string): {
     eventCount: number;
     snapshotCount: number;
   };
-} {
-  const details = listWorkpackDetailsByTenant(tenantId);
-  const latestSnapshots = details.map((detail) => detail.metricSnapshots[0] ?? captureWorkpackMetricSnapshot(detail.workpack.id));
-  const recentEvents = listTelemetryEventsByTenant(tenantId).slice(0, 50);
+}> {
+  const details = await listWorkpackDetailsByTenant(tenantId);
+  const latestSnapshots = await Promise.all(details.map(async (detail) => (
+    detail.metricSnapshots[0] ?? captureWorkpackMetricSnapshot(detail.workpack.id)
+  )));
+  const recentEvents = (await listTelemetryEventsByTenant(tenantId)).slice(0, 50);
+  const snapshotCount = (await listMetricSnapshotsByTenant(tenantId)).length;
 
   return {
     recentEvents,
@@ -219,12 +224,12 @@ export function getWorkpackTelemetrySummary(tenantId: string): {
     totals: {
       workpackCount: details.length,
       eventCount: recentEvents.length,
-      snapshotCount: listMetricSnapshotsByTenant(tenantId).length,
+      snapshotCount,
     },
   };
 }
 
-export function getLatestMetricSnapshot(workpackId: string): MetricSnapshot | null {
-  const detail = getWorkpackDetail(workpackId);
+export async function getLatestMetricSnapshot(workpackId: string): Promise<MetricSnapshot | null> {
+  const detail = await getWorkpackDetail(workpackId);
   return detail?.metricSnapshots[0] ?? null;
 }

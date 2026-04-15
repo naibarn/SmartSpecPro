@@ -9,10 +9,196 @@ from app.api.internal_library import VISION_PROMPT, router
 from app.core.config import settings
 from app.core.database import get_db
 from app.services.landingai_ade_document_service import LandingAIDocumentResult
+from app.services.typhoon_ocr_document_service import (
+    TyphoonDocumentProviderUnavailableError,
+    TyphoonDocumentResult,
+)
 
 
 async def _fake_get_db():
     yield object()
+
+
+@pytest.mark.asyncio
+async def test_document_ocr_test_connection_endpoint_uses_typhoon_key_override(monkeypatch):
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_db] = _fake_get_db
+
+    monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "proxy-token", raising=False)
+    monkeypatch.setattr(
+        "app.api.internal_library._build_document_ocr_test_image",
+        lambda: b"sample-image-bytes",
+    )
+
+    async def fake_typhoon_call(
+        content: bytes,
+        mime_type: str,
+        *,
+        file_name: str,
+        prompt: str,
+        capture_intent: str | None = None,
+        source_url: str | None = None,
+        trace_id: str | None = None,
+        session=None,
+        api_key_override: str | None = None,
+    ):
+        assert content == b"sample-image-bytes"
+        assert mime_type == "image/png"
+        assert file_name == "document-ocr-test.png"
+        assert capture_intent == "receipt"
+        assert api_key_override == "typhoon-test-key"
+        return (
+            {
+                "ocrText": "OCR TEST",
+                "metadata": {"model_version": "typhoon-ocr"},
+            },
+            "typhoon_ocr_1_5",
+            [],
+        )
+
+    monkeypatch.setattr("app.api.internal_library._call_typhoon_document_ocr", fake_typhoon_call)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/internal/library/document-ocr/test-connection",
+            headers={
+                "x-proxy-token": "proxy-token",
+                "x-typhoon-ocr-api-key": "typhoon-test-key",
+            },
+            json={
+                "provider_id": "typhoon_ocr_1_5",
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["provider_id"] == "typhoon_ocr_1_5"
+    assert payload["message"] == "Connection successful"
+    assert payload["ocr_text"] == "OCR TEST"
+    assert payload["model_version"] == "typhoon-ocr"
+    assert payload["elapsed_ms"] >= 0
+
+
+@pytest.mark.asyncio
+async def test_document_ocr_test_connection_endpoint_uses_landingai_key_override(monkeypatch):
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_db] = _fake_get_db
+
+    monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "proxy-token", raising=False)
+    monkeypatch.setattr(
+        "app.api.internal_library._build_document_ocr_test_image",
+        lambda: b"sample-image-bytes",
+    )
+
+    async def fake_landingai_call(
+        content: bytes,
+        mime_type: str,
+        *,
+        file_name: str,
+        prompt: str,
+        capture_intent: str | None = None,
+        source_url: str | None = None,
+        trace_id: str | None = None,
+        session=None,
+        api_key_override: str | None = None,
+    ):
+        assert content == b"sample-image-bytes"
+        assert mime_type == "image/png"
+        assert file_name == "document-ocr-test.png"
+        assert capture_intent == "receipt"
+        assert api_key_override == "landingai-test-key"
+        return (
+            {
+                "ocrText": "OCR TEST",
+                "metadata": {"model_version": "dpt-2-latest"},
+            },
+            "landingai_ade",
+            [],
+        )
+
+    monkeypatch.setattr("app.api.internal_library._call_landingai_ade_document_ocr", fake_landingai_call)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/internal/library/document-ocr/test-connection",
+            headers={
+                "x-proxy-token": "proxy-token",
+                "x-landingai-ade-api-key": "landingai-test-key",
+            },
+            json={
+                "provider_id": "landingai_ade",
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["provider_id"] == "landingai_ade"
+    assert payload["message"] == "Connection successful"
+    assert payload["ocr_text"] == "OCR TEST"
+    assert payload["model_version"] == "dpt-2-latest"
+    assert payload["elapsed_ms"] >= 0
+
+
+@pytest.mark.asyncio
+async def test_document_ocr_test_connection_endpoint_uses_google_ai_vision(monkeypatch):
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_db] = _fake_get_db
+
+    monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "proxy-token", raising=False)
+    monkeypatch.setattr(
+        "app.api.internal_library._build_document_ocr_test_image",
+        lambda: b"sample-image-bytes",
+    )
+
+    async def fake_google_call(
+        content: bytes,
+        mime_type: str,
+        *,
+        file_name: str,
+        prompt: str,
+        capture_intent: str | None = None,
+        source_url: str | None = None,
+        trace_id: str | None = None,
+        session=None,
+        api_key_override: str | None = None,
+    ):
+        assert content == b"sample-image-bytes"
+        assert mime_type == "image/png"
+        assert file_name == "document-ocr-test.png"
+        assert capture_intent == "receipt"
+        return (
+            {
+                "ocrText": "OCR TEST",
+                "metadata": {"model_version": "gemini-2.5-flash"},
+            },
+            "google_ai_vision",
+            [],
+        )
+
+    monkeypatch.setattr("app.api.internal_library._call_google_ai_document_ocr", fake_google_call)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/internal/library/document-ocr/test-connection",
+            headers={"x-proxy-token": "proxy-token"},
+            json={
+                "provider_id": "google_ai_vision",
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["provider_id"] == "google_ai_vision"
+    assert payload["message"] == "Connection successful"
+    assert payload["ocr_text"] == "OCR TEST"
+    assert payload["model_version"] == "gemini-2.5-flash"
+    assert payload["elapsed_ms"] >= 0
 
 
 @pytest.mark.asyncio
@@ -58,6 +244,62 @@ async def test_extract_library_text_endpoint_returns_extracted_text(monkeypatch)
     assert payload["warning"] is None
     assert payload["metadata"]["analysis_profile"] == "metadata_only"
     assert payload["metadata"]["capture_intent"] is None
+
+
+@pytest.mark.asyncio
+async def test_extract_library_text_endpoint_uses_google_ai_vision_provider(monkeypatch):
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_db] = _fake_get_db
+
+    monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "proxy-token", raising=False)
+
+    async def fake_google_call(
+        content: bytes,
+        mime_type: str,
+        *,
+        file_name: str,
+        prompt: str,
+        capture_intent: str | None = None,
+        source_url: str | None = None,
+        trace_id: str | None = None,
+        session=None,
+        api_key_override: str | None = None,
+    ):
+        assert content == b"hello world"
+        assert mime_type == "image/jpeg"
+        assert file_name == "receipt.jpg"
+        assert capture_intent is None
+        return (
+            {
+                "ocrText": "Thai receipt OCR",
+                "metadata": {"model_version": "gemini-2.5-flash"},
+            },
+            "google_ai_vision",
+            [],
+        )
+
+    monkeypatch.setattr("app.api.internal_library._call_google_ai_document_ocr", fake_google_call)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/internal/library/extract-text",
+            headers={"x-proxy-token": "proxy-token"},
+            json={
+                "file_name": "receipt.jpg",
+                "mime_type": "image/jpeg",
+                "content_base64": "aGVsbG8gd29ybGQ=",
+                "ocr_provider": "google_ai_vision",
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["text"] == "Thai receipt OCR"
+    assert payload["method"] == "image_document_ocr"
+    assert payload["metadata"]["ocr_provider"] == "google_ai_vision"
+    assert payload["metadata"]["model_version"] == "gemini-2.5-flash"
 
 
 @pytest.mark.asyncio
@@ -140,6 +382,8 @@ async def test_extract_library_text_endpoint_uses_landingai_ade_for_scanned_slip
             content: bytes | None,
             mime_type: str,
             file_name: str,
+            prompt: str | None = None,
+            capture_intent: str | None = None,
             source_url: str | None = None,
             trace_id: str | None = None,
             session=None,
@@ -187,7 +431,7 @@ async def test_extract_library_text_endpoint_uses_landingai_ade_for_scanned_slip
 
     monkeypatch.setattr(
         "app.api.internal_library.get_landingai_ade_document_service",
-        lambda: FakeAdeService(),
+        lambda *args, **kwargs: FakeAdeService(),
     )
     monkeypatch.setattr(
         "app.api.internal_library.OneDriveContentExtractor.extract",
@@ -220,6 +464,167 @@ async def test_extract_library_text_endpoint_uses_landingai_ade_for_scanned_slip
 
 
 @pytest.mark.asyncio
+async def test_extract_library_text_endpoint_uses_typhoon_ocr_when_typhoon_key_is_present(monkeypatch):
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_db] = _fake_get_db
+
+    monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "proxy-token", raising=False)
+
+    class FakeTyphoonService:
+        def is_configured(self) -> bool:
+            return True
+
+        async def parse_and_extract_document(
+            self,
+            *,
+            content: bytes | None,
+            mime_type: str,
+            file_name: str,
+            source_url: str | None = None,
+            trace_id: str | None = None,
+            session=None,
+            allow_temp_url: bool = True,
+            extract_schema=None,
+        ):
+            assert content == b"image bytes"
+            assert mime_type == "image/jpeg"
+            assert file_name == "receipt.jpg"
+            assert trace_id is not None
+            return TyphoonDocumentResult(
+                provider="typhoon_ocr_1_5",
+                model_version="typhoon-ocr",
+                source_url_kind="uploaded_bytes",
+                source_url_public="",
+                markdown="ร้าน ABC 120 บาท",
+                ocr_text="ร้าน ABC 120 บาท",
+                structured_json={
+                    "shortCaption": "Receipt",
+                    "detailedCaption": "Receipt",
+                    "ocrText": "ร้าน ABC 120 บาท",
+                    "objects": [],
+                    "styles": [],
+                    "materials": [],
+                    "colors": [],
+                    "rooms": [],
+                    "architectureTags": [],
+                    "safetyLabels": [],
+                },
+                page_count=1,
+                warnings=[],
+                trace_id=trace_id,
+                provider_request_id="resp-typhoon-1",
+                parse_status="completed",
+                mime_type="image/jpeg",
+                file_hash="hash-typhoon",
+                markdown_hash="hash-md",
+                ocr_text_hash="hash-ocr",
+            )
+
+    monkeypatch.setattr(
+        "app.api.internal_library.get_typhoon_ocr_document_service",
+        lambda *args, **kwargs: FakeTyphoonService(),
+    )
+
+    class FakeLandingService:
+        def is_configured(self) -> bool:
+            return False
+
+    monkeypatch.setattr(
+        "app.api.internal_library.get_landingai_ade_document_service",
+        lambda *args, **kwargs: FakeLandingService(),
+    )
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/internal/library/extract-text",
+            headers={
+                "x-proxy-token": "proxy-token",
+                "x-typhoon-ocr-api-key": "typhoon-test-key",
+            },
+            json={
+                "file_name": "receipt.jpg",
+                "mime_type": "image/jpeg",
+                "content_base64": "aW1hZ2UgYnl0ZXM=",
+                "analysis_profile": "document_ocr",
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["text"] == "ร้าน ABC 120 บาท"
+    assert payload["method"] == "image_document_ocr"
+    assert payload["metadata"]["ocr_provider"] == "typhoon_ocr_1_5"
+
+
+@pytest.mark.asyncio
+async def test_extract_library_text_endpoint_falls_back_to_native_extractor_when_typhoon_ocr_is_unavailable(monkeypatch):
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_db] = _fake_get_db
+
+    monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "proxy-token", raising=False)
+
+    class FailingTyphoonService:
+        def is_configured(self) -> bool:
+            return True
+
+        async def parse_and_extract_document(
+            self,
+            *,
+            content: bytes | None,
+            mime_type: str,
+            file_name: str,
+            source_url: str | None = None,
+            trace_id: str | None = None,
+            session=None,
+            allow_temp_url: bool = True,
+            extract_schema=None,
+        ):
+            raise TyphoonDocumentProviderUnavailableError("Typhoon OCR is unavailable")
+
+    class DisabledLandingService:
+        def is_configured(self) -> bool:
+            return False
+
+    monkeypatch.setattr("app.api.internal_library.get_typhoon_ocr_document_service", lambda *args, **kwargs: FailingTyphoonService())
+    monkeypatch.setattr("app.api.internal_library.get_landingai_ade_document_service", lambda *args, **kwargs: DisabledLandingService())
+    monkeypatch.setattr(
+        "app.api.internal_library.OneDriveContentExtractor.extract",
+        lambda self, content, mime_type, file_name: {
+            "text": "Extracted document text",
+            "char_count": 23,
+            "method": "pdf",
+        },
+    )
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/internal/library/extract-text",
+            headers={
+                "x-proxy-token": "proxy-token",
+                "x-typhoon-ocr-api-key": "typhoon-test-key",
+            },
+            json={
+                "file_name": "guide.pdf",
+                "mime_type": "application/pdf",
+                "content_base64": "aGVsbG8gd29ybGQ=",
+                "analysis_profile": "document_ocr",
+                "capture_intent": "transfer_slip",
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["text"] == "Extracted document text"
+    assert payload["method"] == "pdf"
+    assert payload["warning"] is not None
+    assert "Typhoon OCR is unavailable" in payload["warning"]
+
+
+@pytest.mark.asyncio
 async def test_enrich_library_media_endpoint_uses_landingai_ade_for_transfer_slip_image(monkeypatch):
     app = FastAPI()
     app.include_router(router)
@@ -240,6 +645,8 @@ async def test_enrich_library_media_endpoint_uses_landingai_ade_for_transfer_sli
             content: bytes | None,
             mime_type: str,
             file_name: str,
+            prompt: str | None = None,
+            capture_intent: str | None = None,
             source_url: str | None = None,
             trace_id: str | None = None,
             session=None,
@@ -251,6 +658,9 @@ async def test_enrich_library_media_endpoint_uses_landingai_ade_for_transfer_sli
             assert content == b"jpg bytes"
             assert mime_type == "image/jpeg"
             assert file_name == "transfer-slip.jpg"
+            assert prompt is not None
+            assert "document transcription engine" in prompt.lower()
+            assert capture_intent == "transfer_slip"
             assert source_url == "https://cdn.example.com/library/uploads/tenant-1/7/transfer-slip.jpg"
             assert session is not None
             assert trace_id is not None
@@ -290,7 +700,7 @@ async def test_enrich_library_media_endpoint_uses_landingai_ade_for_transfer_sli
 
     monkeypatch.setattr(
         "app.api.internal_library.get_landingai_ade_document_service",
-        lambda: FakeAdeService(),
+        lambda *args, **kwargs: FakeAdeService(),
     )
     monkeypatch.setattr(
         "app.api.internal_library._call_gateway_multimodal_vision_bytes",
@@ -703,6 +1113,124 @@ async def test_enrich_library_media_endpoint_uploads_local_source_url_to_temp_r2
     assert gateway_request["payload"]["source_url_host_redacted"] == "localhost"
     assert gateway_request["payload"]["resolved_image_url_public"] is True
     assert gateway_request["payload"]["resolved_image_url_host_redacted"] == "cdn….example.com"
+
+
+@pytest.mark.asyncio
+async def test_enrich_library_media_endpoint_falls_back_to_data_url_when_temp_r2_upload_fails(monkeypatch, tmp_path):
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_db] = _fake_get_db
+
+    monkeypatch.setattr(settings, "SMARTSPEC_PROXY_TOKEN", "proxy-token", raising=False)
+    monkeypatch.setattr(settings, "SMARTSPEC_USE_WEB_GATEWAY", True, raising=False)
+    monkeypatch.setattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", "http://gateway.local", raising=False)
+    monkeypatch.setattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "gateway-token", raising=False)
+    monkeypatch.setattr(settings, "SITE_URL", "http://localhost:3000", raising=False)
+    monkeypatch.setenv("FINANCE_OCR_DEBUG_TRACE", "true")
+    monkeypatch.setenv("FINANCE_OCR_DEBUG_TRACE_DIR", str(tmp_path))
+
+    captured: dict[str, object] = {}
+
+    class FailingR2StorageService:
+        async def upload_bytes(
+            self,
+            content: bytes,
+            key: str,
+            content_type: str = "application/octet-stream",
+            db_session=None,
+            metadata=None,
+        ):
+            raise ValueError("storage unavailable")
+
+    monkeypatch.setattr("app.api.internal_library.get_r2_storage_service", lambda: FailingR2StorageService())
+
+    async def fake_responses_completion(
+        self,
+        *,
+        input,
+        model,
+        reasoning=None,
+        max_output_tokens=None,
+        extra_body=None,
+        **kwargs,
+    ):
+        captured["input"] = input
+        captured["model"] = model
+        captured["reasoning"] = reasoning
+        captured["max_output_tokens"] = max_output_tokens
+        captured["extra_body"] = extra_body
+        return {
+            "output": [
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "type": "output_text",
+                            "text": (
+                                "{\"shortCaption\":\"Krungthai transfer slip\","
+                                "\"detailedCaption\":\"Payment slip showing a transfer of 726.00 baht.\","
+                                "\"ocrText\":\"โอนเงิน 726.00 บาท ไปยัง TIKTOKSHOPSELLER\","
+                                "\"objects\":[\"qr code\",\"amount\"],"
+                                "\"styles\":[],"
+                                "\"materials\":[],"
+                                "\"colors\":[],"
+                                "\"architectureTags\":[]}"
+                            ),
+                        }
+                    ],
+                }
+            ]
+        }
+
+    monkeypatch.setattr("app.api.internal_library.LLMGatewayClient.responses_completion", fake_responses_completion)
+
+    source_url = "http://localhost:3000/uploads/library/tenant-1/7/transfer-slip.jpg"
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/internal/library/enrich-media",
+            headers={"x-proxy-token": "proxy-token"},
+            json={
+                "file_name": "transfer-slip.jpg",
+                "mime_type": "image/jpeg",
+                "content_base64": "aGVsbG8gd29ybGQ=",
+                "source_url": source_url,
+                "analysis_profile": "document_ocr",
+                "capture_intent": "transfer_slip",
+                "enable_vision": True,
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["method"] == "image_document_ocr"
+    assert payload["metadata"]["ocr_provider"] == "gateway_auto"
+    assert "โอนเงิน 726.00 บาท" in payload["text"]
+
+    responses_input = captured["input"]
+    assert isinstance(responses_input, list)
+    image_block = responses_input[0]["content"][1]
+    assert image_block["type"] == "input_image"
+    assert image_block["image_url"].startswith("data:image/jpeg;base64,")
+    assert captured["model"] == "__auto"
+    assert captured["reasoning"] == {"effort": "high"}
+    assert captured["max_output_tokens"] == 4096
+    assert captured["extra_body"] == {
+        "modelSelection": {"mode": "auto-global"},
+        "modelSelectionContext": {"featureModes": ["photo_search", "structured_output", "responses"]},
+    }
+
+    debug_files = list(tmp_path.glob("finance-ocr-*.jsonl"))
+    assert len(debug_files) == 1
+    debug_events = [json.loads(line) for line in debug_files[0].read_text(encoding="utf-8").splitlines() if line.strip()]
+    gateway_request = next(
+        event for event in debug_events if event["event"] == "finance_ocr.gateway.request"
+    )
+    assert gateway_request["payload"]["source_url_public"] is False
+    assert gateway_request["payload"]["source_url_kind"] == "data_url"
+    assert gateway_request["payload"]["source_url_host_redacted"] == "localhost"
+    assert gateway_request["payload"]["resolved_image_url_public"] is False
+    assert gateway_request["payload"]["resolved_image_url_host_redacted"] is None
 
 
 @pytest.mark.asyncio

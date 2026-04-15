@@ -1,0 +1,17 @@
+[Unit]
+Description=SmartSpecPro Alert Monitor Daemon
+After=smartspec-web.service smartspec-backend.service
+Wants=smartspec-web.service
+
+[Service]
+Type=simple
+User=dev
+WorkingDirectory=/home/dev/projects/SmartSpecPro
+ExecStart=/bin/bash /home/dev/projects/SmartSpecPro/scripts/alert-monitor.sh daemon
+Restart=on-failure
+RestartSec=30
+StandardOutput=append:/home/dev/projects/SmartSpecPro/logs/alert-monitor.log
+StandardError=append:/home/dev/projects/SmartSpecPro/logs/alert-monitor.log
+
+[Install]
+WantedBy=multi-user.target

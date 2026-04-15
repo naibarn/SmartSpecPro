@@ -20,7 +20,7 @@ export interface SpeakLocalVoiceReadbackInput {
 
 export interface TauriLocalVoiceReadbackStatus {
   available: boolean;
-  backend: string | null;
+  backend: "native" | "omnivoice" | "speechSynthesis" | string | null;
   reason: string | null;
 }
 

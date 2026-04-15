@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# SmartSpecPro — OpenSandbox Connectivity Verification
+# SmartAIHub — OpenSandbox Connectivity Verification
 # =============================================================================
 #
 # Runs the full connectivity test matrix after deploying the Hetzner server.
@@ -54,7 +54,7 @@ info() { echo -e "  ${BLUE}[INFO]${NC} $*"; }
 preflight() {
   echo ""
   echo "================================================================"
-  echo "  SmartSpecPro — OpenSandbox Connectivity Verification"
+  echo "  SmartAIHub — OpenSandbox Connectivity Verification"
   echo "  Target: ${BASE_URL}"
   echo "  $(date)"
   echo "================================================================"

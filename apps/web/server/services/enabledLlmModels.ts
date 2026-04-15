@@ -204,77 +204,82 @@ export function resolveEnabledLlmModelIdFromRows(input: {
 export async function loadEnabledLlmModelRows(
   options?: { autoSelectionOnly?: boolean },
 ): Promise<EnabledLlmModelRow[]> {
-  const db = await getDb();
-  if (!db) {
+  try {
+    const db = await getDb();
+    if (!db) {
+      return [];
+    }
+
+    const rows = await db
+      .select({
+        providerId: llmProviders.id,
+        providerName: llmProviders.providerName,
+        modelId: modelProviderMap.modelId,
+        providerModelId: modelProviderMap.providerModelId,
+        legacyModelAliases: modelProviderMap.legacyModelAliases,
+        defaultModel: llmProviders.defaultModel,
+        availableModels: llmProviders.availableModels,
+        apiStyle: modelProviderMap.apiStyle,
+        // Capability columns
+        supportsVision: modelProviderMap.supportsVision,
+        supportsThinking: modelProviderMap.supportsThinking,
+        supportsFunctionTools: modelProviderMap.supportsFunctionTools,
+        supportsStructuredOutputs: modelProviderMap.supportsStructuredOutputs,
+        supportsJsonMode: modelProviderMap.supportsJsonMode,
+        supportsStrictToolSchema: modelProviderMap.supportsStrictToolSchema,
+        supportsWebSearch: modelProviderMap.supportsWebSearch,
+        supportsCodeExecution: modelProviderMap.supportsCodeExecution,
+        supportsComputerUse: modelProviderMap.supportsComputerUse,
+        supportsBackground: modelProviderMap.supportsBackground,
+        supportsResponses: modelProviderMap.supportsResponses,
+        // Sizing and ranking
+        contextLength: modelProviderMap.contextLength,
+        priority: modelProviderMap.priority,
+        priorityLocked: modelProviderMap.priorityLocked,
+        isFree: modelProviderMap.isFree,
+        pricingInput: modelProviderMap.pricingInput,
+        pricingOutput: modelProviderMap.pricingOutput,
+      })
+      .from(modelProviderMap)
+      .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
+      .where(and(eq(modelProviderMap.isEnabled, true), eq(llmProviders.isEnabled, true)))
+      .orderBy(
+        asc(llmProviders.sortOrder),
+        asc(modelProviderMap.priority),
+        asc(modelProviderMap.id),
+      );
+
+    return hydrateEnabledLlmModelRows(rows.map((row) => ({
+      providerId: row.providerId,
+      providerName: row.providerName,
+      modelId: row.modelId,
+      providerModelId: row.providerModelId,
+      legacyModelAliases: row.legacyModelAliases as string[] | null,
+      defaultModel: row.defaultModel,
+      availableModels: row.availableModels as AvailableLlmProviderModel[] | null,
+      apiStyle: row.apiStyle,
+      supportsVision: row.supportsVision,
+      supportsThinking: row.supportsThinking,
+      supportsFunctionTools: row.supportsFunctionTools,
+      supportsStructuredOutputs: row.supportsStructuredOutputs,
+      supportsJsonMode: row.supportsJsonMode,
+      supportsStrictToolSchema: row.supportsStrictToolSchema,
+      supportsWebSearch: row.supportsWebSearch,
+      supportsCodeExecution: row.supportsCodeExecution,
+      supportsComputerUse: row.supportsComputerUse,
+      supportsBackground: row.supportsBackground,
+      supportsResponses: row.supportsResponses,
+      contextLength: row.contextLength,
+      priority: row.priority,
+      priorityLocked: row.priorityLocked,
+      isFree: row.isFree,
+      pricingInput: row.pricingInput,
+      pricingOutput: row.pricingOutput,
+    })), options);
+  } catch (error) {
+    console.warn("[EnabledLlmModels] Falling back to empty model list after query failure", error);
     return [];
   }
-
-  const rows = await db
-    .select({
-      providerId: llmProviders.id,
-      providerName: llmProviders.providerName,
-      modelId: modelProviderMap.modelId,
-      providerModelId: modelProviderMap.providerModelId,
-      legacyModelAliases: modelProviderMap.legacyModelAliases,
-      defaultModel: llmProviders.defaultModel,
-      availableModels: llmProviders.availableModels,
-      apiStyle: modelProviderMap.apiStyle,
-      // Capability columns
-      supportsVision: modelProviderMap.supportsVision,
-      supportsThinking: modelProviderMap.supportsThinking,
-      supportsFunctionTools: modelProviderMap.supportsFunctionTools,
-      supportsStructuredOutputs: modelProviderMap.supportsStructuredOutputs,
-      supportsJsonMode: modelProviderMap.supportsJsonMode,
-      supportsStrictToolSchema: modelProviderMap.supportsStrictToolSchema,
-      supportsWebSearch: modelProviderMap.supportsWebSearch,
-      supportsCodeExecution: modelProviderMap.supportsCodeExecution,
-      supportsComputerUse: modelProviderMap.supportsComputerUse,
-      supportsBackground: modelProviderMap.supportsBackground,
-      supportsResponses: modelProviderMap.supportsResponses,
-      // Sizing and ranking
-      contextLength: modelProviderMap.contextLength,
-      priority: modelProviderMap.priority,
-      priorityLocked: modelProviderMap.priorityLocked,
-      isFree: modelProviderMap.isFree,
-      pricingInput: modelProviderMap.pricingInput,
-      pricingOutput: modelProviderMap.pricingOutput,
-    })
-    .from(modelProviderMap)
-    .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
-    .where(and(eq(modelProviderMap.isEnabled, true), eq(llmProviders.isEnabled, true)))
-    .orderBy(
-      asc(llmProviders.sortOrder),
-      asc(modelProviderMap.priority),
-      asc(modelProviderMap.id),
-    );
-
-  return hydrateEnabledLlmModelRows(rows.map((row) => ({
-    providerId: row.providerId,
-    providerName: row.providerName,
-    modelId: row.modelId,
-    providerModelId: row.providerModelId,
-    legacyModelAliases: row.legacyModelAliases as string[] | null,
-    defaultModel: row.defaultModel,
-    availableModels: row.availableModels as AvailableLlmProviderModel[] | null,
-    apiStyle: row.apiStyle,
-    supportsVision: row.supportsVision,
-    supportsThinking: row.supportsThinking,
-    supportsFunctionTools: row.supportsFunctionTools,
-    supportsStructuredOutputs: row.supportsStructuredOutputs,
-    supportsJsonMode: row.supportsJsonMode,
-    supportsStrictToolSchema: row.supportsStrictToolSchema,
-    supportsWebSearch: row.supportsWebSearch,
-    supportsCodeExecution: row.supportsCodeExecution,
-    supportsComputerUse: row.supportsComputerUse,
-    supportsBackground: row.supportsBackground,
-    supportsResponses: row.supportsResponses,
-    contextLength: row.contextLength,
-    priority: row.priority,
-    priorityLocked: row.priorityLocked,
-    isFree: row.isFree,
-    pricingInput: row.pricingInput,
-    pricingOutput: row.pricingOutput,
-  })), options);
 }
 
 export async function resolveEnabledLlmModelId(

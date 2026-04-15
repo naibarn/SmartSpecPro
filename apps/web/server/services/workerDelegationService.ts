@@ -12,6 +12,7 @@ import {
 import { signBearerToken, verifyBearerToken } from "../_core/tokens";
 import type { WorkerAccessAuthContext } from "./workerAuthService";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
+import type { TenantFeatureFlags } from "../../shared/featureFlags";
 import {
   DELEGATED_SESSION_DEFAULT_TTL_SECONDS,
   DELEGATED_SESSION_MAX_TTL_SECONDS,
@@ -27,7 +28,19 @@ import {
   type DelegatedSessionResponse,
   type DelegatedWorkerScope,
 } from "../../shared/workerDelegation";
-import type { WorkerRuntimeType } from "../../shared/workerRuntime";
+import {
+  getWorkerRuntimeDefinition,
+  isWorkerLoopbackUrl,
+  isWorkerHttpsUrl,
+  summarizeHermesTaskMode,
+  type WorkerRuntimeType,
+} from "../../shared/workerRuntime";
+import {
+  getWorkerAccessPermissionScopesForPreset,
+  normalizeWorkerAccessPermissionScopes,
+  type WorkerAccessPermissionPreset,
+  type WorkerAccessPermissionScope,
+} from "../../shared/workerAccessKeys";
 
 const ACTIVE_JOB_STATUSES = new Set([
   "claimed",
@@ -45,6 +58,14 @@ type WorkerRecord = Record<string, any>;
 type WorkerJobRecord = Record<string, any>;
 type SessionRecord = Record<string, any>;
 type GrantRecord = Record<string, any>;
+type RuntimeDelegationCapabilities = {
+  supportsDelegatedHttp: boolean;
+  supportsDelegatedMcp: boolean;
+  supportsCallbacks: boolean;
+  apiServerEnabled: boolean;
+  apiServerBaseUrl: string | null;
+  remoteEndpointPolicyExceptionId: string | null;
+};
 
 type ProfileDefinition = {
   scopes: DelegatedWorkerScope[];
@@ -58,6 +79,15 @@ type ProfileDefinition = {
     ragSearch: boolean;
     ragIngest: boolean;
   };
+};
+
+type WorkerAccessPolicyRecord = {
+  permissionPreset: string | null;
+  permissionScopes: string[];
+  quotaHourly: number | null;
+  quotaDaily: number | null;
+  quotaWeekly: number | null;
+  quotaMonthly: number | null;
 };
 
 const DEFAULT_LLM_MODEL_ALLOWLIST = [
@@ -421,6 +451,220 @@ function hasGrantResource(grants: GrantRecord[], grantType: DelegatedGrantType):
   );
 }
 
+function readRuntimeMetadata(worker: WorkerRecord | null | undefined): Record<string, unknown> {
+  if (!worker || !worker.capabilitiesJson || typeof worker.capabilitiesJson !== "object") {
+    return {};
+  }
+  const runtimeMetadata = (worker.capabilitiesJson as Record<string, unknown>).runtimeMetadata;
+  return runtimeMetadata && typeof runtimeMetadata === "object" && !Array.isArray(runtimeMetadata)
+    ? runtimeMetadata as Record<string, unknown>
+    : {};
+}
+
+function readWorkerAccessPolicy(worker: WorkerRecord | null | undefined): WorkerAccessPolicyRecord | null {
+  const metadata = readRuntimeMetadata(worker);
+  const rawPolicy = metadata.workerAccessPolicy;
+  if (!rawPolicy || typeof rawPolicy !== "object" || Array.isArray(rawPolicy)) {
+    return null;
+  }
+  const policy = rawPolicy as Record<string, unknown>;
+  const permissionPreset = typeof policy.permissionPreset === "string" && policy.permissionPreset.trim().length > 0
+    ? policy.permissionPreset.trim()
+    : null;
+  const permissionScopes = normalizeWorkerAccessPermissionScopes(policy.permissionScopes);
+  const readQuota = (value: unknown): number | null =>
+    typeof value === "number" && Number.isFinite(value) && value > 0
+      ? Math.floor(value)
+      : null;
+  return {
+    permissionPreset,
+    permissionScopes,
+    quotaHourly: readQuota(policy.quotaHourly),
+    quotaDaily: readQuota(policy.quotaDaily),
+    quotaWeekly: readQuota(policy.quotaWeekly),
+    quotaMonthly: readQuota(policy.quotaMonthly),
+  };
+}
+
+function getRequiredDelegatedSessionScopes(
+  scopeProfile: DelegatedScopeProfile,
+  grants: DelegatedGrantRequest,
+  runtimeCapabilities: RuntimeDelegationCapabilities,
+  job?: WorkerJobRecord | null,
+): WorkerAccessPermissionScope[] {
+  const profileDefinition = getProfileDefinition(scopeProfile);
+  const required = new Set<WorkerAccessPermissionScope>(profileDefinition.scopes);
+
+  if (grants.skills.length > 0) {
+    required.add("skills:execute");
+  }
+  if (grants.agencies.length > 0) {
+    required.add("agents:execute");
+  }
+  if (grants.libraryItemIds.length > 0) {
+    required.add("library:read");
+  }
+  if (grants.knowledge.librarySearch) {
+    required.add("library:read");
+  }
+  if (grants.knowledge.libraryUpload) {
+    required.add("library:write");
+  }
+  if (grants.knowledge.ragSearch) {
+    required.add("rag:read");
+  }
+  if (grants.knowledge.ragIngest) {
+    required.add("rag:write");
+  }
+  if (grants.mcpNamespaces.length > 0) {
+    required.add("delegate:mcp");
+  }
+  if (runtimeCapabilities.supportsCallbacks && profileDefinition.routeFamilies.includes("callbacks")) {
+    required.add("callbacks:publish");
+  }
+  const jobInput = job && job.inputJson && typeof job.inputJson === "object" && !Array.isArray(job.inputJson)
+    ? job.inputJson as Record<string, unknown>
+    : {};
+  const roomId = typeof jobInput.roomId === "string" && jobInput.roomId.trim()
+    ? jobInput.roomId.trim()
+    : "";
+  const workflowTargetId = typeof jobInput.runId === "string" && jobInput.runId.trim()
+    ? jobInput.runId.trim()
+    : typeof job?.workflowRunId === "string" && job.workflowRunId.trim()
+      ? job.workflowRunId.trim()
+      : "";
+  if (roomId || workflowTargetId) {
+    required.add("callbacks:publish");
+  }
+
+  return [...required];
+}
+
+function assertWorkerAccessPolicyAllowsDelegatedSession(
+  worker: WorkerRecord,
+  scopeProfile: DelegatedScopeProfile,
+  grants: DelegatedGrantRequest,
+  runtimeCapabilities: RuntimeDelegationCapabilities,
+  job?: WorkerJobRecord | null,
+): void {
+  const policy = readWorkerAccessPolicy(worker);
+  if (!policy) {
+    return;
+  }
+
+  const configuredPreset = policy.permissionPreset === "custom"
+    ? "custom"
+    : policy.permissionPreset && (policy.permissionPreset === "readonly"
+      || policy.permissionPreset === "operator_basic"
+      || policy.permissionPreset === "content_worker"
+      || policy.permissionPreset === "knowledge_worker"
+      || policy.permissionPreset === "work_os_worker"
+      || policy.permissionPreset === "full_personal_worker")
+      ? policy.permissionPreset as WorkerAccessPermissionPreset
+      : null;
+  const allowedScopes = new Set<WorkerAccessPermissionScope>(
+    configuredPreset && configuredPreset !== "custom"
+      ? getWorkerAccessPermissionScopesForPreset(configuredPreset)
+      : policy.permissionScopes,
+  );
+  const requiredScopes = getRequiredDelegatedSessionScopes(scopeProfile, grants, runtimeCapabilities, job);
+  const missingScopes = requiredScopes.filter((scope) => !allowedScopes.has(scope));
+  if (missingScopes.length > 0) {
+    throw new WorkerDelegationError(
+      "worker_access_policy_denied",
+      403,
+      `Worker access policy does not allow delegated session scopes: ${missingScopes.join(", ")}`,
+    );
+  }
+}
+
+function readBooleanCapability(metadata: Record<string, unknown>, key: string, fallback: boolean): boolean {
+  const value = metadata[key];
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function readStringCapability(metadata: Record<string, unknown>, key: string): string | null {
+  const value = metadata[key];
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function getRuntimeDelegationCapabilities(worker: WorkerRecord): RuntimeDelegationCapabilities {
+  const metadata = readRuntimeMetadata(worker);
+  const runtimeType = worker.runtimeType as WorkerRuntimeType;
+
+  if (runtimeType === "hermes_agent_gateway") {
+    return {
+      supportsDelegatedHttp: readBooleanCapability(metadata, "supportsDelegatedHttp", false),
+      supportsDelegatedMcp: readBooleanCapability(metadata, "supportsDelegatedMcp", false),
+      supportsCallbacks: readBooleanCapability(metadata, "supportsCallbacks", false),
+      apiServerEnabled: readBooleanCapability(metadata, "apiServerEnabled", true),
+      apiServerBaseUrl: readStringCapability(metadata, "apiServerBaseUrl"),
+      remoteEndpointPolicyExceptionId: readStringCapability(metadata, "remoteEndpointPolicyExceptionId"),
+    };
+  }
+
+  return {
+    supportsDelegatedHttp: true,
+    supportsDelegatedMcp: true,
+    supportsCallbacks: true,
+    apiServerEnabled: false,
+    apiServerBaseUrl: null,
+    remoteEndpointPolicyExceptionId: null,
+  };
+}
+
+function assertRuntimeDelegationCapabilities(worker: WorkerRecord): RuntimeDelegationCapabilities {
+  const capabilities = getRuntimeDelegationCapabilities(worker);
+
+  if (!capabilities.supportsDelegatedHttp) {
+    throw new WorkerDelegationError(
+      "runtime_capability_unavailable",
+      409,
+      "Worker runtime does not advertise delegated HTTP support",
+    );
+  }
+
+  if (worker.runtimeType === "hermes_agent_gateway") {
+    if (!capabilities.apiServerEnabled) {
+      throw new WorkerDelegationError(
+        "runtime_capability_unavailable",
+        409,
+        "Hermes bridge API-server transport is disabled for this worker",
+      );
+    }
+    if (!capabilities.apiServerBaseUrl) {
+      throw new WorkerDelegationError(
+        "runtime_capability_unavailable",
+        409,
+        "Hermes bridge API-server base URL is required before delegated sessions can be issued",
+      );
+    }
+    if (
+      !isWorkerLoopbackUrl(capabilities.apiServerBaseUrl)
+      && !capabilities.remoteEndpointPolicyExceptionId
+    ) {
+      throw new WorkerDelegationError(
+        "runtime_capability_unavailable",
+        409,
+        "Hermes bridge API-server base URL must resolve to loopback unless an audited remote-endpoint policy exception is present",
+      );
+    }
+    if (
+      !isWorkerLoopbackUrl(capabilities.apiServerBaseUrl)
+      && capabilities.remoteEndpointPolicyExceptionId
+      && !isWorkerHttpsUrl(capabilities.apiServerBaseUrl)
+    ) {
+      throw new WorkerDelegationError(
+        "runtime_capability_unavailable",
+        409,
+        "Hermes bridge API-server base URL must use https when an audited remote-endpoint policy exception is present",
+      );
+    }
+  }
+
+  return capabilities;
+}
+
 function buildDiscoveryRouteHints(
   session: {
     workerJobId: string;
@@ -428,6 +672,7 @@ function buildDiscoveryRouteHints(
     scopeProfile: DelegatedScopeProfile;
   },
   grants: GrantRecord[],
+  runtimeCapabilities: RuntimeDelegationCapabilities,
 ): Array<{
   family: DelegatedRouteFamily;
   method: "GET" | "POST";
@@ -457,13 +702,15 @@ function buildDiscoveryRouteHints(
     hints.push({ family, method, path, purpose, availability });
   };
 
-  addHint("llm", "GET", "/v1/models", "List gateway models allowed for this worker session");
-  addHint("llm", "GET", "/v1/credits", "Read the owner's current SmartSpecPro credit balance");
-  if (session.grantedScopes.includes("llm:chat")) {
+  if (runtimeCapabilities.supportsDelegatedHttp) {
+    addHint("llm", "GET", "/v1/models", "List gateway models allowed for this worker session");
+    addHint("llm", "GET", "/v1/credits", "Read the owner's current SmartAIHub credit balance");
+  }
+  if (runtimeCapabilities.supportsDelegatedHttp && session.grantedScopes.includes("llm:chat")) {
     addHint("llm", "POST", "/v1/chat/completions", "Run OpenAI-compatible chat completions");
     addHint("llm", "POST", "/v1/responses", "Run Responses API style multi-turn execution");
   }
-  if (session.grantedScopes.includes("mcp:read")) {
+  if (runtimeCapabilities.supportsDelegatedMcp && session.grantedScopes.includes("mcp:read")) {
     const allowedNamespaces = readGrantIds(grants, "mcp_server");
     const mcpAvailability = allowedNamespaces.length > 0 ? "ready" : "experimental";
     addHint(
@@ -478,64 +725,92 @@ function buildDiscoveryRouteHints(
     addHint("mcp", "GET", "/v1/mcp/catalog", "Read the static MCP tool catalog for developer guidance", "ready");
   }
 
-  if (session.grantedScopes.includes("skills:list")) {
+  if (runtimeCapabilities.supportsDelegatedHttp && session.grantedScopes.includes("skills:list")) {
     addHint("skills", "GET", "/v1/skills", "List skills visible to the worker owner");
     addHint("skills", "GET", "/v1/skills/{skillId}", "Inspect a specific skill before execution");
   }
-  if (session.grantedScopes.includes("skills:execute")) {
+  if (runtimeCapabilities.supportsDelegatedHttp && session.grantedScopes.includes("skills:execute")) {
     addHint("skills", "POST", "/v1/skills/{skillId}/execute", "Run an allowed skill for this job");
   }
 
-  if (session.grantedScopes.includes("agencies:list")) {
+  if (runtimeCapabilities.supportsDelegatedHttp && session.grantedScopes.includes("agencies:list")) {
     addHint("agencies", "GET", "/v1/agencies", "List agencies visible to the worker owner");
   }
-  if (session.grantedScopes.includes("agencies:invoke")) {
+  if (runtimeCapabilities.supportsDelegatedHttp && session.grantedScopes.includes("agencies:invoke")) {
     addHint("agencies", "POST", "/v1/agencies/{agencyId}/invoke", "Invoke an allowed agency");
   }
 
-  if (session.grantedScopes.includes("media:generate")) {
+  if (runtimeCapabilities.supportsDelegatedHttp && session.grantedScopes.includes("media:generate")) {
     addHint("media", "POST", "/v1/media/images/generate", "Generate images through the platform media stack");
     addHint("media", "POST", "/v1/media/videos/generate", "Generate videos through the platform media stack");
     addHint("media", "POST", "/v1/media/audio/generate", "Generate audio through the platform media stack");
     addHint("media", "GET", "/v1/media/{taskId}/status", "Check asynchronous media generation status");
   }
 
-  if (session.grantedScopes.includes("presentations:create")) {
+  if (runtimeCapabilities.supportsDelegatedHttp && session.grantedScopes.includes("presentations:create")) {
     addHint("presentations", "POST", "/v1/presentations", "Create a presentation for the owner");
   }
 
-  if (session.grantedScopes.includes("video_projects:create")) {
+  if (runtimeCapabilities.supportsDelegatedHttp && session.grantedScopes.includes("video_projects:create")) {
     addHint("video_projects", "POST", "/v1/video-projects", "Create a video project for the owner");
   }
 
-  if (session.grantedScopes.includes("jobs:create")) {
+  if (runtimeCapabilities.supportsDelegatedHttp && session.grantedScopes.includes("jobs:create")) {
     addHint("jobs", "POST", "/v1/jobs", "Create an asynchronous platform job");
   }
-  if (session.grantedScopes.includes("jobs:read")) {
+  if (runtimeCapabilities.supportsDelegatedHttp && session.grantedScopes.includes("jobs:read")) {
     addHint("jobs", "GET", "/v1/jobs", "List jobs created by the owner");
     addHint("jobs", "GET", "/v1/jobs/{jobId}", "Inspect a specific asynchronous job");
   }
 
-  if (session.grantedScopes.includes("library:search") && hasScopedGrant(grants, "library_search_scope")) {
+  if (
+    runtimeCapabilities.supportsDelegatedHttp
+    && session.grantedScopes.includes("library:search")
+    && hasScopedGrant(grants, "library_search_scope")
+  ) {
     addHint("library", "POST", "/v1/knowledge/library/search", "Search the owner's private library scope");
   }
-  if (session.grantedScopes.includes("library:upload") && hasScopedGrant(grants, "library_upload_policy")) {
+  if (
+    runtimeCapabilities.supportsDelegatedHttp
+    && session.grantedScopes.includes("library:upload")
+    && hasScopedGrant(grants, "library_upload_policy")
+  ) {
     addHint("library", "POST", "/v1/knowledge/library/upload", "Upload a file into the owner's library");
   }
-  if (session.grantedScopes.includes("rag:search") && hasScopedGrant(grants, "rag_scope", "search")) {
+  if (
+    runtimeCapabilities.supportsDelegatedHttp
+    && session.grantedScopes.includes("rag:search")
+    && hasScopedGrant(grants, "rag_scope", "search")
+  ) {
     addHint("rag", "POST", "/v1/knowledge/rag/search", "Run semantic search over the owner's indexed knowledge");
   }
-  if (session.grantedScopes.includes("rag:ingest") && hasScopedGrant(grants, "rag_scope", "ingest")) {
+  if (
+    runtimeCapabilities.supportsDelegatedHttp
+    && session.grantedScopes.includes("rag:ingest")
+    && hasScopedGrant(grants, "rag_scope", "ingest")
+  ) {
     addHint("rag", "POST", "/v1/knowledge/rag/ingest", "Upload or re-index owner files for RAG ingestion");
   }
 
-  if (profile.routeFamilies.includes("callbacks") && hasGrantResource(grants, "room_target")) {
-    addHint("callbacks", "POST", `/api/worker-jobs/${session.workerJobId}/publish-room-update`, "Send a room update back into SmartSpecPro");
+  if (
+    runtimeCapabilities.supportsCallbacks
+    && profile.routeFamilies.includes("callbacks")
+    && hasGrantResource(grants, "room_target")
+  ) {
+    addHint("callbacks", "POST", `/api/worker-jobs/${session.workerJobId}/publish-room-update`, "Send a room update back into SmartAIHub");
   }
-  if (profile.routeFamilies.includes("callbacks") && hasGrantResource(grants, "workflow_target")) {
-    addHint("callbacks", "POST", `/api/worker-jobs/${session.workerJobId}/publish-workflow-update`, "Send a workflow update back into SmartSpecPro");
+  if (
+    runtimeCapabilities.supportsCallbacks
+    && profile.routeFamilies.includes("callbacks")
+    && hasGrantResource(grants, "workflow_target")
+  ) {
+    addHint("callbacks", "POST", `/api/worker-jobs/${session.workerJobId}/publish-workflow-update`, "Send a workflow update back into SmartAIHub");
   }
-  if (profile.routeFamilies.includes("callbacks") && session.grantedScopes.includes("llm:chat")) {
+  if (
+    runtimeCapabilities.supportsCallbacks
+    && profile.routeFamilies.includes("callbacks")
+    && session.grantedScopes.includes("llm:chat")
+  ) {
     addHint("callbacks", "POST", `/api/worker-jobs/${session.workerJobId}/publish-user-notification`, "Notify the owner when delegated work completes");
   }
 
@@ -553,10 +828,12 @@ async function buildManifest(
     ownerUserId: number;
     runtimeType: WorkerRuntimeType;
     scopeProfile: DelegatedScopeProfile;
+    activeMode: ReturnType<typeof summarizeHermesTaskMode>;
     grantedScopes: DelegatedWorkerScope[];
     expiresAt: Date;
   },
   grants: GrantRecord[],
+  runtimeCapabilities: RuntimeDelegationCapabilities,
 ): Promise<DelegatedCapabilityManifest> {
   const profile = getProfileDefinition(session.scopeProfile);
   const hasLibrarySearch = session.grantedScopes.includes("library:search") && hasScopedGrant(grants, "library_search_scope");
@@ -567,9 +844,9 @@ async function buildManifest(
   const hasMcpReadScope = session.grantedScopes.includes("mcp:read");
   const hasMcpWriteScope = session.grantedScopes.includes("mcp:write");
   const mcpAvailability =
-    hasMcpReadScope && allowedMcpNamespaces.length > 0
+    runtimeCapabilities.supportsDelegatedMcp && hasMcpReadScope && allowedMcpNamespaces.length > 0
       ? "ready"
-      : hasMcpReadScope || hasMcpWriteScope
+      : runtimeCapabilities.supportsDelegatedMcp && (hasMcpReadScope || hasMcpWriteScope)
         ? "experimental"
         : "unavailable";
 
@@ -582,6 +859,7 @@ async function buildManifest(
     ownerUserId: session.ownerUserId,
     runtimeType: session.runtimeType,
     scopeProfile: session.scopeProfile,
+    activeMode: session.activeMode,
     grantedScopes: session.grantedScopes,
     routeFamilies: profile.routeFamilies,
     allowedMcpNamespaces,
@@ -606,14 +884,18 @@ async function buildManifest(
       maxFileBytes: hasLibraryUpload ? MAX_LIBRARY_UPLOAD_BYTES : null,
     },
     callbackTargets: {
-      roomUpdate: profile.routeFamilies.includes("callbacks") && hasGrantResource(grants, "room_target"),
-      workflowUpdate: profile.routeFamilies.includes("callbacks") && hasGrantResource(grants, "workflow_target"),
-      userNotification: profile.routeFamilies.includes("callbacks") && session.actingUserId > 0,
+      roomUpdate: runtimeCapabilities.supportsCallbacks && profile.routeFamilies.includes("callbacks") && hasGrantResource(grants, "room_target"),
+      workflowUpdate: runtimeCapabilities.supportsCallbacks && profile.routeFamilies.includes("callbacks") && hasGrantResource(grants, "workflow_target"),
+      userNotification: runtimeCapabilities.supportsCallbacks && profile.routeFamilies.includes("callbacks") && session.actingUserId > 0,
     },
     availability: {
-      http: "ready",
+      http: runtimeCapabilities.supportsDelegatedHttp ? "ready" : "unavailable",
       mcp: mcpAvailability,
-      knowledge: hasLibrarySearch || hasLibraryUpload || hasRagSearch || hasRagIngest ? "ready" : "unavailable",
+      knowledge:
+        runtimeCapabilities.supportsDelegatedHttp
+        && (hasLibrarySearch || hasLibraryUpload || hasRagSearch || hasRagIngest)
+          ? "ready"
+          : "unavailable",
     },
     mcp: {
       enabled: false,
@@ -641,7 +923,7 @@ async function buildManifest(
       catalogUrl: "/v1/mcp/catalog",
       manifestPath: `/api/worker-jobs/${session.workerJobId}/delegated-manifest`,
       recommendedAuthMode: "bearer",
-      routeHints: buildDiscoveryRouteHints(session, grants),
+      routeHints: buildDiscoveryRouteHints(session, grants, runtimeCapabilities),
     },
     expiresAt: session.expiresAt.toISOString(),
   };
@@ -796,6 +1078,24 @@ function assertWorkerFeatureEnabled(flags: { openClawExternalRuntime?: boolean }
   }
 }
 
+function assertRuntimeFeatureEnabled(
+  runtimeType: WorkerRuntimeType,
+  flags: Record<string, unknown> | TenantFeatureFlags,
+  tenantId: string,
+): void {
+  const runtimeDefinition = getWorkerRuntimeDefinition(runtimeType);
+  const featureFlag = runtimeDefinition.featureFlag;
+  const featureValue = (flags as unknown as Record<string, unknown>)[featureFlag];
+  if (featureValue !== true) {
+    throw new WorkerDelegationError(
+      "feature_disabled",
+      403,
+      `${runtimeDefinition.displayName} is disabled for tenant ${tenantId}`,
+      "feature_disabled_error",
+    );
+  }
+}
+
 function isDelegatedWorkerAccessEnabled(): boolean {
   return process.env.OPENCLAW_EXTERNAL_RUNTIME_DISPATCH_ENABLED !== "false";
 }
@@ -885,11 +1185,20 @@ export async function createDelegatedWorkerSession(
   ]);
 
   assertDelegatedWorkerAccessEnabled();
-  assertWorkerFeatureEnabled(flags, input.auth.tenantId);
+  assertRuntimeFeatureEnabled(input.auth.runtimeType, flags, input.auth.tenantId);
   const aligned = requireOwnerAligned(worker, job);
+  const runtimeCapabilities = assertRuntimeDelegationCapabilities(aligned.worker);
   assertLeaseAndJobState(input.auth, aligned.job, input.payload.leaseOwnerToken);
+  assertWorkerAccessPolicyAllowsDelegatedSession(
+    aligned.worker,
+    input.payload.scopeProfile,
+    input.payload.grants,
+    runtimeCapabilities,
+    aligned.job,
+  );
 
   const profile = getProfileDefinition(input.payload.scopeProfile);
+  const activeMode = summarizeHermesTaskMode(input.payload.scopeProfile);
   const grantedScopes = [...profile.scopes];
   const expiresAt = new Date(
     Date.now()
@@ -923,10 +1232,12 @@ export async function createDelegatedWorkerSession(
       ownerUserId: Number(aligned.worker.registeredByUserId),
       runtimeType: input.auth.runtimeType,
       scopeProfile: input.payload.scopeProfile,
+      activeMode,
       grantedScopes,
       expiresAt,
     },
     grantRows as GrantRecord[],
+    runtimeCapabilities,
   );
 
   await repo.insertDelegatedSession({
@@ -939,6 +1250,7 @@ export async function createDelegatedWorkerSession(
     ownerUserId: aligned.worker.registeredByUserId,
     runtimeType: input.auth.runtimeType,
     scopeProfile: input.payload.scopeProfile,
+    activeMode,
     grantedScopesJson: grantedScopes,
     manifestJson: manifest,
     leaseOwnerToken: input.payload.leaseOwnerToken,
@@ -974,6 +1286,7 @@ export async function createDelegatedWorkerSession(
     audience: DELEGATED_WORKER_AUDIENCE,
     tokenUse: DELEGATED_WORKER_TOKEN_USE,
     scopeProfile: input.payload.scopeProfile,
+    activeMode,
     grantedScopes,
     expiresAt: expiresAt.toISOString(),
     manifest,
@@ -1000,7 +1313,26 @@ export async function getDelegatedWorkerManifest(
   if (!session) {
     throw new WorkerDelegationError("not_found", 404, "No active delegated session exists for this worker job", "not_found_error");
   }
-  const grants = await repo.listActiveGrantsForSession(session.id);
+  const runtimeCapabilities = assertRuntimeDelegationCapabilities(aligned.worker);
+  const sessionGrants = await repo.listActiveGrantsForSession(session.id);
+  assertWorkerAccessPolicyAllowsDelegatedSession(
+    aligned.worker,
+    session.scopeProfile as DelegatedScopeProfile,
+    {
+      skills: readGrantIds(sessionGrants, "skill"),
+      agencies: readGrantIds(sessionGrants, "agency"),
+      libraryItemIds: readGrantIds(sessionGrants, "library_item").map((value) => Number(value)).filter(Number.isFinite),
+      mcpNamespaces: readGrantIds(sessionGrants, "mcp_server"),
+      knowledge: {
+        librarySearch: hasScopedGrant(sessionGrants, "library_search_scope"),
+        libraryUpload: hasScopedGrant(sessionGrants, "library_upload_policy"),
+        ragSearch: hasScopedGrant(sessionGrants, "rag_scope", "search"),
+        ragIngest: hasScopedGrant(sessionGrants, "rag_scope", "ingest"),
+      },
+    },
+    runtimeCapabilities,
+    aligned.job,
+  );
   return buildManifest(
     {
       id: session.id,
@@ -1012,10 +1344,12 @@ export async function getDelegatedWorkerManifest(
       ownerUserId: Number(session.ownerUserId),
       runtimeType: session.runtimeType as WorkerRuntimeType,
       scopeProfile: session.scopeProfile as DelegatedScopeProfile,
+      activeMode: summarizeHermesTaskMode(session.scopeProfile as DelegatedScopeProfile),
       grantedScopes: normalizeScopes(Array.isArray(session.grantedScopesJson) ? session.grantedScopesJson : []),
       expiresAt: new Date(session.expiresAt),
     },
-    grants,
+    sessionGrants,
+    runtimeCapabilities,
   );
 }
 
@@ -1041,13 +1375,14 @@ export async function getDelegatedWorkerManifestBySessionId(
 
   assertDelegatedWorkerAccessEnabled();
   const flags = await getFeatureFlags(String(session.tenantId));
-  assertWorkerFeatureEnabled(flags, String(session.tenantId));
+  assertRuntimeFeatureEnabled(session.runtimeType as WorkerRuntimeType, flags, String(session.tenantId));
 
   const [worker, job] = await Promise.all([
     repo.getWorkerById(String(session.tenantId), String(session.workerId)),
     repo.getWorkerJobById(String(session.tenantId), String(session.workerJobId)),
   ]);
-  requireOwnerAligned(worker, job);
+  const aligned = requireOwnerAligned(worker, job);
+  const runtimeCapabilities = assertRuntimeDelegationCapabilities(aligned.worker);
   assertLeaseAndJobState(
     {
       audience: "",
@@ -1075,10 +1410,12 @@ export async function getDelegatedWorkerManifestBySessionId(
       ownerUserId: Number(session.ownerUserId),
       runtimeType: session.runtimeType as WorkerRuntimeType,
       scopeProfile: session.scopeProfile as DelegatedScopeProfile,
+      activeMode: summarizeHermesTaskMode(session.scopeProfile as DelegatedScopeProfile),
       grantedScopes: normalizeScopes(Array.isArray(session.grantedScopesJson) ? session.grantedScopesJson : []),
       expiresAt: new Date(session.expiresAt),
     },
     grants,
+    runtimeCapabilities,
   );
 }
 
@@ -1119,7 +1456,7 @@ export async function verifyDelegatedWorkerBearerToken(
 
   assertDelegatedWorkerAccessEnabled();
   const flags = await getFeatureFlags(String(session.tenantId));
-  assertWorkerFeatureEnabled(flags, String(session.tenantId));
+  assertRuntimeFeatureEnabled(session.runtimeType as WorkerRuntimeType, flags, String(session.tenantId));
 
   const [worker, job] = await Promise.all([
     repo.getWorkerById(String(session.tenantId), String(session.workerId)),

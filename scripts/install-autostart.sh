@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# SmartSpecPro Auto-Start Installation Script
+# SmartAIHub Auto-Start Installation Script
 # Installs systemd service for automatic startup after reboot
 #
 # Usage:
@@ -42,7 +42,7 @@ cmd_install() {
 
     echo -e "${CYAN}"
     echo "╔═══════════════════════════════════════════════════════════════╗"
-    echo "║       SmartSpecPro Auto-Start Installation                    ║"
+    echo "║       SmartAIHub Auto-Start Installation                    ║"
     echo "╚═══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 
@@ -100,7 +100,7 @@ cmd_install() {
 cmd_remove() {
     check_root
 
-    log_step "Removing SmartSpecPro auto-start..."
+    log_step "Removing SmartAIHub auto-start..."
 
     # Stop service
     if systemctl is-active --quiet $SERVICE_NAME; then
@@ -186,7 +186,7 @@ case "${1:-help}" in
         cmd_test_reboot
         ;;
     help|--help|-h)
-        echo "SmartSpecPro Auto-Start Manager"
+        echo "SmartAIHub Auto-Start Manager"
         echo ""
         echo "Usage: sudo $0 <command>"
         echo ""

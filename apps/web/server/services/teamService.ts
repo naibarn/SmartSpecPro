@@ -22,6 +22,7 @@ import {
 } from "../../drizzle/schema";
 import crypto from "crypto";
 import { sanitizePersonaInput } from "./personaService";
+import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import {
   buildBlueprintPersonaInput,
   findReusablePersonaForBlueprint,
@@ -29,6 +30,13 @@ import {
   findTeamBlueprintMember,
   resolveLegacyTemplateBlueprintId,
 } from "@shared/teamBlueprints";
+import {
+  summarizeHermesRuntimeChannel,
+  summarizeHermesRuntimeMemorySync,
+  summarizeHermesRuntimePersona,
+  summarizeHermesProviderRouting,
+  workerHermesRuntimeMetadataSchema,
+} from "@shared/workerRuntime";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -154,6 +162,23 @@ export interface BindableWorkerSummary {
   lastSeenAt: Date | null;
   warningFlagsJson: string[];
   boundProfileCount: number;
+  channelCompanionPlatforms: string[];
+  remoteEndpointPolicy: "loopback_only" | "audited_exception_granted" | "unknown" | null;
+  profileName: string | null;
+  profileLabel: string | null;
+  profilePurpose: string | null;
+  personaDisplayLabel: string;
+  personaDisplayPurpose: string;
+  channelStatus: "connected" | "inactive" | "revoked" | "unknown";
+  channelDisplayLabel: string;
+  memorySyncEnabled: boolean;
+  memorySyncScope: "personal" | "team_shared" | "workspace_shared" | "cross_channel" | null;
+  memorySyncStatus: "disabled" | "active" | "inactive" | "quarantined" | "unknown";
+  memorySyncDisplayLabel: string;
+  llmRoutingMode: "auto" | "pinned_provider";
+  preferredProviderId: number | null;
+  preferredProviderName: string | null;
+  providerRoutingDisplayLabel: string;
   availableForBinding: boolean;
   bindingReason: string | null;
 }
@@ -242,17 +267,103 @@ function validateTeamMember(member: CreateTeamMemberInput): void {
   return;
 }
 
+function readWorkerRuntimeMetadata(
+  capabilitiesJson: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | null {
+  if (!capabilitiesJson || typeof capabilitiesJson !== "object") {
+    return null;
+  }
+  const runtimeMetadata = capabilitiesJson.runtimeMetadata;
+  return runtimeMetadata && typeof runtimeMetadata === "object" && !Array.isArray(runtimeMetadata)
+    ? runtimeMetadata as Record<string, unknown>
+    : null;
+}
+
+function readWorkerRevokedAt(worker: { healthSummaryJson?: Record<string, unknown> | null }): string | null {
+  const healthSummary = worker.healthSummaryJson;
+  if (!healthSummary || typeof healthSummary !== "object" || Array.isArray(healthSummary)) {
+    return null;
+  }
+  const controlPlane = healthSummary.controlPlane;
+  if (!controlPlane || typeof controlPlane !== "object" || Array.isArray(controlPlane)) {
+    return null;
+  }
+  const revokedAt = (controlPlane as Record<string, unknown>).revokedAt;
+  return typeof revokedAt === "string" && revokedAt.trim() ? revokedAt : null;
+}
+
+function sanitizeChannelCompanionPlatforms(values: unknown): string[] {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const sanitized: string[] = [];
+  for (const value of values) {
+    if (typeof value !== "string") {
+      continue;
+    }
+    const normalized = value.trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9_-]{0,31}$/.test(normalized) || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    sanitized.push(normalized);
+  }
+  return sanitized;
+}
+
+export function summarizeBindableWorkerRuntimeCapabilities(worker: {
+  runtimeType?: string | null;
+  capabilitiesJson?: Record<string, unknown> | null;
+}): {
+  supportsBoundConnector: boolean;
+  channelCompanionPlatforms: string[];
+  remoteEndpointPolicy: "loopback_only" | "audited_exception_granted" | "unknown" | null;
+} {
+  if (worker.runtimeType === "openclaw_gateway") {
+    return {
+      supportsBoundConnector: true,
+      channelCompanionPlatforms: [],
+      remoteEndpointPolicy: null,
+    };
+  }
+
+  const runtimeMetadata = readWorkerRuntimeMetadata(worker.capabilitiesJson);
+  if (worker.runtimeType === "hermes_agent_gateway") {
+    const parsed = workerHermesRuntimeMetadataSchema.safeParse(runtimeMetadata ?? {});
+    if (!parsed.success) {
+      return {
+        supportsBoundConnector: false,
+        channelCompanionPlatforms: [],
+        remoteEndpointPolicy: "unknown",
+      };
+    }
+
+    return {
+      supportsBoundConnector: parsed.data.supportsBoundConnector === true,
+      channelCompanionPlatforms: sanitizeChannelCompanionPlatforms(parsed.data.gatewayPlatforms),
+      remoteEndpointPolicy: parsed.data.remoteEndpointPolicyExceptionId
+        ? "audited_exception_granted"
+        : "loopback_only",
+    };
+  }
+
+  const capabilityFlag = worker.capabilitiesJson && typeof worker.capabilitiesJson === "object"
+    ? (worker.capabilitiesJson as Record<string, unknown>).supportsBoundConnector
+    : undefined;
+  return {
+    supportsBoundConnector: capabilityFlag === true,
+    channelCompanionPlatforms: [],
+    remoteEndpointPolicy: null,
+  };
+}
+
 function workerSupportsBoundConnector(worker: {
   runtimeType?: string | null;
   capabilitiesJson?: Record<string, unknown> | null;
 }): boolean {
-  if (worker.runtimeType === "openclaw_gateway") {
-    return true;
-  }
-  const capabilityFlag = worker.capabilitiesJson && typeof worker.capabilitiesJson === "object"
-    ? (worker.capabilitiesJson as Record<string, unknown>).supportsBoundConnector
-    : undefined;
-  return capabilityFlag === true;
+  return summarizeBindableWorkerRuntimeCapabilities(worker).supportsBoundConnector;
 }
 
 async function assertExternalWorkerBinding(
@@ -283,6 +394,12 @@ async function assertExternalWorkerBinding(
   }
   if (worker.registeredByUserId !== ownerUserId) {
     throw new Error("You can only bind your own personal workers");
+  }
+  if (worker.runtimeType === "hermes_agent_gateway") {
+    const tenantFlags = await getTenantFeatureFlags(tenantId);
+    if (!tenantFlags.hermesAgentRuntime) {
+      throw new Error("Hermes runtime is disabled for this tenant");
+    }
   }
   if (!workerSupportsBoundConnector(worker)) {
     throw new Error("This worker runtime is not eligible for bound-connector flows");
@@ -1185,6 +1302,8 @@ export async function listBindableWorkers(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  const tenantFlags = await getTenantFeatureFlags(tenantId);
+
   const rows = await db
     .select({
       id: workers.id,
@@ -1196,6 +1315,7 @@ export async function listBindableWorkers(
       teamId: workers.teamId,
       registeredByUserId: workers.registeredByUserId,
       capabilitiesJson: workers.capabilitiesJson,
+      healthSummaryJson: workers.healthSummaryJson,
       lastSeenAt: workers.lastSeenAt,
       warningFlagsJson: workers.warningFlagsJson,
       boundProfileCount: count(assistantProfiles.id),
@@ -1224,6 +1344,7 @@ export async function listBindableWorkers(
       workers.teamId,
       workers.registeredByUserId,
       workers.capabilitiesJson,
+      workers.healthSummaryJson,
       workers.lastSeenAt,
       workers.warningFlagsJson,
     )
@@ -1232,8 +1353,23 @@ export async function listBindableWorkers(
   return rows.map((row) => {
     const boundProfileCount = Number(row.boundProfileCount ?? 0);
     const isTeamCompatible = !row.teamId || !teamId || row.teamId === teamId;
-    const isRuntimeEligible = workerSupportsBoundConnector(row);
-    const bindingReason = !isRuntimeEligible
+    const runtimeCapabilities = summarizeBindableWorkerRuntimeCapabilities(row);
+    const personaSummary = row.runtimeType === "hermes_agent_gateway"
+      ? summarizeHermesRuntimePersona(
+        (row.capabilitiesJson as Record<string, unknown> | null | undefined)?.runtimeMetadata as Record<string, unknown> | null | undefined,
+      )
+      : summarizeHermesRuntimePersona(null);
+    const runtimeMetadata = row.runtimeType === "hermes_agent_gateway"
+      ? (row.capabilitiesJson as Record<string, unknown> | null | undefined)?.runtimeMetadata as Record<string, unknown> | null | undefined
+      : null;
+    const channelSummary = summarizeHermesRuntimeChannel(runtimeMetadata, row.status, readWorkerRevokedAt(row));
+    const memorySyncSummary = summarizeHermesRuntimeMemorySync(runtimeMetadata);
+    const providerRoutingSummary = summarizeHermesProviderRouting(runtimeMetadata);
+    const isHermesRuntime = row.runtimeType === "hermes_agent_gateway";
+    const isHermesEnabled = tenantFlags.hermesAgentRuntime === true;
+    const bindingReason = isHermesRuntime && !isHermesEnabled
+      ? "Hermes runtime is disabled for this tenant"
+      : !runtimeCapabilities.supportsBoundConnector
       ? "Runtime is not eligible for bound connector use yet"
       : row.status === "disabled"
         ? "Worker is disabled"
@@ -1251,6 +1387,23 @@ export async function listBindableWorkers(
       lastSeenAt: row.lastSeenAt ?? null,
       warningFlagsJson: Array.isArray(row.warningFlagsJson) ? row.warningFlagsJson : [],
       boundProfileCount,
+      channelCompanionPlatforms: runtimeCapabilities.channelCompanionPlatforms,
+      remoteEndpointPolicy: runtimeCapabilities.remoteEndpointPolicy,
+      profileName: personaSummary.profileName,
+      profileLabel: personaSummary.profileLabel,
+      profilePurpose: personaSummary.profilePurpose,
+      personaDisplayLabel: personaSummary.displayLabel,
+      personaDisplayPurpose: personaSummary.displayPurpose,
+      channelStatus: channelSummary.channelStatus,
+      channelDisplayLabel: channelSummary.displayLabel,
+      memorySyncEnabled: memorySyncSummary.memorySyncEnabled,
+      memorySyncScope: memorySyncSummary.memorySyncScope,
+      memorySyncStatus: memorySyncSummary.memorySyncStatus,
+      memorySyncDisplayLabel: memorySyncSummary.displayLabel,
+      llmRoutingMode: providerRoutingSummary.llmRoutingMode,
+      preferredProviderId: providerRoutingSummary.preferredProviderId,
+      preferredProviderName: providerRoutingSummary.preferredProviderName,
+      providerRoutingDisplayLabel: providerRoutingSummary.displayLabel,
       availableForBinding: !bindingReason,
       bindingReason,
     };

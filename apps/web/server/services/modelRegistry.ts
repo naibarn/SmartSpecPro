@@ -295,6 +295,18 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     priority: 2,
   },
   {
+    id: "omnivoice-tts",
+    type: "audio",
+    name: "OmniVoice TTS",
+    provider: "omnivoice",
+    description: "Multilingual text-to-speech with optional voice design and cloning support",
+    aliases: ["omnivoice", "omnivoice tts", "omni voice", "omnivoice-tts"],
+    creditCost: 5,
+    voices: ["managed", "custom"],
+    isEnabled: true,
+    priority: 3,
+  },
+  {
     id: "gpt-4o-mini-tts",
     type: "audio",
     name: "GPT-4o Mini TTS",

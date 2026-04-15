@@ -263,7 +263,7 @@ export function createAgencyToolsApiRouter(): Router {
       const spec = {
         openapi: "3.0.3",
         info: {
-          title: "SmartSpecPro Agency Tools API",
+          title: "SmartAIHub Agency Tools API",
           version: "1.0.0",
           description: "Tenant-specific API for executing exposed agency tools.",
         },

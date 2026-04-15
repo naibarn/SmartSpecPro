@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SmartSpecPro Production Backup Script
+# SmartAIHub Production Backup Script
 # สคริปต์สำหรับสำรองข้อมูลฐานข้อมูล PostgreSQL และจัดการไฟล์สำรอง
 
 # ============================================
@@ -34,7 +34,7 @@ mkdir -p "$BACKUP_DIR/postgres"
 
 echo -e "${BLUE}"
 echo "╔═══════════════════════════════════════════════════════════════╗"
-echo "║                SmartSpecPro Database Backup                   ║"
+echo "║                SmartAIHub Database Backup                   ║"
 echo "║              Starting Production Data Backup                  ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"

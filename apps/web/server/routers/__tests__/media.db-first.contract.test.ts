@@ -166,6 +166,20 @@ function makeDbWithSequentialSelectResults(results: Array<any[]>) {
   };
 }
 
+function makeCtx(origin = "https://tenant.example.com") {
+  return {
+    user: { id: 123, role: "user", currentTenantId: 1 },
+    userToken: "user-token",
+    tenantId: 1,
+    publicUrl: origin,
+    req: {
+      headers: {
+        origin,
+      },
+    },
+  };
+}
+
 describe("media router DB-first model contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -826,6 +840,53 @@ describe("media router DB-first model contract", () => {
 
     expect(mockGenerateAudio).not.toHaveBeenCalled();
     expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+  });
+
+  it("generateAudio rejects OmniVoice audio generation from non-desktop origins", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{ modelType: "audio", provider: "omnivoice", isEnabled: true }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+
+    const fn = mediaRouter.generateAudio as Function;
+    await expect(
+      fn({
+        ctx: makeCtx("https://smartaihub.app"),
+        input: {
+          model: "omnivoice-tts",
+          text: "hello from web",
+          extraParams: {
+            reference_audio_base64: "YWJj",
+          },
+        },
+      }),
+    ).rejects.toMatchObject({ message: expect.stringContaining("desktop app") });
+
+    expect(mockGenerateAudio).not.toHaveBeenCalled();
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+  });
+
+  it("generateAudio allows OmniVoice audio generation from desktop origins", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{ modelType: "audio", provider: "omnivoice", isEnabled: true }],
+      [{ creditCost: 150, configJson: { maxPromptLength: 1500, pricingTiers: { default: 150 } } }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+
+    const fn = mediaRouter.generateAudio as Function;
+    await expect(
+      fn({
+        ctx: makeCtx("tauri://localhost"),
+        input: {
+          model: "omnivoice-tts",
+          text: "hello from desktop",
+          extraParams: {
+            reference_audio_base64: "YWJj",
+            reference_text: "hello reference",
+          },
+        },
+      }),
+    ).resolves.toBeDefined();
   });
 
   it("listModelFieldOptions returns static options from configJson input fields", async () => {

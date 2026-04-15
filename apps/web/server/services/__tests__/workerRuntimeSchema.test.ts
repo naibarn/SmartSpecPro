@@ -10,6 +10,7 @@ describe("worker runtime schema foundation", () => {
     expect((schema as any).workerRuntimeTypeEnum?.enumValues).toContain("desktop_zeroclaw_managed");
     expect((schema as any).workerRuntimeTypeEnum?.enumValues).toContain("nemoclaw_sandbox");
     expect((schema as any).workerRuntimeTypeEnum?.enumValues).toContain("hiclaw_cluster");
+    expect((schema as any).workerRuntimeTypeEnum?.enumValues).toContain("hermes_agent_gateway");
   });
 
   it("defines the canonical worker control-plane tables", () => {

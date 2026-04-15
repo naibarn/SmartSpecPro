@@ -68,6 +68,16 @@ describe("monitoringService", () => {
           error: 1,
           info: 0,
         },
+        latestOpenAlert: {
+          title: "LLM error rate spiked",
+          message: "8 of 26 recent LLM calls failed. Top failures: OpenRouter/openai/gpt-5.4-mini → HTTP 400 (7); Kie AI/claude-sonnet-4-6 → HTTP 404 (1).",
+          signal: "31% error rate · OpenRouter/openai/gpt-5.4-mini → HTTP 400 (7); Kie AI/claude-sonnet-4-6 → HTTP 404 (1)",
+          recommendation: "Check provider health, model routing, and fallback paths before chat traffic degrades broadly.",
+          source: "provider_usage_log",
+          anomalyType: "llm_error_spike",
+          severity: "critical",
+          createdAt: "2026-03-30T07:58:30.000Z",
+        },
         llmStats: {
           total: 50,
           errorCount: 12,
@@ -77,6 +87,7 @@ describe("monitoringService", () => {
           p95LatencyMs: 18_500,
           avgLatencyMs: 7_400,
           lastSeenAt: "2026-03-30T07:58:00.000Z",
+          topFailureSummary: "OpenRouter/openai/gpt-5.4-mini → HTTP 400 (7); Kie AI/claude-sonnet-4-6 → HTTP 404 (1)",
         },
         mediaStats: {
           total: 18,
@@ -113,6 +124,10 @@ describe("monitoringService", () => {
       expect(overview.anomalies.some((anomaly) => anomaly.type === "memory_pressure" && anomaly.severity === "critical")).toBe(true);
       expect(overview.anomalies.some((anomaly) => anomaly.type === "llm_error_spike" && anomaly.severity === "critical")).toBe(true);
       expect(overview.anomalies.some((anomaly) => anomaly.type === "orchestration_fallback_spike" && anomaly.severity === "critical")).toBe(true);
+      expect(overview.anomalies.find((anomaly) => anomaly.type === "llm_error_spike")?.message).toContain("Top failures");
+      expect(overview.anomalies.find((anomaly) => anomaly.type === "llm_error_spike")?.signal).toContain("OpenRouter");
+      expect(overview.anomalies.find((anomaly) => anomaly.type === "alert_backlog")?.message).toContain("LLM error rate spiked");
+      expect(overview.anomalies.find((anomaly) => anomaly.type === "alert_backlog")?.signal).toContain("latest unresolved");
       expect(overview.leadingSignals.maxRestartDelta).toBe(4);
       expect(overview.leadingSignals.llmErrorRate).toBeCloseTo(0.24);
     });

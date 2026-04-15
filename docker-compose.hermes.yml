@@ -1,0 +1,68 @@
+# SmartSpec Pro - Hermes Agent Runtime Stack
+#
+# Purpose:
+# - Run one or more Hermes agents locally without publishing host ports
+# - Connect Hermes to the SmartSpec Pro web gateway as the primary LLM path
+# - Keep the runtime isolated from external API providers by default
+#
+# Usage:
+#   cp docker/hermes.env.example docker/hermes.env
+#   # edit docker/hermes.env and set SMARTSPEC_WEB_GATEWAY_TOKEN
+#   docker compose --env-file docker/hermes.env -f docker-compose.hermes.yml run --rm hermes setup
+#   docker compose --env-file docker/hermes.env -f docker-compose.hermes.yml up -d
+#
+# Notes:
+# - This stack intentionally does not publish any ports to the host.
+# - It expects the SmartSpec Pro web gateway to be reachable from the host at
+#   http://host.docker.internal:3000 (works on Docker Desktop; on Linux the
+#   compose file adds the host-gateway mapping explicitly).
+# - To run multiple Hermes agents, start separate compose projects with
+#   different HERMES_DATA_DIR values so each agent keeps its own state.
+
+services:
+  hermes:
+    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:latest}
+    command: ["gateway", "run"]
+    init: true
+    restart: unless-stopped
+    shm_size: "${HERMES_SHM_SIZE:-1g}"
+    working_dir: /opt/data
+    environment:
+      # SmartSpec Pro gateway is the only LLM / tool ingress Hermes should use.
+      SMARTSPEC_USE_WEB_GATEWAY: ${SMARTSPEC_USE_WEB_GATEWAY:-1}
+      SMARTSPEC_WEB_GATEWAY_URL: ${SMARTSPEC_WEB_GATEWAY_URL:-http://host.docker.internal:3000}
+      SMARTSPEC_WEB_GATEWAY_TOKEN: ${SMARTSPEC_WEB_GATEWAY_TOKEN:?SMARTSPEC_WEB_GATEWAY_TOKEN must be set}
+      SMARTSPEC_MCP_BASE_URL: ${SMARTSPEC_MCP_BASE_URL:-http://host.docker.internal:3000}
+      SMARTSPEC_WEB_GATEWAY_TIMEOUT_SECONDS: ${SMARTSPEC_WEB_GATEWAY_TIMEOUT_SECONDS:-600}
+      SMARTSPEC_WEB_GATEWAY_RETRIES: ${SMARTSPEC_WEB_GATEWAY_RETRIES:-2}
+      # Hermes gateway startup checks read this env var directly.
+      GATEWAY_ALLOW_ALL_USERS: ${GATEWAY_ALLOW_ALL_USERS:-false}
+      # Hermes runtime data is stored only inside the mounted volume.
+      HERMES_DATA_DIR: /opt/data
+      HERMES_INSTANCE_NAME: ${HERMES_INSTANCE_NAME:-smartspec-hermes}
+      # Keep Hermes from falling back to provider-specific flows by default.
+      OPENAI_API_KEY: ""
+      ANTHROPIC_API_KEY: ""
+      GROQ_API_KEY: ""
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          cpus: "${HERMES_CPUS:-2.0}"
+          memory: ${HERMES_MEMORY:-4G}
+        reservations:
+          cpus: "${HERMES_CPU_RESERVATION:-0.5}"
+          memory: ${HERMES_MEMORY_RESERVATION:-512M}
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "python /opt/healthcheck/hermes-healthcheck.py || python3 /opt/healthcheck/hermes-healthcheck.py"]
+      interval: 30s
+      timeout: 10s
+      start_period: 45s
+      retries: 5
+    volumes:
+      - ${HERMES_DATA_DIR:-./data/hermes}:/opt/data
+      - ./docker/hermes-healthcheck.py:/opt/healthcheck/hermes-healthcheck.py:ro

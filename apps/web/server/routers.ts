@@ -92,6 +92,7 @@ import { teamRouter } from "./routers/team";
 import { teamRoomRouter } from "./routers/teamRoom";
 import { teamRunRouter } from "./routers/teamRun";
 import { teamWorkItemRouter } from "./routers/teamWorkItem";
+import { workOsRouter } from "./routers/workOs";
 import { scopedMemoryRouter } from "./routers/scopedMemory";
 import { monitoringRouter } from "./routers/monitoring";
 import { mcpServersRouter } from "./routers/mcpServers";
@@ -2045,6 +2046,7 @@ export const appRouter = router({
   teamRoom: teamRoomRouter,
   teamRun: teamRunRouter,
   teamWorkItem: teamWorkItemRouter,
+  workOs: workOsRouter,
   scopedMemory: scopedMemoryRouter,
   monitoring: monitoringRouter,
   mcpServers: mcpServersRouter,

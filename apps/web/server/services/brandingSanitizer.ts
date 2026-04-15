@@ -1,6 +1,6 @@
 const BRAND_REPLACEMENTS: Array<[RegExp, string]> = [
-  [/SmartSpecPro/g, "SmartAIHub"],
-  [/SmartSpec Pro/g, "SmartAIHub"],
+  [/SmartAIHub/g, "SmartAIHub"],
+  [/Smart AI Hub/g, "SmartAIHub"],
   [/SmartSpecWeb/g, "SmartAIHubWeb"],
   [/SmartSpec Web/g, "SmartAIHub Web"],
   [/\bSmartSpec\b/g, "SmartAIHub"],

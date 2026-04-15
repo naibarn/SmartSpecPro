@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { useLocation, useRoute } from "wouter";
 import DOMPurify from "dompurify";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { isHtmlApiErrorMessage } from "@/lib/apiResponseDiagnostics";
 import {
   BookMarked,
   Check,
@@ -1221,16 +1222,20 @@ function isConflictSlideContentEqualDraft(
   }
 }
 
-function getDeckLoadErrorMessage(
+function getPresentationLoadErrorMessage(
   error: unknown,
   messages: {
     fallback: string;
-    legacyBlocked: string;
+    legacyBlocked?: string;
+    htmlResponse?: string;
   },
 ): string {
   const raw = String((error as any)?.message || messages.fallback);
-  if (raw.includes("PRESENTATION_LEGACY_PAYLOAD_BLOCKED")) {
+  if (messages.legacyBlocked && raw.includes("PRESENTATION_LEGACY_PAYLOAD_BLOCKED")) {
     return messages.legacyBlocked;
+  }
+  if (messages.htmlResponse && isHtmlApiErrorMessage(raw)) {
+    return messages.htmlResponse;
   }
   return raw;
 }
@@ -3024,6 +3029,7 @@ export default function PresentationEditor() {
   const [isGeneratingNoteContent, setIsGeneratingNoteContent] = useState(false);
   const [noteGenOpen, setNoteGenOpen] = useState(false);
   const [isProjectTitleEditing, setIsProjectTitleEditing] = useState(false);
+  const [isProjectTitleDialogOpen, setIsProjectTitleDialogOpen] = useState(false);
   const [isProjectTitleSaving, setIsProjectTitleSaving] = useState(false);
   const [isDeckNoteDialogOpen, setIsDeckNoteDialogOpen] = useState(false);
   const [isSlideNoteDialogOpen, setIsSlideNoteDialogOpen] = useState(false);
@@ -3136,11 +3142,11 @@ export default function PresentationEditor() {
   }, [slides, draggingSlideId]);
 
   useEffect(() => {
-    if (isProjectTitleEditing) {
+    if (isProjectTitleEditing || isProjectTitleDialogOpen) {
       return;
     }
     setProjectTitleDraft(projectTitle);
-  }, [projectTitle, isProjectTitleEditing]);
+  }, [projectTitle, isProjectTitleEditing, isProjectTitleDialogOpen]);
 
   useEffect(() => {
     deckNoteDraftRef.current = deckNoteDraft;
@@ -7531,6 +7537,7 @@ export default function PresentationEditor() {
     }
     if (title === projectTitle) {
       setIsProjectTitleEditing(false);
+      setIsProjectTitleDialogOpen(false);
       return;
     }
 
@@ -7551,12 +7558,24 @@ export default function PresentationEditor() {
         trpcUtils.library.listDocuments.invalidate(),
       ]);
       setIsProjectTitleEditing(false);
+      setIsProjectTitleDialogOpen(false);
       toast.success("Project name updated.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to update project name.");
     } finally {
       setIsProjectTitleSaving(false);
     }
+  }
+
+  function openProjectTitleEditor() {
+    setProjectTitleDraft(projectTitle);
+    if (isMobileViewport) {
+      setIsProjectTitleEditing(false);
+      setIsProjectTitleDialogOpen(true);
+      return;
+    }
+    setIsProjectTitleDialogOpen(false);
+    setIsProjectTitleEditing(true);
   }
 
   async function persistDeckNote(
@@ -8509,7 +8528,14 @@ export default function PresentationEditor() {
     return (
       <div className="min-h-screen p-8 space-y-4">
         <h1 className="text-xl font-semibold">{t("error.unavailable")}</h1>
-        <p className="text-sm text-muted-foreground">{itemQuery.error?.message || t("error.itemNotFound")}</p>
+        <p className="text-sm text-muted-foreground">
+          {itemQuery.error
+            ? getPresentationLoadErrorMessage(itemQuery.error, {
+              fallback: t("error.itemNotFound"),
+              htmlResponse: t("error.apiHtmlResponse"),
+            })
+            : t("error.itemNotFound")}
+        </p>
         <Button onClick={() => setLocation(fallback.recoveryCta.href)}>{fallback.recoveryCta.label}</Button>
       </div>
     );
@@ -8573,9 +8599,10 @@ export default function PresentationEditor() {
     return (
       <div className="min-h-screen p-8 space-y-4">
         <h1 className="text-2xl font-semibold">{t("appTitle")}</h1>
-        <p className="text-sm text-red-600">{getDeckLoadErrorMessage(deckQuery.error, {
+        <p className="text-sm text-red-600">{getPresentationLoadErrorMessage(deckQuery.error, {
           fallback: t("error.loadDeck"),
           legacyBlocked: t("error.legacyDeckBlocked"),
+          htmlResponse: t("error.apiHtmlResponse"),
         })}</p>
       </div>
     );
@@ -10239,6 +10266,30 @@ export default function PresentationEditor() {
               <X className="h-3.5 w-3.5" />
             </Button>
           </div>
+        ) : isMobileViewport ? (
+          <div className="flex min-w-0 items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 max-w-[10rem] shrink-0 justify-start gap-1 px-2 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+              onClick={openProjectTitleEditor}
+              aria-label={t("header.projectName")}
+              title={projectTitle}
+            >
+              <span className="truncate">{projectTitle}</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 shrink-0 gap-1 px-2 text-sky-300 hover:bg-slate-800 hover:text-slate-100"
+              onClick={openProjectTitleEditor}
+              aria-label={t("header.editProjectName")}
+              title={t("header.editProjectName")}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{t("header.editProjectName")}</span>
+            </Button>
+          </div>
         ) : (
           <div className="flex min-w-0 items-center gap-1">
             <h1 className="truncate text-sm font-semibold">{projectTitle}</h1>
@@ -10336,6 +10387,18 @@ export default function PresentationEditor() {
                   >
                     <BookMarked className="mr-2 h-4 w-4" />
                     <span>{t("header.saveToTemplate")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-slate-800"
+                    onClick={() => {
+                      setIsMobileHeaderMenuOpen(false);
+                      openProjectTitleEditor();
+                    }}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    <span>{t("header.editProjectName")}</span>
                   </button>
                   <button
                     type="button"
@@ -10854,7 +10917,63 @@ export default function PresentationEditor() {
                   </div>
                 )}
               </div>
-            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={isProjectTitleDialogOpen}
+        onOpenChange={(open) => {
+          setIsProjectTitleDialogOpen(open);
+          if (!open) {
+            setProjectTitleDraft(projectTitle);
+          }
+        }}
+      >
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("header.editProjectName")}</DialogTitle>
+            <DialogDescription>{t("header.projectName")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="project-title-mobile">{t("header.projectName")}</Label>
+            <Input
+              id="project-title-mobile"
+              value={projectTitleDraft}
+              onChange={(event) => setProjectTitleDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleSaveProjectTitle();
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  setProjectTitleDraft(projectTitle);
+                  setIsProjectTitleDialogOpen(false);
+                }
+              }}
+              disabled={isProjectTitleSaving}
+              autoFocus
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setProjectTitleDraft(projectTitle);
+                setIsProjectTitleDialogOpen(false);
+              }}
+              disabled={isProjectTitleSaving}
+            >
+              {t("header.cancelProjectNameEdit")}
+            </Button>
+            <Button
+              onClick={() => void handleSaveProjectTitle()}
+              disabled={isProjectTitleSaving}
+            >
+              <Check className="mr-2 h-4 w-4" />
+              {t("header.saveProjectName")}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       <Dialog

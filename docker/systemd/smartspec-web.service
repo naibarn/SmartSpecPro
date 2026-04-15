@@ -6,6 +6,8 @@ After=smartspec-backend.service
 # health check times out on cold boot (backend auto-restarts and web stays alive)
 Wants=smartspec-backend.service
 PartOf=smartspec.target
+StartLimitIntervalSec=600
+StartLimitBurst=8
 
 [Service]
 Type=simple
@@ -44,8 +46,6 @@ Restart=on-failure
 RestartSec=5s
 RestartMaxDelaySec=120s
 RestartSteps=6
-StartLimitIntervalSec=600
-StartLimitBurst=8
 
 # Logging
 StandardOutput=journal

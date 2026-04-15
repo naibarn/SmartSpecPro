@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SmartSpecPro Automated Tasks Setup (Cron)
+# SmartAIHub Automated Tasks Setup (Cron)
 # สคริปต์สำหรับตั้งค่าการสำรองข้อมูลและตรวจสอบการกู้คืนอัตโนมัติ
 
 RED='\033[0;31m'
@@ -23,7 +23,7 @@ mkdir -p "$LOG_DIR"
 
 echo -e "${BLUE}"
 echo "╔═══════════════════════════════════════════════════════════════╗"
-echo "║                SmartSpecPro Cron Job Setup                    ║"
+echo "║                SmartAIHub Cron Job Setup                    ║"
 echo "║          Automating Backups & Restore Verification            ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
@@ -51,13 +51,13 @@ echo "  - Weekly Restore Test: Every Sunday at 04:00 AM"
 TMP_CRON=$(mktemp)
 crontab -l > "$TMP_CRON" 2>/dev/null || true
 
-# ลบรายการเดิมที่เกี่ยวกับ SmartSpecPro ออกก่อนเพื่อป้องกันการซ้ำซ้อน
-sed -i "/SmartSpecPro/d" "$TMP_CRON"
+# ลบรายการเดิมที่เกี่ยวกับ SmartAIHub ออกก่อนเพื่อป้องกันการซ้ำซ้อน
+sed -i "/SmartAIHub/d" "$TMP_CRON"
 sed -i "/backup-prod.sh/d" "$TMP_CRON"
 sed -i "/restore-test.sh/d" "$TMP_CRON"
 
 # เพิ่มรายการใหม่
-echo "# SmartSpecPro Automated Tasks" >> "$TMP_CRON"
+echo "# SmartAIHub Automated Tasks" >> "$TMP_CRON"
 echo "$CRON_BACKUP" >> "$TMP_CRON"
 echo "$CRON_RESTORE_TEST" >> "$TMP_CRON"
 
@@ -66,7 +66,7 @@ if crontab "$TMP_CRON"; then
     log_info "Cron jobs installed successfully!"
     echo ""
     echo -e "${YELLOW}Current Crontab:${NC}"
-    crontab -l | grep "SmartSpecPro" -A 2
+    crontab -l | grep "SmartAIHub" -A 2
 else
     echo -e "${RED}[ERROR]${NC} Failed to install cron jobs."
 fi

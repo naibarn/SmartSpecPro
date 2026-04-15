@@ -351,7 +351,7 @@ async function handleInitialize(
 
   const result = {
     protocolVersion: negotiatedVersion,
-    serverInfo: { name: "SmartSpecPro", version: "1.0.0" },
+    serverInfo: { name: "SmartAIHub", version: "1.0.0" },
     capabilities: { tools: { listChanged: false } },
   };
 
@@ -697,7 +697,7 @@ async function mcpDeleteHandler(req: Request, res: Response): Promise<void> {
 
 function mcpDiscoveryHandler(_req: Request, res: Response): void {
   res.json({
-    name: "SmartSpecPro",
+    name: "SmartAIHub",
     url: "https://smartaihub.app/v1/mcp",
     auth: { type: "bearer" },
     capabilities: { tools: true, prompts: false, resources: false },

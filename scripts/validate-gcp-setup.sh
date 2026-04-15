@@ -45,7 +45,7 @@ check() {
   return 0
 }
 
-echo "=== SmartSpecPro GCP Bootstrap Validation ==="
+echo "=== SmartAIHub GCP Bootstrap Validation ==="
 echo "Project: $PROJECT_ID"
 echo "Region:  $REGION"
 echo ""

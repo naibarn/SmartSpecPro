@@ -7,8 +7,14 @@ const financeRouterMocks = vi.hoisted(() => ({
   confirmDraft: vi.fn(),
   voidTransaction: vi.fn(),
   listTransactions: vi.fn(),
+  listCounterparties: vi.fn(),
   listDrafts: vi.fn(),
   listRecurringRules: vi.fn(),
+  listPaymentInstitutions: vi.fn(),
+  listPaymentAccounts: vi.fn(),
+  upsertPaymentInstitution: vi.fn(),
+  upsertPaymentAccount: vi.fn(),
+  archivePaymentAccount: vi.fn(),
   getDailySummary: vi.fn(),
   getMonthlySummary: vi.fn(),
   createRecurringRule: vi.fn(),
@@ -18,7 +24,12 @@ const financeRouterMocks = vi.hoisted(() => ({
   searchFinanceEvidence: vi.fn(),
 }));
 
+const financeDocumentExtractionMocks = vi.hoisted(() => ({
+  ingestFinanceDocumentFromLibraryItem: vi.fn(),
+}));
+
 vi.mock("../../services/financeService", () => financeRouterMocks);
+vi.mock("../../services/financeDocumentExtractionService", () => financeDocumentExtractionMocks);
 vi.mock("../../services/financeRetrievalService", () => ({
   searchFinanceEvidence: financeRouterMocks.searchFinanceEvidence,
 }));
@@ -78,8 +89,70 @@ describe("financeRouter", () => {
       version: 1,
     });
     financeRouterMocks.listTransactions.mockResolvedValue([]);
+    financeRouterMocks.listCounterparties.mockResolvedValue([]);
     financeRouterMocks.listDrafts.mockResolvedValue([]);
     financeRouterMocks.listRecurringRules.mockResolvedValue([]);
+    financeRouterMocks.listPaymentInstitutions.mockResolvedValue([]);
+    financeRouterMocks.listPaymentAccounts.mockResolvedValue([]);
+    financeRouterMocks.upsertPaymentInstitution.mockResolvedValue({
+      id: 401,
+      tenantId: "tenant-77",
+      projectId: "personal",
+      ownerUserId: 7,
+      kind: "bank",
+      displayName: "Krungthai",
+      normalizedName: "krungthai",
+      usageCount: 1,
+      lastSeenAt: null,
+      aliases: ["KTB"],
+      allowedScopes: ["user:7"],
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    });
+    financeRouterMocks.upsertPaymentAccount.mockResolvedValue({
+      id: 402,
+      tenantId: "tenant-77",
+      projectId: "personal",
+      ownerUserId: 7,
+      paymentInstitutionId: 401,
+      institutionName: "Krungthai",
+      institutionKind: "bank",
+      kind: "bank_account",
+      nickname: "Salary",
+      normalizedNickname: "salary",
+      last4: "1234",
+      maskedIdentifier: "••••1234",
+      usageCount: 1,
+      lastSeenAt: null,
+      isPrimary: true,
+      archivedAt: null,
+      aliases: ["Main salary"],
+      allowedScopes: ["user:7"],
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    });
+    financeRouterMocks.archivePaymentAccount.mockResolvedValue({
+      id: 402,
+      tenantId: "tenant-77",
+      projectId: "personal",
+      ownerUserId: 7,
+      paymentInstitutionId: 401,
+      institutionName: "Krungthai",
+      institutionKind: "bank",
+      kind: "bank_account",
+      nickname: "Salary",
+      normalizedNickname: "salary",
+      last4: "1234",
+      maskedIdentifier: "••••1234",
+      usageCount: 1,
+      lastSeenAt: null,
+      isPrimary: false,
+      archivedAt: new Date("2026-04-09T00:00:00.000Z"),
+      aliases: ["Main salary"],
+      allowedScopes: ["user:7"],
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    });
     financeRouterMocks.getDailySummary.mockResolvedValue({
       tenantId: "tenant-77",
       projectId: "personal",
@@ -140,6 +213,11 @@ describe("financeRouter", () => {
       projectId: "personal",
       personal: true,
     });
+    financeDocumentExtractionMocks.ingestFinanceDocumentFromLibraryItem.mockResolvedValue({
+      extraction: null,
+      draft: null,
+      libraryItem: null,
+    });
   });
 
   it("forwards the resolved tenant and user to parseTextToDraft", async () => {
@@ -164,6 +242,112 @@ describe("financeRouter", () => {
     });
   });
 
+  it("forwards payment instrument management and proof intent payloads", async () => {
+    const caller = createCaller();
+
+    await caller.listPaymentInstitutions({
+      conversationId: 91,
+      query: "KTB",
+      kind: "bank",
+    });
+
+    await caller.listPaymentAccounts({
+      conversationId: 91,
+      query: "Salary",
+      kind: "bank_account",
+    });
+
+    await caller.upsertPaymentInstitution({
+      conversationId: 91,
+      displayName: "Krungthai",
+      kind: "bank",
+      aliases: ["KTB"],
+    });
+
+    await caller.upsertPaymentAccount({
+      conversationId: 91,
+      paymentInstitutionName: "Krungthai",
+      paymentInstitutionKind: "bank",
+      kind: "bank_account",
+      nickname: "Salary",
+      last4: "1234",
+      maskedIdentifier: "••••1234",
+      aliases: ["Main salary"],
+      isPrimary: true,
+    });
+
+    await caller.archivePaymentAccount({
+      conversationId: 91,
+      paymentAccountId: 402,
+    });
+
+    await caller.ingestFinanceDocument({
+      conversationId: 91,
+      libraryItemId: 11,
+      captureIntent: "transfer_slip",
+      counterpartyName: "Acme",
+      idempotencyKey: "finance-ocr:11",
+      model: "gpt-4o-mini",
+    });
+
+    expect(financeRouterMocks.listPaymentInstitutions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 91,
+        query: "KTB",
+        kind: "bank",
+        userId: 7,
+        tenantId: "tenant-77",
+      }),
+    );
+    expect(financeRouterMocks.listPaymentAccounts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 91,
+        query: "Salary",
+        kind: "bank_account",
+        userId: 7,
+        tenantId: "tenant-77",
+      }),
+    );
+    expect(financeRouterMocks.upsertPaymentInstitution).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 91,
+        displayName: "Krungthai",
+        kind: "bank",
+        userId: 7,
+        tenantId: "tenant-77",
+      }),
+    );
+    expect(financeRouterMocks.upsertPaymentAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 91,
+        paymentInstitutionName: "Krungthai",
+        kind: "bank_account",
+        nickname: "Salary",
+        userId: 7,
+        tenantId: "tenant-77",
+      }),
+    );
+    expect(financeRouterMocks.archivePaymentAccount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 91,
+        paymentAccountId: 402,
+        userId: 7,
+        tenantId: "tenant-77",
+      }),
+    );
+    expect(financeRouterMocks.listPaymentInstitutions).toHaveBeenCalledTimes(1);
+    expect(financeDocumentExtractionMocks.ingestFinanceDocumentFromLibraryItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 91,
+        libraryItemId: 11,
+        captureIntent: "transfer_slip",
+        counterpartyName: "Acme",
+        userId: 7,
+        tenantId: "tenant-77",
+      }),
+    );
+  });
+
   it("applies default listTransactions pagination", async () => {
     const caller = createCaller();
 
@@ -178,6 +362,24 @@ describe("financeRouter", () => {
         tenantId: "tenant-77",
         limit: 50,
         offset: 0,
+      }),
+    );
+  });
+
+  it("forwards counterparty suggestions with resolved tenant scope", async () => {
+    const caller = createCaller();
+
+    await caller.listCounterparties({
+      conversationId: 91,
+      query: "Charge",
+    });
+
+    expect(financeRouterMocks.listCounterparties).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 91,
+        query: "Charge",
+        userId: 7,
+        tenantId: "tenant-77",
       }),
     );
   });

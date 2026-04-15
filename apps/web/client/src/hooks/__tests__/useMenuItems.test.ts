@@ -20,4 +20,22 @@ describe("useMenuItems", () => {
     expect(privateFiles?.path).toBe("/document-management?scope=private_vault&sort=updated_desc");
     expect(privateFiles?.IconComponent).not.toBe(Sparkles);
   });
+
+  it("shows Work OS in the admin sidebar for admin users", () => {
+    const items = getResolvedMenuItems("admin", "admin");
+    const workOs = items.find((item) => item.id === "admin-work-os");
+
+    expect(workOs).toBeDefined();
+    expect(workOs?.path).toBe("/admin/work-os");
+    expect(workOs?.label).toBe("Work OS");
+  });
+
+  it("shows Start Work in the main sidebar for regular users", () => {
+    const items = getResolvedMenuItems("user", "main");
+    const workRequest = items.find((item) => item.id === "work-request");
+
+    expect(workRequest).toBeDefined();
+    expect(workRequest?.path).toBe("/work/request");
+    expect(workRequest?.label).toBe("Start Work");
+  });
 });

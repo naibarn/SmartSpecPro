@@ -21,8 +21,8 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function deriveTrustTags(workpackId: string): TrustTaintTag[] {
-  const detail = getWorkpackDetail(workpackId);
+async function deriveTrustTags(workpackId: string): Promise<TrustTaintTag[]> {
+  const detail = await getWorkpackDetail(workpackId);
   if (!detail) return ["restricted_lineage"];
 
   const tags = new Set<TrustTaintTag>(["verified"]);
@@ -48,14 +48,14 @@ function dedupeBySummary(proposals: ImprovementProposal[]): ImprovementProposal[
   });
 }
 
-export function deriveWorkpackImprovementProposals(workpackId: string): WorkpackLearningBundle {
-  const detail = getWorkpackDetail(workpackId);
+export async function deriveWorkpackImprovementProposals(workpackId: string): Promise<WorkpackLearningBundle> {
+  const detail = await getWorkpackDetail(workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${workpackId}`);
   }
 
   const createdAt = nowIso();
-  const trustTags = deriveTrustTags(workpackId);
+  const trustTags = await deriveTrustTags(workpackId);
   const proposals: ImprovementProposal[] = [];
   const exceptionsByReason = new Map<string, typeof detail.exceptions>();
 
@@ -136,7 +136,9 @@ export function deriveWorkpackImprovementProposals(workpackId: string): Workpack
     }));
   }
 
-  const finalProposals = dedupeBySummary(proposals).map((proposal) => saveImprovementProposal(proposal));
+  const finalProposals = await Promise.all(
+    dedupeBySummary(proposals).map((proposal) => saveImprovementProposal(proposal)),
+  );
   const handoffBriefs = finalProposals
     .filter((proposal) => proposal.actionType === "skill_improvement")
     .map((proposal) => {

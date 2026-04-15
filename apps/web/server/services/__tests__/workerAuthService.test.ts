@@ -25,6 +25,7 @@ describe("workerAuthService", () => {
       desktopZeroClawWorker: true,
       nemoClawSecureWorkerPool: false,
       hiClawClusterRuntime: false,
+      hermesAgentRuntime: true,
     });
     mockIsJtiRevoked.mockResolvedValue(false);
   });
@@ -73,6 +74,73 @@ describe("workerAuthService", () => {
     expect(auth.audience).toBe(WORKER_REGISTRATION_AUDIENCE);
   });
 
+  it("preserves Hermes provider routing on registration tokens", async () => {
+    const {
+      createWorkerRegistrationToken,
+      verifyWorkerRegistrationToken,
+    } = await import("../workerAuthService");
+
+    const token = createWorkerRegistrationToken({
+      tenantId: "tenant-1",
+      runtimeType: "hermes_agent_gateway",
+      registeredByUserId: 7,
+      llmRoutingMode: "pinned_provider",
+      preferredProviderId: 42,
+      preferredProviderName: "SmartSpecPro Gateway",
+    });
+
+    const auth = await verifyWorkerRegistrationToken(token, {
+      runtimeType: "hermes_agent_gateway",
+    });
+
+    expect(auth.llmRoutingMode).toBe("pinned_provider");
+    expect(auth.preferredProviderId).toBe(42);
+    expect(auth.preferredProviderName).toBe("SmartSpecPro Gateway");
+  });
+
+  it("preserves worker access permissions and quotas on registration tokens", async () => {
+    const {
+      createWorkerRegistrationToken,
+      verifyWorkerRegistrationToken,
+    } = await import("../workerAuthService");
+
+    const token = createWorkerRegistrationToken({
+      tenantId: "tenant-1",
+      runtimeType: "hermes_agent_gateway",
+      registeredByUserId: 7,
+      permissionPreset: "custom",
+      permissionScopes: ["workers:register", "llm:chat", "workos:write"],
+      quotaHourly: 12,
+      quotaDaily: 120,
+      quotaWeekly: 700,
+      quotaMonthly: 2_500,
+    });
+
+    const auth = await verifyWorkerRegistrationToken(token, {
+      runtimeType: "hermes_agent_gateway",
+    });
+
+    expect(auth.permissionPreset).toBe("custom");
+    expect(auth.permissionScopes).toEqual(["workers:register", "llm:chat", "workos:write"]);
+    expect(auth.quotaHourly).toBe(12);
+    expect(auth.quotaDaily).toBe(120);
+    expect(auth.quotaWeekly).toBe(700);
+    expect(auth.quotaMonthly).toBe(2_500);
+  });
+
+  it("rejects invalid worker registration routing combinations", async () => {
+    const { createWorkerRegistrationToken } = await import("../workerAuthService");
+
+    expect(() =>
+      createWorkerRegistrationToken({
+        tenantId: "tenant-1",
+        runtimeType: "hermes_agent_gateway",
+        registeredByUserId: 7,
+        llmRoutingMode: "pinned_provider",
+      } as any),
+    ).toThrow(/preferredProviderId/i);
+  });
+
   it("issues worker-bound execution and upload tokens with the required claims", async () => {
     const {
       issueWorkerAccessTokens,
@@ -112,6 +180,7 @@ describe("workerAuthService", () => {
       desktopZeroClawWorker: true,
       nemoClawSecureWorkerPool: false,
       hiClawClusterRuntime: false,
+      hermesAgentRuntime: true,
     });
 
     const {

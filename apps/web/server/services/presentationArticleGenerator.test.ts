@@ -89,6 +89,48 @@ function makeSlideDraftInput() {
   };
 }
 
+function collectSchemaCombinators(node: unknown, path = "root"): string[] {
+  if (!node || typeof node !== "object") {
+    return [];
+  }
+  if (Array.isArray(node)) {
+    return node.flatMap((entry, index) => collectSchemaCombinators(entry, `${path}[${index}]`));
+  }
+
+  const record = node as Record<string, unknown>;
+  const issues: string[] = [];
+  for (const key of ["oneOf", "anyOf", "allOf"] as const) {
+    if (Object.prototype.hasOwnProperty.call(record, key)) {
+      issues.push(`${path}.${key}`);
+    }
+  }
+
+  if (record.properties && typeof record.properties === "object" && !Array.isArray(record.properties)) {
+    for (const [key, value] of Object.entries(record.properties as Record<string, unknown>)) {
+      issues.push(...collectSchemaCombinators(value, `${path}.properties.${key}`));
+    }
+  }
+  if (record.items !== undefined) {
+    issues.push(...collectSchemaCombinators(record.items, `${path}.items`));
+  }
+  if (record.$defs && typeof record.$defs === "object" && !Array.isArray(record.$defs)) {
+    for (const [key, value] of Object.entries(record.$defs as Record<string, unknown>)) {
+      issues.push(...collectSchemaCombinators(value, `${path}.$defs.${key}`));
+    }
+  }
+  for (const [key, value] of Object.entries(record)) {
+    if (key === "properties" || key === "items" || key === "$defs" || key === "oneOf" || key === "anyOf" || key === "allOf") {
+      continue;
+    }
+    if (Array.isArray(value)) {
+      issues.push(...value.flatMap((entry, index) => collectSchemaCombinators(entry, `${path}.${key}[${index}]`)));
+    } else if (value && typeof value === "object") {
+      issues.push(...collectSchemaCombinators(value, `${path}.${key}`));
+    }
+  }
+  return issues;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getSkillByIdAsync).mockResolvedValue(makeSlideSkill() as any);
@@ -519,11 +561,35 @@ describe("presentationArticleGenerator", () => {
     const policyCall = vi.mocked(resolveSkillExecutionPolicy).mock.calls[0]?.[0];
     expect(policyCall?.skill.executionMode).toBe("llm-only");
     expect(policyCall?.skill.executionPolicy?.requirements?.supportsStructuredOutputs).toBe(true);
+    expect(llmCall?.maxModelAttempts).toBe(1);
+    expect(llmCall?.maxTokens).toBe(12000);
     expect(llmCall?.extraBodyParams).toEqual(expect.objectContaining({
       response_format: expect.objectContaining({
         type: "json_schema",
       }),
     }));
+    const structuredSchema = (llmCall?.extraBodyParams as Record<string, unknown> | undefined)?.response_format as Record<string, unknown> | undefined;
+    const jsonSchema = structuredSchema?.json_schema as Record<string, unknown> | undefined;
+    const schema = jsonSchema?.schema as Record<string, unknown> | undefined;
+    const schemaDefs = (schema?.$defs as Record<string, unknown> | undefined) ?? {};
+    expect((schemaDefs.layout_plan_page as Record<string, unknown> | undefined)?.required).toEqual(
+      expect.arrayContaining(["initial_layout_pattern", "switch_reason"]),
+    );
+    expect((schemaDefs.page_fill_rules_applied as Record<string, unknown> | undefined)?.required).toEqual(
+      expect.arrayContaining([
+        "cover_whitespace_ceiling",
+        "closing_whitespace_ceiling",
+        "allow_callout_injection",
+        "allow_keypoint_box_injection",
+      ]),
+    );
+    expect((schemaDefs.render_manifest_simple_block as Record<string, unknown> | undefined)?.required).toEqual(
+      expect.arrayContaining(["size", "weight", "align", "text", "label", "reference", "radius"]),
+    );
+    expect((schemaDefs.render_manifest_block_page as Record<string, unknown> | undefined)?.required).toEqual(
+      expect.arrayContaining(["note"]),
+    );
+    expect(collectSchemaCombinators(schema)).toEqual([]);
     expect(llmCall?.messages[0]?.content).toContain("output must remain render_manifest_json");
     expect(llmCall?.messages[0]?.content).not.toContain("top-level object containing slides as an array");
     expect(vi.mocked(executeSkill)).not.toHaveBeenCalled();
@@ -662,6 +728,8 @@ describe("presentationArticleGenerator", () => {
       ]),
     }));
     expect(vi.mocked(executeSkillLlmWithFallback)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(executeSkillLlmWithFallback).mock.calls[0]?.[0]?.maxTokens).toBe(12000);
+    expect(vi.mocked(executeSkillLlmWithFallback).mock.calls[1]?.[0]?.maxTokens).toBe(12000);
   });
 
   it("repairs non-importable llm slide output into importable slide json", async () => {

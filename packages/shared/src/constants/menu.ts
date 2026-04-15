@@ -25,6 +25,8 @@ export const defaultMenuItems: MenuItem[] = [
   // === Main group (shared across web & desktop) ===
   { id: 'dashboard',     label: 'Dashboard',      labelTh: 'แดชบอร์ด',      icon: 'TrendingUp',      path: '/dashboard',      platforms: ['web', 'desktop'], group: 'main', sortOrder: 0 },
   { id: 'chat',          label: 'Chat (LLM)',     labelTh: 'แชท AI',        icon: 'MessageSquare',   path: '/chat',           platforms: ['web', 'desktop'], group: 'main', sortOrder: 1 },
+  { id: 'work-request',  label: 'Start Work',     labelTh: 'เริ่มงาน',      icon: 'PenLine',         path: '/work/request',   platforms: ['web', 'desktop'], group: 'main', sortOrder: 1.05 },
+  { id: 'my-requests',   label: 'My Requests',    labelTh: 'งานของฉัน',     icon: 'ClipboardCheck',  path: '/work/requests',  platforms: ['web', 'desktop'], group: 'main', sortOrder: 1.06 },
   { id: 'finance',       label: 'Finance',        labelTh: 'การเงิน',       icon: 'Wallet',          path: '/finance',        platforms: ['web', 'desktop'], group: 'main', sortOrder: 1.1 },
   { id: 'finance-reports', label: 'Finance Reports', labelTh: 'รายงานการเงิน', icon: 'BarChart3', path: '/finance/reports', platforms: ['web', 'desktop'], group: 'main', sortOrder: 1.2 },
   { id: 'media',         label: 'Media Studio',   labelTh: 'สตูดิโอ',       icon: 'Sparkles',        path: '/media-studio',   platforms: ['web', 'desktop'], group: 'main', sortOrder: 2 },
@@ -68,6 +70,7 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'admin-scheduled-jobs', label: 'Scheduled Jobs',    labelTh: 'งานตั้งเวลา', icon: 'Clock', path: '/admin/scheduled-jobs', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 21.72 },
   { id: 'admin-audit-logs',     label: 'Audit Logs',        labelTh: 'บันทึกตรวจสอบ', icon: 'Activity', path: '/admin/audit-logs', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 21.75 },
   { id: 'admin-orchestration-logs', label: 'Orchestration Logs', labelTh: 'บันทึก Orchestrator', icon: 'Workflow', path: '/admin/orchestration-logs', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 21.8 },
+  { id: 'admin-work-os',        label: 'Work OS',          labelTh: 'เวิร์กโอเอส', icon: 'ClipboardList', path: '/admin/work-os', platforms: ['web', 'desktop'], roles: ['admin', 'domain_admin'], group: 'admin', sortOrder: 21.82 },
   { id: 'admin-notifications', label: 'Notifications', labelTh: 'การแจ้งเตือน', icon: 'Bell', path: '/admin/notifications', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 21.85, requiresFeature: 'notificationUnifiedCenter' },
   { id: 'admin-alert-rules', label: 'Alert Rules', labelTh: 'กฎแจ้งเตือน', icon: 'BellRing', path: '/admin/alert-rules', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 21.9, requiresFeature: 'notificationPreferencesEnabled' },
   { id: 'admin-task-queue',     label: 'Task Queue',        labelTh: 'คิวงาน',  icon: 'ListChecks', path: '/tasks',                    platforms: ['web', 'desktop'], group: 'main', sortOrder: 9.6 },
@@ -90,7 +93,8 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'admin-content-quality', label: 'Content Quality',   labelTh: 'คุณภาพเนื้อหา', icon: 'ShieldCheck', path: '/admin/content-quality', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 30.8 },
   { id: 'admin-gallery',        label: 'Gallery Admin',     icon: 'Images',      path: '/admin/gallery',            platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 31 },
   { id: 'admin-api-keys',       label: 'API Oversight',     labelTh: 'ตรวจสอบ API', icon: 'ShieldAlert', path: '/admin/api-keys',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 31.5 },
-  { id: 'desktop-host',         label: 'Desktop Host',     labelTh: 'โฮสต์เดสก์ท็อป', icon: 'Download', path: '/desktop-host', platforms: ['web', 'desktop'], roles: ['admin', 'domain_admin'], group: 'admin', sortOrder: 31.7 },
+  { id: 'desktop-host',         label: 'Desktop Release',   labelTh: 'รีลีสเดสก์ท็อป', icon: 'Download', path: '/desktop-host', platforms: ['web', 'desktop'], roles: ['admin', 'domain_admin'], group: 'admin', sortOrder: 31.7 },
+  { id: 'desktop-host-governance', label: 'Desktop Governance', labelTh: 'กำกับดูแลเดสก์ท็อป', icon: 'ShieldCheck', path: '/admin/desktop-host/governance', platforms: ['web', 'desktop'], roles: ['admin', 'domain_admin'], group: 'admin', sortOrder: 31.8 },
   { id: 'admin-settings',       label: 'Platform Settings', icon: 'Settings',    path: '/admin/settings',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 32 },
 
   // === Domain admin group ===

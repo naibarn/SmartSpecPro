@@ -13,6 +13,8 @@ import {
   addCredits,
   deductCredits,
   getUsageStats,
+  getUserOcrUsageSummary,
+  getAdminOcrUsageSummary,
   type TransactionType,
 } from "../services/creditService";
 import { creditSourceTypeEnum } from "../../drizzle/schema";
@@ -73,6 +75,13 @@ const SAFE_METADATA_KEYS = [
   "reservedCost",
   "actualDuration",
   "actualResolution",
+  "ocrProvider",
+  "pageCount",
+  "creditsPerPage",
+  "service",
+  "source",
+  "fileName",
+  "fileType",
 ] as const;
 
 const historyFiltersSchema = z.object({
@@ -167,6 +176,46 @@ export const creditsRouter = router({
     .input(z.object({ days: z.number().min(1).max(365).default(30) }))
     .query(async ({ ctx, input }) => {
       return getUsageStats(ctx.user.id, input.days);
+    }),
+
+  /**
+   * User: OCR usage summary (daily/weekly/monthly + source breakdown)
+   */
+  ocrUsageSummary: protectedProcedure
+    .input(z.object({ days: z.number().min(1).max(365).default(30) }))
+    .query(async ({ ctx, input }) => {
+      return getUserOcrUsageSummary(ctx.user.id, input.days);
+    }),
+
+  /**
+   * Admin: OCR usage summary across users
+   */
+  adminOcrUsageSummary: adminProcedure
+    .input(z.object({
+      days: z.number().min(1).max(365).default(30),
+      limit: z.number().min(1).max(200).default(50),
+      offset: z.number().min(0).default(0),
+      tenantId: z.string().trim().min(1).optional(),
+    }))
+    .query(async ({ input }) => {
+      return getAdminOcrUsageSummary({
+        days: input.days,
+        limit: input.limit,
+        offset: input.offset,
+        tenantId: input.tenantId ?? null,
+      });
+    }),
+
+  /**
+   * Admin: OCR usage summary for a specific user
+   */
+  adminOcrUsageUser: adminProcedure
+    .input(z.object({
+      userId: z.number(),
+      days: z.number().min(1).max(365).default(30),
+    }))
+    .query(async ({ input }) => {
+      return getUserOcrUsageSummary(input.userId, input.days);
     }),
 
   /**

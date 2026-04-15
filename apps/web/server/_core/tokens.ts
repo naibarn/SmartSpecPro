@@ -31,6 +31,15 @@ export interface TokenClaims {
   scopeProfile?: string;
   registeredByUserId?: number;
   externalReference?: string;
+  llmRoutingMode?: "auto" | "pinned_provider";
+  preferredProviderId?: number;
+  preferredProviderName?: string;
+  permissionPreset?: string;
+  permissionScopes?: string[];
+  quotaHourly?: number | null;
+  quotaDaily?: number | null;
+  quotaWeekly?: number | null;
+  quotaMonthly?: number | null;
   scopes?: string[];
   jti?: string;
   exp?: number;
@@ -77,7 +86,9 @@ export function signBearerToken(
   claims: TokenClaims,
   expiresIn: SignOptions["expiresIn"] = "1h",
 ): string {
-  return jwt.sign(claims, JWT_SECRET, { expiresIn });
+  return expiresIn == null
+    ? jwt.sign(claims, JWT_SECRET)
+    : jwt.sign(claims, JWT_SECRET, { expiresIn });
 }
 
 /**

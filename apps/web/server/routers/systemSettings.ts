@@ -18,6 +18,10 @@ import {
   getDesktopReleaseConfig,
   updateDesktopReleaseConfig,
 } from "../services/desktopReleaseSettings";
+import { clearDocumentOcrSettingsCache, getDocumentOcrSettings } from "../services/documentOcrSettings";
+import { clearFinanceSlipMappingPresetCache } from "../services/financeSlipPresetSettings";
+import { clearPinnedMerchantPresetCache } from "../services/financeMerchantPresetSettings";
+import { DOCUMENT_OCR_PROVIDER_IDS } from "../../shared/documentOcrRouting";
 import {
   browserPolicyConfigSchema,
   browserPolicyUserCustomizationSchema,
@@ -27,7 +31,22 @@ import {
 // System Settings Router
 // ============================================================
 
-const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth", "ai", "telegram", "vectordb", "credit_pricing", "infrastructure", "tenant_automation", "desktop_release"]);
+const settingCategorySchema = z.enum([
+  "stripe",
+  "invoice",
+  "email",
+  "general",
+  "oauth",
+  "ai",
+  "telegram",
+  "vectordb",
+  "credit_pricing",
+  "infrastructure",
+  "tenant_automation",
+  "desktop_release",
+  "document_ocr",
+  "finance",
+]);
 
 const desktopReleaseSettingsUpdateSchema = z.object({
   githubRepository: z.string().trim().min(1).max(256),
@@ -36,6 +55,23 @@ const desktopReleaseSettingsUpdateSchema = z.object({
   webUrl: z.string().trim().min(1).max(2048),
   githubToken: z.string().trim().max(4096).optional(),
 });
+
+const documentOcrTestConnectionSchema = z.object({
+  providerId: z.enum([
+    DOCUMENT_OCR_PROVIDER_IDS.typhoonOcr15,
+    DOCUMENT_OCR_PROVIDER_IDS.landingAiAde,
+    DOCUMENT_OCR_PROVIDER_IDS.googleAiVision,
+  ]),
+  apiKey: z.string().trim().max(8192).optional(),
+});
+
+type DocumentOcrTestConnectionResult = {
+  success: boolean;
+  providerId: string;
+  message: string;
+  elapsedMs?: number | null;
+  rateLimitNote?: string | null;
+};
 
 const stripeSettingsSchema = z.object({
   secretKey: z.string().optional(),
@@ -113,6 +149,7 @@ async function fetchPythonAdminJson<T>(params: {
   userId: number;
   method?: "GET" | "POST";
   body?: unknown;
+  headers?: Record<string, string>;
 }): Promise<T> {
   const runtime = await getAppRuntimeConfig();
   const token = createAdminBearerToken(params.userId);
@@ -121,6 +158,7 @@ async function fetchPythonAdminJson<T>(params: {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
+      ...(params.headers ?? {}),
     },
     signal: AbortSignal.timeout(PY_TIMEOUT_MS),
     body: params.body === undefined ? undefined : JSON.stringify(params.body),
@@ -680,10 +718,37 @@ export const systemSettingsRouter = router({
       valueJson: z.record(z.any()).optional(),
       isSensitive: z.boolean().optional(),
       description: z.string().optional(),
+      clear: z.boolean().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
+
+      if (input.clear) {
+        const existing = await db
+          .select()
+          .from(systemSettings)
+          .where(and(
+            eq(systemSettings.category, input.category),
+            eq(systemSettings.key, input.key)
+          ))
+          .limit(1);
+
+        if (existing.length > 0) {
+          await db.delete(systemSettings).where(eq(systemSettings.id, existing[0].id));
+        }
+
+        if (input.category === "document_ocr") {
+          clearDocumentOcrSettingsCache();
+        }
+
+        if (input.category === "finance") {
+          clearFinanceSlipMappingPresetCache();
+          clearPinnedMerchantPresetCache();
+        }
+
+        return { success: true };
+      }
 
       const storedValue = input.isSensitive && input.value !== undefined
         ? encrypt(input.value)
@@ -720,6 +785,15 @@ export const systemSettingsRouter = router({
           description: input.description,
           updatedBy: ctx.user?.id,
         });
+      }
+
+      if (input.category === "document_ocr") {
+        clearDocumentOcrSettingsCache();
+      }
+
+      if (input.category === "finance") {
+        clearFinanceSlipMappingPresetCache();
+        clearPinnedMerchantPresetCache();
       }
 
       return { success: true };
@@ -789,6 +863,7 @@ export const systemSettingsRouter = router({
         userId: ctx.user?.id,
         description: "Google AI Studio API key for OCR and real-world vision enrichment",
       });
+      clearDocumentOcrSettingsCache();
 
       return { success: true, preservedExisting: false };
     }),
@@ -847,6 +922,74 @@ export const systemSettingsRouter = router({
       };
     }
   }),
+
+  testDocumentOcrConnection: adminProcedure
+    .input(documentOcrTestConnectionSchema)
+    .mutation(async ({ input, ctx }) => {
+      const currentSettings = await getDocumentOcrSettings();
+      const apiKey = input.apiKey?.trim() || (
+        input.providerId === DOCUMENT_OCR_PROVIDER_IDS.typhoonOcr15
+          ? currentSettings.typhoonOcrApiKey
+          : input.providerId === DOCUMENT_OCR_PROVIDER_IDS.landingAiAde
+            ? currentSettings.landingAiApiKey
+            : currentSettings.googleAiApiKey
+      );
+
+      if (!apiKey) {
+        const result: DocumentOcrTestConnectionResult = {
+          success: false,
+          providerId: input.providerId,
+          message: input.providerId === DOCUMENT_OCR_PROVIDER_IDS.typhoonOcr15
+            ? "Typhoon OCR API key is not configured"
+            : input.providerId === DOCUMENT_OCR_PROVIDER_IDS.landingAiAde
+              ? "LandingAI ADE API key is not configured"
+              : "Google AI OCR key is not configured",
+        };
+        return result;
+      }
+
+      try {
+        const response = await fetchPythonAdminJson<{
+          success: boolean;
+          provider_id: string;
+          message: string;
+          ocr_text?: string | null;
+          elapsed_ms?: number | null;
+          rate_limit_notice?: string | null;
+        }>({
+          path: "/api/internal/library/document-ocr/test-connection",
+          userId: ctx.user.id,
+          method: "POST",
+          body: {
+            provider_id: input.providerId,
+            ...(input.providerId === DOCUMENT_OCR_PROVIDER_IDS.googleAiVision && input.apiKey?.trim()
+              ? { api_key: input.apiKey.trim() }
+              : {}),
+          },
+          headers: input.providerId === DOCUMENT_OCR_PROVIDER_IDS.typhoonOcr15
+            ? { "x-typhoon-ocr-api-key": apiKey }
+            : input.providerId === DOCUMENT_OCR_PROVIDER_IDS.landingAiAde
+              ? { "x-landingai-ade-api-key": apiKey }
+              : undefined,
+        });
+
+        const result: DocumentOcrTestConnectionResult = {
+          success: response.success,
+          providerId: response.provider_id,
+          message: response.message,
+          elapsedMs: response.elapsed_ms ?? null,
+          rateLimitNote: response.rate_limit_notice ?? null,
+        };
+        return result;
+      } catch (error: any) {
+        const result: DocumentOcrTestConnectionResult = {
+          success: false,
+          providerId: input.providerId,
+          message: `Document OCR test failed: ${error.message}`,
+        };
+        return result;
+      }
+    }),
 
   // ============================================================
   // User-level API Keys (Context7, etc.)

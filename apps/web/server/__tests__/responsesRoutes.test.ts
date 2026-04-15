@@ -22,10 +22,12 @@ const { mockAuthorizeRequest } = vi.hoisted(() => ({
 }));
 const {
   mockAcquireDelegatedWorkerConcurrencySlot,
+  mockBuildDelegatedWorkerOriginMetadata,
   mockEnforceDelegatedWorkerSpendGuardrails,
   mockEnforceDelegatedWorkerModelSelectionPolicy,
 } = vi.hoisted(() => ({
   mockAcquireDelegatedWorkerConcurrencySlot: vi.fn(),
+  mockBuildDelegatedWorkerOriginMetadata: vi.fn((_auth, _surface, extra) => extra ?? {}),
   mockEnforceDelegatedWorkerSpendGuardrails: vi.fn(),
   mockEnforceDelegatedWorkerModelSelectionPolicy: vi.fn(),
 }));
@@ -50,7 +52,8 @@ vi.mock("../_core/llmRoutes", () => ({
 vi.mock("../../server/services/delegatedWorkerPlatformService", () => ({
   acquireDelegatedWorkerConcurrencySlot: (...args: any[]) =>
     mockAcquireDelegatedWorkerConcurrencySlot(...args),
-  buildDelegatedWorkerOriginMetadata: vi.fn((_auth, _surface, extra) => extra ?? {}),
+  buildDelegatedWorkerOriginMetadata: (...args: any[]) =>
+    mockBuildDelegatedWorkerOriginMetadata(...args),
   enforceDelegatedWorkerSpendGuardrails: (...args: any[]) =>
     mockEnforceDelegatedWorkerSpendGuardrails(...args),
   enforceDelegatedWorkerModelSelectionPolicy: (...args: any[]) =>
@@ -352,6 +355,8 @@ describe("/v1/responses endpoint", () => {
   beforeEach(() => {
     mockFetch.mockReset();
     mockAuditLog.mockClear();
+    mockBuildDelegatedWorkerOriginMetadata.mockReset();
+    mockBuildDelegatedWorkerOriginMetadata.mockImplementation((_auth, _surface, extra) => extra ?? {});
     mockLogRequest.mockResolvedValue(undefined);
     mockRunPlanner.mockReset();
     mockRunPlanner.mockResolvedValue(null);
@@ -562,6 +567,39 @@ describe("/v1/responses endpoint", () => {
 
       expect(res.status).toBe(403);
       expect(res.body.error.code).toBe("worker_model_not_allowed");
+    });
+
+    it("propagates delegated worker billing metadata for Hermes runtime requests", async () => {
+      mockAuthorizeRequest.mockResolvedValueOnce({
+        ok: true,
+        mode: "delegated_worker",
+        sub: "worker-delegate:test",
+        userId: 42,
+        ownerUserId: 42,
+        workerId: "worker-hermes-1",
+        workerJobId: "job-hermes-1",
+        delegatedSessionId: "session-hermes-1",
+        runtimeType: "hermes_agent_gateway",
+        scopeProfile: "worker_gateway_hybrid_executor",
+        tenantId: "tenant-api",
+        scopes: ["llm:chat"],
+      });
+      mockFetch.mockResolvedValueOnce(makeFetchResponse(makeResponsesApiResponse()));
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({ model: "gpt-5.4", input: [{ role: "user", content: "hi" }] });
+
+      expect(res.status).toBe(200);
+      expect(mockBuildDelegatedWorkerOriginMetadata).toHaveBeenCalledWith(
+        undefined,
+        "responses.execute",
+        expect.objectContaining({
+          endpoint: "/v1/responses",
+          providerName: "openai",
+          requestedModelId: "gpt-5.4",
+        }),
+      );
     });
 
     it("rejects Kie requests with unknown top-level fields outside the allowlist", async () => {

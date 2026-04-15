@@ -9,6 +9,9 @@ const {
   generateTextWithBrowserLocalRuntimeMock,
   executeExternalLocalChatCompletionMock,
   executeExternalLocalTextCompletionMock,
+  readLocalAiLocalEnginePreferenceMock,
+  shouldAllowExternalLocalBackendMock,
+  shouldAllowOnDeviceLocalEngineMock,
   readConfiguredExternalLocalTextBackendMock,
   readLocalAiDeviceStateMock,
 } = vi.hoisted(() => ({
@@ -17,6 +20,9 @@ const {
   generateTextWithBrowserLocalRuntimeMock: vi.fn(),
   executeExternalLocalChatCompletionMock: vi.fn(),
   executeExternalLocalTextCompletionMock: vi.fn(),
+  readLocalAiLocalEnginePreferenceMock: vi.fn(() => "auto"),
+  shouldAllowExternalLocalBackendMock: vi.fn(() => true),
+  shouldAllowOnDeviceLocalEngineMock: vi.fn(() => true),
   readConfiguredExternalLocalTextBackendMock: vi.fn(() => null),
   readLocalAiDeviceStateMock: vi.fn(() => ({
     installedModelIds: [],
@@ -36,8 +42,11 @@ vi.mock("../adapters/browserLocalRuntime", () => ({
 vi.mock("../adapters/externalLocalTextBackend", () => ({
   executeExternalLocalChatCompletion: executeExternalLocalChatCompletionMock,
   executeExternalLocalTextCompletion: executeExternalLocalTextCompletionMock,
+  readLocalAiLocalEnginePreference: readLocalAiLocalEnginePreferenceMock,
   readConfiguredExternalLocalTextBackend:
     readConfiguredExternalLocalTextBackendMock,
+  shouldAllowExternalLocalBackend: shouldAllowExternalLocalBackendMock,
+  shouldAllowOnDeviceLocalEngine: shouldAllowOnDeviceLocalEngineMock,
 }));
 
 vi.mock("../state/localAiDeviceStateStorage", () => ({
@@ -60,6 +69,12 @@ describe("buildHybridAttachmentAssist", () => {
     generateTextWithBrowserLocalRuntimeMock.mockReset();
     executeExternalLocalChatCompletionMock.mockReset();
     executeExternalLocalTextCompletionMock.mockReset();
+    readLocalAiLocalEnginePreferenceMock.mockReset();
+    readLocalAiLocalEnginePreferenceMock.mockReturnValue("auto");
+    shouldAllowExternalLocalBackendMock.mockReset();
+    shouldAllowExternalLocalBackendMock.mockReturnValue(true);
+    shouldAllowOnDeviceLocalEngineMock.mockReset();
+    shouldAllowOnDeviceLocalEngineMock.mockReturnValue(true);
     readConfiguredExternalLocalTextBackendMock.mockReset();
     readConfiguredExternalLocalTextBackendMock.mockReturnValue(null);
     readLocalAiDeviceStateMock.mockClear();
@@ -280,6 +295,158 @@ describe("buildHybridAttachmentAssist", () => {
     });
     expect(result?.providerContext).toContain("[Hybrid OCR pre-read]");
     expect(result?.providerContext).toContain("Merchant: Esan Kitchen");
+  });
+
+  it("returns raw OCR payload without invoking a summary LLM when preferred", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(new Blob(["pdf-binary"], { type: "application/pdf" }), {
+        status: 200,
+      }),
+    );
+
+    const analyzeAttachmentAssist = vi.fn().mockResolvedValue({
+      kind: "extract_text",
+      extractedText: "ร้านอาหาร ABC\nยอดรวม 180 บาท",
+      extractor: "extract_text",
+      caption: "Receipt extract",
+      ocrText: "ร้านอาหาร ABC\nยอดรวม 180 บาท",
+      warning: null,
+      searchQuality: "full_text",
+      metadata: { page_count: 1 },
+    });
+
+    const result = await buildHybridAttachmentAssist({
+      platform: "tauri",
+      preferences: {
+        ...DEFAULT_LOCAL_AI_SYNCED_PREFERENCES,
+        enabled: true,
+        useForImageTasks: true,
+      },
+      forceCloudOnly: false,
+      preferRawDocumentOcr: true,
+      catalog: [],
+      tauriRuntimeStatus: {
+        available: true,
+        supportsScriptBundle: true,
+        supportsGemma4Text: true,
+        supportsGemma4Image: true,
+        supportsGemma4Voice: true,
+        nodePath: "/usr/bin/node",
+        litertLmPath: "/usr/bin/litert-lm",
+        runtimeRoot: "/tmp/local-ai",
+        managedModelRoot: "/tmp/local-ai/models",
+        bundleMode: "on-demand",
+        gemmaProfileIds: [],
+        bundledGemmaProfileIds: [],
+        installedGemmaProfileIds: [],
+        reason: null,
+      },
+      attachments: [
+        {
+          url: "/uploads/receipt.pdf",
+          fileType: "application/pdf",
+          fileName: "receipt.pdf",
+        },
+      ],
+      userText: "วิเคราะห์ภาพด้วย ocr",
+      analyzeAttachmentAssist,
+    });
+
+    expect(executeTauriLocalGemmaTextMock).not.toHaveBeenCalled();
+    expect(result?.ocrResult).toMatchObject({
+      extractedText: "ร้านอาหาร ABC\nยอดรวม 180 บาท",
+      caption: "Receipt extract",
+      extractor: "extract_text",
+    });
+    expect(result?.providerContext).toContain("ร้านอาหาร ABC");
+  });
+
+  it("forces document OCR on image attachments when document OCR mode is enabled", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(new Blob(["image-binary"], { type: "image/png" }), {
+        status: 200,
+      }),
+    );
+
+    const analyzeAttachmentAssist = vi.fn().mockResolvedValue({
+      kind: "extract_text",
+      extractedText: "ACME Corp\nTotal 99.50",
+      extractor: "landingai_ade",
+      caption: null,
+      ocrText: "ACME Corp\nTotal 99.50",
+      warning: null,
+      searchQuality: "full_text",
+      metadata: { page_count: 1 },
+    });
+
+    const result = await buildHybridAttachmentAssist({
+      platform: "web",
+      preferences: {
+        ...DEFAULT_LOCAL_AI_SYNCED_PREFERENCES,
+        enabled: false,
+        useForImageTasks: false,
+      },
+      forceCloudOnly: false,
+      preferRawDocumentOcr: true,
+      forceDocumentOcr: true,
+      catalog: [],
+      capability: {
+        supported: false,
+        secureContext: true,
+        webgpu: false,
+        webgpuAdapterAvailable: false,
+        webgpuDeviceAvailable: false,
+        browserDeviceMemoryGb: 8,
+        eligibleProfiles: [],
+        eligibleVoiceProfiles: [],
+        reasons: [],
+      },
+      scope: {
+        tenantId: "tenant-1",
+        userId: "user-1",
+        runtimeNamespace: "web",
+      },
+      tauriRuntimeStatus: {
+        available: false,
+        supportsScriptBundle: false,
+        supportsGemma4Text: false,
+        supportsGemma4Image: false,
+        supportsGemma4Voice: false,
+        nodePath: null,
+        litertLmPath: null,
+        runtimeRoot: null,
+        managedModelRoot: null,
+        bundleMode: "on-demand",
+        gemmaProfileIds: [],
+        bundledGemmaProfileIds: [],
+        installedGemmaProfileIds: [],
+        reason: null,
+      },
+      attachments: [
+        {
+          url: "/uploads/photo.png",
+          fileType: "image/png",
+          fileName: "photo.png",
+        },
+      ],
+      userText: "อ่านข้อความนี้ให้หน่อย",
+      analyzeAttachmentAssist,
+    });
+
+    expect(analyzeAttachmentAssist).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileName: "photo.png",
+        mimeType: "image/png",
+        mode: "document_ocr",
+        analysisProfile: "document_ocr",
+        captureIntent: "transfer_slip",
+      }),
+    );
+    expect(result?.ocrResult).toMatchObject({
+      extractedText: "ACME Corp\nTotal 99.50",
+      extractor: "landingai_ade",
+    });
+    expect(result?.providerContext).toContain("ACME Corp");
   });
 
   it("uses the localhost multimodal backend for image understanding when configured", async () => {

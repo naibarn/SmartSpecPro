@@ -2,7 +2,7 @@
 
 ## Scope
 
-This research supports Feature 075, which defines SmartSpecPro as a unified web + desktop agent platform with:
+This research supports Feature 075, which defines SmartAIHub as a unified web + desktop agent platform with:
 
 - a governed Desktop Host built on the existing Tauri shell
 - signed package sync and materialization
@@ -13,7 +13,7 @@ This research supports Feature 075, which defines SmartSpecPro as a unified web 
 
 The goal of this note is to ground the planning work in:
 
-- the current SmartSpecPro codebase
+- the current SmartAIHub codebase
 - the current feature-spec lineage
 - current official documentation for the third-party runtime and desktop update surfaces that materially affect design
 - the real test setup already used in the repo
@@ -46,7 +46,7 @@ Planning implication:
 
 Key finding:
 
-- Agency Swarm is already part of SmartSpecPro's runtime vocabulary, but the prior spec focuses more on capability than on desktop packaging, signed distribution, or device-governed local execution.
+- Agency Swarm is already part of SmartAIHub's runtime vocabulary, but the prior spec focuses more on capability than on desktop packaging, signed distribution, or device-governed local execution.
 
 Planning implication:
 
@@ -255,7 +255,7 @@ Planning implication:
 - Feature 075 should treat Agency Swarm as a Python-based managed runtime with explicit persistence ownership.
 - Desktop Host must own thread persistence, local policy, tool injection, and file access adapters rather than relying on Agency Swarm defaults.
 - The managed packaging story must assume current Agency Swarm wants a modern OpenAI Agents SDK-compatible stack and not the older Assistants-era assumptions.
-- Shared MCP and file options are useful, but in SmartSpecPro they should be mediated by Desktop Host policy and capability manifests.
+- Shared MCP and file options are useful, but in SmartAIHub they should be mediated by Desktop Host policy and capability manifests.
 
 ### Pi Runtime Public Documentation Status
 
@@ -265,7 +265,7 @@ Finding:
 
 Planning implication:
 
-- The plan should treat Pi as a SmartSpecPro-selected local agent engine integration target with an adapter contract to be defined by SmartSpecPro.
+- The plan should treat Pi as a SmartAIHub-selected local agent engine integration target with an adapter contract to be defined by SmartAIHub.
 - Anything more specific than that should remain an implementation decision until the team locks the actual SDK/sidecar choice.
 
 ## Testing Research
@@ -322,5 +322,5 @@ Planning implication:
    - local-file mediation
    - capability enforcement
    - audit and offboarding
-6. Treat Agency Swarm as a managed Python runtime whose persistence and tool surfaces must be controlled by SmartSpecPro.
+6. Treat Agency Swarm as a managed Python runtime whose persistence and tool surfaces must be controlled by SmartAIHub.
 7. Start managed Pi integration with a sidecar/RPC boundary, and revisit embedded integration only after it reaches equivalent isolation and policy guarantees.

@@ -312,6 +312,249 @@ describe("workerRegistryService", () => {
     }));
   });
 
+  it("stores compatibility state and Hermes bridge runtime metadata", async () => {
+    const { registerWorker } = await import("../workerRegistryService");
+
+    const createdWorker = {
+      id: "worker-hermes-1",
+      tenantId: "tenant-1",
+      teamId: null,
+      runtimeType: "hermes_agent_gateway",
+      workerMode: "per_user",
+      machineId: null,
+      machineName: null,
+      displayName: "Hermes Personal Agent",
+      status: "online",
+      runtimeVersion: "0.3.0",
+      runtimeMode: "external_managed",
+      runtimeProfileId: null,
+      policyProfileId: null,
+      externalReference: "hermes://profiles/default",
+      dashboardUrl: "http://127.0.0.1:9001",
+      capabilitiesJson: {},
+      hardwareJson: {},
+      healthSummaryJson: {},
+      warningFlagsJson: [],
+      fileScopeMode: "workspace_scoped",
+      lastSeenAt: new Date("2026-04-11T00:00:00.000Z"),
+      registeredByUserId: 7,
+      createdAt: new Date("2026-04-11T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-11T00:00:00.000Z"),
+    };
+
+    const repo = {
+      findRuntimeProfileByName: vi.fn().mockResolvedValue(null),
+      findWorkerPolicyByName: vi.fn().mockResolvedValue(null),
+      findWorkerByExternalReference: vi.fn().mockResolvedValue(null),
+      createWorker: vi.fn().mockResolvedValue(createdWorker),
+      updateWorker: vi.fn().mockResolvedValue(createdWorker),
+    };
+
+    const payload: WorkerRegistrationPayload = {
+      compatibility: {
+        protocolVersion: "2026-04-06",
+        runtimeVersion: "0.3.0",
+      },
+      runtimeType: "hermes_agent_gateway",
+      workerMode: "per_user",
+      displayName: "Hermes Personal Agent",
+      externalReference: "hermes://profiles/default",
+      runtimeMode: "external_managed",
+      teamId: null,
+      machineId: null,
+      machineName: null,
+      dashboardUrl: "http://127.0.0.1:9001",
+      capabilitiesJson: {},
+      hardwareJson: {},
+      healthSummaryJson: {},
+      warningFlagsJson: [],
+      runtimeMetadataJson: {
+        hermesVersion: "0.3.0",
+        profileName: "default",
+        apiServerEnabled: true,
+        apiServerBaseUrl: "http://127.0.0.1:9001",
+        terminalBackend: "local",
+        gatewayPlatforms: ["telegram", "discord"],
+        supportsDelegatedHttp: true,
+        supportsDelegatedMcp: false,
+        supportsBoundConnector: true,
+        supportsCallbacks: true,
+        hostPlatform: "linux",
+        hostExecutionMode: "native",
+      },
+      fileScopeMode: "workspace_scoped",
+      runtimeProfileName: null,
+      policyProfileName: null,
+    };
+
+    await registerWorker({
+      auth: {
+        tenantId: "tenant-1",
+        teamId: null,
+        runtimeType: "hermes_agent_gateway",
+        registeredByUserId: 7,
+        audience: "smartspec-worker-registration",
+        scopes: ["workers:register"],
+      } as any,
+      payload,
+    }, { repo } as any);
+
+    expect(repo.createWorker).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "hermes_agent_gateway",
+      capabilitiesJson: expect.objectContaining({
+        runtimeMetadata: expect.objectContaining({
+          hermesVersion: "0.3.0",
+          profileName: "default",
+          apiServerBaseUrl: "http://127.0.0.1:9001",
+          supportsBoundConnector: true,
+        }),
+      }),
+      healthSummaryJson: expect.objectContaining({
+        controlPlane: expect.objectContaining({
+          runtimeFamily: "Hermes",
+          featureFlag: "hermesAgentRuntime",
+          remoteEndpointPolicy: "loopback_only",
+          compatibility: expect.objectContaining({
+            runtimeType: "hermes_agent_gateway",
+            transport: expect.objectContaining({
+              compatible: true,
+            }),
+          }),
+        }),
+      }),
+    }));
+  });
+
+  it("stores an audited remote-endpoint exception for Hermes bridge registrations", async () => {
+    const { registerWorker } = await import("../workerRegistryService");
+
+    const createdWorker = {
+      id: "worker-hermes-remote-1",
+      tenantId: "tenant-1",
+      teamId: null,
+      runtimeType: "hermes_agent_gateway",
+      workerMode: "per_user",
+      machineId: null,
+      machineName: null,
+      displayName: "Hermes Personal Agent",
+      status: "online",
+      runtimeVersion: "0.3.0",
+      runtimeMode: "external_managed",
+      runtimeProfileId: null,
+      policyProfileId: null,
+      externalReference: "hermes://profiles/default",
+      dashboardUrl: "https://hermes.example.com",
+      capabilitiesJson: {},
+      hardwareJson: {},
+      healthSummaryJson: {},
+      warningFlagsJson: [],
+      fileScopeMode: "workspace_scoped",
+      lastSeenAt: new Date("2026-04-11T00:00:00.000Z"),
+      registeredByUserId: 7,
+      createdAt: new Date("2026-04-11T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-11T00:00:00.000Z"),
+    };
+
+    const repo = {
+      findRuntimeProfileByName: vi.fn().mockResolvedValue(null),
+      findWorkerPolicyByName: vi.fn().mockResolvedValue(null),
+      findWorkerByExternalReference: vi.fn().mockResolvedValue(null),
+      createWorker: vi.fn().mockResolvedValue(createdWorker),
+      updateWorker: vi.fn().mockResolvedValue(createdWorker),
+    };
+
+    const payload: WorkerRegistrationPayload = {
+      compatibility: {
+        protocolVersion: "2026-04-06",
+        runtimeVersion: "0.3.0",
+      },
+      runtimeType: "hermes_agent_gateway",
+      workerMode: "per_user",
+      displayName: "Hermes Personal Agent",
+      externalReference: "hermes://profiles/default",
+      runtimeMode: "external_managed",
+      teamId: null,
+      machineId: null,
+      machineName: null,
+      dashboardUrl: "https://hermes.example.com",
+      capabilitiesJson: {},
+      hardwareJson: {},
+      healthSummaryJson: {},
+      warningFlagsJson: [],
+      runtimeMetadataJson: {
+        hermesVersion: "0.3.0",
+        profileName: "default",
+        profileLabel: "Default Personal Assistant",
+        profilePurpose: "Handle personal follow-up and coordination",
+        apiServerEnabled: true,
+        apiServerBaseUrl: "https://hermes.example.com",
+        remoteEndpointPolicyExceptionId: "hermes-remote-allow-001",
+        terminalBackend: "local",
+        gatewayPlatforms: ["telegram", "discord"],
+        supportsDelegatedHttp: true,
+        supportsDelegatedMcp: false,
+        supportsBoundConnector: true,
+        supportsCallbacks: true,
+        hostPlatform: "linux",
+        hostExecutionMode: "native",
+      },
+      fileScopeMode: "workspace_scoped",
+      runtimeProfileName: null,
+      policyProfileName: null,
+    };
+
+    await registerWorker({
+      auth: {
+        tenantId: "tenant-1",
+        teamId: null,
+        runtimeType: "hermes_agent_gateway",
+        registeredByUserId: 7,
+        audience: "smartspec-worker-registration",
+        scopes: ["workers:register"],
+        permissionPreset: "custom",
+        permissionScopes: ["workers:register", "llm:chat", "workos:write"],
+        quotaHourly: 9,
+        quotaDaily: 90,
+        quotaWeekly: 450,
+        quotaMonthly: 900,
+      } as any,
+      payload,
+    }, { repo } as any);
+
+    expect(repo.createWorker).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "hermes_agent_gateway",
+      capabilitiesJson: expect.objectContaining({
+        delegatedSpendCaps: expect.objectContaining({
+          hourlyCredits: 9,
+          dailyCredits: 90,
+          weeklyCredits: 450,
+          monthlyCredits: 900,
+        }),
+        runtimeMetadata: expect.objectContaining({
+          apiServerBaseUrl: "https://hermes.example.com",
+          remoteEndpointPolicyExceptionId: "hermes-remote-allow-001",
+          profileLabel: "Default Personal Assistant",
+          profilePurpose: "Handle personal follow-up and coordination",
+          workerAccessPolicy: expect.objectContaining({
+            permissionPreset: "custom",
+            permissionScopes: ["workers:register", "llm:chat", "workos:write"],
+            quotaHourly: 9,
+            quotaDaily: 90,
+            quotaWeekly: 450,
+            quotaMonthly: 900,
+          }),
+        }),
+      }),
+      healthSummaryJson: expect.objectContaining({
+        controlPlane: expect.objectContaining({
+          runtimeFamily: "Hermes",
+          featureFlag: "hermesAgentRuntime",
+          remoteEndpointPolicy: "audited_exception_granted",
+        }),
+      }),
+    }));
+  });
+
   it("updates worker status and lastSeenAt on heartbeat", async () => {
     const { recordWorkerHeartbeat } = await import("../workerRegistryService");
 

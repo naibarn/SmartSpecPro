@@ -16,8 +16,8 @@ tags: [openclaw, worker, external runtime, monitoring, teams, credits, feature f
 คู่มือนี้อธิบายเฉพาะ runtime แบบ `openclaw_gateway` เป็นหลัก ปัจจุบัน SmartSpecPro แยก runtime family อื่นไว้อย่างชัดเจนแล้ว:
 
 - `desktop_zeroclaw_managed` สำหรับงานแบบ Desktop + ZeroClaw ที่ผูกกับเครื่อง
-- `nemoclaw_sandbox` สำหรับ secure sandbox pool ที่เปิดแบบ admin-gated
-- `hiclaw_cluster` สำหรับ collaborative cluster ที่เปิดแบบ admin-gated
+- `nemoclaw_sandbox` สำหรับ NemoClaw secure sandbox pool ดูเพิ่มเติมที่ [NemoClaw Workers](./nemo-claw-workers.md)
+- `hiclaw_cluster` สำหรับ HiClaw collaborative cluster ดูเพิ่มเติมที่ [HiClaw Workers](./hi-claw-workers.md)
 
 runtime เหล่านี้ไม่ได้สืบทอด semantics ของ OpenClaw โดยอัตโนมัติ ถ้าเปิดใช้งานภายหลัง หน้า operator จะเห็นเป็นคนละ runtime family พร้อม rollout และ compatibility state ของตัวเอง
 
@@ -83,6 +83,8 @@ Feature 077 ทำให้ control plane รู้จัก runtime หลา�
 - `nemoclaw_sandbox` กับ `hiclaw_cluster` ยังเป็น runtime แบบ admin-gated จนกว่าจะเปิด rollout ของตัวเอง
 
 ดังนั้นอย่าอ่านคู่มือนี้ว่า runtime ทุกแบบรองรับ dispatch, callback, หรือ delegated session ได้เท่ากันทั้งหมด
+
+ถ้ากำลังเปรียบเทียบสองเส้นทาง external runtime แบบ personal ให้ใช้คู่มือนี้สำหรับเส้นทาง OpenClaw ที่เสถียร และดู [Hermes Workers](./hermes-workers.md) สำหรับเส้นทาง bring-your-own Hermes
 
 ## ลำดับการตั้งค่าที่แนะนำ
 
@@ -271,7 +273,7 @@ worker ใช้ความรู้ของเจ้าของได้เ�
 
 worker ใช้ได้เฉพาะสิ่งที่ delegated job manifest และ grants ระบุให้เท่านั้น
 
-อีกจุดที่ควรรู้คือ path นี้ใช้กับ **OpenClaw gateway worker** เท่านั้น ยังไม่ใช่การ bind ZeroClaw desktop runtime แบบเดียวกัน
+อีกจุดที่ควรรู้คือ path นี้ใช้กับ **OpenClaw gateway worker** เท่านั้น ยังไม่ใช่การ bind ZeroClaw desktop runtime, NemoClaw sandbox, หรือ HiClaw cluster runtime แบบเดียวกัน
 
 ## หน้า Monitoring: ควรดูอะไรก่อน
 

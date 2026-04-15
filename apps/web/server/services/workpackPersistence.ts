@@ -166,6 +166,29 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function isMissingWorkpackTenantForeignKeyError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const cause = (error as { cause?: unknown }).cause;
+  if (!cause || typeof cause !== "object") {
+    return false;
+  }
+
+  const postgresError = cause as {
+    code?: string;
+    constraint_name?: string;
+  };
+
+  return postgresError.code === "23503"
+    && postgresError.constraint_name === "workpack_records_tenantId_fkey";
+}
+
+function isMissingLegacyWorkpackReferenceError(error: unknown): boolean {
+  return error instanceof Error && error.message.startsWith("Unknown workpack: ");
+}
+
 function sortByTimestamp<T>(items: T[], pick: (item: T) => string | null | undefined): T[] {
   return [...items].sort((left, right) => {
     const leftValue = pick(left) ?? "";
@@ -908,7 +931,27 @@ async function ensureLegacyImport(db: DrizzleDB): Promise<void> {
       ];
 
       for (const entry of importEntries) {
-        await putRecord(entry.type, entry.payload, { db, skipLegacyImport: true });
+        try {
+          await putRecord(entry.type, entry.payload, { db, skipLegacyImport: true });
+        } catch (error) {
+          if (isMissingWorkpackTenantForeignKeyError(error)) {
+            const recordId = (entry.payload as { id?: string }).id ?? "unknown";
+            console.warn(
+              "[workpackPersistence] skipping legacy record with missing tenant",
+              { type: entry.type, recordId },
+            );
+            continue;
+          }
+          if (isMissingLegacyWorkpackReferenceError(error)) {
+            const recordId = (entry.payload as { id?: string }).id ?? "unknown";
+            console.warn(
+              "[workpackPersistence] skipping legacy record with missing workpack",
+              { type: entry.type, recordId },
+            );
+            continue;
+          }
+          throw error;
+        }
       }
     } catch (error) {
       console.warn("[workpackPersistence] failed to import legacy file-backed store", error);
@@ -1255,6 +1298,13 @@ export async function listRunsByTenant(tenantId: string, session?: WorkpackPersi
   return listRecordsByTenant("workpack_run", tenantId, session?.db ?? null);
 }
 
+export async function listVersionsForWorkpack(
+  workpackId: string,
+  session?: WorkpackPersistenceSession,
+): Promise<WorkpackVersion[]> {
+  return listRecordsByWorkpack("workpack_version", workpackId, session?.db ?? null);
+}
+
 export async function listAllRuns(session?: WorkpackPersistenceSession): Promise<WorkpackRun[]> {
   return listAllRecordsByType("workpack_run", session?.db ?? null);
 }
@@ -1298,13 +1348,6 @@ export async function listMetricSnapshotsByTenant(
   tenantId: string,
   session?: WorkpackPersistenceSession,
 ): Promise<MetricSnapshot[]> {
-export async function listVersionsForWorkpack(
-  workpackId: string,
-  session?: WorkpackPersistenceSession,
-): Promise<WorkpackVersion[]> {
-  return listRecordsByWorkpack("workpack_version", workpackId, session?.db ?? null);
-}
-
   return listRecordsByTenant("metric_snapshot", tenantId, session?.db ?? null);
 }
 

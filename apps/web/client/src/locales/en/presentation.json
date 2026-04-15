@@ -502,6 +502,7 @@
   "dialog.slideNote.saveAndGenerate": "Save + Generate",
   "dialog.slideNote.wordLimitPlaceholder": "e.g. 300",
   "error.itemNotFound": "Could not find the presentation item.",
+  "error.apiHtmlResponse": "The server returned an HTML page instead of presentation data. Reload the page or sign in again.",
   "error.noDeck": "This presentation deck could not be loaded.",
   "error.retryDeckInit": "Retry deck initialization",
   "error.unavailable": "Presentation is unavailable",

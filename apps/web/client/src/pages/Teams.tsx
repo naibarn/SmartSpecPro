@@ -45,6 +45,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
 import { PersonaEditorFields } from "@/components/settings/PersonaEditorFields";
 import {
   buildPersonaMutationFields,
@@ -143,6 +144,23 @@ interface BindableWorkerOption {
   lastSeenAt: string | Date | null;
   warningFlagsJson: string[];
   boundProfileCount: number;
+  channelCompanionPlatforms: string[];
+  remoteEndpointPolicy: "loopback_only" | "audited_exception_granted" | "unknown" | null;
+  profileName: string | null;
+  profileLabel: string | null;
+  profilePurpose: string | null;
+  personaDisplayLabel: string;
+  personaDisplayPurpose: string;
+  channelStatus: "connected" | "inactive" | "revoked" | "unknown";
+  channelDisplayLabel: string;
+  memorySyncEnabled: boolean;
+  memorySyncScope: "personal" | "team_shared" | "workspace_shared" | "cross_channel" | null;
+  memorySyncStatus: "disabled" | "active" | "inactive" | "quarantined" | "unknown";
+  memorySyncDisplayLabel: string;
+  llmRoutingMode: "auto" | "pinned_provider";
+  preferredProviderId: number | null;
+  preferredProviderName: string | null;
+  providerRoutingDisplayLabel: string;
   availableForBinding: boolean;
   bindingReason?: string | null;
 }
@@ -324,9 +342,108 @@ function getDefaultRoleForKind(
   return memberKind === "assistant" ? "specialist" : "reviewer";
 }
 
+function formatChannelCompanionPlatform(platform: string): string {
+  return platform
+    .split(/[_-]+/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatHermesRemoteEndpointPolicy(policy: BindableWorkerOption["remoteEndpointPolicy"]): string | null {
+  switch (policy) {
+    case "loopback_only":
+      return "Loopback only";
+    case "audited_exception_granted":
+      return "Audited HTTPS exception";
+    case "unknown":
+      return "Policy unknown";
+    default:
+      return null;
+  }
+}
+
+function formatBindableWorkerLabel(
+  worker: BindableWorkerOption,
+  rolloutFlags?: {
+    hermesProfileExperience: boolean;
+    hermesChannelWorkflowExpansion: boolean;
+    hermesMemoryContextSync: boolean;
+    hermesVisibilitySummaries: boolean;
+  },
+): string {
+  const runtimePrefix = worker.runtimeType === "hermes_agent_gateway" ? "Hermes • " : "";
+  const personaSummary = worker.runtimeType === "hermes_agent_gateway" && rolloutFlags?.hermesProfileExperience
+    ? ` · ${worker.personaDisplayLabel}`
+    : "";
+  const channelSummary = worker.runtimeType === "hermes_agent_gateway" && rolloutFlags?.hermesChannelWorkflowExpansion
+    ? ` · ${worker.channelDisplayLabel}`
+    : "";
+  const companionSummary = Boolean(worker.channelCompanionPlatforms?.length)
+    && (worker.runtimeType !== "hermes_agent_gateway" || rolloutFlags?.hermesChannelWorkflowExpansion)
+    ? ` - ${worker.channelCompanionPlatforms.map(formatChannelCompanionPlatform).join(", ")}`
+    : "";
+  const policySummary = worker.runtimeType === "hermes_agent_gateway" && rolloutFlags?.hermesVisibilitySummaries
+    ? formatHermesRemoteEndpointPolicy(worker.remoteEndpointPolicy)
+    : null;
+  const policySuffix = policySummary ? ` · ${policySummary}` : "";
+  return `${runtimePrefix}${worker.displayName} · ${worker.status}${personaSummary}${channelSummary}${policySuffix}${companionSummary}`;
+}
+
+function renderHermesWorkerPolicyBadges(
+  worker: Pick<BindableWorkerOption, "runtimeType" | "remoteEndpointPolicy">,
+  showPolicyDetails: boolean,
+) {
+  if (worker.runtimeType !== "hermes_agent_gateway" || !showPolicyDetails) return null;
+
+  const policyLabel = formatHermesRemoteEndpointPolicy(worker.remoteEndpointPolicy);
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      <Badge variant="outline">Hermes</Badge>
+      {policyLabel ? <Badge variant="secondary">{policyLabel}</Badge> : null}
+    </div>
+  );
+}
+
+function renderWorkerPolicyHint(
+  worker: Pick<BindableWorkerOption, "runtimeType" | "remoteEndpointPolicy"> | null | undefined,
+  showPolicyDetails: boolean,
+) {
+  if (!worker) {
+    return null;
+  }
+
+  if (worker.runtimeType === "hermes_agent_gateway" && showPolicyDetails) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Hermes workers are tenant-gated. Remote API servers stay loopback-only unless an audited HTTPS exception exists.
+      </p>
+    );
+  }
+
+  if (worker.runtimeType === "openclaw_gateway") {
+    return (
+      <p className="text-xs text-muted-foreground">
+        OpenClaw workers use the stable owner-bound delegated runtime path.
+      </p>
+    );
+  }
+
+  if (worker.runtimeType === "desktop_zeroclaw_managed") {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Desktop + ZeroClaw workers stay governed through the Desktop Host surface.
+      </p>
+    );
+  }
+
+  return null;
+}
+
 export default function Teams() {
   const { isLoading: authLoading, isAuthenticated } = useAuth();
   const { t } = useScopedTranslation('agency');
+  const hermesFlags = useTenantFeatureFlags();
   const [location, setLocation] = useLocation();
   const [, routeParams] = useRoute("/teams/:teamId");
   const [search, setSearch] = useState("");
@@ -1188,6 +1305,54 @@ export default function Teams() {
     );
   };
 
+  const renderSelectedWorkerBindingDetails = (workerId: string | null | undefined) => {
+    const selectedWorkerId = workerId?.trim();
+    if (!selectedWorkerId) return null;
+
+    const worker = bindableWorkerMap.get(selectedWorkerId);
+    if (!worker) return null;
+
+    const channelCompanionSummary = Boolean(worker.channelCompanionPlatforms?.length)
+      && (worker.runtimeType !== "hermes_agent_gateway" || hermesFlags.hermesChannelWorkflowExpansion)
+      ? worker.channelCompanionPlatforms.map(formatChannelCompanionPlatform).join(", ")
+      : null;
+    const showHermesPolicy = worker.runtimeType === "hermes_agent_gateway" && hermesFlags.hermesVisibilitySummaries;
+
+    if (!worker.bindingReason && !channelCompanionSummary && !showHermesPolicy) {
+      return null;
+    }
+
+    return (
+      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+        {worker.bindingReason ? (
+          <p>{worker.bindingReason}</p>
+        ) : null}
+        {renderHermesWorkerPolicyBadges(worker, hermesFlags.hermesVisibilitySummaries)}
+        {worker.runtimeType === "hermes_agent_gateway" && hermesFlags.hermesProfileExperience ? (
+          <p>
+            Persona: {worker.personaDisplayLabel}. {worker.personaDisplayPurpose}
+          </p>
+        ) : null}
+        {worker.runtimeType === "hermes_agent_gateway" && hermesFlags.hermesChannelWorkflowExpansion ? (
+          <p>
+            Channel: {worker.channelDisplayLabel}. Memory sync: {worker.memorySyncDisplayLabel}.
+          </p>
+        ) : null}
+        {worker.runtimeType === "hermes_agent_gateway" && hermesFlags.hermesVisibilitySummaries ? (
+          <p>
+            LLM provider routing: {worker.providerRoutingDisplayLabel}.
+          </p>
+        ) : null}
+        {channelCompanionSummary ? (
+          <p>
+            Channel companions: {channelCompanionSummary}. Hermes keeps the live channel tokens and sessions;
+            SmartAIHub only stores the companion metadata.
+          </p>
+        ) : null}
+      </div>
+    );
+  };
+
   const applyTeamBlueprint = (blueprintId: string) => {
     const blueprint = TEAM_BLUEPRINTS.find((item) => item.id === blueprintId);
     if (!blueprint) {
@@ -2039,13 +2204,19 @@ export default function Teams() {
                                 <p className="truncate">{member.externalRef}</p>
                               )}
                               {member.memberKind === "external_connector" && member.externalWorkerId && (
-                                <p className="truncate">
+                                <div className="space-y-1">
+                                  <p className="truncate">
+                                    {(() => {
+                                      const boundWorker = bindableWorkerMap.get(member.externalWorkerId);
+                                      if (!boundWorker) return `Worker ${member.externalWorkerId}`;
+                                      return formatBindableWorkerLabel(boundWorker, hermesFlags);
+                                    })()}
+                                  </p>
                                   {(() => {
                                     const boundWorker = bindableWorkerMap.get(member.externalWorkerId);
-                                    if (!boundWorker) return `Worker ${member.externalWorkerId}`;
-                                    return `${boundWorker.displayName} · ${boundWorker.status}`;
+                                    return boundWorker ? renderHermesWorkerPolicyBadges(boundWorker, hermesFlags.hermesVisibilitySummaries) : null;
                                   })()}
-                                </p>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -2468,22 +2639,19 @@ export default function Teams() {
                       }
                       className="mt-1 flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm"
                     >
-                      <option value="">Leave unresolved</option>
-                      {bindableWorkerList.map((worker) => (
-                        <option
-                          key={worker.id}
+                    <option value="">Leave unresolved</option>
+                    {bindableWorkerList.map((worker) => (
+                      <option
+                        key={worker.id}
                           value={worker.id}
                           disabled={!worker.availableForBinding && worker.id !== editingMember.externalWorkerId}
                         >
-                          {worker.displayName} ({worker.status})
+                          {formatBindableWorkerLabel(worker, hermesFlags)}
                         </option>
                       ))}
                     </select>
-                    {editingMember.externalWorkerId && bindableWorkerMap.get(editingMember.externalWorkerId)?.bindingReason ? (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        {bindableWorkerMap.get(editingMember.externalWorkerId)?.bindingReason}
-                      </p>
-                    ) : null}
+                    {renderWorkerPolicyHint(bindableWorkerMap.get(editingMember.externalWorkerId?.trim() ?? ""), hermesFlags.hermesVisibilitySummaries)}
+                    {renderSelectedWorkerBindingDetails(editingMember.externalWorkerId)}
                   </div>
                   {renderSelectedWorkerBudgetPanel()}
                   <div>
@@ -2712,19 +2880,16 @@ export default function Teams() {
                       setAddExternalDraft((prev) => ({ ...prev, externalWorkerId: e.target.value }))
                     }
                     className="mt-1 flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm"
-                  >
+                    >
                     <option value="">Leave unresolved</option>
                     {bindableWorkerList.map((worker) => (
                       <option key={worker.id} value={worker.id} disabled={!worker.availableForBinding}>
-                        {worker.displayName} ({worker.status})
+                        {formatBindableWorkerLabel(worker, hermesFlags)}
                       </option>
                     ))}
                   </select>
-                  {addExternalDraft.externalWorkerId && bindableWorkerMap.get(addExternalDraft.externalWorkerId)?.bindingReason ? (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {bindableWorkerMap.get(addExternalDraft.externalWorkerId)?.bindingReason}
-                    </p>
-                  ) : null}
+                  {renderWorkerPolicyHint(bindableWorkerMap.get(addExternalDraft.externalWorkerId?.trim() ?? ""), hermesFlags.hermesVisibilitySummaries)}
+                  {renderSelectedWorkerBindingDetails(addExternalDraft.externalWorkerId)}
                 </div>
                 {renderSelectedWorkerBudgetPanel()}
                 <div>
@@ -3137,15 +3302,12 @@ export default function Teams() {
                                 <option value="">Leave unresolved</option>
                                 {bindableWorkerList.map((worker) => (
                                   <option key={worker.id} value={worker.id} disabled={!worker.availableForBinding}>
-                                    {worker.displayName} ({worker.status})
+                                    {formatBindableWorkerLabel(worker, hermesFlags)}
                                   </option>
                                 ))}
                               </select>
-                              {createExternalDraft.externalWorkerId && bindableWorkerMap.get(createExternalDraft.externalWorkerId)?.bindingReason ? (
-                                <p className="mt-2 text-xs text-muted-foreground">
-                                  {bindableWorkerMap.get(createExternalDraft.externalWorkerId)?.bindingReason}
-                                </p>
-                              ) : null}
+                              {renderWorkerPolicyHint(bindableWorkerMap.get(createExternalDraft.externalWorkerId?.trim() ?? ""), hermesFlags.hermesVisibilitySummaries)}
+                              {renderSelectedWorkerBindingDetails(createExternalDraft.externalWorkerId)}
                             </div>
                             {renderSelectedWorkerBudgetPanel()}
                             <div>
@@ -3272,13 +3434,19 @@ export default function Teams() {
                                       : getMemberRoleLabel(m.memberRole))}
                               </p>
                               {m.memberKind === "external_connector" && m.externalWorkerId && (
-                                <p className="truncate text-xs text-muted-foreground">
+                                <div className="space-y-1">
+                                  <p className="truncate text-xs text-muted-foreground">
+                                    {(() => {
+                                      const boundWorker = bindableWorkerMap.get(m.externalWorkerId ?? "");
+                                      if (!boundWorker) return `Worker ${m.externalWorkerId}`;
+                                      return formatBindableWorkerLabel(boundWorker, hermesFlags);
+                                    })()}
+                                  </p>
                                   {(() => {
                                     const boundWorker = bindableWorkerMap.get(m.externalWorkerId ?? "");
-                                    if (!boundWorker) return `Worker ${m.externalWorkerId}`;
-                                    return `${boundWorker.displayName} · ${boundWorker.status}`;
+                                    return boundWorker ? renderHermesWorkerPolicyBadges(boundWorker, hermesFlags.hermesVisibilitySummaries) : null;
                                   })()}
-                                </p>
+                                </div>
                               )}
                               {m.isLead && (
                                 <Badge variant="secondary" className="ml-2 text-xs">

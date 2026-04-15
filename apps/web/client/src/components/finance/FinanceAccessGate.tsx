@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import { Lock, ShieldCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -6,36 +6,43 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/contexts/AuthContext";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import {
   clearPrivateVaultAccessToken,
-  getPrivateVaultAccessToken,
   setPrivateVaultAccessToken,
 } from "@/lib/privateVault";
+import { type FinanceVaultAccessState, useFinanceVaultAccess } from "@/components/finance/useFinanceVaultAccess";
 
 export interface FinanceAccessGateProps {
   children: ReactNode;
   className?: string;
 }
 
-export function FinanceAccessGate({ children, className }: FinanceAccessGateProps) {
+export interface FinanceAccessGateContentProps {
+  access: FinanceVaultAccessState;
+  children: ReactNode;
+  className?: string;
+  backHref?: string;
+  backLabel?: string;
+}
+
+export function FinanceAccessGateContent({
+  access,
+  children,
+  className,
+  backHref,
+  backLabel,
+}: FinanceAccessGateContentProps) {
   const { t } = useScopedTranslation(["settings", "common"]);
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [privateVaultToken, setPrivateVaultTokenState] = useState<string | null>(() => getPrivateVaultAccessToken());
   const [unlockPin, setUnlockPin] = useState("");
   const [unlockError, setUnlockError] = useState<string | null>(null);
-
-  const preferencesQuery = trpc.users.getPreferences.useQuery(undefined, {
-    enabled: isAuthenticated,
-  });
 
   const unlockMutation = trpc.users.unlockPrivateVault.useMutation({
     onSuccess: (result) => {
       const token = String(result.token);
       setPrivateVaultAccessToken(token);
-      setPrivateVaultTokenState(token);
+      access.setPrivateVaultTokenState(token);
       setUnlockPin("");
       setUnlockError(null);
       toast.success(t("privateVault.unlocked"));
@@ -45,32 +52,21 @@ export function FinanceAccessGate({ children, className }: FinanceAccessGateProp
       setUnlockError(message);
       toast.error(message);
       clearPrivateVaultAccessToken();
-      setPrivateVaultTokenState(null);
+      access.setPrivateVaultTokenState(null);
     },
   });
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const syncToken = () => setPrivateVaultTokenState(getPrivateVaultAccessToken());
-    syncToken();
-    window.addEventListener("storage", syncToken);
-    return () => window.removeEventListener("storage", syncToken);
-  }, []);
-
-  const privateVaultEnabled = Boolean(preferencesQuery.data?.privateVault?.enabled);
-  const locked = privateVaultEnabled && !privateVaultToken;
-
   const helperMessage = useMemo(() => {
-    if (!privateVaultEnabled) {
+    if (!access.privateVaultEnabled) {
       return t("privateVault.description");
     }
     if (unlockError) {
       return unlockError;
     }
     return t("privateVault.unlockDescription");
-  }, [privateVaultEnabled, unlockError, t]);
+  }, [access.privateVaultEnabled, unlockError, t]);
 
-  if (authLoading || preferencesQuery.isLoading) {
+  if (access.isLoading) {
     return (
       <div className={className}>
         <div className="flex min-h-[280px] items-center justify-center rounded-[28px] border border-slate-200 bg-white/90 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
@@ -83,7 +79,7 @@ export function FinanceAccessGate({ children, className }: FinanceAccessGateProp
     );
   }
 
-  if (!locked) {
+  if (access.hasAccess) {
     return <>{children}</>;
   }
 
@@ -120,7 +116,7 @@ export function FinanceAccessGate({ children, className }: FinanceAccessGateProp
             placeholder={t("privateVault.pinPlaceholder")}
             className="h-12 rounded-2xl bg-white"
           />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               onClick={() => {
                 const pin = unlockPin.trim();
@@ -147,10 +143,28 @@ export function FinanceAccessGate({ children, className }: FinanceAccessGateProp
             >
               {t("documentManagement.privateVault.managePin")}
             </Button>
+            {backHref ? (
+              <Button
+                variant="ghost"
+                className="h-12 rounded-2xl px-5 text-slate-700"
+                onClick={() => setLocation(backHref)}
+              >
+                {backLabel ?? t("common.back")}
+              </Button>
+            ) : null}
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export function FinanceAccessGate({ children, className }: FinanceAccessGateProps) {
+  const access = useFinanceVaultAccess();
+  return (
+    <FinanceAccessGateContent access={access} className={className}>
+      {children}
+    </FinanceAccessGateContent>
   );
 }
 

@@ -177,16 +177,19 @@ class LandingAIDocumentClientProtocol(Protocol):
         ...
 
 
-def _resolve_api_key() -> str:
+def _resolve_api_key(api_key_override: str | None = None) -> str:
+    override = str(api_key_override or "").strip()
+    if override:
+        return override
     return (
         str(getattr(settings, "LANDINGAI_ADE_API_KEY", "") or "").strip()
         or str(os.getenv("VISION_AGENT_API_KEY", "") or "").strip()
     )
 
 
-def _resolve_config() -> LandingAIDocumentConfig:
+def _resolve_config(api_key_override: str | None = None) -> LandingAIDocumentConfig:
     return LandingAIDocumentConfig(
-        api_key=_resolve_api_key(),
+        api_key=_resolve_api_key(api_key_override),
         base_url=str(getattr(settings, "LANDINGAI_ADE_BASE_URL", "") or LANDINGAI_DEFAULT_BASE_URL).rstrip("/"),
         parse_path=str(getattr(settings, "LANDINGAI_ADE_PARSE_PATH", "") or LANDINGAI_DEFAULT_PARSE_PATH),
         extract_path=str(getattr(settings, "LANDINGAI_ADE_EXTRACT_PATH", "") or LANDINGAI_DEFAULT_EXTRACT_PATH),
@@ -686,7 +689,9 @@ def _infer_extension(file_name: str, mime_type: str) -> str:
     return suffix or ".bin"
 
 
-def get_landingai_ade_document_service() -> LandingAIDocumentService:
+def get_landingai_ade_document_service(api_key_override: str | None = None) -> LandingAIDocumentService:
+    if api_key_override:
+        return LandingAIDocumentService(config=_resolve_config(api_key_override))
     global _service_singleton
     if _service_singleton is None:
         _service_singleton = LandingAIDocumentService()

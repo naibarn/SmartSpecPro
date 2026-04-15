@@ -16,6 +16,7 @@ MAX_ARCHIVE_ENTRIES = 256
 MAX_ARCHIVE_MEMBER_BYTES = 8 * 1024 * 1024
 MAX_ARCHIVE_TOTAL_BYTES = 32 * 1024 * 1024
 MAX_OUTPUT_CHARS = 4000
+DEFAULT_MAX_RENDERED_PAGES = 3
 
 
 def _resolve_binary(env_var: str, binary_name: str) -> str | None:
@@ -59,6 +60,17 @@ def _limit_text(text: str, max_chars: int) -> str:
     return text.strip()[:max_chars]
 
 
+def _resolve_max_rendered_pages() -> int:
+    raw = os.environ.get("SMARTSPEC_MAX_RENDERED_PAGES", "").strip()
+    if not raw:
+        return DEFAULT_MAX_RENDERED_PAGES
+    try:
+        value = int(raw)
+    except ValueError:
+        return DEFAULT_MAX_RENDERED_PAGES
+    return max(1, min(value, 8))
+
+
 def _extract_pdf_text(path: Path, max_chars: int) -> str:
     pdftotext_binary = _resolve_binary("SMARTSPEC_PDFTOTEXT_PATH", "pdftotext")
     if pdftotext_binary:
@@ -99,7 +111,21 @@ def _extract_pdf_text(path: Path, max_chars: int) -> str:
     return _limit_text("\n".join(deduped), max_chars)
 
 
-def _render_pdf_first_page(path: Path, temp_dir: Path) -> Path | None:
+def _resolve_pdf_page_count(path: Path) -> int:
+    pdfinfo_binary = _resolve_binary("SMARTSPEC_PDFINFO_PATH", "pdfinfo")
+    if not pdfinfo_binary:
+        return 1
+    try:
+        output = _run_text_command([pdfinfo_binary, str(path)])
+    except Exception:
+        return 1
+    match = re.search(r"^Pages:\s+(\d+)$", output, flags=re.MULTILINE)
+    if not match:
+        return 1
+    return max(1, int(match.group(1)))
+
+
+def _render_pdf_pages(path: Path, temp_dir: Path, max_pages: int) -> list[Path]:
     pdftoppm_binary = _resolve_binary("SMARTSPEC_PDFTOPPM_PATH", "pdftoppm")
     output_prefix = temp_dir / "rendered-page"
     if pdftoppm_binary:
@@ -108,26 +134,38 @@ def _render_pdf_first_page(path: Path, temp_dir: Path) -> Path | None:
                 pdftoppm_binary,
                 "-f",
                 "1",
-                "-singlefile",
+                "-l",
+                str(max_pages),
                 "-png",
                 str(path),
                 str(output_prefix),
             ]
         )
         if completed.returncode == 0:
-            candidate = output_prefix.with_suffix(".png")
-            if candidate.is_file():
-                return candidate
+            rendered = sorted(temp_dir.glob("rendered-page-*.png"))
+            if rendered:
+                return rendered
 
     mutool_binary = _resolve_binary("SMARTSPEC_MUTOOL_PATH", "mutool")
     if mutool_binary:
-        candidate = temp_dir / "rendered-page.png"
+        candidate_pattern = temp_dir / "rendered-page-%d.png"
         completed = _run_command(
-            [mutool_binary, "draw", "-F", "png", "-o", str(candidate), str(path), "1"]
+            [
+                mutool_binary,
+                "draw",
+                "-F",
+                "png",
+                "-o",
+                str(candidate_pattern),
+                str(path),
+                f"1-{max_pages}",
+            ]
         )
-        if completed.returncode == 0 and candidate.is_file():
-            return candidate
-    return None
+        if completed.returncode == 0:
+            rendered = sorted(temp_dir.glob("rendered-page-*.png"))
+            if rendered:
+                return rendered
+    return []
 
 
 def _extract_pdf_text_via_render_ocr(path: Path, max_chars: int) -> str:
@@ -136,28 +174,44 @@ def _extract_pdf_text_via_render_ocr(path: Path, max_chars: int) -> str:
         return ""
     with tempfile.TemporaryDirectory(prefix="smartspec-pdf-render-") as temp_dir_name:
         temp_dir = Path(temp_dir_name)
-        rendered_path = _render_pdf_first_page(path, temp_dir)
-        if not rendered_path:
+        page_count = _resolve_pdf_page_count(path)
+        rendered_pages = _render_pdf_pages(
+            path,
+            temp_dir,
+            min(page_count, _resolve_max_rendered_pages()),
+        )
+        if not rendered_pages:
             return ""
-        try:
-            ocr_text = _run_text_command(
-                [tesseract_binary, str(rendered_path), "stdout", "--psm", "6"]
-            )
-        except Exception:
-            return ""
-        if ocr_text.strip():
-            return _limit_text(ocr_text, max_chars)
+        page_chunks: list[str] = []
+        for index, rendered_path in enumerate(rendered_pages, start=1):
+            try:
+                ocr_text = _run_text_command(
+                    [tesseract_binary, str(rendered_path), "stdout", "--psm", "6"]
+                )
+            except Exception:
+                continue
+            if ocr_text.strip():
+                page_chunks.append(f"[Page {index}]\n{ocr_text.strip()}")
+        if page_chunks:
+            return _limit_text("\n\n".join(page_chunks), max_chars)
     return ""
 
 
 def _safe_zip_text(path: Path, prefixes: tuple[str, ...], max_chars: int) -> str:
     total_uncompressed = 0
     parts: list[str] = []
+    macro_detected = False
+    embedded_media_count = 0
     with zipfile.ZipFile(path, "r") as archive:
         infos = archive.infolist()
         if len(infos) > MAX_ARCHIVE_ENTRIES:
             raise ValueError("archive contains too many members")
         for info in infos:
+            normalized_name = info.filename.lower()
+            if normalized_name.endswith("vbaproject.bin"):
+                macro_detected = True
+            if "/media/" in normalized_name and not info.is_dir():
+                embedded_media_count += 1
             if not info.filename.startswith(prefixes) or not info.filename.endswith(".xml"):
                 continue
             if info.file_size > MAX_ARCHIVE_MEMBER_BYTES:
@@ -171,18 +225,30 @@ def _safe_zip_text(path: Path, prefixes: tuple[str, ...], max_chars: int) -> str
                 text = value.strip()
                 if text:
                     parts.append(text)
-    return _limit_text("\n".join(parts), max_chars)
+    summary_parts = [
+        f"Macro inspection: {'macros detected' if macro_detected else 'no macros detected'}",
+        f"Embedded media files: {embedded_media_count}",
+    ]
+    return _limit_text("\n".join(summary_parts + parts), max_chars)
 
 
 def _extract_xlsx_text(path: Path, max_chars: int) -> str:
     total_uncompressed = 0
     shared_strings: list[str] = []
     values: list[str] = []
+    macro_detected = False
+    embedded_media_count = 0
+    sheet_count = 0
     with zipfile.ZipFile(path, "r") as archive:
         infos = archive.infolist()
         if len(infos) > MAX_ARCHIVE_ENTRIES:
             raise ValueError("archive contains too many members")
         for info in infos:
+            normalized_name = info.filename.lower()
+            if normalized_name.endswith("vbaproject.bin"):
+                macro_detected = True
+            if "/media/" in normalized_name and not info.is_dir():
+                embedded_media_count += 1
             if info.file_size > MAX_ARCHIVE_MEMBER_BYTES:
                 raise ValueError("archive member exceeds size limit")
             total_uncompressed += info.file_size
@@ -192,6 +258,7 @@ def _extract_xlsx_text(path: Path, max_chars: int) -> str:
                 root = ElementTree.fromstring(archive.read(info))
                 shared_strings.extend(text.strip() for text in root.itertext() if text.strip())
             elif info.filename.startswith("xl/worksheets/") and info.filename.endswith(".xml"):
+                sheet_count += 1
                 root = ElementTree.fromstring(archive.read(info))
                 for element in root.iter():
                     if element.tag.endswith("}v") or element.tag == "v":
@@ -209,7 +276,12 @@ def _extract_xlsx_text(path: Path, max_chars: int) -> str:
                 expanded.append(value)
         else:
             expanded.append(value)
-    return _limit_text("\n".join(expanded), max_chars)
+    summary_parts = [
+        f"Macro inspection: {'macros detected' if macro_detected else 'no macros detected'}",
+        f"Embedded media files: {embedded_media_count}",
+        f"Worksheet count: {sheet_count}",
+    ]
+    return _limit_text("\n".join(summary_parts + expanded), max_chars)
 
 
 def _extract_bmp_metadata(raw: bytes) -> str:
@@ -366,7 +438,7 @@ def _extract_document_text(path: Path, max_chars: int) -> str:
     extension = path.suffix.lower().lstrip(".")
     if extension == "pdf":
         return _extract_pdf_text(path, max_chars)
-    if extension == "docx":
+    if extension in {"docx", "docm"}:
         text = _safe_zip_text(path, ("word/",), max_chars)
         if _prefer_rendered_office_fallback(text, max_chars):
             rendered = _extract_office_text_via_renderer(path, max_chars)
@@ -378,7 +450,7 @@ def _extract_document_text(path: Path, max_chars: int) -> str:
         if rendered.strip():
             return rendered
         raise ValueError("office renderer unavailable for this document type")
-    if extension == "pptx":
+    if extension in {"pptx", "pptm"}:
         text = _safe_zip_text(path, ("ppt/slides/",), max_chars)
         if _prefer_rendered_office_fallback(text, max_chars):
             rendered = _extract_office_text_via_renderer(path, max_chars)
@@ -390,7 +462,7 @@ def _extract_document_text(path: Path, max_chars: int) -> str:
         if rendered.strip():
             return rendered
         raise ValueError("office renderer unavailable for this document type")
-    if extension == "xlsx":
+    if extension in {"xlsx", "xlsm"}:
         text = _extract_xlsx_text(path, max_chars)
         if _prefer_rendered_office_fallback(text, max_chars):
             rendered = _extract_office_text_via_renderer(path, max_chars)

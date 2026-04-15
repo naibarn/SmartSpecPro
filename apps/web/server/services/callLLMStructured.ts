@@ -13,7 +13,7 @@ export interface CallLLMStructuredParams<T> {
   model?: string;
   preferredProviderId?: number;
   strictProviderPin?: boolean;
-  zodSchema: z.ZodType<T>;
+  zodSchema: z.ZodType<T, any, unknown>;
   maxRetries?: number; // default 1
   userId: number;
   tenantId: string;

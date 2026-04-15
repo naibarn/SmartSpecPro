@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SmartSpecPro Health Check & Auto-Recovery Script
+# SmartAIHub Health Check & Auto-Recovery Script
 # Run this periodically (e.g., every 5 minutes via cron) to detect and fix common issues.
 # Web and Backend are managed by systemd (auto-restart on crash).
 
@@ -138,7 +138,7 @@ send_webhook() {
 {
   "username": "SmartSpec HealthCheck",
   "embeds": [{
-    "title": "[${level}] SmartSpecPro Health Check",
+    "title": "[${level}] SmartAIHub Health Check",
     "description": "${msg}",
     "color": ${color},
     "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -353,7 +353,7 @@ check_restart_counts() {
 # ---------------------------------------------------------------------------
 main() {
     echo "---"
-    echo "SmartSpecPro Health Check - $(date)"
+    echo "SmartAIHub Health Check - $(date)"
     echo "---"
     echo ""
 

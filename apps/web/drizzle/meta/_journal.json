@@ -981,6 +981,41 @@
       "when": 1776000005000,
       "tag": "0143_workpack_records",
       "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "7",
+      "when": 1776000006000,
+      "tag": "0144_role_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 141,
+      "version": "7",
+      "when": 1776000007000,
+      "tag": "0145_hermes_worker_runtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 142,
+      "version": "7",
+      "when": 1776000008000,
+      "tag": "0146_work_os_case_ledger_and_operating_queues",
+      "breakpoints": true
+    },
+    {
+      "idx": 143,
+      "version": "7",
+      "when": 1776000009000,
+      "tag": "0147_private_personal_finance_transfer_slip_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 144,
+      "version": "7",
+      "when": 1776000010000,
+      "tag": "0148_private_personal_finance_semantic_duplicate_fingerprint",
+      "breakpoints": true
     }
   ]
 }

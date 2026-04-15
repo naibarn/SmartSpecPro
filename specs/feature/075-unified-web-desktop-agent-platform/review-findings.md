@@ -4,7 +4,7 @@
 
 This note records the main completeness, conflict, and security gaps found while reviewing Feature 075 against:
 
-- the current SmartSpecPro codebase
+- the current SmartAIHub codebase
 - the older desktop baseline in Feature 004
 - the local AI truthfulness rules in Feature 070
 - the worker-runtime family in Features 071-074

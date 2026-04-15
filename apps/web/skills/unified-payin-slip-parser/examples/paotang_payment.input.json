@@ -1,0 +1,11 @@
+{
+  "source": {
+    "filename": "PaoTang_2025_04_30 14_30_09.jpg",
+    "short_caption": "เป๋าตัง ชำระเงินสำเร็จ G-Wallet จำนวนเงิน 120.00 บาท วันที่ทำรายการ 30 เม.ย. 2568 - 14:30"
+  },
+  "parse_options": {
+    "mode": "auto",
+    "auto_detect_issuer": true,
+    "auto_detect_transaction_type": true
+  }
+}

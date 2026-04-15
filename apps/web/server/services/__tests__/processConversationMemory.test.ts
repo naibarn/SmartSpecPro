@@ -186,6 +186,26 @@ describe("processConversationMemory", () => {
     });
   });
 
+  it("skips every memory tier when memory mode is off", async () => {
+    const db = makeQueueDb([]);
+    mockGetDb.mockResolvedValue(db);
+
+    const { processConversationMemory } = await import("../memoryService");
+    const result = await processConversationMemory(1, 7, { memoryMode: "off" });
+
+    expect(mockArchiveMessages).not.toHaveBeenCalled();
+    expect(mockChunkConversationMessages).not.toHaveBeenCalled();
+    expect(mockExtractFacts).not.toHaveBeenCalled();
+    expect(mockBuildSmartSummary).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      summarized: false,
+      entitiesExtracted: 0,
+      compacted: false,
+      compactedMessageCount: 0,
+      consolidated: false,
+    });
+  });
+
   it("archives, chunks, and extracts facts when the respective flags are on", async () => {
     const db = makeQueueDb([
       [{ personaId: null, tenantId: "tenant-1" }],

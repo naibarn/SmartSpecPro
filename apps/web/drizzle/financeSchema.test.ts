@@ -4,6 +4,10 @@ import { getTableColumns, getTableName } from "drizzle-orm";
 import {
   documentExtractions,
   financeDrafts,
+  financePaymentAccounts,
+  financePaymentAccountAliases,
+  financePaymentInstitutions,
+  financePaymentInstitutionAliases,
   financeRecurringRules,
   financeTransactionDocuments,
   financeTransactions,
@@ -19,6 +23,10 @@ describe("finance schema foundation", () => {
     expect(getTableName(financeRecurringRules)).toBe("finance_recurring_rules");
     expect(getTableName(documentExtractions)).toBe("document_extractions");
     expect(getTableName(financeTransactionDocuments)).toBe("finance_transaction_documents");
+    expect(getTableName(financePaymentInstitutions)).toBe("finance_payment_institutions");
+    expect(getTableName(financePaymentInstitutionAliases)).toBe("finance_payment_institution_aliases");
+    expect(getTableName(financePaymentAccounts)).toBe("finance_payment_accounts");
+    expect(getTableName(financePaymentAccountAliases)).toBe("finance_payment_account_aliases");
   });
 
   it("adds the required transaction and draft columns", () => {
@@ -33,6 +41,17 @@ describe("finance schema foundation", () => {
     expect(transactionColumns.currency).toBeDefined();
     expect(transactionColumns.occurredAt).toBeDefined();
     expect(transactionColumns.categoryCode).toBeDefined();
+    expect(transactionColumns.semanticFingerprint).toBeDefined();
+    expect(transactionColumns.slipReference).toBeDefined();
+    expect(transactionColumns.merchantId).toBeDefined();
+    expect(transactionColumns.paymentFeeMinor).toBeDefined();
+    expect(transactionColumns.paymentSourceAccountId).toBeDefined();
+    expect(transactionColumns.paymentDestinationAccountId).toBeDefined();
+    expect(transactionColumns.paymentSourceName).toBeDefined();
+    expect(transactionColumns.paymentDestinationName).toBeDefined();
+    expect(transactionColumns.paymentMethodKind).toBeDefined();
+    expect(transactionColumns.paymentDirection).toBeDefined();
+    expect(transactionColumns.paymentInstrumentConfidence).toBeDefined();
     expect(transactionColumns.idempotencyKey).toBeDefined();
     expect(transactionColumns.confirmedFromDraftId).toBeDefined();
     expect(transactionColumns.allowedScopes).toBeDefined();
@@ -45,6 +64,7 @@ describe("finance schema foundation", () => {
     expect(draftColumns.status).toBeDefined();
     expect(draftColumns.source).toBeDefined();
     expect(draftColumns.idempotencyKey).toBeDefined();
+    expect(draftColumns.semanticFingerprint).toBeDefined();
     expect(draftColumns.payloadJson).toBeDefined();
     expect(draftColumns.missingFields).toBeDefined();
     expect(draftColumns.needsClarification).toBeDefined();
@@ -82,6 +102,37 @@ describe("finance schema foundation", () => {
     expect(linkColumns.sourceExtractionId).toBeDefined();
     expect(linkColumns.role).toBeDefined();
     expect(linkColumns.allowedScopes).toBeDefined();
+  });
+
+  it("defines payment instrument tables and masked nickname fields", () => {
+    const institutionColumns = getTableColumns(financePaymentInstitutions);
+    const institutionAliasColumns = getTableColumns(financePaymentInstitutionAliases);
+    const accountColumns = getTableColumns(financePaymentAccounts);
+    const accountAliasColumns = getTableColumns(financePaymentAccountAliases);
+
+    expect(institutionColumns.tenantId).toBeDefined();
+    expect(institutionColumns.projectId).toBeDefined();
+    expect(institutionColumns.ownerUserId).toBeDefined();
+    expect(institutionColumns.kind).toBeDefined();
+    expect(institutionColumns.displayName).toBeDefined();
+    expect(institutionColumns.normalizedName).toBeDefined();
+
+    expect(institutionAliasColumns.paymentInstitutionId).toBeDefined();
+    expect(institutionAliasColumns.aliasName).toBeDefined();
+    expect(institutionAliasColumns.normalizedAlias).toBeDefined();
+
+    expect(accountColumns.paymentInstitutionId).toBeDefined();
+    expect(accountColumns.kind).toBeDefined();
+    expect(accountColumns.nickname).toBeDefined();
+    expect(accountColumns.normalizedNickname).toBeDefined();
+    expect(accountColumns.last4).toBeDefined();
+    expect(accountColumns.maskedIdentifier).toBeDefined();
+    expect(accountColumns.isPrimary).toBeDefined();
+    expect(accountColumns.archivedAt).toBeDefined();
+
+    expect(accountAliasColumns.paymentAccountId).toBeDefined();
+    expect(accountAliasColumns.aliasName).toBeDefined();
+    expect(accountAliasColumns.normalizedAlias).toBeDefined();
   });
 
   it("adds project-aware indexes to the existing library tables", () => {

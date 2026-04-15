@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { HelpButton } from "@/components/help";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { FinanceHub } from "@/components/finance/FinanceHub";
-import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
+import { FinanceAccessGateContent } from "@/components/finance/FinanceAccessGate";
+import { useFinanceVaultAccess } from "@/components/finance/useFinanceVaultAccess";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 function resolveConversationId(search: string, fallbackId: number | null): number | null {
@@ -28,9 +29,10 @@ export default function FinancePage() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const search = useSearch();
+  const financeVaultAccess = useFinanceVaultAccess();
 
   const personalConversationQuery = trpc.chat.getPersonalConversation.useQuery(undefined, {
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && financeVaultAccess.hasAccess,
   });
 
   const createPersonalConversationMutation = trpc.chat.createPersonalConversation.useMutation({
@@ -50,6 +52,23 @@ export default function FinancePage() {
     });
   };
 
+  if (!financeVaultAccess.hasAccess) {
+    return (
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.10),_transparent_28%),linear-gradient(180deg,_#f8fbff_0%,_#f7fafc_45%,_#eef2ff_100%)]">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1560px] flex-col px-4 py-4 md:px-6 md:py-6">
+          <FinanceAccessGateContent
+            access={financeVaultAccess}
+            className="flex-1"
+            backHref="/dashboard"
+            backLabel={t("dashboard:finance.page.backToDashboard", "Back to dashboard")}
+          >
+            <div />
+          </FinanceAccessGateContent>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.12),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.10),_transparent_28%),linear-gradient(180deg,_#f8fbff_0%,_#f7fafc_45%,_#eef2ff_100%)]">
       <div className="mx-auto flex min-h-screen w-full max-w-[1560px] flex-col px-4 py-4 md:px-6 md:py-6">
@@ -60,6 +79,15 @@ export default function FinancePage() {
         >
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mb-3 -ml-2 gap-2 px-0 text-slate-600 hover:bg-transparent hover:text-slate-900"
+                onClick={() => setLocation("/dashboard")}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                {t("dashboard:finance.page.backToDashboard", "Back to dashboard")}
+              </Button>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge className="rounded-full bg-sky-100 px-3 py-1 text-sky-800 hover:bg-sky-100">
                   <Wallet className="mr-1 h-3.5 w-3.5" />
@@ -121,21 +149,19 @@ export default function FinancePage() {
           </div>
         </motion.header>
 
-        <FinanceAccessGate className="flex-1">
-          <motion.section
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.06 }}
-            className="flex-1"
-          >
-            <FinanceHub
-              surface="page"
-              conversationId={conversationId}
-              onCreatePersonalChat={handleCreatePersonalChat}
-              onOpenFinancePanel={() => setLocation("/chat?panel=finance")}
-            />
-          </motion.section>
-        </FinanceAccessGate>
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.06 }}
+          className="flex-1"
+        >
+          <FinanceHub
+            surface="page"
+            conversationId={conversationId}
+            onCreatePersonalChat={handleCreatePersonalChat}
+            onOpenFinancePanel={() => setLocation("/chat?panel=finance")}
+          />
+        </motion.section>
 
         <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
           <Button variant="ghost" size="sm" className="gap-2 px-0 text-slate-600" onClick={() => setLocation("/dashboard")}>

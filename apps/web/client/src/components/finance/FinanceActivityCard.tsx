@@ -16,6 +16,7 @@ export interface FinanceActivityMetadata {
     currency?: string | null;
     categoryCode?: string | null;
     merchantName?: string | null;
+    counterpartyName?: string | null;
     status?: string | null;
     confidence?: number | null;
     draftId?: number | null;
@@ -108,7 +109,7 @@ export function FinanceActivityCard({
       : content;
   const amountLabel = formatMoneyMinor(finance.amountMinor ?? null, finance.currency ?? "THB");
   const detailParts = [
-    finance.merchantName,
+    finance.counterpartyName ?? finance.merchantName,
     finance.categoryCode,
     finance.type,
     finance.source,

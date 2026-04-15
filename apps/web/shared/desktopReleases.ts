@@ -80,3 +80,30 @@ export const desktopReleaseUploadRequestSchema = z.object({
 export type DesktopReleaseUploadRequest = z.infer<
   typeof desktopReleaseUploadRequestSchema
 >;
+
+export const desktopReleasePresignRequestSchema = desktopReleaseUploadRequestSchema.extend({
+  fileName: z.string().min(1).max(260),
+  contentType: z.string().min(1).max(256),
+  fileSizeBytes: z.number().int().positive(),
+});
+
+export const desktopReleasePresignResponseSchema = z.object({
+  uploadUrl: z.string().url(),
+  storageKey: z.string().min(1),
+});
+
+export type DesktopReleasePresignRequest = z.infer<
+  typeof desktopReleasePresignRequestSchema
+>;
+
+export const desktopReleaseUploadFinalizeRequestSchema = desktopReleaseUploadRequestSchema.extend({
+  storageKey: z.string().min(1),
+  fileName: z.string().min(1).max(260),
+  contentType: z.string().min(1).max(256),
+  fileSizeBytes: z.number().int().positive(),
+  fileSha256: z.string().regex(/^[a-f0-9]{64}$/i),
+});
+
+export type DesktopReleaseUploadFinalizeRequest = z.infer<
+  typeof desktopReleaseUploadFinalizeRequestSchema
+>;

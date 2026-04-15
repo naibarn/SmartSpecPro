@@ -58,23 +58,23 @@ function buildDiff(workpackId: string, stepId: string | null, category: ReplayDi
   };
 }
 
-export function replayWorkpackRun(input: {
+export async function replayWorkpackRun(input: {
   workpackId: string;
   runId?: string | null;
   simulationRunId?: string | null;
-}): WorkpackReplayResult {
-  const detail = getWorkpackDetail(input.workpackId);
+}): Promise<WorkpackReplayResult> {
+  const detail = await getWorkpackDetail(input.workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${input.workpackId}`);
   }
 
   const run = input.runId
-    ? getWorkpackRun(input.runId)
+    ? await getWorkpackRun(input.runId)
     : input.simulationRunId
       ? null
       : detail.runs[0] ?? null;
   const simulationRun = input.simulationRunId
-    ? getSimulationRun(input.simulationRunId)
+    ? await getSimulationRun(input.simulationRunId)
     : input.runId
       ? null
       : detail.simulations[0] ?? null;
@@ -218,7 +218,7 @@ export function replayWorkpackRun(input: {
       ? `Inspect ${diffs[0].remediationPointer} before rerunning a fresh execution.`
       : "Inspect replay evidence before rerunning a fresh execution.";
 
-  saveTelemetryEvent({
+  await saveTelemetryEvent({
     id: `evt_${Date.now().toString(36)}`,
     tenantId: detail.workpack.tenantId,
     workpackId: detail.workpack.id,

@@ -79,12 +79,19 @@ This section owns the safe transition from today's Tauri shell posture to the go
 - Added managed-mode help docs in:
   - `apps/web/docs/help/en/desktop-host-managed-mode.md`
   - `apps/web/docs/help/th/desktop-host-managed-mode.md`
+- Added release workflow gating for Desktop Host hardening suites in:
+  - `.github/workflows/desktop-release.yml`
 - Added regression coverage in:
   - `apps/web/server/services/__tests__/desktopRolloutGates.test.ts`
   - `apps/web/server/routes/desktopHost.test.ts`
   - `apps/web/client/src/pages/__tests__/Settings.desktopHostTab.test.tsx`
   - `apps/tauri-shell/src-tauri/tests/package_sync_tests.rs`
+  - `apps/tauri-shell/src-tauri/tests/device_attestation_tests.rs`
+  - `apps/tauri-shell/src-tauri/tests/device_identity_tests.rs`
+  - `apps/tauri-shell/src-tauri/tests/secret_store_tests.rs`
+  - `apps/tauri-shell/src-tauri/tests/local_file_service_tests.rs`
+  - `apps/tauri-shell/src-tauri/tests/desktop_runtime_capabilities_tests.rs`
 
 ## Final status
 
-- Section 08 is implemented for feature-flagged rollout gates, authenticated route exposure, disabled-device policy closure after refresh, managed-mode docs, and targeted regression coverage.
+- Section 08 is implemented for feature-flagged rollout gates, authenticated route exposure, disabled-device policy closure after refresh, managed-mode docs, targeted regression coverage, and release-workflow gating that blocks desktop builds when Desktop Host hardening suites fail.

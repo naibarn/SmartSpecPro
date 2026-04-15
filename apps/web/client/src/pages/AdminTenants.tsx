@@ -522,7 +522,7 @@ export default function AdminTenants() {
           resetForm();
         }
       }}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogContent className="w-[96vw] max-w-[96vw] sm:w-[94vw] sm:max-w-[94vw] lg:w-[92vw] lg:max-w-[92vw] xl:w-[88vw] xl:max-w-[88vw] h-[92vh] max-h-[92vh] flex flex-col">
           <DialogHeader className="shrink-0">
             <DialogTitle>{editingTenant ? 'Edit Tenant' : 'Create New Tenant'}</DialogTitle>
             <DialogDescription>
@@ -530,361 +530,370 @@ export default function AdminTenants() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 overflow-y-auto flex-1 pr-1">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name">Tenant Name *</Label>
-                <Input
-                  id="name"
-                  placeholder="Acme Corp"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="slug">Slug *</Label>
-                <Input
-                  id="slug"
-                  placeholder="acme-corp"
-                  value={formData.slug}
-                  onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="primaryDomain">Primary Domain *</Label>
-              <Input
-                id="primaryDomain"
-                placeholder="acme.com"
-                value={formData.primaryDomain}
-                onChange={(e) => setFormData({ ...formData, primaryDomain: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="domains">Additional Domains (comma-separated)</Label>
-              <Input
-                id="domains"
-                placeholder="www.acme.com, acme.io"
-                value={formData.domains}
-                onChange={(e) => setFormData({ ...formData, domains: e.target.value })}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="logoUrl">Logo</Label>
-                <div className="space-y-2">
-                  {formData.logoUrl && (
-                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                      <img
-                        src={formData.logoUrl}
-                        alt="Logo preview"
-                        className="w-10 h-10 object-contain rounded"
+          <div className="flex-1 overflow-y-auto pr-1">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,0.82fr)_minmax(460px,1.18fr)] lg:items-start">
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <Label htmlFor="name">Tenant Name *</Label>
+                      <Input
+                        id="name"
+                        placeholder="Acme Corp"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       />
-                      <span className="text-xs text-gray-500 truncate flex-1">
-                        {formData.logoUrl.split('/').pop()}
-                      </span>
-                      <a
-                        href={formData.logoUrl}
-                        download={formData.logoUrl.split('/').pop() || 'logo'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-blue-500 h-6 w-6 p-0"
-                          title="Download logo"
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      </a>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setFormData({ ...formData, logoUrl: '' })}
-                        className="text-red-500 h-6 w-6 p-0"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
                     </div>
-                  )}
-                  <div className="flex gap-2">
-                    <Input
-                      id="logoUrl"
-                      placeholder="https://... or upload"
-                      value={formData.logoUrl}
-                      onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={uploadingLogo}
-                      onClick={() => document.getElementById('logoUpload')?.click()}
-                      className="shrink-0"
-                    >
-                      {uploadingLogo ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Upload className="w-4 h-4" />
-                      )}
-                    </Button>
-                    <input
-                      id="logoUpload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileUpload('logo', file);
-                        e.target.value = '';
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="faviconUrl">Favicon</Label>
-                <div className="space-y-2">
-                  {formData.faviconUrl && (
-                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                      <img
-                        src={formData.faviconUrl}
-                        alt="Favicon preview"
-                        className="w-6 h-6 object-contain"
+                    <div>
+                      <Label htmlFor="slug">Slug *</Label>
+                      <Input
+                        id="slug"
+                        placeholder="acme-corp"
+                        value={formData.slug}
+                        onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
                       />
-                      <span className="text-xs text-gray-500 truncate flex-1">
-                        {formData.faviconUrl.split('/').pop()}
-                      </span>
-                      <a
-                        href={formData.faviconUrl}
-                        download={formData.faviconUrl.split('/').pop() || 'favicon'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-blue-500 h-6 w-6 p-0"
-                          title="Download favicon"
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      </a>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setFormData({ ...formData, faviconUrl: '' })}
-                        className="text-red-500 h-6 w-6 p-0"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
                     </div>
-                  )}
-                  <div className="flex gap-2">
+                  </div>
+
+                  <div className="mt-4">
+                    <Label htmlFor="primaryDomain">Primary Domain *</Label>
                     <Input
-                      id="faviconUrl"
-                      placeholder="https://... or upload"
-                      value={formData.faviconUrl}
-                      onChange={(e) => setFormData({ ...formData, faviconUrl: e.target.value })}
-                      className="flex-1"
+                      id="primaryDomain"
+                      placeholder="acme.com"
+                      value={formData.primaryDomain}
+                      onChange={(e) => setFormData({ ...formData, primaryDomain: e.target.value })}
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={uploadingFavicon}
-                      onClick={() => document.getElementById('faviconUpload')?.click()}
-                      className="shrink-0"
-                    >
-                      {uploadingFavicon ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Upload className="w-4 h-4" />
-                      )}
-                    </Button>
-                    <input
-                      id="faviconUpload"
-                      type="file"
-                      accept="image/*,.ico"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileUpload('favicon', file);
-                        e.target.value = '';
-                      }}
+                  </div>
+
+                  <div className="mt-4">
+                    <Label htmlFor="domains">Additional Domains (comma-separated)</Label>
+                    <Input
+                      id="domains"
+                      placeholder="www.acme.com, acme.io"
+                      value={formData.domains}
+                      onChange={(e) => setFormData({ ...formData, domains: e.target.value })}
                     />
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Website Logo (larger, for public pages) */}
-            <div>
-              <Label htmlFor="websiteLogoUrl">Website Logo (Public Pages)</Label>
-              <p className="text-xs text-gray-500 mb-2">Larger logo displayed on public website header and footer. Recommended: wide format (e.g. 400x80px).</p>
-              <div className="space-y-2">
-                {formData.websiteLogoUrl && (
-                  <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                    <img
-                      src={formData.websiteLogoUrl}
-                      alt="Website logo preview"
-                      className="h-10 w-auto max-w-[200px] object-contain rounded"
-                    />
-                    <span className="text-xs text-gray-500 truncate flex-1">
-                      {formData.websiteLogoUrl.split('/').pop()}
-                    </span>
-                    <a
-                      href={formData.websiteLogoUrl}
-                      download={formData.websiteLogoUrl.split('/').pop() || 'website-logo'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-blue-500 h-6 w-6 p-0"
-                        title="Download website logo"
-                      >
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </a>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setFormData({ ...formData, websiteLogoUrl: '' })}
-                      className="text-red-500 h-6 w-6 p-0"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <Input
-                    id="websiteLogoUrl"
-                    placeholder="https://... or upload"
-                    value={formData.websiteLogoUrl}
-                    onChange={(e) => setFormData({ ...formData, websiteLogoUrl: e.target.value })}
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={uploadingWebsiteLogo}
-                    onClick={() => document.getElementById('websiteLogoUpload')?.click()}
-                    className="shrink-0"
-                  >
-                    {uploadingWebsiteLogo ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Upload className="w-4 h-4" />
-                    )}
-                  </Button>
-                  <input
-                    id="websiteLogoUpload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileUpload('website-logo', file);
-                      e.target.value = '';
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isActive"
-                checked={formData.isActive}
-                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                className="w-4 h-4 rounded border-gray-300"
-              />
-              <Label htmlFor="isActive">Active</Label>
-            </div>
-
-            {/* Theme Preset Selector - Only show when editing */}
-            {editingTenant && themePresets.length > 0 && (
-              <div className="pt-4 border-t">
-                <Label className="flex items-center gap-2 mb-3">
-                  <Palette className="w-4 h-4" />
-                  Theme Preset
-                </Label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {themePresets.map((preset) => {
-                    const colors = preset.themeConfig || preset.theme || {};
-                    const isSelected = editingTenant.themeConfig?.primaryColor === colors.primaryColor;
-                    return (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        disabled={applyingPreset}
-                        onClick={() => applyThemePreset(preset.id)}
-                        className={`relative p-3 rounded-lg border-2 transition-all text-left ${
-                          isSelected
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 bg-white'
-                        }`}
-                      >
-                        {isSelected && (
-                          <div className="absolute top-1 right-1">
-                            <Check className="w-4 h-4 text-blue-500" />
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <Label htmlFor="logoUrl">Logo</Label>
+                      <div className="space-y-2">
+                        {formData.logoUrl && (
+                          <div className="flex items-center gap-2 rounded-lg bg-gray-50 p-2">
+                            <img
+                              src={formData.logoUrl}
+                              alt="Logo preview"
+                              className="h-10 w-10 rounded object-contain"
+                            />
+                            <span className="flex-1 truncate text-xs text-gray-500">
+                              {formData.logoUrl.split('/').pop()}
+                            </span>
+                            <a
+                              href={formData.logoUrl}
+                              download={formData.logoUrl.split('/').pop() || 'logo'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 text-blue-500"
+                                title="Download logo"
+                              >
+                                <Download className="w-4 h-4" />
+                              </Button>
+                            </a>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setFormData({ ...formData, logoUrl: '' })}
+                              className="h-6 w-6 p-0 text-red-500"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
                           </div>
                         )}
-                        <div className="flex gap-1 mb-2">
-                          <div
-                            className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: colors.primaryColor || '#3b82f6' }}
+                        <div className="flex gap-2">
+                          <Input
+                            id="logoUrl"
+                            placeholder="https://... or upload"
+                            value={formData.logoUrl}
+                            onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
+                            className="flex-1"
                           />
-                          <div
-                            className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: colors.secondaryColor || '#6366f1' }}
-                          />
-                          <div
-                            className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: colors.accentColor || '#8b5cf6' }}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={uploadingLogo}
+                            onClick={() => document.getElementById('logoUpload')?.click()}
+                            className="shrink-0"
+                          >
+                            {uploadingLogo ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Upload className="w-4 h-4" />
+                            )}
+                          </Button>
+                          <input
+                            id="logoUpload"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileUpload('logo', file);
+                              e.target.value = '';
+                            }}
                           />
                         </div>
-                        <div className="text-xs font-medium text-gray-900 truncate">
-                          {preset.displayName || preset.name}
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="faviconUrl">Favicon</Label>
+                      <div className="space-y-2">
+                        {formData.faviconUrl && (
+                          <div className="flex items-center gap-2 rounded-lg bg-gray-50 p-2">
+                            <img
+                              src={formData.faviconUrl}
+                              alt="Favicon preview"
+                              className="h-6 w-6 object-contain"
+                            />
+                            <span className="flex-1 truncate text-xs text-gray-500">
+                              {formData.faviconUrl.split('/').pop()}
+                            </span>
+                            <a
+                              href={formData.faviconUrl}
+                              download={formData.faviconUrl.split('/').pop() || 'favicon'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 text-blue-500"
+                                title="Download favicon"
+                              >
+                                <Download className="w-4 h-4" />
+                              </Button>
+                            </a>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setFormData({ ...formData, faviconUrl: '' })}
+                              className="h-6 w-6 p-0 text-red-500"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <Input
+                            id="faviconUrl"
+                            placeholder="https://... or upload"
+                            value={formData.faviconUrl}
+                            onChange={(e) => setFormData({ ...formData, faviconUrl: e.target.value })}
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={uploadingFavicon}
+                            onClick={() => document.getElementById('faviconUpload')?.click()}
+                            className="shrink-0"
+                          >
+                            {uploadingFavicon ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Upload className="w-4 h-4" />
+                            )}
+                          </Button>
+                          <input
+                            id="faviconUpload"
+                            type="file"
+                            accept="image/*,.ico"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileUpload('favicon', file);
+                              e.target.value = '';
+                            }}
+                          />
                         </div>
-                      </button>
-                    );
-                  })}
-                </div>
-                {applyingPreset && (
-                  <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Applying theme...
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-            )}
 
-            {/* Feature Flags (edit mode only) */}
-            {editingTenant && (
-              <div className="space-y-2 pt-4 border-t">
-                <div className="flex items-center gap-2">
-                  <ToggleLeft className="w-4 h-4 text-gray-500" />
-                  <h3 className="text-sm font-semibold text-gray-700">Feature Flags</h3>
+                  <div className="mt-4">
+                    <Label htmlFor="websiteLogoUrl">Website Logo (Public Pages)</Label>
+                    <p className="mb-2 text-xs text-gray-500">Larger logo displayed on public website header and footer. Recommended: wide format (e.g. 400x80px).</p>
+                    <div className="space-y-2">
+                      {formData.websiteLogoUrl && (
+                        <div className="flex items-center gap-2 rounded-lg bg-gray-50 p-2">
+                          <img
+                            src={formData.websiteLogoUrl}
+                            alt="Website logo preview"
+                            className="h-10 w-auto max-w-[200px] rounded object-contain"
+                          />
+                          <span className="flex-1 truncate text-xs text-gray-500">
+                            {formData.websiteLogoUrl.split('/').pop()}
+                          </span>
+                          <a
+                            href={formData.websiteLogoUrl}
+                            download={formData.websiteLogoUrl.split('/').pop() || 'website-logo'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-blue-500"
+                              title="Download website logo"
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          </a>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setFormData({ ...formData, websiteLogoUrl: '' })}
+                            className="h-6 w-6 p-0 text-red-500"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <Input
+                          id="websiteLogoUrl"
+                          placeholder="https://... or upload"
+                          value={formData.websiteLogoUrl}
+                          onChange={(e) => setFormData({ ...formData, websiteLogoUrl: e.target.value })}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={uploadingWebsiteLogo}
+                          onClick={() => document.getElementById('websiteLogoUpload')?.click()}
+                          className="shrink-0"
+                        >
+                          {uploadingWebsiteLogo ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Upload className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <input
+                          id="websiteLogoUpload"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileUpload('website-logo', file);
+                            e.target.value = '';
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="isActive"
+                      checked={formData.isActive}
+                      onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label htmlFor="isActive">Active</Label>
+                  </div>
+
+                  {editingTenant && themePresets.length > 0 && (
+                    <div className="mt-4 border-t pt-4">
+                      <Label className="mb-3 flex items-center gap-2">
+                        <Palette className="w-4 h-4" />
+                        Theme Preset
+                      </Label>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {themePresets.map((preset) => {
+                          const colors = preset.themeConfig || preset.theme || {};
+                          const isSelected = editingTenant.themeConfig?.primaryColor === colors.primaryColor;
+                          return (
+                            <button
+                              key={preset.id}
+                              type="button"
+                              disabled={applyingPreset}
+                              onClick={() => applyThemePreset(preset.id)}
+                              className={`relative rounded-lg border-2 p-3 text-left transition-all ${
+                                isSelected
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-gray-200 bg-white hover:border-gray-300'
+                              }`}
+                            >
+                              {isSelected && (
+                                <div className="absolute right-1 top-1">
+                                  <Check className="w-4 h-4 text-blue-500" />
+                                </div>
+                              )}
+                              <div className="mb-2 flex gap-1">
+                                <div
+                                  className="h-4 w-4 rounded-full"
+                                  style={{ backgroundColor: colors.primaryColor || '#3b82f6' }}
+                                />
+                                <div
+                                  className="h-4 w-4 rounded-full"
+                                  style={{ backgroundColor: colors.secondaryColor || '#6366f1' }}
+                                />
+                                <div
+                                  className="h-4 w-4 rounded-full"
+                                  style={{ backgroundColor: colors.accentColor || '#8b5cf6' }}
+                                />
+                              </div>
+                              <div className="truncate text-xs font-medium text-gray-900">
+                                {preset.displayName || preset.name}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {applyingPreset && (
+                        <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Applying theme...
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <TenantFeatureFlagsPanel tenantId={editingTenant.id} canEdit />
               </div>
-            )}
+
+              {editingTenant && (
+                <div className="space-y-3 lg:sticky lg:top-4 lg:max-h-[calc(92vh-2rem)] lg:overflow-y-auto lg:pr-1">
+                  <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <ToggleLeft className="w-4 h-4 text-gray-500" />
+                      <h3 className="text-sm font-semibold text-gray-700">Feature Flags</h3>
+                    </div>
+                    <div className="mt-3">
+                      <TenantFeatureFlagsPanel tenantId={editingTenant.id} canEdit />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <DialogFooter className="shrink-0">

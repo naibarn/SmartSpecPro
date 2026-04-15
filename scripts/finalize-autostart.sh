@@ -33,7 +33,7 @@ check_root
 
 echo -e "${CYAN}"
 echo "╔═══════════════════════════════════════════════════════════════╗"
-echo "║          Finalize SmartSpecPro Auto-Start                     ║"
+echo "║          Finalize SmartAIHub Auto-Start                     ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 

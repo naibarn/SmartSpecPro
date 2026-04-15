@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# SmartSpecPro - Migrate to Systemd v2 Auto-Install Script
+# SmartAIHub - Migrate to Systemd v2 Auto-Install Script
 # Removes old screen-based service and installs new native systemd services
 #
 
@@ -32,7 +32,7 @@ check_root() {
 print_banner() {
     echo -e "${CYAN}"
     echo "╔═══════════════════════════════════════════════════════════════╗"
-    echo "║       SmartSpecPro - Migrate to Systemd v2                    ║"
+    echo "║       SmartAIHub - Migrate to Systemd v2                    ║"
     echo "║       Automatic Installation & Migration                      ║"
     echo "╚═══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"

@@ -4,7 +4,7 @@
  * Admin panel for toggling feature flags on a per-tenant basis.
  * Used within the tenant edit dialog in AdminTenants.
  *
- * - 44 flags organized in 7 collapsible groups
+ * - Feature flags organized in collapsible groups
  * - Search filter to quickly find flags
  * - Shows "X/Y enabled" summary per group
  * - Optimistic updates with rollback on error
@@ -14,7 +14,7 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import type { TenantFeatureFlags, TenantFeatureFlagKey } from "@shared/featureFlags";
-import { FEATURE_FLAG_DEFAULTS } from "@shared/featureFlags";
+import { FEATURE_FLAG_DEFAULTS } from "@shared/featureFlags.ts";
 import { buildTenantFeatureFlagGroups } from "./tenantFeatureFlagGroups";
 
 interface TenantFeatureFlagsPanelProps {
@@ -105,36 +105,48 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
 
   return (
     <div className="space-y-3">
-      {/* Summary + Search */}
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search flags..."
-          className="flex-1 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
-        />
-        <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
-          {enabledCount}/{totalFlags} on
-        </span>
-        {rolloutState ? (
-          <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-            Workpacks: {rolloutState.rolloutPhase}
+      <div className="sticky top-0 z-10 space-y-3 bg-white/95 pb-3 backdrop-blur">
+        <div className="rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2 text-xs text-sky-900">
+          Hermes Runtime has its own group near the top of the list.
+          Use the search box to jump directly to <span className="font-semibold">Hermes Runtime</span>,
+          <span className="font-semibold"> Hermes Profile Experience</span>,
+          <span className="font-semibold"> Hermes Channel Workflow</span>,
+          <span className="font-semibold"> Hermes Memory Sync</span>,
+          <span className="font-semibold"> Hermes Task Modes</span>, and
+          <span className="font-semibold"> Hermes Visibility Summaries</span>.
+        </div>
+
+        {/* Summary + Search */}
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search flags..."
+            className="flex-1 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
+          <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+            {enabledCount}/{totalFlags} on
           </span>
+          {rolloutState ? (
+            <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+              Workpacks: {rolloutState.rolloutPhase}
+            </span>
+          ) : null}
+        </div>
+
+        {rolloutState ? (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs text-emerald-800">
+            Tenant rollout posture:
+            {" "}
+            {rolloutState.workpacksEnabled ? "workpacks enabled" : "draft only"}
+            {" • "}
+            {rolloutState.workpackAutonomousPilot ? "autonomous pilot on" : "autonomous pilot off"}
+            {" • "}
+            {rolloutState.workpackOpsConsole ? "ops console visible" : "ops console hidden"}
+          </div>
         ) : null}
       </div>
-
-      {rolloutState ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs text-emerald-800">
-          Tenant rollout posture:
-          {" "}
-          {rolloutState.workpacksEnabled ? "workpacks enabled" : "draft only"}
-          {" • "}
-          {rolloutState.workpackAutonomousPilot ? "autonomous pilot on" : "autonomous pilot off"}
-          {" • "}
-          {rolloutState.workpackOpsConsole ? "ops console visible" : "ops console hidden"}
-        </div>
-      ) : null}
 
       {/* Groups */}
       <div className="space-y-1">
@@ -184,6 +196,11 @@ export function TenantFeatureFlagsPanel({ tenantId, canEdit = false }: TenantFea
                         <div className="flex-1 min-w-0 pr-3">
                           <p className="text-sm font-medium text-gray-800 truncate">{label}</p>
                           <p className="text-[11px] text-gray-400 truncate">{description}</p>
+                          {key === "documentOcrExternalProcessing" ? (
+                            <p className="text-[11px] text-amber-700">
+                              Enables outbound document OCR to external providers. Keep off unless tenant is approved.
+                            </p>
+                          ) : null}
                         </div>
                         <button
                           type="button"

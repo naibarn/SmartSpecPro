@@ -1,27 +1,87 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { Loader2, ReceiptText, Upload, CheckCircle2, ArrowDownRight, ArrowUpRight, Pause, Play, FileText, Wallet, Sparkles, Search, Mic, MicOff, RotateCcw } from "lucide-react";
+import { Loader2, ReceiptText, Upload, CheckCircle2, ArrowDownRight, ArrowUpRight, Pause, Play, FileText, Wallet, Sparkles, Search, Mic, MicOff, RotateCcw, Landmark, CreditCard, Plus, ChevronDown, Trash2, MoreVertical } from "lucide-react";
 
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { readFileAsBase64 } from "@/components/editor/uploadMedia";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FinanceCounterpartyAutocomplete } from "@/components/finance/FinanceCounterpartyAutocomplete";
+import { createFinanceOcrDebugTraceId, logFinanceOcrClientStep } from "./financeOcrDebug";
+import { getDocumentOcrProviderLabel } from "../../../../shared/documentOcrRouting.ts";
+import {
+  applyFinanceSlipMappingPresetToDraft,
+  DEFAULT_FINANCE_SLIP_MAPPING_PRESETS,
+  applyFinancePinnedMerchantPresetToDraft,
+  findBestFinancePinnedMerchantPreset,
+  rankFinanceSlipMappingPresets,
+  type FinanceEvidenceItem,
+  type FinanceSlipMappingPreset,
+  type FinanceStructuredDraft,
+} from "../../../../shared/finance";
 import {
   DashboardCard,
   DashboardKpiCard,
   dashboardCardDescriptionClass,
   dashboardMetaLineClass,
 } from "@/components/dashboard";
+import { useIsMobile } from "@/hooks/useMobile";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { usePushToTalk } from "@/hooks/usePushToTalk";
 
 const DEFAULT_CURRENCY = "THB";
+const FINANCE_ACTION_REASON_SESSION_KEYS = {
+  cancelDraft: "finance.cancelDraftReason",
+  voidConfirmedTransaction: "finance.confirmedTransactionVoidReason",
+} as const;
+
+type FinanceActionReasonKey = keyof typeof FINANCE_ACTION_REASON_SESSION_KEYS;
+
+function readStoredActionReason(action: FinanceActionReasonKey): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  try {
+    return window.sessionStorage.getItem(FINANCE_ACTION_REASON_SESSION_KEYS[action]) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function storeActionReason(action: FinanceActionReasonKey, reason: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(FINANCE_ACTION_REASON_SESSION_KEYS[action], reason.trim());
+  } catch {
+    // Ignore storage failures; the mutation still proceeds.
+  }
+}
 
 export interface FinanceHubProps {
   conversationId: number | null;
@@ -124,32 +184,173 @@ function parseRecurringRuleSummary(rrule: string, nextRunAt: string | Date | nul
 function getTransactionTypeLabel(type: string): string {
   switch (type) {
     case "income":
-      return "Income";
+      return "รายรับ";
     case "expense":
-      return "Expense";
+      return "รายจ่าย";
     case "transfer":
-      return "Transfer";
+      return "โอนเงิน";
     default:
-      return type;
+      return "รายการเงิน";
   }
 }
 
 function getFinanceSourceLabel(source: string): string {
   switch (source) {
     case "ocr_document":
-      return "OCR receipt";
+      return "ใบเสร็จ/OCR";
     case "chat_text":
-      return "Chat draft";
+      return "ฉบับร่างจากแชท";
     case "recurring_rule":
-      return "Recurring rule";
+      return "กฎรายการประจำ";
     case "api":
-      return "API";
+      return "เชื่อมต่อ API";
     case "import":
-      return "Import";
+      return "นำเข้า";
     default:
       return source;
   }
 }
+
+function getCaptureIntentLabel(intent: "receipt" | "transfer_slip" | "statement"): string {
+  switch (intent) {
+    case "receipt":
+      return "ใบเสร็จ";
+    case "transfer_slip":
+      return "สลิปโอนเงิน";
+    case "statement":
+      return "สเตทเมนต์";
+  }
+}
+
+function normalizePreviewComparisonText(value: string | null | undefined): string {
+  return (value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function extractPreviewMaskedIdentifier(label: string | null | undefined): string | null {
+  if (!label) {
+    return null;
+  }
+
+  const maskedMatch = label.match(/(?:••••\d{1,4}|\d{4,})/);
+  return maskedMatch?.[0] ?? null;
+}
+
+function extractPreviewAccountName(label: string | null | undefined): string | null {
+  if (!label) {
+    return null;
+  }
+
+  const firstSegment = label.split("·")[0]?.trim();
+  return firstSegment || null;
+}
+
+function getEvidenceFieldLabel(field: string): string {
+  switch (field) {
+    case "amountMinor":
+      return "จำนวนเงิน";
+    case "counterpartyName":
+      return "คู่ค้า/ผู้เกี่ยวข้อง";
+    case "paymentSourceInstitutionName":
+      return "ธนาคารผู้โอน";
+    case "paymentDestinationInstitutionName":
+      return "ธนาคารผู้รับเงิน";
+    case "paymentSourceLabel":
+      return "บัญชีผู้โอน";
+    case "paymentDestinationLabel":
+      return "บัญชีผู้รับเงิน";
+    case "merchantName":
+      return "ร้านค้า/คู่ค้า";
+    case "paymentAccountNickname":
+      return "ชื่อย่อบัญชี";
+    case "paymentAccountLast4":
+      return "เลขท้าย 4 ตัว";
+    case "paymentAccountMaskedIdentifier":
+      return "เลขที่ถูกปิดบัง";
+    case "slipReference":
+      return "เลขอ้างอิงสลิป";
+    case "merchantId":
+      return "รหัสร้านค้า";
+    case "paymentFeeMinor":
+      return "ค่าธรรมเนียม";
+    case "occurredAt":
+      return "วันเวลา";
+    default:
+      return field;
+  }
+}
+
+function buildEvidenceSummaryLine(evidence: FinanceEvidenceItem[]): string {
+  if (evidence.length === 0) {
+    return "ยังไม่มีหลักฐานที่จับได้";
+  }
+
+  const priorityFields = [
+    "amountMinor",
+    "paymentSourceInstitutionName",
+    "paymentDestinationInstitutionName",
+    "counterpartyName",
+    "paymentSourceLabel",
+    "paymentDestinationLabel",
+    "paymentSourceName",
+    "paymentDestinationName",
+    "occurredAt",
+    "merchantName",
+    "paymentAccountNickname",
+    "paymentAccountLast4",
+    "paymentAccountMaskedIdentifier",
+    "slipReference",
+    "merchantId",
+    "paymentFeeMinor",
+  ];
+
+  const summaryLabels: string[] = [];
+
+  for (const field of priorityFields) {
+    if (evidence.some((item) => item.field === field)) {
+      const label = getEvidenceFieldLabel(field);
+      if (!summaryLabels.includes(label)) {
+        summaryLabels.push(label);
+      }
+    }
+  }
+
+  for (const item of evidence) {
+    const label = getEvidenceFieldLabel(item.field);
+    if (!summaryLabels.includes(label)) {
+      summaryLabels.push(label);
+    }
+  }
+
+  const previewLabels = summaryLabels.slice(0, 4);
+  const suffix = summaryLabels.length > previewLabels.length ? "…" : "";
+  return `จับได้ ${evidence.length} รายการหลักฐาน: ${previewLabels.join(", ")}${suffix}`;
+}
+
+function buildTransferSummaryLine(
+  sides: Array<{
+    title: string;
+    bank: string;
+    account: string;
+    accountName: string | null;
+  }>,
+  isSelfTransfer: boolean,
+): string {
+  if (sides.length < 2) {
+    return "จับรายละเอียดการโอนแล้ว";
+  }
+
+  const source = sides[0];
+  const destination = sides[1];
+  const sourceLabel = source.accountName ? `${source.bank} · ${source.accountName}` : source.bank;
+  const destinationLabel = destination.accountName ? `${destination.bank} · ${destination.accountName}` : destination.bank;
+  if (isSelfTransfer) {
+    return `โอนระหว่างบัญชีตัวเอง: ${sourceLabel} → ${destinationLabel}`;
+  }
+
+  return `รายการโอน: ${sourceLabel} → ${destinationLabel}`;
+}
+
+type FinanceCaptureIntent = "receipt" | "transfer_slip" | "statement";
 
 type FinanceDraftPayload = {
   amountMinor?: number;
@@ -159,15 +360,103 @@ type FinanceDraftPayload = {
   counterpartyName?: string | null;
   merchantName?: string | null;
   note?: string | null;
+  humanReadableSummary?: string | null;
+  evidence?: FinanceEvidenceItem[];
+  missingFields?: string[];
   occurredAt?: string;
+  documentRole?: string | null;
+  paymentMethodKind?: "bank_account" | "credit_card" | "cash" | "unknown" | null;
+  paymentDirection?: "outbound" | "inbound" | "both" | "unknown" | null;
+  paymentSourceAccountId?: number | null;
+  paymentDestinationAccountId?: number | null;
+  paymentSourceLabel?: string | null;
+  paymentDestinationLabel?: string | null;
+  paymentSourceName?: string | null;
+  paymentDestinationName?: string | null;
+  paymentSourceInstitutionName?: string | null;
+  paymentDestinationInstitutionName?: string | null;
+  paymentInstitutionName?: string | null;
+  paymentAccountNickname?: string | null;
+  paymentAccountLast4?: string | null;
+  paymentAccountMaskedIdentifier?: string | null;
+  sourceUrl?: string | null;
+  sourceFileName?: string | null;
+  paymentInstrumentConfidence?: number | null;
+  slipReference?: string | null;
+  merchantId?: string | null;
+  paymentFeeMinor?: number | null;
 };
 
 type DraftEditState = {
   date: string;
   time: string;
   counterpartyName: string;
+  paymentSourceLabel?: string;
+  paymentDestinationLabel?: string;
+  paymentSourceName?: string;
+  paymentDestinationName?: string;
+  paymentSourceInstitutionName?: string;
+  paymentDestinationInstitutionName?: string;
+  sourceUrl?: string;
+  sourceFileName?: string;
   status: QuickActionStatus;
 };
+
+type MerchantSuggestion = {
+  displayName: string;
+  categoryCode: string | null;
+  type: "income" | "expense" | "transfer";
+  usageCount: number;
+  lastSeenAt: string | null;
+  aliases: string[];
+};
+
+type FrequentMerchantPatternSuggestion = {
+  merchant: MerchantSuggestion;
+  matchedLabel: string;
+};
+
+function findFrequentMerchantPatternSuggestion(
+  preview: {
+    counterpartyName: string | null;
+    merchantName: string | null;
+    paymentSourceName: string | null;
+    paymentDestinationName: string | null;
+    paymentAccountNickname: string | null;
+  },
+  merchants: MerchantSuggestion[],
+  minimumUsageCount = 2,
+): FrequentMerchantPatternSuggestion | null {
+  const haystacks = [
+    preview.counterpartyName,
+    preview.merchantName,
+    preview.paymentSourceName,
+    preview.paymentDestinationName,
+    preview.paymentAccountNickname,
+  ]
+    .map((value) => normalizePreviewComparisonText(value))
+    .filter((value) => value.length > 0);
+
+  if (haystacks.length === 0) {
+    return null;
+  }
+
+  const candidates = merchants
+    .filter((merchant) => merchant.usageCount >= minimumUsageCount)
+    .map((merchant) => {
+      const names = [merchant.displayName, ...merchant.aliases]
+        .map((value) => normalizePreviewComparisonText(value))
+        .filter((value) => value.length > 0);
+      const matchedLabel = haystacks.find((haystack) => names.some((name) => haystack === name || haystack.includes(name) || name.includes(haystack)));
+      return matchedLabel ? { merchant, matchedLabel } : null;
+    })
+    .filter((item): item is FrequentMerchantPatternSuggestion => Boolean(item))
+    .sort((left, right) => right.merchant.usageCount - left.merchant.usageCount
+      || new Date(right.merchant.lastSeenAt ?? 0).getTime() - new Date(left.merchant.lastSeenAt ?? 0).getTime()
+      || left.merchant.displayName.localeCompare(right.merchant.displayName));
+
+  return candidates[0] ?? null;
+}
 
 function getDraftPayload(draft: { payloadJson?: Record<string, unknown> | null }): FinanceDraftPayload {
   return (draft.payloadJson ?? {}) as FinanceDraftPayload;
@@ -198,26 +487,280 @@ function getFinanceCounterpartyLabel(type: "income" | "expense" | "transfer", co
 
   switch (type) {
     case "income":
-      return "Unspecified payer";
+      return "ไม่ระบุผู้จ่าย";
     case "expense":
-      return "Unspecified payee";
+      return "ไม่ระบุผู้รับเงิน";
     default:
-      return "Unspecified counterparty";
+      return "ไม่ระบุคู่ค้า";
   }
 }
 
 function getFinanceFlowLabel(type: "income" | "expense" | "transfer", t: (key: string, fallback?: string) => string): string {
   switch (type) {
     case "income":
-      return t("dashboard:finance.labels.receivedFrom", "Received from");
+      return t("dashboard:finance.labels.receivedFrom", "รับจาก");
     case "expense":
-      return t("dashboard:finance.labels.paidTo", "Paid to");
+      return t("dashboard:finance.labels.paidTo", "จ่ายให้");
     default:
-      return t("dashboard:finance.labels.transferWith", "Transfer with");
+      return t("dashboard:finance.labels.transferWith", "โอนกับ");
   }
 }
 
+function getPaymentInstrumentLabel(kind: "bank_account" | "credit_card" | "cash" | "unknown"): string {
+  switch (kind) {
+    case "bank_account":
+      return "บัญชีธนาคาร";
+    case "credit_card":
+      return "บัตรเครดิต";
+    case "cash":
+      return "เงินสด";
+    default:
+      return "วิธีชำระเงิน";
+  }
+}
+
+function getPaymentDirectionLabel(direction: "outbound" | "inbound" | "both" | "unknown"): string {
+  switch (direction) {
+    case "outbound":
+      return "จ่ายออก";
+    case "inbound":
+      return "รับเข้า";
+    case "both":
+      return "โอนเงิน";
+    default:
+      return "รายการเงิน";
+  }
+}
+
+function getFinanceOcrProviderLabel(providerId: string): string {
+  if (providerId === "finance_payin_llm_parser") {
+    return "ตัวแปลง LLM";
+  }
+  return getDocumentOcrProviderLabel(providerId);
+}
+
+function buildReadableSlipSummary(input: {
+  humanReadableSummary: string | null;
+  type: "income" | "expense" | "transfer";
+  amountLabel: string;
+  currency: string;
+  counterpartyName: string | null;
+  note: string | null;
+  occurredAt: string | null;
+  paymentSourceInstitutionName: string | null;
+  paymentDestinationInstitutionName: string | null;
+  paymentSourceLabel: string | null;
+  paymentDestinationLabel: string | null;
+  paymentSourceName: string | null;
+  paymentDestinationName: string | null;
+  paymentInstitutionName: string | null;
+  paymentDirection: "outbound" | "inbound" | "both" | "unknown" | null;
+  slipReference: string | null;
+  merchantId: string | null;
+  paymentFeeMinor: number | null;
+}): string {
+  const clean = (value: string | null | undefined) => (value ?? "").trim();
+  if (clean(input.humanReadableSummary)) {
+    return clean(input.humanReadableSummary);
+  }
+
+  const occurredAt = input.occurredAt ? formatDateTime(input.occurredAt) : "—";
+  const amount = input.amountLabel !== "—" ? input.amountLabel : "—";
+  const counterparty = clean(input.counterpartyName) || "—";
+  const sourceParty = [clean(input.paymentSourceInstitutionName), clean(input.paymentSourceLabel)].filter(Boolean).join(" · ") || clean(input.paymentInstitutionName) || "—";
+  const destinationParty = [clean(input.paymentDestinationInstitutionName), clean(input.paymentDestinationLabel)].filter(Boolean).join(" · ") || clean(input.paymentInstitutionName) || "—";
+  const note = clean(input.note);
+  const feeLabel = input.paymentFeeMinor !== null ? ` · ค่าธรรมเนียม ${formatMoneyMinor(input.paymentFeeMinor, input.currency)}` : "";
+  const refLabel = clean(input.slipReference) ? ` · อ้างอิง ${clean(input.slipReference)}` : "";
+
+  if (input.type === "transfer") {
+    const directionLabel = input.paymentDirection === "inbound"
+      ? "รับเงิน"
+      : input.paymentDirection === "outbound"
+        ? "จ่ายเงิน"
+        : "โอนเงิน";
+    return [
+      `สรุปสลิป: ${directionLabel} ${amount}${feeLabel}${refLabel}`,
+      `ผู้โอน: ${sourceParty}`,
+      `ผู้รับเงิน: ${destinationParty}`,
+      `เมื่อ ${occurredAt}`,
+      note ? `หมายเหตุ: ${note}` : "",
+    ].filter(Boolean).join(" · ");
+  }
+
+  const verb = input.type === "income" ? "รับเงิน" : "จ่ายเงิน";
+  return [
+    `สรุปสลิป: ${verb} ${amount}${feeLabel}${refLabel}`,
+    `คู่ค้า/ผู้รับ: ${counterparty}`,
+    `ผ่าน ${clean(input.paymentInstitutionName) || "payment instrument"}`,
+    `เมื่อ ${occurredAt}`,
+    note ? `หมายเหตุ: ${note}` : "",
+  ].filter(Boolean).join(" · ");
+}
+
+function buildPaymentAccountDisplayLabel(item: {
+  nickname: string;
+  institutionName: string;
+  kind: string;
+  last4?: string | null;
+  maskedIdentifier?: string | null;
+}): string {
+  const parts = [item.nickname, item.institutionName];
+  if (item.last4) {
+    parts.push(`••••${item.last4}`);
+  } else if (item.maskedIdentifier) {
+    parts.push(item.maskedIdentifier);
+  }
+  if (item.kind === "credit_card") {
+    parts.push("card");
+  } else if (item.kind === "bank_account") {
+    parts.push("account");
+  }
+  return parts.filter(Boolean).join(" · ");
+}
+
+function paymentAccountOptionList(items: Array<{
+  id: number;
+  displayLabel?: string;
+  nickname: string;
+  institutionName: string;
+  kind: string;
+  last4?: string | null;
+  maskedIdentifier?: string | null;
+  aliases?: string[];
+  usageCount?: number;
+}>): Array<{ id: number; displayName: string; aliases?: string[]; usageCount?: number }> {
+  return items.map((item) => ({
+    id: item.id,
+    displayName: item.displayLabel ?? buildPaymentAccountDisplayLabel(item),
+    aliases: item.aliases,
+    usageCount: item.usageCount,
+  }));
+}
+
+function resolvePaymentAccountSelection(
+  displayName: string,
+  items: Array<{
+    id: number;
+    displayLabel?: string;
+    nickname: string;
+    institutionName: string;
+    kind: string;
+    last4?: string | null;
+    maskedIdentifier?: string | null;
+    aliases?: string[];
+  }>,
+) {
+  const normalized = displayName.trim().toLowerCase();
+  return items.find((item) => {
+    const label = (item.displayLabel ?? buildPaymentAccountDisplayLabel(item)).trim().toLowerCase();
+    return label === normalized
+      || item.nickname.trim().toLowerCase() === normalized
+      || item.aliases?.some((alias) => alias.trim().toLowerCase() === normalized) === true;
+  }) ?? null;
+}
+
 const QUICK_DRAFT_INTENT_PREFIX = /^\s*(?:Expense|Income|Transfer):\s*/i;
+
+type FinanceSemanticDuplicateWarningRecord = {
+  sourceKind: "exact_draft" | "exact_transaction" | "candidate_draft" | "candidate_transaction";
+  sourceLabel: string;
+  draftId: number;
+  transactionId: number | null;
+  type: "income" | "expense" | "transfer";
+  amountMinor: number;
+  currency: string;
+  occurredAt: string;
+  counterpartyName: string | null;
+  merchantName: string | null;
+  note: string | null;
+  paymentMethodKind: "bank_account" | "credit_card" | "cash" | "unknown" | null;
+  paymentDirection: "outbound" | "inbound" | "both" | "unknown" | null;
+  paymentSourceAccountId: number | null;
+  paymentDestinationAccountId: number | null;
+  paymentSourceLabel: string | null;
+  paymentDestinationLabel: string | null;
+  paymentSourceName: string | null;
+  paymentDestinationName: string | null;
+  paymentSourceInstitutionName: string | null;
+  paymentDestinationInstitutionName: string | null;
+  paymentInstitutionName: string | null;
+  paymentAccountNickname: string | null;
+  paymentAccountLast4: string | null;
+  paymentAccountMaskedIdentifier: string | null;
+  slipReference: string | null;
+  merchantId: string | null;
+  paymentFeeMinor: number | null;
+};
+
+function buildSemanticDuplicateWarningSummary(record: FinanceSemanticDuplicateWarningRecord): string {
+  return buildReadableSlipSummary({
+    humanReadableSummary: null,
+    type: record.type,
+    amountLabel: formatMoneyMinor(record.amountMinor, record.currency),
+    currency: record.currency,
+    counterpartyName: record.counterpartyName ?? record.merchantName ?? null,
+    note: record.note ?? null,
+    occurredAt: record.occurredAt,
+    paymentSourceInstitutionName: record.paymentSourceInstitutionName,
+    paymentDestinationInstitutionName: record.paymentDestinationInstitutionName,
+    paymentSourceLabel: record.paymentSourceLabel,
+    paymentDestinationLabel: record.paymentDestinationLabel,
+    paymentSourceName: record.paymentSourceName,
+    paymentDestinationName: record.paymentDestinationName,
+    paymentInstitutionName: record.paymentInstitutionName,
+    paymentDirection: record.paymentDirection,
+    slipReference: record.slipReference,
+    merchantId: record.merchantId,
+    paymentFeeMinor: record.paymentFeeMinor,
+  });
+}
+
+function FinanceSemanticDuplicateWarningCard({
+  conversationId,
+  draftId,
+}: {
+  conversationId: number | null;
+  draftId: number | null;
+}) {
+  const duplicateWarningQuery = trpc.finance.getSemanticDuplicateWarning.useQuery(
+    {
+      conversationId: conversationId ?? 0,
+      draftId: draftId ?? 0,
+    },
+    {
+      enabled: Boolean(conversationId && draftId),
+    },
+  );
+
+  const duplicate = duplicateWarningQuery.data;
+  if (!duplicate) {
+    return null;
+  }
+
+  const summary = buildSemanticDuplicateWarningSummary(duplicate);
+
+  return (
+    <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-3 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">
+            Possible duplicate slip
+          </p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            {duplicate.sourceLabel}
+          </p>
+        </div>
+        <Badge variant="outline" className="border-amber-200 bg-white text-amber-700">
+          Review before confirm
+        </Badge>
+      </div>
+      <p className="mt-2 text-sm leading-6 text-slate-800">
+        {summary}
+      </p>
+    </div>
+  );
+}
 
 type QuickActionStatus =
   | { kind: "idle"; message: null }
@@ -225,6 +768,55 @@ type QuickActionStatus =
   | { kind: "saved"; message: string }
   | { kind: "draft"; message: string }
   | { kind: "error"; message: string };
+
+type ReceiptUploadStatus =
+  | { phase: "idle"; message: null; provider: null; fileName: null }
+  | { phase: "reading"; message: string; provider: null; fileName: string }
+  | { phase: "ocr"; message: string; provider: string | null; fileName: string }
+  | { phase: "uploading"; message: string; provider: string | null; fileName: string }
+  | { phase: "drafting"; message: string; provider: string | null; fileName: string }
+  | { phase: "completed"; message: string; provider: string | null; fileName: string }
+  | { phase: "error"; message: string; provider: string | null; fileName: string };
+
+function getFinanceErrorMessage(error: unknown, fallback: string): string {
+  const candidates: string[] = [];
+
+  if (error instanceof Error && typeof error.message === "string") {
+    candidates.push(error.message);
+  }
+
+  if (error && typeof error === "object") {
+    const maybeMessage = (error as { message?: unknown }).message;
+    const maybeShapeMessage = (error as { shape?: { message?: unknown } }).shape?.message;
+    const maybeDataMessage = (error as { data?: { message?: unknown } }).data?.message;
+    const maybeCauseMessage = (error as { cause?: { message?: unknown } }).cause?.message;
+    for (const value of [maybeMessage, maybeShapeMessage, maybeDataMessage, maybeCauseMessage]) {
+      if (typeof value === "string") {
+        candidates.push(value);
+      }
+    }
+  }
+
+  for (const candidate of candidates) {
+    const message = candidate.trim();
+    if (!message) continue;
+    const normalized = message.toLowerCase();
+    if (normalized === "no message available" || normalized === "undefined" || normalized === "null") {
+      continue;
+    }
+    if (
+      normalized.includes("unexpected token '<'")
+      || normalized.includes("<!doctype")
+      || normalized.includes("<html")
+      || normalized.includes("returned html instead of json")
+    ) {
+      return `${fallback} The server returned HTML instead of JSON.`;
+    }
+    return message;
+  }
+
+  return fallback;
+}
 
 export function FinanceHub({
   conversationId,
@@ -248,10 +840,74 @@ export function FinanceHub({
   const [draftTime, setDraftTime] = useState(initialDraftDateTime.time);
   const [quickActionStatus, setQuickActionStatus] = useState<QuickActionStatus>({ kind: "idle", message: null });
   const [draftEditStates, setDraftEditStates] = useState<Record<number, DraftEditState>>({});
+  const [pendingVoidTransactionId, setPendingVoidTransactionId] = useState<number | null>(null);
+  const [pendingVoidReason, setPendingVoidReason] = useState(() => readStoredActionReason("voidConfirmedTransaction"));
   const [selectedEvidenceTransactionId, setSelectedEvidenceTransactionId] = useState<number | null>(null);
   const [evidenceSearchText, setEvidenceSearchText] = useState("");
+  const [captureIntent, setCaptureIntent] = useState<FinanceCaptureIntent>("receipt");
+  const proofUploadIntentRef = useRef<FinanceCaptureIntent | null>(null);
+  const [draftPaymentSourceLabel, setDraftPaymentSourceLabel] = useState("");
+  const [draftPaymentDestinationLabel, setDraftPaymentDestinationLabel] = useState("");
+  const [draftPaymentSourceInstitutionName, setDraftPaymentSourceInstitutionName] = useState("");
+  const [draftPaymentDestinationInstitutionName, setDraftPaymentDestinationInstitutionName] = useState("");
+  const [draftPaymentInstitutionName, setDraftPaymentInstitutionName] = useState("");
+  const [draftPaymentInstitutionKind, setDraftPaymentInstitutionKind] = useState<"bank" | "issuer" | "other">("bank");
+  const [draftPaymentAccountKind, setDraftPaymentAccountKind] = useState<"bank_account" | "credit_card" | "cash" | "unknown">("bank_account");
+  const [draftPaymentAccountNickname, setDraftPaymentAccountNickname] = useState("");
+  const [draftPaymentAccountLast4, setDraftPaymentAccountLast4] = useState("");
+  const [draftPaymentAccountMaskedIdentifier, setDraftPaymentAccountMaskedIdentifier] = useState("");
+  const [draftPaymentAccountAliases, setDraftPaymentAccountAliases] = useState("");
+  const [receiptUploadPreviewExpanded, setReceiptUploadPreviewExpanded] = useState(false);
+  const [receiptUploadOverviewExpanded, setReceiptUploadOverviewExpanded] = useState(false);
+  const [receiptUploadPreviewDetailsExpanded, setReceiptUploadPreviewDetailsExpanded] = useState(false);
+  const [receiptUploadPreviewEvidenceExpanded, setReceiptUploadPreviewEvidenceExpanded] = useState(false);
+  const [receiptUploadPreviewVisible, setReceiptUploadPreviewVisible] = useState(false);
+  const [receiptUploadPreviewContentVisible, setReceiptUploadPreviewContentVisible] = useState(false);
+  const [receiptUploadDraftId, setReceiptUploadDraftId] = useState<number | null>(null);
+  const [receiptUploadDraftVersion, setReceiptUploadDraftVersion] = useState<number | null>(null);
+  const [receiptUploadAppliedPresetLabel, setReceiptUploadAppliedPresetLabel] = useState<string | null>(null);
+  const [receiptUploadPresetAlternativesVisible, setReceiptUploadPresetAlternativesVisible] = useState(false);
+  const [receiptUploadPreview, setReceiptUploadPreview] = useState<{
+    type: "income" | "expense" | "transfer";
+    amountMinor: number | null;
+    currency: string;
+    categoryCode: string | null;
+    counterpartyName: string | null;
+    merchantName: string | null;
+    note: string | null;
+    occurredAt: string | null;
+    paymentMethodKind: "bank_account" | "credit_card" | "cash" | "unknown" | null;
+    paymentDirection: "outbound" | "inbound" | "both" | "unknown" | null;
+    paymentSourceLabel: string | null;
+    paymentDestinationLabel: string | null;
+    paymentSourceName: string | null;
+    paymentDestinationName: string | null;
+    paymentSourceInstitutionName: string | null;
+    paymentDestinationInstitutionName: string | null;
+    paymentInstitutionName: string | null;
+    paymentAccountNickname: string | null;
+    paymentAccountLast4: string | null;
+    paymentAccountMaskedIdentifier: string | null;
+    slipReference: string | null;
+    merchantId: string | null;
+    paymentFeeMinor: number | null;
+    humanReadableSummary: string | null;
+    confidence: number | null;
+    missingFields: string[];
+    evidence: FinanceEvidenceItem[];
+    sourceUrl: string | null;
+    sourceFileName: string | null;
+    mimeType: string | null;
+  } | null>(null);
   const quickActionModeRef = useRef<"manual" | "quick" | null>(null);
   const deferredCounterpartySearch = useDeferredValue(draftCounterpartyName.trim());
+  const isMobileViewport = useIsMobile();
+  const [receiptUploadStatus, setReceiptUploadStatus] = useState<ReceiptUploadStatus>({
+    phase: "idle",
+    message: null,
+    provider: null,
+    fileName: null,
+  });
 
   const { isRecording, isTranscribing, startRecording, stopRecording } = usePushToTalk({
     onTranscription: (text) => {
@@ -284,6 +940,14 @@ export function FinanceHub({
     { conversationId: conversationId ?? 0 },
     { enabled: financeReady },
   );
+  const slipMappingPresetsQuery = trpc.finance.getSlipMappingPresets.useQuery(
+    undefined,
+    { enabled: financeReady },
+  );
+  const pinnedMerchantPresetsQuery = trpc.finance.getPinnedMerchantPresets.useQuery(
+    undefined,
+    { enabled: financeReady },
+  );
   const draftsQuery = trpc.finance.listDrafts.useQuery(
     { conversationId: conversationId ?? 0, limit: draftLimit },
     { enabled: financeReady },
@@ -308,6 +972,28 @@ export function FinanceHub({
     },
     { enabled: financeReady },
   );
+  const paymentInstitutionsQuery = trpc.finance.listPaymentInstitutions.useQuery(
+    {
+      conversationId: conversationId ?? 0,
+      limit: 12,
+    },
+    { enabled: financeReady },
+  );
+  const paymentAccountsQuery = trpc.finance.listPaymentAccounts.useQuery(
+    {
+      conversationId: conversationId ?? 0,
+      limit: 12,
+    },
+    { enabled: financeReady },
+  );
+  const financeSlipMappingPresets = slipMappingPresetsQuery.data?.length
+    ? slipMappingPresetsQuery.data
+    : DEFAULT_FINANCE_SLIP_MAPPING_PRESETS;
+  const pinnedMerchantPresets = pinnedMerchantPresetsQuery.data ?? [];
+  const draftsQueryErrorMessage = draftsQuery.error
+    ? getFinanceErrorMessage(draftsQuery.error, "โหลดฉบับร่างที่เปิดอยู่ไม่สำเร็จ")
+    : null;
+  const financeDebugEnabled = import.meta.env.DEV;
   const monthlyTransactionsQuery = trpc.finance.listTransactions.useQuery(
     {
       conversationId: conversationId ?? 0,
@@ -331,19 +1017,43 @@ export function FinanceHub({
         && (selectedEvidenceTransactionId !== null || evidenceSearchText.trim().length > 0),
     },
   );
+  const paymentAccountItems = paymentAccountOptionList(paymentAccountsQuery.data ?? []);
+  const selectedDraftPaymentSourceAccount = useMemo(
+    () => resolvePaymentAccountSelection(draftPaymentSourceLabel, paymentAccountsQuery.data ?? []),
+    [draftPaymentSourceLabel, paymentAccountsQuery.data],
+  );
+  const selectedDraftPaymentDestinationAccount = useMemo(
+    () => resolvePaymentAccountSelection(draftPaymentDestinationLabel, paymentAccountsQuery.data ?? []),
+    [draftPaymentDestinationLabel, paymentAccountsQuery.data],
+  );
+  const selectedCapturePaymentAccount = draftTypeHint === "income"
+    ? selectedDraftPaymentDestinationAccount
+    : selectedDraftPaymentSourceAccount;
 
-  const invalidateMonthlyConfirmedTransactions = async () => {
+  const invalidateConfirmedTransactionQueries = async () => {
     if (!conversationId || !monthlySummaryQuery.data?.rangeStart || !monthlySummaryQuery.data?.rangeEnd) {
+      await utils.finance.listTransactions.invalidate({
+        conversationId: conversationId ?? 0,
+        status: "confirmed",
+        limit: transactionLimit,
+      });
       return;
     }
 
-    await utils.finance.listTransactions.invalidate({
-      conversationId,
-      status: "confirmed",
-      fromDate: new Date(monthlySummaryQuery.data.rangeStart),
-      toDate: new Date(monthlySummaryQuery.data.rangeEnd),
-      limit: compact ? 25 : 100,
-    });
+    await Promise.all([
+      utils.finance.listTransactions.invalidate({
+        conversationId,
+        status: "confirmed",
+        limit: transactionLimit,
+      }),
+      utils.finance.listTransactions.invalidate({
+        conversationId,
+        status: "confirmed",
+        fromDate: new Date(monthlySummaryQuery.data.rangeStart),
+        toDate: new Date(monthlySummaryQuery.data.rangeEnd),
+        limit: compact ? 25 : 100,
+      }),
+    ]);
   };
 
   const parseTextMutation = trpc.finance.parseTextToDraft.useMutation({
@@ -367,21 +1077,90 @@ export function FinanceHub({
         toast.success("Finance draft created");
       }
     },
-    onError: (error) => toast.error(error.message || "Failed to create finance draft"),
+    onError: (error) => toast.error(error.message || "สร้างฉบับร่างการเงินไม่สำเร็จ"),
+  });
+
+  const upsertPaymentInstitutionMutation = trpc.finance.upsertPaymentInstitution.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.finance.listPaymentInstitutions.invalidate({ conversationId: conversationId ?? 0, limit: 12 }),
+        utils.finance.listPaymentAccounts.invalidate({ conversationId: conversationId ?? 0, limit: 12 }),
+      ]);
+    },
+    onError: (error) => toast.error(error.message || "บันทึกสถาบันการเงินไม่สำเร็จ"),
+  });
+
+  const upsertPaymentAccountMutation = trpc.finance.upsertPaymentAccount.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.finance.listPaymentAccounts.invalidate({ conversationId: conversationId ?? 0, limit: 12 }),
+        utils.finance.listPaymentInstitutions.invalidate({ conversationId: conversationId ?? 0, limit: 12 }),
+      ]);
+    },
+    onError: (error) => toast.error(error.message || "บันทึกบัญชีชำระเงินไม่สำเร็จ"),
+  });
+
+  const archivePaymentAccountMutation = trpc.finance.archivePaymentAccount.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.finance.listPaymentAccounts.invalidate({ conversationId: conversationId ?? 0, limit: 12 }),
+        utils.finance.listPaymentInstitutions.invalidate({ conversationId: conversationId ?? 0, limit: 12 }),
+      ]);
+    },
+    onError: (error) => toast.error(error.message || "ย้ายบัญชีชำระเงินไปเก็บถาวรไม่สำเร็จ"),
   });
 
   const updateDraftMutation = trpc.finance.updateDraft.useMutation({
     onSuccess: async () => {
       await utils.finance.listDrafts.invalidate({ conversationId: conversationId ?? 0, limit: draftLimit });
     },
-    onError: (error) => toast.error(error.message || "Failed to update draft"),
+    onError: (error) => toast.error(error.message || "อัปเดตฉบับร่างไม่สำเร็จ"),
+  });
+
+  const cancelDraftMutation = trpc.finance.cancelDraft.useMutation({
+    onSuccess: async (_draft, variables) => {
+      if (receiptUploadDraftId === variables.draftId) {
+        setReceiptUploadDraftId(null);
+        setReceiptUploadDraftVersion(null);
+      }
+      await Promise.all([
+        utils.finance.listDrafts.invalidate({ conversationId: conversationId ?? 0, limit: draftLimit }),
+        utils.finance.getDailySummary.invalidate({ conversationId: conversationId ?? 0 }),
+        utils.finance.getMonthlySummary.invalidate({ conversationId: conversationId ?? 0 }),
+      ]);
+      toast.success("Draft cancelled", {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            if (!conversationId || variables.draftId === undefined) return;
+            void restoreDraftMutation.mutateAsync({
+              conversationId,
+              draftId: variables.draftId,
+            });
+          },
+        },
+      });
+    },
+    onError: (error) => toast.error(error.message || "ยกเลิกฉบับร่างไม่สำเร็จ"),
+  });
+
+  const restoreDraftMutation = trpc.finance.restoreDraft.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.finance.listDrafts.invalidate({ conversationId: conversationId ?? 0, limit: draftLimit }),
+        utils.finance.getDailySummary.invalidate({ conversationId: conversationId ?? 0 }),
+        utils.finance.getMonthlySummary.invalidate({ conversationId: conversationId ?? 0 }),
+      ]);
+      toast.success("Draft restored");
+    },
+    onError: (error) => toast.error(error.message || "กู้คืนฉบับร่างไม่สำเร็จ"),
   });
 
   const confirmDraftMutation = trpc.finance.confirmDraft.useMutation({
     onSuccess: async () => {
       await Promise.all([
         utils.finance.listDrafts.invalidate({ conversationId: conversationId ?? 0, limit: draftLimit }),
-        invalidateMonthlyConfirmedTransactions(),
+        invalidateConfirmedTransactionQueries(),
         utils.finance.getDailySummary.invalidate({ conversationId: conversationId ?? 0 }),
         utils.finance.getMonthlySummary.invalidate({ conversationId: conversationId ?? 0 }),
       ]);
@@ -389,19 +1168,25 @@ export function FinanceHub({
         toast.success("Draft confirmed");
       }
     },
-    onError: (error) => toast.error(error.message || "Failed to confirm draft"),
+    onError: (error) => toast.error(error.message || "ยืนยันฉบับร่างไม่สำเร็จ"),
   });
 
   const voidTransactionMutation = trpc.finance.voidTransaction.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (_transaction, variables) => {
+      if (selectedEvidenceTransactionId === variables.transactionId) {
+        setSelectedEvidenceTransactionId(null);
+      }
+      setPendingVoidTransactionId(null);
+      setPendingVoidReason("");
+      storeActionReason("voidConfirmedTransaction", variables.reason ?? "");
       await Promise.all([
-        invalidateMonthlyConfirmedTransactions(),
+        invalidateConfirmedTransactionQueries(),
         utils.finance.getDailySummary.invalidate({ conversationId: conversationId ?? 0 }),
         utils.finance.getMonthlySummary.invalidate({ conversationId: conversationId ?? 0 }),
       ]);
-      toast.success("Transaction voided");
+      toast.success("Confirmed transaction removed");
     },
-    onError: (error) => toast.error(error.message || "Failed to void transaction"),
+    onError: (error) => toast.error(error.message || "ลบรายการที่ยืนยันแล้วไม่สำเร็จ"),
   });
 
   const pauseRecurringRuleMutation = trpc.finance.pauseRecurringRule.useMutation({
@@ -413,7 +1198,7 @@ export function FinanceHub({
       });
       toast.success("Recurring rule paused");
     },
-    onError: (error) => toast.error(error.message || "Failed to pause rule"),
+    onError: (error) => toast.error(error.message || "หยุดกฎรายการประจำชั่วคราวไม่สำเร็จ"),
   });
 
   const resumeRecurringRuleMutation = trpc.finance.resumeRecurringRule.useMutation({
@@ -425,10 +1210,11 @@ export function FinanceHub({
       });
       toast.success("Recurring rule resumed");
     },
-    onError: (error) => toast.error(error.message || "Failed to resume rule"),
+    onError: (error) => toast.error(error.message || "เริ่มใช้กฎรายการประจำอีกครั้งไม่สำเร็จ"),
   });
 
   const uploadFileMutation = trpc.library.uploadFile.useMutation();
+  const analyzeAttachmentAssistMutation = trpc.localAi.analyzeAttachmentAssist.useMutation();
   const ingestDocumentMutation = trpc.finance.ingestFinanceDocument.useMutation({
     onSuccess: async () => {
       await Promise.all([
@@ -436,10 +1222,15 @@ export function FinanceHub({
         utils.finance.getDailySummary.invalidate({ conversationId: conversationId ?? 0 }),
         utils.finance.getMonthlySummary.invalidate({ conversationId: conversationId ?? 0 }),
       ]);
-      toast.success("Receipt queued for OCR");
+      toast.success("ประมวลผลใบเสร็จแล้ว");
     },
-    onError: (error) => toast.error(error.message || "Failed to queue receipt OCR"),
+    onError: (error) => toast.error(getFinanceErrorMessage(error, "ประมวลผล OCR ใบเสร็จไม่สำเร็จ")),
   });
+
+  const isReceiptUploadBusy = receiptUploadStatus.phase === "reading"
+    || receiptUploadStatus.phase === "ocr"
+    || receiptUploadStatus.phase === "uploading"
+    || receiptUploadStatus.phase === "drafting";
 
   const refreshFinance = async () => {
     if (!conversationId) {
@@ -448,7 +1239,7 @@ export function FinanceHub({
 
     await Promise.all([
       utils.finance.listDrafts.invalidate({ conversationId, limit: draftLimit }),
-      invalidateMonthlyConfirmedTransactions(),
+      invalidateConfirmedTransactionQueries(),
       utils.finance.listRecurringRules.invalidate({
         conversationId,
         status: "active",
@@ -461,8 +1252,8 @@ export function FinanceHub({
 
   const buildQuickDraftText = (nextType: "income" | "expense", currentText: string) => {
     const seed = nextType === "expense"
-      ? t("dashboard:finance.quick.expenseSeed", "Expense: ")
-      : t("dashboard:finance.quick.incomeSeed", "Income: ");
+      ? t("dashboard:finance.quick.expenseSeed", "รายจ่าย: ")
+      : t("dashboard:finance.quick.incomeSeed", "รายรับ: ");
 
     const trimmed = currentText.trim();
     if (!trimmed) {
@@ -480,6 +1271,112 @@ export function FinanceHub({
     setQuickActionStatus({ kind: "idle", message: null });
   };
 
+  const buildPaymentPayloadForType = (type: "income" | "expense" | "transfer") => {
+    const source = resolvePaymentAccountSelection(draftPaymentSourceLabel, paymentAccountsQuery.data ?? []);
+    const destination = resolvePaymentAccountSelection(draftPaymentDestinationLabel, paymentAccountsQuery.data ?? []);
+    const selectedAccount = type === "income" ? destination : source;
+    const paymentDirection: "outbound" | "inbound" | "both" | "unknown" = type === "income"
+      ? "inbound"
+      : type === "transfer"
+        ? "both"
+        : "outbound";
+    const paymentMethodKind = (selectedAccount?.kind as "bank_account" | "credit_card" | "cash" | "unknown" | undefined) ?? "unknown";
+    const paymentInstitutionName = selectedAccount?.institutionName ?? (draftPaymentInstitutionName.trim() || null);
+    const paymentAccountNickname = selectedAccount?.nickname ?? (draftPaymentAccountNickname.trim() || null);
+    const paymentAccountLast4 = selectedAccount?.last4 ?? (draftPaymentAccountLast4.trim() || null);
+    const paymentSourceInstitutionName = type === "income"
+      ? null
+      : source?.institutionName ?? (draftPaymentSourceInstitutionName.trim() || null);
+    const paymentDestinationInstitutionName = type === "expense"
+      ? null
+      : destination?.institutionName ?? (draftPaymentDestinationInstitutionName.trim() || null);
+    return {
+      paymentMethodKind,
+      paymentDirection,
+      paymentSourceAccountId: type === "income" ? null : source?.id ?? null,
+      paymentDestinationAccountId: type === "income" ? destination?.id ?? null : type === "transfer" ? destination?.id ?? null : null,
+      paymentSourceLabel: type === "income" ? null : (source?.displayLabel ?? (draftPaymentSourceLabel.trim() || null)),
+      paymentDestinationLabel: type === "income" ? (destination?.displayLabel ?? (draftPaymentDestinationLabel.trim() || null)) : type === "transfer" ? (destination?.displayLabel ?? (draftPaymentDestinationLabel.trim() || null)) : null,
+      paymentSourceInstitutionName,
+      paymentDestinationInstitutionName,
+      paymentInstitutionName,
+      paymentAccountNickname,
+      paymentAccountLast4,
+      paymentAccountMaskedIdentifier: selectedAccount?.maskedIdentifier ?? (draftPaymentAccountMaskedIdentifier.trim() || null),
+      paymentInstrumentConfidence: selectedAccount ? 0.9 : 0.35,
+    };
+  };
+
+  const selectPaymentAccountAsActive = (label: string, accountType: "source" | "destination") => {
+    const selected = resolvePaymentAccountSelection(label, paymentAccountsQuery.data ?? []);
+    if (accountType === "source") {
+      setDraftPaymentSourceLabel(label);
+      setDraftPaymentSourceInstitutionName(selected?.institutionName ?? "");
+    } else {
+      setDraftPaymentDestinationLabel(label);
+      setDraftPaymentDestinationInstitutionName(selected?.institutionName ?? "");
+    }
+  };
+
+  const handleSavePaymentAccount = async () => {
+    if (!conversationId) {
+      return;
+    }
+
+    const institutionName = draftPaymentInstitutionName.trim();
+    const nickname = draftPaymentAccountNickname.trim();
+    if (!institutionName || !nickname) {
+      toast.error("กรุณาระบุชื่อธนาคาร/ผู้ออกบัตรและชื่อเล่น");
+      return;
+    }
+
+    try {
+      await upsertPaymentAccountMutation.mutateAsync({
+        conversationId,
+        paymentInstitutionName: institutionName,
+        paymentInstitutionKind: draftPaymentInstitutionKind,
+        kind: draftPaymentAccountKind,
+        nickname,
+        last4: draftPaymentAccountLast4.trim() || null,
+        maskedIdentifier: draftPaymentAccountMaskedIdentifier.trim() || null,
+        aliases: draftPaymentAccountAliases
+          .split(",")
+          .map((alias) => alias.trim())
+          .filter(Boolean),
+        isPrimary: false,
+      });
+      setDraftPaymentAccountNickname("");
+      setDraftPaymentAccountLast4("");
+      setDraftPaymentAccountMaskedIdentifier("");
+      setDraftPaymentAccountAliases("");
+      toast.success("บันทึกบัญชีแล้ว");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "บันทึกบัญชีไม่สำเร็จ");
+    }
+  };
+
+  const handleResetPaymentAccountForm = () => {
+    setDraftPaymentInstitutionName("");
+    setDraftPaymentInstitutionKind("bank");
+    setDraftPaymentAccountKind("bank_account");
+    setDraftPaymentAccountNickname("");
+    setDraftPaymentAccountLast4("");
+    setDraftPaymentAccountMaskedIdentifier("");
+    setDraftPaymentAccountAliases("");
+    setDraftPaymentSourceInstitutionName("");
+    setDraftPaymentDestinationInstitutionName("");
+  };
+
+  const handleSelectPaymentInstitution = (item: { displayName: string; kind: string }) => {
+    setDraftPaymentInstitutionName(item.displayName);
+    if (item.kind === "bank" || item.kind === "issuer" || item.kind === "other") {
+      setDraftPaymentInstitutionKind(item.kind);
+    }
+    if (item.kind === "issuer") {
+      setDraftPaymentAccountKind("credit_card");
+    }
+  };
+
   const handleParseText = async () => {
     if (!conversationId || !draftText.trim()) {
       return;
@@ -487,12 +1384,15 @@ export function FinanceHub({
 
     const occurredAt = buildDraftOccurredAtIso(draftDate, draftTime);
     if (!occurredAt) {
-      toast.error(t("dashboard:finance.quick.statusInvalidDateTime", "Please choose a valid date and time."));
+      toast.error(t("dashboard:finance.quick.statusInvalidDateTime", "กรุณาเลือกวันและเวลาที่ถูกต้อง"));
       return;
     }
 
     quickActionModeRef.current = "manual";
     try {
+      const paymentPayload = buildPaymentPayloadForType(
+        draftTypeHint === "auto" ? "expense" : draftTypeHint,
+      );
       const draft = await parseTextMutation.mutateAsync({
         conversationId,
         text: draftText.trim(),
@@ -500,6 +1400,7 @@ export function FinanceHub({
         counterpartyName: draftCounterpartyName.trim() || null,
         typeHint: draftTypeHint === "auto" ? null : draftTypeHint,
         occurredAt,
+        ...paymentPayload,
       });
       const draftPayload = getDraftPayload(draft);
       const counterpartyLabel = getFinanceCounterpartyLabel(
@@ -510,19 +1411,19 @@ export function FinanceHub({
       if (onMirrorFinanceActivity) {
         try {
           await onMirrorFinanceActivity({
-            content: `Created a finance draft from chat text: ${counterpartyLabel} · occurred ${formatDateTime(draftPayload.occurredAt)}`,
+            content: `สร้างฉบับร่างการเงินจากข้อความแชท: ${counterpartyLabel} · วันที่ ${formatDateTime(draftPayload.occurredAt)}`,
             artifacts: [
               {
                 id: `finance-draft-${draft.id}`,
                 type: "table",
-                title: "Finance draft",
+                title: "ฉบับร่างการเงิน",
                 content: [
-                  `Type: ${getTransactionTypeLabel(draft.type)}`,
-                  `Amount: ${formatMoneyMinor(draftPayload.amountMinor, draftPayload.currency)}`,
-                  `Counterparty: ${counterpartyLabel}`,
-                  `Category: ${draftPayload.categoryCode ?? "uncategorized"}`,
-                  `Occurred: ${formatDateTime(draftPayload.occurredAt)}`,
-                  `Source: ${getFinanceSourceLabel(draft.source)}`,
+                  `ประเภท: ${getTransactionTypeLabel(draft.type)}`,
+                  `จำนวนเงิน: ${formatMoneyMinor(draftPayload.amountMinor, draftPayload.currency)}`,
+                  `คู่ค้า/ผู้เกี่ยวข้อง: ${counterpartyLabel}`,
+                  `หมวดหมู่: ${draftPayload.categoryCode ?? "ไม่ระบุหมวดหมู่"}`,
+                  `วันที่ทำรายการ: ${formatDateTime(draftPayload.occurredAt)}`,
+                  `แหล่งที่มา: ${getFinanceSourceLabel(draft.source)}`,
                 ],
                 metadata: {
                   finance: {
@@ -569,7 +1470,7 @@ export function FinanceHub({
         kind: "draft",
         message: t(
           "dashboard:finance.quick.statusNeedText",
-          "Type a note first, then click the quick action again to save it.",
+          "พิมพ์รายละเอียดก่อน แล้วกดบันทึกด่วนอีกครั้งเพื่อบันทึก",
         ),
       });
       return;
@@ -578,20 +1479,21 @@ export function FinanceHub({
     quickActionModeRef.current = "quick";
     setQuickActionStatus({
       kind: "saving",
-      message: t("dashboard:finance.quick.statusSaving", "Processing and saving now..."),
+      message: t("dashboard:finance.quick.statusSaving", "กำลังประมวลผลและบันทึก..."),
     });
 
     const occurredAt = buildDraftOccurredAtIso(draftDate, draftTime);
     if (!occurredAt) {
       setQuickActionStatus({
         kind: "error",
-        message: t("dashboard:finance.quick.statusInvalidDateTime", "Please choose a valid date and time."),
+        message: t("dashboard:finance.quick.statusInvalidDateTime", "กรุณาเลือกวันและเวลาที่ถูกต้อง"),
       });
       quickActionModeRef.current = null;
       return;
     }
 
     try {
+      const paymentPayload = buildPaymentPayloadForType(nextType);
       const draft = await parseTextMutation.mutateAsync({
         conversationId,
         text: preparedText.trim(),
@@ -599,6 +1501,7 @@ export function FinanceHub({
         counterpartyName: draftCounterpartyName.trim() || null,
         typeHint: nextType,
         occurredAt,
+        ...paymentPayload,
       });
       const draftPayload = getDraftPayload(draft);
       const counterpartyLabel = getFinanceCounterpartyLabel(
@@ -612,13 +1515,13 @@ export function FinanceHub({
           kind: "draft",
           message: t(
             "dashboard:finance.quick.statusDraft",
-            "Saved as draft because a few details still need review.",
+            "บันทึกเป็นฉบับร่างเพราะยังต้องตรวจสอบบางรายละเอียด",
           ),
         });
         toast.info(
           t(
             "dashboard:finance.quick.statusDraftToast",
-            "Saved as draft and ready for review",
+            "บันทึกเป็นฉบับร่างและพร้อมตรวจสอบแล้ว",
           ),
         );
         return;
@@ -633,26 +1536,26 @@ export function FinanceHub({
         kind: "saved",
         message: t(
           "dashboard:finance.quick.statusSaved",
-          "Saved to your finance log and updated the summary above.",
+          "บันทึกลงสมุดการเงินและอัปเดตสรุปด้านบนแล้ว",
         ),
       });
 
       if (onMirrorFinanceActivity) {
         try {
           await onMirrorFinanceActivity({
-            content: `Saved a ${draft.type} transaction from quick capture: ${counterpartyLabel} · occurred ${formatDateTime(draftPayload.occurredAt)}.`,
+            content: `บันทึกรายการ ${draft.type} จากการบันทึกด่วน: ${counterpartyLabel} · วันที่ ${formatDateTime(draftPayload.occurredAt)}`,
             artifacts: [
               {
                 id: `finance-transaction-${draft.id}`,
                 type: "table",
-                title: "Finance transaction",
+                title: "รายการการเงิน",
                 content: [
-                  `Type: ${getTransactionTypeLabel(draft.type)}`,
-                  `Amount: ${formatMoneyMinor(draftPayload.amountMinor, draftPayload.currency)}`,
-                  `Counterparty: ${counterpartyLabel}`,
-                  `Category: ${draftPayload.categoryCode ?? "uncategorized"}`,
-                  `Occurred: ${formatDateTime(draftPayload.occurredAt)}`,
-                  `Status: confirmed`,
+                  `ประเภท: ${getTransactionTypeLabel(draft.type)}`,
+                  `จำนวนเงิน: ${formatMoneyMinor(draftPayload.amountMinor, draftPayload.currency)}`,
+                  `คู่ค้า/ผู้เกี่ยวข้อง: ${counterpartyLabel}`,
+                  `หมวดหมู่: ${draftPayload.categoryCode ?? "ไม่ระบุหมวดหมู่"}`,
+                  `วันที่ทำรายการ: ${formatDateTime(draftPayload.occurredAt)}`,
+                  `สถานะ: ยืนยันแล้ว`,
                 ],
                 metadata: {
                   finance: {
@@ -681,16 +1584,16 @@ export function FinanceHub({
       toast.success(
         t(
           "dashboard:finance.quick.statusSavedToast",
-          "Saved and updated the summary",
+          "บันทึกแล้วและอัปเดตสรุป",
         ),
       );
       await refreshFinance();
     } catch (error) {
       setQuickActionStatus({
         kind: "error",
-        message: error instanceof Error ? error.message : t("dashboard:finance.quick.statusError", "Could not save the finance entry."),
+        message: error instanceof Error ? error.message : t("dashboard:finance.quick.statusError", "บันทึกรายการการเงินไม่สำเร็จ"),
       });
-      toast.error(error instanceof Error ? error.message : t("dashboard:finance.quick.statusError", "Could not save the finance entry."));
+      toast.error(error instanceof Error ? error.message : t("dashboard:finance.quick.statusError", "บันทึกรายการการเงินไม่สำเร็จ"));
     } finally {
       quickActionModeRef.current = null;
     }
@@ -701,86 +1604,374 @@ export function FinanceHub({
       return;
     }
 
-    const fileBase64 = await readFileAsBase64(file);
-    const uploadResult = await uploadFileMutation.mutateAsync({
+    const captureIntentToUse = proofUploadIntentRef.current ?? captureIntent;
+    const debugTraceId = createFinanceOcrDebugTraceId();
+    let selectedOcrProviderId: string | null = null;
+    let assistResult: Awaited<ReturnType<typeof analyzeAttachmentAssistMutation.mutateAsync>> | null = null;
+    let assistAnalysisProfile = "document_ocr";
+    let assistMetadata: Record<string, unknown> = {};
+    setReceiptUploadStatus({
+      phase: "reading",
+      message: `กำลังอ่าน ${file.name} ก่อนเริ่มประมวลผล...`,
+      provider: null,
       fileName: file.name,
-      fileType: file.type || "application/octet-stream",
-      fileBase64,
-      title: file.name.replace(/\.[^.]+$/, "") || file.name,
-      visibility: "private",
-      projectId: conversationQuery.data?.projectId ?? undefined,
-      metadata: {
-        finance_intake: true,
-        source: "finance_chat",
-        original_file_name: file.name,
-      },
-    } as any);
-
-    const uploadedItem = (uploadResult as any)?.item ?? uploadResult;
-    const libraryItemId = Number(uploadedItem?.id);
-    if (!Number.isFinite(libraryItemId) || libraryItemId <= 0) {
-      throw new Error("Upload response missing library item id");
-    }
-
-    const result = await ingestDocumentMutation.mutateAsync({
-      conversationId,
-      libraryItemId,
-      counterpartyName: draftCounterpartyName.trim() || null,
-      idempotencyKey: `finance-ocr:${conversationId}:${libraryItemId}`,
     });
-    const draft = (result as { draft?: { id: number; type: string; source?: string; status?: string; confidence?: string | number | null; payloadJson: Record<string, unknown> } | null } | null)?.draft;
-    if (draft && onMirrorFinanceActivity) {
-      const draftPayload = getDraftPayload(draft);
-      const counterpartyLabel = getFinanceCounterpartyLabel(
-        draft.type as "income" | "expense" | "transfer",
-        draftPayload.counterpartyName,
-        draftPayload.merchantName,
-      );
+    setReceiptUploadPreview(null);
+    setReceiptUploadDraftId(null);
+    setReceiptUploadDraftVersion(null);
+    setReceiptUploadAppliedPresetLabel(null);
+    setReceiptUploadPreviewExpanded(false);
+    logFinanceOcrClientStep("receipt_upload_start", {
+      debugTraceId,
+      conversationId,
+      fileName: file.name,
+      mimeType: file.type || "application/octet-stream",
+      captureIntent: captureIntentToUse,
+    });
+
+    try {
+      const fileBase64 = await readFileAsBase64(file);
+      setReceiptUploadStatus({
+        phase: "ocr",
+        message: `กำลังประมวลผล ${file.name} ด้วยตัวแปลงสลิปที่ตั้งค่าไว้...`,
+        provider: null,
+        fileName: file.name,
+      });
+      logFinanceOcrClientStep("receipt_upload_base64_ready", {
+        debugTraceId,
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        base64Length: fileBase64.length,
+      });
+      const runAttachmentAssist = async (analysisProfile: "document_ocr" | "finance_payin_llm_parser") => {
+        logFinanceOcrClientStep(
+          "receipt_upload_analyze_start",
+          {
+            debugTraceId,
+            fileName: file.name,
+            mimeType: file.type || "application/octet-stream",
+            captureIntent: captureIntentToUse,
+            analysisProfile,
+          },
+        );
+        const result = await analyzeAttachmentAssistMutation.mutateAsync({
+          fileName: file.name,
+          mimeType: file.type || "application/octet-stream",
+          contentBase64: fileBase64,
+          mode: file.type.toLowerCase() === "application/pdf" ? "extract_text" : "document_ocr",
+          analysisProfile,
+          captureIntent: captureIntentToUse,
+          debugTraceId,
+        });
+        const metadata = result.metadata ?? {};
+        const text = (result.ocrText || result.extractedText || "").trim() || null;
+        return {
+          result,
+          metadata,
+          text,
+          analysisProfile: typeof metadata.analysis_profile === "string" ? metadata.analysis_profile : analysisProfile,
+          provider: typeof metadata.ocr_provider === "string" ? metadata.ocr_provider : null,
+        };
+      };
+
+      let extractedText: string | null = null;
       try {
-        await onMirrorFinanceActivity({
-          content: `Receipt OCR created a ${draft.type} draft for ${counterpartyLabel} · occurred ${formatDateTime(draftPayload.occurredAt)}.`,
-          artifacts: [
-            {
-              id: `finance-ocr-${libraryItemId}`,
-              type: "table",
-              title: "OCR receipt",
-              content: [
-                `Receipt: ${file.name}`,
-                `Draft type: ${getTransactionTypeLabel(draft.type)}`,
-                `Amount: ${formatMoneyMinor(draftPayload.amountMinor, draftPayload.currency)}`,
-                `Counterparty: ${counterpartyLabel}`,
-                `Category: ${draftPayload.categoryCode ?? "uncategorized"}`,
-                `Occurred: ${formatDateTime(draftPayload.occurredAt)}`,
-                `Source: OCR receipt`,
-              ],
-              metadata: {
-                finance: {
-                  kind: "receipt",
-                  draftId: draft.id,
-                  type: draft.type,
-                  amountMinor: draftPayload.amountMinor ?? null,
-                  currency: draftPayload.currency ?? DEFAULT_CURRENCY,
-                  categoryCode: draftPayload.categoryCode ?? "uncategorized",
-                  counterpartyName: draftPayload.counterpartyName ?? draftPayload.merchantName ?? null,
-                  merchantName: draftPayload.merchantName ?? null,
-                  source: draft.source ?? "ocr_document",
-                  status: draft.status ?? "draft",
-                  confidence: draft.confidence ?? null,
-                  projectId: conversationQuery.data?.projectId ?? null,
-                  libraryItemId,
+        const primaryAssist = await runAttachmentAssist("document_ocr");
+        assistResult = primaryAssist.result;
+        assistMetadata = primaryAssist.metadata;
+        extractedText = primaryAssist.text;
+        assistAnalysisProfile = primaryAssist.analysisProfile;
+        const assistOcrProviderId = primaryAssist.provider;
+        selectedOcrProviderId = assistAnalysisProfile === "finance_payin_llm_parser"
+          ? "finance_payin_llm_parser"
+          : assistOcrProviderId;
+        const providerLabel = assistAnalysisProfile === "finance_payin_llm_parser"
+          ? "ตัวแปลง LLM"
+          : getDocumentOcrProviderLabel(selectedOcrProviderId);
+        setReceiptUploadStatus({
+          phase: "uploading",
+          message: extractedText
+            ? `ประมวลผลเสร็จผ่าน ${providerLabel} แล้ว กำลังอัปโหลดไปยังคลังการเงิน...`
+            : `ตัวแปลงที่ตั้งค่าผ่าน ${providerLabel} ไม่พบข้อความ กำลังทำงานต่อจากข้อมูลเมตาของสลิปที่อัปโหลด...`,
+          provider: selectedOcrProviderId,
+          fileName: file.name,
+        });
+        logFinanceOcrClientStep("receipt_upload_analyze_success", {
+          debugTraceId,
+          fileName: file.name,
+          extractedTextLength: extractedText?.length ?? 0,
+          provider: assistOcrProviderId,
+          searchQuality: assistResult.searchQuality ?? null,
+        });
+
+        if (!extractedText) {
+          logFinanceOcrClientStep("receipt_upload_analyze_no_text", {
+            debugTraceId,
+            fileName: file.name,
+            provider: assistOcrProviderId,
+            analysisProfile: assistAnalysisProfile,
+          });
+        }
+      } catch (error) {
+        logFinanceOcrClientStep("receipt_upload_analyze_failed", {
+          debugTraceId,
+          fileName: file.name,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        const message = getFinanceErrorMessage(error, "ประมวลผล OCR ใบเสร็จไม่สำเร็จ");
+        setReceiptUploadStatus({
+          phase: "error",
+          message,
+          provider: null,
+          fileName: file.name,
+        });
+        throw error instanceof Error ? error : new Error(message);
+      }
+
+      const currentAssistResult = assistResult;
+      if (!currentAssistResult) {
+        throw new Error("OCR analysis did not return a result");
+      }
+
+      setReceiptUploadStatus({
+        phase: "uploading",
+        message: `กำลังอัปโหลด ${file.name} ไปยังคลังการเงิน...`,
+        provider: selectedOcrProviderId,
+        fileName: file.name,
+      });
+      logFinanceOcrClientStep("receipt_upload_library_upload_start", {
+        debugTraceId,
+        fileName: file.name,
+        projectId: conversationQuery.data?.projectId ?? null,
+        hasExtractedText: Boolean(extractedText),
+      });
+      const uploadResult = await uploadFileMutation.mutateAsync({
+        fileName: file.name,
+        fileType: file.type || "application/octet-stream",
+        fileBase64,
+        title: file.name.replace(/\.[^.]+$/, "") || file.name,
+        visibility: "private",
+        projectId: conversationQuery.data?.projectId ?? undefined,
+        metadata: {
+          finance_intake: true,
+          source: "finance_chat",
+          original_file_name: file.name,
+          finance_capture_intent: captureIntentToUse,
+          analysis_profile: assistAnalysisProfile,
+          finance_debug_trace_id: debugTraceId,
+          debug_trace_id: debugTraceId,
+          ...(extractedText
+            ? {
+                extracted_text: extractedText,
+                ocr_text: extractedText,
+              }
+            : {}),
+          ...(typeof assistMetadata.unified_payin_slip_summary === "string"
+            ? { unified_payin_slip_summary: assistMetadata.unified_payin_slip_summary }
+            : {}),
+          ...(typeof assistMetadata.unified_payin_slip_result === "object"
+            ? { unified_payin_slip_result: assistMetadata.unified_payin_slip_result }
+            : {}),
+        },
+      } as any);
+      logFinanceOcrClientStep("receipt_upload_library_upload_success", {
+        debugTraceId,
+        fileName: file.name,
+        libraryItemId: (uploadResult as any)?.item?.id ?? (uploadResult as any)?.id ?? null,
+      });
+
+      const uploadResultAny = uploadResult as any;
+      const uploadedItem = uploadResultAny?.item ?? uploadResultAny;
+      const libraryItemId = Number(uploadedItem?.id);
+      const sourceUrl = String(uploadedItem?.sourceUrl ?? uploadedItem?.source_url ?? uploadResultAny?.sourceUrl ?? uploadResultAny?.source_url ?? "").trim() || null;
+      const sourceFileName = String(uploadedItem?.title ?? file.name).trim() || file.name;
+      if (!Number.isFinite(libraryItemId) || libraryItemId <= 0) {
+        throw new Error("ผลอัปโหลดไม่มีรหัสรายการในคลังเอกสาร");
+      }
+
+      logFinanceOcrClientStep("receipt_upload_ingest_start", {
+        debugTraceId,
+        fileName: file.name,
+        libraryItemId,
+        captureIntent: captureIntentToUse,
+      });
+      setReceiptUploadStatus({
+        phase: "drafting",
+        message: `กำลังสร้างฉบับร่างจาก ${file.name}...`,
+        provider: selectedOcrProviderId,
+        fileName: file.name,
+      });
+      const result = await ingestDocumentMutation.mutateAsync({
+        conversationId,
+        libraryItemId,
+        counterpartyName: draftCounterpartyName.trim() || null,
+        captureIntent: captureIntentToUse,
+        idempotencyKey: `finance-ocr:${conversationId}:${libraryItemId}`,
+        debugTraceId,
+      });
+      logFinanceOcrClientStep("receipt_upload_ingest_success", {
+        debugTraceId,
+        fileName: file.name,
+        libraryItemId,
+        draftId: (result as { draft?: { id?: number | null } | null } | null)?.draft?.id ?? null,
+      });
+      const draft = (result as { draft?: { id: number; version?: number; type: string; source?: string; status?: string; confidence?: string | number | null; payloadJson: Record<string, unknown> } | null } | null)?.draft;
+      if (draft && onMirrorFinanceActivity) {
+        const draftPayload = getDraftPayload(draft);
+        const counterpartyLabel = getFinanceCounterpartyLabel(
+          draft.type as "income" | "expense" | "transfer",
+          draftPayload.counterpartyName,
+          draftPayload.merchantName,
+        );
+        try {
+          await onMirrorFinanceActivity({
+            content: `Receipt OCR created a ${draft.type} draft for ${counterpartyLabel} · occurred ${formatDateTime(draftPayload.occurredAt)}.`,
+            artifacts: [
+              {
+                id: `finance-ocr-${libraryItemId}`,
+                type: "table",
+                title: "OCR receipt",
+                content: [
+                  `Receipt: ${file.name}`,
+                  `Draft type: ${getTransactionTypeLabel(draft.type)}`,
+                  `Amount: ${formatMoneyMinor(draftPayload.amountMinor, draftPayload.currency)}`,
+                  `Counterparty: ${counterpartyLabel}`,
+                  `Category: ${draftPayload.categoryCode ?? "uncategorized"}`,
+                  `Occurred: ${formatDateTime(draftPayload.occurredAt)}`,
+                  `Source: OCR receipt`,
+                ],
+                metadata: {
+                  finance: {
+                    kind: "receipt",
+                    draftId: draft.id,
+                    type: draft.type,
+                    amountMinor: draftPayload.amountMinor ?? null,
+                    currency: draftPayload.currency ?? DEFAULT_CURRENCY,
+                    categoryCode: draftPayload.categoryCode ?? "uncategorized",
+                    counterpartyName: draftPayload.counterpartyName ?? draftPayload.merchantName ?? null,
+                    merchantName: draftPayload.merchantName ?? null,
+                    source: draft.source ?? "ocr_document",
+                    status: draft.status ?? "draft",
+                    confidence: draft.confidence ?? null,
+                    projectId: conversationQuery.data?.projectId ?? null,
+                    libraryItemId,
+                  },
                 },
               },
-            },
             ],
           });
-      } catch {
-        // Best-effort mirror to chat; the OCR draft is already persisted.
+        } catch {
+          // Best-effort mirror to chat; the OCR draft is already persisted.
+        }
       }
-    }
 
-    const next = getCurrentDraftDateTime();
-    setDraftDate(next.date);
-    setDraftTime(next.time);
+      if (draft) {
+        setReceiptUploadDraftId(draft.id);
+        setReceiptUploadDraftVersion(typeof draft.version === "number" ? draft.version : null);
+        const draftPayload = getDraftPayload(draft);
+        const occurredAtState = getDraftDateTimeInputState(draftPayload.occurredAt ?? new Date().toISOString());
+        const nextPaymentKind = draftPayload.paymentMethodKind === "credit_card"
+          ? "issuer"
+          : draftPayload.paymentMethodKind === "bank_account"
+            ? "bank"
+            : "other";
+        setDraftText((draftPayload.note ?? extractedText ?? "").trim());
+        setDraftCategoryHint((draftPayload.categoryCode ?? "").trim());
+        setDraftCounterpartyName((draftPayload.counterpartyName ?? draftPayload.merchantName ?? "").trim());
+        setDraftTypeHint((draft.type as "income" | "expense" | "transfer") ?? "auto");
+        setDraftDate(occurredAtState.date);
+        setDraftTime(occurredAtState.time);
+        setDraftPaymentSourceLabel((draftPayload.paymentSourceLabel ?? "").trim());
+        setDraftPaymentDestinationLabel((draftPayload.paymentDestinationLabel ?? "").trim());
+        setDraftPaymentSourceInstitutionName((draftPayload.paymentSourceInstitutionName ?? "").trim());
+        setDraftPaymentDestinationInstitutionName((draftPayload.paymentDestinationInstitutionName ?? "").trim());
+        setDraftPaymentInstitutionName((
+          draftPayload.paymentInstitutionName
+          ?? draftPayload.paymentSourceInstitutionName
+          ?? draftPayload.paymentDestinationInstitutionName
+          ?? ""
+        ).trim());
+        setDraftPaymentInstitutionKind(nextPaymentKind);
+        setDraftPaymentAccountKind((draftPayload.paymentMethodKind ?? "unknown") as typeof draftPaymentAccountKind);
+        setDraftPaymentAccountNickname((draftPayload.paymentAccountNickname ?? "").trim());
+        setDraftPaymentAccountLast4((draftPayload.paymentAccountLast4 ?? "").trim());
+        setDraftPaymentAccountMaskedIdentifier((draftPayload.paymentAccountMaskedIdentifier ?? "").trim());
+        setReceiptUploadPreview({
+          type: draft.type as "income" | "expense" | "transfer",
+          amountMinor: typeof draftPayload.amountMinor === "number" ? draftPayload.amountMinor : null,
+          currency: draftPayload.currency ?? DEFAULT_CURRENCY,
+          categoryCode: draftPayload.categoryCode ?? null,
+          counterpartyName: draftPayload.counterpartyName ?? draftPayload.merchantName ?? null,
+          merchantName: draftPayload.merchantName ?? null,
+          note: draftPayload.note ?? extractedText ?? null,
+          humanReadableSummary: draftPayload.humanReadableSummary ?? null,
+          occurredAt: draftPayload.occurredAt ?? null,
+          paymentMethodKind: draftPayload.paymentMethodKind ?? null,
+          paymentDirection: draftPayload.paymentDirection ?? null,
+          paymentSourceLabel: draftPayload.paymentSourceLabel ?? null,
+          paymentDestinationLabel: draftPayload.paymentDestinationLabel ?? null,
+          paymentSourceName: draftPayload.paymentSourceName ?? null,
+          paymentDestinationName: draftPayload.paymentDestinationName ?? null,
+          paymentSourceInstitutionName: draftPayload.paymentSourceInstitutionName ?? null,
+          paymentDestinationInstitutionName: draftPayload.paymentDestinationInstitutionName ?? null,
+          paymentInstitutionName: draftPayload.paymentInstitutionName ?? null,
+          paymentAccountNickname: draftPayload.paymentAccountNickname ?? null,
+          paymentAccountLast4: draftPayload.paymentAccountLast4 ?? null,
+          paymentAccountMaskedIdentifier: draftPayload.paymentAccountMaskedIdentifier ?? null,
+          slipReference: draftPayload.slipReference ?? null,
+          merchantId: draftPayload.merchantId ?? null,
+          paymentFeeMinor: draftPayload.paymentFeeMinor ?? null,
+          confidence: typeof draft.confidence === "number" ? draft.confidence : null,
+          missingFields: Array.isArray(draftPayload.missingFields)
+            ? draftPayload.missingFields.filter((field): field is string => typeof field === "string" && field.trim().length > 0)
+            : [],
+          evidence: Array.isArray(draftPayload.evidence)
+            ? draftPayload.evidence.filter((item): item is FinanceEvidenceItem => Boolean(
+              item
+              && typeof item.field === "string"
+              && typeof item.snippet === "string"
+              && item.field.trim().length > 0
+              && item.snippet.trim().length > 0,
+            ))
+            : [],
+          sourceUrl: draftPayload.sourceUrl ?? sourceUrl,
+          sourceFileName: draftPayload.sourceFileName ?? sourceFileName,
+          mimeType: file.type || "application/octet-stream",
+        });
+      }
+      setReceiptUploadStatus({
+        phase: "completed",
+        message: `ประมวลผล ${file.name} เสร็จแล้ว`,
+        provider: selectedOcrProviderId,
+        fileName: file.name,
+      });
+      logFinanceOcrClientStep("receipt_upload_complete", {
+        debugTraceId,
+        fileName: file.name,
+        libraryItemId,
+      });
+    } catch (error) {
+      setReceiptUploadStatus({
+        phase: "error",
+        message: getFinanceErrorMessage(error, "ประมวลผล OCR ใบเสร็จไม่สำเร็จ"),
+        provider: selectedOcrProviderId,
+        fileName: file.name,
+      });
+      logFinanceOcrClientStep("receipt_upload_failed", {
+        debugTraceId,
+        fileName: file.name,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    } finally {
+      proofUploadIntentRef.current = null;
+    }
+  };
+
+  const openProofUpload = (intent: FinanceCaptureIntent) => {
+    setCaptureIntent(intent);
+    proofUploadIntentRef.current = intent;
+    receiptInputRef.current?.click();
   };
 
   const summaryCards = financeReady ? [
@@ -818,6 +2009,201 @@ export function FinanceHub({
   const recentTransactions = transactionsQuery.data ?? [];
   const recurringRules = recurringRulesQuery.data ?? [];
   const monthlyTransactions = monthlyTransactionsQuery.data ?? [];
+  const receiptUploadPreviewAmount = receiptUploadPreview?.amountMinor !== null && receiptUploadPreview?.amountMinor !== undefined
+    ? formatMoneyMinor(receiptUploadPreview.amountMinor, receiptUploadPreview.currency)
+    : "—";
+  const receiptUploadPreviewIsImage = Boolean(
+    receiptUploadPreview?.mimeType
+    && receiptUploadPreview.mimeType.toLowerCase().startsWith("image/")
+    && receiptUploadPreview.sourceUrl,
+  );
+  const receiptUploadPreviewIsTransfer = receiptUploadPreview?.type === "transfer";
+  const receiptUploadPreviewIsSelfTransfer = Boolean(
+    receiptUploadPreviewIsTransfer && (
+      (
+        normalizePreviewComparisonText(receiptUploadPreview.paymentSourceInstitutionName)
+        && normalizePreviewComparisonText(receiptUploadPreview.paymentSourceInstitutionName) === normalizePreviewComparisonText(receiptUploadPreview.paymentDestinationInstitutionName)
+      )
+      || (
+        normalizePreviewComparisonText(receiptUploadPreview.paymentSourceLabel)
+        && normalizePreviewComparisonText(receiptUploadPreview.paymentSourceLabel) === normalizePreviewComparisonText(receiptUploadPreview.paymentDestinationLabel)
+      )
+    ),
+  );
+  const receiptUploadPreviewTransferSides = receiptUploadPreviewIsTransfer ? [
+      {
+        title: "ฝั่งผู้โอน",
+        labelBank: "ธนาคารผู้โอน",
+        labelAccount: "บัญชีผู้โอน",
+        labelName: "ชื่อผู้โอน",
+        bank: receiptUploadPreview.paymentSourceInstitutionName ?? "—",
+        account: receiptUploadPreview.paymentSourceLabel ?? "—",
+        partyName: receiptUploadPreview.paymentSourceName ?? null,
+        accountName: extractPreviewAccountName(receiptUploadPreview.paymentSourceLabel),
+        maskedIdentifier: extractPreviewMaskedIdentifier(receiptUploadPreview.paymentSourceLabel),
+        tone: "border border-l-4 border-rose-200 border-l-rose-500 bg-rose-50/90 text-rose-800 shadow-sm",
+        badgeTone: "border-rose-200 bg-rose-100 text-rose-800",
+        badgeLabel: "เงินออก",
+      },
+      {
+        title: "ฝั่งผู้รับเงิน",
+        labelBank: "ธนาคารผู้รับเงิน",
+        labelAccount: "บัญชีผู้รับเงิน",
+        labelName: "ชื่อผู้รับเงิน",
+        bank: receiptUploadPreview.paymentDestinationInstitutionName ?? "—",
+        account: receiptUploadPreview.paymentDestinationLabel ?? "—",
+        partyName: receiptUploadPreview.paymentDestinationName ?? null,
+        accountName: extractPreviewAccountName(receiptUploadPreview.paymentDestinationLabel),
+        maskedIdentifier: extractPreviewMaskedIdentifier(receiptUploadPreview.paymentDestinationLabel),
+        tone: "border border-l-4 border-emerald-200 border-l-emerald-500 bg-emerald-50/90 text-emerald-800 shadow-sm",
+        badgeTone: "border-emerald-200 bg-emerald-100 text-emerald-800",
+        badgeLabel: "เงินเข้า",
+      },
+  ] : [];
+  const receiptUploadPreviewTransferSummary = buildTransferSummaryLine(receiptUploadPreviewTransferSides, receiptUploadPreviewIsSelfTransfer);
+  const receiptUploadPreviewEvidence = receiptUploadPreview?.evidence ?? [];
+  const receiptUploadPreviewMissingFields = receiptUploadPreview?.missingFields ?? [];
+  const receiptUploadPreviewEvidenceSummary = buildEvidenceSummaryLine(receiptUploadPreviewEvidence);
+  const receiptUploadPreviewCombinedSummary = receiptUploadPreviewTransferSummary
+    ? `${receiptUploadPreviewEvidenceSummary} • ${receiptUploadPreviewTransferSummary}`
+    : receiptUploadPreviewEvidenceSummary;
+  const receiptUploadPreviewReadableSummary = receiptUploadPreview
+    ? buildReadableSlipSummary({
+      humanReadableSummary: receiptUploadPreview.humanReadableSummary,
+      type: receiptUploadPreview.type,
+      amountLabel: receiptUploadPreviewAmount,
+      currency: receiptUploadPreview.currency,
+      counterpartyName: receiptUploadPreview.counterpartyName,
+      note: receiptUploadPreview.note,
+      occurredAt: receiptUploadPreview.occurredAt,
+      paymentSourceInstitutionName: receiptUploadPreview.paymentSourceInstitutionName,
+      paymentDestinationInstitutionName: receiptUploadPreview.paymentDestinationInstitutionName,
+      paymentSourceLabel: receiptUploadPreview.paymentSourceLabel,
+      paymentDestinationLabel: receiptUploadPreview.paymentDestinationLabel,
+      paymentSourceName: receiptUploadPreview.paymentSourceName ?? null,
+      paymentDestinationName: receiptUploadPreview.paymentDestinationName ?? null,
+      paymentInstitutionName: receiptUploadPreview.paymentInstitutionName,
+      paymentDirection: receiptUploadPreview.paymentDirection,
+      slipReference: receiptUploadPreview.slipReference ?? null,
+      merchantId: receiptUploadPreview.merchantId ?? null,
+      paymentFeeMinor: receiptUploadPreview.paymentFeeMinor ?? null,
+    })
+    : null;
+  const receiptUploadPreviewKeyFields = receiptUploadPreview ? [
+    { label: "ประเภท", value: getTransactionTypeLabel(receiptUploadPreview.type) },
+    { label: "จำนวนเงิน", value: receiptUploadPreviewAmount },
+    { label: "คู่ค้า/ผู้เกี่ยวข้อง", value: receiptUploadPreview.counterpartyName ?? "—" },
+    { label: "หมวดหมู่", value: receiptUploadPreview.categoryCode ?? "—" },
+    { label: "วันเวลา", value: formatDateTime(receiptUploadPreview.occurredAt) },
+    { label: "เลขอ้างอิงสลิป", value: receiptUploadPreview.slipReference ?? "—" },
+    { label: "รหัสร้านค้า", value: receiptUploadPreview.merchantId ?? "—" },
+    { label: "ค่าธรรมเนียม", value: receiptUploadPreview.paymentFeeMinor !== null ? formatMoneyMinor(receiptUploadPreview.paymentFeeMinor, receiptUploadPreview.currency) : "—" },
+    { label: "ชื่อผู้โอน", value: receiptUploadPreview.paymentSourceName ?? "—" },
+    { label: "ชื่อผู้รับเงิน", value: receiptUploadPreview.paymentDestinationName ?? "—" },
+    { label: "ธนาคารผู้โอน", value: receiptUploadPreview.paymentSourceInstitutionName ?? "—" },
+    { label: "ธนาคารผู้รับเงิน", value: receiptUploadPreview.paymentDestinationInstitutionName ?? "—" },
+    { label: "บัญชีผู้โอน", value: receiptUploadPreview.paymentSourceLabel ?? "—" },
+    { label: "บัญชีผู้รับเงิน", value: receiptUploadPreview.paymentDestinationLabel ?? "—" },
+    { label: "ชื่อย่อบัญชี", value: receiptUploadPreview.paymentAccountNickname ?? "—" },
+    { label: "เลขที่ถูกปิดบัง", value: receiptUploadPreview.paymentAccountMaskedIdentifier ?? "—" },
+    { label: "ธนาคาร/ผู้ออกหลัก", value: receiptUploadPreview.paymentInstitutionName ?? "—" },
+    { label: "ไฟล์ต้นฉบับ", value: receiptUploadPreview.sourceFileName ?? "—" },
+  ] : [];
+  const receiptUploadPreviewEssentialFieldLabels = receiptUploadPreview?.type === "transfer"
+    ? [
+        "ประเภท",
+        "จำนวนเงิน",
+        "วันเวลา",
+        "ธนาคารผู้โอน",
+        "ธนาคารผู้รับเงิน",
+        "ชื่อผู้โอน",
+        "ชื่อผู้รับเงิน",
+        "บัญชีผู้โอน",
+        "บัญชีผู้รับเงิน",
+        "ค่าธรรมเนียม",
+        "เลขอ้างอิงสลิป",
+        "รหัสร้านค้า",
+      ]
+    : [
+        "ประเภท",
+        "จำนวนเงิน",
+        "คู่ค้า/ผู้เกี่ยวข้อง",
+        "วันเวลา",
+        "เลขอ้างอิงสลิป",
+        "รหัสร้านค้า",
+        "ค่าธรรมเนียม",
+      ];
+  const receiptUploadPreviewEssentialFields = receiptUploadPreviewKeyFields
+    .filter((field) => receiptUploadPreviewEssentialFieldLabels.includes(field.label))
+    .slice(0, 6);
+  const receiptUploadPresetSuggestions = useMemo(() => {
+    if (!receiptUploadPreview) {
+      return [];
+    }
+
+    const ranked = rankFinanceSlipMappingPresets(
+      {
+        text: [
+          receiptUploadPreviewReadableSummary ?? "",
+          receiptUploadPreview.humanReadableSummary ?? "",
+          receiptUploadPreview.note ?? "",
+          draftText,
+          receiptUploadPreview.sourceFileName ?? "",
+        ].join(" "),
+        counterpartyName: receiptUploadPreview.counterpartyName ?? null,
+        merchantName: receiptUploadPreview.counterpartyName ?? receiptUploadPreview.paymentDestinationName ?? receiptUploadPreview.paymentSourceName ?? null,
+        paymentSourceName: receiptUploadPreview.paymentSourceName ?? null,
+        paymentDestinationName: receiptUploadPreview.paymentDestinationName ?? null,
+        paymentSourceLabel: receiptUploadPreview.paymentSourceLabel ?? null,
+        paymentDestinationLabel: receiptUploadPreview.paymentDestinationLabel ?? null,
+        slipReference: receiptUploadPreview.slipReference ?? null,
+        merchantId: receiptUploadPreview.merchantId ?? null,
+      },
+      financeSlipMappingPresets,
+    );
+
+    return (ranked.length > 0
+      ? ranked
+      : financeSlipMappingPresets.map((preset) => ({ preset, score: 0 }))).slice(0, 4);
+  }, [
+    draftText,
+    financeSlipMappingPresets,
+    receiptUploadPreview,
+    receiptUploadPreviewReadableSummary,
+  ]);
+  const receiptUploadPrimaryPresetSuggestion = receiptUploadPresetSuggestions[0] ?? null;
+  const receiptUploadPresetAlternatives = receiptUploadPresetSuggestions.slice(1, 3);
+  const receiptUploadPinnedMerchantPresetSuggestion = useMemo(() => {
+    if (!receiptUploadPreview || pinnedMerchantPresets.length === 0) {
+      return null;
+    }
+
+    return findBestFinancePinnedMerchantPreset(
+      {
+        text: [
+          receiptUploadPreviewReadableSummary ?? "",
+          receiptUploadPreview.humanReadableSummary ?? "",
+          receiptUploadPreview.note ?? "",
+          draftText,
+          receiptUploadPreview.sourceFileName ?? "",
+        ].join(" "),
+        counterpartyName: receiptUploadPreview.counterpartyName ?? null,
+        merchantName: receiptUploadPreview.merchantName ?? receiptUploadPreview.counterpartyName ?? receiptUploadPreview.paymentDestinationName ?? receiptUploadPreview.paymentSourceName ?? null,
+        paymentSourceName: receiptUploadPreview.paymentSourceName ?? null,
+        paymentDestinationName: receiptUploadPreview.paymentDestinationName ?? null,
+        paymentSourceLabel: receiptUploadPreview.paymentSourceLabel ?? null,
+        paymentDestinationLabel: receiptUploadPreview.paymentDestinationLabel ?? null,
+        slipReference: receiptUploadPreview.slipReference ?? null,
+        merchantId: receiptUploadPreview.merchantId ?? null,
+      },
+      pinnedMerchantPresets,
+    );
+  }, [
+    draftText,
+    pinnedMerchantPresets,
+    receiptUploadPreview,
+    receiptUploadPreviewReadableSummary,
+  ]);
   const monthlyCategoryBreakdown = useMemo(() => {
     const buckets = new Map<string, {
       categoryCode: string;
@@ -851,6 +2237,104 @@ export function FinanceHub({
     () => monthlyTransactions.reduce((sum, transaction) => sum + transaction.amountMinor, 0),
     [monthlyTransactions],
   );
+  const merchantSuggestions = useMemo<MerchantSuggestion[]>(() => {
+    const buckets = new Map<string, {
+      displayName: string;
+      categoryCounts: Map<string, number>;
+      typeCounts: Map<"income" | "expense" | "transfer", number>;
+      usageCount: number;
+      lastSeenAt: number;
+      aliases: Set<string>;
+    }>();
+
+    for (const transaction of monthlyTransactions) {
+      const displayName = (transaction.merchantName ?? transaction.counterpartyName ?? "").trim();
+      if (!displayName) {
+        continue;
+      }
+
+      const key = normalizePreviewComparisonText(displayName);
+      if (!key) {
+        continue;
+      }
+
+      const bucket = buckets.get(key) ?? {
+        displayName,
+        categoryCounts: new Map<string, number>(),
+        typeCounts: new Map<"income" | "expense" | "transfer", number>(),
+        usageCount: 0,
+        lastSeenAt: 0,
+        aliases: new Set<string>(),
+      };
+      bucket.displayName = bucket.displayName || displayName;
+      bucket.usageCount += 1;
+      const time = new Date(transaction.occurredAt ?? transaction.createdAt ?? Date.now()).getTime();
+      if (Number.isFinite(time)) {
+        bucket.lastSeenAt = Math.max(bucket.lastSeenAt, time);
+      }
+      const categoryCode = (transaction.categoryCode ?? "").trim();
+      if (categoryCode) {
+        bucket.categoryCounts.set(categoryCode, (bucket.categoryCounts.get(categoryCode) ?? 0) + 1);
+      }
+      bucket.typeCounts.set(transaction.type, (bucket.typeCounts.get(transaction.type) ?? 0) + 1);
+      if (transaction.counterpartyName?.trim()) {
+        bucket.aliases.add(transaction.counterpartyName.trim());
+      }
+      if (transaction.merchantName?.trim()) {
+        bucket.aliases.add(transaction.merchantName.trim());
+      }
+      buckets.set(key, bucket);
+    }
+
+    const toSuggestion = (bucket: {
+      displayName: string;
+      categoryCounts: Map<string, number>;
+      typeCounts: Map<"income" | "expense" | "transfer", number>;
+      usageCount: number;
+      lastSeenAt: number;
+      aliases: Set<string>;
+    }): MerchantSuggestion => {
+      const categoryEntries = Array.from(bucket.categoryCounts.entries()).sort((left, right) => right[1] - left[1]);
+      const typeEntries = Array.from(bucket.typeCounts.entries()).sort((left, right) => right[1] - left[1]);
+      const topCategory = categoryEntries[0]?.[0] ?? null;
+      const topType = typeEntries[0]?.[0] ?? "expense";
+      return {
+        displayName: bucket.displayName,
+        categoryCode: topCategory,
+        type: topType,
+        usageCount: bucket.usageCount,
+        lastSeenAt: bucket.lastSeenAt > 0 ? new Date(bucket.lastSeenAt).toISOString() : null,
+        aliases: Array.from(bucket.aliases).slice(0, 3),
+      };
+    };
+
+    const sorted = Array.from(buckets.values())
+      .map((bucket) => toSuggestion(bucket))
+      .sort((left, right) => right.usageCount - left.usageCount || new Date(right.lastSeenAt ?? 0).getTime() - new Date(left.lastSeenAt ?? 0).getTime() || left.displayName.localeCompare(right.displayName));
+
+    const repeated = sorted.filter((item) => item.usageCount >= 2);
+    const source = repeated.length > 0 ? repeated : sorted;
+    return source.slice(0, compact ? 4 : 6);
+  }, [compact, monthlyTransactions]);
+  const receiptUploadMerchantPatternSuggestion = useMemo(() => {
+    if (!receiptUploadPreview) {
+      return null;
+    }
+
+    return findFrequentMerchantPatternSuggestion(
+      {
+        counterpartyName: receiptUploadPreview.counterpartyName,
+        merchantName: receiptUploadPreview.merchantName,
+        paymentSourceName: receiptUploadPreview.paymentSourceName,
+        paymentDestinationName: receiptUploadPreview.paymentDestinationName,
+        paymentAccountNickname: receiptUploadPreview.paymentAccountNickname,
+      },
+      merchantSuggestions,
+    );
+  }, [
+    merchantSuggestions,
+    receiptUploadPreview,
+  ]);
 
   const activeDraftIntentLabel = draftTypeHint === "income"
     ? t("dashboard:finance.quick.intent.income", "Income")
@@ -881,6 +2365,87 @@ export function FinanceHub({
     () => recentTransactions.find((transaction) => transaction.id === selectedEvidenceTransactionId) ?? recentTransactions[0] ?? null,
     [recentTransactions, selectedEvidenceTransactionId],
   );
+  const pendingVoidTransaction = useMemo(() => {
+    if (pendingVoidTransactionId === null) {
+      return null;
+    }
+    return recentTransactions.find((transaction) => transaction.id === pendingVoidTransactionId)
+      ?? (activeEvidenceTransaction?.id === pendingVoidTransactionId ? activeEvidenceTransaction : null);
+  }, [pendingVoidTransactionId, recentTransactions, activeEvidenceTransaction]);
+  const pendingVoidReasonTrimmed = pendingVoidReason.trim();
+  const isPendingVoidReasonValid = pendingVoidReasonTrimmed.length >= 3;
+  const activeEvidenceTransactionDetails = useMemo(() => {
+    if (!activeEvidenceTransaction) {
+      return null;
+    }
+
+    const transaction = activeEvidenceTransaction;
+    const amountLabel = formatMoneyMinor(transaction.amountMinor, transaction.currency);
+    const sourceAccountLabel = transaction.paymentSourceLabel ?? transaction.paymentSourceName ?? transaction.paymentSourceInstitutionName ?? "—";
+    const destinationAccountLabel = transaction.paymentDestinationLabel ?? transaction.paymentDestinationName ?? transaction.paymentDestinationInstitutionName ?? "—";
+
+    return {
+      summary: buildReadableSlipSummary({
+        humanReadableSummary: null,
+        type: transaction.type,
+        amountLabel,
+        currency: transaction.currency,
+        counterpartyName: transaction.counterpartyName ?? transaction.merchantName ?? null,
+        note: transaction.note ?? null,
+        occurredAt: transaction.occurredAt,
+        paymentSourceInstitutionName: transaction.paymentSourceInstitutionName ?? null,
+        paymentDestinationInstitutionName: transaction.paymentDestinationInstitutionName ?? null,
+        paymentSourceLabel: transaction.paymentSourceLabel ?? null,
+        paymentDestinationLabel: transaction.paymentDestinationLabel ?? null,
+        paymentSourceName: transaction.paymentSourceName ?? null,
+        paymentDestinationName: transaction.paymentDestinationName ?? null,
+        paymentInstitutionName: transaction.paymentInstitutionName ?? null,
+        paymentDirection: transaction.paymentDirection ?? null,
+        slipReference: transaction.slipReference ?? null,
+        merchantId: transaction.merchantId ?? null,
+        paymentFeeMinor: transaction.paymentFeeMinor ?? null,
+      }),
+      overviewFields: [
+        { label: "ประเภท", value: getTransactionTypeLabel(transaction.type) },
+        { label: "จำนวนเงิน", value: amountLabel },
+        { label: "หมวดหมู่", value: transaction.categoryCode || "—" },
+        { label: "คู่ค้า/ผู้เกี่ยวข้อง", value: transaction.counterpartyName ?? transaction.merchantName ?? "—" },
+        { label: "สถานะ", value: transaction.status },
+        { label: "แหล่งที่มา", value: getFinanceSourceLabel(transaction.source) },
+        { label: "วันเวลา", value: formatDateTime(transaction.occurredAt) },
+        { label: "หมายเหตุ", value: transaction.note ?? "—" },
+      ],
+      routingFields: [
+        { label: "ทิศทางการจ่าย", value: getPaymentDirectionLabel(transaction.paymentDirection ?? "unknown") },
+        { label: "วิธีชำระเงิน", value: transaction.paymentMethodKind ? getPaymentInstrumentLabel(transaction.paymentMethodKind) : "—" },
+        { label: "ธนาคารผู้โอน", value: transaction.paymentSourceInstitutionName ?? "—" },
+        { label: "บัญชีผู้โอน", value: sourceAccountLabel },
+        { label: "ชื่อผู้โอน", value: transaction.paymentSourceName ?? "—" },
+        { label: "ธนาคารผู้รับเงิน", value: transaction.paymentDestinationInstitutionName ?? "—" },
+        { label: "บัญชีผู้รับเงิน", value: destinationAccountLabel },
+        { label: "ชื่อผู้รับเงิน", value: transaction.paymentDestinationName ?? "—" },
+        { label: "ธนาคาร/ผู้ออกหลัก", value: transaction.paymentInstitutionName ?? "—" },
+        { label: "ชื่อย่อบัญชี", value: transaction.paymentAccountNickname ?? "—" },
+        { label: "เลขท้าย 4 ตัว", value: transaction.paymentAccountLast4 ?? "—" },
+        { label: "เลขที่ถูกปิดบัง", value: transaction.paymentAccountMaskedIdentifier ?? "—" },
+      ],
+      metadataFields: [
+        { label: "เลขอ้างอิงสลิป", value: transaction.slipReference ?? "—" },
+        { label: "รหัสร้านค้า", value: transaction.merchantId ?? "—" },
+        {
+          label: "ค่าธรรมเนียม",
+          value: transaction.paymentFeeMinor !== null ? formatMoneyMinor(transaction.paymentFeeMinor, transaction.currency) : "—",
+        },
+        {
+          label: "ความมั่นใจ",
+          value: transaction.paymentInstrumentConfidence !== null
+            ? `${Math.round(transaction.paymentInstrumentConfidence * 100)}%`
+            : "—",
+        },
+        { label: "ไฟล์ต้นฉบับ", value: transaction.sourceFileName ?? "—" },
+      ],
+    };
+  }, [activeEvidenceTransaction]);
   const summaryGridClass = surface === "page"
     ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
     : surface === "dashboard"
@@ -910,6 +2475,9 @@ export function FinanceHub({
     setDraftEditStates({});
     setSelectedEvidenceTransactionId(null);
     setEvidenceSearchText("");
+    setReceiptUploadDraftId(null);
+    setReceiptUploadDraftVersion(null);
+    setReceiptUploadAppliedPresetLabel(null);
     quickActionModeRef.current = null;
   }, [conversationId]);
 
@@ -948,6 +2516,565 @@ export function FinanceHub({
       return next;
     });
   }, [draftsQuery.data]);
+
+  useEffect(() => {
+    if (!receiptUploadPreview) {
+      setReceiptUploadPreviewVisible(false);
+      setReceiptUploadPreviewContentVisible(false);
+      setReceiptUploadOverviewExpanded(false);
+      setReceiptUploadPreviewDetailsExpanded(false);
+      setReceiptUploadPreviewEvidenceExpanded(false);
+      setReceiptUploadDraftId(null);
+      setReceiptUploadDraftVersion(null);
+      setReceiptUploadAppliedPresetLabel(null);
+      setReceiptUploadPresetAlternativesVisible(false);
+      return;
+    }
+
+    setReceiptUploadPreviewVisible(false);
+    setReceiptUploadOverviewExpanded(false);
+    setReceiptUploadPreviewDetailsExpanded(false);
+    setReceiptUploadPreviewEvidenceExpanded(false);
+    setReceiptUploadPresetAlternativesVisible(false);
+    const frame = window.requestAnimationFrame(() => {
+      setReceiptUploadPreviewVisible(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [receiptUploadPreview]);
+
+  useEffect(() => {
+    if (!receiptUploadPreviewExpanded) {
+      setReceiptUploadPreviewContentVisible(false);
+      return;
+    }
+
+    setReceiptUploadPreviewContentVisible(false);
+    const frame = window.requestAnimationFrame(() => {
+      setReceiptUploadPreviewContentVisible(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [receiptUploadPreviewExpanded]);
+
+  const buildReceiptUploadBaseDraft = (): FinanceStructuredDraft | null => {
+    if (!receiptUploadPreview) {
+      return null;
+    }
+
+    const occurredAt = receiptUploadPreview.occurredAt ?? new Date().toISOString();
+    return {
+      type: receiptUploadPreview.type,
+      amountMinor: Math.max(1, receiptUploadPreview.amountMinor ?? 1),
+      currency: receiptUploadPreview.currency || DEFAULT_CURRENCY,
+      occurredAt,
+      categoryCode: receiptUploadPreview.categoryCode ?? "uncategorized",
+      documentRole: captureIntent === "transfer_slip" ? "transfer_slip" : captureIntent === "statement" ? "statement" : "receipt",
+      counterpartyName: receiptUploadPreview.counterpartyName,
+      merchantName: receiptUploadPreview.paymentDestinationName ?? receiptUploadPreview.paymentSourceName ?? receiptUploadPreview.counterpartyName,
+      note: receiptUploadPreview.note,
+      humanReadableSummary: receiptUploadPreview.humanReadableSummary,
+      evidence: receiptUploadPreview.evidence,
+      sourceUrl: receiptUploadPreview.sourceUrl,
+      sourceFileName: receiptUploadPreview.sourceFileName,
+      slipReference: receiptUploadPreview.slipReference,
+      merchantId: receiptUploadPreview.merchantId,
+      paymentFeeMinor: receiptUploadPreview.paymentFeeMinor,
+      paymentMethodKind: receiptUploadPreview.paymentMethodKind,
+      paymentDirection: receiptUploadPreview.paymentDirection,
+      paymentSourceAccountId: null,
+      paymentDestinationAccountId: null,
+      paymentSourceLabel: receiptUploadPreview.paymentSourceLabel,
+      paymentDestinationLabel: receiptUploadPreview.paymentDestinationLabel,
+      paymentSourceName: receiptUploadPreview.paymentSourceName,
+      paymentDestinationName: receiptUploadPreview.paymentDestinationName,
+      paymentSourceInstitutionName: receiptUploadPreview.paymentSourceInstitutionName,
+      paymentDestinationInstitutionName: receiptUploadPreview.paymentDestinationInstitutionName,
+      paymentInstitutionName: receiptUploadPreview.paymentInstitutionName,
+      paymentAccountNickname: receiptUploadPreview.paymentAccountNickname,
+      paymentAccountLast4: receiptUploadPreview.paymentAccountLast4,
+      paymentAccountMaskedIdentifier: receiptUploadPreview.paymentAccountMaskedIdentifier,
+      paymentInstrumentConfidence: receiptUploadPreview.confidence,
+      confidence: receiptUploadPreview.confidence ?? 0,
+      needsClarification: receiptUploadPreview.missingFields.length > 0,
+      missingFields: receiptUploadPreview.missingFields,
+      sourceMessageId: null,
+      sourceLibraryItemId: receiptUploadDraftId,
+      recurringRuleId: null,
+    } as FinanceStructuredDraft;
+  };
+
+  const handleApplyReceiptUploadPreset = async (preset: FinanceSlipMappingPreset) => {
+    const baseDraft = buildReceiptUploadBaseDraft();
+    if (!baseDraft) {
+      return;
+    }
+
+    const appliedDraft = applyFinanceSlipMappingPresetToDraft(baseDraft, preset);
+    const nextSummary = buildReadableSlipSummary({
+      humanReadableSummary: appliedDraft.humanReadableSummary,
+      type: appliedDraft.type,
+      amountLabel: formatMoneyMinor(appliedDraft.amountMinor, appliedDraft.currency),
+      currency: appliedDraft.currency,
+      counterpartyName: appliedDraft.counterpartyName ?? appliedDraft.merchantName ?? null,
+      note: appliedDraft.note ?? null,
+      occurredAt: appliedDraft.occurredAt,
+      paymentSourceInstitutionName: appliedDraft.paymentSourceInstitutionName ?? null,
+      paymentDestinationInstitutionName: appliedDraft.paymentDestinationInstitutionName ?? null,
+      paymentSourceLabel: appliedDraft.paymentSourceLabel ?? null,
+      paymentDestinationLabel: appliedDraft.paymentDestinationLabel ?? null,
+      paymentSourceName: appliedDraft.paymentSourceName ?? null,
+      paymentDestinationName: appliedDraft.paymentDestinationName ?? null,
+      paymentInstitutionName: appliedDraft.paymentInstitutionName,
+      paymentDirection: appliedDraft.paymentDirection,
+      slipReference: appliedDraft.slipReference ?? null,
+      merchantId: appliedDraft.merchantId ?? null,
+      paymentFeeMinor: appliedDraft.paymentFeeMinor ?? null,
+    });
+
+    const patch = {
+      type: appliedDraft.type,
+      categoryCode: appliedDraft.categoryCode,
+      counterpartyName: appliedDraft.counterpartyName,
+      merchantName: appliedDraft.merchantName,
+      note: appliedDraft.note,
+      humanReadableSummary: nextSummary,
+      evidence: appliedDraft.evidence,
+    } satisfies Partial<FinanceStructuredDraft>;
+
+    if (receiptUploadDraftId !== null && receiptUploadDraftVersion !== null) {
+      const updatedDraft = await updateDraftMutation.mutateAsync({
+        conversationId: conversationId ?? 0,
+        draftId: receiptUploadDraftId,
+        expectedVersion: receiptUploadDraftVersion,
+        patch,
+      });
+      setReceiptUploadDraftVersion(updatedDraft.version ?? receiptUploadDraftVersion);
+      const updatedPayload = getDraftPayload(updatedDraft);
+      setDraftTypeHint(updatedDraft.type);
+      setDraftCategoryHint(updatedPayload.categoryCode ?? "");
+      setDraftCounterpartyName((updatedPayload.counterpartyName ?? updatedPayload.merchantName ?? "").trim());
+      setDraftText((current) => (updatedPayload.note?.trim() ? updatedPayload.note.trim() : current));
+      setDraftPaymentSourceLabel((updatedPayload.paymentSourceLabel ?? "").trim());
+      setDraftPaymentDestinationLabel((updatedPayload.paymentDestinationLabel ?? "").trim());
+      setDraftPaymentSourceInstitutionName((updatedPayload.paymentSourceInstitutionName ?? "").trim());
+      setDraftPaymentDestinationInstitutionName((updatedPayload.paymentDestinationInstitutionName ?? "").trim());
+      setDraftPaymentInstitutionName((
+        updatedPayload.paymentInstitutionName
+        ?? updatedPayload.paymentSourceInstitutionName
+        ?? updatedPayload.paymentDestinationInstitutionName
+        ?? ""
+      ).trim());
+      setDraftPaymentInstitutionKind(
+        updatedPayload.paymentMethodKind === "credit_card"
+          ? "issuer"
+          : updatedPayload.paymentMethodKind === "bank_account"
+            ? "bank"
+            : "other",
+      );
+      setDraftPaymentAccountKind((updatedPayload.paymentMethodKind ?? "unknown") as typeof draftPaymentAccountKind);
+      setDraftPaymentAccountNickname((updatedPayload.paymentAccountNickname ?? "").trim());
+      setDraftPaymentAccountLast4((updatedPayload.paymentAccountLast4 ?? "").trim());
+      setDraftPaymentAccountMaskedIdentifier((updatedPayload.paymentAccountMaskedIdentifier ?? "").trim());
+        setReceiptUploadPreview({
+          ...receiptUploadPreview,
+          type: updatedDraft.type,
+          categoryCode: updatedPayload.categoryCode ?? receiptUploadPreview.categoryCode,
+          counterpartyName: updatedPayload.counterpartyName ?? updatedPayload.merchantName ?? receiptUploadPreview.counterpartyName,
+          merchantName: updatedPayload.merchantName ?? receiptUploadPreview.merchantName,
+          note: updatedPayload.note ?? receiptUploadPreview.note,
+          humanReadableSummary: updatedPayload.humanReadableSummary ?? nextSummary,
+        evidence: Array.isArray(updatedPayload.evidence)
+          ? updatedPayload.evidence.filter((item): item is FinanceEvidenceItem => Boolean(
+            item
+            && typeof item.field === "string"
+            && typeof item.snippet === "string"
+            && item.field.trim().length > 0
+            && item.snippet.trim().length > 0,
+          ))
+          : receiptUploadPreview.evidence,
+        paymentSourceLabel: updatedPayload.paymentSourceLabel ?? receiptUploadPreview.paymentSourceLabel,
+        paymentDestinationLabel: updatedPayload.paymentDestinationLabel ?? receiptUploadPreview.paymentDestinationLabel,
+        paymentSourceName: updatedPayload.paymentSourceName ?? receiptUploadPreview.paymentSourceName,
+        paymentDestinationName: updatedPayload.paymentDestinationName ?? receiptUploadPreview.paymentDestinationName,
+        paymentSourceInstitutionName: updatedPayload.paymentSourceInstitutionName ?? receiptUploadPreview.paymentSourceInstitutionName,
+        paymentDestinationInstitutionName: updatedPayload.paymentDestinationInstitutionName ?? receiptUploadPreview.paymentDestinationInstitutionName,
+        paymentInstitutionName: updatedPayload.paymentInstitutionName ?? receiptUploadPreview.paymentInstitutionName,
+        paymentAccountNickname: updatedPayload.paymentAccountNickname ?? receiptUploadPreview.paymentAccountNickname,
+        paymentAccountLast4: updatedPayload.paymentAccountLast4 ?? receiptUploadPreview.paymentAccountLast4,
+        paymentAccountMaskedIdentifier: updatedPayload.paymentAccountMaskedIdentifier ?? receiptUploadPreview.paymentAccountMaskedIdentifier,
+      });
+    } else {
+      setDraftTypeHint(appliedDraft.type);
+      setDraftCategoryHint(appliedDraft.categoryCode);
+      setDraftCounterpartyName((appliedDraft.counterpartyName ?? appliedDraft.merchantName ?? "").trim());
+      setDraftText((current) => (appliedDraft.note?.trim() ? appliedDraft.note.trim() : current));
+      setDraftPaymentSourceLabel((appliedDraft.paymentSourceLabel ?? "").trim());
+      setDraftPaymentDestinationLabel((appliedDraft.paymentDestinationLabel ?? "").trim());
+      setDraftPaymentSourceInstitutionName((appliedDraft.paymentSourceInstitutionName ?? "").trim());
+      setDraftPaymentDestinationInstitutionName((appliedDraft.paymentDestinationInstitutionName ?? "").trim());
+      setDraftPaymentInstitutionName((
+        appliedDraft.paymentInstitutionName
+        ?? appliedDraft.paymentSourceInstitutionName
+        ?? appliedDraft.paymentDestinationInstitutionName
+        ?? ""
+      ).trim());
+      setDraftPaymentInstitutionKind(
+        appliedDraft.paymentMethodKind === "credit_card"
+          ? "issuer"
+          : appliedDraft.paymentMethodKind === "bank_account"
+            ? "bank"
+            : "other",
+      );
+      setDraftPaymentAccountKind((appliedDraft.paymentMethodKind ?? "unknown") as typeof draftPaymentAccountKind);
+      setDraftPaymentAccountNickname((appliedDraft.paymentAccountNickname ?? "").trim());
+      setDraftPaymentAccountLast4((appliedDraft.paymentAccountLast4 ?? "").trim());
+      setDraftPaymentAccountMaskedIdentifier((appliedDraft.paymentAccountMaskedIdentifier ?? "").trim());
+        setReceiptUploadPreview({
+          ...receiptUploadPreview,
+          type: appliedDraft.type,
+          categoryCode: appliedDraft.categoryCode,
+          counterpartyName: appliedDraft.counterpartyName ?? appliedDraft.merchantName ?? receiptUploadPreview.counterpartyName,
+          merchantName: appliedDraft.merchantName ?? receiptUploadPreview.merchantName,
+          note: appliedDraft.note,
+          humanReadableSummary: nextSummary,
+        evidence: appliedDraft.evidence,
+      });
+    }
+
+    setReceiptUploadAppliedPresetLabel(preset.label);
+    setReceiptUploadPresetAlternativesVisible(false);
+    toast.success(`ใช้รูปแบบ: ${preset.label}`);
+  };
+
+  const handleApplyReceiptUploadPinnedMerchantSuggestion = async () => {
+    if (!receiptUploadPinnedMerchantPresetSuggestion) {
+      return;
+    }
+
+    const baseDraft = buildReceiptUploadBaseDraft();
+    if (!baseDraft) {
+      return;
+    }
+
+    const preset = receiptUploadPinnedMerchantPresetSuggestion;
+    const merchantLabel = preset.merchantName?.trim() || preset.label.trim();
+    const appliedDraft = applyFinancePinnedMerchantPresetToDraft(baseDraft, preset);
+    const nextSummary = buildReadableSlipSummary({
+      humanReadableSummary: appliedDraft.humanReadableSummary,
+      type: appliedDraft.type,
+      amountLabel: formatMoneyMinor(appliedDraft.amountMinor, appliedDraft.currency),
+      currency: appliedDraft.currency,
+      counterpartyName: appliedDraft.counterpartyName ?? appliedDraft.merchantName ?? merchantLabel,
+      note: appliedDraft.note ?? null,
+      occurredAt: appliedDraft.occurredAt,
+      paymentSourceInstitutionName: appliedDraft.paymentSourceInstitutionName ?? null,
+      paymentDestinationInstitutionName: appliedDraft.paymentDestinationInstitutionName ?? null,
+      paymentSourceLabel: appliedDraft.paymentSourceLabel ?? null,
+      paymentDestinationLabel: appliedDraft.paymentDestinationLabel ?? null,
+      paymentSourceName: appliedDraft.paymentSourceName ?? null,
+      paymentDestinationName: appliedDraft.paymentDestinationName ?? null,
+      paymentInstitutionName: appliedDraft.paymentInstitutionName,
+      paymentDirection: appliedDraft.paymentDirection,
+      slipReference: appliedDraft.slipReference ?? null,
+      merchantId: appliedDraft.merchantId ?? null,
+      paymentFeeMinor: appliedDraft.paymentFeeMinor ?? null,
+    });
+
+    const nextEvidence = [
+      ...appliedDraft.evidence,
+      {
+        field: "merchantPinnedPreset",
+        value: preset.label,
+        snippet: `pinned merchant "${merchantLabel}" matched merchant preset "${preset.label}"`,
+        confidence: 0.95,
+      },
+    ] satisfies FinanceEvidenceItem[];
+
+    const appliedWithSummary: FinanceStructuredDraft = {
+      ...appliedDraft,
+      humanReadableSummary: nextSummary,
+      evidence: nextEvidence,
+      counterpartyName: appliedDraft.counterpartyName ?? merchantLabel,
+      merchantName: appliedDraft.merchantName ?? merchantLabel,
+    };
+
+    const patch = {
+      type: appliedWithSummary.type,
+      categoryCode: appliedWithSummary.categoryCode,
+      counterpartyName: appliedWithSummary.counterpartyName,
+      merchantName: appliedWithSummary.merchantName,
+      humanReadableSummary: appliedWithSummary.humanReadableSummary,
+      evidence: appliedWithSummary.evidence,
+    } satisfies Partial<FinanceStructuredDraft>;
+
+    if (receiptUploadDraftId !== null && receiptUploadDraftVersion !== null) {
+      const updatedDraft = await updateDraftMutation.mutateAsync({
+        conversationId: conversationId ?? 0,
+        draftId: receiptUploadDraftId,
+        expectedVersion: receiptUploadDraftVersion,
+        patch,
+      });
+      setReceiptUploadDraftVersion(updatedDraft.version ?? receiptUploadDraftVersion);
+      const updatedPayload = getDraftPayload(updatedDraft);
+      setDraftTypeHint(updatedDraft.type);
+      setDraftCategoryHint(updatedPayload.categoryCode ?? "");
+      setDraftCounterpartyName((updatedPayload.counterpartyName ?? updatedPayload.merchantName ?? "").trim());
+      setDraftText((current) => (updatedPayload.note?.trim() ? updatedPayload.note.trim() : current));
+      setDraftPaymentSourceLabel((updatedPayload.paymentSourceLabel ?? "").trim());
+      setDraftPaymentDestinationLabel((updatedPayload.paymentDestinationLabel ?? "").trim());
+      setDraftPaymentSourceInstitutionName((updatedPayload.paymentSourceInstitutionName ?? "").trim());
+      setDraftPaymentDestinationInstitutionName((updatedPayload.paymentDestinationInstitutionName ?? "").trim());
+      setDraftPaymentInstitutionName((
+        updatedPayload.paymentInstitutionName
+        ?? updatedPayload.paymentSourceInstitutionName
+        ?? updatedPayload.paymentDestinationInstitutionName
+        ?? ""
+      ).trim());
+      setDraftPaymentInstitutionKind(
+        updatedPayload.paymentMethodKind === "credit_card"
+          ? "issuer"
+          : updatedPayload.paymentMethodKind === "bank_account"
+            ? "bank"
+            : "other",
+      );
+      setDraftPaymentAccountKind((updatedPayload.paymentMethodKind ?? "unknown") as typeof draftPaymentAccountKind);
+      setDraftPaymentAccountNickname((updatedPayload.paymentAccountNickname ?? "").trim());
+      setDraftPaymentAccountLast4((updatedPayload.paymentAccountLast4 ?? "").trim());
+      setDraftPaymentAccountMaskedIdentifier((updatedPayload.paymentAccountMaskedIdentifier ?? "").trim());
+      setReceiptUploadPreview({
+        ...receiptUploadPreview,
+        type: updatedDraft.type,
+        categoryCode: updatedPayload.categoryCode ?? receiptUploadPreview.categoryCode,
+        counterpartyName: updatedPayload.counterpartyName ?? updatedPayload.merchantName ?? receiptUploadPreview.counterpartyName,
+        merchantName: updatedPayload.merchantName ?? receiptUploadPreview.merchantName,
+        note: updatedPayload.note ?? receiptUploadPreview.note,
+        humanReadableSummary: updatedPayload.humanReadableSummary ?? nextSummary,
+        evidence: Array.isArray(updatedPayload.evidence)
+          ? updatedPayload.evidence.filter((item): item is FinanceEvidenceItem => Boolean(
+            item
+            && typeof item.field === "string"
+            && typeof item.snippet === "string"
+            && item.field.trim().length > 0
+            && item.snippet.trim().length > 0,
+          ))
+          : receiptUploadPreview.evidence,
+        paymentSourceLabel: updatedPayload.paymentSourceLabel ?? receiptUploadPreview.paymentSourceLabel,
+        paymentDestinationLabel: updatedPayload.paymentDestinationLabel ?? receiptUploadPreview.paymentDestinationLabel,
+        paymentSourceName: updatedPayload.paymentSourceName ?? receiptUploadPreview.paymentSourceName,
+        paymentDestinationName: updatedPayload.paymentDestinationName ?? receiptUploadPreview.paymentDestinationName,
+        paymentSourceInstitutionName: updatedPayload.paymentSourceInstitutionName ?? receiptUploadPreview.paymentSourceInstitutionName,
+        paymentDestinationInstitutionName: updatedPayload.paymentDestinationInstitutionName ?? receiptUploadPreview.paymentDestinationInstitutionName,
+        paymentInstitutionName: updatedPayload.paymentInstitutionName ?? receiptUploadPreview.paymentInstitutionName,
+        paymentAccountNickname: updatedPayload.paymentAccountNickname ?? receiptUploadPreview.paymentAccountNickname,
+        paymentAccountLast4: updatedPayload.paymentAccountLast4 ?? receiptUploadPreview.paymentAccountLast4,
+        paymentAccountMaskedIdentifier: updatedPayload.paymentAccountMaskedIdentifier ?? receiptUploadPreview.paymentAccountMaskedIdentifier,
+      });
+    } else {
+      setDraftTypeHint(appliedWithSummary.type);
+      setDraftCategoryHint(appliedWithSummary.categoryCode);
+      setDraftCounterpartyName((appliedWithSummary.counterpartyName ?? appliedWithSummary.merchantName ?? "").trim());
+      setDraftText((current) => (appliedWithSummary.note?.trim() ? appliedWithSummary.note.trim() : current));
+      setDraftPaymentSourceLabel((appliedWithSummary.paymentSourceLabel ?? "").trim());
+      setDraftPaymentDestinationLabel((appliedWithSummary.paymentDestinationLabel ?? "").trim());
+      setDraftPaymentSourceInstitutionName((appliedWithSummary.paymentSourceInstitutionName ?? "").trim());
+      setDraftPaymentDestinationInstitutionName((appliedWithSummary.paymentDestinationInstitutionName ?? "").trim());
+      setDraftPaymentInstitutionName((
+        appliedWithSummary.paymentInstitutionName
+        ?? appliedWithSummary.paymentSourceInstitutionName
+        ?? appliedWithSummary.paymentDestinationInstitutionName
+        ?? ""
+      ).trim());
+      setDraftPaymentInstitutionKind(
+        appliedWithSummary.paymentMethodKind === "credit_card"
+          ? "issuer"
+          : appliedWithSummary.paymentMethodKind === "bank_account"
+            ? "bank"
+            : "other",
+      );
+      setDraftPaymentAccountKind((appliedWithSummary.paymentMethodKind ?? "unknown") as typeof draftPaymentAccountKind);
+      setDraftPaymentAccountNickname((appliedWithSummary.paymentAccountNickname ?? "").trim());
+      setDraftPaymentAccountLast4((appliedWithSummary.paymentAccountLast4 ?? "").trim());
+      setDraftPaymentAccountMaskedIdentifier((appliedWithSummary.paymentAccountMaskedIdentifier ?? "").trim());
+      setReceiptUploadPreview({
+        ...receiptUploadPreview,
+        type: appliedWithSummary.type,
+        categoryCode: appliedWithSummary.categoryCode,
+        counterpartyName: appliedWithSummary.counterpartyName ?? appliedWithSummary.merchantName ?? receiptUploadPreview.counterpartyName,
+        merchantName: appliedWithSummary.merchantName ?? receiptUploadPreview.merchantName,
+        note: appliedWithSummary.note,
+        humanReadableSummary: nextSummary,
+        evidence: appliedWithSummary.evidence,
+      });
+    }
+
+    setReceiptUploadAppliedPresetLabel(preset.label);
+    setReceiptUploadPresetAlternativesVisible(false);
+    toast.success(`ใช้ร้านค้าปักหมุด: ${preset.label}`);
+  };
+
+  const handleApplyReceiptUploadMerchantSuggestion = async () => {
+    if (!receiptUploadMerchantPatternSuggestion) {
+      return;
+    }
+
+    const baseDraft = buildReceiptUploadBaseDraft();
+    if (!baseDraft) {
+      return;
+    }
+
+    const merchant = receiptUploadMerchantPatternSuggestion.merchant;
+    const merchantLabel = merchant.displayName.trim();
+    const nextSummary = buildReadableSlipSummary({
+      humanReadableSummary: null,
+      type: baseDraft.type,
+      amountLabel: formatMoneyMinor(baseDraft.amountMinor, baseDraft.currency),
+      currency: baseDraft.currency,
+      counterpartyName: baseDraft.counterpartyName ?? merchantLabel,
+      note: baseDraft.note ?? null,
+      occurredAt: baseDraft.occurredAt,
+      paymentSourceInstitutionName: baseDraft.paymentSourceInstitutionName ?? null,
+      paymentDestinationInstitutionName: baseDraft.paymentDestinationInstitutionName ?? null,
+      paymentSourceLabel: baseDraft.paymentSourceLabel ?? null,
+      paymentDestinationLabel: baseDraft.paymentDestinationLabel ?? null,
+      paymentSourceName: baseDraft.paymentSourceName ?? null,
+      paymentDestinationName: baseDraft.paymentDestinationName ?? null,
+      paymentInstitutionName: baseDraft.paymentInstitutionName,
+      paymentDirection: baseDraft.paymentDirection,
+      slipReference: baseDraft.slipReference ?? null,
+      merchantId: baseDraft.merchantId ?? null,
+      paymentFeeMinor: baseDraft.paymentFeeMinor ?? null,
+    });
+
+    const appliedDraft: FinanceStructuredDraft = {
+      ...baseDraft,
+      type: merchant.type,
+      categoryCode: merchant.categoryCode ?? baseDraft.categoryCode,
+      counterpartyName: baseDraft.counterpartyName ?? merchantLabel,
+      merchantName: baseDraft.merchantName ?? merchantLabel,
+      humanReadableSummary: nextSummary,
+      evidence: [
+        ...baseDraft.evidence,
+        {
+          field: "merchantHistorySuggestion",
+          value: merchantLabel,
+          snippet: `matched frequent merchant "${merchantLabel}" used ${merchant.usageCount} times`,
+          confidence: 0.9,
+        },
+      ],
+    };
+
+    const patch = {
+      type: appliedDraft.type,
+      categoryCode: appliedDraft.categoryCode,
+      counterpartyName: appliedDraft.counterpartyName,
+      merchantName: appliedDraft.merchantName,
+      humanReadableSummary: appliedDraft.humanReadableSummary,
+      evidence: appliedDraft.evidence,
+    } satisfies Partial<FinanceStructuredDraft>;
+
+    if (receiptUploadDraftId !== null && receiptUploadDraftVersion !== null) {
+      const updatedDraft = await updateDraftMutation.mutateAsync({
+        conversationId: conversationId ?? 0,
+        draftId: receiptUploadDraftId,
+        expectedVersion: receiptUploadDraftVersion,
+        patch,
+      });
+      setReceiptUploadDraftVersion(updatedDraft.version ?? receiptUploadDraftVersion);
+      const updatedPayload = getDraftPayload(updatedDraft);
+      setDraftTypeHint(updatedDraft.type);
+      setDraftCategoryHint(updatedPayload.categoryCode ?? "");
+      setDraftCounterpartyName((updatedPayload.counterpartyName ?? updatedPayload.merchantName ?? "").trim());
+      setDraftText((current) => (updatedPayload.note?.trim() ? updatedPayload.note.trim() : current));
+      setDraftPaymentSourceLabel((updatedPayload.paymentSourceLabel ?? "").trim());
+      setDraftPaymentDestinationLabel((updatedPayload.paymentDestinationLabel ?? "").trim());
+      setDraftPaymentSourceInstitutionName((updatedPayload.paymentSourceInstitutionName ?? "").trim());
+      setDraftPaymentDestinationInstitutionName((updatedPayload.paymentDestinationInstitutionName ?? "").trim());
+      setDraftPaymentInstitutionName((
+        updatedPayload.paymentInstitutionName
+        ?? updatedPayload.paymentSourceInstitutionName
+        ?? updatedPayload.paymentDestinationInstitutionName
+        ?? ""
+      ).trim());
+      setDraftPaymentInstitutionKind(
+        updatedPayload.paymentMethodKind === "credit_card"
+          ? "issuer"
+          : updatedPayload.paymentMethodKind === "bank_account"
+            ? "bank"
+            : "other",
+      );
+      setDraftPaymentAccountKind((updatedPayload.paymentMethodKind ?? "unknown") as typeof draftPaymentAccountKind);
+      setDraftPaymentAccountNickname((updatedPayload.paymentAccountNickname ?? "").trim());
+      setDraftPaymentAccountLast4((updatedPayload.paymentAccountLast4 ?? "").trim());
+      setDraftPaymentAccountMaskedIdentifier((updatedPayload.paymentAccountMaskedIdentifier ?? "").trim());
+      setReceiptUploadPreview({
+        ...receiptUploadPreview,
+        type: updatedDraft.type,
+        categoryCode: updatedPayload.categoryCode ?? receiptUploadPreview.categoryCode,
+        counterpartyName: updatedPayload.counterpartyName ?? updatedPayload.merchantName ?? receiptUploadPreview.counterpartyName,
+        merchantName: updatedPayload.merchantName ?? receiptUploadPreview.merchantName,
+        note: updatedPayload.note ?? receiptUploadPreview.note,
+        humanReadableSummary: updatedPayload.humanReadableSummary ?? nextSummary,
+        evidence: Array.isArray(updatedPayload.evidence)
+          ? updatedPayload.evidence.filter((item): item is FinanceEvidenceItem => Boolean(
+            item
+            && typeof item.field === "string"
+            && typeof item.snippet === "string"
+            && item.field.trim().length > 0
+            && item.snippet.trim().length > 0,
+          ))
+          : receiptUploadPreview.evidence,
+        paymentSourceLabel: updatedPayload.paymentSourceLabel ?? receiptUploadPreview.paymentSourceLabel,
+        paymentDestinationLabel: updatedPayload.paymentDestinationLabel ?? receiptUploadPreview.paymentDestinationLabel,
+        paymentSourceName: updatedPayload.paymentSourceName ?? receiptUploadPreview.paymentSourceName,
+        paymentDestinationName: updatedPayload.paymentDestinationName ?? receiptUploadPreview.paymentDestinationName,
+        paymentSourceInstitutionName: updatedPayload.paymentSourceInstitutionName ?? receiptUploadPreview.paymentSourceInstitutionName,
+        paymentDestinationInstitutionName: updatedPayload.paymentDestinationInstitutionName ?? receiptUploadPreview.paymentDestinationInstitutionName,
+        paymentInstitutionName: updatedPayload.paymentInstitutionName ?? receiptUploadPreview.paymentInstitutionName,
+        paymentAccountNickname: updatedPayload.paymentAccountNickname ?? receiptUploadPreview.paymentAccountNickname,
+        paymentAccountLast4: updatedPayload.paymentAccountLast4 ?? receiptUploadPreview.paymentAccountLast4,
+        paymentAccountMaskedIdentifier: updatedPayload.paymentAccountMaskedIdentifier ?? receiptUploadPreview.paymentAccountMaskedIdentifier,
+      });
+    } else {
+      setDraftTypeHint(appliedDraft.type);
+      setDraftCategoryHint(appliedDraft.categoryCode);
+      setDraftCounterpartyName((appliedDraft.counterpartyName ?? appliedDraft.merchantName ?? "").trim());
+      setDraftText((current) => (appliedDraft.note?.trim() ? appliedDraft.note.trim() : current));
+      setDraftPaymentSourceLabel((appliedDraft.paymentSourceLabel ?? "").trim());
+      setDraftPaymentDestinationLabel((appliedDraft.paymentDestinationLabel ?? "").trim());
+      setDraftPaymentSourceInstitutionName((appliedDraft.paymentSourceInstitutionName ?? "").trim());
+      setDraftPaymentDestinationInstitutionName((appliedDraft.paymentDestinationInstitutionName ?? "").trim());
+      setDraftPaymentInstitutionName((
+        appliedDraft.paymentInstitutionName
+        ?? appliedDraft.paymentSourceInstitutionName
+        ?? appliedDraft.paymentDestinationInstitutionName
+        ?? ""
+      ).trim());
+      setDraftPaymentInstitutionKind(
+        appliedDraft.paymentMethodKind === "credit_card"
+          ? "issuer"
+          : appliedDraft.paymentMethodKind === "bank_account"
+            ? "bank"
+            : "other",
+      );
+      setDraftPaymentAccountKind((appliedDraft.paymentMethodKind ?? "unknown") as typeof draftPaymentAccountKind);
+      setDraftPaymentAccountNickname((appliedDraft.paymentAccountNickname ?? "").trim());
+      setDraftPaymentAccountLast4((appliedDraft.paymentAccountLast4 ?? "").trim());
+      setDraftPaymentAccountMaskedIdentifier((appliedDraft.paymentAccountMaskedIdentifier ?? "").trim());
+      setReceiptUploadPreview({
+        ...receiptUploadPreview,
+        type: appliedDraft.type,
+        categoryCode: appliedDraft.categoryCode,
+        counterpartyName: appliedDraft.counterpartyName ?? appliedDraft.merchantName ?? receiptUploadPreview.counterpartyName,
+        merchantName: appliedDraft.merchantName ?? receiptUploadPreview.merchantName,
+        note: appliedDraft.note,
+        humanReadableSummary: nextSummary,
+        evidence: appliedDraft.evidence,
+      });
+    }
+
+    setReceiptUploadAppliedPresetLabel(merchantLabel);
+    setReceiptUploadPresetAlternativesVisible(false);
+    toast.success(`Applied merchant pattern: ${merchantLabel}`);
+  };
 
   const lockedState = (
     <div className="space-y-4">
@@ -1036,7 +3163,7 @@ export function FinanceHub({
                       onChange={(event) => setDraftCategoryHint(event.target.value)}
                       placeholder={t(
                         "dashboard:finance.quick.categoryPlaceholder",
-                        "Custom category hint, e.g. taxi / coffee / rent",
+                        "คำใบ้หมวดหมู่ เช่น taxi / coffee / rent",
                       )}
                       className="bg-white"
                     />
@@ -1044,25 +3171,84 @@ export function FinanceHub({
                       value={draftCounterpartyName}
                       placeholder={t(
                         "dashboard:finance.quick.counterpartyPlaceholder",
-                        "Counterparty / payee / payer, e.g. Starbucks or ACME",
+                        "คู่ค้า / ผู้รับ / ผู้จ่าย เช่น Starbucks หรือ ACME",
                       )}
                       onValueChange={setDraftCounterpartyName}
                       items={counterpartiesQuery.data ?? []}
                       helperText={t(
                         "dashboard:finance.quick.counterpartyHelper",
-                        "Pick a canonical name from the dropdown to avoid duplicate spellings later.",
+                        "เลือกชื่อมาตรฐานจากรายการเพื่อเลี่ยงการสะกดซ้ำในอนาคต",
                       )}
                       className="bg-white"
                       inputClassName="bg-white"
                     />
                   </div>
+                  {merchantSuggestions.length > 0 ? (
+                    <div className="rounded-2xl border border-slate-200 bg-white/90 p-3 shadow-sm">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            ร้านค้าที่ใช้บ่อยและหมวดหมู่ที่แนะนำ
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-slate-500">
+                            เลือกร้านค้าที่ใช้บ่อยเพื่อใช้หมวดหมู่และประเภทรายการที่น่าจะถูกที่สุด
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                          {merchantSuggestions.length}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {merchantSuggestions.map((suggestion) => (
+                          <Button
+                            key={`${suggestion.displayName}-${suggestion.categoryCode ?? "uncategorized"}`}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-auto max-w-full flex-col items-start gap-1 rounded-2xl px-3 py-2 text-left"
+                            onClick={() => {
+                              setDraftCounterpartyName(suggestion.displayName);
+                              if (suggestion.categoryCode) {
+                                setDraftCategoryHint(suggestion.categoryCode);
+                              }
+                              if (suggestion.type !== "transfer") {
+                                setDraftTypeHint(suggestion.type);
+                              }
+                            }}
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="font-semibold text-slate-900">
+                                {suggestion.displayName}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "border-slate-200 bg-slate-50 text-slate-600",
+                                  suggestion.type === "expense"
+                                    ? "border-rose-200 bg-rose-50 text-rose-700"
+                                    : suggestion.type === "income"
+                                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                      : "border-sky-200 bg-sky-50 text-sky-700",
+                                )}
+                              >
+                                {getTransactionTypeLabel(suggestion.type)}
+                              </Badge>
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {suggestion.categoryCode ?? "uncategorized"} · used {suggestion.usageCount} {suggestion.usageCount === 1 ? "time" : "times"}
+                            </span>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Select
                       value={draftTypeHint}
                       onValueChange={(value) => setDraftTypeHint(value as typeof draftTypeHint)}
                     >
                       <SelectTrigger className="bg-white">
-                        <SelectValue placeholder={t("dashboard:finance.quick.intentLabel", "Intent")} />
+                        <SelectValue placeholder={t("dashboard:finance.quick.intentLabel", "ประเภท")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="auto">{t("dashboard:finance.quick.intent.auto", "Auto intent")}</SelectItem>
@@ -1130,7 +3316,7 @@ export function FinanceHub({
                               : "border-slate-200 bg-white text-slate-600",
                       )}
                     >
-                      {t("dashboard:finance.quick.intentLabel", "Intent")}: {activeDraftIntentLabel}
+                      {t("dashboard:finance.quick.intentLabel", "ประเภท")}: {activeDraftIntentLabel}
                     </Badge>
                     <span>
                       {draftTypeHint === "auto"
@@ -1181,20 +3367,777 @@ export function FinanceHub({
                       )}
                       {t("dashboard:finance.quick.parseText")}
                     </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => receiptInputRef.current?.click()}
-                      disabled={uploadFileMutation.isPending || ingestDocumentMutation.isPending}
-                    >
-                      {uploadFileMutation.isPending || ingestDocumentMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Upload className="h-4 w-4" />
-                      )}
-                      {t("dashboard:finance.quick.upload")}
-                    </Button>
+                    <div className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {t("dashboard:finance.quick.uploadTitle", "อัปโหลดหลักฐาน")}
+                          </p>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                          {t(
+                            "dashboard:finance.quick.uploadDescription",
+                              "ใช้ใบเสร็จ สลิปโอนเงิน หรือสเตทเมนต์ รูปภาพจะถูกประมวลผลด้วยตัวแปลงสลิปที่ตั้งค่าไว้ก่อนสร้างฉบับร่าง",
+                          )}
+                        </p>
+                        </div>
+                        <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                          {getCaptureIntentLabel(captureIntent)}
+                        </Badge>
+                      </div>
+                      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                        <Button
+                          type="button"
+                          variant={captureIntent === "receipt" ? "default" : "outline"}
+                          className="justify-start gap-2"
+                          onClick={() => openProofUpload("receipt")}
+                          disabled={uploadFileMutation.isPending || ingestDocumentMutation.isPending || isReceiptUploadBusy}
+                        >
+                          {uploadFileMutation.isPending || ingestDocumentMutation.isPending || isReceiptUploadBusy ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <ReceiptText className="h-4 w-4" />
+                          )}
+                          {t("dashboard:finance.quick.upload", "อัปโหลดใบเสร็จ")}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={captureIntent === "transfer_slip" ? "default" : "outline"}
+                          className="justify-start gap-2"
+                          onClick={() => openProofUpload("transfer_slip")}
+                          disabled={uploadFileMutation.isPending || ingestDocumentMutation.isPending || isReceiptUploadBusy}
+                        >
+                          {uploadFileMutation.isPending || ingestDocumentMutation.isPending || isReceiptUploadBusy ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                          {t("dashboard:finance.quick.uploadSlip", "อัปโหลดสลิปโอนเงิน")}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={captureIntent === "statement" ? "default" : "outline"}
+                          className="justify-start gap-2"
+                          onClick={() => openProofUpload("statement")}
+                          disabled={uploadFileMutation.isPending || ingestDocumentMutation.isPending || isReceiptUploadBusy}
+                        >
+                          {uploadFileMutation.isPending || ingestDocumentMutation.isPending || isReceiptUploadBusy ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <FileText className="h-4 w-4" />
+                          )}
+                          {t("dashboard:finance.quick.uploadStatement", "อัปโหลดสเตทเมนต์")}
+                        </Button>
+                      </div>
+                      <p className="mt-3 text-xs leading-5 text-slate-500">
+                        {t(
+                          "dashboard:finance.quick.uploadHelper",
+                          "การอัปโหลดใบเสร็จ สลิปโอนเงิน และสเตทเมนต์จะผ่านตัวแปลงที่ตั้งค่าไว้โดยอัตโนมัติ เพื่อเชื่อมข้อความที่แยกได้กลับไปยังรายการธุรกรรม",
+                        )}
+                      </p>
+                      {receiptUploadStatus.phase !== "idle" ? (
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs leading-5 text-slate-600" aria-live="polite">
+                          <Badge
+                            variant={receiptUploadStatus.phase === "error" ? "destructive" : receiptUploadStatus.phase === "completed" ? "default" : "secondary"}
+                            className={cn(
+                              "rounded-full px-3 py-1",
+                              receiptUploadStatus.phase === "completed"
+                                ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
+                                : receiptUploadStatus.phase === "error"
+                                  ? "bg-rose-50 text-rose-700 hover:bg-rose-50"
+                                  : "bg-sky-50 text-sky-700 hover:bg-sky-50",
+                            )}
+                          >
+                            {receiptUploadStatus.phase === "reading"
+                              ? "กำลังอ่าน"
+                              : receiptUploadStatus.phase === "ocr"
+                                ? "กำลังประมวลผล"
+                                : receiptUploadStatus.phase === "uploading"
+                                  ? "กำลังอัปโหลด"
+                                  : receiptUploadStatus.phase === "drafting"
+                                    ? "กำลังสร้างฉบับร่าง"
+                                    : receiptUploadStatus.phase === "completed"
+                                      ? "เสร็จแล้ว"
+                                      : "เกิดข้อผิดพลาด"}
+                          </Badge>
+                          <span>{receiptUploadStatus.message}</span>
+                          {receiptUploadStatus.provider ? (
+                            <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">
+                              {getFinanceOcrProviderLabel(receiptUploadStatus.provider)}
+                            </Badge>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {receiptUploadPreview ? (
+                        <div
+                          className={cn(
+                            "mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 ease-out will-change-transform motion-reduce:transition-none",
+                            receiptUploadPreviewVisible
+                              ? "translate-y-0 scale-100 opacity-100"
+                              : "translate-y-2 scale-[0.985] opacity-0",
+                          )}
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">
+                                ตัวอย่างจาก OCR
+                              </p>
+                              <p className="mt-1 text-xs leading-5 text-slate-500">
+                                <span className="sm:hidden">ดูข้อมูลที่แยกแล้วก่อนยืนยัน</span>
+                                <span className="hidden sm:inline">Parser จะเติมข้อมูลเหล่านี้ก่อนยืนยันฉบับร่าง โดยจะแยกฝั่งผู้โอนและผู้รับเงินไว้ชัดเจน รวมถึงกรณีโอนระหว่างบัญชีของตัวเอง</span>
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                                {receiptUploadPreview.paymentDirection === "both"
+                                  ? "สลิปโอนเงิน"
+                                  : receiptUploadPreview.paymentDirection === "inbound"
+                                    ? "รับเข้า"
+                                    : receiptUploadPreview.paymentDirection === "outbound"
+                                      ? "จ่ายออก"
+                                      : "รายการเงิน"}
+                              </Badge>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-2 rounded-full"
+                                onClick={() => setReceiptUploadPreviewExpanded((current) => !current)}
+                              >
+                                {receiptUploadPreviewExpanded ? "ย่อการแสดงผล" : "ขยายดูเพิ่มเติม"}
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs leading-5 text-slate-500">
+                            <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">
+                              {receiptUploadPreview.sourceFileName ?? "ไฟล์ต้นฉบับ"}
+                            </Badge>
+                            {receiptUploadPreview.sourceUrl ? (
+                              <a
+                                href={receiptUploadPreview.sourceUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-medium text-sky-700 underline-offset-4 hover:underline"
+                              >
+                                เปิดไฟล์ต้นฉบับ
+                              </a>
+                            ) : (
+                              <span>ไม่มีลิงก์ต้นฉบับ</span>
+                            )}
+                          </div>
+                          <div className="mt-4">
+                            <FinanceSemanticDuplicateWarningCard
+                              conversationId={conversationId}
+                              draftId={receiptUploadDraftId}
+                            />
+                          </div>
+                          <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50/70 p-4 shadow-sm">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900">
+                                  สรุปจาก AI และฟิลด์สำคัญ
+                                </p>
+                                <p className="mt-1 text-xs leading-5 text-slate-500">
+                                  <span className="sm:hidden">เปิดเพื่อดูสรุปและฟิลด์ที่บันทึก</span>
+                                  <span className="hidden sm:inline">แสดงสรุปสั้นก่อน แล้วค่อยขยายเพื่อดูฟิลด์ที่แยกได้ทั้งหมดและหลักฐานประกอบ</span>
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="border-sky-200 bg-white text-sky-700">
+                                  {receiptUploadPreview.confidence !== null
+                                    ? `ความมั่นใจ ${Math.round(receiptUploadPreview.confidence * 100)}%`
+                                    : "ยังไม่มีคะแนนความมั่นใจ"}
+                                </Badge>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 gap-2 rounded-full"
+                                  onClick={() => setReceiptUploadOverviewExpanded((current) => !current)}
+                                >
+                                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", receiptUploadOverviewExpanded ? "rotate-180" : "")} />
+                                  {receiptUploadOverviewExpanded ? "ซ่อนรายละเอียด" : "แสดงรายละเอียด"}
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="mt-4 rounded-2xl border border-sky-200 bg-white/90 p-4 shadow-sm">
+                              <div className="flex items-center justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-semibold text-slate-900">
+                                    ฟิลด์หลัก
+                                  </p>
+                                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                                    ฟิลด์ที่มักต้องใช้ทันที ก่อนเปิดดูรายละเอียดฉบับเต็ม
+                                  </p>
+                                </div>
+                                <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                                  {receiptUploadPreviewEssentialFields.length} ฟิลด์
+                                </Badge>
+                              </div>
+                              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                {receiptUploadPreviewEssentialFields.map((field, index) => (
+                                  <div
+                                    key={`${field.label}-${index}`}
+                                    className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs leading-5 shadow-sm"
+                                  >
+                                    <p className="font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                      {field.label}
+                                    </p>
+                                    <p className="mt-1 break-words text-sm text-slate-900">
+                                      {field.value}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            {receiptUploadPinnedMerchantPresetSuggestion ? (
+                              <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50/70 p-4 shadow-sm">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900">
+                                  ร้านค้าปักหมุด
+                                </p>
+                                <p className="mt-1 text-xs leading-5 text-slate-500">
+                                  แอดมินปักหมุดร้านค้านี้ไว้ จึงขึ้นก่อนคำแนะนำทั่วไป
+                                </p>
+                              </div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {receiptUploadAppliedPresetLabel ? (
+                                      <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                                        ใช้แล้ว: {receiptUploadAppliedPresetLabel}
+                                      </Badge>
+                                    ) : null}
+                                    <Badge variant="outline" className="border-sky-200 bg-white text-sky-700">
+                                      ร้านค้าปักหมุด
+                                    </Badge>
+                                    {receiptUploadPresetAlternatives.length > 0 ? (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 rounded-full px-3 text-sky-800 hover:bg-sky-100"
+                                        onClick={() => setReceiptUploadPresetAlternativesVisible((current) => !current)}
+                                      >
+                                        {receiptUploadPresetAlternativesVisible
+                                          ? "ซ่อนตัวเลือกเพิ่มเติม"
+                                          : `ตัวเลือกเพิ่มเติม (${receiptUploadPresetAlternatives.length})`}
+                                      </Button>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                <div className="mt-3 rounded-2xl border border-sky-200 bg-white p-3 shadow-sm">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div>
+                                      <p className="text-sm font-semibold text-slate-900">
+                                        {receiptUploadPinnedMerchantPresetSuggestion.merchantName?.trim()
+                                          || receiptUploadPinnedMerchantPresetSuggestion.label}
+                                      </p>
+                                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                                        {receiptUploadPinnedMerchantPresetSuggestion.note?.trim()
+                                          || "ใช้การจับคู่ที่ปักหมุดนี้ก่อนรูปแบบทั่วไป"}
+                                      </p>
+                                    </div>
+                                    <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                                      {receiptUploadPinnedMerchantPresetSuggestion.categoryCode ?? "uncategorized"}
+                                    </Badge>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="mt-3 h-auto w-full justify-between rounded-2xl border-sky-200 bg-white px-4 py-3 text-left text-slate-700 hover:border-sky-300 hover:bg-sky-50"
+                                  onClick={() => { void handleApplyReceiptUploadPinnedMerchantSuggestion(); }}
+                                  >
+                                    <span className="flex flex-col items-start gap-1">
+                                      <span className="text-sm font-semibold text-slate-900">
+                                        ใช้ {receiptUploadPinnedMerchantPresetSuggestion.merchantName?.trim()
+                                          || receiptUploadPinnedMerchantPresetSuggestion.label}
+                                      </span>
+                                      <span className="text-xs text-slate-500">
+                                        เติมฉบับร่างด้วยการจับคู่ร้านค้าที่แอดมินปักหมุด
+                                      </span>
+                                    </span>
+                                    <ChevronDown className="h-4 w-4 -rotate-90 text-sky-700" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : null}
+                            {!receiptUploadPinnedMerchantPresetSuggestion && receiptUploadMerchantPatternSuggestion ? (
+                              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 shadow-sm">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div>
+                                    <p className="text-sm font-semibold text-slate-900">
+                                      ร้านค้าที่เคยใช้บ่อย
+                                    </p>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                      ร้านค้านี้ปรากฏบ่อยในประวัติ จึงนำรูปแบบเดิมมาใช้ได้ทันที
+                                    </p>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {receiptUploadAppliedPresetLabel ? (
+                                      <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                                        ใช้แล้ว: {receiptUploadAppliedPresetLabel}
+                                      </Badge>
+                                    ) : null}
+                                    <Badge variant="outline" className="border-emerald-200 bg-white text-emerald-700">
+                                      ใช้ไปแล้ว {receiptUploadMerchantPatternSuggestion.merchant.usageCount} ครั้ง
+                                    </Badge>
+                                    {receiptUploadPresetAlternatives.length > 0 ? (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 rounded-full px-3 text-emerald-800 hover:bg-emerald-100"
+                                        onClick={() => setReceiptUploadPresetAlternativesVisible((current) => !current)}
+                                      >
+                                        {receiptUploadPresetAlternativesVisible
+                                          ? "ซ่อนตัวเลือกเพิ่มเติม"
+                                          : `ตัวเลือกเพิ่มเติม (${receiptUploadPresetAlternatives.length})`}
+                                      </Button>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                <div className="mt-3 rounded-2xl border border-emerald-200 bg-white p-3 shadow-sm">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div>
+                                      <p className="text-sm font-semibold text-slate-900">
+                                        {receiptUploadMerchantPatternSuggestion.merchant.displayName}
+                                      </p>
+                                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                                        {receiptUploadMerchantPatternSuggestion.merchant.type === "expense"
+                                          ? "ใช้รูปแบบรายจ่ายล่าสุดของร้านค้านี้"
+                                          : receiptUploadMerchantPatternSuggestion.merchant.type === "income"
+                                            ? "ใช้รูปแบบรายได้ล่าสุดของร้านค้านี้"
+                                            : "ใช้รูปแบบการโอนล่าสุดของร้านค้านี้"}
+                                      </p>
+                                    </div>
+                                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                                      {receiptUploadMerchantPatternSuggestion.merchant.categoryCode ?? "uncategorized"}
+                                    </Badge>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="mt-3 h-auto w-full justify-between rounded-2xl border-emerald-200 bg-white px-4 py-3 text-left text-slate-700 hover:border-emerald-300 hover:bg-emerald-50"
+                                    onClick={() => { void handleApplyReceiptUploadMerchantSuggestion(); }}
+                                  >
+                                    <span className="flex flex-col items-start gap-1">
+                                      <span className="text-sm font-semibold text-slate-900">
+                                        ใช้ {receiptUploadMerchantPatternSuggestion.merchant.displayName}
+                                      </span>
+                                      <span className="text-xs text-slate-500">
+                                        เติมฉบับร่างด้วยรูปแบบร้านค้าจากประวัติของคุณ
+                                      </span>
+                                    </span>
+                                    <ChevronDown className="h-4 w-4 -rotate-90 text-emerald-700" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : null}
+                            {(!receiptUploadMerchantPatternSuggestion || receiptUploadPresetAlternativesVisible) ? (
+                              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 shadow-sm">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div>
+                                    <p className="text-sm font-semibold text-slate-900">
+                                      รูปแบบที่แนะนำ
+                                    </p>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                      แสดงตัวเลือกที่ตรงที่สุดก่อน เพื่อให้เลือกได้เร็ว ตัวเลือกอื่นจะซ่อนไว้จนกว่าจะต้องใช้
+                                    </p>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {receiptUploadAppliedPresetLabel ? (
+                                      <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                                        ใช้แล้ว: {receiptUploadAppliedPresetLabel}
+                                      </Badge>
+                                    ) : null}
+                                    <Badge variant="outline" className="border-amber-200 bg-white text-amber-700">
+                                      {receiptUploadPrimaryPresetSuggestion ? "แนะนำ" : "ไม่ตรง"}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                {receiptUploadPrimaryPresetSuggestion ? (
+                                  <div className="mt-3 rounded-2xl border border-amber-200 bg-white p-3 shadow-sm">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <div>
+                                        <p className="text-sm font-semibold text-slate-900">
+                                      {receiptUploadPrimaryPresetSuggestion.score > 0 ? "ตรงที่สุด" : "รูปแบบที่พบบ่อย"}
+                                        </p>
+                                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                                          {receiptUploadPrimaryPresetSuggestion.score > 0
+                                            ? "นี่คือรูปแบบที่ใกล้เคียงที่สุดจากข้อความในสลิปและฟิลด์ปัจจุบัน"
+                                            : "ไม่พบตัวตรงเป๊ะ จึงแสดงรูปแบบที่ใช้งานบ่อยและมีประโยชน์ก่อน"}
+                                        </p>
+                                      </div>
+                                      <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+                                        {receiptUploadPrimaryPresetSuggestion.preset.transactionType}
+                                      </Badge>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="mt-3 h-auto w-full justify-between rounded-2xl border-amber-200 bg-white px-4 py-3 text-left text-slate-700 hover:border-amber-300 hover:bg-amber-50"
+                                      onClick={() => { void handleApplyReceiptUploadPreset(receiptUploadPrimaryPresetSuggestion.preset); }}
+                                    >
+                                      <span className="flex flex-col items-start gap-1">
+                                        <span className="text-sm font-semibold text-slate-900">
+                                          ใช้ {receiptUploadPrimaryPresetSuggestion.preset.label}
+                                        </span>
+                                        <span className="text-xs text-slate-500">
+                                          กดครั้งเดียวแล้วเติมฉบับร่างด้วยการจับคู่ที่น่าจะใช่ที่สุด
+                                        </span>
+                                      </span>
+                                      <ChevronDown className="h-4 w-4 -rotate-90 text-amber-700" />
+                                    </Button>
+                                  </div>
+                                ) : null}
+                                {receiptUploadPresetAlternativesVisible && receiptUploadPresetAlternatives.length > 0 ? (
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    {receiptUploadPresetAlternatives.map(({ preset, score }) => (
+                                      <Button
+                                        key={preset.id}
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className={cn(
+                                          "h-auto rounded-full border-amber-200 bg-white px-3 py-2 text-left text-slate-700 hover:border-amber-300 hover:bg-amber-50",
+                                          score > 0 ? "ring-1 ring-amber-200" : "",
+                                        )}
+                                        onClick={() => { void handleApplyReceiptUploadPreset(preset); }}
+                                      >
+                                        <span className="flex items-center gap-2">
+                                          <span className="font-semibold text-slate-900">ใช้ {preset.label}</span>
+                                          <span className="text-[11px] uppercase tracking-[0.14em] text-slate-500">
+                                            {preset.transactionType}
+                                          </span>
+                                        </span>
+                                      </Button>
+                                    ))}
+                                  </div>
+                                ) : null}
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                  {receiptUploadPrimaryPresetSuggestion
+                                    ? "แสดงตัวแนะนำก่อน ให้เปิดตัวเลือกอื่นเมื่อรูปแบบแนะนำไม่ตรง"
+                                    : "ยังไม่มีตัวตรงเป๊ะ จึงแสดงรูปแบบที่พบบ่อยก่อน"}
+                                </p>
+                              </div>
+                            ) : null}
+                            <div
+                              className={cn(
+                                "mt-4 overflow-hidden transition-all duration-300 ease-out",
+                                receiptUploadOverviewExpanded
+                                  ? "max-h-[2000px] opacity-100"
+                                  : "max-h-0 opacity-0",
+                              )}
+                            >
+                              <div className="grid gap-4">
+                                <div className="rounded-2xl border border-sky-200 bg-white px-4 py-3 text-sm leading-6 text-slate-800 shadow-sm line-clamp-1">
+                                  {receiptUploadPreviewReadableSummary
+                                    ?? (receiptUploadPreviewMissingFields.length > 0
+                                      ? `${receiptUploadPreviewMissingFields.length} ฟิลด์ยังต้องยืนยัน`
+                                      : "สลิปถูกแปลงเป็นข้อมูลโครงสร้างแล้ว ตรวจฟิลด์สำคัญด้านล่างก่อนบันทึกฉบับร่าง")}
+                                </div>
+                                {receiptUploadPreviewMissingFields.length > 0 ? (
+                                  <div className="flex flex-wrap gap-2">
+                                    {receiptUploadPreviewMissingFields.map((field) => (
+                                      <Badge key={field} variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+                                        ขาด {field}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                ) : null}
+                                <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div>
+                                      <p className="text-sm font-semibold text-slate-900">
+                                        ฟิลด์สำคัญ
+                                      </p>
+                                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                                        ค่าด้านล่างคือข้อมูลจริงที่จะถูกบันทึกลงในฉบับร่าง
+                                      </p>
+                                    </div>
+                                    <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">
+                                      {receiptUploadPreviewKeyFields.length} ฟิลด์
+                                    </Badge>
+                                  </div>
+                                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                    {receiptUploadPreviewKeyFields.map((field, index) => (
+                                      <div
+                                        key={field.label}
+                                        className={cn(
+                                          "rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs leading-5 shadow-sm transition-all duration-300",
+                                          receiptUploadPreviewVisible ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0",
+                                        )}
+                                        style={{
+                                          transitionDelay: receiptUploadPreviewVisible ? `${index * 36}ms` : "0ms",
+                                        }}
+                                      >
+                                        <p className="font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                          {field.label}
+                                        </p>
+                                        <p className="mt-1 break-words text-sm text-slate-900">
+                                          {field.value}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            {isMobileViewport ? (
+                                <div className="rounded-xl border border-sky-200 bg-white/80 p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                      หลักฐานและรายละเอียดการโอน
+                                    </p>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                      มุมมองแบบย่อของฟิลด์ที่ใช้บันทึกฉบับร่าง
+                                    </p>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 gap-2 rounded-full"
+                                    onClick={() => setReceiptUploadPreviewDetailsExpanded((current) => !current)}
+                                  >
+                                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", receiptUploadPreviewDetailsExpanded ? "rotate-180" : "")} />
+                                    {receiptUploadPreviewDetailsExpanded ? "ซ่อนรายละเอียด" : "แสดงรายละเอียด"}
+                                  </Button>
+                                </div>
+                                <div className="mt-2 flex items-start gap-2 text-xs leading-5 text-slate-600">
+                                  <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 font-semibold text-sky-700">
+                                    {receiptUploadPreviewEvidence.length}
+                                  </span>
+                                  <span>{receiptUploadPreviewCombinedSummary}</span>
+                                </div>
+                                {receiptUploadPreviewDetailsExpanded ? (
+                                  <div className="mt-3 space-y-3">
+                                    <div className="rounded-xl border border-sky-200 bg-white px-3 py-2 shadow-sm">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                          รายการหลักฐาน
+                                        </p>
+                                        <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                                          {receiptUploadPreviewEvidence.length}
+                                        </Badge>
+                                      </div>
+                                      <p className="mt-2 text-xs leading-5 text-slate-600">
+                                        {receiptUploadPreviewEvidenceSummary}
+                                      </p>
+                                    </div>
+                                    {receiptUploadPreviewIsTransfer ? (
+                                      <div className="rounded-xl border border-sky-200 bg-white px-3 py-2 shadow-sm">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                            รายละเอียดการโอน
+                                          </p>
+                                          <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                                            โอนเงิน
+                                          </Badge>
+                                        </div>
+                                        <p className="mt-2 text-xs leading-5 text-slate-600">
+                                          {receiptUploadPreviewTransferSummary}
+                                        </p>
+                                        {receiptUploadPreviewIsSelfTransfer ? (
+                                          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-sky-200 bg-sky-50/70 px-3 py-2 text-xs leading-5 text-sky-800">
+                                            <Badge variant="outline" className="border-sky-200 bg-white text-sky-700">
+                                              โอนระหว่างบัญชีตัวเอง
+                                            </Badge>
+                                            <span>
+                                              บัญชีทั้งสองฝั่งอยู่ธนาคารเดียวกัน ระบบจะแยกฝั่งผู้โอนและผู้รับเงินไว้คนละช่อง
+                                            </span>
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <div className="rounded-xl border border-sky-200 bg-white/80 p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                    รายการหลักฐาน
+                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                                      {receiptUploadPreviewEvidence.length}
+                                    </Badge>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 gap-2 rounded-full"
+                                      onClick={() => setReceiptUploadPreviewEvidenceExpanded((current) => !current)}
+                                    >
+                                      <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", receiptUploadPreviewEvidenceExpanded ? "rotate-180" : "")} />
+                                      {receiptUploadPreviewEvidenceExpanded ? "ซ่อนหลักฐาน" : "แสดงหลักฐาน"}
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="mt-2 flex items-start gap-2 text-xs leading-5 text-slate-600">
+                                  <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 font-semibold text-sky-700">
+                                    {receiptUploadPreviewEvidence.length}
+                                  </span>
+                                  <span>{receiptUploadPreviewEvidenceSummary}</span>
+                                </div>
+                                {receiptUploadPreviewEvidenceExpanded ? (
+                                  <div className="mt-3 grid gap-2">
+                                    {receiptUploadPreviewEvidence.map((item, index) => (
+                                      <div
+                                        key={`${item.field}-${index}`}
+                                        className={cn(
+                                          "rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs leading-5 shadow-sm transition-all duration-300",
+                                          receiptUploadPreviewVisible ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0",
+                                        )}
+                                        style={{
+                                          transitionDelay: receiptUploadPreviewVisible ? `${(receiptUploadPreviewKeyFields.length + index) * 36}ms` : "0ms",
+                                        }}
+                                      >
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                          <p className="font-semibold uppercase tracking-[0.16em] text-slate-500">
+                                            {getEvidenceFieldLabel(item.field)}
+                                          </p>
+                                          {typeof item.confidence === "number" ? (
+                                            <span className="text-[11px] text-slate-500">
+                                              {Math.round(item.confidence * 100)}%
+                                            </span>
+                                          ) : null}
+                                        </div>
+                                        {item.value ? (
+                                          <p className="mt-1 break-words text-sm text-slate-900">
+                                            {item.value}
+                                          </p>
+                                        ) : null}
+                                        <p className="mt-1 break-words text-xs text-slate-500">
+                                          {item.snippet}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            )}
+                          </div>
+                          {receiptUploadPreviewExpanded ? (
+                            <div
+                              className={cn(
+                                "mt-4 space-y-4 transition-all duration-300 ease-out",
+                                receiptUploadPreviewContentVisible
+                                  ? "translate-y-0 opacity-100"
+                                  : "translate-y-2 opacity-0",
+                              )}
+                            >
+                              {receiptUploadPreviewIsImage ? (
+                                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                                  <img
+                                    src={receiptUploadPreview.sourceUrl ?? undefined}
+                                    alt={receiptUploadPreview.sourceFileName ?? "สลิปต้นฉบับ"}
+                                    className="max-h-[320px] w-full object-contain"
+                                  />
+                                </div>
+                              ) : null}
+                              {receiptUploadPreviewIsTransfer ? (
+                                !isMobileViewport ? (
+                                  <div className="space-y-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">
+                                          รายละเอียดการโอน
+                                        </Badge>
+                                        <span className="text-xs leading-5 text-slate-500">
+                                          <span className="sm:hidden">เปิดเพื่อดูรายละเอียดธนาคารทั้งฝั่งผู้โอนและผู้รับเงิน</span>
+                                          <span className="hidden sm:inline">ฝั่งผู้โอนและผู้รับเงินจะแสดงพร้อมกันบนหน้าจอเดสก์ท็อป</span>
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                      {receiptUploadPreviewTransferSides.map((side, index) => (
+                                        <div
+                                          key={side.title}
+                                          className={cn(
+                                            "rounded-2xl border p-4 shadow-sm transition-all duration-300 transform-gpu",
+                                            receiptUploadPreviewContentVisible ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
+                                            side.tone,
+                                          )}
+                                          style={{
+                                            transitionDelay: receiptUploadPreviewContentVisible ? `${index * 90}ms` : "0ms",
+                                          }}
+                                        >
+                                          <div className="flex items-center justify-between gap-2">
+                                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                              {side.title}
+                                            </p>
+                                            <Badge variant="outline" className={cn("inline-flex items-center gap-1.5 border px-3 py-1 text-xs font-semibold shadow-sm", side.badgeTone)}>
+                                              {side.title === "ฝั่งผู้โอน" ? (
+                                                <ArrowDownRight className="h-3.5 w-3.5" />
+                                              ) : (
+                                                <ArrowUpRight className="h-3.5 w-3.5" />
+                                              )}
+                                              {side.badgeLabel}
+                                            </Badge>
+                                          </div>
+                                          <div className="mt-3 space-y-3">
+                                            <div>
+                                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                                {side.labelBank}
+                                              </p>
+                                              <p className="mt-1 break-words text-sm font-medium text-slate-950">
+                                                {side.bank}
+                                              </p>
+                                            </div>
+                                            <div>
+                                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                                {side.labelAccount}
+                                              </p>
+                                              <p className="mt-1 break-words text-sm font-medium text-slate-950">
+                                                {side.account}
+                                              </p>
+                                            </div>
+                                            <div>
+                                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                                {side.labelName}
+                                              </p>
+                                              <p className="mt-1 break-words text-sm font-medium text-slate-950">
+                                                {side.partyName ?? "—"}
+                                              </p>
+                                            </div>
+                                            <div className="overflow-hidden rounded-xl bg-white/80 px-3 py-2 ring-1 ring-white/80">
+                                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                                ชื่อบัญชี
+                                              </p>
+                                              <p className="mt-1 break-words text-sm font-semibold text-slate-950">
+                                                {side.accountName ?? "—"}
+                                              </p>
+                                              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                                เลขที่ปิดบัง
+                                              </p>
+                                              <p className="mt-1 break-words font-mono text-xs font-semibold text-slate-700">
+                                                {side.maskedIdentifier ?? "—"}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null
+                              ) : null}
+                              {!isMobileViewport && receiptUploadPreviewIsSelfTransfer ? (
+                                <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-sky-200 bg-sky-50/70 px-4 py-3 text-sm text-sky-800">
+                                  <Badge variant="outline" className="border-sky-200 bg-white text-sky-700">
+                                    โอนระหว่างบัญชีตัวเอง
+                                  </Badge>
+                                  <span>
+                                    บัญชีทั้งสองฝั่งอยู่ธนาคารเดียวกัน ระบบจะแยกฝั่งผู้โอนและผู้รับเงินไว้คนละช่อง
+                                  </span>
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
                     <Button
                       type="button"
                       variant={isRecording ? "destructive" : "outline"}
@@ -1240,7 +4183,7 @@ export function FinanceHub({
                         {quickActionStatus.kind === "saving"
                           ? t("dashboard:finance.quick.statusSavingLabel", "Saving")
                           : quickActionStatus.kind === "saved"
-                            ? t("dashboard:finance.quick.statusSavedLabel", "Saved")
+                            ? t("dashboard:finance.quick.statusSavedLabel", "บันทึกแล้ว")
                             : quickActionStatus.kind === "draft"
                               ? t("dashboard:finance.quick.statusDraftLabel", "Draft")
                               : t("dashboard:finance.quick.statusErrorLabel", "Error")}
@@ -1248,25 +4191,292 @@ export function FinanceHub({
                       <span>{quickActionStatus.message}</span>
                     </div>
                   ) : null}
-                    <Input
-                      ref={receiptInputRef}
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+                  <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {t("dashboard:finance.payment.title", "Payment account / card")}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">
+                          {t(
+                            "dashboard:finance.payment.helper",
+                            "Pick a canonical nickname first. The system will reuse the same bank account or credit card without creating duplicate names.",
+                          )}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                        {getPaymentDirectionLabel(
+                          draftTypeHint === "income"
+                            ? "inbound"
+                            : draftTypeHint === "transfer"
+                              ? "both"
+                              : "outbound",
+                        )}
+                      </Badge>
+                    </div>
+                    <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                      {draftTypeHint !== "income" ? (
+                        <FinanceCounterpartyAutocomplete
+                          value={draftPaymentSourceLabel}
+                          placeholder={t(
+                            "dashboard:finance.payment.sourcePlaceholder",
+                            "บัญชี/บัตรที่จ่ายออก",
+                          )}
+                          onValueChange={setDraftPaymentSourceLabel}
+                          items={paymentAccountItems}
+                          helperText={t(
+                            "dashboard:finance.payment.sourceHelper",
+                            "เลือกบัญชีหรือบัตรที่ใช้จ่ายออก",
+                          )}
+                          className="bg-white"
+                          inputClassName="bg-white"
+                        />
+                      ) : null}
+                      {draftTypeHint === "income" || draftTypeHint === "transfer" ? (
+                        <FinanceCounterpartyAutocomplete
+                          value={draftPaymentDestinationLabel}
+                          placeholder={t(
+                            "dashboard:finance.payment.destinationPlaceholder",
+                            "บัญชี/ช่องทางที่รับเข้า",
+                          )}
+                          onValueChange={setDraftPaymentDestinationLabel}
+                          items={paymentAccountItems}
+                          helperText={t(
+                            "dashboard:finance.payment.destinationHelper",
+                            "เลือกบัญชีที่รับเงินเข้า",
+                          )}
+                          className="bg-white"
+                          inputClassName="bg-white"
+                        />
+                      ) : null}
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {paymentAccountsQuery.data?.slice(0, 6).map((item) => (
+                        <Button
+                          key={item.id}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "h-8 gap-2 rounded-full",
+                            selectedDraftPaymentSourceAccount?.id === item.id || selectedDraftPaymentDestinationAccount?.id === item.id
+                              ? "border-sky-300 bg-sky-50 text-sky-700"
+                              : "",
+                          )}
+                          onClick={() => {
+                            const label = item.displayLabel ?? buildPaymentAccountDisplayLabel(item);
+                            if (draftTypeHint === "income") {
+                              selectPaymentAccountAsActive(label, "destination");
+                            } else {
+                              selectPaymentAccountAsActive(label, "source");
+                            }
+                            if (draftTypeHint === "transfer") {
+                              setDraftPaymentDestinationLabel(label);
+                            }
+                          }}
+                        >
+                          {item.kind === "credit_card" ? <CreditCard className="h-3.5 w-3.5" /> : <Landmark className="h-3.5 w-3.5" />}
+                          <span className="max-w-[14rem] truncate">{item.displayLabel ?? buildPaymentAccountDisplayLabel(item)}</span>
+                        </Button>
+                      ))}
+                    </div>
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {t("dashboard:finance.payment.manageTitle", "เพิ่มบัญชีธนาคารหรือบัตรเครดิต")}
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-slate-500">
+                            {t(
+                              "dashboard:finance.payment.manageDescription",
+                              "Use nicknames for each account or card. One bank or issuer can have many instruments, and the same nickname will be reused across drafts and reports.",
+                            )}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                          {selectedCapturePaymentAccount
+                            ? selectedCapturePaymentAccount.displayLabel
+                            : t("dashboard:finance.payment.noneSelected", "ยังไม่ได้เลือกบัญชี")}
+                        </Badge>
+                      </div>
+                      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                        <Input
+                          value={draftPaymentInstitutionName}
+                          onChange={(event) => setDraftPaymentInstitutionName(event.target.value)}
+                          placeholder={t("dashboard:finance.payment.institutionPlaceholder", "ชื่อธนาคารหรือผู้ออกบัตร")}
+                          className="bg-white"
+                        />
+                        <Select
+                          value={draftPaymentInstitutionKind}
+                          onValueChange={(value) => setDraftPaymentInstitutionKind(value as typeof draftPaymentInstitutionKind)}
+                        >
+                          <SelectTrigger className="bg-white">
+                            <SelectValue placeholder={t("dashboard:finance.payment.institutionKind", "ประเภทสถาบัน")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="bank">{t("dashboard:finance.payment.institutionBank", "Bank")}</SelectItem>
+                            <SelectItem value="issuer">{t("dashboard:finance.payment.institutionIssuer", "Card issuer")}</SelectItem>
+                            <SelectItem value="other">{t("dashboard:finance.payment.institutionOther", "Other")}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={draftPaymentAccountKind}
+                          onValueChange={(value) => {
+                            const nextKind = value as typeof draftPaymentAccountKind;
+                            setDraftPaymentAccountKind(nextKind);
+                            if (nextKind === "credit_card") {
+                              setDraftPaymentInstitutionKind((current) => (current === "other" ? current : "issuer"));
+                            } else if (nextKind === "bank_account") {
+                              setDraftPaymentInstitutionKind((current) => (current === "other" ? current : "bank"));
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="bg-white">
+                            <SelectValue placeholder={t("dashboard:finance.payment.accountKind", "ประเภทบัญชี")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="bank_account">{t("dashboard:finance.payment.accountBank", "บัญชีธนาคาร")}</SelectItem>
+                            <SelectItem value="credit_card">{t("dashboard:finance.payment.accountCard", "บัตรเครดิต")}</SelectItem>
+                            <SelectItem value="cash">{t("dashboard:finance.payment.accountCash", "เงินสด")}</SelectItem>
+                            <SelectItem value="unknown">{t("dashboard:finance.payment.accountUnknown", "ไม่ทราบ")}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          value={draftPaymentAccountNickname}
+                          onChange={(event) => setDraftPaymentAccountNickname(event.target.value)}
+                          placeholder={t("dashboard:finance.payment.nicknamePlaceholder", "ชื่อเล่น เช่น SCB Main หรือ KTC Blue")}
+                          className="bg-white"
+                        />
+                        <Input
+                          value={draftPaymentAccountLast4}
+                          onChange={(event) => setDraftPaymentAccountLast4(event.target.value.replace(/\D+/g, "").slice(0, 4))}
+                          placeholder={t("dashboard:finance.payment.last4Placeholder", "เลขท้าย 4 ตัว")}
+                          inputMode="numeric"
+                          maxLength={4}
+                          className="bg-white"
+                        />
+                        <Input
+                          value={draftPaymentAccountMaskedIdentifier}
+                          onChange={(event) => setDraftPaymentAccountMaskedIdentifier(event.target.value)}
+                          placeholder={t("dashboard:finance.payment.maskedPlaceholder", "เลขที่ปิดบัง หรือเลขบัญชีบางส่วน")}
+                          className="bg-white"
+                        />
+                        <Input
+                          value={draftPaymentAccountAliases}
+                          onChange={(event) => setDraftPaymentAccountAliases(event.target.value)}
+                          placeholder={t("dashboard:finance.payment.aliasesPlaceholder", "ชื่ออื่นคั่นด้วยจุลภาค")}
+                          className="bg-white"
+                        />
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          className="gap-2"
+                          onClick={() => void handleSavePaymentAccount()}
+                          disabled={upsertPaymentAccountMutation.isPending}
+                        >
+                          {upsertPaymentAccountMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Plus className="h-4 w-4" />
+                          )}
+                          {t("dashboard:finance.payment.saveInstrument", "บันทึกบัญชี / บัตร")}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="gap-2"
+                          onClick={handleResetPaymentAccountForm}
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          {t("dashboard:finance.payment.reset", "รีเซ็ต")}
+                        </Button>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {paymentInstitutionsQuery.data?.slice(0, 8).map((institution) => (
+                          <Button
+                            key={institution.id}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-2 rounded-full"
+                            onClick={() => handleSelectPaymentInstitution(institution)}
+                          >
+                            <Landmark className="h-3.5 w-3.5" />
+                            <span className="max-w-[12rem] truncate">
+                              {institution.displayName}
+                            </span>
+                          </Button>
+                        ))}
+                      </div>
+                      <p className="mt-3 text-xs leading-5 text-slate-500">
+                        {t(
+                          "dashboard:finance.payment.manageHelper",
+                          "Select a nickname or institution to reuse the same payment instrument when recording reports, OCR slips, or quick drafts.",
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <Input
+                    ref={receiptInputRef}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
                       className="hidden"
-                      onChange={async (event) => {
-                        const file = event.target.files?.[0];
-                        event.target.value = "";
-                        if (!file) {
-                          return;
-                        }
-                        try {
-                          await handleReceiptUpload(file);
-                        } catch (error) {
-                          toast.error(error instanceof Error ? error.message : "Failed to process receipt");
-                        }
-                      }}
-                    />
+                    onChange={async (event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (!file) {
+                        return;
+                      }
+                      try {
+                        await handleReceiptUpload(file);
+                      } catch (error) {
+                        toast.error(getFinanceErrorMessage(error, "ประมวลผล OCR ใบเสร็จไม่สำเร็จ"));
+                      }
+                    }}
+                  />
                 </div>
+              </div>
+            ) : null}
+
+            {(financeDebugEnabled || draftsQuery.isError) ? (
+              <div className="rounded-2xl border border-dashed border-sky-200 bg-sky-50/70 p-4 text-xs text-slate-700">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-700">
+                    Finance debug
+                  </p>
+                  <Badge variant="outline" className="border-sky-200 bg-white text-sky-700">
+                    {draftsQuery.isError ? "คิวรีฉบับร่างมีปัญหา" : "คิวรีฉบับร่างปกติ"}
+                  </Badge>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-xl bg-white/80 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">ห้องสนทนา</p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">
+                      #{conversationId ?? "n/a"} · {conversationQuery.data?.title ?? "No conversation"} · {conversationQuery.data?.projectId ?? "no project"}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      tenant: {conversationQuery.data?.tenantId ?? "n/a"} · personal: {financeReady ? "yes" : "no"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-white/80 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">คิวรีฉบับร่าง</p>
+                    <p className="mt-1 text-sm font-medium text-slate-900">
+                      status=draft · limit={draftLimit} · returned={openDrafts.length}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      กำลังโหลด: {draftsQuery.isLoading ? "ใช่" : "ไม่ใช่"} · ดึงข้อมูล: {draftsQuery.isFetching ? "ใช่" : "ไม่ใช่"} · error: {draftsQuery.isError ? "ใช่" : "ไม่ใช่"}
+                    </p>
+                  </div>
+                </div>
+                {draftsQueryErrorMessage ? (
+                  <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
+                    {draftsQueryErrorMessage}
+                  </p>
+                ) : null}
+                <p className="mt-3 text-[12px] leading-5 text-slate-500">
+                  ถ้ามีฉบับร่างในฐานข้อมูลแต่แผงนี้ขึ้นเป็นศูนย์ ให้ตรวจ scope ของห้องสนทนาและผลคิวรีฉบับร่างก่อนเป็นอันดับแรก
+                </p>
               </div>
             ) : null}
 
@@ -1335,12 +4545,56 @@ export function FinanceHub({
                                 <CheckCircle2 className="h-3.5 w-3.5" />
                                 {t("dashboard:finance.actions.confirm")}
                               </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 gap-1.5 border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+                                    disabled={!financeReady || cancelDraftMutation.isPending}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    ยกเลิกฉบับร่าง
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Cancel this draft?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      The draft will be removed from the open list and won’t affect your balances.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Keep draft</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-red-600 text-white hover:bg-red-700"
+                                      onClick={async () => {
+                                        if (!conversationId) return;
+                                        await cancelDraftMutation.mutateAsync({
+                                          conversationId,
+                                          draftId: draft.id,
+                                        });
+                                      }}
+                                    >
+                                      ยกเลิกฉบับร่าง
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </div>
                           </div>
                           {draft.needsClarification ? (
                             <p className="mt-2 text-xs font-medium text-amber-700">
                               {t("dashboard:finance.labels.needsAttention")}
                             </p>
+                          ) : null}
+                          {draft.source === "ocr_document" ? (
+                            <div className="mt-3">
+                              <FinanceSemanticDuplicateWarningCard
+                                conversationId={conversationId}
+                                draftId={draft.id}
+                              />
+                            </div>
                           ) : null}
                           <div className="mt-3 rounded-2xl border border-dashed border-sky-200 bg-sky-50/60 p-3">
                             <div className="flex items-start justify-between gap-3">
@@ -1351,7 +4605,7 @@ export function FinanceHub({
                                 <p className="mt-1 text-xs leading-5 text-slate-500">
                                   {t(
                                     "dashboard:finance.drafts.editDescription",
-                                    "Adjust the OCR date, time, or counterparty before confirming this draft.",
+                                    "ปรับวัน เวลา หรือคู่ค้าที่ได้จาก OCR ก่อนยืนยันฉบับร่างนี้",
                                   )}
                                 </p>
                               </div>
@@ -1369,21 +4623,21 @@ export function FinanceHub({
                                 )}
                               >
                                 {draftEditStatus.kind === "saving"
-                                  ? t("dashboard:finance.quick.statusSavingLabel", "Saving")
+                                  ? t("dashboard:finance.quick.statusSavingLabel", "กำลังบันทึก")
                                   : draftEditStatus.kind === "saved"
-                                    ? t("dashboard:finance.quick.statusSavedLabel", "Saved")
+                                    ? t("dashboard:finance.quick.statusSavedLabel", "บันทึกแล้ว")
                                     : draftEditStatus.kind === "error"
-                                      ? t("dashboard:finance.quick.statusErrorLabel", "Error")
-                                      : t("dashboard:finance.quick.statusDraftLabel", "Draft")}
+                                      ? t("dashboard:finance.quick.statusErrorLabel", "ผิดพลาด")
+                                      : t("dashboard:finance.quick.statusDraftLabel", "ฉบับร่าง")}
                               </Badge>
                             </div>
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
                               <label className="space-y-1.5 sm:col-span-2">
                                 <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                  {t("dashboard:finance.drafts.editCounterpartyLabel", "Counterparty")}
+                                  {t("dashboard:finance.drafts.editCounterpartyLabel", "คู่ค้า/ผู้เกี่ยวข้อง")}
                                 </span>
                                 <Input
-                                  aria-label={t("dashboard:finance.drafts.editCounterpartyLabel", "Counterparty")}
+                                  aria-label={t("dashboard:finance.drafts.editCounterpartyLabel", "คู่ค้า/ผู้เกี่ยวข้อง")}
                                   value={draftEditState.counterpartyName}
                                   onChange={(event) => {
                                     const nextCounterparty = event.target.value;
@@ -1401,17 +4655,17 @@ export function FinanceHub({
                                   }}
                                   placeholder={t(
                                     "dashboard:finance.drafts.editCounterpartyPlaceholder",
-                                    "Who was paid or who paid you?",
+                                    "จ่ายให้ใคร หรือใครจ่ายให้คุณ",
                                   )}
                                   className="bg-white"
                                 />
                               </label>
                               <label className="space-y-1.5">
                                 <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                  {t("dashboard:finance.drafts.editDateLabel", "Date")}
+                                  {t("dashboard:finance.drafts.editDateLabel", "วัน")}
                                 </span>
                                 <Input
-                                  aria-label={t("dashboard:finance.drafts.editDateLabel", "Date")}
+                                  aria-label={t("dashboard:finance.drafts.editDateLabel", "วัน")}
                                   type="date"
                                   value={draftEditState.date}
                                   onChange={(event) => {
@@ -1433,10 +4687,10 @@ export function FinanceHub({
                               </label>
                               <label className="space-y-1.5">
                                 <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                  {t("dashboard:finance.drafts.editTimeLabel", "Time")}
+                                  {t("dashboard:finance.drafts.editTimeLabel", "เวลา")}
                                 </span>
                                 <Input
-                                  aria-label={t("dashboard:finance.drafts.editTimeLabel", "Time")}
+                                  aria-label={t("dashboard:finance.drafts.editTimeLabel", "เวลา")}
                                   type="time"
                                   value={draftEditState.time}
                                   onChange={(event) => {
@@ -1477,7 +4731,7 @@ export function FinanceHub({
                                 }}
                               >
                                 <RotateCcw className="h-3.5 w-3.5" />
-                                {t("dashboard:finance.drafts.resetToOriginal", "Reset")}
+                                {t("dashboard:finance.drafts.resetToOriginal", "รีเซ็ต")}
                               </Button>
                               <Button
                                 type="button"
@@ -1564,7 +4818,7 @@ export function FinanceHub({
                                 ) : (
                                   <CheckCircle2 className="h-3.5 w-3.5" />
                                 )}
-                                {t("dashboard:finance.drafts.saveEdit", "Save date/time")}
+                                {t("dashboard:finance.drafts.saveEdit", "บันทึกวัน/เวลา")}
                               </Button>
                             </div>
                             {draftEditStatus.kind !== "idle" ? (
@@ -1585,7 +4839,7 @@ export function FinanceHub({
                                   {draftEditStatus.kind === "saving"
                                     ? t("dashboard:finance.quick.statusSavingLabel", "Saving")
                                     : draftEditStatus.kind === "saved"
-                                      ? t("dashboard:finance.quick.statusSavedLabel", "Saved")
+                                      ? t("dashboard:finance.quick.statusSavedLabel", "บันทึกแล้ว")
                                       : t("dashboard:finance.quick.statusErrorLabel", "Error")}
                                 </Badge>
                                 <span>{draftEditStatus.message}</span>
@@ -1640,31 +4894,34 @@ export function FinanceHub({
                               </p>
                             </div>
                             <div className="flex shrink-0 flex-col items-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 gap-1.5 text-slate-600"
-                                onClick={() => setSelectedEvidenceTransactionId(transaction.id)}
-                              >
-                                <Search className="h-3.5 w-3.5" />
-                                {t("dashboard:finance.report.inspect")}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 gap-1.5 text-slate-600"
-                                onClick={() => {
-                                  if (!conversationId) return;
-                                  void voidTransactionMutation.mutateAsync({
-                                    conversationId,
-                                    transactionId: transaction.id,
-                                  });
-                                }}
-                                disabled={!financeReady || voidTransactionMutation.isPending}
-                              >
-                                <FileText className="h-3.5 w-3.5" />
-                                {t("dashboard:finance.actions.void")}
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-slate-600"
+                                    aria-label={`เมนูการจัดการรายการของ ${transactionCounterparty}`}
+                                  >
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    className="gap-2"
+                                    onClick={() => setSelectedEvidenceTransactionId(transaction.id)}
+                                  >
+                                    <Search className="h-3.5 w-3.5" />
+                                    {t("dashboard:finance.report.inspect")}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="gap-2 text-red-700 focus:text-red-700"
+                                    onClick={() => setPendingVoidTransactionId(transaction.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    ลบ / โมฆะ
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </div>
                         </div>
@@ -1674,6 +4931,117 @@ export function FinanceHub({
                 ) : (
                   <div className="py-4 text-sm text-slate-500">
                     {t("dashboard:finance.transactions.empty")}
+                  </div>
+                )}
+              </DashboardCard>
+
+              <DashboardCard
+                eyebrow="รายการยืนยันแล้ว"
+                title="รายละเอียดรายการยืนยัน"
+                description="แสดงฟิลด์ย่อยจากสลิปที่แยกได้และบันทึกไว้กับรายการที่ยืนยันแล้ว"
+              >
+                {activeEvidenceTransaction && activeEvidenceTransactionDetails ? (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="text-xs uppercase tracking-wide text-slate-500">สรุปอ่านง่าย</div>
+                      <p className="mt-2 text-sm font-medium leading-6 text-slate-900">
+                        {activeEvidenceTransactionDetails.summary}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                          {getTransactionTypeLabel(activeEvidenceTransaction.type)}
+                        </Badge>
+                        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                          {formatMoneyMinor(activeEvidenceTransaction.amountMinor, activeEvidenceTransaction.currency)}
+                        </Badge>
+                        <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">
+                          {getFinanceSourceLabel(activeEvidenceTransaction.source)}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 xl:grid-cols-3">
+                      {[
+                        {
+                          title: "ภาพรวม",
+                          fields: activeEvidenceTransactionDetails.overviewFields,
+                        },
+                        {
+                          title: "เส้นทางการจ่าย",
+                          fields: activeEvidenceTransactionDetails.routingFields,
+                        },
+                        {
+                          title: "ข้อมูลสลิป",
+                          fields: activeEvidenceTransactionDetails.metadataFields,
+                        },
+                      ].map((section) => (
+                        <div key={section.title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                          <div className="text-xs uppercase tracking-wide text-slate-500">{section.title}</div>
+                          <dl className="mt-3 space-y-3">
+                            {section.fields.map((field) => (
+                              <div key={field.label} className="flex items-start justify-between gap-3 border-b border-dashed border-slate-100 pb-2 last:border-b-0 last:pb-0">
+                                <dt className="min-w-0 text-xs font-medium uppercase tracking-wide text-slate-500">
+                                  {field.label}
+                                </dt>
+                                <dd className="max-w-[65%] text-right text-sm text-slate-900">
+                                  {field.label === "ไฟล์ต้นฉบับ" && activeEvidenceTransaction.sourceUrl ? (
+                                    <a
+                                      href={activeEvidenceTransaction.sourceUrl}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="font-medium text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-800"
+                                    >
+                                      {field.value}
+                                    </a>
+                                  ) : (
+                                    field.value
+                                  )}
+                                </dd>
+                              </div>
+                            ))}
+                          </dl>
+                        </div>
+                      ))}
+                    </div>
+
+                    {activeEvidenceTransaction.sourceUrl ? (
+                      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                        <span className="text-slate-500">ไฟล์ต้นฉบับ:</span>
+                        <a
+                          href={activeEvidenceTransaction.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-medium text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-800"
+                        >
+                          {activeEvidenceTransaction.sourceFileName ?? activeEvidenceTransaction.sourceUrl}
+                        </a>
+                      </div>
+                    ) : null}
+
+                    <div className="rounded-2xl border border-red-200 bg-red-50/60 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-red-800">ลบ / ทำให้รายการยืนยันเป็นโมฆะ</p>
+                          <p className="mt-1 text-xs leading-5 text-red-700">
+                            ลบรายการนี้ออกจากยอดคงเหลือและรายงานสรุป แต่ยังเก็บประวัติการตรวจสอบไว้
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-9 gap-2 border-red-300 bg-white text-red-700 hover:bg-red-100 hover:text-red-800"
+                          onClick={() => setPendingVoidTransactionId(activeEvidenceTransaction.id)}
+                          disabled={!financeReady || voidTransactionMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          ลบ / โมฆะ
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-4 text-sm text-slate-500">
+                    ยังไม่ได้เลือกรายการที่ยืนยันแล้ว
                   </div>
                 )}
               </DashboardCard>
@@ -1708,7 +5076,7 @@ export function FinanceHub({
                               <p className={dashboardMetaLineClass}>
                                 <span>{getFinanceFlowLabel(rule.type, t)}: {ruleCounterparty}</span>
                                 <span className="text-slate-300">|</span>
-                                <span>{rule.autoConfirm ? "Auto-confirm" : "Draft first"}</span>
+                                <span>{rule.autoConfirm ? "ยืนยันอัตโนมัติ" : "สร้างฉบับร่างก่อน"}</span>
                               </p>
                             </div>
                             <div className="flex shrink-0 flex-col items-end gap-2">
@@ -1783,9 +5151,9 @@ export function FinanceHub({
                                 {formatMoneyMinor(totalMinor)}
                               </p>
                               <p className="mt-1">
-                                {category.expenseMinor > 0 ? `Expense ${formatMoneyMinor(category.expenseMinor)}` : ""}
+                                {category.expenseMinor > 0 ? `รายจ่าย ${formatMoneyMinor(category.expenseMinor)}` : ""}
                                 {category.expenseMinor > 0 && category.incomeMinor > 0 ? " · " : ""}
-                                {category.incomeMinor > 0 ? `Income ${formatMoneyMinor(category.incomeMinor)}` : ""}
+                                {category.incomeMinor > 0 ? `รายรับ ${formatMoneyMinor(category.incomeMinor)}` : ""}
                               </p>
                             </div>
                           </div>
@@ -1868,14 +5236,14 @@ export function FinanceHub({
                       {linkedDocuments.map((link) => (
                         <div key={link.id} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
                           <p className="text-sm font-semibold text-slate-900">
-                            {link.libraryItem?.title ?? `Document ${link.libraryItemId}`}
+                            {link.libraryItem?.title ?? `เอกสาร ${link.libraryItemId}`}
                           </p>
                           <p className="mt-1 text-xs text-slate-500">
                             {link.role}
                             {link.note ? ` · ${link.note}` : ""}
                           </p>
                           <p className="mt-1 text-xs text-slate-400">
-                            {link.libraryItem?.source ?? "library"}
+                            {link.libraryItem?.source ?? "คลังเอกสาร"}
                           </p>
                         </div>
                       ))}
@@ -1920,7 +5288,7 @@ export function FinanceHub({
                             <p className={dashboardMetaLineClass}>
                               <span>{getFinanceSourceLabel("recurring_rule")}</span>
                               <span className="text-slate-300">|</span>
-                              <span>{rule.autoConfirm ? "Auto-confirm" : "Draft first"}</span>
+                              <span>{rule.autoConfirm ? "ยืนยันอัตโนมัติ" : "สร้างฉบับร่างก่อน"}</span>
                             </p>
                           </div>
                         </div>
@@ -1933,6 +5301,73 @@ export function FinanceHub({
                   </div>
                 )}
               </DashboardCard>
+
+              <AlertDialog
+                open={pendingVoidTransactionId !== null}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setPendingVoidTransactionId(null);
+                    setPendingVoidReason("");
+                  }
+                }}
+              >
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>ลบรายการที่ยืนยันแล้วใช่หรือไม่?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      ระบบจะลบรายการนี้ออกจากยอดคงเหลือและรายงานสรุป แต่ยังเก็บประวัติการตรวจสอบไว้
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  {pendingVoidTransaction ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                      <div className="font-semibold text-slate-800">
+                        {getTransactionTypeLabel(pendingVoidTransaction.type)} · {formatMoneyMinor(pendingVoidTransaction.amountMinor, pendingVoidTransaction.currency)}
+                      </div>
+                      <div className="mt-1">
+                        {getFinanceFlowLabel(pendingVoidTransaction.type, t)}: {getFinanceCounterpartyLabel(
+                          pendingVoidTransaction.type,
+                          pendingVoidTransaction.counterpartyName ?? null,
+                          pendingVoidTransaction.merchantName ?? null,
+                        )}
+                      </div>
+                      <div className="mt-1">{formatDateTime(pendingVoidTransaction.occurredAt)}</div>
+                    </div>
+                  ) : null}
+                  <div className="space-y-2">
+                    <label htmlFor="void-transaction-reason" className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      เหตุผล (จำเป็น)
+                    </label>
+                    <Textarea
+                      id="void-transaction-reason"
+                      value={pendingVoidReason}
+                      onChange={(event) => setPendingVoidReason(event.target.value)}
+                      placeholder="เหตุผลสั้น ๆ เช่น สลิปซ้ำ"
+                      className="bg-white"
+                    />
+                    <p className="text-xs text-slate-500">
+                      ระบุเหตุผลสั้น ๆ สำหรับประวัติการตรวจสอบ อย่างน้อย 3 ตัวอักษร
+                    </p>
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>เก็บรายการไว้</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-red-600 text-white hover:bg-red-700"
+                      disabled={!isPendingVoidReasonValid}
+                      onClick={() => {
+                        if (!conversationId || pendingVoidTransactionId === null || !isPendingVoidReasonValid) return;
+                        storeActionReason("voidConfirmedTransaction", pendingVoidReasonTrimmed);
+                        void voidTransactionMutation.mutateAsync({
+                          conversationId,
+                          transactionId: pendingVoidTransactionId,
+                          reason: pendingVoidReasonTrimmed,
+                        });
+                      }}
+                    >
+                                    ลบ / โมฆะ
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         ) : (

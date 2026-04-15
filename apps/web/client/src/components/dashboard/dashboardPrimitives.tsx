@@ -119,8 +119,8 @@ export function DashboardCard<T extends ElementType = 'div'>({
   return (
     <Component {...componentProps} className={cn(dashboardSurfaceClass, 'overflow-hidden', className)}>
       {hasHeader ? (
-        <div className={cn('flex items-start justify-between gap-4 px-5 pt-5 sm:px-6 sm:pt-6', headerClassName)}>
-          <div className="min-w-0 flex-1">
+        <div className={cn('flex flex-col gap-3 px-5 pt-5 sm:flex-row sm:items-start sm:justify-between sm:px-6 sm:pt-6', headerClassName)}>
+          <div className="min-w-0 w-full sm:flex-1">
             {eyebrow ? <p className={dashboardSectionEyebrowClass}>{eyebrow}</p> : null}
             {(title || description || leading) ? (
               <div className={cn('mt-1', leading ? 'flex items-start gap-3' : 'block')}>
@@ -132,7 +132,7 @@ export function DashboardCard<T extends ElementType = 'div'>({
               </div>
             ) : null}
           </div>
-          {trailing ? <div className="shrink-0">{trailing}</div> : null}
+          {trailing ? <div className="w-full sm:w-auto sm:shrink-0">{trailing}</div> : null}
         </div>
       ) : null}
 

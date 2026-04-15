@@ -186,6 +186,21 @@ function sanitizeReleaseFileName(value: string): string {
     .slice(0, 160) || "installer.bin";
 }
 
+export function createDesktopReleaseStorageKey(input: {
+  version: string;
+  platform: DesktopReleasePlatform;
+  channel: DesktopReleaseChannel;
+  fileName: string;
+}): string {
+  return [
+    "desktop-releases",
+    sanitizeReleasePathSegment(input.platform),
+    sanitizeReleasePathSegment(input.channel),
+    sanitizeReleasePathSegment(input.version),
+    `${Date.now()}-${nanoid(10)}-${sanitizeReleaseFileName(input.fileName)}`,
+  ].join("/");
+}
+
 function inferInstallerFormat(fileName: string): DesktopReleaseInstallerFormat {
   const lower = fileName.toLowerCase();
   if (lower.endsWith(".tar.gz") || lower.endsWith(".tgz")) return "tar_gz";
@@ -378,13 +393,12 @@ export async function persistDesktopReleaseUpload(input: DesktopReleaseUploadInp
   const channel = input.channel ?? "stable";
   const installerFormat = input.installerFormat ?? inferInstallerFormat(input.fileName);
   const publish = input.publish ?? true;
-  const storageKey = [
-    "desktop-releases",
-    sanitizeReleasePathSegment(input.platform),
-    sanitizeReleasePathSegment(channel),
-    sanitizeReleasePathSegment(input.version),
-    `${Date.now()}-${nanoid(10)}-${sanitizeReleaseFileName(input.fileName)}`,
-  ].join("/");
+  const storageKey = createDesktopReleaseStorageKey({
+    version: input.version,
+    platform: input.platform,
+    channel,
+    fileName: input.fileName,
+  });
 
   const stored = await storagePutFromPath(storageKey, input.filePath, input.contentType);
 
@@ -424,6 +438,63 @@ export async function persistDesktopReleaseUpload(input: DesktopReleaseUploadInp
     await storageDelete(stored.key).catch(() => undefined);
     throw error;
   }
+}
+
+export async function persistDesktopReleaseUploadFromStorage(input: {
+  version: string;
+  platform: DesktopReleasePlatform;
+  channel?: DesktopReleaseChannel;
+  installerFormat?: DesktopReleaseInstallerFormat;
+  releaseNotes?: string | null;
+  publish?: boolean;
+  fileName: string;
+  contentType: string;
+  fileSizeBytes: number;
+  fileSha256: string;
+  storageKey: string;
+  uploadedByUserId: number | null;
+}): Promise<DesktopReleaseAsset> {
+  await ensureDesktopReleaseSchema();
+  const drizzle = getDb();
+  const channel = input.channel ?? "stable";
+  const installerFormat = input.installerFormat ?? inferInstallerFormat(input.fileName);
+  const publish = input.publish ?? true;
+
+  if (!input.storageKey.startsWith("desktop-releases/")) {
+    throw new Error("desktop_release_storage_key_invalid");
+  }
+
+  const [created] = await drizzle
+    .insert(desktopInstallerReleases)
+    .values({
+      version: input.version,
+      platform: input.platform,
+      channel,
+      installerFormat,
+      fileName: input.fileName,
+      contentType: input.contentType,
+      storageKey: input.storageKey,
+      fileSizeBytes: input.fileSizeBytes,
+      fileSha256: input.fileSha256,
+      releaseNotes: input.releaseNotes?.trim() ? input.releaseNotes.trim() : null,
+      isPublished: publish,
+      publishedAt: publish ? new Date() : null,
+      uploadedBy: input.uploadedByUserId,
+      uploadedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning({ id: desktopInstallerReleases.id });
+
+  if (!created) {
+    throw new Error("failed_to_create_desktop_release_record");
+  }
+
+  const loaded = await getDesktopReleaseAssetById(created.id);
+  if (!loaded) {
+    throw new Error("failed_to_load_desktop_release_record");
+  }
+
+  return loaded;
 }
 
 export async function updateDesktopReleaseRecord(

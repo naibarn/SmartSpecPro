@@ -158,7 +158,9 @@ describe("Finance locked navigation", () => {
     render(<FinanceReportsPage />);
 
     expect(screen.getByRole("heading", { name: /privateVault\.unlockTitle/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /finance reports/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /payment accounts/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /category breakdown/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /export pdf/i })).not.toBeInTheDocument();
   });
 });

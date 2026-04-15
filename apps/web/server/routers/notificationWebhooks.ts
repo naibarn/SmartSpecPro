@@ -376,7 +376,7 @@ export const notificationWebhooksRouter = router({
           type: "system",
           title: "Test webhook",
           content:
-            "This is a test delivery from SmartSpecPro.",
+            "This is a test delivery from SmartAIHub.",
           priority: "normal",
           relatedResourceType: null,
           relatedResourceId: null,
@@ -400,7 +400,7 @@ export const notificationWebhooksRouter = router({
             "Content-Type": "application/json",
             "X-Signature-256": `sha256=${signature}`,
             "X-Delivery-Timestamp": deliveryTimestamp,
-            "User-Agent": "SmartSpecPro-Webhook/1.0",
+            "User-Agent": "SmartAIHub-Webhook/1.0",
           },
           body,
           signal: controller.signal,

@@ -13,6 +13,7 @@ import { checkNotificationHealth } from "../services/notificationHealthChecks";
 import { collectServiceRuntimeSnapshot } from "./services";
 import * as workerFleetService from "../services/workerFleetService";
 import * as workerBudgetService from "../services/workerBudgetService";
+import * as workOsService from "../services/workOsService";
 
 function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: number | null } | null }): string {
   const tid = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
@@ -51,6 +52,11 @@ export const monitoringRouter = router({
         telemetry: await listRoleTelemetrySnapshots(tenantId, input ?? {}),
       };
     }),
+
+  getWorkOsOverview: adminProcedure.query(async ({ ctx }) => {
+    const tenantId = requireTenantId(ctx);
+    return workOsService.getOverview(tenantId);
+  }),
 
   getRunEvents: protectedProcedure
     .input(z.object({

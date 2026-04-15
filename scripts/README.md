@@ -34,6 +34,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ### Build a packaged desktop app
 
+Desktop release configuration is managed in the SmartAIHub UI under **Admin Desktop Host**. Use the panel there to save the GitHub repository, workflow, ref, public URL, and GitHub token before you queue a build.
+
 Use your public HTTPS domain so the installed app works immediately after installation:
 
 ```bash

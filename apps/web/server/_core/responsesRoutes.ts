@@ -35,6 +35,11 @@ import {
 } from "../services/creditService";
 import { resolveApiUrl, type ApiStyle } from "./llmRoutes";
 import {
+  deriveChatSelectionContext,
+  type ChatFeatureMode,
+  resolveChatModelSelection,
+} from "../services/chatModelSelection";
+import {
   SearchResultCache,
   requiresFreshData,
   DEFAULT_MAX_SEARCH_CALLS_PER_REQUEST,
@@ -133,10 +138,13 @@ const ALLOWED_FIELDS = new Set([
   "temperature",
   "top_p",
   "max_output_tokens",
+  "reasoning",
   "store",
   "metadata",
   "stream",
   "previous_response_id",
+  "modelSelection",
+  "modelSelectionContext",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -401,6 +409,11 @@ export function validateKieResponsesConflicts(body: any): string | null {
   return null;
 }
 
+function getResponsesSelectionErrorStatus(error: unknown): number {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return message.includes("not enabled for this tenant") ? 403 : 400;
+}
+
 /**
  * Build upstream request headers for the provider.
  */
@@ -458,22 +471,59 @@ function estimateNextRoundCredits(budget: BudgetState): number {
   return Math.ceil(avgPerRound * 1.2); // 20% buffer
 }
 
+function extractPromptTextFromResponsesContent(content: unknown): string {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (!Array.isArray(content)) {
+    if (content && typeof content === "object") {
+      const record = content as Record<string, unknown>;
+      if (typeof record.text === "string") {
+        return record.text;
+      }
+      if (typeof record.content === "string") {
+        return record.content;
+      }
+    }
+    return "";
+  }
+
+  return content
+    .map((part) => {
+      if (typeof part === "string") {
+        return part;
+      }
+      if (!part || typeof part !== "object") {
+        return "";
+      }
+      const record = part as Record<string, unknown>;
+      if (typeof record.text === "string") {
+        return record.text;
+      }
+      if (typeof record.content === "string") {
+        return record.content;
+      }
+      return "";
+    })
+    .filter((part) => part.length > 0)
+    .join("\n");
+}
+
 /**
  * Extract the user's prompt text from a Responses API input field.
- * Handles both string and message-array formats.
+ * Handles string, message-array, and multimodal content-array formats.
  */
 function extractUserPrompt(input: unknown): string {
   if (typeof input === "string") return input;
   if (!Array.isArray(input)) return "";
   // Look for user message first
-  const userMsg = input.find(
-    (i: any) => i?.role === "user" && i?.content,
-  );
-  if (userMsg) return String((userMsg as any).content);
+  const userMsg = input.find((i: any) => i?.role === "user" && i?.content);
+  if (userMsg) return extractPromptTextFromResponsesContent((userMsg as any).content);
   // Fallback to first string or first content
   const first = input[0];
   if (typeof first === "string") return first;
-  return String((first as any)?.content || "");
+  return extractPromptTextFromResponsesContent((first as any)?.content || "");
 }
 
 // ---------------------------------------------------------------------------
@@ -604,12 +654,72 @@ export function registerResponsesRoutes(
       let { body: sanitizedBody, maxBudgetCredits, stream } =
         sanitizeResult;
 
-      // --- Resolve provider & model ---
-      const preferredProviderId = req.body?.preferredProvider;
-      let provider: any = null;
+      // --- Resolve selection / provider / model ---
+      const preferredProviderCandidate =
+        req.body?.preferredProvider != null ? Number(req.body.preferredProvider) : NaN;
+      const bodyPreferredProvider = Number.isFinite(preferredProviderCandidate)
+        ? preferredProviderCandidate
+        : null;
+      const bodyModelSelection = req.body?.modelSelection;
+      const bodySelectionContext = deriveChatSelectionContext(req.body?.modelSelectionContext);
+      const shouldUseSelectionRouting =
+        bodyModelSelection != null
+        || bodySelectionContext != null
+        || sanitizedBody.model === "__auto";
 
+      const selectionContext = shouldUseSelectionRouting
+        ? {
+            featureModes: Array.from(
+              new Set<ChatFeatureMode>([
+                ...(bodySelectionContext?.featureModes ?? []),
+                "responses",
+              ]),
+            ),
+          }
+        : null;
+
+      let resolvedSelection: Awaited<ReturnType<typeof resolveChatModelSelection>> | null = null;
+      let requestedModelId: string | null = null;
+      let preferredProviderId: number | null = bodyPreferredProvider;
+
+      if (shouldUseSelectionRouting) {
+        try {
+          resolvedSelection = await resolveChatModelSelection({
+            bodyModel: bodyModelSelection != null ? (sanitizedBody.model as string | null) : null,
+            bodyPreferredProvider,
+            bodyModelSelection,
+            selectionContext,
+            autoSelectionEnabled: true,
+          });
+        } catch (error) {
+          return res.status(getResponsesSelectionErrorStatus(error)).json({
+            error: {
+              message: error instanceof Error ? error.message : "Invalid responses model selection",
+            },
+          });
+        }
+        requestedModelId = resolvedSelection.resolvedModelId;
+        preferredProviderId = resolvedSelection.preferredProviderId ?? preferredProviderId;
+        debugLog("responses", "Resolved responses model selection", {
+          selectionMode: resolvedSelection.selectionMode,
+          resolvedModelId: resolvedSelection.resolvedModelId,
+          resolvedProviderId: resolvedSelection.resolvedProviderId ?? null,
+          resolvedProviderName: resolvedSelection.resolvedProviderName ?? null,
+          routeFamily: resolvedSelection.routeFamily,
+          preferredProviderId,
+        });
+      }
+
+      let provider: any = null;
       if (preferredProviderId != null) {
         provider = await deps.getLlmProviderById(preferredProviderId);
+        if (!provider && resolvedSelection?.strictProviderPin) {
+          return res.status(400).json({
+            error: {
+              message: "Pinned provider is not available for this responses selection.",
+            },
+          });
+        }
       }
       if (!provider) {
         provider = await deps.getActiveLlmProvider();
@@ -624,10 +734,12 @@ export function registerResponsesRoutes(
         });
       }
 
-      const requestedModelId = await resolveEnabledLlmModelId([
-        sanitizedBody.model as string | undefined,
-        provider.defaultModel,
-      ]);
+      if (!requestedModelId) {
+        requestedModelId = await resolveEnabledLlmModelId([
+          sanitizedBody.model as string | undefined,
+          provider.defaultModel,
+        ]);
+      }
       if (!requestedModelId) {
         return res.status(503).json({
           error: {

@@ -1,7 +1,7 @@
 import type {
   LocalAiExecutionMode,
   LocalAiVoiceInputMode,
-} from "../runtime-types/index";
+} from "../runtime-types/index.ts";
 
 export type LocalAiPlatform = "web" | "tauri" | "android_future";
 export type LocalAiRuntimeFamily =

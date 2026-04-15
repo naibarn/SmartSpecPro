@@ -55,7 +55,11 @@ def _write_r2_trace(event: str, **payload) -> None:
                 **payload,
             }, ensure_ascii=True) + "\n")
     except Exception:
-        logger.warning("r2_trace_write_failed", event=event, exc_info=True)
+        try:
+            logger.warning("r2_trace_write_failed", trace_event=event, exc_info=True)
+        except Exception:
+            # Tracing must never interfere with the storage upload path.
+            pass
 
 
 class R2StorageService:

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SmartSpecPro System Health Monitor & Alert Script
+# SmartAIHub System Health Monitor & Alert Script
 # ตรวจสอบสุขภาพของระบบและส่งการแจ้งเตือนผ่าน Webhook (Discord/Slack)
 
 # ============================================
@@ -9,7 +9,7 @@
 # ใส่ URL ของ Webhook ของคุณที่นี่ (หรือตั้งค่าใน .env)
 WEBHOOK_URL="${ALERT_WEBHOOK_URL:-}"
 CHECK_INTERVAL=300 # ตรวจสอบทุกๆ 5 นาที (300 วินาที)
-PROJECT_NAME="SmartSpecPro-Production"
+PROJECT_NAME="SmartAIHub-Production"
 
 # รายการบริการและ URL ที่ต้องตรวจสอบ
 declare -A SERVICES=(

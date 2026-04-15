@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { TRPCError } from "@trpc/server";
 import { and, count, desc, eq, gt, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 
+import { debugLog } from "../_core/logger";
 import { getDb } from "../db";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
 import { storagePut, storageGet, storageDelete } from "../storage";
@@ -41,12 +42,25 @@ import {
   refundCredits,
 } from "./creditService";
 import {
+  calculateOcrCredits,
+  classifyOcrFileClass,
+  getDocumentOcrSettings,
+  getDocumentOcrCreditsPerUnit,
+  isOcrExtractor,
+  resolveOcrPageCount,
+  resolveOcrProvider,
+} from "./documentOcrSettings";
+import { getFinanceOcrDebugTraceId, recordFinanceOcrDebugStep } from "./financeOcrDebug";
+import {
   buildUploadPipelineState,
   computeLibraryUploadChecksum,
   enrichLibraryUploadContent,
+  type LibraryUploadEnrichmentResult,
   type LibraryUploadPipelineStage,
   validateLibraryUploadSignature,
 } from "./libraryUploadPipeline";
+import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
+import { getTraceId } from "./traceContext";
 import {
   dispatchVectorOperation,
   getEffectiveVectorProviderConfig,
@@ -849,6 +863,30 @@ function extractTextLikeUploadContent(
   return text.length > 0 ? text : null;
 }
 
+function extractTextLikeUploadMetadata(metadata?: Record<string, unknown> | null): string | null {
+  if (!metadata || typeof metadata !== "object") {
+    return null;
+  }
+
+  const candidates = [
+    metadata.extracted_text,
+    metadata.ocr_text,
+    metadata.text,
+    metadata.full_text,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string") {
+      const trimmed = candidate.trim();
+      if (trimmed.length > 0) {
+        return trimmed;
+      }
+    }
+  }
+
+  return null;
+}
+
 async function upsertLibrarySourceTextChunk(
   db: DbClient,
   params: {
@@ -1020,6 +1058,76 @@ function buildLibraryUploadMetadata(
     svg_sanitized: uploadFields.svgSanitized || undefined,
     ...(uploadFields.extraMetadata || {}),
   });
+}
+
+type OcrChargePlan = {
+  amount: number;
+  pageCount: number;
+  creditsPerUnit: number;
+  billingUnit: "image" | "page";
+  provider: string | null;
+  extractor: string | null;
+  idempotencyKey: string;
+  description: string;
+  metadata: Record<string, unknown>;
+};
+
+async function buildOcrChargePlan(params: {
+  extractor: string | null;
+  metadata: Record<string, unknown>;
+  mimeType: string;
+  fileName: string;
+  fileSizeBytes: number;
+  libraryItemId: number;
+  tenantId: LibraryTenantId;
+  userId: number;
+  source: "library_upload" | "library_replace";
+  traceId?: string | null;
+}): Promise<OcrChargePlan | null> {
+  if (!isOcrExtractor(params.extractor)) return null;
+  const settings = await getDocumentOcrSettings();
+  const fileClass = classifyOcrFileClass({
+    mimeType: params.mimeType,
+    fileName: params.fileName,
+  });
+  const provider = resolveOcrProvider(params.metadata, params.extractor);
+  const creditsPerUnit = getDocumentOcrCreditsPerUnit({
+    settings,
+    providerId: provider,
+    fileClass,
+  });
+  if (creditsPerUnit <= 0) return null;
+  const pageCount = resolveOcrPageCount(params.metadata, params.mimeType);
+  const amount = calculateOcrCredits(pageCount, creditsPerUnit);
+  if (amount <= 0) return null;
+  const billingUnit = fileClass === "pdf" ? "page" : "image";
+  const unitCount = fileClass === "pdf" ? pageCount : 1;
+  const description = `OCR (${provider || "document_ocr"}): ${params.fileName} · ${unitCount} ${billingUnit}${unitCount === 1 ? "" : "s"}`;
+  return {
+    amount,
+    pageCount,
+    creditsPerUnit,
+    billingUnit,
+    provider,
+    extractor: params.extractor,
+    idempotencyKey: `ocr:${params.source}:${params.libraryItemId}`,
+    description,
+    metadata: {
+      service: "library.ocr",
+      source: params.source,
+      libraryItemId: params.libraryItemId,
+      fileName: params.fileName,
+      fileType: params.mimeType,
+      fileSizeBytes: params.fileSizeBytes,
+      fileClass,
+      pageCount,
+      billingUnit,
+      creditsPerUnit,
+      ocrProvider: provider,
+      extractor: params.extractor,
+      traceId: params.traceId ?? null,
+    },
+  };
 }
 
 function getUploadPipelineMetadata(
@@ -2289,66 +2397,126 @@ export async function uploadLibraryFile(
   }
 
   const billing = await calculateLibraryUploadCreditCost(effectiveFileType, fileBuffer.length);
-  const fallbackText = extractTextLikeUploadContent(fileBuffer, effectiveFileType, ext);
-  const enrichment = await enrichLibraryUploadContent({
-    fileBuffer,
-    fileName,
-    fileType: effectiveFileType,
-    extension: ext,
-    fallbackText,
-    metadata: input.metadata,
-  });
-  const extractedText = enrichment.extractedText;
-  if (billing.totalCredits > 0) {
-    const hasCredits = await hasEnoughCredits(actor.userId, billing.totalCredits);
-    if (!hasCredits) {
-      throw new Error(`Insufficient credits. Required: ${billing.totalCredits}`);
-    }
-  }
+  const fallbackText = extractTextLikeUploadMetadata(input.metadata)
+    ?? extractTextLikeUploadContent(fileBuffer, effectiveFileType, ext);
+  const debugTraceId = getFinanceOcrDebugTraceId(
+    typeof input.metadata?.finance_debug_trace_id === "string"
+      ? input.metadata.finance_debug_trace_id
+      : typeof input.metadata?.debug_trace_id === "string"
+        ? input.metadata.debug_trace_id
+        : null,
+  );
 
   const fileId = crypto.randomUUID().replace(/-/g, "");
   const key = `library/uploads/${tenantId}/${actor.userId}/${fileId}${ext ? `.${ext}` : ""}`;
   const storage = await storagePut(key, fileBuffer, effectiveFileType);
-  const inferredProcessingItemType = inferLibraryItemType(effectiveFileType, ext);
-  const created = await createLibraryItem(
-    {
-      itemType: inferredProcessingItemType,
-      source: "document_upload",
-      title: input.title?.trim() || fileName,
-      description: null,
-      status: "indexing",
-      visibility: input.visibility ?? "private",
-      projectId: input.projectId ?? null,
-      parentId: input.parentId ?? null,
-      metadata: {
-        ...buildLibraryUploadMetadata(input.metadata, {
-          fileName,
-          fileType: effectiveFileType,
-          extension: ext,
-          fileSizeBytes: fileBuffer.length,
-          checksumSha256,
-          extractedText,
-          extractor: enrichment.extractor,
-          searchQuality: enrichment.searchQuality,
-          stage: "indexing",
-          stageMessage: enrichment.stageMessage,
-          warnings: enrichment.warnings,
-          svgSanitized: svgUpload,
-          extraMetadata: enrichment.extraMetadata,
-        }),
-        uploaded_by_user_id: actor.userId,
-        source_key: storage.key,
-      },
+  let enrichment: LibraryUploadEnrichmentResult | null = null;
+  let extractedText: string | null = null;
+  let created: Awaited<ReturnType<typeof createLibraryItem>> | null = null;
+  try {
+    const featureFlags = await getTenantFeatureFlags(String(tenantId));
+    enrichment = await enrichLibraryUploadContent({
+      fileBuffer,
+      fileName,
+      fileType: effectiveFileType,
+      extension: ext,
+      fallbackText,
       sourceUrl: storage.url,
-      thumbnailUrl: inferredProcessingItemType === "image" ? storage.url : null,
-      sourceLink: {
-        linkType: "upload_key",
-        linkId: storage.key,
+      metadata: input.metadata,
+      externalProcessingAllowed: featureFlags.documentOcrExternalProcessing,
+      tenantId: String(tenantId),
+    });
+    extractedText = enrichment.extractedText;
+    debugLog("finance_ocr", "library upload enrichment", {
+      traceId: getTraceId() ?? "unknown",
+      debugTraceId,
+      fileName,
+      fileType: effectiveFileType,
+      extension: ext,
+      fallbackTextLength: fallbackText?.length ?? 0,
+      extractedTextLength: extractedText?.length ?? 0,
+      extractor: enrichment.extractor,
+      searchQuality: enrichment.searchQuality,
+      warningCount: enrichment.warnings.length,
+      sourceUrlPresent: Boolean(storage.url),
+    });
+    recordFinanceOcrDebugStep("library_upload_enrichment", {
+      traceId: debugTraceId ?? getTraceId() ?? "unknown",
+      fileName,
+      fileType: effectiveFileType,
+      extension: ext,
+      fallbackTextLength: fallbackText?.length ?? 0,
+      extractedTextLength: extractedText?.length ?? 0,
+      extractor: enrichment.extractor,
+      searchQuality: enrichment.searchQuality,
+      warningCount: enrichment.warnings.length,
+      sourceUrlPresent: Boolean(storage.url),
+    });
+
+    const inferredProcessingItemType = inferLibraryItemType(effectiveFileType, ext);
+    created = await createLibraryItem(
+      {
+        itemType: inferredProcessingItemType,
+        source: "document_upload",
+        title: input.title?.trim() || fileName,
+        description: null,
+        status: "indexing",
+        visibility: input.visibility ?? "private",
+        projectId: input.projectId ?? null,
+        parentId: input.parentId ?? null,
+        metadata: {
+          ...buildLibraryUploadMetadata(input.metadata, {
+            fileName,
+            fileType: effectiveFileType,
+            extension: ext,
+            fileSizeBytes: fileBuffer.length,
+            checksumSha256,
+            extractedText,
+            extractor: enrichment.extractor,
+            searchQuality: enrichment.searchQuality,
+            stage: "indexing",
+            stageMessage: enrichment.stageMessage,
+            warnings: enrichment.warnings,
+            svgSanitized: svgUpload,
+            extraMetadata: enrichment.extraMetadata,
+          }),
+          uploaded_by_user_id: actor.userId,
+          source_key: storage.key,
+        },
+        sourceUrl: storage.url,
+        thumbnailUrl: inferredProcessingItemType === "image" ? storage.url : null,
+        sourceLink: {
+          linkType: "upload_key",
+          linkId: storage.key,
+        },
       },
-    },
-    actor,
-    db,
-  );
+      actor,
+      db,
+    );
+  } catch (error) {
+    await storageDelete(storage.key).catch(() => {});
+    throw error;
+  }
+  debugLog("finance_ocr", "library upload persisted", {
+    traceId: getTraceId() ?? "unknown",
+    debugTraceId,
+    libraryItemId: created.item.id,
+    fileName,
+    fileType: effectiveFileType,
+    extension: ext,
+    extractedTextLength: extractedText?.length ?? 0,
+    metadataHasExtractedText: Boolean((created.item.metadata ?? {}).extracted_text),
+    metadataKeys: Object.keys((created.item.metadata ?? {}) as Record<string, unknown>).slice(0, 16),
+  });
+  recordFinanceOcrDebugStep("library_upload_persisted", {
+    traceId: debugTraceId ?? getTraceId() ?? "unknown",
+    libraryItemId: created.item.id,
+    fileName,
+    fileType: effectiveFileType,
+    extension: ext,
+    extractedTextLength: extractedText?.length ?? 0,
+    metadataHasExtractedText: Boolean((created.item.metadata ?? {}).extracted_text),
+  });
 
   if (extractedText) {
     await upsertLibrarySourceTextChunk(db, {
@@ -2358,10 +2526,84 @@ export async function uploadLibraryFile(
       source: isMarkdownLibraryUpload(ext) ? "document_upload_markdown" : "document_upload_extracted",
       projectId: input.projectId ?? null,
     });
+    debugLog("finance_ocr", "library upload chunk upserted", {
+      traceId: getTraceId() ?? "unknown",
+      debugTraceId,
+      libraryItemId: created.item.id,
+      fileName,
+      extractedTextLength: extractedText.length,
+      chunkSource: isMarkdownLibraryUpload(ext) ? "document_upload_markdown" : "document_upload_extracted",
+    });
+    recordFinanceOcrDebugStep("library_upload_chunk_upserted", {
+      traceId: debugTraceId ?? getTraceId() ?? "unknown",
+      libraryItemId: created.item.id,
+      fileName,
+      extractedTextLength: extractedText.length,
+      chunkSource: isMarkdownLibraryUpload(ext) ? "document_upload_markdown" : "document_upload_extracted",
+    });
+  } else {
+    debugLog("finance_ocr", "library upload no extracted text", {
+      traceId: getTraceId() ?? "unknown",
+      debugTraceId,
+      libraryItemId: created.item.id,
+      fileName,
+      fileType: effectiveFileType,
+      extension: ext,
+      searchQuality: enrichment.searchQuality,
+      warningCount: enrichment.warnings.length,
+    });
+    recordFinanceOcrDebugStep("library_upload_no_extracted_text", {
+      traceId: debugTraceId ?? getTraceId() ?? "unknown",
+      libraryItemId: created.item.id,
+      fileName,
+      fileType: effectiveFileType,
+      extension: ext,
+      searchQuality: enrichment.searchQuality,
+      warningCount: enrichment.warnings.length,
+    });
   }
 
-  if (billing.totalCredits > 0) {
-    try {
+  const ocrChargePlan = await buildOcrChargePlan({
+    extractor: enrichment.extractor,
+    metadata: (created.item.metadata ?? {}) as Record<string, unknown>,
+    mimeType: effectiveFileType,
+    fileName,
+    fileSizeBytes: fileBuffer.length,
+    libraryItemId: created.item.id,
+    tenantId,
+    userId: actor.userId,
+    source: "library_upload",
+    traceId: getTraceId(),
+  });
+
+  const totalCharge = billing.totalCredits + (ocrChargePlan?.amount ?? 0);
+  if (totalCharge > 0) {
+    const hasCredits = await hasEnoughCredits(actor.userId, totalCharge);
+    if (!hasCredits) {
+      throw new Error(`Insufficient credits. Required: ${totalCharge}`);
+    }
+  }
+
+  let ocrCharged = false;
+  let uploadCharged = false;
+  try {
+    if (ocrChargePlan) {
+      await deductCredits({
+        userId: actor.userId,
+        amount: ocrChargePlan.amount,
+        tenantId,
+        sourceType: "other",
+        description: ocrChargePlan.description,
+        idempotencyKey: ocrChargePlan.idempotencyKey,
+        metadata: {
+          ...ocrChargePlan.metadata,
+          ...(input.billingMetadata ?? {}),
+        },
+      });
+      ocrCharged = true;
+    }
+
+    if (billing.totalCredits > 0) {
       await deductCredits({
         userId: actor.userId,
         amount: billing.totalCredits,
@@ -2383,20 +2625,54 @@ export async function uploadLibraryFile(
           ...(input.billingMetadata ?? {}),
         },
       });
-    } catch (error) {
-      // Roll back uploaded artifact when post-upload billing fails (e.g., concurrent balance race).
-      try {
-        const softDeleted = await softDeleteLibraryItem(created.item.id, actor, db);
-        if (softDeleted) {
-          await permanentDeleteLibraryItem(created.item.id, actor, db);
-        } else {
-          await storageDelete(storage.key).catch(() => {});
-        }
-      } catch {
+      uploadCharged = true;
+    }
+  } catch (error) {
+    if (ocrCharged && ocrChargePlan) {
+      await refundCredits({
+        userId: actor.userId,
+        amount: ocrChargePlan.amount,
+        description: `Refund OCR charge (library upload): ${fileName}`,
+        sourceType: "other",
+        metadata: {
+          ...ocrChargePlan.metadata,
+          refundReason: "library_upload_billing_failed",
+        },
+      }).catch(() => {});
+    }
+    if (uploadCharged && billing.totalCredits > 0) {
+      await refundCredits({
+        userId: actor.userId,
+        amount: billing.totalCredits,
+        description: `Refund library upload billing: ${fileName}`,
+        sourceType: "indexing",
+        metadata: {
+          service: "library.upload_file",
+          libraryItemId: created.item.id,
+          fileName,
+          fileType,
+          fileSizeBytes: fileBuffer.length,
+          billingCategory: billing.category,
+          billingBaseCredits: billing.baseCredits,
+          billingStepCredits: billing.stepCredits,
+          billingExtraSteps: billing.extraSteps,
+          billingSizeStepMb: billing.sizeStepMb,
+          refundReason: "library_upload_billing_failed",
+        },
+      }).catch(() => {});
+    }
+    // Roll back uploaded artifact when post-upload billing fails (e.g., concurrent balance race).
+    try {
+      const softDeleted = await softDeleteLibraryItem(created.item.id, actor, db);
+      if (softDeleted) {
+        await permanentDeleteLibraryItem(created.item.id, actor, db);
+      } else {
         await storageDelete(storage.key).catch(() => {});
       }
-      throw error;
+    } catch {
+      await storageDelete(storage.key).catch(() => {});
     }
+    throw error;
   }
 
   const indexJob = await safeEnqueueLibraryIndexJob(
@@ -2502,17 +2778,18 @@ export async function replaceLibraryFile(
   }
 
   const billing = await calculateLibraryUploadCreditCost(effectiveFileType, fileBuffer.length);
-  const fallbackText = extractTextLikeUploadContent(fileBuffer, effectiveFileType, ext);
-  const enrichment = await enrichLibraryUploadContent({
-    fileBuffer,
-    fileName,
-    fileType: effectiveFileType,
-    extension: ext,
-    fallbackText,
-    metadata: input.metadata,
-  });
-  const extractedText = enrichment.extractedText;
+  const fallbackText = extractTextLikeUploadMetadata(input.metadata)
+    ?? extractTextLikeUploadContent(fileBuffer, effectiveFileType, ext);
+  const debugTraceId = getFinanceOcrDebugTraceId(
+    typeof input.metadata?.finance_debug_trace_id === "string"
+      ? input.metadata.finance_debug_trace_id
+      : typeof input.metadata?.debug_trace_id === "string"
+        ? input.metadata.debug_trace_id
+        : null,
+  );
   let debitTransactionId: number | null = null;
+  let ocrDebitTransactionId: number | null = null;
+  let ocrChargePlan: OcrChargePlan | null = null;
   if (billing.totalCredits > 0) {
     const hasCredits = await hasEnoughCredits(actor.userId, billing.totalCredits);
     if (!hasCredits) {
@@ -2586,6 +2863,46 @@ export async function replaceLibraryFile(
     newKey = `library/uploads/${tenantId}/${actor.userId}/${fileId}${ext ? `.${ext}` : ""}`;
     const storage = await storagePut(newKey, fileBuffer, effectiveFileType);
     const inferredItemType = inferLibraryItemType(effectiveFileType, ext);
+    const featureFlags = await getTenantFeatureFlags(String(tenantId));
+    const enrichment = await enrichLibraryUploadContent({
+      fileBuffer,
+      fileName,
+      fileType: effectiveFileType,
+      extension: ext,
+      fallbackText,
+      sourceUrl: storage.url,
+      metadata: input.metadata,
+      externalProcessingAllowed: featureFlags.documentOcrExternalProcessing,
+      tenantId: String(tenantId),
+    });
+    const extractedText = enrichment.extractedText;
+    debugLog("finance_ocr", "library replace enrichment", {
+      traceId: getTraceId() ?? "unknown",
+      debugTraceId,
+      libraryItemId: existing.id,
+      fileName,
+      fileType: effectiveFileType,
+      extension: ext,
+      fallbackTextLength: fallbackText?.length ?? 0,
+      extractedTextLength: extractedText?.length ?? 0,
+      extractor: enrichment.extractor,
+      searchQuality: enrichment.searchQuality,
+      warningCount: enrichment.warnings.length,
+      sourceUrlPresent: Boolean(storage.url),
+    });
+    recordFinanceOcrDebugStep("library_replace_enrichment", {
+      traceId: debugTraceId ?? getTraceId() ?? "unknown",
+      libraryItemId: existing.id,
+      fileName,
+      fileType: effectiveFileType,
+      extension: ext,
+      fallbackTextLength: fallbackText?.length ?? 0,
+      extractedTextLength: extractedText?.length ?? 0,
+      extractor: enrichment.extractor,
+      searchQuality: enrichment.searchQuality,
+      warningCount: enrichment.warnings.length,
+      sourceUrlPresent: Boolean(storage.url),
+    });
 
     // Steps 6-7 in a transaction so item + link updates are atomic
     const updated = await db.transaction(async (tx) => {
@@ -2644,6 +2961,27 @@ export async function replaceLibraryFile(
 
       return txUpdated;
     });
+    debugLog("finance_ocr", "library replace persisted", {
+      traceId: getTraceId() ?? "unknown",
+      debugTraceId,
+      libraryItemId: existing.id,
+      fileName,
+      fileType: effectiveFileType,
+      extension: ext,
+      extractedTextLength: extractedText?.length ?? 0,
+      metadataHasExtractedText: Boolean((updated.metadata ?? {}).extracted_text),
+      metadataKeys: Object.keys((updated.metadata ?? {}) as Record<string, unknown>).slice(0, 16),
+    });
+    recordFinanceOcrDebugStep("library_replace_persisted", {
+      traceId: debugTraceId ?? getTraceId() ?? "unknown",
+      libraryItemId: existing.id,
+      fileName,
+      fileType: effectiveFileType,
+      extension: ext,
+      extractedTextLength: extractedText?.length ?? 0,
+      metadataHasExtractedText: Boolean((updated.metadata ?? {}).extracted_text),
+      metadataKeys: Object.keys((updated.metadata ?? {}) as Record<string, unknown>).slice(0, 16),
+    });
 
     if (extractedText) {
       await upsertLibrarySourceTextChunk(db, {
@@ -2651,6 +2989,21 @@ export async function replaceLibraryFile(
         libraryItemId: existing.id,
         content: extractedText,
         source: isMarkdownLibraryUpload(ext) ? "document_replace_markdown" : "document_replace_extracted",
+      });
+      debugLog("finance_ocr", "library replace chunk upserted", {
+        traceId: getTraceId() ?? "unknown",
+        debugTraceId,
+        libraryItemId: existing.id,
+        fileName,
+        extractedTextLength: extractedText.length,
+        chunkSource: isMarkdownLibraryUpload(ext) ? "document_replace_markdown" : "document_replace_extracted",
+      });
+      recordFinanceOcrDebugStep("library_replace_chunk_upserted", {
+        traceId: debugTraceId ?? getTraceId() ?? "unknown",
+        libraryItemId: existing.id,
+        fileName,
+        extractedTextLength: extractedText.length,
+        chunkSource: isMarkdownLibraryUpload(ext) ? "document_replace_markdown" : "document_replace_extracted",
       });
     } else {
       await db
@@ -2661,6 +3014,55 @@ export async function replaceLibraryFile(
             eq(libraryChunks.contentType, "markdown_source"),
           ),
         );
+      debugLog("finance_ocr", "library replace no extracted text", {
+        traceId: getTraceId() ?? "unknown",
+        debugTraceId,
+        libraryItemId: existing.id,
+        fileName,
+        fileType: effectiveFileType,
+        extension: ext,
+        searchQuality: enrichment.searchQuality,
+        warningCount: enrichment.warnings.length,
+      });
+      recordFinanceOcrDebugStep("library_replace_no_extracted_text", {
+        traceId: debugTraceId ?? getTraceId() ?? "unknown",
+        libraryItemId: existing.id,
+        fileName,
+        fileType: effectiveFileType,
+        extension: ext,
+        searchQuality: enrichment.searchQuality,
+        warningCount: enrichment.warnings.length,
+      });
+    }
+
+    ocrChargePlan = await buildOcrChargePlan({
+      extractor: enrichment.extractor,
+      metadata: (updated.metadata ?? {}) as Record<string, unknown>,
+      mimeType: effectiveFileType,
+      fileName,
+      fileSizeBytes: fileBuffer.length,
+      libraryItemId: existing.id,
+      tenantId,
+      userId: actor.userId,
+      source: "library_replace",
+      traceId: getTraceId(),
+    });
+
+    if (ocrChargePlan) {
+      const hasCredits = await hasEnoughCredits(actor.userId, ocrChargePlan.amount);
+      if (!hasCredits) {
+        throw new Error(`Insufficient credits. Required: ${ocrChargePlan.amount}`);
+      }
+      const ocrDebit = await deductCredits({
+        userId: actor.userId,
+        amount: ocrChargePlan.amount,
+        tenantId,
+        sourceType: "other",
+        description: ocrChargePlan.description,
+        idempotencyKey: ocrChargePlan.idempotencyKey,
+        metadata: ocrChargePlan.metadata,
+      });
+      ocrDebitTransactionId = ocrDebit.transactionId;
     }
 
     // 8. Enqueue re-indexing (outside transaction — job queue insert)
@@ -2691,6 +3093,19 @@ export async function replaceLibraryFile(
     if (newKey) {
       // Clean up the orphaned uploaded file
       await storageDelete(newKey).catch(() => {});
+    }
+    if (ocrChargePlan && ocrDebitTransactionId) {
+      await refundCredits({
+        userId: actor.userId,
+        amount: ocrChargePlan.amount,
+        description: `Refund OCR charge (library replace): ${fileName}`,
+        originalTransactionId: ocrDebitTransactionId,
+        sourceType: "other",
+        metadata: {
+          ...ocrChargePlan.metadata,
+          refundReason: "library_replace_failed",
+        },
+      }).catch(() => {});
     }
     if (billing.totalCredits > 0 && debitTransactionId) {
       await refundCredits({
@@ -4294,9 +4709,12 @@ export async function restoreContentVersion(
       .limit(1);
 
     const currentStorageKey = currentLinks[0]?.linkId ?? null;
+    const currentFileType = typeof oldMetadata.file_type === "string"
+      ? oldMetadata.file_type
+      : "application/octet-stream";
     const currentSnapshotContent = JSON.stringify({
       file_name: oldMetadata.file_name ?? existing.title,
-      file_type: oldMetadata.file_type ?? effectiveFileType ?? "application/octet-stream",
+      file_type: currentFileType,
       file_size_bytes: oldMetadata.file_size_bytes ?? 0,
       original_source_url: existing.sourceUrl ?? null,
     });

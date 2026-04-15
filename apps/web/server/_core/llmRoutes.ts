@@ -24,6 +24,7 @@ import {
   acquireDelegatedWorkerConcurrencySlot,
   buildDelegatedWorkerOriginMetadata,
   DelegatedWorkerPlatformError,
+  enforceDelegatedWorkerLlmRoutePolicy,
   enforceDelegatedWorkerModelSelectionPolicy,
   enforceDelegatedWorkerSpendGuardrails,
 } from "../services/delegatedWorkerPlatformService";
@@ -1137,46 +1138,137 @@ export function transformRequestBody(
     return transformedMessages;
   };
 
-  const flattenOpenAiContentPart = (part: unknown): string => {
+  const normalizeResponsesContentPart = (
+    part: unknown,
+  ): Record<string, unknown> | null => {
     if (typeof part === "string") {
-      return part;
+      const text = part.trim();
+      return text.length > 0 ? { type: "input_text", text } : null;
     }
-    if (part && typeof part === "object") {
-      const record = part as Record<string, unknown>;
-      if (typeof record.text === "string") {
-        return record.text;
-      }
-      if (typeof record.content === "string") {
-        return record.content;
-      }
-      if (record.type === "image_url") {
-        return "[image]";
-      }
+
+    if (!part || typeof part !== "object") {
+      return null;
     }
-    return "";
+
+    const record = part as Record<string, unknown>;
+
+    if (typeof record.text === "string" && record.text.trim().length > 0) {
+      return { type: "input_text", text: record.text };
+    }
+
+    if (record.type === "text" && typeof record.content === "string" && record.content.trim().length > 0) {
+      return { type: "input_text", text: record.content };
+    }
+
+    if (record.type === "image_url") {
+      const imageValue = record.image_url;
+      const imageUrl =
+        typeof imageValue === "string"
+          ? imageValue.trim()
+          : imageValue && typeof imageValue === "object"
+            ? typeof (imageValue as Record<string, unknown>).url === "string"
+              ? String((imageValue as Record<string, unknown>).url).trim()
+              : ""
+            : "";
+
+      if (!imageUrl) {
+        return null;
+      }
+
+      const detail =
+        imageValue && typeof imageValue === "object" && typeof (imageValue as Record<string, unknown>).detail === "string"
+          ? String((imageValue as Record<string, unknown>).detail)
+          : typeof record.detail === "string"
+            ? String(record.detail)
+            : undefined;
+
+      return detail
+        ? { type: "input_image", image_url: imageUrl, detail }
+        : { type: "input_image", image_url: imageUrl };
+    }
+
+    if (record.type === "file_url") {
+      const fileValue = record.file_url;
+      const fileUrl =
+        typeof fileValue === "string"
+          ? fileValue.trim()
+          : fileValue && typeof fileValue === "object"
+            ? typeof (fileValue as Record<string, unknown>).url === "string"
+              ? String((fileValue as Record<string, unknown>).url).trim()
+              : ""
+            : "";
+
+      if (!fileUrl) {
+        return null;
+      }
+
+      return { type: "input_file", file_url: fileUrl };
+    }
+
+    if (typeof record.content === "string" && record.content.trim().length > 0) {
+      return { type: "input_text", text: record.content };
+    }
+
+    return null;
   };
 
-  const flattenOpenAiMessageContent = (content: unknown): string => {
+  const normalizeResponsesMessageContent = (
+    content: unknown,
+  ): string | Array<Record<string, unknown>> => {
     if (typeof content === "string") {
-      return content;
+      return content.trim();
     }
+
     if (Array.isArray(content)) {
-      return content
-        .map((part) => flattenOpenAiContentPart(part))
-        .filter((part) => part.length > 0)
-        .join("\n");
+      const parts = content
+        .map((part) => normalizeResponsesContentPart(part))
+        .filter((part): part is Record<string, unknown> => Boolean(part));
+
+      if (parts.length === 0) {
+        return "";
+      }
+
+      const hasNonTextPart = parts.some((part) => part.type !== "input_text");
+      if (!hasNonTextPart) {
+        return parts
+          .map((part) => (typeof part.text === "string" ? part.text : ""))
+          .filter((part) => part.length > 0)
+          .join("\n");
+      }
+
+      return parts;
     }
-    if (content && typeof content === "object") {
-      return flattenOpenAiContentPart(content);
+
+    const normalized = normalizeResponsesContentPart(content);
+    if (!normalized) {
+      return "";
     }
-    return "";
+    return normalized.type === "input_text" && typeof normalized.text === "string"
+      ? normalized.text
+      : [normalized];
+  };
+
+  const extractResponsesTextFromContent = (content: unknown): string => {
+    const normalized = normalizeResponsesMessageContent(content);
+    if (typeof normalized === "string") {
+      return normalized;
+    }
+    return normalized
+      .map((part) => {
+        if (part.type === "input_text" && typeof part.text === "string") {
+          return part.text;
+        }
+        return "";
+      })
+      .filter((part) => part.length > 0)
+      .join("\n");
   };
 
   if (apiStyle === "responses") {
     const messages = Array.isArray(body.messages) ? body.messages : [];
     const instructions = messages
       .filter((message: any) => message?.role === "system")
-      .map((message: any) => flattenOpenAiMessageContent(message.content))
+      .map((message: any) => extractResponsesTextFromContent(message.content))
       .filter((part: string) => part.length > 0)
       .join("\n\n");
 
@@ -1184,7 +1276,7 @@ export function transformRequestBody(
       .filter((message: any) => message?.role !== "system")
       .map((message: any) => ({
         role: message?.role === "assistant" ? "assistant" : "user",
-        content: flattenOpenAiMessageContent(message?.content),
+        content: normalizeResponsesMessageContent(message?.content),
       }));
 
     const normalizedText = (() => {
@@ -2291,6 +2383,12 @@ async function proxyChatWithCredits(
     preferredProviderId,
     providerName: provider.providerName,
   });
+  await enforceDelegatedWorkerLlmRoutePolicy({
+    auth: req.auth,
+    requestedModelId,
+    resolvedProviderId: provider.providerId ?? preferredProviderId ?? null,
+    providerName: provider.providerName,
+  });
   await enforceDelegatedWorkerSpendGuardrails({
     auth: req.auth,
     estimatedCredits: estimateDelegatedChatCredits(
@@ -2422,6 +2520,12 @@ async function proxyChatWithCredits(
     const trackedCostUsd = providerCostUsd && providerCostUsd > 0
       ? providerCostUsd
       : calculateLLMCostUsd(inputTokens, outputTokens, requestedModelId);
+    await enforceDelegatedWorkerLlmRoutePolicy({
+      auth: req.auth,
+      requestedModelId,
+      resolvedProviderId: provider.providerId ?? preferredProviderId ?? null,
+      providerName: provider.providerName,
+    });
     await enforceDelegatedWorkerSpendGuardrails({
       auth: req.auth,
       estimatedCredits: bridgedCreditsUsed,
@@ -2632,6 +2736,12 @@ async function proxyChatWithCredits(
     const actualCreditsUsed = costUsd && costUsd > 0
       ? calculateCreditsFromCost(costUsd)
       : calculateCreditsForLLM(inputTokens, outputTokens, requestedModelId);
+    await enforceDelegatedWorkerLlmRoutePolicy({
+      auth: req.auth,
+      requestedModelId,
+      resolvedProviderId: provider.providerId ?? preferredProviderId ?? null,
+      providerName: provider.providerName,
+    });
     await enforceDelegatedWorkerSpendGuardrails({
       auth: req.auth,
       estimatedCredits: actualCreditsUsed,
@@ -2940,6 +3050,12 @@ async function proxyChatWithCredits(
     }
 
     // Deduct credits for streaming
+    await enforceDelegatedWorkerLlmRoutePolicy({
+      auth: req.auth,
+      requestedModelId,
+      resolvedProviderId: provider.providerId ?? preferredProviderId ?? null,
+      providerName: provider.providerName,
+    });
     await enforceDelegatedWorkerSpendGuardrails({
       auth: req.auth,
       estimatedCredits: actualStreamCredits,

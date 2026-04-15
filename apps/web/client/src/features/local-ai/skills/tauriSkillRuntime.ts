@@ -757,7 +757,7 @@ export function buildGemma4LocalSkillPrompt(input: {
   dynamicParams?: Record<string, unknown>;
 }): string {
   const sections = [
-    "You are SmartSpecPro executing a reviewed local-safe skill with Gemma 4.",
+    "You are SmartAIHub executing a reviewed local-safe skill with Gemma 4.",
     `Skill ID: ${input.skillId}`,
   ];
 

@@ -833,6 +833,106 @@ async function loadSlideSkillStructuredOutputSchema(params: {
     }
   }
 
+  const normalizeStrictObjectSchema = (value: unknown): unknown => {
+    if (!value || typeof value !== "object") {
+      return value;
+    }
+    if (Array.isArray(value)) {
+      return value.map((entry) => normalizeStrictObjectSchema(entry));
+    }
+
+    const record = value as Record<string, unknown>;
+    for (const [key, entry] of Object.entries(record)) {
+      if (Array.isArray(entry)) {
+        record[key] = entry.map((item) => normalizeStrictObjectSchema(item));
+      } else if (entry && typeof entry === "object") {
+        record[key] = normalizeStrictObjectSchema(entry);
+      }
+    }
+
+    if (record.type === "object" && record.properties && typeof record.properties === "object" && !Array.isArray(record.properties)) {
+      const propertyKeys = Object.keys(record.properties as Record<string, unknown>);
+      if (propertyKeys.length > 0) {
+        const required = new Set(
+          Array.isArray(record.required)
+            ? record.required.map((item) => String(item))
+            : [],
+        );
+        for (const key of propertyKeys) {
+          required.add(key);
+        }
+        record.required = Array.from(required);
+      }
+    }
+
+    return record;
+  };
+
+  const stripUnsupportedCombinators = (value: unknown): unknown => {
+    if (Array.isArray(value)) {
+      return value.map((entry) => stripUnsupportedCombinators(entry));
+    }
+    if (!value || typeof value !== "object") {
+      return value;
+    }
+
+    const record = { ...(value as Record<string, unknown>) };
+    const combinatorKeys = ["oneOf", "anyOf", "allOf"] as const;
+    for (const key of combinatorKeys) {
+      if (!Object.prototype.hasOwnProperty.call(record, key)) {
+        continue;
+      }
+      const branches = Array.isArray(record[key])
+        ? (record[key] as Array<Record<string, unknown>>).filter((entry) => !!entry && typeof entry === "object")
+        : [];
+      const hasStructuralShape =
+        typeof record.type === "string"
+        || record.properties !== undefined
+        || record.items !== undefined
+        || record.enum !== undefined
+        || record.const !== undefined;
+      if (!hasStructuralShape && branches.length > 0) {
+        return stripUnsupportedCombinators(branches[0]);
+      }
+      delete record[key];
+    }
+
+    if (record.properties && typeof record.properties === "object" && !Array.isArray(record.properties)) {
+      const nextProperties: Record<string, unknown> = {};
+      for (const [propKey, propVal] of Object.entries(record.properties as Record<string, unknown>)) {
+        nextProperties[propKey] = stripUnsupportedCombinators(propVal);
+      }
+      record.properties = nextProperties;
+    }
+
+    if (record.items !== undefined) {
+      record.items = stripUnsupportedCombinators(record.items);
+    }
+
+    if (record.$defs && typeof record.$defs === "object" && !Array.isArray(record.$defs)) {
+      const nextDefs: Record<string, unknown> = {};
+      for (const [defKey, defVal] of Object.entries(record.$defs as Record<string, unknown>)) {
+        nextDefs[defKey] = stripUnsupportedCombinators(defVal);
+      }
+      record.$defs = nextDefs;
+    }
+
+    for (const [key, entry] of Object.entries(record)) {
+      if (key === "properties" || key === "items" || key === "$defs" || combinatorKeys.includes(key as typeof combinatorKeys[number])) {
+        continue;
+      }
+      if (Array.isArray(entry)) {
+        record[key] = entry.map((item) => stripUnsupportedCombinators(item));
+      } else if (entry && typeof entry === "object") {
+        record[key] = stripUnsupportedCombinators(entry);
+      }
+    }
+
+    return record;
+  };
+
+  effectiveSchema = stripUnsupportedCombinators(normalizeStrictObjectSchema(effectiveSchema)) as Record<string, unknown>;
+
   const schemaNameBase = String(params.skill.id || params.skill.name || "slide_skill")
     .trim()
     .replace(/[^a-zA-Z0-9]+/g, "_")
@@ -2645,6 +2745,7 @@ export async function preparePresentationSlideBundle(
       skillSlug: input.slideSkillId,
       userId: input.userId,
       executionPolicy,
+      maxModelAttempts: 1,
       enableThinking: input.requiresThinking || undefined,
       maxTokens: 4_000,
     });
@@ -2838,18 +2939,25 @@ export async function generatePresentationSlideDraft(
   const generateSlideJsonViaLlm = async (): Promise<{ slideJson: string; modelId?: string }> => {
     const llmTrace: Record<string, unknown> = {};
     (debugTrace.traces as Record<string, unknown>).llm = llmTrace;
+    const renderManifestTokenBudget = expectsRenderManifest
+      ? Math.max(
+          12_000,
+          clampSlideCount(requestedRenderManifestPageCount ?? input.maxPages) * 1_200,
+        )
+      : 6_000;
     const executeJsonPass = async (
       messages: Array<{ role: "system" | "user"; content: string }>,
       operation: string,
     ) => {
       const result = await executeSkillLlmWithFallback({
         messages,
-        skillSlug: input.slideSkillId,
-        userId: input.userId,
-        executionPolicy,
-        enableThinking: input.requiresThinking || undefined,
-        maxTokens: 6_000,
-        extraBodyParams: structuredOutputSchema
+      skillSlug: input.slideSkillId,
+      userId: input.userId,
+      executionPolicy,
+      maxModelAttempts: 1,
+      enableThinking: input.requiresThinking || undefined,
+      maxTokens: renderManifestTokenBudget,
+      extraBodyParams: structuredOutputSchema
           ? {
               response_format: {
                 type: "json_schema",
@@ -3216,17 +3324,18 @@ async function generateArticleWithSkill(
     "Never return HTML, markdown fences, JSON, or tool chatter.",
   ].join("\n\n");
 
-  const result = await executeSkillLlmWithFallback({
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: buildPresentationArticlePrompt(input) },
-    ],
-    skillSlug: skillId,
-    userId: input.userId,
-    executionPolicy,
-    enableThinking: input.requiresThinking || undefined,
-    maxTokens: 3_200,
-  });
+    const result = await executeSkillLlmWithFallback({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: buildPresentationArticlePrompt(input) },
+      ],
+      skillSlug: skillId,
+      userId: input.userId,
+      executionPolicy,
+      maxModelAttempts: 1,
+      enableThinking: input.requiresThinking || undefined,
+      maxTokens: 3_200,
+    });
 
   if (!result.success || !result.content?.trim()) {
     throw new Error(result.error || "Failed to generate article from skill");

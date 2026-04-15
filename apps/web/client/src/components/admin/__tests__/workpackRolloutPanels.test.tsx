@@ -61,6 +61,7 @@ describe("workpack rollout admin panels", () => {
   it("renders workpack rollout posture inside the tenant flags panel", () => {
     render(<TenantFeatureFlagsPanel tenantId="tenant-1" canEdit={false} />);
 
+    expect(screen.getByText(/hermes runtime has its own group near the top of the list/i)).toBeInTheDocument();
     expect(screen.getByText(/workpacks: supervised/i)).toBeInTheDocument();
     expect(screen.getByText(/tenant rollout posture/i)).toBeInTheDocument();
   });

@@ -52,6 +52,28 @@ describe("ttsService", () => {
       expect(body.provider).toBe("elevenlabs");
     });
 
+    it("routes to omnivoice provider when specified", async () => {
+      await synthesize("Hi", { format: "mp3", provider: "omnivoice" });
+      const [, opts] = mockFetch.mock.calls[0];
+      const body = JSON.parse(opts.body);
+      expect(body.provider).toBe("omnivoice");
+    });
+
+    it("forwards OmniVoice extension fields when provided", async () => {
+      await synthesize("Hello", {
+        format: "mp3",
+        provider: "omnivoice",
+        instruct: "female, low pitch, british accent",
+        referenceAudioUrl: "https://cdn.example.com/ref.wav",
+        referenceText: "Reference transcript",
+      });
+      const [, opts] = mockFetch.mock.calls[0];
+      const body = JSON.parse(opts.body);
+      expect(body.instruct).toBe("female, low pitch, british accent");
+      expect(body.reference_audio_url).toBe("https://cdn.example.com/ref.wav");
+      expect(body.reference_text).toBe("Reference transcript");
+    });
+
     it("routes to openai provider by default", async () => {
       await synthesize("Hi", { format: "mp3" });
       const [, opts] = mockFetch.mock.calls[0];

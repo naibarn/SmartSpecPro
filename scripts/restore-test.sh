@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SmartSpecPro Backup & Restore Verification Script
+# SmartAIHub Backup & Restore Verification Script
 # สคริปต์สำหรับทดสอบการกู้คืนข้อมูลเพื่อให้มั่นใจว่าไฟล์สำรองใช้งานได้จริง
 
 # ============================================
@@ -29,7 +29,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 print_banner() {
     echo -e "${CYAN}"
     echo "╔═══════════════════════════════════════════════════════════════╗"
-    echo "║             SmartSpecPro Restore Verification                 ║"
+    echo "║             SmartAIHub Restore Verification                 ║"
     echo "║           Testing Backup Integrity & Recovery                 ║"
     echo "╚═══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"

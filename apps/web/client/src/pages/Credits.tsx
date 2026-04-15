@@ -60,6 +60,15 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import {
   CREDIT_TRANSACTION_SOURCE_TYPES,
   type CreditTransactionOriginSurface,
   type CreditTransactionSourceType,
@@ -86,6 +95,7 @@ export default function Credits() {
     sourceType: sourceFilter ? (sourceFilter as CreditTransactionSourceType) : undefined,
   });
   const { data: usageStats } = trpc.credits.stats.useQuery({ days: 30 });
+  const { data: ocrUsage, isLoading: ocrLoading } = trpc.credits.ocrUsageSummary.useQuery({ days: 30 });
   const { data: packages, isLoading: packagesLoading } = trpc.packages.list.useQuery();
   const topupMutation = trpc.billing.createTopupCheckout.useMutation({
     onError: (error) => {
@@ -131,6 +141,23 @@ export default function Credits() {
   const originSurfaceLabels = useMemo<Record<CreditTransactionOriginSurface, string>>(() => ({
     media_studio: t('credits.sources.mediaStudio'),
   }), [t]);
+  const [ocrPeriod, setOcrPeriod] = useState<"daily" | "weekly" | "monthly">("daily");
+  const ocrSeries = useMemo(() => {
+    if (!ocrUsage) return [];
+    if (ocrPeriod === "weekly") return ocrUsage.weekly || [];
+    if (ocrPeriod === "monthly") return ocrUsage.monthly || [];
+    return ocrUsage.daily || [];
+  }, [ocrPeriod, ocrUsage]);
+  const ocrSourceLabels = useMemo<Record<string, string>>(() => ({
+    library_upload: "Document Management (Upload)",
+    library_replace: "Document Management (Replace)",
+    finance_ocr: "Finance (Income/Expense)",
+    chat_ocr: "Chat (Attachment OCR)",
+    "library.ocr": "Document OCR",
+    "finance.ocr": "Finance OCR",
+    "chat.ocr": "Chat OCR",
+    unknown: "Unknown",
+  }), []);
   const getSourcePresentation = (transaction: {
     sourceType?: unknown;
     description?: unknown;
@@ -324,6 +351,149 @@ export default function Credits() {
               iconClassName={stat.color}
             />
           ))}
+        </motion.div>
+
+        {/* OCR Usage Overview */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="mb-10"
+        >
+          <DashboardCard
+            title="OCR Usage Overview"
+            description="Track how often OCR is used and how many credits it consumes."
+            bodyClassName="p-6 space-y-6"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <DashboardKpiCard
+                icon={Zap}
+                value={ocrUsage?.totals?.credits?.toString() ?? "0"}
+                label="OCR credits (30d)"
+                className="p-4"
+                iconContainerClassName="bg-blue-50"
+                iconClassName="text-blue-600"
+              />
+              <DashboardKpiCard
+                icon={Clock}
+                value={ocrUsage?.totals?.count?.toString() ?? "0"}
+                label="OCR requests (30d)"
+                className="p-4"
+                iconContainerClassName="bg-amber-50"
+                iconClassName="text-amber-600"
+              />
+              <DashboardKpiCard
+                icon={TrendingUp}
+                value={
+                  ocrUsage?.totals?.count
+                    ? (ocrUsage.totals.credits / ocrUsage.totals.count).toFixed(2)
+                    : "0.00"
+                }
+                label="Avg credits / request"
+                className="p-4"
+                iconContainerClassName="bg-emerald-50"
+                iconClassName="text-emerald-600"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant={ocrPeriod === "daily" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setOcrPeriod("daily")}
+              >
+                Daily
+              </Button>
+              <Button
+                type="button"
+                variant={ocrPeriod === "weekly" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setOcrPeriod("weekly")}
+              >
+                Weekly
+              </Button>
+              <Button
+                type="button"
+                variant={ocrPeriod === "monthly" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setOcrPeriod("monthly")}
+              >
+                Monthly
+              </Button>
+            </div>
+
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={ocrSeries}>
+                  <defs>
+                    <linearGradient id="ocrCreditsGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="periodStart"
+                    tickFormatter={(value) => new Date(value).toLocaleDateString()}
+                  />
+                  <YAxis />
+                  <Tooltip
+                    formatter={(value: number, name: string) => [
+                      Math.round(Number(value)),
+                      name === "credits" ? "Credits" : "Requests",
+                    ]}
+                    labelFormatter={(label) => new Date(label).toLocaleString()}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="credits"
+                    stroke="#3b82f6"
+                    fill="url(#ocrCreditsGradient)"
+                    name="credits"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="text-sm font-semibold text-slate-900 mb-2">By Source</div>
+                <div className="space-y-2 text-sm text-slate-700">
+                  {(ocrUsage?.bySource ?? []).length === 0 && (
+                    <div className="text-slate-400">No OCR usage yet.</div>
+                  )}
+                  {(ocrUsage?.bySource ?? []).map((row: any) => (
+                    <div key={`source-${row.source}`} className="flex items-center justify-between">
+                      <span>{ocrSourceLabels[row.source] || row.source}</span>
+                      <span className="font-medium">{Math.round(Number(row.credits || 0))} credits</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="text-sm font-semibold text-slate-900 mb-2">By Provider</div>
+                <div className="space-y-2 text-sm text-slate-700">
+                  {(ocrUsage?.byProvider ?? []).length === 0 && (
+                    <div className="text-slate-400">No OCR usage yet.</div>
+                  )}
+                  {(ocrUsage?.byProvider ?? []).map((row: any) => (
+                    <div key={`provider-${row.source}`} className="flex items-center justify-between">
+                      <span>{row.source}</span>
+                      <span className="font-medium">{Math.round(Number(row.credits || 0))} credits</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {ocrLoading && (
+              <div className="flex items-center gap-2 text-sm text-slate-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading OCR usage…
+              </div>
+            )}
+          </DashboardCard>
         </motion.div>
 
         {/* Credit Packages — Collapsible */}

@@ -207,7 +207,7 @@ def download_model(profile_id: str) -> Path:
     partial = target_path.with_suffix(target_path.suffix + ".partial")
     request = urllib.request.Request(
         url,
-        headers={"User-Agent": "SmartSpecPro-Tauri/0.1"},
+        headers={"User-Agent": "SmartAIHub-Tauri/0.1"},
     )
     print(f"Downloading {profile_id} from {url}")
     with urllib.request.urlopen(request) as response, partial.open("wb") as output:
@@ -237,7 +237,7 @@ def prune_model_resources(selected_profiles: list[str]) -> None:
     placeholder = RESOURCE_MODELS_DIR / "README.md"
     placeholder.write_text(
         "# LiteRT-LM bundled models\n\n"
-        "This directory may stay empty in `on-demand` mode. SmartSpecPro downloads managed Gemma 4 `.litertlm` files here or into the app-managed runtime storage when needed.\n",
+        "This directory may stay empty in `on-demand` mode. SmartAIHub downloads managed Gemma 4 `.litertlm` files here or into the app-managed runtime storage when needed.\n",
         encoding="utf-8",
     )
 

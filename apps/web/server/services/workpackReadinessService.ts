@@ -4,11 +4,13 @@ import { evaluateWorkpackRolloutGate } from "./workpackRolloutGateService";
 import { getWorkpackDetail, listWorkpackDetailsByTenant } from "./workpackPersistence";
 import { captureWorkpackMetricSnapshot, getLatestMetricSnapshot } from "./workpackTelemetryService";
 
+type WorkpackDetail = NonNullable<Awaited<ReturnType<typeof getWorkpackDetail>>>;
+
 function nowIso(): string {
   return new Date().toISOString();
 }
 
-function deriveTrustStatus(detail: NonNullable<ReturnType<typeof getWorkpackDetail>>): WorkpackReadinessSummary["trustStatus"] {
+function deriveTrustStatus(detail: WorkpackDetail): WorkpackReadinessSummary["trustStatus"] {
   if (detail.version.fixtureCatalog.some((fixture) => fixture.governance.redactionState === "unscrubbed")) {
     return "restricted";
   }
@@ -18,13 +20,13 @@ function deriveTrustStatus(detail: NonNullable<ReturnType<typeof getWorkpackDeta
   return "verified";
 }
 
-function deriveConnectorHealth(detail: NonNullable<ReturnType<typeof getWorkpackDetail>>): WorkpackReadinessSummary["connectorHealth"] {
+function deriveConnectorHealth(detail: WorkpackDetail): WorkpackReadinessSummary["connectorHealth"] {
   if (detail.version.connectorMaps.some((map) => map.validationStatus === "blocked")) return "blocked";
   if (detail.version.connectorMaps.some((map) => map.validationStatus === "stale")) return "stale";
   return "healthy";
 }
 
-function deriveExceptionSeverity(detail: NonNullable<ReturnType<typeof getWorkpackDetail>>): WorkpackReadinessSummary["exceptionSeverity"] {
+function deriveExceptionSeverity(detail: WorkpackDetail): WorkpackReadinessSummary["exceptionSeverity"] {
   if (detail.exceptions.some((record) => !record.resolvedAt && record.riskClass === "critical")) return "critical";
   if (detail.exceptions.some((record) => !record.resolvedAt && record.riskClass === "high")) return "high";
   if (detail.exceptions.some((record) => !record.resolvedAt && record.riskClass === "medium")) return "medium";
@@ -33,13 +35,13 @@ function deriveExceptionSeverity(detail: NonNullable<ReturnType<typeof getWorkpa
 }
 
 export async function getWorkpackReadinessSummary(workpackId: string): Promise<WorkpackReadinessSummary> {
-  const detail = getWorkpackDetail(workpackId);
+  const detail = await getWorkpackDetail(workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${workpackId}`);
   }
   const gate = await evaluateWorkpackRolloutGate({ workpackId, targetMode: "autonomous" });
-  const promotionEligibility = evaluateWorkpackPromotionEligibility(workpackId);
-  const snapshot = getLatestMetricSnapshot(workpackId) ?? captureWorkpackMetricSnapshot(workpackId);
+  const promotionEligibility = await evaluateWorkpackPromotionEligibility(workpackId);
+  const snapshot = await getLatestMetricSnapshot(workpackId) ?? await captureWorkpackMetricSnapshot(workpackId);
 
   return workpackReadinessSummarySchema.parse({
     workpackId: detail.workpack.id,
@@ -59,7 +61,7 @@ export async function getWorkpackReadinessSummary(workpackId: string): Promise<W
 }
 
 export async function listWorkpackReadinessSummaries(tenantId: string): Promise<WorkpackReadinessSummary[]> {
-  const details = listWorkpackDetailsByTenant(tenantId);
+  const details = await listWorkpackDetailsByTenant(tenantId);
   const summaries = await Promise.all(details.map((detail) => getWorkpackReadinessSummary(detail.workpack.id)));
   return summaries.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }

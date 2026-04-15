@@ -195,6 +195,21 @@ describe("executeSkillLlmWithFallback", () => {
     expect(triedModels).not.toContain("mistral-large");
   });
 
+  it("can be constrained to a single model attempt for simpler debug flows", async () => {
+    mockExecute.mockResolvedValue(errorResult(500));
+
+    const result = await executeSkillLlmWithFallback(
+      makeRequest({
+        maxModelAttempts: 1,
+      }),
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.attempts).toHaveLength(1);
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(result.attempts[0].modelId).toBe("gpt-4o");
+  });
+
   // ═══════════════════════════════════════════════════════════════════════════
   // 5. Deduplication — same model never tried twice
   // ═══════════════════════════════════════════════════════════════════════════
@@ -544,16 +559,30 @@ describe("executeSkillLlmWithFallback", () => {
     expect(result.content).toBe("Plain text response");
   });
 
-  it("falls back to 'No response generated' when choices are empty", async () => {
-    mockExecute.mockResolvedValueOnce({
-      type: "success" as const,
-      response: { choices: [] },
-      providerId: 1,
-      providerName: "openai",
-    });
+  it("treats empty choices as a failed attempt and falls back to the next model", async () => {
+    mockExecute
+      .mockResolvedValueOnce({
+        type: "success" as const,
+        response: { choices: [] },
+        providerId: 1,
+        providerName: "openai",
+      })
+      .mockResolvedValueOnce(successResult("anthropic"));
 
     const result = await executeSkillLlmWithFallback(makeRequest());
 
-    expect(result.content).toBe("No response generated");
+    expect(result.success).toBe(true);
+    expect(result.modelId).toBe("gpt-4o-mini");
+    expect(result.content).toBe("LLM says hi");
+    expect(result.attempts).toHaveLength(2);
+    expect(result.attempts[0]).toMatchObject({
+      success: false,
+      errorType: "empty_response",
+      errorMessage: "No response generated",
+    });
+    expect(result.attempts[1]).toMatchObject({
+      success: true,
+      modelId: "gpt-4o-mini",
+    });
   });
 });

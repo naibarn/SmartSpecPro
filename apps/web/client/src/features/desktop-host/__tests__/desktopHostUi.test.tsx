@@ -129,8 +129,15 @@ describe("desktop host UI helpers", () => {
                   keyAlgorithm: "ed25519",
                   keyVersion: 2,
                   publicKeyDigestSha256: "a".repeat(64),
-                  attestationMode: "software_pkcs8",
-                  secretStorage: "file_store",
+                  attestationMode: "hardware_attested",
+                  secretStorage: "windows_dpapi",
+                  storageProtection: "os_protected",
+                  storageProvider: "test_attestation_helper",
+                  osAttested: true,
+                  hardwareBacked: true,
+                  attestationProvider: "test_attestation_helper",
+                  attestationEvidenceSha256: "b".repeat(64),
+                  attestationClaims: ["device_id:device-1", "key_version:2"],
                   proofKind: "ed25519_signature",
                 },
                 localFileService: {
@@ -139,14 +146,21 @@ describe("desktop host UI helpers", () => {
                   supportedFormats: ["pdf", "docx", "pptx", "xlsx", "png"],
                   maxInputBytes: 8_388_608,
                   timeoutMs: 8_000,
-                  ocrEnabled: false,
+                  ocrEnabled: true,
                   pdfExtractor: "internal_heuristic",
-                  ocrProvider: "none",
-                  fullRenderingSupported: false,
-                activeContentExecutionAllowed: false,
+                  ocrProvider: "tesseract",
+                  renderBackend: "pdftoppm+soffice",
+                  officeRenderer: "soffice",
+                  renderedPreviewFormats: ["pdf", "docx", "pptx"],
+                  complexDocumentSupport: "ocr_rendering",
+                  multiPageRenderingSupported: true,
+                  maxRenderedPages: 3,
+                  ocrLayoutMode: "page_segmented",
+                  fullRenderingSupported: true,
+                  activeContentExecutionAllowed: false,
+                },
               },
-            },
-            localRoots: [
+              localRoots: [
               {
                 rootId: "quotes",
                 name: "Quotes",
@@ -352,8 +366,48 @@ describe("desktop host UI helpers", () => {
     expect(screen.getByText("Storyboard Writer")).toBeInTheDocument();
     expect(screen.getByText(/ed25519 \/ ed25519_signature/i)).toBeInTheDocument();
     expect(screen.getByText("PDF internal_heuristic")).toBeInTheDocument();
-    expect(screen.getByText("Extraction only")).toBeInTheDocument();
+    expect(screen.getByText("test_attestation_helper")).toBeInTheDocument();
+    expect(screen.getByText("Up to 3 pages")).toBeInTheDocument();
+    expect(screen.getByText("page_segmented")).toBeInTheDocument();
+    expect(screen.getByText("Rendering + extraction")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /disable device/i })).toBeInTheDocument();
+  });
+
+  it("shows tenant guidance instead of raw tenant_required errors", () => {
+    render(
+      <DesktopHostSettingsPanel
+        featureFlags={{
+          desktopHostEnabled: true,
+          desktopAdvancedLocalMode: false,
+          desktopPackageSync: true,
+          desktopAgencyRuntime: false,
+          desktopWorkerProjection: true,
+        }}
+        status={null}
+        statusLoading={false}
+        statusError="desktop_host_tenant_required"
+        controlPlaneState={null}
+        controlPlaneLoading={false}
+        controlPlaneError="desktop_host_tenant_required"
+        packageCatalog={null}
+        packageCatalogLoading={false}
+        packageCatalogError="desktop_host_tenant_required"
+        scopeLabel="tenant"
+      />,
+    );
+
+    expect(
+      screen.getByText("Select a tenant to load live Desktop Host posture."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Select a tenant and a device to inspect its control plane snapshot."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Select a tenant to load the package catalog."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Unable to load device posture:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Unable to load control plane state:/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Unable to load package catalog:/i)).not.toBeInTheDocument();
   });
 
   it("builds stable handoff links", () => {
@@ -369,7 +423,7 @@ describe("desktop host UI helpers", () => {
     expect(buildDesktopLaunchUri({
       runId: "run-1",
       agencyId: "proposal-orchestrator",
-    })).toBe("smartspecpro://desktop/open?runId=run-1&agencyId=proposal-orchestrator");
+    })).toBe("smartaihub://desktop/open?runId=run-1&agencyId=proposal-orchestrator");
     expect(resolveDesktopViewHref({
       agencyId: "proposal-orchestrator",
     })).toBe("/agencies/proposal-orchestrator");

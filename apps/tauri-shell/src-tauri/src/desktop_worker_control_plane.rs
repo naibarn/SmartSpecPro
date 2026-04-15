@@ -1119,7 +1119,7 @@ fn post_json<T: DeserializeOwned, P: Serialize>(
         .post(url)
         .header("Accept", "application/json")
         .header("Content-Type", "application/json")
-        .header("User-Agent", "SmartSpecPro-Tauri/0.1")
+        .header("User-Agent", "SmartAIHub-Tauri/0.1")
         .bearer_auth(bearer_token.trim())
         .body(body)
         .send()
@@ -1140,7 +1140,7 @@ fn get_json<T: DeserializeOwned>(
     let response = client
         .get(url)
         .header("Accept", "application/json")
-        .header("User-Agent", "SmartSpecPro-Tauri/0.1")
+        .header("User-Agent", "SmartAIHub-Tauri/0.1")
         .bearer_auth(bearer_token.trim())
         .send()
         .map_err(|error| format!("desktop worker request failed: {error}"))?;
@@ -1197,7 +1197,7 @@ fn upload_presigned_artifact(
     let response = client
         .put(validated_upload_url)
         .header("Content-Type", content_type)
-        .header("User-Agent", "SmartSpecPro-Tauri/0.1")
+        .header("User-Agent", "SmartAIHub-Tauri/0.1")
         .body(file_bytes)
         .send()
         .map_err(|error| format!("artifact upload request failed: {error}"))?;

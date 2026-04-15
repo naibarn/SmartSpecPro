@@ -25,6 +25,7 @@ import { registerWorkerRuntimeRoutes } from "../routes/workerRuntime";
 import { registerWorkflowNodeTypesRoute } from "../routes/workflowNodeTypes";
 import { registerWorkflowWorkerRuntimeRoutes } from "../routes/workflowWorkerRuntime";
 import { registerDesktopHostRoutes } from "../routes/desktopHost";
+import { registerDesktopReleaseRoutes } from "../routes/desktopReleases";
 import { registerContentAutomationRoutes } from "../routers/contentAutomationRoutes";
 import { registerContentManifestImportRoutes } from "../routers/contentManifestImport";
 import { registerAutoDraftToolRoute } from "../routers/autoDraftTool";
@@ -88,6 +89,7 @@ import { initWebhookDispatchQueue, closeWebhookDispatchQueue } from "../services
 import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purgeOldTrashItems";
 import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs/gdriveSessionCleanup";
 import { initializeUploadPostCleanupJob, shutdownUploadPostCleanupWorker } from "../jobs/uploadPostCleanup";
+import { initializeFinanceOcrRetentionJob, shutdownFinanceOcrRetentionJob } from "../jobs/financeOcrRetentionJob";
 import { initializePendingApprovalAlertJob } from "../jobs/pendingApprovalAlert";
 import { initializeNotificationJobs } from "../jobs/notificationJobs";
 import { initializeBillingJobs, shutdownBillingJobs } from "../jobs/billingJobs";
@@ -340,7 +342,7 @@ const csrfCheck = (req: any, res: any, next: any) => {
     req.originalUrl.startsWith("/api/webhooks/gdrive") ||
     req.path.startsWith("/webhooks/telegram/") ||
     req.originalUrl.startsWith("/webhooks/telegram/") ||
-    // Inbound webhook triggers (external services sending events into SmartSpecPro)
+    // Inbound webhook triggers (external services sending events into SmartAIHub)
     // req.path includes the /api prefix at app-middleware level, so check originalUrl only.
     req.originalUrl.startsWith("/api/webhooks/trigger/") ||
     // Generalized channel webhooks (platform callbacks: WhatsApp, Slack, Discord, etc.)
@@ -453,7 +455,7 @@ app.use("/internal", createSlideRenderRouter());
 // Webhook routes (before CSRF-protected routes, external services send raw POSTs)
 app.use("/api/webhooks", createWebhookRouter());
 
-// Inbound webhook trigger endpoints (external services → SmartSpecPro conversations/agencies/workflows)
+// Inbound webhook trigger endpoints (external services → SmartAIHub conversations/agencies/workflows)
 // Must be before CSRF middleware — these are server-to-server requests with their own auth
 app.use("/api/webhooks/trigger", express.json({ limit: "1mb" }), createWebhookTriggerRouter());
 
@@ -527,6 +529,7 @@ registerAgencyStreamRoutes(app);
 registerLiveBrowserStreamRoutes(app);
 registerWorkerRuntimeRoutes(app);
 registerDesktopHostRoutes(app);
+registerDesktopReleaseRoutes(app);
 registerWorkflowNodeTypesRoute(app);
 registerWorkflowWorkerRuntimeRoutes(app);
 registerContentAutomationRoutes(app);
@@ -1515,6 +1518,13 @@ async function main() {
     console.error("[Startup] Failed to initialize GDrive cleanup job:", error);
   }
 
+  // Initialize Finance OCR retention cleanup (every 6h)
+  try {
+    await initializeFinanceOcrRetentionJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize Finance OCR retention job:", error);
+  }
+
   // Initialize Upload-Post retention cleanup (every 6h)
   try {
     await initializeUploadPostCleanupJob();
@@ -1648,6 +1658,7 @@ process.on("SIGTERM", async () => {
 
   // 3. Shut down background workers
   await shutdownGDriveCleanupWorker().catch(() => {});
+  await shutdownFinanceOcrRetentionJob().catch(() => {});
   await shutdownUploadPostCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownBillingJobs().catch(() => {});
@@ -1659,8 +1670,8 @@ process.on("SIGTERM", async () => {
   await shutdownMemoryMaintenanceJobs().catch(() => {});
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});
   await shutdownWorkpackScheduleJob().catch(() => {});
-  await closeEmbeddingQueue().catch(() => {});
   await shutdownRoleRoutineSchedulerJob().catch(() => {});
+  await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
 
   // 3b. Shut down channel adapters
@@ -1709,6 +1720,7 @@ process.on("SIGINT", async () => {
 
   await auditLogger.shutdown().catch(() => {});
   await shutdownGDriveCleanupWorker().catch(() => {});
+  await shutdownFinanceOcrRetentionJob().catch(() => {});
   await shutdownUploadPostCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownBillingJobs().catch(() => {});
@@ -1720,8 +1732,8 @@ process.on("SIGINT", async () => {
   await shutdownMemoryMaintenanceJobs().catch(() => {});
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});
   await shutdownWorkpackScheduleJob().catch(() => {});
-  await closeEmbeddingQueue().catch(() => {});
   await shutdownRoleRoutineSchedulerJob().catch(() => {});
+  await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
   await Promise.all(
     adapterRegistry.getAll()

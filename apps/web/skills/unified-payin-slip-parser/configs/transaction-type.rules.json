@@ -1,0 +1,72 @@
+{
+  "version": "3.0.0",
+  "rules": [
+    {
+      "transaction_type": "bill_payment",
+      "match_any_text": [
+        "จ่ายบิลสำเร็จ",
+        "bill payment",
+        "ชื่อร้านค้า",
+        "รหัสร้านค้า",
+        "หมายเลขอ้างอิง 2"
+      ]
+    },
+    {
+      "transaction_type": "qr_payment",
+      "match_any_text": [
+        "ชำระด้วย qr สำเร็จ",
+        "scan qr",
+        "merchant code",
+        "รหัสร้านค้า",
+        "qr สำเร็จ"
+      ]
+    },
+    {
+      "transaction_type": "transfer_between_accounts",
+      "match_any_text": [
+        "จาก",
+        "ไปยัง",
+        "โอนเงินสำเร็จ",
+        "from",
+        "to account",
+        "transfer success"
+      ]
+    },
+    {
+      "transaction_type": "promptpay_transfer",
+      "match_any_text": [
+        "พร้อมเพย์",
+        "promptpay",
+        "เบอร์มือถือ",
+        "mobile number"
+      ]
+    },
+    {
+      "transaction_type": "wallet_payment",
+      "match_any_text": [
+        "truemoney",
+        "wallet payment",
+        "g-wallet",
+        "g wallet",
+        "ชำระเงินสำเร็จ"
+      ]
+    },
+    {
+      "transaction_type": "wallet_transfer",
+      "match_any_text": [
+        "wallet transfer",
+        "transfer to wallet",
+        "โอนเงินเข้าวอลเล็ท"
+      ]
+    },
+    {
+      "transaction_type": "cash_in_out",
+      "match_any_text": [
+        "cash in",
+        "cash out",
+        "เติมเงิน",
+        "ถอนเงิน"
+      ]
+    }
+  ]
+}

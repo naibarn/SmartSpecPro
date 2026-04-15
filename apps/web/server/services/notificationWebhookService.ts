@@ -252,7 +252,7 @@ export async function deliverWebhook(
         "Content-Type": "application/json",
         "X-Signature-256": `sha256=${signature}`,
         "X-Delivery-Timestamp": deliveryTimestamp,
-        "User-Agent": "SmartSpecPro-Webhook/1.0",
+        "User-Agent": "SmartAIHub-Webhook/1.0",
       },
       body,
       signal: controller.signal,

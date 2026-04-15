@@ -32,6 +32,7 @@ class AudioModel(str, Enum):
     """Supported audio generation models"""
     ELEVENLABS_TTS = "elevenlabs-tts"
     ELEVENLABS_SFX = "elevenlabs-sfx"
+    OMNIVOICE_TTS = "omnivoice-tts"
 
 
 # Default models for each type
@@ -150,6 +151,13 @@ MODEL_METADATA: Dict[str, Dict[str, Any]] = {
         "provider": "kie.ai",
         "description": "Sound effects generation",
         "supports_voices": [],
+    },
+    AudioModel.OMNIVOICE_TTS.value: {
+        "type": "audio",
+        "name": "OmniVoice TTS",
+        "provider": "omnivoice",
+        "description": "Multilingual text-to-speech with optional voice design and cloning",
+        "supports_voices": ["managed", "custom"],
     },
 }
 

@@ -66,7 +66,7 @@ vi.mock("./enabledLlmModels", () => ({
       providerModelId: "gpt-5-4",
       defaultModel: null,
       apiStyle: "responses",
-      supportsVision: false,
+      supportsVision: true,
       supportsThinking: true,
       supportsFunctionTools: true,
       supportsStructuredOutputs: true,
@@ -335,6 +335,16 @@ describe("resolveChatModelSelection", () => {
 
     expect(result.resolvedModelId).toBe("gpt-5.4");
     expect(result.routeFamily).toBe("responses");
+  });
+
+  it("prefers responses-family models when responses are explicitly required", async () => {
+    const result = await resolveChatModelSelection({
+      bodyModelSelection: { mode: "auto-global" },
+      selectionContext: { featureModes: ["photo_search", "structured_output", "responses"] },
+    });
+
+    expect(result.routeFamily).toBe("responses");
+    expect(result.resolvedModelId).toBe("gpt-5.4");
   });
 
   it("uses legacy default resolution when chat does not explicitly opt into auto selection", async () => {

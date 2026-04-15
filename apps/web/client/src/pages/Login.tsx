@@ -15,7 +15,9 @@ import {
   rememberAuthReturnUrl,
 } from '@/lib/authRedirects';
 import { getSmartSpecWebEndpoint } from '@/lib/webRuntime';
+import { hasTauriRuntime } from '@/lib/webRuntime';
 import { useAuth } from '@/_core/hooks/useAuth';
+import { setAuthToken, setUser as setDesktopAuthUser } from '@/services/authService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -40,6 +42,137 @@ const ALLOWED_OAUTH_ORIGINS = [
   'https://accounts.google.com/',
   'https://github.com/login/oauth/authorize',
 ];
+
+type LoginResponsePayload = {
+  result?: {
+    data?: {
+      json?: {
+        success?: boolean;
+        requires2FA?: boolean;
+        email?: string;
+        hasBackupEmail?: boolean;
+        hasPhone?: boolean;
+        user?: {
+          id?: string | number;
+          email?: string | null;
+          name?: string | null;
+          currentTenantId?: string | number | null;
+        };
+        message?: string;
+      };
+    };
+  };
+  error?: {
+    json?: {
+      message?: string;
+    };
+  };
+};
+
+type DesktopLoginResponse = {
+  access_token?: string;
+  refresh_token?: string;
+  user?: {
+    id?: string | number;
+    email?: string | null;
+    name?: string | null;
+    role?: string | null;
+  };
+  error?: {
+    message?: string;
+  };
+  requiresBrowserSignIn?: boolean;
+  reason?: string;
+};
+
+async function parseJsonResponse(response: Response): Promise<unknown | null> {
+  const raw = await response.text();
+  if (!raw.trim()) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { raw };
+  }
+}
+
+function extractDesktopLoginMessage(
+  response: Response,
+  payload: DesktopLoginResponse | null,
+  t: (key: string, options?: Record<string, string | number>) => string,
+) {
+  const message = payload?.error?.message ?? "";
+  const reason = payload?.reason ?? "";
+
+  if (payload?.requiresBrowserSignIn || reason === "social_login_requires_browser" || reason === "two_factor_requires_browser") {
+    return t("login.toast.desktopBrowserRequired");
+  }
+
+  if (response.status === 401) {
+    return t("login.invalidCredentials");
+  }
+
+  if (response.status === 403) {
+    return message || t("login.toast.emailVerificationRequired");
+  }
+
+  if (response.status === 409) {
+    return message || t("login.toast.desktopBrowserRequired");
+  }
+
+  if (response.status === 429) {
+    return message || t("login.toast.accountLocked");
+  }
+
+  if (response.status >= 500) {
+    return message || t("login.toast.serverError");
+  }
+
+  return message || t("login.toast.unexpectedResponse");
+}
+
+function extractWebLoginMessage(
+  response: Response,
+  payload: LoginResponsePayload | null,
+  t: (key: string, options?: Record<string, string | number>) => string,
+) {
+  const result = payload?.result?.data?.json;
+  const errorMessage = payload?.error?.json?.message ?? result?.message ?? "";
+
+  if (result?.requires2FA) {
+    return "";
+  }
+
+  if (response.status === 401) {
+    return t("login.invalidCredentials");
+  }
+
+  if (response.status === 403) {
+    return errorMessage || t("login.toast.emailVerificationRequired");
+  }
+
+  if (response.status === 429) {
+    return errorMessage || t("login.toast.accountLocked");
+  }
+
+  if (response.status >= 500) {
+    return errorMessage || t("login.toast.serverError");
+  }
+
+  return errorMessage || t("login.toast.unexpectedResponse");
+}
+
+function toDesktopAuthUser(user: NonNullable<DesktopLoginResponse["user"]>) {
+  const email = user.email ?? "";
+  return {
+    id: String(user.id ?? email),
+    email,
+    full_name: user.name ?? email.split("@")[0] ?? "",
+    is_admin: user.role === "admin",
+  };
+}
 
 export default function Login() {
   const { t } = useScopedTranslation('auth');
@@ -129,45 +262,81 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // Call login API
-      const response = await fetch(getSmartSpecWebEndpoint('/trpc/auth.login'), {
+      const isDesktop = hasTauriRuntime();
+      const endpoint = isDesktop ? '/auth/desktop/login' : '/trpc/auth.login';
+      const response = await fetch(getSmartSpecWebEndpoint(endpoint), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          json: { email, password }
-        }),
-        credentials: 'include',
+        body: JSON.stringify(
+          isDesktop
+            ? { email, password }
+            : { json: { email, password } },
+        ),
+        credentials: isDesktop ? 'omit' : 'include',
       });
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
 
-      // Extract the response from tRPC structure: { result: { data: { json: {...} } } }
-      const result = data.result?.data?.json;
+      if (isDesktop) {
+        const payload = data as DesktopLoginResponse | null;
+        const desktopUser = payload?.user ?? null;
+        if (response.ok && payload?.access_token && desktopUser) {
+          await setAuthToken(payload.access_token);
+          await setDesktopAuthUser(toDesktopAuthUser(desktopUser));
+
+          const loginUserId = desktopUser.id;
+          if (loginUserId != null) getPostHog()?.identify(String(loginUserId));
+          getPostHog()?.capture("login_succeeded", { auth_method: "email", runtime: "desktop" });
+          toast.success(t('login.toast.success'));
+          clearPendingOAuthTwoFactor();
+          redirectToReturnUrl(getReturnUrl());
+          return;
+        }
+
+        const errorMessage = extractDesktopLoginMessage(response, payload, t);
+        const reason = response.status === 401 ? 'invalid_credentials'
+          : response.status === 403 ? 'email_not_verified'
+          : response.status === 409 ? 'browser_sign_in_required'
+          : response.status === 429 ? 'account_locked'
+          : response.status >= 500 ? 'server_error'
+          : 'unexpected_response';
+        getPostHog()?.capture("login_failed", { failure_reason: reason, auth_method: "email", runtime: "desktop" });
+        if (errorMessage.toLowerCase().includes('verify your email')) {
+          setNeedsVerification(true);
+        }
+        toast.error(errorMessage);
+        return;
+      }
+
+      const payload = data as LoginResponsePayload | null;
+      const result = payload?.result?.data?.json;
 
       if (result?.requires2FA) {
         clearPendingOAuthTwoFactor();
         setNeeds2FA(true);
-        setTwoFAEmail(result.email);
-        setHas2FABackup({ email: result.hasBackupEmail, phone: result.hasPhone });
+        setTwoFAEmail(result.email ?? email);
+        setHas2FABackup({ email: !!result.hasBackupEmail, phone: !!result.hasPhone });
         return;
       }
 
       if (result?.success) {
-        const loginUserId = result.userId || result.id;
+        const loginUserId = result.user?.id || result.user?.currentTenantId;
         if (loginUserId) getPostHog()?.identify(String(loginUserId));
-        getPostHog()?.capture("login_succeeded", { auth_method: "email" });
+        getPostHog()?.capture("login_succeeded", { auth_method: "email", runtime: "web" });
         toast.success(t('login.toast.success'));
         setNeedsVerification(false);
         clearPendingOAuthTwoFactor();
         redirectToReturnUrl(getReturnUrl());
       } else {
-        const errorMessage = result?.message || data.error?.json?.message || 'Invalid email or password';
-        const reason = errorMessage.toLowerCase().includes('verify') ? 'email_not_verified'
-          : errorMessage.toLowerCase().includes('locked') ? 'account_locked'
-          : 'invalid_credentials';
-        getPostHog()?.capture("login_failed", { failure_reason: reason, auth_method: "email" });
+        const errorMessage = extractWebLoginMessage(response, payload, t);
+        const reason = response.status === 401 ? 'invalid_credentials'
+          : response.status === 403 ? 'email_not_verified'
+          : response.status === 429 ? 'account_locked'
+          : response.status >= 500 ? 'server_error'
+          : 'unexpected_response';
+        getPostHog()?.capture("login_failed", { failure_reason: reason, auth_method: "email", runtime: "web" });
         if (errorMessage.toLowerCase().includes('verify your email')) {
           setNeedsVerification(true);
         }
@@ -175,8 +344,12 @@ export default function Login() {
       }
     } catch (error) {
       console.error('Login error:', error);
-      getPostHog()?.capture("login_failed", { failure_reason: "network_error", auth_method: "email" });
-      toast.error(t('login.toast.failed'));
+      getPostHog()?.capture("login_failed", { failure_reason: "network_error", auth_method: "email", runtime: hasTauriRuntime() ? "desktop" : "web" });
+      toast.error(
+        hasTauriRuntime()
+          ? t('login.toast.networkError')
+          : t('login.toast.failed'),
+      );
     } finally {
       setIsLoading(false);
     }

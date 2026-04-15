@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SmartSpecPro Production Restart Script
+# SmartAIHub Production Restart Script
 # สคริปต์สำหรับรีสตาร์ทบริการต่างๆ ในโหมด Production
 
 RED='\033[0;31m'

@@ -1,0 +1,36 @@
+[Unit]
+Description=SmartSpecPro Hermes Agent Runtime
+Documentation=https://github.com/smartspecpro/smartspec
+After=docker.service
+Requires=docker.service
+PartOf=smartspec.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=dev
+Group=dev
+WorkingDirectory=/home/dev/projects/SmartSpecPro
+Restart=on-failure
+RestartSec=30s
+
+# Make sure Docker is available before starting the Hermes stack.
+ExecStartPre=/usr/bin/docker info
+
+# Start Hermes and wait until the container healthcheck succeeds.
+ExecStart=/bin/bash -lc 'HERMES_ENV_FILE=/home/dev/projects/SmartSpecPro/docker/hermes.env /home/dev/projects/SmartSpecPro/docker/scripts/hermes.sh up'
+
+# Stop Hermes cleanly.
+ExecStop=/bin/bash -lc 'HERMES_ENV_FILE=/home/dev/projects/SmartSpecPro/docker/hermes.env /home/dev/projects/SmartSpecPro/docker/scripts/hermes.sh down'
+
+# Give Docker a little more time on shutdown before systemd gives up.
+TimeoutStartSec=180
+TimeoutStopSec=60
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smartspec-hermes
+
+[Install]
+WantedBy=smartspec.target

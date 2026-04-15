@@ -75,10 +75,46 @@ describe("DesktopReleaseConfigPanel", () => {
     vi.clearAllMocks();
   });
 
-  it("keeps save clickable and explains missing required fields instead of failing silently", async () => {
+  it("starts collapsed and expands on demand before saving", async () => {
     const user = userEvent.setup();
 
     render(<DesktopReleaseConfigPanel enabled />);
+
+    expect(
+      screen.queryByLabelText(
+        "dashboard:desktopReleases.admin.config.repository"
+      )
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "common.showMore",
+      })
+    );
+
+    expect(
+      await screen.findByLabelText(
+        "dashboard:desktopReleases.admin.config.repository"
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByText(
+        "dashboard:desktopReleases.admin.config.guide.step1.title"
+      )
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "dashboard:desktopReleases.admin.config.guide.expand",
+      })
+    );
+
+    expect(
+      await screen.findByText(
+        "dashboard:desktopReleases.admin.config.guide.step1.title"
+      )
+    ).toBeInTheDocument();
 
     const saveButton = screen.getByRole("button", {
       name: "dashboard:desktopReleases.admin.config.save",
@@ -90,7 +126,7 @@ describe("DesktopReleaseConfigPanel", () => {
 
     expect(spies.mutateMock).not.toHaveBeenCalled();
     expect(spies.toastErrorMock).toHaveBeenCalledWith(
-      "dashboard:desktopReleases.admin.config.missingRequired",
+      "dashboard:desktopReleases.admin.config.missingRequired"
     );
   });
 });

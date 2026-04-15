@@ -75,6 +75,7 @@ import {
   Filter,
   Download,
   ReceiptText,
+  ClipboardList,
 } from "lucide-react";
 
 type ReviewAgencySummary = {
@@ -282,8 +283,12 @@ export default function Dashboard() {
     desktopGovernanceEnabled,
     "tenant"
   );
-  const desktopGovernancePath =
+  const desktopReleaseWorkspacePath =
     user?.role === "admin" ? "/admin/desktop-host" : "/domain-admin/desktop-host";
+  const desktopGovernancePath =
+    user?.role === "admin"
+      ? "/admin/desktop-host/governance"
+      : "/domain-admin/desktop-host/governance";
   const { data: agencyListData } = useAgencyList();
 
   const { data: agencyReviewDashboardRaw } =
@@ -723,6 +728,23 @@ export default function Dashboard() {
   const nextBestActions = useMemo<DashboardShortcut[]>(() => {
     const actions: DashboardShortcut[] = [];
 
+    if (user.role !== "admin" && user.role !== "domain_admin") {
+      actions.push({
+        label: t("dashboard:nextBestActions.startWork"),
+        href: "/work/request",
+        icon: ClipboardList,
+        description: t("dashboard:nextBestActions.startWorkDetail"),
+        color: "from-slate-700 to-sky-700",
+      });
+      actions.push({
+        label: t("dashboard:nextBestActions.myRequests"),
+        href: "/work/requests",
+        icon: FileText,
+        description: t("dashboard:nextBestActions.myRequestsDetail"),
+        color: "from-slate-700 to-indigo-700",
+      });
+    }
+
     if (user.role === "admin" || user.role === "domain_admin") {
       actions.push({
         label: tenantFlags.desktopHostEnabled
@@ -730,9 +752,9 @@ export default function Dashboard() {
           : t("dashboard:nextBestActions.manageDesktopReleases"),
         href: tenantFlags.desktopHostEnabled
           ? user.role === "admin"
-            ? "/admin/desktop-host"
-            : "/domain-admin/desktop-host"
-          : "/desktop-host",
+            ? "/admin/desktop-host/governance"
+            : "/domain-admin/desktop-host/governance"
+          : desktopReleaseWorkspacePath,
         icon: tenantFlags.desktopHostEnabled ? MonitorPlay : Download,
         description: tenantFlags.desktopHostEnabled
           ? "See enrolled desktop devices, last contact, and access restrictions."
@@ -896,6 +918,18 @@ export default function Dashboard() {
   };
 
   const quickActions = [
+    {
+      label: t("dashboard:quickActions.startWork"),
+      icon: ClipboardList,
+      href: "/work/request",
+      color: "from-slate-700 to-sky-700",
+    },
+    {
+      label: t("dashboard:quickActions.myRequests"),
+      icon: FileText,
+      href: "/work/requests",
+      color: "from-slate-700 to-indigo-700",
+    },
     {
       label: t("dashboard:quickActions.mediaStudio"),
       icon: Sparkles,

@@ -275,6 +275,7 @@ describe("desktopHost routes", () => {
         desktopHostEnabled: true,
         desktopPackageSync: true,
         desktopAgencyRuntime: true,
+        desktopWorkerProjection: true,
       }),
       getSkillByIdAsync: async () => undefined,
       registerDesktopDevice: async ({ payload }) => ({
@@ -535,6 +536,115 @@ describe("desktopHost routes", () => {
           },
         ],
       }),
+      updateDesktopDevicePolicyOverrides: async ({ deviceId, overrides }) => ({
+        deviceId,
+        displayName: "Ops Desktop",
+        machineName: "ops-desktop",
+        healthStatus: "online",
+        accessState: "active",
+        platform: {
+          os: "windows",
+          osVersion: "11",
+          arch: "x64",
+          appVersion: "0.1.0",
+        },
+        enrolledAt: "2026-04-09T09:00:00.000Z",
+        lastSeenAt: "2026-04-09T10:00:00.000Z",
+        workerProjectionEnabled: true,
+        projectedWorkerRuntimeType: "desktop_zeroclaw_managed",
+        warningFlags: [],
+        capabilities: {},
+        owner: {
+          userId: "1",
+          name: "Ops Admin",
+          email: "ops@example.com",
+        },
+        presence: {
+          status: "online",
+          staleAfterSeconds: 300,
+          lastSeenAgeSeconds: 30,
+          reportedAt: "2026-04-09T10:00:00.000Z",
+        },
+        localRoots: [],
+        packageCachePaths: [],
+        packageSyncState: {
+          syncStatus: "ready",
+          lastSyncAt: null,
+          lastError: null,
+          syncedPackageIds: [],
+          packageCount: 0,
+          lastRevocationCheckAt: null,
+        },
+        pendingActions: [],
+        currentWorkspaceProfile: null,
+        lastRunSummary: null,
+        policyVersion: "desktop-host-policy-2026-04-08",
+        policyExpiresAt: "2026-04-09T11:00:00.000Z",
+        policyOverrides: {
+          allowAdvancedLocalMode: overrides.allowAdvancedLocalMode ?? null,
+          allowPackageSync: overrides.allowPackageSync ?? null,
+          allowAgencyRuntime: overrides.allowAgencyRuntime ?? null,
+          allowWorkerProjection: overrides.allowWorkerProjection ?? null,
+          maxLocalRoots: overrides.maxLocalRoots ?? null,
+          outputWritebackMode: overrides.outputWritebackMode ?? null,
+        },
+      }),
+      queueDesktopDeviceAction: async ({ deviceId, actionType }) => ({
+        device: {
+          deviceId,
+          displayName: "Ops Desktop",
+          machineName: "ops-desktop",
+          healthStatus: actionType === "quarantine_device" ? "unhealthy" : "online",
+          accessState: actionType === "quarantine_device" ? "quarantined" : "active",
+          platform: {
+            os: "windows",
+            osVersion: "11",
+            arch: "x64",
+            appVersion: "0.1.0",
+          },
+          enrolledAt: "2026-04-09T09:00:00.000Z",
+          lastSeenAt: "2026-04-09T10:00:00.000Z",
+          workerProjectionEnabled: true,
+          projectedWorkerRuntimeType: "desktop_zeroclaw_managed",
+          warningFlags: actionType === "quarantine_device" ? ["device_quarantined"] : [],
+          capabilities: {},
+          owner: {
+            userId: "1",
+            name: "Ops Admin",
+            email: "ops@example.com",
+          },
+          presence: {
+            status: "online",
+            staleAfterSeconds: 300,
+            lastSeenAgeSeconds: 30,
+            reportedAt: "2026-04-09T10:00:00.000Z",
+          },
+          localRoots: [],
+          packageCachePaths: [],
+          packageSyncState: {
+            syncStatus: "ready",
+            lastSyncAt: null,
+            lastError: null,
+            syncedPackageIds: [],
+            packageCount: 0,
+            lastRevocationCheckAt: null,
+          },
+          pendingActions: [],
+          currentWorkspaceProfile: null,
+          lastRunSummary: null,
+          policyVersion: "desktop-host-policy-2026-04-08",
+          policyExpiresAt: "2026-04-09T11:00:00.000Z",
+          policyOverrides: {},
+        },
+        action: {
+          actionId: "device-action-1",
+          actionType,
+          status: "queued",
+          rootId: null,
+          requestedAt: "2026-04-09T10:00:00.000Z",
+          note: null,
+        },
+      }),
       queueDesktopRootAction: async ({ deviceId, rootId, actionType }) => ({
         device: {
           deviceId,
@@ -668,6 +778,20 @@ describe("desktopHost routes", () => {
     const deviceStateResponse = await request(app).get(
       "/api/desktop-host/devices/device-1/state",
     );
+    const policyOverrideResponse = await request(app)
+      .post("/api/desktop-host/devices/device-1/policy-overrides")
+      .send({
+        overrides: {
+          allowAdvancedLocalMode: false,
+          maxLocalRoots: 2,
+          outputWritebackMode: "managed_output_only",
+        },
+      });
+    const deviceActionResponse = await request(app)
+      .post("/api/desktop-host/devices/device-1/actions")
+      .send({
+        actionType: "quarantine_device",
+      });
     const rootActionResponse = await request(app)
       .post("/api/desktop-host/devices/device-1/roots/quotes/actions")
       .send({
@@ -716,6 +840,10 @@ describe("desktopHost routes", () => {
     expect(deviceStateResponse.body.policySnapshot.localRoots[0]?.absolutePath).toBe(
       "C:/Users/demo/Documents/Quotes",
     );
+    expect(policyOverrideResponse.status).toBe(200);
+    expect(policyOverrideResponse.body.device.policyOverrides.allowAdvancedLocalMode).toBe(false);
+    expect(deviceActionResponse.status).toBe(200);
+    expect(deviceActionResponse.body.action.actionType).toBe("quarantine_device");
     expect(rootActionResponse.status).toBe(200);
     expect(rootActionResponse.body.action.actionType).toBe("reindex_root");
     expect(catalogResponse.status).toBe(200);

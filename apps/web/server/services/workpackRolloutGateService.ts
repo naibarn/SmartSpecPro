@@ -22,14 +22,14 @@ export async function evaluateWorkpackRolloutGate(input: {
   workpackId: string;
   targetMode?: "supervised" | "autonomous";
 }): Promise<WorkpackRolloutGateDecision> {
-  const detail = getWorkpackDetail(input.workpackId);
+  const detail = await getWorkpackDetail(input.workpackId);
   if (!detail) {
     throw new Error(`Unknown workpack: ${input.workpackId}`);
   }
 
   const flags = await getTenantFeatureFlags(detail.workpack.tenantId);
-  const incidents = listIncidentsForWorkpack(input.workpackId).filter((incident) => incident.status === "active");
-  const promotionEligibility = evaluateWorkpackPromotionEligibility(input.workpackId);
+  const incidents = (await listIncidentsForWorkpack(input.workpackId)).filter((incident) => incident.status === "active");
+  const promotionEligibility = await evaluateWorkpackPromotionEligibility(input.workpackId);
   const unresolvedExceptions = detail.exceptions.filter((record) => !record.resolvedAt);
   const connectorBlocked = detail.version.connectorMaps.some((map) => map.validationStatus === "blocked");
   const connectorStale = detail.version.connectorMaps.some((map) => map.validationStatus === "stale");

@@ -7,6 +7,7 @@ let notificationCountData = { count: 3 };
 let notificationsData: any[] = [];
 let urgentRemindersData: any[] = [];
 let currentLocation = "/";
+let mockLocale: "en" | "th" = "en";
 const setLocationMock = vi.fn();
 const openWindowMock = vi.fn();
 
@@ -38,7 +39,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 vi.mock("@/i18n/useScopedTranslation", () => ({
   useScopedTranslation: () => ({
-    locale: "en",
+    locale: mockLocale,
     t: (key: string) => key,
   }),
 }));
@@ -64,6 +65,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
     notificationsData = [];
     urgentRemindersData = [];
     currentLocation = "/";
+    mockLocale = "en";
     setLocationMock.mockClear();
     openWindowMock.mockReset();
     Object.defineProperty(window, "open", {
@@ -297,6 +299,21 @@ describe("GlobalNotificationBell occurrence badge", () => {
     expect(bellRoot.style.left).toBe("");
   });
 
+  it("ignores legacy stored custom positions without a version marker and docks the bell to the top right", () => {
+    notificationCountData = { count: 2 };
+    localStorage.setItem(
+      "global-notification-bell-position",
+      JSON.stringify({ mode: "custom", x: 420, y: 24 }),
+    );
+
+    render(<GlobalAlerts />);
+
+    const bellRoot = screen.getByTestId("global-notification-bell");
+    expect(bellRoot.style.right).toBe("12px");
+    expect(bellRoot.style.top).toBe("12px");
+    expect(bellRoot.style.left).toBe("");
+  });
+
   it("uses actionUrl for urgent monitoring reminders instead of falling back to chat", async () => {
     urgentRemindersData = [
       {
@@ -370,6 +387,72 @@ describe("GlobalNotificationBell occurrence badge", () => {
       "_blank",
       "noopener,noreferrer",
     );
+  });
+
+  it("formats observed timestamps with the app locale instead of the browser locale", async () => {
+    const toLocaleStringSpy = vi
+      .spyOn(Date.prototype, "toLocaleString")
+      .mockImplementation(function (this: Date, locale?: string) {
+        return locale === "en" ? "en-formatted" : `unexpected-${locale ?? "none"}`;
+      });
+
+    urgentRemindersData = [
+      {
+        id: 119,
+        title: "Monitoring signal is stale",
+        content: "No fresh monitoring check has landed.",
+        priority: "critical",
+        scheduledMessageId: null,
+        conversationId: null,
+        relatedResourceType: "system_health",
+        metadata: {
+          source: "guardian.ops_overview",
+          observedAt: "2026-04-11T13:08:01Z",
+          signal: "1 pending",
+          recommendation: "Triage the outstanding alerts now",
+          relatedItems: {
+            category: "monitoring",
+          },
+        },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    expect(await screen.findByText("Observed: en-formatted")).toBeTruthy();
+    expect(toLocaleStringSpy).toHaveBeenCalledWith("en");
+    toLocaleStringSpy.mockRestore();
+  });
+
+  it("uses the Thai incident action label for localized ops reminders", async () => {
+    mockLocale = "th";
+    urgentRemindersData = [
+      {
+        id: 122,
+        title: "Critical alerts are piling up without clear ownership",
+        content: "High-severity alerts were raised, but the incident still lacks clear triage and acknowledgement.",
+        priority: "critical",
+        scheduledMessageId: null,
+        conversationId: null,
+        actionUrl: "/admin/dashboard?incident=ops-overview%3Aaudit%3Allm_error_spike",
+        actionLabel: "Open Incident",
+        relatedResourceType: "system_health",
+        metadata: {
+          source: "guardian.ops_overview",
+          signal: "44% error rate",
+          recommendation: "Check provider health, rate limits, and fallback routing before chat traffic degrades broadly.",
+          observedAt: "2026-04-11T12:57:32Z",
+          relatedItems: {
+            category: "audit",
+          },
+        },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    expect(await screen.findByRole("button", { name: /เปิดเหตุการณ์/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /open incident/i })).toBeNull();
   });
 
   it("dismisses an urgent reminder modal when the dismiss button is clicked", async () => {

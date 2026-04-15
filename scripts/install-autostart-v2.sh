@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# SmartSpecPro Auto-Start Installation Script (v2 - Systemd Native)
+# SmartAIHub Auto-Start Installation Script (v2 - Systemd Native)
 # Installs multiple systemd services for proper auto-start after reboot
 #
 # Usage:
@@ -48,7 +48,7 @@ cmd_install() {
 
     echo -e "${CYAN}"
     echo "╔═══════════════════════════════════════════════════════════════╗"
-    echo "║       SmartSpecPro Auto-Start Installation (v2)               ║"
+    echo "║       SmartAIHub Auto-Start Installation (v2)               ║"
     echo "║       Using Native Systemd Services                           ║"
     echo "╚═══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
@@ -123,7 +123,7 @@ cmd_install() {
 cmd_remove() {
     check_root
 
-    log_step "Removing SmartSpecPro auto-start..."
+    log_step "Removing SmartAIHub auto-start..."
 
     # Stop and disable target
     if systemctl is-active --quiet smartspec.target; then
@@ -153,7 +153,7 @@ cmd_remove() {
 
 cmd_status() {
     echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║                SmartSpecPro Service Status                    ║${NC}"
+    echo -e "${CYAN}║                SmartAIHub Service Status                    ║${NC}"
     echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
@@ -202,7 +202,7 @@ case "${1:-help}" in
         cmd_status
         ;;
     help|--help|-h)
-        echo "SmartSpecPro Auto-Start Manager (v2 - Systemd Native)"
+        echo "SmartAIHub Auto-Start Manager (v2 - Systemd Native)"
         echo ""
         echo "Usage: sudo $0 <command>"
         echo ""

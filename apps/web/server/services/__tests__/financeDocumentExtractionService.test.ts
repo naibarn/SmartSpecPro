@@ -54,6 +54,8 @@ const financeDocumentHarness = vi.hoisted(() => {
   const mockGetConversationById = vi.fn();
   const mockGetLibraryItemById = vi.fn();
   const mockCallLLMStructured = vi.fn();
+  const mockExtractFinanceStructuredDraftFromOcrText = vi.fn();
+  const mockBuildFinanceStructuredDraftFromText = vi.fn();
   const mockParseDocumentToDraft = vi.fn();
   const mockAuditLog = vi.fn();
   const mockCheckRateLimit = vi.fn();
@@ -88,6 +90,8 @@ const financeDocumentHarness = vi.hoisted(() => {
     mockGetConversationById,
     mockGetLibraryItemById,
     mockCallLLMStructured,
+    mockExtractFinanceStructuredDraftFromOcrText,
+    mockBuildFinanceStructuredDraftFromText,
     mockParseDocumentToDraft,
     mockAuditLog,
     mockCheckRateLimit,
@@ -95,6 +99,13 @@ const financeDocumentHarness = vi.hoisted(() => {
     mockEnrichLibraryUploadContent,
     mockDebugLog,
     mockExtractDocumentOccurredAtIso,
+    mockHasEnoughCredits: vi.fn(async () => true),
+    mockDeductCredits: vi.fn(async () => ({
+      success: true,
+      creditsUsed: 1,
+      newBalance: 100,
+      transactionId: 1,
+    })),
     mockGetTenantFeatureFlags: vi.fn(async () => ({
       documentOcrExternalProcessing: true,
     })),
@@ -116,6 +127,26 @@ vi.mock("../chatService", () => ({
   getConversationById: financeDocumentHarness.mockGetConversationById,
   isPersonalProjectId: (projectId: string | null | undefined) => projectId === "personal",
   PERSONAL_PROJECT_ID: "personal",
+}));
+
+vi.mock("../creditService", () => ({
+  hasEnoughCredits: financeDocumentHarness.mockHasEnoughCredits,
+  deductCredits: financeDocumentHarness.mockDeductCredits,
+}));
+
+vi.mock("../documentOcrSettings", () => ({
+  calculateOcrCredits: (pageCount: number, creditsPerPage: number) => Math.max(0, Math.round(pageCount) * creditsPerPage),
+  getDocumentOcrSettings: vi.fn().mockResolvedValue({
+    landingAiApiKey: "",
+    googleAiApiKey: "",
+    creditsPerPage: 1,
+  }),
+  isOcrExtractor: () => false,
+  resolveOcrPageCount: () => 1,
+  resolveOcrProvider: (_metadata: Record<string, unknown>, extractor: string | null) => extractor || null,
+  classifyOcrFileClass: (params: { mimeType?: string | null }) =>
+    String(params.mimeType ?? "").toLowerCase() === "application/pdf" ? "pdf" : "image",
+  getDocumentOcrCreditsPerUnit: (_settings: any, _providerId: string | null | undefined, _fileClass: string) => 1,
 }));
 
 vi.mock("../libraryService", () => ({
@@ -152,6 +183,8 @@ vi.mock("../../_core/logger", () => ({
 vi.mock("../financeService", () => ({
   parseDocumentToDraft: financeDocumentHarness.mockParseDocumentToDraft,
   extractDocumentOccurredAtIso: financeDocumentHarness.mockExtractDocumentOccurredAtIso,
+  extractFinanceStructuredDraftFromOcrText: financeDocumentHarness.mockExtractFinanceStructuredDraftFromOcrText,
+  buildFinanceStructuredDraftFromText: financeDocumentHarness.mockBuildFinanceStructuredDraftFromText,
 }));
 
 vi.mock("../tenantFeatureFlagService", () => ({
@@ -235,24 +268,69 @@ beforeEach(() => {
     createdAt: new Date("2026-04-09T00:00:00.000Z"),
     updatedAt: new Date("2026-04-09T00:00:00.000Z"),
   } as any);
-  financeDocumentHarness.mockCallLLMStructured.mockResolvedValue({
-    data: {
-      type: "expense",
-      amountMinor: 180,
-      currency: "THB",
-      occurredAt: "2026-04-09T09:00:00.000Z",
-      categoryCode: "food",
-      merchantName: "ABC",
-      note: "Team dinner",
-      confidence: 0.61,
-      needsClarification: true,
-      missingFields: ["merchantName"],
-      sourceMessageId: null,
-      sourceLibraryItemId: 22,
-      recurringRuleId: null,
-    },
-    tokensUsed: 42,
-    creditsUsed: 4,
+  financeDocumentHarness.mockBuildFinanceStructuredDraftFromText.mockImplementation((params: {
+    text: string;
+    typeHint?: "income" | "expense" | "transfer" | null;
+    categoryHint?: string | null;
+    counterpartyHint?: string | null;
+    occurredAt?: string | null;
+    captureIntent?: "receipt" | "transfer_slip" | "statement" | null;
+  }) => ({
+    type: params.typeHint === "transfer" ? "transfer" : "expense",
+    amountMinor: 180,
+    currency: "THB",
+    occurredAt: params.occurredAt ?? "2026-04-09T09:00:00.000Z",
+    categoryCode: "food",
+    documentRole: params.captureIntent ?? "receipt",
+    counterpartyName: params.counterpartyHint ?? "ABC",
+    merchantName: "ABC",
+    note: "Team dinner",
+    paymentMethodKind: "bank_account",
+    paymentDirection: "outbound",
+    paymentSourceAccountId: null,
+    paymentDestinationAccountId: null,
+    paymentSourceLabel: null,
+    paymentDestinationLabel: null,
+    paymentInstitutionName: null,
+    paymentAccountNickname: null,
+    paymentAccountLast4: null,
+    paymentInstrumentConfidence: 0.61,
+    confidence: 0.61,
+    needsClarification: true,
+    missingFields: ["merchantName"],
+    sourceMessageId: null,
+    sourceLibraryItemId: 22,
+    recurringRuleId: null,
+  }));
+  financeDocumentHarness.mockExtractFinanceStructuredDraftFromOcrText.mockResolvedValue({
+    type: "expense",
+    amountMinor: 180,
+    currency: "THB",
+    occurredAt: "2026-04-09T09:00:00.000Z",
+    categoryCode: "food",
+    documentRole: "receipt",
+    counterpartyName: "ABC",
+    merchantName: "ABC",
+    note: "Team dinner",
+    paymentMethodKind: "bank_account",
+    paymentDirection: "outbound",
+    paymentSourceAccountId: null,
+    paymentDestinationAccountId: null,
+    paymentSourceLabel: null,
+    paymentDestinationLabel: null,
+    paymentSourceInstitutionName: null,
+    paymentDestinationInstitutionName: null,
+    paymentInstitutionName: null,
+    paymentAccountNickname: null,
+    paymentAccountLast4: null,
+    paymentAccountMaskedIdentifier: null,
+    paymentInstrumentConfidence: 0.61,
+    confidence: 0.61,
+    needsClarification: true,
+    missingFields: ["merchantName"],
+    sourceMessageId: null,
+    sourceLibraryItemId: 22,
+    recurringRuleId: null,
   });
   financeDocumentHarness.mockParseDocumentToDraft.mockResolvedValue({
     id: 55,
@@ -321,7 +399,8 @@ describe("financeDocumentExtractionService", () => {
 
     expect(result.extraction.id).toBe(31);
     expect(result.draft.id).toBe(55);
-    expect(financeDocumentHarness.mockCallLLMStructured).toHaveBeenCalledTimes(1);
+    expect(financeDocumentHarness.mockExtractFinanceStructuredDraftFromOcrText).toHaveBeenCalledTimes(1);
+    expect(financeDocumentHarness.mockBuildFinanceStructuredDraftFromText).not.toHaveBeenCalled();
     expect(financeDocumentHarness.mockAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: "finance_document_ocr_started",
@@ -579,6 +658,434 @@ describe("financeDocumentExtractionService", () => {
       sourceUrlPublic: true,
       sourceUrlHostRedacted: "cdn….example.com",
     });
+  });
+
+  it("continues finance OCR from the original upload even when external OCR is tenant-disabled", async () => {
+    financeDocumentHarness.mockGetTenantFeatureFlags.mockResolvedValueOnce({
+      documentOcrExternalProcessing: false,
+    });
+
+    const db = financeDocumentHarness.getDbState();
+    db.queueSelectResult([]);
+    db.queueInsertResult({
+      id: 35,
+      tenantId: "tenant-1",
+      projectId: "personal",
+      ownerUserId: 7,
+      libraryItemId: 22,
+      source: "ocr_document",
+      idempotencyKey: "finance-document:tenant-1:personal:22",
+      sourceHash: "abc123",
+      ocrProvider: "library_upload_pipeline",
+      ocrText: "ร้านกาแฟ XYZ โอน 250 บาท",
+      ocrJson: {},
+      extractedJson: {},
+      confidenceJson: {},
+      mimeType: "application/pdf",
+      fileHash: "abc123",
+      pageCount: 1,
+      sourceMessageId: null,
+      sourceLibraryItemId: null,
+      allowedScopes: ["user:7"],
+      financeDraftId: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    });
+
+    financeDocumentHarness.mockGetLibraryItemById.mockResolvedValueOnce({
+      id: 22,
+      tenantId: "tenant-1",
+      ownerUserId: 7,
+      projectId: "personal",
+      itemType: "pdf",
+      source: "document_upload",
+      title: "transfer-slip.pdf",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: {
+        file_type: "application/pdf",
+        file_name: "transfer-slip.pdf",
+        content_checksum_sha256: "abc123",
+        file_size_bytes: 120_000,
+        extractor: "library_upload_pipeline",
+        page_count: 1,
+        finance_capture_intent: "transfer_slip",
+      },
+      sourceUrl: "https://cdn.example.com/library/uploads/tenant-1/7/transfer-slip.pdf",
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    } as any);
+
+    financeDocumentHarness.mockEnrichLibraryUploadContent.mockResolvedValueOnce({
+      extractedText: "ร้านกาแฟ XYZ โอน 250 บาท",
+      extractor: "image_document_ocr",
+      warnings: [],
+      searchQuality: "full_text",
+      stageMessage: "fallback ocr",
+      extraMetadata: {},
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        arrayBuffer: async () => Buffer.from("%PDF-1.7 scanned slip", "utf8").buffer,
+      }),
+    );
+
+    const result = await ingestFinanceDocumentFromLibraryItem({
+      conversationId: 91,
+      libraryItemId: 22,
+      userId: 7,
+      tenantId: "tenant-1",
+      idempotencyKey: "finance-document:tenant-1:personal:22",
+    });
+
+    expect(result.extraction.id).toBe(35);
+    expect(result.draft.id).toBe(55);
+    expect(financeDocumentHarness.mockEnrichLibraryUploadContent).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the unified transfer slip summary directly when it is already stored in library metadata", async () => {
+    const db = financeDocumentHarness.getDbState();
+    db.queueSelectResult([]);
+    db.queueInsertResult({
+      id: 36,
+      tenantId: "tenant-1",
+      projectId: "personal",
+      ownerUserId: 7,
+      libraryItemId: 22,
+      source: "ocr_document",
+      idempotencyKey: "finance-document:tenant-1:personal:22",
+      sourceHash: "abc123",
+      ocrProvider: "gateway_auto",
+      ocrText: "สรุปรายการสลิปโอนเงิน\nจำนวนเงิน: 726.00 THB",
+      ocrJson: {},
+      extractedJson: {},
+      confidenceJson: {},
+      mimeType: "image/jpeg",
+      fileHash: "abc123",
+      pageCount: 1,
+      sourceMessageId: null,
+      sourceLibraryItemId: null,
+      allowedScopes: ["user:7"],
+      financeDraftId: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    });
+
+    financeDocumentHarness.mockGetLibraryItemById.mockResolvedValueOnce({
+      id: 22,
+      tenantId: "tenant-1",
+      ownerUserId: 7,
+      projectId: "personal",
+      itemType: "image",
+      source: "document_upload",
+      title: "transfer-slip.jpg",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: {
+        file_type: "image/jpeg",
+        file_name: "transfer-slip.jpg",
+        content_checksum_sha256: "abc123",
+        file_size_bytes: 120_000,
+        extractor: "library_upload_pipeline",
+        finance_capture_intent: "transfer_slip",
+        analysis_profile: "finance_payin_llm_parser",
+        unified_payin_slip_summary: "สรุปรายการสลิปโอนเงิน\nจำนวนเงิน: 726.00 THB\nจ่ายจาก: กรุงไทย · XXX-X-XX577-0\nโอนไปยัง: TIKTOKSHOPSELLER",
+      },
+      sourceUrl: null,
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    } as any);
+
+    const result = await ingestFinanceDocumentFromLibraryItem({
+      conversationId: 91,
+      libraryItemId: 22,
+      userId: 7,
+      tenantId: "tenant-1",
+      idempotencyKey: "finance-document:tenant-1:personal:22",
+    });
+
+    expect(financeDocumentHarness.mockEnrichLibraryUploadContent).not.toHaveBeenCalled();
+    expect(financeDocumentHarness.mockExtractFinanceStructuredDraftFromOcrText).toHaveBeenCalledTimes(1);
+    expect(financeDocumentHarness.mockExtractFinanceStructuredDraftFromOcrText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining("สรุปรายการสลิปโอนเงิน"),
+        captureIntent: "transfer_slip",
+      }),
+    );
+    expect(result.extraction.id).toBe(36);
+  });
+
+  it("builds finance draft text from unified transfer slip metadata when the stored summary is missing", async () => {
+    const db = financeDocumentHarness.getDbState();
+    db.queueSelectResult([]);
+    db.queueInsertResult({
+      id: 37,
+      tenantId: "tenant-1",
+      projectId: "personal",
+      ownerUserId: 7,
+      libraryItemId: 23,
+      source: "ocr_document",
+      idempotencyKey: "finance-document:tenant-1:personal:23",
+      sourceHash: "abc124",
+      ocrProvider: "gateway_auto",
+      ocrText: "สรุปรายการสลิปโอนเงิน\nจำนวนเงิน: 726.00 THB",
+      ocrJson: {},
+      extractedJson: {},
+      confidenceJson: {},
+      mimeType: "image/jpeg",
+      fileHash: "abc124",
+      pageCount: 1,
+      sourceMessageId: null,
+      sourceLibraryItemId: null,
+      allowedScopes: ["user:7"],
+      financeDraftId: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    });
+
+    financeDocumentHarness.mockGetLibraryItemById.mockResolvedValueOnce({
+      id: 23,
+      tenantId: "tenant-1",
+      ownerUserId: 7,
+      projectId: "personal",
+      itemType: "image",
+      source: "document_upload",
+      title: "transfer-slip.jpg",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: {
+        file_type: "image/jpeg",
+        file_name: "transfer-slip.jpg",
+        content_checksum_sha256: "abc124",
+        file_size_bytes: 120_000,
+        extractor: "library_upload_pipeline",
+        finance_capture_intent: "transfer_slip",
+        analysis_profile: "finance_payin_llm_parser",
+        unified_payin_slip_result: {
+          detected_issuer: {
+            issuer_code: "KTB",
+            issuer_name_th: "กรุงไทย",
+          },
+          transaction: {
+            transaction_type: "transfer_between_accounts",
+            amount: 726,
+            currency: "THB",
+            fee: 0,
+            reference_id: "C20250429511921197051",
+            raw_date_text: "29 เม.ย. 2568 - 21:30",
+          },
+          payer: {
+            name: "นายพงษ์ จ",
+            issuer_name: "กรุงไทย",
+            account_number: "XXX-X-XX577-0",
+          },
+          payee: {
+            name: "TIKTOKSHOPSELLER",
+            issuer_name: "ธนาคารกรุงไทย",
+          },
+        },
+      },
+      sourceUrl: null,
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    } as any);
+
+    const result = await ingestFinanceDocumentFromLibraryItem({
+      conversationId: 91,
+      libraryItemId: 23,
+      userId: 7,
+      tenantId: "tenant-1",
+      idempotencyKey: "finance-document:tenant-1:personal:23",
+    });
+
+    expect(financeDocumentHarness.mockEnrichLibraryUploadContent).not.toHaveBeenCalled();
+    expect(financeDocumentHarness.mockExtractFinanceStructuredDraftFromOcrText).toHaveBeenCalledTimes(1);
+    const extractInput = financeDocumentHarness.mockExtractFinanceStructuredDraftFromOcrText.mock.calls[0]?.[0] as Record<string, unknown> | undefined;
+    expect(extractInput).toEqual(expect.objectContaining({
+      captureIntent: "transfer_slip",
+    }));
+    expect(String(extractInput?.text ?? "")).toContain("กรุงไทย");
+    expect(String(extractInput?.text ?? "")).toContain("TIKTOKSHOPSELLER");
+    expect(result.extraction.id).toBe(37);
+  });
+
+  it("prefers unified structured transfer slip data over a misleading stored summary", async () => {
+    const db = financeDocumentHarness.getDbState();
+    db.queueSelectResult([]);
+    db.queueInsertResult({
+      id: 39,
+      tenantId: "tenant-1",
+      projectId: "personal",
+      ownerUserId: 7,
+      libraryItemId: 25,
+      source: "ocr_document",
+      idempotencyKey: "finance-document:tenant-1:personal:25",
+      sourceHash: "abc126",
+      ocrProvider: "gateway_auto",
+      ocrText: "Krungthai กรุงไทย\nโอนเงินสำเร็จ\nรหัสอ้างอิง Ade6ac7c9b4e84f85\nจำนวนเงิน\n299.37 บาท\nค่าธรรมเนียม\n0.00 บาท\nวันที่ทำรายการ\n10 เม.ย. 2569 - 10:05",
+      ocrJson: {},
+      extractedJson: {},
+      confidenceJson: {},
+      mimeType: "image/jpeg",
+      fileHash: "abc126",
+      pageCount: 1,
+      sourceMessageId: null,
+      sourceLibraryItemId: null,
+      allowedScopes: ["user:7"],
+      financeDraftId: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    });
+
+    financeDocumentHarness.mockGetLibraryItemById.mockResolvedValueOnce({
+      id: 25,
+      tenantId: "tenant-1",
+      ownerUserId: 7,
+      projectId: "personal",
+      itemType: "image",
+      source: "document_upload",
+      title: "1775790323347.jpg",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: {
+        file_type: "image/jpeg",
+        file_name: "1775790323347.jpg",
+        content_checksum_sha256: "abc126",
+        file_size_bytes: 120_000,
+        extractor: "library_upload_pipeline",
+        finance_capture_intent: "transfer_slip",
+        analysis_profile: "finance_payin_llm_parser",
+        ocr_text: "สรุปรายการสลิปโอนเงิน\nจำนวนเงิน: 1,775,790,323,347 บาท\nวันที่และเวลา: 13/04/2026 21:21",
+        unified_payin_slip_summary: "สรุปรายการสลิปโอนเงิน\nจำนวนเงิน: 1,775,790,323,347 บาท\nวันที่และเวลา: 13/04/2026 21:21",
+        unified_payin_slip_result: {
+          detected_issuer: {
+            issuer_code: "KTB",
+            issuer_name_th: "กรุงไทย",
+          },
+          transaction: {
+            transaction_type: "transfer_between_accounts",
+            amount: 299.37,
+            currency: "THB",
+            fee: 0,
+            reference_id: "Ade6ac7c9b4e84f85",
+            raw_date_text: "10 เม.ย. 2569 - 10:05",
+          },
+          payer: {
+            name: "นายพงษ์ จ",
+            issuer_name: "กรุงไทย",
+            account_number: "XXX-X-XX577-0",
+          },
+          payee: {
+            name: "PROMPAY",
+            issuer_name: "ธนาคารกรุงไทย",
+          },
+        },
+      },
+      sourceUrl: null,
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    } as any);
+
+    const result = await ingestFinanceDocumentFromLibraryItem({
+      conversationId: 91,
+      libraryItemId: 25,
+      userId: 7,
+      tenantId: "tenant-1",
+      idempotencyKey: "finance-document:tenant-1:personal:25",
+    });
+
+    expect(financeDocumentHarness.mockExtractFinanceStructuredDraftFromOcrText).toHaveBeenCalledTimes(1);
+    const extractInput = financeDocumentHarness.mockExtractFinanceStructuredDraftFromOcrText.mock.calls[0]?.[0] as Record<string, unknown> | undefined;
+    expect(String(extractInput?.text ?? "")).toContain("299.37 THB");
+    expect(String(extractInput?.text ?? "")).toContain("10 เม.ย. 2569 - 10:05");
+    expect(String(extractInput?.text ?? "")).not.toContain("1,775,790,323,347");
+    expect(result.extraction.id).toBe(39);
+  });
+
+  it("keeps unified transfer slip ingestion moving when only the parser mode is present in metadata", async () => {
+    const db = financeDocumentHarness.getDbState();
+    db.queueSelectResult([]);
+    db.queueInsertResult({
+      id: 38,
+      tenantId: "tenant-1",
+      projectId: "personal",
+      ownerUserId: 7,
+      libraryItemId: 24,
+      source: "ocr_document",
+      idempotencyKey: "finance-document:tenant-1:personal:24",
+      sourceHash: "abc125",
+      ocrProvider: "gateway_auto",
+      ocrText: "สรุปรายการสลิปโอนเงิน\nไฟล์: transfer-slip.jpg\nโหมด: unified_llm_parser",
+      ocrJson: {},
+      extractedJson: {},
+      confidenceJson: {},
+      mimeType: "image/jpeg",
+      fileHash: "abc125",
+      pageCount: 1,
+      sourceMessageId: null,
+      sourceLibraryItemId: null,
+      allowedScopes: ["user:7"],
+      financeDraftId: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    });
+
+    financeDocumentHarness.mockGetLibraryItemById.mockResolvedValueOnce({
+      id: 24,
+      tenantId: "tenant-1",
+      ownerUserId: 7,
+      projectId: "personal",
+      itemType: "image",
+      source: "document_upload",
+      title: "transfer-slip.jpg",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: {
+        file_type: "image/jpeg",
+        file_name: "transfer-slip.jpg",
+        content_checksum_sha256: "abc125",
+        file_size_bytes: 120_000,
+        extractor: "library_upload_pipeline",
+        finance_capture_intent: "transfer_slip",
+        analysis_profile: "finance_payin_llm_parser",
+      },
+      sourceUrl: null,
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-09T00:00:00.000Z"),
+    } as any);
+
+    const result = await ingestFinanceDocumentFromLibraryItem({
+      conversationId: 91,
+      libraryItemId: 24,
+      userId: 7,
+      tenantId: "tenant-1",
+      idempotencyKey: "finance-document:tenant-1:personal:24",
+    });
+
+    expect(financeDocumentHarness.mockEnrichLibraryUploadContent).not.toHaveBeenCalled();
+    expect(financeDocumentHarness.mockExtractFinanceStructuredDraftFromOcrText).toHaveBeenCalledTimes(1);
+    const extractInput = financeDocumentHarness.mockExtractFinanceStructuredDraftFromOcrText.mock.calls[0]?.[0] as Record<string, unknown> | undefined;
+    expect(String(extractInput?.text ?? "")).toContain("unified_llm_parser");
+    expect(String(extractInput?.text ?? "")).toContain("transfer-slip.jpg");
+    expect(result.extraction.id).toBe(38);
   });
 
   it("logs a redacted local host when the fallback source url is private", async () => {
@@ -904,7 +1411,12 @@ describe("financeDocumentExtractionService", () => {
   });
 
   it("logs OCR failure when structured extraction fails", async () => {
-    financeDocumentHarness.mockCallLLMStructured.mockRejectedValueOnce(new Error("ocr provider timeout"));
+    financeDocumentHarness.mockExtractFinanceStructuredDraftFromOcrText.mockImplementationOnce(() => {
+      throw new Error("ocr llm unavailable");
+    });
+    financeDocumentHarness.mockBuildFinanceStructuredDraftFromText.mockImplementationOnce(() => {
+      throw new Error("structured draft unavailable");
+    });
 
     await expect(
       ingestFinanceDocumentFromLibraryItem({
@@ -913,7 +1425,7 @@ describe("financeDocumentExtractionService", () => {
         userId: 7,
         tenantId: "tenant-1",
       }),
-    ).rejects.toThrow("ocr provider timeout");
+    ).rejects.toThrow("structured draft unavailable");
 
     expect(financeDocumentHarness.mockAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -942,7 +1454,7 @@ describe("financeDocumentExtractionService", () => {
     ).rejects.toThrow(/throttled/i);
 
     expect(financeDocumentHarness.mockGetLibraryItemById).not.toHaveBeenCalled();
-    expect(financeDocumentHarness.mockCallLLMStructured).not.toHaveBeenCalled();
+    expect(financeDocumentHarness.mockBuildFinanceStructuredDraftFromText).not.toHaveBeenCalled();
   });
 
   it("is exposed through the finance router with resolved tenant scope", async () => {

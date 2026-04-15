@@ -2,8 +2,11 @@ import crypto from "crypto";
 
 import { debugLog } from "../_core/logger";
 import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
+import { getDocumentOcrSettings, resolveDocumentOcrRouting } from "./documentOcrSettings";
+import { getFinanceOcrDebugTraceId, recordFinanceOcrDebugStep } from "./financeOcrDebug";
 import { getTraceId } from "./traceContext";
 import { MAX_AUDIO_BYTES, transcribe } from "./sttService";
+import { loadEnabledLlmModelRows, type EnabledLlmModelRow } from "./enabledLlmModels";
 const INTERNAL_REQUEST_TIMEOUT_MS = 30_000;
 
 const COMPLEX_DOCUMENT_EXTENSIONS = new Set(["pdf", "docx", "pptx", "xlsx", "doc", "ppt", "xls"]);
@@ -45,6 +48,7 @@ export interface LibraryUploadEnrichmentResult {
 type UploadAnalysisProfile =
   | "metadata_only"
   | "document_ocr"
+  | "finance_payin_llm_parser"
   | "real_world_vision"
   | "video_transcript";
 
@@ -78,6 +82,7 @@ function resolveUploadAnalysisProfile(metadata: Record<string, unknown> | undefi
 
   switch (raw) {
     case "document_ocr":
+    case "finance_payin_llm_parser":
     case "real_world_vision":
     case "video_transcript":
       return raw;
@@ -122,6 +127,61 @@ function fingerprintToken(token: string | null | undefined): string | null {
     return null;
   }
   return crypto.createHash("sha256").update(value).digest("hex").slice(0, 12);
+}
+
+function pickStructuredVisionChatModel(rows: EnabledLlmModelRow[]): {
+  modelId: string | null;
+  candidateCount: number;
+} {
+  const candidates = rows
+    .filter((row) =>
+      row.apiStyle === "chat-completions"
+      && row.supportsVision === true
+      && row.supportsStructuredOutputs === true,
+    )
+    .sort((left, right) => left.priority - right.priority);
+
+  return {
+    modelId: candidates[0]?.modelId ?? null,
+    candidateCount: candidates.length,
+  };
+}
+
+async function resolveStructuredVisionChatModelId(params: {
+  traceId: string;
+  debugTraceId?: string | null;
+  fileName: string;
+  analysisProfile: UploadAnalysisProfile;
+  captureIntent: "receipt" | "transfer_slip" | "statement" | null;
+}): Promise<string | null> {
+  const autoRows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
+  let selection = pickStructuredVisionChatModel(autoRows);
+
+  if (!selection.modelId) {
+    const allRows = await loadEnabledLlmModelRows();
+    selection = pickStructuredVisionChatModel(allRows);
+  }
+
+  debugLog("finance_ocr", "gateway model selection", {
+    traceId: params.traceId,
+    debugTraceId: params.debugTraceId ?? null,
+    fileName: params.fileName,
+    analysisProfile: params.analysisProfile,
+    captureIntent: params.captureIntent,
+    modelId: selection.modelId,
+    candidateCount: selection.candidateCount,
+  });
+  recordFinanceOcrDebugStep("gateway_model_selection", {
+    traceId: params.debugTraceId ?? params.traceId,
+    traceIdInternal: params.traceId,
+    fileName: params.fileName,
+    analysisProfile: params.analysisProfile,
+    captureIntent: params.captureIntent,
+    modelId: selection.modelId,
+    candidateCount: selection.candidateCount,
+  });
+
+  return selection.modelId;
 }
 
 async function getInternalProxyToken(): Promise<string> {
@@ -256,6 +316,8 @@ async function postInternalJson<TResponse>(
   path: string,
   body: Record<string, unknown>,
   traceId?: string | null,
+  extraHeaders?: Record<string, string>,
+  tenantId?: string | null,
 ): Promise<TResponse> {
   const [internalProxyToken, runtime] = await Promise.all([
     getInternalProxyToken(),
@@ -287,6 +349,8 @@ async function postInternalJson<TResponse>(
         "Content-Type": "application/json",
         "x-proxy-token": internalProxyToken,
         "x-trace-id": resolvedTraceId,
+        ...(tenantId ? { "x-tenant-id": tenantId } : {}),
+        ...(extraHeaders || {}),
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -311,16 +375,42 @@ async function extractComplexDocumentText(params: {
   captureIntent: "receipt" | "transfer_slip" | "statement" | null;
   externalProcessingAllowed: boolean;
   sourceUrl?: string | null;
+  tenantId?: string | null;
   traceId?: string | null;
+  debugTraceId?: string | null;
 }): Promise<LibraryUploadEnrichmentResult> {
   const traceId = resolveFinanceOcrTraceId(params.traceId);
+  const ocrSettings = await getDocumentOcrSettings();
+  const ocrRouting = resolveDocumentOcrRouting({
+    settings: ocrSettings,
+    mimeType: params.fileType,
+    fileName: params.fileName,
+  });
   debugLog("finance_ocr", "extract-text start", {
     traceId,
+    debugTraceId: params.debugTraceId ?? null,
     fileName: params.fileName,
     fileType: params.fileType,
     analysisProfile: params.analysisProfile,
     captureIntent: params.captureIntent,
     contentBytes: params.fileBuffer.byteLength,
+    ocrFileClass: ocrRouting.fileClass,
+    ocrRequestedProvider: ocrRouting.requestedProviderId,
+    ocrProvider: ocrRouting.providerId,
+    ocrFallbackReason: ocrRouting.fallbackReason,
+  });
+  recordFinanceOcrDebugStep("extract_text_start", {
+    traceId: params.debugTraceId ?? traceId,
+    traceIdInternal: traceId,
+    fileName: params.fileName,
+    fileType: params.fileType,
+    analysisProfile: params.analysisProfile,
+    captureIntent: params.captureIntent,
+    contentBytes: params.fileBuffer.byteLength,
+    ocrFileClass: ocrRouting.fileClass,
+    ocrRequestedProvider: ocrRouting.requestedProviderId,
+    ocrProvider: ocrRouting.providerId,
+    ocrFallbackReason: ocrRouting.fallbackReason,
   });
   const payload = await postInternalJson<ExtractTextResponse>(
     "/api/internal/library/extract-text",
@@ -328,11 +418,14 @@ async function extractComplexDocumentText(params: {
       file_name: params.fileName,
       mime_type: params.fileType,
       content_base64: params.fileBuffer.toString("base64"),
+      ocr_provider: ocrRouting.providerId,
       ...(params.sourceUrl ? { source_url: params.sourceUrl } : {}),
       analysis_profile: params.analysisProfile,
       ...(params.captureIntent ? { capture_intent: params.captureIntent } : {}),
     },
     traceId,
+    ocrRouting.requestHeaders ?? undefined,
+    params.tenantId ?? null,
   );
 
   const extractedText = typeof payload.text === "string" && payload.text.trim()
@@ -351,6 +444,16 @@ async function extractComplexDocumentText(params: {
   };
   debugLog("finance_ocr", "extract-text result", {
     traceId,
+    debugTraceId: params.debugTraceId ?? null,
+    fileName: params.fileName,
+    method: payload.method ?? null,
+    charCount: payload.char_count ?? 0,
+    hasText: Boolean(extractedText),
+    warning: payload.warning ?? null,
+  });
+  recordFinanceOcrDebugStep("extract_text_result", {
+    traceId: params.debugTraceId ?? traceId,
+    traceIdInternal: traceId,
     fileName: params.fileName,
     method: payload.method ?? null,
     charCount: payload.char_count ?? 0,
@@ -417,11 +520,39 @@ async function enrichMediaUpload(params: {
   enableTranscript: boolean;
   externalProcessingAllowed: boolean;
   sourceUrl?: string | null;
+  tenantId?: string | null;
   traceId?: string | null;
+  debugTraceId?: string | null;
 }): Promise<LibraryUploadEnrichmentResult> {
   const traceId = resolveFinanceOcrTraceId(params.traceId);
+  const ocrSettings = await getDocumentOcrSettings();
+  const ocrRouting = resolveDocumentOcrRouting({
+    settings: ocrSettings,
+    mimeType: params.fileType,
+    fileName: params.fileName,
+  });
+  const shouldUseUnifiedParser =
+    params.analysisProfile === "finance_payin_llm_parser"
+    && params.captureIntent === "transfer_slip";
+  const gatewayModelId = shouldUseUnifiedParser
+    ? await resolveStructuredVisionChatModelId({
+      traceId,
+      debugTraceId: params.debugTraceId ?? null,
+      fileName: params.fileName,
+      analysisProfile: params.analysisProfile,
+      captureIntent: params.captureIntent,
+    })
+    : null;
+  if (shouldUseUnifiedParser && !gatewayModelId) {
+    throw new Error("No enabled chat LLM model supports vision + structured outputs for transfer slip parsing.");
+  }
+  const extraHeaders: Record<string, string> = {
+    ...(ocrRouting.requestHeaders ?? {}),
+    ...(gatewayModelId ? { "x-llm-model-id": gatewayModelId } : {}),
+  };
   debugLog("finance_ocr", "enrich-media start", {
     traceId,
+    debugTraceId: params.debugTraceId ?? null,
     fileName: params.fileName,
     fileType: params.fileType,
     analysisProfile: params.analysisProfile,
@@ -429,6 +560,25 @@ async function enrichMediaUpload(params: {
     enableVision: params.enableVision,
     enableTranscript: params.enableTranscript,
     contentBytes: params.fileBuffer.byteLength,
+    ocrFileClass: ocrRouting.fileClass,
+    ocrRequestedProvider: ocrRouting.requestedProviderId,
+    ocrProvider: ocrRouting.providerId,
+    ocrFallbackReason: ocrRouting.fallbackReason,
+  });
+  recordFinanceOcrDebugStep("enrich_media_start", {
+    traceId: params.debugTraceId ?? traceId,
+    traceIdInternal: traceId,
+    fileName: params.fileName,
+    fileType: params.fileType,
+    analysisProfile: params.analysisProfile,
+    captureIntent: params.captureIntent,
+    enableVision: params.enableVision,
+    enableTranscript: params.enableTranscript,
+    contentBytes: params.fileBuffer.byteLength,
+    ocrFileClass: ocrRouting.fileClass,
+    ocrRequestedProvider: ocrRouting.requestedProviderId,
+    ocrProvider: ocrRouting.providerId,
+    ocrFallbackReason: ocrRouting.fallbackReason,
   });
   try {
     const payload = await postInternalJson<MediaEnrichmentResponse>(
@@ -437,6 +587,7 @@ async function enrichMediaUpload(params: {
         file_name: params.fileName,
         mime_type: params.fileType,
         content_base64: params.fileBuffer.toString("base64"),
+        ocr_provider: ocrRouting.providerId,
         ...(params.sourceUrl ? { source_url: params.sourceUrl } : {}),
         analysis_profile: params.analysisProfile,
         ...(params.captureIntent ? { capture_intent: params.captureIntent } : {}),
@@ -444,6 +595,8 @@ async function enrichMediaUpload(params: {
         enable_transcript: params.enableTranscript,
       },
       traceId,
+      Object.keys(extraHeaders).length > 0 ? extraHeaders : undefined,
+      params.tenantId ?? null,
     );
 
     const extractedParts = [
@@ -464,6 +617,18 @@ async function enrichMediaUpload(params: {
     };
     debugLog("finance_ocr", "enrich-media result", {
       traceId,
+      debugTraceId: params.debugTraceId ?? null,
+      fileName: params.fileName,
+      method: payload.method ?? null,
+      charCount: payload.char_count ?? 0,
+      hasText: Boolean(dedupedText),
+      searchQuality: payload.search_quality ?? null,
+      warning: payload.warning ?? null,
+      metadataKeys: payload.metadata ? Object.keys(payload.metadata).slice(0, 16) : [],
+    });
+    recordFinanceOcrDebugStep("enrich_media_result", {
+      traceId: params.debugTraceId ?? traceId,
+      traceIdInternal: traceId,
       fileName: params.fileName,
       method: payload.method ?? null,
       charCount: payload.char_count ?? 0,
@@ -476,6 +641,16 @@ async function enrichMediaUpload(params: {
   } catch (error) {
     debugLog("finance_ocr", "enrich-media failed", {
       traceId,
+      debugTraceId: params.debugTraceId ?? null,
+      fileName: params.fileName,
+      fileType: params.fileType,
+      analysisProfile: params.analysisProfile,
+      captureIntent: params.captureIntent,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
+    recordFinanceOcrDebugStep("enrich_media_failed", {
+      traceId: params.debugTraceId ?? traceId,
+      traceIdInternal: traceId,
       fileName: params.fileName,
       fileType: params.fileType,
       analysisProfile: params.analysisProfile,
@@ -503,13 +678,33 @@ export async function enrichLibraryUploadContent(params: {
   metadata?: Record<string, unknown>;
   traceId?: string | null;
   externalProcessingAllowed?: boolean;
+  tenantId?: string | null;
 }): Promise<LibraryUploadEnrichmentResult> {
   const traceId = resolveFinanceOcrTraceId(params.traceId);
+  const debugTraceId = getFinanceOcrDebugTraceId(
+    typeof params.metadata?.finance_debug_trace_id === "string"
+      ? params.metadata.finance_debug_trace_id
+      : typeof params.metadata?.debug_trace_id === "string"
+        ? params.metadata.debug_trace_id
+        : null,
+  );
   const analysisProfile = resolveUploadAnalysisProfile(params.metadata);
   const captureIntent = resolveCaptureIntent(params.metadata);
   const externalProcessingAllowed = params.externalProcessingAllowed ?? true;
   debugLog("finance_ocr", "pipeline route", {
     traceId,
+    debugTraceId,
+    fileName: params.fileName,
+    fileType: params.fileType,
+    extension: params.extension,
+    analysisProfile,
+    captureIntent,
+    externalProcessingAllowed,
+    hasFallbackText: Boolean(params.fallbackText),
+  });
+  recordFinanceOcrDebugStep("pipeline_route", {
+    traceId: debugTraceId ?? traceId,
+    traceIdInternal: traceId,
     fileName: params.fileName,
     fileType: params.fileType,
     extension: params.extension,
@@ -522,6 +717,13 @@ export async function enrichLibraryUploadContent(params: {
   if (params.fallbackText) {
     debugLog("finance_ocr", "pipeline inline text", {
       traceId,
+      debugTraceId,
+      fileName: params.fileName,
+      textLength: params.fallbackText.length,
+    });
+    recordFinanceOcrDebugStep("pipeline_inline_text", {
+      traceId: debugTraceId ?? traceId,
+      traceIdInternal: traceId,
       fileName: params.fileName,
       textLength: params.fallbackText.length,
     });
@@ -535,15 +737,25 @@ export async function enrichLibraryUploadContent(params: {
     };
   }
 
-  if (analysisProfile === "document_ocr" && !externalProcessingAllowed) {
-    return {
-      extractedText: null,
-      extractor: "document_ocr_policy_blocked",
-      warnings: ["External document OCR processing is disabled for this tenant."],
-      searchQuality: "metadata_only",
-      stageMessage: "Document uploaded. External OCR is disabled for this tenant, so search uses metadata only.",
-      extraMetadata: {
-        ocr_policy_blocked: true,
+  if ((analysisProfile === "document_ocr" || analysisProfile === "finance_payin_llm_parser") && !externalProcessingAllowed) {
+    recordFinanceOcrDebugStep("pipeline_document_ocr_blocked", {
+      traceId: debugTraceId ?? traceId,
+      traceIdInternal: traceId,
+      fileName: params.fileName,
+      fileType: params.fileType,
+      extension: params.extension,
+      analysisProfile,
+    });
+      return {
+        extractedText: null,
+        extractor: analysisProfile === "finance_payin_llm_parser"
+          ? "finance_payin_llm_parser_policy_blocked"
+          : "document_ocr_policy_blocked",
+        warnings: ["External document OCR processing is disabled for this tenant."],
+        searchQuality: "metadata_only",
+        stageMessage: "Document uploaded. External OCR is disabled for this tenant, so search uses metadata only.",
+        extraMetadata: {
+          ocr_policy_blocked: true,
         analysis_profile: analysisProfile,
       },
     };
@@ -558,10 +770,22 @@ export async function enrichLibraryUploadContent(params: {
         externalProcessingAllowed,
         sourceUrl: params.sourceUrl,
         traceId,
+        debugTraceId,
       });
     } catch (error) {
       debugLog("finance_ocr", "pipeline complex document failed", {
         traceId,
+        debugTraceId,
+        fileName: params.fileName,
+        fileType: params.fileType,
+        extension: params.extension,
+        analysisProfile,
+        captureIntent,
+        errorMessage: error instanceof Error ? error.message : String(error),
+      });
+      recordFinanceOcrDebugStep("pipeline_complex_document_failed", {
+        traceId: debugTraceId ?? traceId,
+        traceIdInternal: traceId,
         fileName: params.fileName,
         fileType: params.fileType,
         extension: params.extension,
@@ -593,12 +817,14 @@ export async function enrichLibraryUploadContent(params: {
       enableVision: false,
       enableTranscript: true,
       externalProcessingAllowed,
+      tenantId: params.tenantId,
       traceId,
+      debugTraceId,
     });
   }
 
   if (params.fileType.startsWith("image/")) {
-    if (analysisProfile === "document_ocr" || analysisProfile === "real_world_vision") {
+    if (analysisProfile === "document_ocr" || analysisProfile === "finance_payin_llm_parser" || analysisProfile === "real_world_vision") {
       return enrichMediaUpload({
         fileBuffer: params.fileBuffer,
         fileName: params.fileName,
@@ -609,12 +835,23 @@ export async function enrichLibraryUploadContent(params: {
         enableTranscript: false,
         externalProcessingAllowed,
         sourceUrl: params.sourceUrl,
+        tenantId: params.tenantId,
         traceId,
+        debugTraceId,
       });
     }
 
     debugLog("finance_ocr", "pipeline image metadata only", {
       traceId,
+      debugTraceId,
+      fileName: params.fileName,
+      fileType: params.fileType,
+      extension: params.extension,
+      analysisProfile,
+    });
+    recordFinanceOcrDebugStep("pipeline_image_metadata_only", {
+      traceId: debugTraceId ?? traceId,
+      traceIdInternal: traceId,
       fileName: params.fileName,
       fileType: params.fileType,
       extension: params.extension,
@@ -634,6 +871,15 @@ export async function enrichLibraryUploadContent(params: {
 
   debugLog("finance_ocr", "pipeline unsupported", {
     traceId,
+    debugTraceId,
+    fileName: params.fileName,
+    fileType: params.fileType,
+    extension: params.extension,
+    analysisProfile,
+  });
+  recordFinanceOcrDebugStep("pipeline_unsupported", {
+    traceId: debugTraceId ?? traceId,
+    traceIdInternal: traceId,
     fileName: params.fileName,
     fileType: params.fileType,
     extension: params.extension,

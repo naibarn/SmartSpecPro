@@ -13,9 +13,23 @@ import {
   getDelegatedScopeProfilePolicy,
   type DelegatedWorkerAuthContext,
 } from "./workerDelegationService";
+import { normalizeWorkerAccessPermissionScopes } from "../../shared/workerAccessKeys";
 
 type WorkerRecord = Record<string, any>;
 type WorkerJobRecord = Record<string, any>;
+type WorkerAccessPolicyRecord = {
+  permissionPreset: string | null;
+  permissionScopes: string[];
+  quotaHourly: number | null;
+  quotaDaily: number | null;
+  quotaWeekly: number | null;
+  quotaMonthly: number | null;
+};
+type HermesWorkerRoutingPolicy = {
+  llmRoutingMode: "auto" | "pinned_provider";
+  preferredProviderId: number | null;
+  preferredProviderName: string | null;
+};
 
 type DelegatedWorkerAuth = {
   mode?: string;
@@ -210,6 +224,57 @@ function readReservedCredits(job: WorkerJobRecord | null): number | null {
   return sanitizeBudgetValue((billing as Record<string, unknown>).reservedCredits);
 }
 
+function readWorkerAccessPolicy(worker: WorkerRecord | null): WorkerAccessPolicyRecord | null {
+  const source = worker?.capabilitiesJson;
+  if (!source || typeof source !== "object") {
+    return null;
+  }
+  const runtimeMetadata = (source as Record<string, unknown>).runtimeMetadata;
+  if (!runtimeMetadata || typeof runtimeMetadata !== "object" || Array.isArray(runtimeMetadata)) {
+    return null;
+  }
+  const policy = (runtimeMetadata as Record<string, unknown>).workerAccessPolicy;
+  if (!policy || typeof policy !== "object" || Array.isArray(policy)) {
+    return null;
+  }
+  const rawPolicy = policy as Record<string, unknown>;
+  return {
+    permissionPreset: typeof rawPolicy.permissionPreset === "string" && rawPolicy.permissionPreset.trim().length > 0
+      ? rawPolicy.permissionPreset.trim()
+      : null,
+    permissionScopes: normalizeWorkerAccessPermissionScopes(rawPolicy.permissionScopes),
+    quotaHourly: sanitizeBudgetValue(rawPolicy.quotaHourly),
+    quotaDaily: sanitizeBudgetValue(rawPolicy.quotaDaily),
+    quotaWeekly: sanitizeBudgetValue(rawPolicy.quotaWeekly),
+    quotaMonthly: sanitizeBudgetValue(rawPolicy.quotaMonthly),
+  };
+}
+
+function readHermesWorkerRoutingPolicy(worker: WorkerRecord | null): HermesWorkerRoutingPolicy | null {
+  if (!worker || worker.runtimeType !== "hermes_agent_gateway") {
+    return null;
+  }
+  const source = worker.capabilitiesJson;
+  if (!source || typeof source !== "object") {
+    return null;
+  }
+  const runtimeMetadata = (source as Record<string, unknown>).runtimeMetadata;
+  if (!runtimeMetadata || typeof runtimeMetadata !== "object" || Array.isArray(runtimeMetadata)) {
+    return null;
+  }
+  const llmRoutingMode = (runtimeMetadata as Record<string, unknown>).llmRoutingMode;
+  const preferredProviderId = sanitizeBudgetValue((runtimeMetadata as Record<string, unknown>).preferredProviderId);
+  const preferredProviderName = typeof (runtimeMetadata as Record<string, unknown>).preferredProviderName === "string"
+    && String((runtimeMetadata as Record<string, unknown>).preferredProviderName).trim().length > 0
+    ? String((runtimeMetadata as Record<string, unknown>).preferredProviderName).trim()
+    : null;
+  return {
+    llmRoutingMode: llmRoutingMode === "pinned_provider" ? "pinned_provider" : "auto",
+    preferredProviderId,
+    preferredProviderName,
+  };
+}
+
 async function sumWorkerUsageCreditsSince(
   userId: number,
   workerId: string,
@@ -395,6 +460,73 @@ export async function enforceDelegatedWorkerSpendGuardrails(
   }
 }
 
+export async function enforceDelegatedWorkerLlmRoutePolicy(
+  input: {
+    auth: DelegatedWorkerAuth | null | undefined;
+    requestedModelId?: string | null;
+    resolvedProviderId?: number | null;
+    providerName?: string | null;
+  },
+): Promise<void> {
+  if (!isDelegatedWorkerAuth(input.auth)) {
+    return;
+  }
+
+  const { worker } = await loadWorkerContext(input.auth);
+  if (!worker) {
+    throw new DelegatedWorkerPlatformError(
+      "worker_context_not_found",
+      404,
+      "Delegated worker context was not found",
+      "not_found_error",
+    );
+  }
+
+  const policy = readWorkerAccessPolicy(worker);
+  if (policy && !policy.permissionScopes.includes("llm:chat")) {
+    throw new DelegatedWorkerPlatformError(
+      "worker_access_policy_denied",
+      403,
+      "This worker is not permitted to use LLM routes",
+      "auth_error",
+    );
+  }
+
+  if (worker.runtimeType === "hermes_agent_gateway") {
+    const routingPolicy = readHermesWorkerRoutingPolicy(worker);
+    if (routingPolicy?.llmRoutingMode === "pinned_provider") {
+      if (routingPolicy.preferredProviderId == null) {
+        throw new DelegatedWorkerPlatformError(
+          "worker_access_policy_denied",
+          403,
+          "Pinned Hermes provider routing is misconfigured",
+          "auth_error",
+        );
+      }
+      if (input.resolvedProviderId != null && input.resolvedProviderId !== routingPolicy.preferredProviderId) {
+        throw new DelegatedWorkerPlatformError(
+          "worker_access_policy_denied",
+          403,
+          "This Hermes worker must use its pinned provider",
+          "auth_error",
+        );
+      }
+      if (typeof input.providerName === "string" && routingPolicy.preferredProviderName) {
+        const normalizedProviderName = normalizeValue(input.providerName);
+        const normalizedPinnedProviderName = normalizeValue(routingPolicy.preferredProviderName);
+        if (normalizedProviderName !== normalizedPinnedProviderName) {
+          throw new DelegatedWorkerPlatformError(
+            "worker_access_policy_denied",
+            403,
+            "This Hermes worker must use its pinned provider",
+            "auth_error",
+          );
+        }
+      }
+    }
+  }
+}
+
 export async function acquireDelegatedWorkerConcurrencySlot(
   input: {
     auth: DelegatedWorkerAuth | null | undefined;
@@ -491,7 +623,7 @@ export function enforceDelegatedWorkerModelSelectionPolicy(
     throw new DelegatedWorkerPlatformError(
       "worker_model_not_allowed",
       403,
-      "Delegated workers must use SmartSpecPro-approved model aliases instead of raw provider model identifiers",
+      "Delegated workers must use SmartAIHub-approved model aliases instead of raw provider model identifiers",
       "auth_error",
     );
   }

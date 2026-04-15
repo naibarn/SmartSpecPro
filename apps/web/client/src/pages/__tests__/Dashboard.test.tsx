@@ -175,6 +175,10 @@ const translationMap: Record<string, string> = {
   "dashboard:trendHealth.title": "Trend & Health",
   "dashboard:quickActions.subtitle": "Workspace Shortcuts",
   "dashboard:nextBestActions.title": "Next Best Actions",
+  "dashboard:nextBestActions.startWork": "Start work",
+  "dashboard:nextBestActions.startWorkDetail": "Create a new request when work begins outside chat.",
+  "dashboard:nextBestActions.myRequests": "My requests",
+  "dashboard:nextBestActions.myRequestsDetail": "Review the work you already started and pick up where you left off.",
   "dashboard:review.improvementLoop": "Tenant-wide improvement loop",
   "dashboard:filterByAgency": "Filter by agency",
   "dashboard:review.open": "Open Review",
@@ -218,6 +222,8 @@ const translationMap: Record<string, string> = {
   "dashboard:finance.actions.void": "Void",
   "dashboard:finance.quick.addExpense": "Add Expense",
   "dashboard:finance.quick.addIncome": "Add Income",
+  "dashboard:quickActions.startWork": "Start Work",
+  "dashboard:quickActions.myRequests": "My Requests",
   "dashboard:finance.description": "A private, user-scoped finance workspace for chat drafts, OCR receipts, recurring rules, and reports.",
   "dashboard:finance.drafts.empty": "No open drafts yet.",
   "dashboard:finance.drafts.title": "Drafts",
@@ -438,6 +444,10 @@ vi.mock("@/features/desktop-host/useDesktopHostStatus", () => ({
   useDesktopHostStatus: () => desktopGovernanceStatusState,
 }));
 
+vi.mock("@/features/desktop-releases/DesktopReleasePanel", () => ({
+  DesktopReleasePanel: () => <div data-testid="desktop-release-panel" />,
+}));
+
 vi.mock("@/hooks/useAgencyQuery", () => ({
   useAgencyList: () => ({
     data: {
@@ -529,6 +539,8 @@ vi.mock("@/lib/trpc", () => ({
         getMonthlySummary: financeInvalidateMock(),
         listTransactions: financeInvalidateMock(),
         listRecurringRules: financeInvalidateMock(),
+        listPaymentInstitutions: financeInvalidateMock(),
+        listPaymentAccounts: financeInvalidateMock(),
       },
     }),
     media: {
@@ -648,6 +660,15 @@ vi.mock("@/lib/trpc", () => ({
           isLoading: false,
         })),
       },
+      listCounterparties: {
+        useQuery: vi.fn(() => ({ data: [], isLoading: false })),
+      },
+      listPaymentInstitutions: {
+        useQuery: vi.fn(() => ({ data: [], isLoading: false })),
+      },
+      listPaymentAccounts: {
+        useQuery: vi.fn(() => ({ data: [], isLoading: false })),
+      },
       searchFinanceEvidence: {
         useQuery: vi.fn(() => ({
           data: {
@@ -684,6 +705,9 @@ vi.mock("@/lib/trpc", () => ({
       parseTextToDraft: {
         useMutation: vi.fn(() => financeMutationMock()),
       },
+      updateDraft: {
+        useMutation: vi.fn(() => financeMutationMock()),
+      },
       confirmDraft: {
         useMutation: vi.fn(() => financeMutationMock()),
       },
@@ -697,6 +721,15 @@ vi.mock("@/lib/trpc", () => ({
         useMutation: vi.fn(() => financeMutationMock()),
       },
       ingestFinanceDocument: {
+        useMutation: vi.fn(() => financeMutationMock()),
+      },
+      upsertPaymentInstitution: {
+        useMutation: vi.fn(() => financeMutationMock()),
+      },
+      upsertPaymentAccount: {
+        useMutation: vi.fn(() => financeMutationMock()),
+      },
+      archivePaymentAccount: {
         useMutation: vi.fn(() => financeMutationMock()),
       },
     },
@@ -851,6 +884,8 @@ describe("Dashboard", () => {
     expect(screen.getByText("Trend & Health")).toBeInTheDocument();
     expect(screen.getAllByText("Workspace Shortcuts").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Next Best Actions")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /start work/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: /my requests/i }).length).toBeGreaterThan(0);
   });
 
   it("shows the personal finance report surface and shortcut", () => {
@@ -925,7 +960,7 @@ describe("Dashboard", () => {
     expect(desktopReleasesButton).toBeInTheDocument();
 
     fireEvent.click(desktopReleasesButton);
-    expect(setLocationMock).toHaveBeenCalledWith("/admin/desktop-host");
+    expect(setLocationMock).toHaveBeenCalledWith("/admin/desktop-host/governance");
   });
 
   it("shows a dedicated desktop governance panel on the dashboard for admins", () => {
@@ -945,6 +980,6 @@ describe("Dashboard", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /open governance console/i })
     );
-    expect(setLocationMock).toHaveBeenCalledWith("/admin/desktop-host");
+    expect(setLocationMock).toHaveBeenCalledWith("/admin/desktop-host/governance");
   });
 });

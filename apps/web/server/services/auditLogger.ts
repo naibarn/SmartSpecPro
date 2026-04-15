@@ -222,6 +222,10 @@ const SENSITIVE_KEYS = new Set([
   "cookie",
   "accesstoken",
   "access_token",
+  "reference_audio_base64",
+  "referenceaudiobase64",
+  "reference_audio_url",
+  "referenceaudiourl",
 ]);
 
 const MAX_ENTRY_BYTES = 32_768; // 32 KB
@@ -282,7 +286,7 @@ function truncateMessages(messages: unknown[]): unknown[] {
   return truncated;
 }
 
-function sanitizePayload(payload: unknown): unknown {
+export function sanitizePayload(payload: unknown): unknown {
   if (!payload || typeof payload !== "object") return payload;
 
   const obj = payload as Record<string, unknown>;

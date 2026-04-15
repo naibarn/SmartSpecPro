@@ -15,13 +15,14 @@ const MAX_TEXT_PREVIEW_BYTES: u64 = 1_048_576;
 const MAX_TEXT_SNIPPET_BYTES: u64 = 524_288;
 const MAX_RICH_DOCUMENT_INPUT_BYTES: u64 = 8_388_608;
 const RICH_DOCUMENT_PARSE_TIMEOUT_MS: u64 = 8_000;
+const DEFAULT_MAX_RENDERED_PAGES: u32 = 3;
 const SAFE_TEXT_EXTENSIONS: &[&str] = &[
     "txt", "md", "markdown", "csv", "json", "yml", "yaml", "log", "rtf", "ts", "tsx", "js",
     "jsx", "py", "rs", "sql", "html", "css", "xml",
 ];
 const RICH_DOCUMENT_EXTENSIONS: &[&str] = &[
-    "pdf", "doc", "docx", "odt", "ppt", "pptx", "odp", "xls", "xlsx", "ods", "png", "jpg",
-    "jpeg", "webp", "gif", "bmp", "tif", "tiff", "svg",
+    "pdf", "doc", "docx", "docm", "odt", "ppt", "pptx", "pptm", "odp", "xls", "xlsx", "xlsm",
+    "ods", "png", "jpg", "jpeg", "webp", "gif", "bmp", "tif", "tiff", "svg",
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -39,6 +40,12 @@ pub struct LocalFileParserCapabilityReport {
     pub office_renderer: String,
     pub rendered_preview_formats: Vec<String>,
     pub complex_document_support: String,
+    pub macro_inspection_supported: bool,
+    pub embedded_media_inspection_supported: bool,
+    pub layout_analysis_mode: String,
+    pub multi_page_rendering_supported: bool,
+    pub max_rendered_pages: u32,
+    pub ocr_layout_mode: String,
     pub full_rendering_supported: bool,
     pub active_content_execution_allowed: bool,
 }
@@ -190,6 +197,14 @@ fn resolve_rendered_preview_formats(
     formats
 }
 
+fn resolve_max_rendered_pages() -> u32 {
+    env::var("SMARTSPEC_MAX_RENDERED_PAGES")
+        .ok()
+        .and_then(|value| value.trim().parse::<u32>().ok())
+        .map(|value| value.clamp(1, 8))
+        .unwrap_or(DEFAULT_MAX_RENDERED_PAGES)
+}
+
 pub fn describe_local_file_parser_capabilities() -> LocalFileParserCapabilityReport {
     let pdf_extractor = if resolve_binary_path("SMARTSPEC_PDFTOTEXT_PATH", "pdftotext").is_some() {
         "pdftotext".into()
@@ -215,12 +230,24 @@ pub fn describe_local_file_parser_capabilities() -> LocalFileParserCapabilityRep
         _ => "none".into(),
     };
     let full_rendering_supported = pdf_render_backend.is_some() || office_renderer != "none";
+    let max_rendered_pages = if full_rendering_supported {
+        resolve_max_rendered_pages()
+    } else {
+        0
+    };
     let complex_document_support = if full_rendering_supported && ocr_enabled {
         "ocr_rendering".into()
     } else if full_rendering_supported {
         "rendering_without_ocr".into()
     } else {
         "text_extraction_only".into()
+    };
+    let layout_analysis_mode = if full_rendering_supported && ocr_enabled {
+        "page_segmented".into()
+    } else if office_renderer != "none" || pdf_render_backend.is_some() {
+        "basic_structural".into()
+    } else {
+        "none".into()
     };
     LocalFileParserCapabilityReport {
         enabled: true,
@@ -242,6 +269,16 @@ pub fn describe_local_file_parser_capabilities() -> LocalFileParserCapabilityRep
         office_renderer,
         rendered_preview_formats,
         complex_document_support,
+        macro_inspection_supported: true,
+        embedded_media_inspection_supported: true,
+        layout_analysis_mode,
+        multi_page_rendering_supported: full_rendering_supported && max_rendered_pages > 1,
+        max_rendered_pages,
+        ocr_layout_mode: if ocr_enabled && full_rendering_supported {
+            "page_segmented".into()
+        } else {
+            "plain_text".into()
+        },
         full_rendering_supported,
         active_content_execution_allowed: false,
     }

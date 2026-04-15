@@ -1,11 +1,11 @@
-import type { CapabilityResult } from "../capability/index";
+import type { CapabilityResult } from "../capability/index.ts";
 import type {
   LocalAiConversationOverride,
   LocalAiExecutionMode,
   LocalAiSyncedPreferences,
   LocalAiTaskClass,
   LocalAiVoiceInputMode,
-} from "../runtime-types/index";
+} from "../runtime-types/index.ts";
 
 export interface RuntimeDecisionEnvelope {
   taskClass: LocalAiTaskClass;

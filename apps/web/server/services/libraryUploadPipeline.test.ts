@@ -9,6 +9,24 @@ vi.mock("./appRuntimeConfig", () => ({
   getPreferredInternalToken: vi.fn(async () => "proxy-token"),
 }));
 
+vi.mock("./documentOcrSettings", () => ({
+  getDocumentOcrSettings: vi.fn(async () => ({
+    imageOcrProvider: "legacy",
+    pdfOcrProvider: "legacy",
+    typhoonOcrApiKey: "",
+    landingAiApiKey: "",
+    googleAiApiKey: "",
+    creditsPerPage: 1,
+  })),
+  resolveDocumentOcrRouting: vi.fn(() => ({
+    fileClass: "legacy",
+    requestedProviderId: "legacy",
+    providerId: "legacy",
+    fallbackReason: "legacy_default",
+    requestHeaders: null,
+  })),
+}));
+
 vi.mock("./traceContext", () => ({
   getTraceId: vi.fn(() => "trace-ocr-123"),
 }));
@@ -113,6 +131,44 @@ describe("libraryUploadPipeline", () => {
     expect(body.capture_intent).toBe("transfer_slip");
     expect((init.headers as Record<string, string>)["x-trace-id"]).toBe("trace-ocr-123");
     expect((init.headers as Record<string, string>)["x-proxy-token"]).toBe("proxy-token");
+  });
+
+  it("uses internal media enrichment for transfer slips when the unified LLM parser is requested", async () => {
+    process.env.SMARTSPEC_PROXY_TOKEN = "proxy-token";
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        text: "สรุปรายการสลิปโอนเงิน\nจำนวนเงิน: 726.00 THB",
+        method: "image_unified_llm_parser",
+        search_quality: "full_text",
+        caption: "Transfer slip",
+        metadata: {
+          unified_payin_slip_summary: "สรุปรายการสลิปโอนเงิน\nจำนวนเงิน: 726.00 THB",
+          analysis_profile: "finance_payin_llm_parser",
+        },
+      }),
+    }));
+
+    const result = await enrichLibraryUploadContent({
+      fileBuffer: Buffer.from([0xff, 0xd8, 0xff, 0xdb]),
+      fileName: "transfer-slip.jpg",
+      fileType: "image/jpeg",
+      extension: "jpg",
+      fallbackText: null,
+      externalProcessingAllowed: true,
+      metadata: {
+        analysis_profile: "finance_payin_llm_parser",
+        finance_capture_intent: "transfer_slip",
+      },
+    });
+
+    expect(result.extractor).toBe("image_unified_llm_parser");
+    expect(result.extractedText).toContain("สรุปรายการสลิปโอนเงิน");
+    const fetchCall = (global.fetch as any).mock.calls[0];
+    const init = fetchCall?.[1] as RequestInit;
+    const body = JSON.parse(String(init.body));
+    expect(body.analysis_profile).toBe("finance_payin_llm_parser");
+    expect(body.capture_intent).toBe("transfer_slip");
   });
 
   it("forwards sourceUrl to internal media enrichment when provided", async () => {

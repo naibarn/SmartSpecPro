@@ -55,6 +55,7 @@ import {
   TestTube2,
   Menu,
   Brain,
+  CheckSquare,
   Search,
   Database,
   HardDrive,
@@ -66,6 +67,7 @@ import {
   Server,
   Zap,
   Bot,
+  FileText,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -81,6 +83,7 @@ import { defaultMenuItems, type MenuItem as SharedMenuItem, type UserRole } from
 import StorageSettingsPanel from "@/components/admin/StorageSettingsPanel";
 import InfrastructureSettingsPanel from "@/components/admin/InfrastructureSettingsPanel";
 import AgencyAdminPanel from "@/components/admin/AgencyAdminPanel";
+import DocumentOcrSettingsPanel from "@/components/admin/DocumentOcrSettingsPanel";
 import TelegramConnectionsPanel from "@/components/admin/TelegramConnectionsPanel";
 import { TenantAutomationPolicyPanel } from "@/components/settings/TenantAutomationPolicyPanel";
 import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
@@ -582,6 +585,8 @@ export default function AdminSettings() {
       twoFA: { label: "2FA", sublabel: isThai ? "ตัวพิสูจน์ตัวตน" : "Authenticator" },
       stt: { label: "STT", sublabel: isThai ? "แปลงเสียงเป็นข้อความ" : "Speech-to-Text" },
       ai: { label: isThai ? "AI / หน่วยความจำ" : "AI / Memory", sublabel: isThai ? "โมเดลสรุปผล" : "Summary Model" },
+      documentOcr: { label: isThai ? "OCR" : "OCR", sublabel: isThai ? "เส้นทาง / keys" : "Routing / keys" },
+      financeRules: { label: isThai ? "Rules" : "Rules", sublabel: isThai ? "merchant pins / slips" : "Merchant pins / slips" },
       vectordb: { label: isThai ? "ฐานข้อมูลเวกเตอร์" : "Vector Database", sublabel: isThai ? "RAG / Embeddings" : "RAG & Embeddings" },
       storage: { label: isThai ? "พื้นที่จัดเก็บ" : "Storage", sublabel: isThai ? "Local / R2 / S3" : "Local / R2 / S3" },
       infrastructure: { label: isThai ? "โครงสร้างพื้นฐาน" : "Infrastructure", sublabel: isThai ? "GCP / Redis / Tasks" : "GCP / Redis / Tasks" },
@@ -946,16 +951,9 @@ export default function AdminSettings() {
   const [aiSummaryModel, setAiSummaryModel] = useState("");
   const [allowUserOwnLlmApiKeys, setAllowUserOwnLlmApiKeys] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
-  const [googleAiForm, setGoogleAiForm] = useState({ apiKey: "" });
-  const [showGoogleAiApiKey, setShowGoogleAiApiKey] = useState(false);
-  const [googleAiKeyConfigured, setGoogleAiKeyConfigured] = useState(false);
   const { data: aiSettings, refetch: refetchAi } = trpc.systemSettings.getSettingsByCategory.useQuery(
     { category: "ai" as any },
     { enabled: !!user && user.role === "admin" }
-  );
-  const { data: googleAiSettings, refetch: refetchGoogleAi } = trpc.systemSettings.getGoogleAiSettings.useQuery(
-    undefined,
-    { enabled: !!user && user.role === "admin" },
   );
   const updateAiSettingMutation = trpc.systemSettings.updateSetting.useMutation({
     onSuccess: () => { toast.success("AI setting saved"); refetchAi(); },
@@ -965,20 +963,6 @@ export default function AdminSettings() {
     onSuccess: () => {
       toast.success("LLM key policy updated");
       refetchAi();
-    },
-    onError: (err: any) => toast.error(err.message),
-  });
-  const updateGoogleAiMutation = trpc.systemSettings.updateGoogleAiSettings.useMutation({
-    onSuccess: () => {
-      toast.success("Google AI key saved securely");
-      refetchGoogleAi();
-      setGoogleAiForm({ apiKey: "" });
-    },
-    onError: (err: any) => toast.error(err.message),
-  });
-  const testGoogleAiMutation = trpc.systemSettings.testGoogleAiConnection.useMutation({
-    onSuccess: (data) => {
-      data.success ? toast.success(data.message) : toast.error(data.message);
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -1007,11 +991,6 @@ export default function AdminSettings() {
     );
     setAllowUserOwnLlmApiKeys(userOwnKeysSetting?.value === "true");
   }, [aiSettings, defaultAiSummaryModelId, enabledAiSummaryModelIds, modelsData?.models]);
-
-  useEffect(() => {
-    if (!googleAiSettings) return;
-    setGoogleAiKeyConfigured(!!googleAiSettings.apiKeyConfigured);
-  }, [googleAiSettings]);
 
   const resolvedAiSummaryModel = pickEnabledModelId({
     preferredId: aiSummaryModel,
@@ -1353,6 +1332,8 @@ export default function AdminSettings() {
     { key: "2FA", label: copy.nav.twoFA.label, sublabel: copy.nav.twoFA.sublabel, icon: Shield },
     { key: "stt", label: copy.nav.stt.label, sublabel: copy.nav.stt.sublabel, icon: Mic },
     { key: "ai", label: copy.nav.ai.label, sublabel: copy.nav.ai.sublabel, icon: Brain },
+    { key: "document_ocr", label: copy.nav.documentOcr.label, sublabel: copy.nav.documentOcr.sublabel, icon: FileText },
+    { key: "finance_rules", label: copy.nav.financeRules.label, sublabel: copy.nav.financeRules.sublabel, icon: CheckSquare },
     { key: "vectordb", label: copy.nav.vectordb.label, sublabel: copy.nav.vectordb.sublabel, icon: Database },
     { key: "storage", label: copy.nav.storage.label, sublabel: copy.nav.storage.sublabel, icon: Cloud },
     { key: "infrastructure", label: copy.nav.infrastructure.label, sublabel: copy.nav.infrastructure.sublabel, icon: Server },
@@ -3596,11 +3577,11 @@ export default function AdminSettings() {
                     />
                   </div>
 
-                  <Select value={aiSummaryModel || ""} onValueChange={setAiSummaryModel}>
-                    <SelectTrigger className="w-full max-w-md">
-                      <SelectValue placeholder="Select model" />
-                    </SelectTrigger>
-                    <SelectContent>
+                <Select value={aiSummaryModel || ""} onValueChange={setAiSummaryModel}>
+                  <SelectTrigger className="w-full max-w-md">
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
                       {modelsData?.models
                         ?.filter((m: any) =>
                           !modelSearch ||
@@ -3625,100 +3606,6 @@ export default function AdminSettings() {
                   </Select>
                 </div>
 
-                <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium">Google AI API Key for OCR / Real-World Vision</label>
-                    <p className="text-xs text-muted-foreground">
-                      This key is used only for explicitly requested OCR or real-world image analysis, such as photos of paper documents. AI-generated images and videos added from Media History keep using their saved prompts for search, so this key is not spent for those cases.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="googleAiApiKey">
-                      API Key {googleAiKeyConfigured ? "(leave empty to keep current)" : ""}
-                    </Label>
-                    <div className="relative max-w-xl">
-                      <Input
-                        id="googleAiApiKey"
-                        type={showGoogleAiApiKey ? "text" : "password"}
-                        value={googleAiForm.apiKey}
-                        onChange={(e) => setGoogleAiForm({ apiKey: e.target.value })}
-                        placeholder={googleAiKeyConfigured ? "AIza••••••••" : "AIza..."}
-                        className="pr-10 font-mono text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowGoogleAiApiKey(!showGoogleAiApiKey)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                      >
-                        {showGoogleAiApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {googleAiKeyConfigured ? (
-                        <Badge variant="outline" className="text-green-600">
-                          <Check className="mr-1 h-3 w-3" />
-                          Key configured
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">Not configured</Badge>
-                      )}
-                      {googleAiSettings?.source ? (
-                        <Badge variant="outline">Source: {googleAiSettings.source}</Badge>
-                      ) : null}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      The key is encrypted before it is stored in the database and is never shown again after saving.
-                    </p>
-                  </div>
-
-                  <DashboardCard
-                    className="border-blue-200 bg-blue-50"
-                    bodyClassName="space-y-3 p-4 text-sm text-blue-950"
-                  >
-                    <div className="font-medium">Where to create this key</div>
-                    <ol className="list-decimal space-y-1 pl-5 text-xs text-blue-900">
-                      <li>Open <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="font-medium underline">Google AI Studio</a> and sign in with the Google account that owns your project.</li>
-                      <li>Create or choose a Google Cloud project when prompted.</li>
-                      <li>Click <strong>Create API key</strong>.</li>
-                      <li>Copy the generated key that starts with <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">AIza</code>.</li>
-                      <li>Paste it here, then click <strong>Save Google AI Key</strong>.</li>
-                    </ol>
-                    <div className="rounded-lg border border-blue-200 bg-white p-3 text-xs text-blue-900">
-                      Use this key for OCR and real-world photo understanding only. For AI-generated media saved from the app, prompt-based search is already used and is usually enough.
-                    </div>
-                  </DashboardCard>
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      onClick={() => updateGoogleAiMutation.mutate({ apiKey: googleAiForm.apiKey || undefined })}
-                      disabled={updateGoogleAiMutation.isPending || !googleAiForm.apiKey.trim()}
-                      className="gap-2"
-                    >
-                      {updateGoogleAiMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="h-4 w-4" />
-                      )}
-                      Save Google AI Key
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => testGoogleAiMutation.mutate()}
-                      disabled={testGoogleAiMutation.isPending || !googleAiKeyConfigured}
-                    >
-                      {testGoogleAiMutation.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <TestTube className="mr-2 h-4 w-4" />
-                      )}
-                      Test Google AI Key
-                    </Button>
-                  </div>
-                </div>
-
                   <Button
                     onClick={() => {
                       updateAiSettingMutation.mutate({
@@ -3737,6 +3624,57 @@ export default function AdminSettings() {
                   )}
                   Save AI Settings
                 </Button>
+            </DashboardCard>
+          </TabsContent>
+
+          {/* Document OCR Settings Tab */}
+          <TabsContent value="document_ocr">
+            <DocumentOcrSettingsPanel />
+          </TabsContent>
+
+          {/* Finance Rules Settings Tab */}
+          <TabsContent value="finance_rules">
+            <DashboardCard
+              className="overflow-hidden"
+              leading={<CheckSquare className="w-5 h-5 text-blue-600" />}
+              title="Finance Rules"
+              description="Merchant pins and slip presets are managed on a separate page so you can search existing merchants without mixing the flow into OCR routing."
+              bodyClassName="space-y-4 p-6"
+            >
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-sm font-semibold text-slate-900">Merchant pins</div>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                    Pin important merchants from the system merchant list, then let Finance suggest them first.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-sm font-semibold text-slate-900">Slip mapping presets</div>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                    Reuse rules for common income, expense, and transfer slips after OCR or LLM parsing.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                  Search existing merchants
+                </Badge>
+                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                  One-click pins
+                </Badge>
+                <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                  Separate from OCR routing
+                </Badge>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button className="gap-2" onClick={() => setLocation("/admin/finance-rules")}>
+                  <CheckSquare className="h-4 w-4" />
+                  Open full page
+                </Button>
+              </div>
+              <div className="rounded-xl border border-dashed border-slate-300 bg-white/80 p-4 text-xs text-slate-600">
+                OCR routing stays on the Document OCR tab. This page is just for merchant pin search and slip mapping rules.
+              </div>
             </DashboardCard>
           </TabsContent>
 

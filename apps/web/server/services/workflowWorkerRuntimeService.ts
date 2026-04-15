@@ -6,6 +6,7 @@ import { workerArtifacts, workerJobEvents, workerJobs } from "../../drizzle/sche
 import type { WorkerResourceProfile, WorkerRuntimeType } from "../../shared/workerRuntime";
 import { sanitizeWorkerPayload } from "./workerPayloadSanitizer";
 import {
+  HERMES_SUPPORTED_JOB_TYPES,
   OPENCLAW_SUPPORTED_JOB_TYPES,
   queueWorkerJobByRuntime,
   WorkerSchedulerError,
@@ -339,27 +340,38 @@ export async function dispatchWorkflowWorkerJob(
       };
     }
 
-    const result = await queueJob({
-      runtimeType,
+    const baseQueueInput = {
       tenantId: input.actor.tenantId,
       teamId: input.payload.teamId ?? null,
       workflowRunId: input.payload.workflowRunId ?? null,
       requestedByUserId: input.actor.userId,
       requestedByPersonaId: input.payload.requestedByPersonaId ?? null,
       requestedBySystemComponent: input.payload.requestedBySystemComponent ?? "workflow_runtime_node",
-      jobType: input.payload.jobType as (typeof OPENCLAW_SUPPORTED_JOB_TYPES)[number],
       title: input.payload.title ?? null,
       description: input.payload.description ?? null,
       priority: input.payload.priority,
       timeoutSeconds: input.payload.timeoutSeconds,
       resourceProfile: input.payload.resourceProfile as WorkerResourceProfile | undefined,
-      capabilityFamilies: coerceCapabilityFamilies(runtimeType, input.payload.capabilityFamilies) as any,
       inputJson: input.payload.inputJson ?? input.payload.jobRequest ?? {},
       instructionsJson: input.payload.instructionsJson ?? {},
       idempotencyKey: input.payload.idempotencyKey ?? null,
       preferredWorkerId: input.payload.preferredWorkerId ?? null,
       reservedCredits: input.payload.reservedCredits ?? null,
-    });
+    };
+
+    const result = runtimeType === "hermes_agent_gateway"
+      ? await queueJob({
+        runtimeType: "hermes_agent_gateway",
+        ...baseQueueInput,
+        jobType: input.payload.jobType as (typeof HERMES_SUPPORTED_JOB_TYPES)[number],
+        capabilityFamilies: coerceCapabilityFamilies("hermes_agent_gateway", input.payload.capabilityFamilies) as any,
+      })
+      : await queueJob({
+        runtimeType: "openclaw_gateway",
+        ...baseQueueInput,
+        jobType: input.payload.jobType as (typeof OPENCLAW_SUPPORTED_JOB_TYPES)[number],
+        capabilityFamilies: coerceCapabilityFamilies("openclaw_gateway", input.payload.capabilityFamilies) as any,
+      });
 
     return {
       created: result.created,

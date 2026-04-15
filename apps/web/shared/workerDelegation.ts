@@ -36,6 +36,15 @@ export const delegatedScopeProfileValues = [
   "worker_gateway_hybrid_executor",
 ] as const;
 
+export const delegatedTaskModeValues = [
+  "coordination",
+  "research_summary",
+  "channel_response",
+  "team_update_drafting",
+  "monitoring_triage",
+  "generic_fallback",
+] as const;
+
 export const delegatedGrantTypeValues = [
   "skill",
   "agency",
@@ -74,12 +83,14 @@ export const delegatedWorkerCallbackChannelValues = [
 
 export type DelegatedWorkerScope = (typeof delegatedWorkerScopeValues)[number];
 export type DelegatedScopeProfile = (typeof delegatedScopeProfileValues)[number];
+export type DelegatedTaskMode = (typeof delegatedTaskModeValues)[number];
 export type DelegatedGrantType = (typeof delegatedGrantTypeValues)[number];
 export type DelegatedRouteFamily = (typeof delegatedRouteFamilyValues)[number];
 export type DelegatedWorkerCallbackChannel = (typeof delegatedWorkerCallbackChannelValues)[number];
 
 export const delegatedWorkerScopeSchema = z.enum(delegatedWorkerScopeValues);
 export const delegatedScopeProfileSchema = z.enum(delegatedScopeProfileValues);
+export const delegatedTaskModeSchema = z.enum(delegatedTaskModeValues);
 export const delegatedGrantTypeSchema = z.enum(delegatedGrantTypeValues);
 export const delegatedRouteFamilySchema = z.enum(delegatedRouteFamilyValues);
 export const delegatedWorkerCallbackChannelSchema = z.enum(delegatedWorkerCallbackChannelValues);
@@ -138,6 +149,11 @@ export const delegatedCapabilityManifestSchema = z.object({
   ownerUserId: z.number().int().positive(),
   runtimeType: workerRuntimeTypeSchema,
   scopeProfile: delegatedScopeProfileSchema,
+  activeMode: z.object({
+    taskMode: delegatedTaskModeSchema,
+    scopeProfile: delegatedScopeProfileSchema.nullable().default(null),
+    displayLabel: z.string().min(1),
+  }).optional(),
   grantedScopes: z.array(delegatedWorkerScopeSchema),
   routeFamilies: z.array(delegatedRouteFamilySchema),
   allowedMcpNamespaces: z.array(z.string().min(1)).default([]),
@@ -215,6 +231,7 @@ export const delegatedSessionResponseSchema = z.object({
   audience: z.literal(DELEGATED_WORKER_AUDIENCE),
   tokenUse: z.literal(DELEGATED_WORKER_TOKEN_USE),
   scopeProfile: delegatedScopeProfileSchema,
+  activeMode: delegatedCapabilityManifestSchema.shape.activeMode.optional().nullable().default(null),
   grantedScopes: z.array(delegatedWorkerScopeSchema),
   expiresAt: z.string().datetime(),
   manifest: delegatedCapabilityManifestSchema,

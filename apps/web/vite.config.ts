@@ -27,6 +27,7 @@ if (process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG) {
 export default defineConfig({
   plugins,
   resolve: {
+    extensions: [".ts", ".tsx", ".mjs", ".js", ".jsx", ".json"],
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),

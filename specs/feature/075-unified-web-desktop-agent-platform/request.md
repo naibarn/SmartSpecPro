@@ -13,9 +13,9 @@ Create the next feature package in `specs/feature` that turns the current mix of
 - local AI / local skill execution
 - external Claw worker runtime support
 
-into one coherent **SmartSpecPro unified web + desktop agent platform** plan.
+into one coherent **SmartAIHub unified web + desktop agent platform** plan.
 
-The new feature should use the provided "SmartSpecPro Master Spec v10" as the primary product and security direction, but it must stay grounded in the current repository:
+The new feature should use the provided "SmartAIHub Master Spec v10" as the primary product and security direction, but it must stay grounded in the current repository:
 
 - continue the existing feature lineage instead of rewriting the whole roadmap from scratch
 - treat the existing Tauri shell as the desktop foundation

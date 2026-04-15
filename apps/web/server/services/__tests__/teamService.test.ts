@@ -1,7 +1,39 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as teamService from "../teamService";
 
+const { mockGetDb, mockGetTenantFeatureFlags } = vi.hoisted(() => ({
+  mockGetDb: vi.fn(),
+  mockGetTenantFeatureFlags: vi.fn(),
+}));
+
+vi.mock("../../db", () => ({
+  getDb: mockGetDb,
+}));
+
+vi.mock("../tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: mockGetTenantFeatureFlags,
+}));
+
+function makeListBindableWorkersDb(rows: Array<Record<string, unknown>>) {
+  const query = {
+    from: vi.fn(() => query),
+    leftJoin: vi.fn(() => query),
+    where: vi.fn(() => query),
+    groupBy: vi.fn(() => query),
+    orderBy: vi.fn(() => rows),
+  };
+
+  return {
+    select: vi.fn(() => query),
+  };
+}
+
 describe("teamService", () => {
+  beforeEach(() => {
+    mockGetDb.mockReset();
+    mockGetTenantFeatureFlags.mockReset();
+  });
+
   describe("validateTeamInput", () => {
     const baseInput: teamService.CreateTeamInput = {
       tenantId: "tenant-1",
@@ -250,6 +282,202 @@ describe("teamService", () => {
     it("handles empty name gracefully", () => {
       const slug = teamService.generateTeamSlug("");
       expect(slug).toMatch(/^-[a-f0-9]{6}$/);
+    });
+  });
+
+  describe("summarizeBindableWorkerRuntimeCapabilities", () => {
+    it("treats Hermes workers as bindable only when nested runtime metadata grants the capability", () => {
+      expect(teamService.summarizeBindableWorkerRuntimeCapabilities({
+        runtimeType: "hermes_agent_gateway",
+        capabilitiesJson: {
+          runtimeMetadata: {
+            hermesVersion: "1.2.3",
+            profileName: "personal-default",
+            profileLabel: "Personal Default",
+            profilePurpose: "Handle personal follow-up and coordination",
+            apiServerEnabled: true,
+            apiServerBaseUrl: "http://127.0.0.1:4100",
+            terminalBackend: "pty",
+            gatewayPlatforms: ["Telegram", "discord", "discord"],
+            supportsDelegatedHttp: true,
+            supportsDelegatedMcp: false,
+            supportsBoundConnector: true,
+            supportsCallbacks: true,
+            hostPlatform: "macos",
+            hostExecutionMode: "foreground",
+          },
+        },
+      })).toEqual({
+        supportsBoundConnector: true,
+        channelCompanionPlatforms: ["telegram", "discord"],
+        remoteEndpointPolicy: "loopback_only",
+      });
+    });
+
+    it("fails closed for Hermes workers that omit the nested bound-connector capability", () => {
+      expect(teamService.summarizeBindableWorkerRuntimeCapabilities({
+        runtimeType: "hermes_agent_gateway",
+        capabilitiesJson: {
+          supportsBoundConnector: true,
+          runtimeMetadata: {
+            hermesVersion: "1.2.3",
+            profileName: "personal-default",
+            profileLabel: "Personal Default",
+            profilePurpose: "Handle personal follow-up and coordination",
+            apiServerEnabled: true,
+            apiServerBaseUrl: "http://127.0.0.1:4100",
+            terminalBackend: "pty",
+            gatewayPlatforms: ["telegram"],
+            supportsDelegatedHttp: true,
+            supportsDelegatedMcp: false,
+            supportsCallbacks: true,
+            hostPlatform: "macos",
+            hostExecutionMode: "foreground",
+          },
+        },
+      })).toEqual({
+        supportsBoundConnector: false,
+        channelCompanionPlatforms: ["telegram"],
+        remoteEndpointPolicy: "loopback_only",
+      });
+    });
+
+    it("filters unsafe channel companion labels before surfacing them to the UI", () => {
+      expect(teamService.summarizeBindableWorkerRuntimeCapabilities({
+        runtimeType: "hermes_agent_gateway",
+        capabilitiesJson: {
+          runtimeMetadata: {
+            hermesVersion: "1.2.3",
+            profileName: "personal-default",
+            profileLabel: "Personal Default",
+            profilePurpose: "Handle personal follow-up and coordination",
+            apiServerEnabled: true,
+            apiServerBaseUrl: "http://127.0.0.1:4100",
+            terminalBackend: "pty",
+            gatewayPlatforms: ["telegram", "https://secret.example", "Bearer token", "discord_bot"],
+            supportsDelegatedHttp: true,
+            supportsDelegatedMcp: false,
+            supportsBoundConnector: true,
+            supportsCallbacks: true,
+            hostPlatform: "macos",
+            hostExecutionMode: "foreground",
+          },
+        },
+      })).toEqual({
+        supportsBoundConnector: true,
+        channelCompanionPlatforms: ["telegram", "discord_bot"],
+        remoteEndpointPolicy: "loopback_only",
+      });
+    });
+  });
+
+  describe("listBindableWorkers", () => {
+    it("marks Hermes workers unavailable when the tenant rollout gate is disabled", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        hermesAgentRuntime: false,
+      });
+      mockGetDb.mockResolvedValue(makeListBindableWorkersDb([
+        {
+          id: "worker-hermes-1",
+          displayName: "Hermes Agent",
+          status: "online",
+          runtimeType: "hermes_agent_gateway",
+          runtimeVersion: "0.3.0",
+          externalReference: "hermes://profiles/default",
+          teamId: null,
+          registeredByUserId: 7,
+          capabilitiesJson: {
+          runtimeMetadata: {
+            hermesVersion: "0.3.0",
+            profileName: "default",
+            profileLabel: "Default Personal Assistant",
+            profilePurpose: "Handle personal follow-up and coordination",
+            apiServerEnabled: true,
+            apiServerBaseUrl: "http://127.0.0.1:9001",
+            terminalBackend: "local",
+              gatewayPlatforms: ["telegram"],
+              supportsDelegatedHttp: true,
+              supportsDelegatedMcp: false,
+              supportsBoundConnector: true,
+              supportsCallbacks: true,
+              hostPlatform: "linux",
+              hostExecutionMode: "native",
+            },
+          },
+          lastSeenAt: new Date("2026-04-11T00:00:00.000Z"),
+          warningFlagsJson: [],
+          boundProfileCount: 2,
+        },
+      ]));
+
+      const workers = await teamService.listBindableWorkers("tenant-1", 7, null);
+
+      expect(workers).toHaveLength(1);
+      expect(workers[0]).toEqual(expect.objectContaining({
+        id: "worker-hermes-1",
+        availableForBinding: false,
+        bindingReason: "Hermes runtime is disabled for this tenant",
+        remoteEndpointPolicy: "loopback_only",
+        personaDisplayLabel: "Default Personal Assistant",
+        personaDisplayPurpose: "Handle personal follow-up and coordination",
+        channelDisplayLabel: "Connected",
+        memorySyncDisplayLabel: "Memory sync off",
+      }));
+    });
+
+    it("keeps Hermes workers bindable when the tenant rollout gate is enabled and the runtime is ready", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        hermesAgentRuntime: true,
+      });
+      mockGetDb.mockResolvedValue(makeListBindableWorkersDb([
+        {
+          id: "worker-hermes-2",
+          displayName: "Hermes Agent",
+          status: "online",
+          runtimeType: "hermes_agent_gateway",
+          runtimeVersion: "0.3.0",
+          externalReference: "hermes://profiles/default",
+          teamId: null,
+          registeredByUserId: 7,
+          capabilitiesJson: {
+          runtimeMetadata: {
+            hermesVersion: "0.3.0",
+            profileName: "default",
+            profileLabel: "Default Personal Assistant",
+            profilePurpose: "Handle personal follow-up and coordination",
+            apiServerEnabled: true,
+            apiServerBaseUrl: "http://127.0.0.1:9001",
+            remoteEndpointPolicyExceptionId: "hermes-remote-allow-001",
+              terminalBackend: "local",
+              gatewayPlatforms: ["telegram", "discord"],
+              supportsDelegatedHttp: true,
+              supportsDelegatedMcp: false,
+              supportsBoundConnector: true,
+              supportsCallbacks: true,
+              hostPlatform: "linux",
+              hostExecutionMode: "native",
+            },
+          },
+          lastSeenAt: new Date("2026-04-11T00:00:00.000Z"),
+          warningFlagsJson: [],
+          boundProfileCount: 1,
+        },
+      ]));
+
+      const workers = await teamService.listBindableWorkers("tenant-1", 7, null);
+
+      expect(workers).toHaveLength(1);
+      expect(workers[0]).toEqual(expect.objectContaining({
+        id: "worker-hermes-2",
+        availableForBinding: true,
+        bindingReason: null,
+        channelCompanionPlatforms: ["telegram", "discord"],
+        remoteEndpointPolicy: "audited_exception_granted",
+        personaDisplayLabel: "Default Personal Assistant",
+        personaDisplayPurpose: "Handle personal follow-up and coordination",
+        channelDisplayLabel: "Connected",
+        memorySyncDisplayLabel: "Memory sync off",
+      }));
     });
   });
 

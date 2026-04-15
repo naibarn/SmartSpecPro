@@ -229,10 +229,14 @@ const messageRoleSchema = z.enum(["user", "assistant", "system"]);
 
 const attachmentSchema = z.object({
   type: z.enum(["image", "file", "audio", "video"]),
-  // Allow both full URLs (http/https) and relative paths (/uploads/...)
+  // Allow both full URLs (http/https) and relative paths (/uploads/... or /api/storage/files/...)
   url: z.string().refine(
-    (val) => val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/uploads/"),
-    { message: "URL must be a valid http/https URL or a relative /uploads/ path" }
+    (val) =>
+      val.startsWith("http://") ||
+      val.startsWith("https://") ||
+      val.startsWith("/uploads/") ||
+      val.startsWith("/api/storage/files/"),
+    { message: "URL must be a valid http/https URL or a relative /uploads/ or /api/storage/files/ path" }
   ),
   key: z.string().optional(),
   name: z.string().optional(),

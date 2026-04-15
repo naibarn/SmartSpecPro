@@ -2493,6 +2493,7 @@ export const financeDrafts = pgTable("finance_drafts", {
   source: financeSourceEnum("source").notNull(),
   idempotencyKey: varchar("idempotency_key", { length: 256 }).notNull(),
   sourceHash: varchar("source_hash", { length: 64 }),
+  semanticFingerprint: varchar("semantic_fingerprint", { length: 64 }),
   payloadJson: jsonb("payload_json").$type<Record<string, any>>().notNull().default({}),
   missingFields: text("missing_fields").array().notNull().default(sql`'{}'`),
   confidence: numeric("confidence", { precision: 3, scale: 2 }),
@@ -2510,6 +2511,7 @@ export const financeDrafts = pgTable("finance_drafts", {
   index("finance_drafts_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
   index("finance_drafts_tenant_status_created_idx").on(t.tenantId, t.status, t.createdAt),
   index("finance_drafts_source_hash_idx").on(t.sourceHash),
+  index("finance_drafts_semantic_fingerprint_idx").on(t.semanticFingerprint),
   index("finance_drafts_source_message_idx").on(t.sourceMessageId),
   index("finance_drafts_source_library_item_idx").on(t.sourceLibraryItemId),
   index("finance_drafts_recurring_rule_idx").on(t.recurringRuleId),
@@ -2536,14 +2538,20 @@ export const financeTransactions = pgTable("finance_transactions", {
   counterpartyName: text("counterparty_name"),
   merchantName: text("merchant_name"),
   note: text("note"),
+  slipReference: text("slip_reference"),
+  merchantId: text("merchant_id"),
+  paymentFeeMinor: integer("payment_fee_minor"),
   paymentSourceAccountId: integer("payment_source_account_id").references(() => financePaymentAccounts.id, { onDelete: "set null" }),
   paymentDestinationAccountId: integer("payment_destination_account_id").references(() => financePaymentAccounts.id, { onDelete: "set null" }),
+  paymentSourceName: text("payment_source_name"),
+  paymentDestinationName: text("payment_destination_name"),
   paymentMethodKind: financePaymentInstrumentKindEnum("payment_method_kind").notNull().default("unknown"),
   paymentDirection: financePaymentDirectionEnum("payment_direction").notNull().default("unknown"),
   paymentInstrumentConfidence: numeric("payment_instrument_confidence", { precision: 3, scale: 2 }),
   confidence: numeric("confidence", { precision: 3, scale: 2 }),
   idempotencyKey: varchar("idempotency_key", { length: 256 }).notNull(),
   sourceHash: varchar("source_hash", { length: 64 }),
+  semanticFingerprint: varchar("semantic_fingerprint", { length: 64 }),
   confirmedFromDraftId: integer("confirmed_from_draft_id").references(() => financeDrafts.id, { onDelete: "set null" }),
   recurringRuleId: integer("recurring_rule_id").references(() => financeRecurringRules.id, { onDelete: "set null" }),
   sourceMessageId: integer("source_message_id").references(() => messages.id, { onDelete: "set null" }),
@@ -2564,6 +2572,7 @@ export const financeTransactions = pgTable("finance_transactions", {
   index("finance_transactions_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
   index("finance_transactions_tenant_status_occurred_idx").on(t.tenantId, t.status, t.occurredAt),
   index("finance_transactions_source_hash_idx").on(t.sourceHash),
+  index("finance_transactions_semantic_fingerprint_idx").on(t.semanticFingerprint),
   index("finance_transactions_source_message_idx").on(t.sourceMessageId),
   index("finance_transactions_source_library_item_idx").on(t.sourceLibraryItemId),
   index("finance_transactions_recurring_rule_idx").on(t.recurringRuleId),
@@ -8204,6 +8213,7 @@ export const workerRuntimeTypeEnum = pgEnum("worker_runtime_type", [
   "desktop_zeroclaw_managed",
   "nemoclaw_sandbox",
   "hiclaw_cluster",
+  "hermes_agent_gateway",
 ]);
 
 export const workerStatusEnum = pgEnum("worker_status", [
@@ -8705,6 +8715,43 @@ export const workItemRiskClassEnum = pgEnum("work_item_risk_class", [
 export const workItemApprovalStateEnum = pgEnum("work_item_approval_state", [
   "not_required", "pending", "approved", "rejected",
 ]);
+export const workOsStateEnum = pgEnum("work_os_state", [
+  "new",
+  "triaged",
+  "planned",
+  "in_progress",
+  "waiting_for_approval",
+  "waiting_for_input",
+  "blocked",
+  "escalated",
+  "completed",
+  "cancelled",
+  "failed",
+]);
+export const workOsAssignmentTypeEnum = pgEnum("work_os_assignment_type", [
+  "human",
+  "queue",
+  "role",
+  "hybrid",
+]);
+export const workOsSlaBreachStateEnum = pgEnum("work_os_sla_breach_state", [
+  "none",
+  "at_risk",
+  "breached",
+  "resolved",
+]);
+export const workOsApprovalStatusEnum = pgEnum("work_os_approval_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "cancelled",
+]);
+export const workOsExceptionStatusEnum = pgEnum("work_os_exception_status", [
+  "open",
+  "paused",
+  "downgraded",
+  "resolved",
+]);
 export const agentEventCategoryEnum = pgEnum("agent_event_category", [
   "status_change", "communication", "tool_use", "memory_op",
   "artifact_op", "handoff", "approval", "error",
@@ -8913,6 +8960,231 @@ export const workItemEvents = pgTable("work_item_events", {
 
 export type WorkItemEvent = typeof workItemEvents.$inferSelect;
 export type InsertWorkItemEvent = typeof workItemEvents.$inferInsert;
+
+/**
+ * work_requests — initial intake records for business work.
+ */
+export const workRequests = pgTable("work_requests", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: integer("projectId"),
+  sourceType: varchar("sourceType", { length: 50 }).notNull(),
+  sourceRef: varchar("sourceRef", { length: 255 }),
+  requesterType: workOsAssignmentTypeEnum("requesterType").notNull().default("human"),
+  requesterId: varchar("requesterId", { length: 36 }),
+  workType: varchar("workType", { length: 100 }),
+  businessDomain: varchar("businessDomain", { length: 100 }),
+  urgency: varchar("urgency", { length: 30 }).notNull().default("normal"),
+  riskLevel: varchar("riskLevel", { length: 30 }).notNull().default("medium"),
+  classificationConfidence: doublePrecision("classificationConfidence"),
+  defaultOwnerType: workOsAssignmentTypeEnum("defaultOwnerType"),
+  defaultOwnerId: varchar("defaultOwnerId", { length: 36 }),
+  defaultQueueId: varchar("defaultQueueId", { length: 36 }),
+  title: varchar("title", { length: 500 }).notNull(),
+  objective: text("objective"),
+  currentState: workOsStateEnum("currentState").notNull().default("new"),
+  linkedConversationIdsJson: jsonb("linkedConversationIdsJson").$type<string[]>(),
+  linkedWorkpackRunIdsJson: jsonb("linkedWorkpackRunIdsJson").$type<string[]>(),
+  linkedRoleRoutineRunIdsJson: jsonb("linkedRoleRoutineRunIdsJson").$type<string[]>(),
+  linkedCaseId: varchar("linkedCaseId", { length: 36 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_requests_tenant_state_idx").on(t.tenantId, t.currentState, t.createdAt),
+  index("work_requests_tenant_source_idx").on(t.tenantId, t.sourceType, t.createdAt),
+]);
+
+export type WorkRequest = typeof workRequests.$inferSelect;
+export type InsertWorkRequest = typeof workRequests.$inferInsert;
+
+/**
+ * work_cases — durable business context spanning one or more tasks or runs.
+ */
+export const workCases = pgTable("work_cases", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: integer("projectId"),
+  requestId: varchar("requestId", { length: 36 }).notNull().references(() => workRequests.id, { onDelete: "cascade" }),
+  primaryTaskId: varchar("primaryTaskId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 500 }).notNull(),
+  summary: text("summary"),
+  ownerType: workOsAssignmentTypeEnum("ownerType"),
+  ownerId: varchar("ownerId", { length: 36 }),
+  priority: workItemPriorityEnum("priority").notNull().default("normal"),
+  riskLevel: varchar("riskLevel", { length: 30 }).notNull().default("medium"),
+  dataClassification: varchar("dataClassification", { length: 30 }).notNull().default("internal"),
+  currentState: workOsStateEnum("currentState").notNull().default("new"),
+  linkedConversationIdsJson: jsonb("linkedConversationIdsJson").$type<string[]>(),
+  linkedWorkpackRunIdsJson: jsonb("linkedWorkpackRunIdsJson").$type<string[]>(),
+  linkedRoleRoutineRunIdsJson: jsonb("linkedRoleRoutineRunIdsJson").$type<string[]>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_cases_tenant_state_idx").on(t.tenantId, t.currentState, t.updatedAt),
+  index("work_cases_request_idx").on(t.requestId),
+  index("work_cases_primary_task_idx").on(t.primaryTaskId),
+]);
+
+export type WorkCase = typeof workCases.$inferSelect;
+export type InsertWorkCase = typeof workCases.$inferInsert;
+
+/**
+ * work_assignments — immutable ownership history for work cases and tasks.
+ */
+export const workAssignments = pgTable("work_assignments", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).notNull().references(() => workCases.id, { onDelete: "cascade" }),
+  taskId: varchar("taskId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  previousOwnerType: workOsAssignmentTypeEnum("previousOwnerType"),
+  previousOwnerId: varchar("previousOwnerId", { length: 36 }),
+  ownerType: workOsAssignmentTypeEnum("ownerType").notNull(),
+  ownerId: varchar("ownerId", { length: 36 }),
+  assignmentSource: varchar("assignmentSource", { length: 50 }).notNull().default("manual"),
+  reason: text("reason"),
+  actorAssistantId: varchar("actorAssistantId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  actorUserId: integer("actorUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_assignments_case_created_idx").on(t.caseId, t.createdAt),
+  index("work_assignments_tenant_owner_idx").on(t.tenantId, t.ownerType, t.ownerId),
+  index("work_assignments_task_idx").on(t.taskId),
+]);
+
+export type WorkAssignment = typeof workAssignments.$inferSelect;
+export type InsertWorkAssignment = typeof workAssignments.$inferInsert;
+
+/**
+ * work_approvals — work-scoped approval checkpoints.
+ */
+export const workApprovals = pgTable("work_approvals", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).notNull().references(() => workCases.id, { onDelete: "cascade" }),
+  taskId: varchar("taskId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  approvalTransportId: varchar("approvalTransportId", { length: 36 }),
+  approvalStatus: workOsApprovalStatusEnum("approvalStatus").notNull().default("pending"),
+  approverType: workOsAssignmentTypeEnum("approverType").default("human"),
+  approverId: varchar("approverId", { length: 36 }),
+  comment: text("comment"),
+  metadataJson: jsonb("metadataJson"),
+  requestedAt: timestamp("requestedAt", { withTimezone: true }).defaultNow().notNull(),
+  respondedAt: timestamp("respondedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_approvals_case_status_idx").on(t.caseId, t.approvalStatus, t.createdAt),
+  index("work_approvals_task_idx").on(t.taskId),
+]);
+
+export type WorkApproval = typeof workApprovals.$inferSelect;
+export type InsertWorkApproval = typeof workApprovals.$inferInsert;
+
+/**
+ * work_exceptions — escalated policy, availability, or SLA tripwires.
+ */
+export const workExceptions = pgTable("work_exceptions", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).notNull().references(() => workCases.id, { onDelete: "cascade" }),
+  taskId: varchar("taskId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  exceptionType: varchar("exceptionType", { length: 100 }).notNull(),
+  severity: varchar("severity", { length: 30 }).notNull().default("medium"),
+  status: workOsExceptionStatusEnum("status").notNull().default("open"),
+  reason: text("reason"),
+  ownerType: workOsAssignmentTypeEnum("ownerType"),
+  ownerId: varchar("ownerId", { length: 36 }),
+  metadataJson: jsonb("metadataJson"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  resolvedAt: timestamp("resolvedAt", { withTimezone: true }),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_exceptions_case_status_idx").on(t.caseId, t.status, t.createdAt),
+  index("work_exceptions_task_idx").on(t.taskId),
+]);
+
+export type WorkException = typeof workExceptions.$inferSelect;
+export type InsertWorkException = typeof workExceptions.$inferInsert;
+
+/**
+ * work_outcomes — explicit business results for completed work.
+ */
+export const workOutcomes = pgTable("work_outcomes", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).notNull().references(() => workCases.id, { onDelete: "cascade" }),
+  taskId: varchar("taskId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  disposition: varchar("disposition", { length: 100 }).notNull(),
+  resolutionCode: varchar("resolutionCode", { length: 100 }),
+  customerImpact: varchar("customerImpact", { length: 100 }),
+  reviewerResult: varchar("reviewerResult", { length: 100 }),
+  followUpRequired: boolean("followUpRequired").default(false).notNull(),
+  summary: text("summary"),
+  metadataJson: jsonb("metadataJson"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_outcomes_case_created_idx").on(t.caseId, t.createdAt),
+  index("work_outcomes_task_idx").on(t.taskId),
+]);
+
+export type WorkOutcome = typeof workOutcomes.$inferSelect;
+export type InsertWorkOutcome = typeof workOutcomes.$inferInsert;
+
+/**
+ * work_sla — explicit SLA envelope for routable work.
+ */
+export const workSlas = pgTable("work_slas", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).notNull().references(() => workCases.id, { onDelete: "cascade" }),
+  taskId: varchar("taskId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  policyId: varchar("policyId", { length: 36 }),
+  dueAt: timestamp("dueAt", { withTimezone: true }),
+  serviceWindowStartAt: timestamp("serviceWindowStartAt", { withTimezone: true }),
+  serviceWindowEndAt: timestamp("serviceWindowEndAt", { withTimezone: true }),
+  urgency: varchar("urgency", { length: 30 }).notNull().default("normal"),
+  breachState: workOsSlaBreachStateEnum("breachState").notNull().default("none"),
+  breachedAt: timestamp("breachedAt", { withTimezone: true }),
+  escalatedAt: timestamp("escalatedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_slas_case_due_idx").on(t.caseId, t.dueAt),
+  index("work_slas_task_idx").on(t.taskId),
+]);
+
+export type WorkSla = typeof workSlas.$inferSelect;
+export type InsertWorkSla = typeof workSlas.$inferInsert;
+
+/**
+ * work_os_events — append-only event log for request/case/task/approval/exception/outcome transitions.
+ */
+export const workOsEvents = pgTable("work_os_events", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).references(() => workCases.id, { onDelete: "cascade" }),
+  taskId: varchar("taskId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  actorAssistantId: varchar("actorAssistantId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  actorUserId: integer("actorUserId").references(() => users.id, { onDelete: "set null" }),
+  eventType: varchar("eventType", { length: 100 }).notNull(),
+  fromState: workOsStateEnum("fromState"),
+  toState: workOsStateEnum("toState"),
+  detailJson: jsonb("detailJson"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_os_events_case_created_idx").on(t.caseId, t.createdAt),
+  index("work_os_events_request_created_idx").on(t.requestId, t.createdAt),
+  index("work_os_events_task_created_idx").on(t.taskId, t.createdAt),
+]);
+
+export type WorkOsEvent = typeof workOsEvents.$inferSelect;
+export type InsertWorkOsEvent = typeof workOsEvents.$inferInsert;
 
 /**
  * agent_activity_events — append-only event log for monitoring.

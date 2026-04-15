@@ -31,6 +31,10 @@ const LOCAL_LLM_MAX_AUDIO_BYTES: usize = 12 * 1024 * 1024;
 const LOCAL_LLM_MAX_IMAGE_BYTES: usize = 12 * 1024 * 1024;
 const LOCAL_LLM_MAX_AUDIO_SECONDS: u32 = 30;
 const LOCAL_LLM_AUDIO_PROMPT: &str = "Transcribe the spoken audio faithfully. Return only the spoken words in the same language. Do not add commentary, labels, or explanations. If there is no intelligible speech, return an empty string.";
+const LOCAL_TTS_PROVIDER_ENV: &str = "SMARTSPEC_TAURI_TTS_PROVIDER";
+const LOCAL_TTS_GATEWAY_URL_ENV: &str = "SMARTSPEC_TAURI_TTS_GATEWAY_URL";
+const LOCAL_TTS_GATEWAY_TOKEN_ENV: &str = "SMARTSPEC_TAURI_TTS_GATEWAY_TOKEN";
+const LOCAL_TTS_FORMAT: &str = "wav";
 const GEMMA4_SUPPORTED_PROFILES: [&str; 2] = [
     "gemma4-e2b-tauri-fast",
     "gemma4-e4b-tauri-balanced",
@@ -229,6 +233,13 @@ pub struct LocalTtsSpeakRequest {
     pub rate: Option<f32>,
 }
 
+#[derive(Debug, Clone)]
+struct RemoteTtsGatewayConfig {
+    provider: String,
+    gateway_url: String,
+    gateway_token: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LocalSkillExecutionEnvelope {
@@ -290,7 +301,7 @@ fn local_gemma4_text_runtime_enabled() -> bool {
 fn local_runtime_root() -> Result<PathBuf, String> {
     let home_dir = dirs::home_dir()
         .ok_or_else(|| "Failed to resolve home directory for local skill runtime".to_string())?;
-    let root = home_dir.join("SmartSpecPro").join("LocalSkillRuntime");
+    let root = home_dir.join("SmartAIHub").join("LocalSkillRuntime");
     fs::create_dir_all(&root)
         .map_err(|error| format!("Failed to create local skill runtime root: {error}"))?;
     Ok(root)
@@ -879,7 +890,50 @@ fn resolve_native_tts_backend() -> Option<(PathBuf, &'static str)> {
     None
 }
 
+fn resolve_remote_tts_gateway_config() -> Option<RemoteTtsGatewayConfig> {
+    let provider = env::var(LOCAL_TTS_PROVIDER_ENV).ok()?.trim().to_ascii_lowercase();
+    if provider != "omnivoice" {
+        return None;
+    }
+
+    let gateway_url = env::var(LOCAL_TTS_GATEWAY_URL_ENV)
+        .or_else(|_| env::var("SMARTSPEC_WEB_GATEWAY_URL"))
+        .ok()?;
+    let gateway_url = gateway_url.trim().trim_end_matches('/').to_string();
+    if gateway_url.is_empty() {
+        return None;
+    }
+    let gateway_token = env::var(LOCAL_TTS_GATEWAY_TOKEN_ENV)
+        .or_else(|_| env::var("SMARTSPEC_WEB_GATEWAY_TOKEN"))
+        .ok()
+        .and_then(|value| {
+            let trimmed = value.trim().to_string();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed)
+            }
+        });
+    if gateway_token.is_none() {
+        return None;
+    }
+
+    Some(RemoteTtsGatewayConfig {
+        provider,
+        gateway_url,
+        gateway_token,
+    })
+}
+
 fn build_local_tts_status() -> LocalTtsStatus {
+    if let Some(remote) = resolve_remote_tts_gateway_config() {
+        return LocalTtsStatus {
+            available: true,
+            backend: Some(remote.provider),
+            reason: None,
+        };
+    }
+
     match resolve_native_tts_backend() {
         Some((_, backend)) => LocalTtsStatus {
             available: true,
@@ -892,6 +946,53 @@ fn build_local_tts_status() -> LocalTtsStatus {
             reason: Some("native_tts_backend_unavailable".to_string()),
         },
     }
+}
+
+fn resolve_audio_player_command(audio_path: &Path) -> Result<(Command, &'static str), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let mut command = Command::new("afplay");
+        command.arg(audio_path);
+        command.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+        return Ok((command, "afplay"));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let mut command = Command::new("powershell.exe");
+        command
+            .arg("-NoProfile")
+            .arg("-NonInteractive")
+            .arg("-Command")
+            .arg("$player = New-Object System.Media.SoundPlayer $env:SMARTSPEC_TTS_AUDIO_PATH; $player.PlaySync();");
+        command.env("SMARTSPEC_TTS_AUDIO_PATH", audio_path);
+        command.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+        return Ok((command, "powershell-soundplayer"));
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        if let Some(ffplay_path) = find_program_in_path(&["ffplay"]) {
+            let mut command = Command::new(ffplay_path);
+            command
+                .arg("-nodisp")
+                .arg("-autoexit")
+                .arg("-loglevel")
+                .arg("error")
+                .arg(audio_path);
+            command.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+            return Ok((command, "ffplay"));
+        }
+
+        if let Some(aplay_path) = find_program_in_path(&["aplay"]) {
+            let mut command = Command::new(aplay_path);
+            command.arg(audio_path);
+            command.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+            return Ok((command, "aplay"));
+        }
+    }
+
+    Err("No supported local audio playback backend is available".to_string())
 }
 
 fn apply_native_tts_env(command: &mut Command) {
@@ -912,6 +1013,58 @@ fn apply_native_tts_env(command: &mut Command) {
             command.env(env_key, value);
         }
     }
+}
+
+fn fetch_remote_tts_audio(request: &LocalTtsSpeakRequest, remote: &RemoteTtsGatewayConfig) -> Result<(PathBuf, PathBuf), String> {
+    let text = sanitize_tts_text(&request.text)?;
+    let temp_dir = env::temp_dir().join(format!("smartspec-tts-{}", Uuid::new_v4()));
+    fs::create_dir_all(&temp_dir)
+        .map_err(|error| format!("Failed to create temporary TTS directory: {error}"))?;
+    let audio_path = temp_dir.join(format!("utterance.{LOCAL_TTS_FORMAT}"));
+
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(180))
+        .build()
+        .map_err(|error| format!("Failed to initialize remote TTS client: {error}"))?;
+
+    let mut payload = serde_json::json!({
+        "text": text,
+        "provider": remote.provider,
+        "voice": "alloy",
+        "speed": request.rate.unwrap_or(1.0),
+        "format": LOCAL_TTS_FORMAT,
+    });
+    if let Some(lang) = &request.lang {
+        payload["lang"] = serde_json::Value::String(lang.clone());
+    }
+
+    let response = client
+        .post(format!("{}/api/internal/tts", remote.gateway_url))
+        .header("Content-Type", "application/json")
+        .header("X-Internal-Token", remote.gateway_token.clone().unwrap_or_default())
+        .body(
+            serde_json::to_vec(&payload)
+                .map_err(|error| format!("Failed to serialize remote OmniVoice payload: {error}"))?,
+        )
+        .send()
+        .map_err(|error| format!("Failed to start remote OmniVoice TTS: {error}"))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().unwrap_or_default();
+        return Err(if body.trim().is_empty() {
+            format!("Remote OmniVoice TTS failed with status {status}")
+        } else {
+            format!("Remote OmniVoice TTS failed with status {status}: {}", body.trim())
+        });
+    }
+
+    let bytes = response
+        .bytes()
+        .map_err(|error| format!("Failed to read remote OmniVoice audio: {error}"))?;
+    fs::write(&audio_path, &bytes)
+        .map_err(|error| format!("Failed to persist remote OmniVoice audio: {error}"))?;
+    Ok((temp_dir, audio_path))
 }
 
 fn build_native_tts_command(request: &LocalTtsSpeakRequest) -> Result<(Command, String), String> {
@@ -1715,7 +1868,7 @@ pub async fn local_http_backend_chat_completion(
             .post(request_url_for_task)
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
-            .header("User-Agent", "SmartSpecPro-Tauri/0.1");
+            .header("User-Agent", "SmartAIHub-Tauri/0.1");
         if let Some(api_key) = api_key {
             http_request = http_request.bearer_auth(api_key);
         }
@@ -1859,7 +2012,7 @@ pub async fn local_llm_prepare_model(
             .build()
             .map_err(|error| format!("Failed to initialize model download client: {error}"))?
             .get(download_url_for_task)
-            .header("User-Agent", "SmartSpecPro-Tauri/0.1")
+            .header("User-Agent", "SmartAIHub-Tauri/0.1")
             .send()
             .map_err(|error| format!("Failed to download Gemma 4 model: {error}"))?;
 
@@ -2423,6 +2576,45 @@ pub fn local_tts_speak_text(
     state: tauri::State<'_, Arc<Mutex<LocalLlmProcessRegistry>>>,
 ) -> Result<bool, String> {
     stop_active_tts_process(state.inner())?;
+
+    if let Some(remote) = resolve_remote_tts_gateway_config() {
+        let (temp_dir, audio_path) = fetch_remote_tts_audio(&request, &remote)?;
+        let (mut command, _backend) = resolve_audio_player_command(&audio_path)?;
+        let child = Arc::new(Mutex::new(
+            command
+                .spawn()
+                .map_err(|error| format!("Failed to start remote OmniVoice playback: {error}"))?,
+        ));
+        let request_id = Uuid::new_v4().to_string();
+
+        {
+            let mut registry = state
+                .lock()
+                .map_err(|_| "Local TTS process registry lock was poisoned".to_string())?;
+            registry.active_tts_process = Some((request_id.clone(), Arc::clone(&child)));
+        }
+
+        let registry_state = Arc::clone(state.inner());
+        thread::spawn(move || {
+            if let Ok(mut child_guard) = child.lock() {
+                let _ = child_guard.wait();
+            }
+            if let Ok(mut registry) = registry_state.lock() {
+                let should_clear = registry
+                    .active_tts_process
+                    .as_ref()
+                    .map(|(active_id, _)| active_id == &request_id)
+                    .unwrap_or(false);
+                if should_clear {
+                    registry.active_tts_process = None;
+                }
+            }
+            let _ = fs::remove_file(&audio_path);
+            let _ = fs::remove_dir_all(&temp_dir);
+        });
+
+        return Ok(true);
+    }
 
     let (mut command, _backend) = build_native_tts_command(&request)?;
     let child = Arc::new(Mutex::new(

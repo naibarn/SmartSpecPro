@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SmartSpecPro Full Stack Stop Script
+# SmartAIHub Full Stack Stop Script
 # หยุดการทำงานของทุกโมดูล (Docker Services + Desktop App processes)
 
 RED='\033[0;31m'
@@ -15,7 +15,7 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 
 echo -e "${YELLOW}"
 echo "╔═══════════════════════════════════════════════════════════════╗"
-echo "║                SmartSpecPro Full Stack Stop                   ║"
+echo "║                SmartAIHub Full Stack Stop                   ║"
 echo "║          Shutting Down All Services & Applications            ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
@@ -48,5 +48,5 @@ for port in 3000 8000 5432 6379 7070 3001; do
 done
 
 echo ""
-echo -e "${GREEN}✅ All SmartSpecPro modules have been stopped successfully.${NC}"
+echo -e "${GREEN}✅ All SmartAIHub modules have been stopped successfully.${NC}"
 echo ""
