@@ -56,6 +56,7 @@ If the work came from Work OS, the plan should clearly inherit the Work OS case/
 - Keep the plan readable enough that operators can reason about ownership and next steps at a glance.
 - Avoid a separate product shell unless the existing Teams surfaces cannot reasonably carry the plan panel.
 - The plan view should remain durable and refreshable throughout execution.
+- When the work originated from Work OS, the plan view should show whether the latest mirror sync is synced, pending, or failed so operators can see if the business-facing projection is current.
 
 ## Completion Criteria
 

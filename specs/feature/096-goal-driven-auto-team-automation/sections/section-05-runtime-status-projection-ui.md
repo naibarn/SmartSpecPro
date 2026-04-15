@@ -49,6 +49,8 @@ Keep the Work OS case and request projection aligned with the same status model 
 
 If the work originated in Work OS, the Teams status panel should read as a projection of that same case rather than a separate local interpretation.
 
+If a Work OS mirror write is pending or failed, the UI should surface that sync state explicitly instead of implying the case is fully settled.
+
 ### 4. Freshness and invalidation
 
 Preserve the existing invalidation and refetch behavior so the UI remains reactive when runtime state changes.
