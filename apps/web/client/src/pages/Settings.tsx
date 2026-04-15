@@ -76,6 +76,7 @@ import { BudgetPanel } from '@/components/settings/BudgetPanel';
 import { PersonasPanel } from '@/components/settings/PersonasPanel';
 import { UserAutomationPreferencesPanel } from '@/components/settings/UserAutomationPreferencesPanel';
 import { NotificationPreferencesPanel } from '@/components/settings/NotificationPreferencesPanel';
+import { WorkerAccessKeysPanel } from '@/components/settings/WorkerAccessKeysPanel';
 import { LocalAiSettingsSection } from '@/features/local-ai/components/LocalAiSettingsSection';
 import { DesktopHostSettingsPanel } from '@/features/desktop-host/DesktopHostSettingsPanel';
 import { useDesktopHostStatus } from '@/features/desktop-host/useDesktopHostStatus';
@@ -86,7 +87,7 @@ import { LocaleToggle } from '@/components/LocaleToggle';
 import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 import { useTenantFeatureFlag } from '@/hooks/useTenantFeatureFlag';
 
-type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'preferences' | 'localAi' | 'desktopHost' | 'notifications' | 'automation' | 'api' | 'billing' | 'integrations' | 'personas';
+type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'preferences' | 'localAi' | 'desktopHost' | 'notifications' | 'automation' | 'workers' | 'api' | 'billing' | 'integrations' | 'personas';
 
 type TwoFAStep = 'idle' | 'setup' | 'verify' | 'done' | 'disable' | 'regen';
 
@@ -876,6 +877,7 @@ export default function Settings() {
       : []),
     { id: 'notifications', label: t('settings.tabs.notifications'), icon: Bell },
     { id: 'automation', label: t('settings.tabs.automation'), icon: Bot },
+    { id: 'workers', label: t('settings.tabs.workers'), icon: Key },
     { id: 'api', label: t('settings.tabs.apiKeys'), icon: Key },
     { id: 'billing', label: t('settings.tabs.billing'), icon: CreditCard },
     { id: 'integrations', label: t('settings.tabs.integrations'), icon: Link2 },
@@ -933,6 +935,24 @@ export default function Settings() {
       </header>
 
       <main className="px-4 sm:px-6 lg:px-8 py-8">
+        {activeTab !== 'workers' && (
+          <div className="mb-6 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-cyan-950">{t('settings.workers.quickAccessTitle')}</p>
+                <p className="mt-1 text-sm text-cyan-900">{t('settings.workers.quickAccessDescription')}</p>
+              </div>
+              <Button
+                variant="outline"
+                className="border-cyan-300 bg-white text-cyan-950 hover:bg-cyan-100"
+                onClick={() => setActiveTab('workers')}
+              >
+                <Key className="mr-2 h-4 w-4" />
+                {t('settings.workers.openWorkers')}
+              </Button>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Settings Navigation */}
           <motion.div
@@ -1938,10 +1958,10 @@ export default function Settings() {
                     rootActionInFlightKey={desktopRootActionKey}
                     adminConsoleHref={
                       user?.role === 'admin'
-                        ? '/admin/desktop-host'
+                        ? '/admin/desktop-host/governance'
                         : user?.role === 'domain_admin'
-                          ? '/domain-admin/desktop-host'
-                          : null
+                          ? '/domain-admin/desktop-host/governance'
+                        : null
                     }
                   />
                 </div>
@@ -1981,6 +2001,12 @@ export default function Settings() {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+
+              {activeTab === 'workers' && (
+                <div className="space-y-6">
+                  <WorkerAccessKeysPanel />
                 </div>
               )}
 

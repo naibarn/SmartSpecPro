@@ -283,7 +283,7 @@
   "localAi.voiceInput.options.gemma4_local": "Gemma 4 local",
   "localAi.voiceInput.options.auto": "Auto",
   "localAi.voiceInput.optionUnavailable": "{{label}} (unavailable on this surface)",
-  "localAi.voiceInput.privacy.legacy_stt": "Voice audio may travel through SmartSpecPro backend and external STT providers.",
+  "localAi.voiceInput.privacy.legacy_stt": "Voice audio may travel through SmartAIHub backend and external STT providers.",
   "localAi.voiceInput.privacy.gemma4_local": "Voice audio is intended to stay on this device; explicit local mode must fail closed instead of silently downgrading to third-party STT when local runtime is unavailable.",
   "localAi.voiceInput.privacy.auto": "Auto mode may fall back to the current server-backed STT path on unsupported devices.",
   "localAi.voiceInput.desktopReady": "This desktop build can transcribe short microphone recordings locally with Gemma 4.",

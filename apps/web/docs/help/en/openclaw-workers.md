@@ -16,8 +16,8 @@ Use this guide when you want SmartSpecPro Web to hand supported work to a Claw-f
 This guide is specifically about the `openclaw_gateway` runtime. SmartSpecPro now tracks other worker families separately:
 
 - `desktop_zeroclaw_managed` for Desktop + ZeroClaw machine-hosted work
-- `nemoclaw_sandbox` for admin-gated secure sandbox pools
-- `hiclaw_cluster` for admin-gated collaborative clusters
+- `nemoclaw_sandbox` for NemoClaw secure sandbox pools. See [NemoClaw Workers](./nemo-claw-workers.md).
+- `hiclaw_cluster` for HiClaw collaborative clusters. See [HiClaw Workers](./hi-claw-workers.md).
 
 Those runtime families do not inherit OpenClaw semantics automatically. If a tenant enables them later, operator views will show them as separate runtime families with their own rollout and compatibility state.
 
@@ -83,6 +83,8 @@ Feature 077 widens the control plane, but production readiness is still runtime-
 - `nemoclaw_sandbox` and `hiclaw_cluster` stay admin-gated until their own rollout flags are enabled
 
 Do not read this guide as proof that every runtime family supports the same dispatch, callback, or delegated-session behavior.
+
+If you are comparing the two personal external runtime lanes, keep using this guide for the stable OpenClaw path and see [Hermes Workers](./hermes-workers.md) for the bring-your-own Hermes path.
 
 ## Setup order that works best
 
@@ -271,7 +273,7 @@ A binding alone does not automatically:
 
 The worker can only use what the delegated job manifest and grants allow.
 
-Also note that this team-binding path currently targets **OpenClaw gateway workers**. It is not the same thing as binding a ZeroClaw desktop runtime.
+Also note that this team-binding path currently targets **OpenClaw gateway workers**. It is not the same thing as binding a ZeroClaw desktop runtime, a NemoClaw sandbox, or a HiClaw cluster runtime.
 
 ## Monitoring: what to check first
 

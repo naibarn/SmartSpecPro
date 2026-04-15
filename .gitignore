@@ -144,6 +144,8 @@ htmlcov/
 # Docker
 # ============================================================================
 docker-compose.override.yml
+!docker/hermes.env.example
+!docker/hermes.multi.env.example
 
 # ============================================================================
 # Compiled files
@@ -209,4 +211,5 @@ apps/tauri-shell/src-tauri/resources/litert-lm-models/
 python-backend/media_storage/
 python-backend/coverage.xml
 apps/web/data/chat-memory-archives/
+data/
 coverage.xml

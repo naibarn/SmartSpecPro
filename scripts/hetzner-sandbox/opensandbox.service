@@ -1,5 +1,5 @@
 [Unit]
-Description=SmartSpecPro OpenSandbox Server
+Description=SmartAIHub OpenSandbox Server
 Documentation=https://github.com/smartspecpro/smartspec
 After=docker.service network-online.target
 Requires=docker.service

@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GalleryTemplateCard } from "@/components/workflow/GalleryTemplateCard";
 import { GalleryDetailDrawer } from "@/components/workflow/GalleryDetailDrawer";
+import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 
 const PAGE_SIZE = 24;
 
@@ -126,14 +127,26 @@ export default function WorkflowGallery() {
 
             {/* CTA for auth users */}
             {isAuthenticated && (
-              <Button
-                onClick={() => setLocation("/workflows/editor")}
-                className="bg-gradient-to-r from-violet-500 to-teal-400 hover:from-violet-600 hover:to-teal-500 text-white shadow-lg shadow-violet-500/25"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Create New Workflow
-                <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <Button
+                  onClick={() => setLocation("/workflows/editor")}
+                  className="bg-gradient-to-r from-violet-500 to-teal-400 hover:from-violet-600 hover:to-teal-500 text-white shadow-lg shadow-violet-500/25"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create New Workflow
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setLocation(buildWorkpackEntrypointHref({
+                    entrypoint: "workflow_gallery",
+                    surface: "discovery",
+                  }))}
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Open Workpack Discovery
+                </Button>
+              </div>
             )}
           </motion.div>
         </div>

@@ -1,0 +1,9 @@
+[project]
+name = "unified-slip-parser"
+version = "0.3.0"
+description = "Unified parser for Thai bank, wallet, and app-issued slips"
+requires-python = ">=3.10"
+dependencies = ["pillow"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

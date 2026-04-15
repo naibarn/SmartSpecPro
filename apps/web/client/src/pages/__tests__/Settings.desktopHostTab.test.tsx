@@ -138,6 +138,7 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
         "settings.tabs.desktopHost": "Desktop Host",
         "settings.tabs.notifications": "Notifications",
         "settings.tabs.automation": "Automation",
+        "settings.tabs.workers": "Workers",
         "settings.tabs.apiKeys": "API Keys",
         "settings.tabs.billing": "Billing",
         "settings.tabs.integrations": "Integrations",
@@ -200,6 +201,9 @@ vi.mock("@/components/settings/PersonasPanel", () => ({
 }));
 vi.mock("@/components/settings/UserAutomationPreferencesPanel", () => ({
   UserAutomationPreferencesPanel: () => <div />,
+}));
+vi.mock("@/components/settings/WorkerAccessKeysPanel", () => ({
+  WorkerAccessKeysPanel: () => <div />,
 }));
 vi.mock("@/components/settings/NotificationPreferencesPanel", () => ({
   NotificationPreferencesPanel: () => <div />,
@@ -292,8 +296,15 @@ describe("Settings desktop host tab", () => {
                 keyAlgorithm: "ed25519",
                 keyVersion: 2,
                 publicKeyDigestSha256: "a".repeat(64),
-                attestationMode: "software_pkcs8",
-                secretStorage: "file_store",
+                attestationMode: "hardware_attested",
+                secretStorage: "windows_dpapi",
+                storageProtection: "os_protected",
+                storageProvider: "test_attestation_helper",
+                osAttested: true,
+                hardwareBacked: true,
+                attestationProvider: "test_attestation_helper",
+                attestationEvidenceSha256: "b".repeat(64),
+                attestationClaims: ["device_id:device-1", "key_version:2"],
                 proofKind: "ed25519_signature",
               },
               localFileService: {
@@ -302,10 +313,17 @@ describe("Settings desktop host tab", () => {
                 supportedFormats: ["pdf", "docx", "pptx", "xlsx", "png"],
                 maxInputBytes: 8_388_608,
                 timeoutMs: 8_000,
-                ocrEnabled: false,
+                ocrEnabled: true,
                 pdfExtractor: "internal_heuristic",
-                ocrProvider: "none",
-                fullRenderingSupported: false,
+                ocrProvider: "tesseract",
+                renderBackend: "pdftoppm+soffice",
+                officeRenderer: "soffice",
+                renderedPreviewFormats: ["pdf", "docx", "pptx"],
+                complexDocumentSupport: "ocr_rendering",
+                multiPageRenderingSupported: true,
+                maxRenderedPages: 3,
+                ocrLayoutMode: "page_segmented",
+                fullRenderingSupported: true,
                 activeContentExecutionAllowed: false,
               },
             },
@@ -453,7 +471,8 @@ describe("Settings desktop host tab", () => {
     expect(screen.getByText("Rich Document Parser")).toBeInTheDocument();
     expect(screen.getByText(/python_subprocess_bounded/i)).toBeInTheDocument();
     expect(screen.getByText("PDF internal_heuristic")).toBeInTheDocument();
-    expect(screen.getByText("Extraction only")).toBeInTheDocument();
+    expect(screen.getByText("Rendering + extraction")).toBeInTheDocument();
+    expect(screen.getByText("Up to 3 pages")).toBeInTheDocument();
     expect(screen.getByText("Quotes")).toBeInTheDocument();
     expect(screen.getByText("Storyboard Writer")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /disable device/i })).toBeInTheDocument();

@@ -385,6 +385,20 @@ AUDIO_MODELS: Dict[str, GenerationModel] = {
         tags=["elevenlabs", "sfx", "sound-effect"],
         documentation_url="https://kie.ai/elevenlabs-sound-effect",
     ),
+    
+    "omnivoice/multilingual-tts": GenerationModel(
+        id="omnivoice/multilingual-tts",
+        name="OmniVoice Multilingual TTS",
+        provider="omnivoice",
+        media_type=MediaType.AUDIO,
+        description="Self-hosted multilingual text-to-speech with optional voice design and cloning support",
+        max_prompt_length=10000,
+        output_formats=["mp3", "wav"],
+        base_credits=12,
+        status=ModelStatus.BETA,
+        tags=["omnivoice", "tts", "multilingual", "voice-cloning"],
+        documentation_url="https://github.com/k2-fsa/OmniVoice",
+    ),
 }
 
 

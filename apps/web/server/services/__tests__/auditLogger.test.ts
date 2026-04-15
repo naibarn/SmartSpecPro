@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { auditLogger } from "../auditLogger";
+import { sanitizePayload } from "../auditLogger";
 
 describe("auditLogger.readEntries", () => {
   afterEach(() => {
@@ -33,5 +34,23 @@ describe("auditLogger.readEntries", () => {
     });
 
     expect(rows.map((row) => row.traceId)).toEqual(["trace-3", "trace-2"]);
+  });
+});
+
+describe("auditLogger.sanitizePayload", () => {
+  it("redacts OmniVoice reference audio payloads", () => {
+    const result = sanitizePayload({
+      reference_audio_base64: "YWJjMTIz",
+      reference_audio_url: "https://example.com/audio.wav?sig=secret",
+      reference_audio_name: "voice-sample.wav",
+      nested: {
+        referenceAudioBase64: "ZWY0NTY=",
+      },
+    }) as Record<string, unknown>;
+
+    expect(result.reference_audio_base64).toBe("[REDACTED]");
+    expect(result.reference_audio_url).toBe("[REDACTED]");
+    expect(result.reference_audio_name).toBe("voice-sample.wav");
+    expect((result.nested as Record<string, unknown>).referenceAudioBase64).toBe("[REDACTED]");
   });
 });

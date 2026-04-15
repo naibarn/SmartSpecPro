@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SmartSpecPro Auto-Maintenance Script
+# SmartAIHub Auto-Maintenance Script
 # Runs periodically to prevent resource leaks and disk bloat.
 # Designed to be safe and idempotent — can run every hour via cron.
 

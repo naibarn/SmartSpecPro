@@ -2,10 +2,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   getLocalVoiceReadbackAvailability,
+  getTauriLocalVoiceReadbackStatus,
   shouldSpeakLocalVoiceReadback,
   speakLocalVoiceReadback,
   stopLocalVoiceReadback,
 } from "./localVoiceReadback";
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: vi.fn(),
+}));
 
 class MockSpeechSynthesisUtterance {
   text: string;
@@ -89,5 +94,21 @@ describe("localVoiceReadback", () => {
 
     stopLocalVoiceReadback();
     expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports OmniVoice as the tauri backend when the runtime exposes it", async () => {
+    vi.stubGlobal("window", { __TAURI__: {} } as Window & { __TAURI__: unknown });
+    const { invoke } = await import("@tauri-apps/api/core");
+    vi.mocked(invoke).mockResolvedValue({
+      available: true,
+      backend: "omnivoice",
+      reason: null,
+    });
+
+    await expect(getTauriLocalVoiceReadbackStatus()).resolves.toEqual({
+      available: true,
+      backend: "omnivoice",
+      reason: null,
+    });
   });
 });

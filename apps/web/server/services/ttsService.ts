@@ -18,15 +18,19 @@ export const MAX_TTS_CHARS = 5000;
 
 export interface TTSResult {
   audioBuffer: Buffer;
-  contentType: string; // "audio/mpeg" or "audio/pcm"
+  contentType: string; // "audio/mpeg", "audio/pcm", or "audio/wav"
   duration: number;    // estimated seconds
 }
 
 export interface SynthesizeOptions {
-  format: "mp3" | "pcm16";
+  format: "mp3" | "pcm16" | "wav";
   voice?: string;
   speed?: number;
-  provider?: "elevenlabs" | "openai";
+  provider?: "elevenlabs" | "openai" | "omnivoice";
+  instruct?: string;
+  referenceAudioBase64?: string;
+  referenceAudioUrl?: string;
+  referenceText?: string;
 }
 
 // ── Credit calculation ────────────────────────────────────────────────────
@@ -69,6 +73,10 @@ export async function synthesize(
       voice: options.voice ?? "alloy",
       speed: options.speed ?? 1.0,
       format: options.format,
+      instruct: options.instruct ?? null,
+      reference_audio_base64: options.referenceAudioBase64 ?? null,
+      reference_audio_url: options.referenceAudioUrl ?? null,
+      reference_text: options.referenceText ?? null,
     }),
   });
 

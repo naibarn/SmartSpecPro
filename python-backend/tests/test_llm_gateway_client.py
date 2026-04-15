@@ -96,6 +96,91 @@ async def test_chat_completion_sends_correct_body(client):
 
 
 @pytest.mark.asyncio
+async def test_chat_completion_includes_extra_body(client):
+    """Extra body fields should pass through to the gateway request."""
+    mock_resp = _mock_response(200, {"choices": []})
+
+    with patch("app.services.llm_gateway_client.httpx.AsyncClient") as MockClient:
+        mock_instance = AsyncMock()
+        mock_instance.request = AsyncMock(return_value=mock_resp)
+        mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
+        mock_instance.__aexit__ = AsyncMock(return_value=False)
+        MockClient.return_value = mock_instance
+
+        await client.chat_completion(
+            messages=[{"role": "user", "content": "test"}],
+            model="__auto",
+            extra_body={
+                "modelSelection": {"mode": "auto-global"},
+                "modelSelectionContext": {"featureModes": ["photo_search", "structured_output", "responses"]},
+            },
+        )
+
+        call_args = mock_instance.request.call_args
+        body = call_args.kwargs.get("json") or call_args[1].get("json", {})
+        assert body["model"] == "__auto"
+        assert body["modelSelection"] == {"mode": "auto-global"}
+        assert body["modelSelectionContext"] == {"featureModes": ["photo_search", "structured_output", "responses"]}
+
+
+@pytest.mark.asyncio
+async def test_responses_completion_sends_multimodal_payload(client):
+    """Responses API requests should preserve input_text + input_image blocks and reasoning."""
+    mock_resp = _mock_response(200, {
+        "output": [
+            {
+                "type": "message",
+                "role": "assistant",
+                "content": [
+                    {"type": "output_text", "text": "{\"ocrText\":\"ok\"}"},
+                ],
+            },
+        ],
+    })
+
+    with patch("app.services.llm_gateway_client.httpx.AsyncClient") as MockClient:
+        mock_instance = AsyncMock()
+        mock_instance.request = AsyncMock(return_value=mock_resp)
+        mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
+        mock_instance.__aexit__ = AsyncMock(return_value=False)
+        MockClient.return_value = mock_instance
+
+        await client.responses_completion(
+            input=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": "What is in this image?"},
+                        {"type": "input_image", "image_url": "https://example.com/example.png"},
+                    ],
+                }
+            ],
+            model="__auto",
+            reasoning={"effort": "high"},
+            max_output_tokens=4096,
+            extra_body={
+                "modelSelection": {"mode": "auto-global"},
+                "modelSelectionContext": {"featureModes": ["photo_search", "structured_output", "responses"]},
+            },
+            user_id=7,
+            tenant_id="tenant-abc",
+        )
+
+        call_args = mock_instance.request.call_args
+        body = call_args.kwargs.get("json") or call_args[1].get("json", {})
+        assert body["model"] == "__auto"
+        assert body["stream"] is False
+        assert body["reasoning"] == {"effort": "high"}
+        assert body["max_output_tokens"] == 4096
+        assert body["modelSelection"] == {"mode": "auto-global"}
+        assert body["modelSelectionContext"] == {"featureModes": ["photo_search", "structured_output", "responses"]}
+        assert body["input"][0]["content"][1] == {
+            "type": "input_image",
+            "image_url": "https://example.com/example.png",
+        }
+
+
+@pytest.mark.asyncio
 async def test_vision_call_constructs_image_blocks(client):
     """vision_call builds OpenAI-format image content blocks."""
     mock_resp = _mock_response(200, {"choices": [{"message": {"content": "screenshot analysis"}}]})
@@ -213,9 +298,35 @@ async def test_http_429_gives_up_after_3_retries(client):
 
 
 @pytest.mark.asyncio
+async def test_http_400_includes_body_preview(client):
+    """HTTP 400 should include the response body preview in the error message."""
+    mock_400 = _mock_response(400)
+    mock_400.text = "invalid image url: only https URLs are allowed"
+
+    with patch("app.services.llm_gateway_client.httpx.AsyncClient") as MockClient:
+        mock_instance = AsyncMock()
+        mock_instance.request = AsyncMock(return_value=mock_400)
+        mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
+        mock_instance.__aexit__ = AsyncMock(return_value=False)
+        MockClient.return_value = mock_instance
+
+        with pytest.raises(GatewayUnavailableError) as exc_info:
+            await client.chat_completion(
+                messages=[{"role": "user", "content": "test"}],
+                model="gpt-5.4",
+                user_id=1,
+            )
+
+        message = str(exc_info.value)
+        assert "Gateway returned 400" in message
+        assert "invalid image url" in message
+
+
+@pytest.mark.asyncio
 async def test_http_5xx_retries_once(client):
     """HTTP 5xx retries once then raises GatewayUnavailableError."""
     mock_500 = _mock_response(500)
+    mock_500.text = "provider exploded with a detailed diagnostic payload"
 
     with patch("app.services.llm_gateway_client.httpx.AsyncClient") as MockClient:
         mock_instance = AsyncMock()
@@ -224,12 +335,13 @@ async def test_http_5xx_retries_once(client):
         mock_instance.__aexit__ = AsyncMock(return_value=False)
         MockClient.return_value = mock_instance
 
-        with pytest.raises(GatewayUnavailableError):
+        with pytest.raises(GatewayUnavailableError) as exc_info:
             await client.chat_completion(
                 messages=[{"role": "user", "content": "test"}],
                 model="gpt-5.4",
                 user_id=1,
             )
+        assert "provider exploded" in str(exc_info.value)
         assert mock_instance.request.call_count == 2
 
 

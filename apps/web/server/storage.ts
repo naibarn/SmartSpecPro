@@ -369,6 +369,43 @@ export async function storagePut(
   }
 }
 
+/**
+ * Store a file from a filesystem path while avoiding unnecessary memory copies.
+ * This is used for large installer uploads.
+ */
+export async function storagePutFromPath(
+  relKey: string,
+  sourcePath: string,
+  contentType = "application/octet-stream",
+): Promise<{ key: string; url: string }> {
+  const config = await getActiveStorageConfig();
+
+  switch (config.provider) {
+    case "local": {
+      const key = normalizeKey(relKey);
+      ensureUploadsDir(path.dirname(key));
+      fs.copyFileSync(sourcePath, path.join(UPLOADS_DIR, key));
+      return { key, url: `/uploads/${key}` };
+    }
+    case "s3": {
+      const key = normalizeKey(relKey);
+      await config.client.send(
+        new PutObjectCommand({
+          Bucket: config.bucket,
+          Key: key,
+          Body: fs.createReadStream(sourcePath),
+          ContentType: contentType,
+        }),
+      );
+      return { key, url: `/api/storage/files/${encodeURI(key)}` };
+    }
+    case "forge": {
+      const buffer = fs.readFileSync(sourcePath);
+      return storagePut(relKey, buffer, contentType);
+    }
+  }
+}
+
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
   const config = await getActiveStorageConfig();
   switch (config.provider) {

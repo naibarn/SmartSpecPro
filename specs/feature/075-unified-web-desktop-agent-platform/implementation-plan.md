@@ -2,7 +2,7 @@
 
 ## Objective
 
-Deliver a concrete implementation roadmap for Feature 075 so SmartSpecPro can evolve from:
+Deliver a concrete implementation roadmap for Feature 075 so SmartAIHub can evolve from:
 
 - a capable web control plane
 - a permissive Tauri local shell

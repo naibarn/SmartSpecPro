@@ -9,6 +9,7 @@ export const workerRuntimeTypeValues = [
   "desktop_zeroclaw_managed",
   "nemoclaw_sandbox",
   "hiclaw_cluster",
+  "hermes_agent_gateway",
 ] as const;
 
 export const workerStatusValues = [
@@ -320,6 +321,300 @@ export const workerHiClawRuntimeMetadataSchema = z.object({
   matrixVisibilityMode: z.string().min(1),
 });
 
+export const workerHermesRuntimeMetadataSchema = z.object({
+  hermesVersion: z.string().min(1),
+  profileName: z.string().min(1),
+  profileLabel: z.string().min(1).nullable().optional().default(null),
+  profilePurpose: z.string().min(1).nullable().optional().default(null),
+  llmRoutingMode: z.enum(["auto", "pinned_provider"]).default("auto"),
+  preferredProviderId: z.number().int().positive().nullable().optional().default(null),
+  preferredProviderName: z.string().min(1).nullable().optional().default(null),
+  channelStatus: z.enum(["connected", "inactive", "revoked"]).nullable().optional().default(null),
+  apiServerEnabled: z.boolean().default(true),
+  apiServerBaseUrl: z.string().url().nullable().optional().default(null),
+  remoteEndpointPolicyExceptionId: z.string().trim().min(1).nullable().optional().default(null),
+  terminalBackend: z.string().min(1),
+  gatewayPlatforms: z.array(z.string().min(1)).default([]),
+  supportsDelegatedHttp: z.boolean().default(false),
+  supportsDelegatedMcp: z.boolean().default(false),
+  supportsBoundConnector: z.boolean().default(false),
+  supportsCallbacks: z.boolean().default(false),
+  memorySyncEnabled: z.boolean().default(false),
+  memorySyncScope: z.enum(["personal", "team_shared", "workspace_shared", "cross_channel"]).nullable().optional().default(null),
+  memorySyncStatus: z.enum(["disabled", "active", "inactive", "quarantined"]).nullable().optional().default(null),
+  workerAccessPolicy: z.object({
+    permissionPreset: z.string().min(1).nullable().optional().default(null),
+    permissionScopes: z.array(z.string().min(1)).default([]),
+    quotaHourly: z.number().int().positive().nullable().optional().default(null),
+    quotaDaily: z.number().int().positive().nullable().optional().default(null),
+    quotaWeekly: z.number().int().positive().nullable().optional().default(null),
+    quotaMonthly: z.number().int().positive().nullable().optional().default(null),
+  }).nullable().optional().default(null),
+  hostPlatform: z.string().min(1),
+  hostExecutionMode: z.string().min(1),
+}).superRefine((payload, ctx) => {
+  if (payload.apiServerEnabled && !payload.apiServerBaseUrl) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["apiServerBaseUrl"],
+      message: "Hermes bridge metadata requires apiServerBaseUrl when apiServerEnabled is true",
+    });
+  }
+  if (
+    payload.apiServerBaseUrl
+    && !isWorkerLoopbackUrl(payload.apiServerBaseUrl)
+    && payload.remoteEndpointPolicyExceptionId
+    && !isWorkerHttpsUrl(payload.apiServerBaseUrl)
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["apiServerBaseUrl"],
+      message: "Hermes bridge remote API server URLs must use https when an audited exception is granted",
+    });
+  }
+  if (payload.llmRoutingMode === "pinned_provider" && !payload.preferredProviderId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["preferredProviderId"],
+      message: "Hermes pinned provider routing requires preferredProviderId",
+    });
+  }
+  if (payload.preferredProviderId && payload.llmRoutingMode !== "pinned_provider") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["llmRoutingMode"],
+      message: "preferredProviderId requires llmRoutingMode to be pinned_provider",
+    });
+  }
+  if (payload.preferredProviderName && !payload.preferredProviderId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["preferredProviderName"],
+      message: "preferredProviderName requires preferredProviderId",
+    });
+  }
+});
+
+export interface HermesRuntimePersonaSummary {
+  profileName: string | null;
+  profileLabel: string | null;
+  profilePurpose: string | null;
+  displayLabel: string;
+  displayPurpose: string;
+  isGenericFallback: boolean;
+}
+
+export interface HermesRuntimeChannelSummary {
+  channelStatus: "connected" | "inactive" | "revoked" | "unknown";
+  displayLabel: string;
+  hasCallbackSupport: boolean;
+  hasDelegatedHttpSupport: boolean;
+  hasDelegatedMcpSupport: boolean;
+  connectedPlatforms: string[];
+}
+
+export interface HermesRuntimeMemorySyncSummary {
+  memorySyncEnabled: boolean;
+  memorySyncScope: "personal" | "team_shared" | "workspace_shared" | "cross_channel" | null;
+  memorySyncStatus: "disabled" | "active" | "inactive" | "quarantined" | "unknown";
+  displayLabel: string;
+  isSharedScope: boolean;
+}
+
+export interface HermesTaskModeSummary {
+  taskMode: "coordination" | "research_summary" | "channel_response" | "team_update_drafting" | "monitoring_triage" | "generic_fallback";
+  scopeProfile: "worker_gateway_readonly" | "worker_gateway_content_creator" | "worker_gateway_researcher" | "worker_gateway_media_operator" | "worker_gateway_hybrid_executor" | null;
+  displayLabel: string;
+}
+
+export interface HermesProviderRoutingSummary {
+  llmRoutingMode: "auto" | "pinned_provider";
+  preferredProviderId: number | null;
+  preferredProviderName: string | null;
+  displayLabel: string;
+}
+
+const HERMES_SCOPE_PROFILE_TO_TASK_MODE: Record<
+  "worker_gateway_readonly" | "worker_gateway_content_creator" | "worker_gateway_researcher" | "worker_gateway_media_operator" | "worker_gateway_hybrid_executor",
+  HermesTaskModeSummary["taskMode"]
+> = {
+  worker_gateway_readonly: "coordination",
+  worker_gateway_content_creator: "team_update_drafting",
+  worker_gateway_researcher: "research_summary",
+  worker_gateway_media_operator: "channel_response",
+  worker_gateway_hybrid_executor: "monitoring_triage",
+};
+
+export function summarizeHermesRuntimePersona(
+  runtimeMetadataJson: Record<string, unknown> | null | undefined,
+): HermesRuntimePersonaSummary {
+  const parsed = workerHermesRuntimeMetadataSchema.safeParse(runtimeMetadataJson ?? {});
+  if (!parsed.success) {
+    return {
+      profileName: null,
+      profileLabel: null,
+      profilePurpose: null,
+      displayLabel: "Generic Hermes",
+      displayPurpose: "Default Hermes behavior",
+      isGenericFallback: true,
+    };
+  }
+
+  const profileName = parsed.data.profileName?.trim() || null;
+  const profileLabel = parsed.data.profileLabel?.trim() || null;
+  const profilePurpose = parsed.data.profilePurpose?.trim() || null;
+  const displayLabel = profileLabel ?? profileName ?? "Generic Hermes";
+  const displayPurpose = profilePurpose ?? (profileName ? "Default Hermes behavior" : "No persona selected");
+
+  return {
+    profileName,
+    profileLabel,
+    profilePurpose,
+    displayLabel,
+    displayPurpose,
+    isGenericFallback: profileName === null && profileLabel === null && profilePurpose === null,
+  };
+}
+
+export function summarizeHermesRuntimeChannel(
+  runtimeMetadataJson: Record<string, unknown> | null | undefined,
+  workerStatus?: string | null,
+  revokedAt?: string | null,
+): HermesRuntimeChannelSummary {
+  const parsed = workerHermesRuntimeMetadataSchema.safeParse(runtimeMetadataJson ?? {});
+  if (!parsed.success) {
+    return {
+      channelStatus: "unknown",
+      displayLabel: "Channel state unavailable",
+      hasCallbackSupport: false,
+      hasDelegatedHttpSupport: false,
+      hasDelegatedMcpSupport: false,
+      connectedPlatforms: [],
+    };
+  }
+
+  const status = parsed.data.channelStatus
+    ?? (revokedAt ? "revoked" : null)
+    ?? (workerStatus === "disabled" || workerStatus === "draining" ? "inactive" : null)
+    ?? ((parsed.data.supportsCallbacks || parsed.data.supportsDelegatedHttp || parsed.data.supportsDelegatedMcp || parsed.data.gatewayPlatforms.length > 0)
+      ? "connected"
+      : "inactive");
+  const displayLabel =
+    status === "connected" ? "Connected"
+    : status === "revoked" ? "Revoked"
+    : status === "inactive" ? "Inactive"
+    : "Unknown";
+
+  return {
+    channelStatus: status,
+    displayLabel,
+    hasCallbackSupport: parsed.data.supportsCallbacks === true,
+    hasDelegatedHttpSupport: parsed.data.supportsDelegatedHttp === true,
+    hasDelegatedMcpSupport: parsed.data.supportsDelegatedMcp === true,
+    connectedPlatforms: parsed.data.gatewayPlatforms.map((platform) => platform.trim().toLowerCase()).filter(Boolean),
+  };
+}
+
+export function summarizeHermesRuntimeMemorySync(
+  runtimeMetadataJson: Record<string, unknown> | null | undefined,
+): HermesRuntimeMemorySyncSummary {
+  const parsed = workerHermesRuntimeMetadataSchema.safeParse(runtimeMetadataJson ?? {});
+  if (!parsed.success) {
+    return {
+      memorySyncEnabled: false,
+      memorySyncScope: null,
+      memorySyncStatus: "unknown",
+      displayLabel: "Memory sync unavailable",
+      isSharedScope: false,
+    };
+  }
+
+  const memorySyncEnabled = parsed.data.memorySyncEnabled === true;
+  const memorySyncScope = parsed.data.memorySyncScope ?? null;
+  const memorySyncStatus = parsed.data.memorySyncStatus
+    ?? (memorySyncEnabled ? "active" : "disabled");
+  const displayLabel =
+    memorySyncStatus === "active"
+      ? (memorySyncScope === "personal" || !memorySyncScope ? "Personal memory sync" : "Shared memory sync")
+      : memorySyncStatus === "quarantined"
+        ? "Memory sync quarantined"
+        : memorySyncStatus === "inactive"
+          ? "Memory sync inactive"
+          : "Memory sync off";
+
+  return {
+    memorySyncEnabled,
+    memorySyncScope,
+    memorySyncStatus,
+    displayLabel,
+    isSharedScope: memorySyncScope === "team_shared" || memorySyncScope === "workspace_shared" || memorySyncScope === "cross_channel",
+  };
+}
+
+export function summarizeHermesTaskMode(
+  scopeProfile: string | null | undefined,
+): HermesTaskModeSummary {
+  const normalized = typeof scopeProfile === "string" ? scopeProfile.trim() : "";
+  if (!normalized) {
+    return {
+      taskMode: "generic_fallback",
+      scopeProfile: null,
+      displayLabel: "Generic fallback",
+    };
+  }
+
+  const profile = normalized as keyof typeof HERMES_SCOPE_PROFILE_TO_TASK_MODE;
+  const taskMode = HERMES_SCOPE_PROFILE_TO_TASK_MODE[profile] ?? "generic_fallback";
+  const displayLabelMap: Record<HermesTaskModeSummary["taskMode"], string> = {
+    coordination: "Coordination",
+    research_summary: "Research summary",
+    channel_response: "Channel response",
+    team_update_drafting: "Team update drafting",
+    monitoring_triage: "Monitoring triage",
+    generic_fallback: "Generic fallback",
+  };
+
+  return {
+    taskMode,
+    scopeProfile: (profile in HERMES_SCOPE_PROFILE_TO_TASK_MODE ? profile : null) as HermesTaskModeSummary["scopeProfile"],
+    displayLabel: displayLabelMap[taskMode],
+  };
+}
+
+export function summarizeHermesProviderRouting(
+  runtimeMetadataJson: Record<string, unknown> | null | undefined,
+): HermesProviderRoutingSummary {
+  const parsed = workerHermesRuntimeMetadataSchema.safeParse(runtimeMetadataJson ?? {});
+  if (!parsed.success) {
+    return {
+      llmRoutingMode: "auto",
+      preferredProviderId: null,
+      preferredProviderName: null,
+      displayLabel: "LLM provider auto-select",
+    };
+  }
+
+  const preferredProviderId = parsed.data.preferredProviderId ?? null;
+  const preferredProviderName = parsed.data.preferredProviderName?.trim() || null;
+  if (parsed.data.llmRoutingMode === "pinned_provider" && preferredProviderId) {
+    return {
+      llmRoutingMode: "pinned_provider",
+      preferredProviderId,
+      preferredProviderName,
+      displayLabel: preferredProviderName
+        ? `Pinned to ${preferredProviderName}`
+        : `Pinned provider #${preferredProviderId}`,
+    };
+  }
+
+  return {
+    llmRoutingMode: "auto",
+    preferredProviderId,
+    preferredProviderName,
+    displayLabel: "LLM provider auto-select",
+  };
+}
+
 const workerRegistrationPayloadBaseSchema = z.object({
   compatibility: workerProtocolCompatibilitySchema,
   runtimeType: workerRuntimeTypeSchema,
@@ -344,6 +639,29 @@ const workerRegistrationPayloadBaseSchema = z.object({
 export const workerRegistrationPayloadSchema = workerRegistrationPayloadBaseSchema.superRefine(
   (payload, ctx) => {
     validateWorkerRuntimeMetadata(payload.runtimeType, payload.workerMode, payload.runtimeMetadataJson, ctx);
+    if (payload.runtimeType === "hermes_agent_gateway") {
+      if (payload.workerMode !== "per_user") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["workerMode"],
+          message: "Hermes bridge registrations must use per_user worker mode in v1",
+        });
+      }
+      if (payload.runtimeMode !== "external_managed") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["runtimeMode"],
+          message: "Hermes bridge registrations must use external_managed runtime mode in v1",
+        });
+      }
+      if (!payload.externalReference.startsWith("hermes://")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["externalReference"],
+          message: "Hermes bridge externalReference must use hermes:// URI form",
+        });
+      }
+    }
   },
 );
 
@@ -426,6 +744,17 @@ export const DEFAULT_CLAW_GATEWAY_COMPATIBILITY = workerGatewayCompatibilityMeta
   ],
 });
 
+export const DEFAULT_HERMES_GATEWAY_COMPATIBILITY = workerGatewayCompatibilityMetadataSchema.parse({
+  authMode: "bearer",
+  embeddingsSupport: "unsupported",
+  httpEndpoints: [
+    { method: "GET", path: "/health", purpose: "Hermes API server health check" },
+    { method: "POST", path: "/v1/chat/completions", purpose: "OpenAI-compatible chat bridge" },
+    { method: "POST", path: "/v1/responses", purpose: "OpenAI-compatible responses bridge" },
+    { method: "GET", path: "/v1/models", purpose: "Hermes model discovery" },
+  ],
+});
+
 export interface WorkerRuntimeDefinition {
   runtimeType: WorkerRuntimeType;
   displayName: string;
@@ -455,7 +784,7 @@ export const WORKER_RUNTIME_DEFINITIONS: Readonly<
   desktop_zeroclaw_managed: {
     runtimeType: "desktop_zeroclaw_managed",
     displayName: "Desktop + ZeroClaw Managed Runtime",
-    familyName: "DesktopZeroClaw",
+    familyName: "Desktop + ZeroClaw",
     featureFlag: "desktopZeroClawWorker",
     registrationSupport: "feature_gated",
     dispatchSupport: "limited",
@@ -484,6 +813,17 @@ export const WORKER_RUNTIME_DEFINITIONS: Readonly<
     supportedRuntimeFamilySchemaVersions: [WORKER_RUNTIME_FAMILY_SCHEMA_VERSION],
     supportedRuntimeProfileSchemaVersions: [WORKER_RUNTIME_PROFILE_SCHEMA_VERSION],
     gatewayCompatibility: null,
+  },
+  hermes_agent_gateway: {
+    runtimeType: "hermes_agent_gateway",
+    displayName: "Hermes Agent Gateway",
+    familyName: "Hermes",
+    featureFlag: "hermesAgentRuntime",
+    registrationSupport: "feature_gated",
+    dispatchSupport: "limited",
+    supportedRuntimeFamilySchemaVersions: [WORKER_RUNTIME_FAMILY_SCHEMA_VERSION],
+    supportedRuntimeProfileSchemaVersions: [WORKER_RUNTIME_PROFILE_SCHEMA_VERSION],
+    gatewayCompatibility: DEFAULT_HERMES_GATEWAY_COMPATIBILITY,
   },
 };
 
@@ -655,6 +995,14 @@ export function isWorkerLoopbackUrl(value: string): boolean {
       || hostname === "127.0.0.1"
       || hostname === "::1"
       || hostname === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
+export function isWorkerHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value.trim()).protocol === "https:";
   } catch {
     return false;
   }
@@ -1026,6 +1374,44 @@ function validateWorkerRuntimeMetadata(
           path: ["runtimeMetadataJson", ...issue.path],
         });
       }
+    }
+    return;
+  }
+
+  if (runtimeType === "hermes_agent_gateway") {
+    const parsed = workerHermesRuntimeMetadataSchema.safeParse(runtimeMetadataJson);
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        ctx.addIssue({
+          ...issue,
+          path: ["runtimeMetadataJson", ...issue.path],
+        });
+      }
+      return;
+    }
+
+    if (
+      parsed.data.apiServerBaseUrl
+      && !isWorkerLoopbackUrl(parsed.data.apiServerBaseUrl)
+      && !parsed.data.remoteEndpointPolicyExceptionId
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["runtimeMetadataJson", "apiServerBaseUrl"],
+        message: "Hermes bridge apiServerBaseUrl must default to a loopback address unless remoteEndpointPolicyExceptionId grants an audited exception",
+      });
+    }
+    if (
+      parsed.data.apiServerBaseUrl
+      && !isWorkerLoopbackUrl(parsed.data.apiServerBaseUrl)
+      && parsed.data.remoteEndpointPolicyExceptionId
+      && !isWorkerHttpsUrl(parsed.data.apiServerBaseUrl)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["runtimeMetadataJson", "apiServerBaseUrl"],
+        message: "Hermes bridge remote API server URLs must use https when an audited exception is granted",
+      });
     }
   }
 }

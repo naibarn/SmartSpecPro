@@ -502,6 +502,7 @@
   "dialog.slideNote.saveAndGenerate": "บันทึก + สร้าง",
   "dialog.slideNote.wordLimitPlaceholder": "เช่น 300",
   "error.itemNotFound": "ไม่พบรายการการนำเสนอ",
+  "error.apiHtmlResponse": "เซิร์ฟเวอร์ตอบกลับเป็นหน้า HTML แทนข้อมูลการนำเสนอ ลองโหลดหน้าใหม่หรือลงชื่อเข้าใช้อีกครั้ง",
   "error.noDeck": "ไม่สามารถโหลดชุดการนำเสนอนี้ได้",
   "error.retryDeckInit": "ลองเริ่มชุดการนำเสนอใหม่อีกครั้ง",
   "error.unavailable": "ไม่สามารถใช้งานการนำเสนอได้",

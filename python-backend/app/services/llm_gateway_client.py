@@ -10,6 +10,7 @@ Feature: 032-Browser-Automation-Copilot, Section 02
 
 import asyncio
 import logging
+import re
 import uuid
 from typing import Any
 
@@ -34,6 +35,24 @@ class GatewayUnavailableError(Exception):
     def __init__(self, message: str = "Gateway unavailable", trace_id: str = ""):
         super().__init__(message)
         self.trace_id = trace_id
+
+
+def _response_preview(response: httpx.Response, *, max_length: int = 240) -> str:
+    """Return a compact, human-readable preview of an HTTP response body."""
+    text = getattr(response, "text", None)
+    if not isinstance(text, str):
+        content = getattr(response, "content", None)
+        if isinstance(content, (bytes, bytearray)):
+            try:
+                text = bytes(content).decode("utf-8", errors="replace")
+            except Exception:
+                text = ""
+        else:
+            text = ""
+    preview = re.sub(r"\s+", " ", text).strip()
+    if len(preview) > max_length:
+        preview = preview[:max_length].rstrip() + "…"
+    return preview
 
 
 class LLMGatewayClient:
@@ -142,8 +161,12 @@ class LLMGatewayClient:
                 if response.status_code >= 500:
                     retries_5xx += 1
                     if retries_5xx > max_5xx_retries:
+                        body_preview = _response_preview(response)
+                        message = f"Gateway error {response.status_code} after retry (traceId={trace_id})"
+                        if body_preview:
+                            message = f"{message} body={body_preview}"
                         raise GatewayUnavailableError(
-                            f"Gateway error {response.status_code} after retry (traceId={trace_id})",
+                            message,
                             trace_id=trace_id,
                         )
                     logger.warning(
@@ -154,8 +177,12 @@ class LLMGatewayClient:
                     continue
 
                 # Other 4xx — don't retry
+                body_preview = _response_preview(response)
+                message = f"Gateway returned {response.status_code} (traceId={trace_id})"
+                if body_preview:
+                    message = f"{message} body={body_preview}"
                 raise GatewayUnavailableError(
-                    f"Gateway returned {response.status_code} (traceId={trace_id})",
+                    message,
                     trace_id=trace_id,
                 )
 
@@ -177,6 +204,7 @@ class LLMGatewayClient:
         response_format: dict[str, Any] | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        extra_body: dict[str, Any] | None = None,
         trace_id: str | None = None,
         timeout: int | None = None,
     ) -> dict[str, Any]:
@@ -194,9 +222,57 @@ class LLMGatewayClient:
             body["temperature"] = temperature
         if max_tokens is not None:
             body["max_tokens"] = max_tokens
+        if extra_body is not None:
+            body.update(extra_body)
 
         response = await self._request_with_retry(
             "POST", "/v1/chat/completions", json_body=body, headers=headers,
+            timeout=timeout,
+        )
+        return response.json()
+
+    async def responses_completion(
+        self,
+        input: list[dict[str, Any]],
+        model: str,
+        user_id: int | None = None,
+        tenant_id: str | None = None,
+        *,
+        instructions: str | None = None,
+        reasoning: dict[str, Any] | None = None,
+        tools: list[dict[str, Any]] | None = None,
+        tool_choice: Any | None = None,
+        metadata: dict[str, Any] | None = None,
+        max_output_tokens: int | None = None,
+        extra_body: dict[str, Any] | None = None,
+        trace_id: str | None = None,
+        timeout: int | None = None,
+    ) -> dict[str, Any]:
+        """POST /v1/responses via internal HTTP.
+
+        This keeps multimodal OCR payloads in the native Responses API shape:
+        input -> [ { role, content: [ input_text, input_image, ... ] } ]
+        """
+        headers = self._build_headers(user_id, tenant_id, trace_id)
+
+        body: dict[str, Any] = {"model": model, "input": input, "stream": False}
+        if instructions is not None:
+            body["instructions"] = instructions
+        if reasoning is not None:
+            body["reasoning"] = reasoning
+        if tools is not None:
+            body["tools"] = tools
+        if tool_choice is not None:
+            body["tool_choice"] = tool_choice
+        if metadata is not None:
+            body["metadata"] = metadata
+        if max_output_tokens is not None:
+            body["max_output_tokens"] = max_output_tokens
+        if extra_body is not None:
+            body.update(extra_body)
+
+        response = await self._request_with_retry(
+            "POST", "/v1/responses", json_body=body, headers=headers,
             timeout=timeout,
         )
         return response.json()

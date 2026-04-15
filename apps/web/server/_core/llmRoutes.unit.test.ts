@@ -159,6 +159,55 @@ describe("transformRequestBody", () => {
     });
   });
 
+  it("preserves multimodal content as Responses input blocks for Kie GPT/Codex models", () => {
+    const transformed = transformRequestBody(
+      {
+        messages: [
+          { role: "system", content: "Reply in Thai" },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "What is in this image?" },
+              {
+                type: "image_url",
+                image_url: { url: "https://example.com/example.png", detail: "high" },
+              },
+            ],
+          },
+        ],
+        reasoning: { effort: "high" },
+      },
+      "kie_ai",
+      "gpt-5-4",
+      false,
+      "responses",
+      {
+        requestBodyFormat: "responses",
+        passthroughFields: ["reasoning"],
+      },
+    );
+
+    expect(transformed).toEqual({
+      model: "gpt-5-4",
+      input: [
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: "What is in this image?" },
+            {
+              type: "input_image",
+              image_url: "https://example.com/example.png",
+              detail: "high",
+            },
+          ],
+        },
+      ],
+      stream: false,
+      instructions: "Reply in Thai",
+      reasoning: { effort: "high" },
+    });
+  });
+
   it("maps response_format into Responses API text.format for Kie GPT/Codex models", () => {
     const transformed = transformRequestBody(
       {

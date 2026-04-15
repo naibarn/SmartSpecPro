@@ -8,8 +8,10 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import {
   createConversation,
+  createPersonalConversation,
   getConversations,
   getConversationById,
+  getPersonalConversation,
   updateConversation,
   deleteConversation,
   restoreConversation,
@@ -31,6 +33,7 @@ import {
   getSkillPreferences,
   updateSkillPreference,
   buildChatContext,
+  PERSONAL_PROJECT_ID,
 } from "../services/chatService";
 import {
   readStoredChatModelSelectionState,
@@ -226,10 +229,14 @@ const messageRoleSchema = z.enum(["user", "assistant", "system"]);
 
 const attachmentSchema = z.object({
   type: z.enum(["image", "file", "audio", "video"]),
-  // Allow both full URLs (http/https) and relative paths (/uploads/...)
+  // Allow both full URLs (http/https) and relative paths (/uploads/... or /api/storage/files/...)
   url: z.string().refine(
-    (val) => val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/uploads/"),
-    { message: "URL must be a valid http/https URL or a relative /uploads/ path" }
+    (val) =>
+      val.startsWith("http://") ||
+      val.startsWith("https://") ||
+      val.startsWith("/uploads/") ||
+      val.startsWith("/api/storage/files/"),
+    { message: "URL must be a valid http/https URL or a relative /uploads/ or /api/storage/files/ path" }
   ),
   key: z.string().optional(),
   name: z.string().optional(),
@@ -474,6 +481,13 @@ export const chatRouter = router({
     .mutation(async ({ ctx, input }) => {
       await assertChatAutoModelSelectionEnabled(ctx.tenantId || "default", input.modelSelection);
 
+      if (input.projectId === PERSONAL_PROJECT_ID) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Use createPersonalConversation for personal chats",
+        });
+      }
+
       const initialSkillSettings = input.modelSelection
         ? writeStoredChatModelSelectionState(undefined, {
             mode: input.modelSelection.mode,
@@ -500,6 +514,62 @@ export const chatRouter = router({
           domain: ctx.user.registeredDomain || undefined,
           userId: ctx.user.id,
           source: "chat.createConversation",
+          channel: "web",
+        }).catch((err) => {
+          console.warn("[Funnel] trackFirstConversation failed:", err);
+        });
+      }
+
+      return {
+        id: conversation.id,
+        title: conversation.title,
+        model: conversation.model,
+        modelSelection: readStoredChatModelSelectionState(conversation.skillSettings),
+        projectId: (conversation as any).projectId,
+        createdAt: conversation.createdAt,
+      };
+    }),
+
+  /**
+   * Create a locked personal conversation
+   */
+  createPersonalConversation: protectedProcedure
+    .input(
+      z.object({
+        title: z.string().max(255).optional(),
+        model: z.string().max(100).optional(),
+        modelSelection: chatModelSelectionSchema.optional(),
+        systemPrompt: z.string().optional(),
+        personaId: z.string().uuid().nullable().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await assertChatAutoModelSelectionEnabled(ctx.tenantId || "default", input.modelSelection);
+
+      const initialSkillSettings = input.modelSelection
+        ? writeStoredChatModelSelectionState(undefined, {
+            mode: input.modelSelection.mode,
+            modelId: input.modelSelection.mode === "explicit" ? input.modelSelection.modelId : null,
+            providerId: "providerId" in input.modelSelection ? input.modelSelection.providerId ?? null : null,
+            providerName: "providerName" in input.modelSelection ? input.modelSelection.providerName ?? null : null,
+          })
+        : undefined;
+      const conversation = await createPersonalConversation({
+        userId: ctx.user.id,
+        title: input.title || "Personal Chat",
+        model: input.modelSelection?.mode === "explicit" ? input.modelSelection.modelId : input.model,
+        skillSettings: initialSkillSettings as any,
+        systemPrompt: input.systemPrompt,
+        tenantId: ctx.tenantId || null,
+        personaId: input.personaId ?? null,
+      });
+
+      if (ENABLE_FUNNEL_TRACKING) {
+        trackFirstConversation({
+          tenantId: ctx.user.registeredDomain || "default",
+          domain: ctx.user.registeredDomain || undefined,
+          userId: ctx.user.id,
+          source: "chat.createPersonalConversation",
           channel: "web",
         }).catch((err) => {
           console.warn("[Funnel] trackFirstConversation failed:", err);
@@ -555,6 +625,35 @@ export const chatRouter = router({
         })),
         total,
         hasMore: input.offset + conversations.length < total,
+      };
+    }),
+
+  /**
+   * Resolve the user's locked personal conversation without relying on list pagination.
+   */
+  getPersonalConversation: protectedProcedure
+    .query(async ({ ctx }) => {
+      const conversation = await getPersonalConversation({
+        userId: ctx.user.id,
+        tenantId: ctx.tenantId || ctx.user.currentTenantId?.toString?.() || null,
+      });
+
+      if (!conversation) {
+        return null;
+      }
+
+      return {
+        id: conversation.id,
+        title: conversation.title,
+        model: conversation.model,
+        modelSelection: readStoredChatModelSelectionState(conversation.skillSettings),
+        messageCount: conversation.messageCount,
+        isPinned: conversation.isPinned,
+        isArchived: conversation.isArchived,
+        totalCreditsUsed: conversation.totalCreditsUsed,
+        projectId: (conversation as any).projectId || null,
+        createdAt: conversation.createdAt,
+        updatedAt: conversation.updatedAt,
       };
     }),
 

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Unified Slip Parser Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "detected_issuer",
+    "transaction",
+    "raw"
+  ],
+  "properties": {
+    "detected_issuer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issuer_code",
+        "issuer_type",
+        "confidence"
+      ],
+      "properties": {
+        "issuer_code": {
+          "type": "string"
+        },
+        "issuer_type": {
+          "type": "string"
+        },
+        "issuer_name_th": {
+          "type": "string"
+        },
+        "issuer_name_en": {
+          "type": "string"
+        },
+        "source_used": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "transaction": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "payer": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "payee": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "raw": {
+      "type": "object",
+      "additionalProperties": false
+    }
+  }
+}

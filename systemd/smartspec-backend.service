@@ -4,6 +4,8 @@ Documentation=https://github.com/smartspecpro/smartspec
 After=docker.service smartspec-infra.service
 Requires=smartspec-infra.service
 PartOf=smartspec.target
+StartLimitIntervalSec=600
+StartLimitBurst=8
 
 [Service]
 Type=simple
@@ -16,18 +18,35 @@ Environment="PATH=/home/dev/projects/SmartSpecPro/python-backend/.venv/bin:/usr/
 Environment="PYTHONUNBUFFERED=1"
 EnvironmentFile=-/home/dev/projects/SmartSpecPro/python-backend/.env
 
-# Kill any orphan process on port 8000 before starting
+# Kill orphan on port, then wait until port is actually free (up to 10s)
 ExecStartPre=/bin/bash -c '/usr/bin/fuser -k 8000/tcp 2>/dev/null || true'
-ExecStartPre=/bin/sleep 1
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 20); do ss -tlnp 2>/dev/null | grep -q ":8000 " || exit 0; sleep 0.5; done; echo "WARN: port 8000 still in use after 10s"'
 
-# Start backend (no --reload for production stability)
-ExecStart=/home/dev/projects/SmartSpecPro/python-backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+# Start backend directly (no wrapper scripts)
+ExecStart=/home/dev/projects/SmartSpecPro/python-backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 
-# Restart policy
-Restart=always
+# Verify backend is actually responding after startup (30s — Python imports take ~15s on cold boot)
+ExecStartPost=/bin/bash -c 'for i in $(seq 1 30); do curl -sf http://localhost:8000/health >/dev/null 2>&1 && exit 0; sleep 1; done; echo "FATAL: health check failed after 30s"; exit 1'
+
+# Clean shutdown: SIGTERM + SIGKILL entire cgroup — control-group kills all
+# children (MCP stdio subprocesses) instead of just the main process
+KillMode=control-group
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+
+# Resource limits for MCP stdio processes
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Clean up port after stop
+ExecStopPost=/bin/bash -c '/usr/bin/fuser -k 8000/tcp 2>/dev/null || true'
+
+# Restart policy: exponential backoff to prevent tight crash loops
+# Sequence: 5s → 10s → 20s → 40s → 80s → 120s (cap)
+Restart=on-failure
 RestartSec=5s
-StartLimitIntervalSec=300
-StartLimitBurst=10
+RestartMaxDelaySec=120s
+RestartSteps=6
 
 # Logging
 StandardOutput=journal

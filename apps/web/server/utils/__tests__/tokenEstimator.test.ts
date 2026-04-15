@@ -61,4 +61,19 @@ describe("estimateMessages", () => {
     ];
     expect(estimateMessages(messages)).toBe(0);
   });
+
+  it("handles multimodal message content without throwing", () => {
+    const messages = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "What is in this image?" },
+          { type: "image_url", image_url: { url: "https://example.com/example.png" } },
+        ],
+      },
+    ];
+
+    const total = estimateMessages(messages as any);
+    expect(total).toBeGreaterThan(0);
+  });
 });

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SmartSpecPro Production Log Viewer
+# SmartAIHub Production Log Viewer
 # สคริปต์สำหรับตรวจสอบ Log ของบริการต่างๆ ในโหมด Production
 
 RED='\033[0;31m'

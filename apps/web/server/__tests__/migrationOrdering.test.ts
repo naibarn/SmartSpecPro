@@ -77,11 +77,20 @@ describe("migration ordering", () => {
 
     const foundationFile = "0138_private_personal_finance_foundation.sql";
     const backstopFile = "0139_private_personal_finance_security_backstop.sql";
+    const vectorIndexFile = "0140_private_personal_finance_vector_index_name.sql";
+    const counterpartiesFile = "0141_private_personal_finance_counterparties.sql";
+    const paymentInstrumentsFile = "0142_private_personal_finance_payment_instruments.sql";
     const foundationIndex = migrations.indexOf(foundationFile);
     const backstopIndex = migrations.indexOf(backstopFile);
+    const vectorIndexFileIndex = migrations.indexOf(vectorIndexFile);
+    const counterpartiesIndex = migrations.indexOf(counterpartiesFile);
+    const paymentInstrumentsIndex = migrations.indexOf(paymentInstrumentsFile);
 
     expect(foundationIndex).toBeGreaterThan(-1);
     expect(backstopIndex).toBeGreaterThan(foundationIndex);
+    expect(vectorIndexFileIndex).toBeGreaterThan(backstopIndex);
+    expect(counterpartiesIndex).toBeGreaterThan(vectorIndexFileIndex);
+    expect(paymentInstrumentsIndex).toBeGreaterThan(counterpartiesIndex);
     expect(migrations[foundationIndex - 1]).toBe("0137_desktop_installer_distribution.sql");
   });
 
@@ -124,6 +133,102 @@ describe("migration ordering", () => {
     expect(content).toContain("app.current_tenant_id");
     expect(content).toContain("app.current_user_id");
     expect(content).toContain("app.current_project_id");
+  });
+
+  it("finance vector cleanup migration persists vector index names for library chunks", () => {
+    const vectorIndexPath = path.resolve(
+      import.meta.dirname,
+      "../../../../apps/web/drizzle/0140_private_personal_finance_vector_index_name.sql"
+    );
+
+    expect(fs.existsSync(vectorIndexPath)).toBe(true);
+
+    const content = fs.readFileSync(vectorIndexPath, "utf-8");
+    expect(content).toContain('ADD COLUMN IF NOT EXISTS "vector_index_name" varchar(128)');
+    expect(content).toContain('library_chunks_vector_index_name_idx');
+    expect(content).toContain("compatibility-only");
+  });
+
+  it("finance payment instrument migration creates the new bank/account tables and enums", () => {
+    const migrationPath = path.resolve(
+      import.meta.dirname,
+      "../../../../apps/web/drizzle/0142_private_personal_finance_payment_instruments.sql"
+    );
+
+    expect(fs.existsSync(migrationPath)).toBe(true);
+
+    const content = fs.readFileSync(migrationPath, "utf-8");
+    expect(content).toContain("finance_payment_institutions");
+    expect(content).toContain("finance_payment_accounts");
+    expect(content).toContain("finance_payment_account_aliases");
+    expect(content).toContain("finance_payment_direction");
+    expect(content).toContain("transfer_slip");
+    expect(content).toContain("payment_source_account_id");
+    expect(content).toContain("payment_destination_account_id");
+  });
+
+  it("Work OS migration metadata keeps the journal entry and snapshot file in sync", () => {
+    const journalPath = path.resolve(
+      import.meta.dirname,
+      "../../../../apps/web/drizzle/meta/_journal.json"
+    );
+    const snapshotPath = path.resolve(
+      import.meta.dirname,
+      "../../../../apps/web/drizzle/meta/0147_snapshot.json"
+    );
+
+    expect(fs.existsSync(journalPath)).toBe(true);
+    expect(fs.existsSync(snapshotPath)).toBe(true);
+
+    const journal = JSON.parse(fs.readFileSync(journalPath, "utf-8"));
+    const entries = journal.entries ?? journal;
+    const targetEntry = entries.find((entry: { tag?: string; idx?: number }) => entry.tag === "0147_private_personal_finance_transfer_slip_fields");
+    expect(targetEntry).toBeTruthy();
+    expect(targetEntry?.idx).toBeGreaterThan(0);
+
+    const snapshot = JSON.parse(fs.readFileSync(snapshotPath, "utf-8"));
+    expect(snapshot.version).toBe("7");
+    expect(snapshot.prevId).toBeTruthy();
+    expect(Object.keys(snapshot.tables)).toEqual(expect.arrayContaining([
+      "public.work_requests",
+      "public.work_cases",
+      "public.work_assignments",
+      "public.work_approvals",
+      "public.work_exceptions",
+      "public.work_outcomes",
+      "public.work_slas",
+      "public.work_os_events",
+    ]));
+  });
+
+  it("Work OS migration SQL and snapshot naming stay aligned with the migration sequence", () => {
+    const migrationsDir = path.resolve(
+      import.meta.dirname,
+      "../../../../apps/web/drizzle"
+    );
+    const metaDir = path.resolve(
+      import.meta.dirname,
+      "../../../../apps/web/drizzle/meta"
+    );
+
+    const migrations = fs
+      .readdirSync(migrationsDir)
+      .filter((f: string) => /^\d{4}_.+\.sql$/.test(f))
+      .sort();
+    const migrationFile = "0147_private_personal_finance_transfer_slip_fields.sql";
+    const previousMigrationFile = "0146_work_os_case_ledger_and_operating_queues.sql";
+    const snapshotFile = "0147_snapshot.json";
+
+    expect(migrations).toContain(migrationFile);
+    expect(fs.existsSync(path.join(metaDir, snapshotFile))).toBe(true);
+
+    const migrationIndex = migrations.indexOf(migrationFile);
+    const previousMigrationIndex = migrations.indexOf(previousMigrationFile);
+    expect(migrationIndex).toBeGreaterThan(previousMigrationIndex);
+
+    const migrationPrefix = migrationFile.split("_")[0];
+    const snapshotPrefix = snapshotFile.split("_")[0];
+    expect(migrationPrefix).toBe(snapshotPrefix);
   });
 
   it("Python migration 006 defines pgvector extension and tenant RLS", () => {

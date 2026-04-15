@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SmartSpecPro Full Stack Run Script
+# SmartAIHub Full Stack Run Script
 # รันทุกโมดูลพร้อมกัน (Docker Services + Desktop App)
 
 RED='\033[0;31m'
@@ -18,7 +18,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 print_banner() {
     echo -e "${CYAN}"
     echo "╔═══════════════════════════════════════════════════════════════╗"
-    echo "║                SmartSpecPro Full Stack Run                    ║"
+    echo "║                SmartAIHub Full Stack Run                    ║"
     echo "║          Starting Services & Desktop Application              ║"
     echo "╚═══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
@@ -67,7 +67,7 @@ log_info "Note: This will open a new window. Keep this terminal open to see logs
 
 # 5. แสดงสถานะและคำแนะนำ
 echo ""
-echo -e "${GREEN}🚀 SmartSpecPro is now running!${NC}"
+echo -e "${GREEN}🚀 SmartAIHub is now running!${NC}"
 echo "--------------------------------------------------"
 echo -e "SmartSpec Web:    ${CYAN}http://localhost:3000${NC}"
 echo -e "Python Backend:   ${CYAN}http://localhost:8000${NC}"

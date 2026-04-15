@@ -22,6 +22,7 @@ const initPromise = i18next
     defaultNS: "common",
     ns: [...STARTUP_NAMESPACES],
     partialBundledLanguages: true,
+    keySeparator: false,
     interpolation: { escapeValue: false },
     react: { useSuspense: true },
   });

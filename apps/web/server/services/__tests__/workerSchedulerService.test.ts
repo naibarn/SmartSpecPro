@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  HERMES_SUPPORTED_CAPABILITY_FAMILIES,
   queueDesktopComfyImageGenerationJob,
   queueDesktopComfyWorkflowRunJob,
   queueDesktopLocalFolderIngestJob,
   OPENCLAW_SUPPORTED_CAPABILITY_FAMILIES,
   queueHiClawWorkerJob,
+  queueHermesWorkerJob,
   queueNemoClawWorkerJob,
   queueDesktopVideoAssemblyJob,
   queueOpenClawWorkerJob,
@@ -48,6 +50,7 @@ describe("workerSchedulerService", () => {
       desktopZeroClawWorker: false,
       nemoClawSecureWorkerPool: false,
       hiClawClusterRuntime: false,
+      hermesAgentRuntime: true,
     });
   });
 
@@ -221,6 +224,207 @@ describe("workerSchedulerService", () => {
 
     expect(getFeatureFlags).not.toHaveBeenCalled();
     expect(repo.insertJob).not.toHaveBeenCalled();
+  });
+
+  it("queues Hermes external follow-up jobs through the feature-gated scheduler", async () => {
+    repo.findWorkerById.mockResolvedValue({
+      id: "worker-hermes-1",
+      runtimeType: "hermes_agent_gateway",
+      status: "online",
+      capabilitiesJson: {
+        runtimeMetadata: {
+          hermesVersion: "1.2.3",
+          profileName: "personal-default",
+          apiServerEnabled: true,
+          apiServerBaseUrl: "http://127.0.0.1:4100",
+          terminalBackend: "pty",
+          gatewayPlatforms: ["telegram"],
+          supportsDelegatedHttp: true,
+          supportsDelegatedMcp: false,
+          supportsBoundConnector: true,
+          supportsCallbacks: true,
+          hostPlatform: "macos",
+          hostExecutionMode: "foreground",
+        },
+      },
+    });
+
+    const result = await queueHermesWorkerJob(
+      {
+        tenantId: "tenant-1",
+        teamId: "team-1",
+        workflowRunId: "run-1",
+        requestedByUserId: 7,
+        jobType: "external_agent_task",
+        capabilityFamilies: ["artifact-producing-session"],
+        preferredWorkerId: "worker-hermes-1",
+        idempotencyKey: "hermes-job-1",
+      },
+      {
+        repo: repo as any,
+        reserveCredits,
+        getFeatureFlags,
+      },
+    );
+
+    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "hermes_agent_gateway",
+      jobType: "external_agent_task",
+      resourceProfile: "network_heavy",
+      capabilityRequirementsJson: expect.objectContaining({
+        capabilityFamilies: ["artifact-producing-session"],
+        preferredWorkerId: "worker-hermes-1",
+      }),
+      instructionsJson: expect.objectContaining({
+        intent: "external_connector_follow_up",
+      }),
+    }));
+    expect(result.created).toBe(true);
+  });
+
+  it("rejects Hermes jobs that overclaim unsupported capability families", async () => {
+    await expect(
+      queueHermesWorkerJob(
+        {
+          tenantId: "tenant-1",
+          requestedByUserId: 7,
+          jobType: "external_agent_task",
+          capabilityFamilies: [
+            HERMES_SUPPORTED_CAPABILITY_FAMILIES[0],
+            "tool-using-research" as any,
+          ],
+        },
+        {
+          repo: repo as any,
+          reserveCredits,
+          getFeatureFlags,
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "unsupported_capability_family",
+      statusCode: 400,
+    });
+  });
+
+  it("fails closed for Hermes dispatch when the tenant rollout gate is disabled", async () => {
+    getFeatureFlags.mockResolvedValueOnce({
+      openClawExternalRuntime: true,
+      desktopZeroClawWorker: false,
+      nemoClawSecureWorkerPool: false,
+      hiClawClusterRuntime: false,
+      hermesAgentRuntime: false,
+    });
+
+    await expect(
+      queueHermesWorkerJob(
+        {
+          tenantId: "tenant-1",
+          requestedByUserId: 7,
+          jobType: "external_agent_task",
+          capabilityFamilies: ["artifact-producing-session"],
+          preferredWorkerId: "worker-hermes-disabled",
+        },
+        {
+          repo: repo as any,
+          reserveCredits,
+          getFeatureFlags,
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "feature_disabled",
+      statusCode: 403,
+    });
+  });
+
+  it("fails closed for Hermes dispatch when the worker has registration but not bound-dispatch readiness", async () => {
+    repo.findWorkerById.mockResolvedValueOnce({
+      id: "worker-hermes-staged",
+      runtimeType: "hermes_agent_gateway",
+      status: "online",
+      capabilitiesJson: {
+        runtimeMetadata: {
+          hermesVersion: "1.2.3",
+          profileName: "personal-default",
+          apiServerEnabled: true,
+          apiServerBaseUrl: "http://127.0.0.1:4100",
+          terminalBackend: "pty",
+          gatewayPlatforms: ["telegram"],
+          supportsDelegatedHttp: true,
+          supportsDelegatedMcp: true,
+          supportsBoundConnector: false,
+          supportsCallbacks: true,
+          hostPlatform: "macos",
+          hostExecutionMode: "foreground",
+        },
+      },
+    });
+
+    await expect(
+      queueHermesWorkerJob(
+        {
+          tenantId: "tenant-1",
+          requestedByUserId: 7,
+          jobType: "external_agent_task",
+          capabilityFamilies: ["artifact-producing-session"],
+          preferredWorkerId: "worker-hermes-staged",
+        },
+        {
+          repo: repo as any,
+          reserveCredits,
+          getFeatureFlags,
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "rollout_stage_blocked",
+      statusCode: 409,
+    });
+  });
+
+  it("dispatches Hermes jobs through queueWorkerJobByRuntime", async () => {
+    repo.findWorkerById.mockResolvedValue({
+      id: "worker-hermes-2",
+      runtimeType: "hermes_agent_gateway",
+      status: "online",
+      capabilitiesJson: {
+        runtimeMetadata: {
+          hermesVersion: "1.2.3",
+          profileName: "personal-default",
+          apiServerEnabled: true,
+          apiServerBaseUrl: "http://127.0.0.1:4200",
+          terminalBackend: "pty",
+          gatewayPlatforms: [],
+          supportsDelegatedHttp: true,
+          supportsDelegatedMcp: false,
+          supportsBoundConnector: true,
+          supportsCallbacks: false,
+          hostPlatform: "macos",
+          hostExecutionMode: "foreground",
+        },
+      },
+    });
+
+    await queueWorkerJobByRuntime(
+      {
+        runtimeType: "hermes_agent_gateway",
+        tenantId: "tenant-1",
+        requestedByUserId: 7,
+        jobType: "external_agent_task",
+        capabilityFamilies: ["artifact-producing-session"],
+        preferredWorkerId: "worker-hermes-2",
+      },
+      {
+        repo: repo as any,
+        reserveCredits,
+        getFeatureFlags,
+      },
+    );
+
+    expect(repo.insertJob).toHaveBeenCalledWith(expect.objectContaining({
+      runtimeType: "hermes_agent_gateway",
+      capabilityRequirementsJson: expect.objectContaining({
+        preferredWorkerId: "worker-hermes-2",
+      }),
+    }));
   });
 
   it("matches job claims against preferred workers and capability hints", () => {

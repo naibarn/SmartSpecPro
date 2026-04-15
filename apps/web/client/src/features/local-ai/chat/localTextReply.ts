@@ -214,7 +214,7 @@ function buildLocalReplyPrompt(input: {
   );
 
   return [
-    "You are SmartSpecPro running as a local Gemma 4 assistant on the user's device.",
+    "You are SmartAIHub running as a local Gemma 4 assistant on the user's device.",
     "Respond helpfully and directly to the user.",
     "If the request depends on live web data, unsupported tools, or missing external context, say so briefly instead of inventing facts.",
     "Keep the answer concise and action-oriented.",
@@ -239,7 +239,7 @@ function buildBrowserLocalReplyPrompt(input: {
 
 function buildFallbackLocalReplyPrompt(userText: string): string {
   return [
-    "You are SmartSpecPro running as a local Gemma 4 assistant on the user's device.",
+    "You are SmartAIHub running as a local Gemma 4 assistant on the user's device.",
     "Answer the user directly in the same language as the user's message.",
     "Do not include labels such as [Response], [Assistant], or role prefixes.",
     "Keep the answer short and practical.",

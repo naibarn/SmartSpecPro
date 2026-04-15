@@ -116,6 +116,18 @@ describe("MEDIA_MODELS — BytePlus ModelArk entries", () => {
   });
 });
 
+describe("MEDIA_MODELS — OmniVoice audio entry", () => {
+  it('MEDIA_MODELS["omnivoice-tts"] has provider "omnivoice" and type "audio"', () => {
+    expect(MEDIA_MODELS["omnivoice-tts"]).toBeDefined();
+    expect(MEDIA_MODELS["omnivoice-tts"].provider).toBe("omnivoice");
+    expect(MEDIA_MODELS["omnivoice-tts"].type).toBe("audio");
+  });
+
+  it("OmniVoice creditCost is 5", () => {
+    expect(MEDIA_MODELS["omnivoice-tts"].creditCost).toBe(5);
+  });
+});
+
 describe("MediaGenerationService retry behavior", () => {
   const taskPayload = {
     id: "task-123",

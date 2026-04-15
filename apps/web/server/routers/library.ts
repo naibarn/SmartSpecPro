@@ -115,6 +115,7 @@ const uploadLibraryFileSchema = z.object({
   fileBase64: z.string().min(1).max(MAX_FILE_BASE64_LENGTH),
   title: z.string().min(1).max(255).optional(),
   visibility: visibilitySchema.optional(),
+  projectId: z.string().min(1).max(100).nullable().optional(),
   parentId: z.number().int().positive().nullable().optional(),
   metadata: z.record(z.any()).optional(),
 });

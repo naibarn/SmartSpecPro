@@ -1,6 +1,6 @@
 # OpenSandbox — Hetzner Production Setup
 
-Deployment scripts for the SmartSpecPro OpenSandbox execution plane on a Hetzner CPX31 server in Singapore (`sgp1`). OpenSandbox provides isolated code/media execution for Python skills and media generation workflows.
+Deployment scripts for the SmartAIHub OpenSandbox execution plane on a Hetzner CPX31 server in Singapore (`sgp1`). OpenSandbox provides isolated code/media execution for Python skills and media generation workflows.
 
 ## Architecture
 

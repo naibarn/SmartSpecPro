@@ -100,7 +100,7 @@ function buildUpgradeBrief(skill: Skill, recommendation: SkillImprovementRecomme
     : {};
 
   const lines = [
-    `Improve the existing SmartSpecPro skill "${skill.name}" (${skill.slug}).`,
+    `Improve the existing SmartAIHub skill "${skill.name}" (${skill.slug}).`,
     `Recommendation type: ${recommendation.recommendationType}.`,
     `Primary goal: ${recommendation.title}.`,
     recommendation.summary ? `Summary: ${recommendation.summary}` : "",
@@ -831,4 +831,16 @@ export async function applySkillUpgradeRecommendation(
     void failedRun;
     throw new Error(message);
   }
+}
+
+export function isWorkpackImprovementAutoApplyEligible(input: {
+  risk: "low" | "medium" | "high";
+  trustTags: string[];
+  actionType: string;
+}): boolean {
+  if (input.risk !== "low") return false;
+  if (input.trustTags.some((tag) => tag !== "verified" && tag !== "tenant_local_only")) {
+    return false;
+  }
+  return input.actionType === "skill_improvement" || input.actionType === "fixture_update";
 }

@@ -62,6 +62,58 @@ const extraParamsSchema = z
 
 const creditOriginSurfaceSchema = z.enum(["media_studio"]).optional();
 
+const DESKTOP_MEDIA_ORIGINS = new Set([
+  "tauri://localhost",
+  "http://tauri.localhost",
+  "https://tauri.localhost",
+]);
+
+function isDesktopMediaRequest(req: { headers?: Record<string, unknown> } | undefined): boolean {
+  if (!req?.headers) return false;
+
+  const origin = req.headers.origin;
+  if (typeof origin === "string" && DESKTOP_MEDIA_ORIGINS.has(origin)) {
+    return true;
+  }
+
+  const referer = req.headers.referer;
+  if (typeof referer === "string") {
+    try {
+      const refererOrigin = new URL(referer).origin;
+      if (DESKTOP_MEDIA_ORIGINS.has(refererOrigin)) {
+        return true;
+      }
+    } catch {
+      // Ignore malformed referers.
+    }
+  }
+
+  return false;
+}
+
+function getBase64SizeInBytes(base64: string): number {
+  const normalized = base64.replace(/\s+/g, "");
+  if (!normalized) return 0;
+  const padding = normalized.endsWith("==") ? 2 : normalized.endsWith("=") ? 1 : 0;
+  return Math.floor((normalized.length * 3) / 4) - padding;
+}
+
+function assertOmnivoiceReferenceAudioSize(extraParams: Record<string, unknown> | undefined): void {
+  if (!extraParams) return;
+
+  const rawBase64 = extraParams.reference_audio_base64 ?? extraParams.referenceAudioBase64;
+  if (typeof rawBase64 !== "string" || rawBase64.trim().length === 0) return;
+
+  const maxBytes = 10 * 1024 * 1024;
+  const sizeBytes = getBase64SizeInBytes(rawBase64);
+  if (sizeBytes > maxBytes) {
+    throw new TRPCError({
+      code: "PAYLOAD_TOO_LARGE",
+      message: `OmniVoice reference audio exceeds the ${Math.floor(maxBytes / (1024 * 1024))} MB limit.`,
+    });
+  }
+}
+
 // Helper to create secure token for Python backend (fallback)
 function createMediaToken(userId: number): string {
   return signBearerToken({
@@ -1630,6 +1682,13 @@ export const mediaRouter = router({
       const model = input.model || await getDefaultModelId("audio");
       const modelMeta = await resolveModelMeta(model, "audio");
 
+      if (normalizeMediaProviderName(modelMeta.provider) === "omnivoice" && !isDesktopMediaRequest(ctx.req)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "OmniVoice voice cloning is available only in the desktop app.",
+        });
+      }
+
       // Calculate credit cost from DB pricingTiers
       const dbModel = await getModelWithPricing(model);
       assertMediaPromptWithinModelLimit({
@@ -1638,6 +1697,9 @@ export const mediaRouter = router({
         configJson: dbModel.configJson,
         fieldLabel: "Text",
       });
+      if (normalizeMediaProviderName(modelMeta.provider) === "omnivoice") {
+        assertOmnivoiceReferenceAudioSize(input.extraParams);
+      }
       const creditCost = calculateCreditCost(dbModel, {
         text: input.text,
         ...(input.extraParams ?? {}),
@@ -1752,6 +1814,12 @@ export const mediaRouter = router({
 
       const model = input.model || await getDefaultModelId("audio");
       const modelMeta = await resolveModelMeta(model, "audio");
+      if (normalizeMediaProviderName(modelMeta.provider) === "omnivoice" && !isDesktopMediaRequest(ctx.req)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "OmniVoice voice cloning is available only in the desktop app.",
+        });
+      }
       const dbModel = await getModelWithPricing(model);
       assertMediaPromptWithinModelLimit({
         value: input.text,
@@ -1759,6 +1827,9 @@ export const mediaRouter = router({
         configJson: dbModel.configJson,
         fieldLabel: "Text",
       });
+      if (normalizeMediaProviderName(modelMeta.provider) === "omnivoice") {
+        assertOmnivoiceReferenceAudioSize(input.extraParams);
+      }
       const creditCost = calculateCreditCost(dbModel, {
         text: input.text,
         ...(input.extraParams ?? {}),

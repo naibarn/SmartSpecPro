@@ -2,7 +2,7 @@
 
 ## Feature
 
-Build Feature 075: a unified web + desktop agent platform for SmartSpecPro where:
+Build Feature 075: a unified web + desktop agent platform for SmartAIHub where:
 
 - Web remains the universal surface and control plane.
 - Desktop becomes the governed local execution surface.
@@ -10,7 +10,7 @@ Build Feature 075: a unified web + desktop agent platform for SmartSpecPro where
 
 ## Why This Exists
 
-SmartSpecPro already has the raw ingredients of the target product:
+SmartAIHub already has the raw ingredients of the target product:
 
 - a Tauri desktop shell with local execution primitives
 - a web control plane with gateway, skills, agencies, and runtime contracts
@@ -19,7 +19,7 @@ SmartSpecPro already has the raw ingredients of the target product:
 
 What is still missing is the canonical architecture that turns those pieces into one enterprise product instead of three parallel systems.
 
-Without this feature, SmartSpecPro risks:
+Without this feature, SmartAIHub risks:
 
 - leaving desktop as a powerful but permissive shell
 - leaving worker runtimes as a separate operational island
@@ -27,7 +27,7 @@ Without this feature, SmartSpecPro risks:
 
 ## Product Outcome
 
-The product should behave as a single SmartSpecPro system with two surfaces:
+The product should behave as a single SmartAIHub system with two surfaces:
 
 - `Web`: governance, publishing, monitoring, lightweight execution, universal access
 - `Desktop`: local execution, local files, Docker-backed workspaces, local connectors, high-resource jobs, advanced local automation
@@ -38,7 +38,7 @@ The user should understand where execution happened, what runtime was used, what
 
 ### 1. Desktop Host Foundation
 
-The existing Tauri app at `apps/tauri-shell` becomes the canonical SmartSpecPro Desktop Host.
+The existing Tauri app at `apps/tauri-shell` becomes the canonical SmartAIHub Desktop Host.
 
 It must stop being primarily a raw local command surface and instead become a governed host that owns:
 
@@ -74,7 +74,7 @@ Compatibility rule:
 
 In managed mode:
 
-- all model access must route through the SmartSpecPro gateway
+- all model access must route through the SmartAIHub gateway
 - Desktop Host may not silently use unmanaged provider keys
 - degraded or offline conditions must not trigger direct-provider fallback
 - this gateway-only rule applies to Pi and Agency Swarm as well as any desktop-hosted helper runtimes
@@ -199,7 +199,7 @@ Required controls:
 
 - Current Tauri updater guidance expects signed updates and public-key verification.
 - Current Agency Swarm guidance assumes a modern Python runtime and application-owned persistence callbacks.
-- No authoritative public contract was confirmed for the exact "Pi" runtime name used in the feature, so the integration must be expressed as an adapter boundary owned by SmartSpecPro.
+- No authoritative public contract was confirmed for the exact "Pi" runtime name used in the feature, so the integration must be expressed as an adapter boundary owned by SmartAIHub.
 
 ## Explicit Assumptions Used for This Plan
 

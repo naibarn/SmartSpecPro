@@ -14,12 +14,43 @@ const MESSAGE_OVERHEAD_TOKENS = 4;
 /** Regex to detect CJK / Thai / Korean script ranges */
 const CJK_RANGE = /[\u2E80-\u9FFF\uAC00-\uD7AF\u0E00-\u0E7F]/g;
 
-export function estimateTokens(text: string): number {
-  if (!text) return 0;
+function normalizeTokenText(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
 
-  const cjkMatches = text.match(CJK_RANGE);
+  if (Array.isArray(value)) {
+    return value
+      .map((part) => normalizeTokenText(part))
+      .filter((part) => part.length > 0)
+      .join("\n");
+  }
+
+  if (!value || typeof value !== "object") {
+    return "";
+  }
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.text === "string") {
+    return record.text;
+  }
+  if (typeof record.content === "string") {
+    return record.content;
+  }
+  if (Array.isArray(record.content)) {
+    return normalizeTokenText(record.content);
+  }
+
+  return "";
+}
+
+export function estimateTokens(text: unknown): number {
+  const normalized = normalizeTokenText(text);
+  if (!normalized) return 0;
+
+  const cjkMatches = normalized.match(CJK_RANGE);
   const cjkCharCount = cjkMatches?.length ?? 0;
-  const asciiCharCount = text.length - cjkCharCount;
+  const asciiCharCount = normalized.length - cjkCharCount;
 
   const cjkTokens = cjkCharCount / CHARS_PER_TOKEN_CJK;
   const asciiTokens = asciiCharCount / CHARS_PER_TOKEN_ASCII;

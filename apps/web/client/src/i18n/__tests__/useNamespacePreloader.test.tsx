@@ -42,6 +42,12 @@ describe("useNamespacePreloader", () => {
     expect(loadNamespacesMock).toHaveBeenCalledWith(["chat"]);
   });
 
+  it("calls i18next.loadNamespaces when location changes to /work/request", () => {
+    mockPathname = "/work/request";
+    renderHook(() => useNamespacePreloader());
+    expect(loadNamespacesMock).toHaveBeenCalledWith(["workos"]);
+  });
+
   it("loads English fallback namespaces when language is not en", () => {
     mockPathname = "/chat";
     renderHook(() => useNamespacePreloader());

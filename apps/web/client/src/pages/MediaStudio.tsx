@@ -115,6 +115,7 @@ import { cn } from "@/lib/utils";
 import { GenerationProgress, type GenerationTask as QueueGenerationTask } from "@/components/chat/media/GenerationProgress";
 import { clearTenantPageCache } from "@/hooks/useTenantPage";
 import ModelSelectorDialog from "@/components/media/ModelSelectorDialog";
+import { OmniVoiceCloneDialog } from "@/components/media/OmniVoiceCloneDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
 import { ContentComposerPanel } from "@/components/media/ContentComposerPanel";
 import { RenderProgressDialog } from "@/components/videoeditor/RenderProgressDialog";
@@ -1259,6 +1260,7 @@ export default function MediaStudio() {
   const [showStyleDialog, setShowStyleDialog] = useState(false);
   const [showVfxDialog, setShowVfxDialog] = useState(false);
   const [showSkillDialog, setShowSkillDialog] = useState(false);
+  const [showOmnivoiceCloneDialog, setShowOmnivoiceCloneDialog] = useState(false);
 
   // Translation state (global)
   const [translatedText, setTranslatedText] = useState('');
@@ -1336,6 +1338,11 @@ export default function MediaStudio() {
   const voicePreviewAudioRef = useRef<HTMLAudioElement | null>(null);
   const [playingVoicePreviewKey, setPlayingVoicePreviewKey] = useState<string | null>(null);
   const [loadingVoicePreviewKey, setLoadingVoicePreviewKey] = useState<string | null>(null);
+  const [omnivoiceReferenceAudioName, setOmnivoiceReferenceAudioName] = useState("");
+  const [omnivoiceReferenceAudioBase64, setOmnivoiceReferenceAudioBase64] = useState("");
+  const [omnivoiceReferenceAudioMimeType, setOmnivoiceReferenceAudioMimeType] = useState("");
+  const [omnivoiceReferenceText, setOmnivoiceReferenceText] = useState("");
+  const [omnivoiceInstruct, setOmnivoiceInstruct] = useState("");
 
   // API queries
   const { data: credits } = trpc.credits.balance.useQuery();
@@ -1345,6 +1352,7 @@ export default function MediaStudio() {
     typeof window !== "undefined" && (window as any).__TAURI__ != null
       ? "tauri"
       : "web";
+  const isDesktopPlatform = skillRuntimePlatform === "tauri";
   // Fetch user-visible skills (respects per-user visibility settings)
   const { data: userVisibleSkillsRaw } = trpc.skills.getUserVisibleSkills.useQuery({
     platform: skillRuntimePlatform,
@@ -1371,9 +1379,19 @@ export default function MediaStudio() {
     }));
   }, [userVisibleSkillsRaw]);
   const { data: mediaModels } = trpc.mediaModels.list.useQuery({ type: activeTab });
+  const visibleMediaModels = useMemo(() => {
+    const models = (mediaModels?.models as any[] | undefined) ?? [];
+    return isDesktopPlatform
+      ? models
+      : models.filter((model) => model.provider !== "omnivoice");
+  }, [isDesktopPlatform, mediaModels?.models]);
+  const visibleMediaProviders = useMemo(() => {
+    const providers = (mediaModels?.providers as string[] | undefined) ?? [];
+    return isDesktopPlatform ? providers : providers.filter((provider) => provider !== "omnivoice");
+  }, [isDesktopPlatform, mediaModels?.providers]);
   const selectedMediaModel = useMemo(
-    () => (mediaModels?.models as any[] | undefined)?.find((m) => m.modelId === selectedModel),
-    [mediaModels?.models, selectedModel],
+    () => visibleMediaModels.find((m) => m.modelId === selectedModel),
+    [selectedModel, visibleMediaModels],
   );
   const selectedMediaModelConfig = useMemo(() => {
     const rawConfig = selectedMediaModel?.configJson;
@@ -1403,6 +1421,45 @@ export default function MediaStudio() {
     () => getModelGenerationModeLabel(selectedMediaModel as any),
     [selectedMediaModel],
   );
+  const isOmnivoiceDesktopCloneMode =
+    activeTab === "audio" &&
+    isDesktopPlatform &&
+    selectedMediaModel?.provider === "omnivoice";
+  const buildOmnivoiceDesktopExtraParams = useCallback(() => {
+    if (!isOmnivoiceDesktopCloneMode) {
+      return {};
+    }
+
+    const extra: Record<string, unknown> = {};
+    if (omnivoiceReferenceAudioBase64.trim()) {
+      extra.reference_audio_base64 = omnivoiceReferenceAudioBase64.trim();
+    }
+    if (omnivoiceReferenceAudioMimeType.trim()) {
+      extra.reference_audio_mime_type = omnivoiceReferenceAudioMimeType.trim();
+    }
+    if (omnivoiceReferenceAudioName.trim()) {
+      extra.reference_audio_name = omnivoiceReferenceAudioName.trim();
+    }
+    if (omnivoiceReferenceText.trim()) {
+      extra.reference_text = omnivoiceReferenceText.trim();
+    }
+    if (omnivoiceInstruct.trim()) {
+      extra.instruct = omnivoiceInstruct.trim();
+    }
+    return extra;
+  }, [
+    isOmnivoiceDesktopCloneMode,
+    omnivoiceInstruct,
+    omnivoiceReferenceAudioBase64,
+    omnivoiceReferenceAudioMimeType,
+    omnivoiceReferenceAudioName,
+    omnivoiceReferenceText,
+  ]);
+  useEffect(() => {
+    if (!isOmnivoiceDesktopCloneMode) {
+      setShowOmnivoiceCloneDialog(false);
+    }
+  }, [isOmnivoiceDesktopCloneMode]);
   const selectedMediaModelForInputFields = useMemo(
     () => (selectedMediaModel ? { ...selectedMediaModel, configJson: selectedMediaModelConfig ?? undefined } : undefined),
     [selectedMediaModel, selectedMediaModelConfig],
@@ -1742,7 +1799,7 @@ export default function MediaStudio() {
   // Set model from localStorage or default when models load
   useEffect(() => {
     if (modelInitialized) return;
-    if (!mediaModels?.models || mediaModels.models.length === 0) return;
+    if (!visibleMediaModels || visibleMediaModels.length === 0) return;
 
     // 1. Check localStorage for last used model for this media type
     const storageKey = `smartspec_model_${activeTab}`;
@@ -1750,7 +1807,7 @@ export default function MediaStudio() {
 
     if (savedModelId) {
       // Verify the saved model still exists
-      const savedModel = mediaModels.models.find((m: any) => m.modelId === savedModelId);
+      const savedModel = visibleMediaModels.find((m: any) => m.modelId === savedModelId);
       if (savedModel) {
         setSelectedModel(savedModelId);
         setModelInitialized(true);
@@ -1759,9 +1816,9 @@ export default function MediaStudio() {
     }
 
     // 2. Fallback: select first model (sorted by priority in API)
-    setSelectedModel(mediaModels.models[0].modelId);
+    setSelectedModel(visibleMediaModels[0].modelId);
     setModelInitialized(true);
-  }, [mediaModels, activeTab, modelInitialized]);
+  }, [activeTab, modelInitialized, visibleMediaModels]);
 
   // Save selected model to localStorage when user changes it
   useEffect(() => {
@@ -1771,13 +1828,27 @@ export default function MediaStudio() {
     }
   }, [selectedModel, activeTab, modelInitialized]);
 
+  useEffect(() => {
+    if (!isDesktopPlatform && selectedMediaModel?.provider === "omnivoice") {
+      const fallbackModel = visibleMediaModels.find((model: any) => model.provider !== "omnivoice");
+      if (fallbackModel && fallbackModel.modelId !== selectedModel) {
+        setSelectedModel(fallbackModel.modelId);
+      }
+      setOmnivoiceReferenceAudioName("");
+      setOmnivoiceReferenceAudioBase64("");
+      setOmnivoiceReferenceAudioMimeType("");
+      setOmnivoiceReferenceText("");
+      setOmnivoiceInstruct("");
+    }
+  }, [isDesktopPlatform, selectedMediaModel?.provider, selectedModel, visibleMediaModels]);
+
   // Reset dynamic model input values when model changes, populate with defaults + current synced values
   useEffect(() => {
-    if (!selectedModel || !mediaModels?.models) {
+    if (!selectedModel || visibleMediaModels.length === 0) {
       setModelInputValues({});
       return;
     }
-    const model = (mediaModels.models as any[]).find((m) => m.modelId === selectedModel);
+    const model = visibleMediaModels.find((m) => m.modelId === selectedModel);
     const config = model?.configJson as any;
     if (!config?.inputFields) {
       setModelInputValues({});
@@ -1814,13 +1885,13 @@ export default function MediaStudio() {
         setAspectRatio(defaultAr);
       }
     }
-  }, [selectedModel, mediaModels, activeTab, aspectRatio, setAspectRatio]);
+  }, [selectedModel, visibleMediaModels, activeTab, aspectRatio, setAspectRatio]);
 
   // Keep modelInputValues in sync with runtime values for fields that declare syncWith targets.
   // Runs whenever prompt / referenceImages / aspectRatio changes so the read-only display stays current.
   useEffect(() => {
-    if (!selectedModel || !mediaModels?.models) return;
-    const model = (mediaModels.models as any[]).find((m) => m.modelId === selectedModel);
+    if (!selectedModel || visibleMediaModels.length === 0) return;
+    const model = visibleMediaModels.find((m) => m.modelId === selectedModel);
     const config = model?.configJson as any;
     if (!config?.inputFields) return;
 
@@ -1841,7 +1912,7 @@ export default function MediaStudio() {
       setModelInputValues((prev: Record<string, any>) => ({ ...prev, ...syncedValues }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prompt, referenceImages, referenceVideos, aspectRatio, selectedModel, mediaModels]);
+  }, [prompt, referenceImages, referenceVideos, aspectRatio, selectedModel, visibleMediaModels]);
 
   // Save aspect ratio to localStorage when changed (per-tab)
   useEffect(() => {
@@ -2804,10 +2875,11 @@ export default function MediaStudio() {
       : currentAspectRatio;
 
     // Build extra params from dynamic model input fields
-    const selectedModelData = mediaModels?.models?.find((m: any) => m.modelId === selectedModel);
+    const selectedModelData = visibleMediaModels.find((m: any) => m.modelId === selectedModel);
     const rawConfig = selectedModelData?.configJson;
     const modelConfig = (typeof rawConfig === "string" ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })() : rawConfig) as any;
     const extraParams: Record<string, any> = {};
+    const omnivoiceExtraParams = buildOmnivoiceDesktopExtraParams();
     const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
       (modelConfig as Record<string, unknown>) ?? null,
     );
@@ -2885,6 +2957,10 @@ export default function MediaStudio() {
     const effectiveReferenceVideos = selectedMediaModelReferenceSupport.videoUrls
       ? referenceVideos
       : [];
+    const mergedExtraParams = {
+      ...extraParams,
+      ...omnivoiceExtraParams,
+    };
     const storyboardGenerationContext: StoryboardVideoGenerationContext | undefined =
       activeTab === "video"
       ? {
@@ -2893,7 +2969,7 @@ export default function MediaStudio() {
             model: selectedModel || undefined,
             referenceImages: effectiveReferenceImages.map((item) => ({ ...item })),
             referenceVideos: effectiveReferenceVideos.map((item) => ({ ...item })),
-            extraParams: Object.keys(extraParams).length > 0 ? { ...extraParams } : undefined,
+            extraParams: Object.keys(mergedExtraParams).length > 0 ? { ...mergedExtraParams } : undefined,
             apiConfig: Object.keys(apiConfig).length > 0 ? { ...apiConfig } : undefined,
             resolution: modelInputValues.resolution || undefined,
             referenceVideoUrl,
@@ -2941,7 +3017,7 @@ export default function MediaStudio() {
 
       // Get the appropriate prompt for this iteration
       const currentPrompt = isMultiVideo ? promptsToGenerate[i] : finalPrompt;
-      const currentExtraParams = { ...extraParams };
+      const currentExtraParams = { ...mergedExtraParams };
       if (promptSyncedFields.length > 0 && resolveRuntimeFieldValue) {
         for (const field of promptSyncedFields) {
           currentExtraParams[field.key] = resolveRuntimeFieldValue(field, currentPrompt);
@@ -3593,11 +3669,12 @@ export default function MediaStudio() {
     try {
       updateRetryTask({ status: "generating", statusDetail: t('mediaStudio.generationStatus.retryInProgress') });
 
-      const selectedModelData = mediaModels?.models?.find((m: any) => m.modelId === retryModel);
+      const selectedModelData = visibleMediaModels.find((m: any) => m.modelId === retryModel);
       const rawConfig = selectedModelData?.configJson;
       const modelConfig = (typeof rawConfig === "string" ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })() : rawConfig) as any;
       const retryDurationField = getModelInputField({ configJson: modelConfig } as any, "duration");
       const extraParams: Record<string, any> = {};
+      const omnivoiceExtraParams = buildOmnivoiceDesktopExtraParams();
       const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
         (modelConfig as Record<string, unknown>) ?? null,
       );
@@ -3657,6 +3734,10 @@ export default function MediaStudio() {
           }
         }
       }
+      const mergedExtraParams = {
+        ...extraParams,
+        ...omnivoiceExtraParams,
+      };
 
       const outputFormatValue = tabState.modelInputValues.outputFormat ?? tabState.modelInputValues.output_format;
       const referenceStyleUrl = (tabState.modelInputValues.referenceStyleUrl ?? tabState.modelInputValues.reference_style_url) as string | undefined;
@@ -3720,7 +3801,7 @@ export default function MediaStudio() {
           text: retryPrompt,
           model: retryModel || undefined,
           originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
-          ...(Object.keys(extraParams).length > 0 ? { extraParams } : {}),
+          ...(Object.keys(mergedExtraParams).length > 0 ? { extraParams: mergedExtraParams } : {}),
           ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
         });
 
@@ -3792,12 +3873,13 @@ export default function MediaStudio() {
       setIsGenerating(false);
     }
   }, [
+    buildOmnivoiceDesktopExtraParams,
     buildApiConfigFromModelConfig,
     extractTaskResultUrl,
     generateAudioMutation,
     generateImageAsyncMutation,
     generateVideoAsyncMutation,
-    mediaModels?.models,
+    visibleMediaModels,
     refetchMediaHistory,
     resolveArrayFieldRuntimeValue,
     selectedModel,
@@ -4648,8 +4730,8 @@ export default function MediaStudio() {
 
   // Get model credit cost using pricing tiers from configJson
   const getModelCost = () => {
-    if (!mediaModels?.models) return 10;
-    const model = mediaModels.models.find((m: any) => m.modelId === selectedModel);
+    if (visibleMediaModels.length === 0) return 10;
+    const model = visibleMediaModels.find((m: any) => m.modelId === selectedModel);
     if (!model) return 10;
 
     const rawConfig = model.configJson;
@@ -5241,7 +5323,7 @@ export default function MediaStudio() {
               {/* Character Count */}
               {(() => {
                 const currentPromptLength = (enhancedPrompt || prompt).length;
-                const modelData = mediaModels?.models?.find((m: any) => m.modelId === selectedModel);
+                const modelData = visibleMediaModels.find((m: any) => m.modelId === selectedModel);
                 const config = modelData?.configJson as any;
                 const parsedMaxLength = Number(config?.maxPromptLength);
                 const maxLength = Number.isFinite(parsedMaxLength) && parsedMaxLength > 0 ? parsedMaxLength : null;
@@ -5572,7 +5654,7 @@ export default function MediaStudio() {
                     <Bot className="h-4 w-4 mr-2" />
                     <span className="flex-1 text-left break-words whitespace-normal">
                       {selectedModel
-                        ? mediaModels?.models?.find((m: any) => m.modelId === selectedModel)?.name || t('mediaStudio.selectModel')
+                        ? visibleMediaModels.find((m: any) => m.modelId === selectedModel)?.name || t('mediaStudio.selectModel')
                         : t('mediaStudio.selectModel')}
                     </span>
                     {selectedMediaModelGenerationModeLabel && (
@@ -5590,7 +5672,7 @@ export default function MediaStudio() {
                         {selectedMediaModelGenerationModeLabel}
                       </Badge>
                     )}
-                    {selectedModel && mediaModels?.models?.find((m: any) => m.modelId === selectedModel) && (
+                    {selectedModel && visibleMediaModels.find((m: any) => m.modelId === selectedModel) && (
                       <Badge variant="outline" className="ml-2 text-xs shrink-0">
                         {getModelCost()}c
                       </Badge>
@@ -5599,9 +5681,9 @@ export default function MediaStudio() {
                   <ModelSelectorDialog
                     open={showModelDialog}
                     onOpenChange={setShowModelDialog}
-                    models={mediaModels?.models || []}
+                    models={visibleMediaModels}
                     providers={
-                      ((mediaModels?.providers as string[] | undefined) || []).map((name) => ({
+                      visibleMediaProviders.map((name) => ({
                         id: name,
                         name,
                         displayName: name,
@@ -5616,7 +5698,7 @@ export default function MediaStudio() {
 
                 {/* Aspect Ratio — uses model-specific options from configJson when available (not for audio) */}
                 {activeTab !== "audio" && (() => {
-                  const modelData = mediaModels?.models?.find((m: any) => m.modelId === selectedModel);
+                  const modelData = visibleMediaModels.find((m: any) => m.modelId === selectedModel);
                   const config = modelData?.configJson as any;
                   const arField = config?.inputFields?.find((f: any) => f.key === "aspect_ratio");
                   const arOptions = arField?.options as { value: string; label: string }[] | undefined;
@@ -5720,7 +5802,7 @@ export default function MediaStudio() {
 
                 {/* Dynamic Model Input Fields from configJson */}
                 {(() => {
-                  const modelData = (mediaModels?.models as any[] | undefined)?.find((m) => m.modelId === selectedModel);
+                  const modelData = visibleMediaModels.find((m) => m.modelId === selectedModel);
                   const config = modelData?.configJson as any;
                   const allFields: any[] = config?.inputFields ?? [];
 
@@ -6286,6 +6368,43 @@ export default function MediaStudio() {
                       </Button>
                     </div>
                   )}
+                </div>
+              )}
+
+              {activeTab === "audio" && selectedMediaModel?.provider === "omnivoice" && !isDesktopPlatform && (
+                <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+                  OmniVoice voice cloning is available in the desktop app only. Open Media Studio in the Tauri desktop build to upload a reference clip and generate cloned TTS.
+                </div>
+              )}
+
+              {isOmnivoiceDesktopCloneMode && (
+                <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Music className="h-4 w-4 text-sky-600" />
+                    <h3 className="font-semibold text-sky-900">OmniVoice Desktop Clone</h3>
+                    <Badge variant="outline" className="text-[10px] border-sky-200 text-sky-700 bg-white">
+                      desktop only
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-sky-800/80">
+                    Open the clone studio to upload a reference clip, add transcript and style notes, and generate cloned TTS with OmniVoice.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="border-sky-200 bg-white text-sky-900 hover:bg-sky-100"
+                      onClick={() => setShowOmnivoiceCloneDialog(true)}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Open Clone Studio
+                    </Button>
+                    {omnivoiceReferenceAudioName && (
+                      <Badge variant="outline" className="text-[10px] border-sky-200 text-sky-700 bg-white">
+                        Loaded: {omnivoiceReferenceAudioName}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -7831,6 +7950,21 @@ export default function MediaStudio() {
           </div>
       </DialogContent>
       </Dialog>
+
+      <OmniVoiceCloneDialog
+        open={showOmnivoiceCloneDialog}
+        onOpenChange={setShowOmnivoiceCloneDialog}
+        referenceAudioName={omnivoiceReferenceAudioName}
+        onReferenceAudioNameChange={setOmnivoiceReferenceAudioName}
+        referenceAudioBase64={omnivoiceReferenceAudioBase64}
+        onReferenceAudioBase64Change={setOmnivoiceReferenceAudioBase64}
+        referenceAudioMimeType={omnivoiceReferenceAudioMimeType}
+        onReferenceAudioMimeTypeChange={setOmnivoiceReferenceAudioMimeType}
+        referenceText={omnivoiceReferenceText}
+        onReferenceTextChange={setOmnivoiceReferenceText}
+        instruct={omnivoiceInstruct}
+        onInstructChange={setOmnivoiceInstruct}
+      />
 
       {storyboardReviewOpen && (
       <StoryboardBatchReviewDialog

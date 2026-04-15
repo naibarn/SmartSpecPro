@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { skipToken } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -205,6 +206,25 @@ type WorkerFleetRow = {
   diagnosticsAvailable: boolean;
   dashboardUrl: string | null;
   revokedAt: string | null;
+  remoteEndpointPolicy: "loopback_only" | "audited_exception_granted" | "unknown" | null;
+  profileName: string | null;
+  profileLabel: string | null;
+  profilePurpose: string | null;
+  personaDisplayLabel: string;
+  personaDisplayPurpose: string;
+  channelStatus: "connected" | "inactive" | "revoked" | "unknown";
+  channelDisplayLabel: string;
+  memorySyncEnabled: boolean;
+  memorySyncScope: "personal" | "team_shared" | "workspace_shared" | "cross_channel" | null;
+  memorySyncStatus: "disabled" | "active" | "inactive" | "quarantined" | "unknown";
+  memorySyncDisplayLabel: string;
+  llmRoutingMode: "auto" | "pinned_provider";
+  preferredProviderId: number | null;
+  preferredProviderName: string | null;
+  providerRoutingDisplayLabel: string;
+  workerAccessPolicyPreset: string | null;
+  workerAccessPolicyScopeCount: number;
+  workerAccessPolicyQuotaDisplayLabel: string;
 };
 type WorkerDiagnosticsSnapshot = {
   workerId: string;
@@ -221,6 +241,25 @@ type WorkerDiagnosticsSnapshot = {
   warningFlagsJson: string[];
   dashboardUrl: string | null;
   revokedAt: string | null;
+  remoteEndpointPolicy: "loopback_only" | "audited_exception_granted" | "unknown" | null;
+  profileName: string | null;
+  profileLabel: string | null;
+  profilePurpose: string | null;
+  personaDisplayLabel: string;
+  personaDisplayPurpose: string;
+  channelStatus: "connected" | "inactive" | "revoked" | "unknown";
+  channelDisplayLabel: string;
+  memorySyncEnabled: boolean;
+  memorySyncScope: "personal" | "team_shared" | "workspace_shared" | "cross_channel" | null;
+  memorySyncStatus: "disabled" | "active" | "inactive" | "quarantined" | "unknown";
+  memorySyncDisplayLabel: string;
+  llmRoutingMode: "auto" | "pinned_provider";
+  preferredProviderId: number | null;
+  preferredProviderName: string | null;
+  providerRoutingDisplayLabel: string;
+  workerAccessPolicyPreset: string | null;
+  workerAccessPolicyScopeCount: number;
+  workerAccessPolicyQuotaDisplayLabel: string;
 };
 type WorkerMcpInsightTotals = {
   sessionInitializations: number;
@@ -271,6 +310,11 @@ type WorkerMcpInsights = {
     sessionId: string;
     workerJobId: string;
     scopeProfile: string;
+    activeMode: {
+      taskMode: string;
+      scopeProfile: string | null;
+      displayLabel: string;
+    };
     createdAt: string;
     expiresAt: string;
     revokedAt: string | null;
@@ -343,6 +387,8 @@ type TenantWorkerMcpOverviewWorkerMetric = {
   blockedCount: number;
   lastSeenAt: string | null;
   lastEventAt: string | null;
+  channelStatus: "connected" | "inactive" | "revoked" | "unknown";
+  memorySyncStatus: "disabled" | "active" | "inactive" | "quarantined" | "unknown";
 };
 type TenantWorkerMcpOverviewRecentEvent = WorkerMcpRecentEvent & {
   workerId: string | null;
@@ -459,6 +505,45 @@ function humanizeMachineLabel(value: string | null | undefined): string {
     .replace(/\s+/g, " ")
     .trim()
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function isHermesWorkerType(runtimeType: string | null | undefined): boolean {
+  return runtimeType === "hermes_agent_gateway";
+}
+
+function formatHermesRemoteEndpointPolicy(value: string | null | undefined): string {
+  switch (value) {
+    case "audited_exception_granted":
+      return "Audited HTTPS exception";
+    case "loopback_only":
+      return "Loopback only";
+    case "unknown":
+      return "Policy unknown";
+    default:
+      return "Policy unavailable";
+  }
+}
+
+function formatWorkerAccessPolicy(worker: {
+  workerAccessPolicyPreset: string | null;
+  workerAccessPolicyScopeCount: number;
+  workerAccessPolicyQuotaDisplayLabel: string;
+}): string {
+  const preset = worker.workerAccessPolicyPreset ?? "unavailable";
+  return `${preset} · ${worker.workerAccessPolicyScopeCount} scopes · ${worker.workerAccessPolicyQuotaDisplayLabel}`;
+}
+
+function getHermesRemoteEndpointPolicyBadgeClass(value: string | null | undefined): string {
+  switch (value) {
+    case "audited_exception_granted":
+      return "border-amber-200 bg-amber-50 text-amber-800";
+    case "loopback_only":
+      return "border-slate-200 bg-slate-50 text-slate-700";
+    case "unknown":
+      return "border-yellow-200 bg-yellow-50 text-yellow-800";
+    default:
+      return "border-slate-200 bg-slate-50 text-slate-500";
+  }
 }
 
 function workerBudgetWindowLabel(label: WorkerBudgetWindowSummary["label"]): string {
@@ -1740,6 +1825,7 @@ type Tab = "checks" | "alerts" | "metrics";
 
 export default function AdminMonitoring() {
   const { user, loading: authLoading } = useAuth();
+  const hermesFlags = useTenantFeatureFlags();
   const { locale } = useScopedTranslation("admin");
   const utils = trpc.useUtils();
   const [location, setLocation] = useLocation();
@@ -1812,6 +1898,7 @@ export default function AdminMonitoring() {
       refetchOnWindowFocus: false,
     },
   );
+  const selectedWorkerBudget = (workerBudgetQuery.data as WorkerBudgetSummary | undefined) ?? null;
   const [workerBudgetDrafts, setWorkerBudgetDrafts] = useState<Record<string, WorkerBudgetDraft>>({});
   const updateWorkerStateMutation = trpc.monitoring.updateWorkerState.useMutation({
     onSuccess: async () => {
@@ -1901,6 +1988,15 @@ export default function AdminMonitoring() {
     return () => window.clearTimeout(timeoutId);
   }, [authLoading, forceFreshCheckMutation, user]);
 
+  useEffect(() => {
+    if (!selectedWorkerBudget) return;
+    setWorkerBudgetDrafts((prev) => (
+      prev[selectedWorkerBudget.workerId]
+        ? prev
+        : { ...prev, [selectedWorkerBudget.workerId]: createWorkerBudgetDraft(selectedWorkerBudget) }
+    ));
+  }, [selectedWorkerBudget]);
+
   // Auth guard
   if (authLoading) {
     return (
@@ -1932,7 +2028,6 @@ export default function AdminMonitoring() {
   const tenantWorkerMcpOverview = (tenantWorkerMcpOverviewQuery.data as TenantWorkerMcpOverview | undefined) ?? null;
   const selectedWorkerDiagnostics = (workerDiagnosticsQuery.data as WorkerDiagnosticsSnapshot | undefined) ?? null;
   const selectedWorkerMcpInsights = (workerMcpInsightsQuery.data as WorkerMcpInsights | undefined) ?? null;
-  const selectedWorkerBudget = (workerBudgetQuery.data as WorkerBudgetSummary | undefined) ?? null;
   const selectedWorkerBudgetDraft = selectedWorkerId
     ? workerBudgetDrafts[selectedWorkerId] ?? createWorkerBudgetDraft(selectedWorkerBudget)
     : null;
@@ -1958,6 +2053,68 @@ export default function AdminMonitoring() {
       ? "ตอนนี้ service cards ทั้งหมดเป็น Stale แปลว่าข้อมูล monitoring ที่แสดงอาจเก่า ขั้นแรกให้กด Force Fresh Check ก่อน แล้วค่อยตรวจแท็บ Checks ถ้ายังไม่อัปเดต"
       : "All service cards are stale right now, which means the monitoring view may be showing old data. Start with Force Fresh Check, then inspect Checks if the page still does not refresh."
     : heroGuidance.summary;
+
+  const workerLocaleText = locale === "th"
+    ? {
+        personaPrefix: "เพอร์โซนา:",
+        channelPrefix: "แชนแนล:",
+        memorySyncPrefix: "การซิงก์หน่วยความจำ:",
+        providerRoutingPrefix: "เส้นทางผู้ให้บริการ LLM:",
+        accessPolicyPrefix: "นโยบายสิทธิ์ worker:",
+        diagnosticsTitle: "การตรวจสอบ worker",
+        diagnosticsSummary: "ภาพรวม control plane ที่ถูกปกปิดสำหรับ",
+        diagnosticsCapturedPrefix: "บันทึกเมื่อ",
+        diagnosticsNoRecord: "ยังไม่มีบันทึก",
+        diagnosticsUnavailable: "ยังไม่มีข้อมูล diagnostics",
+        mcpTitle: "ข้อมูลเชิงลึก MCP ของ worker",
+        mcpSummary: "ความจริงจาก runtime สำหรับ delegated MCP รวมถึงการใช้งาน worker MCP ช่วง 24 ชั่วโมงล่าสุด",
+        manifestLabel: "Manifest",
+        operatorPolicyLabel: "นโยบาย operator",
+        toolCallsLabel: "การเรียกเครื่องมือ",
+        delegatedSessionLabel: "เซสชันที่มอบสิทธิ์",
+        activeFamiliesLabel: "families ที่ใช้งานอยู่",
+        hiddenToolsLabel: "เครื่องมือที่ซ่อนอยู่",
+        availableFamiliesLabel: "families ที่พร้อมใช้",
+        operatorRestrictionsLabel: "ข้อจำกัดของ operator",
+        enabledLabel: "เปิดใช้งาน",
+        disabledLabel: "ปิดใช้งาน",
+        observedLabel: "พบ session",
+        noneLabel: "ไม่มี",
+        noRecentSession: "ยังไม่มี delegated session ล่าสุดสำหรับ worker นี้",
+        approvalGroupsSuffix: "กลุ่มที่ต้องอนุมัติ",
+        succeededPrefix: "สำเร็จ",
+        blockedPrefix: "ถูกบล็อก",
+      }
+    : {
+        personaPrefix: "Persona:",
+        channelPrefix: "Channel:",
+        memorySyncPrefix: "Memory sync:",
+        providerRoutingPrefix: "LLM provider routing:",
+        accessPolicyPrefix: "Worker access policy:",
+        diagnosticsTitle: "Worker diagnostics",
+        diagnosticsSummary: "Redacted control-plane snapshot for",
+        diagnosticsCapturedPrefix: "Captured",
+        diagnosticsNoRecord: "No record",
+        diagnosticsUnavailable: "No diagnostics available yet.",
+        mcpTitle: "Worker MCP insights",
+        mcpSummary: "Runtime truth for delegated MCP plus the last 24 hours of worker MCP usage.",
+        manifestLabel: "Manifest",
+        operatorPolicyLabel: "Operator policy",
+        toolCallsLabel: "Tool calls",
+        delegatedSessionLabel: "Delegated session",
+        activeFamiliesLabel: "active families",
+        hiddenToolsLabel: "hidden tools",
+        availableFamiliesLabel: "Available families",
+        operatorRestrictionsLabel: "Operator restrictions",
+        enabledLabel: "Enabled",
+        disabledLabel: "Disabled",
+        observedLabel: "Observed",
+        noneLabel: "None",
+        noRecentSession: "No recent delegated session for this worker.",
+        approvalGroupsSuffix: "approval-gated groups",
+        succeededPrefix: "succeeded",
+        blockedPrefix: "blocked",
+      };
 
   const navigateToTab = (tab: Tab) => {
     setActiveTab(tab);
@@ -2040,15 +2197,6 @@ export default function AdminMonitoring() {
     });
   };
 
-  useEffect(() => {
-    if (!selectedWorkerBudget) return;
-    setWorkerBudgetDrafts((prev) => (
-      prev[selectedWorkerBudget.workerId]
-        ? prev
-        : { ...prev, [selectedWorkerBudget.workerId]: createWorkerBudgetDraft(selectedWorkerBudget) }
-    ));
-  }, [selectedWorkerBudget]);
-
   const tabs: { id: Tab; label: string }[] = [
     { id: "checks", label: "Checks" },
     { id: "alerts", label: `Alerts${criticalCount + warningCount > 0 ? ` (${criticalCount + warningCount})` : ""}` },
@@ -2105,6 +2253,13 @@ export default function AdminMonitoring() {
             </div>
             <div className="flex items-center gap-2">
               <LocaleToggle className="hidden sm:inline-flex" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLocation("/admin/work-os")}
+              >
+                Work OS
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -2242,7 +2397,7 @@ export default function AdminMonitoring() {
 
         <DashboardCard
           title="Claw Workers"
-          description="Control-plane view of registered OpenClaw workers, current load, and diagnostics availability."
+          description="Control-plane view of registered OpenClaw, Hermes, NemoClaw, and HiClaw workers, current load, and diagnostics availability."
           leading={<Server className="h-5 w-5 text-sky-600" />}
           trailing={(
             <div className="flex items-center gap-2">
@@ -2251,7 +2406,28 @@ export default function AdminMonitoring() {
                 topic="openclaw-workers"
                 variant="outline"
                 size="sm"
-                label={locale === "th" ? "คู่มือ Worker" : "Worker Help"}
+                label={locale === "th" ? "คู่มือ OpenClaw" : "OpenClaw Help"}
+              />
+              <HelpButton
+                page="/admin/monitoring"
+                topic="hermes-workers"
+                variant="outline"
+                size="sm"
+                label={locale === "th" ? "คู่มือ Hermes" : "Hermes Help"}
+              />
+              <HelpButton
+                page="/admin/monitoring"
+                topic="nemo-claw-workers"
+                variant="outline"
+                size="sm"
+                label={locale === "th" ? "คู่มือ NemoClaw" : "NemoClaw Help"}
+              />
+              <HelpButton
+                page="/admin/monitoring"
+                topic="hi-claw-workers"
+                variant="outline"
+                size="sm"
+                label={locale === "th" ? "คู่มือ HiClaw" : "HiClaw Help"}
               />
               <Button
                 size="sm"
@@ -2294,54 +2470,54 @@ export default function AdminMonitoring() {
                 <div className="space-y-4">
                   <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
                     <div className="rounded-md border bg-white p-3">
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Workers</p>
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{locale === "th" ? "Worker" : "Workers"}</p>
                       <p className="mt-1 text-sm font-medium">{tenantWorkerMcpOverview.totalWorkers}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {tenantWorkerMcpOverview.workersWithActiveDelegatedSessions} active delegated sessions
+                        {tenantWorkerMcpOverview.workersWithActiveDelegatedSessions} {locale === "th" ? "delegated sessions ที่ใช้งานอยู่" : "active delegated sessions"}
                       </p>
                     </div>
                     <div className="rounded-md border bg-white p-3">
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Tool calls</p>
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{workerLocaleText.toolCallsLabel}</p>
                       <p className="mt-1 text-sm font-medium">{tenantWorkerMcpOverview.totals.toolCalls}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {tenantWorkerMcpOverview.totals.successCount} succeeded, {tenantWorkerMcpOverview.totals.deniedCount + tenantWorkerMcpOverview.totals.budgetDeniedCount + tenantWorkerMcpOverview.totals.approvalRequiredCount} blocked
+                        {tenantWorkerMcpOverview.totals.successCount} {workerLocaleText.succeededPrefix}, {tenantWorkerMcpOverview.totals.deniedCount + tenantWorkerMcpOverview.totals.budgetDeniedCount + tenantWorkerMcpOverview.totals.approvalRequiredCount} {workerLocaleText.blockedPrefix}
                       </p>
                     </div>
                     <div className="rounded-md border bg-white p-3">
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Workers using MCP</p>
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{locale === "th" ? "Worker ที่ใช้ MCP" : "Workers using MCP"}</p>
                       <p className="mt-1 text-sm font-medium">{tenantWorkerMcpOverview.workersWithRecentMcpCalls}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {tenantWorkerMcpOverview.manifestStatusCounts.ready} ready · {tenantWorkerMcpOverview.manifestStatusCounts.stale} stale · {tenantWorkerMcpOverview.manifestStatusCounts.unavailable} unavailable
+                        {tenantWorkerMcpOverview.manifestStatusCounts.ready} {locale === "th" ? "พร้อมใช้" : "ready"} · {tenantWorkerMcpOverview.manifestStatusCounts.stale} {locale === "th" ? "ล้าสมัย" : "stale"} · {tenantWorkerMcpOverview.manifestStatusCounts.unavailable} {locale === "th" ? "ไม่พร้อมใช้" : "unavailable"}
                       </p>
                     </div>
                     <div className="rounded-md border bg-white p-3">
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Operator policy</p>
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{workerLocaleText.operatorPolicyLabel}</p>
                       <p className="mt-1 text-sm font-medium">
-                        {tenantWorkerMcpOverview.operatorPolicy.enabled ? "Enabled" : "Disabled"}
+                        {tenantWorkerMcpOverview.operatorPolicy.enabled ? workerLocaleText.enabledLabel : workerLocaleText.disabledLabel}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {tenantWorkerMcpOverview.operatorPolicy.disabledFamilies.length + tenantWorkerMcpOverview.operatorPolicy.disabledToolGroups.length + tenantWorkerMcpOverview.operatorPolicy.approvalRequiredToolGroups.length} active restrictions
+                        {tenantWorkerMcpOverview.operatorPolicy.disabledFamilies.length + tenantWorkerMcpOverview.operatorPolicy.disabledToolGroups.length + tenantWorkerMcpOverview.operatorPolicy.approvalRequiredToolGroups.length} {locale === "th" ? "ข้อจำกัดที่ใช้งานอยู่" : "active restrictions"}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
                     {!tenantWorkerMcpOverview.operatorPolicy.enabled ? (
-                      <Badge variant="destructive">Delegated MCP disabled globally</Badge>
+                      <Badge variant="destructive">{locale === "th" ? "ปิดใช้งาน Delegated MCP แบบรวม" : "Delegated MCP disabled globally"}</Badge>
                     ) : null}
                     {tenantWorkerMcpOverview.operatorPolicy.disabledFamilies.map((family) => (
                       <Badge key={`tenant-family-${family}`} variant="destructive">
-                        Family off: {family}
+                        {locale === "th" ? "ปิด family:" : "Family off:"} {family}
                       </Badge>
                     ))}
                     {tenantWorkerMcpOverview.operatorPolicy.disabledToolGroups.map((group) => (
                       <Badge key={`tenant-group-${group}`} variant="destructive">
-                        Group off: {group}
+                        {locale === "th" ? "ปิด group:" : "Group off:"} {group}
                       </Badge>
                     ))}
                     {tenantWorkerMcpOverview.operatorPolicy.approvalRequiredToolGroups.map((group) => (
                       <Badge key={`tenant-approval-${group}`} className="border border-amber-200 bg-amber-50 text-amber-800">
-                        Approval: {group}
+                        {locale === "th" ? "ต้องอนุมัติ:" : "Approval:"} {group}
                       </Badge>
                     ))}
                     {tenantWorkerMcpOverview.operatorPolicy.enabled
@@ -2379,12 +2555,17 @@ export default function AdminMonitoring() {
                         {tenantWorkerMcpOverview.workerMetrics.slice(0, 5).map((worker) => (
                           <div key={worker.workerId} className="rounded-md border border-dashed p-2 text-xs">
                             <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <div className="font-medium">{worker.displayName}</div>
-                                <div className="text-muted-foreground">
-                                  {worker.runtimeType} · {humanizeMachineLabel(worker.healthState)} · {humanizeMachineLabel(worker.manifestStatus)}
-                                </div>
+                            <div>
+                              <div className="font-medium">{worker.displayName}</div>
+                              <div className="text-muted-foreground">
+                                {worker.runtimeType} · {humanizeMachineLabel(worker.healthState)} · {humanizeMachineLabel(worker.manifestStatus)}
                               </div>
+                              {isHermesWorkerType(worker.runtimeType) ? (
+                                <div className="text-muted-foreground">
+                                  {humanizeMachineLabel(worker.channelStatus)} · {humanizeMachineLabel(worker.memorySyncStatus)}
+                                </div>
+                              ) : null}
+                            </div>
                               <Button
                                 size="sm"
                                 variant={selectedWorkerId === worker.workerId ? "default" : "outline"}
@@ -2453,6 +2634,23 @@ export default function AdminMonitoring() {
                         </Badge>
                         <Badge variant="outline">{worker.status}</Badge>
                         <Badge variant="secondary">{worker.runtimeLabel}</Badge>
+                        {isHermesWorkerType(worker.runtimeType) ? (
+                          <Badge variant="outline">Hermes</Badge>
+                        ) : null}
+                        {isHermesWorkerType(worker.runtimeType) && hermesFlags.hermesProfileExperience ? (
+                          <Badge variant="secondary">{worker.personaDisplayLabel}</Badge>
+                        ) : null}
+                        {isHermesWorkerType(worker.runtimeType) && hermesFlags.hermesChannelWorkflowExpansion ? (
+                          <Badge variant="outline">{worker.channelDisplayLabel}</Badge>
+                        ) : null}
+                        {isHermesWorkerType(worker.runtimeType) && hermesFlags.hermesMemoryContextSync ? (
+                          <Badge variant="secondary">{worker.memorySyncDisplayLabel}</Badge>
+                        ) : null}
+                        {isHermesWorkerType(worker.runtimeType) && worker.remoteEndpointPolicy && hermesFlags.hermesVisibilitySummaries ? (
+                          <Badge className={cn("border", getHermesRemoteEndpointPolicyBadgeClass(worker.remoteEndpointPolicy))}>
+                            {formatHermesRemoteEndpointPolicy(worker.remoteEndpointPolicy)}
+                          </Badge>
+                        ) : null}
                         <Badge
                           variant={worker.compatibilityState === "compatible" ? "outline" : "destructive"}
                         >
@@ -2467,6 +2665,27 @@ export default function AdminMonitoring() {
                       <p className="text-xs text-muted-foreground">
                         Last seen {timeAgo(worker.lastSeenAt)} · registration {humanizeMachineLabel(worker.registrationSupport)} · dispatch {humanizeMachineLabel(worker.dispatchSupport)}{worker.dashboardUrl ? " · dashboard available" : ""}
                       </p>
+                      {isHermesWorkerType(worker.runtimeType) && hermesFlags.hermesProfileExperience ? (
+                        <p className="text-xs text-muted-foreground">
+                          {workerLocaleText.personaPrefix} {worker.personaDisplayLabel}. {worker.personaDisplayPurpose}
+                          {" "}Remote endpoint policy: {formatHermesRemoteEndpointPolicy(worker.remoteEndpointPolicy)}.
+                        </p>
+                      ) : null}
+                      {isHermesWorkerType(worker.runtimeType) && hermesFlags.hermesChannelWorkflowExpansion ? (
+                        <p className="text-xs text-muted-foreground">
+                          {workerLocaleText.channelPrefix} {worker.channelDisplayLabel} · {workerLocaleText.memorySyncPrefix} {worker.memorySyncDisplayLabel}.
+                        </p>
+                      ) : null}
+                      {isHermesWorkerType(worker.runtimeType) && hermesFlags.hermesVisibilitySummaries ? (
+                        <p className="text-xs text-muted-foreground">
+                          {workerLocaleText.providerRoutingPrefix} {worker.providerRoutingDisplayLabel}.
+                        </p>
+                      ) : null}
+                      {worker.workerAccessPolicyPreset ? (
+                        <p className="text-xs text-muted-foreground">
+                          {workerLocaleText.accessPolicyPrefix} {formatWorkerAccessPolicy(worker)}.
+                        </p>
+                      ) : null}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Button
@@ -2518,9 +2737,9 @@ export default function AdminMonitoring() {
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div>
-                    <p className="text-sm font-medium">Worker diagnostics</p>
+                    <p className="text-sm font-medium">{workerLocaleText.diagnosticsTitle}</p>
                     <p className="text-xs text-muted-foreground">
-                      Redacted control-plane snapshot for {selectedWorkerDiagnostics?.displayName ?? selectedWorkerId}
+                      {workerLocaleText.diagnosticsSummary} {selectedWorkerDiagnostics?.displayName ?? selectedWorkerId}
                     </p>
                   </div>
                   <Button size="sm" variant="ghost" onClick={() => setSelectedWorkerId(null)}>
@@ -2535,11 +2754,36 @@ export default function AdminMonitoring() {
                 ) : selectedWorkerDiagnostics ? (
                   <div className="space-y-2 text-xs text-slate-700">
                     <p>
-                      Captured {selectedWorkerDiagnostics.capturedAt ? formatAbsoluteDateTime(selectedWorkerDiagnostics.capturedAt) : "No record"}
+                      {workerLocaleText.diagnosticsCapturedPrefix} {selectedWorkerDiagnostics.capturedAt ? formatAbsoluteDateTime(selectedWorkerDiagnostics.capturedAt) : workerLocaleText.diagnosticsNoRecord}
                     </p>
                     <p>
                       {selectedWorkerDiagnostics.runtimeLabel} · {selectedWorkerDiagnostics.runtimeFamily} · {humanizeMachineLabel(selectedWorkerDiagnostics.compatibilityState)}
                     </p>
+                    {isHermesWorkerType(selectedWorkerDiagnostics.runtimeType) && hermesFlags.hermesProfileExperience ? (
+                      <p>
+                        {workerLocaleText.personaPrefix} {selectedWorkerDiagnostics.personaDisplayLabel}. {selectedWorkerDiagnostics.personaDisplayPurpose}
+                      </p>
+                    ) : null}
+                    {isHermesWorkerType(selectedWorkerDiagnostics.runtimeType) && hermesFlags.hermesChannelWorkflowExpansion ? (
+                      <p>
+                        {workerLocaleText.channelPrefix} {selectedWorkerDiagnostics.channelDisplayLabel} · {workerLocaleText.memorySyncPrefix} {selectedWorkerDiagnostics.memorySyncDisplayLabel}
+                      </p>
+                    ) : null}
+                    {isHermesWorkerType(selectedWorkerDiagnostics.runtimeType) && hermesFlags.hermesVisibilitySummaries ? (
+                      <p>
+                        {workerLocaleText.providerRoutingPrefix} {selectedWorkerDiagnostics.providerRoutingDisplayLabel}
+                      </p>
+                    ) : null}
+                    {isHermesWorkerType(selectedWorkerDiagnostics.runtimeType) && hermesFlags.hermesVisibilitySummaries ? (
+                      <p>
+                        Remote endpoint policy: {formatHermesRemoteEndpointPolicy(selectedWorkerDiagnostics.remoteEndpointPolicy)}.
+                      </p>
+                    ) : null}
+                    {selectedWorkerDiagnostics.workerAccessPolicyPreset ? (
+                      <p>
+                        {workerLocaleText.accessPolicyPrefix} {formatWorkerAccessPolicy(selectedWorkerDiagnostics)}.
+                      </p>
+                    ) : null}
                     <pre className="max-h-64 overflow-auto rounded-md bg-white p-3 text-[11px] leading-5">
                       {JSON.stringify({
                         runtimeType: selectedWorkerDiagnostics.runtimeType,
@@ -2547,25 +2791,27 @@ export default function AdminMonitoring() {
                         runtimeFamily: selectedWorkerDiagnostics.runtimeFamily,
                         compatibilityState: selectedWorkerDiagnostics.compatibilityState,
                         compatibility: selectedWorkerDiagnostics.compatibility,
+                        remoteEndpointPolicy: selectedWorkerDiagnostics.remoteEndpointPolicy,
                         summary: selectedWorkerDiagnostics.summaryJson,
                         details: selectedWorkerDiagnostics.detailsJson,
                         warningFlags: selectedWorkerDiagnostics.warningFlagsJson,
                         dashboardUrl: selectedWorkerDiagnostics.dashboardUrl,
                         revokedAt: selectedWorkerDiagnostics.revokedAt,
+                        workerAccessPolicyPreset: selectedWorkerDiagnostics.workerAccessPolicyPreset,
+                        workerAccessPolicyScopeCount: selectedWorkerDiagnostics.workerAccessPolicyScopeCount,
+                        workerAccessPolicyQuotaDisplayLabel: selectedWorkerDiagnostics.workerAccessPolicyQuotaDisplayLabel,
                       }, null, 2)}
                     </pre>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No diagnostics available yet.</p>
+                  <p className="text-sm text-muted-foreground">{workerLocaleText.diagnosticsUnavailable}</p>
                 )}
 
                 <div className="mt-4 rounded-lg border bg-white p-3">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <p className="text-sm font-medium">Worker MCP insights</p>
-                      <p className="text-xs text-muted-foreground">
-                        Runtime truth for delegated MCP plus the last 24 hours of worker MCP usage.
-                      </p>
+                      <p className="text-sm font-medium">{workerLocaleText.mcpTitle}</p>
+                      <p className="text-xs text-muted-foreground">{workerLocaleText.mcpSummary}</p>
                     </div>
                     {selectedWorkerMcpInsights ? (
                       <Badge
@@ -2592,7 +2838,7 @@ export default function AdminMonitoring() {
                     <div className="space-y-4">
                       <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
                         <div className="rounded-md border p-3">
-                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Manifest</p>
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{workerLocaleText.manifestLabel}</p>
                           <p className="mt-1 text-sm font-medium">
                             {humanizeMachineLabel(selectedWorkerMcpInsights.manifestStatus)}
                           </p>
@@ -2601,31 +2847,36 @@ export default function AdminMonitoring() {
                           </p>
                         </div>
                         <div className="rounded-md border p-3">
-                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Operator policy</p>
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{workerLocaleText.operatorPolicyLabel}</p>
                           <p className="mt-1 text-sm font-medium">
-                            {selectedWorkerMcpInsights.manifest?.mcp.operatorPolicy.enabled === false ? "Disabled" : "Enabled"}
+                            {selectedWorkerMcpInsights.manifest?.mcp.operatorPolicy.enabled === false ? workerLocaleText.disabledLabel : workerLocaleText.enabledLabel}
                           </p>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {selectedWorkerMcpInsights.manifest?.mcp.operatorPolicy.approvalRequiredToolGroups.length ?? 0} approval-gated groups
+                            {selectedWorkerMcpInsights.manifest?.mcp.operatorPolicy.approvalRequiredToolGroups.length ?? 0} {workerLocaleText.approvalGroupsSuffix}
                           </p>
                         </div>
                         <div className="rounded-md border p-3">
-                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Tool calls</p>
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{workerLocaleText.toolCallsLabel}</p>
                           <p className="mt-1 text-sm font-medium">{selectedWorkerMcpInsights.totals.toolCalls}</p>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {selectedWorkerMcpInsights.totals.successCount} succeeded, {selectedWorkerMcpInsights.totals.deniedCount + selectedWorkerMcpInsights.totals.budgetDeniedCount + selectedWorkerMcpInsights.totals.approvalRequiredCount} blocked
+                            {selectedWorkerMcpInsights.totals.successCount} {workerLocaleText.succeededPrefix}, {selectedWorkerMcpInsights.totals.deniedCount + selectedWorkerMcpInsights.totals.budgetDeniedCount + selectedWorkerMcpInsights.totals.approvalRequiredCount} {workerLocaleText.blockedPrefix}
                           </p>
                         </div>
                         <div className="rounded-md border p-3">
-                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Delegated session</p>
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{workerLocaleText.delegatedSessionLabel}</p>
                           <p className="mt-1 text-sm font-medium">
-                            {selectedWorkerMcpInsights.activeDelegatedSession ? "Observed" : "None"}
+                            {selectedWorkerMcpInsights.activeDelegatedSession ? workerLocaleText.observedLabel : workerLocaleText.noneLabel}
                           </p>
                           <p className="mt-1 text-xs text-muted-foreground">
                             {selectedWorkerMcpInsights.activeDelegatedSession
                               ? `Job ${selectedWorkerMcpInsights.activeDelegatedSession.workerJobId} · expires ${formatAbsoluteDateTime(selectedWorkerMcpInsights.activeDelegatedSession.expiresAt)}`
-                              : "No recent delegated session for this worker."}
+                              : workerLocaleText.noRecentSession}
                           </p>
+                          {selectedWorkerMcpInsights.activeDelegatedSession && hermesFlags.hermesTaskModes ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Mode {selectedWorkerMcpInsights.activeDelegatedSession.activeMode.displayLabel}
+                            </p>
+                          ) : null}
                         </div>
                       </div>
 
@@ -2638,16 +2889,21 @@ export default function AdminMonitoring() {
                             <Badge variant="outline">
                               Scope {humanizeMachineLabel(selectedWorkerMcpInsights.manifest.scopeProfile)}
                             </Badge>
+                            {selectedWorkerMcpInsights.activeDelegatedSession && hermesFlags.hermesTaskModes ? (
+                              <Badge variant="outline">
+                                Mode {selectedWorkerMcpInsights.activeDelegatedSession.activeMode.displayLabel}
+                              </Badge>
+                            ) : null}
                             <Badge variant="outline">
-                              {selectedWorkerMcpInsights.manifest.mcp.availableFamilies.length} active families
+                              {selectedWorkerMcpInsights.manifest.mcp.availableFamilies.length} {workerLocaleText.activeFamiliesLabel}
                             </Badge>
                             <Badge variant="outline">
-                              {selectedWorkerMcpInsights.manifest.mcp.disabledTools.length} hidden tools
+                              {selectedWorkerMcpInsights.manifest.mcp.disabledTools.length} {workerLocaleText.hiddenToolsLabel}
                             </Badge>
                           </div>
                           <div className="mt-3 grid gap-3 lg:grid-cols-2">
                             <div>
-                              <p className="text-xs font-medium text-slate-700">Available families</p>
+                              <p className="text-xs font-medium text-slate-700">{workerLocaleText.availableFamiliesLabel}</p>
                               <div className="mt-2 flex flex-wrap gap-2">
                                 {selectedWorkerMcpInsights.manifest.mcp.families
                                   .filter((family) => family.enabled)
@@ -2659,7 +2915,7 @@ export default function AdminMonitoring() {
                               </div>
                             </div>
                             <div>
-                              <p className="text-xs font-medium text-slate-700">Operator restrictions</p>
+                              <p className="text-xs font-medium text-slate-700">{workerLocaleText.operatorRestrictionsLabel}</p>
                               <div className="mt-2 flex flex-wrap gap-2">
                                 {selectedWorkerMcpInsights.manifest.mcp.operatorPolicy.disabledFamilies.map((family) => (
                                   <Badge key={`family-${family}`} variant="destructive">
@@ -2773,7 +3029,7 @@ export default function AdminMonitoring() {
                     <div>
                       <p className="text-sm font-medium">Worker credit guardrails</p>
                       <p className="text-xs text-muted-foreground">
-                        Safety caps for this personal worker. Charges still come from the acting user's SmartSpecPro balance.
+                        Safety caps for this personal worker. Charges still come from the acting user's SmartAIHub balance.
                       </p>
                     </div>
                     {selectedWorkerBudget?.blockedByBudget ? (

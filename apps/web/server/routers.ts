@@ -92,6 +92,7 @@ import { teamRouter } from "./routers/team";
 import { teamRoomRouter } from "./routers/teamRoom";
 import { teamRunRouter } from "./routers/teamRun";
 import { teamWorkItemRouter } from "./routers/teamWorkItem";
+import { workOsRouter } from "./routers/workOs";
 import { scopedMemoryRouter } from "./routers/scopedMemory";
 import { monitoringRouter } from "./routers/monitoring";
 import { mcpServersRouter } from "./routers/mcpServers";
@@ -105,6 +106,8 @@ import { socialInboxRouter } from "./routers/socialInbox";
 import { billingRouter } from "./routers/billing";
 import { adminBillingRouter } from "./routers/adminBilling";
 import { localAiRouter } from "./routers/localAi";
+import { workpackRouter } from "./routers/workpack";
+import { roleMonitorRouter } from "./routers/roleMonitor";
 import {
   clearPendingTwoFactorCookie,
   readPendingTwoFactorCookie,
@@ -179,6 +182,8 @@ export const appRouter = router({
   billing: billingRouter,
   adminBilling: adminBillingRouter,
   localAi: localAiRouter,
+  workpack: workpackRouter,
+  roleMonitor: roleMonitorRouter,
   
   auth: router({
     me: publicProcedure.query(opts => {
@@ -2041,6 +2046,7 @@ export const appRouter = router({
   teamRoom: teamRoomRouter,
   teamRun: teamRunRouter,
   teamWorkItem: teamWorkItemRouter,
+  workOs: workOsRouter,
   scopedMemory: scopedMemoryRouter,
   monitoring: monitoringRouter,
   mcpServers: mcpServersRouter,

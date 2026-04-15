@@ -37,7 +37,17 @@ import {
   WORKER_RUNTIME_PROTOCOL_VERSION,
   evaluateWorkerCompatibility,
   getWorkerRuntimeDefinition,
+  workerHermesRuntimeMetadataSchema,
 } from "../../shared/workerRuntime";
+import {
+  getWorkerAccessPermissionScopesForPreset,
+  type WorkerAccessPermissionPreset,
+  type WorkerAccessPermissionScope,
+} from "../../shared/workerAccessKeys";
+import {
+  openClawBrowserJobPayloadSchema,
+  openClawWorkflowJobPayloadSchema,
+} from "../../shared/workerOpenClawPayloads";
 import type {
   WorkerAccessAuthContext,
   WorkerRegistrationAuthContext,
@@ -264,25 +274,72 @@ function mergeRuntimeMetadata(
   };
 }
 
+function normalizeQuotaValue(value: number | null | undefined): number | null {
+  if (value == null) {
+    return null;
+  }
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : null;
+}
+
+function buildWorkerAccessPolicyMetadata(
+  auth: WorkerRegistrationAuthContext,
+): Record<string, unknown> {
+  const permissionPreset = auth.permissionPreset ?? "readonly";
+  const permissionScopes = Array.isArray(auth.permissionScopes)
+    ? auth.permissionScopes.filter((scope): scope is WorkerAccessPermissionScope => typeof scope === "string")
+    : [];
+  return {
+    permissionPreset,
+    permissionScopes: permissionScopes.length > 0
+      ? permissionScopes
+      : auth.permissionPreset === "custom"
+        ? permissionScopes
+        : getWorkerAccessPermissionScopesForPreset(permissionPreset as WorkerAccessPermissionPreset),
+    quotaHourly: normalizeQuotaValue(auth.quotaHourly),
+    quotaDaily: normalizeQuotaValue(auth.quotaDaily),
+    quotaWeekly: normalizeQuotaValue(auth.quotaWeekly),
+    quotaMonthly: normalizeQuotaValue(auth.quotaMonthly),
+  };
+}
+
 function buildWorkerControlPlaneState(
   runtimeType: WorkerRuntimeType,
   compatibility: WorkerProtocolCompatibility,
   existingControlPlane: Record<string, unknown> = {},
+  runtimeMetadataJson: Record<string, unknown> = {},
 ): Record<string, unknown> {
   const runtimeDefinition = getWorkerRuntimeDefinition(runtimeType);
-  return {
+  const controlPlane: Record<string, unknown> = {
     ...existingControlPlane,
     compatibility: evaluateWorkerCompatibility(runtimeType, compatibility),
     runtimeFamily: runtimeDefinition.familyName,
     featureFlag: runtimeDefinition.featureFlag,
     lastCompatibilityCheckAt: new Date().toISOString(),
   };
+
+  if (runtimeType === "hermes_agent_gateway") {
+    const existingRemoteEndpointPolicy = typeof controlPlane.remoteEndpointPolicy === "string"
+      ? controlPlane.remoteEndpointPolicy
+      : null;
+    if (Object.keys(runtimeMetadataJson).length > 0) {
+      const parsedRuntimeMetadata = workerHermesRuntimeMetadataSchema.safeParse(runtimeMetadataJson);
+      controlPlane.remoteEndpointPolicy = parsedRuntimeMetadata.success
+        && parsedRuntimeMetadata.data.remoteEndpointPolicyExceptionId
+        ? "audited_exception_granted"
+        : "loopback_only";
+    } else {
+      controlPlane.remoteEndpointPolicy = existingRemoteEndpointPolicy ?? "loopback_only";
+    }
+  }
+
+  return controlPlane;
 }
 
 function buildWorkerHealthSummary(
   existingHealthSummaryJson: unknown,
   runtimeType: WorkerRuntimeType,
   compatibility: WorkerProtocolCompatibility,
+  runtimeMetadataJson: Record<string, unknown> = {},
 ): Record<string, unknown> {
   const existingHealthSummary = sanitizeWorkerPayload(
     isPlainObject(existingHealthSummaryJson) ? existingHealthSummaryJson : {},
@@ -293,6 +350,7 @@ function buildWorkerHealthSummary(
       runtimeType,
       compatibility,
       readWorkerControlPlaneState({ healthSummaryJson: existingHealthSummary }),
+      runtimeMetadataJson,
     ),
   };
 }
@@ -372,6 +430,23 @@ function assertRuntimeSpecificJobEventContract(
   job: WorkerJobRecord,
   payload: WorkerJobEventPayload,
 ): void {
+  const openClawSchema = job.jobType === "browser_automation_task"
+    ? openClawBrowserJobPayloadSchema
+    : job.jobType === "plugin_workflow_task"
+      ? openClawWorkflowJobPayloadSchema
+      : null;
+
+  if (openClawSchema) {
+    const result = openClawSchema.safeParse(payload.payloadJson ?? {});
+    if (!result.success) {
+      throw new WorkerRuntimeServiceError(
+        "invalid_request",
+        400,
+        result.error.issues.map((issue) => issue.message).join("; ") || `${job.jobType} payload is invalid`,
+      );
+    }
+  }
+
   const progressStages = job.jobType === "video_assembly"
     ? VIDEO_ASSEMBLY_PROGRESS_STAGES
     : job.jobType === "local_folder_ingest"
@@ -703,6 +778,33 @@ export async function registerWorker(
   assertSupportedRuntimeType(input.payload.runtimeType);
   assertWorkerProtocolCompatibility(input.payload.runtimeType, input.payload.compatibility);
 
+  const incomingRuntimeMetadata = isPlainObject(input.payload.runtimeMetadataJson)
+    ? (input.payload.runtimeMetadataJson as Record<string, unknown>)
+    : {};
+  const authHasProviderPin = input.auth.runtimeType === "hermes_agent_gateway"
+    && (input.auth.llmRoutingMode === "pinned_provider" || input.auth.preferredProviderId != null);
+  const workerAccessPolicy = buildWorkerAccessPolicyMetadata(input.auth);
+  const effectiveRuntimeMetadata = authHasProviderPin
+    ? {
+        ...incomingRuntimeMetadata,
+        llmRoutingMode: input.auth.llmRoutingMode,
+        preferredProviderId: input.auth.preferredProviderId ?? null,
+        preferredProviderName: input.auth.preferredProviderName ?? null,
+      }
+    : incomingRuntimeMetadata;
+  const effectiveRuntimeMetadataWithAccessPolicy = {
+    ...effectiveRuntimeMetadata,
+    workerAccessPolicy,
+  };
+  const delegatedSpendCaps = {
+    hourlyCredits: normalizeQuotaValue(input.auth.quotaHourly),
+    fiveHourCredits: null,
+    dailyCredits: normalizeQuotaValue(input.auth.quotaDaily),
+    weeklyCredits: normalizeQuotaValue(input.auth.quotaWeekly),
+    monthlyCredits: normalizeQuotaValue(input.auth.quotaMonthly),
+  };
+  const hasDelegatedSpendCaps = Object.values(delegatedSpendCaps).some((value) => value != null);
+
   if (input.auth.runtimeType && input.auth.runtimeType !== input.payload.runtimeType) {
     throw new WorkerRuntimeServiceError("worker_scope_mismatch", 403, "Registration token runtime does not match the payload runtime", "auth_error");
   }
@@ -740,14 +842,18 @@ export async function registerWorker(
     externalReference: input.payload.externalReference,
     dashboardUrl: sanitizeDashboardUrl(input.payload.dashboardUrl ?? null),
     capabilitiesJson: mergeRuntimeMetadata(
-      input.payload.capabilitiesJson,
-      input.payload.runtimeMetadataJson ?? {},
+      {
+        ...(isPlainObject(input.payload.capabilitiesJson) ? input.payload.capabilitiesJson : {}),
+        ...(hasDelegatedSpendCaps ? { delegatedSpendCaps } : {}),
+      },
+      effectiveRuntimeMetadataWithAccessPolicy,
     ),
     hardwareJson: sanitizeWorkerPayload(input.payload.hardwareJson) as Record<string, unknown>,
     healthSummaryJson: buildWorkerHealthSummary(
       input.payload.healthSummaryJson,
       input.payload.runtimeType,
       input.payload.compatibility,
+      effectiveRuntimeMetadata,
     ),
     warningFlagsJson: sanitizeWorkerWarningFlags(input.payload.warningFlagsJson),
     fileScopeMode: input.payload.fileScopeMode,
@@ -759,6 +865,12 @@ export async function registerWorker(
     ? await repo.updateWorker(existing.id, nextValues)
     : await repo.createWorker(nextValues);
 
+  const hermesRuntimeMetadata = worker.runtimeType === "hermes_agent_gateway"
+    ? workerHermesRuntimeMetadataSchema.safeParse(
+      ((nextValues.capabilitiesJson as Record<string, unknown> | null | undefined)?.runtimeMetadata as Record<string, unknown> | undefined) ?? {},
+    )
+    : null;
+
   auditLogger.log({
     eventType: "worker_registered",
     userId: input.auth.registeredByUserId ?? null,
@@ -769,6 +881,23 @@ export async function registerWorker(
       teamId: worker.teamId ?? null,
       created: !existing,
       externalReference: worker.externalReference,
+      llmRoutingMode: hermesRuntimeMetadata?.success ? hermesRuntimeMetadata.data.llmRoutingMode : undefined,
+      preferredProviderId: hermesRuntimeMetadata?.success ? hermesRuntimeMetadata.data.preferredProviderId ?? null : null,
+      preferredProviderName: hermesRuntimeMetadata?.success ? hermesRuntimeMetadata.data.preferredProviderName ?? null : null,
+      permissionPreset: input.auth.permissionPreset,
+      permissionScopes: input.auth.permissionScopes,
+      quotaHourly: input.auth.quotaHourly ?? null,
+      quotaDaily: input.auth.quotaDaily ?? null,
+      quotaWeekly: input.auth.quotaWeekly ?? null,
+      quotaMonthly: input.auth.quotaMonthly ?? null,
+      remoteEndpointPolicy: hermesRuntimeMetadata?.success && hermesRuntimeMetadata.data.remoteEndpointPolicyExceptionId
+        ? "audited_exception_granted"
+        : worker.runtimeType === "hermes_agent_gateway"
+          ? "loopback_only"
+          : undefined,
+      remoteEndpointPolicyExceptionId: hermesRuntimeMetadata?.success
+        ? hermesRuntimeMetadata.data.remoteEndpointPolicyExceptionId ?? null
+        : null,
     },
   });
 
@@ -817,6 +946,7 @@ export async function recordWorkerHeartbeat(
       worker.healthSummaryJson,
       worker.runtimeType,
       input.payload.compatibility,
+      input.payload.runtimeMetadataJson ?? {},
     ),
     warningFlagsJson: sanitizeWorkerWarningFlags(input.payload.warningsJson),
     lastSeenAt: new Date(),

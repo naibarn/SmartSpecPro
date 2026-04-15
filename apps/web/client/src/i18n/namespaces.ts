@@ -2,6 +2,8 @@
 export const ROUTE_NAMESPACES = [
   { pathPrefix: "/dashboard", namespaces: ["dashboard"] as const },
   { pathPrefix: "/chat", namespaces: ["chat"] as const },
+  { pathPrefix: "/work/request", namespaces: ["workos"] as const },
+  { pathPrefix: "/work/requests", namespaces: ["workos"] as const },
   { pathPrefix: "/agencies", namespaces: ["agency"] as const },
   { pathPrefix: "/workflows", namespaces: ["workflow"] as const },
   { pathPrefix: "/media", namespaces: ["media"] as const },

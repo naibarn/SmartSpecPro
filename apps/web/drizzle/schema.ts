@@ -2088,9 +2088,30 @@ export const financeSourceEnum = pgEnum("finance_source", [
 
 export const financeDocumentRoleEnum = pgEnum("finance_document_role", [
   "receipt",
+  "transfer_slip",
   "invoice",
   "statement",
   "supporting",
+]);
+
+export const financePaymentInstitutionKindEnum = pgEnum("finance_payment_institution_kind", [
+  "bank",
+  "issuer",
+  "other",
+]);
+
+export const financePaymentInstrumentKindEnum = pgEnum("finance_payment_instrument_kind", [
+  "bank_account",
+  "credit_card",
+  "cash",
+  "unknown",
+]);
+
+export const financePaymentDirectionEnum = pgEnum("finance_payment_direction", [
+  "outbound",
+  "inbound",
+  "both",
+  "unknown",
 ]);
 
 export const libraryItems = pgTable("library_items", {
@@ -2161,6 +2182,7 @@ export const libraryChunks = pgTable("library_chunks", {
   contentType: varchar("content_type", { length: 32 }).notNull().default("text"),
   tokenCount: integer("token_count"),
   vectorRefId: varchar("vector_ref_id", { length: 128 }),
+  vectorIndexName: varchar("vector_index_name", { length: 128 }),
   metadata: json("metadata").$type<Record<string, any>>().notNull().default({}),
   // Denormalized scope cache — mirrors parent item's allowed_scopes
   allowedScopes: text("allowed_scopes").array().default(sql`'{}'`),
@@ -2173,6 +2195,7 @@ export const libraryChunks = pgTable("library_chunks", {
   index("library_chunks_tenant_content_type_idx").on(t.tenantId, t.contentType),
   index("library_chunks_tenant_project_idx").on(t.tenantId, t.projectId),
   index("library_chunks_vector_ref_idx").on(t.vectorRefId),
+  index("library_chunks_vector_index_name_idx").on(t.vectorIndexName),
   index("library_chunks_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
   index("library_chunks_parent_chunk_idx").on(t.parentChunkId),
 ]);
@@ -2275,6 +2298,147 @@ export const libraryIndexJobs = pgTable("library_index_jobs", {
 export type LibraryIndexJob = typeof libraryIndexJobs.$inferSelect;
 export type InsertLibraryIndexJob = typeof libraryIndexJobs.$inferInsert;
 
+export const financeCounterparties = pgTable("finance_counterparties", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  displayName: text("display_name").notNull(),
+  normalizedName: varchar("normalized_name", { length: 512 }).notNull(),
+  usageCount: integer("usage_count").notNull().default(0),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_counterparties_tenant_normalized_unique").on(t.tenantId, t.projectId, t.ownerUserId, t.normalizedName),
+  index("finance_counterparties_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_counterparties_tenant_usage_idx").on(t.tenantId, t.ownerUserId, t.usageCount),
+  index("finance_counterparties_last_seen_idx").on(t.tenantId, t.lastSeenAt),
+  index("finance_counterparties_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+]);
+
+export type FinanceCounterparty = typeof financeCounterparties.$inferSelect;
+export type InsertFinanceCounterparty = typeof financeCounterparties.$inferInsert;
+
+export const financeCounterpartyAliases = pgTable("finance_counterparty_aliases", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  counterpartyId: integer("counterparty_id").notNull().references(() => financeCounterparties.id, { onDelete: "cascade" }),
+  aliasName: text("alias_name").notNull(),
+  normalizedAlias: varchar("normalized_alias", { length: 512 }).notNull(),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_counterparty_aliases_tenant_normalized_unique").on(t.tenantId, t.projectId, t.ownerUserId, t.normalizedAlias),
+  index("finance_counterparty_aliases_counterparty_idx").on(t.counterpartyId),
+  index("finance_counterparty_aliases_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_counterparty_aliases_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+]);
+
+export type FinanceCounterpartyAlias = typeof financeCounterpartyAliases.$inferSelect;
+export type InsertFinanceCounterpartyAlias = typeof financeCounterpartyAliases.$inferInsert;
+
+export const financePaymentInstitutions = pgTable("finance_payment_institutions", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  kind: financePaymentInstitutionKindEnum("kind").notNull().default("bank"),
+  displayName: text("display_name").notNull(),
+  normalizedName: varchar("normalized_name", { length: 512 }).notNull(),
+  usageCount: integer("usage_count").notNull().default(0),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_payment_institutions_tenant_normalized_unique").on(t.tenantId, t.projectId, t.ownerUserId, t.kind, t.normalizedName),
+  index("finance_payment_institutions_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_payment_institutions_tenant_usage_idx").on(t.tenantId, t.ownerUserId, t.usageCount),
+  index("finance_payment_institutions_last_seen_idx").on(t.tenantId, t.lastSeenAt),
+  index("finance_payment_institutions_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+]);
+
+export type FinancePaymentInstitution = typeof financePaymentInstitutions.$inferSelect;
+export type InsertFinancePaymentInstitution = typeof financePaymentInstitutions.$inferInsert;
+
+export const financePaymentInstitutionAliases = pgTable("finance_payment_institution_aliases", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  paymentInstitutionId: integer("payment_institution_id").notNull().references(() => financePaymentInstitutions.id, { onDelete: "cascade" }),
+  aliasName: text("alias_name").notNull(),
+  normalizedAlias: varchar("normalized_alias", { length: 512 }).notNull(),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_payment_institution_aliases_tenant_normalized_unique").on(t.tenantId, t.projectId, t.ownerUserId, t.normalizedAlias),
+  index("finance_payment_institution_aliases_payment_institution_idx").on(t.paymentInstitutionId),
+  index("finance_payment_institution_aliases_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_payment_institution_aliases_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+]);
+
+export type FinancePaymentInstitutionAlias = typeof financePaymentInstitutionAliases.$inferSelect;
+export type InsertFinancePaymentInstitutionAlias = typeof financePaymentInstitutionAliases.$inferInsert;
+
+export const financePaymentAccounts = pgTable("finance_payment_accounts", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  paymentInstitutionId: integer("payment_institution_id").notNull().references(() => financePaymentInstitutions.id, { onDelete: "cascade" }),
+  kind: financePaymentInstrumentKindEnum("kind").notNull(),
+  nickname: text("nickname").notNull(),
+  normalizedNickname: varchar("normalized_nickname", { length: 512 }).notNull(),
+  last4: varchar("last4", { length: 4 }),
+  maskedIdentifier: text("masked_identifier"),
+  usageCount: integer("usage_count").notNull().default(0),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  isPrimary: boolean("is_primary").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_payment_accounts_tenant_unique").on(t.tenantId, t.projectId, t.ownerUserId, t.paymentInstitutionId, t.kind, t.normalizedNickname),
+  index("finance_payment_accounts_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_payment_accounts_payment_institution_idx").on(t.paymentInstitutionId),
+  index("finance_payment_accounts_last_seen_idx").on(t.tenantId, t.lastSeenAt),
+  index("finance_payment_accounts_usage_idx").on(t.tenantId, t.ownerUserId, t.usageCount),
+  index("finance_payment_accounts_primary_idx").on(t.tenantId, t.ownerUserId, t.isPrimary),
+  index("finance_payment_accounts_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+]);
+
+export type FinancePaymentAccount = typeof financePaymentAccounts.$inferSelect;
+export type InsertFinancePaymentAccount = typeof financePaymentAccounts.$inferInsert;
+
+export const financePaymentAccountAliases = pgTable("finance_payment_account_aliases", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id", { length: 100 }).notNull(),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  paymentAccountId: integer("payment_account_id").notNull().references(() => financePaymentAccounts.id, { onDelete: "cascade" }),
+  aliasName: text("alias_name").notNull(),
+  normalizedAlias: varchar("normalized_alias", { length: 512 }).notNull(),
+  allowedScopes: text("allowed_scopes").array().notNull().default(sql`'{}'`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("finance_payment_account_aliases_tenant_normalized_unique").on(t.tenantId, t.projectId, t.ownerUserId, t.normalizedAlias),
+  index("finance_payment_account_aliases_payment_account_idx").on(t.paymentAccountId),
+  index("finance_payment_account_aliases_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
+  index("finance_payment_account_aliases_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+]);
+
+export type FinancePaymentAccountAlias = typeof financePaymentAccountAliases.$inferSelect;
+export type InsertFinancePaymentAccountAlias = typeof financePaymentAccountAliases.$inferInsert;
+
 export const financeRecurringRules = pgTable("finance_recurring_rules", {
   id: serial("id").primaryKey(),
   tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
@@ -2284,6 +2448,8 @@ export const financeRecurringRules = pgTable("finance_recurring_rules", {
   amountMinor: integer("amount_minor").notNull(),
   currency: varchar("currency", { length: 3 }).notNull().default("THB"),
   categoryCode: varchar("category_code", { length: 64 }).notNull(),
+  counterpartyId: integer("counterparty_id").references(() => financeCounterparties.id, { onDelete: "set null" }),
+  counterpartyName: text("counterparty_name"),
   merchantName: text("merchant_name"),
   note: text("note"),
   rrule: text("rrule").notNull(),
@@ -2307,6 +2473,7 @@ export const financeRecurringRules = pgTable("finance_recurring_rules", {
   index("finance_recurring_rules_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
   index("finance_recurring_rules_tenant_status_next_run_idx").on(t.tenantId, t.status, t.nextRunAt),
   index("finance_recurring_rules_source_hash_idx").on(t.sourceHash),
+  index("finance_recurring_rules_counterparty_idx").on(t.counterpartyId),
   index("finance_recurring_rules_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
   index("finance_recurring_rules_source_message_idx").on(t.sourceMessageId),
   index("finance_recurring_rules_source_library_item_idx").on(t.sourceLibraryItemId),
@@ -2326,6 +2493,7 @@ export const financeDrafts = pgTable("finance_drafts", {
   source: financeSourceEnum("source").notNull(),
   idempotencyKey: varchar("idempotency_key", { length: 256 }).notNull(),
   sourceHash: varchar("source_hash", { length: 64 }),
+  semanticFingerprint: varchar("semantic_fingerprint", { length: 64 }),
   payloadJson: jsonb("payload_json").$type<Record<string, any>>().notNull().default({}),
   missingFields: text("missing_fields").array().notNull().default(sql`'{}'`),
   confidence: numeric("confidence", { precision: 3, scale: 2 }),
@@ -2343,6 +2511,7 @@ export const financeDrafts = pgTable("finance_drafts", {
   index("finance_drafts_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
   index("finance_drafts_tenant_status_created_idx").on(t.tenantId, t.status, t.createdAt),
   index("finance_drafts_source_hash_idx").on(t.sourceHash),
+  index("finance_drafts_semantic_fingerprint_idx").on(t.semanticFingerprint),
   index("finance_drafts_source_message_idx").on(t.sourceMessageId),
   index("finance_drafts_source_library_item_idx").on(t.sourceLibraryItemId),
   index("finance_drafts_recurring_rule_idx").on(t.recurringRuleId),
@@ -2365,11 +2534,24 @@ export const financeTransactions = pgTable("finance_transactions", {
   currency: varchar("currency", { length: 3 }).notNull().default("THB"),
   occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
   categoryCode: varchar("category_code", { length: 64 }).notNull(),
+  counterpartyId: integer("counterparty_id").references(() => financeCounterparties.id, { onDelete: "set null" }),
+  counterpartyName: text("counterparty_name"),
   merchantName: text("merchant_name"),
   note: text("note"),
+  slipReference: text("slip_reference"),
+  merchantId: text("merchant_id"),
+  paymentFeeMinor: integer("payment_fee_minor"),
+  paymentSourceAccountId: integer("payment_source_account_id").references(() => financePaymentAccounts.id, { onDelete: "set null" }),
+  paymentDestinationAccountId: integer("payment_destination_account_id").references(() => financePaymentAccounts.id, { onDelete: "set null" }),
+  paymentSourceName: text("payment_source_name"),
+  paymentDestinationName: text("payment_destination_name"),
+  paymentMethodKind: financePaymentInstrumentKindEnum("payment_method_kind").notNull().default("unknown"),
+  paymentDirection: financePaymentDirectionEnum("payment_direction").notNull().default("unknown"),
+  paymentInstrumentConfidence: numeric("payment_instrument_confidence", { precision: 3, scale: 2 }),
   confidence: numeric("confidence", { precision: 3, scale: 2 }),
   idempotencyKey: varchar("idempotency_key", { length: 256 }).notNull(),
   sourceHash: varchar("source_hash", { length: 64 }),
+  semanticFingerprint: varchar("semantic_fingerprint", { length: 64 }),
   confirmedFromDraftId: integer("confirmed_from_draft_id").references(() => financeDrafts.id, { onDelete: "set null" }),
   recurringRuleId: integer("recurring_rule_id").references(() => financeRecurringRules.id, { onDelete: "set null" }),
   sourceMessageId: integer("source_message_id").references(() => messages.id, { onDelete: "set null" }),
@@ -2390,9 +2572,14 @@ export const financeTransactions = pgTable("finance_transactions", {
   index("finance_transactions_tenant_project_owner_idx").on(t.tenantId, t.projectId, t.ownerUserId),
   index("finance_transactions_tenant_status_occurred_idx").on(t.tenantId, t.status, t.occurredAt),
   index("finance_transactions_source_hash_idx").on(t.sourceHash),
+  index("finance_transactions_semantic_fingerprint_idx").on(t.semanticFingerprint),
   index("finance_transactions_source_message_idx").on(t.sourceMessageId),
   index("finance_transactions_source_library_item_idx").on(t.sourceLibraryItemId),
   index("finance_transactions_recurring_rule_idx").on(t.recurringRuleId),
+  index("finance_transactions_counterparty_idx").on(t.counterpartyId),
+  index("finance_transactions_payment_source_account_idx").on(t.paymentSourceAccountId),
+  index("finance_transactions_payment_destination_account_idx").on(t.paymentDestinationAccountId),
+  index("finance_transactions_payment_method_kind_idx").on(t.paymentMethodKind),
   index("finance_transactions_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
   index("finance_transactions_owner_voided_idx").on(t.tenantId, t.ownerUserId, t.voidedAt),
   check("finance_transactions_amount_minor_positive", sql`${t.amountMinor} > 0`),
@@ -3479,6 +3666,90 @@ export const systemSettings = pgTable("system_settings", {
 
 export type SystemSettings = typeof systemSettings.$inferSelect;
 export type InsertSystemSettings = typeof systemSettings.$inferInsert;
+
+export const workpackRecordTypeEnum = pgEnum("workpack_record_type", [
+  "case_source",
+  "playbook",
+  "workpack",
+  "workpack_version",
+  "workpack_run",
+  "simulation_run",
+  "workpack_exception",
+  "benchmark_pack",
+  "promotion_record",
+  "improvement_proposal",
+  "telemetry_event",
+  "metric_snapshot",
+  "incident_record",
+  "schedule_record",
+]);
+
+export const workpackRecords = pgTable("workpack_records", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  recordType: workpackRecordTypeEnum("recordType").notNull(),
+  recordId: varchar("recordId", { length: 128 }).notNull(),
+  workpackId: varchar("workpackId", { length: 128 }),
+  sortTimestamp: timestamp("sortTimestamp", { withTimezone: true }),
+  payloadJson: jsonb("payloadJson").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("workpack_records_tenant_type_record_unique").on(t.tenantId, t.recordType, t.recordId),
+  index("workpack_records_type_record_idx").on(t.recordType, t.recordId),
+  index("workpack_records_tenant_type_idx").on(t.tenantId, t.recordType),
+  index("workpack_records_tenant_workpack_idx").on(t.tenantId, t.workpackId),
+  index("workpack_records_tenant_type_sort_idx").on(t.tenantId, t.recordType, t.sortTimestamp),
+]);
+
+export type WorkpackRecord = typeof workpackRecords.$inferSelect;
+export type InsertWorkpackRecord = typeof workpackRecords.$inferInsert;
+
+export const roleRecordTypeEnum = pgEnum("role_record_type", [
+  "role_blueprint",
+  "role_agent",
+  "role_contract",
+  "role_workpack_binding",
+  "role_routine",
+  "role_routine_run",
+  "role_checkpoint",
+  "role_message",
+  "role_handoff",
+  "role_metric_snapshot",
+  "role_exception_binding",
+  "role_improvement_proposal",
+  "role_promotion_gate",
+  "role_telemetry_event",
+  "role_incident_record",
+  "role_routine_queue_item",
+  "role_approval_request",
+  "role_memory_item",
+]);
+
+export const roleRecords = pgTable("role_records", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  recordType: roleRecordTypeEnum("recordType").notNull(),
+  recordId: varchar("recordId", { length: 128 }).notNull(),
+  roleId: varchar("roleId", { length: 128 }),
+  routineId: varchar("routineId", { length: 128 }),
+  routineRunId: varchar("routineRunId", { length: 128 }),
+  sortTimestamp: timestamp("sortTimestamp", { withTimezone: true }),
+  payloadJson: jsonb("payloadJson").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("role_records_tenant_type_record_unique").on(t.tenantId, t.recordType, t.recordId),
+  index("role_records_type_record_idx").on(t.recordType, t.recordId),
+  index("role_records_tenant_type_idx").on(t.tenantId, t.recordType),
+  index("role_records_tenant_role_idx").on(t.tenantId, t.roleId),
+  index("role_records_tenant_routine_idx").on(t.tenantId, t.routineId),
+  index("role_records_tenant_routine_run_idx").on(t.tenantId, t.routineRunId),
+  index("role_records_tenant_type_sort_idx").on(t.tenantId, t.recordType, t.sortTimestamp),
+]);
+
+export type RoleRecord = typeof roleRecords.$inferSelect;
+export type InsertRoleRecord = typeof roleRecords.$inferInsert;
 
 // ============================================================
 // Invoice Configuration - Per-tenant or global invoice settings
@@ -7942,6 +8213,7 @@ export const workerRuntimeTypeEnum = pgEnum("worker_runtime_type", [
   "desktop_zeroclaw_managed",
   "nemoclaw_sandbox",
   "hiclaw_cluster",
+  "hermes_agent_gateway",
 ]);
 
 export const workerStatusEnum = pgEnum("worker_status", [
@@ -8443,6 +8715,43 @@ export const workItemRiskClassEnum = pgEnum("work_item_risk_class", [
 export const workItemApprovalStateEnum = pgEnum("work_item_approval_state", [
   "not_required", "pending", "approved", "rejected",
 ]);
+export const workOsStateEnum = pgEnum("work_os_state", [
+  "new",
+  "triaged",
+  "planned",
+  "in_progress",
+  "waiting_for_approval",
+  "waiting_for_input",
+  "blocked",
+  "escalated",
+  "completed",
+  "cancelled",
+  "failed",
+]);
+export const workOsAssignmentTypeEnum = pgEnum("work_os_assignment_type", [
+  "human",
+  "queue",
+  "role",
+  "hybrid",
+]);
+export const workOsSlaBreachStateEnum = pgEnum("work_os_sla_breach_state", [
+  "none",
+  "at_risk",
+  "breached",
+  "resolved",
+]);
+export const workOsApprovalStatusEnum = pgEnum("work_os_approval_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "cancelled",
+]);
+export const workOsExceptionStatusEnum = pgEnum("work_os_exception_status", [
+  "open",
+  "paused",
+  "downgraded",
+  "resolved",
+]);
 export const agentEventCategoryEnum = pgEnum("agent_event_category", [
   "status_change", "communication", "tool_use", "memory_op",
   "artifact_op", "handoff", "approval", "error",
@@ -8651,6 +8960,231 @@ export const workItemEvents = pgTable("work_item_events", {
 
 export type WorkItemEvent = typeof workItemEvents.$inferSelect;
 export type InsertWorkItemEvent = typeof workItemEvents.$inferInsert;
+
+/**
+ * work_requests — initial intake records for business work.
+ */
+export const workRequests = pgTable("work_requests", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: integer("projectId"),
+  sourceType: varchar("sourceType", { length: 50 }).notNull(),
+  sourceRef: varchar("sourceRef", { length: 255 }),
+  requesterType: workOsAssignmentTypeEnum("requesterType").notNull().default("human"),
+  requesterId: varchar("requesterId", { length: 36 }),
+  workType: varchar("workType", { length: 100 }),
+  businessDomain: varchar("businessDomain", { length: 100 }),
+  urgency: varchar("urgency", { length: 30 }).notNull().default("normal"),
+  riskLevel: varchar("riskLevel", { length: 30 }).notNull().default("medium"),
+  classificationConfidence: doublePrecision("classificationConfidence"),
+  defaultOwnerType: workOsAssignmentTypeEnum("defaultOwnerType"),
+  defaultOwnerId: varchar("defaultOwnerId", { length: 36 }),
+  defaultQueueId: varchar("defaultQueueId", { length: 36 }),
+  title: varchar("title", { length: 500 }).notNull(),
+  objective: text("objective"),
+  currentState: workOsStateEnum("currentState").notNull().default("new"),
+  linkedConversationIdsJson: jsonb("linkedConversationIdsJson").$type<string[]>(),
+  linkedWorkpackRunIdsJson: jsonb("linkedWorkpackRunIdsJson").$type<string[]>(),
+  linkedRoleRoutineRunIdsJson: jsonb("linkedRoleRoutineRunIdsJson").$type<string[]>(),
+  linkedCaseId: varchar("linkedCaseId", { length: 36 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_requests_tenant_state_idx").on(t.tenantId, t.currentState, t.createdAt),
+  index("work_requests_tenant_source_idx").on(t.tenantId, t.sourceType, t.createdAt),
+]);
+
+export type WorkRequest = typeof workRequests.$inferSelect;
+export type InsertWorkRequest = typeof workRequests.$inferInsert;
+
+/**
+ * work_cases — durable business context spanning one or more tasks or runs.
+ */
+export const workCases = pgTable("work_cases", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  projectId: integer("projectId"),
+  requestId: varchar("requestId", { length: 36 }).notNull().references(() => workRequests.id, { onDelete: "cascade" }),
+  primaryTaskId: varchar("primaryTaskId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 500 }).notNull(),
+  summary: text("summary"),
+  ownerType: workOsAssignmentTypeEnum("ownerType"),
+  ownerId: varchar("ownerId", { length: 36 }),
+  priority: workItemPriorityEnum("priority").notNull().default("normal"),
+  riskLevel: varchar("riskLevel", { length: 30 }).notNull().default("medium"),
+  dataClassification: varchar("dataClassification", { length: 30 }).notNull().default("internal"),
+  currentState: workOsStateEnum("currentState").notNull().default("new"),
+  linkedConversationIdsJson: jsonb("linkedConversationIdsJson").$type<string[]>(),
+  linkedWorkpackRunIdsJson: jsonb("linkedWorkpackRunIdsJson").$type<string[]>(),
+  linkedRoleRoutineRunIdsJson: jsonb("linkedRoleRoutineRunIdsJson").$type<string[]>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_cases_tenant_state_idx").on(t.tenantId, t.currentState, t.updatedAt),
+  index("work_cases_request_idx").on(t.requestId),
+  index("work_cases_primary_task_idx").on(t.primaryTaskId),
+]);
+
+export type WorkCase = typeof workCases.$inferSelect;
+export type InsertWorkCase = typeof workCases.$inferInsert;
+
+/**
+ * work_assignments — immutable ownership history for work cases and tasks.
+ */
+export const workAssignments = pgTable("work_assignments", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).notNull().references(() => workCases.id, { onDelete: "cascade" }),
+  taskId: varchar("taskId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  previousOwnerType: workOsAssignmentTypeEnum("previousOwnerType"),
+  previousOwnerId: varchar("previousOwnerId", { length: 36 }),
+  ownerType: workOsAssignmentTypeEnum("ownerType").notNull(),
+  ownerId: varchar("ownerId", { length: 36 }),
+  assignmentSource: varchar("assignmentSource", { length: 50 }).notNull().default("manual"),
+  reason: text("reason"),
+  actorAssistantId: varchar("actorAssistantId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  actorUserId: integer("actorUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_assignments_case_created_idx").on(t.caseId, t.createdAt),
+  index("work_assignments_tenant_owner_idx").on(t.tenantId, t.ownerType, t.ownerId),
+  index("work_assignments_task_idx").on(t.taskId),
+]);
+
+export type WorkAssignment = typeof workAssignments.$inferSelect;
+export type InsertWorkAssignment = typeof workAssignments.$inferInsert;
+
+/**
+ * work_approvals — work-scoped approval checkpoints.
+ */
+export const workApprovals = pgTable("work_approvals", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).notNull().references(() => workCases.id, { onDelete: "cascade" }),
+  taskId: varchar("taskId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  approvalTransportId: varchar("approvalTransportId", { length: 36 }),
+  approvalStatus: workOsApprovalStatusEnum("approvalStatus").notNull().default("pending"),
+  approverType: workOsAssignmentTypeEnum("approverType").default("human"),
+  approverId: varchar("approverId", { length: 36 }),
+  comment: text("comment"),
+  metadataJson: jsonb("metadataJson"),
+  requestedAt: timestamp("requestedAt", { withTimezone: true }).defaultNow().notNull(),
+  respondedAt: timestamp("respondedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_approvals_case_status_idx").on(t.caseId, t.approvalStatus, t.createdAt),
+  index("work_approvals_task_idx").on(t.taskId),
+]);
+
+export type WorkApproval = typeof workApprovals.$inferSelect;
+export type InsertWorkApproval = typeof workApprovals.$inferInsert;
+
+/**
+ * work_exceptions — escalated policy, availability, or SLA tripwires.
+ */
+export const workExceptions = pgTable("work_exceptions", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).notNull().references(() => workCases.id, { onDelete: "cascade" }),
+  taskId: varchar("taskId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  exceptionType: varchar("exceptionType", { length: 100 }).notNull(),
+  severity: varchar("severity", { length: 30 }).notNull().default("medium"),
+  status: workOsExceptionStatusEnum("status").notNull().default("open"),
+  reason: text("reason"),
+  ownerType: workOsAssignmentTypeEnum("ownerType"),
+  ownerId: varchar("ownerId", { length: 36 }),
+  metadataJson: jsonb("metadataJson"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  resolvedAt: timestamp("resolvedAt", { withTimezone: true }),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_exceptions_case_status_idx").on(t.caseId, t.status, t.createdAt),
+  index("work_exceptions_task_idx").on(t.taskId),
+]);
+
+export type WorkException = typeof workExceptions.$inferSelect;
+export type InsertWorkException = typeof workExceptions.$inferInsert;
+
+/**
+ * work_outcomes — explicit business results for completed work.
+ */
+export const workOutcomes = pgTable("work_outcomes", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).notNull().references(() => workCases.id, { onDelete: "cascade" }),
+  taskId: varchar("taskId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  disposition: varchar("disposition", { length: 100 }).notNull(),
+  resolutionCode: varchar("resolutionCode", { length: 100 }),
+  customerImpact: varchar("customerImpact", { length: 100 }),
+  reviewerResult: varchar("reviewerResult", { length: 100 }),
+  followUpRequired: boolean("followUpRequired").default(false).notNull(),
+  summary: text("summary"),
+  metadataJson: jsonb("metadataJson"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_outcomes_case_created_idx").on(t.caseId, t.createdAt),
+  index("work_outcomes_task_idx").on(t.taskId),
+]);
+
+export type WorkOutcome = typeof workOutcomes.$inferSelect;
+export type InsertWorkOutcome = typeof workOutcomes.$inferInsert;
+
+/**
+ * work_sla — explicit SLA envelope for routable work.
+ */
+export const workSlas = pgTable("work_slas", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).notNull().references(() => workCases.id, { onDelete: "cascade" }),
+  taskId: varchar("taskId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  policyId: varchar("policyId", { length: 36 }),
+  dueAt: timestamp("dueAt", { withTimezone: true }),
+  serviceWindowStartAt: timestamp("serviceWindowStartAt", { withTimezone: true }),
+  serviceWindowEndAt: timestamp("serviceWindowEndAt", { withTimezone: true }),
+  urgency: varchar("urgency", { length: 30 }).notNull().default("normal"),
+  breachState: workOsSlaBreachStateEnum("breachState").notNull().default("none"),
+  breachedAt: timestamp("breachedAt", { withTimezone: true }),
+  escalatedAt: timestamp("escalatedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_slas_case_due_idx").on(t.caseId, t.dueAt),
+  index("work_slas_task_idx").on(t.taskId),
+]);
+
+export type WorkSla = typeof workSlas.$inferSelect;
+export type InsertWorkSla = typeof workSlas.$inferInsert;
+
+/**
+ * work_os_events — append-only event log for request/case/task/approval/exception/outcome transitions.
+ */
+export const workOsEvents = pgTable("work_os_events", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).references(() => workCases.id, { onDelete: "cascade" }),
+  taskId: varchar("taskId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  actorAssistantId: varchar("actorAssistantId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  actorUserId: integer("actorUserId").references(() => users.id, { onDelete: "set null" }),
+  eventType: varchar("eventType", { length: 100 }).notNull(),
+  fromState: workOsStateEnum("fromState"),
+  toState: workOsStateEnum("toState"),
+  detailJson: jsonb("detailJson"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_os_events_case_created_idx").on(t.caseId, t.createdAt),
+  index("work_os_events_request_created_idx").on(t.requestId, t.createdAt),
+  index("work_os_events_task_created_idx").on(t.taskId, t.createdAt),
+]);
+
+export type WorkOsEvent = typeof workOsEvents.$inferSelect;
+export type InsertWorkOsEvent = typeof workOsEvents.$inferInsert;
 
 /**
  * agent_activity_events — append-only event log for monitoring.

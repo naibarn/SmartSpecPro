@@ -94,6 +94,9 @@ export const domainAdminProcedure = t.procedure.use(
   }),
 );
 
+// Work intake procedures - authenticated users can create and inspect their own requests
+export const workIntakeProcedure = protectedProcedure;
+
 // Rate-limited domain admin procedure - auth check first, then rate limit
 // Used for sensitive export and query operations that need abuse protection
 export const rateLimitedDomainAdminProcedure = t.procedure

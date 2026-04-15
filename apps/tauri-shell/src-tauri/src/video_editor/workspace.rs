@@ -10,7 +10,7 @@ pub fn get_video_editor_workspace_path() -> Result<String, String> {
         .ok_or_else(|| "Failed to get home directory".to_string())?;
 
     let workspace = home_dir
-        .join("SmartSpecPro")
+        .join("SmartAIHub")
         .join("VideoEditor")
         .join("workspace");
 
@@ -28,7 +28,7 @@ pub fn get_video_editor_projects_path() -> Result<String, String> {
         .ok_or_else(|| "Failed to get home directory".to_string())?;
 
     let projects = home_dir
-        .join("SmartSpecPro")
+        .join("SmartAIHub")
         .join("VideoEditor")
         .join("projects");
 

@@ -17,6 +17,7 @@ from .uvoice_provider import UVoiceProvider
 from .fal_ai_provider import FalAIProvider
 from .knplabai_provider import KNPLabsProvider
 from .nvidia_nim_provider import NvidiaNimProvider
+from .omnivoice_provider import OmniVoiceProvider
 from .wavespeed_media_provider import WaveSpeedMediaProvider
 
 __all__ = [
@@ -34,5 +35,6 @@ __all__ = [
     "FalAIProvider",
     "KNPLabsProvider",
     "NvidiaNimProvider",
+    "OmniVoiceProvider",
     "WaveSpeedMediaProvider",
 ]

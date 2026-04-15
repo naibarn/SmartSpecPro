@@ -8,6 +8,8 @@ import { router, protectedProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { debugLog, debugError } from "../_core/logger";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
+import * as workOsService from "../services/workOsService";
+import { resolveTenantIdVarchar } from "../services/tenantContext";
 
 /**
  * Approval request status enum
@@ -41,6 +43,14 @@ function getAuthToken(ctx: { userToken: string | null; user: { id: number } }): 
     code: "UNAUTHORIZED",
     message: "No authentication token available",
   });
+}
+
+function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: number | null } | null }): string {
+  const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+  if (!tenantId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Tenant context required" });
+  }
+  return tenantId;
 }
 
 /**
@@ -266,6 +276,9 @@ export const approvalsRouter = router({
         requestId: z.string().uuid(),
         decision: z.enum(["approved", "rejected"]),
         comment: z.string().max(1000).optional(),
+        workRequestId: z.string().min(1).optional(),
+        workCaseId: z.string().min(1).optional(),
+        workTaskId: z.string().min(1).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -302,6 +315,19 @@ export const approvalsRouter = router({
 
         const data = await response.json();
 
+        if (input.workCaseId) {
+          await workOsService.recordApproval({
+            tenantId: requireTenantId(ctx),
+            requestId: input.workRequestId ?? null,
+            caseId: input.workCaseId,
+            taskId: input.workTaskId ?? null,
+            approvalTransportId: input.requestId,
+            decision: input.decision,
+            comment: input.comment ?? null,
+            actorUserId: ctx.user.id,
+          });
+        }
+
         debugLog("Approvals", "Decision submitted", {
           userId: ctx.user.id,
           requestId: input.requestId,
@@ -327,6 +353,9 @@ export const approvalsRouter = router({
       z.object({
         requestId: z.string().uuid(),
         reason: z.string().max(500).optional(),
+        workRequestId: z.string().min(1).optional(),
+        workCaseId: z.string().min(1).optional(),
+        workTaskId: z.string().min(1).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -360,6 +389,19 @@ export const approvalsRouter = router({
         }
 
         const data = await response.json();
+
+        if (input.workCaseId) {
+          await workOsService.recordApproval({
+            tenantId: requireTenantId(ctx),
+            requestId: input.workRequestId ?? null,
+            caseId: input.workCaseId,
+            taskId: input.workTaskId ?? null,
+            approvalTransportId: input.requestId,
+            decision: "cancelled",
+            comment: input.reason ?? null,
+            actorUserId: ctx.user.id,
+          });
+        }
 
         debugLog("Approvals", "Request cancelled", {
           userId: ctx.user.id,

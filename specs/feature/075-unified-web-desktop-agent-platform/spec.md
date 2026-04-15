@@ -11,12 +11,12 @@ Audience: Product, Web Control Plane, Desktop/Tauri, Runtime, Skills, Agency, Se
 
 ## 1. Executive summary
 
-SmartSpecPro should behave as **one product with two execution surfaces**:
+SmartAIHub should behave as **one product with two execution surfaces**:
 
 - **Web** is the universal surface and control plane
 - **Desktop** is the local execution-rich surface
 
-This feature turns the current Tauri shell into **SmartSpecPro Desktop Host** and defines how it works with:
+This feature turns the current Tauri shell into **SmartAIHub Desktop Host** and defines how it works with:
 
 - gateway-only managed LLM routing
 - local execution through **Pi**
@@ -41,7 +41,7 @@ The product outcome is:
 
 ## 2. Problem statement
 
-SmartSpecPro already has important pieces of the future architecture, but they are still fragmented:
+SmartAIHub already has important pieces of the future architecture, but they are still fragmented:
 
 - the Tauri shell can run local Docker, PTY, file, Git, video, and local skill commands
 - Feature 070 adds local Gemma 4 inference for lightweight work
@@ -58,7 +58,7 @@ Initial gaps this feature addresses:
 - there is no runtime router that explains when work should use platform skill, Pi, Agency Swarm, or external worker runtime
 - desktop and web do not yet share one complete trust-and-label model for runs, packages, and locality
 
-Without this feature, SmartSpecPro risks shipping:
+Without this feature, SmartAIHub risks shipping:
 
 - a strong web control plane
 - a strong but permissive local shell
@@ -70,7 +70,7 @@ instead of a coherent unified product.
 
 ## 3. Goals
 
-1. Define SmartSpecPro as one product with web and desktop surfaces.
+1. Define SmartAIHub as one product with web and desktop surfaces.
 2. Elevate the existing Tauri shell into a governed Desktop Host.
 3. Introduce a canonical desktop device identity, policy, and offboarding model.
 4. Add signed package sync and materialization for desktop-local skills and agencies.
@@ -179,7 +179,7 @@ The new desktop-host model supersedes or narrows prior documents as follows:
 ### 6.2 Desktop foundation
 
 - The desktop product remains the existing Tauri shell path at `apps/tauri-shell`.
-- Feature 075 renames the architecture role of that shell to **SmartSpecPro Desktop Host**.
+- Feature 075 renames the architecture role of that shell to **SmartAIHub Desktop Host**.
 
 ### 6.3 Runtime taxonomy
 
@@ -259,6 +259,8 @@ Rules:
   - last-seen timestamp
   - proof-of-possession algorithm and binding mode
   - attestation/storage mode reported by desktop
+  - attestation provider, evidence digest, and reported claims when desktop exposes them
+  - attestation support source, default mode, helper reachability, and supported modes when desktop exposes an external broker posture report
 - the same settings surface should show local parser posture, including:
   - isolation mode
   - supported rich-document formats
@@ -266,6 +268,10 @@ Rules:
   - PDF extraction backend, render backend, office renderer, and OCR provider when available
   - whether parser posture is text-extraction only, rendering without OCR, or render-plus-OCR capable
   - rendered preview formats when desktop exposes them
+  - whether multi-page rendering is available and the maximum rendered page count
+  - OCR layout mode for rendered extraction paths
+  - whether macro inspection and embedded media inspection are available
+  - layout analysis mode for rendered or structurally segmented extraction paths
   - bounded input and timeout limits
 
 ### 6.7 Workspace posture
@@ -282,13 +288,13 @@ Rules:
 
 ### 6.8.1 Desktop-to-platform transport posture
 
-- Desktop Host is **HTTP-first, MCP-second** when talking to SmartSpecPro platform services
+- Desktop Host is **HTTP-first, MCP-second** when talking to SmartAIHub platform services
 - Pi and Agency Swarm should consume Desktop Host adapters, and those adapters should prefer durable HTTP contracts where they already exist
 - MCP remains valid where tool/workspace semantics fit better, but it must not become a third undocumented platform surface
 
 ### 6.8.2 Truthful locality labels
 
-- Feature 075 inherits Feature 070's rule that `Local` is reserved for flows where the relevant raw input did not traverse the SmartSpecPro backend before inference or execution
+- Feature 075 inherits Feature 070's rule that `Local` is reserved for flows where the relevant raw input did not traverse the SmartAIHub backend before inference or execution
 - Desktop Host runs that still depend on server-persisted chat state, server-mediated tools, or platform-side completion should typically be labeled `Hybrid`, not `Local`
 - the product must publish a run-label matrix so desktop, web, and worker runtimes render locality truthfully and consistently
 
@@ -320,7 +326,7 @@ Rules:
 
 ### 6.12 Desktop update trust chain
 
-- SmartSpecPro Desktop Host binaries, bundled runtime support packs, and updater payloads must be signed
+- SmartAIHub Desktop Host binaries, bundled runtime support packs, and updater payloads must be signed
 - the desktop host must verify binary/update provenance before applying upgrades
 - rollback and downgrade protection must exist for the app bundle and for runtime support components where version skew can weaken policy enforcement
 - the desktop host must maintain a trusted signer set / public-key set for update verification, with support for signed key rotation and emergency signer revocation
@@ -332,7 +338,7 @@ Rules:
 ## 7. High-level architecture
 
 ```text
-SmartSpecPro Server (Control Plane)
+SmartAIHub Server (Control Plane)
   ├─ Auth / SSO / Policy / Trust / Signing / Revocation
   ├─ Package Registry (skills, agencies, support packs)
   ├─ Signed Release Metadata / Update Policy
@@ -341,7 +347,7 @@ SmartSpecPro Server (Control Plane)
   ├─ Run Metadata / Shared History / Admin Views
   └─ Web Product
 
-SmartSpecPro Desktop Host (Tauri)
+SmartAIHub Desktop Host (Tauri)
   ├─ Unified Workbench UI
   ├─ Device Identity + Policy Bridge
   ├─ Package Sync + Materializer
@@ -468,8 +474,8 @@ Desktop-host truth:
 
 - managed workspaces must use policy-controlled container profiles
 - default network posture is restricted:
-  - SmartSpecPro server allowed
-  - SmartSpecPro gateway allowed
+  - SmartAIHub server allowed
+  - SmartAIHub gateway allowed
   - approved connector endpoints allowed
   - all else denied unless policy permits
 - mounts must be generated from approved roots and workspace policy, not direct user-provided Docker volume strings in managed mode
@@ -482,7 +488,7 @@ Desktop-host truth:
 
 ### 8.8 Connector runtime and secrets
 
-- local connectors must run through a SmartSpecPro-managed connector runtime
+- local connectors must run through a SmartAIHub-managed connector runtime
 - runtimes consume connector actions through host APIs, not arbitrary SDK use in managed mode
 - connector credentials are device-scoped and stored in the desktop secure store
 - secrets must be runtime-scoped and short-lived where practical
@@ -645,7 +651,7 @@ Phase 4 exit gate:
 
 ## 13. Final decision statement
 
-SmartSpecPro should standardize on this end-state:
+SmartAIHub should standardize on this end-state:
 
 - Web is the control plane and universal surface.
 - Desktop Host is the local execution-rich surface built on the existing Tauri shell.

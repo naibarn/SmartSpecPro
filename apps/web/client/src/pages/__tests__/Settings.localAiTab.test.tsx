@@ -104,6 +104,7 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
         "settings.tabs.localAi": "Local AI",
         "settings.tabs.notifications": "Notifications",
         "settings.tabs.automation": "Automation",
+        "settings.tabs.workers": "Workers",
         "settings.tabs.apiKeys": "API Keys",
         "settings.tabs.billing": "Billing",
         "settings.tabs.integrations": "Integrations",
@@ -164,6 +165,9 @@ vi.mock("@/components/settings/PersonasPanel", () => ({
 }));
 vi.mock("@/components/settings/UserAutomationPreferencesPanel", () => ({
   UserAutomationPreferencesPanel: () => <div />,
+}));
+vi.mock("@/components/settings/WorkerAccessKeysPanel", () => ({
+  WorkerAccessKeysPanel: () => <div />,
 }));
 vi.mock("@/components/settings/NotificationPreferencesPanel", () => ({
   NotificationPreferencesPanel: () => <div />,

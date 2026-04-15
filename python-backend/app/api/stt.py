@@ -145,6 +145,13 @@ class TTSRequest(BaseModel):
     voice: str = "alloy"
     speed: float = Field(default=1.0, ge=0.25, le=4.0)
     format: str = "mp3"
+    instruct: Optional[str] = None
+    reference_audio_base64: Optional[str] = Field(
+        default=None,
+        max_length=13_333_336,  # ~10MB raw audio after base64 expansion
+    )
+    reference_audio_url: Optional[str] = None
+    reference_text: Optional[str] = None
 
 
 @router.post(
@@ -169,7 +176,7 @@ async def synthesize_speech(
     if len(body.text) > MAX_TTS_CHARS:
         raise HTTPException(status_code=413, detail=f"Text exceeds {MAX_TTS_CHARS} characters")
 
-    if body.provider not in ("openai", "elevenlabs", "knplabs", "knplabai"):
+    if body.provider not in ("openai", "elevenlabs", "knplabs", "knplabai", "omnivoice"):
         raise HTTPException(status_code=400, detail=f"Unsupported TTS provider: {body.provider}")
 
     try:
@@ -197,9 +204,18 @@ async def _call_tts_provider(body: TTSRequest) -> tuple[bytes, str]:
             voice=body.voice,
             speed=body.speed,
             format=body.format,
+            instruct=body.instruct,
+            reference_audio_base64=body.reference_audio_base64,
+            reference_audio_url=body.reference_audio_url,
+            reference_text=body.reference_text,
         )
         audio_bytes = result.get("audio_bytes", b"")
-        content_type = "audio/mpeg" if body.format == "mp3" else "audio/pcm"
+        if body.format == "wav":
+            content_type = "audio/wav"
+        elif body.format == "mp3":
+            content_type = "audio/mpeg"
+        else:
+            content_type = "audio/pcm"
         return audio_bytes, content_type
     except ImportError:
         logger.error("unified_client_not_available", detail="TTS unavailable — unified client not configured")

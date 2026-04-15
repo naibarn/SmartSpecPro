@@ -1,5 +1,5 @@
 #!/bin/bash
-# Security Check Script for SmartSpec Pro
+# Security Check Script for SmartAIHub
 # RISK-014 FIX: Automated security scanning
 #
 # Usage: ./scripts/security-check.sh [--fix] [--ci]
@@ -34,7 +34,7 @@ for arg in "$@"; do
 done
 
 echo "========================================"
-echo "SmartSpec Pro Security Check"
+echo "SmartAIHub Security Check"
 echo "========================================"
 echo ""
 

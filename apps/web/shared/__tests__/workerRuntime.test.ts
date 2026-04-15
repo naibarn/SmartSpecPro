@@ -10,6 +10,7 @@ import {
   LOCAL_FOLDER_INGEST_PROGRESS_STAGES,
   VIDEO_ASSEMBLY_FAILURE_CODES,
   VIDEO_ASSEMBLY_PROGRESS_STAGES,
+  WORKER_RUNTIME_DEFINITIONS,
   comfyImageGenerationJobContractSchema,
   comfyWorkflowRunJobContractSchema,
   WORKER_RUNTIME_FAMILY_SCHEMA_VERSION,
@@ -23,13 +24,23 @@ import {
   workerDesktopExecutionIdentitySchema,
   workerHeartbeatPayloadSchema,
   workerRegistrationPayloadSchema,
+  summarizeHermesProviderRouting,
+  summarizeHermesRuntimeChannel,
+  summarizeHermesRuntimeMemorySync,
+  summarizeHermesRuntimePersona,
+  summarizeHermesTaskMode,
   workerRuntimeTypeValues,
   workerScopeValues,
 } from "../workerRuntime";
+import { evaluateHermesCapabilityRolloutReadiness } from "../featureFlags";
 
 describe("workerRuntime shared contracts", () => {
   it("includes openclaw_gateway in the runtime vocabulary", () => {
     expect(workerRuntimeTypeValues).toContain("openclaw_gateway");
+  });
+
+  it("includes hermes_agent_gateway in the runtime vocabulary", () => {
+    expect(workerRuntimeTypeValues).toContain("hermes_agent_gateway");
   });
 
   it("exposes worker scopes for the control-plane loop", () => {
@@ -168,6 +179,426 @@ describe("workerRuntime shared contracts", () => {
       expect.objectContaining({ path: "/v1/models" }),
       expect.objectContaining({ path: "/v1/knowledge/rag/ingest" }),
     ]));
+  });
+
+  it("defines Hermes as a feature-gated external runtime with limited dispatch", () => {
+    expect(WORKER_RUNTIME_DEFINITIONS.hermes_agent_gateway).toEqual(expect.objectContaining({
+      runtimeType: "hermes_agent_gateway",
+      displayName: "Hermes Agent Gateway",
+      familyName: "Hermes",
+      featureFlag: "hermesAgentRuntime",
+      registrationSupport: "feature_gated",
+      dispatchSupport: "limited",
+      gatewayCompatibility: expect.objectContaining({
+        preferredTransport: "http",
+        httpEndpoints: expect.arrayContaining([
+          expect.objectContaining({ path: "/v1/chat/completions" }),
+          expect.objectContaining({ path: "/v1/responses" }),
+          expect.objectContaining({ path: "/v1/models" }),
+        ]),
+      }),
+    }));
+  });
+
+  it("labels Desktop + ZeroClaw with a user-facing family name", () => {
+    expect(WORKER_RUNTIME_DEFINITIONS.desktop_zeroclaw_managed).toEqual(expect.objectContaining({
+      runtimeType: "desktop_zeroclaw_managed",
+      displayName: "Desktop + ZeroClaw Managed Runtime",
+      familyName: "Desktop + ZeroClaw",
+      featureFlag: "desktopZeroClawWorker",
+      registrationSupport: "feature_gated",
+      dispatchSupport: "limited",
+    }));
+  });
+
+  it("validates Hermes bridge runtime metadata requirements", () => {
+    const parsed = workerRegistrationPayloadSchema.parse({
+      compatibility: {
+        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+        runtimeVersion: "0.3.0",
+      },
+      runtimeType: "hermes_agent_gateway",
+      workerMode: "per_user",
+      runtimeMode: "external_managed",
+      displayName: "Hermes Personal Agent",
+      externalReference: "hermes://profiles/default",
+      runtimeMetadataJson: {
+        hermesVersion: "0.3.0",
+        profileName: "default",
+        profileLabel: "Default Personal Assistant",
+        profilePurpose: "Handle personal follow-up and coordination",
+        apiServerEnabled: true,
+        apiServerBaseUrl: "http://127.0.0.1:9001",
+        terminalBackend: "local",
+        gatewayPlatforms: ["telegram", "discord"],
+        supportsDelegatedHttp: true,
+        supportsDelegatedMcp: false,
+        supportsBoundConnector: true,
+        supportsCallbacks: true,
+        hostPlatform: "linux",
+        hostExecutionMode: "native",
+      },
+    });
+
+    expect(parsed.runtimeMetadataJson).toEqual(expect.objectContaining({
+      hermesVersion: "0.3.0",
+      profileName: "default",
+      profileLabel: "Default Personal Assistant",
+      profilePurpose: "Handle personal follow-up and coordination",
+      apiServerEnabled: true,
+      apiServerBaseUrl: "http://127.0.0.1:9001",
+      supportsDelegatedHttp: true,
+      supportsCallbacks: true,
+    }));
+
+    expect(() => workerRegistrationPayloadSchema.parse({
+      compatibility: {
+        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+        runtimeVersion: "0.3.0",
+      },
+      runtimeType: "hermes_agent_gateway",
+      workerMode: "per_user",
+      runtimeMode: "external_managed",
+      displayName: "Broken Hermes",
+      externalReference: "hermes://profiles/default",
+      runtimeMetadataJson: {
+        hermesVersion: "0.3.0",
+        profileName: "default",
+        profileLabel: "Default Personal Assistant",
+        profilePurpose: "Handle personal follow-up and coordination",
+        apiServerEnabled: true,
+        terminalBackend: "local",
+        gatewayPlatforms: ["telegram"],
+        supportsDelegatedHttp: true,
+        supportsDelegatedMcp: false,
+        supportsBoundConnector: true,
+        supportsCallbacks: true,
+        hostPlatform: "linux",
+        hostExecutionMode: "native",
+      },
+    })).toThrow(/apiServerBaseUrl/i);
+  });
+
+  it("allows audited remote Hermes API servers when a policy exception is supplied", () => {
+    const parsed = workerRegistrationPayloadSchema.parse({
+      compatibility: {
+        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+        runtimeVersion: "0.3.0",
+      },
+      runtimeType: "hermes_agent_gateway",
+      workerMode: "per_user",
+      runtimeMode: "external_managed",
+      displayName: "Hermes Personal Agent",
+      externalReference: "hermes://profiles/default",
+      runtimeMetadataJson: {
+        hermesVersion: "0.3.0",
+        profileName: "default",
+        profileLabel: "Default Personal Assistant",
+        profilePurpose: "Handle personal follow-up and coordination",
+        apiServerEnabled: true,
+        apiServerBaseUrl: "https://hermes.example.com",
+        remoteEndpointPolicyExceptionId: "hermes-remote-allow-001",
+        terminalBackend: "local",
+        gatewayPlatforms: ["telegram", "discord"],
+        supportsDelegatedHttp: true,
+        supportsDelegatedMcp: false,
+        supportsBoundConnector: true,
+        supportsCallbacks: true,
+        hostPlatform: "linux",
+        hostExecutionMode: "native",
+      },
+    });
+
+    expect(parsed.runtimeMetadataJson).toEqual(expect.objectContaining({
+      apiServerBaseUrl: "https://hermes.example.com",
+      remoteEndpointPolicyExceptionId: "hermes-remote-allow-001",
+    }));
+  });
+
+  it("validates pinned Hermes provider routing metadata", () => {
+    const parsed = workerRegistrationPayloadSchema.parse({
+      compatibility: {
+        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+        runtimeVersion: "0.3.0",
+      },
+      runtimeType: "hermes_agent_gateway",
+      workerMode: "per_user",
+      runtimeMode: "external_managed",
+      displayName: "Hermes Personal Agent",
+      externalReference: "hermes://profiles/default",
+      runtimeMetadataJson: {
+        hermesVersion: "0.3.0",
+        profileName: "default",
+        llmRoutingMode: "pinned_provider",
+        preferredProviderId: 42,
+        preferredProviderName: "OpenRouter",
+        terminalBackend: "local",
+        gatewayPlatforms: ["telegram"],
+        supportsDelegatedHttp: true,
+        supportsDelegatedMcp: false,
+        supportsBoundConnector: true,
+        supportsCallbacks: true,
+        apiServerEnabled: true,
+        apiServerBaseUrl: "http://127.0.0.1:9001",
+        hostPlatform: "linux",
+        hostExecutionMode: "native",
+      },
+    });
+
+    expect(parsed.runtimeMetadataJson).toEqual(expect.objectContaining({
+      llmRoutingMode: "pinned_provider",
+      preferredProviderId: 42,
+      preferredProviderName: "OpenRouter",
+    }));
+
+    expect(() => workerRegistrationPayloadSchema.parse({
+      compatibility: {
+        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+        runtimeVersion: "0.3.0",
+      },
+      runtimeType: "hermes_agent_gateway",
+      workerMode: "per_user",
+      runtimeMode: "external_managed",
+      displayName: "Broken Hermes",
+      externalReference: "hermes://profiles/default",
+      runtimeMetadataJson: {
+        hermesVersion: "0.3.0",
+        profileName: "default",
+        llmRoutingMode: "pinned_provider",
+        terminalBackend: "local",
+        gatewayPlatforms: ["telegram"],
+        supportsDelegatedHttp: true,
+        supportsDelegatedMcp: false,
+        supportsBoundConnector: true,
+        supportsCallbacks: true,
+        apiServerEnabled: true,
+        apiServerBaseUrl: "http://127.0.0.1:9001",
+        hostPlatform: "linux",
+        hostExecutionMode: "native",
+      },
+    })).toThrow(/preferredProviderId/i);
+  });
+
+  it("rejects audited remote Hermes API servers that downgrade to http", () => {
+    expect(() => workerRegistrationPayloadSchema.parse({
+      compatibility: {
+        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+        runtimeVersion: "0.3.0",
+      },
+      runtimeType: "hermes_agent_gateway",
+      workerMode: "per_user",
+      runtimeMode: "external_managed",
+      displayName: "Hermes Personal Agent",
+      externalReference: "hermes://profiles/default",
+      runtimeMetadataJson: {
+        hermesVersion: "0.3.0",
+        profileName: "default",
+        profileLabel: "Default Personal Assistant",
+        profilePurpose: "Handle personal follow-up and coordination",
+        apiServerEnabled: true,
+        apiServerBaseUrl: "http://hermes.example.com",
+        remoteEndpointPolicyExceptionId: "hermes-remote-allow-001",
+        terminalBackend: "local",
+        gatewayPlatforms: ["telegram"],
+        supportsDelegatedHttp: true,
+        supportsDelegatedMcp: false,
+        supportsBoundConnector: true,
+        supportsCallbacks: true,
+        hostPlatform: "linux",
+        hostExecutionMode: "native",
+      },
+    })).toThrow(/https/i);
+  });
+
+  it("rejects remote Hermes API servers without a policy exception", () => {
+    expect(() => workerRegistrationPayloadSchema.parse({
+      compatibility: {
+        protocolVersion: WORKER_RUNTIME_PROTOCOL_VERSION,
+        runtimeVersion: "0.3.0",
+      },
+      runtimeType: "hermes_agent_gateway",
+      workerMode: "per_user",
+      runtimeMode: "external_managed",
+      displayName: "Hermes Personal Agent",
+      externalReference: "hermes://profiles/default",
+      runtimeMetadataJson: {
+        hermesVersion: "0.3.0",
+        profileName: "default",
+        profileLabel: "Default Personal Assistant",
+        profilePurpose: "Handle personal follow-up and coordination",
+        apiServerEnabled: true,
+        apiServerBaseUrl: "https://hermes.example.com",
+        terminalBackend: "local",
+        gatewayPlatforms: ["telegram"],
+        supportsDelegatedHttp: true,
+        supportsDelegatedMcp: false,
+        supportsBoundConnector: true,
+        supportsCallbacks: true,
+        hostPlatform: "linux",
+        hostExecutionMode: "native",
+      },
+    })).toThrow(/loopback/i);
+  });
+
+  it("summarizes Hermes persona metadata with safe generic fallback", () => {
+    expect(summarizeHermesRuntimePersona({
+      hermesVersion: "0.3.0",
+      profileName: "default",
+      profileLabel: "Default Personal Assistant",
+      profilePurpose: "Handle personal follow-up and coordination",
+      apiServerEnabled: true,
+      apiServerBaseUrl: "http://127.0.0.1:9001",
+      terminalBackend: "local",
+      gatewayPlatforms: ["telegram"],
+      supportsDelegatedHttp: true,
+      supportsDelegatedMcp: false,
+      supportsBoundConnector: true,
+      supportsCallbacks: true,
+      hostPlatform: "linux",
+      hostExecutionMode: "native",
+    })).toEqual(expect.objectContaining({
+      profileName: "default",
+      profileLabel: "Default Personal Assistant",
+      profilePurpose: "Handle personal follow-up and coordination",
+      displayLabel: "Default Personal Assistant",
+      displayPurpose: "Handle personal follow-up and coordination",
+      isGenericFallback: false,
+    }));
+
+    expect(summarizeHermesRuntimePersona(null)).toEqual(expect.objectContaining({
+      profileName: null,
+      displayLabel: "Generic Hermes",
+      displayPurpose: "Default Hermes behavior",
+      isGenericFallback: true,
+    }));
+  });
+
+  it("summarizes Hermes channel, memory sync, and task mode state", () => {
+    expect(summarizeHermesRuntimeChannel({
+      hermesVersion: "0.3.0",
+      profileName: "default",
+      terminalBackend: "local",
+      gatewayPlatforms: ["telegram", "discord"],
+      supportsDelegatedHttp: true,
+      supportsDelegatedMcp: true,
+      supportsBoundConnector: true,
+      supportsCallbacks: true,
+      apiServerEnabled: true,
+      apiServerBaseUrl: "http://127.0.0.1:9001",
+      hostPlatform: "linux",
+      hostExecutionMode: "native",
+      memorySyncEnabled: true,
+      memorySyncScope: "personal",
+      memorySyncStatus: "active",
+      channelStatus: "connected",
+    }, "online", null)).toEqual(expect.objectContaining({
+      channelStatus: "connected",
+      displayLabel: "Connected",
+      hasCallbackSupport: true,
+      connectedPlatforms: ["telegram", "discord"],
+    }));
+
+    expect(summarizeHermesRuntimeChannel({
+      hermesVersion: "0.3.0",
+      profileName: "default",
+      terminalBackend: "local",
+      gatewayPlatforms: ["telegram"],
+      supportsDelegatedHttp: true,
+      supportsDelegatedMcp: false,
+      supportsBoundConnector: true,
+      supportsCallbacks: true,
+      apiServerEnabled: true,
+      apiServerBaseUrl: "http://127.0.0.1:9001",
+      hostPlatform: "linux",
+      hostExecutionMode: "native",
+    }, "disabled", "2026-04-06T00:00:00.000Z")).toEqual(expect.objectContaining({
+      channelStatus: "revoked",
+      displayLabel: "Revoked",
+    }));
+
+    expect(summarizeHermesRuntimeMemorySync({
+      hermesVersion: "0.3.0",
+      profileName: "default",
+      terminalBackend: "local",
+      gatewayPlatforms: ["telegram"],
+      supportsDelegatedHttp: true,
+      supportsDelegatedMcp: false,
+      supportsBoundConnector: true,
+      supportsCallbacks: true,
+      apiServerEnabled: true,
+      apiServerBaseUrl: "http://127.0.0.1:9001",
+      hostPlatform: "linux",
+      hostExecutionMode: "native",
+      memorySyncEnabled: true,
+      memorySyncScope: "team_shared",
+      memorySyncStatus: "quarantined",
+      channelStatus: "inactive",
+    })).toEqual(expect.objectContaining({
+      memorySyncEnabled: true,
+      memorySyncScope: "team_shared",
+      memorySyncStatus: "quarantined",
+      displayLabel: "Memory sync quarantined",
+      isSharedScope: true,
+    }));
+
+    expect(summarizeHermesTaskMode("worker_gateway_researcher")).toEqual(expect.objectContaining({
+      taskMode: "research_summary",
+      scopeProfile: "worker_gateway_researcher",
+      displayLabel: "Research summary",
+    }));
+
+    expect(summarizeHermesTaskMode(null)).toEqual(expect.objectContaining({
+      taskMode: "generic_fallback",
+      scopeProfile: null,
+      displayLabel: "Generic fallback",
+    }));
+  });
+
+  it("summarizes Hermes provider routing state", () => {
+    expect(summarizeHermesProviderRouting({
+      hermesVersion: "0.3.0",
+      profileName: "default",
+      llmRoutingMode: "pinned_provider",
+      preferredProviderId: 12,
+      preferredProviderName: "OpenRouter",
+      terminalBackend: "local",
+      gatewayPlatforms: ["telegram"],
+      supportsDelegatedHttp: true,
+      supportsDelegatedMcp: false,
+      supportsBoundConnector: true,
+      supportsCallbacks: true,
+      apiServerEnabled: true,
+      apiServerBaseUrl: "http://127.0.0.1:9001",
+      hostPlatform: "linux",
+      hostExecutionMode: "native",
+    })).toEqual(expect.objectContaining({
+      llmRoutingMode: "pinned_provider",
+      preferredProviderId: 12,
+      preferredProviderName: "OpenRouter",
+      displayLabel: "Pinned to OpenRouter",
+    }));
+
+    expect(summarizeHermesProviderRouting(null)).toEqual(expect.objectContaining({
+      llmRoutingMode: "auto",
+      preferredProviderId: null,
+      displayLabel: "LLM provider auto-select",
+    }));
+  });
+
+  it("summarizes Hermes capability rollout slices from feature flags", () => {
+    expect(evaluateHermesCapabilityRolloutReadiness({
+      hermesProfileExperience: true,
+      hermesChannelWorkflowExpansion: true,
+      hermesMemoryContextSync: false,
+      hermesTaskModes: true,
+      hermesVisibilitySummaries: false,
+    })).toEqual({
+      profileExperience: true,
+      channelWorkflowExpansion: true,
+      memoryContextSync: false,
+      taskModes: true,
+      visibilitySummaries: false,
+    });
   });
 
   it("evaluates transport and runtime-profile compatibility separately", () => {

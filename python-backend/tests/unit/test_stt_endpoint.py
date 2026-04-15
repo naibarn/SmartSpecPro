@@ -143,6 +143,39 @@ class TestTTSEndpoint:
         assert response.status_code == 400
 
     @pytest.mark.asyncio
+    async def test_tts_accepts_omnivoice_provider(self, stt_client, mock_unified_client):
+        """OmniVoice is accepted as a supported TTS provider."""
+        response = await stt_client.post(
+            "/api/internal/tts",
+            headers={"X-Internal-Token": "test-internal-token"},
+            json={"text": "Hello", "provider": "omnivoice"},
+        )
+        assert response.status_code in (200, 422)
+
+    @pytest.mark.asyncio
+    async def test_tts_forwards_omnivoice_extension_fields(self, stt_client, mock_unified_client):
+        """Voice-design and reference fields are forwarded to the unified client."""
+        response = await stt_client.post(
+            "/api/internal/tts",
+            headers={"X-Internal-Token": "test-internal-token"},
+            json={
+                "text": "Hello",
+                "provider": "omnivoice",
+                "instruct": "female, low pitch",
+                "reference_audio_url": "https://cdn.example.com/ref.wav",
+                "reference_text": "reference transcript",
+            },
+        )
+        assert response.status_code in (200, 422)
+        if response.status_code == 200:
+            mock_unified_client.synthesize_speech.assert_awaited()
+            kwargs = mock_unified_client.synthesize_speech.await_args.kwargs
+            assert kwargs["provider"] == "omnivoice"
+            assert kwargs["instruct"] == "female, low pitch"
+            assert kwargs["reference_audio_url"] == "https://cdn.example.com/ref.wav"
+            assert kwargs["reference_text"] == "reference transcript"
+
+    @pytest.mark.asyncio
     async def test_tts_rejects_text_exceeding_max_chars(self, stt_client):
         """Text > MAX_TTS_CHARS rejected with 413."""
         from app.api.stt import MAX_TTS_CHARS

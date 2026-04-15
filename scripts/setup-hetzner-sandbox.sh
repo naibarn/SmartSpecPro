@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# SmartSpecPro — Hetzner OpenSandbox Server Provisioning Script
+# SmartAIHub — Hetzner OpenSandbox Server Provisioning Script
 # =============================================================================
 #
 # Idempotent setup script for a fresh Ubuntu 22.04 / Debian 12 server.
@@ -467,7 +467,7 @@ step_install_systemd_service() {
     log_warn "opensandbox.service not found at ${service_src} — generating minimal unit."
     cat > "${service_dest}" << EOF
 [Unit]
-Description=SmartSpecPro OpenSandbox Server
+Description=SmartAIHub OpenSandbox Server
 After=docker.service
 Requires=docker.service
 
@@ -600,7 +600,7 @@ step_verify_health() {
 main() {
   echo ""
   echo "================================================================"
-  echo "  SmartSpecPro — Hetzner OpenSandbox Provisioning"
+  echo "  SmartAIHub — Hetzner OpenSandbox Provisioning"
   echo "  $(date)"
   echo "================================================================"
   echo ""

@@ -15,6 +15,7 @@ import { Bell, AlarmClock, X, Check, ChevronDown, Clock3 } from "lucide-react";
 import { toast } from "sonner";
 
 const BELL_STORAGE_KEY = "global-notification-bell-position";
+const BELL_STORAGE_VERSION = 1;
 const BELL_MARGIN = 12;
 const BELL_DEFAULT_WIDTH = 60;
 const BELL_DEFAULT_HEIGHT = 44;
@@ -28,6 +29,11 @@ type BellPosition = {
 type BellPlacement =
   | { mode: "docked" }
   | ({ mode: "custom" } & BellPosition);
+
+type BellPlacementStorage = {
+  version: number;
+  placement: BellPlacement;
+};
 
 type BellDragState = {
   pointerId: number;
@@ -68,12 +74,21 @@ function getInitialBellPlacement(): BellPlacement {
   try {
     const saved = window.localStorage.getItem(BELL_STORAGE_KEY);
     if (saved) {
-      const parsed = JSON.parse(saved) as Partial<BellPlacement>;
-      if (parsed.mode === "custom" && typeof parsed.x === "number" && typeof parsed.y === "number") {
-        return {
-          mode: "custom",
-          ...clampBellPosition({ x: parsed.x, y: parsed.y }, window.innerWidth, window.innerHeight),
-        };
+      const parsed = JSON.parse(saved) as Partial<BellPlacementStorage> & Partial<BellPlacement>;
+      if (parsed.version === BELL_STORAGE_VERSION) {
+        const placement = parsed.placement;
+        if (placement?.mode === "custom" && typeof placement.x === "number" && typeof placement.y === "number") {
+          return {
+            mode: "custom",
+            ...clampBellPosition({ x: placement.x, y: placement.y }, window.innerWidth, window.innerHeight),
+          };
+        }
+      } else if (parsed.mode === "custom" && typeof parsed.x === "number" && typeof parsed.y === "number") {
+        // Legacy migration path: discard pre-versioned placements so the bell
+        // re-docks to the top-right on first load after the fix.
+        window.localStorage.removeItem(BELL_STORAGE_KEY);
+      } else if (parsed.x !== undefined || parsed.y !== undefined) {
+        window.localStorage.removeItem(BELL_STORAGE_KEY);
       }
     }
   } catch {
@@ -105,7 +120,11 @@ function persistBellPlacement(placement: BellPlacement) {
 
   try {
     if (placement.mode === "custom") {
-      window.localStorage.setItem(BELL_STORAGE_KEY, JSON.stringify(placement));
+      const payload: BellPlacementStorage = {
+        version: BELL_STORAGE_VERSION,
+        placement,
+      };
+      window.localStorage.setItem(BELL_STORAGE_KEY, JSON.stringify(payload));
       return;
     }
 
@@ -134,6 +153,33 @@ function safeOpenInNewTab(url: string) {
   const openedWindow = window.open(url, "_blank", "noopener,noreferrer");
   if (openedWindow) {
     openedWindow.opener = null;
+  }
+}
+
+function localizeActionLabel(
+  label: string | null | undefined,
+  locale: "en" | "th",
+): string | null {
+  const trimmed = typeof label === "string" ? label.trim() : "";
+  if (!trimmed) return null;
+  if (locale !== "th") return trimmed;
+
+  switch (trimmed.toLowerCase()) {
+    case "open incident":
+    case "view incident":
+      return "เปิดเหตุการณ์";
+    case "open monitoring":
+      return "เปิดการติดตาม";
+    case "open investigation guide":
+      return "เปิดคู่มือการตรวจสอบ";
+    case "open invoice":
+      return "เปิดใบแจ้งหนี้";
+    case "open details":
+      return "เปิดรายละเอียด";
+    case "dismiss":
+      return "ปิด";
+    default:
+      return trimmed;
   }
 }
 
@@ -585,6 +631,7 @@ function GlobalUrgentReminders({
   const recommendation = typeof metadata?.recommendation === "string" ? metadata.recommendation : null;
   const signal = typeof metadata?.signal === "string" ? metadata.signal : null;
   const observedAt = typeof metadata?.observedAt === "string" ? metadata.observedAt : null;
+  const localizedActionLabel = localizeActionLabel(modalReminder.actionLabel, locale);
   const guidance = getOpsIncidentGuidance({
     locale,
     title: modalReminder.title,
@@ -596,7 +643,7 @@ function GlobalUrgentReminders({
     severity: modalReminder.priority,
   });
   const technicalTitle = modalReminder.title.trim() !== guidance.headline.trim() ? modalReminder.title : null;
-  const actionLabel = modalReminder.actionLabel || (isBillingReminder
+  const actionLabel = localizedActionLabel || (isBillingReminder
     ? (locale === "th" ? "เปิดใบแจ้งหนี้" : "Open invoice")
     : isOpsIncidentReminder
       ? guidance.monitoringActionLabel
@@ -777,7 +824,7 @@ function GlobalUrgentReminders({
             )}
             {observedAt && (
               <div style={{ fontSize: "12px", color: "var(--muted-foreground, #888)", marginBottom: detailRows.length > 0 ? "8px" : 0 }}>
-                Observed: {new Date(observedAt).toLocaleString()}
+                Observed: {new Date(observedAt).toLocaleString(locale)}
               </div>
             )}
             {detailRows.length > 0 && (

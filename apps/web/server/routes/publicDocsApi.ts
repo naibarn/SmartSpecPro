@@ -62,10 +62,10 @@ export function buildOpenApiSpec() {
   return {
     openapi: "3.0.3",
     info: {
-      title: "SmartSpecPro Public API",
+      title: "SmartAIHub Public API",
       version: "1.0.0",
       description: [
-        "Programmatic access to SmartSpecPro skills, agencies, media generation, presentations, and automation.",
+        "Programmatic access to SmartAIHub skills, agencies, media generation, presentations, and automation.",
         "",
         "## Authentication",
         "All endpoints (except `/v1/openapi.json` and `/v1/docs`) require an API key.",
@@ -110,7 +110,7 @@ export function buildOpenApiSpec() {
       ].join("\n"),
     },
     externalDocs: {
-      description: "SmartSpecPro Developer Guide",
+      description: "SmartAIHub Developer Guide",
       url: "https://smartaihub.app/v1/docs",
     },
     servers: [
@@ -1318,7 +1318,7 @@ export function buildOpenApiSpec() {
           operationId: "getMcpCatalog",
           tags: ["MCP"],
           summary: "Read the static MCP tool catalog",
-          description: "Returns the canonical SmartSpecPro MCP tool catalog, including tool families, idempotency expectations, and execution modes. Use this for static discovery guidance; delegated workers must still honor their per-job delegated manifest.",
+          description: "Returns the canonical SmartAIHub MCP tool catalog, including tool families, idempotency expectations, and execution modes. Use this for static discovery guidance; delegated workers must still honor their per-job delegated manifest.",
           responses: {
             "200": {
               description: "Static MCP catalog",
@@ -1616,7 +1616,7 @@ export function registerPublicDocsRoutes(app: Express): void {
     "/v1/docs",
     swaggerUi.serve as any,
     swaggerUi.setup(spec, {
-      customSiteTitle: "SmartSpecPro API Docs",
+      customSiteTitle: "SmartAIHub API Docs",
       customCss: ".swagger-ui .topbar { display: none }",
       swaggerOptions: {
         persistAuthorization: true,

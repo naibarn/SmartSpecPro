@@ -40,11 +40,39 @@ const creditServiceMocks = vi.hoisted(() => ({
   refundCredits: vi.fn().mockResolvedValue({ success: true, creditsAdded: 5, newBalance: 100, transactionId: 2 }),
 }));
 
+const libraryUploadPipelineMocks = vi.hoisted(() => ({
+  enrichLibraryUploadContent: vi.fn(),
+}));
+
 vi.mock("./creditService", () => ({
   calculateLibraryUploadCreditCost: creditServiceMocks.calculateLibraryUploadCreditCost,
   hasEnoughCredits: creditServiceMocks.hasEnoughCredits,
   deductCredits: creditServiceMocks.deductCredits,
   refundCredits: creditServiceMocks.refundCredits,
+}));
+
+vi.mock("./libraryUploadPipeline", async (importOriginal) => {
+  const original = await importOriginal<typeof import("./libraryUploadPipeline")>();
+  libraryUploadPipelineMocks.enrichLibraryUploadContent.mockImplementation(original.enrichLibraryUploadContent);
+  return {
+    ...original,
+    enrichLibraryUploadContent: libraryUploadPipelineMocks.enrichLibraryUploadContent,
+  };
+});
+
+vi.mock("./documentOcrSettings", () => ({
+  calculateOcrCredits: (pageCount: number, creditsPerPage: number) => Math.max(0, Math.round(pageCount) * creditsPerPage),
+  getDocumentOcrSettings: vi.fn().mockResolvedValue({
+    landingAiApiKey: "",
+    googleAiApiKey: "",
+    creditsPerPage: 1,
+  }),
+  isOcrExtractor: () => false,
+  resolveOcrPageCount: () => 1,
+  resolveOcrProvider: (_metadata: Record<string, unknown>, extractor: string | null) => extractor || null,
+  classifyOcrFileClass: (params: { mimeType?: string | null }) =>
+    String(params.mimeType ?? "").toLowerCase() === "application/pdf" ? "pdf" : "image",
+  getDocumentOcrCreditsPerUnit: (_settings: any, _providerId: string | null | undefined, _fileClass: string) => 1,
 }));
 
 const groupsServiceMocks = vi.hoisted(() => ({
@@ -62,6 +90,7 @@ vi.mock("./groupsService", async (importOriginal) => {
 import {
   LibraryUrlValidationError,
   canReadLibraryItem,
+  collectLibraryVectorCleanupTargets,
   createLibraryItem,
   getPublicShareLinkState,
   getLibraryItemById,
@@ -175,6 +204,27 @@ describe("ACL helpers", () => {
     );
 
     expect(allowed).toBe(false);
+  });
+
+  it("collects explicit vector cleanup targets from persisted chunk metadata", async () => {
+    mockDb.select
+      .mockReturnValueOnce(makeSelectWhereChain([
+        {
+          vectorRefId: "vec-1",
+          vectorIndexName: "finance-library-v2",
+          metadata: { source: "document_upload" },
+        },
+      ]))
+      .mockReturnValueOnce(makeSelectWhereChain([
+        {
+          metadata: { source: "document_upload" },
+        },
+      ]));
+
+    const targets = await collectLibraryVectorCleanupTargets(77, 5);
+
+    expect(targets.vectorRefIds).toEqual(["vec-1"]);
+    expect(targets.indexNames).toEqual(["finance-library-v2"]);
   });
 });
 
@@ -466,6 +516,90 @@ describe("uploadLibraryFile", () => {
     ).rejects.toThrow("declared file type");
 
     expect(mockStoragePut).not.toHaveBeenCalled();
+  });
+
+  it("sniffs octet-stream image uploads and routes them to OCR enrichment", async () => {
+    mockStoragePut.mockResolvedValueOnce({
+      key: "library/uploads/t-1/9/slip.jpg",
+      url: "https://cdn.example.com/slip.jpg",
+    });
+
+    mockDb.select
+      .mockReturnValueOnce(makeSelectChain([]))
+      .mockReturnValueOnce(makeSelectChain([], true))
+      .mockReturnValueOnce(makeSelectChain([]));
+
+    const insertLibraryItemValues = vi.fn().mockReturnValue({
+      returning: vi.fn().mockResolvedValue([
+        {
+          id: 912,
+          tenantId: "44",
+          ownerUserId: 9,
+          itemType: "image",
+          source: "document_upload",
+          title: "slip.jpg",
+          description: null,
+          status: "indexing",
+          visibility: "private",
+          metadata: {
+            file_type: "image/jpeg",
+          },
+          sourceUrl: "https://cdn.example.com/slip.jpg",
+          thumbnailUrl: "https://cdn.example.com/slip.jpg",
+          deletedAt: null,
+          createdAt: new Date("2026-02-10T00:00:00.000Z"),
+          updatedAt: new Date("2026-02-10T00:00:00.000Z"),
+        },
+      ]),
+    });
+    const insertLibraryLinkValues = vi.fn().mockReturnValue({
+      onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+    });
+    const enqueueValues = vi.fn().mockReturnValue({
+      returning: vi.fn().mockResolvedValue([
+        {
+          id: 44,
+          status: "pending",
+        },
+      ]),
+    });
+
+    mockDb.insert
+      .mockReturnValueOnce({ values: insertLibraryItemValues })
+      .mockReturnValueOnce({ values: insertLibraryLinkValues })
+      .mockReturnValueOnce({ values: enqueueValues });
+
+    libraryUploadPipelineMocks.enrichLibraryUploadContent.mockResolvedValueOnce({
+      extractedText: null,
+      extractor: "mocked",
+      warnings: [],
+      searchQuality: "metadata_only",
+      stageMessage: "mocked",
+      extraMetadata: {},
+    });
+
+    const result = await uploadLibraryFile(
+      {
+        fileName: "slip.jpg",
+        fileType: "application/octet-stream",
+        fileBase64: Buffer.from([0xff, 0xd8, 0xff, 0xdb, 0x00, 0x43, 0x00, 0x08]).toString("base64"),
+      },
+      {
+        userId: 9,
+        tenantId: 44,
+        role: "user",
+      },
+    );
+
+    expect(libraryUploadPipelineMocks.enrichLibraryUploadContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileType: "image/jpeg",
+        fileName: "slip.jpg",
+        sourceUrl: "https://cdn.example.com/slip.jpg",
+      }),
+    );
+    expect(result.item.itemType).toBe("image");
+    expect(result.item.metadata?.file_type).toBe("image/jpeg");
   });
 
   it("rejects unsafe svg payload before persisting", async () => {

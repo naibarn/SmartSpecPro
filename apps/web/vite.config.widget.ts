@@ -42,6 +42,7 @@ export default defineConfig({
     minify: "esbuild",
   },
   resolve: {
+    extensions: [".ts", ".tsx", ".mjs", ".js", ".jsx", ".json"],
     alias: {
       "@": resolve(__dirname, "client/src"),
     },

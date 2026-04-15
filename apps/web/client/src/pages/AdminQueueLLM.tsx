@@ -73,6 +73,10 @@ export default function AdminQueueLLM() {
     refetchInterval: refreshInterval ?? false,
   });
 
+  const documentOcrLimiterStatus = trpc.queues.getDocumentOcrLimiterStatus.useQuery(undefined, {
+    refetchInterval: refreshInterval ?? false,
+  });
+
   const queueStatus = trpc.queues.getQueueStatus.useQuery(undefined, {
     refetchInterval: refreshInterval ?? false,
   });
@@ -416,6 +420,75 @@ export default function AdminQueueLLM() {
                     })}
                   </div>
                 )}
+
+                <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50/80 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="font-semibold">Document OCR Rate Limiter</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Typhoon OCR 1.5 is enforced by the Python OCR service and capped at 20 requests per minute system-wide.
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                      External limiter
+                    </Badge>
+                  </div>
+
+                  {documentOcrLimiterStatus.data?.limiters?.length ? (
+                    <div className="mt-4 space-y-4">
+                      {documentOcrLimiterStatus.data.limiters.map((limiter) => {
+                        const usagePercent = limiter.limit > 0 ? (limiter.current / limiter.limit) * 100 : 0;
+                        const isNearLimit = usagePercent >= 80;
+                        const isAtLimit = limiter.remaining === 0;
+                        return (
+                          <div key={limiter.provider} className="rounded-lg border border-white bg-white p-4 shadow-sm">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="font-semibold">{limiter.displayName}</div>
+                                <Badge variant="outline">provider: {limiter.provider}</Badge>
+                                <Badge variant={limiter.redisAvailable ? "secondary" : "destructive"}>
+                                  {limiter.redisAvailable ? "Redis connected" : "Redis unavailable"}
+                                </Badge>
+                                <Badge variant={isAtLimit ? "destructive" : isNearLimit ? "outline" : "secondary"}>
+                                  {isAtLimit ? "At limit" : isNearLimit ? "Near limit" : "Healthy"}
+                                </Badge>
+                              </div>
+                              <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                                Managed externally
+                              </Badge>
+                            </div>
+
+                            <Progress value={Math.min(100, usagePercent)} className="mt-3 h-2" />
+
+                            <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-muted-foreground md:grid-cols-4">
+                              <div>
+                                <span className="font-medium text-slate-700">Current:</span> {limiter.current}
+                              </div>
+                              <div>
+                                <span className="font-medium text-slate-700">Remaining:</span> {limiter.remaining}
+                              </div>
+                              <div>
+                                <span className="font-medium text-slate-700">Limit:</span> {limiter.limit}/min
+                              </div>
+                              <div>
+                                <span className="font-medium text-slate-700">Retry after:</span>{" "}
+                                {limiter.retryAfterSeconds != null ? `${limiter.retryAfterSeconds}s` : "n/a"}
+                              </div>
+                            </div>
+
+                            <div className="mt-3 text-xs text-muted-foreground">
+                              {limiter.note}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="mt-3 text-sm text-muted-foreground">
+                      Document OCR limiter status is not available yet.
+                    </div>
+                  )}
+                </div>
               </div>
             </DashboardCard>
           </TabsContent>
@@ -750,7 +823,19 @@ export default function AdminQueueLLM() {
                   <TableBody>
                     {providerConfigs.data?.configs.map((config) => (
                       <TableRow key={config.provider}>
-                        <TableCell className="font-medium">{config.provider}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <span>{config.displayName ?? config.provider}</span>
+                            {config.managedExternally ? (
+                              <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                                External
+                              </Badge>
+                            ) : null}
+                          </div>
+                          {config.displayName ? (
+                            <div className="text-xs text-muted-foreground">{config.provider}</div>
+                          ) : null}
+                        </TableCell>
                         <TableCell className="text-right">{config.maxConcurrent}</TableCell>
                         <TableCell className="text-right">{config.minTime}</TableCell>
                         <TableCell className="text-right">{config.reservoir || "-"}</TableCell>

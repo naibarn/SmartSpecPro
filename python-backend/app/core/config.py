@@ -84,8 +84,24 @@ class Settings(BaseSettings):
     KIE_AI_BASE_URL: str = "https://api.kie.ai/api/v1"
     KIE_AI_CALLBACK_URL: str = ""  # Optional webhook for async task completion
 
+    # LandingAI ADE (shared document OCR / parsing backbone)
+    LANDINGAI_ADE_API_KEY: str = ""
+    LANDINGAI_ADE_BASE_URL: str = "https://api.va.landing.ai"
+    LANDINGAI_ADE_PARSE_PATH: str = "/v1/ade/parse"
+    LANDINGAI_ADE_EXTRACT_PATH: str = "/v1/ade/extract"
+    LANDINGAI_ADE_POLL_PATH_TEMPLATE: str = "/v1/ade/parse/jobs/{job_id}"
+    LANDINGAI_ADE_PARSE_MODEL: str = "dpt-2-latest"
+    LANDINGAI_ADE_EXTRACT_MODEL: str = "dpt-2-latest"
+    LANDINGAI_ADE_TIMEOUT_SECONDS: float = 90.0
+    LANDINGAI_ADE_POLL_INTERVAL_SECONDS: float = 2.0
+    LANDINGAI_ADE_MAX_POLL_ATTEMPTS: int = 5
+    LANDINGAI_ADE_UPLOAD_FOLDER: str = "temp/landingai-ade"
+
     KNPLABAI_API_KEY: str = ""
     KNPLABAI_BASE_URL: str = "https://api.knplabai.com/ai/v1"
+
+    OMNIVOICE_API_KEY: str = ""
+    OMNIVOICE_BASE_URL: str = ""
 
     NVIDIA_NIM_API_KEY: str = ""
     NVIDIA_NIM_BASE_URL: str = "https://integrate.api.nvidia.com/v1"

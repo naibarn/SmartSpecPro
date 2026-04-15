@@ -78,6 +78,14 @@ Chat is the fastest place to ask for answers, drafts, brainstorming, prompt buil
   - open the room's Workflow Board directly
 - **Approve / reject / send back** actions should still be completed inside Team Room rather than directly inside Chat.
 
+## Starting tracked work from Chat
+
+- Use the **Start tracked work** card when a conversation should become a real request instead of staying as an untracked chat thread.
+- Open the **Work Request** page when you want to create the request yourself.
+- Open the **Work OS Guide** if you want a step-by-step explanation of how work enters the system.
+- Open **Work OS Console** when you are an admin and need to route requests, attach legacy work, or review the full lifecycle.
+- If work comes from another system, use webhook or API intake so the request appears in Work OS without manual copy-paste.
+
 ## Browser Session from Chat
 
 - Use **Browser Session** when the task requires live websites, comparison across pages, or a real browser workflow.

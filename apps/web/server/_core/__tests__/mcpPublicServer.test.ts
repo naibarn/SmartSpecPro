@@ -449,6 +449,57 @@ describe("POST /v1/mcp — protocol", () => {
     }
   });
 
+  it("hides delegated MCP tools for Hermes sessions that truthfully advertise MCP as unavailable", async () => {
+    const previousRuntimeType = mockDelegatedManifest.runtimeType;
+    const previousAvailability = { ...mockDelegatedManifest.availability };
+    const previousMcp = structuredClone(mockDelegatedManifest.mcp);
+
+    mockDelegatedManifest.runtimeType = "hermes_agent_gateway";
+    mockDelegatedManifest.availability = {
+      ...mockDelegatedManifest.availability,
+      mcp: "unavailable",
+    };
+    mockDelegatedManifest.mcp = {
+      ...mockDelegatedManifest.mcp,
+      enabled: false,
+      availableFamilies: [],
+      families: [],
+      availableTools: [],
+      experimentalTools: [],
+      disabledTools: [],
+    };
+
+    try {
+      const delegatedWorkerApp = makeApp({
+        ok: true,
+        mode: "delegated_worker",
+        sub: "worker-1",
+        userId: 7,
+        ownerUserId: 7,
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        workerJobId: "job-1",
+        delegatedSessionId: "delegated-session-1",
+        runtimeType: "hermes_agent_gateway",
+        scopeProfile: "worker_gateway_hybrid_executor",
+        scopes: ["mcp:read", "mcp:write", "llm:chat"],
+      });
+      const sessionId = await initializeSession(delegatedWorkerApp);
+
+      const res = await request(delegatedWorkerApp)
+        .post("/v1/mcp")
+        .set("Mcp-Session-Id", sessionId)
+        .send({ jsonrpc: "2.0", method: "tools/list", params: {}, id: 5 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.result.tools).toEqual([]);
+    } finally {
+      mockDelegatedManifest.runtimeType = previousRuntimeType;
+      mockDelegatedManifest.availability = previousAvailability;
+      mockDelegatedManifest.mcp = previousMcp;
+    }
+  });
+
   it("denies delegated MCP tools that require approval by operator policy", async () => {
     const previousApprovalGroups = process.env.OPENCLAW_EXTERNAL_RUNTIME_MCP_APPROVAL_REQUIRED_TOOL_GROUPS;
     const previousScopes = [...mockDelegatedManifest.grantedScopes];
@@ -518,7 +569,7 @@ describe("POST /v1/mcp — protocol", () => {
         id: 1,
       });
     expect(res.status).toBe(200);
-    expect(res.body.result.serverInfo.name).toBe("SmartSpecPro");
+    expect(res.body.result.serverInfo.name).toBe("SmartAIHub");
     expect(res.body.result.protocolVersion).toBe("2025-03-26");
     expect(res.body.result.capabilities.tools).toBeDefined();
     expect(res.headers["mcp-session-id"]).toBeDefined();
@@ -883,7 +934,7 @@ describe("GET /.well-known/mcp.json", () => {
     const res = await request(makeApp()).get("/.well-known/mcp.json");
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toMatch(/application\/json/);
-    expect(res.body.name).toBe("SmartSpecPro");
+    expect(res.body.name).toBe("SmartAIHub");
     expect(res.body.url).toBe("https://smartaihub.app/v1/mcp");
     expect(res.body.auth.type).toBe("bearer");
     expect(res.body.capabilities.tools).toBe(true);

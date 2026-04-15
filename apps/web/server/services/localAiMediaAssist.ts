@@ -1,4 +1,6 @@
 import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
+import { getDocumentOcrSettings, resolveDocumentOcrRouting } from "./documentOcrSettings";
+import { loadEnabledLlmModelRows, type EnabledLlmModelRow } from "./enabledLlmModels";
 
 const INTERNAL_REQUEST_TIMEOUT_MS = 30_000;
 const MAX_LOCAL_AI_MEDIA_ASSIST_BYTES = 12 * 1024 * 1024;
@@ -14,6 +16,7 @@ interface ExtractTextResponse {
   char_count?: number;
   method?: string;
   warning?: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 interface MediaEnrichmentResponse {
@@ -60,6 +63,8 @@ function decodeBase64Payload(contentBase64: string): Buffer {
 async function postInternalJson<TResponse>(
   path: string,
   body: Record<string, unknown>,
+  extraHeaders?: Record<string, string>,
+  tenantId?: string | null,
 ): Promise<TResponse> {
   const [internalProxyToken, runtime] = await Promise.all([
     getPreferredInternalToken(),
@@ -77,6 +82,8 @@ async function postInternalJson<TResponse>(
       headers: {
         "Content-Type": "application/json",
         "x-proxy-token": internalProxyToken,
+        ...(tenantId ? { "x-tenant-id": tenantId } : {}),
+        ...(extraHeaders || {}),
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -110,26 +117,82 @@ function resolveAssistMode(input: {
     : "extract_text";
 }
 
+function isImageMimeType(mimeType: string): boolean {
+  return mimeType.trim().toLowerCase().startsWith("image/");
+}
+
+function pickStructuredVisionChatModel(rows: EnabledLlmModelRow[]): {
+  modelId: string | null;
+  candidateCount: number;
+} {
+  const candidates = rows
+    .filter((row) =>
+      row.apiStyle === "chat-completions"
+      && row.supportsVision === true
+      && row.supportsStructuredOutputs === true,
+    )
+    .sort((left, right) => left.priority - right.priority);
+
+  return {
+    modelId: candidates[0]?.modelId ?? null,
+    candidateCount: candidates.length,
+  };
+}
+
+async function resolveStructuredVisionChatModelId(): Promise<string | null> {
+  const autoRows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
+  let selection = pickStructuredVisionChatModel(autoRows);
+
+  if (!selection.modelId) {
+    const allRows = await loadEnabledLlmModelRows();
+    selection = pickStructuredVisionChatModel(allRows);
+  }
+
+  return selection.modelId;
+}
+
 export async function analyzeLocalAiAttachmentAssist(input: {
   fileName: string;
   mimeType: string;
   contentBase64: string;
   mode: LocalAiAttachmentAssistMode;
+  analysisProfile?: "document_ocr" | "real_world_vision" | "extract_text" | "finance_payin_llm_parser";
+  captureIntent?: "receipt" | "transfer_slip" | "statement" | null;
+  tenantId?: string | null;
 }): Promise<LocalAiAttachmentAssistResult> {
   decodeBase64Payload(input.contentBase64);
   const resolvedMode = resolveAssistMode({
     mode: input.mode,
     mimeType: input.mimeType,
   });
+  const ocrSettings = await getDocumentOcrSettings();
+  const useUnifiedPayinSlipParser =
+    isImageMimeType(input.mimeType)
+    && input.captureIntent === "transfer_slip"
+    && ocrSettings.payinSlipParserMode === "unified_llm_parser"
+    && resolvedMode === "document_ocr";
+  const resolvedAnalysisProfile = useUnifiedPayinSlipParser
+    ? "finance_payin_llm_parser"
+    : (input.analysisProfile ?? resolvedMode);
 
   if (resolvedMode === "extract_text") {
+    const ocrRouting = resolveDocumentOcrRouting({
+      settings: ocrSettings,
+      mimeType: input.mimeType,
+      fileName: input.fileName,
+    });
     const payload = await postInternalJson<ExtractTextResponse>(
       "/api/internal/library/extract-text",
       {
         file_name: input.fileName,
         mime_type: input.mimeType,
         content_base64: input.contentBase64,
+        ocr_provider: ocrRouting.providerId,
+        analysis_profile: resolvedAnalysisProfile,
+        ...(input.captureIntent ? { capture_intent: input.captureIntent } : {}),
       },
+      ocrRouting.requestHeaders ?? undefined,
+      input.tenantId ?? null,
     );
     const extractedText = (payload.text ?? "").trim();
     return {
@@ -140,20 +203,41 @@ export async function analyzeLocalAiAttachmentAssist(input: {
       ocrText: extractedText || null,
       warning: payload.warning ?? null,
       searchQuality: extractedText ? "full_text" : "metadata_only",
-      metadata: {},
+      metadata: payload.metadata ?? {},
     };
   }
 
+  const ocrRouting = resolveDocumentOcrRouting({
+    settings: ocrSettings,
+    mimeType: input.mimeType,
+    fileName: input.fileName,
+  });
+  const gatewayModelId = useUnifiedPayinSlipParser
+    ? await resolveStructuredVisionChatModelId()
+    : null;
+  if (useUnifiedPayinSlipParser && !gatewayModelId) {
+    throw new Error("No enabled chat LLM model supports vision + structured outputs for transfer slip parsing.");
+  }
   const payload = await postInternalJson<MediaEnrichmentResponse>(
     "/api/internal/library/enrich-media",
     {
       file_name: input.fileName,
       mime_type: input.mimeType,
       content_base64: input.contentBase64,
-      analysis_profile: resolvedMode,
+      ...(useUnifiedPayinSlipParser ? {} : { ocr_provider: ocrRouting.providerId }),
+      analysis_profile: resolvedAnalysisProfile,
+      ...(input.captureIntent ? { capture_intent: input.captureIntent } : {}),
       enable_vision: true,
       enable_transcript: false,
     },
+    (() => {
+      const headers: Record<string, string> = {
+        ...(useUnifiedPayinSlipParser ? {} : (ocrRouting.requestHeaders ?? {})),
+        ...(gatewayModelId ? { "x-llm-model-id": gatewayModelId } : {}),
+      };
+      return Object.keys(headers).length > 0 ? headers : undefined;
+    })(),
+    input.tenantId ?? null,
   );
 
   const extractedText = (payload.text ?? "").trim();

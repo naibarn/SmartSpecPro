@@ -24,6 +24,7 @@ function parseArgs(argv) {
     bundleMode: "skip",
     noInstall: false,
     webUrl: "",
+    version: "",
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -37,6 +38,9 @@ function parseArgs(argv) {
     } else if (arg === "--web-url") {
       options.webUrl = argv[i + 1] ?? fail("Missing value for --web-url");
       i += 1;
+    } else if (arg === "--version") {
+      options.version = argv[i + 1] ?? fail("Missing value for --version");
+      i += 1;
     } else if (arg === "--no-install") {
       options.noInstall = true;
     } else if (arg === "-h" || arg === "--help") {
@@ -46,6 +50,7 @@ Options:
   --target <triple>        Optional Rust target triple to pass to Tauri build.
   --bundle-mode <mode>     One of: skip, on-demand, e2b, e4b, all.
   --web-url <url>          Public SmartAIHub web URL embedded into the packaged desktop app.
+  --version <x.y.z>        Optional desktop bundle version to stamp into Tauri before building.
   --no-install             Skip npm install even if Tauri CLI is missing.
   -h, --help               Show this help.
 `);
@@ -193,6 +198,11 @@ if (isLoopbackUrl(desktopWebUrl)) {
   log("End users do not need a local python-backend when this public web URL is reachable.");
 }
 
+if (options.version) {
+  log(`Stamping desktop bundle version ${options.version}...`);
+  run("node", ["scripts/set-desktop-version.mjs", "--version", options.version]);
+}
+
 const tauriBin = join(root, "node_modules", ".bin", process.platform === "win32" ? "tauri.cmd" : "tauri");
 if (!existsSync(tauriBin)) {
   if (options.noInstall) {
@@ -231,6 +241,7 @@ run("node", ffmpegArgs);
 log(`Building SmartAIHub Web assets for ${desktopWebUrl}...`);
 run("npm", ["--workspace", "apps/web", "run", "build"], {
   env: {
+    VITE_SMARTAIHUB_WEB_URL: desktopWebUrl,
     VITE_SMARTSPEC_WEB_URL: desktopWebUrl,
   },
 });

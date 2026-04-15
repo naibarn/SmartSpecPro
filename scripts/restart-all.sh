@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SmartSpecPro Full Stack Restart Script
+# SmartAIHub Full Stack Restart Script
 # รีสตาร์ททุกโมดูล (หยุดและเริ่มใหม่ทั้งหมด)
 
 RED='\033[0;31m'
@@ -15,7 +15,7 @@ log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 
 echo -e "${CYAN}"
 echo "╔═══════════════════════════════════════════════════════════════╗"
-echo "║               SmartSpecPro Full Stack Restart                 ║"
+echo "║               SmartAIHub Full Stack Restart                 ║"
 echo "║            Refreshing All Services & Applications             ║"
 ╚═══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"

@@ -3926,6 +3926,24 @@ describe("PresentationEditor", () => {
     });
   });
 
+  it("opens project rename in a dialog on small viewports", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 375 });
+
+    render(<PresentationEditor />);
+
+    expect(screen.queryByRole("heading", { name: /product pitch/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /edit project name/i }));
+    expect(await screen.findByLabelText("Project Name")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Project Name"), { target: { value: "Pitch Mobile" } });
+    fireEvent.click(screen.getByRole("button", { name: /save project name/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.updateItem).toHaveBeenCalledWith({ id: 42, title: "Pitch Mobile" });
+      expect(mutationMocks.updateDeck).toHaveBeenCalled();
+    });
+  });
+
   it("opens presentation note dialog and saves deck notes through updateDeck", async () => {
     render(<PresentationEditor />);
 

@@ -472,6 +472,20 @@ function preferChatFamiliesWhenPossible(
   return nonResponsesRows.length > 0 ? nonResponsesRows : rows;
 }
 
+function preferResponsesFamiliesWhenRequired(
+  rows: EnabledLlmModelRow[],
+  requirements: Partial<CapabilityRequirements>,
+): EnabledLlmModelRow[] {
+  if (requirements.supportsResponses !== true) {
+    return rows;
+  }
+
+  const responsesRows = rows.filter(
+    (row) => mapApiStyleToRouteFamily(row.apiStyle) === "responses",
+  );
+  return responsesRows.length > 0 ? responsesRows : rows;
+}
+
 function sortRowsByPriority(rows: EnabledLlmModelRow[]): EnabledLlmModelRow[] {
   return [...rows].sort((left, right) => {
     if (left.priority !== right.priority) {
@@ -530,6 +544,7 @@ export async function resolveChatModelSelection(
     const requirementCandidates = filterRowsByRequirements(candidates, derived.requirements);
     if (requirementCandidates.length > 0) {
       candidates = preferChatFamiliesWhenPossible(requirementCandidates, derived.allowResponsesFamily);
+      candidates = preferResponsesFamiliesWhenRequired(candidates, derived.requirements);
     } else if (input.bodyPreferredProvider) {
       const globalRequirementCandidates = filterRowsByRequirements(
         rows,
@@ -537,6 +552,7 @@ export async function resolveChatModelSelection(
       );
       if (globalRequirementCandidates.length > 0) {
         candidates = preferChatFamiliesWhenPossible(globalRequirementCandidates, derived.allowResponsesFamily);
+        candidates = preferResponsesFamiliesWhenRequired(candidates, derived.requirements);
       }
     }
 
@@ -577,19 +593,24 @@ export async function resolveChatModelSelection(
         throw new Error("Explicit modelSelection.providerId does not match an enabled mapping for the selected model");
       }
       const explicitRows = filterRowsByRequirements([exactProviderRow], derived.requirements);
-      if (explicitRows.length === 0) {
+      const preferredExplicitRows = preferResponsesFamiliesWhenRequired(explicitRows, derived.requirements);
+      if (preferredExplicitRows.length === 0) {
+        throw new Error("The selected explicit model does not satisfy this chat request's validated requirements");
+      }
+      const chosenRow = sortRowsByPriority(preferredExplicitRows)[0];
+      if (!chosenRow) {
         throw new Error("The selected explicit model does not satisfy this chat request's validated requirements");
       }
       return {
         selectionMode: selection.mode,
         selection,
         requestedModelId: selection.modelId,
-        resolvedModelId: exactProviderRow.modelId,
-        resolvedProviderId: exactProviderRow.providerId,
-        resolvedProviderName: exactProviderRow.providerName,
-        preferredProviderId: exactProviderRow.providerId,
+        resolvedModelId: chosenRow.modelId,
+        resolvedProviderId: chosenRow.providerId,
+        resolvedProviderName: chosenRow.providerName,
+        preferredProviderId: chosenRow.providerId,
         strictProviderPin: true,
-        routeFamily: mapApiStyleToRouteFamily(exactProviderRow.apiStyle),
+        routeFamily: mapApiStyleToRouteFamily(chosenRow.apiStyle),
         requirements: derived.requirements,
         continuityApplied: false,
         shouldPersistSelectionState: true,
@@ -597,7 +618,8 @@ export async function resolveChatModelSelection(
     }
 
     const eligibleRows = filterRowsByRequirements(matchingRows, derived.requirements);
-    const chosenRow = sortRowsByPriority(eligibleRows)[0];
+    const preferredEligibleRows = preferResponsesFamiliesWhenRequired(eligibleRows, derived.requirements);
+    const chosenRow = sortRowsByPriority(preferredEligibleRows)[0];
     if (!chosenRow) {
       throw new Error("The selected explicit model does not satisfy this chat request's validated requirements");
     }
@@ -628,6 +650,7 @@ export async function resolveChatModelSelection(
   candidates = filterAutoSelectableLlmModelRows(candidates);
   candidates = filterRowsByRequirements(candidates, derived.requirements);
   candidates = preferChatFamiliesWhenPossible(candidates, derived.allowResponsesFamily);
+  candidates = preferResponsesFamiliesWhenRequired(candidates, derived.requirements);
   if (candidates.length === 0) {
     if (selection.mode === "auto-provider") {
       throw new Error("No enabled model in the selected provider satisfies this chat request");

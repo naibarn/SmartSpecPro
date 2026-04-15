@@ -3,15 +3,27 @@
  * Admin-only routes for managing users
  */
 
+import crypto from "crypto";
 import { z } from "zod";
 import { router, adminProcedure, protectedProcedure, domainAdminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { users, creditTransactions } from "../../drizzle/schema";
+import { llmProviders, users, creditTransactions } from "../../drizzle/schema";
 import { eq, desc, like, or, sql, and } from "drizzle-orm";
 import { addCredits, deductCredits, type TransactionType } from "../services/creditService";
 import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 import { browserPolicyUserProfileSchema } from "../../shared/browserPolicy";
 import { SUPPORTED_LANGUAGES } from "../../shared/i18n";
+import {
+  getWorkerAccessPermissionScopesForPreset,
+  normalizeWorkerAccessKeysPreferences,
+  normalizeWorkerAccessPermissionScopes,
+  workerAccessKeyRecordSchema,
+  workerAccessPermissionPresetSchema,
+  workerAccessPermissionScopeSchema,
+  workerAccessQuotaPolicySchema,
+  workerLlmRoutingModeSchema,
+} from "../../shared/workerAccessKeys";
+import { workerRuntimeTypeSchema } from "../../shared/workerRuntime";
 import {
   resolveEffectiveUserAutomationPolicy,
   updateUserBrowserPolicyProfile,
@@ -24,6 +36,8 @@ import {
   validatePrivateVaultAccessToken,
   verifyPrivateVaultPin,
 } from "../services/privateVaultService";
+import { createWorkerRegistrationToken } from "../services/workerAuthService";
+import { revokeJti } from "../_core/revocation";
 import {
   localAiPreferencesSchema,
   mergeLocalAiPreferences,
@@ -77,11 +91,30 @@ const updatePreferencesSchema = z.object({
   localAi: localAiPreferencesSchema.partial().optional(),
 });
 
+const createWorkerAccessKeySchema = z.object({
+  label: z.string().trim().min(1).max(120),
+  runtimeType: workerRuntimeTypeSchema,
+  llmRoutingMode: workerLlmRoutingModeSchema.default("auto"),
+  preferredProviderId: z.number().int().positive().nullable().optional(),
+  permissionPreset: workerAccessPermissionPresetSchema.default("readonly"),
+  permissionScopes: z.array(workerAccessPermissionScopeSchema).default([]),
+  quotaHourly: workerAccessQuotaPolicySchema.shape.quotaHourly,
+  quotaDaily: workerAccessQuotaPolicySchema.shape.quotaDaily,
+  quotaWeekly: workerAccessQuotaPolicySchema.shape.quotaWeekly,
+  quotaMonthly: workerAccessQuotaPolicySchema.shape.quotaMonthly,
+  expiresInDays: z.number().int().positive().nullable().optional(),
+});
+
+const revokeWorkerAccessKeySchema = z.object({
+  keyId: z.string().min(1),
+});
+
 const userPreferencesOutputSchema = z
   .object({
     translationLanguage: z.enum(SUPPORTED_LANGUAGES).optional(),
     translationModel: z.string().max(100).optional(),
     displayLocale: z.enum(SUPPORTED_LANGUAGES).optional(),
+    workerAccessKeys: z.array(workerAccessKeyRecordSchema).default([]),
     privateVault: z
       .object({
         enabled: z.boolean().optional(),
@@ -779,11 +812,14 @@ export const usersRouter = router({
     const db = await getDb();
     if (!db) return {};
     const [user] = await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
-    return sanitizeUserPreferencesWithLocalAi(
-      sanitizeUserPreferences(
-        (user?.userPreferences as Record<string, any>) || {},
-      ),
+    const sanitizedBase = sanitizeUserPreferences(
+      (user?.userPreferences as Record<string, any>) || {},
     );
+    const workerPrefs = normalizeWorkerAccessKeysPreferences(sanitizedBase.workerAccessKeys);
+    return sanitizeUserPreferencesWithLocalAi({
+      ...sanitizedBase,
+      workerAccessKeys: workerPrefs.workerAccessKeys,
+    });
   }),
 
   updatePreferences: protectedProcedure
@@ -809,7 +845,168 @@ export const usersRouter = router({
       }
 
       await db.update(users).set({ userPreferences: updated }).where(eq(users.id, ctx.user.id));
-      return sanitizeUserPreferencesWithLocalAi(sanitizeUserPreferences(updated));
+      const workerPrefs = normalizeWorkerAccessKeysPreferences(updated.workerAccessKeys);
+      return sanitizeUserPreferencesWithLocalAi({
+        ...sanitizeUserPreferences(updated),
+        workerAccessKeys: workerPrefs.workerAccessKeys,
+      });
+    }),
+
+  listWorkerAccessKeys: protectedProcedure
+    .output(z.object({
+      keys: z.array(workerAccessKeyRecordSchema),
+    }))
+    .query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return { keys: [] };
+      const [row] = await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      const workerPrefs = normalizeWorkerAccessKeysPreferences({
+        workerAccessKeys: ((row?.userPreferences as Record<string, unknown> | null | undefined)?.workerAccessKeys as unknown[]) ?? [],
+      });
+      return { keys: workerPrefs.workerAccessKeys };
+    }),
+
+  createWorkerAccessKey: protectedProcedure
+    .input(createWorkerAccessKeySchema)
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [userRow] = await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      const currentPrefs = sanitizeUserPreferences((userRow?.userPreferences as Record<string, unknown>) || {});
+      const workerPrefs = normalizeWorkerAccessKeysPreferences({
+        workerAccessKeys: (currentPrefs.workerAccessKeys as unknown[]) ?? [],
+      });
+
+      if (input.llmRoutingMode === "pinned_provider" && !input.preferredProviderId) {
+        throw new Error("preferredProviderId is required when llmRoutingMode is pinned_provider");
+      }
+      const permissionPreset = input.permissionPreset ?? "readonly";
+      const permissionScopes = permissionPreset === "custom"
+        ? normalizeWorkerAccessPermissionScopes(input.permissionScopes)
+        : getWorkerAccessPermissionScopesForPreset(permissionPreset);
+      if (permissionPreset === "custom" && permissionScopes.length === 0) {
+        throw new Error("permissionScopes are required when permissionPreset is custom");
+      }
+      const tenantId = String(ctx.user.currentTenantId ?? ctx.tenantId ?? "").trim();
+      if (!tenantId) {
+        throw new Error("Tenant context is required");
+      }
+      const keyId = `wrk_${Date.now()}_${crypto.randomBytes(8).toString("hex")}`;
+      const expiresAt = input.expiresInDays
+        ? new Date(Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000)
+        : null;
+      const provider = input.preferredProviderId
+        ? await db
+          .select({ displayName: llmProviders.displayName, providerName: llmProviders.providerName })
+          .from(llmProviders)
+          .where(eq(llmProviders.id, input.preferredProviderId))
+          .limit(1)
+          .then((rows) => rows[0] ?? null)
+        : null;
+      if (input.preferredProviderId != null && !provider) {
+        throw new Error(`LLM provider ${input.preferredProviderId} not found`);
+      }
+      const providerName = provider?.displayName ?? provider?.providerName ?? null;
+      const token = createWorkerRegistrationToken({
+        tenantId,
+        registeredByUserId: ctx.user.id,
+        runtimeType: input.runtimeType,
+        llmRoutingMode: input.llmRoutingMode,
+        preferredProviderId: input.preferredProviderId ?? null,
+        preferredProviderName: providerName,
+        permissionPreset,
+        permissionScopes,
+        quotaHourly: input.quotaHourly ?? null,
+        quotaDaily: input.quotaDaily ?? null,
+        quotaWeekly: input.quotaWeekly ?? null,
+        quotaMonthly: input.quotaMonthly ?? null,
+        jti: keyId,
+      }, expiresAt ? Math.max(60, Math.floor((expiresAt.getTime() - Date.now()) / 1000)) : null);
+
+      const keyRecord = workerAccessKeyRecordSchema.parse({
+        keyId,
+        label: input.label.trim(),
+        runtimeType: input.runtimeType,
+        llmRoutingMode: input.llmRoutingMode,
+        preferredProviderId: input.preferredProviderId ?? null,
+        preferredProviderName: providerName,
+        permissionPreset,
+        permissionScopes,
+        quotaHourly: input.quotaHourly ?? null,
+        quotaDaily: input.quotaDaily ?? null,
+        quotaWeekly: input.quotaWeekly ?? null,
+        quotaMonthly: input.quotaMonthly ?? null,
+        tokenHint: token.slice(-8),
+        createdAt: new Date().toISOString(),
+        expiresAt: expiresAt?.toISOString() ?? null,
+        revokedAt: null,
+        lastUsedAt: null,
+      });
+
+      const nextKeys = [...workerPrefs.workerAccessKeys, keyRecord];
+      const nextPrefs = {
+        ...currentPrefs,
+        workerAccessKeys: nextKeys,
+      };
+      await db.update(users).set({ userPreferences: nextPrefs }).where(eq(users.id, ctx.user.id));
+
+      return {
+        rawToken: token,
+        key: keyRecord,
+        preferences: sanitizeUserPreferencesWithLocalAi({
+          ...sanitizeUserPreferences(nextPrefs),
+          workerAccessKeys: nextKeys,
+        }),
+      };
+    }),
+
+  revokeWorkerAccessKey: protectedProcedure
+    .input(revokeWorkerAccessKeySchema)
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const [userRow] = await db.select({ userPreferences: users.userPreferences }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      const currentPrefs = sanitizeUserPreferences((userRow?.userPreferences as Record<string, unknown>) || {});
+      const workerPrefs = normalizeWorkerAccessKeysPreferences({
+        workerAccessKeys: (currentPrefs.workerAccessKeys as unknown[]) ?? [],
+      });
+      const existing = workerPrefs.workerAccessKeys.find((key) => key.keyId === input.keyId);
+      if (!existing) {
+        throw new Error("Worker access key not found");
+      }
+      if (existing.revokedAt) {
+        return {
+          key: existing,
+          preferences: sanitizeUserPreferencesWithLocalAi({
+            ...sanitizeUserPreferences(currentPrefs),
+            workerAccessKeys: workerPrefs.workerAccessKeys,
+          }),
+        };
+      }
+
+      const revokedAt = new Date().toISOString();
+      const updatedKeys = workerPrefs.workerAccessKeys.map((key) =>
+        key.keyId === input.keyId
+          ? { ...key, revokedAt }
+          : key,
+      );
+      const nextPrefs = {
+        ...currentPrefs,
+        workerAccessKeys: updatedKeys,
+      };
+      await db.update(users).set({ userPreferences: nextPrefs }).where(eq(users.id, ctx.user.id));
+
+      await revokeJti(existing.keyId, existing.expiresAt ? new Date(existing.expiresAt).getTime() : Date.now() + 10 * 365 * 24 * 60 * 60 * 1000);
+
+      return {
+        key: { ...existing, revokedAt },
+        preferences: sanitizeUserPreferencesWithLocalAi({
+          ...sanitizeUserPreferences(nextPrefs),
+          workerAccessKeys: updatedKeys,
+        }),
+      };
     }),
 
   setPrivateVaultPin: protectedProcedure

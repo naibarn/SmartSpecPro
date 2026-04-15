@@ -98,7 +98,9 @@
         "page_role",
         "section_title",
         "layout_pattern",
+        "initial_layout_pattern",
         "template_switched",
+        "switch_reason",
         "image_position",
         "page_quality_expectation"
       ],
@@ -161,6 +163,7 @@
           "minimum": 1
         },
         "output_kind": {
+          "type": "string",
           "const": "render_manifest_json"
         }
       }
@@ -170,6 +173,8 @@
       "additionalProperties": false,
       "required": [
         "color"
+        ,
+        "texture"
       ],
       "properties": {
         "color": {
@@ -268,7 +273,11 @@
       "required": [
         "target_occupancy_min",
         "target_occupancy_max",
-        "whitespace_ceiling"
+        "whitespace_ceiling",
+        "cover_whitespace_ceiling",
+        "closing_whitespace_ceiling",
+        "allow_callout_injection",
+        "allow_keypoint_box_injection"
       ],
       "properties": {
         "target_occupancy_min": {
@@ -569,7 +578,14 @@
         "x",
         "y",
         "w",
-        "h"
+        "h",
+        "size",
+        "weight",
+        "align",
+        "text",
+        "label",
+        "reference",
+        "radius"
       ],
       "properties": {
         "type": {
@@ -630,9 +646,10 @@
         {
           "if": {
             "properties": {
-              "type": {
-                "const": "image"
-              }
+            "type": {
+              "type": "string",
+              "const": "image"
+            }
             }
           },
           "then": {
@@ -786,7 +803,8 @@
         "title",
         "layout",
         "quality",
-        "blocks"
+        "blocks",
+        "note"
       ],
       "properties": {
         "page_number": {
@@ -846,6 +864,7 @@
       ],
       "properties": {
         "output_format": {
+          "type": "string",
           "const": "layout_plan_json"
         },
         "project_summary": {
@@ -887,6 +906,7 @@
       ],
       "properties": {
         "output_format": {
+          "type": "string",
           "const": "render_manifest_json"
         },
         "document_meta": {
@@ -926,6 +946,7 @@
       ],
       "properties": {
         "output_format": {
+          "type": "string",
           "const": "page_by_page_markdown"
         },
         "markdown": {

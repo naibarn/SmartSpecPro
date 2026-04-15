@@ -172,6 +172,7 @@ describe("RunEngine", () => {
           "member-external": {
             memberKind: "external_connector",
             externalWorkerId: "worker-1",
+            externalWorkerRuntimeType: "openclaw_gateway",
           },
           "member-assistant": {
             memberKind: "assistant",
@@ -182,6 +183,7 @@ describe("RunEngine", () => {
         {
           workItemId: "work-1",
           externalWorkerId: "worker-1",
+          runtimeType: "openclaw_gateway",
           memberId: "member-external",
           title: "Review partner reply",
           objective: "Wait for external review",
@@ -189,6 +191,71 @@ describe("RunEngine", () => {
           threadRootMessageId: "msg-1",
         },
       ]);
+    });
+
+    it("preserves Hermes runtime identity when resolving external connector dispatch candidates", () => {
+      expect(runEngine.resolveExternalConnectorDispatchCandidates({
+        workItems: [
+          {
+            id: "work-hermes-1",
+            title: "Reply to Telegram lead",
+            objective: "Send the final partner update",
+            status: "awaiting_approval",
+            threadRootMessageId: "msg-hermes-1",
+            assignedMemberId: null,
+            reviewerMemberId: null,
+            approverMemberId: "member-hermes",
+          },
+        ],
+        memberBindings: {
+          "member-hermes": {
+            memberKind: "external_connector",
+            externalWorkerId: "worker-hermes-1",
+            externalWorkerRuntimeType: "hermes_agent_gateway",
+          },
+        },
+      })).toEqual([
+        {
+          workItemId: "work-hermes-1",
+          externalWorkerId: "worker-hermes-1",
+          runtimeType: "hermes_agent_gateway",
+          memberId: "member-hermes",
+          title: "Reply to Telegram lead",
+          objective: "Send the final partner update",
+          status: "awaiting_approval",
+          threadRootMessageId: "msg-hermes-1",
+        },
+      ]);
+    });
+
+    it("builds external connector dispatch jobs against the bound worker runtime", () => {
+      expect(runEngine.buildExternalConnectorDispatchJobInput({
+        tenantId: "tenant-1",
+        run: {
+          id: "run-1",
+          roomId: "room-1",
+          teamId: "team-1",
+          initiatedByUserId: 7,
+        } as any,
+        candidate: {
+          workItemId: "work-hermes-1",
+          externalWorkerId: "worker-hermes-1",
+          runtimeType: "hermes_agent_gateway",
+          memberId: "member-hermes",
+          title: "Reply to Telegram lead",
+          objective: "Send the final partner update",
+          status: "awaiting_approval",
+          threadRootMessageId: "msg-hermes-1",
+        },
+      })).toEqual(expect.objectContaining({
+        runtimeType: "hermes_agent_gateway",
+        preferredWorkerId: "worker-hermes-1",
+        jobType: "external_agent_task",
+        instructionsJson: expect.objectContaining({
+          intent: "external_connector_follow_up",
+          externalWorkerId: "worker-hermes-1",
+        }),
+      }));
     });
 
     it("stops queueing more turns when no actionable work is left", () => {

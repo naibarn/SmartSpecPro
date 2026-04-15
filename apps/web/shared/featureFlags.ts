@@ -55,13 +55,23 @@ export interface TenantFeatureFlags {
   desktopZeroClawWorker: boolean; // F47 — Desktop + ZeroClaw managed worker runtime
   nemoClawSecureWorkerPool: boolean; // F48 — NemoClaw secure worker pools
   hiClawClusterRuntime: boolean; // F49 — HiClaw collaborative cluster runtime
-  desktopHostEnabled: boolean; // F50 — Unified Desktop Host control plane
-  desktopAdvancedLocalMode: boolean; // F51 — Step-up desktop local power
-  desktopPackageSync: boolean; // F52 — Signed desktop package sync and materialization
-  desktopAgencyRuntime: boolean; // F53 — Desktop Agency Swarm runtime enablement
-  desktopWorkerProjection: boolean; // F54 — Desktop Host projection into worker fabric
-  agencyHybridAdk: boolean; // F55 — Hybrid Agency Runtime with Google ADK compile/runtime surfaces
-  agencyHybridAdkKillSwitch: boolean; // F56 — Operational kill switch for Agency Hybrid ADK paths
+  hermesAgentRuntime: boolean; // F50 — Hermes bridge-backed external runtime foundation
+  desktopHostEnabled: boolean; // F51 — Unified Desktop Host control plane
+  desktopAdvancedLocalMode: boolean; // F52 — Step-up desktop local power
+  desktopPackageSync: boolean; // F53 — Signed desktop package sync and materialization
+  desktopAgencyRuntime: boolean; // F54 — Desktop Agency Swarm runtime enablement
+  desktopWorkerProjection: boolean; // F55 — Desktop Host projection into worker fabric
+  agencyHybridAdk: boolean; // F56 — Hybrid Agency Runtime with Google ADK compile/runtime surfaces
+  agencyHybridAdkKillSwitch: boolean; // F57 — Operational kill switch for Agency Hybrid ADK paths
+  workpacksEnabled: boolean; // F58 — Autonomous workpack intake, lifecycle, and control-plane surfaces
+  workpackAutonomousPilot: boolean; // F59 — Tenant rollout gate for autonomous workpack execution
+  workpackOpsConsole: boolean; // F60 — Admin monitoring and readiness controls for workpacks
+  documentOcrExternalProcessing: boolean; // F61 — Allow outbound document OCR processing (ADE / gateway)
+  hermesProfileExperience: boolean; // F62 — Hermes persona/profile summaries in teams and admin views
+  hermesChannelWorkflowExpansion: boolean; // F63 — Hermes channel companion workflow surfaces
+  hermesMemoryContextSync: boolean; // F64 — Hermes opt-in memory/context sync surfaces
+  hermesTaskModes: boolean; // F65 — Hermes task mode summaries and work-mode mapping
+  hermesVisibilitySummaries: boolean; // F66 — Hermes progress and observability summaries
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -120,6 +130,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "desktopZeroClawWorker",
   "nemoClawSecureWorkerPool",
   "hiClawClusterRuntime",
+  "hermesAgentRuntime",
   "desktopHostEnabled",
   "desktopAdvancedLocalMode",
   "desktopPackageSync",
@@ -127,6 +138,15 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "desktopWorkerProjection",
   "agencyHybridAdk",
   "agencyHybridAdkKillSwitch",
+  "workpacksEnabled",
+  "workpackAutonomousPilot",
+  "workpackOpsConsole",
+  "documentOcrExternalProcessing",
+  "hermesProfileExperience",
+  "hermesChannelWorkflowExpansion",
+  "hermesMemoryContextSync",
+  "hermesTaskModes",
+  "hermesVisibilitySummaries",
 ]);
 
 /**
@@ -184,6 +204,7 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   desktopZeroClawWorker: false, // Desktop worker host remains tenant-gated until runtime/profile support is ready
   nemoClawSecureWorkerPool: false, // Secure sandbox pools are explicitly admin-gated
   hiClawClusterRuntime: false, // Collaborative cluster runtime is explicitly admin-gated
+  hermesAgentRuntime: false, // Hermes bridge-backed runtime stays disabled until rollout and policy surfaces are ready
   desktopHostEnabled: false, // Desktop Host control plane rollout is explicit and fail-closed
   desktopAdvancedLocalMode: false, // High-power local mode requires explicit tenant opt-in
   desktopPackageSync: false, // Signed package sync stays disabled until registry/policy is ready
@@ -191,4 +212,118 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   desktopWorkerProjection: false, // Desktop Host only joins worker fabric when explicitly enabled
   agencyHybridAdk: false, // Hybrid Agency Runtime is explicit opt-in while ADK integration remains rollout-gated
   agencyHybridAdkKillSwitch: false, // Kill switch defaults open but stays available for incident response
+  workpacksEnabled: true, // Workpack authoring ships on by default for first-party tenants
+  workpackAutonomousPilot: false, // Autonomous execution remains rollout-gated until readiness evidence exists
+  workpackOpsConsole: true, // Admin monitoring surfaces can render workpack readiness immediately
+  documentOcrExternalProcessing: false, // External document OCR stays tenant-gated by default
+  hermesProfileExperience: false, // Hermes persona/profile summaries stay rollout-gated until tenant admins opt in
+  hermesChannelWorkflowExpansion: false, // Hermes channel workflow expansion stays off until revoke/reauthorize behavior is ready
+  hermesMemoryContextSync: false, // Hermes memory/context sync stays off until approval and quarantine semantics are ready
+  hermesTaskModes: false, // Hermes task mode summaries stay rollout-gated until operator surfaces are ready
+  hermesVisibilitySummaries: false, // Hermes visibility summaries stay admin-gated until rollout evidence exists
 };
+
+export type HermesRolloutSurface =
+  | "disabled"
+  | "registration"
+  | "bound_dispatch"
+  | "delegated_mcp"
+  | "channel_companion";
+
+export interface HermesRolloutReadinessInput {
+  featureFlags: Pick<TenantFeatureFlags, "hermesAgentRuntime">;
+  bridgeCapabilities?: {
+    apiServerEnabled?: boolean | null;
+    supportsDelegatedHttp?: boolean | null;
+    supportsDelegatedMcp?: boolean | null;
+    supportsBoundConnector?: boolean | null;
+    supportsCallbacks?: boolean | null;
+    gatewayPlatforms?: string[] | null;
+  };
+  remoteEndpointPolicyExceptionId?: string | null;
+}
+
+export interface HermesRolloutReadiness {
+  parentGateEnabled: boolean;
+  surfaces: {
+    registration: boolean;
+    boundDispatch: boolean;
+    delegatedMcp: boolean;
+    channelCompanion: boolean;
+  };
+  highestEnabledSurface: HermesRolloutSurface;
+  remoteEndpointPolicy: "loopback_only" | "audited_exception_granted";
+}
+
+export function evaluateHermesRolloutReadiness(
+  input: HermesRolloutReadinessInput,
+): HermesRolloutReadiness {
+  const parentGateEnabled = input.featureFlags.hermesAgentRuntime === true;
+  const bridgeCapabilities = input.bridgeCapabilities ?? {};
+  const sanitizedGatewayPlatforms = Array.isArray(bridgeCapabilities.gatewayPlatforms)
+    ? bridgeCapabilities.gatewayPlatforms.filter(
+      (value): value is string => typeof value === "string" && value.trim().length > 0,
+    )
+    : [];
+
+  const registration = parentGateEnabled;
+  const boundDispatch = registration
+    && bridgeCapabilities.apiServerEnabled === true
+    && bridgeCapabilities.supportsDelegatedHttp === true
+    && bridgeCapabilities.supportsBoundConnector === true;
+  const delegatedMcp = boundDispatch && bridgeCapabilities.supportsDelegatedMcp === true;
+  const channelCompanion = boundDispatch
+    && bridgeCapabilities.supportsCallbacks === true
+    && sanitizedGatewayPlatforms.length > 0;
+
+  const highestEnabledSurface: HermesRolloutSurface = !registration
+    ? "disabled"
+    : channelCompanion
+      ? "channel_companion"
+      : delegatedMcp
+        ? "delegated_mcp"
+        : boundDispatch
+          ? "bound_dispatch"
+          : "registration";
+
+  return {
+    parentGateEnabled,
+    surfaces: {
+      registration,
+      boundDispatch,
+      delegatedMcp,
+      channelCompanion,
+    },
+    highestEnabledSurface,
+    remoteEndpointPolicy: input.remoteEndpointPolicyExceptionId?.trim()
+      ? "audited_exception_granted"
+      : "loopback_only",
+  };
+}
+
+export interface HermesCapabilityRolloutReadiness {
+  profileExperience: boolean;
+  channelWorkflowExpansion: boolean;
+  memoryContextSync: boolean;
+  taskModes: boolean;
+  visibilitySummaries: boolean;
+}
+
+export function evaluateHermesCapabilityRolloutReadiness(
+  input: Pick<
+    TenantFeatureFlags,
+    | "hermesProfileExperience"
+    | "hermesChannelWorkflowExpansion"
+    | "hermesMemoryContextSync"
+    | "hermesTaskModes"
+    | "hermesVisibilitySummaries"
+  >,
+): HermesCapabilityRolloutReadiness {
+  return {
+    profileExperience: input.hermesProfileExperience === true,
+    channelWorkflowExpansion: input.hermesChannelWorkflowExpansion === true,
+    memoryContextSync: input.hermesMemoryContextSync === true,
+    taskModes: input.hermesTaskModes === true,
+    visibilitySummaries: input.hermesVisibilitySummaries === true,
+  };
+}

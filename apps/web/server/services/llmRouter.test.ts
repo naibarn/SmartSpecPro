@@ -50,6 +50,9 @@ vi.mock("./crypto", () => ({
 }));
 
 import { resolveProviders, executeWithFallback } from "./llmRouter";
+import { auditLogger } from "./auditLogger";
+
+const mockAuditLog = vi.mocked(auditLogger.log);
 
 vi.stubGlobal("fetch", mockFetch);
 
@@ -102,6 +105,7 @@ function makeCandidate(overrides: Partial<any> = {}) {
     baseUrl: "https://api.test.com/v1",
     apiKeyEncrypted: "encrypted-key",
     providerModelId: "gpt-4o",
+    supportsResponses: true,
     pricingInput: "2.50",
     pricingOutput: "10.00",
     isFree: false,
@@ -357,6 +361,213 @@ describe("executeWithFallback", () => {
     }
   });
 
+  it("routes responses-style requests through the responses endpoint and normalizes the payload", async () => {
+    const provider = makeCandidate({
+      providerId: 1,
+      providerName: "kie_ai",
+      baseUrl: "https://api.kie.ai",
+      providerModelId: "gpt-5-4",
+      apiStyle: "responses",
+    });
+    setupProviderResolution([provider]);
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id: "resp_123",
+        model: "gpt-5-4",
+        output_text: "{\"ok\":true}",
+        usage: { input_tokens: 11, output_tokens: 7, total_tokens: 18 },
+      }),
+    });
+
+    const result = await executeWithFallback({
+      model: "gpt-5-4",
+      messages: [
+        { role: "system", content: "Return JSON only" },
+        { role: "user", content: "Say hello" },
+      ],
+      stream: false,
+      userId: 1,
+      maxTokens: 6000,
+      extraBodyParams: {
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "demo",
+            schema: {
+              type: "object",
+              properties: {
+                ok: { type: "boolean" },
+              },
+              required: ["ok"],
+            },
+            strict: true,
+          },
+        },
+      },
+    });
+
+    expect(result.type).toBe("success");
+    if (result.type === "success") {
+      expect(result.response.choices[0].message.content).toBe("{\"ok\":true}");
+      expect(result.response.usage.prompt_tokens).toBe(11);
+      expect(result.response.usage.completion_tokens).toBe(7);
+    }
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [fetchUrl, fetchInit] = mockFetch.mock.calls[0] ?? [];
+    expect(fetchUrl).toBe("https://api.kie.ai/codex/v1/responses");
+    const body = JSON.parse(String((fetchInit as any)?.body ?? "{}"));
+    expect(body).toEqual(expect.objectContaining({
+      model: "gpt-5-4",
+      stream: false,
+      input: [
+        {
+          role: "user",
+          content: "Say hello",
+        },
+      ],
+      instructions: "Return JSON only",
+      max_output_tokens: 6000,
+      text: expect.objectContaining({
+        format: expect.objectContaining({
+          type: "json_schema",
+        }),
+      }),
+    }));
+    expect(body).not.toHaveProperty("messages");
+    expect(body).not.toHaveProperty("response_format");
+  });
+
+  it("routes messages-style requests through the messages endpoint and converts the payload", async () => {
+    const provider = makeCandidate({
+      providerId: 1,
+      providerName: "kie_ai",
+      baseUrl: "https://api.kie.ai",
+      providerModelId: "claude-sonnet-4-6",
+      apiStyle: "messages",
+    });
+    setupProviderResolution([provider]);
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        content: [{ text: "Hello" }],
+        usage: { input_tokens: 11, output_tokens: 7, total_tokens: 18 },
+      }),
+    });
+
+    const result = await executeWithFallback({
+      model: "claude-sonnet-4-6",
+      messages: [
+        { role: "system", content: "You are helpful" },
+        { role: "user", content: "Say hello" },
+      ],
+      stream: false,
+      userId: 1,
+      maxTokens: 1024,
+    });
+
+    expect(result.type).toBe("success");
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [fetchUrl, fetchInit] = mockFetch.mock.calls[0] ?? [];
+    expect(fetchUrl).toBe("https://api.kie.ai/claude/v1/messages");
+
+    const body = JSON.parse(String((fetchInit as any)?.body ?? "{}"));
+    expect(body).toEqual(expect.objectContaining({
+      model: "claude-sonnet-4-6",
+      stream: false,
+      max_tokens: 1024,
+      system: "You are helpful",
+      messages: [
+        {
+          role: "user",
+          content: [{ type: "text", text: "Say hello" }],
+        },
+      ],
+    }));
+    expect(body).not.toHaveProperty("input");
+    expect(body).not.toHaveProperty("response_format");
+  });
+
+  it("falls back to chat-completions when a responses-style model does not support responses", async () => {
+    const provider = makeCandidate({
+      providerId: 1,
+      providerName: "openrouter",
+      baseUrl: "https://openrouter.ai/api/v1",
+      providerModelId: "openai/gpt-5.4-mini",
+      apiStyle: "responses",
+      supportsResponses: false,
+    });
+    setupProviderResolution([provider]);
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: "{\"ok\":true}" } }],
+        usage: { prompt_tokens: 11, completion_tokens: 7 },
+      }),
+    });
+
+    const result = await executeWithFallback({
+      model: "gpt-5.4-mini",
+      messages: [
+        { role: "system", content: "Return JSON only" },
+        { role: "user", content: "Say hello" },
+      ],
+      stream: false,
+      userId: 1,
+      maxTokens: 6000,
+      extraBodyParams: {
+        provider: {
+          allow_fallbacks: false,
+        },
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "demo",
+            schema: {
+              type: "object",
+              properties: {
+                ok: { type: "boolean" },
+              },
+              required: ["ok"],
+            },
+            strict: true,
+          },
+        },
+      },
+    });
+
+    expect(result.type).toBe("success");
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    const [fetchUrl, fetchInit] = mockFetch.mock.calls[0] ?? [];
+    expect(fetchUrl).toBe("https://openrouter.ai/api/v1/chat/completions");
+    const body = JSON.parse(String((fetchInit as any)?.body ?? "{}"));
+    expect(body).toEqual(expect.objectContaining({
+      model: "openai/gpt-5.4-mini",
+      messages: [
+        { role: "system", content: "Return JSON only" },
+        { role: "user", content: "Say hello" },
+      ],
+      stream: false,
+      max_tokens: 6000,
+      provider: expect.objectContaining({
+        allow_fallbacks: false,
+        require_parameters: true,
+      }),
+      response_format: expect.objectContaining({
+        type: "json_schema",
+      }),
+    }));
+    expect(body).not.toHaveProperty("input");
+    expect(body).not.toHaveProperty("instructions");
+  });
+
   it("falls back when a provider returns HTML instead of JSON", async () => {
     const provider1 = makeCandidate({ providerId: 1, providerName: "HTMLProvider" });
     const provider2 = makeCandidate({ providerId: 2, providerName: "JSONProvider" });
@@ -523,7 +734,18 @@ describe("executeWithFallback", () => {
     });
 
     expect(result.type).toBe("error");
+    if (result.type === "error") {
+      expect(result.error).toContain("Bad request");
+    }
     expect(mockFetch).toHaveBeenCalledTimes(1); // Only one attempt
+    expect(mockHealthRecordFailure).not.toHaveBeenCalled();
+    expect(mockAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "llm_response",
+      statusCode: 400,
+      responsePayload: expect.objectContaining({
+        bodyPreview: "Bad request",
+      }),
+    }));
   });
 
   it("max fallback attempts respected (default 3)", async () => {

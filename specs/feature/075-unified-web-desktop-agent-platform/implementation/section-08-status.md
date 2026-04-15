@@ -8,6 +8,7 @@
   - settings-surface disable-device action aligned with the governed route
   - managed-mode help docs in English and Thai
   - regression tests for Desktop Host settings exposure and route gating
+  - desktop release workflow gating that runs Desktop Host web contract tests plus Tauri hardening suites before build artifacts are produced
 - Targeted tests passed:
   - `npm --prefix apps/web test -- server/routes/desktopHost.test.ts server/services/__tests__/desktopRolloutGates.test.ts client/src/pages/__tests__/Settings.desktopHostTab.test.tsx`
   - `cargo test --manifest-path apps/tauri-shell/src-tauri/Cargo.toml --test package_sync_tests`

@@ -1,24 +1,31 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import {
+  desktopDeviceAccessStateSchema,
   desktopDeviceRunSummarySchema,
+  desktopDevicePolicyOverridesSchema,
   desktopDeviceDisableResponseSchema,
   desktopCapabilitySnapshotSchema,
   desktopLocalRootSchema,
+  desktopManagedActionTypeSchema,
   desktopManagedActionSchema,
   desktopPackageSyncStateSchema,
   desktopRegisteredDeviceSummarySchema,
   resolveDesktopWorkerProjectionRuntimeType,
   type DesktopCapabilitySnapshot,
+  type DesktopDeviceAccessState,
   type DesktopDeviceDisableRequest,
   type DesktopDeviceDisableResponse,
   type DesktopDeviceHeartbeatPayload,
   type DesktopDeviceHealthStatus,
+  type DesktopDeviceOwner,
+  type DesktopDevicePolicyOverrides,
   type DesktopDeviceRegistrationPayload,
   type DesktopHostDeviceStatusResponse,
   type DesktopLocalRoot,
   type DesktopManagedAction,
+  type DesktopManagedActionType,
   type DesktopPackageSyncState,
   type DesktopRegisteredDeviceSummary,
   type DesktopDeviceRunSummary,
@@ -26,7 +33,7 @@ import {
   desktopWorkspaceProfileSchema,
 } from "../../shared/desktopHost";
 import type { TenantFeatureFlags } from "../../shared/featureFlags";
-import { desktopDevices } from "../../drizzle/schema";
+import { desktopDevices, users } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { auditLogger } from "./auditLogger";
 import { buildDesktopDeviceOffboarding } from "./deviceEnrollmentService";
@@ -35,6 +42,12 @@ import { sanitizeWorkerPayload, sanitizeWorkerWarningFlags } from "./workerPaylo
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 
 type DesktopDeviceRecord = Record<string, any>;
+
+interface DesktopDeviceOwnerRecord {
+  id: number;
+  name: string | null;
+  email: string | null;
+}
 
 export interface DesktopDeviceActor {
   tenantId: string;
@@ -60,6 +73,7 @@ export interface DesktopDeviceRegistryRepository {
     userId: number,
   ) => Promise<DesktopDeviceRecord[]>;
   updateDevice: (deviceId: string, values: Record<string, unknown>) => Promise<DesktopDeviceRecord>;
+  listUsersByIds?: (userIds: number[]) => Promise<DesktopDeviceOwnerRecord[]>;
 }
 
 export class DesktopDeviceRegistryError extends Error {
@@ -119,6 +133,20 @@ const defaultRepo: DesktopDeviceRegistryRepository = {
       .from(desktopDevices)
       .where(and(eq(desktopDevices.tenantId, tenantId), eq(desktopDevices.userId, userId)));
   },
+  async listUsersByIds(userIds) {
+    if (userIds.length === 0) {
+      return [];
+    }
+    const db = await getDb();
+    return db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+      })
+      .from(users)
+      .where(inArray(users.id, userIds));
+  },
 };
 
 function parseNumericUserId(value: string | number | null | undefined): number | null {
@@ -173,6 +201,94 @@ function inferHealthStatus(input: {
 
   const warnings = sanitizeWorkerWarningFlags(input.warningFlagsJson);
   return warnings.length > 0 ? "unhealthy" : "online";
+}
+
+function inferAccessState(input: {
+  disabledAt?: unknown;
+  accessState?: unknown;
+}): DesktopDeviceAccessState {
+  if (input.disabledAt) {
+    return "disabled";
+  }
+
+  const parsed = desktopDeviceAccessStateSchema.safeParse(input.accessState);
+  return parsed.success ? parsed.data : "active";
+}
+
+function extractPolicyOverrides(
+  policyOverridesJson: unknown,
+): DesktopDevicePolicyOverrides {
+  const sanitized = sanitizeWorkerPayload(policyOverridesJson);
+  return desktopDevicePolicyOverridesSchema.parse(
+    sanitized && typeof sanitized === "object" ? sanitized : {},
+  );
+}
+
+function normalizePolicyOverrides(
+  overrides: Partial<DesktopDevicePolicyOverrides> | null | undefined,
+): DesktopDevicePolicyOverrides {
+  return desktopDevicePolicyOverridesSchema.parse({
+    allowAdvancedLocalMode: overrides?.allowAdvancedLocalMode ?? null,
+    allowPackageSync: overrides?.allowPackageSync ?? null,
+    allowAgencyRuntime: overrides?.allowAgencyRuntime ?? null,
+    allowWorkerProjection: overrides?.allowWorkerProjection ?? null,
+    maxLocalRoots: overrides?.maxLocalRoots ?? null,
+    outputWritebackMode: overrides?.outputWritebackMode ?? null,
+  });
+}
+
+function resolveDeviceOwner(
+  device: DesktopDeviceRecord,
+  ownerById: Map<number, DesktopDeviceOwnerRecord>,
+): DesktopDeviceOwner {
+  const numericUserId = parseNumericUserId(device.userId);
+  const ownerRecord = numericUserId != null ? ownerById.get(numericUserId) ?? null : null;
+  return {
+    userId: numericUserId != null ? String(numericUserId) : null,
+    name: ownerRecord?.name ?? null,
+    email: ownerRecord?.email ?? null,
+  };
+}
+
+function buildPresenceSummary(input: {
+  device: DesktopDeviceRecord;
+  now: Date;
+  staleAfterSeconds?: number;
+}) {
+  const staleAfterSeconds = input.staleAfterSeconds ?? 300;
+  const accessState = inferAccessState({
+    disabledAt: input.device.disabledAt,
+    accessState: input.device.accessState,
+  });
+  const lastSeenAt = toIsoStringOrNull(input.device.lastSeenAt);
+  if (accessState === "disabled") {
+    return {
+      status: "disabled" as const,
+      staleAfterSeconds,
+      lastSeenAgeSeconds: null,
+      reportedAt: lastSeenAt,
+    };
+  }
+
+  if (!lastSeenAt) {
+    return {
+      status: "offline" as const,
+      staleAfterSeconds,
+      lastSeenAgeSeconds: null,
+      reportedAt: null,
+    };
+  }
+
+  const ageSeconds = Math.max(
+    0,
+    Math.floor((input.now.getTime() - new Date(lastSeenAt).getTime()) / 1000),
+  );
+  return {
+    status: ageSeconds <= staleAfterSeconds ? "online" as const : "stale" as const,
+    staleAfterSeconds,
+    lastSeenAgeSeconds: ageSeconds,
+    reportedAt: lastSeenAt,
+  };
 }
 
 function buildProjectionState(input: {
@@ -299,6 +415,8 @@ function extractDesktopCapabilitySnapshot(
   const sanitized = sanitizeWorkerPayload(capabilitiesJson) as Record<string, unknown>;
   return desktopCapabilitySnapshotSchema.parse({
     deviceIdentity: sanitized.deviceIdentity ?? sanitized.device_identity ?? null,
+    deviceAttestationSupport:
+      sanitized.deviceAttestationSupport ?? sanitized.device_attestation_support ?? null,
     localFileService: sanitized.localFileService ?? sanitized.local_file_service ?? null,
   });
 }
@@ -362,9 +480,31 @@ function extractLastRunSummary(
     : null;
 }
 
+async function resolveOwnerDirectory(
+  repo: DesktopDeviceRegistryRepository,
+  devices: DesktopDeviceRecord[],
+): Promise<Map<number, DesktopDeviceOwnerRecord>> {
+  const userIds = [...new Set(
+    devices
+      .map((device) => parseNumericUserId(device.userId))
+      .filter((userId): userId is number => userId != null),
+  )];
+  if (userIds.length === 0 || !repo.listUsersByIds) {
+    return new Map();
+  }
+  const rows = await repo.listUsersByIds(userIds);
+  return new Map(rows.map((row) => [row.id, row]));
+}
+
 export function summarizeDesktopDeviceRecord(
   device: DesktopDeviceRecord,
+  options: {
+    now?: Date;
+    ownerById?: Map<number, DesktopDeviceOwnerRecord>;
+    staleAfterSeconds?: number;
+  } = {},
 ): DesktopRegisteredDeviceSummary {
+  const ownerById = options.ownerById ?? new Map<number, DesktopDeviceOwnerRecord>();
   return desktopRegisteredDeviceSummarySchema.parse({
     deviceId: String(device.id),
     displayName: String(device.displayName ?? device.id),
@@ -374,9 +514,19 @@ export function summarizeDesktopDeviceRecord(
       healthSummaryJson: device.healthSummaryJson,
       warningFlagsJson: device.warningFlagsJson,
     }),
+    accessState: inferAccessState({
+      disabledAt: device.disabledAt,
+      accessState: device.accessState,
+    }),
     platform: sanitizeWorkerPayload(device.platform) as Record<string, unknown>,
     enrolledAt: toIsoStringOrNull(device.enrolledAt),
     lastSeenAt: toIsoStringOrNull(device.lastSeenAt),
+    owner: resolveDeviceOwner(device, ownerById),
+    presence: buildPresenceSummary({
+      device,
+      now: options.now ?? new Date(),
+      staleAfterSeconds: options.staleAfterSeconds,
+    }),
     workerProjectionEnabled: Boolean(device.workerProjectionEnabled),
     projectedWorkerRuntimeType: typeof device.projectedWorkerRuntimeType === "string"
       ? device.projectedWorkerRuntimeType
@@ -391,6 +541,7 @@ export function summarizeDesktopDeviceRecord(
     lastRunSummary: extractLastRunSummary(device.lastRunSummaryJson),
     policyVersion: typeof device.policyVersion === "string" ? device.policyVersion : null,
     policyExpiresAt: toIsoStringOrNull(device.policyExpiresAt),
+    policyOverrides: extractPolicyOverrides(device.policyOverridesJson),
   });
 }
 
@@ -463,6 +614,8 @@ export async function registerDesktopDevice(
     lastRunSummaryJson: sanitizeWorkerPayload(input.payload.lastRunSummary) as Record<string, unknown>,
     policyVersion: existing?.policyVersion ?? null,
     policyExpiresAt: existing?.policyExpiresAt ?? null,
+    policyOverridesJson: sanitizeWorkerPayload(existing?.policyOverridesJson ?? {}) as Record<string, unknown>,
+    accessState: existing?.accessState === "reauth_required" ? "active" : existing?.accessState ?? "active",
     warningFlagsJson: sanitizeWorkerWarningFlags(input.payload.warningFlagsJson),
     disabledAt: null,
     lastSeenAt: new Date(),
@@ -528,6 +681,20 @@ export async function recordDesktopDeviceHeartbeat(
       `Desktop device ${input.deviceId} has been disabled and cannot refresh policy or credentials`,
     );
   }
+  if (currentDevice.accessState === "reauth_required") {
+    throw new DesktopDeviceRegistryError(
+      "desktop_device_reauth_required",
+      403,
+      `Desktop device ${input.deviceId} must re-authorize before it can refresh policy or credentials`,
+    );
+  }
+  if (currentDevice.accessState === "quarantined") {
+    throw new DesktopDeviceRegistryError(
+      "desktop_device_quarantined",
+      403,
+      `Desktop device ${input.deviceId} is quarantined and cannot refresh policy or credentials`,
+    );
+  }
 
   const acknowledgedActionIds = new Set(input.payload.acknowledgedActionIds ?? []);
   const pendingActions = extractPendingActions(currentDevice.pendingActionsJson).filter(
@@ -553,6 +720,7 @@ export async function recordDesktopDeviceHeartbeat(
     currentWorkspaceProfileJson: sanitizeWorkerPayload(input.payload.currentWorkspaceProfile) as Record<string, unknown>,
     lastRunSummaryJson: sanitizeWorkerPayload(input.payload.lastRunSummary) as Record<string, unknown>,
     warningFlagsJson: sanitizeWorkerWarningFlags(input.payload.warningFlagsJson),
+    accessState: currentDevice.accessState ?? "active",
     policyCursor: input.payload.policyCursor ?? currentDevice.policyCursor ?? null,
     lastSeenAt: new Date(),
   });
@@ -588,9 +756,13 @@ export async function listDesktopDevicesForActor(
   }
 
   const devices = await repo.listDevicesByTenantUser(input.actor.tenantId, parsedUserId);
+  const ownerById = await resolveOwnerDirectory(repo, devices);
+  const generatedAt = now();
   return {
-    generatedAt: now().toISOString(),
-    devices: devices.map(summarizeDesktopDeviceRecord),
+    generatedAt: generatedAt.toISOString(),
+    devices: devices.map((device) =>
+      summarizeDesktopDeviceRecord(device, { now: generatedAt, ownerById })
+    ),
   };
 }
 
@@ -614,9 +786,13 @@ export async function listTenantDesktopDevicesForActor(
   }
 
   const devices = await repo.listDevicesByTenant(input.actor.tenantId);
+  const ownerById = await resolveOwnerDirectory(repo, devices);
+  const generatedAt = now();
   return {
-    generatedAt: now().toISOString(),
-    devices: devices.map(summarizeDesktopDeviceRecord),
+    generatedAt: generatedAt.toISOString(),
+    devices: devices.map((device) =>
+      summarizeDesktopDeviceRecord(device, { now: generatedAt, ownerById })
+    ),
   };
 }
 
@@ -635,6 +811,201 @@ export async function getDesktopDeviceByIdForTenant(
     return null;
   }
   return device;
+}
+
+export async function updateDesktopDevicePolicyOverrides(
+  input: {
+    actor: DesktopDeviceActor;
+    deviceId: string;
+    overrides: Partial<DesktopDevicePolicyOverrides>;
+    note?: string | null;
+  },
+  deps: {
+    repo?: DesktopDeviceRegistryRepository;
+    now?: () => Date;
+  } = {},
+): Promise<DesktopRegisteredDeviceSummary> {
+  const repo = deps.repo ?? defaultRepo;
+  const now = deps.now ?? (() => new Date());
+  const device = await repo.findDeviceById(input.deviceId);
+  assertTenantDeviceExists(input.actor, device, input.deviceId);
+  const currentDevice = device as DesktopDeviceRecord;
+  if (!actorCanManageDevice(input.actor, currentDevice)) {
+    throw new DesktopDeviceRegistryError(
+      "desktop_device_forbidden",
+      403,
+      "The authenticated actor cannot update policy overrides for this desktop device",
+    );
+  }
+
+  const mergedOverrides = normalizePolicyOverrides({
+    ...extractPolicyOverrides(currentDevice.policyOverridesJson),
+    ...input.overrides,
+  });
+
+  const updatedDevice = await repo.updateDevice(input.deviceId, {
+    policyOverridesJson: sanitizeWorkerPayload(mergedOverrides) as Record<string, unknown>,
+    updatedAt: now(),
+  });
+
+  auditLogger.log({
+    eventType: "desktop_host_device_policy_overrides_updated",
+    userId: parseNumericUserId(input.actor.userId),
+    metadata: {
+      tenantId: input.actor.tenantId,
+      deviceId: input.deviceId,
+      note: input.note ?? null,
+      overrides: mergedOverrides,
+    },
+  });
+
+  const ownerById = await resolveOwnerDirectory(repo, [updatedDevice]);
+  return summarizeDesktopDeviceRecord(updatedDevice, {
+    now: now(),
+    ownerById,
+  });
+}
+
+export async function queueDesktopDeviceAction(
+  input: {
+    actor: DesktopDeviceActor;
+    deviceId: string;
+    actionType: Extract<
+      DesktopManagedActionType,
+      | "force_reauth"
+      | "revoke_runtime_tokens"
+      | "cancel_active_runs"
+      | "quarantine_device"
+      | "resume_device_access"
+    >;
+    note?: string | null;
+  },
+  deps: {
+    repo?: DesktopDeviceRegistryRepository;
+    now?: () => Date;
+  } = {},
+): Promise<{
+  device: DesktopRegisteredDeviceSummary;
+  action: DesktopManagedAction;
+}> {
+  const repo = deps.repo ?? defaultRepo;
+  const now = deps.now ?? (() => new Date());
+  const device = await repo.findDeviceById(input.deviceId);
+  assertTenantDeviceExists(input.actor, device, input.deviceId);
+  const currentDevice = device as DesktopDeviceRecord;
+  if (!actorCanManageDevice(input.actor, currentDevice)) {
+    throw new DesktopDeviceRegistryError(
+      "desktop_device_forbidden",
+      403,
+      "The authenticated actor cannot manage this desktop device",
+    );
+  }
+
+  const currentAccessState = inferAccessState({
+    disabledAt: currentDevice.disabledAt,
+    accessState: currentDevice.accessState,
+  });
+  if (currentAccessState === "disabled" && input.actionType !== "resume_device_access") {
+    throw new DesktopDeviceRegistryError(
+      "desktop_device_disabled",
+      403,
+      `Desktop device ${input.deviceId} is disabled and only offboarding-safe actions are allowed`,
+    );
+  }
+  if (currentAccessState === "disabled" && input.actionType === "resume_device_access") {
+    throw new DesktopDeviceRegistryError(
+      "desktop_device_resume_unsupported",
+      400,
+      "Disabled desktop devices must be re-authorized through enrollment rather than resumed from the tenant console",
+    );
+  }
+
+  const action = desktopManagedActionSchema.parse({
+    actionId: randomUUID(),
+    actionType: desktopManagedActionTypeSchema.parse(input.actionType),
+    status: "queued",
+    requestedAt: now().toISOString(),
+    note: input.note ?? null,
+  });
+
+  const warningFlags = new Set(sanitizeWorkerWarningFlags(currentDevice.warningFlagsJson));
+  let nextAccessState: DesktopDeviceAccessState = currentAccessState;
+
+  switch (input.actionType) {
+    case "force_reauth":
+      nextAccessState = "reauth_required";
+      warningFlags.add("device_reauth_required");
+      break;
+    case "quarantine_device":
+      nextAccessState = "quarantined";
+      warningFlags.add("device_quarantined");
+      break;
+    case "resume_device_access":
+      nextAccessState = "active";
+      warningFlags.delete("device_reauth_required");
+      warningFlags.delete("device_quarantined");
+      break;
+    case "revoke_runtime_tokens":
+    case "cancel_active_runs":
+      nextAccessState = currentAccessState;
+      break;
+  }
+
+  const nextActions = [
+    ...extractPendingActions(currentDevice.pendingActionsJson).filter(
+      (existingAction) => !(
+        existingAction.rootId == null
+        && existingAction.actionType === input.actionType
+        && existingAction.status === "queued"
+      ),
+    ),
+    action,
+  ];
+
+  const updatedHealthSummary: Record<string, unknown> & { status?: DesktopDeviceHealthStatus } = {
+    ...(sanitizeWorkerPayload(currentDevice.healthSummaryJson) as Record<string, unknown>),
+    accessState: nextAccessState,
+    lastAdminAction: input.actionType,
+    lastAdminActionAt: now().toISOString(),
+  };
+  if (input.actionType === "quarantine_device") {
+    updatedHealthSummary.status = "unhealthy";
+  }
+  if (input.actionType === "resume_device_access") {
+    updatedHealthSummary.status = inferHealthStatus({
+      healthSummaryJson: currentDevice.healthSummaryJson,
+      warningFlagsJson: [...warningFlags],
+    });
+  }
+
+  const updatedDevice = await repo.updateDevice(input.deviceId, {
+    accessState: nextAccessState,
+    warningFlagsJson: [...warningFlags],
+    healthSummaryJson: updatedHealthSummary,
+    pendingActionsJson: nextActions.map((queuedAction) => sanitizeWorkerPayload(queuedAction) as Record<string, unknown>),
+    updatedAt: now(),
+  });
+
+  auditLogger.log({
+    eventType: "desktop_host_device_action_queued",
+    userId: parseNumericUserId(input.actor.userId),
+    metadata: {
+      tenantId: input.actor.tenantId,
+      deviceId: input.deviceId,
+      actionType: input.actionType,
+      note: input.note ?? null,
+      accessState: nextAccessState,
+    },
+  });
+
+  const ownerById = await resolveOwnerDirectory(repo, [updatedDevice]);
+  return {
+    device: summarizeDesktopDeviceRecord(updatedDevice, {
+      now: now(),
+      ownerById,
+    }),
+    action,
+  };
 }
 
 export async function queueDesktopRootAction(
@@ -718,7 +1089,10 @@ export async function queueDesktopRootAction(
   });
 
   return {
-    device: summarizeDesktopDeviceRecord(updatedDevice),
+    device: summarizeDesktopDeviceRecord(updatedDevice, {
+      now: now(),
+      ownerById: await resolveOwnerDirectory(repo, [updatedDevice]),
+    }),
     action,
   };
 }
@@ -755,10 +1129,12 @@ export async function disableDesktopDevice(
 
   const updatedDevice = await repo.updateDevice(input.deviceId, {
     disabledAt,
+    accessState: "disabled",
     warningFlagsJson: [...warningFlags],
     healthSummaryJson: {
       ...(sanitizeWorkerPayload(currentDevice.healthSummaryJson) as Record<string, unknown>),
       status: "disabled",
+      accessState: "disabled",
       disabledReason: input.payload?.reason ?? null,
       disabledAt: disabledAt.toISOString(),
     },
@@ -783,7 +1159,10 @@ export async function disableDesktopDevice(
   });
 
   return desktopDeviceDisableResponseSchema.parse({
-    device: summarizeDesktopDeviceRecord(updatedDevice),
+    device: summarizeDesktopDeviceRecord(updatedDevice, {
+      now: now(),
+      ownerById: await resolveOwnerDirectory(repo, [updatedDevice]),
+    }),
     disabledAt: disabledAt.toISOString(),
     offboardingPlan: {
       ...offboardingPlan,

@@ -1,5 +1,15 @@
 export function hasTauriRuntime(): boolean {
-  return typeof window !== "undefined" && (window as any).__TAURI__ != null;
+  if (typeof window === "undefined") return false;
+  const tauriGlobal = (window as any).__TAURI__ ?? (window as any).__TAURI_INTERNALS__ ?? (window as any).__TAURI_METADATA__;
+  if (tauriGlobal != null) {
+    return true;
+  }
+  const protocol = window.location?.protocol ?? "";
+  if (protocol === "tauri:" || window.location?.origin?.startsWith("tauri://")) {
+    return true;
+  }
+  const userAgent = window.navigator?.userAgent ?? "";
+  return /tauri/i.test(userAgent);
 }
 
 export function getSmartSpecWebEndpoint(path: string): string {

@@ -741,6 +741,6 @@ export async function probeExternalLocalTextBackend(input: {
     maxTokens: 8,
     temperature: 0,
     signal: input.signal,
-    systemPrompt: "You are checking a local SmartSpecPro development backend connection. Reply with OK only.",
+    systemPrompt: "You are checking a local SmartAIHub development backend connection. Reply with OK only.",
   });
 }

@@ -1,0 +1,29 @@
+{
+  "plugin_root": "/home/dev/projects/SmartSpecPro/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/082-work-os-case-ledger-and-operating-queues/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/082-work-os-case-ledger-and-operating-queues/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "workflow_backend": "compatible",
+  "task_tracking_backend": "compatible",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-canonical-work-model-and-migration-envelope",
+    "section-02-work-os-services-and-compatibility-adapter",
+    "section-03-intake-normalization-and-routing-boundaries",
+    "section-04-approvals-exceptions-outcomes-and-sla-state",
+    "section-05-operator-surfaces-timeline-projections-and-monitoring",
+    "section-06-rollout-regression-coverage-and-release-guardrails"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-11T06:58:52.730111+00:00"
+}

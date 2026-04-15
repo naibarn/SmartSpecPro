@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getWorkerAccessPermissionScopesForPreset } from "../../../shared/workerAccessKeys";
+
 const mockGetDb = vi.fn();
 
 vi.mock("../../db", () => ({
@@ -59,6 +61,129 @@ describe("delegatedWorkerPlatformService", () => {
         rawRequestedModel: "provider/raw-model",
         resolvedModelId: "gpt-5.4",
       })).toThrowError(DelegatedWorkerPlatformError);
+  });
+
+  it("enforces Hermes worker access policy for delegated LLM routes", async () => {
+    const {
+      enforceDelegatedWorkerLlmRoutePolicy,
+      DelegatedWorkerPlatformError,
+    } = await import("../delegatedWorkerPlatformService");
+
+    const makeDb = (worker: Record<string, unknown>, job: Record<string, unknown>) => {
+      const rows = [[worker], [job]];
+      return {
+        select() {
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    limit() {
+                      return Promise.resolve(rows.shift() ?? []);
+                    },
+                  };
+                },
+              };
+            },
+          };
+        },
+      };
+    };
+
+    mockGetDb.mockResolvedValue(makeDb(
+      {
+        id: "worker-1",
+        tenantId: "tenant-1",
+        runtimeType: "hermes_agent_gateway",
+        status: "online",
+        capabilitiesJson: {
+          runtimeMetadata: {
+            llmRoutingMode: "pinned_provider",
+            preferredProviderId: 42,
+            preferredProviderName: "SmartSpecPro Gateway",
+            workerAccessPolicy: {
+              permissionPreset: "readonly",
+              permissionScopes: getWorkerAccessPermissionScopesForPreset("readonly"),
+              quotaHourly: 10,
+              quotaDaily: 100,
+              quotaWeekly: null,
+              quotaMonthly: null,
+            },
+          },
+        },
+      },
+      {
+        id: "job-1",
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        requestedByUserId: 7,
+      },
+    ) as any);
+
+    await expect(enforceDelegatedWorkerLlmRoutePolicy({
+      auth: {
+        mode: "delegated_worker",
+        tenantId: "tenant-1",
+        userId: 7,
+        ownerUserId: 7,
+        workerId: "worker-1",
+        workerJobId: "job-1",
+        delegatedSessionId: "session-1",
+        runtimeType: "hermes_agent_gateway",
+        scopeProfile: "worker_gateway_hybrid_executor",
+      } as any,
+      requestedModelId: "gpt-5.4",
+      resolvedProviderId: 42,
+      providerName: "SmartSpecPro Gateway",
+    })).resolves.toBeUndefined();
+
+    mockGetDb.mockResolvedValue(makeDb(
+      {
+        id: "worker-1",
+        tenantId: "tenant-1",
+        runtimeType: "hermes_agent_gateway",
+        status: "online",
+        capabilitiesJson: {
+          runtimeMetadata: {
+            llmRoutingMode: "auto",
+            workerAccessPolicy: {
+              permissionPreset: "readonly",
+              permissionScopes: getWorkerAccessPermissionScopesForPreset("readonly").filter((scope) => scope !== "llm:chat"),
+              quotaHourly: 10,
+              quotaDaily: 100,
+              quotaWeekly: null,
+              quotaMonthly: null,
+            },
+          },
+        },
+      },
+      {
+        id: "job-1",
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        requestedByUserId: 7,
+      },
+    ) as any);
+
+    await expect(enforceDelegatedWorkerLlmRoutePolicy({
+      auth: {
+        mode: "delegated_worker",
+        tenantId: "tenant-1",
+        userId: 7,
+        ownerUserId: 7,
+        workerId: "worker-1",
+        workerJobId: "job-1",
+        delegatedSessionId: "session-1",
+        runtimeType: "hermes_agent_gateway",
+        scopeProfile: "worker_gateway_hybrid_executor",
+      } as any,
+      requestedModelId: "gpt-5.4",
+      resolvedProviderId: 42,
+      providerName: "SmartSpecPro Gateway",
+    })).rejects.toMatchObject({
+      code: "worker_access_policy_denied",
+      statusCode: 403,
+    });
   });
 
   it("limits concurrent delegated compute actions per worker job", async () => {

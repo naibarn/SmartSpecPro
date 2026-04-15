@@ -551,7 +551,7 @@ fn materialize_local_folder_ingest_artifacts(
     let mut root_summaries = Vec::new();
     let mut indexed_files = Vec::new();
     let mut summary_lines = vec![
-        "SmartSpecPro Local Folder Ingest Summary".to_string(),
+        "SmartAIHub Local Folder Ingest Summary".to_string(),
         format!("Job ID: {}", plan.job_id),
         String::new(),
     ];

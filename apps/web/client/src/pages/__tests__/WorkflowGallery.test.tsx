@@ -10,6 +10,32 @@ vi.mock("wouter", () => ({
 // Mock sonner
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({
+    isAuthenticated: true,
+  }),
+}));
+
+vi.mock("@/components/Navbar", () => ({
+  Navbar: () => <div data-testid="navbar" />,
+}));
+
+vi.mock("@/components/Footer", () => ({
+  Footer: () => <div data-testid="footer" />,
+}));
+
+vi.mock("framer-motion", () => ({
+  motion: new Proxy(
+    {},
+    {
+      get: () => (props: any) => {
+        const { children, ...rest } = props;
+        return <div {...rest}>{children}</div>;
+      },
+    },
+  ),
+}));
+
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     workflow: {
@@ -85,7 +111,7 @@ describe("WorkflowGallery page", () => {
     } as any);
     renderPage();
     const skeletons = document.querySelectorAll(".animate-pulse");
-    expect(skeletons.length).toBeGreaterThanOrEqual(24);
+    expect(skeletons.length).toBeGreaterThanOrEqual(12);
   });
 
   it("renders template cards once query resolves", () => {

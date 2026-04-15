@@ -99,6 +99,224 @@ export interface CreditBalance {
   plan: string;
 }
 
+const OCR_SERVICE_KEYS = ["library.ocr", "finance.ocr", "chat.ocr"] as const;
+const OCR_DESCRIPTION_PREFIX = "OCR (";
+
+type OcrTimeSeriesPoint = {
+  periodStart: string;
+  count: number;
+  credits: number;
+};
+
+type OcrSourceBreakdown = {
+  source: string;
+  count: number;
+  credits: number;
+};
+
+function buildOcrWhereClause() {
+  const keys = OCR_SERVICE_KEYS.map((key) => sql`${key}`);
+  return sql`(
+    ${creditTransactions.type} = 'usage'
+    AND (
+      (${creditTransactions.metadata} ->> 'service') IN (${sql.join(keys, sql`, `)})
+      OR ${creditTransactions.description} ILIKE ${`${OCR_DESCRIPTION_PREFIX}%`}
+    )
+  )`;
+}
+
+function buildOcrSourceExpr() {
+  return sql<string>`COALESCE(
+    ${creditTransactions.metadata} ->> 'source',
+    ${creditTransactions.metadata} ->> 'service',
+    'unknown'
+  )`;
+}
+
+function buildOcrProviderExpr() {
+  return sql<string>`COALESCE(
+    ${creditTransactions.metadata} ->> 'ocrProvider',
+    ${creditTransactions.metadata} ->> 'provider',
+    ${creditTransactions.metadata} ->> 'service',
+    'unknown'
+  )`;
+}
+
+async function getOcrTimeSeries(params: {
+  userId?: number;
+  days: number;
+  period: "day" | "week" | "month";
+  tenantId?: string | null;
+}): Promise<OcrTimeSeriesPoint[]> {
+  const periodSql = sql.raw(params.period);
+  const periodExpr = sql`date_trunc(${periodSql}, ${creditTransactions.createdAt})`;
+  const startDate = new Date(Date.now() - params.days * 24 * 60 * 60 * 1000);
+
+  const rows = await db
+    .select({
+      periodStart: periodExpr,
+      count: sql<number>`COUNT(*)`,
+      credits: sql<number>`SUM(ABS(${creditTransactions.amount}))`,
+    })
+    .from(creditTransactions)
+    .leftJoin(users, eq(users.id, creditTransactions.userId))
+    .where(and(
+      buildOcrWhereClause(),
+      gte(creditTransactions.createdAt, startDate),
+      ...(params.userId ? [eq(creditTransactions.userId, params.userId)] : []),
+      ...(params.tenantId ? [sql`${users.currentTenantId}::text = ${params.tenantId}`] : []),
+    ))
+    .groupBy(periodExpr)
+    .orderBy(periodExpr);
+
+  return rows.map((row) => ({
+    periodStart: new Date(row.periodStart as unknown as Date).toISOString(),
+    count: Number(row.count || 0),
+    credits: Number(row.credits || 0),
+  }));
+}
+
+async function getOcrSourceBreakdown(params: { userId?: number; days: number; tenantId?: string | null }): Promise<OcrSourceBreakdown[]> {
+  const sourceExpr = buildOcrSourceExpr();
+  const startDate = new Date(Date.now() - params.days * 24 * 60 * 60 * 1000);
+
+  const rows = await db
+    .select({
+      source: sourceExpr,
+      count: sql<number>`COUNT(*)`,
+      credits: sql<number>`SUM(ABS(${creditTransactions.amount}))`,
+    })
+    .from(creditTransactions)
+    .leftJoin(users, eq(users.id, creditTransactions.userId))
+    .where(and(
+      buildOcrWhereClause(),
+      gte(creditTransactions.createdAt, startDate),
+      ...(params.userId ? [eq(creditTransactions.userId, params.userId)] : []),
+      ...(params.tenantId ? [sql`${users.currentTenantId}::text = ${params.tenantId}`] : []),
+    ))
+    .groupBy(sourceExpr)
+    .orderBy(sql`SUM(ABS(${creditTransactions.amount})) DESC`);
+
+  return rows.map((row) => ({
+    source: String(row.source || "unknown"),
+    count: Number(row.count || 0),
+    credits: Number(row.credits || 0),
+  }));
+}
+
+async function getOcrProviderBreakdown(params: { userId?: number; days: number; tenantId?: string | null }): Promise<OcrSourceBreakdown[]> {
+  const providerExpr = buildOcrProviderExpr();
+  const startDate = new Date(Date.now() - params.days * 24 * 60 * 60 * 1000);
+
+  const rows = await db
+    .select({
+      source: providerExpr,
+      count: sql<number>`COUNT(*)`,
+      credits: sql<number>`SUM(ABS(${creditTransactions.amount}))`,
+    })
+    .from(creditTransactions)
+    .leftJoin(users, eq(users.id, creditTransactions.userId))
+    .where(and(
+      buildOcrWhereClause(),
+      gte(creditTransactions.createdAt, startDate),
+      ...(params.userId ? [eq(creditTransactions.userId, params.userId)] : []),
+      ...(params.tenantId ? [sql`${users.currentTenantId}::text = ${params.tenantId}`] : []),
+    ))
+    .groupBy(providerExpr)
+    .orderBy(sql`SUM(ABS(${creditTransactions.amount})) DESC`);
+
+  return rows.map((row) => ({
+    source: String(row.source || "unknown"),
+    count: Number(row.count || 0),
+    credits: Number(row.credits || 0),
+  }));
+}
+
+export async function getUserOcrUsageSummary(userId: number, days: number) {
+  const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const [totals] = await db
+    .select({
+      count: sql<number>`COUNT(*)`,
+      credits: sql<number>`SUM(ABS(${creditTransactions.amount}))`,
+    })
+    .from(creditTransactions)
+    .leftJoin(users, eq(users.id, creditTransactions.userId))
+    .where(and(
+      buildOcrWhereClause(),
+      eq(creditTransactions.userId, userId),
+      gte(creditTransactions.createdAt, startDate),
+    ));
+
+  return {
+    totals: {
+      credits: Number(totals?.credits || 0),
+      count: Number(totals?.count || 0),
+    },
+    bySource: await getOcrSourceBreakdown({ userId, days }),
+    byProvider: await getOcrProviderBreakdown({ userId, days }),
+    daily: await getOcrTimeSeries({ userId, days, period: "day" }),
+    weekly: await getOcrTimeSeries({ userId, days: Math.max(days, 90), period: "week" }),
+    monthly: await getOcrTimeSeries({ userId, days: Math.max(days, 365), period: "month" }),
+  };
+}
+
+export async function getAdminOcrUsageSummary(params: { days: number; limit: number; offset: number; tenantId?: string | null }) {
+  const startDate = new Date(Date.now() - params.days * 24 * 60 * 60 * 1000);
+  const [totals] = await db
+    .select({
+      count: sql<number>`COUNT(*)`,
+      credits: sql<number>`SUM(ABS(${creditTransactions.amount}))`,
+    })
+    .from(creditTransactions)
+    .leftJoin(users, eq(users.id, creditTransactions.userId))
+    .where(and(
+      buildOcrWhereClause(),
+      gte(creditTransactions.createdAt, startDate),
+      ...(params.tenantId ? [sql`${users.currentTenantId}::text = ${params.tenantId}`] : []),
+    ));
+
+  const userRows = await db
+    .select({
+      userId: creditTransactions.userId,
+      name: users.name,
+      email: users.email,
+      credits: sql<number>`SUM(ABS(${creditTransactions.amount}))`,
+      count: sql<number>`COUNT(*)`,
+      lastUsedAt: sql<Date | null>`MAX(${creditTransactions.createdAt})`,
+    })
+    .from(creditTransactions)
+    .leftJoin(users, eq(users.id, creditTransactions.userId))
+    .where(and(
+      buildOcrWhereClause(),
+      gte(creditTransactions.createdAt, startDate),
+      ...(params.tenantId ? [sql`${users.currentTenantId}::text = ${params.tenantId}`] : []),
+    ))
+    .groupBy(creditTransactions.userId, users.name, users.email)
+    .orderBy(sql`SUM(ABS(${creditTransactions.amount})) DESC`)
+    .limit(params.limit)
+    .offset(params.offset);
+
+  return {
+    totals: {
+      credits: Number(totals?.credits || 0),
+      count: Number(totals?.count || 0),
+    },
+    bySource: await getOcrSourceBreakdown({ days: params.days, tenantId: params.tenantId }),
+    byProvider: await getOcrProviderBreakdown({ days: params.days, tenantId: params.tenantId }),
+    daily: await getOcrTimeSeries({ days: params.days, period: "day", tenantId: params.tenantId }),
+    weekly: await getOcrTimeSeries({ days: Math.max(params.days, 90), period: "week", tenantId: params.tenantId }),
+    monthly: await getOcrTimeSeries({ days: Math.max(params.days, 365), period: "month", tenantId: params.tenantId }),
+    users: userRows.map((row) => ({
+      userId: row.userId,
+      name: row.name ?? null,
+      email: row.email ?? null,
+      credits: Number(row.credits || 0),
+      count: Number(row.count || 0),
+      lastUsedAt: row.lastUsedAt ? new Date(row.lastUsedAt).toISOString() : null,
+    })),
+  };
+}
+
 export interface TransactionHistoryParams {
   userId: number;
   limit?: number;

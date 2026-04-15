@@ -25,6 +25,31 @@ export interface ProviderLimitConfig {
   timeout?: number;           // Max wait time for slot (ms)
 }
 
+export interface ProviderLimitConfigView extends ProviderLimitConfig {
+  provider: string;
+  displayName?: string;
+  managedExternally?: boolean;
+  category?: string;
+}
+
+export interface DocumentOcrRateLimitStatus {
+  provider: string;
+  displayName: string;
+  limit: number;
+  windowSeconds: number;
+  current: number;
+  remaining: number;
+  retryAfterSeconds: number | null;
+  redisAvailable: boolean;
+  managedExternally: true;
+  note?: string;
+}
+
+export const DOCUMENT_OCR_RATE_LIMIT_KEY = "rate_limit:typhoon_ocr_1_5:requests";
+export const DOCUMENT_OCR_RATE_LIMIT_LIMIT = 20;
+export const DOCUMENT_OCR_RATE_LIMIT_WINDOW_SECONDS = 60;
+export const DOCUMENT_OCR_RATE_LIMIT_DISPLAY_NAME = "Typhoon OCR 1.5";
+
 // Default configurations per provider
 export const PROVIDER_LIMITS: Record<string, ProviderLimitConfig> = {
   'opencode-zen': {
@@ -167,6 +192,24 @@ export const MEDIA_PROVIDER_LIMITS: Record<string, MediaProviderLimitConfig> = {
     timeout: 90000,
     videoMultiplier: 2,
     audioMultiplier: 1.5,
+  },
+};
+
+export const DOCUMENT_OCR_PROVIDER_LIMITS: Record<string, ProviderLimitConfig & {
+  displayName: string;
+  managedExternally: true;
+  category: "document_ocr";
+}> = {
+  typhoon_ocr_1_5: {
+    displayName: "Typhoon OCR 1.5",
+    category: "document_ocr",
+    managedExternally: true,
+    maxConcurrent: 1,
+    minTime: 3000,
+    reservoir: DOCUMENT_OCR_RATE_LIMIT_LIMIT,
+    reservoirRefreshInterval: DOCUMENT_OCR_RATE_LIMIT_WINDOW_SECONDS * 1000,
+    freeModelMultiplier: 1,
+    timeout: 120000,
   },
 };
 
@@ -375,6 +418,11 @@ export function getProviderLimitConfig(providerName: string): ProviderLimitConfi
 export function getMediaProviderLimitConfig(providerName: string): MediaProviderLimitConfig {
   const key = providerName.toLowerCase();
   return MEDIA_PROVIDER_LIMITS[key] ?? MEDIA_PROVIDER_LIMITS['default-media'];
+}
+
+export function getDocumentOcrProviderLimitConfig(providerName: string) {
+  const key = providerName.toLowerCase();
+  return DOCUMENT_OCR_PROVIDER_LIMITS[key] ?? null;
 }
 
 /**
@@ -753,6 +801,100 @@ export async function getAllLimiterCounts(): Promise<Array<{
         reservoir,
       },
       stats: limiterStats.get(provider) || null,
+    });
+  }
+
+  return results;
+}
+
+export async function getDocumentOcrLimiterStatus(): Promise<Array<{
+  provider: string;
+  displayName: string;
+  config: ProviderLimitConfigView & { displayName: string; managedExternally: true; category: "document_ocr" };
+  counts: {
+    running: number;
+    queued: number;
+    reservoir: number | null;
+  };
+  stats: LimiterStats | null;
+  managedExternally: true;
+  current: number;
+  remaining: number;
+  limit: number;
+  windowSeconds: number;
+  retryAfterSeconds: number | null;
+  redisAvailable: boolean;
+  note?: string;
+}>> {
+  const configEntries = Object.entries(DOCUMENT_OCR_PROVIDER_LIMITS);
+  const results: Array<{
+    provider: string;
+    displayName: string;
+    config: ProviderLimitConfigView & { displayName: string; managedExternally: true; category: "document_ocr" };
+    counts: {
+      running: number;
+      queued: number;
+      reservoir: number | null;
+    };
+    stats: LimiterStats | null;
+    managedExternally: true;
+    current: number;
+    remaining: number;
+    limit: number;
+    windowSeconds: number;
+    retryAfterSeconds: number | null;
+    redisAvailable: boolean;
+    note?: string;
+  }> = [];
+
+  const redis = isRedisAvailable() ? getRedisClient() : null;
+  let currentCount = 0;
+  let retryAfterSeconds: number | null = null;
+  let redisAvailable = Boolean(redis);
+
+  if (redis) {
+    try {
+      currentCount = await redis.zcard(DOCUMENT_OCR_RATE_LIMIT_KEY);
+      const oldest = await redis.zrange(DOCUMENT_OCR_RATE_LIMIT_KEY, 0, 0, "WITHSCORES");
+      if (currentCount >= DOCUMENT_OCR_RATE_LIMIT_LIMIT && Array.isArray(oldest) && oldest.length >= 2) {
+        const oldestTimestamp = Number(oldest[1]);
+        if (Number.isFinite(oldestTimestamp)) {
+          retryAfterSeconds = Math.max(
+            1,
+            Math.ceil(oldestTimestamp + DOCUMENT_OCR_RATE_LIMIT_WINDOW_SECONDS - Date.now() / 1000),
+          );
+        }
+      }
+    } catch {
+      redisAvailable = false;
+    }
+  }
+
+  for (const [provider, config] of configEntries) {
+    const remaining = Math.max(0, DOCUMENT_OCR_RATE_LIMIT_LIMIT - currentCount);
+    results.push({
+      provider,
+      displayName: config.displayName,
+      config: {
+        provider,
+        ...config,
+      },
+      counts: {
+        running: 0,
+        queued: currentCount,
+        reservoir: remaining,
+      },
+      stats: null,
+      managedExternally: true as const,
+      current: currentCount,
+      remaining,
+      limit: DOCUMENT_OCR_RATE_LIMIT_LIMIT,
+      windowSeconds: DOCUMENT_OCR_RATE_LIMIT_WINDOW_SECONDS,
+      retryAfterSeconds,
+      redisAvailable,
+      note: redisAvailable
+        ? "Managed by the Python OCR service and enforced system-wide."
+        : "Redis is unavailable; the OCR limiter status cannot be read.",
     });
   }
 

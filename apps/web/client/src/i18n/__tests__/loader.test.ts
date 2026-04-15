@@ -14,6 +14,10 @@ const { hasResourceBundleMock, addResourceBundleMock, mockGlobModules } =
         Promise.resolve({ default: { greeting: "Hello" } }),
       "../locales/th/common.json": () =>
         Promise.resolve({ default: { greeting: "สวัสดี" } }),
+      "../locales/en/nav.json": () =>
+        Promise.resolve({ default: { "navbar.home": "Home" } }),
+      "../locales/th/nav.json": () =>
+        Promise.resolve({ default: { "navbar.home": "หน้าหลัก" } }),
     };
 
     return { hasResourceBundleMock, addResourceBundleMock, mockGlobModules };
@@ -75,6 +79,17 @@ describe("i18n/loader", () => {
       "en",
       "common",
       { greeting: "Hello" },
+      true,
+      true,
+    );
+  });
+
+  it("loadNamespace keeps nav keys such as navbar.home intact", async () => {
+    await loadNamespace("en", "nav");
+    expect(addResourceBundleMock).toHaveBeenCalledWith(
+      "en",
+      "nav",
+      { "navbar.home": "Home" },
       true,
       true,
     );

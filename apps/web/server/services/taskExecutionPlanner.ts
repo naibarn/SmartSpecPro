@@ -21,6 +21,33 @@ export type TaskType = "chat" | "skill" | "media" | "responses" | "agency";
 export type TaskComplexity = "simple" | "moderate" | "complex";
 export type ExecutionStrategy = "cheapest" | "fastest" | "best";
 export type BudgetClass = "economy" | "standard" | "premium";
+export type TaskRuntimePath =
+  | "workflow"
+  | "skill"
+  | "browser"
+  | "hybrid"
+  | "agency"
+  | "desktop_local"
+  | "worker_fabric";
+export type TaskStepUpBoundary = "none" | "approval" | "policy";
+
+export interface TaskRuntimeHints {
+  preferredPath?: TaskRuntimePath;
+  allowedFallbackPaths?: TaskRuntimePath[];
+  connectorCount?: number;
+  localityHint?: "none" | "desktop" | "worker_fabric";
+  sideEffectClass?: "read_only" | "bounded_write" | "external_write" | "irreversible" | "financial" | "privileged";
+  requiresApproval?: boolean;
+  prefersBrowser?: boolean;
+  prefersWorkflow?: boolean;
+  requiresDeterministic?: boolean;
+}
+
+export interface TaskRuntimeIntent {
+  readonly primaryPath: TaskRuntimePath;
+  readonly fallbackPaths: readonly TaskRuntimePath[];
+  readonly stepUpBoundary: TaskStepUpBoundary;
+}
 
 export interface TaskClassificationInput {
   sourceType: string;
@@ -31,6 +58,7 @@ export interface TaskClassificationInput {
   hasTools?: boolean;
   hasMultipleSteps?: boolean;
   executionPolicy?: SkillExecutionPolicyConfig;
+  runtimeHints?: TaskRuntimeHints;
 }
 
 export interface TaskExecutionPlan {
@@ -42,6 +70,7 @@ export interface TaskExecutionPlan {
   readonly budgetClass?: BudgetClass;
   readonly thinkingLevel?: ThinkingLevel;
   readonly disallowedModels?: readonly string[];
+  readonly runtimeIntent?: Readonly<TaskRuntimeIntent>;
   readonly context?: Readonly<{
     skillSlug?: string;
     conversationModel?: string;
@@ -64,6 +93,76 @@ export interface TaskBillingMetadata {
 // ── Constants ────────────────────────────────────────────────────────
 
 export const CURRENT_PLAN_VERSION = 1;
+
+function dedupePaths(paths: readonly TaskRuntimePath[]): readonly TaskRuntimePath[] {
+  return Array.from(new Set(paths));
+}
+
+function inferRuntimeIntent(input: {
+  taskType: TaskType;
+  complexity: TaskComplexity;
+  runtimeHints?: TaskRuntimeHints;
+}): TaskRuntimeIntent | undefined {
+  const hints = input.runtimeHints;
+  if (!hints) {
+    return undefined;
+  }
+
+  const connectorCount = hints.connectorCount ?? 0;
+  const sideEffectClass = hints.sideEffectClass ?? "read_only";
+  const requiresApproval = hints.requiresApproval === true;
+  const localityHint = hints.localityHint ?? "none";
+
+  let primaryPath: TaskRuntimePath;
+  if (localityHint === "desktop") {
+    primaryPath = "desktop_local";
+  } else if (hints.preferredPath) {
+    primaryPath = hints.preferredPath;
+  } else if (input.taskType === "agency" && connectorCount > 1) {
+    primaryPath = "agency";
+  } else if ((hints.prefersBrowser || input.taskType === "responses") && sideEffectClass === "read_only") {
+    primaryPath = "browser";
+  } else if (localityHint === "worker_fabric") {
+    primaryPath = "worker_fabric";
+  } else if (sideEffectClass === "read_only" && connectorCount === 0) {
+    primaryPath = "skill";
+  } else if (hints.prefersWorkflow || hints.requiresDeterministic) {
+    primaryPath = "workflow";
+  } else if (connectorCount > 1) {
+    primaryPath = "hybrid";
+  } else {
+    primaryPath = input.taskType === "agency" ? "agency" : "workflow";
+  }
+
+  const defaultFallbacks: readonly TaskRuntimePath[] =
+    primaryPath === "browser"
+      ? input.complexity === "complex" ? ["hybrid", "agency"] : ["hybrid"]
+      : primaryPath === "desktop_local"
+        ? ["worker_fabric"]
+        : primaryPath === "workflow"
+          ? ["skill"]
+          : primaryPath === "hybrid"
+            ? input.complexity === "complex" ? ["agency", "workflow"] : ["workflow", "agency"]
+            : primaryPath === "worker_fabric"
+              ? ["agency"]
+              : primaryPath === "agency"
+                ? ["hybrid"]
+                : [];
+
+  const fallbackPaths = dedupePaths(hints.allowedFallbackPaths?.length ? hints.allowedFallbackPaths : defaultFallbacks);
+  const stepUpBoundary: TaskStepUpBoundary =
+    requiresApproval || sideEffectClass === "financial" || sideEffectClass === "irreversible" || sideEffectClass === "privileged"
+      ? "approval"
+      : sideEffectClass !== "read_only" || connectorCount > 0
+        ? "policy"
+        : "none";
+
+  return {
+    primaryPath,
+    fallbackPaths,
+    stepUpBoundary,
+  };
+}
 
 // ── Source type to task type mapping ──────────────────────────────────
 
@@ -147,6 +246,11 @@ export function buildExecutionPlan(input: TaskClassificationInput): TaskExecutio
 
   const thinkingHint = input.executionPolicy?.thinking_level_hint as ThinkingLevel | undefined;
   const thinkingLevel = resolveThinkingLevel(thinkingHint, complexity);
+  const runtimeIntent = inferRuntimeIntent({
+    taskType,
+    complexity,
+    runtimeHints: input.runtimeHints,
+  });
 
   const plan: TaskExecutionPlan = {
     version: 1,
@@ -169,6 +273,7 @@ export function buildExecutionPlan(input: TaskClassificationInput): TaskExecutio
           },
         }
       : {}),
+    ...(runtimeIntent ? { runtimeIntent } : {}),
   };
 
   return Object.freeze(plan);

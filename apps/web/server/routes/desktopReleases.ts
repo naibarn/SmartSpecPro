@@ -7,26 +7,39 @@ import multer from "multer";
 
 import { hasScope, verifyBearerToken } from "../_core/tokens";
 import { sdk } from "../_core/sdk";
-import { getUploadsDir, storageGet, storageResolveUrl, storageStreamFile } from "../storage";
 import {
+  getUploadsDir,
+  storageGet,
+  storagePresignPut,
+  storageResolveUrl,
+  storageStreamFile,
+} from "../storage";
+import {
+  createDesktopReleaseStorageKey,
   deleteDesktopReleaseRecord,
   getDesktopReleaseStorageInfo,
   listDesktopReleaseCatalog,
   persistDesktopReleaseUpload,
+  persistDesktopReleaseUploadFromStorage,
   updateDesktopReleaseRecord,
 } from "../services/desktopReleaseService";
 import {
   desktopReleaseAssetSchema,
   desktopReleaseCatalogResponseSchema,
+  desktopReleasePresignRequestSchema,
+  desktopReleasePresignResponseSchema,
   desktopReleaseUploadRequestSchema,
+  desktopReleaseUploadFinalizeRequestSchema,
 } from "../../shared/desktopReleases";
 import {
   desktopReleaseBuildRequestSchema,
+  desktopReleaseBuildHistoryResponseSchema,
   desktopReleaseBuildRunStatusSchema,
   desktopReleaseBuildResponseSchema,
 } from "../../shared/desktopReleaseBuilds";
 import {
   buildDesktopReleaseFromGithubAction,
+  listDesktopReleaseBuildHistory,
   getDesktopReleaseBuildRunStatus,
   suggestDesktopReleaseBuildVersion,
 } from "../services/desktopReleaseBuildService";
@@ -179,12 +192,7 @@ export function createDesktopReleaseRouter(): Router {
   router.get("/", async (req, res) => {
     try {
       const viewer = await authenticateDesktopReleaseUser(req);
-      if (!viewer) {
-        res.status(401).json({ error: "desktop_release_unauthorized" });
-        return;
-      }
-
-      const includeUnpublished = isDesktopReleaseAdminRole(viewer.role);
+      const includeUnpublished = viewer ? isDesktopReleaseAdminRole(viewer.role) : false;
       const platform = detectPlatformQuery(req.query.platform);
 
       const catalog = await listDesktopReleaseCatalog({
@@ -203,14 +211,9 @@ export function createDesktopReleaseRouter(): Router {
   router.get("/latest", async (req, res) => {
     try {
       const viewer = await authenticateDesktopReleaseUser(req);
-      if (!viewer) {
-        res.status(401).json({ error: "desktop_release_unauthorized" });
-        return;
-      }
-
       const platform = detectPlatformQuery(req.query.platform);
       const catalog = await listDesktopReleaseCatalog({
-        includeUnpublished: isDesktopReleaseAdminRole(viewer.role),
+        includeUnpublished: viewer ? isDesktopReleaseAdminRole(viewer.role) : false,
         platform,
       });
 
@@ -285,13 +288,37 @@ export function createDesktopReleaseRouter(): Router {
     }
   });
 
-  router.get("/:id/download", async (req, res) => {
+  router.get("/builds/history", async (req, res) => {
     try {
       const viewer = await authenticateDesktopReleaseUser(req);
       if (!viewer) {
         res.status(401).json({ error: "desktop_release_unauthorized" });
         return;
       }
+      if (!isDesktopReleaseAdminRole(viewer.role)) {
+        res.status(403).json({ error: "desktop_release_forbidden" });
+        return;
+      }
+
+      const limit = Number.parseInt(String(req.query.limit ?? "8"), 10);
+      const builds = await listDesktopReleaseBuildHistory({
+        limit: Number.isFinite(limit) ? limit : 8,
+      });
+
+      res.json(desktopReleaseBuildHistoryResponseSchema.parse({
+        generatedAt: new Date().toISOString(),
+        builds,
+      }));
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "failed_to_list_desktop_release_build_history",
+      });
+    }
+  });
+
+  router.get("/:id/download", async (req, res) => {
+    try {
+      const viewer = await authenticateDesktopReleaseUser(req);
 
       const id = Number.parseInt(req.params.id, 10);
       if (!Number.isFinite(id)) {
@@ -304,7 +331,7 @@ export function createDesktopReleaseRouter(): Router {
         res.status(404).json({ error: "desktop_release_not_found" });
         return;
       }
-      if (!release.isPublished && !isDesktopReleaseAdminRole(viewer.role)) {
+      if (!release.isPublished && (!viewer || !isDesktopReleaseAdminRole(viewer.role))) {
         res.status(404).json({ error: "desktop_release_not_found" });
         return;
       }
@@ -449,6 +476,87 @@ export function createDesktopReleaseRouter(): Router {
       }
     },
   );
+
+  router.post("/upload-url", async (req, res) => {
+    try {
+      const viewer = await authenticateDesktopReleaseUploader(req);
+      if (!viewer) {
+        res.status(401).json({ error: "desktop_release_unauthorized" });
+        return;
+      }
+      if (!isDesktopReleaseAdminRole(viewer.role)) {
+        res.status(403).json({ error: "desktop_release_forbidden" });
+        return;
+      }
+
+      const parsed = desktopReleasePresignRequestSchema.parse(req.body ?? {});
+      const storageKey = createDesktopReleaseStorageKey({
+        version: parsed.version,
+        platform: parsed.platform,
+        channel: parsed.channel ?? "stable",
+        fileName: parsed.fileName,
+      });
+
+      const presign = await storagePresignPut(
+        storageKey,
+        parsed.contentType,
+        parsed.fileSizeBytes,
+        60 * 30,
+      );
+
+      if (!presign) {
+        res.status(400).json({ error: "desktop_release_presign_unavailable" });
+        return;
+      }
+
+      res.json(desktopReleasePresignResponseSchema.parse({
+        uploadUrl: presign.url,
+        storageKey: presign.key,
+      }));
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "desktop_release_presign_failed",
+      });
+    }
+  });
+
+  router.post("/upload/complete", async (req, res) => {
+    try {
+      const viewer = await authenticateDesktopReleaseUploader(req);
+      if (!viewer) {
+        res.status(401).json({ error: "desktop_release_unauthorized" });
+        return;
+      }
+      if (!isDesktopReleaseAdminRole(viewer.role)) {
+        res.status(403).json({ error: "desktop_release_forbidden" });
+        return;
+      }
+
+      const parsed = desktopReleaseUploadFinalizeRequestSchema.parse(req.body ?? {});
+      const release = await persistDesktopReleaseUploadFromStorage({
+        version: parsed.version,
+        platform: parsed.platform,
+        channel: parsed.channel ?? "stable",
+        installerFormat: parsed.installerFormat,
+        releaseNotes: parsed.releaseNotes,
+        publish: parsed.publish,
+        fileName: parsed.fileName,
+        contentType: parsed.contentType,
+        fileSizeBytes: parsed.fileSizeBytes,
+        fileSha256: parsed.fileSha256,
+        storageKey: parsed.storageKey,
+        uploadedByUserId: viewer.userId,
+      });
+
+      res.status(201).json({
+        release: desktopReleaseAssetSchema.parse(release),
+      });
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "desktop_release_upload_failed",
+      });
+    }
+  });
 
   router.patch("/:id", async (req, res) => {
     try {

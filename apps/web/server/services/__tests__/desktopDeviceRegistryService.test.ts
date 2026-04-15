@@ -10,14 +10,20 @@ import {
   disableDesktopDevice,
   listDesktopDevicesForActor,
   listTenantDesktopDevicesForActor,
+  queueDesktopDeviceAction,
   queueDesktopRootAction,
   recordDesktopDeviceHeartbeat,
   registerDesktopDevice,
+  updateDesktopDevicePolicyOverrides,
   type DesktopDeviceRegistryRepository,
 } from "../desktopDeviceRegistryService";
 
 function createRepo(): DesktopDeviceRegistryRepository {
   const devices = new Map<string, Record<string, unknown>>();
+  const directory = new Map<number, { id: number; name: string | null; email: string | null }>([
+    [42, { id: 42, name: "Ops Admin", email: "ops@example.com" }],
+    [7, { id: 7, name: "Tenant Admin", email: "tenant-admin@example.com" }],
+  ]);
 
   return {
     async createDevice(values) {
@@ -53,6 +59,11 @@ function createRepo(): DesktopDeviceRegistryRepository {
       };
       devices.set(deviceId, next);
       return next;
+    },
+    async listUsersByIds(userIds) {
+      return userIds
+        .map((userId) => directory.get(userId))
+        .filter((row): row is { id: number; name: string | null; email: string | null } => Boolean(row));
     },
   };
 }
@@ -488,6 +499,7 @@ describe("desktopDeviceRegistryService", () => {
     );
 
     expect(tenantStatus.devices).toHaveLength(1);
+    expect(tenantStatus.devices[0]?.owner.email).toBe("ops@example.com");
     expect(tenantStatus.devices[0]?.packageSyncState.syncStatus).toBe("ready");
     expect(actionResult.action.actionType).toBe("reindex_root");
     expect(actionResult.device.pendingActions).toEqual(
@@ -498,5 +510,122 @@ describe("desktopDeviceRegistryService", () => {
         }),
       ]),
     );
+  });
+
+  it("persists per-device policy overrides for tenant admins", async () => {
+    const repo = createRepo();
+
+    await registerDesktopDevice(
+      {
+        actor: {
+          tenantId: "tenant-1",
+          userId: 42,
+          role: "admin",
+        },
+        payload: buildRegistrationPayload({
+          userId: 42,
+        }),
+      },
+      {
+        repo,
+        getFeatureFlags: async () => ({
+          ...FEATURE_FLAG_DEFAULTS,
+          desktopHostEnabled: true,
+        }),
+      },
+    );
+
+    const updatedDevice = await updateDesktopDevicePolicyOverrides(
+      {
+        actor: {
+          tenantId: "tenant-1",
+          userId: 7,
+          role: "admin",
+        },
+        deviceId: "device-1",
+        overrides: {
+          allowAdvancedLocalMode: false,
+          allowPackageSync: true,
+          maxLocalRoots: 2,
+          outputWritebackMode: "managed_output_only",
+        },
+        note: "tenant_lockdown",
+      },
+      {
+        repo,
+        now: () => new Date("2026-04-09T12:10:00.000Z"),
+      },
+    );
+
+    expect(updatedDevice.owner.name).toBe("Ops Admin");
+    expect(updatedDevice.policyOverrides).toMatchObject({
+      allowAdvancedLocalMode: false,
+      allowPackageSync: true,
+      maxLocalRoots: 2,
+      outputWritebackMode: "managed_output_only",
+    });
+  });
+
+  it("queues quarantine and re-auth actions while updating access state", async () => {
+    const repo = createRepo();
+
+    await registerDesktopDevice(
+      {
+        actor: {
+          tenantId: "tenant-1",
+          userId: 42,
+          role: "admin",
+        },
+        payload: buildRegistrationPayload({
+          userId: 42,
+        }),
+      },
+      {
+        repo,
+        getFeatureFlags: async () => ({
+          ...FEATURE_FLAG_DEFAULTS,
+          desktopHostEnabled: true,
+        }),
+      },
+    );
+
+    const quarantined = await queueDesktopDeviceAction(
+      {
+        actor: {
+          tenantId: "tenant-1",
+          userId: 7,
+          role: "admin",
+        },
+        deviceId: "device-1",
+        actionType: "quarantine_device",
+        note: "suspicious_activity",
+      },
+      {
+        repo,
+        now: () => new Date("2026-04-09T12:15:00.000Z"),
+      },
+    );
+
+    expect(quarantined.device.accessState).toBe("quarantined");
+    expect(quarantined.action.actionType).toBe("quarantine_device");
+
+    const resumed = await queueDesktopDeviceAction(
+      {
+        actor: {
+          tenantId: "tenant-1",
+          userId: 7,
+          role: "admin",
+        },
+        deviceId: "device-1",
+        actionType: "resume_device_access",
+      },
+      {
+        repo,
+        now: () => new Date("2026-04-09T12:16:00.000Z"),
+      },
+    );
+
+    expect(resumed.device.accessState).toBe("active");
+    expect(resumed.action.actionType).toBe("resume_device_access");
   });
 });

@@ -22,7 +22,9 @@ import {
   looksLikeWorkerLocalFilePath,
   LOCAL_FOLDER_INGEST_PROGRESS_STAGES,
   videoAssemblyJobContractSchema,
+  workerHermesRuntimeMetadataSchema,
 } from "../../shared/workerRuntime";
+import { evaluateHermesRolloutReadiness } from "../../shared/featureFlags";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import {
   reserveWorkerJobCredits,
@@ -34,6 +36,7 @@ const OPENCLAW_RUNTIME_TYPE: WorkerRuntimeType = "openclaw_gateway";
 const DESKTOP_RUNTIME_TYPE: WorkerRuntimeType = "desktop_zeroclaw_managed";
 const NEMOCLAW_RUNTIME_TYPE: WorkerRuntimeType = "nemoclaw_sandbox";
 const HICLAW_RUNTIME_TYPE: WorkerRuntimeType = "hiclaw_cluster";
+const HERMES_RUNTIME_TYPE: WorkerRuntimeType = "hermes_agent_gateway";
 
 export const OPENCLAW_SUPPORTED_JOB_TYPES = [
   "external_agent_task",
@@ -48,6 +51,15 @@ export const OPENCLAW_SUPPORTED_CAPABILITY_FAMILIES = [
   "tool-using-research",
   "channel-assistant-handoff",
   "artifact-producing-session",
+] as const;
+
+export const HERMES_SUPPORTED_JOB_TYPES = [
+  "external_agent_task",
+] as const;
+
+export const HERMES_SUPPORTED_CAPABILITY_FAMILIES = [
+  "artifact-producing-session",
+  "channel-assistant-handoff",
 ] as const;
 
 export const NEMOCLAW_SUPPORTED_CAPABILITY_FAMILIES = [
@@ -67,6 +79,9 @@ export const HICLAW_SUPPORTED_CAPABILITY_FAMILIES = [
 type SupportedOpenClawJobType = (typeof OPENCLAW_SUPPORTED_JOB_TYPES)[number];
 type SupportedOpenClawCapabilityFamily =
   (typeof OPENCLAW_SUPPORTED_CAPABILITY_FAMILIES)[number];
+type SupportedHermesJobType = (typeof HERMES_SUPPORTED_JOB_TYPES)[number];
+type SupportedHermesCapabilityFamily =
+  (typeof HERMES_SUPPORTED_CAPABILITY_FAMILIES)[number];
 type SupportedNemoClawCapabilityFamily =
   (typeof NEMOCLAW_SUPPORTED_CAPABILITY_FAMILIES)[number];
 type SupportedHiClawCapabilityFamily =
@@ -101,6 +116,7 @@ export interface WorkerSchedulerFeatureFlags {
   desktopZeroClawWorker: boolean;
   nemoClawSecureWorkerPool: boolean;
   hiClawClusterRuntime: boolean;
+  hermesAgentRuntime: boolean;
 }
 
 export interface WorkerSchedulerRepository {
@@ -439,6 +455,27 @@ export interface QueueNemoClawWorkerJobInput {
   reservedCredits?: number | null;
 }
 
+export interface QueueHermesWorkerJobInput {
+  tenantId: string;
+  teamId?: string | null;
+  workflowRunId?: string | null;
+  requestedByUserId?: number | null;
+  requestedByPersonaId?: string | null;
+  requestedBySystemComponent?: string | null;
+  jobType: SupportedHermesJobType;
+  title?: string | null;
+  description?: string | null;
+  priority?: number;
+  timeoutSeconds?: number;
+  resourceProfile?: WorkerResourceProfile;
+  capabilityFamilies?: SupportedHermesCapabilityFamily[];
+  inputJson?: Record<string, unknown>;
+  instructionsJson?: Record<string, unknown>;
+  idempotencyKey?: string | null;
+  preferredWorkerId?: string | null;
+  reservedCredits?: number | null;
+}
+
 export interface QueueHiClawWorkerJobInput {
   tenantId: string;
   teamId?: string | null;
@@ -483,6 +520,9 @@ export type QueueWorkerJobByRuntimeInput =
   | ({
       runtimeType: "nemoclaw_sandbox";
     } & QueueNemoClawWorkerJobInput)
+  | ({
+      runtimeType: "hermes_agent_gateway";
+    } & QueueHermesWorkerJobInput)
   | ({
       runtimeType: "hiclaw_cluster";
     } & QueueHiClawWorkerJobInput);
@@ -1356,6 +1396,129 @@ export async function queueNemoClawWorkerJob(
   );
 }
 
+function assertHermesEligible(input: QueueHermesWorkerJobInput): void {
+  if (!HERMES_SUPPORTED_JOB_TYPES.includes(input.jobType)) {
+    throw new WorkerSchedulerError(
+      "unsupported_job_type",
+      400,
+      `Job type ${input.jobType} is not supported by Hermes routing`,
+    );
+  }
+
+  const capabilityFamilies = input.capabilityFamilies ?? [];
+  const unsupportedFamily = capabilityFamilies.find(
+    (family) => !HERMES_SUPPORTED_CAPABILITY_FAMILIES.includes(family),
+  );
+  if (unsupportedFamily) {
+    throw new WorkerSchedulerError(
+      "unsupported_capability_family",
+      400,
+      `Capability family ${unsupportedFamily} is not supported by Hermes routing`,
+    );
+  }
+}
+
+function readHermesDispatchReadiness(
+  tenantFlags: WorkerSchedulerFeatureFlags,
+  worker: WorkerRecord | null,
+): ReturnType<typeof evaluateHermesRolloutReadiness> {
+  const runtimeMetadataSource = worker && worker.capabilitiesJson && typeof worker.capabilitiesJson === "object"
+    ? (worker.capabilitiesJson as Record<string, unknown>).runtimeMetadata
+    : null;
+  const runtimeMetadata = runtimeMetadataSource && typeof runtimeMetadataSource === "object" && !Array.isArray(runtimeMetadataSource)
+    ? runtimeMetadataSource
+    : {};
+  const parsed = workerHermesRuntimeMetadataSchema.safeParse(runtimeMetadata);
+
+  return evaluateHermesRolloutReadiness({
+    featureFlags: {
+      hermesAgentRuntime: tenantFlags.hermesAgentRuntime,
+    },
+    bridgeCapabilities: parsed.success
+      ? {
+        apiServerEnabled: parsed.data.apiServerEnabled,
+        supportsDelegatedHttp: parsed.data.supportsDelegatedHttp,
+        supportsDelegatedMcp: parsed.data.supportsDelegatedMcp,
+        supportsBoundConnector: parsed.data.supportsBoundConnector,
+        supportsCallbacks: parsed.data.supportsCallbacks,
+        gatewayPlatforms: parsed.data.gatewayPlatforms,
+      }
+      : {},
+    remoteEndpointPolicyExceptionId: parsed.success
+      ? parsed.data.remoteEndpointPolicyExceptionId
+      : undefined,
+  });
+}
+
+export async function queueHermesWorkerJob(
+  input: QueueHermesWorkerJobInput,
+  deps: {
+    repo?: WorkerSchedulerRepository;
+    reserveCredits?: typeof reserveWorkerJobCredits;
+    getFeatureFlags?: (tenantId: string) => Promise<WorkerSchedulerFeatureFlags>;
+  } = {},
+): Promise<{ created: boolean; job: WorkerJobRecord }> {
+  assertHermesEligible(input);
+  const repo = deps.repo ?? defaultRepo;
+  const getFeatureFlags = deps.getFeatureFlags ?? getTenantFeatureFlags;
+  const tenantFlags = await getFeatureFlags(input.tenantId);
+
+  if (!tenantFlags.hermesAgentRuntime) {
+    throw new WorkerSchedulerError(
+      "feature_disabled",
+      403,
+      `${getWorkerRuntimeDefinition(HERMES_RUNTIME_TYPE).displayName} dispatch is disabled for this tenant`,
+    );
+  }
+
+  if (!input.preferredWorkerId?.trim()) {
+    throw new WorkerSchedulerError(
+      "preferred_worker_required",
+      400,
+      "Hermes dispatch requires a preferred worker so owner-bound rollout stays explicit",
+    );
+  }
+
+  const preferredWorker = await repo.findWorkerById(input.tenantId, input.preferredWorkerId.trim());
+  assertPreferredWorkerCompatible(preferredWorker, input.preferredWorkerId.trim(), HERMES_RUNTIME_TYPE, "a Hermes agent gateway worker");
+
+  const readiness = readHermesDispatchReadiness(tenantFlags, preferredWorker);
+  if (!readiness.surfaces.boundDispatch) {
+    throw new WorkerSchedulerError(
+      "rollout_stage_blocked",
+      409,
+      "Hermes dispatch is not ready for this worker until delegated HTTP, bound-connector support, and API-server readiness are all reported",
+    );
+  }
+
+  return queueFeatureGatedExternalRuntimeJob(
+    {
+      ...input,
+      runtimeType: HERMES_RUNTIME_TYPE,
+      preferredWorkerId: input.preferredWorkerId.trim(),
+      capabilityFamilies: input.capabilityFamilies?.length
+        ? input.capabilityFamilies
+        : ["artifact-producing-session"],
+      resourceProfile: input.resourceProfile ?? "network_heavy",
+    },
+    {
+      featureFlagKey: "hermesAgentRuntime",
+      dispatchDisabledMessage: "Hermes agent gateway dispatch is disabled by operator kill switch",
+      featureDisabledMessage: `${getWorkerRuntimeDefinition(HERMES_RUNTIME_TYPE).displayName} dispatch is disabled for this tenant`,
+      unsupportedResourceProfiles: ["gpu_required", "sandbox_required"],
+      defaultResourceProfile: "network_heavy",
+      intent: "external_connector_follow_up",
+      statusReason: "hermes_agent_gateway_job",
+      runtimeLabel: "a Hermes agent gateway worker",
+    },
+    {
+      ...deps,
+      repo,
+      getFeatureFlags,
+    },
+  );
+}
+
 export async function queueHiClawWorkerJob(
   input: QueueHiClawWorkerJobInput,
   deps: {
@@ -1414,6 +1577,10 @@ export async function queueWorkerJobByRuntime(
 
   if (input.runtimeType === "nemoclaw_sandbox") {
     return queueNemoClawWorkerJob(input, deps);
+  }
+
+  if (input.runtimeType === "hermes_agent_gateway") {
+    return queueHermesWorkerJob(input, deps);
   }
 
   if (input.runtimeType === "hiclaw_cluster") {

@@ -28,7 +28,7 @@ This section owns the user-visible product coherence between web and desktop.
 ## Implementation notes
 
 - prefer shared UI components and shared enum/label helpers instead of separate desktop-only copies
-- the Tauri-hosted workbench should feel like SmartSpecPro, not like a generic shell console
+- the Tauri-hosted workbench should feel like SmartAIHub, not like a generic shell console
 - required run labels:
   - surface
   - runtime
@@ -82,24 +82,28 @@ This section owns the user-visible product coherence between web and desktop.
 - Integrated Desktop Host surfaces into:
   - `apps/web/client/src/pages/Settings.tsx`
   - `apps/web/client/src/pages/Chat.tsx`
+  - `apps/web/client/src/pages/Dashboard.tsx`
+  - `apps/web/client/src/pages/Admin/AdminCommandCenter.tsx`
+  - `apps/web/client/src/pages/AdminSettings.tsx`
 - Added concrete handoff and admin surfaces in:
   - `apps/web/client/src/pages/DesktopOpen.tsx`
   - `apps/web/client/src/pages/DesktopView.tsx`
   - `apps/web/client/src/pages/AdminDesktopHost.tsx`
   - `apps/web/client/src/App.tsx`
 - Added device and parser posture visibility to the settings surface:
-  - enrolled device list with health, PoP posture, attestation mode, and last-seen timestamps
+  - enrolled device list with owner identity, health, access state, presence/stale posture, PoP posture, attestation mode, attestation provider/claims, broker posture, and last-seen timestamps
   - device selector plus selected-device control-plane state, rollout gates, and workspace posture
   - live package sync summaries and desktop package catalog cards with trust / signer / state
   - managed local-root cards with reindex / purge / revoke actions
-  - device-disable action that drives the new governed offboarding route
-  - isolated rich-document parser posture with bounded input/timeout, supported format summary, extractor backend, OCR provider, and extraction-only vs full-render posture
+  - device-disable action plus per-device policy overrides and remote governance actions that drive the new governed offboarding and quarantine flows
+  - isolated rich-document parser posture with bounded input/timeout, supported format summary, extractor backend, OCR provider, macro/media inspection posture, layout-analysis posture, and extraction-only vs full-render posture
 - Added TDD coverage in:
   - `apps/web/client/src/features/desktop-host/__tests__/desktopHostUi.test.tsx`
   - `apps/web/client/src/pages/__tests__/Settings.desktopHostTab.test.tsx`
   - `apps/web/client/src/pages/__tests__/DesktopHandoffPages.test.tsx`
   - `apps/web/client/src/pages/__tests__/AdminDesktopHost.test.tsx`
+  - `apps/web/client/src/pages/__tests__/Dashboard.test.tsx`
 
 ## Final status
 
-- Section 06 is implemented for shared labels, desktop bootstrap and control-plane visibility, enrolled-device posture, root/package governance UI, cross-surface deep-link handoff routes, and tenant admin desktop governance screens.
+- Section 06 is implemented for shared labels, desktop bootstrap and control-plane visibility, enrolled-device posture, root/package governance UI, cross-surface deep-link handoff routes, tenant admin desktop governance screens, and clearer admin discoverability from a dedicated Dashboard governance panel, Dashboard next-best-actions, Admin Command Center, and Settings surfaces.

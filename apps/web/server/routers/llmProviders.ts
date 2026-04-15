@@ -308,55 +308,79 @@ export const PROVIDER_TEMPLATES = [
 export const llmProvidersRouter = router({
   // Get all enabled mapped models from enabled providers (for Desktop App model selector)
   availableModels: protectedProcedure.query(async () => {
-    const dbInstance = await getDb();
-    if (!dbInstance) return { models: [], providers: [] };
-    const [providers, mappedModels] = await Promise.all([
-      dbInstance
-        .select({
-          id: llmProviders.id,
-          providerName: llmProviders.providerName,
-          displayName: llmProviders.displayName,
-          availableModels: llmProviders.availableModels,
-          configJson: llmProviders.configJson,
-          defaultModel: llmProviders.defaultModel,
-        })
-        .from(llmProviders)
-        .where(eq(llmProviders.isEnabled, true))
-        .orderBy(asc(llmProviders.sortOrder)),
-      dbInstance
-        .select({
-          providerId: modelProviderMap.providerId,
-          providerName: llmProviders.providerName,
-          providerDisplayName: llmProviders.displayName,
-          modelId: modelProviderMap.modelId,
-          modelName: modelProviderMap.modelName,
-          contextLength: modelProviderMap.contextLength,
-        })
-        .from(modelProviderMap)
-        .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
-        .where(and(eq(modelProviderMap.isEnabled, true), eq(llmProviders.isEnabled, true)))
-        .orderBy(asc(modelProviderMap.modelName), asc(modelProviderMap.priority)),
-    ]);
+    try {
+      const dbInstance = await getDb();
+      if (!dbInstance) return { models: [], providers: [] };
+      const [providers, mappedModels] = await Promise.all([
+        dbInstance
+          .select({
+            id: llmProviders.id,
+            providerName: llmProviders.providerName,
+            displayName: llmProviders.displayName,
+            availableModels: llmProviders.availableModels,
+            configJson: llmProviders.configJson,
+            defaultModel: llmProviders.defaultModel,
+          })
+          .from(llmProviders)
+          .where(eq(llmProviders.isEnabled, true))
+          .orderBy(asc(llmProviders.sortOrder)),
+        dbInstance
+          .select({
+            providerId: modelProviderMap.providerId,
+            providerName: llmProviders.providerName,
+            providerDisplayName: llmProviders.displayName,
+            modelId: modelProviderMap.modelId,
+            modelName: modelProviderMap.modelName,
+            contextLength: modelProviderMap.contextLength,
+          })
+          .from(modelProviderMap)
+          .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
+          .where(and(eq(modelProviderMap.isEnabled, true), eq(llmProviders.isEnabled, true)))
+          .orderBy(asc(modelProviderMap.modelName), asc(modelProviderMap.priority)),
+      ]);
 
-    const enabledProviders = (providers as EnabledProviderRow[]).map((provider) =>
-      resolveProviderCatalogDefaults(provider),
-    );
-    const models = mergeAvailableLlmModels({
-      providers: enabledProviders,
-      mappedModels: mappedModels.filter((row) =>
-        enabledProviders.some((provider) => provider.id === row.providerId),
-      ) as EnabledMappedModelRow[],
-    });
-    
-    return {
-      models,
-      providers: enabledProviders.map(p => ({
-        name: p.providerName,
-        displayName: p.displayName,
-        isPrimary: (p.configJson as any)?.isPrimary === true,
-        isFallback: (p.configJson as any)?.isFallback === true,
-      })),
-    };
+      const enabledProviders = (providers as EnabledProviderRow[]).map((provider) =>
+        resolveProviderCatalogDefaults(provider),
+      );
+      const models = mergeAvailableLlmModels({
+        providers: enabledProviders,
+        mappedModels: mappedModels.filter((row) =>
+          enabledProviders.some((provider) => provider.id === row.providerId),
+        ) as EnabledMappedModelRow[],
+      });
+
+      return {
+        models,
+        providers: enabledProviders.map(p => ({
+          name: p.providerName,
+          displayName: p.displayName,
+          isPrimary: (p.configJson as any)?.isPrimary === true,
+          isFallback: (p.configJson as any)?.isFallback === true,
+        })),
+      };
+    } catch (error) {
+      console.warn("[llmProviders.availableModels] falling back after query failure", error);
+      const fallbackModels = buildKieLlmAvailableModels()
+        .filter((model) => model.surface === "chat" || model.surface == null)
+        .map((model) => ({
+          id: model.id,
+          name: model.name,
+          provider: "kie_ai",
+          providerDisplayName: "Kie AI",
+          contextLength: model.contextLength,
+          isDefault: model.id === "gpt-5-4",
+        }));
+
+      return {
+        models: fallbackModels,
+        providers: [{
+          name: "kie_ai",
+          displayName: "Kie AI",
+          isPrimary: true,
+          isFallback: true,
+        }],
+      };
+    }
   }),
 
   // Get all enabled providers (for users)

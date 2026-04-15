@@ -20,7 +20,14 @@ import {
   sanitizeWorkerWarningFlags,
 } from "./workerPayloadSanitizer";
 import type { AuditLogEntry } from "./auditLogger";
-import { getWorkerRuntimeDefinition } from "../../shared/workerRuntime";
+import {
+  getWorkerRuntimeDefinition,
+  summarizeHermesProviderRouting,
+  summarizeHermesRuntimeChannel,
+  summarizeHermesRuntimeMemorySync,
+  summarizeHermesRuntimePersona,
+  summarizeHermesTaskMode,
+} from "../../shared/workerRuntime";
 
 type WorkerRecord = Record<string, any>;
 type WorkerArtifactRecord = Record<string, any>;
@@ -37,6 +44,7 @@ const RECLAIMABLE_JOB_STATUSES = [
   "indexing",
 ] as const;
 const MAX_MCP_AUDIT_READ_PER_DAY = 4000;
+type WorkerRemoteEndpointPolicy = "loopback_only" | "audited_exception_granted" | "unknown";
 
 export type WorkerFleetAction = "disable" | "drain" | "resume" | "revoke";
 
@@ -61,6 +69,25 @@ export interface WorkerFleetSummary {
   diagnosticsAvailable: boolean;
   dashboardUrl: string | null;
   revokedAt: string | null;
+  remoteEndpointPolicy: WorkerRemoteEndpointPolicy | null;
+  profileName: string | null;
+  profileLabel: string | null;
+  profilePurpose: string | null;
+  personaDisplayLabel: string;
+  personaDisplayPurpose: string;
+  channelStatus: "connected" | "inactive" | "revoked" | "unknown";
+  channelDisplayLabel: string;
+  memorySyncEnabled: boolean;
+  memorySyncScope: "personal" | "team_shared" | "workspace_shared" | "cross_channel" | null;
+  memorySyncStatus: "disabled" | "active" | "inactive" | "quarantined" | "unknown";
+  memorySyncDisplayLabel: string;
+  llmRoutingMode: "auto" | "pinned_provider";
+  preferredProviderId: number | null;
+  preferredProviderName: string | null;
+  providerRoutingDisplayLabel: string;
+  workerAccessPolicyPreset: string | null;
+  workerAccessPolicyScopeCount: number;
+  workerAccessPolicyQuotaDisplayLabel: string;
 }
 
 export interface WorkerDiagnosticsSnapshot {
@@ -78,6 +105,25 @@ export interface WorkerDiagnosticsSnapshot {
   warningFlagsJson: string[];
   dashboardUrl: string | null;
   revokedAt: string | null;
+  remoteEndpointPolicy: WorkerRemoteEndpointPolicy | null;
+  profileName: string | null;
+  profileLabel: string | null;
+  profilePurpose: string | null;
+  personaDisplayLabel: string;
+  personaDisplayPurpose: string;
+  channelStatus: "connected" | "inactive" | "revoked" | "unknown";
+  channelDisplayLabel: string;
+  memorySyncEnabled: boolean;
+  memorySyncScope: "personal" | "team_shared" | "workspace_shared" | "cross_channel" | null;
+  memorySyncStatus: "disabled" | "active" | "inactive" | "quarantined" | "unknown";
+  memorySyncDisplayLabel: string;
+  llmRoutingMode: "auto" | "pinned_provider";
+  preferredProviderId: number | null;
+  preferredProviderName: string | null;
+  providerRoutingDisplayLabel: string;
+  workerAccessPolicyPreset: string | null;
+  workerAccessPolicyScopeCount: number;
+  workerAccessPolicyQuotaDisplayLabel: string;
 }
 
 export interface WorkerMcpInsightTotals {
@@ -133,6 +179,7 @@ export interface WorkerMcpInsights {
     sessionId: string;
     workerJobId: string;
     scopeProfile: string;
+    activeMode: ReturnType<typeof summarizeHermesTaskMode>;
     createdAt: string;
     expiresAt: string;
     revokedAt: string | null;
@@ -159,6 +206,11 @@ export interface TenantWorkerMcpOverviewWorkerMetric {
   blockedCount: number;
   lastSeenAt: string | null;
   lastEventAt: string | null;
+  channelStatus: "connected" | "inactive" | "revoked" | "unknown";
+  memorySyncStatus: "disabled" | "active" | "inactive" | "quarantined" | "unknown";
+  workerAccessPolicyPreset: string | null;
+  workerAccessPolicyScopeCount: number;
+  workerAccessPolicyQuotaDisplayLabel: string;
 }
 
 export interface TenantWorkerMcpOverviewRecentEvent extends WorkerMcpRecentEvent {
@@ -233,6 +285,98 @@ function readCompatibility(worker: WorkerRecord): Record<string, unknown> | null
   const healthSummary = asRecord(worker.healthSummaryJson);
   const controlPlane = healthSummary ? asRecord(healthSummary.controlPlane) : null;
   return controlPlane ? asRecord(controlPlane.compatibility) : null;
+}
+
+function readRemoteEndpointPolicy(worker: WorkerRecord): WorkerRemoteEndpointPolicy | null {
+  if (worker.runtimeType !== "hermes_agent_gateway") {
+    return null;
+  }
+
+  const healthSummary = asRecord(worker.healthSummaryJson);
+  const controlPlane = healthSummary ? asRecord(healthSummary.controlPlane) : null;
+  const policy = controlPlane && typeof controlPlane.remoteEndpointPolicy === "string"
+    ? controlPlane.remoteEndpointPolicy
+    : null;
+  if (policy === "loopback_only" || policy === "audited_exception_granted") {
+    return policy;
+  }
+  return "unknown";
+}
+
+function readHermesPersonaSummary(worker: WorkerRecord): ReturnType<typeof summarizeHermesRuntimePersona> {
+  if (worker.runtimeType !== "hermes_agent_gateway") {
+    return summarizeHermesRuntimePersona(null);
+  }
+  const capabilities = isPlainObject(worker.capabilitiesJson) ? worker.capabilitiesJson : null;
+  const runtimeMetadata = capabilities && isPlainObject(capabilities.runtimeMetadata)
+    ? capabilities.runtimeMetadata
+    : null;
+  return summarizeHermesRuntimePersona(runtimeMetadata);
+}
+
+function readHermesRuntimeChannelSummary(worker: WorkerRecord): ReturnType<typeof summarizeHermesRuntimeChannel> {
+  if (worker.runtimeType !== "hermes_agent_gateway") {
+    return summarizeHermesRuntimeChannel(null, worker.status, readRevokedAt(worker));
+  }
+  const capabilities = isPlainObject(worker.capabilitiesJson) ? worker.capabilitiesJson : null;
+  const runtimeMetadata = capabilities && isPlainObject(capabilities.runtimeMetadata)
+    ? capabilities.runtimeMetadata
+    : null;
+  return summarizeHermesRuntimeChannel(runtimeMetadata, worker.status, readRevokedAt(worker));
+}
+
+function readHermesRuntimeMemorySyncSummary(worker: WorkerRecord): ReturnType<typeof summarizeHermesRuntimeMemorySync> {
+  if (worker.runtimeType !== "hermes_agent_gateway") {
+    return summarizeHermesRuntimeMemorySync(null);
+  }
+  const capabilities = isPlainObject(worker.capabilitiesJson) ? worker.capabilitiesJson : null;
+  const runtimeMetadata = capabilities && isPlainObject(capabilities.runtimeMetadata)
+    ? capabilities.runtimeMetadata
+    : null;
+  return summarizeHermesRuntimeMemorySync(runtimeMetadata);
+}
+
+function summarizeWorkerAccessPolicy(
+  worker: WorkerRecord,
+): {
+  workerAccessPolicyPreset: string | null;
+  workerAccessPolicyScopeCount: number;
+  workerAccessPolicyQuotaDisplayLabel: string;
+} {
+  const capabilities = isPlainObject(worker.capabilitiesJson) ? worker.capabilitiesJson : null;
+  const runtimeMetadata = capabilities && isPlainObject(capabilities.runtimeMetadata)
+    ? capabilities.runtimeMetadata
+    : null;
+  const policy = runtimeMetadata && isPlainObject(runtimeMetadata.workerAccessPolicy)
+    ? runtimeMetadata.workerAccessPolicy
+    : null;
+  if (!policy) {
+    return {
+      workerAccessPolicyPreset: null,
+      workerAccessPolicyScopeCount: 0,
+      workerAccessPolicyQuotaDisplayLabel: "Policy unavailable",
+    };
+  }
+
+  const permissionPreset = typeof policy.permissionPreset === "string" && policy.permissionPreset.trim().length > 0
+    ? policy.permissionPreset.trim()
+    : null;
+  const permissionScopes = Array.isArray(policy.permissionScopes)
+    ? policy.permissionScopes.filter((scope): scope is string => typeof scope === "string" && scope.trim().length > 0)
+    : [];
+  const quotaParts = [
+    policy.quotaHourly ? `H${policy.quotaHourly}` : null,
+    policy.quotaDaily ? `D${policy.quotaDaily}` : null,
+    policy.quotaWeekly ? `W${policy.quotaWeekly}` : null,
+    policy.quotaMonthly ? `M${policy.quotaMonthly}` : null,
+  ].filter((part): part is string => Boolean(part));
+  const quotaDisplay = quotaParts.length > 0 ? quotaParts.join(" / ") : "No quota limits";
+
+  return {
+    workerAccessPolicyPreset: permissionPreset,
+    workerAccessPolicyScopeCount: permissionScopes.length,
+    workerAccessPolicyQuotaDisplayLabel: quotaDisplay,
+  };
 }
 
 function deriveCompatibilityState(
@@ -323,7 +467,7 @@ function deriveMcpFamily(toolName: string | null | undefined): string | null {
 
 function coerceManifest(value: unknown): Pick<
   DelegatedCapabilityManifest,
-  "availability" | "mcp" | "discovery" | "scopeProfile" | "workerJobId" | "expiresAt"
+  "availability" | "mcp" | "discovery" | "scopeProfile" | "activeMode" | "workerJobId" | "expiresAt"
 > | null {
   const parsed = delegatedCapabilityManifestSchema.safeParse(value);
   if (!parsed.success) {
@@ -334,6 +478,7 @@ function coerceManifest(value: unknown): Pick<
     mcp: parsed.data.mcp,
     discovery: parsed.data.discovery,
     scopeProfile: parsed.data.scopeProfile,
+    activeMode: parsed.data.activeMode ?? summarizeHermesTaskMode(parsed.data.scopeProfile),
     workerJobId: parsed.data.workerJobId,
     expiresAt: parsed.data.expiresAt,
   };
@@ -623,6 +768,13 @@ export async function listWorkerFleet(
   return workerRows.map((worker) => {
     const runtimeDefinition = getWorkerRuntimeDefinition(worker.runtimeType);
     const compatibility = readCompatibility(worker);
+    const personaSummary = readHermesPersonaSummary(worker);
+    const channelSummary = readHermesRuntimeChannelSummary(worker);
+    const memorySyncSummary = readHermesRuntimeMemorySyncSummary(worker);
+    const accessPolicySummary = summarizeWorkerAccessPolicy(worker);
+    const providerRoutingSummary = summarizeHermesProviderRouting(
+      (worker.capabilitiesJson as Record<string, unknown> | null | undefined)?.runtimeMetadata as Record<string, unknown> | null | undefined,
+    );
 
     return {
       id: worker.id,
@@ -645,6 +797,25 @@ export async function listWorkerFleet(
       diagnosticsAvailable: isPlainObject(worker.healthSummaryJson) && isPlainObject(worker.healthSummaryJson.details),
       dashboardUrl: sanitizeDashboardUrl(worker.dashboardUrl),
       revokedAt: readRevokedAt(worker),
+      remoteEndpointPolicy: readRemoteEndpointPolicy(worker),
+      profileName: personaSummary.profileName,
+      profileLabel: personaSummary.profileLabel,
+      profilePurpose: personaSummary.profilePurpose,
+      personaDisplayLabel: personaSummary.displayLabel,
+      personaDisplayPurpose: personaSummary.displayPurpose,
+      channelStatus: channelSummary.channelStatus,
+      channelDisplayLabel: channelSummary.displayLabel,
+      memorySyncEnabled: memorySyncSummary.memorySyncEnabled,
+      memorySyncScope: memorySyncSummary.memorySyncScope,
+      memorySyncStatus: memorySyncSummary.memorySyncStatus,
+      memorySyncDisplayLabel: memorySyncSummary.displayLabel,
+      llmRoutingMode: providerRoutingSummary.llmRoutingMode,
+      preferredProviderId: providerRoutingSummary.preferredProviderId,
+      preferredProviderName: providerRoutingSummary.preferredProviderName,
+      providerRoutingDisplayLabel: providerRoutingSummary.displayLabel,
+      workerAccessPolicyPreset: accessPolicySummary.workerAccessPolicyPreset,
+      workerAccessPolicyScopeCount: accessPolicySummary.workerAccessPolicyScopeCount,
+      workerAccessPolicyQuotaDisplayLabel: accessPolicySummary.workerAccessPolicyQuotaDisplayLabel,
     };
   });
 }
@@ -663,6 +834,13 @@ export async function getWorkerDiagnosticsSnapshot(
   const healthSummary = isPlainObject(worker.healthSummaryJson) ? worker.healthSummaryJson : {};
   const runtimeDefinition = getWorkerRuntimeDefinition(worker.runtimeType);
   const compatibility = readCompatibility(worker);
+  const personaSummary = readHermesPersonaSummary(worker);
+  const channelSummary = readHermesRuntimeChannelSummary(worker);
+  const memorySyncSummary = readHermesRuntimeMemorySyncSummary(worker);
+  const accessPolicySummary = summarizeWorkerAccessPolicy(worker);
+  const providerRoutingSummary = summarizeHermesProviderRouting(
+    (worker.capabilitiesJson as Record<string, unknown> | null | undefined)?.runtimeMetadata as Record<string, unknown> | null | undefined,
+  );
 
   return {
     workerId: worker.id,
@@ -679,6 +857,25 @@ export async function getWorkerDiagnosticsSnapshot(
     warningFlagsJson: sanitizeWorkerWarningFlags(worker.warningFlagsJson),
     dashboardUrl: sanitizeDashboardUrl(worker.dashboardUrl),
     revokedAt: readRevokedAt(worker),
+    remoteEndpointPolicy: readRemoteEndpointPolicy(worker),
+    profileName: personaSummary.profileName,
+    profileLabel: personaSummary.profileLabel,
+    profilePurpose: personaSummary.profilePurpose,
+    personaDisplayLabel: personaSummary.displayLabel,
+    personaDisplayPurpose: personaSummary.displayPurpose,
+    channelStatus: channelSummary.channelStatus,
+    channelDisplayLabel: channelSummary.displayLabel,
+    memorySyncEnabled: memorySyncSummary.memorySyncEnabled,
+    memorySyncScope: memorySyncSummary.memorySyncScope,
+    memorySyncStatus: memorySyncSummary.memorySyncStatus,
+    memorySyncDisplayLabel: memorySyncSummary.displayLabel,
+    llmRoutingMode: providerRoutingSummary.llmRoutingMode,
+    preferredProviderId: providerRoutingSummary.preferredProviderId,
+    preferredProviderName: providerRoutingSummary.preferredProviderName,
+    providerRoutingDisplayLabel: providerRoutingSummary.displayLabel,
+    workerAccessPolicyPreset: accessPolicySummary.workerAccessPolicyPreset,
+    workerAccessPolicyScopeCount: accessPolicySummary.workerAccessPolicyScopeCount,
+    workerAccessPolicyQuotaDisplayLabel: accessPolicySummary.workerAccessPolicyQuotaDisplayLabel,
   };
 }
 
@@ -823,6 +1020,8 @@ export async function getWorkerMcpInsights(
           sessionId: String(latestSession.id),
           workerJobId: String(latestSession.workerJobId),
           scopeProfile: String(latestSession.scopeProfile),
+          activeMode: coerceManifest(latestSession.manifestJson)?.activeMode
+            ?? summarizeHermesTaskMode(latestSession.scopeProfile as string | null | undefined),
           createdAt: new Date(latestSession.createdAt).toISOString(),
           expiresAt: new Date(latestSession.expiresAt).toISOString(),
           revokedAt: latestSession.revokedAt ? new Date(latestSession.revokedAt).toISOString() : null,
@@ -901,6 +1100,9 @@ export async function getTenantWorkerMcpOverview(
 
   for (const worker of workerRows) {
     const summary = summarizeLatestSessionManifest(latestSessionByWorkerId.get(worker.id) ?? null);
+    const channelSummary = readHermesRuntimeChannelSummary(worker);
+    const memorySyncSummary = readHermesRuntimeMemorySyncSummary(worker);
+    const accessPolicySummary = summarizeWorkerAccessPolicy(worker);
     manifestStatusCounts[summary.manifestStatus] += 1;
     if (summary.activeDelegatedSession) {
       activeWorkerIds.add(worker.id);
@@ -916,6 +1118,11 @@ export async function getTenantWorkerMcpOverview(
       blockedCount: 0,
       lastSeenAt: worker.lastSeenAt ? new Date(worker.lastSeenAt).toISOString() : null,
       lastEventAt: null,
+      channelStatus: channelSummary.channelStatus,
+      memorySyncStatus: memorySyncSummary.memorySyncStatus,
+      workerAccessPolicyPreset: accessPolicySummary.workerAccessPolicyPreset,
+      workerAccessPolicyScopeCount: accessPolicySummary.workerAccessPolicyScopeCount,
+      workerAccessPolicyQuotaDisplayLabel: accessPolicySummary.workerAccessPolicyQuotaDisplayLabel,
     });
   }
 

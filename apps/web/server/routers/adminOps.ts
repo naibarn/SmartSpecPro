@@ -36,6 +36,44 @@ function isCloudTaskEventsMissingError(error: unknown): boolean {
 }
 
 export const adminOpsRouter = router({
+  workpackReleaseHealth: domainAdminProcedure.query(async ({ ctx }) => {
+    const tenantId = String(ctx.tenantId ?? ctx.user?.currentTenantId ?? "");
+    const { getWorkpackMonitoringSummary } = await import("../services/monitoringService");
+    const { listWorkpackReadinessSummaries } = await import("../services/workpackReadinessService");
+    const summary = await getWorkpackMonitoringSummary(tenantId);
+    const readiness = await listWorkpackReadinessSummaries(tenantId);
+
+    return {
+      summary,
+      readiness,
+      blockers: readiness.filter((item) => item.gateResult !== "ready"),
+    };
+  }),
+
+  roleAutonomyHealth: domainAdminProcedure
+    .input(z.object({
+      roleId: z.string().min(1).optional(),
+      departmentLabel: z.string().min(1).optional(),
+      routineId: z.string().min(1).optional(),
+      workpackFamily: z.string().min(1).optional(),
+      runtimeFamily: z.string().min(1).optional(),
+      connectorFamily: z.string().min(1).optional(),
+      riskTier: z.enum(["low", "medium", "high", "critical"]).optional(),
+    }).optional())
+    .query(async ({ input, ctx }) => {
+      const tenantId = String(ctx.tenantId ?? ctx.user?.currentTenantId ?? "");
+      const { getRoleRosterSummary } = await import("../services/roleMonitorService");
+      const { listRoleTelemetrySnapshots } = await import("../services/roleTelemetryService");
+
+      const roster = await getRoleRosterSummary(tenantId);
+      const telemetry = await listRoleTelemetrySnapshots(tenantId, input ?? {});
+      return {
+        roster,
+        telemetry,
+        blockers: roster.filter((item) => item.gateResult !== "ready"),
+      };
+    }),
+
   /**
    * Traffic & Auth Panel - Daily user activity and login metrics
    */

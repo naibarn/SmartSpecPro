@@ -43,13 +43,18 @@ vi.mock("../../services/creditService", () => ({
 const mockCreateMessage = vi.fn().mockResolvedValue({});
 const mockGetConversationById = vi.fn();
 const mockCreateConversation = vi.fn();
+const mockCreatePersonalConversation = vi.fn();
 const mockUpdateConversation = vi.fn();
 const mockBuildChatContext = vi.fn().mockResolvedValue([]);
 vi.mock("../../services/chatService", () => ({
   createConversation: (...args: unknown[]) => mockCreateConversation(...args),
+  createPersonalConversation: (...args: unknown[]) =>
+    mockCreatePersonalConversation(...args),
+  PERSONAL_PROJECT_ID: "personal",
   createMessage: (...args: unknown[]) => mockCreateMessage(...args),
   getConversationById: (...args: unknown[]) =>
     mockGetConversationById(...args),
+  getPersonalConversation: vi.fn(),
   buildChatContext: (...args: unknown[]) => mockBuildChatContext(...args),
   getConversations: vi.fn(),
   getMessages: vi.fn(),
@@ -486,6 +491,81 @@ describe("Chat Router → Unified Orchestrator Wiring", () => {
         },
       }),
     ).rejects.toThrow("Chat auto model selection is not enabled for this tenant");
+  });
+
+  it("createPersonalConversation always forces the personal project lock", async () => {
+    const { chatRouter } = await import("../chat");
+    const caller = chatRouter.createCaller({
+      user: {
+        id: 1,
+        openId: "user-open-id",
+        email: "user@example.com",
+        name: "Tester",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+        currentTenantId: "tenant-1",
+        registeredDomain: "tenant-1",
+      },
+      tenantId: "tenant-1",
+      userToken: null,
+      privateVaultToken: null,
+      publicUrl: "https://example.com",
+      req: { ip: "127.0.0.1", headers: {}, protocol: "https" } as any,
+      res: {} as any,
+    });
+
+    mockCreatePersonalConversation.mockResolvedValue({
+      id: 77,
+      title: "Personal Chat",
+      model: null,
+      skillSettings: null,
+      projectId: "personal",
+      createdAt: new Date("2026-04-09T00:00:00.000Z"),
+    });
+
+    await caller.createPersonalConversation({
+      title: "Personal Chat",
+    });
+
+    expect(mockCreatePersonalConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Personal Chat",
+        tenantId: "tenant-1",
+      }),
+    );
+  });
+
+  it("rejects the generic createConversation route when personal projectId is supplied", async () => {
+    const { chatRouter } = await import("../chat");
+    const caller = chatRouter.createCaller({
+      user: {
+        id: 1,
+        openId: "user-open-id",
+        email: "user@example.com",
+        name: "Tester",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+        currentTenantId: "tenant-1",
+        registeredDomain: "tenant-1",
+      },
+      tenantId: "tenant-1",
+      userToken: null,
+      privateVaultToken: null,
+      publicUrl: "https://example.com",
+      req: { ip: "127.0.0.1", headers: {}, protocol: "https" } as any,
+      res: {} as any,
+    });
+
+    await expect(
+      caller.createConversation({
+        title: "Should fail",
+        projectId: "personal",
+      }),
+    ).rejects.toThrow("Use createPersonalConversation for personal chats");
   });
 
   it("updateConversation persists provider-auto selection when flag is on", async () => {

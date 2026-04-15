@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.llm_proxy.openrouter_wrapper import OpenRouterWrapper, create_openrouter_client
 from app.llm_proxy.models import LLMRequest, LLMResponse, LLMProvider
 from app.core.config import settings
-from app.llm_proxy.providers import KieAIProvider, KNPLabsProvider
+from app.llm_proxy.providers import KieAIProvider, KNPLabsProvider, OmniVoiceProvider
 
 logger = structlog.get_logger()
 
@@ -58,6 +58,7 @@ class UnifiedLLMClient:
         self.model_to_provider: Dict[str, str] = {}  # Map model strings to their provider names
         self.kie_ai_client: Optional[KieAIProvider] = None
         self.knplabs_client: Optional[KNPLabsProvider] = None
+        self.omnivoice_client: Optional[OmniVoiceProvider] = None
         self._initialized = False
 
         logger.info("unified_llm_client_created")
@@ -204,6 +205,13 @@ class UnifiedLLMClient:
             )
             logger.info("knplabs_initialized_from_db", base_url=base_url)
 
+        elif provider_name == "omnivoice":
+            self.omnivoice_client = OmniVoiceProvider(
+                api_key=api_key,
+                base_url=base_url,
+            )
+            logger.info("omnivoice_initialized_from_db", base_url=base_url)
+
         elif provider_name == "ollama":
             from openai import OpenAI
             self.direct_providers['ollama'] = OpenAI(
@@ -281,6 +289,13 @@ class UnifiedLLMClient:
             logger.info("knplabs_client_initialized")
         elif settings.KNPLABAI_API_KEY:
             logger.warning("knplabs_env_key_ignored_placeholder")
+
+        if settings.OMNIVOICE_BASE_URL and settings.OMNIVOICE_BASE_URL.strip():
+            self.omnivoice_client = OmniVoiceProvider(
+                api_key=settings.OMNIVOICE_API_KEY or None,
+                base_url=settings.OMNIVOICE_BASE_URL,
+            )
+            logger.info("omnivoice_client_initialized")
     
     async def chat(
         self,
@@ -799,6 +814,10 @@ class UnifiedLLMClient:
         voice: str = "alloy",
         speed: float = 1.0,
         format: str = "mp3",
+        instruct: Optional[str] = None,
+        reference_audio_base64: Optional[str] = None,
+        reference_audio_url: Optional[str] = None,
+        reference_text: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Synthesize speech using OpenAI, KNPLabs, or ElevenLabs-compatible routing."""
         provider_name = provider.strip().lower()
@@ -872,6 +891,25 @@ class UnifiedLLMClient:
                 response = await client.get(url)
                 response.raise_for_status()
                 return {"audio_bytes": response.content}
+
+        if provider_name == "omnivoice":
+            if not self.omnivoice_client:
+                from app.services.media_provider_service import initialize_omnivoice_client
+                self.omnivoice_client = await initialize_omnivoice_client()
+            if not self.omnivoice_client:
+                raise ValueError("OmniVoice provider not available")
+
+            audio_bytes = await self.omnivoice_client.generate_speech(
+                text=text,
+                voice=voice,
+                speed=speed,
+                response_format=format,
+                instruct=instruct,
+                reference_audio_base64=reference_audio_base64,
+                reference_audio_url=reference_audio_url,
+                reference_text=reference_text,
+            )
+            return {"audio_bytes": audio_bytes}
 
         raise ValueError(f"Unsupported TTS provider: {provider}")
     

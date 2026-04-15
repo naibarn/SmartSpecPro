@@ -1,5 +1,5 @@
 #!/bin/bash
-# Database Backup Script - SmartSpec Pro
+# Database Backup Script - SmartAIHub
 # Usage: ./scripts/backup-database.sh
 
 set -e
@@ -17,7 +17,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║   SmartSpec Pro Database Backup       ║${NC}"
+echo -e "${GREEN}║   SmartAIHub Database Backup       ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════╝${NC}"
 echo ""
 

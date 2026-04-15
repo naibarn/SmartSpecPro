@@ -43,7 +43,8 @@ export interface AbuseGuardParams {
     | "media:audio"
     | "media:image_async"
     | "media:audio_async"
-    | "media:video_async";
+    | "media:video_async"
+    | "finance";
   /** SHA-256 hash of the prompt/input content */
   promptHash: string;
 }

@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChatSidebar, ChatView, MemoryPanel, SkillSettings, ArtifactPanel, SchedulePanel, type Artifact } from "@/components/chat";
+import { FinanceHub } from "@/components/finance/FinanceHub";
+import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
 import { CanvasPane } from "@/components/chat/canvas/CanvasPane";
 import { HelpButton } from "@/components/help";
 import { BrowserSessionSummaryCard } from "@/components/browser-session/BrowserSessionSummaryCard";
@@ -20,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, PanelLeftClose, Brain, Wand2, Layers, Bell, Menu, MonitorPlay, Loader2, Send, Users, Play, X, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronLeft, PanelLeftClose, Brain, Wand2, Layers, Bell, Menu, MonitorPlay, Loader2, Send, Users, Play, X, ChevronDown, ChevronUp, ReceiptText } from "lucide-react";
 import { AgencyPickerModal } from "@/components/agency/AgencyPickerModal";
 import { useAgencyStream } from "@/hooks/useAgencyStream";
 import { AgencyChatStream } from "@/components/agency/AgencyChatStream";
@@ -53,9 +56,10 @@ import {
 import type { LiveBrowserCreateSessionRequest } from "@shared/liveBrowser";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 
 
-type RightPanel = "none" | "memory" | "skills" | "artifacts" | "schedule" | "canvas";
+type RightPanel = "none" | "memory" | "skills" | "artifacts" | "schedule" | "canvas" | "finance";
 type AgencyRunPhase = "idle" | "connecting" | "running" | "completed" | "failed";
 
 export default function Chat() {
@@ -96,8 +100,6 @@ export default function Chat() {
 
   const utils = trpc.useUtils();
 
-  // Get available models from LLM providers (for default model)
-  const { data: modelsData } = trpc.llmProviders.availableModels.useQuery();
   // Agency trigger data for auto-detection in chat
   const { data: agencyTriggersData } = (trpc as any).agency?.listTriggers?.useQuery?.(undefined, {
     staleTime: 60_000,
@@ -110,6 +112,27 @@ export default function Chat() {
   const createLiveBrowserSessionMutation = trpc.liveBrowser.createSession.useMutation();
   const sendLiveBrowserCommandMutation = trpc.liveBrowser.sendCommand.useMutation();
   const saveAssistantMessageMutation = trpc.chat.saveAssistantMessage.useMutation();
+  const mirrorFinanceActivity = async (message: {
+    content: string;
+    artifacts: Array<{
+      id: string;
+      type: "markdown" | "table" | "chart";
+      title?: string;
+      content: string | string[];
+      metadata?: Record<string, unknown>;
+    }>;
+  }) => {
+    if (!selectedConversationId) {
+      return;
+    }
+
+    await saveAssistantMessageMutation.mutateAsync({
+      conversationId: selectedConversationId,
+      content: message.content,
+      artifacts: message.artifacts,
+    });
+    utils.chat.getMessages.invalidate({ conversationId: selectedConversationId });
+  };
 
   const browserSessionArtifacts = useMemo(
     () => (messagesData || [])
@@ -129,6 +152,13 @@ export default function Chat() {
 
   // Create conversation mutation
   const createConversationMutation = trpc.chat.createConversation.useMutation({
+    onSuccess: (data) => {
+      setSelectedConversationId(data.id);
+      utils.chat.listConversations.invalidate();
+    },
+  });
+
+  const createPersonalConversationMutation = trpc.chat.createPersonalConversation.useMutation({
     onSuccess: (data) => {
       setSelectedConversationId(data.id);
       utils.chat.listConversations.invalidate();
@@ -170,6 +200,9 @@ export default function Chat() {
       setInitialDmUserId(Number(dm));
       setInitialDmUserName(dmName || "User");
       setRightPanel("schedule");
+      window.history.replaceState({}, "", "/chat");
+    } else if (panel === "finance") {
+      setRightPanel("finance");
       window.history.replaceState({}, "", "/chat");
     } else if (panel === "schedule") {
       setRightPanel("schedule");
@@ -302,11 +335,18 @@ export default function Chat() {
   };
 
   const createConversationWithDefaultModel = async (title = t('chat.newChat')) => {
-    const defaultModel = modelsData?.models?.find(m => m.isDefault);
     return createConversationMutation.mutateAsync({
       title,
-      model: defaultModel?.id,
     });
+  };
+
+  const activateConversation = (conversationId: number, options?: { closeSidebar?: boolean }) => {
+    setSelectedConversationId(conversationId);
+    setRightPanel("none");
+    setLocation(`/chat?c=${conversationId}`);
+    if (options?.closeSidebar ?? window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
   };
 
   const ensureConversationId = async () => {
@@ -314,7 +354,7 @@ export default function Chat() {
       return selectedConversationId;
     }
     const result = await createConversationWithDefaultModel();
-    setSelectedConversationId(result.id);
+    activateConversation(result.id);
     return result.id;
   };
 
@@ -493,8 +533,23 @@ export default function Chat() {
   };
 
   const handleNewChat = async () => {
-    const result = await createConversationWithDefaultModel();
-    setSelectedConversationId(result.id);
+    try {
+      const result = await createConversationWithDefaultModel();
+      activateConversation(result.id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("chat.createConversationFailed"));
+    }
+  };
+
+  const handleNewPersonalChat = async () => {
+    try {
+      const result = await createPersonalConversationMutation.mutateAsync({
+        title: t("chat.startPersonalChat"),
+      });
+      activateConversation(result.id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("chat.createConversationFailed"));
+    }
   };
 
   const handleOpenTeamRoom = (teamId: string) => {
@@ -505,11 +560,8 @@ export default function Chat() {
 
   // Create new chat continuing the same project, with summary from previous chat
   const handleNewChatFromProject = async (projectId: string, summary: string) => {
-    const defaultModel = modelsData?.models?.find(m => m.isDefault);
-
     const result = await createConversationMutation.mutateAsync({
       title: `${projectId} - continued`,
-      model: defaultModel?.id,
       projectId,
       systemPrompt: summary
         ? `Context from previous conversation in project "${projectId}":\n\n${summary}`
@@ -541,6 +593,7 @@ export default function Chat() {
     }
 
     setSelectedConversationId(result.id);
+    setLocation(`/chat?c=${result.id}`);
     // Open Memory panel so user can see the carried-over context
     setRightPanel("memory");
   };
@@ -674,6 +727,15 @@ export default function Chat() {
             <Brain className="h-4 w-4" />
             <span className="hidden sm:inline">{t('chat.memory')}</span>
           </Button>
+          <Button
+            variant={rightPanel === "finance" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setRightPanel(rightPanel === "finance" ? "none" : "finance")}
+            className="gap-2"
+          >
+            <ReceiptText className="h-4 w-4" />
+            <span className="hidden sm:inline">{t('chat.finance')}</span>
+          </Button>
           {chatBrowserSessionEnabled && (
             <Button
               variant="ghost"
@@ -731,10 +793,11 @@ export default function Chat() {
           <ChatSidebar
             selectedConversationId={selectedConversationId}
             onSelectConversation={(id) => {
-              setSelectedConversationId(id);
+              activateConversation(id, { closeSidebar: true });
               setSidebarOpen(false);
             }}
             onNewChat={handleNewChat}
+            onNewPersonalChat={handleNewPersonalChat}
             onOpenTeamRoom={handleOpenTeamRoom}
           />
         </div>
@@ -748,8 +811,9 @@ export default function Chat() {
           {sidebarOpen && (
             <ChatSidebar
               selectedConversationId={selectedConversationId}
-              onSelectConversation={(id) => setSelectedConversationId(id)}
+              onSelectConversation={(id) => activateConversation(id, { closeSidebar: false })}
               onNewChat={handleNewChat}
+              onNewPersonalChat={handleNewPersonalChat}
               onOpenTeamRoom={handleOpenTeamRoom}
             />
           )}
@@ -869,6 +933,7 @@ export default function Chat() {
                   onConfirmBrowserSessionSuggestion={handleConfirmBrowserSessionSuggestion}
                   onDismissBrowserSessionSuggestion={handleDismissBrowserSessionSuggestion}
                   onRunAgency={() => setAgencyPickerOpen(true)}
+                  onOpenFinancePanel={() => setRightPanel("finance")}
                 />
                 {/* Agency suggestion card (auto-detected) */}
                 {agencySuggestion && !targetAgency && (
@@ -1094,6 +1159,19 @@ export default function Chat() {
                   <Users className="h-4 w-4" />
                   {t('chat.exploreAgencies')}
                 </Button>
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setLocation(buildWorkpackEntrypointHref({
+                    entrypoint: "chat",
+                    surface: "intake",
+                  }))}
+                >
+                  <Layers className="h-4 w-4" />
+                  Open Workpack Intake
+                </Button>
               </div>
             </DashboardSurface>
           )}
@@ -1106,7 +1184,7 @@ export default function Chat() {
           className={cn(
             "flex h-full min-h-0 flex-shrink-0 flex-col overflow-hidden transition-all duration-200",
             rightPanel !== "none"
-              ? "w-full translate-x-0 border-l sm:w-96 lg:w-[28rem]"
+              ? "w-full translate-x-0 border-l sm:w-[26rem] lg:w-[36rem] xl:w-[40rem]"
               : "pointer-events-none w-0 translate-x-full border-l-0"
           )}
         >
@@ -1134,6 +1212,37 @@ export default function Chat() {
               conversationId={selectedConversationId}
               onClose={() => setRightPanel("none")}
             />
+          )}
+          {rightPanel === "finance" && (
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="flex items-center justify-between border-b border-slate-200/80 bg-white/95 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                    {t("chat.finance")}
+                  </p>
+                  <h2 className="truncate text-base font-semibold text-slate-900">
+                    {t("dashboard:finance.title")}
+                  </h2>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setRightPanel("none")}
+                  className="h-9 w-9 shrink-0 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  aria-label={t("chat.dismiss")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <FinanceAccessGate className="min-h-0 flex-1 overflow-y-auto p-3">
+                <FinanceHub
+                  surface="panel"
+                  conversationId={selectedConversationId}
+                  onCreatePersonalChat={handleNewPersonalChat}
+                  onMirrorFinanceActivity={mirrorFinanceActivity}
+                />
+              </FinanceAccessGate>
+            </div>
           )}
           {rightPanel === "schedule" && (
             <SchedulePanel

@@ -14,6 +14,7 @@ const createLiveBrowserSessionMutateAsync = vi.fn();
 const sendLiveBrowserCommandMutateAsync = vi.fn();
 const saveAssistantMessageMutateAsync = vi.fn();
 const createConversationMutateAsync = vi.fn();
+const createPersonalConversationMutateAsync = vi.fn();
 const updateConversationMutateAsync = vi.fn();
 const getSessionFetch = vi.fn();
 const invalidateMessages = vi.fn();
@@ -21,6 +22,50 @@ const invalidateConversations = vi.fn();
 
 let messagesData: Array<Record<string, unknown>> = [];
 let tenantFlagsData: Record<string, unknown> | undefined = { chatBrowserSessionEntry: true };
+
+const translationMap: Record<string, string> = {
+  "common.back": "Back",
+  "chat.alerts": "Alerts",
+  "chat.artifacts": "Artifacts",
+  "chat.browserSession": "Browser Session",
+  "chat.browserSession.opened": "Opened Browser Session from Chat.",
+  "chat.browserSession.queued": "Instruction queued for this Browser Session.",
+  "chat.browserSession.queueFailed": "Failed to queue Browser Session instruction.",
+  "chat.browserSession.returnLabel": "Return to Chat",
+  "chat.browserSessionDescription": "Let AI work in a live browser directly from this chat.",
+  "chat.browserSessionHint": "Start a Browser Session to let AI discover sites, navigate pages, and continue working while you stay in Chat.",
+  "chat.chooseBrowserSkill": "Choose a browser skill",
+  "chat.dismiss": "Dismiss",
+  "chat.exploreAgencies": "Explore Agencies",
+  "chat.finance": "Finance",
+  "chat.browserInstructionPlaceholder": "Find the best site for this task, compare options, and continue.",
+  "chat.memory": "Memory",
+  "chat.openBrowserSession": "Open Browser Session",
+  "chat.queuingInstruction": "Queuing Instruction...",
+  "chat.quickBrowserInstruction": "Quick Browser Instruction",
+  "chat.quickBrowserInstructionDesc": "Describe the next result you want or the step AI should take without leaving Chat.",
+  "chat.newChat": "New Chat",
+  "chat.startPersonalChat": "Start Personal Chat",
+  "chat.running": "Running...",
+  "chat.sendBrowserInstruction": "Send Browser Instruction",
+  "chat.skills": "Skills",
+  "chat.startBrowserSession": "Start Browser Session",
+  "chat.startNewChat": "Start New Chat",
+  "chat.title": "AI Chat",
+  "chat.useAgency": "Use Agency",
+};
+
+function translate(key: string, params?: Record<string, string | number>) {
+  if (key === "dashboard:finance.title") {
+    return "Personal Finance";
+  }
+
+  if (key === "dashboard:finance.openPanel") {
+    return "Open Finance Panel";
+  }
+
+  return translationMap[key] ?? (typeof params?.name === "string" ? params.name : key);
+}
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/chat", mockSetLocation],
@@ -34,8 +79,39 @@ vi.mock("@/contexts/AuthContext", () => ({
   }),
 }));
 
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    t: translate,
+    i18n: {
+      exists: () => true,
+      resolvedLanguage: "en",
+      language: "en",
+      changeLanguage: vi.fn(),
+    },
+    locale: "en",
+    setLocale: vi.fn(),
+  }),
+}));
+
 vi.mock("@/components/chat", () => ({
-  ChatSidebar: () => <div>Chat Sidebar</div>,
+  ChatSidebar: ({
+    onNewChat,
+    onNewPersonalChat,
+  }: {
+    onNewChat: () => void;
+    onNewPersonalChat?: () => void;
+  }) => (
+    <div>
+      <button type="button" onClick={() => onNewChat()}>
+        Start New Chat
+      </button>
+      {onNewPersonalChat ? (
+        <button type="button" onClick={() => onNewPersonalChat()}>
+          Start Personal Chat
+        </button>
+      ) : null}
+    </div>
+  ),
   ChatHelpDialog: () => <button type="button">Chat Help</button>,
   ChatView: ({
     conversationId,
@@ -108,6 +184,10 @@ vi.mock("@/components/chat/canvas/CanvasPane", () => ({
   CanvasPane: () => <div>Canvas Pane</div>,
 }));
 
+vi.mock("@/components/finance/FinanceHub", () => ({
+  FinanceHub: () => <div>Finance Hub</div>,
+}));
+
 vi.mock("@/components/browser-session/BrowserSessionHelpDialog", () => ({
   BrowserSessionHelpDialog: () => <button type="button">Help</button>,
 }));
@@ -133,6 +213,17 @@ vi.mock("@/lib/trpc", () => ({
         useQuery: () => ({ data: { models: [] } }),
       },
     },
+    users: {
+      getPreferences: {
+        useQuery: () => ({
+          data: { privateVault: { enabled: false } },
+          isLoading: false,
+        }),
+      },
+      unlockPrivateVault: {
+        useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+      },
+    },
     tenantFeatureFlags: {
       getFeatureFlags: {
         useQuery: () => ({ data: tenantFlagsData }),
@@ -144,6 +235,9 @@ vi.mock("@/lib/trpc", () => ({
       },
       createConversation: {
         useMutation: () => ({ mutateAsync: createConversationMutateAsync }),
+      },
+      createPersonalConversation: {
+        useMutation: () => ({ mutateAsync: createPersonalConversationMutateAsync }),
       },
       updateConversation: {
         useMutation: () => ({ mutateAsync: updateConversationMutateAsync }),
@@ -177,6 +271,7 @@ describe("Chat Browser Session entry", () => {
     tenantFlagsData = { chatBrowserSessionEntry: true };
     window.history.replaceState({}, "", "/chat?c=12");
     createConversationMutateAsync.mockResolvedValue({ id: 88 });
+    createPersonalConversationMutateAsync.mockResolvedValue({ id: 89 });
     getSessionFetch.mockResolvedValue({
       sessionId: "lbs_chat_1",
       tenantId: "tenant-1",
@@ -227,7 +322,6 @@ describe("Chat Browser Session entry", () => {
     expect(screen.getByText(/Let AI work in a live browser directly from this chat\./i)).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Start Browser Session" }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: "Help" }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Chat Help" })).toBeInTheDocument();
   });
 
   it("keeps the Browser Session launcher visible when tenant flags have not loaded yet", () => {
@@ -237,7 +331,6 @@ describe("Chat Browser Session entry", () => {
 
     expect(screen.getAllByRole("button", { name: "Start Browser Session" }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: "Help" }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Chat Help" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Open Browser Session/i })).toBeInTheDocument();
   });
 
@@ -255,8 +348,48 @@ describe("Chat Browser Session entry", () => {
 
     expect(rightPanel).toHaveAttribute("aria-hidden", "false");
     expect(rightPanel).toHaveClass("w-full");
-    expect(rightPanel).toHaveClass("sm:w-96");
-    expect(rightPanel).toHaveClass("lg:w-[28rem]");
+    expect(rightPanel).toHaveClass("sm:w-[26rem]");
+    expect(rightPanel).toHaveClass("lg:w-[36rem]");
+    expect(rightPanel).toHaveClass("xl:w-[40rem]");
+  });
+
+  it("opens the finance panel from the chat toolbar", () => {
+    render(<Chat />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Finance$/i }));
+
+    expect(screen.getByText("Finance Hub")).toBeInTheDocument();
+    expect(screen.getByTestId("chat-right-panel")).toHaveAttribute("aria-hidden", "false");
+  });
+
+  it("creates a new chat from the sidebar shortcut", async () => {
+    render(<Chat />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /start new chat/i })[0]);
+
+    await waitFor(() => {
+      expect(createConversationMutateAsync).toHaveBeenCalledWith({
+        title: "New Chat",
+        model: undefined,
+      });
+    });
+
+    expect(mockSetLocation).toHaveBeenCalledWith("/chat?c=88");
+  });
+
+  it("creates a personal chat from the sidebar shortcut", async () => {
+    render(<Chat />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /start personal chat/i })[0]);
+
+    await waitFor(() => {
+      expect(createPersonalConversationMutateAsync).toHaveBeenCalledWith({
+        title: "Start Personal Chat",
+        model: undefined,
+      });
+    });
+
+    expect(mockSetLocation).toHaveBeenCalledWith("/chat?c=89");
   });
 
   it("creates and opens a Browser Session from Chat", async () => {
@@ -294,7 +427,7 @@ describe("Chat Browser Session entry", () => {
 
     render(<Chat />);
 
-    expect(screen.getByRole("button", { name: "Help" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Help" }).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Start Browser Session" }));
 
     await waitFor(() => {

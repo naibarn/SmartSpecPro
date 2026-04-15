@@ -135,6 +135,9 @@ jobs:
       - name: Install npm dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Set desktop bundle version
+        run: node scripts/set-desktop-version.mjs --version "${{ github.event.inputs.tag || github.ref_name }}"
+
       - name: Build SmartAIHub Web assets for desktop
         env:
           VITE_SMARTAIHUB_WEB_URL: ${{ github.event.inputs.web_url }}

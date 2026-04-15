@@ -100,6 +100,14 @@ export type AuditEventType =
   | "upload_post_connection_disconnected"
   | "upload_post_profile_created"
   | "upload_post_profile_deleted"
+  | "finance_draft_created"
+  | "finance_draft_confirmed"
+  | "finance_transaction_voided"
+  | "finance_recurring_rule_failed"
+  | "finance_document_ocr_started"
+  | "finance_document_ocr_completed"
+  | "finance_document_ocr_failed"
+  | "finance_report_exported"
   | "responses_api_call"
   | "web_search_call"
   | "browser_tool_call"
@@ -117,8 +125,10 @@ export type AuditEventType =
   | "agency_result_routed"
   | "desktop_host_device_enrolled"
   | "desktop_host_policy_refreshed"
+  | "desktop_host_device_policy_overrides_updated"
   | "desktop_host_package_sync"
   | "desktop_host_local_root_registered"
+  | "desktop_host_device_action_queued"
   | "desktop_host_root_action_queued"
   | "desktop_host_runtime_selected"
   | "desktop_host_outbound_policy_decision"
@@ -155,6 +165,7 @@ export interface AuditLogEntry {
   timestamp: string;
   eventType: AuditEventType;
   userId: number | null;
+  tenantId?: string | null;
   providerId?: number | null;
   providerName?: string | null;
   model?: string | null;
@@ -211,6 +222,10 @@ const SENSITIVE_KEYS = new Set([
   "cookie",
   "accesstoken",
   "access_token",
+  "reference_audio_base64",
+  "referenceaudiobase64",
+  "reference_audio_url",
+  "referenceaudiourl",
 ]);
 
 const MAX_ENTRY_BYTES = 32_768; // 32 KB
@@ -271,7 +286,7 @@ function truncateMessages(messages: unknown[]): unknown[] {
   return truncated;
 }
 
-function sanitizePayload(payload: unknown): unknown {
+export function sanitizePayload(payload: unknown): unknown {
   if (!payload || typeof payload !== "object") return payload;
 
   const obj = payload as Record<string, unknown>;

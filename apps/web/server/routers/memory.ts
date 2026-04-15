@@ -455,7 +455,14 @@ export const memoryRouter = router({
         });
       }
 
-      const result = await processConversationMemory(input.conversationId, ctx.user.id);
+      const result = await processConversationMemory(input.conversationId, ctx.user.id, {
+        memoryMode:
+          conversation.memoryMode === "off"
+            || conversation.memoryMode === "no_long"
+            || conversation.memoryMode === "full"
+            ? conversation.memoryMode
+            : "full",
+      });
 
       return result;
     }),

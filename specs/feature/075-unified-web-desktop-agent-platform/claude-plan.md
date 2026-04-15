@@ -1,8 +1,8 @@
 # Claude Plan
 
-This plan describes how to implement Feature 075 as the architectural umbrella for SmartSpecPro's unified web + desktop agent platform.
+This plan describes how to implement Feature 075 as the architectural umbrella for SmartAIHub's unified web + desktop agent platform.
 
-The implementation should preserve the existing codebase's useful local-execution substrate while changing the product contract from "permissive shell with point features" to "governed Desktop Host integrated with the SmartSpecPro control plane."
+The implementation should preserve the existing codebase's useful local-execution substrate while changing the product contract from "permissive shell with point features" to "governed Desktop Host integrated with the SmartAIHub control plane."
 
 The plan assumes the provisional interview answers captured in `claude-interview.md`, especially:
 

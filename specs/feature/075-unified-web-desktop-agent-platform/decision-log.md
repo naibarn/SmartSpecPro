@@ -14,7 +14,7 @@
 ## Why this is a new feature instead of an edit to 071-074
 
 - Features 071-074 focus on the external worker fabric and delegated platform access
-- the new request is broader: it defines SmartSpecPro itself as a unified web + desktop product with a governed desktop-host model
+- the new request is broader: it defines SmartAIHub itself as a unified web + desktop product with a governed desktop-host model
 - OpenClaw remains part of the story, but it is only one runtime family inside the larger platform direction
 
 ## Locked decisions
@@ -26,9 +26,9 @@
 
 2. The existing Tauri shell is the desktop foundation.
    - Feature 075 does not invent another desktop product line.
-   - the Tauri shell evolves into **SmartSpecPro Desktop Host**
+   - the Tauri shell evolves into **SmartAIHub Desktop Host**
 
-3. SmartSpecPro remains one product with two surfaces.
+3. SmartAIHub remains one product with two surfaces.
    - web is the control plane and universal surface
    - desktop is the local execution-rich surface
 

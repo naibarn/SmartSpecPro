@@ -82,7 +82,7 @@ function localizedShared(locale: Locale) {
       faqLabel: "คำถามที่พบบ่อย",
       technicalLabel: "สัญญาณเชิงเทคนิค",
       helpLabel: "เปิดคู่มือการตรวจสอบ",
-      monitoringActionLabel: "เปิดหน้า Monitoring",
+      monitoringActionLabel: "เปิดเหตุการณ์",
       dismissLabel: "ปิด",
       reminderLabel: "การแจ้งเตือนระบบ",
     } satisfies Omit<OpsIncidentGuidance, "kind" | "headline" | "summary" | "impactBody" | "checkNow" | "confirmFixed" | "faqItems" | "helpTopicSlug" | "helpHref">;
@@ -95,7 +95,7 @@ function localizedShared(locale: Locale) {
     faqLabel: "Quick FAQ",
     technicalLabel: "Technical Signal",
     helpLabel: "Open Investigation Guide",
-    monitoringActionLabel: "Open Monitoring",
+    monitoringActionLabel: "Open Incident",
     dismissLabel: "Dismiss",
     reminderLabel: "System Reminder",
   } satisfies Omit<OpsIncidentGuidance, "kind" | "headline" | "summary" | "impactBody" | "checkNow" | "confirmFixed" | "faqItems" | "helpTopicSlug" | "helpHref">;
@@ -142,12 +142,15 @@ export function getOpsIncidentGuidance(input: OpsIncidentGuidanceInput): OpsInci
           helpTopicSlug,
           helpHref: `/help/${helpTopicSlug}`,
         };
-      case "alert_backlog":
+      case "alert_backlog": {
+        const detailedSummary = input.message?.trim();
         return {
           kind,
           ...shared,
           headline: "มี critical alerts ค้างและยังไม่มีคนรับเรื่อง",
-          summary: "ระบบยังมี alert ระดับสูงที่เปิดค้างอยู่หลายรายการ การแจ้งเตือนถูกสร้างแล้วแต่ยังไม่มีการ triage หรือ acknowledgement ที่ชัดเจน",
+          summary: detailedSummary
+            ? `ระบบยังมี alert ระดับสูงค้างอยู่: ${detailedSummary}`
+            : "ระบบยังมี alert ระดับสูงที่เปิดค้างอยู่หลายรายการ การแจ้งเตือนถูกสร้างแล้วแต่ยังไม่มีการ triage หรือ acknowledgement ที่ชัดเจน",
           impactBody: "ถ้าไม่แยกให้ได้ว่า alert ไหนคือต้นเหตุจริง ทีมจะเสียเวลาไล่ตามอาการซ้ำ และอาจปล่อยให้ failure เดิมลุกลามโดยไม่มี owner",
           checkNow: [
             "เปิด Alert Inbox ของ incident นี้ แล้วแยก alert ซ้ำออกจาก failure แรกที่เป็นต้นเหตุ",
@@ -176,6 +179,7 @@ export function getOpsIncidentGuidance(input: OpsIncidentGuidanceInput): OpsInci
           helpTopicSlug,
           helpHref: `/help/${helpTopicSlug}`,
         };
+      }
       case "services":
         return {
           kind,

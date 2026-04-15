@@ -75,6 +75,32 @@ sys.exit(1)
     fs::set_permissions(&script_path, permissions).unwrap();
 }
 
+#[cfg(target_os = "linux")]
+fn write_fake_attestation_helper(path: &Path) {
+    let script = r#"#!/usr/bin/env python3
+import json
+import os
+
+print(json.dumps({
+    "providerId": "test_attestation_helper",
+    "attestationMode": "hardware_attested",
+    "storageProtection": "os_protected",
+    "storageProvider": "helper_secure_enclave",
+    "osAttested": True,
+    "hardwareBacked": True,
+    "claims": [
+        f"device_id:{os.environ.get('SMARTSPEC_DEVICE_ID', '')}",
+        f"key_version:{os.environ.get('SMARTSPEC_DEVICE_KEY_VERSION', '')}",
+        f"key_digest:{os.environ.get('SMARTSPEC_PUBLIC_KEY_DIGEST_SHA256', '')}",
+    ],
+}))
+"#;
+    fs::write(path, script).unwrap();
+    let mut permissions = fs::metadata(path).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(path, permissions).unwrap();
+}
+
 #[test]
 fn initializes_and_reads_device_identity() {
     let _guard = ENV_LOCK.lock().unwrap();
@@ -91,6 +117,9 @@ fn initializes_and_reads_device_identity() {
     assert_eq!(identity.storage_provider, "filesystem");
     assert!(!identity.os_attested);
     assert!(!identity.hardware_backed);
+    assert_eq!(identity.attestation_provider, "derived_runtime");
+    assert!(identity.attestation_evidence_sha256.is_none());
+    assert!(identity.attestation_claims.contains(&"storage_backend:file_store".to_string()));
     assert!(base_dir.join(format!("{}.secret", identity.secret_id)).exists());
     env::remove_var("SMARTSPEC_SECRET_STORAGE_BACKEND");
 }
@@ -148,6 +177,7 @@ fn uses_os_keychain_metadata_when_secret_tool_backend_is_available() {
     assert_eq!(identity.secret_storage, "os_keychain");
     assert_eq!(identity.storage_protection, "os_protected");
     assert_eq!(identity.storage_provider, "freedesktop_secret_service");
+    assert_eq!(identity.attestation_provider, "derived_runtime");
     assert!(!base_dir.join(format!("{}.secret", identity.secret_id)).exists());
 
     env::set_var("PATH", original_path);
@@ -179,9 +209,52 @@ fn elevates_attestation_posture_when_os_attested_hardware_hints_are_present() {
     assert_eq!(identity.storage_provider, "freedesktop_secret_service");
     assert!(identity.os_attested);
     assert!(identity.hardware_backed);
+    assert_eq!(identity.attestation_provider, "derived_runtime");
 
     env::set_var("PATH", original_path);
     env::remove_var("SMARTSPEC_SECRET_STORAGE_BACKEND");
     env::remove_var("SMARTSPEC_SECRET_OS_ATTESTED");
     env::remove_var("SMARTSPEC_SECRET_HARDWARE_BACKED");
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn uses_external_attestation_helper_when_available() {
+    let _guard = ENV_LOCK.lock().unwrap();
+    let base_dir = temp_dir("attestation-helper");
+    let fake_bin_dir = temp_dir("secret-tool-bin-helper");
+    let fake_state_dir = temp_dir("secret-tool-state-helper");
+    let helper_path = temp_dir("attestation-helper-script").join("helper.py");
+    fs::create_dir_all(helper_path.parent().unwrap()).unwrap();
+    write_fake_secret_tool(&fake_bin_dir, &fake_state_dir);
+    write_fake_attestation_helper(&helper_path);
+    let original_path = env::var("PATH").unwrap_or_default();
+    env::set_var(
+        "PATH",
+        format!("{}:{}", fake_bin_dir.to_string_lossy(), original_path),
+    );
+    env::set_var("SMARTSPEC_SECRET_STORAGE_BACKEND", "os_keychain");
+    env::set_var(
+        "SMARTSPEC_DEVICE_ATTESTATION_HELPER",
+        helper_path.to_string_lossy().to_string(),
+    );
+
+    let identity = initialize_device_identity(&base_dir, "device-xyz", 7).unwrap();
+
+    assert_eq!(identity.attestation_mode, "hardware_attested");
+    assert_eq!(identity.storage_provider, "helper_secure_enclave");
+    assert_eq!(identity.attestation_provider, "test_attestation_helper");
+    assert!(identity.attestation_evidence_sha256.is_some());
+    assert!(identity
+        .attestation_claims
+        .iter()
+        .any(|claim| claim == "device_id:device-xyz"));
+    assert!(identity
+        .attestation_claims
+        .iter()
+        .any(|claim| claim == "key_version:7"));
+
+    env::set_var("PATH", original_path);
+    env::remove_var("SMARTSPEC_SECRET_STORAGE_BACKEND");
+    env::remove_var("SMARTSPEC_DEVICE_ATTESTATION_HELPER");
 }

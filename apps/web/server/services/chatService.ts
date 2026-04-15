@@ -1,6 +1,7 @@
 /**
  * Chat Service - Database operations for conversations, messages, and memory
  */
+import { TRPCError } from "@trpc/server";
 import { eq, desc, asc, and, sql, or, inArray, lt, gte, SQL, ilike, isNull, isNotNull } from "drizzle-orm";
 import { getDb } from "../db";
 import {
@@ -25,6 +26,61 @@ import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
 import { estimateTokens, estimateMessages } from "../utils/tokenEstimator";
+
+export const PERSONAL_PROJECT_ID = "personal" as const;
+
+export function isPersonalProjectId(projectId: string | null | undefined): boolean {
+  return projectId === PERSONAL_PROJECT_ID;
+}
+
+function buildConversationInsertData(data: {
+  userId: number;
+  title?: string;
+  model?: string | null;
+  skillSettings?: InsertConversation["skillSettings"];
+  systemPrompt?: string;
+  projectId?: string | null;
+  tenantId?: string | null;
+  personaId?: string | null;
+}) {
+  return {
+    userId: data.userId,
+    title: data.title || "New Chat",
+    model: data.model || null,
+    skillSettings: data.skillSettings,
+    systemPrompt: data.systemPrompt,
+    projectId: data.projectId ?? null,
+    tenantId: data.tenantId || null,
+    personaId: data.personaId || null,
+  };
+}
+
+async function insertConversationRow(data: {
+  userId: number;
+  title?: string;
+  model?: string | null;
+  skillSettings?: InsertConversation["skillSettings"];
+  systemPrompt?: string;
+  projectId?: string | null;
+  tenantId?: string | null;
+  personaId?: string | null;
+}): Promise<Conversation> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const resolvedModel = await resolveEnabledLlmModelId([data.model]);
+
+  const [conversation] = await db
+    .insert(conversations)
+    .values(
+      buildConversationInsertData({
+        ...data,
+        model: resolvedModel || null,
+      }),
+    )
+    .returning();
+
+  return conversation;
+}
 
 // ==================== Google Drive Integration ====================
 
@@ -73,23 +129,65 @@ export async function createConversation(data: {
   tenantId?: string | null;
   personaId?: string | null;
 }): Promise<Conversation> {
+  if (isPersonalProjectId(data.projectId)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Use the personal chat creation flow to create a personal conversation",
+    });
+  }
+
+  return await insertConversationRow(data);
+}
+
+/**
+ * Create a new locked personal conversation.
+ */
+export async function createPersonalConversation(data: {
+  userId: number;
+  title?: string;
+  model?: string;
+  skillSettings?: InsertConversation["skillSettings"];
+  systemPrompt?: string;
+  tenantId?: string | null;
+  personaId?: string | null;
+}): Promise<Conversation> {
+  return await insertConversationRow({
+    ...data,
+    title: data.title || "Personal Chat",
+    projectId: PERSONAL_PROJECT_ID,
+  });
+}
+
+/**
+ * Get the active personal conversation for a user in a tenant.
+ * Returns the most recently updated locked personal conversation, if any.
+ */
+export async function getPersonalConversation(data: {
+  userId: number;
+  tenantId?: string | null;
+}): Promise<Conversation | undefined> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  const resolvedModel = await resolveEnabledLlmModelId([data.model]);
+  if (!db) return undefined;
+
+  const resolvedTenantId = data.tenantId?.trim() || null;
+  const conditions = [
+    eq(conversations.userId, data.userId),
+    eq(conversations.projectId, PERSONAL_PROJECT_ID),
+    isNull(conversations.trashedAt),
+  ];
+
+  if (resolvedTenantId) {
+    conditions.push(eq(conversations.tenantId, resolvedTenantId));
+  } else {
+    conditions.push(isNull(conversations.tenantId));
+  }
 
   const [conversation] = await db
-    .insert(conversations)
-    .values({
-      userId: data.userId,
-      title: data.title || "New Chat",
-      model: resolvedModel || null,
-      skillSettings: data.skillSettings,
-      systemPrompt: data.systemPrompt,
-      projectId: data.projectId,
-      tenantId: data.tenantId || null,
-      personaId: data.personaId || null,
-    })
-    .returning();
+    .select()
+    .from(conversations)
+    .where(and(...conditions))
+    .orderBy(desc(conversations.updatedAt), desc(conversations.id))
+    .limit(1);
 
   return conversation;
 }
@@ -170,6 +268,43 @@ export async function updateConversation(
   if ("model" in updateData) {
     updateData.model =
       (await resolveEnabledLlmModelId([updateData.model as string | null | undefined])) || null;
+  }
+
+  const [currentConversation] = await db
+    .select({
+      id: conversations.id,
+      projectId: conversations.projectId,
+    })
+    .from(conversations)
+    .where(and(eq(conversations.id, id), eq(conversations.userId, userId)))
+    .limit(1);
+
+  if (!currentConversation) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Conversation not found",
+    });
+  }
+
+  const nextProjectId =
+    "projectId" in updateData ? (updateData.projectId ?? null) : undefined;
+
+  if (
+    isPersonalProjectId(currentConversation.projectId) &&
+    nextProjectId !== undefined &&
+    !isPersonalProjectId(nextProjectId)
+  ) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Personal chat projectId is locked",
+    });
+  }
+
+  if (nextProjectId === PERSONAL_PROJECT_ID && !isPersonalProjectId(currentConversation.projectId)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Use the personal chat creation flow to create a personal conversation",
+    });
   }
 
   await db

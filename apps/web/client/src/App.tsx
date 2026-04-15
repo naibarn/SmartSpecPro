@@ -61,6 +61,7 @@ const AdminSkillRepositories = lazy(() => import("./pages/AdminSkillRepositories
 const AdminTenants = lazy(() => import("./pages/AdminTenants"));
 const AdminServices = lazy(() => import("./pages/AdminServices"));
 const AdminSettings = lazy(() => import("./pages/AdminSettings"));
+const AdminFinanceRules = lazy(() => import("./pages/AdminFinanceRules"));
 const AdminBillingCenter = lazy(() => import("./pages/AdminBillingCenter"));
 const AdminQueueDashboard = lazy(() => import("./pages/AdminQueueDashboard"));
 const AdminQueueLLM = lazy(() => import("./pages/AdminQueueLLM"));
@@ -82,11 +83,17 @@ const DomainAdminContent = lazy(() => import("./pages/DomainAdminContent"));
 const DomainUsers = lazy(() => import("./pages/DomainUsers"));
 const TenantSettings = lazy(() => import("./pages/TenantSettings"));
 const Chat = lazy(() => import("./pages/Chat"));
+const Finance = lazy(() => import("./pages/Finance"));
+const FinanceReports = lazy(() => import("./pages/FinanceReports"));
 const SocialChannels = lazy(() => import("./pages/SocialChannels"));
 const SocialInbox = lazy(() => import("./pages/SocialInbox"));
 const SocialPublishing = lazy(() => import("./pages/SocialPublishing"));
 const SocialModeration = lazy(() => import("./pages/SocialModeration"));
 const SocialAutomation = lazy(() => import("./pages/SocialAutomation"));
+const AutonomousTeamMonitor = lazy(() => import("./pages/AutonomousTeamMonitor"));
+const RoleAgentDetail = lazy(() => import("./pages/RoleAgentDetail"));
+const RoleMissionPlanner = lazy(() => import("./pages/RoleMissionPlanner"));
+const RoleRoutineScheduler = lazy(() => import("./pages/RoleRoutineScheduler"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Generate = lazy(() => import("./pages/Generate"));
 const MediaStudio = lazy(() => import("./pages/MediaStudio"));
@@ -99,6 +106,7 @@ const GroupDiscovery = lazy(() => import("./pages/GroupDiscovery"));
 const GroupDetailPanel = lazy(() => import("./components/groups/GroupDetailPanel"));
 const Settings = lazy(() => import("./pages/Settings"));
 const AdminDesktopHost = lazy(() => import("./pages/AdminDesktopHost"));
+const DesktopHostGovernance = lazy(() => import("./pages/DesktopHostGovernance"));
 const DesktopOpen = lazy(() => import("./pages/DesktopOpen"));
 const DesktopView = lazy(() => import("./pages/DesktopView"));
 const SkillBrowser = lazy(() => import("./pages/SkillBrowser"));
@@ -132,11 +140,22 @@ const AdminPersonas = lazy(() => import("./pages/AdminPersonas"));
 const Workflows = lazy(() => import("./pages/Workflows"));
 const WorkflowEditor = lazy(() => import("./pages/WorkflowEditor"));
 const WorkflowGallery = lazy(() => import("./pages/WorkflowGallery"));
+const WorkpackIntakeStudio = lazy(() => import("./pages/WorkpackIntakeStudio"));
+const WorkpackDetail = lazy(() => import("./pages/WorkpackDetail"));
+const WorkpackReplayLab = lazy(() => import("./pages/WorkpackReplayLab"));
+const WorkpackExceptionInbox = lazy(() => import("./pages/WorkpackExceptionInbox"));
+const WorkpackConnectorStudio = lazy(() => import("./pages/WorkpackConnectorStudio"));
+const WorkpackRoiDashboard = lazy(() => import("./pages/WorkpackRoiDashboard"));
+const WorkpackDiscovery = lazy(() => import("./pages/WorkpackDiscovery"));
 const WebhookTriggers = lazy(() => import("./pages/WebhookTriggers"));
 const AdminChannelRouter = lazy(() => import("./pages/AdminChannelRouter"));
 const AdminSystemGuardian = lazy(() => import("./pages/AdminSystemGuardian"));
 const AdminMonitoring = lazy(() => import("./pages/AdminMonitoring"));
+const AdminOcrUsage = lazy(() => import("./pages/AdminOcrUsage"));
+const AdminWorkOsDashboard = lazy(() => import("./pages/AdminWorkOsDashboard"));
 const AdminFeedbackHub = lazy(() => import("./pages/AdminFeedbackHub"));
+const WorkRequest = lazy(() => import("./pages/WorkRequest"));
+const MyRequests = lazy(() => import("./pages/MyRequests"));
 const MyFeedback = lazy(() => import("./pages/MyFeedback"));
 const ContentQualityDashboard = lazy(() => import("./pages/ContentQualityDashboard"));
 const HelpPage = lazy(() => import("./pages/Help"));
@@ -278,8 +297,17 @@ function Router() {
         <Route path="/admin/settings">
           <RequireAdmin><AdminSettings /></RequireAdmin>
         </Route>
+        <Route path="/admin/finance-rules">
+          <RequireAdmin><AdminFinanceRules /></RequireAdmin>
+        </Route>
         <Route path="/admin/desktop-host">
           <RequireAdmin><AdminDesktopHost /></RequireAdmin>
+        </Route>
+        <Route path="/admin/desktop-host/governance">
+          <RequireAdmin><DesktopHostGovernance /></RequireAdmin>
+        </Route>
+        <Route path="/desktop-host">
+          <RequireDomainAdmin><AdminDesktopHost /></RequireDomainAdmin>
         </Route>
         <Route path="/admin/billing">
           <RequireAdmin><AdminBillingCenter /></RequireAdmin>
@@ -338,6 +366,18 @@ function Router() {
         <Route path="/admin/monitoring">
           <RequireAdmin><AdminMonitoring /></RequireAdmin>
         </Route>
+        <Route path="/admin/ocr-usage">
+          <RequireAdmin><AdminOcrUsage /></RequireAdmin>
+        </Route>
+        <Route path="/admin/work-os">
+          <RequireDomainAdmin><AdminWorkOsDashboard /></RequireDomainAdmin>
+        </Route>
+        <Route path="/work/request">
+          <RequireAuth><WorkRequest /></RequireAuth>
+        </Route>
+        <Route path="/work/requests">
+          <RequireAuth><MyRequests /></RequireAuth>
+        </Route>
         <Route path="/admin/feedback-hub">
           <RequireAdmin><AdminFeedbackHub /></RequireAdmin>
         </Route>
@@ -362,6 +402,9 @@ function Router() {
         <Route path="/domain-admin/desktop-host">
           <RequireDomainAdmin><AdminDesktopHost /></RequireDomainAdmin>
         </Route>
+        <Route path="/domain-admin/desktop-host/governance">
+          <RequireDomainAdmin><DesktopHostGovernance /></RequireDomainAdmin>
+        </Route>
         <Route path="/domain-admin/blog">
           <RequireDomainAdmin><DomainBlogAdmin /></RequireDomainAdmin>
         </Route>
@@ -372,6 +415,8 @@ function Router() {
         <Route path="/signup" component={Signup} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/chat"><RequireAuth><Chat /></RequireAuth></Route>
+        <Route path="/finance/reports"><RequireAuth><FinanceReports /></RequireAuth></Route>
+        <Route path="/finance"><RequireAuth><Finance /></RequireAuth></Route>
         <Route path="/social/channels"><RequireAuth><SocialChannels /></RequireAuth></Route>
         <Route path="/social/inbox"><RequireAuth><SocialInbox /></RequireAuth></Route>
         <Route path="/social/publishing"><RequireAuth><SocialPublishing /></RequireAuth></Route>
@@ -381,6 +426,10 @@ function Router() {
         <Route path="/automation/live/:sessionId"><RequireAuth><AutomationPage /></RequireAuth></Route>
         <Route path="/teams"><RequireAuth><Teams /></RequireAuth></Route>
         <Route path="/teams/:teamId"><RequireAuth><Teams /></RequireAuth></Route>
+        <Route path="/role-monitor"><RequireAuth><AutonomousTeamMonitor /></RequireAuth></Route>
+        <Route path="/role-monitor/:roleId/mission"><RequireAuth><RoleMissionPlanner /></RequireAuth></Route>
+        <Route path="/role-monitor/:roleId/routines"><RequireAuth><RoleRoutineScheduler /></RequireAuth></Route>
+        <Route path="/role-monitor/:roleId"><RequireAuth><RoleAgentDetail /></RequireAuth></Route>
         <Route path="/agencies"><RequireAuth><AgencyBrowser /></RequireAuth></Route>
         <Route path="/agencies/templates"><RequireAuth><AgencyTemplates /></RequireAuth></Route>
         <Route path="/agencies/marketplace"><RequireAuth><AgencyMarketplace /></RequireAuth></Route>
@@ -392,6 +441,13 @@ function Router() {
         <Route path="/workflows/editor"><RequireAuth><WorkflowEditor /></RequireAuth></Route>
         <Route path="/workflows/gallery"><RequireAuth><WorkflowGallery /></RequireAuth></Route>
         <Route path="/workflows/editor/:id"><RequireAuth><WorkflowEditor /></RequireAuth></Route>
+        <Route path="/workpacks/intake"><RequireAuth><WorkpackIntakeStudio /></RequireAuth></Route>
+        <Route path="/workpacks/exceptions"><RequireAuth><WorkpackExceptionInbox /></RequireAuth></Route>
+        <Route path="/workpacks/roi"><RequireAuth><WorkpackRoiDashboard /></RequireAuth></Route>
+        <Route path="/workpacks/discovery"><RequireAuth><WorkpackDiscovery /></RequireAuth></Route>
+        <Route path="/workpacks/:workpackId/replay"><RequireAuth><WorkpackReplayLab /></RequireAuth></Route>
+        <Route path="/workpacks/:workpackId/connectors"><RequireAuth><WorkpackConnectorStudio /></RequireAuth></Route>
+        <Route path="/workpacks/:workpackId"><RequireAuth><WorkpackDetail /></RequireAuth></Route>
         <Route path="/webhook-triggers"><RequireAuth><WebhookTriggers /></RequireAuth></Route>
         <Route path="/dashboard"><RequireAuth><Dashboard /></RequireAuth></Route>
         <Route path="/notifications"><RequireAuth><Notifications /></RequireAuth></Route>

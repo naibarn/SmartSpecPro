@@ -13,7 +13,11 @@ import { and, eq, isNotNull, lt } from "drizzle-orm";
 import { getDb } from "../db";
 import { libraryItems, libraryLinks } from "../../drizzle/schema";
 import { auditLogger } from "../services/auditLogger";
-import { cascadeDeleteLibraryItem } from "../services/libraryService";
+import {
+  cascadeDeleteLibraryItem,
+  cleanupLibraryVectorArtifacts,
+  collectLibraryVectorCleanupTargets,
+} from "../services/libraryService";
 import { storageDelete } from "../storage";
 
 const TRASH_RETENTION_DAYS = 90;
@@ -44,7 +48,7 @@ export async function executeTrashPurge(): Promise<{ purgedCount: number; totalF
   let hasMore = true;
   while (hasMore) {
     const batch = await db
-      .select({ id: libraryItems.id })
+      .select({ id: libraryItems.id, tenantId: libraryItems.tenantId })
       .from(libraryItems)
       .where(
         and(
@@ -60,15 +64,21 @@ export async function executeTrashPurge(): Promise<{ purgedCount: number; totalF
     for (const item of batch) {
       try {
         // Collect storage keys before cascade delete removes them
-        const uploadKeys = await db
-          .select({ linkId: libraryLinks.linkId })
-          .from(libraryLinks)
-          .where(
-            and(
-              eq(libraryLinks.libraryItemId, item.id),
-              eq(libraryLinks.linkType, "upload_key"),
+        const [uploadKeys, vectorCleanupTargets] = await Promise.all([
+          db
+            .select({ linkId: libraryLinks.linkId })
+            .from(libraryLinks)
+            .where(
+              and(
+                eq(libraryLinks.libraryItemId, item.id),
+                eq(libraryLinks.linkType, "upload_key"),
+              ),
             ),
-          );
+          collectLibraryVectorCleanupTargets(item.id, item.tenantId, db).catch(() => ({
+            vectorRefIds: [],
+            indexNames: [],
+          })),
+        ]);
 
         await db.transaction(async (tx) => {
           await cascadeDeleteLibraryItem(tx, item.id);
@@ -87,6 +97,17 @@ export async function executeTrashPurge(): Promise<{ purgedCount: number; totalF
             );
           }
         }
+
+        await cleanupLibraryVectorArtifacts({
+          tenantId: item.tenantId,
+          vectorRefIds: vectorCleanupTargets.vectorRefIds,
+          indexNames: vectorCleanupTargets.indexNames,
+        }).catch((err) => {
+          console.error(
+            `[trash-purge] Vector cleanup failed for item ${item.id}:`,
+            err instanceof Error ? err.message : err,
+          );
+        });
       } catch (error) {
         errors++;
         console.error(`[trash-purge] Failed to purge item ${item.id}:`, error instanceof Error ? error.message : error);

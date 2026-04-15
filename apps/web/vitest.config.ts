@@ -8,6 +8,7 @@ export default defineConfig({
   plugins: [react()],
   root: templateRoot,
   resolve: {
+    extensions: [".ts", ".tsx", ".mts", ".mjs", ".js", ".jsx", ".json"],
     dedupe: ["react", "react-dom"],
     alias: {
       "react": path.resolve(templateRoot, "node_modules", "react"),

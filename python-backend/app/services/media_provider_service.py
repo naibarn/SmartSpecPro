@@ -294,6 +294,36 @@ async def initialize_uvoice_client():
         return None
 
 
+async def initialize_omnivoice_client():
+    """
+    Initialize the OmniVoice client from media provider config or env.
+
+    Returns:
+        OmniVoiceProvider instance or None if not configured
+    """
+    from app.llm_proxy.providers import OmniVoiceProvider
+    from app.core.config import settings
+
+    provider_config = await get_media_provider_key("omnivoice")
+    api_key = (provider_config or {}).get("apiKey") or settings.OMNIVOICE_API_KEY or None
+    base_url = (provider_config or {}).get("baseUrl") or settings.OMNIVOICE_BASE_URL or ""
+
+    if not str(base_url).strip():
+        logger.warning("omnivoice_not_configured", message="No OmniVoice base URL found in media_providers table or env")
+        return None
+
+    try:
+        client = OmniVoiceProvider(
+            api_key=api_key,
+            base_url=base_url,
+        )
+        logger.info("omnivoice_client_initialized", base_url=base_url)
+        return client
+    except Exception as e:
+        logger.error("omnivoice_client_init_failed", error=str(e))
+        return None
+
+
 def clear_cache():
     """Clear the provider cache"""
     global _provider_cache, _last_fetch

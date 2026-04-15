@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SmartSpecPro Monitoring Setup Script
+# SmartAIHub Monitoring Setup Script
 # Sets up automated health checks and monitoring
 
 set -e
@@ -14,7 +14,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}  SmartSpecPro Monitoring Setup${NC}"
+echo -e "${BLUE}  SmartAIHub Monitoring Setup${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
 echo ""
 
@@ -47,7 +47,7 @@ if crontab -l 2>/dev/null | grep -q "health-check.sh"; then
 else
     # Add cron job
     (crontab -l 2>/dev/null || true; echo "") | crontab -
-    (crontab -l; echo "# SmartSpecPro Health Check - Every 5 minutes") | crontab -
+    (crontab -l; echo "# SmartAIHub Health Check - Every 5 minutes") | crontab -
     (crontab -l; echo "*/5 * * * * cd $PROJECT_ROOT && ./scripts/health-check.sh >> logs/health-check.log 2>&1") | crontab -
 
     echo "      ✓ Cron job added (runs every 5 minutes)"

@@ -3,12 +3,14 @@ pub mod agency_swarm_runtime;
 pub mod connector_runtime;
 pub mod desktop_runtime_capabilities;
 pub mod desktop_worker_comfy;
+pub mod desktop_auth_credentials;
 pub mod desktop_worker_control_plane;
 pub mod desktop_worker_credentials;
 pub mod desktop_worker_executor;
 pub mod desktop_worker_folder_ingest;
 pub mod desktop_worker_runtime;
 pub mod device_identity;
+pub mod device_attestation;
 pub mod device_enrollment;
 mod docker_commands;
 mod git_commands;
@@ -27,6 +29,7 @@ mod terminal_pty;
 mod video_editor;
 
 use std::sync::{Arc, Mutex};
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -39,6 +42,13 @@ pub fn run() {
         .manage(Arc::new(Mutex::new(local_skill_runtime::LocalLlmProcessRegistry::default())))
         .manage(Arc::new(Mutex::new(video_editor::render::RenderEngine::default())))
         .manage(Arc::new(Mutex::new(video_editor::job_dispatcher::JobStore::default())))
+        .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.maximize();
+            }
+
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             // Docker
             docker_commands::docker_check,
@@ -109,6 +119,12 @@ pub fn run() {
             desktop_worker_credentials::desktop_host_delete_desktop_credential,
             desktop_worker_credentials::desktop_host_clear_worker_session_credentials,
             desktop_worker_credentials::desktop_host_clear_device_runtime_credentials,
+            desktop_auth_credentials::get_auth_token,
+            desktop_auth_credentials::set_auth_token,
+            desktop_auth_credentials::get_user_data,
+            desktop_auth_credentials::set_user_data,
+            desktop_auth_credentials::clear_all_credentials,
+            desktop_auth_credentials::is_authenticated,
             desktop_worker_executor::desktop_host_run_single_worker_cycle,
             desktop_worker_executor::desktop_host_run_worker_loop,
             desktop_worker_folder_ingest::desktop_host_prepare_local_folder_ingest,
@@ -116,6 +132,7 @@ pub fn run() {
             device_identity::desktop_host_initialize_device_identity,
             device_identity::desktop_host_read_device_identity,
             device_identity::desktop_host_rotate_device_identity,
+            device_attestation::desktop_host_describe_device_attestation_support,
             device_enrollment::desktop_host_build_asymmetric_enrollment_proof,
             device_enrollment::desktop_host_build_enrollment_proof,
             device_enrollment::desktop_host_generate_device_signing_keypair,

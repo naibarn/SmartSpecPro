@@ -18,11 +18,14 @@ import {
   getAllLimiterStats,
   resetLimiter,
   clearWaitingJobs,
+  DOCUMENT_OCR_PROVIDER_LIMITS,
   PROVIDER_LIMITS,
   MEDIA_PROVIDER_LIMITS,
+  type ProviderLimitConfigView,
   getAllModelUsageStats,
   getTopModels,
   getProviderModelStats,
+  getDocumentOcrLimiterStatus as getDocumentOcrLimiterStatusRows,
   // Media provider stats
   getAllMediaUsageStats,
   getMediaProviderStats,
@@ -209,11 +212,28 @@ export const queuesRouter = router({
    * Get provider rate limit configurations
    */
   getProviderConfigs: adminProcedure.query(() => {
-    return {
-      configs: Object.entries(PROVIDER_LIMITS).map(([provider, config]) => ({
+    const configs: ProviderLimitConfigView[] = [
+      ...Object.entries(PROVIDER_LIMITS).map(([provider, config]) => ({
         provider,
         ...config,
       })),
+      ...Object.entries(DOCUMENT_OCR_PROVIDER_LIMITS).map(([provider, config]) => ({
+        provider,
+        ...config,
+      })),
+    ];
+    return {
+      configs,
+    };
+  }),
+
+  /**
+   * Get document OCR limiter status
+   */
+  getDocumentOcrLimiterStatus: adminProcedure.query(async () => {
+    const limiters = await getDocumentOcrLimiterStatusRows();
+    return {
+      limiters,
     };
   }),
 

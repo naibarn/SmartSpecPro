@@ -13,6 +13,7 @@ import { checkNotificationHealth } from "../services/notificationHealthChecks";
 import { collectServiceRuntimeSnapshot } from "./services";
 import * as workerFleetService from "../services/workerFleetService";
 import * as workerBudgetService from "../services/workerBudgetService";
+import * as workOsService from "../services/workOsService";
 
 function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: number | null } | null }): string {
   const tid = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
@@ -21,6 +22,42 @@ function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantI
 }
 
 export const monitoringRouter = router({
+  getWorkpackSummary: adminProcedure.query(async ({ ctx }) => {
+    const tenantId = requireTenantId(ctx);
+    return monitoringService.getWorkpackMonitoringSummary(tenantId);
+  }),
+
+  getWorkpackReadiness: adminProcedure.query(async ({ ctx }) => {
+    const tenantId = requireTenantId(ctx);
+    const { listWorkpackReadinessSummaries } = await import("../services/workpackReadinessService");
+    return listWorkpackReadinessSummaries(tenantId);
+  }),
+
+  getRoleAutonomySummary: adminProcedure
+    .input(z.object({
+      roleId: z.string().min(1).optional(),
+      departmentLabel: z.string().min(1).optional(),
+      routineId: z.string().min(1).optional(),
+      workpackFamily: z.string().min(1).optional(),
+      runtimeFamily: z.string().min(1).optional(),
+      connectorFamily: z.string().min(1).optional(),
+      riskTier: z.enum(["low", "medium", "high", "critical"]).optional(),
+    }).optional())
+    .query(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      const { getRoleRosterSummary } = await import("../services/roleMonitorService");
+      const { listRoleTelemetrySnapshots } = await import("../services/roleTelemetryService");
+      return {
+        roster: await getRoleRosterSummary(tenantId),
+        telemetry: await listRoleTelemetrySnapshots(tenantId, input ?? {}),
+      };
+    }),
+
+  getWorkOsOverview: adminProcedure.query(async ({ ctx }) => {
+    const tenantId = requireTenantId(ctx);
+    return workOsService.getOverview(tenantId);
+  }),
+
   getRunEvents: protectedProcedure
     .input(z.object({
       runId: z.string().min(1),

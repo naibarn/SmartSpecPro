@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,13 +36,16 @@ import {
   Trash,
   UsersRound,
   ChevronDown,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConversationScopeBadge } from "./ConversationScopeBadge";
 
 interface ChatSidebarProps {
   selectedConversationId: number | null;
   onSelectConversation: (id: number) => void;
   onNewChat: () => void;
+  onNewPersonalChat?: () => void;
   onOpenTeamRoom?: (roomId: string) => void;
 }
 
@@ -49,8 +53,10 @@ export function ChatSidebar({
   selectedConversationId,
   onSelectConversation,
   onNewChat,
+  onNewPersonalChat,
   onOpenTeamRoom,
 }: ChatSidebarProps) {
+  const { t } = useScopedTranslation("chat");
   const [search, setSearch] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState<number | null>(null);
@@ -332,7 +338,7 @@ export function ChatSidebar({
       <div className="flex items-center justify-between border-b p-3">
         {selectMode ? (
           <>
-            <span className="text-sm font-medium">{selectedIds.size} selected</span>
+            <span className="text-sm font-medium">{t("sidebar.selected", { count: selectedIds.size })}</span>
             <div className="flex items-center gap-1">
               <Button
                 size="sm"
@@ -343,7 +349,7 @@ export function ChatSidebar({
                 }}
                 className="text-xs h-8"
               >
-                {selectedIds.size === conversations.length ? "None" : "All"}
+                {selectedIds.size === conversations.length ? t("sidebar.selectNone") : t("sidebar.selectAll")}
               </Button>
               <Button
                 size="sm"
@@ -362,22 +368,53 @@ export function ChatSidebar({
           </>
         ) : (
           <>
-            <h2 className="text-lg font-semibold">Chats</h2>
-            <div className="flex items-center gap-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setSelectMode(true)}
-                className="h-8 gap-1 px-2"
-                title="Select chats"
-              >
-                <CheckSquare className="h-4 w-4" />
-                <span className="text-xs">Select</span>
-              </Button>
-              <Button size="sm" onClick={onNewChat} className="gap-2">
-                <MessageSquarePlus className="h-4 w-4" />
-                New
-              </Button>
+            <div className="w-full space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">{t("sidebar.title")}</h2>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSelectMode(true)}
+                  className="h-8 gap-1 px-2"
+                  title={t("sidebar.select")}
+                  type="button"
+                >
+                  <CheckSquare className="h-4 w-4" />
+                  <span className="text-xs">{t("sidebar.select")}</span>
+                </Button>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                  {t("sidebar.startHere")}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-600">
+                  {t("sidebar.startHint")}
+                </p>
+                <div className="mt-3 grid gap-2">
+                  <Button
+                    size="sm"
+                    onClick={onNewChat}
+                    className="w-full justify-start gap-2"
+                    type="button"
+                  >
+                    <MessageSquarePlus className="h-4 w-4" />
+                    {t("startNewChat")}
+                  </Button>
+                  {onNewPersonalChat ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={onNewPersonalChat}
+                      className="w-full justify-start gap-2"
+                      title={t("sidebar.personalChatHint")}
+                      type="button"
+                    >
+                      <Lock className="h-4 w-4" />
+                      {t("startPersonalChat")}
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
             </div>
           </>
         )}
@@ -388,7 +425,7 @@ export function ChatSidebar({
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search chats..."
+            placeholder={t("sidebar.search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-8"
@@ -470,7 +507,10 @@ export function ChatSidebar({
                           {(conv as any).projectId && (
                             <>
                               <span>·</span>
-                              <span className="text-primary">{(conv as any).projectId}</span>
+                              <ConversationScopeBadge
+                                projectId={(conv as any).projectId}
+                                className="h-4 px-1.5"
+                              />
                             </>
                           )}
                           {conv.totalCreditsUsed && Number(conv.totalCreditsUsed) > 0 && (
@@ -539,7 +579,7 @@ export function ChatSidebar({
             onClick={() => setCleanupDialogOpen(true)}
           >
             <Trash2 className="h-3 w-3" />
-            Delete empty chats ({emptyCount})
+            {`Delete empty chats (${emptyCount})`}
           </Button>
         )}
         {!selectMode && (
@@ -550,7 +590,7 @@ export function ChatSidebar({
             onClick={() => setShowTrash(true)}
           >
             <Trash className="h-3 w-3" />
-            Trash
+            {t("sidebar.trash")}
           </Button>
         )}
       </div>

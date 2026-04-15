@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import {
   Download,
@@ -14,6 +14,12 @@ import { toast } from "sonner";
 
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { Button } from "@/components/ui/button";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,6 +39,7 @@ import {
 } from "@shared/desktopReleases";
 import {
   desktopReleaseBuildBundleModeValues,
+  type DesktopReleaseBuildHistoryItem,
   desktopReleaseBuildRunStatusSchema,
   desktopReleaseBuildPlatformValues,
   desktopReleaseBuildResponseSchema,
@@ -44,10 +51,18 @@ import {
   type DesktopReleaseBuildResponse,
 } from "@shared/desktopReleaseBuilds";
 import { useDesktopReleaseCatalog } from "./useDesktopReleaseCatalog";
+import { useDesktopReleaseBuildHistory } from "./useDesktopReleaseBuildHistory";
 
 type DesktopReleasePanelVariant = "dashboard" | "admin";
 type Translator = (key: string, values?: Record<string, string | number>) => string;
-type DesktopReleaseBuildProgressPhase = "idle" | "dispatching" | "queued" | "running" | "publishing" | "completed" | "failed";
+type DesktopReleaseBuildProgressPhase = "idle" | "dispatching" | "queued" | "running" | "publishing" | "stalled" | "completed" | "failed";
+type DesktopReleaseBuildSessionState = {
+  buildResult: DesktopReleaseBuildResponse;
+  buildRunStatus: DesktopReleaseBuildRunStatus | null;
+};
+
+const DESKTOP_RELEASE_BUILD_SESSION_STORAGE_KEY = "smartaihub.desktop-release.build-session.v1";
+const DESKTOP_RELEASE_BUILD_STALE_AFTER_MS = 30 * 60 * 1000;
 
 function formatBytes(value: number): string {
   if (value >= 1_073_741_824) {
@@ -138,6 +153,130 @@ function formatBuildBundleModeLabel(
   return t("dashboard:desktopReleases.admin.build.bundleMode.all");
 }
 
+function toTimestampMs(value: string | null | undefined): number {
+  if (!value) {
+    return 0;
+  }
+
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function buildRunStatusFromHistoryItem(
+  item: DesktopReleaseBuildHistoryItem,
+): DesktopReleaseBuildRunStatus {
+  return {
+    workflowRunId: item.workflowRunId,
+    workflowRunUrl: item.workflowRunUrl,
+    workflowRunStatus: item.workflowRunStatus,
+    workflowRunConclusion: item.workflowRunConclusion,
+    workflowRunUpdatedAt: item.workflowRunUpdatedAt,
+    portalSyncStatus: item.portalSyncStatus,
+    portalSyncUpdatedAt: item.portalSyncUpdatedAt,
+    portalSyncError: item.portalSyncError,
+    portalSyncAttempts: item.portalSyncAttempts,
+  };
+}
+
+function formatBuildPortalSyncError(
+  t: Translator,
+  error: string,
+): string {
+  if (error === "desktop_release_github_release_not_ready") {
+    return t("dashboard:desktopReleases.admin.build.progress.error.releaseNotReady");
+  }
+
+  const assetNotReadyMatch = error.match(/^desktop_release_github_asset_not_found_(windows|macos|linux)$/);
+  if (assetNotReadyMatch) {
+    return t("dashboard:desktopReleases.admin.build.progress.error.assetNotReady", {
+      platform: formatPlatformLabel(t, assetNotReadyMatch[1] as DesktopReleasePlatform),
+    });
+  }
+
+  if (error === "desktop_release_github_token_not_configured") {
+    return t("dashboard:desktopReleases.admin.build.progress.error.missingGithubToken");
+  }
+
+  return error;
+}
+
+function formatCatalogError(t: Translator, error: string | null): string | null {
+  if (!error) {
+    return null;
+  }
+
+  if (error === "desktop_release_catalog_timeout") {
+    return t("dashboard:desktopReleases.error.timeout");
+  }
+  if (error === "desktop_release_unauthorized") {
+    return t("dashboard:desktopReleases.error.unauthorized");
+  }
+  if (error === "desktop_release_forbidden") {
+    return t("dashboard:desktopReleases.error.forbidden");
+  }
+  if (error === "desktop_release_catalog_unavailable") {
+    return t("dashboard:desktopReleases.error.unavailable");
+  }
+
+  return error;
+}
+
+function formatBuildHistoryError(t: Translator, error: string | null): string | null {
+  if (!error) {
+    return null;
+  }
+
+  if (error === "desktop_release_build_history_timeout") {
+    return t("dashboard:desktopReleases.admin.build.history.errorTimeout");
+  }
+  if (error === "desktop_release_unauthorized") {
+    return t("dashboard:desktopReleases.admin.build.history.errorUnauthorized");
+  }
+  if (error === "desktop_release_forbidden") {
+    return t("dashboard:desktopReleases.admin.build.history.errorForbidden");
+  }
+  if (error === "desktop_release_build_history_unavailable") {
+    return t("dashboard:desktopReleases.admin.build.history.errorUnavailable");
+  }
+
+  return error;
+}
+
+function formatUploadError(t: Translator, error: string | null): string | null {
+  if (!error) {
+    return null;
+  }
+
+  if (error === "desktop_release_upload_too_large") {
+    return t("dashboard:desktopReleases.admin.uploadTooLarge");
+  }
+  if (error === "desktop_release_presign_unavailable") {
+    return t("dashboard:desktopReleases.admin.uploadPresignUnavailable");
+  }
+  if (error === "desktop_release_storage_key_invalid") {
+    return t("dashboard:desktopReleases.admin.uploadStorageInvalid");
+  }
+  if (error === "desktop_release_unauthorized") {
+    return t("dashboard:desktopReleases.admin.uploadUnauthorized");
+  }
+  if (error === "desktop_release_forbidden") {
+    return t("dashboard:desktopReleases.admin.uploadForbidden");
+  }
+  if (error === "desktop_release_file_missing") {
+    return t("dashboard:desktopReleases.admin.uploadMissingFile");
+  }
+
+  return error;
+}
+
+async function hashFileSha256(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(digest))
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 function buildProgressPercent(phase: DesktopReleaseBuildProgressPhase): number {
   switch (phase) {
     case "dispatching":
@@ -148,6 +287,8 @@ function buildProgressPercent(phase: DesktopReleaseBuildProgressPhase): number {
       return 72;
     case "publishing":
       return 88;
+    case "stalled":
+      return 92;
     case "completed":
       return 100;
     case "failed":
@@ -169,6 +310,8 @@ function buildProgressToneClass(phase: DesktopReleaseBuildProgressPhase): string
       return "bg-gradient-to-r from-sky-600 via-cyan-600 to-emerald-500";
     case "publishing":
       return "bg-gradient-to-r from-cyan-600 via-sky-600 to-emerald-500";
+    case "stalled":
+      return "bg-gradient-to-r from-amber-500 via-orange-500 to-rose-400";
     default:
       return "bg-slate-300";
   }
@@ -186,8 +329,180 @@ function buildProgressBadgeClass(phase: DesktopReleaseBuildProgressPhase): strin
       return "border-sky-200 bg-sky-50 text-sky-800";
     case "publishing":
       return "border-cyan-200 bg-cyan-50 text-cyan-800";
+    case "stalled":
+      return "border-amber-200 bg-amber-50 text-amber-800";
     default:
       return "border-slate-200 bg-slate-50 text-slate-500";
+  }
+}
+
+function resolveDesktopReleaseBuildProgressPhase(params: {
+  buildSubmitting: boolean;
+  hasBuildResult: boolean;
+  hasWorkflowRunId: boolean;
+  workflowRunStatus: DesktopReleaseBuildRunStatus["workflowRunStatus"] | DesktopReleaseBuildHistoryItem["workflowRunStatus"];
+  workflowRunConclusion: DesktopReleaseBuildRunStatus["workflowRunConclusion"] | DesktopReleaseBuildHistoryItem["workflowRunConclusion"];
+  portalSyncStatus: DesktopReleaseBuildRunStatus["portalSyncStatus"] | DesktopReleaseBuildHistoryItem["portalSyncStatus"];
+  workflowRunUpdatedAt: DesktopReleaseBuildRunStatus["workflowRunUpdatedAt"] | DesktopReleaseBuildHistoryItem["workflowRunUpdatedAt"];
+  queuedAt?: string | null;
+}): DesktopReleaseBuildProgressPhase {
+  if (params.buildSubmitting) {
+    return "dispatching";
+  }
+  if (!params.hasBuildResult) {
+    return "idle";
+  }
+  if (!params.hasWorkflowRunId) {
+    return "queued";
+  }
+  if (!params.workflowRunStatus) {
+    return "queued";
+  }
+  if (params.workflowRunStatus === "queued") {
+    return "queued";
+  }
+  if (params.workflowRunStatus === "in_progress") {
+    return "running";
+  }
+  if (params.workflowRunStatus === "completed") {
+    if (params.workflowRunConclusion !== "success") {
+      return "failed";
+    }
+    if (params.portalSyncStatus === "completed") {
+      return "completed";
+    }
+    if (params.portalSyncStatus === "failed") {
+      return "failed";
+    }
+    const startedAt = params.workflowRunUpdatedAt ?? params.queuedAt ?? null;
+    const startedAtMs = startedAt ? Date.parse(startedAt) : Number.NaN;
+    if (Number.isFinite(startedAtMs) && Date.now() - startedAtMs >= DESKTOP_RELEASE_BUILD_STALE_AFTER_MS) {
+      return "stalled";
+    }
+    return "publishing";
+  }
+  return "queued";
+}
+
+function buildProgressTitleForPhase(
+  t: Translator,
+  phase: DesktopReleaseBuildProgressPhase,
+): string {
+  switch (phase) {
+    case "dispatching":
+      return t("dashboard:desktopReleases.admin.build.progress.dispatching");
+    case "queued":
+      return t("dashboard:desktopReleases.admin.build.progress.queued");
+    case "running":
+      return t("dashboard:desktopReleases.admin.build.progress.running");
+    case "publishing":
+      return t("dashboard:desktopReleases.admin.build.progress.publishing");
+    case "stalled":
+      return t("dashboard:desktopReleases.admin.build.progress.stalled");
+    case "completed":
+      return t("dashboard:desktopReleases.admin.build.progress.completed");
+    case "failed":
+      return t("dashboard:desktopReleases.admin.build.progress.failed");
+    default:
+      return t("dashboard:desktopReleases.admin.build.progress.idle");
+  }
+}
+
+function buildProgressDescriptionForPhase(
+  t: Translator,
+  phase: DesktopReleaseBuildProgressPhase,
+): string {
+  switch (phase) {
+    case "dispatching":
+      return t("dashboard:desktopReleases.admin.build.progress.dispatchingDescription");
+    case "queued":
+      return t("dashboard:desktopReleases.admin.build.progress.queuedDescription");
+    case "running":
+      return t("dashboard:desktopReleases.admin.build.progress.runningDescription");
+    case "publishing":
+      return t("dashboard:desktopReleases.admin.build.progress.publishingDescription");
+    case "stalled":
+      return t("dashboard:desktopReleases.admin.build.progress.stalledDescription");
+    case "completed":
+      return t("dashboard:desktopReleases.admin.build.progress.completedDescription");
+    case "failed":
+      return t("dashboard:desktopReleases.admin.build.progress.failedDescription");
+    default:
+      return t("dashboard:desktopReleases.admin.build.progress.idleDescription");
+  }
+}
+
+function buildProgressBadgeLabelForPhase(
+  t: Translator,
+  phase: DesktopReleaseBuildProgressPhase,
+): string {
+  switch (phase) {
+    case "dispatching":
+      return t("dashboard:desktopReleases.admin.build.progress.dispatchingBadge");
+    case "queued":
+      return t("dashboard:desktopReleases.admin.build.progress.queuedBadge");
+    case "running":
+      return t("dashboard:desktopReleases.admin.build.progress.runningBadge");
+    case "publishing":
+      return t("dashboard:desktopReleases.admin.build.progress.publishingBadge");
+    case "stalled":
+      return t("dashboard:desktopReleases.admin.build.progress.stalledBadge");
+    case "completed":
+      return t("dashboard:desktopReleases.admin.build.progress.completedBadge");
+    case "failed":
+      return t("dashboard:desktopReleases.admin.build.progress.failedBadge");
+    default:
+      return t("dashboard:desktopReleases.admin.build.progress.idleBadge");
+  }
+}
+
+function readDesktopReleaseBuildSessionState(): DesktopReleaseBuildSessionState | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(DESKTOP_RELEASE_BUILD_SESSION_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as {
+      buildResult?: unknown;
+      buildRunStatus?: unknown;
+    };
+
+    const buildResult = desktopReleaseBuildResponseSchema.parse(parsed.buildResult);
+    const buildRunStatus = parsed.buildRunStatus
+      ? desktopReleaseBuildRunStatusSchema.parse(parsed.buildRunStatus)
+      : null;
+
+    return {
+      buildResult,
+      buildRunStatus,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeDesktopReleaseBuildSessionState(state: DesktopReleaseBuildSessionState | null): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    if (!state) {
+      window.sessionStorage.removeItem(DESKTOP_RELEASE_BUILD_SESSION_STORAGE_KEY);
+      return;
+    }
+
+    window.sessionStorage.setItem(
+      DESKTOP_RELEASE_BUILD_SESSION_STORAGE_KEY,
+      JSON.stringify(state),
+    );
+  } catch {
+    // Ignore storage issues in private browsing / quota constrained modes.
   }
 }
 
@@ -246,7 +561,20 @@ export function DesktopReleasePanel(props: {
 }) {
   const { variant, enabled = true, canTriggerBuild = false } = props;
   const { t } = useScopedTranslation(["dashboard", "common"]);
-  const { catalog, isLoading, error, refresh } = useDesktopReleaseCatalog(enabled);
+  const {
+    catalog,
+    isLoading,
+    error,
+    refresh: refreshCatalog,
+    attempt: catalogAttempt,
+  } = useDesktopReleaseCatalog(enabled);
+  const {
+    history: buildHistory,
+    isLoading: buildHistoryLoading,
+    error: buildHistoryError,
+    refresh: refreshBuildHistory,
+    attempt: buildHistoryAttempt,
+  } = useDesktopReleaseBuildHistory(variant === "admin" && enabled);
   const [uploading, setUploading] = useState(false);
   const [actionInFlightId, setActionInFlightId] = useState<number | null>(null);
   const [buildSubmitting, setBuildSubmitting] = useState(false);
@@ -255,8 +583,12 @@ export function DesktopReleasePanel(props: {
   const [buildPlatform, setBuildPlatform] = useState<DesktopReleaseBuildPlatform>("windows");
   const [buildBundleMode, setBuildBundleMode] = useState<DesktopReleaseBuildBundleMode>("on-demand");
   const [buildReleaseNotes, setBuildReleaseNotes] = useState("");
-  const [buildResult, setBuildResult] = useState<DesktopReleaseBuildResponse | null>(null);
-  const [buildRunStatus, setBuildRunStatus] = useState<DesktopReleaseBuildRunStatus | null>(null);
+  const [buildResult, setBuildResult] = useState<DesktopReleaseBuildResponse | null>(() => (
+    readDesktopReleaseBuildSessionState()?.buildResult ?? null
+  ));
+  const [buildRunStatus, setBuildRunStatus] = useState<DesktopReleaseBuildRunStatus | null>(() => (
+    readDesktopReleaseBuildSessionState()?.buildRunStatus ?? null
+  ));
   const [buildRunStatusLoading, setBuildRunStatusLoading] = useState(false);
   const [buildRunStatusError, setBuildRunStatusError] = useState<string | null>(null);
   const [version, setVersion] = useState("");
@@ -267,6 +599,11 @@ export function DesktopReleasePanel(props: {
   const [publish, setPublish] = useState(true);
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [catalogLoadStartedAt, setCatalogLoadStartedAt] = useState<number | null>(null);
+  const [historyLoadStartedAt, setHistoryLoadStartedAt] = useState<number | null>(null);
+  const [loadingTick, setLoadingTick] = useState(0);
+  const lastCatalogRefreshAtRef = useRef(0);
+  const lastHistoryRefreshAtRef = useRef(0);
 
   const preferredPlatform = useMemo(() => detectPreferredDesktopPlatform(), []);
   const primaryRelease = useMemo(
@@ -274,6 +611,9 @@ export function DesktopReleasePanel(props: {
     [catalog, preferredPlatform],
   );
   const latestReleases = catalog?.releases ?? [];
+  const hasCatalog = Boolean(catalog);
+  const showCatalogLoading = isLoading && !hasCatalog;
+  const showCatalogRefreshing = isLoading && hasCatalog;
   const suggestedBuildVersion = useMemo(
     () => suggestNextDesktopReleaseVersion(latestReleases[0]?.version ?? null),
     [latestReleases],
@@ -284,106 +624,166 @@ export function DesktopReleasePanel(props: {
     : "w-full bg-slate-200 text-slate-500 shadow-none hover:bg-slate-200";
   const buildWorkflowRunId = buildResult?.workflowRunId ?? null;
   const buildPortalSyncStatus = buildRunStatus?.portalSyncStatus ?? "idle";
+  const buildHistoryItems = buildHistory?.builds ?? [];
+  const showBuildHistory = variant === "admin";
+  const triggerCatalogRefresh = useCallback((force = false) => {
+    const now = Date.now();
+    if (!force) {
+      if (isLoading) {
+        return;
+      }
+      if (now - lastCatalogRefreshAtRef.current < 15_000) {
+        return;
+      }
+    }
+    lastCatalogRefreshAtRef.current = now;
+    refreshCatalog();
+  }, [isLoading, refreshCatalog]);
+
+  const triggerBuildHistoryRefresh = useCallback((force = false) => {
+    const now = Date.now();
+    if (!force) {
+      if (buildHistoryLoading) {
+        return;
+      }
+      if (now - lastHistoryRefreshAtRef.current < 20_000) {
+        return;
+      }
+    }
+    lastHistoryRefreshAtRef.current = now;
+    refreshBuildHistory();
+  }, [buildHistoryLoading, refreshBuildHistory]);
+
+  const handleRefreshAll = () => {
+    triggerCatalogRefresh(true);
+    triggerBuildHistoryRefresh(true);
+  };
 
   const buildProgressPhase = useMemo<DesktopReleaseBuildProgressPhase>(() => {
-    if (buildSubmitting) {
-      return "dispatching";
-    }
-    if (!buildResult) {
-      return "idle";
-    }
-    if (!buildWorkflowRunId) {
-      return "queued";
-    }
-    if (!buildRunStatus?.workflowRunStatus || buildRunStatus.workflowRunStatus === "queued") {
-      return "queued";
-    }
-    if (buildRunStatus.workflowRunStatus === "in_progress") {
-      return "running";
-    }
-    if (buildRunStatus.workflowRunStatus === "completed") {
-      if (buildRunStatus.workflowRunConclusion !== "success") {
-        return "failed";
-      }
-      if (buildPortalSyncStatus === "completed") {
-        return "completed";
-      }
-      if (buildPortalSyncStatus === "failed") {
-        return "failed";
-      }
-      return "publishing";
-    }
-    return "queued";
+    return resolveDesktopReleaseBuildProgressPhase({
+      buildSubmitting,
+      hasBuildResult: Boolean(buildResult),
+      hasWorkflowRunId: Boolean(buildWorkflowRunId),
+      workflowRunStatus: buildRunStatus?.workflowRunStatus ?? null,
+      workflowRunConclusion: buildRunStatus?.workflowRunConclusion ?? null,
+      portalSyncStatus: buildPortalSyncStatus,
+      workflowRunUpdatedAt: buildRunStatus?.workflowRunUpdatedAt ?? null,
+      queuedAt: buildResult?.queuedAt ?? null,
+    });
   }, [buildPortalSyncStatus, buildResult, buildRunStatus, buildSubmitting, buildWorkflowRunId]);
+  const catalogErrorMessage = useMemo(() => formatCatalogError(t, error), [error, t]);
+  const buildHistoryErrorMessage = useMemo(
+    () => formatBuildHistoryError(t, buildHistoryError),
+    [buildHistoryError, t],
+  );
+
+  const currentBuildHistoryItem = useMemo(() => {
+    if (!buildWorkflowRunId) {
+      return null;
+    }
+
+    return buildHistoryItems.find((item) => item.workflowRunId === buildWorkflowRunId) ?? null;
+  }, [buildHistoryItems, buildWorkflowRunId]);
 
   const buildProgressTitle = useMemo(() => {
-    if (buildProgressPhase === "dispatching") {
-      return t("dashboard:desktopReleases.admin.build.progress.dispatching");
-    }
-    if (buildProgressPhase === "queued") {
-      return t("dashboard:desktopReleases.admin.build.progress.queued");
-    }
-    if (buildProgressPhase === "running") {
-      return t("dashboard:desktopReleases.admin.build.progress.running");
-    }
-    if (buildProgressPhase === "publishing") {
-      return t("dashboard:desktopReleases.admin.build.progress.publishing");
-    }
-    if (buildProgressPhase === "completed") {
-      return t("dashboard:desktopReleases.admin.build.progress.completed");
-    }
-    if (buildProgressPhase === "failed") {
-      return t("dashboard:desktopReleases.admin.build.progress.failed");
-    }
-    return t("dashboard:desktopReleases.admin.build.progress.idle");
+    return buildProgressTitleForPhase(t, buildProgressPhase);
   }, [buildProgressPhase, t]);
 
   const buildProgressDescription = useMemo(() => {
-    if (buildProgressPhase === "dispatching") {
-      return t("dashboard:desktopReleases.admin.build.progress.dispatchingDescription");
-    }
-    if (buildProgressPhase === "queued") {
-      return t("dashboard:desktopReleases.admin.build.progress.queuedDescription");
-    }
-    if (buildProgressPhase === "running") {
-      return t("dashboard:desktopReleases.admin.build.progress.runningDescription");
-    }
-    if (buildProgressPhase === "publishing") {
-      return t("dashboard:desktopReleases.admin.build.progress.publishingDescription");
-    }
-    if (buildProgressPhase === "completed") {
-      return t("dashboard:desktopReleases.admin.build.progress.completedDescription");
-    }
-    if (buildProgressPhase === "failed") {
-      return t("dashboard:desktopReleases.admin.build.progress.failedDescription");
-    }
-    return t("dashboard:desktopReleases.admin.build.progress.idleDescription");
+    return buildProgressDescriptionForPhase(t, buildProgressPhase);
   }, [buildProgressPhase, t]);
 
   const buildProgressBadgeLabel = useMemo(() => {
-    if (buildProgressPhase === "dispatching") {
-      return t("dashboard:desktopReleases.admin.build.progress.dispatchingBadge");
-    }
-    if (buildProgressPhase === "queued") {
-      return t("dashboard:desktopReleases.admin.build.progress.queuedBadge");
-    }
-    if (buildProgressPhase === "running") {
-      return t("dashboard:desktopReleases.admin.build.progress.runningBadge");
-    }
-    if (buildProgressPhase === "publishing") {
-      return t("dashboard:desktopReleases.admin.build.progress.publishingBadge");
-    }
-    if (buildProgressPhase === "completed") {
-      return t("dashboard:desktopReleases.admin.build.progress.completedBadge");
-    }
-    if (buildProgressPhase === "failed") {
-      return t("dashboard:desktopReleases.admin.build.progress.failedBadge");
-    }
-    return t("dashboard:desktopReleases.admin.build.progress.idleBadge");
+    return buildProgressBadgeLabelForPhase(t, buildProgressPhase);
   }, [buildProgressPhase, t]);
   const buildProgressPercentValue = buildProgressPercent(buildProgressPhase);
   const buildProgressBarClassName = buildProgressToneClass(buildProgressPhase);
   const buildProgressBadgeClassName = buildProgressBadgeClass(buildProgressPhase);
+  const buildPortalSyncAttempts = buildRunStatus?.portalSyncAttempts ?? null;
+  const buildPortalSyncError = buildRunStatus?.portalSyncError ?? null;
+  const formattedBuildPortalSyncError = useMemo(() => {
+    if (!buildPortalSyncError) {
+      return null;
+    }
+
+    return formatBuildPortalSyncError(t, buildPortalSyncError);
+  }, [buildPortalSyncError, t]);
+  const buildPortalSyncAlertMessage = useMemo(() => {
+    if (!formattedBuildPortalSyncError) {
+      return null;
+    }
+
+    if (!["publishing", "stalled", "failed"].includes(buildProgressPhase)) {
+      return null;
+    }
+
+    if (buildProgressPhase === "failed") {
+      return {
+        tone: "failed" as const,
+        message: t("dashboard:desktopReleases.admin.build.progress.portalSyncError", {
+          error: formattedBuildPortalSyncError,
+        }),
+      };
+    }
+
+    return {
+      tone: "retrying" as const,
+      message: t("dashboard:desktopReleases.admin.build.progress.portalSyncRetrying", {
+        error: formattedBuildPortalSyncError,
+      }),
+    };
+  }, [buildProgressPhase, formattedBuildPortalSyncError, t]);
+
+  useEffect(() => {
+    if (isLoading) {
+      setCatalogLoadStartedAt((value) => value ?? Date.now());
+    } else {
+      setCatalogLoadStartedAt(null);
+    }
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (buildHistoryLoading) {
+      setHistoryLoadStartedAt((value) => value ?? Date.now());
+    } else {
+      setHistoryLoadStartedAt(null);
+    }
+  }, [buildHistoryLoading]);
+
+  useEffect(() => {
+    if (!isLoading && !buildHistoryLoading) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setLoadingTick((value) => value + 1);
+    }, 1000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [isLoading, buildHistoryLoading]);
+
+  const catalogLoadingAgeMs = catalogLoadStartedAt ? Math.max(0, Date.now() - catalogLoadStartedAt) : 0;
+  const historyLoadingAgeMs = historyLoadStartedAt ? Math.max(0, Date.now() - historyLoadStartedAt) : 0;
+  const catalogLoadingSeconds = catalogLoadingAgeMs ? Math.ceil(catalogLoadingAgeMs / 1000) : 0;
+  const historyLoadingSeconds = historyLoadingAgeMs ? Math.ceil(historyLoadingAgeMs / 1000) : 0;
+  const showLoadingDiagnostics = Boolean(
+    isLoading
+    || buildHistoryLoading
+    || catalogErrorMessage
+    || buildHistoryErrorMessage,
+  );
+
+  useEffect(() => {
+    if (buildResult) {
+      writeDesktopReleaseBuildSessionState({
+        buildResult,
+        buildRunStatus,
+      });
+      return;
+    }
+
+    writeDesktopReleaseBuildSessionState(null);
+  }, [buildResult, buildRunStatus]);
 
   useEffect(() => {
     if (!buildVersionIsCustom) {
@@ -525,9 +925,56 @@ export function DesktopReleasePanel(props: {
       && buildRunStatus.workflowRunConclusion === "success"
       && buildRunStatus.portalSyncStatus === "completed"
     ) {
-      refresh();
+      triggerCatalogRefresh(true);
+      triggerBuildHistoryRefresh(true);
     }
-  }, [buildRunStatus?.portalSyncStatus, buildRunStatus?.workflowRunConclusion, buildRunStatus?.workflowRunStatus, refresh]);
+  }, [
+    buildRunStatus?.portalSyncStatus,
+    buildRunStatus?.workflowRunConclusion,
+    buildRunStatus?.workflowRunStatus,
+    triggerBuildHistoryRefresh,
+    triggerCatalogRefresh,
+  ]);
+
+  useEffect(() => {
+    if (variant !== "admin" || !buildWorkflowRunId) {
+      return;
+    }
+
+    triggerBuildHistoryRefresh();
+  }, [
+    buildWorkflowRunId,
+    buildRunStatus?.portalSyncStatus,
+    buildRunStatus?.workflowRunConclusion,
+    buildRunStatus?.workflowRunStatus,
+    buildRunStatus?.workflowRunUpdatedAt,
+    triggerBuildHistoryRefresh,
+    variant,
+  ]);
+
+  useEffect(() => {
+    if (!currentBuildHistoryItem) {
+      return;
+    }
+
+    const nextStatus = buildRunStatusFromHistoryItem(currentBuildHistoryItem);
+    const currentStatusSignature = JSON.stringify(buildRunStatus ?? null);
+    const nextStatusSignature = JSON.stringify(nextStatus);
+    const currentTimestamp = Math.max(
+      toTimestampMs(buildRunStatus?.workflowRunUpdatedAt),
+      toTimestampMs(buildRunStatus?.portalSyncUpdatedAt),
+      toTimestampMs(buildResult?.queuedAt),
+    );
+    const historyTimestamp = Math.max(
+      toTimestampMs(currentBuildHistoryItem.workflowRunUpdatedAt),
+      toTimestampMs(currentBuildHistoryItem.portalSyncUpdatedAt),
+      toTimestampMs(currentBuildHistoryItem.recordUpdatedAt),
+      toTimestampMs(currentBuildHistoryItem.queuedAt),
+    );
+    if (currentStatusSignature !== nextStatusSignature && historyTimestamp >= currentTimestamp) {
+      setBuildRunStatus(nextStatus);
+    }
+  }, [buildResult?.queuedAt, buildRunStatus, currentBuildHistoryItem]);
 
   const handleUpload = async () => {
     if (!file) {
@@ -539,6 +986,93 @@ export function DesktopReleasePanel(props: {
 
     setUploading(true);
     try {
+      const normalizedFileName = file.name.trim() || "installer.bin";
+      const contentType = file.type || "application/octet-stream";
+      const fileSizeBytes = file.size;
+      const fileSha256 = await hashFileSha256(file);
+
+      const presignResponse = await fetch("/api/desktop-releases/upload-url", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          version: version.trim(),
+          platform,
+          channel,
+          installerFormat,
+          releaseNotes: releaseNotes.trim(),
+          publish,
+          fileName: normalizedFileName,
+          contentType,
+          fileSizeBytes,
+        }),
+      });
+      const presignPayload = await presignResponse.json().catch(() => ({}));
+
+      if (presignResponse.ok && typeof presignPayload?.uploadUrl === "string") {
+        const uploadResponse = await fetch(presignPayload.uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": contentType,
+          },
+          body: file,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("desktop_release_upload_failed");
+        }
+
+        const finalizeResponse = await fetch("/api/desktop-releases/upload/complete", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            version: version.trim(),
+            platform,
+            channel,
+            installerFormat,
+            releaseNotes: releaseNotes.trim(),
+            publish,
+            fileName: normalizedFileName,
+            contentType,
+            fileSizeBytes,
+            fileSha256,
+            storageKey: presignPayload.storageKey,
+          }),
+        });
+        const finalizePayload = await finalizeResponse.json().catch(() => ({}));
+        if (!finalizeResponse.ok) {
+          throw new Error(
+            typeof finalizePayload?.error === "string"
+              ? finalizePayload.error
+              : "desktop_release_upload_failed",
+          );
+        }
+
+        setVersion("");
+        setReleaseNotes("");
+        setFile(null);
+        setPublish(true);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        triggerCatalogRefresh(true);
+        toast.success(t("dashboard:desktopReleases.admin.uploadSuccess"));
+        return;
+      }
+
+      if (presignPayload?.error && presignPayload.error !== "desktop_release_presign_unavailable") {
+        throw new Error(
+          typeof presignPayload.error === "string"
+            ? presignPayload.error
+            : "desktop_release_upload_failed",
+        );
+      }
+
       const form = new FormData();
       form.append("file", file);
       form.append("version", version.trim());
@@ -553,6 +1087,9 @@ export function DesktopReleasePanel(props: {
         credentials: "include",
         body: form,
       });
+      if (response.status === 413) {
+        throw new Error("desktop_release_upload_too_large");
+      }
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(typeof payload?.error === "string" ? payload.error : "desktop_release_upload_failed");
@@ -565,14 +1102,14 @@ export function DesktopReleasePanel(props: {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-      refresh();
+      triggerCatalogRefresh(true);
       toast.success(t("dashboard:desktopReleases.admin.uploadSuccess"));
     } catch (uploadError) {
-      toast.error(
-        uploadError instanceof Error
-          ? uploadError.message
-          : t("dashboard:desktopReleases.admin.uploadFailed"),
-      );
+      const rawMessage = uploadError instanceof Error
+        ? uploadError.message
+        : "desktop_release_upload_failed";
+      const friendlyMessage = formatUploadError(t, rawMessage);
+      toast.error(friendlyMessage ?? t("dashboard:desktopReleases.admin.uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -595,7 +1132,7 @@ export function DesktopReleasePanel(props: {
       if (!response.ok) {
         throw new Error(typeof payload?.error === "string" ? payload.error : "desktop_release_update_failed");
       }
-      refresh();
+      triggerCatalogRefresh(true);
       toast.success(
         release.isPublished
           ? t("dashboard:desktopReleases.admin.unpublishSuccess")
@@ -627,7 +1164,7 @@ export function DesktopReleasePanel(props: {
       if (!response.ok) {
         throw new Error(typeof payload?.error === "string" ? payload.error : "desktop_release_delete_failed");
       }
-      refresh();
+      triggerCatalogRefresh(true);
       toast.success(t("dashboard:desktopReleases.admin.deleteSuccess"));
     } catch (deleteError) {
       toast.error(
@@ -657,14 +1194,194 @@ export function DesktopReleasePanel(props: {
           titleClassName={dashboardCardTitleLgClass}
         />
 
-        {isLoading ? (
+        {showLoadingDiagnostics ? (
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-white/95 p-4 text-sm text-slate-600">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                {t("dashboard:desktopReleases.loadingDetail.title")}
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-slate-200 bg-white text-slate-700"
+                onClick={handleRefreshAll}
+              >
+                <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                {t("dashboard:desktopReleases.loadingDetail.refresh")}
+              </Button>
+            </div>
+            <div className="mt-3 space-y-2">
+              {isLoading ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                  <span>
+                    {t("dashboard:desktopReleases.loadingDetail.catalog", {
+                      seconds: catalogLoadingSeconds,
+                    })}
+                  </span>
+                  <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                    {t("dashboard:desktopReleases.loadingDetail.attempt", {
+                      count: catalogAttempt,
+                    })}
+                  </Badge>
+                  {catalogLoadingSeconds >= 15 ? (
+                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                      {t("dashboard:desktopReleases.loadingDetail.timeout")}
+                    </Badge>
+                  ) : null}
+                  {catalogLoadingSeconds >= 120 ? (
+                    <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
+                      {t("dashboard:desktopReleases.loadingDetail.stalled")}
+                    </Badge>
+                  ) : null}
+                </div>
+              ) : null}
+              {buildHistoryLoading ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                  <span>
+                    {t("dashboard:desktopReleases.loadingDetail.history", {
+                      seconds: historyLoadingSeconds,
+                    })}
+                  </span>
+                  <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                    {t("dashboard:desktopReleases.loadingDetail.attempt", {
+                      count: buildHistoryAttempt,
+                    })}
+                  </Badge>
+                  {historyLoadingSeconds >= 15 ? (
+                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                      {t("dashboard:desktopReleases.loadingDetail.timeout")}
+                    </Badge>
+                  ) : null}
+                  {historyLoadingSeconds >= 120 ? (
+                    <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
+                      {t("dashboard:desktopReleases.loadingDetail.stalled")}
+                    </Badge>
+                  ) : null}
+                </div>
+              ) : null}
+              {catalogErrorMessage ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {t("dashboard:desktopReleases.loadingDetail.errorCatalog", { error: catalogErrorMessage })}
+                </div>
+              ) : null}
+              {buildHistoryErrorMessage ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {t("dashboard:desktopReleases.loadingDetail.errorHistory", { error: buildHistoryErrorMessage })}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {buildResult || buildRunStatus ? (
+          <div className="mt-4 rounded-2xl border border-sky-100 bg-white/95 p-4 text-sm text-slate-700 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  {t("dashboard:desktopReleases.admin.build.progress.title")}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {buildProgressTitle}
+                </p>
+              </div>
+              <Badge variant="outline" className={buildProgressBadgeClassName}>
+                {buildProgressBadgeLabel}
+              </Badge>
+            </div>
+
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${buildProgressBarClassName}`}
+                style={{ width: `${buildProgressPercentValue}%` }}
+              />
+            </div>
+
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              {buildProgressDescription}
+            </p>
+
+            {buildProgressPhase === "publishing" ? (
+              <div className="mt-3 rounded-2xl border border-cyan-100 bg-cyan-50 px-3 py-2 text-xs leading-5 text-cyan-800">
+                {t("dashboard:desktopReleases.admin.build.progress.backgroundNote")}
+              </div>
+            ) : null}
+
+            {buildProgressPhase === "stalled" ? (
+              <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                {t("dashboard:desktopReleases.admin.build.progress.stalledNote")}
+              </div>
+            ) : null}
+
+            {buildPortalSyncAlertMessage ? (
+              <div
+                className={`mt-3 rounded-2xl px-3 py-2 text-xs leading-5 ${
+                  buildPortalSyncAlertMessage.tone === "failed"
+                    ? "border border-rose-200 bg-rose-50 text-rose-700"
+                    : "border border-amber-200 bg-amber-50 text-amber-800"
+                }`}
+              >
+                {buildPortalSyncAlertMessage.message}
+              </div>
+            ) : null}
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {buildWorkflowRunId ? (
+                <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
+                  {`Run #${buildWorkflowRunId}`}
+                </Badge>
+              ) : null}
+              {buildPortalSyncAttempts != null && buildPortalSyncAttempts > 0 ? (
+                <Badge variant="outline" className="border-cyan-200 bg-cyan-50 text-cyan-800">
+                  {t("dashboard:desktopReleases.admin.build.progress.syncAttempt", {
+                    count: buildPortalSyncAttempts,
+                  })}
+                </Badge>
+              ) : null}
+              {buildRunStatusLoading ? (
+                <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  {t("dashboard:desktopReleases.admin.build.progress.refreshing")}
+                </Badge>
+              ) : null}
+              {buildRunStatusError ? (
+                <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                  {t("dashboard:desktopReleases.admin.build.progress.retrying")}
+                </Badge>
+              ) : null}
+            </div>
+
+            <div className="mt-4">
+              <Button asChild size="sm" className="bg-sky-700 text-white hover:bg-sky-800">
+                <a href={buildRunStatus?.workflowRunUrl ?? buildResult?.workflowRunUrl ?? buildResult?.workflowUrl} target="_blank" rel="noreferrer">
+                  {t("dashboard:desktopReleases.admin.build.openActions")}
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </a>
+              </Button>
+            </div>
+
+            {buildRunStatus?.workflowRunUpdatedAt ? (
+              <p className="mt-3 text-xs text-slate-500">
+                {t("dashboard:desktopReleases.admin.build.progress.lastUpdated", {
+                  time: new Intl.DateTimeFormat(undefined, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  }).format(new Date(buildRunStatus.workflowRunUpdatedAt)),
+                })}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {showCatalogLoading ? (
           <div className="mt-4 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/90 px-4 py-4 text-sm text-slate-600">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t("dashboard:desktopReleases.loading")}
           </div>
-        ) : error ? (
+        ) : catalogErrorMessage && !hasCatalog ? (
           <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">
-            {error}
+            {catalogErrorMessage}
           </div>
         ) : primaryRelease ? (
           <div className="mt-4 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
@@ -684,7 +1401,7 @@ export function DesktopReleasePanel(props: {
                   {primaryRelease.releaseNotes}
                 </p>
               ) : null}
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap items-center gap-2">
                 <Button asChild className="bg-slate-900 text-white hover:bg-slate-800">
                   <a href={primaryRelease.downloadUrl}>
                     <Download className="mr-2 h-4 w-4" />
@@ -703,6 +1420,12 @@ export function DesktopReleasePanel(props: {
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </a>
                 </Button>
+                {showCatalogRefreshing ? (
+                  <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    {t("dashboard:desktopReleases.loading")}
+                  </Badge>
+                ) : null}
               </div>
             </div>
 
@@ -769,7 +1492,7 @@ export function DesktopReleasePanel(props: {
             <Button
               variant="outline"
               size="sm"
-              onClick={refresh}
+              onClick={handleRefreshAll}
               className="border-slate-200 bg-white text-slate-700"
             >
               <RefreshCw className="mr-2 h-4 w-4" />
@@ -782,6 +1505,87 @@ export function DesktopReleasePanel(props: {
         }
         titleClassName={dashboardCardTitleLgClass}
       />
+
+      {showLoadingDiagnostics ? (
+        <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 text-sm text-slate-600">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              {t("dashboard:desktopReleases.loadingDetail.title")}
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-slate-200 bg-white text-slate-700"
+              onClick={handleRefreshAll}
+            >
+              <RefreshCw className="mr-2 h-3.5 w-3.5" />
+              {t("dashboard:desktopReleases.loadingDetail.refresh")}
+            </Button>
+          </div>
+          <div className="mt-3 space-y-2">
+                {isLoading ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                    <span>
+                      {t("dashboard:desktopReleases.loadingDetail.catalog", {
+                        seconds: catalogLoadingSeconds,
+                      })}
+                    </span>
+                    <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                      {t("dashboard:desktopReleases.loadingDetail.attempt", {
+                        count: catalogAttempt,
+                      })}
+                    </Badge>
+                    {catalogLoadingSeconds >= 15 ? (
+                      <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                        {t("dashboard:desktopReleases.loadingDetail.timeout")}
+                      </Badge>
+                    ) : null}
+                    {catalogLoadingSeconds >= 120 ? (
+                      <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
+                        {t("dashboard:desktopReleases.loadingDetail.stalled")}
+                      </Badge>
+                    ) : null}
+                  </div>
+                ) : null}
+                {buildHistoryLoading ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                    <span>
+                      {t("dashboard:desktopReleases.loadingDetail.history", {
+                        seconds: historyLoadingSeconds,
+                      })}
+                    </span>
+                    <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                      {t("dashboard:desktopReleases.loadingDetail.attempt", {
+                        count: buildHistoryAttempt,
+                      })}
+                    </Badge>
+                    {historyLoadingSeconds >= 15 ? (
+                      <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                        {t("dashboard:desktopReleases.loadingDetail.timeout")}
+                      </Badge>
+                    ) : null}
+                    {historyLoadingSeconds >= 120 ? (
+                      <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
+                        {t("dashboard:desktopReleases.loadingDetail.stalled")}
+                      </Badge>
+                    ) : null}
+                  </div>
+                ) : null}
+            {catalogErrorMessage ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {t("dashboard:desktopReleases.loadingDetail.errorCatalog", { error: catalogErrorMessage })}
+              </div>
+            ) : null}
+            {buildHistoryErrorMessage ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {t("dashboard:desktopReleases.loadingDetail.errorHistory", { error: buildHistoryErrorMessage })}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {canTriggerBuild ? (
         <div className="rounded-2xl border border-sky-200 bg-sky-50/70 p-4 shadow-sm">
@@ -910,10 +1714,41 @@ export function DesktopReleasePanel(props: {
                     {buildProgressDescription}
                   </p>
 
+                  {buildProgressPhase === "publishing" ? (
+                    <div className="mt-3 rounded-2xl border border-cyan-100 bg-cyan-50 px-3 py-2 text-xs leading-5 text-cyan-800">
+                      {t("dashboard:desktopReleases.admin.build.progress.backgroundNote")}
+                    </div>
+                  ) : null}
+
+                  {buildProgressPhase === "stalled" ? (
+                    <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                      {t("dashboard:desktopReleases.admin.build.progress.stalledNote")}
+                    </div>
+                  ) : null}
+
+                  {buildPortalSyncAlertMessage ? (
+                    <div
+                      className={`mt-3 rounded-2xl px-3 py-2 text-xs leading-5 ${
+                        buildPortalSyncAlertMessage.tone === "failed"
+                          ? "border border-rose-200 bg-rose-50 text-rose-700"
+                          : "border border-amber-200 bg-amber-50 text-amber-800"
+                      }`}
+                    >
+                      {buildPortalSyncAlertMessage.message}
+                    </div>
+                  ) : null}
+
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     {buildWorkflowRunId ? (
                       <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
                         {`Run #${buildWorkflowRunId}`}
+                      </Badge>
+                    ) : null}
+                    {buildPortalSyncAttempts != null && buildPortalSyncAttempts > 0 ? (
+                      <Badge variant="outline" className="border-cyan-200 bg-cyan-50 text-cyan-800">
+                        {t("dashboard:desktopReleases.admin.build.progress.syncAttempt", {
+                          count: buildPortalSyncAttempts,
+                        })}
                       </Badge>
                     ) : null}
                     {buildRunStatusLoading ? (
@@ -982,6 +1817,150 @@ export function DesktopReleasePanel(props: {
                     </Badge>
                   </div>
                 </div>
+              ) : null}
+
+              {showBuildHistory ? (
+                <Accordion type="single" collapsible defaultValue="">
+                  <AccordionItem
+                    value="build-history"
+                    className="rounded-2xl border border-sky-100 bg-white/95 shadow-sm"
+                  >
+                    <AccordionTrigger className="px-4 py-4 hover:no-underline">
+                      <div className="flex min-w-0 flex-1 flex-col gap-1 text-left">
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                          {t("dashboard:desktopReleases.admin.build.history.eyebrow")}
+                        </p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {t("dashboard:desktopReleases.admin.build.history.title")}
+                        </p>
+                        <p className="text-xs leading-5 text-slate-500">
+                          {t("dashboard:desktopReleases.admin.build.history.description")}
+                        </p>
+                      </div>
+                      <div className="ml-4 flex items-center gap-2">
+                        <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                          {buildHistoryItems.length}
+                        </Badge>
+                        {buildHistoryErrorMessage ? (
+                          <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
+                            {t("dashboard:desktopReleases.admin.build.history.errorBadge")}
+                          </Badge>
+                        ) : null}
+                        {buildHistoryLoading ? (
+                          <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            {t("dashboard:desktopReleases.admin.build.history.loading")}
+                          </Badge>
+                        ) : null}
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      {buildHistoryErrorMessage ? (
+                        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                          {t("dashboard:desktopReleases.admin.build.history.error", {
+                            error: buildHistoryErrorMessage,
+                          })}
+                        </div>
+                      ) : buildHistoryItems.length > 0 ? (
+                        <div className="space-y-3">
+                          {buildHistoryItems.map((item) => {
+                            const itemPhase = resolveDesktopReleaseBuildProgressPhase({
+                              buildSubmitting: false,
+                              hasBuildResult: true,
+                              hasWorkflowRunId: true,
+                              workflowRunStatus: item.workflowRunStatus,
+                              workflowRunConclusion: item.workflowRunConclusion,
+                              portalSyncStatus: item.portalSyncStatus,
+                              workflowRunUpdatedAt: item.workflowRunUpdatedAt,
+                            });
+
+                            return (
+                              <div
+                                key={item.workflowRunId}
+                                className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700"
+                              >
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">
+                                        {t("dashboard:desktopReleases.version", { version: item.version })}
+                                      </Badge>
+                                      <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">
+                                        {formatBuildPlatformLabel(t, item.platform)}
+                                      </Badge>
+                                      <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">
+                                        {formatBuildBundleModeLabel(t, item.bundleMode)}
+                                      </Badge>
+                                      <Badge variant="outline" className={buildProgressBadgeClass(itemPhase)}>
+                                        {buildProgressBadgeLabelForPhase(t, itemPhase)}
+                                      </Badge>
+                                    </div>
+                                    <p className="mt-2 text-sm font-semibold text-slate-900">
+                                      {`Run #${item.workflowRunId}`}
+                                    </p>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                      {item.repository} · {item.workflow} · {item.ref}
+                                    </p>
+                                  </div>
+
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <Badge variant="outline" className="border-cyan-200 bg-cyan-50 text-cyan-800">
+                                      {t(`dashboard:desktopReleases.admin.build.history.portalSync.${item.portalSyncStatus}`)}
+                                    </Badge>
+                                    <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">
+                                      {t("dashboard:desktopReleases.admin.build.history.uploadedPlatforms", {
+                                        count: item.uploadedPlatforms.length,
+                                      })}
+                                    </Badge>
+                                  </div>
+                                </div>
+
+                                {item.releaseNotes ? (
+                                  <p className="mt-3 line-clamp-2 rounded-2xl border border-slate-100 bg-white px-3 py-2 text-xs leading-5 text-slate-600">
+                                    {item.releaseNotes}
+                                  </p>
+                                ) : null}
+
+                                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {item.portalSyncAttempts != null && item.portalSyncAttempts > 0 ? (
+                                      <Badge variant="outline" className="border-cyan-200 bg-cyan-50 text-cyan-800">
+                                        {t("dashboard:desktopReleases.admin.build.progress.syncAttempt", {
+                                          count: item.portalSyncAttempts,
+                                        })}
+                                      </Badge>
+                                    ) : null}
+                                  </div>
+
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-xs text-slate-500">
+                                      {t("dashboard:desktopReleases.admin.build.history.updatedAt", {
+                                        time: new Intl.DateTimeFormat(undefined, {
+                                          dateStyle: "medium",
+                                          timeStyle: "short",
+                                        }).format(new Date(item.recordUpdatedAt)),
+                                      })}
+                                    </span>
+                                    <Button asChild size="sm" variant="outline" className="border-slate-200 bg-white">
+                                      <a href={item.workflowRunUrl ?? item.workflowUrl} target="_blank" rel="noreferrer">
+                                        {t("dashboard:desktopReleases.admin.build.openActions")}
+                                        <ChevronRight className="ml-2 h-4 w-4" />
+                                      </a>
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-white/90 px-4 py-6 text-sm text-slate-500">
+                          {t("dashboard:desktopReleases.admin.build.history.empty")}
+                        </div>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               ) : null}
 
               <div className="rounded-2xl border border-sky-100 bg-white/90 p-4 text-xs text-slate-500">
@@ -1139,25 +2118,24 @@ export function DesktopReleasePanel(props: {
         </div>
 
         <div className="space-y-3">
-          {isLoading ? (
+          {showCatalogLoading ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
               <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
               {t("dashboard:desktopReleases.loading")}
             </div>
-          ) : error ? (
+          ) : error && !hasCatalog ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">
               {error}
             </div>
           ) : latestReleases.length > 0 ? (
             latestReleases.map((release) => (
-              <div
-                key={release.id}
-                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-              >
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0">
+              <div key={release.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className={dashboardCardTitleClass}>{release.fileName}</p>
+                      <p className={`${dashboardCardTitleClass} break-words leading-snug`}>
+                        {release.fileName}
+                      </p>
                       {release.isPublished ? (
                         <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
                           {t("dashboard:desktopReleases.admin.statePublished")}
@@ -1167,23 +2145,29 @@ export function DesktopReleasePanel(props: {
                           {t("dashboard:desktopReleases.admin.stateHidden")}
                         </Badge>
                       )}
+                      {showCatalogRefreshing ? (
+                        <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          {t("dashboard:desktopReleases.loading")}
+                        </Badge>
+                      ) : null}
                     </div>
                     <ReleaseBadgeRow release={release} t={t} />
-                    <p className={`mt-2 ${dashboardCardDescriptionClass}`}>
+                    <p className={`mt-2 max-w-2xl ${dashboardCardDescriptionClass}`}>
                       {t("dashboard:desktopReleases.fileInfo", {
                         file: release.fileName,
                         size: formatBytes(release.fileSizeBytes),
                       })}
                     </p>
                     {release.releaseNotes ? (
-                      <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600">
+                      <p className="mt-3 max-w-2xl whitespace-pre-line text-sm leading-6 text-slate-600">
                         {release.releaseNotes}
                       </p>
                     ) : null}
                   </div>
 
-                  <div className="flex shrink-0 flex-wrap gap-2">
-                    <Button asChild variant="outline" className="border-slate-200 bg-white">
+                  <div className="flex w-full flex-wrap gap-2 xl:w-auto xl:shrink-0 xl:justify-end">
+                    <Button asChild variant="outline" className="w-full border-slate-200 bg-white sm:w-auto">
                       <a href={release.downloadUrl}>
                         <Download className="mr-2 h-4 w-4" />
                         {t("dashboard:desktopReleases.download")}
@@ -1191,7 +2175,7 @@ export function DesktopReleasePanel(props: {
                     </Button>
                     <Button
                       variant="outline"
-                      className="border-slate-200 bg-white"
+                      className="w-full border-slate-200 bg-white sm:w-auto"
                       onClick={() => {
                         void handleTogglePublish(release);
                       }}
@@ -1208,7 +2192,7 @@ export function DesktopReleasePanel(props: {
                     </Button>
                     <Button
                       variant="destructive"
-                      className="bg-red-600 text-white hover:bg-red-700"
+                      className="w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto"
                       onClick={() => {
                         void handleDelete(release);
                       }}

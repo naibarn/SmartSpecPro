@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getWorkerAccessPermissionScopesForPreset } from "../../../shared/workerAccessKeys";
+
 const {
   mockAuditReadEntries,
   mockAuditLog,
@@ -54,18 +56,96 @@ describe("workerFleetService", () => {
       } as any,
     });
 
+      expect(result).toEqual([
+        expect.objectContaining({
+          id: "worker-1",
+          runtimeLabel: "OpenClaw Gateway",
+          runtimeFamily: "OpenClaw",
+          compatibilityState: "unknown",
+          registrationSupport: "stable",
+          dispatchSupport: "stable",
+          healthState: "stale",
+          boundProfileCount: 2,
+          activeJobCount: 3,
+          diagnosticsAvailable: true,
+          remoteEndpointPolicy: null,
+          channelDisplayLabel: "Channel state unavailable",
+          memorySyncDisplayLabel: "Memory sync unavailable",
+        }),
+      ]);
+    });
+
+  it("labels Hermes workers with truthful family and rollout posture", async () => {
+    const { listWorkerFleet } = await import("../workerFleetService");
+
+    const result = await listWorkerFleet("tenant-1", {
+      repo: {
+        listWorkersByTenant: vi.fn().mockResolvedValue([
+          {
+            id: "worker-hermes-1",
+            displayName: "Hermes Profile Default",
+            runtimeType: "hermes_agent_gateway",
+            runtimeVersion: "0.3.0",
+            status: "online",
+            teamId: null,
+            externalReference: "hermes://profiles/default",
+            lastSeenAt: new Date(),
+            warningFlagsJson: [],
+            healthSummaryJson: {
+              controlPlane: {
+                remoteEndpointPolicy: "audited_exception_granted",
+              },
+              details: { ok: true },
+            },
+            capabilitiesJson: {
+              runtimeMetadata: {
+                hermesVersion: "0.3.0",
+                profileName: "default",
+                profileLabel: "Default Personal Assistant",
+                profilePurpose: "Handle personal follow-up and coordination",
+                apiServerEnabled: true,
+                apiServerBaseUrl: "http://127.0.0.1:9001",
+                terminalBackend: "local",
+                gatewayPlatforms: ["telegram"],
+                supportsDelegatedHttp: true,
+                supportsDelegatedMcp: false,
+                supportsBoundConnector: true,
+                supportsCallbacks: true,
+                workerAccessPolicy: {
+                  permissionPreset: "operator_basic",
+                  permissionScopes: getWorkerAccessPermissionScopesForPreset("operator_basic"),
+                  quotaHourly: 25,
+                  quotaDaily: 250,
+                  quotaWeekly: 1_000,
+                  quotaMonthly: 2_500,
+                },
+                hostPlatform: "linux",
+                hostExecutionMode: "native",
+              },
+            },
+            dashboardUrl: "http://127.0.0.1:9001",
+          },
+        ]),
+        listBindingCounts: vi.fn().mockResolvedValue([{ workerId: "worker-hermes-1", boundProfileCount: 1 }]),
+        listActiveJobCounts: vi.fn().mockResolvedValue([{ workerId: "worker-hermes-1", activeJobCount: 0 }]),
+      } as any,
+    });
+
     expect(result).toEqual([
       expect.objectContaining({
-        id: "worker-1",
-        runtimeLabel: "OpenClaw Gateway",
-        runtimeFamily: "OpenClaw",
-        compatibilityState: "unknown",
-        registrationSupport: "stable",
-        dispatchSupport: "stable",
-        healthState: "stale",
-        boundProfileCount: 2,
-        activeJobCount: 3,
-        diagnosticsAvailable: true,
+        runtimeType: "hermes_agent_gateway",
+        runtimeLabel: "Hermes Agent Gateway",
+        runtimeFamily: "Hermes",
+        registrationSupport: "feature_gated",
+        dispatchSupport: "limited",
+        remoteEndpointPolicy: "audited_exception_granted",
+        personaDisplayLabel: "Default Personal Assistant",
+        personaDisplayPurpose: "Handle personal follow-up and coordination",
+        channelDisplayLabel: "Connected",
+        memorySyncDisplayLabel: "Memory sync off",
+        workerAccessPolicyPreset: "operator_basic",
+        workerAccessPolicyScopeCount: 14,
+        workerAccessPolicyQuotaDisplayLabel: "H25 / D250 / W1000 / M2500",
       }),
     ]);
   });
@@ -84,6 +164,9 @@ describe("workerFleetService", () => {
           warningFlagsJson: [" disk-low "],
           healthSummaryJson: {
             capturedAt: "2026-04-06T10:00:00.000Z",
+            controlPlane: {
+              remoteEndpointPolicy: "loopback_only",
+            },
             summary: {
               Authorization: "Bearer legacy-secret",
             },
@@ -93,6 +176,32 @@ describe("workerFleetService", () => {
               },
             },
           },
+            capabilitiesJson: {
+              runtimeMetadata: {
+                hermesVersion: "0.3.0",
+                profileName: "default",
+                profileLabel: "Default Personal Assistant",
+                profilePurpose: "Handle personal follow-up and coordination",
+                apiServerEnabled: true,
+                apiServerBaseUrl: "http://127.0.0.1:9001",
+                terminalBackend: "local",
+                gatewayPlatforms: ["telegram"],
+                supportsDelegatedHttp: true,
+                supportsDelegatedMcp: false,
+                supportsBoundConnector: true,
+                supportsCallbacks: true,
+                workerAccessPolicy: {
+                  permissionPreset: "readonly",
+                  permissionScopes: getWorkerAccessPermissionScopesForPreset("readonly"),
+                  quotaHourly: 10,
+                  quotaDaily: 100,
+                  quotaWeekly: null,
+                  quotaMonthly: null,
+                },
+                hostPlatform: "linux",
+                hostExecutionMode: "native",
+              },
+            },
         }),
       } as any,
     });
@@ -100,11 +209,19 @@ describe("workerFleetService", () => {
     expect(result).toEqual(expect.objectContaining({
       workerId: "worker-1",
       runtimeLabel: "OpenClaw Gateway",
-      runtimeFamily: "OpenClaw",
-      compatibilityState: "unknown",
-      summaryJson: {
-        Authorization: "[REDACTED]",
-      },
+        runtimeFamily: "OpenClaw",
+        compatibilityState: "unknown",
+        remoteEndpointPolicy: null,
+        personaDisplayLabel: "Generic Hermes",
+        personaDisplayPurpose: "Default Hermes behavior",
+        channelDisplayLabel: "Channel state unavailable",
+        memorySyncDisplayLabel: "Memory sync unavailable",
+        workerAccessPolicyPreset: "readonly",
+        workerAccessPolicyScopeCount: 9,
+        workerAccessPolicyQuotaDisplayLabel: "H10 / D100",
+        summaryJson: {
+          Authorization: "[REDACTED]",
+        },
       detailsJson: {
         nested: {
           refresh_token: "[REDACTED]",
@@ -473,6 +590,11 @@ describe("workerFleetService", () => {
 
     expect(result.manifestStatus).toBe("ready");
     expect(result.manifest?.mcp.operatorPolicy.approvalRequiredToolGroups).toEqual(["media_generation"]);
+    expect(result.activeDelegatedSession?.activeMode).toEqual(expect.objectContaining({
+      taskMode: "monitoring_triage",
+      scopeProfile: "worker_gateway_hybrid_executor",
+      displayLabel: "Monitoring triage",
+    }));
     expect(result.totals.successCount).toBe(1);
     expect(result.totals.approvalRequiredCount).toBe(1);
     expect(result.toolMetrics).toEqual(expect.arrayContaining([

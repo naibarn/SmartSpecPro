@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# SmartSpecPro System Crash Monitor
+# SmartAIHub System Crash Monitor
 # Detects service restart loops and RAM pressure before they become fatal.
 # Runs every minute via cron:
-#   * * * * * /home/dev/projects/SmartSpecPro/scripts/system-crash-monitor.sh >> /home/dev/projects/SmartSpecPro/logs/system-watch/cron.log 2>&1
+#   * * * * * /home/dev/projects/SmartAIHub/scripts/system-crash-monitor.sh >> /home/dev/projects/SmartAIHub/logs/system-watch/cron.log 2>&1
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="${PROJECT_ROOT}/logs/system-watch"
@@ -40,7 +40,7 @@ send_webhook() {
 {
   "username": "SmartSpec CrashMonitor",
   "embeds": [{
-    "title": "[${level}] SmartSpecPro Crash Monitor",
+    "title": "[${level}] SmartAIHub Crash Monitor",
     "description": "${msg}",
     "color": ${color},
     "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -60,7 +60,7 @@ main() {
 
     # ------------------------------------------------------------------
     # 1. Restart-loop detection
-    # Count "Started SmartSpecPro" events in the last 10 minutes across
+    # Count "Started SmartAIHub" events in the last 10 minutes across
     # all smartspec-*.service units.
     # ------------------------------------------------------------------
     local restart_output
@@ -69,9 +69,9 @@ main() {
 
     for service in smartspec-web smartspec-backend; do
         local count
-        count="$(echo "${restart_output}" | grep -c "Started SmartSpecPro" 2>/dev/null || echo 0)"
+        count="$(echo "${restart_output}" | grep -c "Started SmartAIHub" 2>/dev/null || echo 0)"
         # Per-service count: grep the service name too
-        count="$(echo "${restart_output}" | grep "${service}" | grep -c "Started SmartSpecPro" 2>/dev/null || echo 0)"
+        count="$(echo "${restart_output}" | grep "${service}" | grep -c "Started SmartAIHub" 2>/dev/null || echo 0)"
 
         if [ "${count}" -gt "${RESTART_THRESHOLD}" ]; then
             alerts+=("CRITICAL restart_loop service=${service} restarts_10m=${count} threshold=${RESTART_THRESHOLD}")

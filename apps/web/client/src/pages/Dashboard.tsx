@@ -18,10 +18,15 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useAgencyList } from "@/hooks/useAgencyQuery";
 import { getResolvedMenuItems } from "@/hooks/useMenuItems";
 import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
+import { useDesktopHostStatus } from "@/features/desktop-host/useDesktopHostStatus";
+import { DesktopReleasePanel } from "@/features/desktop-releases/DesktopReleasePanel";
 import { trpc } from "@/lib/trpc";
+import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { JobCard } from "@/components/chat/JobCard";
+import { FinanceHub } from "@/components/finance/FinanceHub";
+import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
 import {
   DashboardSectionHeader,
   DashboardStatCard,
@@ -64,9 +69,13 @@ import {
   CheckCircle,
   Share2,
   MessageCircleMore,
+  MonitorPlay,
   Send,
   ShieldCheck,
   Filter,
+  Download,
+  ReceiptText,
+  ClipboardList,
 } from "lucide-react";
 
 type ReviewAgencySummary = {
@@ -230,9 +239,17 @@ export default function Dashboard() {
 
   // Recent chat conversations
   const { data: chatData } = trpc.chat.listConversations.useQuery(
-    { limit: 5 },
+    { limit: 20 },
     { enabled: isAuthenticated }
   );
+
+  // Resolve the locked personal finance conversation directly so it does not depend on pagination.
+  const { data: personalFinanceConversationData } = trpc.chat.getPersonalConversation.useQuery(
+    undefined,
+    { enabled: isAuthenticated }
+  );
+
+  const createPersonalConversationMutation = trpc.chat.createPersonalConversation.useMutation();
 
   // Fetch active workflows
   const { data: activeWorkflows } = trpc.workflow.list.useQuery(
@@ -259,6 +276,19 @@ export default function Dashboard() {
 
   // Tenant feature flags for menu gating
   const tenantFlags = useTenantFeatureFlags();
+  const isAdminLike = user?.role === "admin" || user?.role === "domain_admin";
+  const desktopGovernanceEnabled =
+    isAuthenticated && tenantFlags.desktopHostEnabled && isAdminLike;
+  const desktopGovernanceStatus = useDesktopHostStatus(
+    desktopGovernanceEnabled,
+    "tenant"
+  );
+  const desktopReleaseWorkspacePath =
+    user?.role === "admin" ? "/admin/desktop-host" : "/domain-admin/desktop-host";
+  const desktopGovernancePath =
+    user?.role === "admin"
+      ? "/admin/desktop-host/governance"
+      : "/domain-admin/desktop-host/governance";
   const { data: agencyListData } = useAgencyList();
 
   const { data: agencyReviewDashboardRaw } =
@@ -698,6 +728,41 @@ export default function Dashboard() {
   const nextBestActions = useMemo<DashboardShortcut[]>(() => {
     const actions: DashboardShortcut[] = [];
 
+    if (user.role !== "admin" && user.role !== "domain_admin") {
+      actions.push({
+        label: t("dashboard:nextBestActions.startWork"),
+        href: "/work/request",
+        icon: ClipboardList,
+        description: t("dashboard:nextBestActions.startWorkDetail"),
+        color: "from-slate-700 to-sky-700",
+      });
+      actions.push({
+        label: t("dashboard:nextBestActions.myRequests"),
+        href: "/work/requests",
+        icon: FileText,
+        description: t("dashboard:nextBestActions.myRequestsDetail"),
+        color: "from-slate-700 to-indigo-700",
+      });
+    }
+
+    if (user.role === "admin" || user.role === "domain_admin") {
+      actions.push({
+        label: tenantFlags.desktopHostEnabled
+          ? "Desktop governance"
+          : t("dashboard:nextBestActions.manageDesktopReleases"),
+        href: tenantFlags.desktopHostEnabled
+          ? user.role === "admin"
+            ? "/admin/desktop-host/governance"
+            : "/domain-admin/desktop-host/governance"
+          : desktopReleaseWorkspacePath,
+        icon: tenantFlags.desktopHostEnabled ? MonitorPlay : Download,
+        description: tenantFlags.desktopHostEnabled
+          ? "See enrolled desktop devices, last contact, and access restrictions."
+          : t("dashboard:nextBestActions.manageDesktopReleasesDetail"),
+        color: "from-slate-700 to-indigo-700",
+      });
+    }
+
     if ((pendingApprovals?.requests?.length ?? 0) > 0) {
       actions.push({
         label: t("dashboard:nextBestActions.reviewApprovals"),
@@ -786,8 +851,44 @@ export default function Dashboard() {
     pendingApprovals?.requests?.length,
     recentTaskStats.failed,
     reviewOverview,
+    tenantFlags.desktopHostEnabled,
+    user.role,
     user.credits,
   ]);
+
+  const desktopGovernanceSummary = useMemo(() => {
+    const devices = desktopGovernanceStatus.status?.devices ?? [];
+    let online = 0;
+    let stale = 0;
+    let restricted = 0;
+    let withRoots = 0;
+
+    for (const device of devices) {
+      const presenceStatus = device.presence?.status ?? "offline";
+      if (presenceStatus === "online") {
+        online += 1;
+      } else if (presenceStatus === "stale") {
+        stale += 1;
+      }
+
+      if ((device.accessState ?? "active") !== "active") {
+        restricted += 1;
+      }
+
+      if ((device.localRoots?.length ?? 0) > 0) {
+        withRoots += 1;
+      }
+    }
+
+    return {
+      total: devices.length,
+      online,
+      stale,
+      restricted,
+      withRoots,
+      reportedAt: desktopGovernanceStatus.status?.generatedAt ?? null,
+    };
+  }, [desktopGovernanceStatus.status]);
 
   const sparklineMax = useMemo(() => {
     const values = analyticsPoints.map(point => Math.abs(point.credits));
@@ -795,6 +896,7 @@ export default function Dashboard() {
   }, [analyticsPoints]);
 
   const topRecentTransaction = recentTransactions?.[0] ?? null;
+  const personalFinanceConversation = personalFinanceConversationData ?? null;
   const latestConversation = chatData?.conversations?.[0] ?? null;
   const urgentNoticeCount = attentionNotices.filter(
     notice => notice.tone !== "positive"
@@ -817,6 +919,18 @@ export default function Dashboard() {
 
   const quickActions = [
     {
+      label: t("dashboard:quickActions.startWork"),
+      icon: ClipboardList,
+      href: "/work/request",
+      color: "from-slate-700 to-sky-700",
+    },
+    {
+      label: t("dashboard:quickActions.myRequests"),
+      icon: FileText,
+      href: "/work/requests",
+      color: "from-slate-700 to-indigo-700",
+    },
+    {
       label: t("dashboard:quickActions.mediaStudio"),
       icon: Sparkles,
       href: "/media-studio",
@@ -827,6 +941,12 @@ export default function Dashboard() {
       icon: MessageSquare,
       href: "/chat",
       color: "from-slate-700 to-cyan-700",
+    },
+    {
+      label: t("dashboard:quickActions.finance"),
+      icon: ReceiptText,
+      href: "/chat?panel=finance",
+      color: "from-slate-700 to-emerald-700",
     },
     {
       label: t("dashboard:quickActions.documentManagement"),
@@ -845,6 +965,15 @@ export default function Dashboard() {
       icon: Users,
       href: "/agencies",
       color: "from-slate-700 to-blue-700",
+    },
+    {
+      label: "Workpacks",
+      icon: Workflow,
+      href: buildWorkpackEntrypointHref({
+        entrypoint: "dashboard",
+        surface: "roi",
+      }),
+      color: "from-slate-700 to-violet-700",
     },
     {
       label: t("dashboard:quickActions.buyCredits"),
@@ -1552,11 +1681,158 @@ export default function Dashboard() {
             </div>
           </motion.section>
 
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.09 }}
+            className="mb-8"
+          >
+            <FinanceAccessGate>
+              <FinanceHub
+                surface="dashboard"
+                compact
+                conversationId={personalFinanceConversation?.id ?? null}
+                onCreatePersonalChat={async () => {
+                  const created = await createPersonalConversationMutation.mutateAsync({
+                    title: t("dashboard:finance.title"),
+                  });
+                  navigateTo(`/chat?c=${created.id}&panel=finance`);
+                }}
+                onOpenFinancePanel={() => navigateTo("/chat?panel=finance")}
+              />
+            </FinanceAccessGate>
+          </motion.section>
+
+          {desktopGovernanceEnabled && (
+            <motion.section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.09 }}
+              className="mb-8"
+            >
+              <div className="relative overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-slate-700 via-indigo-500 to-sky-500" />
+                <DashboardSectionHeader
+                  eyebrow={t("dashboard:admin.desktopGovernanceEyebrow")}
+                  title={t("dashboard:admin.desktopGovernance")}
+                  description={t("dashboard:admin.desktopGovernanceDescription")}
+                  trailing={
+                    <div className="flex flex-wrap items-center gap-2">
+                      {desktopGovernanceSummary.reportedAt && (
+                        <Badge
+                          variant="secondary"
+                          className="gap-1 border-slate-200 bg-slate-50 text-slate-700 shadow-sm"
+                        >
+                          <Clock className="h-3 w-3" />
+                          {t("dashboard:admin.desktopGovernanceLastCheck", {
+                            time: formatDashboardRelativeTime(
+                              desktopGovernanceSummary.reportedAt
+                            ),
+                          })}
+                        </Badge>
+                      )}
+                      <Button
+                        size="sm"
+                        onClick={() => navigateTo(desktopGovernancePath)}
+                      >
+                        {t("dashboard:admin.desktopGovernanceOpen")}
+                      </Button>
+                    </div>
+                  }
+                />
+
+                <div className="mt-4 grid gap-3 md:grid-cols-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                      {t("dashboard:admin.desktopGovernanceDevices")}
+                    </p>
+                    <div className="mt-2 flex items-end gap-2">
+                      <span className="text-2xl font-semibold text-slate-900">
+                        {desktopGovernanceSummary.total}
+                      </span>
+                    </div>
+                    <p className={`mt-2 ${dashboardCardBodyClass}`}>
+                      {t("dashboard:admin.desktopGovernanceDevicesDescription")}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                      {t("dashboard:admin.desktopGovernanceConnected")}
+                    </p>
+                    <div className="mt-2 flex items-end gap-2">
+                      <span className="text-2xl font-semibold text-slate-900">
+                        {desktopGovernanceStatus.isLoading
+                          ? "…"
+                          : desktopGovernanceSummary.online}
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                        {t("dashboard:admin.desktopGovernanceStale", {
+                          count: desktopGovernanceSummary.stale,
+                        })}
+                      </span>
+                    </div>
+                    <p className={`mt-2 ${dashboardCardBodyClass}`}>
+                      {t("dashboard:admin.desktopGovernanceConnectedDescription")}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                      {t("dashboard:admin.desktopGovernanceRestricted")}
+                    </p>
+                    <div className="mt-2 flex items-end gap-2">
+                      <span className="text-2xl font-semibold text-slate-900">
+                        {desktopGovernanceStatus.isLoading
+                          ? "…"
+                          : desktopGovernanceSummary.restricted}
+                      </span>
+                    </div>
+                    <p className={`mt-2 ${dashboardCardBodyClass}`}>
+                      {t("dashboard:admin.desktopGovernanceRestrictedDescription")}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                      {t("dashboard:admin.desktopGovernanceRoots")}
+                    </p>
+                    <div className="mt-2 flex items-end gap-2">
+                      <span className="text-2xl font-semibold text-slate-900">
+                        {desktopGovernanceStatus.isLoading
+                          ? "…"
+                          : desktopGovernanceSummary.withRoots}
+                      </span>
+                    </div>
+                    <p className={`mt-2 ${dashboardCardBodyClass}`}>
+                      {t("dashboard:admin.desktopGovernanceRootsDescription")}
+                    </p>
+                  </div>
+                </div>
+
+                {desktopGovernanceStatus.error ? (
+                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-800">
+                    {t("dashboard:admin.desktopGovernanceUnavailable")}
+                  </div>
+                ) : null}
+              </div>
+            </motion.section>
+          )}
+
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mb-8"
+          >
+            <DesktopReleasePanel variant="dashboard" enabled={isAuthenticated} />
+          </motion.section>
+
           {/* Trend & Health */}
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.12 }}
+            transition={{ delay: 0.14 }}
             className="mb-8 rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl"
           >
             <DashboardSectionHeader

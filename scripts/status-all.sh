@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SmartSpecPro Full Stack Status Script
+# SmartAIHub Full Stack Status Script
 # ตรวจสอบสถานะการทำงานของทุกโมดูล (Docker, Ports, Desktop App)
 
 RED='\033[0;31m'
@@ -17,7 +17,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 echo -e "${CYAN}"
 echo "╔═══════════════════════════════════════════════════════════════╗"
-echo "║                SmartSpecPro System Status                     ║"
+echo "║                SmartAIHub System Status                     ║"
 echo "║           Checking All Services & Applications                ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"

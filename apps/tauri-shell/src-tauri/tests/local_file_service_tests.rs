@@ -67,6 +67,52 @@ fn create_pptx_fixture(path: &PathBuf, text: &str) {
     assert!(status.success());
 }
 
+fn create_openxml_macro_fixture(path: &PathBuf, kind: &str, text: &str) {
+    let (xml_entry, xml_payload, extra_entries, macro_entry, media_entry) = match kind {
+        "docm" => (
+            "word/document.xml",
+            format!(
+                "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body><w:p><w:r><w:t>{text}</w:t></w:r></w:p></w:body></w:document>"
+            ),
+            "[]".to_string(),
+            "word/vbaProject.bin",
+            "word/media/image1.png",
+        ),
+        "pptm" => (
+            "ppt/slides/slide1.xml",
+            format!(
+                "<p:sld xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"><p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>{text}</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>"
+            ),
+            "[]".to_string(),
+            "ppt/vbaProject.bin",
+            "ppt/media/image1.png",
+        ),
+        "xlsm" => (
+            "xl/worksheets/sheet1.xml",
+            "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetData><row r=\"1\"><c><v>42</v></c></row></sheetData></worksheet>".to_string(),
+            "[(\"xl/sharedStrings.xml\", '<sst xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><si><t>Budget Macro Summary</t></si></sst>')]".to_string(),
+            "xl/vbaProject.bin",
+            "xl/media/image1.png",
+        ),
+        _ => panic!("unsupported macro fixture kind"),
+    };
+    let script = format!(
+        "import zipfile\npath = r'''{path}'''\nxml_entry = r'''{xml_entry}'''\nxml_payload = r'''{xml_payload}'''\nextra_entries = {extra_entries}\nwith zipfile.ZipFile(path, 'w') as archive:\n    archive.writestr('[Content_Types].xml', '<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"></Types>')\n    archive.writestr(xml_entry, xml_payload)\n    for entry_name, entry_payload in extra_entries:\n        archive.writestr(entry_name, entry_payload)\n    archive.writestr('{macro_entry}', b'macro-bytes')\n    archive.writestr('{media_entry}', b'img')",
+        path = path.to_string_lossy(),
+        xml_entry = xml_entry,
+        xml_payload = xml_payload.replace('\'', "\\'"),
+        extra_entries = extra_entries,
+        macro_entry = macro_entry,
+        media_entry = media_entry,
+    );
+    let status = Command::new("python3")
+        .arg("-c")
+        .arg(script)
+        .status()
+        .unwrap();
+    assert!(status.success());
+}
+
 fn write_png_fixture(path: &PathBuf) {
     let png_bytes: [u8; 69] = [
         0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, b'I', b'H',
@@ -281,7 +327,10 @@ fn reports_bounded_local_file_parser_capabilities() {
     assert_eq!(capability.isolation_mode, "python_subprocess_bounded");
     assert!(capability.supported_formats.contains(&"pdf".to_string()));
     assert!(capability.supported_formats.contains(&"docx".to_string()));
+    assert!(capability.supported_formats.contains(&"docm".to_string()));
     assert!(capability.supported_formats.contains(&"doc".to_string()));
+    assert!(capability.supported_formats.contains(&"pptm".to_string()));
+    assert!(capability.supported_formats.contains(&"xlsm".to_string()));
     assert!(capability.supported_formats.contains(&"bmp".to_string()));
     assert!(!capability.ocr_enabled);
     assert_eq!(capability.pdf_extractor, "internal_heuristic");
@@ -290,8 +339,48 @@ fn reports_bounded_local_file_parser_capabilities() {
     assert_eq!(capability.office_renderer, "none");
     assert!(capability.rendered_preview_formats.is_empty());
     assert_eq!(capability.complex_document_support, "text_extraction_only");
+    assert!(capability.macro_inspection_supported);
+    assert!(capability.embedded_media_inspection_supported);
+    assert_eq!(capability.layout_analysis_mode, "none");
+    assert!(!capability.multi_page_rendering_supported);
+    assert_eq!(capability.max_rendered_pages, 0);
+    assert_eq!(capability.ocr_layout_mode, "plain_text");
     assert!(!capability.full_rendering_supported);
     assert!(!capability.active_content_execution_allowed);
+}
+
+#[test]
+fn extracts_macro_and_embedded_media_summaries_from_macro_enabled_openxml_documents() {
+    let _guard = ENV_LOCK.lock().unwrap();
+    let root_dir = temp_dir("macro-openxml");
+    fs::create_dir_all(&root_dir).unwrap();
+    let docm_path = root_dir.join("brief.docm");
+    let pptm_path = root_dir.join("deck.pptm");
+    let xlsm_path = root_dir.join("budget.xlsm");
+    create_openxml_macro_fixture(&docm_path, "docm", "Executive Brief");
+    create_openxml_macro_fixture(&pptm_path, "pptm", "Launch Milestones");
+    create_openxml_macro_fixture(&xlsm_path, "xlsm", "Budget Macro Summary");
+    let root = build_managed_root(
+        "quotes",
+        "Quotes",
+        &root_dir.to_string_lossy(),
+        Some(WritebackMode::ManagedOutputOnly),
+        false,
+    )
+    .unwrap();
+
+    let docm_preview = get_preview_internal(vec![root.clone()], &docm_path.to_string_lossy()).unwrap();
+    let pptm_preview = get_preview_internal(vec![root.clone()], &pptm_path.to_string_lossy()).unwrap();
+    let xlsm_preview = get_preview_internal(vec![root], &xlsm_path.to_string_lossy()).unwrap();
+
+    assert!(docm_preview.preview_text.contains("Macro inspection: macros detected"));
+    assert!(docm_preview.preview_text.contains("Embedded media files: 1"));
+    assert!(docm_preview.preview_text.contains("Executive Brief"));
+    assert!(pptm_preview.preview_text.contains("Macro inspection: macros detected"));
+    assert!(pptm_preview.preview_text.contains("Launch Milestones"));
+    assert!(xlsm_preview.preview_text.contains("Macro inspection: macros detected"));
+    assert!(xlsm_preview.preview_text.contains("Embedded media files: 1"));
+    assert!(xlsm_preview.preview_text.contains("Worksheet count: 1"));
 }
 
 #[cfg(target_os = "linux")]
@@ -315,6 +404,7 @@ fn enables_ocr_capability_when_tesseract_is_available() {
 
     assert!(capability.ocr_enabled);
     assert_eq!(capability.ocr_provider, "tesseract");
+    assert_eq!(capability.ocr_layout_mode, "plain_text");
 }
 
 #[cfg(target_os = "linux")]
@@ -325,11 +415,15 @@ fn reports_rendering_capabilities_when_pdf_and_office_renderers_are_available() 
     fs::create_dir_all(&fake_bin_dir).unwrap();
     write_fake_binary(
         &fake_bin_dir.join("pdftoppm"),
-        "#!/usr/bin/env bash\nprefix=\"${@: -1}\"\ntouch \"${prefix}.png\"\n",
+        "#!/usr/bin/env bash\nprefix=\"${@: -1}\"\ntouch \"${prefix}-1.png\"\ntouch \"${prefix}-2.png\"\n",
+    );
+    write_fake_binary(
+        &fake_bin_dir.join("pdfinfo"),
+        "#!/usr/bin/env bash\necho 'Pages:          2'\n",
     );
     write_fake_binary(
         &fake_bin_dir.join("tesseract"),
-        "#!/usr/bin/env bash\necho 'Rendered OCR text'\n",
+        "#!/usr/bin/env bash\necho \"Rendered OCR text $(basename \\\"$1\\\")\"\n",
     );
     write_fake_binary(
         &fake_bin_dir.join("soffice"),
@@ -347,6 +441,9 @@ fn reports_rendering_capabilities_when_pdf_and_office_renderers_are_available() 
     assert_eq!(capability.render_backend, "pdftoppm+soffice");
     assert_eq!(capability.office_renderer, "soffice");
     assert_eq!(capability.complex_document_support, "ocr_rendering");
+    assert!(capability.multi_page_rendering_supported);
+    assert_eq!(capability.max_rendered_pages, 3);
+    assert_eq!(capability.ocr_layout_mode, "page_segmented");
     assert!(capability.rendered_preview_formats.contains(&"pdf".to_string()));
     assert!(capability.rendered_preview_formats.contains(&"doc".to_string()));
     assert!(capability.full_rendering_supported);
@@ -367,11 +464,15 @@ fn uses_render_pipeline_for_scanned_pdf_and_legacy_office_documents() {
     );
     write_fake_binary(
         &fake_bin_dir.join("pdftoppm"),
-        "#!/usr/bin/env bash\nprefix=\"${@: -1}\"\ntouch \"${prefix}.png\"\n",
+        "#!/usr/bin/env bash\nprefix=\"${@: -1}\"\ntouch \"${prefix}-1.png\"\ntouch \"${prefix}-2.png\"\n",
+    );
+    write_fake_binary(
+        &fake_bin_dir.join("pdfinfo"),
+        "#!/usr/bin/env bash\necho 'Pages:          2'\n",
     );
     write_fake_binary(
         &fake_bin_dir.join("tesseract"),
-        "#!/usr/bin/env bash\necho 'Rendered OCR text'\n",
+        "#!/usr/bin/env bash\necho \"Rendered OCR text $(basename \\\"$1\\\")\"\n",
     );
     write_fake_binary(
         &fake_bin_dir.join("soffice"),
@@ -400,8 +501,10 @@ fn uses_render_pipeline_for_scanned_pdf_and_legacy_office_documents() {
     let doc_preview = get_preview_internal(vec![root], &doc_path.to_string_lossy()).unwrap();
     std::env::set_var("PATH", original_path);
 
-    assert!(pdf_preview.preview_text.contains("Rendered OCR text"));
-    assert!(doc_preview.preview_text.contains("Rendered OCR text"));
+    assert!(pdf_preview.preview_text.contains("[Page 1]"));
+    assert!(pdf_preview.preview_text.contains("rendered-page-1.png"));
+    assert!(pdf_preview.preview_text.contains("[Page 2]"));
+    assert!(doc_preview.preview_text.contains("[Page 1]"));
 }
 
 #[cfg(target_os = "linux")]

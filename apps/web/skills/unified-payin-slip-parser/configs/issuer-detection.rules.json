@@ -1,0 +1,184 @@
+{
+  "version": "3.0.0",
+  "strategy": "weighted_evidence_with_generic_fallback",
+  "issuers": [
+    {
+      "issuer_code": "KTB",
+      "issuer_type": "bank",
+      "issuer_name_th": "กรุงไทย",
+      "issuer_name_en": "Krungthai",
+      "text_keywords": [
+        "krungthai",
+        "กรุงไทย"
+      ],
+      "filename_keywords": [
+        "ktb",
+        "krungthai"
+      ],
+      "reference_patterns": [
+        "^C\\d{10,}$",
+        "^A[a-zA-Z0-9]{8,}$"
+      ],
+      "visual_colors_rgb": [
+        [
+          40,
+          170,
+          230
+        ],
+        [
+          55,
+          110,
+          200
+        ]
+      ]
+    },
+    {
+      "issuer_code": "BAY",
+      "issuer_type": "bank",
+      "issuer_name_th": "กรุงศรี",
+      "issuer_name_en": "Krungsri",
+      "text_keywords": [
+        "krungsri",
+        "กรุงศรี"
+      ],
+      "filename_keywords": [
+        "krungsri",
+        "bay",
+        "receipt_"
+      ],
+      "reference_patterns": [
+        "^BAYM\\d+$"
+      ],
+      "visual_colors_rgb": [
+        [
+          220,
+          175,
+          20
+        ],
+        [
+          240,
+          210,
+          90
+        ]
+      ]
+    },
+    {
+      "issuer_code": "SCB",
+      "issuer_type": "bank",
+      "issuer_name_th": "ไทยพาณิชย์",
+      "issuer_name_en": "SCB",
+      "text_keywords": [
+        "scb",
+        "ไทยพาณิชย์",
+        "มณี",
+        "manee"
+      ],
+      "filename_keywords": [
+        "scb",
+        "txn_"
+      ],
+      "reference_patterns": [],
+      "visual_colors_rgb": [
+        [
+          95,
+          45,
+          150
+        ],
+        [
+          130,
+          80,
+          180
+        ]
+      ]
+    },
+    {
+      "issuer_code": "TTB",
+      "issuer_type": "bank",
+      "issuer_name_th": "ทีทีบี",
+      "issuer_name_en": "ttb",
+      "text_keywords": [
+        "ttb",
+        "ทีทีบี",
+        "thanachart",
+        "ทหารไทย"
+      ],
+      "filename_keywords": [
+        "ttb",
+        "transfer_"
+      ],
+      "reference_patterns": [],
+      "visual_colors_rgb": [
+        [
+          35,
+          90,
+          170
+        ],
+        [
+          245,
+          130,
+          40
+        ]
+      ]
+    },
+    {
+      "issuer_code": "TRUEMONEY",
+      "issuer_type": "wallet",
+      "issuer_name_th": "ทรูมันนี่ วอลเล็ท",
+      "issuer_name_en": "TrueMoney Wallet",
+      "text_keywords": [
+        "truemoney",
+        "true money",
+        "ทรูมันนี่",
+        "wallet"
+      ],
+      "filename_keywords": [
+        "tmn",
+        "truemoney",
+        "true money"
+      ],
+      "reference_patterns": [
+        "^TMN[_A-Z0-9-]+$"
+      ],
+      "visual_colors_rgb": [
+        [
+          250,
+          90,
+          20
+        ],
+        [
+          240,
+          130,
+          40
+        ]
+      ]
+    },
+    {
+      "issuer_code": "PAOTANG",
+      "issuer_type": "gov_app",
+      "issuer_name_th": "เป๋าตัง",
+      "issuer_name_en": "Paotang",
+      "text_keywords": [
+        "เป๋าตัง",
+        "paotang",
+        "g-wallet",
+        "g wallet"
+      ],
+      "filename_keywords": [
+        "paotang"
+      ],
+      "reference_patterns": [],
+      "visual_colors_rgb": [
+        [
+          50,
+          180,
+          220
+        ],
+        [
+          0,
+          140,
+          200
+        ]
+      ]
+    }
+  ]
+}

@@ -49,6 +49,16 @@ export const SCOPE_PRIORITY: Record<string, number> = {
   user: 1,
 };
 
+function isMissingScopedMemoriesTable(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const err = error as { code?: string; message?: string };
+  if (err.code === "42P01") return true; // relation does not exist
+  if (typeof err.message === "string" && err.message.includes("scoped_memories")) {
+    return true;
+  }
+  return false;
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /** Default visibility based on owner type */
@@ -95,13 +105,20 @@ export async function getMemory(memoryId: string, tenantId: string): Promise<Sco
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const [result] = await db
-    .select()
-    .from(scopedMemories)
-    .where(and(eq(scopedMemories.id, memoryId), eq(scopedMemories.tenantId, tenantId)))
-    .limit(1);
+  try {
+    const [result] = await db
+      .select()
+      .from(scopedMemories)
+      .where(and(eq(scopedMemories.id, memoryId), eq(scopedMemories.tenantId, tenantId)))
+      .limit(1);
 
-  return result ?? null;
+    return result ?? null;
+  } catch (error) {
+    if (isMissingScopedMemoriesTable(error)) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function updateMemory(
@@ -112,25 +129,39 @@ export async function updateMemory(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const [result] = await db
-    .update(scopedMemories)
-    .set({ ...updates, updatedAt: new Date() })
-    .where(and(eq(scopedMemories.id, memoryId), eq(scopedMemories.tenantId, tenantId)))
-    .returning();
+  try {
+    const [result] = await db
+      .update(scopedMemories)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(scopedMemories.id, memoryId), eq(scopedMemories.tenantId, tenantId)))
+      .returning();
 
-  return result ?? null;
+    return result ?? null;
+  } catch (error) {
+    if (isMissingScopedMemoriesTable(error)) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function deleteMemory(memoryId: string, tenantId: string): Promise<boolean> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db
-    .delete(scopedMemories)
-    .where(and(eq(scopedMemories.id, memoryId), eq(scopedMemories.tenantId, tenantId)))
-    .returning({ id: scopedMemories.id });
+  try {
+    const result = await db
+      .delete(scopedMemories)
+      .where(and(eq(scopedMemories.id, memoryId), eq(scopedMemories.tenantId, tenantId)))
+      .returning({ id: scopedMemories.id });
 
-  return result.length > 0;
+    return result.length > 0;
+  } catch (error) {
+    if (isMissingScopedMemoriesTable(error)) {
+      return false;
+    }
+    throw error;
+  }
 }
 
 /**
@@ -142,17 +173,24 @@ export async function deleteMemories(memoryIds: string[], tenantId: string): Pro
   if (!db) throw new Error("Database not available");
   if (memoryIds.length === 0) return 0;
 
-  const result = await db
-    .delete(scopedMemories)
-    .where(
-      and(
-        eq(scopedMemories.tenantId, tenantId),
-        inArray(scopedMemories.id, memoryIds),
-      ),
-    )
-    .returning({ id: scopedMemories.id });
+  try {
+    const result = await db
+      .delete(scopedMemories)
+      .where(
+        and(
+          eq(scopedMemories.tenantId, tenantId),
+          inArray(scopedMemories.id, memoryIds),
+        ),
+      )
+      .returning({ id: scopedMemories.id });
 
-  return result.length;
+    return result.length;
+  } catch (error) {
+    if (isMissingScopedMemoriesTable(error)) {
+      return 0;
+    }
+    throw error;
+  }
 }
 
 /**
@@ -168,18 +206,25 @@ export async function listMemories(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return await db
-    .select()
-    .from(scopedMemories)
-    .where(
-      and(
-        eq(scopedMemories.tenantId, tenantId),
-        eq(scopedMemories.ownerType, ownerType),
-        eq(scopedMemories.ownerId, ownerId),
-      ),
-    )
-    .orderBy(desc(scopedMemories.updatedAt), desc(scopedMemories.createdAt))
-    .limit(limit);
+  try {
+    return await db
+      .select()
+      .from(scopedMemories)
+      .where(
+        and(
+          eq(scopedMemories.tenantId, tenantId),
+          eq(scopedMemories.ownerType, ownerType),
+          eq(scopedMemories.ownerId, ownerId),
+        ),
+      )
+      .orderBy(desc(scopedMemories.updatedAt), desc(scopedMemories.createdAt))
+      .limit(limit);
+  } catch (error) {
+    if (isMissingScopedMemoriesTable(error)) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 // ─── Promotion ──────────────────────────────────────────────────────────────
@@ -275,17 +320,25 @@ export async function searchMemories(
     ? sql<number>`(${keywordWeight} * (${keywordScore}) + ${vectorWeight} * (${vectorScore}))`
     : keywordScore;
 
-  const rows = await db
-    .select({
-      memory: scopedMemories,
-      keywordScore,
-      vectorScore,
-      combinedScore,
-    })
-    .from(scopedMemories)
-    .where(scopeFilter)
-    .orderBy(desc(combinedScore))
-    .limit(topK * 2); // Over-fetch for dedup
+  let rows: Array<{ memory: ScopedMemory; keywordScore: number; vectorScore: number; combinedScore: number }> = [];
+  try {
+    rows = await db
+      .select({
+        memory: scopedMemories,
+        keywordScore,
+        vectorScore,
+        combinedScore,
+      })
+      .from(scopedMemories)
+      .where(scopeFilter)
+      .orderBy(desc(combinedScore))
+      .limit(topK * 2); // Over-fetch for dedup
+  } catch (error) {
+    if (isMissingScopedMemoriesTable(error)) {
+      return [];
+    }
+    throw error;
+  }
 
   // Deduplicate by content hash — prefer higher-priority scope
   const seen = new Map<string, MemorySearchResult>();
@@ -339,12 +392,19 @@ export async function getRuleMemories(
     eq(scopedMemories.memoryKind, "rule"),
   ];
 
-  return await db
-    .select()
-    .from(scopedMemories)
-    .where(and(...conditions))
-    .orderBy(desc(scopedMemories.importance), desc(scopedMemories.reinforcementCount), desc(scopedMemories.lastAccessedAt))
-    .limit(20);
+  try {
+    return await db
+      .select()
+      .from(scopedMemories)
+      .where(and(...conditions))
+      .orderBy(desc(scopedMemories.importance), desc(scopedMemories.reinforcementCount), desc(scopedMemories.lastAccessedAt))
+      .limit(20);
+  } catch (error) {
+    if (isMissingScopedMemoriesTable(error)) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 // ─── Prompt Retrieval Convenience ───────────────────────────────────────────

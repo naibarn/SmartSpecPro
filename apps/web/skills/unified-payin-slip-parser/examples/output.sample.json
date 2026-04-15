@@ -1,0 +1,58 @@
+{
+  "detected_issuer": {
+    "issuer_code": "KTB",
+    "issuer_type": "bank",
+    "issuer_name_th": "กรุงไทย",
+    "issuer_name_en": "Krungthai",
+    "source_used": "ocr_only",
+    "confidence": 0.99,
+    "evidence": [
+      {
+        "kind": "text_keyword",
+        "signal": "issuer keyword",
+        "weight": 0.9,
+        "matched_value": "กรุงไทย"
+      }
+    ]
+  },
+  "transaction": {
+    "status": "success",
+    "transaction_type": "bill_payment",
+    "channel": "mobile_banking",
+    "reference_id": "C20250505512519614446",
+    "merchant_code": "KB000001989025",
+    "merchant_reference": "APIC17464481847183VM",
+    "merchant_tax_id": "010753600031505",
+    "amount": 421.0,
+    "currency": "THB",
+    "fee": 0.0,
+    "fee_currency": "THB",
+    "raw_date_text": "05 พ.ค. 2568 - 19:29",
+    "transaction_datetime_local": "05 พ.ค. 2568 - 19:29",
+    "transaction_datetime_iso": "2025-05-05T19:29:00+07:00"
+  },
+  "payer": {
+    "name": "นายนพพร จ **",
+    "issuer_name": "กรุงไทย",
+    "account_number": "XXX-X-XX577-0"
+  },
+  "payee": {
+    "name": "บริษัท ช้อปปี้เพย์ (ประเทศไทย) จำกัด",
+    "merchant_name": "บริษัท ช้อปปี้เพย์ (ประเทศไทย) จำกัด"
+  },
+  "compatibility": {
+    "bank_code": "KTB",
+    "bank_name_th": "กรุงไทย",
+    "bank_name_en": "Krungthai"
+  },
+  "validation": {
+    "is_valid": true,
+    "warnings": [],
+    "missing_fields": []
+  },
+  "raw": {
+    "raw_ocr_text": "",
+    "short_caption": "Krungthai กรุงไทย จ่ายบิลสำเร็จ ...",
+    "image_path": ""
+  }
+}

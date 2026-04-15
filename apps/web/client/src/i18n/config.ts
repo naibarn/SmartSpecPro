@@ -29,6 +29,7 @@ export const ALL_NAMESPACES = [
   "media",
   "marketplace",
   "workflow",
+  "workos",
   "profile",
   "settings",
   "billing",

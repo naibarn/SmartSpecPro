@@ -1,0 +1,27 @@
+import { Link } from "wouter";
+
+interface RoleWorkpackLinksProps {
+  workpackId: string;
+}
+
+export function RoleWorkpackLinks({ workpackId }: RoleWorkpackLinksProps) {
+  return (
+    <div className="flex flex-wrap gap-3 text-sm">
+      <Link href={`/workpacks/${workpackId}`} className="text-sky-600 hover:text-sky-700">
+        Workpack detail
+      </Link>
+      <Link href={`/workpacks/${workpackId}/replay`} className="text-sky-600 hover:text-sky-700">
+        Replay
+      </Link>
+      <Link href={`/workpacks/${workpackId}/connectors`} className="text-sky-600 hover:text-sky-700">
+        Connectors
+      </Link>
+      <Link href={`/workpacks/exceptions`} className="text-sky-600 hover:text-sky-700">
+        Exceptions
+      </Link>
+      <Link href={`/workpacks/roi`} className="text-sky-600 hover:text-sky-700">
+        ROI
+      </Link>
+    </div>
+  );
+}

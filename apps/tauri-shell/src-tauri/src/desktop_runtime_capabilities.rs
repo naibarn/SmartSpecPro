@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::Path;
 
+use crate::device_attestation::{
+    describe_device_attestation_support, DeviceAttestationSupportReport,
+};
 use crate::device_identity::read_device_identity;
 use crate::local_file_service::{
     describe_local_file_parser_capabilities, LocalFileParserCapabilityReport,
@@ -20,6 +23,9 @@ pub struct DeviceIdentityCapabilityReport {
     pub storage_provider: String,
     pub os_attested: bool,
     pub hardware_backed: bool,
+    pub attestation_provider: String,
+    pub attestation_evidence_sha256: Option<String>,
+    pub attestation_claims: Vec<String>,
     pub proof_kind: String,
 }
 
@@ -27,6 +33,7 @@ pub struct DeviceIdentityCapabilityReport {
 #[serde(rename_all = "camelCase")]
 pub struct DesktopRuntimeCapabilitiesReport {
     pub device_identity: DeviceIdentityCapabilityReport,
+    pub device_attestation_support: DeviceAttestationSupportReport,
     pub local_file_service: LocalFileParserCapabilityReport,
     pub worker_toolchain: DesktopWorkerToolchainReport,
 }
@@ -90,6 +97,8 @@ pub fn build_desktop_worker_doctor_summary(
                 "attestationMode": identity.attestation_mode,
                 "secretStorage": identity.secret_storage,
                 "storageProtection": identity.storage_protection,
+                "attestationProvider": identity.attestation_provider,
+                "attestationClaims": identity.attestation_claims,
             }),
         }),
         Err(error) => {
@@ -101,6 +110,36 @@ pub fn build_desktop_worker_doctor_summary(
             });
             recommended_actions.push("initialize_or_rotate_device_identity".into());
         }
+    }
+
+    let attestation_support = describe_device_attestation_support();
+    checks.push(DesktopWorkerDoctorCheck {
+        id: "device_attestation_support".into(),
+        status: if attestation_support.helper_configured && !attestation_support.helper_reachable {
+            "warn".into()
+        } else {
+            "ok".into()
+        },
+        message: if attestation_support.helper_configured && !attestation_support.helper_reachable {
+            "configured attestation broker is not reachable".into()
+        } else {
+            format!(
+                "attestation evidence source is {} ({})",
+                attestation_support.evidence_source, attestation_support.provider_hint
+            )
+        },
+        details_json: json!({
+            "evidenceSource": attestation_support.evidence_source,
+            "helperConfigured": attestation_support.helper_configured,
+            "helperReachable": attestation_support.helper_reachable,
+            "defaultMode": attestation_support.default_mode,
+            "providerHint": attestation_support.provider_hint,
+            "supportedModes": attestation_support.supported_modes,
+            "notes": attestation_support.notes,
+        }),
+    });
+    if attestation_support.helper_configured && !attestation_support.helper_reachable {
+        recommended_actions.push("repair_or_reconfigure_device_attestation_broker".into());
     }
 
     let parser = describe_local_file_parser_capabilities();
@@ -118,6 +157,11 @@ pub fn build_desktop_worker_doctor_summary(
             "ocrProvider": parser.ocr_provider,
             "pdfExtractor": parser.pdf_extractor,
             "renderBackend": parser.render_backend,
+            "macroInspectionSupported": parser.macro_inspection_supported,
+            "embeddedMediaInspectionSupported": parser.embedded_media_inspection_supported,
+            "layoutAnalysisMode": parser.layout_analysis_mode,
+            "multiPageRenderingSupported": parser.multi_page_rendering_supported,
+            "maxRenderedPages": parser.max_rendered_pages,
             "fullRenderingSupported": parser.full_rendering_supported,
         }),
     });
@@ -204,8 +248,12 @@ pub fn build_desktop_runtime_capabilities(
             storage_provider: identity.storage_provider,
             os_attested: identity.os_attested,
             hardware_backed: identity.hardware_backed,
+            attestation_provider: identity.attestation_provider,
+            attestation_evidence_sha256: identity.attestation_evidence_sha256,
+            attestation_claims: identity.attestation_claims,
             proof_kind: "ed25519_signature".into(),
         },
+        device_attestation_support: describe_device_attestation_support(),
         local_file_service: describe_local_file_parser_capabilities(),
         worker_toolchain: build_desktop_worker_toolchain_report(),
     })

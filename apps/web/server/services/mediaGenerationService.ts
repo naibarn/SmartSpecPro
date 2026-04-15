@@ -327,6 +327,15 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     description: "Sound effects generation",
     creditCost: 3,
   },
+  "omnivoice-tts": {
+    id: "omnivoice-tts",
+    type: "audio",
+    name: "OmniVoice TTS",
+    provider: "omnivoice",
+    description: "Multilingual text-to-speech with optional voice design and cloning support",
+    supportsVoices: ["managed", "custom"],
+    creditCost: 5,
+  },
   "gpt-4o-mini-tts": {
     id: "gpt-4o-mini-tts",
     type: "audio",

@@ -7,7 +7,8 @@
   - authenticated desktop-host enrollment challenge/verify API routes
   - desktop device identity init/read/rotate lifecycle
   - OS-protected secret storage when the platform exposes a supported keychain or DPAPI helper
-  - desktop capability reports that surface device identity posture, storage protection, provider, and attestation hints to the control plane
+  - desktop capability reports that surface device identity posture, storage protection, attestation provider, evidence digest, claims, and explicit attestation-support posture to the control plane
+  - helper-driven attestation evidence ingestion plus helper reachability reporting for deployments that expose an external attestation broker
   - device disable/offboarding actions that block later heartbeat refresh and close policy gates
   - tenant-wide device listing and selected-device control-plane state routes for governed admin review
   - root-action queue routes and audit events for reindex / purge / revoke operations
@@ -17,7 +18,7 @@
   - scoped secret metadata lifecycle and audit events
   - offboarding cleanup plans covering package caches and derived stores
 - Residual hardening still pending:
-  - integrate universal hardware-backed or platform-attested key providers on every supported desktop platform
+  - integrate universal native hardware-backed or platform-attested key providers on every supported desktop platform without helper mediation
 - Targeted tests passed:
   - `npm --prefix apps/web test -- shared/__tests__/desktopHostContracts.test.ts server/routes/desktopHost.test.ts server/services/__tests__/desktopDeviceRegistryService.test.ts server/services/__tests__/desktopOffboarding.test.ts server/services/__tests__/desktopUpdateService.test.ts`
   - `cargo test --manifest-path apps/tauri-shell/src-tauri/Cargo.toml --test device_identity_tests --test secret_store_tests --test desktop_runtime_capabilities_tests`

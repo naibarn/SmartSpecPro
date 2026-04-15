@@ -15,7 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   FEATURE_FLAG_DEFAULTS,
   type TenantFeatureFlagKey,
-} from "@shared/featureFlags";
+} from "@shared/featureFlags.ts";
 
 interface TenantCurrentResponse {
   tenant?: {

@@ -66,9 +66,43 @@ export const desktopReleaseBuildRunStatusSchema = z.object({
   workflowRunUpdatedAt: z.string().datetime().nullable(),
   portalSyncStatus: z.enum(desktopReleaseBuildPortalSyncValues).nullable(),
   portalSyncUpdatedAt: z.string().datetime().nullable(),
+  portalSyncError: z.string().nullable().optional(),
+  portalSyncAttempts: z.number().int().nonnegative().nullable().optional(),
 });
 
 export type DesktopReleaseBuildRunStatus = z.infer<typeof desktopReleaseBuildRunStatusSchema>;
+
+export const desktopReleaseBuildHistoryItemSchema = z.object({
+  workflowRunId: z.string().min(1),
+  repository: z.string().min(1),
+  workflow: z.string().min(1),
+  workflowUrl: z.string().url(),
+  ref: z.string().min(1),
+  version: z.string().min(1),
+  platform: desktopReleaseBuildPlatformSchema,
+  bundleMode: desktopReleaseBuildBundleModeSchema,
+  releaseNotes: z.string().nullable(),
+  queuedAt: z.string().datetime(),
+  workflowRunUrl: z.string().url().nullable(),
+  workflowRunStatus: z.enum(desktopReleaseBuildRunStatusValues).nullable(),
+  workflowRunConclusion: z.enum(desktopReleaseBuildConclusionValues).nullable(),
+  workflowRunUpdatedAt: z.string().datetime().nullable(),
+  portalSyncStatus: z.enum(desktopReleaseBuildPortalSyncValues).nullable(),
+  portalSyncUpdatedAt: z.string().datetime().nullable(),
+  portalSyncError: z.string().nullable().optional(),
+  portalSyncAttempts: z.number().int().nonnegative().nullable().optional(),
+  uploadedPlatforms: z.array(desktopReleaseBuildPlatformSchema),
+  recordUpdatedAt: z.string().datetime(),
+});
+
+export type DesktopReleaseBuildHistoryItem = z.infer<typeof desktopReleaseBuildHistoryItemSchema>;
+
+export const desktopReleaseBuildHistoryResponseSchema = z.object({
+  generatedAt: z.string().datetime(),
+  builds: z.array(desktopReleaseBuildHistoryItemSchema),
+});
+
+export type DesktopReleaseBuildHistoryResponse = z.infer<typeof desktopReleaseBuildHistoryResponseSchema>;
 
 export function normalizeDesktopReleaseVersion(version: string | null | undefined): string {
   const trimmed = String(version ?? "").trim();

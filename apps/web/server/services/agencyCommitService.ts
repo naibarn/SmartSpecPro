@@ -7,6 +7,7 @@ import {
   createLibraryItem,
   getLibraryItemById,
   getUserEffectivePermission,
+  resolveLibraryVectorIndexName,
   type LibraryActor,
 } from "./libraryService";
 
@@ -371,6 +372,7 @@ export async function commitLibraryBackedPreview(params: {
           contentType: "markdown_source",
           tokenCount: null,
           vectorRefId: null,
+          vectorIndexName: resolveLibraryVectorIndexName(),
           metadata: {
             source: "agency_commit_preview",
             rag_excluded: true,
@@ -384,6 +386,7 @@ export async function commitLibraryBackedPreview(params: {
             contentType: "markdown_source",
             tokenCount: null,
             vectorRefId: null,
+            vectorIndexName: resolveLibraryVectorIndexName(),
             metadata: {
               source: "agency_commit_preview",
               rag_excluded: true,

@@ -61,7 +61,7 @@ export function buildDesktopLaunchUri(input: {
   if (input.projectId) params.set("projectId", input.projectId);
   if (input.skillId) params.set("skillId", input.skillId);
   if (input.agencyId) params.set("agencyId", input.agencyId);
-  return `smartspecpro://desktop/open?${params.toString()}`;
+  return `smartaihub://desktop/open?${params.toString()}`;
 }
 
 export function resolveDesktopViewHref(input: {

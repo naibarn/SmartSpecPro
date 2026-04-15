@@ -1,4 +1,4 @@
--- SmartSpecPro PostgreSQL Initialization Script
+-- SmartAIHub PostgreSQL Initialization Script
 -- This script runs once when the database is first created
 
 -- The database 'smartspec' is already created by POSTGRES_DB env var
@@ -8,4 +8,4 @@
 -- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Note: Alembic migrations handle the actual schema
-SELECT 'PostgreSQL initialized for SmartSpecPro' AS status;
+SELECT 'PostgreSQL initialized for SmartAIHub' AS status;

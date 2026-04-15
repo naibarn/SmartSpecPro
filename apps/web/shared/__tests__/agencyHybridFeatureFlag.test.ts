@@ -23,6 +23,14 @@ describe("agencyHybridAdk feature flags", () => {
       "desktop_zeroclaw_managed",
       "nemoclaw_sandbox",
       "hiclaw_cluster",
+      "hermes_agent_gateway",
     ]);
+  });
+
+  it("keeps Hermes runtime disabled by default behind its own feature flag", async () => {
+    const { ALLOWED_FEATURE_FLAGS, FEATURE_FLAG_DEFAULTS } = await import("../featureFlags");
+
+    expect(ALLOWED_FEATURE_FLAGS.has("hermesAgentRuntime")).toBe(true);
+    expect(FEATURE_FLAG_DEFAULTS.hermesAgentRuntime).toBe(false);
   });
 });

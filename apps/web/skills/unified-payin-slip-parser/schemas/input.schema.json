@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Unified Slip Parser Input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source"
+  ],
+  "properties": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "raw_ocr_text": {
+          "type": "string"
+        },
+        "short_caption": {
+          "type": "string"
+        },
+        "image_path": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "mime_type": {
+          "type": "string"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "raw_ocr_text"
+          ]
+        },
+        {
+          "required": [
+            "short_caption"
+          ]
+        },
+        {
+          "required": [
+            "image_path"
+          ]
+        }
+      ]
+    },
+    "parse_options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "ocr_only",
+            "image_only",
+            "multimodal"
+          ],
+          "default": "auto"
+        },
+        "auto_detect_issuer": {
+          "type": "boolean",
+          "default": true
+        },
+        "auto_detect_transaction_type": {
+          "type": "boolean",
+          "default": true
+        },
+        "normalize_buddhist_year": {
+          "type": "boolean",
+          "default": true
+        },
+        "normalize_currency": {
+          "type": "boolean",
+          "default": true
+        },
+        "mask_sensitive_values": {
+          "type": "boolean",
+          "default": false
+        },
+        "return_detection_evidence": {
+          "type": "boolean",
+          "default": true
+        },
+        "strict_validation": {
+          "type": "boolean",
+          "default": false
+        },
+        "min_confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.65
+        }
+      }
+    }
+  }
+}

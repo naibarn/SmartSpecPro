@@ -74,6 +74,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { ConversationScopeBadge } from "./ConversationScopeBadge";
 
 const entityTypeConfig = {
   // General
@@ -382,6 +383,7 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
   // Fetch memories — scoped by project when conversation has a projectId
   // Don't fetch memories until a conversation exists (new chat = no memories shown)
   const currentProjectId = (conversation as any)?.projectId || "";
+  const isPersonalProject = currentProjectId === "personal";
   const hasProject = !!currentProjectId;
   const { data: rawMemories, isLoading } = trpc.memory.getEntityMemories.useQuery({
     entityType: selectedType === "all" ? undefined : (selectedType as any),
@@ -655,7 +657,7 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
   };
 
   const handleSaveProjectId = () => {
-    if (!conversationId) return;
+    if (!conversationId || isPersonalProject) return;
     updateConversationMutation.mutate({
       id: conversationId,
       projectId: projectIdInput.trim() || null,
@@ -876,7 +878,19 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
                 <Package className="h-3.5 w-3.5" />
                 Project
               </div>
-              {editingProjectId ? (
+              {isPersonalProject ? (
+                <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50/80 p-2.5">
+                  <div className="flex items-center gap-2">
+                    <ConversationScopeBadge projectId={currentProjectId} />
+                    <span className="text-xs text-amber-800">
+                      Personal scope is locked to this user
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-700">
+                    Project retargeting is disabled for personal chats so receipts, bills, and private notes never drift into a work project.
+                  </p>
+                </div>
+              ) : editingProjectId ? (
                 <div className="flex gap-1.5">
                   <Input
                     value={projectIdInput}
@@ -899,7 +913,11 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
               ) : (
                 <div className="flex items-center justify-between">
                   <span className="text-xs">
-                    {currentProjectId || <span className="italic text-muted-foreground">{t("memory.projectNotSet")}</span>}
+                    {currentProjectId ? (
+                      <ConversationScopeBadge projectId={currentProjectId} />
+                    ) : (
+                      <span className="italic text-muted-foreground">{t("memory.projectNotSet")}</span>
+                    )}
                   </span>
                   <Button
                     variant="ghost"
@@ -909,12 +927,13 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
                       setProjectIdInput(currentProjectId);
                       setEditingProjectId(true);
                     }}
+                    disabled={isPersonalProject}
                   >
                     Edit
                   </Button>
                 </div>
               )}
-              {currentProjectId && onNewChatFromProject && (
+              {currentProjectId && !isPersonalProject && onNewChatFromProject && (
                 <Button
                   variant="outline"
                   size="sm"

@@ -1,0 +1,11 @@
+{
+  "source": {
+    "filename": "TMN_26022024_191423794.jpg",
+    "short_caption": "TrueMoney Wallet ชำระเงินสำเร็จ จำนวนเงิน 89.00 บาท ค่าธรรมเนียม 0.00 บาท วันที่ทำรายการ 26 ก.พ. 2567 - 19:14"
+  },
+  "parse_options": {
+    "mode": "auto",
+    "auto_detect_issuer": true,
+    "auto_detect_transaction_type": true
+  }
+}

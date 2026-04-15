@@ -652,7 +652,7 @@ export default function BillingCenter() {
                     consentVersion: autoRenewConsentEnabled ? "phase2-autorenew-v1" : null,
                     consentSnapshot: autoRenewConsentEnabled
                       ? {
-                        consentText: "I authorize SmartSpecPro to charge this saved payment method for future subscription renewals.",
+                        consentText: "I authorize SmartAIHub to charge this saved payment method for future subscription renewals.",
                         locale: "en",
                         enrollmentSource: "billing_center",
                         userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
@@ -698,7 +698,7 @@ export default function BillingCenter() {
                       paymentMethodId: selectedAutoRenewMethodId,
                       consentVersion: "phase2-autorenew-v1",
                       consentSnapshot: {
-                        consentText: "I authorize SmartSpecPro to charge this saved payment method for future subscription renewals.",
+                        consentText: "I authorize SmartAIHub to charge this saved payment method for future subscription renewals.",
                         locale: "en",
                         enrollmentSource: "billing_center",
                         userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,

@@ -40,6 +40,8 @@ export interface SkillLlmRequest {
   skillSlug: string;
   userId: number;
   executionPolicy: SkillExecutionPolicyResult;
+  /** Limit how many model candidates are tried for this request. Defaults to 5. */
+  maxModelAttempts?: number;
   maxTokens?: number;
   temperature?: number;
   extraBodyParams?: Record<string, unknown>;
@@ -94,11 +96,11 @@ const MAX_MODEL_ATTEMPTS = 5;
 export async function executeSkillLlmWithFallback(
   request: SkillLlmRequest,
 ): Promise<SkillLlmResult> {
-  const { messages, skillSlug, userId, executionPolicy, stream = false, enableThinking, maxTokens, temperature, extraBodyParams } = request;
+  const { messages, skillSlug, userId, executionPolicy, stream = false, enableThinking, maxTokens, temperature, extraBodyParams, maxModelAttempts } = request;
   const overallStart = Date.now();
   const attempts: FallbackAttempt[] = [];
 
-  const candidateModelIds = await buildCandidateList(executionPolicy);
+  const candidateModelIds = await buildCandidateList(executionPolicy, maxModelAttempts);
 
   if (candidateModelIds.length === 0) {
     return {
@@ -125,6 +127,7 @@ export async function executeSkillLlmWithFallback(
         skillSlug,
         attempt: i + 1,
         totalCandidates: candidateModelIds.length,
+        maxModelAttempts: maxModelAttempts ?? MAX_MODEL_ATTEMPTS,
         messageCount: messages.length,
         ...(i > 0
           ? { previousAttempts: attempts.map(summarizeAttempt) }
@@ -150,12 +153,65 @@ export async function executeSkillLlmWithFallback(
     if (result.type === "success") {
       // ─── SUCCESS ───
       const response = result.response;
-      const content =
+      const rawContent =
         typeof response === "string"
           ? response
-          : response?.choices?.[0]?.message?.content || "No response generated";
+          : response?.choices?.[0]?.message?.content;
+      const content =
+        typeof rawContent === "string"
+          ? rawContent
+          : "";
+      const normalizedContent = content.trim();
       const inputTokens = response?.usage?.prompt_tokens ?? 0;
       const outputTokens = response?.usage?.completion_tokens ?? 0;
+
+      if (!normalizedContent) {
+        const errorMsg = "No response generated";
+
+        attempts.push({
+          attempt: i + 1,
+          modelId,
+          providerName: result.providerName,
+          statusCode: 502,
+          errorType: "empty_response",
+          errorMessage: errorMsg,
+          durationMs,
+          success: false,
+        });
+
+        auditLogger.log({
+          eventType: "llm_response",
+          userId,
+          model: modelId,
+          requestType: "skill",
+          errorType: "empty_response",
+          errorMessage: errorMsg,
+          timing: { totalMs: durationMs },
+          wasFallback: i > 0,
+          fallbackAttempt: i,
+          metadata: {
+            skillSlug,
+            attempt: i + 1,
+            willRetry: i < candidateModelIds.length - 1,
+            attemptHistory: attempts.map(summarizeAttempt),
+          },
+        });
+
+        debugError(
+          "skillFallback",
+          `Attempt ${i + 1}/${candidateModelIds.length} failed: ${modelId} → empty response. ` +
+          (i < candidateModelIds.length - 1 ? `Trying next model...` : `No more candidates.`),
+          {
+            skillSlug,
+            attempt: i + 1,
+            modelId,
+            errorMsg,
+            willRetry: i < candidateModelIds.length - 1,
+          },
+        );
+
+        continue;
+      }
 
       attempts.push({
         attempt: i + 1,
@@ -303,7 +359,9 @@ export async function executeSkillLlmWithFallback(
  */
 async function buildCandidateList(
   policy: SkillExecutionPolicyResult,
+  maxModelAttempts: number = MAX_MODEL_ATTEMPTS,
 ): Promise<string[]> {
+  const effectiveMaxAttempts = Math.max(1, Math.min(MAX_MODEL_ATTEMPTS, Math.floor(maxModelAttempts || MAX_MODEL_ATTEMPTS)));
   const rows = (await loadEnabledLlmModelRows()).filter(
     (row) => policy.allowFreeModels || row.isFree !== true,
   );
@@ -314,7 +372,7 @@ async function buildCandidateList(
   const result: string[] = [];
 
   const add = (m: string) => {
-    if (m && !seen.has(m) && result.length < MAX_MODEL_ATTEMPTS) {
+    if (m && !seen.has(m) && result.length < effectiveMaxAttempts) {
       seen.add(m);
       result.push(m);
     }
@@ -322,6 +380,9 @@ async function buildCandidateList(
 
   // 1. Primary model always first
   if (primaryModel) add(primaryModel);
+  if (primaryModel && effectiveMaxAttempts === 1) {
+    return result;
+  }
 
   const honorsExplicitSkillModel =
     policy.modelSource === "skill_llmModelId" ||
@@ -342,7 +403,7 @@ async function buildCandidateList(
         (requirements as Record<string, boolean>)[cap] = true;
       }
     }
-    const candidates = selectLlmModelCandidates(requirements, rows, MAX_MODEL_ATTEMPTS);
+    const candidates = selectLlmModelCandidates(requirements, rows, effectiveMaxAttempts);
     for (const c of candidates) add(c);
   }
 

@@ -37,6 +37,7 @@ export const PROVIDER_TEMPLATES = [
       // Audio models
       { id: "elevenlabs-tts", name: "ElevenLabs TTS", type: "audio" as const, description: "Text-to-speech" },
       { id: "elevenlabs-sound-effect", name: "ElevenLabs Sound Effects", type: "audio" as const, description: "Sound effect generation" },
+      { id: "omnivoice-tts", name: "OmniVoice TTS", type: "audio" as const, description: "Multilingual text-to-speech with voice design and cloning" },
     ],
   },
   {
@@ -129,6 +130,17 @@ export const PROVIDER_TEMPLATES = [
       { id: "uvoice/tts-standard", name: "UVoice TTS Standard", type: "audio" as const, description: "Standard quality voices (up to 5,000 chars)" },
       { id: "uvoice/tts-natural", name: "UVoice TTS Natural", type: "audio" as const, description: "Natural voice quality (up to 1,500 chars)" },
       { id: "uvoice/tts-premium", name: "UVoice TTS Premium", type: "audio" as const, description: "Premium expressive voices (up to 1,500 chars)" },
+    ],
+  },
+  {
+    providerName: "omnivoice",
+    displayName: "OmniVoice",
+    description: "Multilingual text-to-speech with voice design, cloning, and narration-ready outputs",
+    providerType: "audio" as const,
+    baseUrl: "https://api.omnivoice.ai",
+    defaultModel: "omnivoice-tts",
+    availableModels: [
+      { id: "omnivoice-tts", name: "OmniVoice TTS", type: "audio" as const, description: "Multilingual text-to-speech with voice design and cloning" },
     ],
   },
   {

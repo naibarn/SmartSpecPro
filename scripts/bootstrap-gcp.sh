@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # bootstrap-gcp.sh
-# One-shot script to provision all GCP resources for SmartSpecPro MVP.
+# One-shot script to provision all GCP resources for SmartAIHub MVP.
 # Usage: ./scripts/bootstrap-gcp.sh PROJECT_ID REGION BILLING_ACCOUNT_ID [ORG_ID]
 #
 # Prerequisites:
@@ -30,7 +30,7 @@ BILLING_ACCOUNT="${3:?Usage: $0 PROJECT_ID REGION BILLING_ACCOUNT_ID [ORG_ID]}"
 ORG_ID="${4:-}"
 SKIP_CONFIRM="${SKIP_CONFIRM:-false}"
 
-echo "=== SmartSpecPro GCP Bootstrap ==="
+echo "=== SmartAIHub GCP Bootstrap ==="
 echo "Project: $PROJECT_ID"
 echo "Region:  $REGION"
 echo "Billing: $BILLING_ACCOUNT"
@@ -64,11 +64,11 @@ if gcloud projects describe "$PROJECT_ID" &>/dev/null; then
 else
   if [[ -n "$ORG_ID" ]]; then
     gcloud projects create "$PROJECT_ID" \
-      --name="SmartSpecPro MVP" \
+      --name="SmartAIHub MVP" \
       --organization="$ORG_ID"
   else
     gcloud projects create "$PROJECT_ID" \
-      --name="SmartSpecPro MVP"
+      --name="SmartAIHub MVP"
   fi
   echo "Project created: $PROJECT_ID"
 fi
@@ -112,7 +112,7 @@ else
   gcloud artifacts repositories create smartspecpro \
     --repository-format=docker \
     --location="$REGION" \
-    --description="SmartSpecPro Docker images" \
+    --description="SmartAIHub Docker images" \
     --project="$PROJECT_ID"
   echo "Artifact Registry repository created."
 fi

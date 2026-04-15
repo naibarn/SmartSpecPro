@@ -69,6 +69,78 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useTenantFeatureFlag", () => ({
+  useTenantFeatureFlags: () => ({
+    multiChannel: true,
+    chatWidget: true,
+    browserTool: true,
+    canvas: true,
+    voiceChat: true,
+    webhookTriggers: true,
+    costDisplay: true,
+    personaSystem: true,
+    crossAgency: true,
+    channelRouter: true,
+    automationCopilot: true,
+    liveBrowser: true,
+    responsesApi: true,
+    taskPlannerEnabled: true,
+    taskPlannerAgencyEscalation: true,
+    chatBrowserSessionEntry: true,
+    agencyBrowserSessionUi: true,
+    workflowBrowserSessionNodes: true,
+    publicApi: true,
+    multimodalMemory: true,
+    skillOrchestrator: true,
+    orchestratorEnabled: true,
+    notificationDedupEnabled: true,
+    notificationPreferencesEnabled: true,
+    notificationEscalationEnabled: true,
+    notificationUnifiedCenter: true,
+    notificationEmailDelivery: true,
+    notificationWebhookDelivery: true,
+    unifiedSkillExecution: true,
+    agencyCustomTools: true,
+    agencyGuardrails: true,
+    agencyStreaming: true,
+    agencyMcpBridge: true,
+    agencyToolApi: true,
+    agencyAgenticModeEnabled: true,
+    agencyReactExecutorEnabled: true,
+    agencyAutonomousAgentEnabled: true,
+    agencyLongTermMemoryEnabled: true,
+    META_CHANNELS_ENABLED: true,
+    mcpServerRegistry: true,
+    mcpStdio: true,
+    mcpOAuth: true,
+    UPLOAD_POST_GATEWAY_ENABLED: true,
+    chatAutoModelSelection: true,
+    localClientLlmMode: true,
+    openClawExternalRuntime: true,
+    desktopZeroClawWorker: true,
+    nemoClawSecureWorkerPool: true,
+    hiClawClusterRuntime: true,
+    hermesAgentRuntime: true,
+    desktopHostEnabled: true,
+    desktopAdvancedLocalMode: true,
+    desktopPackageSync: true,
+    desktopAgencyRuntime: true,
+    desktopWorkerProjection: true,
+    agencyHybridAdk: true,
+    agencyHybridAdkKillSwitch: true,
+    workpacksEnabled: true,
+    workpackAutonomousPilot: true,
+    workpackOpsConsole: true,
+    documentOcrExternalProcessing: true,
+    hermesProfileExperience: true,
+    hermesChannelWorkflowExpansion: true,
+    hermesMemoryContextSync: true,
+    hermesTaskModes: true,
+    hermesVisibilitySummaries: true,
+  }),
+  useTenantFeatureFlag: () => true,
+}));
+
 vi.mock("@/components/orchestrator/TeamRoomView", () => ({
   TeamRoomView: () => <div data-testid="team-room-view" />,
 }));
@@ -342,5 +414,61 @@ describe("Teams preset creation flow", () => {
     render(<Teams />);
 
     expect(await screen.findByText(/gateway alpha · online/i)).toBeInTheDocument();
+  });
+
+  it("shows Hermes policy context for bound external connectors", async () => {
+    routeParamsRef.current = { teamId: "team-1" };
+    teamListDataRef.current = [
+      {
+        id: "team-1",
+        name: "Hermes Team",
+        description: null,
+        category: "operations",
+        status: "active",
+        memberCount: 1,
+      },
+    ];
+    teamGetDataRef.current = {
+      id: "team-1",
+      name: "Hermes Team",
+      members: [
+        {
+          id: "member-1",
+          memberKind: "external_connector",
+          memberRole: "reviewer",
+          displayName: "Hermes Operator",
+          externalRef: "hermes://profiles/default",
+          externalWorkerId: "worker-hermes-1",
+          roleTitle: "External Reviewer",
+          isLead: false,
+        },
+      ],
+    };
+    bindableWorkersRef.current = [
+      {
+        id: "worker-hermes-1",
+        displayName: "Hermes Agent",
+        status: "online",
+        runtimeType: "hermes_agent_gateway",
+        runtimeVersion: "0.3.0",
+        externalReference: "hermes://profiles/default",
+        teamId: "team-1",
+        lastSeenAt: new Date().toISOString(),
+        warningFlagsJson: [],
+        boundProfileCount: 1,
+        channelCompanionPlatforms: ["telegram"],
+        remoteEndpointPolicy: "audited_exception_granted",
+        profileName: "default",
+        profileLabel: "Default Personal Assistant",
+        profilePurpose: "Handle personal follow-up and coordination",
+        personaDisplayLabel: "Default Personal Assistant",
+        personaDisplayPurpose: "Handle personal follow-up and coordination",
+        availableForBinding: true,
+      },
+    ];
+
+    render(<Teams />);
+
+    expect(await screen.findByText(/Hermes • Hermes Agent · online · Default Personal Assistant/i)).toBeInTheDocument();
   });
 });

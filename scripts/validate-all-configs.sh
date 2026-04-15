@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# SmartSpecPro Comprehensive Config Validation
+# SmartAIHub Comprehensive Config Validation
 # Validates all config files for consistency, prevents recurring issues
 # CRITICAL RULES:
 # 1. Production domain is ONLY https://smartaihub.app (NO OTHER DOMAINS)
@@ -40,7 +40,7 @@ WRONG_DOMAINS=(
 print_banner() {
     echo -e "${CYAN}"
     echo "╔═══════════════════════════════════════════════════════════════╗"
-    echo "║       SmartSpecPro Comprehensive Config Validation           ║"
+    echo "║       SmartAIHub Comprehensive Config Validation           ║"
     echo "║       Prevents recurring domain and startup issues           ║"
     echo "╚═══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"

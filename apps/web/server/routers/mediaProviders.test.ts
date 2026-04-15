@@ -401,6 +401,21 @@ describe("PROVIDER_TEMPLATES — UVoice entry", () => {
   });
 });
 
+describe("PROVIDER_TEMPLATES — OmniVoice entry", () => {
+  const omnivoiceTemplate = PROVIDER_TEMPLATES.find(
+    (t) => t.providerName === "omnivoice"
+  );
+
+  it("includes an entry with providerName 'omnivoice'", () => {
+    expect(omnivoiceTemplate).toBeDefined();
+  });
+
+  it("is an audio provider with narration-focused model support", () => {
+    expect(omnivoiceTemplate?.providerType).toBe("audio");
+    expect(omnivoiceTemplate?.availableModels?.some((m) => m.id === "omnivoice-tts")).toBe(true);
+  });
+});
+
 describe("PROVIDER_TEMPLATES — KNPLabs AI entry", () => {
   const knplabsTemplate = PROVIDER_TEMPLATES.find(
     (t) => t.providerName === "knplabai"

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Feature 075 is intentionally the architectural umbrella for SmartSpecPro's unified web + desktop platform.
+Feature 075 is intentionally the architectural umbrella for SmartAIHub's unified web + desktop platform.
 
 This note decomposes it into follow-on execution slices that are small enough to plan, staff, and deliver without reopening the core architecture.
 
@@ -129,6 +129,81 @@ Key outputs:
 - offboarding automation
 - rollout gates and regression suite
 
+### Slice 7: OmniVoice Provider Contract and Gateway
+
+Focus:
+
+- internal TTS provider support for OmniVoice
+- provider capability and validation contracts
+- stable backend error handling
+- compatibility with existing TTS providers
+
+Why here:
+
+- Feature 075 foundations should land first so OmniVoice inherits the correct trust and rollout posture instead of creating a parallel voice path
+
+Key outputs:
+
+- `omnivoice` provider support in internal TTS routes
+- shared capability metadata
+- validation for plain TTS vs cloning inputs
+
+### Slice 8: OmniVoice Media Narration and Voice Assets
+
+Focus:
+
+- presentation narration
+- multilingual voice assets
+- approved reference-audio cloning flows
+- media model registry and UI exposure
+
+Why next:
+
+- this is the highest-value product use case and avoids making desktop packaging the first blocker
+
+Key outputs:
+
+- OmniVoice-backed audio models
+- narration workflow support
+- cloning provenance metadata
+
+### Slice 9: OmniVoice Desktop Premium Readback
+
+Focus:
+
+- optional desktop-local OmniVoice runtime
+- capability-gated premium spoken readback
+- native TTS fallback preservation
+
+Why after server/media:
+
+- local packaging, model/runtime prep, and device capability checks are more operationally complex than server-side provider work
+
+Key outputs:
+
+- Desktop Host runtime adapter
+- capability and policy surfaces
+- trusted package/materialization path
+
+### Slice 10: OmniVoice Governance and Rollout Closure
+
+Focus:
+
+- rollout flags
+- cloning policy controls
+- audit/provenance
+- regression and truthfulness coverage
+
+Why last:
+
+- this slice closes the loop across backend, media, and desktop once all concrete execution paths are known
+
+Key outputs:
+
+- phase gates
+- audit and provenance rules
+- regression matrix
+
 ## Suggested sequencing rules
 
 1. Do not start Pi runtime integration before device identity and package trust are settled.
@@ -146,6 +221,10 @@ Key outputs:
 | Slice 4 | Desktop platform, runtime, gateway |
 | Slice 5 | Runtime, agency, connectors, desktop platform |
 | Slice 6 | Product UX, security, admin/platform, QA |
+| Slice 7 | Web platform, backend/runtime, security |
+| Slice 8 | Media, presentation UX, backend/runtime |
+| Slice 9 | Desktop platform, runtime, security |
+| Slice 10 | Product UX, security, QA, admin/platform |
 
 ## Suggested planning mode for each slice
 
@@ -155,6 +234,10 @@ Key outputs:
 - Slice 4: standard deep-plan
 - Slice 5: promoted deep-plan if Agency Swarm packaging is still unclear
 - Slice 6: standard deep-plan with rollout and QA emphasis
+- Slice 7: standard deep-plan
+- Slice 8: standard deep-plan
+- Slice 9: promoted deep-plan if local runtime packaging or model distribution is still unsettled
+- Slice 10: standard deep-plan with rollout and QA emphasis
 
 ## Recommended next action
 
@@ -165,3 +248,10 @@ If the team wants to move immediately, start with:
 3. Slice 3: Local File Intelligence and Managed Workspace Profiles
 
 That order gives the rest of the platform a secure substrate instead of building runtimes first and retrofitting governance later.
+
+For OmniVoice specifically, start only after the above substrate slices are stable:
+
+1. Slice 7: OmniVoice Provider Contract and Gateway
+2. Slice 8: OmniVoice Media Narration and Voice Assets
+3. Slice 9: OmniVoice Desktop Premium Readback
+4. Slice 10: OmniVoice Governance and Rollout Closure
