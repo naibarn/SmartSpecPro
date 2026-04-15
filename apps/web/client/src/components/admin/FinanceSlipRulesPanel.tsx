@@ -418,7 +418,7 @@ export default function FinanceSlipRulesPanel() {
     try {
       const normalized = pinnedMerchantPresets
         .map((preset, index) => normalizePinnedMerchantPresetRow(preset, index))
-        .filter((preset) => preset.label.trim().length > 0 && preset.merchantName.trim().length > 0);
+        .filter((preset) => preset.label.trim().length > 0 && (preset.merchantName?.trim().length ?? 0) > 0);
 
       await updateSettingMutation.mutateAsync({
         category: "finance" as any,

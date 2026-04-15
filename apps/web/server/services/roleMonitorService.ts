@@ -1,4 +1,5 @@
 import { getRoleCheckpointHealth } from "./roleCheckpointService";
+import { getRoleRegistrySnapshot } from "./agentRegistryAdapterService";
 import { listRoleAwareExceptionView, syncRoleExceptionBindings } from "./roleExceptionBindingService";
 import { getRoleAgentDetail, listRoleDetailsByTenant } from "./rolePersistence";
 import { evaluateRoleRolloutGate } from "./roleRolloutGateService";
@@ -11,6 +12,7 @@ export async function getRoleRosterSummary(tenantId: string) {
     const metric = await getLatestRoleMetricSnapshot(detail.role.id);
     const checkpoint = await getRoleCheckpointHealth(detail.role.id);
     const gate = await evaluateRoleRolloutGate({ roleId: detail.role.id });
+    const registrySnapshot = await getRoleRegistrySnapshot(tenantId, detail.role.id);
     return {
       roleId: detail.role.id,
       name: detail.role.name,
@@ -27,6 +29,9 @@ export async function getRoleRosterSummary(tenantId: string) {
       blockerCodes: gate.blockers,
       gateResult: gate.gateResult,
       rolloutPhase: gate.rolloutPhase,
+      registryId: registrySnapshot?.registry?.id ?? null,
+      registryVersionId: registrySnapshot?.version?.id ?? null,
+      registryVersionStatus: registrySnapshot?.version?.versionStatus ?? null,
     };
   }));
 }
@@ -42,6 +47,7 @@ export async function getRoleMonitorDetail(roleId: string) {
   const checkpointHealth = await getRoleCheckpointHealth(roleId);
   const gate = await evaluateRoleRolloutGate({ roleId });
   const roleExceptions = await listRoleAwareExceptionView(roleId);
+  const registry = await getRoleRegistrySnapshot(detail.role.tenantId, roleId);
   const workpackDependencies = await Promise.all(
     Array.from(new Set(detail.routineRuns.map((run) => run.selectedWorkpackFamily).filter(Boolean) as string[]))
       .map(async (workpackId) => ({
@@ -70,6 +76,7 @@ export async function getRoleMonitorDetail(roleId: string) {
     promotionGates: detail.promotionGates,
     metric,
     gate,
+    registry,
   };
 }
 
@@ -92,4 +99,3 @@ export async function getRoleRoutineTimeline(roleId: string) {
     endedAt: run.endedAt,
   }));
 }
-

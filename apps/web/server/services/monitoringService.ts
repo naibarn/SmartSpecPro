@@ -34,6 +34,7 @@ import {
 import crypto from "crypto";
 import { auditLogger, type AuditLogEntry } from "./auditLogger";
 import { getQueueHealthStatus } from "./queueHealthMonitor";
+import { describeStatusBridge } from "./workStatusBridge";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,10 @@ export interface StuckAgentCheck {
   agentId: string | null;
   reason: string | null;
   lastActivityAge: number | null;
+}
+
+export function describeRunStatusBridge(status: "queued" | "running" | "paused" | "completed" | "failed" | "stopped", stopReason?: string | null) {
+  return describeStatusBridge(status, stopReason);
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -139,6 +144,9 @@ export async function captureSnapshot(
       costJson: Object.fromEntries(
         Object.entries(perAgent).map(([id, d]) => [id, d.creditsUsed]),
       ),
+      artifactCountJson: {
+        statusBridge: describeRunStatusBridge(run.status, run.stopReason),
+      },
     })
     .returning();
 
@@ -668,6 +676,7 @@ type QueueSignalStats = {
 
 export interface OpsAnomaly {
   id: string;
+  dedupeKey?: string;
   severity: "warning" | "critical";
   category: "resources" | "services" | "monitoring" | "audit" | "orchestration";
   type: string;
@@ -1297,6 +1306,32 @@ function buildAnomaly(input: Omit<OpsAnomaly, "id">): OpsAnomaly {
   };
 }
 
+export function buildOpsAlertDedupeKey(
+  anomaly: OpsAnomaly,
+  overview: any,
+): string {
+  if (anomaly.type !== "alert_backlog") {
+    return `ops-overview:${anomaly.id}`;
+  }
+
+  const latestOpenAlert = "latestOpenAlert" in overview ? overview.latestOpenAlert : null;
+  const unackedAlerts = "unackedAlerts" in overview ? overview.unackedAlerts : undefined;
+  const fingerprint = [
+    unackedAlerts?.critical ?? 0,
+    unackedAlerts?.error ?? 0,
+    latestOpenAlert?.anomalyType ?? "none",
+    latestOpenAlert?.title ?? "none",
+    latestOpenAlert?.message ?? "none",
+  ].join("|");
+
+  const digest = crypto.createHash("sha1").update(fingerprint).digest("hex").slice(0, 12);
+  return `ops-overview:${anomaly.id}:${digest}`;
+}
+
+export function shouldSkipOpsAlertEmission(hasOpenAlert: boolean, hasRecentAlert: boolean): boolean {
+  return hasOpenAlert || hasRecentAlert;
+}
+
 export function deriveOpsOverview(input: OpsOverviewInput): OpsOverview {
   const now = input.now ?? new Date();
   const anomalies: OpsAnomaly[] = [];
@@ -1491,7 +1526,7 @@ export function deriveOpsOverview(input: OpsOverviewInput): OpsOverview {
   const criticalLikeAlerts = input.unackedAlerts.critical + input.unackedAlerts.error;
   if (criticalLikeAlerts > 0) {
     const latestOpenAlert = input.latestOpenAlert ?? null;
-    anomalies.push(buildAnomaly({
+    const backlogAnomaly = buildAnomaly({
       severity: "critical",
       category: "monitoring",
       type: "alert_backlog",
@@ -1507,7 +1542,12 @@ export function deriveOpsOverview(input: OpsOverviewInput): OpsOverview {
         : `${criticalLikeAlerts} pending`,
       observedAt: toIsoString(input.lastCheckAt),
       source: "monitoring_alerts",
-    }));
+    });
+    backlogAnomaly.dedupeKey = buildOpsAlertDedupeKey(backlogAnomaly, {
+      unackedAlerts: input.unackedAlerts,
+      latestOpenAlert,
+    });
+    anomalies.push(backlogAnomaly);
   } else if (input.unackedAlerts.warning >= 3) {
     anomalies.push(buildAnomaly({
       severity: "warning",
@@ -2193,6 +2233,23 @@ async function hasRecentOpsAlert(
   return rows.length > 0;
 }
 
+async function hasOpenOpsAlert(
+  db: Awaited<ReturnType<typeof getDb>>,
+  dedupeKey: string,
+): Promise<boolean> {
+  const rows = await db
+    .select({ id: monitoringAlerts.id })
+    .from(monitoringAlerts)
+    .where(and(
+      eq(monitoringAlerts.acknowledged, false),
+      sql`${monitoringAlerts.metadata}->>'source' = 'ops_overview'`,
+      sql`${monitoringAlerts.metadata}->>'dedupeKey' = ${dedupeKey}`,
+    ))
+    .limit(1);
+
+  return rows.length > 0;
+}
+
 async function notifyAdminsAboutAnomaly(
   db: Awaited<ReturnType<typeof getDb>>,
   anomaly: OpsAnomaly,
@@ -2264,10 +2321,13 @@ export async function syncOpsAlerts(opts?: {
   let skippedAsDuplicate = 0;
 
   for (const anomaly of candidates) {
-    const dedupeKey = `ops-overview:${anomaly.id}`;
+    const dedupeKey = buildOpsAlertDedupeKey(anomaly, overview);
     const cooldownMinutes = anomalyCooldownMinutes(anomaly);
     const cooldownSince = new Date(Date.now() - cooldownMinutes * 60_000);
-    const duplicate = await hasRecentOpsAlert(db, dedupeKey, cooldownSince);
+    const duplicate = shouldSkipOpsAlertEmission(
+      await hasOpenOpsAlert(db, dedupeKey),
+      await hasRecentOpsAlert(db, dedupeKey, cooldownSince),
+    );
     if (duplicate) {
       skippedAsDuplicate += 1;
       continue;

@@ -83,12 +83,15 @@ function getInitialBellPlacement(): BellPlacement {
             ...clampBellPosition({ x: placement.x, y: placement.y }, window.innerWidth, window.innerHeight),
           };
         }
-      } else if (parsed.mode === "custom" && typeof parsed.x === "number" && typeof parsed.y === "number") {
+      } else {
+        const legacyPlacement = parsed as Partial<BellPlacement> & Partial<BellPosition>;
+        if (legacyPlacement.mode === "custom" && typeof legacyPlacement.x === "number" && typeof legacyPlacement.y === "number") {
         // Legacy migration path: discard pre-versioned placements so the bell
         // re-docks to the top-right on first load after the fix.
         window.localStorage.removeItem(BELL_STORAGE_KEY);
-      } else if (parsed.x !== undefined || parsed.y !== undefined) {
-        window.localStorage.removeItem(BELL_STORAGE_KEY);
+        } else if (legacyPlacement.x !== undefined || legacyPlacement.y !== undefined) {
+          window.localStorage.removeItem(BELL_STORAGE_KEY);
+        }
       }
     }
   } catch {

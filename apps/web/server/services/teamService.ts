@@ -5,7 +5,7 @@
  * and integrates with template instantiation.
  */
 
-import { eq, and, or, isNull, sql, count, getTableColumns, asc, desc } from "drizzle-orm";
+import { eq, and, or, isNull, sql, count, getTableColumns, asc, desc, inArray } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   agencies,
@@ -15,6 +15,8 @@ import {
   assistantTeamTemplates,
   personaTemplates,
   teamRooms,
+  teamRuns,
+  teamWorkItems,
   workers,
   type AssistantTeam,
   type AssistantProfile,
@@ -148,6 +150,12 @@ export interface TeamSummary {
   category: string | null;
   status: string | null;
   memberCount: number;
+  roomCount?: number;
+  latestRoomId?: string | null;
+  latestRoomType?: string | null;
+  activeRunCount?: number;
+  openWorkItemCount?: number;
+  waitingWorkItemCount?: number;
   createdAt: Date;
 }
 
@@ -1287,10 +1295,107 @@ export async function listTeams(
 
   const roomCountMap = new Map(roomCounts.map((c) => [c.teamId, Number(c.roomCount)]));
 
+  const latestRoomRows = teamIds.length > 0
+    ? await db
+        .select({
+          teamId: teamRooms.teamId,
+          roomId: teamRooms.id,
+          roomType: teamRooms.roomType,
+        })
+        .from(teamRooms)
+        .where(
+          and(
+            eq(teamRooms.tenantId, tenantId),
+            inArray(teamRooms.teamId, teamIds),
+          ),
+        )
+        .orderBy(desc(teamRooms.createdAt))
+    : [];
+  const latestRoomIdMap = new Map<string, string>();
+  const latestRoomTypeMap = new Map<string, string>();
+  for (const row of latestRoomRows) {
+    if (!latestRoomIdMap.has(row.teamId)) {
+      latestRoomIdMap.set(row.teamId, row.roomId);
+      latestRoomTypeMap.set(row.teamId, row.roomType);
+    }
+  }
+
+  const activeRunRows = teamIds.length > 0
+    ? await db
+        .select({
+          teamId: teamRuns.teamId,
+          activeRunCount: count(),
+        })
+        .from(teamRuns)
+        .innerJoin(teamRooms, eq(teamRooms.id, teamRuns.roomId))
+        .where(
+          and(
+            eq(teamRooms.tenantId, tenantId),
+            inArray(teamRuns.teamId, teamIds),
+            inArray(teamRuns.status, ["queued", "running"]),
+          ),
+        )
+        .groupBy(teamRuns.teamId)
+    : [];
+  const activeRunCountMap = new Map(activeRunRows.map((c) => [c.teamId, Number(c.activeRunCount)]));
+
+  const openWorkItemRows = teamIds.length > 0
+    ? await db
+        .select({
+          teamId: teamWorkItems.teamId,
+          openWorkItemCount: count(),
+        })
+        .from(teamWorkItems)
+        .where(
+          and(
+            eq(teamWorkItems.tenantId, tenantId),
+            inArray(teamWorkItems.teamId, teamIds),
+            or(
+              eq(teamWorkItems.status, "planned"),
+              eq(teamWorkItems.status, "in_progress"),
+              eq(teamWorkItems.status, "in_review"),
+              eq(teamWorkItems.status, "needs_revision"),
+              eq(teamWorkItems.status, "awaiting_approval"),
+              eq(teamWorkItems.status, "blocked"),
+            ),
+          ),
+        )
+        .groupBy(teamWorkItems.teamId)
+    : [];
+  const openWorkItemCountMap = new Map(openWorkItemRows.map((c) => [c.teamId, Number(c.openWorkItemCount)]));
+
+  const waitingWorkItemRows = teamIds.length > 0
+    ? await db
+        .select({
+          teamId: teamWorkItems.teamId,
+          waitingWorkItemCount: count(),
+        })
+        .from(teamWorkItems)
+        .where(
+          and(
+            eq(teamWorkItems.tenantId, tenantId),
+            inArray(teamWorkItems.teamId, teamIds),
+            or(
+              eq(teamWorkItems.status, "in_review"),
+              eq(teamWorkItems.status, "needs_revision"),
+              eq(teamWorkItems.status, "awaiting_approval"),
+              eq(teamWorkItems.status, "blocked"),
+            ),
+          ),
+        )
+        .groupBy(teamWorkItems.teamId)
+    : [];
+  const waitingWorkItemCountMap = new Map(waitingWorkItemRows.map((c) => [c.teamId, Number(c.waitingWorkItemCount)]));
+
   return teams.map((t) => ({
     ...t,
     memberCount: countMap.get(t.id) ?? 0,
     roomCount: roomCountMap.get(t.id) ?? 0,
+    latestRoomId: latestRoomIdMap.get(t.id) ?? null,
+    latestRoomType: latestRoomTypeMap.get(t.id) ?? null,
+    activeRunCount: activeRunCountMap.get(t.id) ?? 0,
+    openWorkItemCount: openWorkItemCountMap.get(t.id) ?? 0,
+    waitingWorkItemCount: waitingWorkItemCountMap.get(t.id) ?? 0,
   }));
 }
 

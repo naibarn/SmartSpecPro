@@ -949,7 +949,9 @@ export const usersRouter = router({
         ...currentPrefs,
         workerAccessKeys: nextKeys,
       };
-      await db.update(users).set({ userPreferences: nextPrefs }).where(eq(users.id, ctx.user.id));
+      await db.update(users).set({
+        userPreferences: nextPrefs as typeof users.$inferInsert["userPreferences"],
+      }).where(eq(users.id, ctx.user.id));
 
       return {
         rawToken: token,
@@ -996,7 +998,9 @@ export const usersRouter = router({
         ...currentPrefs,
         workerAccessKeys: updatedKeys,
       };
-      await db.update(users).set({ userPreferences: nextPrefs }).where(eq(users.id, ctx.user.id));
+      await db.update(users).set({
+        userPreferences: nextPrefs as typeof users.$inferInsert["userPreferences"],
+      }).where(eq(users.id, ctx.user.id));
 
       await revokeJti(existing.keyId, existing.expiresAt ? new Date(existing.expiresAt).getTime() : Date.now() + 10 * 365 * 24 * 60 * 60 * 1000);
 

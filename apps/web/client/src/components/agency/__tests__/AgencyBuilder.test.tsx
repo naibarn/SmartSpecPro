@@ -6,20 +6,25 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 
+let mockNodesState: any[] = [];
+let mockEdgesState: any[] = [];
+const mockClipboardWriteText = vi.fn();
+const mockSetNodes = vi.fn((next: any) => {
+  mockNodesState = typeof next === "function" ? next(mockNodesState) : next;
+});
+const mockSetEdges = vi.fn((next: any) => {
+  mockEdgesState = typeof next === "function" ? next(mockEdgesState) : next;
+});
+
 // ── React Flow mock ────────────────────────────────────────
 vi.mock("reactflow", () => {
-  const useNodesState = vi.fn(() => {
-    const nodes: any[] = [];
-    return [nodes, vi.fn(), vi.fn()];
-  });
-  const useEdgesState = vi.fn(() => {
-    const edges: any[] = [];
-    return [edges, vi.fn(), vi.fn()];
-  });
+  const useNodesState = vi.fn(() => [mockNodesState, mockSetNodes, vi.fn()]);
+  const useEdgesState = vi.fn(() => [mockEdgesState, mockSetEdges, vi.fn()]);
   const useReactFlow = vi.fn(() => ({
-    getNodes: () => [],
+    getNodes: () => mockNodesState,
     setCenter: vi.fn(),
     getZoom: () => 1,
+    fitView: vi.fn(),
   }));
 
   return {
@@ -32,7 +37,31 @@ vi.mock("reactflow", () => {
           "data-nodes": JSON.stringify(nodes ?? []),
           "data-edges": JSON.stringify(edges ?? []),
         },
-        children,
+        [
+          ...(nodes ?? []).map((node: any) =>
+            createElement(
+              "button",
+              {
+                key: node.id,
+                type: "button",
+                "data-testid": `node-${node.id}`,
+                onClick: (event: any) => onNodeClick?.(event, node),
+              },
+              node.data?.name ?? node.id,
+            ),
+          ),
+          createElement(
+            "button",
+            {
+              key: "pane",
+              type: "button",
+              "data-testid": "pane-click",
+              onClick: (event: any) => onPaneClick?.(event),
+            },
+            "pane",
+          ),
+          children,
+        ],
       ),
     ReactFlowProvider: ({ children }: any) => createElement("div", null, children),
     useNodesState,
@@ -77,6 +106,10 @@ const mockCompilePreviewMutation = vi.fn().mockReturnValue({
   }),
   isPending: false,
 });
+const mockSkillCreateMutation = vi.fn().mockReturnValue({
+  mutateAsync: vi.fn().mockResolvedValue({ id: 99, slug: "exported-skill" }),
+  isPending: false,
+});
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
@@ -84,6 +117,9 @@ vi.mock("@/lib/trpc", () => ({
       agency: {
         getById: { invalidate: vi.fn() },
         list: { invalidate: vi.fn() },
+      },
+      skills: {
+        listFromDb: { invalidate: vi.fn() },
       },
     }),
     llmProviders: {
@@ -104,6 +140,9 @@ vi.mock("@/lib/trpc", () => ({
       saveBuilder: { useMutation: (...args: any[]) => mockUseMutation(...args) },
       compilePreview: { useMutation: (...args: any[]) => mockCompilePreviewMutation(...args) },
     },
+    skills: {
+      create: { useMutation: (...args: any[]) => mockSkillCreateMutation(...args) },
+    },
   },
 }));
 
@@ -121,9 +160,11 @@ vi.mock("@/contexts/AuthContext", () => ({
 // ── Wouter mock ────────────────────────────────────────────
 const mockSetLocation = vi.fn();
 const mockUseRoute = vi.fn().mockReturnValue([true, { id: "new" }]);
+const mockUseSearch = vi.fn(() => "");
 vi.mock("wouter", () => ({
   useRoute: (...args: any[]) => mockUseRoute(...args),
   useLocation: vi.fn().mockReturnValue(["/agencies/new/edit", mockSetLocation]),
+  useSearch: (...args: any[]) => mockUseSearch(...args),
 }));
 
 // ── Sonner mock ────────────────────────────────────────────
@@ -153,7 +194,7 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
 }));
 
 vi.mock("@/components/agency/AgencyToolbar", () => ({
-  AgencyToolbar: ({ agencyName, agencyStatus, onNameChange, onSave, onPublish, onAutoLayout, onTest }: any) =>
+  AgencyToolbar: ({ agencyName, agencyStatus, onNameChange, onSave, onPublish, onAutoLayout, onTest, onCopyAgencyLink }: any) =>
     createElement("div", null, [
       createElement("input", {
         key: "name",
@@ -165,6 +206,7 @@ vi.mock("@/components/agency/AgencyToolbar", () => ({
       createElement("button", { key: "publish", onClick: onPublish }, "Publish"),
       createElement("button", { key: "layout", onClick: onAutoLayout }, "Auto Layout"),
       createElement("button", { key: "test", onClick: onTest }, "Test"),
+      createElement("button", { key: "copy", title: "Copy link", onClick: onCopyAgencyLink }, "Copy"),
     ]),
 }));
 
@@ -196,6 +238,44 @@ vi.mock("@/components/agency/NodePropertyPanel", () => ({
   NodePropertyPanel: () => createElement("div", { "data-testid": "agency-node-panel" }),
 }));
 
+vi.mock("@/components/agency/ExportAsSkillDialog", () => ({
+  ExportAsSkillDialog: ({ open, selectedNodes, selectedEdges, onExport, initialName, initialDescription, initialCategory, sourceLink }: any) =>
+    open
+      ? createElement("div", { "data-testid": "skill-export-dialog" }, [
+          createElement("span", { key: "count" }, `selected:${selectedNodes.length}`),
+          createElement("span", { key: "edges" }, `edges:${selectedEdges.length}`),
+          createElement("span", { key: "name" }, `name:${initialName ?? ""}`),
+          createElement("span", { key: "description" }, `description:${initialDescription ?? ""}`),
+          createElement("span", { key: "category" }, `category:${initialCategory ?? ""}`),
+          sourceLink
+            ? createElement(
+                "button",
+                {
+                  key: "copy-source-link",
+                  type: "button",
+                  onClick: () => mockClipboardWriteText(sourceLink),
+                },
+                "Copy source link",
+              )
+            : null,
+          createElement(
+            "button",
+            {
+              key: "export",
+              type: "button",
+              onClick: () => onExport({
+                name: initialName || "Graph Assistant",
+                description: initialDescription || "Transforms a selected agency graph into a skill.",
+                category: initialCategory || "chat_assistant",
+                edgeIds: selectedEdges.map((edge: any) => edge.id),
+              }),
+            },
+            "Confirm Export",
+          ),
+        ])
+      : null,
+}));
+
 const mockTenantFeatureFlags = vi.fn(() => ({
   agencyHybridAdk: false,
   agencyHybridAdkKillSwitch: false,
@@ -211,7 +291,15 @@ vi.mock("reactflow/dist/style.css", () => ({}));
 describe("AgencyBuilder", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: mockClipboardWriteText,
+      },
+    });
+    mockNodesState = [];
+    mockEdgesState = [];
     mockUseRoute.mockReturnValue([true, { id: "new" }]);
+    mockUseSearch.mockReturnValue("");
     mockUseAuth.mockReturnValue({
       isLoading: false,
       isAuthenticated: true,
@@ -225,6 +313,10 @@ describe("AgencyBuilder", () => {
     mockTenantFeatureFlags.mockReturnValue({
       agencyHybridAdk: false,
       agencyHybridAdkKillSwitch: false,
+    });
+    mockSkillCreateMutation.mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({ id: 99, slug: "exported-skill" }),
+      isPending: false,
     });
   });
 
@@ -258,6 +350,206 @@ describe("AgencyBuilder", () => {
     expect(screen.getByText("Publish")).toBeTruthy();
     expect(screen.getByText("Auto Layout")).toBeTruthy();
     expect(screen.getByText("Test")).toBeTruthy();
+  });
+
+  it("exports the selected agency node as a skill", async () => {
+    mockNodesState = [
+      {
+        id: "node-1",
+        type: "agency",
+        position: { x: 0, y: 0 },
+        data: {
+          nodeType: "agent",
+          name: "Research Lead",
+          description: "Research the topic",
+          instructions: "Summarize sources and decisions.",
+          subgraphId: null,
+          isEntryPoint: true,
+          isOptional: false,
+          nodeConfig: {},
+          tools: [],
+          toolIds: [],
+          guardrailIds: [],
+          examples: [],
+          outputSchema: null,
+          mcpServers: [],
+          runtimeConfig: null,
+        },
+      },
+      {
+        id: "node-2",
+        type: "agency",
+        position: { x: 0, y: 140 },
+        data: {
+          nodeType: "agent",
+          name: "QA Lead",
+          description: "Verify the output",
+          instructions: "Check the graph for coverage gaps.",
+          subgraphId: null,
+          isEntryPoint: false,
+          isOptional: false,
+          nodeConfig: {},
+          tools: [],
+          toolIds: [],
+          guardrailIds: [],
+          examples: [],
+          outputSchema: null,
+          mcpServers: [],
+          runtimeConfig: null,
+        },
+      },
+    ];
+    mockEdgesState = [
+      {
+        id: "edge-1",
+        source: "node-1",
+        target: "node-2",
+        data: { flowType: "delegation" },
+      },
+    ];
+
+    const { default: AgencyBuilder } = await import("@/pages/AgencyBuilder");
+    render(createElement(AgencyBuilder));
+
+    fireEvent.change(screen.getByDisplayValue("Untitled Agency"), {
+      target: { value: "Ops Agency" },
+    });
+    fireEvent.click(screen.getByTestId("node-node-1"));
+    fireEvent.click(screen.getByTestId("node-node-2"), { ctrlKey: true });
+    expect(screen.getByText("Export as Skill")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Export as Skill"));
+    expect(screen.getByTestId("skill-export-dialog")).toBeTruthy();
+    expect(screen.getByText("selected:2")).toBeTruthy();
+    expect(screen.getByText("edges:1")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Confirm Export"));
+
+    await waitFor(() => {
+      expect(
+        mockSkillCreateMutation.mock.results.some((result) => {
+          const mutateAsync = result.value?.mutateAsync;
+          return Boolean(mutateAsync?.mock?.calls?.length);
+        }),
+      ).toBe(true);
+    });
+
+    const exportedResult = mockSkillCreateMutation.mock.results.find((result) =>
+      Boolean(result.value?.mutateAsync?.mock?.calls?.length),
+    );
+    const mutateAsync = exportedResult?.value?.mutateAsync;
+    expect(mutateAsync).toHaveBeenCalledTimes(1);
+
+    const payload = mutateAsync.mock.calls[0]?.[0];
+    expect(payload).toEqual(expect.objectContaining({
+      slug: "graph-assistant",
+      name: "Graph Assistant",
+      category: "chat_assistant",
+      icon: "package",
+    }));
+    expect(String(payload.skillContent)).toContain("Research Lead");
+    expect(String(payload.skillContent)).toContain("QA Lead");
+    expect(String(payload.skillContent)).toContain("node-1 -> node-2");
+    expect(String(payload.systemPrompt)).toContain("Graph Assistant");
+    expect(payload.configJson).toEqual(expect.objectContaining({
+      source: "agency_export",
+      sourceAgencyName: "Ops Agency",
+      sourceAgencyId: null,
+      selectedEdgeIds: ["edge-1"],
+    }));
+    expect(mockSetLocation).toHaveBeenCalledWith("/settings/skills?skillId=99");
+  });
+
+  it("copies the agency permalink from the selection banner", async () => {
+    mockUseSearch.mockReturnValue("?foo=bar");
+
+    const { default: AgencyBuilder } = await import("@/pages/AgencyBuilder");
+    render(createElement(AgencyBuilder));
+
+    fireEvent.click(screen.getByTitle("Copy link"));
+
+    expect(mockClipboardWriteText).toHaveBeenCalledWith(
+      `${window.location.origin}/agencies/new/edit?foo=bar`,
+    );
+  });
+
+  it("auto-opens export when duplicate skill query parameters are present", async () => {
+    mockUseSearch.mockReturnValue(
+      "?autoExport=1&duplicateSkillName=Graph%20Assistant&duplicateSkillDescription=Exported%20from%20agency.&duplicateSkillCategory=chat_assistant",
+    );
+    mockNodesState = [
+      {
+        id: "node-1",
+        type: "agency",
+        position: { x: 0, y: 0 },
+        data: {
+          nodeType: "agent",
+          name: "Research Lead",
+          description: "Research the topic",
+          instructions: "Summarize sources and decisions.",
+          subgraphId: null,
+          isEntryPoint: true,
+          isOptional: false,
+          nodeConfig: {},
+          tools: [],
+          toolIds: [],
+          guardrailIds: [],
+          examples: [],
+          outputSchema: null,
+          mcpServers: [],
+          runtimeConfig: null,
+        },
+      },
+      {
+        id: "node-2",
+        type: "agency",
+        position: { x: 0, y: 140 },
+        data: {
+          nodeType: "agent",
+          name: "QA Lead",
+          description: "Verify the output",
+          instructions: "Check the graph for coverage gaps.",
+          subgraphId: null,
+          isEntryPoint: false,
+          isOptional: false,
+          nodeConfig: {},
+          tools: [],
+          toolIds: [],
+          guardrailIds: [],
+          examples: [],
+          outputSchema: null,
+          mcpServers: [],
+          runtimeConfig: null,
+        },
+      },
+    ];
+    mockEdgesState = [
+      {
+        id: "edge-1",
+        source: "node-1",
+        target: "node-2",
+        data: { flowType: "delegation" },
+      },
+    ];
+
+    const { default: AgencyBuilder } = await import("@/pages/AgencyBuilder");
+    render(createElement(AgencyBuilder));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("skill-export-dialog")).toBeTruthy();
+    });
+
+    expect(screen.getByText("selected:2")).toBeTruthy();
+    expect(screen.getByText("edges:1")).toBeTruthy();
+    expect(screen.getByText("name:Graph Assistant")).toBeTruthy();
+    expect(screen.getByText("description:Exported from agency.")).toBeTruthy();
+    expect(screen.getByText("category:chat_assistant")).toBeTruthy();
+    expect(screen.getByText("Copy source link")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Copy source link"));
+    expect(mockClipboardWriteText).toHaveBeenCalledWith(
+      `${window.location.origin}/agencies/new/edit?autoExport=1&duplicateSkillName=Graph%20Assistant&duplicateSkillDescription=Exported%20from%20agency.&duplicateSkillCategory=chat_assistant`,
+    );
   });
 
   it("loading state displays spinner when auth is loading", async () => {

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { agentRegistryVersionStatusSchema } from "./agentRegistryContracts";
 import { workerCallbackMetadataSchema } from "./workerOpenClawPayloads";
 import { workerRuntimeTypeSchema } from "./workerRuntime";
 
@@ -159,6 +160,14 @@ export const delegatedCapabilityManifestSchema = z.object({
   allowedMcpNamespaces: z.array(z.string().min(1)).default([]),
   allowedModelAliases: z.array(z.string().min(1)).default([]),
   allowedProviderProfiles: z.array(z.string().min(1)).default([]),
+  agentRegistry: z.object({
+    registryId: z.string().min(1),
+    registryKey: z.string().min(1),
+    versionId: z.string().min(1).nullable(),
+    versionStatus: agentRegistryVersionStatusSchema.nullable(),
+    stableVersionId: z.string().min(1).nullable(),
+    resolutionReason: z.string().min(1).nullable(),
+  }).nullable().default(null),
   knowledgeAccess: z.object({
     libraryRead: z.boolean().default(false),
     librarySearch: z.boolean().default(false),

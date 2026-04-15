@@ -8734,6 +8734,61 @@ export const workOsAssignmentTypeEnum = pgEnum("work_os_assignment_type", [
   "role",
   "hybrid",
 ]);
+export const workAutomationModeEnum = pgEnum("work_automation_mode", [
+  "manual_assist",
+  "semi_auto",
+  "fully_auto",
+]);
+export const workAutomationRunStatusEnum = pgEnum("work_automation_run_status", [
+  "pending",
+  "running",
+  "waiting_for_input",
+  "waiting_for_approval",
+  "paused",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+export const workAutomationStepStatusEnum = pgEnum("work_automation_step_status", [
+  "planned",
+  "running",
+  "needs_input",
+  "awaiting_approval",
+  "blocked",
+  "succeeded",
+  "failed",
+  "skipped",
+  "cancelled",
+]);
+export const workAutomationCheckpointApprovalStateEnum = pgEnum("work_automation_checkpoint_approval_state", [
+  "pending",
+  "approved",
+  "rejected",
+  "not_required",
+]);
+export const workAutomationCheckpointStatusEnum = pgEnum("work_automation_checkpoint_status", [
+  "open",
+  "approved",
+  "rejected",
+  "resumed",
+  "cancelled",
+]);
+export const workAutomationSurfaceEnum = pgEnum("work_automation_surface", [
+  "manual",
+  "work_os",
+  "skill",
+  "agency",
+  "browser",
+  "document_management",
+  "media_studio",
+  "video_editor",
+]);
+export const workAutomationRiskTierEnum = pgEnum("work_automation_risk_tier", [
+  "low",
+  "medium",
+  "high",
+  "critical",
+]);
 export const workOsSlaBreachStateEnum = pgEnum("work_os_sla_breach_state", [
   "none",
   "at_risk",
@@ -9014,6 +9069,17 @@ export const workCases = pgTable("work_cases", {
   riskLevel: varchar("riskLevel", { length: 30 }).notNull().default("medium"),
   dataClassification: varchar("dataClassification", { length: 30 }).notNull().default("internal"),
   currentState: workOsStateEnum("currentState").notNull().default("new"),
+  automationRunId: varchar("automationRunId", { length: 36 }),
+  automationMode: workAutomationModeEnum("automationMode").notNull().default("manual_assist"),
+  automationTemplateKey: varchar("automationTemplateKey", { length: 120 }),
+  automationTemplateFamily: varchar("automationTemplateFamily", { length: 120 }).notNull().default("content-production"),
+  automationTemplateSource: varchar("automationTemplateSource", { length: 120 }).notNull().default("case_intake"),
+  automationPolicyJson: jsonb("automationPolicyJson").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  automationStepId: varchar("automationStepId", { length: 36 }),
+  automationCheckpointId: varchar("automationCheckpointId", { length: 36 }),
+  automationDisposition: varchar("automationDisposition", { length: 120 }),
+  automationSummary: text("automationSummary"),
+  automationUpdatedAt: timestamp("automationUpdatedAt", { withTimezone: true }),
   linkedConversationIdsJson: jsonb("linkedConversationIdsJson").$type<string[]>(),
   linkedWorkpackRunIdsJson: jsonb("linkedWorkpackRunIdsJson").$type<string[]>(),
   linkedRoleRoutineRunIdsJson: jsonb("linkedRoleRoutineRunIdsJson").$type<string[]>(),
@@ -9187,6 +9253,199 @@ export type WorkOsEvent = typeof workOsEvents.$inferSelect;
 export type InsertWorkOsEvent = typeof workOsEvents.$inferInsert;
 
 /**
+ * work_automation_runs — canonical run envelopes for Work OS automation cases.
+ */
+export const workAutomationRuns = pgTable("work_automation_runs", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).notNull().references(() => workCases.id, { onDelete: "cascade" }),
+  taskId: varchar("taskId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  templateKey: varchar("templateKey", { length: 120 }).notNull(),
+  templateVersion: varchar("templateVersion", { length: 50 }),
+  templateFamily: varchar("templateFamily", { length: 120 }).notNull().default("content-production"),
+  templateSource: varchar("templateSource", { length: 120 }).notNull().default("case_intake"),
+  title: varchar("title", { length: 500 }).notNull(),
+  objective: text("objective"),
+  currentMode: workAutomationModeEnum("currentMode").notNull().default("manual_assist"),
+  status: workAutomationRunStatusEnum("status").notNull().default("pending"),
+  currentStepId: varchar("currentStepId", { length: 36 }),
+  currentCheckpointId: varchar("currentCheckpointId", { length: 36 }),
+  finalDisposition: varchar("finalDisposition", { length: 120 }),
+  finalDispositionReason: text("finalDispositionReason"),
+  resumeCursor: text("resumeCursor"),
+  policyJson: jsonb("policyJson").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+  resolvedAt: timestamp("resolvedAt", { withTimezone: true }),
+  createdByUserId: integer("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdByAssistantId: varchar("createdByAssistantId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_automation_runs_case_idx").on(t.caseId, t.createdAt),
+  index("work_automation_runs_tenant_idx").on(t.tenantId),
+  index("work_automation_runs_status_idx").on(t.status),
+  index("work_automation_runs_mode_idx").on(t.currentMode, t.updatedAt),
+]);
+
+export type WorkAutomationRun = typeof workAutomationRuns.$inferSelect;
+export type InsertWorkAutomationRun = typeof workAutomationRuns.$inferInsert;
+
+/**
+ * work_automation_run_steps — ordered, queryable step history for a run.
+ */
+export const workAutomationRunSteps = pgTable("work_automation_run_steps", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).notNull().references(() => workCases.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => workAutomationRuns.id, { onDelete: "cascade" }),
+  stepKey: varchar("stepKey", { length: 120 }).notNull(),
+  stepIndex: integer("stepIndex").notNull().default(0),
+  title: varchar("title", { length: 500 }).notNull(),
+  status: workAutomationStepStatusEnum("status").notNull().default("planned"),
+  riskTier: workAutomationRiskTierEnum("riskTier").notNull().default("medium"),
+  surface: workAutomationSurfaceEnum("surface").notNull().default("manual"),
+  inputRefsJson: jsonb("inputRefsJson").$type<string[]>().default([]).notNull(),
+  outputRefsJson: jsonb("outputRefsJson").$type<string[]>().default([]).notNull(),
+  retryCount: integer("retryCount").notNull().default(0),
+  idempotencyKey: varchar("idempotencyKey", { length: 180 }),
+  summary: text("summary"),
+  detailJson: jsonb("detailJson").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  actorUserId: integer("actorUserId").references(() => users.id, { onDelete: "set null" }),
+  actorAssistantId: varchar("actorAssistantId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_automation_run_steps_run_idx").on(t.runId, t.stepIndex, t.createdAt),
+  index("work_automation_run_steps_case_idx").on(t.caseId, t.createdAt),
+  index("work_automation_run_steps_tenant_idx").on(t.tenantId),
+  index("work_automation_run_steps_step_key_idx").on(t.runId, t.stepKey),
+  uniqueIndex("work_automation_run_steps_tenant_run_step_idempotency_unique")
+    .on(t.tenantId, t.runId, t.stepKey, t.idempotencyKey)
+    .where(sql`"idempotencyKey" IS NOT NULL`),
+]);
+
+export type WorkAutomationRunStep = typeof workAutomationRunSteps.$inferSelect;
+export type InsertWorkAutomationRunStep = typeof workAutomationRunSteps.$inferInsert;
+
+/**
+ * work_automation_browser_task_claims — durable claim/outbox state for browser automation tasks.
+ */
+export const workAutomationBrowserTaskClaims = pgTable("work_automation_browser_task_claims", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).notNull().references(() => workCases.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => workAutomationRuns.id, { onDelete: "cascade" }),
+  stepId: varchar("stepId", { length: 36 }).references(() => workAutomationRunSteps.id, { onDelete: "set null" }),
+  stepKey: varchar("stepKey", { length: 120 }).notNull(),
+  stepIndex: integer("stepIndex").notNull().default(0),
+  title: varchar("title", { length: 500 }).notNull(),
+  idempotencyKey: varchar("idempotencyKey", { length: 180 }),
+  claimToken: varchar("claimToken", { length: 128 }).notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("claimed"),
+  taskId: varchar("taskId", { length: 200 }),
+  executionId: varchar("executionId", { length: 200 }),
+  reservationId: varchar("reservationId", { length: 120 }),
+  inputRefsJson: jsonb("inputRefsJson").$type<string[]>().default([]).notNull(),
+  outputRefsJson: jsonb("outputRefsJson").$type<string[]>().default([]).notNull(),
+  detailJson: jsonb("detailJson").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  errorMessage: text("errorMessage"),
+  claimedAt: timestamp("claimedAt", { withTimezone: true }).defaultNow().notNull(),
+  dispatchedAt: timestamp("dispatchedAt", { withTimezone: true }),
+  lastPolledAt: timestamp("lastPolledAt", { withTimezone: true }),
+  nextPollAt: timestamp("nextPollAt", { withTimezone: true }),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  pollCount: integer("pollCount").notNull().default(0),
+  createdByUserId: integer("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdByAssistantId: varchar("createdByAssistantId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("work_automation_browser_task_claims_tenant_run_step_idempotency_unique")
+    .on(t.tenantId, t.runId, t.stepKey, t.idempotencyKey)
+    .where(sql`"idempotencyKey" IS NOT NULL`),
+  uniqueIndex("work_automation_browser_task_claims_tenant_task_unique")
+    .on(t.tenantId, t.taskId)
+    .where(sql`"taskId" IS NOT NULL`),
+  index("work_automation_browser_task_claims_tenant_status_poll_idx").on(t.tenantId, t.status, t.nextPollAt),
+  index("work_automation_browser_task_claims_run_idx").on(t.runId, t.createdAt),
+  index("work_automation_browser_task_claims_case_idx").on(t.caseId, t.createdAt),
+]);
+
+export type WorkAutomationBrowserTaskClaim = typeof workAutomationBrowserTaskClaims.$inferSelect;
+export type InsertWorkAutomationBrowserTaskClaim = typeof workAutomationBrowserTaskClaims.$inferInsert;
+
+/**
+ * work_automation_run_checkpoints — approval and resume snapshots for automation runs.
+ */
+export const workAutomationRunCheckpoints = pgTable("work_automation_run_checkpoints", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).notNull().references(() => workCases.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => workAutomationRuns.id, { onDelete: "cascade" }),
+  stepId: varchar("stepId", { length: 36 }).references(() => workAutomationRunSteps.id, { onDelete: "set null" }),
+  stepKey: varchar("stepKey", { length: 120 }),
+  checkpointKey: varchar("checkpointKey", { length: 120 }).notNull(),
+  resumeCursor: text("resumeCursor").notNull(),
+  approvalState: workAutomationCheckpointApprovalStateEnum("approvalState").notNull().default("pending"),
+  checkpointStatus: workAutomationCheckpointStatusEnum("checkpointStatus").notNull().default("open"),
+  editSnapshotRefsJson: jsonb("editSnapshotRefsJson").$type<string[]>().default([]).notNull(),
+  snapshotJson: jsonb("snapshotJson").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  detailJson: jsonb("detailJson").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  requestedByUserId: integer("requestedByUserId").references(() => users.id, { onDelete: "set null" }),
+  approvedByUserId: integer("approvedByUserId").references(() => users.id, { onDelete: "set null" }),
+  actorAssistantId: varchar("actorAssistantId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  requestedAt: timestamp("requestedAt", { withTimezone: true }),
+  approvedAt: timestamp("approvedAt", { withTimezone: true }),
+  resumedAt: timestamp("resumedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_automation_run_checkpoints_run_idx").on(t.runId, t.createdAt),
+  index("work_automation_run_checkpoints_case_idx").on(t.caseId, t.createdAt),
+  index("work_automation_run_checkpoints_tenant_idx").on(t.tenantId),
+  index("work_automation_run_checkpoints_status_idx").on(t.checkpointStatus, t.approvalState),
+]);
+
+export type WorkAutomationRunCheckpoint = typeof workAutomationRunCheckpoints.$inferSelect;
+export type InsertWorkAutomationRunCheckpoint = typeof workAutomationRunCheckpoints.$inferInsert;
+
+/**
+ * work_automation_run_events — append-only audit trail for mode changes and automation lifecycle events.
+ */
+export const workAutomationRunEvents = pgTable("work_automation_run_events", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestId: varchar("requestId", { length: 36 }).references(() => workRequests.id, { onDelete: "cascade" }),
+  caseId: varchar("caseId", { length: 36 }).notNull().references(() => workCases.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => workAutomationRuns.id, { onDelete: "cascade" }),
+  stepId: varchar("stepId", { length: 36 }).references(() => workAutomationRunSteps.id, { onDelete: "set null" }),
+  checkpointId: varchar("checkpointId", { length: 36 }).references(() => workAutomationRunCheckpoints.id, { onDelete: "set null" }),
+  eventType: varchar("eventType", { length: 120 }).notNull(),
+  fromMode: workAutomationModeEnum("fromMode"),
+  toMode: workAutomationModeEnum("toMode"),
+  status: workAutomationRunStatusEnum("status"),
+  detailJson: jsonb("detailJson").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  actorUserId: integer("actorUserId").references(() => users.id, { onDelete: "set null" }),
+  actorAssistantId: varchar("actorAssistantId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_automation_run_events_run_idx").on(t.runId, t.createdAt),
+  index("work_automation_run_events_case_idx").on(t.caseId, t.createdAt),
+  index("work_automation_run_events_tenant_idx").on(t.tenantId),
+  index("work_automation_run_events_event_idx").on(t.eventType, t.createdAt),
+]);
+
+export type WorkAutomationRunEvent = typeof workAutomationRunEvents.$inferSelect;
+export type InsertWorkAutomationRunEvent = typeof workAutomationRunEvents.$inferInsert;
+
+/**
  * agent_activity_events — append-only event log for monitoring.
  * No updatedAt by design. No FKs for write performance.
  */
@@ -9244,6 +9503,140 @@ export const agentRunSummaries = pgTable("agent_run_summaries", {
 
 export type AgentRunSummary = typeof agentRunSummaries.$inferSelect;
 export type InsertAgentRunSummary = typeof agentRunSummaries.$inferInsert;
+
+export const agentRegistryRegistries = pgTable("agent_registry_registries", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  registryKey: varchar("registryKey", { length: 180 }).notNull(),
+  agentKind: varchar("agentKind", { length: 64 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").default(""),
+  owningTeamId: varchar("owningTeamId", { length: 36 }),
+  owningUserId: integer("owningUserId").references(() => users.id, { onDelete: "set null" }),
+  currentStableVersionId: varchar("currentStableVersionId", { length: 36 }),
+  currentLatestVersionId: varchar("currentLatestVersionId", { length: 36 }),
+  rolloutState: varchar("rolloutState", { length: 32 }).notNull().default("draft"),
+  modelFamilies: jsonb("modelFamilies").$type<string[]>().notNull().default([]),
+  metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agent_registry_registries_tenant_idx").on(t.tenantId, t.createdAt),
+  uniqueIndex("agent_registry_registries_tenant_key_idx").on(t.tenantId, t.registryKey),
+]);
+
+export type AgentRegistryRegistry = typeof agentRegistryRegistries.$inferSelect;
+export type InsertAgentRegistryRegistry = typeof agentRegistryRegistries.$inferInsert;
+
+export const agentRegistryVersions = pgTable("agent_registry_versions", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  registryId: varchar("registryId", { length: 36 }).notNull().references(() => agentRegistryRegistries.id, { onDelete: "cascade" }),
+  versionNumber: integer("versionNumber").notNull(),
+  versionStatus: varchar("versionStatus", { length: 32 }).notNull().default("draft"),
+  rolloutState: varchar("rolloutState", { length: 32 }).notNull().default("draft"),
+  previousVersionId: varchar("previousVersionId", { length: 36 }),
+  isStable: boolean("isStable").notNull().default(false),
+  reviewRequired: boolean("reviewRequired").notNull().default(false),
+  publishedAt: timestamp("publishedAt", { withTimezone: true }),
+  frozenAt: timestamp("frozenAt", { withTimezone: true }),
+  createdByUserId: integer("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agent_registry_versions_registry_idx").on(t.registryId, t.versionNumber),
+  index("agent_registry_versions_tenant_idx").on(t.tenantId, t.createdAt),
+  uniqueIndex("agent_registry_versions_unique_version_idx").on(t.registryId, t.versionNumber),
+]);
+
+export type AgentRegistryVersion = typeof agentRegistryVersions.$inferSelect;
+export type InsertAgentRegistryVersion = typeof agentRegistryVersions.$inferInsert;
+
+export const agentRegistryPolicyBindings = pgTable("agent_registry_policy_bindings", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  registryId: varchar("registryId", { length: 36 }).notNull().references(() => agentRegistryRegistries.id, { onDelete: "cascade" }),
+  versionId: varchar("versionId", { length: 36 }).notNull().references(() => agentRegistryVersions.id, { onDelete: "cascade" }),
+  purpose: text("purpose").notNull(),
+  supportedWorkDomains: jsonb("supportedWorkDomains").$type<string[]>().notNull().default([]),
+  supportedToolClasses: jsonb("supportedToolClasses").$type<string[]>().notNull().default([]),
+  disallowedActionClasses: jsonb("disallowedActionClasses").$type<string[]>().notNull().default([]),
+  memoryScopeJson: jsonb("memoryScopeJson").$type<Record<string, unknown>>().notNull().default({}),
+  budgetPolicyJson: jsonb("budgetPolicyJson").$type<Record<string, unknown>>().notNull().default({}),
+  escalationPolicyJson: jsonb("escalationPolicyJson").$type<Record<string, unknown>>().notNull().default({}),
+  approvalRequirementsJson: jsonb("approvalRequirementsJson").$type<string[]>().notNull().default([]),
+  modelCompatibilityJson: jsonb("modelCompatibilityJson").$type<string[]>().notNull().default([]),
+  evaluationTargetsJson: jsonb("evaluationTargetsJson").$type<string[]>().notNull().default([]),
+  outcomeMemoryHook: varchar("outcomeMemoryHook", { length: 180 }).notNull(),
+  metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agent_registry_policy_bindings_registry_idx").on(t.registryId),
+  index("agent_registry_policy_bindings_version_idx").on(t.versionId),
+]);
+
+export type AgentRegistryPolicyBinding = typeof agentRegistryPolicyBindings.$inferSelect;
+export type InsertAgentRegistryPolicyBinding = typeof agentRegistryPolicyBindings.$inferInsert;
+
+export const agentRegistryRolloutBindings = pgTable("agent_registry_rollout_bindings", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  registryId: varchar("registryId", { length: 36 }).notNull().references(() => agentRegistryRegistries.id, { onDelete: "cascade" }),
+  versionId: varchar("versionId", { length: 36 }).notNull().references(() => agentRegistryVersions.id, { onDelete: "cascade" }),
+  tenantTargetId: varchar("tenantTargetId", { length: 36 }),
+  teamTargetId: varchar("teamTargetId", { length: 36 }),
+  queueTargetId: varchar("queueTargetId", { length: 36 }),
+  workpackFamily: varchar("workpackFamily", { length: 120 }),
+  environment: varchar("environment", { length: 64 }),
+  shadowPercent: integer("shadowPercent").notNull().default(0),
+  canaryPercent: integer("canaryPercent").notNull().default(0),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agent_registry_rollout_bindings_registry_idx").on(t.registryId),
+  index("agent_registry_rollout_bindings_version_idx").on(t.versionId),
+]);
+
+export type AgentRegistryRolloutBinding = typeof agentRegistryRolloutBindings.$inferSelect;
+export type InsertAgentRegistryRolloutBinding = typeof agentRegistryRolloutBindings.$inferInsert;
+
+export const agentRegistryPromotionReviews = pgTable("agent_registry_promotion_reviews", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  registryId: varchar("registryId", { length: 36 }).notNull().references(() => agentRegistryRegistries.id, { onDelete: "cascade" }),
+  proposedVersionId: varchar("proposedVersionId", { length: 36 }).notNull().references(() => agentRegistryVersions.id, { onDelete: "cascade" }),
+  baselineVersionId: varchar("baselineVersionId", { length: 36 }),
+  decision: varchar("decision", { length: 32 }).notNull(),
+  reason: text("reason").notNull(),
+  createdByUserId: integer("createdByUserId").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agent_registry_promotion_reviews_registry_idx").on(t.registryId, t.createdAt),
+]);
+
+export type AgentRegistryPromotionReview = typeof agentRegistryPromotionReviews.$inferSelect;
+export type InsertAgentRegistryPromotionReview = typeof agentRegistryPromotionReviews.$inferInsert;
+
+export const agentRegistryOutcomeMemory = pgTable("agent_registry_outcome_memory", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  registryId: varchar("registryId", { length: 36 }).notNull().references(() => agentRegistryRegistries.id, { onDelete: "cascade" }),
+  versionId: varchar("versionId", { length: 36 }).notNull().references(() => agentRegistryVersions.id, { onDelete: "cascade" }),
+  workloadClass: varchar("workloadClass", { length: 120 }).notNull(),
+  selectedModelFamily: varchar("selectedModelFamily", { length: 120 }),
+  outcome: varchar("outcome", { length: 32 }).notNull(),
+  failureMode: varchar("failureMode", { length: 180 }),
+  operatorEditsJson: jsonb("operatorEditsJson").$type<string[]>().notNull().default([]),
+  improvementNotes: text("improvementNotes").notNull().default(""),
+  redactionState: varchar("redactionState", { length: 32 }).notNull().default("redacted"),
+  retentionTier: varchar("retentionTier", { length: 32 }).notNull().default("standard"),
+  metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agent_registry_outcome_memory_registry_idx").on(t.registryId, t.workloadClass, t.createdAt),
+  index("agent_registry_outcome_memory_version_idx").on(t.versionId, t.createdAt),
+]);
+
+export type AgentRegistryOutcomeMemory = typeof agentRegistryOutcomeMemory.$inferSelect;
+export type InsertAgentRegistryOutcomeMemory = typeof agentRegistryOutcomeMemory.$inferInsert;
 
 /**
  * run_snapshots — periodic state captures during active runs.

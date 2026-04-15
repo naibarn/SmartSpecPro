@@ -131,7 +131,7 @@ import { WorkerAccessKeysPanel } from "../WorkerAccessKeysPanel";
 
 describe("WorkerAccessKeysPanel", () => {
   it("renders the worker help, permissions, and quota controls", () => {
-    render(<WorkerAccessKeysPanel />);
+    render(<WorkerAccessKeysPanel tenantName="Acme Labs" />);
 
     expect(screen.getByText("Create registration key")).toBeTruthy();
     expect(screen.getAllByText("Permissions").length).toBeGreaterThan(0);

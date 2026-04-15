@@ -20,6 +20,19 @@ describe("helpContentService", () => {
     expect(index.some(topic => topic.slug === "local-ai")).toBe(true);
   });
 
+  it("keeps English and Thai help topic coverage in sync", async () => {
+    const [enIndex, thIndex] = await Promise.all([
+      getHelpSearchIndex("en"),
+      getHelpSearchIndex("th"),
+    ]);
+
+    const enSlugs = enIndex.map((topic) => topic.slug).sort();
+    const thSlugs = thIndex.map((topic) => topic.slug).sort();
+
+    expect(enSlugs).toEqual(thSlugs);
+    expect(enIndex.length).toBe(thIndex.length);
+  });
+
   it("returns the local-ai topic in Thai", async () => {
     const topic = await getHelpTopic("local-ai", "th");
 
@@ -50,6 +63,18 @@ describe("helpContentService", () => {
     expect(topic?.html).toContain("https");
   });
 
+  it("documents Work OS permalinks and evidence filters", async () => {
+    const topic = await getHelpTopic("work-os", "en");
+
+    expect(topic).not.toBeNull();
+    expect(topic?.title).toContain("Work OS");
+    expect(topic?.html).toContain("/admin/work-os?caseId=case-123");
+    expect(topic?.html).toContain("timelineSource=role_routine");
+    expect(topic?.html).toContain("timelineSource=team_run");
+    expect(topic?.html).toContain("timelineSource=workpack_record");
+    expect(topic?.html).toContain("timelineSource=work_os");
+  });
+
   it("loads the NemoClaw worker guide in English and keeps the sandbox posture explicit", async () => {
     const topic = await getHelpTopic("nemo-claw-workers", "en");
 
@@ -67,6 +92,42 @@ describe("helpContentService", () => {
     expect(topic?.title).toContain("NemoClaw");
     expect(topic?.html).toContain("nemoClawSecureWorkerPool");
     expect(topic?.html).toContain("sandbox");
+  });
+
+  it("loads the Document Management guide in English and keeps the shared library flow explicit", async () => {
+    const topic = await getHelpTopic("document-management", "en");
+
+    expect(topic).not.toBeNull();
+    expect(topic?.title).toContain("Document Management");
+    expect(topic?.html).toContain("Media History");
+    expect(topic?.html).toContain("Uploaded files are available immediately in chat attachments");
+  });
+
+  it("loads the Document Management guide in Thai and keeps the shared library flow explicit", async () => {
+    const topic = await getHelpTopic("document-management", "th");
+
+    expect(topic).not.toBeNull();
+    expect(topic?.title).toContain("จัดการเอกสาร");
+    expect(topic?.html).toContain("Media History");
+    expect(topic?.html).toContain("ไฟล์ที่อัปโหลดพร้อมใช้งานทันที");
+  });
+
+  it("loads the Video Editor guide in English and keeps export behavior explicit", async () => {
+    const topic = await getHelpTopic("video-editor", "en");
+
+    expect(topic).not.toBeNull();
+    expect(topic?.title).toContain("Video Editor");
+    expect(topic?.html).toContain("Export runs as a background task");
+    expect(topic?.html).toContain("AI Draft");
+  });
+
+  it("loads the Video Editor guide in Thai and keeps export behavior explicit", async () => {
+    const topic = await getHelpTopic("video-editor", "th");
+
+    expect(topic).not.toBeNull();
+    expect(topic?.title).toContain("Video Editor");
+    expect(topic?.html).toContain("Export ทำงานเป็น background task");
+    expect(topic?.html).toContain("AI Draft");
   });
 
   it("loads the HiClaw worker guide in English and keeps the cluster posture explicit", async () => {

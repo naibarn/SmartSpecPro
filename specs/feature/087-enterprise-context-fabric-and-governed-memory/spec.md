@@ -23,6 +23,7 @@ Feature 087 adds that fabric by unifying:
 - governed retrieval and evidence bundling
 
 The product outcome is that agents see the right context for the right job, with provenance and policy attached.
+The platform should also learn which context bundles actually helped the work so future retrieval can prefer higher-value memory and suppress low-value memory.
 
 Context governance must remain tenant-scoped and user-team aware:
 
@@ -62,6 +63,7 @@ Without that layer:
 3. Support governed context assembly by work type, agent type, and data class.
 4. Give operators visibility into why a context bundle was selected.
 5. Preserve strict tenant, project, and owner isolation.
+6. Capture context utility so the system can improve what it retrieves next time.
 
 ---
 
@@ -70,6 +72,7 @@ Without that layer:
 1. This feature does not replace the existing vector stores.
 2. This feature does not require one universal embedding model.
 3. This feature does not allow role agents to read broadly by default.
+4. This feature does not own run execution or approval logic; it supplies the governed memory layer that Feature 095 and Feature 084 consume.
 
 ---
 
@@ -114,6 +117,7 @@ Without that layer:
 | `org_memory` | Shared organizational reference material |
 | `approved_long_term_memory` | Explicitly promoted durable memory |
 | `suppressed_memory` | Memory that must not be injected automatically |
+| `context_feedback_record` | Evidence that a memory item helped, hurt, or was unused in a run |
 
 ### 7.2 Context bundle metadata
 
@@ -128,6 +132,9 @@ Every context bundle must support:
 - `data_classification`
 - `why_selected`
 - `suppression_reason` when applicable
+- `utility_signal`
+- `contradiction_signal`
+- `retention_hint`
 
 ---
 
@@ -155,6 +162,13 @@ Every context bundle must support:
 
 - Operators must be able to inspect a "why this context" view for important runs.
 - Role-memory and work-memory changes must be auditable.
+
+### 8.4 Context utility feedback
+
+- Every important run should record whether a retrieved context item contributed to success, had no effect, or created friction.
+- High-utility items can be promoted into approved long-term memory when policy allows and they remain fresh enough.
+- Low-utility, contradictory, or repeatedly stale items should be suppressed or downgraded automatically.
+- The system should prefer context bundles that have a proven relationship to better outcomes for the same workload class, while still respecting tenant and project boundaries.
 
 ---
 
@@ -185,3 +199,4 @@ Every context bundle must support:
 3. Suppressed, stale, or low-trust context can be blocked from automatic injection.
 4. Work memory, role memory, and organization memory remain isolated unless a policy explicitly allows sharing.
 5. High-risk work can require citations and trusted-source thresholds before autonomous continuation.
+6. The platform can explain not only why a context item was selected, but whether it improved the run and should be kept for the future.

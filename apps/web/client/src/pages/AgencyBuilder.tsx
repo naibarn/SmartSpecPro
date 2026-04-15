@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, useSearch } from "wouter";
 import ReactFlow, {
   ReactFlowProvider,
   addEdge,
@@ -31,6 +31,8 @@ import { AgencySidebar } from "@/components/agency/AgencySidebar";
 import { AgencyVersionHistory } from "@/components/agency/AgencyVersionHistory";
 import { RunHistoryPanel } from "@/components/agency/RunHistoryPanel";
 import { AutoCreateAgencyModal } from "@/components/agency/AutoCreateAgencyModal";
+import { ExportAsSkillDialog } from "@/components/agency/ExportAsSkillDialog";
+import { buildAgencySkillExportPayload } from "@/components/agency/agencySkillExport";
 import {
   applySpecialEdgeConnection,
   buildSpecialFlowEdges,
@@ -41,7 +43,7 @@ import {
 } from "@/components/agency/nodeGraphSync";
 import { useAgencyValidation } from "@/hooks/useAgencyValidation";
 import { useAgencyHistory } from "@/hooks/useAgencyHistory";
-import { Loader2, Network, Sparkles } from "lucide-react";
+import { Loader2, Network, Package, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -315,14 +317,15 @@ function getSubgraphOverlayLayout(
 
 function AgencyCanvas() {
   const { t } = useScopedTranslation("agency");
-  const [, setLocation] = useLocation();
+  const [currentLocation, setLocation] = useLocation();
+  const search = useSearch();
   const [matched, params] = useRoute("/agencies/:id/edit");
   const agencyId = (params as Record<string, string>)?.id as string | undefined;
   const isNew = agencyId === "new";
 
   const [nodes, setNodes, onNodesChange] = useNodesState<AgencyNodeData>([]);
   const [edges, setEdges, onEdgesChangeBase] = useEdgesState([]);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 
   // Wrap onEdgesChange to auto-remove Router routes when edges are deleted
   const onEdgesChange = useCallback(
@@ -356,10 +359,29 @@ function AgencyCanvas() {
   const [upgradeDialogOpen, setUpgradeDialogOpen] = useState(false);
   const [upgradeAnalysis, setUpgradeAnalysis] = useState<UpgradeAnalysisState | null>(null);
   const [upgradeAnalysisLoading, setUpgradeAnalysisLoading] = useState(false);
+  const [skillExportOpen, setSkillExportOpen] = useState(false);
+  const [skillExportPreset, setSkillExportPreset] = useState<{
+    name?: string;
+    description?: string;
+    category?: string;
+  } | null>(null);
   const [creatorFeeCredits, setCreatorFeeCredits] = useState(0);
   const tenantFlags = useTenantFeatureFlags();
   const hybridRuntimeEnabled = tenantFlags.agencyHybridAdk;
   const hybridKillSwitchActive = tenantFlags.agencyHybridAdkKillSwitch;
+  const duplicateSkillQuery = useMemo(() => {
+    const params = new URLSearchParams(search);
+    return {
+      autoExport: params.get("autoExport") === "1",
+      name: params.get("duplicateSkillName") || undefined,
+      description: params.get("duplicateSkillDescription") || undefined,
+      category: params.get("duplicateSkillCategory") || undefined,
+    };
+  }, [search]);
+  const autoExportTriggeredRef = useRef(false);
+  const currentAgencyLink = useMemo(() => {
+    return `${window.location.origin}${currentLocation}${search ? (search.startsWith("?") ? search : `?${search}`) : ""}`;
+  }, [currentLocation, search]);
   const { data: llmModelsData } = trpc.llmProviders.availableModels.useQuery(undefined, {
     staleTime: 60_000,
   });
@@ -688,7 +710,7 @@ function AgencyCanvas() {
       return nextEdges;
     });
 
-    setSelectedNodeId(boundaryId);
+    setSelectedNodeIds([boundaryId]);
     toast.info("Inserted an engine boundary for the cross-engine handoff.");
     return true;
   }, [defaultEngine, nodes, primarySubgraphId, setEdges, setNodes, syncedSubgraphs]);
@@ -724,12 +746,20 @@ function AgencyCanvas() {
     [insertEngineBoundaryBridge, nodes, setEdges, setNodes],
   );
 
-  const onNodeClick = useCallback((_: any, node: Node) => {
-    setSelectedNodeId(node.id);
+  const onNodeClick = useCallback((event: any, node: Node) => {
+    const multiSelect = Boolean(event?.shiftKey || event?.metaKey || event?.ctrlKey);
+    setSelectedNodeIds((current) => {
+      if (multiSelect) {
+        return current.includes(node.id)
+          ? current.filter((id) => id !== node.id)
+          : [...current, node.id];
+      }
+      return [node.id];
+    });
   }, []);
 
   const onPaneClick = useCallback(() => {
-    setSelectedNodeId(null);
+    setSelectedNodeIds([]);
   }, []);
 
   // -- Add node from sidebar (click or drag) --
@@ -798,7 +828,7 @@ function AgencyCanvas() {
       }
       return [...nds, newNode];
     });
-    setSelectedNodeId(newNode.id);
+    setSelectedNodeIds([newNode.id]);
 
     // Scroll viewport to center on the new node
     setTimeout(() => {
@@ -875,7 +905,7 @@ function AgencyCanvas() {
       setEdges((eds) =>
         eds.filter((e) => e.source !== nodeId && e.target !== nodeId),
       );
-      setSelectedNodeId(null);
+      setSelectedNodeIds((current) => current.filter((id) => id !== nodeId));
     },
     [setNodes, setEdges],
   );
@@ -892,6 +922,11 @@ function AgencyCanvas() {
       mutateAsync: async () => null,
       isPending: false,
     };
+  const skillCreateMutation = trpc.skills.create.useMutation({
+    onError: (error) => {
+      toast.error(error.message || "Failed to export skill");
+    },
+  });
 
   const serializeGraph = useCallback(() => {
     const effectiveSubgraphs = syncedSubgraphs;
@@ -1398,7 +1433,7 @@ function AgencyCanvas() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setSelectedNodeId(null);
+        setSelectedNodeIds([]);
         return;
       }
       if (!canEdit) return;
@@ -1406,8 +1441,9 @@ function AgencyCanvas() {
       const tag = (e.target as HTMLElement)?.tagName;
       const inInput = tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable;
 
-      if ((e.key === "Delete" || e.key === "Backspace") && !inInput && selectedNodeId) {
-        handleDeleteNode(selectedNodeId);
+      const primarySelectedNodeId = selectedNodeIds[0] ?? null;
+      if ((e.key === "Delete" || e.key === "Backspace") && !inInput && primarySelectedNodeId) {
+        handleDeleteNode(primarySelectedNodeId);
         return;
       }
       if (e.ctrlKey || e.metaKey) {
@@ -1431,11 +1467,112 @@ function AgencyCanvas() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [canEdit, selectedNodeId, handleDeleteNode, undo, redo, setNodes, setEdges, handleSave, handlePublish]);
+  }, [canEdit, selectedNodeIds, handleDeleteNode, undo, redo, setNodes, setEdges, handleSave, handlePublish]);
 
+  const selectedNodeId = selectedNodeIds[0] ?? null;
   const selectedNode = selectedNodeId
     ? nodes.find((n) => n.id === selectedNodeId)
     : null;
+  const selectedExportNodes = useMemo(
+    () => nodes.filter((node) => selectedNodeIds.includes(node.id)),
+    [nodes, selectedNodeIds],
+  );
+  const selectedExportEdges = useMemo(() => {
+    if (selectedExportNodes.length === 0) return [];
+    const selectedNodeIds = new Set(selectedExportNodes.map((node) => node.id));
+    return edges.filter((edge) => selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target));
+  }, [edges, selectedExportNodes]);
+
+  useEffect(() => {
+    if (!duplicateSkillQuery.autoExport || autoExportTriggeredRef.current || nodes.length === 0) {
+      return;
+    }
+    autoExportTriggeredRef.current = true;
+    setSelectedNodeIds(nodes.map((node) => node.id));
+    setSkillExportPreset({
+      name: duplicateSkillQuery.name,
+      description: duplicateSkillQuery.description,
+      category: duplicateSkillQuery.category,
+    });
+    setSkillExportOpen(true);
+  }, [duplicateSkillQuery.autoExport, duplicateSkillQuery.category, duplicateSkillQuery.description, duplicateSkillQuery.name, nodes]);
+
+  const handleOpenSkillExport = useCallback(() => {
+    if (!canEdit || selectedExportNodes.length === 0) {
+      toast.error("Select an agency node first.");
+      return;
+    }
+    setSkillExportOpen(true);
+  }, [canEdit, selectedExportNodes.length]);
+
+  const handleCopyAgencyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(currentAgencyLink);
+      toast.success("Agency link copied.");
+    } catch {
+      toast.error("Failed to copy agency link");
+    }
+  }, [currentAgencyLink]);
+
+  const handleExportSkill = useCallback(async (config: { name: string; description: string; category: string; edgeIds: string[] }) => {
+    if (selectedExportNodes.length === 0) {
+      toast.error("Select an agency node first.");
+      return;
+    }
+
+    try {
+      const payload = buildAgencySkillExportPayload({
+        skillName: config.name,
+        description: config.description,
+        category: config.category,
+        agencyName,
+        agencyId: agencyId && agencyId !== "new" ? agencyId : null,
+        nodes: selectedExportNodes,
+        edges: selectedExportEdges,
+        includedEdgeIds: config.edgeIds,
+        defaultEngine,
+        documentVersion,
+        compileMode,
+        compatibilityMode,
+      });
+
+      const created = await skillCreateMutation.mutateAsync({
+        slug: payload.slug,
+        name: payload.name,
+        description: payload.description,
+        category: payload.category,
+        icon: payload.icon,
+        tags: payload.tags,
+        systemPrompt: payload.systemPrompt,
+        skillContent: payload.skillContent,
+        configJson: payload.configJson,
+        visibility: "private",
+        enabledByDefault: false,
+        visibleByDefault: false,
+        isEnabled: true,
+      });
+
+      await utils.skills.listFromDb.invalidate();
+      toast.success(`Created skill "${created.slug}" from ${selectedExportNodes.length} selected node${selectedExportNodes.length > 1 ? "s" : ""}.`);
+      setSkillExportOpen(false);
+      setSkillExportPreset(null);
+      setLocation(`/settings/skills?skillId=${created.id}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to export skill");
+    }
+  }, [
+    agencyName,
+    compileMode,
+    compatibilityMode,
+    defaultEngine,
+    documentVersion,
+    selectedExportEdges,
+    selectedExportNodes,
+    setLocation,
+    skillCreateMutation,
+    utils.skills.listFromDb,
+    agencyId,
+  ]);
 
   const isSaving =
     createMutation.isPending ||
@@ -1473,8 +1610,35 @@ function AgencyCanvas() {
         onHistory={() => setVersionHistoryOpen(true)}
         onRunHistory={() => setRunHistoryOpen(true)}
         onAutoCreate={() => setAutoCreateOpen(true)}
+        onCopyAgencyLink={handleCopyAgencyLink}
         readOnly={!canEdit}
       />
+
+      {canEdit && selectedNode && (
+        <div className="flex items-center justify-between gap-3 border-b bg-emerald-50/80 px-4 py-2 text-xs text-emerald-900">
+          <div className="min-w-0">
+            <p className="font-medium">
+              {selectedExportNodes.length > 1
+                ? `Selected subgraph: ${selectedExportNodes.length} nodes`
+                : `Selected node: ${selectedNode.data.name}`}
+            </p>
+            <p className="truncate text-[11px] text-emerald-800/80">
+              {selectedExportNodes.length > 1
+                ? "Export the selected subgraph as a reusable skill definition."
+                : "Export the selected node as a reusable skill definition."}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-100"
+            onClick={handleOpenSkillExport}
+          >
+            <Package className="mr-1.5 h-3.5 w-3.5" />
+            Export as Skill
+          </Button>
+        </div>
+      )}
 
       <div className="border-b bg-slate-50/80 px-4 py-3" data-testid="agency-hybrid-banner">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -2020,11 +2184,23 @@ function AgencyCanvas() {
             onChange={(updates) =>
               handleNodeDataChange(selectedNode.id, updates)
             }
-            onClose={() => setSelectedNodeId(null)}
+            onClose={() => setSelectedNodeIds([])}
             onDelete={() => handleDeleteNode(selectedNode.id)}
           />
         )}
       </div>
+
+      <ExportAsSkillDialog
+        open={skillExportOpen}
+        onOpenChange={setSkillExportOpen}
+        selectedNodes={selectedExportNodes}
+        selectedEdges={selectedExportEdges}
+        sourceLink={currentAgencyLink}
+        initialName={skillExportPreset?.name}
+        initialDescription={skillExportPreset?.description}
+        initialCategory={skillExportPreset?.category}
+        onExport={handleExportSkill}
+      />
     </div>
   );
 }

@@ -79,3 +79,24 @@ Work OS สามารถมอบหมายงานให้:
 - เปิด **Work OS Console** เพื่อดู inbox, timeline, approvals, exceptions และ outcomes
 - เปิด **Admin Monitoring** ถ้าต้องการภาพรวมของระบบก่อน
 - กลับไปที่ **Chat** เมื่อต้องอธิบายขั้นตอนถัดไปด้วยภาษาธรรมดา
+
+## Permalink และตัวกรอง
+
+คุณสามารถแชร์มุมมองของ Work OS ที่ต้องการด้วย URL แบบ bookmarkable ได้:
+
+- `/admin/work-os` เปิดคอนโซลหลัก
+- `/admin/work-os?caseId=case-123` เปิดเคสเดียวโดยตรง
+- `/admin/work-os?caseId=case-123&timelineSource=role_routine` โฟกัสที่ evidence ของ role routine
+- `/admin/work-os?caseId=case-123&timelineSource=team_run` โฟกัสที่ evidence ของ team run
+- `/admin/work-os?caseId=case-123&timelineSource=workpack_record` โฟกัสที่ workpack evidence
+- `/admin/work-os?caseId=case-123&timelineSource=work_os` แสดง event stream หลักของ Work OS
+
+ใช้ `caseId` เพื่อให้อยู่ที่เคสเดิม และใช้ `timelineSource` เพื่อกรอง timeline ให้เหลือ evidence slice เดียว
+วิธีนี้ช่วยให้แชร์ คัดลอก และกลับมาดูมุมมองเดิมได้ง่ายขึ้น
+
+## คำอธิบายสั้น ๆ
+
+- `caseId` ใช้เปิดเคสเดิม
+- `timelineSource` ใช้กรอง timeline ให้เหลือ evidence slice เดียว
+- `work_os` คือ main case stream
+- `role_routine`, `team_run`, และ `workpack_record` คือ evidence slice แบบเฉพาะแหล่งที่มา

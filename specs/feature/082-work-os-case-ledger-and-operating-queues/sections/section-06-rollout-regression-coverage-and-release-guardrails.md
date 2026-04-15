@@ -9,6 +9,7 @@ Ship the Work OS safely with staged rollout, regression coverage, and guardrails
 - Roll out in compatibility-first phases.
 - Add regression coverage around tenant isolation, lifecycle events, and legacy compatibility.
 - Add release guardrails so no user-facing surface can mutate ownership, SLA, approval, or exception state outside the canonical work service boundary.
+- Keep the rollout reversible through deterministic projections and additive migration steps before any full backfill is enabled.
 
 ## Implementation Notes
 
@@ -29,6 +30,8 @@ Ship the Work OS safely with staged rollout, regression coverage, and guardrails
 - Assert no user-facing surface can mutate Work OS ownership, SLA, approval, or exception state without the canonical service boundary.
 - Assert tenant isolation is preserved across intake, queueing, approval, exception, and timeline access.
 - Assert the final regression suite covers the primary lifecycle from intake through outcome retrieval.
+- Assert external assistants and autonomous workers route to triage when no safe target work item, queue, or owner is available.
+- Assert a later physical backfill or feature-flag harness can be introduced without changing the deterministic read-projection contract.
 
 ## Acceptance Notes
 
@@ -47,4 +50,4 @@ Ship the Work OS safely with staged rollout, regression coverage, and guardrails
 
 ## Deviation
 
-- The rollout guardrail is currently expressed through compatibility-first code paths and regression tests; a dedicated feature-flag rollout harness can be added later if needed.
+- The rollout guardrail is currently expressed through compatibility-first code paths and regression tests; a dedicated feature-flag rollout harness can be added later if needed, but the specification now requires the deterministic projection contract to remain stable across any later backfill work.

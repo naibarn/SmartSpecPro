@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { pickEnabledModelId } from "@/lib/enabledModelSelection";
@@ -532,6 +532,7 @@ export default function AdminSkills() {
   const [maintenanceStatusFilter, setMaintenanceStatusFilter] = useState<string>("pending_review");
   const [selectedRecommendationId, setSelectedRecommendationId] = useState<number | null>(null);
   const [pendingMaintenanceApply, setPendingMaintenanceApply] = useState<PendingMaintenanceApply | null>(null);
+  const openedSkillIdFromQueryRef = useRef<number | null>(null);
   const [scheduleDraft, setScheduleDraft] = useState({
     id: null as number | null,
     name: "",
@@ -582,6 +583,14 @@ export default function AdminSkills() {
 
   // Check auth — any authenticated user can access, not just admins
   const isAdmin = user?.role === "admin";
+  const search = useSearch();
+  const openSkillIdFromQuery = useMemo(() => {
+    const params = new URLSearchParams(search);
+    const value = params.get("skillId");
+    if (!value) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [search]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -601,6 +610,17 @@ export default function AdminSkills() {
     search: searchQuery || undefined,
     enabledOnly: showEnabledOnly || undefined,
   });
+
+  useEffect(() => {
+    if (!skills || !openSkillIdFromQuery || editingSkill || openedSkillIdFromQueryRef.current === openSkillIdFromQuery) {
+      return;
+    }
+    const found = skills.find((skill: any) => skill.id === openSkillIdFromQuery);
+    if (found) {
+      openedSkillIdFromQueryRef.current = openSkillIdFromQuery;
+      setEditingSkill(found as unknown as Skill);
+    }
+  }, [editingSkill, openSkillIdFromQuery, skills]);
 
   // Fetch categories
   const { data: categories } = trpc.skills.getCategories.useQuery();
@@ -1314,6 +1334,46 @@ export default function AdminSkills() {
     setStudioTargetSkillId(skillId ?? null);
     setIsStudioDialogOpen(true);
   };
+
+  const selectedSkillExportSource = useMemo(() => {
+    const configJson = (editingSkill?.configJson ?? null) as Record<string, any> | null;
+    if (!configJson || configJson.source !== "agency_export") return null;
+    const sourceAgencyId = typeof configJson.sourceAgencyId === "string" ? configJson.sourceAgencyId : null;
+    const sourceAgencyName = typeof configJson.sourceAgencyName === "string" ? configJson.sourceAgencyName : null;
+    return {
+      sourceAgencyId,
+      sourceAgencyName,
+    };
+  }, [editingSkill?.configJson]);
+
+  const sourceGraphDuplicateLocation = useMemo(() => {
+    if (!selectedSkillExportSource?.sourceAgencyId || !editingSkill) return null;
+    const params = new URLSearchParams({
+      autoExport: "1",
+      duplicateSkillName: editingSkill.name,
+      duplicateSkillDescription: editingSkill.description || "",
+      duplicateSkillCategory: editingSkill.category || "chat_assistant",
+    });
+    return `/agencies/${selectedSkillExportSource.sourceAgencyId}/edit?${params.toString()}`;
+  }, [editingSkill, selectedSkillExportSource?.sourceAgencyId]);
+
+  const handleCopySourceGraphDuplicateLocation = useCallback(async () => {
+    if (!sourceGraphDuplicateLocation) return;
+    const url = `${window.location.origin}${sourceGraphDuplicateLocation}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({
+        title: "Copied permalink",
+        description: "The duplicate link has been copied to your clipboard.",
+      });
+    } catch {
+      toast({
+        title: "Copy failed",
+        description: "Unable to copy the duplicate link right now.",
+        variant: "destructive",
+      });
+    }
+  }, [sourceGraphDuplicateLocation, toast]);
 
   if (authLoading || !user || !isAdmin) {
     return (
@@ -2981,6 +3041,46 @@ export default function AdminSkills() {
                 Update skill configuration for "{editingSkill.slug}"
               </DialogDescription>
             </DialogHeader>
+            {selectedSkillExportSource?.sourceAgencyId && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                <div className="space-y-0.5">
+                  <p className="font-medium">Exported from Agency Builder</p>
+                  <p className="text-xs text-emerald-800">
+                    {selectedSkillExportSource.sourceAgencyName
+                      ? `Source agency: ${selectedSkillExportSource.sourceAgencyName}`
+                      : "This skill was created from an agency graph export."}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-100"
+                  onClick={() => setLocation(`/agencies/${selectedSkillExportSource.sourceAgencyId}/edit`)}
+                >
+                  Open source graph
+                </Button>
+                {sourceGraphDuplicateLocation && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-100"
+                      onClick={() => setLocation(sourceGraphDuplicateLocation)}
+                    >
+                      Duplicate from source graph
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-100"
+                      onClick={handleCopySourceGraphDuplicateLocation}
+                    >
+                      Copy duplicate link
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>

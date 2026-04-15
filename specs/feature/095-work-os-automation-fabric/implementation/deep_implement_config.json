@@ -1,0 +1,27 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/095-work-os-automation-fabric/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/095-work-os-automation-fabric/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-canonical-automation-run-model",
+    "section-02-mode-selection-workflow-template-resolution-and-transition-rules",
+    "section-03-execution-adapters-step-routing-boundaries-and-surface-allowlists",
+    "section-04-checkpoints-human-edits-approval-gates-and-resume-semantics",
+    "section-05-evidence-drafts-media-outputs-and-operator-surfaces",
+    "section-06-rollout-guardrails-and-regression-coverage"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-15T11:14:54.736666+00:00"
+}

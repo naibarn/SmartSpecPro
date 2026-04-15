@@ -26,6 +26,7 @@ import { getTenantFeatureFlag } from "../services/featureFlags";
 import { assertBrowserPolicySurfaceReady } from "../services/browserPolicyReleaseControl";
 import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
 import { loadLegacyAutomationSettings } from "../services/browserPolicySettingsBridge";
+import { finalizeAutomationCopilotTaskReservation } from "../services/automationCopilotExecutionService";
 const AUTOMATION_PREFIX = "/api/v1/automation-copilot";
 const CREDIT_RESERVE_AMOUNT = 100;
 const MIN_CREDITS_TO_START = 10;
@@ -155,17 +156,7 @@ export const automationCopilotRouter = router({
 
       const data = (await res.json()) as Record<string, unknown>;
 
-      // Refund unused reservation when execution reaches terminal state
-      const status = data.status as string | undefined;
-      if ((status === "success" || status === "failed") && isRedisAvailable()) {
-        const redis = getRedisClient();
-        const resKey = `automation:task_reservation:${input.taskId}`;
-        const reservationId = await redis.get(resKey);
-        if (reservationId) {
-          await refundReservation(reservationId);
-          await redis.del(resKey);
-        }
-      }
+      await finalizeAutomationCopilotTaskReservation(input.taskId, String(data.status ?? ""));
 
       return data;
     }),

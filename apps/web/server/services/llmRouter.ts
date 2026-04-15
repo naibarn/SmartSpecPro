@@ -29,6 +29,11 @@ export interface ProviderCandidate {
   priority: number;
 }
 
+type NormalizedResponsesInputPart =
+  | { type: "input_text"; text: string }
+  | { type: "input_image"; image_url: string; detail?: unknown }
+  | { type: "input_file"; file_url: string };
+
 export type ExecuteResult =
   | { type: "success"; response: any; providerId: number; providerName: string }
   | { type: "fallback_required"; from: ProviderCandidate; to: ProviderCandidate; estimatedCredits: number }
@@ -144,6 +149,7 @@ async function resolveProvidersWithRule(modelId: string): Promise<ResolveResult>
       baseUrl: llmProviders.baseUrl,
       apiKeyEncrypted: llmProviders.apiKeyEncrypted,
       availableModels: llmProviders.availableModels,
+      supportsResponses: modelProviderMap.supportsResponses,
       providerModelId: modelProviderMap.providerModelId,
       apiStyle: modelProviderMap.apiStyle,
       pricingInput: modelProviderMap.pricingInput,
@@ -258,8 +264,27 @@ function sortCandidates(
 
 // --- Request Execution ---
 
-function isFallbackEligible(statusCode: number): boolean {
-  return statusCode === 429 || statusCode >= 500;
+function isFallbackEligible(statusCode: number, errorMessage?: string): boolean {
+  if (statusCode === 429 || statusCode >= 500) {
+    return true;
+  }
+
+  if (statusCode !== 400 || !errorMessage) {
+    return false;
+  }
+
+  const normalized = errorMessage.toLowerCase();
+  return [
+    "invalid model",
+    "not a valid model",
+    "unsupported request fields",
+    "unsupported field",
+    "response_format",
+    "does not allow",
+    "invalid_request_error",
+    "unknown model",
+    "model not found",
+  ].some((pattern) => normalized.includes(pattern));
 }
 
 function resolveChatUrl(baseUrl: string): string {
@@ -285,7 +310,7 @@ function resolveResponsesUrl(baseUrl: string, providerName: string, modelId: str
 
 function normalizeResponsesInputContent(
   content: unknown,
-): string | Array<Record<string, unknown>> {
+): string | NormalizedResponsesInputPart[] {
   if (typeof content === "string") {
     const text = content.trim();
     return text;
@@ -331,14 +356,15 @@ function normalizeResponsesInputContent(
         }
         return null;
       })
-      .filter((part): part is Record<string, unknown> => Boolean(part));
+        .filter((part): part is NormalizedResponsesInputPart => part !== null);
 
     if (parts.length === 0) {
       return "";
     }
 
     if (parts.every((part) => part.type === "input_text")) {
-      return parts
+      const textParts = parts as Array<{ type: "input_text"; text: string }>;
+      return textParts
         .map((part) => (typeof part.text === "string" ? part.text : ""))
         .filter((part) => part.length > 0)
         .join("\n");
@@ -1014,7 +1040,7 @@ export async function executeWithFallback(params: {
       });
 
       // Non-retriable client error — truncate error text to avoid leaking provider internals
-      if (!isFallbackEligible(statusCode)) {
+      if (!isFallbackEligible(statusCode, detailedErrorMessage)) {
         return { type: "error", error: detailedErrorMessage.slice(0, 500), statusCode };
       }
 

@@ -8,6 +8,8 @@ import {
   workItemEvents,
   workpackRecords,
   teamRuns,
+  workAutomationRuns,
+  workAutomationRunEvents,
 } from "../../../drizzle/schema";
 
 const { mockGetDb } = vi.hoisted(() => ({
@@ -24,7 +26,23 @@ vi.mock("../workItemService", () => ({
   createWorkItem: mockCreateWorkItem,
 }));
 
-import { createWorkRequest, createWorkTask, projectTaskAsCase } from "../workOsService";
+const { mockGetRoleRoutineRun, mockListRoleRoutineRunsForRoutine } = vi.hoisted(() => ({
+  mockGetRoleRoutineRun: vi.fn(),
+  mockListRoleRoutineRunsForRoutine: vi.fn(),
+}));
+vi.mock("../rolePersistence", () => ({
+  getRoleRoutineRun: mockGetRoleRoutineRun,
+  listRoleRoutineRunsForRoutine: mockListRoleRoutineRunsForRoutine,
+}));
+
+const { mockBuildBrowserAutomationTimelineEntries } = vi.hoisted(() => ({
+  mockBuildBrowserAutomationTimelineEntries: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("../workAutomationBrowserTaskService", () => ({
+  buildBrowserAutomationTimelineEntries: mockBuildBrowserAutomationTimelineEntries,
+}));
+
+import { createWorkRequest, createWorkTask, getWorkCaseProjection, projectTaskAsCase } from "../workOsService";
 
 function buildReturning<T>(value: T) {
   return {
@@ -132,6 +150,9 @@ describe("workOsService", () => {
             if (table === workItemEvents) {
               return { where: () => ({ orderBy: async () => [] }) };
             }
+            if (table === workAutomationRuns) {
+              return { where: () => ({ orderBy: () => ({ limit: async () => [] }) }) };
+            }
             return { where: () => ({ limit: async () => [] }) };
           },
         };
@@ -209,6 +230,9 @@ describe("workOsService", () => {
             }
             if (table === workItemEvents) {
               return { where: () => ({ orderBy: async () => [{ id: "evt-legacy-1", eventType: "created", createdAt: new Date("2026-04-10T00:00:00.000Z"), detailJson: { ok: true } }] }) };
+            }
+            if (table === workAutomationRuns) {
+              return { where: () => ({ orderBy: () => ({ limit: async () => [] }) }) };
             }
             return { where: () => ({ limit: async () => [] }) };
           },
@@ -312,6 +336,9 @@ describe("workOsService", () => {
             if (table === workpackRecords) {
               return { where: () => ({ orderBy: async () => [workPackRecord] }) };
             }
+            if (table === workAutomationRuns) {
+              return { where: () => ({ orderBy: () => ({ limit: async () => [] }) }) };
+            }
             return { where: () => ({ orderBy: async () => [], limit: async () => [] }) };
           },
         };
@@ -327,6 +354,281 @@ describe("workOsService", () => {
     expect(workpackEntry?.eventType).toBe("workpack_run");
     expect(teamRunEntry?.eventType).toBe("team_run_snapshot");
     expect(workpackEntry?.detailJson).toEqual(expect.objectContaining({ recordId: "wpr-1" }));
-    expect(teamRunEntry?.detailJson).toEqual(expect.objectContaining({ runId: "run-1" }));
+    expect(teamRunEntry?.detailJson).toEqual(expect.objectContaining({
+      runId: "run-1",
+      status: "running",
+      workOsState: "in_progress",
+      statusBridge: expect.objectContaining({
+        teamRunStatus: "running",
+        workOsState: "in_progress",
+      }),
+    }));
+  });
+
+  it("includes role-routine evidence in the case timeline", async () => {
+    const roleRun = {
+      id: "rrun-1",
+      tenantId: "tenant-1",
+      roleId: "role-1",
+      routineId: "routine-1",
+      contractId: "contract-1",
+      status: "running",
+      triggerSource: "schedule",
+      idempotencyKey: "idem-1",
+      selectedWorkpackFamily: "family-1",
+      resolvedWorkpackVersionId: "wpv-1",
+      linkedWorkpackRunIds: ["wpr-1"],
+      checkpointId: "checkpoint-1",
+      recoveryState: "fresh",
+      resolutionPolicy: "pinned_version",
+      previousResolvedVersionId: null,
+      rollbackBaselineVersionId: null,
+      partitionKey: null,
+      blockerCodes: ["waiting_on_input"],
+      currentObjectiveSummary: "Review invoice",
+      approvalRequestIds: [],
+      startedAt: "2026-04-10T04:00:00.000Z",
+      endedAt: null,
+      createdAt: "2026-04-10T04:00:00.000Z",
+      updatedAt: "2026-04-10T04:05:00.000Z",
+    };
+
+    const caseRecord = {
+      id: "case-1",
+      tenantId: "tenant-1",
+      requestId: "req-1",
+      primaryTaskId: "task-1",
+      currentState: "in_progress",
+      title: "Process invoice",
+      summary: "Collect invoice data",
+      priority: "normal",
+      riskLevel: "medium",
+      dataClassification: "internal",
+      ownerType: "queue",
+      ownerId: "queue-1",
+      linkedConversationIdsJson: [],
+      linkedWorkpackRunIdsJson: [],
+      linkedRoleRoutineRunIdsJson: ["rrun-1"],
+      createdAt: new Date("2026-04-10T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+    };
+
+    const task = {
+      id: "task-1",
+      tenantId: "tenant-1",
+      teamId: "team-1",
+      roomId: "room-1",
+      routineId: "routine-1",
+      runId: null,
+      status: "planned",
+      title: "Follow up",
+      objective: "Collect invoice data",
+      priority: "normal",
+      riskClass: "medium",
+      createdAt: new Date("2026-04-10T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+    };
+
+    mockGetRoleRoutineRun.mockResolvedValue(roleRun);
+    mockListRoleRoutineRunsForRoutine.mockResolvedValue([roleRun]);
+
+    const db = {
+      select(fields?: any) {
+        if (fields?.run === teamRuns) {
+          return {
+            from() {
+              return {
+                innerJoin() {
+                  return {
+                    where() {
+                      return {
+                        orderBy: async () => [],
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        return {
+          from(table: any) {
+            if (table === teamWorkItems) {
+              return { where: () => ({ limit: async () => [task] }) };
+            }
+            if (table === workCases) {
+              return { where: () => ({ limit: async () => [caseRecord] }) };
+            }
+            if (table === workRequests) {
+              return { where: () => ({ limit: async () => [{ id: "req-1", tenantId: "tenant-1", currentState: "new" }] }) };
+            }
+            if (table === workAssignments || table === workOsEvents || table === workItemEvents || table === workpackRecords) {
+              return { where: () => ({ orderBy: async () => [] }) };
+            }
+            if (table === workAutomationRuns) {
+              return { where: () => ({ orderBy: () => ({ limit: async () => [] }) }) };
+            }
+            return { where: () => ({ orderBy: async () => [], limit: async () => [] }) };
+          },
+        };
+      },
+    };
+
+    mockGetDb.mockResolvedValue(db as any);
+
+    const projection = await getWorkCaseProjection("case-1", "tenant-1");
+    const roleRoutineEntry = projection.timeline.find((entry) => entry.source === "role_routine");
+
+    expect(roleRoutineEntry?.eventType).toBe("role_routine_running");
+    expect(roleRoutineEntry?.detailJson).toEqual(expect.objectContaining({
+      routineId: "routine-1",
+      routineRunId: "rrun-1",
+      selectedWorkpackFamily: "family-1",
+    }));
+  });
+
+  it("includes automation run evidence in the case timeline", async () => {
+    const automationRun = {
+      id: "run-automation-1",
+      tenantId: "tenant-1",
+      requestId: "req-1",
+      caseId: "case-1",
+      taskId: "task-1",
+      templateKey: "content-production",
+      templateVersion: "v1",
+      title: "Generate launch assets",
+      objective: "Create research, copy, storyboard, media, and video",
+      currentMode: "semi_auto",
+      status: "running",
+      currentStepId: "step-automation-1",
+      currentCheckpointId: "checkpoint-automation-1",
+      finalDisposition: null,
+      finalDispositionReason: null,
+      resumeCursor: "resume:automation",
+      createdByUserId: 42,
+      createdByAssistantId: null,
+      startedAt: new Date("2026-04-10T05:00:00.000Z"),
+      completedAt: null,
+      createdAt: new Date("2026-04-10T05:00:00.000Z"),
+      updatedAt: new Date("2026-04-10T05:05:00.000Z"),
+    };
+
+    const automationEvent = {
+      id: "automation-event-1",
+      tenantId: "tenant-1",
+      requestId: "req-1",
+      caseId: "case-1",
+      runId: "run-automation-1",
+      stepId: null,
+      checkpointId: null,
+      eventType: "automation_run_created",
+      fromMode: null,
+      toMode: "semi_auto",
+      status: "running",
+      detailJson: { templateKey: "content-production" },
+      actorUserId: 42,
+      actorAssistantId: null,
+      createdAt: new Date("2026-04-10T05:00:00.000Z"),
+    };
+
+    const caseRecord = {
+      id: "case-1",
+      tenantId: "tenant-1",
+      requestId: "req-1",
+      primaryTaskId: "task-1",
+      currentState: "in_progress",
+      title: "Process invoice",
+      summary: "Collect invoice data",
+      priority: "normal",
+      riskLevel: "medium",
+      dataClassification: "internal",
+      ownerType: "queue",
+      ownerId: "queue-1",
+      automationRunId: "run-automation-1",
+      automationMode: "semi_auto",
+      automationStepId: "step-automation-1",
+      automationCheckpointId: "checkpoint-automation-1",
+      automationDisposition: null,
+      automationSummary: "Create research, copy, storyboard, media, and video",
+      automationUpdatedAt: new Date("2026-04-10T05:05:00.000Z"),
+      linkedConversationIdsJson: [],
+      linkedWorkpackRunIdsJson: [],
+      linkedRoleRoutineRunIdsJson: [],
+      createdAt: new Date("2026-04-10T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-10T05:05:00.000Z"),
+    };
+
+    const task = {
+      id: "task-1",
+      tenantId: "tenant-1",
+      teamId: "team-1",
+      roomId: "room-1",
+      status: "planned",
+      title: "Follow up",
+      objective: "Collect invoice data",
+      priority: "normal",
+      riskClass: "medium",
+      createdAt: new Date("2026-04-10T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+    };
+
+    const db = {
+      select(fields?: any) {
+        if (fields?.run === teamRuns) {
+          return {
+            from() {
+              return {
+                innerJoin() {
+                  return {
+                    where() {
+                      return {
+                        orderBy: async () => [],
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        return {
+          from(table: any) {
+            if (table === teamWorkItems) {
+              return { where: () => ({ limit: async () => [task] }) };
+            }
+            if (table === workCases) {
+              return { where: () => ({ limit: async () => [caseRecord] }) };
+            }
+            if (table === workRequests) {
+              return { where: () => ({ limit: async () => [{ id: "req-1", tenantId: "tenant-1", currentState: "new" }] }) };
+            }
+            if (table === workAssignments || table === workOsEvents || table === workItemEvents || table === workpackRecords) {
+              return { where: () => ({ orderBy: async () => [] }) };
+            }
+            if (table === workAutomationRuns) {
+              return { where: () => ({ orderBy: () => ({ limit: async () => [automationRun] }) }) };
+            }
+            if (table === workAutomationRunEvents) {
+              return { where: () => ({ orderBy: async () => [automationEvent] }) };
+            }
+            return { where: () => ({ orderBy: async () => [], limit: async () => [] }) };
+          },
+        };
+      },
+    };
+
+    mockGetDb.mockResolvedValue(db as any);
+
+    const projection = await getWorkCaseProjection("case-1", "tenant-1");
+    const automationEntry = projection.timeline.find((entry) => entry.eventType === "automation_run_created");
+
+    expect(projection.automation.run?.id).toBe("run-automation-1");
+    expect(automationEntry?.source).toBe("work_os");
+    expect(automationEntry?.detailJson).toEqual(expect.objectContaining({
+      runId: "run-automation-1",
+      templateKey: "content-production",
+    }));
   });
 });

@@ -5856,6 +5856,18 @@ export function ChatView({
                           {t("workStart.openGuide")}
                         </Button>
                       </div>
+                      <div className="mt-3 rounded-xl border border-slate-200 bg-white/80 p-3 text-xs text-slate-600">
+                        <p className="font-medium text-slate-800">Permalink tips</p>
+                        <p className="mt-1">
+                          Use <code>caseId</code> to reopen the same case later. Use{" "}
+                          <code>timelineSource</code> to jump to a specific evidence slice such as{" "}
+                          <code>work_os</code>, <code>role_routine</code>, <code>team_run</code>, or{" "}
+                          <code>workpack_record</code>.
+                        </p>
+                        <p className="mt-1">
+                          If you need the guide, the button above opens `/help/work-os`.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>

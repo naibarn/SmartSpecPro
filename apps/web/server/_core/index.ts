@@ -36,6 +36,7 @@ import { registerSkillDiscoveryToolRoute } from "../routers/skillDiscoveryTool";
 import { registerInternalSocialToolRoute } from "../routes/internalSocialTool";
 import { registerInternalSocialActionsRoute } from "../routes/internalSocialActions";
 import { registerInternalMetricsRoute } from "../routes/internalMetrics";
+import { renderAgentRegistryMetrics } from "../services/agentRegistryMetrics";
 
 import { createWebhookRouter } from "../routes/webhooks";
 import { createWebhookTriggerRouter } from "../routes/webhookTrigger";
@@ -108,6 +109,10 @@ import {
   initializeRoleRoutineSchedulerJob,
   shutdownRoleRoutineSchedulerJob,
 } from "../jobs/roleRoutineSchedulerJob";
+import {
+  initializeBrowserAutomationClaimReconcilerJob,
+  shutdownBrowserAutomationClaimReconcilerJob,
+} from "../jobs/browserAutomationClaimReconciler";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { startHistoryCollection } from "../services/llmQueue";
 import { recoverActiveRunsOnStartup } from "../services/runEngine";
@@ -261,6 +266,11 @@ app.get("/api/virtual-admin/health", async (_req, res) => {
   } catch {
     res.json({ running: false, error: "Guardian not initialized" });
   }
+});
+
+app.get("/metrics", (_req, res) => {
+  res.type("text/plain; version=0.0.4");
+  res.send(renderAgentRegistryMetrics());
 });
 
 /**
@@ -1565,6 +1575,12 @@ async function main() {
     console.error("[Startup] Failed to initialize role routine scheduler job:", error);
   }
 
+  try {
+    await initializeBrowserAutomationClaimReconcilerJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize browser automation claim reconciler job:", error);
+  }
+
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
@@ -1671,6 +1687,7 @@ process.on("SIGTERM", async () => {
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});
   await shutdownWorkpackScheduleJob().catch(() => {});
   await shutdownRoleRoutineSchedulerJob().catch(() => {});
+  await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
 
@@ -1733,6 +1750,7 @@ process.on("SIGINT", async () => {
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});
   await shutdownWorkpackScheduleJob().catch(() => {});
   await shutdownRoleRoutineSchedulerJob().catch(() => {});
+  await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
   await Promise.all(

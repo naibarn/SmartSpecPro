@@ -748,6 +748,35 @@ describe("executeWithFallback", () => {
     }));
   });
 
+  it("400 invalid-model responses can fallback to the next provider", async () => {
+    const provider1 = makeCandidate({ providerId: 1, providerName: "OpenRouter-A" });
+    const provider2 = makeCandidate({ providerId: 2, providerName: "OpenRouter-B" });
+    setupProviderResolution([provider1, provider2]);
+
+    mockFetch
+      .mockResolvedValueOnce({ ok: false, status: 400, text: async () => JSON.stringify({ error: { message: "not a valid model" } }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: "Recovered" } }], usage: { prompt_tokens: 12, completion_tokens: 6 } }),
+      });
+
+    const result = await executeWithFallback({
+      model: "gpt-5.4-mini",
+      messages: [{ role: "user", content: "Hi" }],
+      stream: false,
+      userId: 1,
+    });
+
+    expect(result.type).toBe("success");
+    if (result.type === "success") {
+      expect(result.providerId).toBe(2);
+    }
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockHealthRecordFailure).toHaveBeenCalledWith(1, "http_400");
+    expect(mockHealthRecordSuccess).toHaveBeenCalledWith(2);
+  });
+
   it("max fallback attempts respected (default 3)", async () => {
     const providers = [1, 2, 3, 4, 5].map(id => makeCandidate({ providerId: id }));
     setupProviderResolution(providers);

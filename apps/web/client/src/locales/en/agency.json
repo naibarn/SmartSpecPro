@@ -173,6 +173,7 @@
   "builder.toolbar.fee": "Fee:",
   "builder.toolbar.layout": "Layout",
   "builder.toolbar.model": "Model:",
+  "builder.toolbar.copyAgencyLink": "Copy link",
   "builder.toolbar.publish": "Publish",
   "builder.toolbar.readOnly": "Read Only",
   "builder.toolbar.redo": "Redo (Ctrl+Y)",

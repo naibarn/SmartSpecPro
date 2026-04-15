@@ -41,6 +41,15 @@ export default function AdminOcrUsage() {
     unknown: "Unknown",
   }), []);
 
+  type AdminOcrUsageUserRow = {
+    userId: number;
+    name: string | null;
+    email: string | null;
+    credits: number | string | null;
+    count: number | string | null;
+    lastUsedAt: string | Date | null;
+  };
+
   const { data, isLoading, refetch } = trpc.credits.adminOcrUsageSummary.useQuery({
     days,
     limit: pageSize,
@@ -83,7 +92,7 @@ export default function AdminOcrUsage() {
       return raw;
     };
 
-    const rows = data.users.map((row) => [
+    const rows = data.users.map((row: AdminOcrUsageUserRow) => [
       row.userId,
       row.name ?? "",
       row.email ?? "",
@@ -95,7 +104,7 @@ export default function AdminOcrUsage() {
     const header = ["userId", "name", "email", "credits", "requests", "lastUsedAt"];
     const csv = [
       header.map(resolveCsvValue).join(","),
-      ...rows.map((row) => row.map(resolveCsvValue).join(",")),
+      ...rows.map((row: Array<unknown>) => row.map(resolveCsvValue).join(",")),
     ].join("\n");
 
     const fileTenant = tenantId ? `tenant-${tenantId}` : "all-tenants";
@@ -364,7 +373,7 @@ export default function AdminOcrUsage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(data?.users ?? []).map((row) => (
+                    {(data?.users ?? []).map((row: AdminOcrUsageUserRow) => (
                       <tr
                         key={`user-${row.userId}`}
                         className="border-b last:border-0 cursor-pointer hover:bg-slate-50"

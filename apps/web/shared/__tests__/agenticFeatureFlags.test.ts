@@ -19,9 +19,9 @@ describe("Agentic feature flags", () => {
 
   test("FEATURE_FLAG_DEFAULTS has correct defaults for agentic flags", () => {
     expect(FEATURE_FLAG_DEFAULTS.agencyAgenticModeEnabled).toBe(true);
-    expect(FEATURE_FLAG_DEFAULTS.agencyReactExecutorEnabled).toBe(false);
-    expect(FEATURE_FLAG_DEFAULTS.agencyAutonomousAgentEnabled).toBe(false);
-    expect(FEATURE_FLAG_DEFAULTS.agencyLongTermMemoryEnabled).toBe(false);
+    expect(FEATURE_FLAG_DEFAULTS.agencyReactExecutorEnabled).toBe(true);
+    expect(FEATURE_FLAG_DEFAULTS.agencyAutonomousAgentEnabled).toBe(true);
+    expect(FEATURE_FLAG_DEFAULTS.agencyLongTermMemoryEnabled).toBe(true);
   });
 
   test("TenantFeatureFlags interface accepts all 4 new flags", () => {

@@ -88,6 +88,16 @@ vi.mock("@/hooks/useTenantFeatureFlag", () => ({
   useTenantFeatureFlag: () => false,
 }));
 
+vi.mock("@/contexts/TenantContext", () => ({
+  useTenant: () => ({
+    tenant: {
+      name: "Acme Labs",
+    },
+    isLoading: false,
+    refreshTenant: vi.fn(),
+  }),
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => key,

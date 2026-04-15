@@ -10,6 +10,7 @@ type OpsHealth = "healthy" | "warning" | "critical";
 
 type OpsAnomaly = {
   id: string;
+  dedupeKey?: string;
   severity: "warning" | "critical";
   category: "resources" | "services" | "monitoring" | "audit" | "orchestration";
   type: string;
@@ -54,6 +55,31 @@ type OpsOverview = {
   updatedAt: string;
 };
 
+type WorkOsOverview = {
+  byState: Record<string, number>;
+  openExceptions: number;
+  overdueSla: number;
+  completed: number;
+};
+
+type BrowserAutomationHealth = {
+  totalClaims: number;
+  pendingClaims: number;
+  claimedClaims: number;
+  queuedClaims: number;
+  runningClaims: number;
+  completedClaims: number;
+  failedClaims: number;
+  cancelledClaims: number;
+  staleClaims: number;
+  distinctCases: number;
+  latestClaimedAt: string | Date | null;
+  latestPolledAt: string | Date | null;
+  latestUpdatedAt: string | Date | null;
+  latestCompletedAt: string | Date | null;
+  nextPollAt: string | Date | null;
+};
+
 type OpsEarlyWarningPanelProps = {
   overview?: OpsOverview;
   isLoading?: boolean;
@@ -69,6 +95,8 @@ type OpsEarlyWarningPanelProps = {
     reviewCount: number;
     topReasonCodes?: string[];
   };
+  workOsOverview?: WorkOsOverview;
+  browserAutomationHealth?: BrowserAutomationHealth;
 };
 
 const severityBadgeClassName: Record<OpsHealth, string> = {
@@ -106,7 +134,7 @@ function latencyLabel(value: number | null): string | null {
   return `${Math.round(value)}ms`;
 }
 
-function relativeTimeLabel(value: string | null): string | null {
+function relativeTimeLabel(value: string | Date | null): string | null {
   if (!value) return null;
   const diffSeconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
   if (diffSeconds < 60) return `${diffSeconds}s ago`;
@@ -124,6 +152,8 @@ export function OpsEarlyWarningPanel({
   description = "Cross-check resources, alerts, audit logs, and orchestration so abnormal patterns show up before the server tips over.",
   showMonitoringLink = false,
   workpackRollout,
+  workOsOverview,
+  browserAutomationHealth,
 }: OpsEarlyWarningPanelProps) {
   const [, setLocation] = useLocation();
 
@@ -148,6 +178,23 @@ export function OpsEarlyWarningPanel({
     ];
     return pills.filter((pill): pill is { label: string; value: string } => Boolean(pill.value));
   }, [overview]);
+
+  const workOsStatePills = useMemo(() => {
+    if (!workOsOverview) return [];
+    return Object.entries(workOsOverview.byState)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([state, count]) => `${state}: ${count}`);
+  }, [workOsOverview]);
+
+  const browserAutomationPills = useMemo(() => {
+    if (!browserAutomationHealth) return [];
+    return [
+      `pending: ${browserAutomationHealth.pendingClaims}`,
+      `stale: ${browserAutomationHealth.staleClaims}`,
+      `running: ${browserAutomationHealth.runningClaims}`,
+      `cases: ${browserAutomationHealth.distinctCases}`,
+    ];
+  }, [browserAutomationHealth]);
 
   const HealthIcon = overview?.health === "critical"
     ? Siren
@@ -216,6 +263,51 @@ export function OpsEarlyWarningPanel({
               {workpackRollout.topReasonCodes.map((reasonCode) => (
                 <Badge key={reasonCode} variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
                   Workpack blocker: {reasonCode}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+
+          {workOsOverview ? (
+            <div className="grid gap-3 md:grid-cols-4">
+              <SignalStat label="Open Exceptions" value={workOsOverview.openExceptions} tone={workOsOverview.openExceptions > 0 ? "critical" : "healthy"} />
+              <SignalStat label="Overdue SLA" value={workOsOverview.overdueSla} tone={workOsOverview.overdueSla > 0 ? "critical" : "healthy"} />
+              <SignalStat label="Completed" value={workOsOverview.completed} tone="neutral" />
+              <SignalStat label="States" value={Object.values(workOsOverview.byState).reduce((sum, count) => sum + count, 0)} tone="neutral" />
+            </div>
+          ) : null}
+
+          {browserAutomationHealth ? (
+            <div className="rounded-2xl border border-cyan-100 bg-cyan-50/50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Browser automation health</p>
+                  <p className="text-xs text-slate-600">
+                    Pending claims, stale polls, and queue pressure for browser-based automation steps.
+                  </p>
+                </div>
+                <Badge variant="outline" className="border-cyan-200 bg-white text-cyan-700">
+                  {browserAutomationHealth.totalClaims} total claims
+                </Badge>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {browserAutomationPills.map((pill) => (
+                  <Badge key={pill} variant="outline" className="border-cyan-200 bg-white text-cyan-700">
+                    {pill}
+                  </Badge>
+                ))}
+              </div>
+              <p className="mt-3 text-xs text-slate-500">
+                Latest updated {relativeTimeLabel(browserAutomationHealth.latestUpdatedAt)} · next poll {relativeTimeLabel(browserAutomationHealth.nextPollAt)}
+              </p>
+            </div>
+          ) : null}
+
+          {workOsStatePills.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {workOsStatePills.map((pill) => (
+                <Badge key={pill} variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
+                  {pill}
                 </Badge>
               ))}
             </div>

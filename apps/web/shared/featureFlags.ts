@@ -72,6 +72,7 @@ export interface TenantFeatureFlags {
   hermesMemoryContextSync: boolean; // F64 — Hermes opt-in memory/context sync surfaces
   hermesTaskModes: boolean; // F65 — Hermes task mode summaries and work-mode mapping
   hermesVisibilitySummaries: boolean; // F66 — Hermes progress and observability summaries
+  agentRegistryEnabled: boolean; // F67 — Governed agent registry surface and rollout gates
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -147,6 +148,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "hermesMemoryContextSync",
   "hermesTaskModes",
   "hermesVisibilitySummaries",
+  "agentRegistryEnabled",
 ]);
 
 /**
@@ -221,6 +223,7 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   hermesMemoryContextSync: false, // Hermes memory/context sync stays off until approval and quarantine semantics are ready
   hermesTaskModes: false, // Hermes task mode summaries stay rollout-gated until operator surfaces are ready
   hermesVisibilitySummaries: false, // Hermes visibility summaries stay admin-gated until rollout evidence exists
+  agentRegistryEnabled: false, // Governed registry rollout remains tenant opt-in until staged adoption is ready
 };
 
 export type HermesRolloutSurface =

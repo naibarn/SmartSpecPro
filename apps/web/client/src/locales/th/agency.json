@@ -173,6 +173,7 @@
   "builder.toolbar.fee": "ค่าธรรมเนียม:",
   "builder.toolbar.layout": "จัดวาง",
   "builder.toolbar.model": "โมเดล:",
+  "builder.toolbar.copyAgencyLink": "คัดลอกลิงก์",
   "builder.toolbar.publish": "เผยแพร่",
   "builder.toolbar.readOnly": "อ่านอย่างเดียว",
   "builder.toolbar.redo": "ทำซ้ำ (Ctrl+Y)",

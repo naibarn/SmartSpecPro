@@ -21,6 +21,7 @@ Feature 084 adds that substrate:
 - resumable checkpoints
 - replay and fork controls
 - a machine-readable execution journal
+- a memory trail of what was done, what result was achieved, and what should improve next
 
 The target outcome is that SmartAIHub can answer:
 
@@ -28,6 +29,8 @@ The target outcome is that SmartAIHub can answer:
 - why control changed
 - what state was carried forward
 - where the latest safe resume point is
+- what work was attempted and what outcome it produced
+- what the next run should do differently
 
 This run ledger must respect tenant ownership and team ownership:
 
@@ -70,6 +73,7 @@ Without this feature, autonomous work remains brittle:
 3. Support pause, resume, retry, replay, and fork from known checkpoints.
 4. Preserve decision records and handoff reasons across agent, human, and runtime boundaries.
 5. Expose one timeline for operators, replay tooling, and audits.
+6. Preserve outcome memory so the platform can learn from each execution without rewriting the canonical ledger.
 
 ---
 
@@ -78,6 +82,7 @@ Without this feature, autonomous work remains brittle:
 1. This feature does not replace Feature 082 work items.
 2. This feature does not define the autonomy policy itself; Feature 085 owns that.
 3. This feature does not replace existing low-level logs or traces; it binds them into a runtime ledger.
+4. This feature does not own workflow orchestration or step routing; Feature 095 uses the ledger to run cases.
 
 ---
 
@@ -124,6 +129,7 @@ Without this feature, autonomous work remains brittle:
 | `run_decision_record` | Why a choice or reroute happened |
 | `run_resume_token` | Operator-safe resume handle |
 | `run_fork` | Diagnostic or alternate branch from a prior checkpoint |
+| `run_learning_record` | Post-run memory of what was done, what happened, and what should improve next |
 
 ### 7.2 Required fields
 
@@ -152,6 +158,22 @@ Every handoff record must capture:
 - load handoff
 - supervisor reroute
 - human resume
+
+### 7.4 Run memory fields
+
+Every run learning record should capture:
+
+- `workload_type`
+- `work_summary`
+- `expected_result`
+- `actual_result`
+- `success_signals`
+- `failure_signals`
+- `friction_points`
+- `operator_override_notes`
+- `improvement_candidates`
+- `model_or_prompt_version`
+- `next_run_hint`
 
 ---
 
@@ -186,6 +208,17 @@ Every handoff record must capture:
   - why the system changed owners or paused
   - what approval or policy boundary was hit
 
+### 8.4 Run memory capture
+
+- After a run completes, the platform must write a machine-readable learning summary that describes:
+  - what work was attempted
+  - what result was produced
+  - what changed after human review or retry
+  - what the next run should improve
+- Learning summaries must be linked to the run, the final checkpoint, and the key steps that created the outcome.
+- The ledger should distinguish canonical execution history from derived learning notes so replay and audit never lose fidelity.
+- Reusable learning notes should be queryable by workload type, agent version, and model version so future runs can benefit from prior outcomes.
+
 ---
 
 ## 9. Product surfaces
@@ -197,6 +230,7 @@ Feature 084 should add or standardize:
 - `Handoff Inspector`
 - `Resume / Retry / Fork controls`
 - `Decision Record panel`
+- `Outcome Memory panel`
 
 These surfaces should be shared by workpack detail, role monitor, and exception views where possible.
 
@@ -229,3 +263,4 @@ These surfaces should be shared by workpack detail, role monitor, and exception 
 3. The system can explain why a handoff happened using machine-readable reason codes.
 4. Replay and diagnostic fork do not overwrite the canonical production run ledger.
 5. The platform can answer "who had control at this point and what state did they inherit?" from the ledger alone.
+6. The platform can also answer "what happened, what worked, and what should improve next?" from the same run family.

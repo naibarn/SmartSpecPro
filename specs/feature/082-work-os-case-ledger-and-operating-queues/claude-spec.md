@@ -13,6 +13,8 @@ Deliver a canonical Work OS layer that makes business work first-class through d
 - Map executable tasks to the existing team-work-item substrate first.
 - Add approval, exception, outcome, and SLA records as explicit objects.
 - Preserve a server-canonical work identity across chat, workpacks, role agents, monitoring, and desktop execution.
+- Preserve a truthful desktop sync contract so offline or quarantined progress is queued and later attributed back to the shared case timeline instead of becoming desktop-only state.
+- Ensure external assistants and autonomous workers can only create or update work through the canonical Work OS APIs, with triage fallback when no safe target work item or queue can be resolved.
 - Expose tenant-visible inboxes, queues, timelines, and operational dashboards.
 - Keep legacy team-work-item and workpack evidence reachable from the new case timeline.
 
@@ -32,6 +34,7 @@ Deliver a canonical Work OS layer that makes business work first-class through d
 5. Web remains the source of truth for ownership, SLA, and audit state.
 6. Desktop is a truthful execution surface, not a second source of truth.
 7. Legacy surfaces must write through the canonical Work OS boundary.
+8. The first release may use deterministic projections before a full physical backfill.
 
 ## 4. Existing codebase fit
 
@@ -40,6 +43,7 @@ Deliver a canonical Work OS layer that makes business work first-class through d
 - `teamWorkItemRouter` already mirrors lifecycle events into room messages.
 - `monitoringRouter` already exposes operational summaries and admin alerting.
 - `approvalsRouter` already proxies approval operations and should be integrated rather than bypassed.
+- Desktop and external-agent flows can be layered on top of the same canonical work identity without introducing a second workflow engine.
 
 ## 5. Testing stance
 

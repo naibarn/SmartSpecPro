@@ -17,9 +17,12 @@ import {
   FileText,
   Loader2,
   MessageSquare,
+  Copy,
   ShieldCheck,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type WorkRequestRecord = {
   id: string;
@@ -34,8 +37,8 @@ type WorkRequestRecord = {
   defaultOwnerId?: string | null;
   defaultQueueId?: string | null;
   linkedCaseId?: string | null;
-  createdAt: string;
-  updatedAt?: string;
+  createdAt: string | Date;
+  updatedAt?: string | Date;
 };
 
 function formatDate(value: string | Date | null | undefined): string {
@@ -89,6 +92,47 @@ function stateLabel(t: (key: string, defaultValue?: string) => string, state: st
   return t(key, state.replaceAll("_", " "));
 }
 
+function buildWorkOsConsolePath(caseId?: string | null): string {
+  const params = new URLSearchParams();
+  if (caseId) {
+    params.set("caseId", caseId);
+  }
+  params.set("timelineSource", "work_os");
+  return `/admin/work-os?${params.toString()}`;
+}
+
+function buildWorkOsSourcePath(source: "role_routine" | "team_run" | "workpack_record", caseId?: string | null): string {
+  const params = new URLSearchParams();
+  if (caseId) {
+    params.set("caseId", caseId);
+  }
+  params.set("timelineSource", source);
+  return `/admin/work-os?${params.toString()}`;
+}
+
+function copyWorkOsLink(path: string, successMessage: string): void {
+  const url = `${window.location.origin}${path}`;
+  void navigator.clipboard
+    .writeText(url)
+    .then(() => {
+      toast.success(successMessage);
+    })
+    .catch(() => {
+      toast.error("Could not copy the Work OS link");
+    });
+}
+
+function sourceLinkLabel(source: "role_routine" | "team_run" | "workpack_record"): string {
+  switch (source) {
+    case "role_routine":
+      return "Role Routine";
+    case "team_run":
+      return "Team Run";
+    case "workpack_record":
+      return "Workpack";
+  }
+}
+
 export default function MyRequestsPage() {
   const { user } = useAuth();
   const { t } = useScopedTranslation("workos");
@@ -136,6 +180,10 @@ export default function MyRequestsPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={() => setLocation("/help/work-os")}>
+              <BookOpen className="mr-1 h-4 w-4" />
+              {t("helper.guide", "Open guide")}
+            </Button>
             <Button variant="outline" onClick={() => setLocation("/chat")}>
               <MessageSquare className="mr-1 h-4 w-4" />
               {t("list.openChat", "Open Chat")}
@@ -145,10 +193,19 @@ export default function MyRequestsPage() {
               {t("list.startWork", "Start Work")}
             </Button>
             {isAdminLike ? (
-              <Button onClick={() => setLocation("/admin/work-os")}>
-                <ShieldCheck className="mr-1 h-4 w-4" />
-                {t("list.openConsole", "Open Work OS Console")}
-              </Button>
+              <>
+                <Button onClick={() => setLocation(buildWorkOsConsolePath(null))}>
+                  <ShieldCheck className="mr-1 h-4 w-4" />
+                  {t("list.openConsole", "Open Work OS Console")}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => copyWorkOsLink(buildWorkOsConsolePath(null), "Work OS link copied")}
+                >
+                  <Copy className="mr-1 h-4 w-4" />
+                  Copy permalink
+                </Button>
+              </>
             ) : null}
           </div>
         </div>
@@ -194,7 +251,7 @@ export default function MyRequestsPage() {
                     {t("list.startWork", "Start Work")}
                   </Button>
                   <Button variant="outline" onClick={() => setLocation("/help/work-os")}>
-                    {t("helper.guide", "Read the Work OS guide")}
+                    {t("helper.guide", "Open guide")}
                   </Button>
                 </div>
               </div>
@@ -263,16 +320,70 @@ export default function MyRequestsPage() {
                             {t("list.startWork", "Start Work")}
                           </Button>
                           {isAdminLike ? (
-                            <Button
-                              size="sm"
-                              onClick={() => setLocation(
-                                request.linkedCaseId
-                                  ? `/admin/work-os?caseId=${encodeURIComponent(request.linkedCaseId)}`
-                                  : "/admin/work-os"
-                              )}
-                            >
-                              {t("list.openConsole", "Open Work OS Console")}
-                            </Button>
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => setLocation(buildWorkOsConsolePath(request.linkedCaseId ?? null))}
+                              >
+                                {t("list.openConsole", "Open Work OS Console")}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => copyWorkOsLink(buildWorkOsConsolePath(request.linkedCaseId ?? null), "Work OS link copied")}
+                              >
+                                <Copy className="mr-1 h-4 w-4" />
+                                Copy permalink
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setLocation(buildWorkOsSourcePath("role_routine", request.linkedCaseId ?? null))}
+                              >
+                                {sourceLinkLabel("role_routine")}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setLocation(buildWorkOsSourcePath("team_run", request.linkedCaseId ?? null))}
+                              >
+                                {sourceLinkLabel("team_run")}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setLocation(buildWorkOsSourcePath("workpack_record", request.linkedCaseId ?? null))}
+                              >
+                                {sourceLinkLabel("workpack_record")}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                aria-label="Copy role evidence"
+                                onClick={() => copyWorkOsLink(buildWorkOsSourcePath("role_routine", request.linkedCaseId ?? null), "Role Routine link copied")}
+                              >
+                                <Copy className="mr-1 h-4 w-4" />
+                                Copy role evidence
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                aria-label="Copy team evidence"
+                                onClick={() => copyWorkOsLink(buildWorkOsSourcePath("team_run", request.linkedCaseId ?? null), "Team Run link copied")}
+                              >
+                                <Copy className="mr-1 h-4 w-4" />
+                                Copy team evidence
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                aria-label="Copy workpack evidence"
+                                onClick={() => copyWorkOsLink(buildWorkOsSourcePath("workpack_record", request.linkedCaseId ?? null), "Workpack link copied")}
+                              >
+                                <Copy className="mr-1 h-4 w-4" />
+                                Copy workpack evidence
+                              </Button>
+                            </div>
                           ) : null}
                         </div>
                       </div>
@@ -303,9 +414,13 @@ export default function MyRequestsPage() {
                   {t("list.startWork", "Start Work")}
                 </Button>
                 <Button variant="outline" onClick={() => setLocation("/help/work-os")}>
-                  {t("helper.guide", "Read the Work OS guide")}
+                  {t("helper.guide", "Open guide")}
                 </Button>
               </div>
+              <p className="text-xs text-slate-500">
+                Work OS links are bookmarkable. `timelineSource=work_os` opens the main case view, while
+                `role_routine`, `team_run`, and `workpack_record` jump straight to those evidence slices.
+              </p>
             </div>
           </DashboardCard>
         </div>

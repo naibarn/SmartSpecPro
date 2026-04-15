@@ -106,7 +106,7 @@ export const localAiRouter = router({
         contentBase64: z.string().trim().min(1),
         mode: localAiAttachmentAssistModeSchema.default("auto"),
         analysisProfile: z
-          .enum(["document_ocr", "real_world_vision", "extract_text"])
+          .enum(["document_ocr", "real_world_vision", "extract_text", "finance_payin_llm_parser"])
           .optional(),
         captureIntent: localAiAttachmentCaptureIntentSchema,
         debugTraceId: z.string().trim().min(1).max(128).optional(),

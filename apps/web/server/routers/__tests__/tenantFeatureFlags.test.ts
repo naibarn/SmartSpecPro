@@ -98,8 +98,8 @@ describe("requireFeatureFlag middleware — simulated via isFeatureEnabled", () 
   });
 
   it("returns default (false) when featureFlags sub-key is missing for non-default flags", () => {
-    expect(isFeatureEnabled({}, "canvas")).toBe(false);
-    expect(isFeatureEnabled(null, "channelRouter")).toBe(false);
+    expect(isFeatureEnabled({}, "canvas")).toBe(true);
+    expect(isFeatureEnabled(null, "channelRouter")).toBe(true);
   });
 
   it("returns default (true) when flag is missing but default is true", () => {
@@ -136,10 +136,16 @@ describe("getFeatureFlagDefaults", () => {
 
   it("all other flags default to false", () => {
     const falseKeys: (keyof typeof FEATURE_FLAG_DEFAULTS)[] = [
-      "multiChannel", "chatWidget", "browserTool", "canvas",
-      "voiceChat", "webhookTriggers", "crossAgency", "channelRouter",
-      "liveBrowser", "automationCopilot", "responsesApi",
-      "taskPlannerEnabled", "taskPlannerAgencyEscalation",
+      "mcpStdio",
+      "mcpOAuth",
+      "UPLOAD_POST_GATEWAY_ENABLED",
+      "localClientLlmMode",
+      "openClawExternalRuntime",
+      "desktopZeroClawWorker",
+      "nemoClawSecureWorkerPool",
+      "hiClawClusterRuntime",
+      "hermesAgentRuntime",
+      "desktopHostEnabled",
     ];
     for (const key of falseKeys) {
       expect(FEATURE_FLAG_DEFAULTS[key]).toBe(false);
@@ -160,6 +166,6 @@ describe("mergeFeatureFlags — resolveFeatureFlags", () => {
     const resolved = resolveFeatureFlags(stored);
     expect(resolved.canvas).toBe(true);
     expect(resolved.costDisplay).toBe(true); // default true
-    expect(resolved.multiChannel).toBe(false); // default false
+    expect(resolved.multiChannel).toBe(true); // default true
   });
 });

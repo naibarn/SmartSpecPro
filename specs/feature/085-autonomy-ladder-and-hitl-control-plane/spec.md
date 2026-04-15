@@ -22,6 +22,7 @@ Feature 085 introduces that model:
 
 The product outcome is not just "an approval button."
 It is a platform-wide contract for when humans stay in control, when agents may proceed, and how the system safely steps back up to a person.
+It also learns from prior run outcomes so future autonomy decisions can be evidence-backed rather than static.
 
 The autonomy model is tenant-aware and user-team aware:
 
@@ -60,6 +61,7 @@ Without a universal autonomy ladder:
 3. Support downgrade, pause, and escalation when confidence, policy, or SLA posture changes.
 4. Give operators one control plane for autonomy configuration by queue, workpack family, and role routine.
 5. Keep human reviews narrow and consequence-focused instead of approval spam.
+6. Feed outcome memory from prior runs into future autonomy recommendations without auto-escalating risk silently.
 
 ---
 
@@ -68,6 +70,7 @@ Without a universal autonomy ladder:
 1. This feature does not replace the policy engine in Feature 086.
 2. This feature does not promise fully autonomous operation for high-risk work.
 3. This feature does not remove existing browser-policy approvals; it generalizes them.
+4. This feature does not own workflow execution or checkpoint persistence; Feature 095 uses the shared autonomy policy while Feature 084 stores the run history.
 
 ---
 
@@ -167,6 +170,13 @@ Without a universal autonomy ladder:
   - resume after human edits
 - Downgrade decisions must be visible in the run ledger from Feature 084.
 
+### 8.4 Evidence-backed tuning
+
+- The platform should recommend autonomy changes using recent outcome memory from Feature 084 and evaluation evidence from Feature 088.
+- Automatic downgrade may trigger on repeated failure patterns, policy drift, or low-confidence clusters.
+- Automatic upgrade must remain gated by policy, evaluation thresholds, and rollback readiness.
+- Approval previews should include prior outcome patterns for the same workload class when available.
+
 ---
 
 ## 9. Web and desktop responsibilities
@@ -196,3 +206,4 @@ Without a universal autonomy ladder:
 3. Approval UI can show the specific action or plan being approved, not only a generic yes/no dialog.
 4. Incident or drift conditions can automatically downgrade autonomy without losing work continuity.
 5. Humans intervene only at meaningful consequence boundaries rather than every small execution step.
+6. Operators can see why a workload is recommended for a different autonomy level based on outcome memory and evaluation evidence.

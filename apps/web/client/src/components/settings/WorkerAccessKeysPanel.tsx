@@ -28,6 +28,10 @@ type GeneratedKey = {
   key: WorkerAccessKeyRecord;
 };
 
+type WorkerAccessKeysPanelProps = {
+  tenantName?: string | null;
+};
+
 const WORKER_RUNTIME_LABELS: Record<WorkerRuntimeType, string> = {
   openclaw_gateway: "OpenClaw",
   desktop_zeroclaw_managed: "ZeroClaw Desktop",
@@ -149,6 +153,10 @@ function formatQuota(value: number | null | undefined, unit: string, unlimitedLa
   return `${value}/${unit}`;
 }
 
+function injectTenantName(text: string, tenantName: string): string {
+  return text.replaceAll("{{tenantName}}", tenantName);
+}
+
 type WorkerConnectionGuide = {
   runtimeType: WorkerRuntimeType;
   titleKey: string;
@@ -156,11 +164,12 @@ type WorkerConnectionGuide = {
   steps: string[];
 };
 
-export function WorkerAccessKeysPanel() {
+export function WorkerAccessKeysPanel({ tenantName }: WorkerAccessKeysPanelProps) {
   const { t } = useScopedTranslation("settings");
   const utils = trpc.useUtils();
   const prefsQuery = trpc.users.getPreferences.useQuery();
   const providersQuery = trpc.llmProviders.list.useQuery();
+  const resolvedTenantName = tenantName?.trim() || t("workers.tenantFallback");
 
   const [label, setLabel] = useState("");
   const [runtimeType, setRuntimeType] = useState<WorkerRuntimeType>("hermes_agent_gateway");
@@ -177,8 +186,8 @@ export function WorkerAccessKeysPanel() {
   const [expiresInDays, setExpiresInDays] = useState("30");
   const [generatedKey, setGeneratedKey] = useState<GeneratedKey | null>(null);
 
-  const providerOptions = useMemo(
-    () => (providersQuery.data ?? []).map((provider) => ({
+  const providerOptions = useMemo<Array<{ id: number; label: string; name: string }>>(
+    () => (providersQuery.data ?? []).map((provider: { id: number; displayName?: string | null; providerName: string }) => ({
       id: provider.id,
       label: provider.displayName || provider.providerName,
       name: provider.providerName,
@@ -288,9 +297,11 @@ export function WorkerAccessKeysPanel() {
 
   function handleCreate() {
     const parsedExpiry = expiresInDays.trim() ? Number(expiresInDays) : null;
-    if (expiresInDays.trim() && (!Number.isInteger(parsedExpiry) || parsedExpiry < 1)) {
-      toast.error(t("settings.workers.invalidExpiry"));
-      return;
+    if (expiresInDays.trim()) {
+      if (parsedExpiry == null || !Number.isInteger(parsedExpiry) || parsedExpiry < 1) {
+        toast.error(t("settings.workers.invalidExpiry"));
+        return;
+      }
     }
     const parsedQuotaHourly = quotaHourly.trim() ? Number(quotaHourly) : null;
     const parsedQuotaDaily = quotaDaily.trim() ? Number(quotaDaily) : null;
@@ -338,7 +349,7 @@ export function WorkerAccessKeysPanel() {
       <DashboardSectionHeader
         eyebrow={t("settings.workers.eyebrow")}
         title={t("settings.workers.title")}
-        description={t("settings.workers.description")}
+        description={injectTenantName(t("settings.workers.description", { tenantName: resolvedTenantName }), resolvedTenantName)}
       />
 
       {generatedKey && (
@@ -676,7 +687,7 @@ export function WorkerAccessKeysPanel() {
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <div className="space-y-2">
               <div className="font-medium">{t("settings.workers.guidanceTitle")}</div>
-              <p>{t("settings.workers.guidanceBody")}</p>
+              <p>{injectTenantName(t("settings.workers.guidanceBody", { tenantName: resolvedTenantName }), resolvedTenantName)}</p>
               <ol className="list-decimal space-y-1 pl-5 text-blue-900/90">
                 <li>{t("settings.workers.guide.step1")}</li>
                 <li>{t("settings.workers.guide.step2")}</li>
@@ -690,7 +701,9 @@ export function WorkerAccessKeysPanel() {
 
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-900">
           <div className="font-medium">{t("settings.workers.permissions.title")}</div>
-          <p className="mt-1 text-emerald-800">{t("settings.workers.permissions.summary")}</p>
+          <p className="mt-1 text-emerald-800">
+            {injectTenantName(t("settings.workers.permissions.summary", { tenantName: resolvedTenantName }), resolvedTenantName)}
+          </p>
           <ul className="mt-3 space-y-2 text-emerald-800/90">
             <li>{t("settings.workers.permissions.tip1")}</li>
             <li>{t("settings.workers.permissions.tip2")}</li>
@@ -722,12 +735,16 @@ export function WorkerAccessKeysPanel() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-4 text-sm text-cyan-950 lg:col-span-2">
           <div className="font-medium">{t("settings.workers.connect.title")}</div>
-          <p className="mt-1 text-cyan-900">{t("settings.workers.connect.description")}</p>
+          <p className="mt-1 text-cyan-900">
+            {injectTenantName(t("settings.workers.connect.description", { tenantName: resolvedTenantName }), resolvedTenantName)}
+          </p>
         </div>
         {connectionGuides.map((guide) => (
           <div key={guide.runtimeType} className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-800">
             <div className="font-medium text-slate-900">{t(guide.titleKey)}</div>
-            <p className="mt-1 text-slate-600">{t(guide.descriptionKey)}</p>
+            <p className="mt-1 text-slate-600">
+              {injectTenantName(t(guide.descriptionKey), resolvedTenantName)}
+            </p>
             <ol className="mt-3 list-decimal space-y-2 pl-5 text-slate-700">
               {guide.steps.map((stepKey) => (
                 <li key={stepKey}>{t(stepKey)}</li>

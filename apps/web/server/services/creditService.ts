@@ -114,6 +114,27 @@ type OcrSourceBreakdown = {
   credits: number;
 };
 
+type OcrAggregationRow = {
+  periodStart: Date | string;
+  count: number | string | bigint | null;
+  credits: number | string | bigint | null;
+};
+
+type OcrBreakdownRow = {
+  source: string | null;
+  count: number | string | bigint | null;
+  credits: number | string | bigint | null;
+};
+
+type OcrUserRow = {
+  userId: number;
+  name: string | null;
+  email: string | null;
+  credits: number | string | bigint | null;
+  count: number | string | bigint | null;
+  lastUsedAt: Date | string | null;
+};
+
 function buildOcrWhereClause() {
   const keys = OCR_SERVICE_KEYS.map((key) => sql`${key}`);
   return sql`(
@@ -169,7 +190,7 @@ async function getOcrTimeSeries(params: {
     .groupBy(periodExpr)
     .orderBy(periodExpr);
 
-  return rows.map((row) => ({
+  return rows.map((row: OcrAggregationRow) => ({
     periodStart: new Date(row.periodStart as unknown as Date).toISOString(),
     count: Number(row.count || 0),
     credits: Number(row.credits || 0),
@@ -197,7 +218,7 @@ async function getOcrSourceBreakdown(params: { userId?: number; days: number; te
     .groupBy(sourceExpr)
     .orderBy(sql`SUM(ABS(${creditTransactions.amount})) DESC`);
 
-  return rows.map((row) => ({
+  return rows.map((row: OcrBreakdownRow) => ({
     source: String(row.source || "unknown"),
     count: Number(row.count || 0),
     credits: Number(row.credits || 0),
@@ -225,7 +246,7 @@ async function getOcrProviderBreakdown(params: { userId?: number; days: number; 
     .groupBy(providerExpr)
     .orderBy(sql`SUM(ABS(${creditTransactions.amount})) DESC`);
 
-  return rows.map((row) => ({
+  return rows.map((row: OcrBreakdownRow) => ({
     source: String(row.source || "unknown"),
     count: Number(row.count || 0),
     credits: Number(row.credits || 0),
@@ -306,7 +327,7 @@ export async function getAdminOcrUsageSummary(params: { days: number; limit: num
     daily: await getOcrTimeSeries({ days: params.days, period: "day", tenantId: params.tenantId }),
     weekly: await getOcrTimeSeries({ days: Math.max(params.days, 90), period: "week", tenantId: params.tenantId }),
     monthly: await getOcrTimeSeries({ days: Math.max(params.days, 365), period: "month", tenantId: params.tenantId }),
-    users: userRows.map((row) => ({
+    users: userRows.map((row: OcrUserRow) => ({
       userId: row.userId,
       name: row.name ?? null,
       email: row.email ?? null,
