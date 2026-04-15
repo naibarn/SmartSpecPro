@@ -6,6 +6,7 @@ import {
   deriveOpsOverview,
   buildOpsIncidentTimeline,
   shouldSkipOpsAlertEmission,
+  describeRunStatusBridge,
 } from "../monitoringService";
 
 describe("monitoringService", () => {
@@ -278,6 +279,21 @@ describe("monitoringService", () => {
       expect(overview.health).toBe("healthy");
       expect(overview.anomalies).toHaveLength(0);
       expect(overview.summary.totalAnomalies).toBe(0);
+    });
+
+    it("maps run statuses into a deterministic Work OS bridge", () => {
+      expect(describeRunStatusBridge("running")).toEqual(expect.objectContaining({
+        teamRunStatus: "running",
+        workOsState: "in_progress",
+      }));
+      expect(describeRunStatusBridge("paused", "awaiting_human_approval")).toEqual(expect.objectContaining({
+        teamRunStatus: "paused",
+        workOsState: "waiting_for_approval",
+      }));
+      expect(describeRunStatusBridge("stopped", "user_requested")).toEqual(expect.objectContaining({
+        teamRunStatus: "stopped",
+        workOsState: "cancelled",
+      }));
     });
 
     it("downgrades a one-off failed service snapshot when the previous snapshot was healthy", () => {
