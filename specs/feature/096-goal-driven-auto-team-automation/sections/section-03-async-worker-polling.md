@@ -73,6 +73,7 @@ The completion step should not require a human just because the job was async.
 - Make duplicate completions safe.
 - Keep polling and resuming separate from human approval logic.
 - The implementation should allow the orchestration loop to keep moving once the async result lands.
+- The current slice adds reusable async job handle builders in `apps/web/server/services/asyncJobHandle.ts`, surfaces worker job handles through `workflowWorkerRuntimeService`, and returns pollable handles for media jobs so callers can reason about terminal vs waiting states without inventing a second job model.
 
 ## Completion Criteria
 

@@ -139,6 +139,12 @@ describe("workItemService", () => {
       workItemId: "work-1",
       eventType: "created",
       revisionVersion: 1,
+      detailJson: expect.objectContaining({
+        verificationPolicy: expect.objectContaining({
+          riskClass: "medium",
+          reviewerPersona: "qa_validator",
+        }),
+      }),
     }));
   });
 
@@ -292,6 +298,23 @@ describe("workItemService", () => {
       approverMemberId: "assistant-1",
       publisherMemberId: "assistant-1",
     });
+  });
+
+  it("prefers safety-oriented reviewers for high-risk work items when available", async () => {
+    const profiles = [
+      { id: "assistant-1", memberKind: "assistant", memberRole: "orchestrator", isLead: true },
+      { id: "assistant-2", memberKind: "assistant", memberRole: "researcher", isLead: false },
+      { id: "assistant-3", memberKind: "assistant", memberRole: "qa", isLead: false },
+      { id: "assistant-4", memberKind: "assistant", memberRole: "safety", isLead: false },
+      { id: "assistant-5", memberKind: "assistant", memberRole: "publisher", isLead: false },
+    ];
+    const db = makeDb([profiles], [], []);
+    mockGetDb.mockResolvedValue(db);
+
+    const result = await resolveTeamWorkflowAssignments("team-1", "tenant-1", "high");
+
+    expect(result.reviewerMemberId).toBe("assistant-4");
+    expect(result.approverMemberId).toBe("assistant-5");
   });
 
   it("routes a work item to review and assigns the reviewer by role", async () => {

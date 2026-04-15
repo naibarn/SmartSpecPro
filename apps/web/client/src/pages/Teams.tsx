@@ -717,6 +717,8 @@ export default function Teams() {
     setRunStatus(activeRunDetail.status);
   }, [activeRunDetail?.status]);
 
+  const activeRunRuntimeState = (activeRunDetail as any)?.runtimeState ?? null;
+
   // Run mutations
   const startRunMutation = trpc.teamRun.start.useMutation({
     onSuccess: (data) => {
@@ -805,6 +807,9 @@ export default function Teams() {
     advanceRunMutation.isPending;
 
   const activeRunStatusReason = (() => {
+    if (activeRunRuntimeState?.waitingReason) {
+      return activeRunRuntimeState.waitingReason;
+    }
     if (!activeRunDetail) return null;
     if (activeRunDetail.status === "paused") {
       switch (activeRunDetail.stopReason) {
@@ -2035,6 +2040,7 @@ export default function Teams() {
                         roomId={selectedRoomId}
                         runId={activeRunId ?? undefined}
                         roomGoal={selectedRoom?.goalPrompt}
+                        runtimeState={activeRunRuntimeState}
                         runStatus={runStatus as any}
                         runStatusReason={activeRunStatusReason}
                         onResumeRun={() => activeRunId && resumeRunMutation.mutate({ runId: activeRunId })}
@@ -2070,6 +2076,7 @@ export default function Teams() {
                         roomId={selectedRoomId}
                         runId={activeRunId ?? undefined}
                         roomGoal={selectedRoom?.goalPrompt}
+                        runtimeState={activeRunRuntimeState}
                         runStatus={runStatus as any}
                         runStatusReason={activeRunStatusReason}
                         onResumeRun={() => activeRunId && resumeRunMutation.mutate({ runId: activeRunId })}

@@ -62,6 +62,7 @@ Make sure the implementation can ship in additive slices:
 - Keep the tests aligned with the existing Vitest structure in the repo.
 - Prefer small targeted tests for the core loop helpers and integration tests for the end-to-end run flow.
 - Ensure regression tests lock down the compatibility layer before any risky migration is introduced.
+- The current slice adds regression coverage for async job handles, verification policy resolution, work-item reviewer selection, worker runtime status projection, and workflow-panel runtime visibility.
 
 ## Completion Criteria
 

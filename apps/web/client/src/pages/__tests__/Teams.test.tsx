@@ -5,19 +5,21 @@ import userEvent from "@testing-library/user-event";
 
 const teamCreateMutateAsync = vi.fn();
 const ownedWorkerBudgetMutate = vi.fn();
-const {
-  teamListDataRef,
-  teamGetDataRef,
-  bindableWorkersRef,
-  ownedWorkerBudgetRef,
-  routeParamsRef,
-} = vi.hoisted(() => ({
-  teamListDataRef: { current: [] as any[] },
-  teamGetDataRef: { current: undefined as any },
-  bindableWorkersRef: { current: [] as any[] },
-  ownedWorkerBudgetRef: { current: null as any },
-  routeParamsRef: { current: null as any },
-}));
+  const {
+    teamListDataRef,
+    teamGetDataRef,
+    teamRunDetailRef,
+    bindableWorkersRef,
+    ownedWorkerBudgetRef,
+    routeParamsRef,
+  } = vi.hoisted(() => ({
+    teamListDataRef: { current: [] as any[] },
+    teamGetDataRef: { current: undefined as any },
+    teamRunDetailRef: { current: undefined as any },
+    bindableWorkersRef: { current: [] as any[] },
+    ownedWorkerBudgetRef: { current: null as any },
+    routeParamsRef: { current: null as any },
+  }));
 const invalidateMocks = {
   teamList: vi.fn(),
   teamGet: vi.fn(),
@@ -149,8 +151,13 @@ vi.mock("@/components/orchestrator/RunMonitorPanel", () => ({
   RunMonitorPanel: () => <div data-testid="run-monitor-panel" />,
 }));
 
+const workflowPanelPropsRef = vi.hoisted(() => ({ current: null as any }));
+
 vi.mock("@/components/orchestrator/RoomWorkflowPanel", () => ({
-  RoomWorkflowPanel: () => <div data-testid="workflow-panel" />,
+  RoomWorkflowPanel: (props: any) => {
+    workflowPanelPropsRef.current = props;
+    return <div data-testid="workflow-panel" data-runtime-phase={props.runtimeState?.currentPhase ?? ""} />;
+  },
 }));
 
 vi.mock("@/components/settings/PersonaEditorFields", () => ({
@@ -272,7 +279,7 @@ vi.mock("@/lib/trpc", () => ({
     },
     teamRun: {
       get: {
-        useQuery: () => ({ data: undefined }),
+        useQuery: () => ({ data: teamRunDetailRef.current }),
       },
       start: {
         useMutation: () => ({ mutate: vi.fn(), isPending: false }),

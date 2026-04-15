@@ -18,6 +18,7 @@ import path from "path";
 import os from "os";
 import { assertTextClipRolloutEnabledForSpec } from "../services/textClipRollout";
 import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
+import { buildMediaJobHandle, shouldPollAsyncJobHandle } from "../services/asyncJobHandle";
 
 // ========================================
 // Redis helpers (lazy import to avoid circular deps)
@@ -475,9 +476,11 @@ export const mediaJobsRouter = router({
       };
 
       // Store job in Redis for tracking
+      const submittedAt = Date.now();
       await setJobKey(jobId, "meta", {
         userId: String(ctx.user.id),
-        submittedAt: Date.now(),
+        submittedAt,
+        nextPollAt: submittedAt + 120_000,
       });
       await setJobKey(jobId, "status", {
         status: "queued",
@@ -572,9 +575,11 @@ export const mediaJobsRouter = router({
 
       // Store in Redis
       await setJobKey(jobId, "spec", spec);
+      const submittedAt = Date.now();
       await setJobKey(jobId, "meta", {
         userId: String(ctx.user.id),
-        submittedAt: Date.now(),
+        submittedAt,
+        nextPollAt: submittedAt + 120_000,
       });
       await setJobKey(jobId, "status", {
         status: "queued",
@@ -644,18 +649,27 @@ export const mediaJobsRouter = router({
       if (!status) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
       }
+      const jobHandle = buildMediaJobHandle({
+        jobId: input.jobId,
+        status: status.status,
+        submittedAt: meta.submittedAt,
+        nextPollAt: meta.nextPollAt ?? null,
+        resultSummary: typeof status.message === "string" ? status.message : null,
+        failureReason: status.status === "error" ? (status.message ?? null) : null,
+      });
+      const pollable = shouldPollAsyncJobHandle(jobHandle);
 
       // Attach result or error if terminal
       if (status.status === "done") {
         const result = await getJobKey(input.jobId, "result");
-        return { ...status, result };
+        return { ...status, result, jobHandle, pollable };
       }
       if (status.status === "error") {
         const error = await getJobKey(input.jobId, "error");
-        return { ...status, error };
+        return { ...status, error, jobHandle, pollable };
       }
 
-      return status;
+      return { ...status, jobHandle, pollable };
     }),
 
   cancelJob: protectedProcedure
@@ -702,6 +716,8 @@ export const mediaJobsRouter = router({
       outputTarget: string;
       resultUrl?: string;
       errorMessage?: string;
+      jobHandle: ReturnType<typeof buildMediaJobHandle>;
+      pollable: boolean;
     }> = [];
 
     for (const jobId of jobIds.slice(0, 50)) {
@@ -727,6 +743,16 @@ export const mediaJobsRouter = router({
         errorMessage = error?.message || statusRaw.message;
       }
 
+      const jobHandle = buildMediaJobHandle({
+        jobId,
+        status: statusRaw.status,
+        submittedAt: meta.submittedAt,
+        nextPollAt: meta.nextPollAt ?? null,
+        resultSummary: typeof statusRaw.message === "string" ? statusRaw.message : null,
+        failureReason: errorMessage ?? null,
+      });
+      const pollable = shouldPollAsyncJobHandle(jobHandle);
+
       jobs.push({
         jobId,
         status: statusRaw.status || "unknown",
@@ -737,6 +763,8 @@ export const mediaJobsRouter = router({
         outputTarget: spec?.output?.target || "",
         resultUrl,
         errorMessage,
+        jobHandle,
+        pollable,
       });
     }
 
@@ -1201,7 +1229,8 @@ export function registerMediaJobRoutes(app: Express) {
       }
 
       await setJobKey(jobId, "spec", fullSpec);
-      await setJobKey(jobId, "meta", { userId, submittedAt: Date.now() });
+      const submittedAt = Date.now();
+      await setJobKey(jobId, "meta", { userId, submittedAt, nextPollAt: submittedAt + 120_000 });
       await setJobKey(jobId, "status", {
         status: "queued",
         progress: 0,

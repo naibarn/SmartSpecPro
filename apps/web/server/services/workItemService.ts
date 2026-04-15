@@ -10,6 +10,11 @@ import {
   workItemEvents,
   type TeamWorkItem,
 } from "../../drizzle/schema";
+import {
+  buildVerificationPolicyEvidence,
+  resolveVerificationPolicyForRiskClass,
+  type VerificationRiskClass,
+} from "./verificationPolicy";
 
 const DEFAULT_LOCK_TTL_MS = 10 * 60 * 1000;
 
@@ -233,9 +238,33 @@ function pickFirstProfileId(
   return profiles.find(predicate)?.id ?? null;
 }
 
+function pickVerificationProfileId(
+  profiles: Array<{
+    id: string;
+    memberKind: string;
+    memberRole: string;
+    isLead: boolean;
+  }>,
+  riskClass: VerificationRiskClass,
+): string | null {
+  const reviewerRolesByRisk: Record<VerificationRiskClass, string[]> = {
+    low: ["reviewer", "domain", "specialist"],
+    medium: ["reviewer", "validator", "qa", "domain"],
+    high: ["safety", "policy", "reviewer", "validator"],
+    critical: ["safety", "policy", "human", "reviewer"],
+  };
+
+  for (const role of reviewerRolesByRisk[riskClass]) {
+    const profile = profiles.find((entry) => entry.memberRole === role);
+    if (profile) return profile.id;
+  }
+  return null;
+}
+
 export async function resolveTeamWorkflowAssignments(
   teamId: string,
   tenantId: string,
+  riskClass: VerificationRiskClass = "medium",
 ): Promise<TeamWorkflowAssignments> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -268,6 +297,7 @@ export async function resolveTeamWorkflowAssignments(
     orchestratorMemberId;
 
   const reviewerMemberId =
+    pickVerificationProfileId(profiles, riskClass) ??
     pickFirstProfileId(profiles, (profile) => profile.memberRole === "reviewer") ??
     orchestratorMemberId ??
     researchMemberId;
@@ -293,7 +323,10 @@ export async function createWorkItem(input: CreateWorkItemInput): Promise<TeamWo
   const resolvedAssignments =
     input.autoAssignByRole === false
       ? null
-      : await resolveTeamWorkflowAssignments(input.teamId, input.tenantId);
+      : await resolveTeamWorkflowAssignments(input.teamId, input.tenantId, input.riskClass ?? "medium");
+  const verificationPolicy = resolveVerificationPolicyForRiskClass(input.riskClass ?? "medium", {
+    requiresHumanApproval: input.requiresApproval ?? false,
+  });
 
   const [created] = await db
     .insert(teamWorkItems)
@@ -331,14 +364,15 @@ export async function createWorkItem(input: CreateWorkItemInput): Promise<TeamWo
     eventType: "created",
     toStatus: created.status,
     revisionVersion: created.revisionVersion,
-    detailJson: {
-      title: created.title,
-      approvalState: created.approvalState,
-      assignedMemberId: created.assignedMemberId,
-      reviewerMemberId: created.reviewerMemberId,
-      approverMemberId: created.approverMemberId,
-    },
-  });
+      detailJson: {
+        title: created.title,
+        approvalState: created.approvalState,
+        assignedMemberId: created.assignedMemberId,
+        reviewerMemberId: created.reviewerMemberId,
+        approverMemberId: created.approverMemberId,
+        verificationPolicy: buildVerificationPolicyEvidence(verificationPolicy),
+      },
+    });
 
   return created;
 }
@@ -409,6 +443,11 @@ export async function reviseWorkItem(input: ReviseWorkItemInput): Promise<TeamWo
     revisionVersion: current.revisionVersion,
     detailJson: {
       supersededByWorkItemId: revision.id,
+      verificationPolicy: buildVerificationPolicyEvidence(
+        resolveVerificationPolicyForRiskClass(current.riskClass ?? "medium", {
+          requiresHumanApproval: current.approvalState !== "not_required",
+        }),
+      ),
     },
   });
 
@@ -423,6 +462,11 @@ export async function reviseWorkItem(input: ReviseWorkItemInput): Promise<TeamWo
     revisionVersion: revision.revisionVersion,
     detailJson: {
       parentWorkItemId: current.id,
+      verificationPolicy: buildVerificationPolicyEvidence(
+        resolveVerificationPolicyForRiskClass(revision.riskClass ?? "medium", {
+          requiresHumanApproval: revision.approvalState !== "not_required",
+        }),
+      ),
     },
   });
 
@@ -741,6 +785,11 @@ export async function routeWorkItemByRole(
       assignedMemberId: workItem.assignedMemberId,
       reviewerMemberId: workItem.reviewerMemberId,
       approverMemberId: workItem.approverMemberId,
+      verificationPolicy: buildVerificationPolicyEvidence(
+        resolveVerificationPolicyForRiskClass(workItem.riskClass ?? "medium", {
+          requiresHumanApproval: workItem.approvalState !== "not_required",
+        }),
+      ),
     },
   });
 

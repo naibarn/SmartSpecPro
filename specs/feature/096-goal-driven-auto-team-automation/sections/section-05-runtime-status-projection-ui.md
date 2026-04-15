@@ -74,6 +74,7 @@ Preserve the existing invalidation and refetch behavior so the UI remains reacti
 - The Work OS projection should mirror the same underlying transition history for the same case or request.
 - The mapping between team-run states and Work OS states should be deterministic and consistent with the canonical status matrix in the spec.
 - The terminal `team_runs.status` still matters, but it should not be the only thing the operator sees.
+- The current slice adds a runtime summary banner to `RoomWorkflowPanel` and forwards `runtimeState` from `Teams.tsx`, so operators can see phase, reviewer, evidence, and mirror state without leaving the room.
 
 ## Completion Criteria
 

@@ -33,6 +33,25 @@ interface RoomWorkflowPanelProps {
   roomId: string;
   runId?: string;
   roomGoal?: string | null;
+  runtimeState?: {
+    currentPhase: string;
+    waitingReason: string | null;
+    nextPollAt: string | null;
+    riskClass: string | null;
+    reviewerPersona: string | null;
+    verificationState: string;
+    evidenceRefs: string[];
+    workOsLinkage?: {
+      teamId: string;
+      roomId: string;
+      projectedWorkOsState: string;
+    } | null;
+    statusBridge?: {
+      teamRunStatus: string;
+      workOsState: string;
+      note?: string | null;
+    } | null;
+  } | null;
   teamMembers: WorkflowMemberSummary[];
   runStatus?: "idle" | "queued" | "running" | "paused" | "completed" | "failed" | "stopped";
   runStatusReason?: string | null;
@@ -290,6 +309,7 @@ export function RoomWorkflowPanel({
   roomId,
   runId,
   roomGoal,
+  runtimeState,
   teamMembers,
   runStatus = "idle",
   runStatusReason,
@@ -556,6 +576,26 @@ export function RoomWorkflowPanel({
               {t("orchestrator.workflow.currentObjective")}
             </div>
             <p className="mt-1 text-sm">{roomGoal}</p>
+          </div>
+        )}
+        {runtimeState && (
+          <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-700">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">Phase: {runtimeState.currentPhase}</Badge>
+              <Badge variant="outline">Verification: {runtimeState.verificationState}</Badge>
+              {runtimeState.riskClass && <Badge variant="outline">Risk: {runtimeState.riskClass}</Badge>}
+              {runtimeState.reviewerPersona && <Badge variant="outline">Reviewer: {runtimeState.reviewerPersona}</Badge>}
+            </div>
+            <div className="mt-2 space-y-1">
+              {runtimeState.waitingReason && <p>Waiting: {runtimeState.waitingReason}</p>}
+              {runtimeState.nextPollAt && <p>Next poll: {runtimeState.nextPollAt}</p>}
+              <p>Evidence refs: {runtimeState.evidenceRefs.length}</p>
+              {runtimeState.workOsLinkage && (
+                <p>
+                  Work OS mirror: {runtimeState.workOsLinkage.projectedWorkOsState} ({runtimeState.workOsLinkage.teamId}/{runtimeState.workOsLinkage.roomId})
+                </p>
+              )}
+            </div>
           </div>
         )}
       </div>
