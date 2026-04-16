@@ -205,8 +205,8 @@ async function recordWorkItemEvent(input: {
   toStatus?: WorkItemStatus | null;
   revisionVersion?: number | null;
   detailJson?: Record<string, unknown> | null;
-}): Promise<void> {
-  const db = await getDb();
+}, tx?: Awaited<ReturnType<typeof getDb>>): Promise<void> {
+  const db = tx ?? await getDb();
   if (!db) throw new Error("Database not available");
 
   await db
@@ -316,8 +316,18 @@ export async function resolveTeamWorkflowAssignments(
   };
 }
 
-export async function createWorkItem(input: CreateWorkItemInput): Promise<TeamWorkItem> {
-  const db = await getDb();
+export async function createWorkItem(
+  input: CreateWorkItemInput,
+  tx?: Awaited<ReturnType<typeof getDb>>,
+): Promise<TeamWorkItem> {
+  return createWorkItemWithDb(input, tx);
+}
+
+async function createWorkItemWithDb(
+  input: CreateWorkItemInput,
+  tx?: Awaited<ReturnType<typeof getDb>>,
+): Promise<TeamWorkItem> {
+  const db = tx ?? await getDb();
   if (!db) throw new Error("Database not available");
 
   const resolvedAssignments =
@@ -372,7 +382,7 @@ export async function createWorkItem(input: CreateWorkItemInput): Promise<TeamWo
         approverMemberId: created.approverMemberId,
         verificationPolicy: buildVerificationPolicyEvidence(verificationPolicy),
       },
-    });
+    }, tx);
 
   return created;
 }

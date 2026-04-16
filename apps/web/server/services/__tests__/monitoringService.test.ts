@@ -9,6 +9,7 @@ import {
   describeRunStatusBridge,
   buildRunRuntimeState,
   extractRunRuntimeState,
+  extractRunPlanArtifact,
 } from "../monitoringService";
 
 describe("monitoringService", () => {
@@ -325,12 +326,46 @@ describe("monitoringService", () => {
       const runtimeState = {
         currentPhase: "awaiting_human_approval",
         waitingReason: "awaiting_human_approval",
+        policyGateReason: "approval is required",
+        traceId: "trace-1",
         nextPollAt: null,
         riskClass: "high",
         reviewerPersona: "safety-reviewer",
         verificationState: "pending",
         evidenceRefs: ["summary:summary-1"],
         jobHandle: { provider: "hermes" },
+        governedContext: {
+          version: 1,
+          tenantId: "tenant-1",
+          principalScope: "team-1",
+          objective: "Launch objective",
+          generatedAt: "2026-04-15T12:00:00.000Z",
+          selectedCount: 1,
+          excludedCount: 0,
+          summary: "1 context item(s) selected, 0 excluded for Launch objective",
+          items: [],
+        },
+        traceEnvelope: {
+          version: 1,
+          traceId: "trace-1",
+          tenantId: "tenant-1",
+          source: "monitoring",
+          entityId: "run-1",
+          eventType: "snapshot",
+          generatedAt: "2026-04-15T12:00:00.000Z",
+          summary: "Snapshot created",
+          evidenceRefs: [],
+        },
+        readinessRecord: {
+          version: 1,
+          kind: "team_run",
+          entityId: "run-1",
+          generatedAt: "2026-04-15T12:00:00.000Z",
+          score: 0.8,
+          status: "ready",
+          reason: "Ready",
+          evidenceRefs: [],
+        },
         statusBridge: describeRunStatusBridge("paused", "awaiting_human_approval"),
         workOsLinkage: {
           teamId: "team-1",
@@ -347,9 +382,20 @@ describe("monitoringService", () => {
       } as any)).toEqual(expect.objectContaining({
         currentPhase: "awaiting_human_approval",
         waitingReason: "awaiting_human_approval",
+        policyGateReason: "approval is required",
+        traceId: "trace-1",
         riskClass: "high",
         reviewerPersona: "safety-reviewer",
         verificationState: "pending",
+        governedContext: expect.objectContaining({
+          tenantId: "tenant-1",
+        }),
+        traceEnvelope: expect.objectContaining({
+          traceId: "trace-1",
+        }),
+        readinessRecord: expect.objectContaining({
+          status: "ready",
+        }),
       }));
 
       expect(extractRunRuntimeState({
@@ -361,6 +407,67 @@ describe("monitoringService", () => {
         statusBridge: expect.objectContaining({
           workOsState: "in_progress",
         }),
+      }));
+    });
+
+    it("extracts the durable plan artifact from snapshot payloads", () => {
+      expect(extractRunPlanArtifact({
+        artifactCountJson: {
+          planArtifact: {
+            version: 1,
+            runId: "run-1",
+            roomId: "room-1",
+            teamId: "team-1",
+            caseId: null,
+            requestId: null,
+            objective: "Launch objective",
+            source: "team_run",
+            status: "ready",
+            generatedAt: "2026-04-15T12:00:00.000Z",
+            lastUpdatedAt: "2026-04-15T12:30:00.000Z",
+            exploration: {
+              selectedCandidateId: "balanced-hybrid",
+              selectionReason: "Balanced hybrid keeps exploration bounded while preserving choice quality.",
+              criteria: ["safety", "speed", "determinism"],
+              candidates: [
+                {
+                  candidateId: "workflow-first",
+                  title: "Workflow first",
+                  strategy: "deterministic, review-heavy execution",
+                  summary: "Keep the path narrow.",
+                  strengths: ["tight evidence discipline"],
+                  tradeoffs: ["less exploratory breadth"],
+                  riskClass: "medium",
+                },
+                {
+                  candidateId: "balanced-hybrid",
+                  title: "Balanced hybrid",
+                  strategy: "bounded exploration then commit",
+                  summary: "Explore then lock a plan.",
+                  strengths: ["balance of creativity and control"],
+                  tradeoffs: ["not fully exhaustive"],
+                  riskClass: "medium",
+                },
+              ],
+            },
+            steps: [],
+            evidenceRefs: [],
+            planEvidenceRefs: [],
+            reviewerMatrix: [],
+            review: {
+              status: "passed",
+              iteration: 1,
+              reviewedAt: "2026-04-15T12:31:00.000Z",
+              reviewerPersona: "safety-reviewer",
+              issues: [],
+              score: 0.92,
+              recommendation: "Proceed to execution.",
+            },
+          },
+        },
+      } as any)).toEqual(expect.objectContaining({
+        objective: "Launch objective",
+        status: "ready",
       }));
     });
 

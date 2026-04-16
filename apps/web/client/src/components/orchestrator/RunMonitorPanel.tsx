@@ -36,6 +36,14 @@ interface RunMonitorPanelProps {
   className?: string;
 }
 
+function getVerificationGateReason(event: RunStreamEvent): string | null {
+  const detail = event.data as Record<string, unknown> | null | undefined;
+  if (!detail || typeof detail !== "object") return null;
+  const gate = detail.verificationGate as Record<string, unknown> | undefined;
+  const reason = gate?.reason;
+  return typeof reason === "string" && reason.trim() ? reason.trim() : null;
+}
+
 export function RunMonitorPanel({
   runId,
   teamName,
@@ -296,6 +304,11 @@ export function RunMonitorPanel({
                   <div className="text-[10px] text-muted-foreground">
                     {event.actorId.slice(0, 12)} · {new Date(event.ts).toLocaleTimeString()}
                   </div>
+                  {getVerificationGateReason(event) ? (
+                    <div className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] text-amber-800">
+                      Policy gate: {getVerificationGateReason(event)}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))

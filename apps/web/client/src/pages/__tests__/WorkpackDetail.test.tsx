@@ -155,6 +155,9 @@ describe("WorkpackDetail", () => {
     expect(screen.getByText(/Session Id lbs_demo_123/i)).toBeInTheDocument();
     expect(screen.getByText(/Browser State review_required/i)).toBeInTheDocument();
     expect(screen.getByText(/Connector Families crm/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^ROI$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Discovery$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Exceptions$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /refresh executor status/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /process due schedules/i })).toBeInTheDocument();
   });

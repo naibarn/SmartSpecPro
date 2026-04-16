@@ -109,6 +109,8 @@ describe("workpackPromotionService", () => {
     const promotion = await publishBenchmarkPack({ workpackId: draft.workpack.id });
 
     expect(promotion.benchmarkPack?.publicationStatus).toBe("published");
+    expect(promotion.manifest?.packId).toBe(promotion.benchmarkPack?.id);
+    expect(promotion.manifest?.reversible).toBe(true);
     expect(promotion.promotionRecord.state).toBe("active");
 
     const rolledBack = await rollbackWorkpackPromotion({

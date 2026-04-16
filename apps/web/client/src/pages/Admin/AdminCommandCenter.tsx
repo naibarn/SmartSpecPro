@@ -14,6 +14,7 @@ import {
   type OpsOverview,
 } from "@/components/admin/OpsEarlyWarningPanel";
 import { cn } from "@/lib/utils";
+import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 import {
   Activity,
   AlertTriangle,
@@ -22,10 +23,12 @@ import {
   CheckCheck,
   ChevronRight,
   Clock3,
+  ClipboardList,
   ExternalLink,
   Gauge,
   Loader2,
   MonitorPlay,
+  Package,
   RefreshCw,
   Server,
   ShieldAlert,
@@ -414,6 +417,45 @@ export default function AdminCommandCenter() {
     };
   }, [queueSystem]);
 
+  const workpackHubActions = [
+    {
+      title: "Intake Studio",
+      description: "Start a governed workpack from incoming work.",
+      path: buildWorkpackEntrypointHref({
+        entrypoint: "dashboard",
+        surface: "intake",
+      }),
+      icon: ClipboardList,
+    },
+    {
+      title: "Discovery Library",
+      description: "Browse reusable starter and benchmark packs.",
+      path: buildWorkpackEntrypointHref({
+        entrypoint: "dashboard",
+        surface: "discovery",
+      }),
+      icon: Package,
+    },
+    {
+      title: "ROI Dashboard",
+      description: "Track readiness, blockers, and roadmap progress.",
+      path: buildWorkpackEntrypointHref({
+        entrypoint: "dashboard",
+        surface: "roi",
+      }),
+      icon: Gauge,
+    },
+    {
+      title: "Exceptions Inbox",
+      description: "Review connector and policy exceptions.",
+      path: buildWorkpackEntrypointHref({
+        entrypoint: "dashboard",
+        surface: "exceptions",
+      }),
+      icon: AlertTriangle,
+    },
+  ];
+
   const drilldowns = [
     {
       title: "Monitoring & Alert Inbox",
@@ -649,6 +691,30 @@ export default function AdminCommandCenter() {
             subLabel={`${queueSummary.totalQueued} limiter + ${queueSummary.cloudTasks} cloud tasks`}
           />
         </div>
+
+        <DashboardCard
+          title="Workpack Hub"
+          description="Jump directly into the workpack surfaces used most often by operators."
+        >
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {workpackHubActions.map((action) => (
+              <button
+                key={action.title}
+                type="button"
+                className="group flex items-start gap-3 rounded-2xl border border-slate-200 bg-white/90 px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50"
+                onClick={() => setLocation(action.path)}
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+                  <action.icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900">{action.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">{action.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </DashboardCard>
 
         <OpsEarlyWarningPanel
           overview={opsOverview}

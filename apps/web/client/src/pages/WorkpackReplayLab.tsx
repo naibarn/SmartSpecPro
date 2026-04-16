@@ -3,6 +3,7 @@ import { useRoute } from "wouter";
 import { toast } from "sonner";
 import { DashboardCard } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { WorkpackDiffViewer } from "@/components/workpack/WorkpackDiffViewer";
@@ -49,6 +50,34 @@ export default function WorkpackReplayLab() {
         promotionState={detailQuery.data.workpack.promotionState}
         nextAction={replayQuery.data.nextAction}
       />
+
+      <div className="grid gap-6 xl:grid-cols-[1fr,1fr]">
+        <DashboardCard title="Replay Gate" description="Inspection-only replay and release posture">
+          <div className="space-y-3 text-sm text-slate-600">
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline">{replayQuery.data.gateStatus}</Badge>
+              {detailQuery.data.enterprise?.releaseGate ? (
+                <Badge variant="outline">{detailQuery.data.enterprise.releaseGate.gateResult}</Badge>
+              ) : null}
+            </div>
+            <p>{replayQuery.data.nextAction}</p>
+            <p>Inspection mode: {replayQuery.data.inspectionMode}</p>
+            <p>Side effects allowed: {String(replayQuery.data.canReemitSideEffects)}</p>
+            {detailQuery.data.enterprise?.releaseGate?.failedChecks.length ? (
+              <p>Release blockers: {detailQuery.data.enterprise.releaseGate.failedChecks.join(", ")}</p>
+            ) : null}
+          </div>
+        </DashboardCard>
+
+        <DashboardCard title="Enterprise Evidence" description="Trace, context, readiness, and pack evidence linked to the current workpack">
+          <div className="space-y-3 text-sm text-slate-600">
+            <p>Trace: {detailQuery.data.enterprise?.traceEnvelope.traceId ?? "n/a"}</p>
+            <p>Context selected: {detailQuery.data.enterprise?.governedContext.selectedCount ?? 0}</p>
+            <p>Readiness: {detailQuery.data.enterprise?.readinessRecord.status ?? "n/a"}</p>
+            <p>Pack: {detailQuery.data.enterprise?.packManifest?.packId ?? "n/a"}</p>
+          </div>
+        </DashboardCard>
+      </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr,1.1fr]">
         <DashboardCard title="Simulation Controls" description="Choose the replay mode that best matches the evidence you have">

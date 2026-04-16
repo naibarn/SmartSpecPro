@@ -1,6 +1,6 @@
 # Feature Specs Map
 
-Last updated: 2026-04-10
+Last updated: 2026-04-16
 
 - **001-workflow-scripts**: local workflow engine (`.smartspec/ss_autopilot`) used by Desktop (004) and tests (008)
 - **002-auth-generator**: generator/template (CLI) used optionally by Web server (003) or Python backend (007)
@@ -28,10 +28,11 @@ Last updated: 2026-04-10
 - **081-hermes-agent-runtime-gateway-and-channel-interop**: Hermes Agent as a bring-your-own external runtime via a SmartSpecPro bridge, staged registration-to-dispatch rollout, delegated HTTP/MCP access, owner-bound bound-worker flows, audited remote-endpoint exceptions, and gated channel-companion interoperability without changing the Desktop Host core runtime model
 - **082-work-os-case-ledger-and-operating-queues**: first-class business work objects, queue ownership, SLA tracking, and case-bound approvals and exceptions as the Work OS layer above runs and chat
 - **083-agent-registry-and-organization-model**: governed registry for planner, reviewer, supervisor, connector, and role-agent identities with versioning, rollout, tool scope, memory scope, and budget policy
-- **084-stateful-handoff-and-durable-run-ledger**: first-class handoff semantics, durable execution ledger, checkpoint-aware replay, and resumable state across human and agent boundaries
-- **085-autonomy-ladder-and-hitl-control-plane**: platform-wide autonomy levels, approval taxonomy, downgrade rules, and HITL control surfaces across queues, workpacks, and role routines
-- **086-agent-policy-guardrails-and-action-mesh**: unified action registry with pre/post guardrails, typed tool contracts, risk scoring, approval binding, and governed connector execution
-- **087-enterprise-context-fabric-and-governed-memory**: governed context assembly, scoped memory layers, trust and freshness scoring, and explainable retrieval for enterprise agent work
-- **088-agentops-tracing-evaluation-and-release-gates**: end-to-end tracing, replay, shadow/canary evaluation, business KPI measurement, and autonomy release gates
-- **089-workforce-exchange-and-installable-operations-packs**: marketplace evolution from skills to installable workpacks, role blueprints, policy packs, and benchmark-backed workforce bundles
-- **090-enterprise-readiness-autonomy-economics-and-agent-dev-platform**: enterprise identity and evidence controls, workforce ROI metrics, internal agent SDK standards, and rollout/adoption enablement
+- **084-stateful-handoff-and-durable-run-ledger**: absorbed into Feature 095 and Feature 096 as durable execution and resumable run state
+- **085-autonomy-ladder-and-hitl-control-plane**: absorbed into Feature 096 as autonomy levels, HITL choice windows, and approval gates
+- **086-agent-policy-guardrails-and-action-mesh**: absorbed into Feature 096 as risk classes, policy gates, and executable verification rules
+- **087-enterprise-context-fabric-and-governed-memory**: roadmap item for governed context assembly and explainable retrieval
+- **088-agentops-tracing-evaluation-and-release-gates**: roadmap item for tracing, replay, evaluation, and release gates
+- **089-workforce-exchange-and-installable-operations-packs**: roadmap item for installable workpacks and exchange bundles
+- **090-enterprise-readiness-autonomy-economics-and-agent-dev-platform**: roadmap item for identity, evidence, ROI, and SDK readiness
+- **097-enterprise-platform-continuation-roadmap**: umbrella roadmap for the remaining enterprise platform layers that are not yet core runtime blockers

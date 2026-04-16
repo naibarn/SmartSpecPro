@@ -237,6 +237,19 @@ The implementation must use a deterministic mapping between execution state and 
 
 If a state does not fit the matrix cleanly, the system must prefer `blocked` plus an exception record over silent divergence.
 
+### 4.9 Exploration and comparison policy
+
+For ambiguous, high-impact, or naturally multi-solution work, the system should explore multiple candidate approaches before selecting an execution plan.
+
+The system should:
+
+- generate at least two candidate approaches when feasible
+- compare them on speed, safety, determinism, evidence quality, parallelizability, and cost
+- write the comparison result durably so Teams can inspect why one path was chosen
+- escalate to a human if the comparison shows multiple materially different safe options and the system cannot justify one path
+
+Exploration should be bounded and skipped when the task is trivial, deterministic, or time-critical.
+
 ### Review Protocol by Work Type
 
 #### Skill execution

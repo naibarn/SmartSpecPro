@@ -938,10 +938,38 @@ describe("Dashboard", () => {
 
     expect(screen.getByText("Priority Snapshot")).toBeInTheDocument();
     expect(screen.getByText("Trend & Health")).toBeInTheDocument();
+    expect(screen.getByText("Workpack Hub")).toBeInTheDocument();
     expect(screen.getAllByText("Workspace Shortcuts").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Next Best Actions")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /start work/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: /my requests/i }).length).toBeGreaterThan(0);
+  });
+
+  it("links workpack surfaces from the dashboard hub", () => {
+    render(<Dashboard />);
+
+    expect(screen.getByRole("button", { name: /intake studio/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /discovery library/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /roi dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /exceptions inbox/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /intake studio/i }));
+    expect(setLocationMock).toHaveBeenCalledWith("/workpacks/intake?entrypoint=dashboard");
+
+    setLocationMock.mockClear();
+
+    fireEvent.click(screen.getByRole("button", { name: /discovery library/i }));
+    expect(setLocationMock).toHaveBeenCalledWith("/workpacks/discovery?entrypoint=dashboard");
+  });
+
+  it("shows the admin work os console shortcut for admin users", () => {
+    authState.role = "admin";
+
+    render(<Dashboard />);
+
+    expect(screen.getByRole("button", { name: /work os console/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /work os console/i }));
+    expect(setLocationMock).toHaveBeenCalledWith("/admin/work-os");
   });
 
   it("shows the personal finance report surface and shortcut", () => {

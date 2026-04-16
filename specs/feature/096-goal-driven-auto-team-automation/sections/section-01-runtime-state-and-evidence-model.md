@@ -17,6 +17,8 @@ The engine needs a reliable place to store:
 
 The first slice should keep `team_runs.status` as the compatibility layer and layer richer state onto run snapshots.
 
+The initial plan should also be reviewable before execution begins so the system can hold back the first `in_progress` transition until the plan passes review.
+
 ## What This Section Must Change
 
 ### 1. Snapshot contract
@@ -96,6 +98,7 @@ The section should not require a destructive migration of historical run rows.
 ## Completion Criteria
 
 - The system can persist and read the richer runtime state.
+- The system can persist and read the plan review result and repair-loop evidence.
 - Older runs still load and behave correctly.
 - Snapshot capture includes enough information for downstream orchestration and UI rendering.
 - The evidence model is durable enough to support step verification and review in later sections.

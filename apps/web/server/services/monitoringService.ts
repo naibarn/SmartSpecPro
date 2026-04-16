@@ -35,6 +35,16 @@ import crypto from "crypto";
 import { auditLogger, type AuditLogEntry } from "./auditLogger";
 import { getQueueHealthStatus } from "./queueHealthMonitor";
 import { describeStatusBridge, type StatusBridge } from "./workStatusBridge";
+import { getTraceId } from "./traceContext";
+import {
+  buildGovernedContextSnapshot,
+  buildReadinessMetricRecord,
+  buildTraceEnvelope,
+  extractEnterpriseArtifacts,
+  type GovernedContextSnapshot,
+  type ReadinessMetricRecord,
+  type TraceEnvelope,
+} from "./enterprisePlatformArtifacts";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -70,6 +80,9 @@ export type RunRuntimePhase =
   | "running"
   | "waiting_for_worker"
   | "waiting_for_poll"
+  | "awaiting_human_choice"
+  | "awaiting_final_review"
+  | "awaiting_final_approval"
   | "awaiting_human_approval"
   | "blocked"
   | "completed"
@@ -79,18 +92,158 @@ export type RunRuntimePhase =
 export interface RunRuntimeState {
   currentPhase: RunRuntimePhase;
   waitingReason: string | null;
+  policyGateReason: string | null;
+  traceId: string | null;
   nextPollAt: string | null;
+  choiceDeadlineAt: string | null;
+  finalReviewDeadlineAt: string | null;
   riskClass: "low" | "medium" | "high" | "critical" | null;
   reviewerPersona: string | null;
   verificationState: "pending" | "passed" | "failed" | "unknown";
+  finalReview: {
+    status: "pending" | "passed" | "failed";
+    reviewerPersona: string | null;
+    score: number | null;
+    recommendation: string | null;
+    comment: string | null;
+    issues: string[];
+  } | null;
   evidenceRefs: string[];
   jobHandle: Record<string, unknown> | null;
   statusBridge: StatusBridge;
+  planArtifact: RunPlanArtifact | null;
+  governedContext: GovernedContextSnapshot | null;
+  traceEnvelope: TraceEnvelope | null;
+  readinessRecord: ReadinessMetricRecord | null;
   workOsLinkage: {
     teamId: string;
     roomId: string;
     projectedWorkOsState: StatusBridge["workOsState"];
   } | null;
+}
+
+export type RunPlanStepStatus =
+  | "planned"
+  | "in_progress"
+  | "waiting_for_worker"
+  | "waiting_for_poll"
+  | "awaiting_human_approval"
+  | "blocked"
+  | "completed"
+  | "failed";
+
+export type RunPlanReviewStatus = "pending" | "passed" | "failed";
+
+export interface RunPlanReview {
+  status: RunPlanReviewStatus;
+  iteration: number;
+  reviewedAt: string | null;
+  reviewerPersona: string;
+  issues: string[];
+  score: number | null;
+  recommendation: string | null;
+}
+
+export interface RunPlanComparisonCandidate {
+  candidateId: string;
+  title: string;
+  strategy: string;
+  summary: string;
+  strengths: string[];
+  tradeoffs: string[];
+  riskClass: "low" | "medium" | "high" | "critical";
+}
+
+export interface RunPlanComparison {
+  selectedCandidateId: string;
+  selectionReason: string;
+  criteria: string[];
+  candidates: RunPlanComparisonCandidate[];
+}
+
+export interface RunPlanStep {
+  stepKey: string;
+  title: string;
+  objective: string;
+  ownerPersona: string;
+  ownerMemberId: string | null;
+  reviewerPersona: string;
+  reviewerMemberId: string | null;
+  verificationMethod: string;
+  retryRule: string;
+  evidenceRequirements: string[];
+  status: RunPlanStepStatus;
+  evidenceRefs: string[];
+  notes: string | null;
+}
+
+export interface RunPlanArtifact {
+  version: 1;
+  runId: string;
+  roomId: string;
+  teamId: string;
+  caseId: string | null;
+  requestId: string | null;
+  objective: string;
+  source: "team_run" | "work_os";
+  status: "planning" | "ready" | "executing" | "blocked" | "completed" | "failed";
+  generatedAt: string;
+  lastUpdatedAt: string;
+  steps: RunPlanStep[];
+  evidenceRefs: string[];
+  planEvidenceRefs: string[];
+  reviewerMatrix: Array<{
+    riskClass: "low" | "medium" | "high" | "critical";
+    reviewerPersona: string;
+    escalationRule: string;
+  }>;
+  exploration: RunPlanComparison | null;
+  review: RunPlanReview;
+}
+
+function normalizeRunPlanArtifact(
+  artifact: Partial<RunPlanArtifact> | null | undefined,
+): RunPlanArtifact | null {
+  if (!artifact) return null;
+
+  return {
+    version: artifact.version ?? 1,
+    runId: artifact.runId ?? "",
+    roomId: artifact.roomId ?? "",
+    teamId: artifact.teamId ?? "",
+    caseId: artifact.caseId ?? null,
+    requestId: artifact.requestId ?? null,
+    objective: artifact.objective ?? "Run objective",
+    source: artifact.source ?? "team_run",
+    status: artifact.status ?? "planning",
+    generatedAt: artifact.generatedAt ?? new Date().toISOString(),
+    lastUpdatedAt: artifact.lastUpdatedAt ?? new Date().toISOString(),
+    steps: Array.isArray(artifact.steps) ? artifact.steps as RunPlanStep[] : [],
+    evidenceRefs: Array.isArray(artifact.evidenceRefs) ? artifact.evidenceRefs.filter((item): item is string => typeof item === "string") : [],
+    planEvidenceRefs: Array.isArray(artifact.planEvidenceRefs) ? artifact.planEvidenceRefs.filter((item): item is string => typeof item === "string") : [],
+    reviewerMatrix: Array.isArray(artifact.reviewerMatrix)
+      ? artifact.reviewerMatrix.filter((item): item is RunPlanArtifact["reviewerMatrix"][number] => Boolean(item && typeof item === "object"))
+      : [],
+    exploration: artifact.exploration && typeof artifact.exploration === "object"
+      ? {
+          selectedCandidateId: typeof artifact.exploration.selectedCandidateId === "string" ? artifact.exploration.selectedCandidateId : "candidate-balanced",
+          selectionReason: typeof artifact.exploration.selectionReason === "string" ? artifact.exploration.selectionReason : "Selected from the candidate comparison set.",
+          criteria: Array.isArray(artifact.exploration.criteria) ? artifact.exploration.criteria.filter((item): item is string => typeof item === "string") : [],
+          candidates: Array.isArray(artifact.exploration.candidates)
+            ? artifact.exploration.candidates.filter((item): item is RunPlanComparisonCandidate => Boolean(item && typeof item === "object"))
+            : [],
+        }
+      : null,
+    review: {
+      status: artifact.review?.status ?? "pending",
+      iteration: artifact.review?.iteration ?? 0,
+      reviewedAt: artifact.review?.reviewedAt ?? null,
+      reviewerPersona: artifact.review?.reviewerPersona ?? "orchestrator",
+      issues: Array.isArray(artifact.review?.issues) ? artifact.review.issues.filter((item): item is string => typeof item === "string") : [],
+      score: typeof artifact.review?.score === "number" ? artifact.review.score : null,
+      recommendation: typeof artifact.review?.recommendation === "string" ? artifact.review.recommendation : null,
+    },
+  };
 }
 
 function deriveRunRuntimePhase(
@@ -103,6 +256,9 @@ function deriveRunRuntimePhase(
     case "running":
       return "running";
     case "paused":
+      if (stopReason === "awaiting_human_choice") return "awaiting_human_choice";
+      if (stopReason === "awaiting_final_review") return "awaiting_final_review";
+      if (stopReason === "awaiting_final_approval") return "awaiting_final_approval";
       if (stopReason === "awaiting_human_approval") return "awaiting_human_approval";
       if (stopReason === "awaiting_external_member") return "waiting_for_worker";
       if (stopReason === "user_paused") return "blocked";
@@ -123,13 +279,22 @@ export function buildRunRuntimeState(run: Pick<TeamRun, "status" | "stopReason" 
   return {
     currentPhase: deriveRunRuntimePhase(run.status, run.stopReason),
     waitingReason: run.stopReason ?? null,
+    policyGateReason: null,
+    traceId: getTraceId() ?? null,
     nextPollAt: null,
+    choiceDeadlineAt: null,
+    finalReviewDeadlineAt: null,
     riskClass: null,
     reviewerPersona: null,
     verificationState: run.status === "completed" ? "passed" : run.status === "failed" ? "failed" : "unknown",
+    finalReview: null,
     evidenceRefs: run.summaryArtifactId ? [`summary:${run.summaryArtifactId}`] : [],
     jobHandle: null,
     statusBridge,
+    planArtifact: null,
+    governedContext: null,
+    traceEnvelope: null,
+    readinessRecord: null,
     workOsLinkage: {
       teamId: run.teamId,
       roomId: run.roomId,
@@ -141,6 +306,7 @@ export function buildRunRuntimeState(run: Pick<TeamRun, "status" | "stopReason" 
 export function extractRunRuntimeState(snapshot: Pick<RunSnapshot, "artifactCountJson"> | null | undefined): RunRuntimeState | null {
   const payload = snapshot?.artifactCountJson as Record<string, unknown> | null | undefined;
   if (!payload) return null;
+  const extractedEnterpriseArtifacts = extractEnterpriseArtifacts({ payload });
 
   const runtimeState = payload.runtimeState as Partial<RunRuntimeState> | undefined;
   const statusBridge = payload.statusBridge as StatusBridge | undefined;
@@ -149,13 +315,25 @@ export function extractRunRuntimeState(snapshot: Pick<RunSnapshot, "artifactCoun
     return {
       currentPhase: (runtimeState.currentPhase as RunRuntimePhase | undefined) ?? "blocked",
       waitingReason: (runtimeState.waitingReason as string | null | undefined) ?? null,
+      policyGateReason: (runtimeState.policyGateReason as string | null | undefined) ?? null,
       nextPollAt: (runtimeState.nextPollAt as string | null | undefined) ?? null,
+      choiceDeadlineAt: (runtimeState.choiceDeadlineAt as string | null | undefined) ?? null,
+      finalReviewDeadlineAt: (runtimeState.finalReviewDeadlineAt as string | null | undefined) ?? null,
       riskClass: (runtimeState.riskClass as RunRuntimeState["riskClass"] | undefined) ?? null,
       reviewerPersona: (runtimeState.reviewerPersona as string | null | undefined) ?? null,
       verificationState: (runtimeState.verificationState as RunRuntimeState["verificationState"] | undefined) ?? "unknown",
+      finalReview: (runtimeState.finalReview as RunRuntimeState["finalReview"] | undefined) ?? null,
       evidenceRefs: Array.isArray(runtimeState.evidenceRefs) ? runtimeState.evidenceRefs.filter((item): item is string => typeof item === "string") : [],
       jobHandle: (runtimeState.jobHandle as Record<string, unknown> | null | undefined) ?? null,
       statusBridge: (runtimeState.statusBridge as StatusBridge | undefined) ?? statusBridge ?? describeRunStatusBridge("queued"),
+      traceId: (runtimeState.traceId as string | null | undefined) ?? null,
+      planArtifact:
+        normalizeRunPlanArtifact(runtimeState.planArtifact as Partial<RunPlanArtifact> | null | undefined)
+        ?? normalizeRunPlanArtifact(payload.planArtifact as Partial<RunPlanArtifact> | undefined)
+        ?? null,
+      governedContext: (runtimeState.governedContext as GovernedContextSnapshot | undefined) ?? extractedEnterpriseArtifacts.governedContext,
+      traceEnvelope: (runtimeState.traceEnvelope as TraceEnvelope | undefined) ?? extractedEnterpriseArtifacts.traceEnvelope,
+      readinessRecord: (runtimeState.readinessRecord as ReadinessMetricRecord | undefined) ?? extractedEnterpriseArtifacts.readinessRecord,
       workOsLinkage: (runtimeState.workOsLinkage as RunRuntimeState["workOsLinkage"] | undefined) ?? null,
     };
   }
@@ -188,13 +366,22 @@ export function extractRunRuntimeState(snapshot: Pick<RunSnapshot, "artifactCoun
     return {
       currentPhase: phase,
       waitingReason: null,
+      policyGateReason: null,
       nextPollAt: null,
+      choiceDeadlineAt: null,
+      finalReviewDeadlineAt: null,
       riskClass: null,
       reviewerPersona: null,
       verificationState: "unknown",
+      finalReview: null,
       evidenceRefs: [],
       jobHandle: null,
       statusBridge,
+      traceId: null,
+      planArtifact: normalizeRunPlanArtifact(payload.planArtifact as Partial<RunPlanArtifact> | undefined) ?? null,
+      governedContext: extractedEnterpriseArtifacts.governedContext,
+      traceEnvelope: extractedEnterpriseArtifacts.traceEnvelope,
+      readinessRecord: extractedEnterpriseArtifacts.readinessRecord,
       workOsLinkage: null,
     };
   }
@@ -216,10 +403,160 @@ export async function getLatestRunSnapshot(runId: string): Promise<RunSnapshot |
   return snapshot ?? null;
 }
 
-function buildRunSnapshotArtifactPayload(run: Pick<TeamRun, "status" | "stopReason" | "summaryArtifactId" | "roomId" | "teamId">) {
+export async function getLatestPolicyGateReason(runId: string, tenantId?: string): Promise<string | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const rows = tenantId
+    ? await db
+        .select({
+          detailJson: agentActivityEvents.detailJson,
+        })
+        .from(agentActivityEvents)
+        .where(and(eq(agentActivityEvents.runId, runId), eq(agentActivityEvents.tenantId, tenantId)))
+        .orderBy(desc(agentActivityEvents.createdAt))
+        .limit(20)
+    : await db
+        .select({
+          detailJson: agentActivityEvents.detailJson,
+        })
+        .from(agentActivityEvents)
+        .where(eq(agentActivityEvents.runId, runId))
+        .orderBy(desc(agentActivityEvents.createdAt))
+        .limit(20);
+
+  for (const row of rows) {
+    const detail = row.detailJson as Record<string, unknown> | null | undefined;
+    const gate = detail?.verificationGate as Record<string, unknown> | undefined;
+    const reason = gate?.reason;
+    if (typeof reason === "string" && reason.trim()) {
+      return reason.trim();
+    }
+  }
+
+  return null;
+}
+
+export function extractRunPlanArtifact(snapshot: Pick<RunSnapshot, "artifactCountJson"> | null | undefined): RunPlanArtifact | null {
+  const payload = snapshot?.artifactCountJson as Record<string, unknown> | null | undefined;
+  if (!payload) return null;
+  return normalizeRunPlanArtifact(payload.planArtifact as Partial<RunPlanArtifact> | undefined);
+}
+
+function buildRunSnapshotArtifactPayload(
+  run: Pick<TeamRun, "id" | "status" | "stopReason" | "summaryArtifactId" | "roomId" | "teamId" | "tenantId" | "objective">,
+  extraArtifacts?: Record<string, unknown> | null,
+  extraRuntimeState?: Partial<RunRuntimeState> | null,
+) {
+  const runtimeState = buildRunRuntimeState(run);
+  if (extraRuntimeState && typeof extraRuntimeState === "object") {
+    Object.assign(runtimeState, extraRuntimeState);
+  }
+  if (extraArtifacts?.planArtifact && typeof extraArtifacts.planArtifact === "object") {
+    runtimeState.planArtifact = extraArtifacts.planArtifact as RunPlanArtifact;
+  }
+  const traceId = runtimeState.traceId ?? getTraceId() ?? `snapshot-${run.id ?? run.roomId}`;
+  const finalReview = (extraArtifacts?.finalReview as Record<string, unknown> | undefined) ?? (runtimeState.finalReview as Record<string, unknown> | undefined);
+  const planScore = typeof runtimeState.planArtifact?.review.score === "number" ? runtimeState.planArtifact.review.score : null;
+  const finalScore = typeof finalReview?.score === "number" ? finalReview.score : null;
+  const readinessScore = finalScore ?? planScore ?? (runtimeState.verificationState === "passed" ? 0.9 : runtimeState.verificationState === "failed" ? 0.2 : 0.55);
+  const readinessReason =
+    typeof finalReview?.comment === "string" && finalReview.comment.trim()
+      ? finalReview.comment.trim()
+      : runtimeState.planArtifact?.review.recommendation
+        ?? runtimeState.policyGateReason
+        ?? `Runtime readiness for ${run.objective}`;
+  const context = buildGovernedContextSnapshot({
+    tenantId: run.tenantId,
+    principalScope: run.teamId,
+    objective: run.objective || "Run objective",
+    items: [
+      {
+        id: `run:${run.id}`,
+        label: run.objective || "Run objective",
+        sourceType: "team_run",
+        scope: "room",
+        trustTier: "trusted",
+        freshnessTier: "fresh",
+        reason: "Primary run objective",
+        score: 1,
+        evidenceRefs: runtimeState.evidenceRefs,
+      },
+      {
+        id: `status:${run.id}`,
+        label: runtimeState.currentPhase,
+        sourceType: "runtime_state",
+        scope: "room",
+        trustTier: "trusted",
+        freshnessTier: "fresh",
+        reason: "Current runtime phase",
+        score: 0.92,
+        evidenceRefs: runtimeState.evidenceRefs,
+      },
+      ...(runtimeState.planArtifact
+        ? [{
+            id: `plan:${run.id}`,
+            label: runtimeState.planArtifact.objective,
+            sourceType: "plan_artifact",
+            scope: "room",
+            trustTier: "derived",
+            freshnessTier: "fresh",
+            reason: "Durable plan artifact selected for execution",
+            score: runtimeState.planArtifact.review.score ?? 0.85,
+            evidenceRefs: runtimeState.planArtifact.planEvidenceRefs,
+          }]
+        : []),
+      ...(runtimeState.policyGateReason
+        ? [{
+            id: `policy:${run.id}`,
+            label: runtimeState.policyGateReason,
+            sourceType: "policy_gate",
+            scope: "case",
+            trustTier: "trusted",
+            freshnessTier: "fresh",
+            reason: "Latest policy gate reason",
+            score: 0.8,
+            evidenceRefs: runtimeState.evidenceRefs,
+          }]
+        : []),
+      ...(finalReview
+        ? [{
+            id: `final:${run.id}`,
+            label: typeof finalReview.comment === "string" && finalReview.comment.trim() ? finalReview.comment.trim() : "Final review",
+            sourceType: "final_review",
+            scope: "room",
+            trustTier: "derived",
+            freshnessTier: "fresh",
+            reason: "Final reviewer commentary",
+            score: typeof finalReview.score === "number" ? finalReview.score : 0.7,
+            evidenceRefs: runtimeState.evidenceRefs,
+          }]
+        : []),
+    ],
+  });
+  const traceEnvelope = buildTraceEnvelope({
+    traceId,
+    tenantId: run.tenantId,
+    source: "team_run_snapshot",
+    entityId: run.id,
+    eventType: "run_snapshot",
+    summary: `${run.objective || "Run objective"} · ${runtimeState.currentPhase}`,
+    evidenceRefs: runtimeState.evidenceRefs,
+  });
+  const readinessRecord = buildReadinessMetricRecord({
+    kind: "team_run",
+    entityId: run.id,
+    score: readinessScore,
+    reason: readinessReason,
+    evidenceRefs: runtimeState.evidenceRefs,
+  });
   return {
     statusBridge: describeRunStatusBridge(run.status, run.stopReason),
-    runtimeState: buildRunRuntimeState(run),
+    runtimeState,
+    traceEnvelope,
+    governedContext: context,
+    readinessRecord,
+    ...(extraArtifacts ?? {}),
   } satisfies Record<string, unknown>;
 }
 
@@ -264,6 +601,7 @@ export async function recordEvent(
 export async function captureSnapshot(
   runId: string,
   tenantId: string,
+  options?: { artifactCountJson?: Record<string, unknown> | null },
 ): Promise<RunSnapshot> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -277,6 +615,14 @@ export async function captureSnapshot(
     .then((rows) => rows.map((r) => r.run));
 
   if (!run) throw new Error(`Run ${runId} not found`);
+  const latestSnapshot = await getLatestRunSnapshot(runId);
+  const previousArtifactCountJson = (latestSnapshot?.artifactCountJson as Record<string, unknown> | null | undefined) ?? null;
+  const mergedArtifactCountJson = {
+    ...(previousArtifactCountJson ?? {}),
+    ...(options?.artifactCountJson ?? {}),
+  } satisfies Record<string, unknown>;
+  const policyGateReason = await getLatestPolicyGateReason(runId, tenantId).catch(() => null);
+  const traceId = getTraceId() ?? null;
 
   const budget = (run.budgetSnapshotJson as BudgetSnapshot) ?? { totalCreditsUsed: 0, perAgent: {} };
   const perAgent = budget.perAgent ?? {};
@@ -302,7 +648,11 @@ export async function captureSnapshot(
       costJson: Object.fromEntries(
         Object.entries(perAgent).map(([id, d]) => [id, d.creditsUsed]),
       ),
-      artifactCountJson: buildRunSnapshotArtifactPayload(run),
+      artifactCountJson: buildRunSnapshotArtifactPayload(
+        run,
+        mergedArtifactCountJson,
+        policyGateReason ? { policyGateReason } : null,
+      ),
     })
     .returning();
 

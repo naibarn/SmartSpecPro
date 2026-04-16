@@ -75,6 +75,6 @@ describe("WorkpackReplayLab", () => {
 
     expect(screen.getByText("Replay Diffs")).toBeInTheDocument();
     expect(screen.getByText(/connector scope drifted/i)).toBeInTheDocument();
-    expect(screen.getByText(/inspect connector drift/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/inspect connector drift/i).length).toBeGreaterThan(0);
   });
 });

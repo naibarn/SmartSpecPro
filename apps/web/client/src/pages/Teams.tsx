@@ -771,6 +771,46 @@ export default function Teams() {
     onError: (err) => toast.error(err.message),
   });
 
+  const chooseExplorationCandidateMutation = trpc.teamRun.chooseExplorationCandidate.useMutation({
+    onSuccess: () => {
+      if (activeRunId) {
+        utils.teamRun.get.invalidate({ runId: activeRunId });
+      }
+      toast.success("Exploration candidate selected");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const rejectExplorationCandidatesMutation = trpc.teamRun.rejectExplorationCandidates.useMutation({
+    onSuccess: () => {
+      if (activeRunId) {
+        utils.teamRun.get.invalidate({ runId: activeRunId });
+      }
+      toast.success("Exploration candidates rejected; replanning started");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const approveFinalResultMutation = trpc.teamRun.approveFinalReview.useMutation({
+    onSuccess: () => {
+      if (activeRunId) {
+        utils.teamRun.get.invalidate({ runId: activeRunId });
+      }
+      toast.success("Final result approved");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const rejectFinalResultMutation = trpc.teamRun.rejectFinalReview.useMutation({
+    onSuccess: () => {
+      if (activeRunId) {
+        utils.teamRun.get.invalidate({ runId: activeRunId });
+      }
+      toast.success("Final result rejected; replanning started");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const advanceRunMutation = trpc.teamRun.advance.useMutation({
     onSuccess: (results, variables) => {
       setRunStatus("running");
@@ -804,7 +844,11 @@ export default function Teams() {
     pauseRunMutation.isPending ||
     resumeRunMutation.isPending ||
     stopRunMutation.isPending ||
-    advanceRunMutation.isPending;
+    advanceRunMutation.isPending ||
+    chooseExplorationCandidateMutation.isPending ||
+    rejectExplorationCandidatesMutation.isPending ||
+    approveFinalResultMutation.isPending ||
+    rejectFinalResultMutation.isPending;
 
   const activeRunStatusReason = (() => {
     if (activeRunRuntimeState?.waitingReason) {
@@ -813,6 +857,10 @@ export default function Teams() {
     if (!activeRunDetail) return null;
     if (activeRunDetail.status === "paused") {
       switch (activeRunDetail.stopReason) {
+        case "awaiting_human_choice":
+          return "Human choice window open for exploration candidates";
+        case "awaiting_final_approval":
+          return "Final approval window open";
         case "user_paused":
           return t("teams.run.reason.userPaused");
         case "awaiting_human_approval":
@@ -841,6 +889,39 @@ export default function Teams() {
   const openStartRunDialog = () => {
     setStartRunMode(selectedRoomExecutionMode);
     setStartRunDialog(true);
+  };
+
+  const handleChooseExplorationCandidate = (candidateId: string, comment?: string) => {
+    if (!activeRunId) return;
+    chooseExplorationCandidateMutation.mutate({
+      runId: activeRunId,
+      candidateId,
+      comment,
+    });
+  };
+
+  const handleRejectExplorationCandidates = (reason?: string) => {
+    if (!activeRunId) return;
+    rejectExplorationCandidatesMutation.mutate({
+      runId: activeRunId,
+      reason,
+    });
+  };
+
+  const handleApproveFinalResult = (comment?: string) => {
+    if (!activeRunId) return;
+    approveFinalResultMutation.mutate({
+      runId: activeRunId,
+      comment,
+    });
+  };
+
+  const handleRejectFinalResult = (reason?: string) => {
+    if (!activeRunId) return;
+    rejectFinalResultMutation.mutate({
+      runId: activeRunId,
+      reason,
+    });
   };
 
   const resetQuickPersonaForm = () => {
@@ -2044,6 +2125,10 @@ export default function Teams() {
                         runStatus={runStatus as any}
                         runStatusReason={activeRunStatusReason}
                         onResumeRun={() => activeRunId && resumeRunMutation.mutate({ runId: activeRunId })}
+                        onChooseExplorationCandidate={handleChooseExplorationCandidate}
+                        onRejectExplorationCandidates={handleRejectExplorationCandidates}
+                        onApproveFinalResult={handleApproveFinalResult}
+                        onRejectFinalResult={handleRejectFinalResult}
                         onFocusThread={(messageId, options) => {
                           setActiveRoomPanel("chat");
                           setFocusMessageRequest({
@@ -2080,6 +2165,10 @@ export default function Teams() {
                         runStatus={runStatus as any}
                         runStatusReason={activeRunStatusReason}
                         onResumeRun={() => activeRunId && resumeRunMutation.mutate({ runId: activeRunId })}
+                        onChooseExplorationCandidate={handleChooseExplorationCandidate}
+                        onRejectExplorationCandidates={handleRejectExplorationCandidates}
+                        onApproveFinalResult={handleApproveFinalResult}
+                        onRejectFinalResult={handleRejectFinalResult}
                         onFocusThread={(messageId, options) =>
                           setFocusMessageRequest({
                             messageId,

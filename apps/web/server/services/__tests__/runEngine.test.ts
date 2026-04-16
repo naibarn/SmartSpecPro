@@ -1,5 +1,61 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+const mockCallLLMStructured = vi.hoisted(() => vi.fn(async () => ({
+  data: { pass: true, score: 0.92, issues: [], recommendation: null },
+  tokensUsed: 40,
+  creditsUsed: 1,
+})));
+
+vi.mock("../callLLMStructured", () => ({
+  callLLMStructured: mockCallLLMStructured,
+}));
+
 import * as runEngine from "../runEngine";
+
+beforeEach(() => {
+  mockCallLLMStructured.mockClear();
+});
+
+function makePlanExploration(selectedCandidateId: string = "balanced-hybrid") {
+  return {
+    selectedCandidateId,
+    selectionReason: selectedCandidateId === "workflow-first"
+      ? "The workflow-first path keeps validation and evidence tighter."
+      : selectedCandidateId === "swarm-first"
+        ? "The swarm-first path preserves more variation before commit."
+        : "The balanced-hybrid path keeps exploration bounded while still committing to execution.",
+    criteria: ["safety", "speed", "determinism", "evidence quality", "parallelization potential", "Work OS continuity"],
+    candidates: [
+      {
+        candidateId: "workflow-first",
+        title: "Workflow first",
+        strategy: "deterministic, review-heavy execution",
+        summary: "Keep the path narrow and validated.",
+        strengths: ["tight evidence discipline", "stable Work OS mirroring", "strong approval boundaries"],
+        tradeoffs: ["less exploratory breadth", "slower option discovery"],
+        riskClass: "medium" as const,
+      },
+      {
+        candidateId: "swarm-first",
+        title: "Swarm first",
+        strategy: "idea-rich, parallel exploration",
+        summary: "Fan out multiple personas early so the team can compare more routes before it commits.",
+        strengths: ["more brainstorming coverage", "better edge-case discovery", "good for ambiguous objectives"],
+        tradeoffs: ["higher validation burden", "more variation to reconcile"],
+        riskClass: "medium" as const,
+      },
+      {
+        candidateId: "balanced-hybrid",
+        title: "Balanced hybrid",
+        strategy: "bounded exploration then commit",
+        summary: "Explore enough to avoid a brittle first answer, then lock a plan and execute with discipline.",
+        strengths: ["good balance of creativity and control", "supports comparison without endless ideation", "fits the existing auto-team loop"],
+        tradeoffs: ["not as exhaustive as a full swarm-first approach", "requires a quality reviewer to keep scope bounded"],
+        riskClass: "medium" as const,
+      },
+    ],
+  } as const;
+}
 
 describe("RunEngine", () => {
   describe("type exports", () => {
@@ -95,6 +151,432 @@ describe("RunEngine", () => {
         shouldStop: false,
         hasGoalProgress: true,
       })).toBe(true);
+    });
+
+    it("repairs incomplete plan artifacts before marking them ready", () => {
+      const reviewed = runEngine.reviewAutoTeamPlanArtifact({
+        version: 1,
+        runId: "run-1",
+        roomId: "room-1",
+        teamId: "team-1",
+        caseId: null,
+        requestId: null,
+        objective: "Launch objective",
+        source: "team_run",
+        status: "ready",
+        generatedAt: "2026-04-15T12:00:00.000Z",
+        lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+        steps: [
+          {
+            stepKey: "plan-decompose",
+            title: "Plan and decompose the objective",
+            objective: "Launch objective",
+            ownerPersona: "",
+            ownerMemberId: null,
+            reviewerPersona: "",
+            reviewerMemberId: null,
+            verificationMethod: "",
+            retryRule: "",
+            evidenceRequirements: [],
+            status: "planned",
+            evidenceRefs: [],
+            notes: null,
+          },
+          {
+            stepKey: "execute-primary",
+            title: "Execute the primary work slice",
+            objective: "Launch objective",
+            ownerPersona: "",
+            ownerMemberId: null,
+            reviewerPersona: "",
+            reviewerMemberId: null,
+            verificationMethod: "",
+            retryRule: "",
+            evidenceRequirements: [],
+            status: "planned",
+            evidenceRefs: [],
+            notes: null,
+          },
+          {
+            stepKey: "review-repair",
+            title: "Review and repair",
+            objective: "Launch objective",
+            ownerPersona: "",
+            ownerMemberId: null,
+            reviewerPersona: "",
+            reviewerMemberId: null,
+            verificationMethod: "",
+            retryRule: "",
+            evidenceRequirements: [],
+            status: "planned",
+            evidenceRefs: [],
+            notes: null,
+          },
+          {
+            stepKey: "finalize-mirror",
+            title: "Finalize and mirror back to Work OS",
+            objective: "Launch objective",
+            ownerPersona: "",
+            ownerMemberId: null,
+            reviewerPersona: "",
+            reviewerMemberId: null,
+            verificationMethod: "",
+            retryRule: "",
+            evidenceRequirements: [],
+            status: "planned",
+            evidenceRefs: [],
+            notes: null,
+          },
+        ],
+        evidenceRefs: [],
+        planEvidenceRefs: [],
+        reviewerMatrix: [],
+        exploration: makePlanExploration(),
+        review: {
+          status: "pending",
+          iteration: 0,
+          reviewedAt: null,
+          reviewerPersona: "qa_validator",
+          issues: [],
+          score: null,
+          recommendation: null,
+        },
+      } as any, {
+        coordinatorPersona: "Lead",
+        reviewerPersona: "qa_validator",
+        specialtyPersona: "specialist",
+        publisherPersona: "publisher",
+      });
+
+      expect(reviewed.review.status).toBe("passed");
+      expect(reviewed.review.iteration).toBeGreaterThan(0);
+      expect(reviewed.steps[0]?.ownerPersona).toBe("Lead");
+      expect(reviewed.steps[1]?.ownerPersona).toBe("specialist");
+      expect(reviewed.steps[0]?.reviewerPersona).toBe("qa_validator");
+      expect(reviewed.reviewerMatrix).toHaveLength(4);
+    });
+
+    it("requires persona separation on non-trivial plan steps when the team has role diversity", () => {
+      const reviewed = runEngine.reviewAutoTeamPlanArtifact({
+        version: 1,
+        runId: "run-2",
+        roomId: "room-2",
+        teamId: "team-2",
+        caseId: null,
+        requestId: null,
+        objective: "Launch objective",
+        source: "team_run",
+        status: "ready",
+        generatedAt: "2026-04-15T12:00:00.000Z",
+        lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+        steps: [
+          {
+            stepKey: "plan-decompose",
+            title: "Plan and decompose the objective",
+            objective: "Launch objective",
+            ownerPersona: "Lead",
+            ownerMemberId: null,
+            reviewerPersona: "Lead",
+            reviewerMemberId: null,
+            verificationMethod: "review",
+            retryRule: "Refine until the plan is clear.",
+            evidenceRequirements: ["plan artifact"],
+            status: "planned",
+            evidenceRefs: [],
+            notes: null,
+          },
+          {
+            stepKey: "execute-primary",
+            title: "Execute the primary work slice",
+            objective: "Launch objective",
+            ownerPersona: "Lead",
+            ownerMemberId: null,
+            reviewerPersona: "Lead",
+            reviewerMemberId: null,
+            verificationMethod: "test_and_review",
+            retryRule: "Repair and rerun until ready.",
+            evidenceRequirements: ["work output"],
+            status: "planned",
+            evidenceRefs: [],
+            notes: null,
+          },
+          {
+            stepKey: "review-repair",
+            title: "Review and repair",
+            objective: "Launch objective",
+            ownerPersona: "Lead",
+            ownerMemberId: null,
+            reviewerPersona: "Lead",
+            reviewerMemberId: null,
+            verificationMethod: "test_and_review",
+            retryRule: "Loop until approved.",
+            evidenceRequirements: ["review note"],
+            status: "planned",
+            evidenceRefs: [],
+            notes: null,
+          },
+          {
+            stepKey: "finalize-mirror",
+            title: "Finalize and mirror back to Work OS",
+            objective: "Launch objective",
+            ownerPersona: "Publisher",
+            ownerMemberId: null,
+            reviewerPersona: "Publisher",
+            reviewerMemberId: null,
+            verificationMethod: "review",
+            retryRule: "Mirror until systems agree.",
+            evidenceRequirements: ["work os event"],
+            status: "planned",
+            evidenceRefs: [],
+            notes: null,
+          },
+        ],
+        evidenceRefs: ["run:run-2"],
+        planEvidenceRefs: ["run:run-2"],
+        reviewerMatrix: [
+          { riskClass: "low", reviewerPersona: "technical reviewer", escalationRule: "stay in automation unless repeated repair fails" },
+          { riskClass: "medium", reviewerPersona: "qa validator", escalationRule: "require stronger validation before advancing" },
+          { riskClass: "high", reviewerPersona: "safety policy", escalationRule: "block or escalate if policy remains unresolved" },
+          { riskClass: "critical", reviewerPersona: "human approval", escalationRule: "do not continue without explicit approval" },
+        ],
+        exploration: makePlanExploration("workflow-first"),
+        review: {
+          status: "pending",
+          iteration: 0,
+          reviewedAt: null,
+          reviewerPersona: "qa_validator",
+          issues: [],
+          score: null,
+          recommendation: null,
+        },
+      } as any, {
+        coordinatorPersona: "Lead",
+        reviewerPersona: "qa_validator",
+        specialtyPersona: "specialist",
+        publisherPersona: "publisher",
+      });
+
+      expect(reviewed.review.status).toBe("failed");
+      expect(reviewed.review.issues).toContain("persona_separation_required:execute-primary");
+    });
+
+    it("uses an LLM-assisted persona review when the plan is ready for semantic evaluation", async () => {
+      const reviewed = await runEngine.reviewAutoTeamPlanArtifactWithPersonaReview({
+        version: 1,
+        runId: "run-3",
+        roomId: "room-3",
+        teamId: "team-3",
+        caseId: null,
+        requestId: null,
+        objective: "Launch objective",
+        source: "team_run",
+        status: "ready",
+        generatedAt: "2026-04-15T12:00:00.000Z",
+        lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+        steps: [
+          {
+            stepKey: "plan-decompose",
+            title: "Plan and decompose the objective",
+            objective: "Launch objective",
+            ownerPersona: "Lead",
+            ownerMemberId: null,
+            reviewerPersona: "QA",
+            reviewerMemberId: null,
+            verificationMethod: "review",
+            retryRule: "Refine until complete.",
+            evidenceRequirements: ["plan artifact"],
+            status: "planned",
+            evidenceRefs: ["run:run-3"],
+            notes: null,
+          },
+          {
+            stepKey: "execute-primary",
+            title: "Execute the primary work slice",
+            objective: "Launch objective",
+            ownerPersona: "Specialist",
+            ownerMemberId: null,
+            reviewerPersona: "QA",
+            reviewerMemberId: null,
+            verificationMethod: "test_and_review",
+            retryRule: "Repair and rerun until ready.",
+            evidenceRequirements: ["work output"],
+            status: "planned",
+            evidenceRefs: ["run:run-3"],
+            notes: null,
+          },
+          {
+            stepKey: "review-repair",
+            title: "Review and repair",
+            objective: "Launch objective",
+            ownerPersona: "QA",
+            ownerMemberId: null,
+            reviewerPersona: "Safety",
+            reviewerMemberId: null,
+            verificationMethod: "test_and_review",
+            retryRule: "Loop until approved.",
+            evidenceRequirements: ["review note"],
+            status: "planned",
+            evidenceRefs: ["run:run-3"],
+            notes: null,
+          },
+          {
+            stepKey: "finalize-mirror",
+            title: "Finalize and mirror back to Work OS",
+            objective: "Launch objective",
+            ownerPersona: "Publisher",
+            ownerMemberId: null,
+            reviewerPersona: "Lead",
+            reviewerMemberId: null,
+            verificationMethod: "review",
+            retryRule: "Mirror until systems agree.",
+            evidenceRequirements: ["work os event"],
+            status: "planned",
+            evidenceRefs: ["run:run-3"],
+            notes: null,
+          },
+        ],
+        evidenceRefs: ["run:run-3"],
+        planEvidenceRefs: ["run:run-3"],
+        reviewerMatrix: [
+          { riskClass: "low", reviewerPersona: "technical reviewer", escalationRule: "stay in automation unless repeated repair fails" },
+          { riskClass: "medium", reviewerPersona: "qa validator", escalationRule: "require stronger validation before advancing" },
+          { riskClass: "high", reviewerPersona: "safety policy", escalationRule: "block or escalate if policy remains unresolved" },
+          { riskClass: "critical", reviewerPersona: "human approval", escalationRule: "do not continue without explicit approval" },
+        ],
+        exploration: makePlanExploration("balanced-hybrid"),
+        review: {
+          status: "pending",
+          iteration: 0,
+          reviewedAt: null,
+          reviewerPersona: "qa_validator",
+          issues: [],
+          score: null,
+          recommendation: null,
+        },
+      }, {
+        tenantId: "tenant-1",
+        userId: 1,
+        coordinatorPersona: "Lead",
+        reviewerPersona: "qa_validator",
+        specialtyPersona: "specialist",
+        publisherPersona: "publisher",
+      } as any);
+
+      expect(mockCallLLMStructured).toHaveBeenCalled();
+      expect(reviewed.review.status).toBe("passed");
+      expect(reviewed.review.reviewerPersona).toBe("qa_validator");
+      expect(reviewed.review.score).toBe(0.92);
+      expect(reviewed.review.recommendation).toBeNull();
+    });
+
+    it("blocks the plan review explicitly when the LLM reviewer is unavailable", async () => {
+      mockCallLLMStructured.mockRejectedValueOnce(new Error("LLM unavailable"));
+
+      const reviewed = await runEngine.reviewAutoTeamPlanArtifactWithPersonaReview({
+        version: 1,
+        runId: "run-4",
+        roomId: "room-4",
+        teamId: "team-4",
+        caseId: null,
+        requestId: null,
+        objective: "Launch objective",
+        source: "team_run",
+        status: "ready",
+        generatedAt: "2026-04-15T12:00:00.000Z",
+        lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+        steps: [
+          {
+            stepKey: "plan-decompose",
+            title: "Plan and decompose the objective",
+            objective: "Launch objective",
+            ownerPersona: "Lead",
+            ownerMemberId: null,
+            reviewerPersona: "QA",
+            reviewerMemberId: null,
+            verificationMethod: "review",
+            retryRule: "Refine until complete.",
+            evidenceRequirements: ["plan artifact"],
+            status: "planned",
+            evidenceRefs: ["run:run-4"],
+            notes: null,
+          },
+          {
+            stepKey: "execute-primary",
+            title: "Execute the primary work slice",
+            objective: "Launch objective",
+            ownerPersona: "Specialist",
+            ownerMemberId: null,
+            reviewerPersona: "QA",
+            reviewerMemberId: null,
+            verificationMethod: "test_and_review",
+            retryRule: "Repair and rerun until ready.",
+            evidenceRequirements: ["work output"],
+            status: "planned",
+            evidenceRefs: ["run:run-4"],
+            notes: null,
+          },
+          {
+            stepKey: "review-repair",
+            title: "Review and repair",
+            objective: "Launch objective",
+            ownerPersona: "QA",
+            ownerMemberId: null,
+            reviewerPersona: "Safety",
+            reviewerMemberId: null,
+            verificationMethod: "test_and_review",
+            retryRule: "Loop until approved.",
+            evidenceRequirements: ["review note"],
+            status: "planned",
+            evidenceRefs: ["run:run-4"],
+            notes: null,
+          },
+          {
+            stepKey: "finalize-mirror",
+            title: "Finalize and mirror back to Work OS",
+            objective: "Launch objective",
+            ownerPersona: "Publisher",
+            ownerMemberId: null,
+            reviewerPersona: "Lead",
+            reviewerMemberId: null,
+            verificationMethod: "review",
+            retryRule: "Mirror until systems agree.",
+            evidenceRequirements: ["work os event"],
+            status: "planned",
+            evidenceRefs: ["run:run-4"],
+            notes: null,
+          },
+        ],
+        evidenceRefs: ["run:run-4"],
+        planEvidenceRefs: ["run:run-4"],
+        reviewerMatrix: [
+          { riskClass: "low", reviewerPersona: "technical reviewer", escalationRule: "stay in automation unless repeated repair fails" },
+          { riskClass: "medium", reviewerPersona: "qa validator", escalationRule: "require stronger validation before advancing" },
+          { riskClass: "high", reviewerPersona: "safety policy", escalationRule: "block or escalate if policy remains unresolved" },
+          { riskClass: "critical", reviewerPersona: "human approval", escalationRule: "do not continue without explicit approval" },
+        ],
+        exploration: makePlanExploration("workflow-first"),
+        review: {
+          status: "pending",
+          iteration: 0,
+          reviewedAt: null,
+          reviewerPersona: "qa_validator",
+          issues: [],
+          score: null,
+          recommendation: null,
+        },
+      }, {
+        tenantId: "tenant-1",
+        userId: 1,
+        coordinatorPersona: "Lead",
+        reviewerPersona: "qa_validator",
+        specialtyPersona: "specialist",
+        publisherPersona: "publisher",
+      } as any);
+
+      expect(reviewed.review.status).toBe("failed");
+      expect(reviewed.status).toBe("blocked");
+      expect(reviewed.review.issues).toContain("llm_reviewer_unavailable");
+      expect(reviewed.review.recommendation).toContain("LLM reviewer unavailable");
     });
 
     it("keeps looping when assistant-owned work remains actionable", () => {

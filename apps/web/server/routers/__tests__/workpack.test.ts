@@ -6,6 +6,51 @@ vi.mock("../../db", () => ({
 
 import { appRouter } from "../../routers";
 import { resetWorkpackStore } from "../../services/workpackPersistence";
+import { compileWorkpackExecutionPlan } from "../../services/workpackCompilerService";
+import { validateConnectorMaps } from "../../services/workpackConnectorService";
+import { publishBenchmarkPack } from "../../services/workpackPromotionService";
+import { updateWorkpackVersion } from "../../services/workpackPersistence";
+import { simulateWorkpack } from "../../services/workpackSimulationService";
+
+const supportConnectorMetadata = {
+  helpdesk: {
+    availableFields: ["record_id", "status", "summary", "ticket_id", "priority"],
+    fieldTypes: {
+      record_id: "string",
+      status: "string",
+      summary: "string",
+      ticket_id: "string",
+      priority: "string",
+    },
+    grantedScopes: ["helpdesk:read", "helpdesk:write"],
+    supportsIdempotency: true,
+    status: "healthy" as const,
+  },
+  knowledge_base: {
+    availableFields: ["record_id", "status", "summary", "article_id"],
+    fieldTypes: {
+      record_id: "string",
+      status: "string",
+      summary: "string",
+      article_id: "string",
+    },
+    grantedScopes: ["knowledge_base:read", "knowledge_base:write"],
+    supportsIdempotency: true,
+    status: "healthy" as const,
+  },
+  chat: {
+    availableFields: ["record_id", "status", "summary", "thread_id"],
+    fieldTypes: {
+      record_id: "string",
+      status: "string",
+      summary: "string",
+      thread_id: "string",
+    },
+    grantedScopes: ["chat:read", "chat:write"],
+    supportsIdempotency: true,
+    status: "healthy" as const,
+  },
+};
 
 function createProtectedContext() {
   return {
@@ -65,6 +110,8 @@ describe("workpack router", () => {
 
     expect(compiled.steps.length).toBeGreaterThan(0);
     expect(detail.workpack.id).toBe(draft.workpack.id);
+    expect(detail.enterprise.releaseGate.gateResult).toMatch(/ready|review_required|blocked/);
+    expect(detail.enterprise.sdkContract.kind).toBe("internal_agent_sdk");
     expect(simulation.simulationRun.status).toBe("blocked");
     expect(replay.inspectionMode).toBe("inspection_only");
   });
@@ -92,5 +139,72 @@ describe("workpack router", () => {
 
     expect(discovery.starters).toHaveLength(1);
     expect(roi.readiness).toHaveLength(1);
+    expect(roi.enterprise).toHaveLength(1);
+    expect(roi.roadmapSummary.workpackCount).toBe(1);
+    expect(roi.roadmapSummary.phaseCounts.ready + roi.roadmapSummary.phaseCounts.review_required + roi.roadmapSummary.phaseCounts.blocked).toBeGreaterThan(0);
+  });
+
+  it("surfaces benchmark manifests in discovery", async () => {
+    const caller = appRouter.createCaller(createProtectedContext());
+    const draft = await caller.workpack.createDraft({
+      title: "Support benchmark",
+      goal: "Classify and route tickets",
+      domainPack: "support_ops",
+      sources: [
+        {
+          type: "document",
+          title: "Support SOP",
+          sourceText: "Classify and route tickets.",
+        },
+      ],
+    });
+
+    await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
+    await validateConnectorMaps({
+      workpackId: draft.workpack.id,
+      emitExceptions: false,
+      metadataByFamily: supportConnectorMetadata,
+    });
+    await updateWorkpackVersion(draft.version.id, (version) => ({
+      ...version,
+      fixtureCatalog: version.fixtureCatalog.map((fixture) => ({
+        ...fixture,
+        governance: {
+          ...fixture.governance,
+          redactionState: "de_identified",
+          accessScope: "benchmark_candidate",
+        },
+      })),
+    }));
+    await simulateWorkpack({ workpackId: draft.workpack.id });
+
+    await publishBenchmarkPack({ workpackId: draft.workpack.id });
+
+    const discovery = await caller.workpack.discovery();
+    expect(discovery.benchmarks[0]?.manifest?.packId).toBeTruthy();
+    expect(discovery.benchmarks[0]?.manifest?.reversible).toBe(true);
+  });
+
+  it("exposes workpack release health for admin monitoring", async () => {
+    const caller = appRouter.createCaller(createProtectedContext());
+    const draft = await caller.workpack.createDraft({
+      title: "Ops briefing",
+      goal: "Prepare a recurring status summary",
+      domainPack: "operations",
+      sources: [
+        {
+          type: "document",
+          title: "Ops notes",
+          sourceText: "Compile a concise status summary.",
+        },
+      ],
+    });
+
+    await compileWorkpackExecutionPlan({ workpackId: draft.workpack.id });
+    await simulateWorkpack({ workpackId: draft.workpack.id });
+
+    const releaseHealth = await caller.adminOps.workpackReleaseHealth();
+    expect(releaseHealth.readiness.length).toBe(1);
+    expect(releaseHealth.summary.workpackCount).toBeGreaterThan(0);
   });
 });

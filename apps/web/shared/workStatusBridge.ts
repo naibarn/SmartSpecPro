@@ -4,6 +4,8 @@ export type WorkOsStateHint =
   | "planned"
   | "triaged"
   | "in_progress"
+  | "waiting_for_choice"
+  | "waiting_for_review"
   | "waiting_for_approval"
   | "waiting_for_input"
   | "blocked"
@@ -13,7 +15,7 @@ export type WorkOsStateHint =
   | "failed"
   | "new";
 
-export type TeamRunStatusHint = TeamRun["status"] | "cancelled" | "waiting_for_worker" | "waiting_for_poll" | "awaiting_human_approval";
+export type TeamRunStatusHint = TeamRun["status"] | "cancelled" | "waiting_for_worker" | "waiting_for_poll" | "awaiting_human_approval" | "awaiting_human_choice" | "awaiting_final_review" | "awaiting_final_approval";
 
 export interface StatusBridge {
   teamRunStatus: TeamRunStatusHint;
@@ -33,6 +35,9 @@ export function mapTeamRunStatusToWorkOsState(
     case "running":
       return "in_progress";
     case "paused":
+      if (stopReason === "awaiting_human_choice") return "waiting_for_choice";
+      if (stopReason === "awaiting_final_review") return "waiting_for_review";
+      if (stopReason === "awaiting_final_approval") return "waiting_for_approval";
       if (stopReason === "awaiting_human_approval") return "waiting_for_approval";
       if (stopReason === "awaiting_external_member") return "in_progress";
       if (stopReason === "user_paused") return "waiting_for_input";
@@ -57,6 +62,10 @@ export function mapWorkOsStateToTeamRunStatus(state: string | null | undefined):
       return "running";
     case "waiting_for_approval":
       return "awaiting_human_approval";
+    case "waiting_for_review":
+      return "awaiting_final_review";
+    case "waiting_for_choice":
+      return "awaiting_human_choice";
     case "waiting_for_input":
       return "waiting_for_poll";
     case "blocked":
@@ -93,6 +102,8 @@ export function getStatusBridgeTone(workOsState: WorkOsStateHint): StatusBridgeT
     case "triaged":
       return "sky";
     case "waiting_for_approval":
+    case "waiting_for_choice":
+    case "waiting_for_review":
     case "waiting_for_input":
       return "amber";
     case "blocked":

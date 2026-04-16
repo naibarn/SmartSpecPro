@@ -18,7 +18,14 @@ import {
   listWorkpackDetailsByTenant,
 } from "../services/workpackPersistence";
 import { simulateWorkpack } from "../services/workpackSimulationService";
-import { replayWorkpackRun } from "../services/workpackReplayService";
+import { analyzeWorkpackReplay, replayWorkpackRun } from "../services/workpackReplayService";
+import {
+  buildEnterpriseReleaseGate,
+  buildEnterpriseSdkContract,
+  buildGovernedContextSnapshot,
+  buildPackManifest,
+  buildTraceEnvelope,
+} from "../services/enterprisePlatformArtifacts";
 import {
   discoverConnectorIntrospections,
   getConnectorStudioView,
@@ -40,6 +47,328 @@ import {
   runDueWorkpackSchedules,
   triggerWorkpackSchedule,
 } from "../services/workpackLaunchService";
+
+function buildWorkpackEnterpriseEvidence(detail: NonNullable<Awaited<ReturnType<typeof getWorkpackDetail>>>, readiness: Awaited<ReturnType<typeof getWorkpackReadinessSummary>>, replay: Awaited<ReturnType<typeof replayWorkpackRun>>) {
+  const latestBenchmark = detail.benchmarks[0] ?? null;
+  const packManifest = latestBenchmark ? buildPackManifest({ benchmarkPack: latestBenchmark, detail }) : null;
+  const traceEnvelope = buildTraceEnvelope({
+    traceId: detail.runs[0]?.id ? `trace:${detail.runs[0].id}` : `trace:${detail.workpack.id}`,
+    tenantId: detail.workpack.tenantId,
+    source: "workpack",
+    entityId: detail.workpack.id,
+    eventType: "enterprise_evidence_snapshot",
+    summary: `${detail.workpack.title} enterprise evidence snapshot`,
+    evidenceRefs: [
+      ...(detail.runs[0]?.artifactReferences.map((artifact) => artifact.artifactId) ?? []),
+      ...(replay.diffs.map((diff) => `${diff.category}:${diff.stepId ?? "run"}`)),
+    ],
+  });
+  const governedContext = buildGovernedContextSnapshot({
+    tenantId: detail.workpack.tenantId,
+    principalScope: "workpack",
+    objective: detail.workpack.goal,
+    items: [
+      {
+        id: `workpack:${detail.workpack.id}`,
+        label: detail.workpack.title,
+        sourceType: "workpack",
+        scope: "workpack",
+        trustTier: "trusted",
+        freshnessTier: "fresh",
+        reason: "Canonical workpack objective and title",
+        score: 1,
+        evidenceRefs: [`workpack:${detail.workpack.id}`],
+      },
+      {
+        id: `readiness:${detail.workpack.id}`,
+        label: `Readiness ${readiness.gateResult}`,
+        sourceType: "readiness",
+        scope: "workpack",
+        trustTier: "derived",
+        freshnessTier: "fresh",
+        reason: readiness.nextAction,
+        score: readiness.gateResult === "ready" ? 0.92 : readiness.gateResult === "review_required" ? 0.66 : 0.28,
+        evidenceRefs: [`readiness:${detail.workpack.id}`],
+      },
+      {
+        id: `replay:${detail.workpack.id}`,
+        label: `Replay ${replay.gateStatus}`,
+        sourceType: "replay",
+        scope: "workpack",
+        trustTier: "derived",
+        freshnessTier: "warm",
+        reason: replay.nextAction,
+        score: replay.gateStatus === "clean" ? 0.9 : replay.gateStatus === "review_required" ? 0.62 : 0.24,
+        evidenceRefs: [`replay:${detail.workpack.id}`],
+      },
+      ...detail.version.connectorMaps.map((map, index) => ({
+        id: `connector:${map.connectorFamily}:${index}`,
+        label: map.connectorFamily,
+        sourceType: "connector",
+        scope: "workpack" as const,
+        trustTier: map.validationStatus === "validated" ? "trusted" : "derived",
+        freshnessTier: map.validationStatus === "validated" ? "fresh" : "warm",
+        reason: `Connector validation is ${map.validationStatus}`,
+        score: map.validationStatus === "validated" ? 0.88 : map.validationStatus === "stale" ? 0.54 : 0.2,
+        evidenceRefs: [`connector:${map.connectorFamily}`],
+      })),
+    ],
+  });
+  const readinessRecord = {
+    version: 1 as const,
+    kind: "workpack" as const,
+    entityId: detail.workpack.id,
+    generatedAt: readiness.updatedAt,
+    score: readiness.gateResult === "ready" ? 0.9 : readiness.gateResult === "review_required" ? 0.62 : 0.24,
+    status: readiness.gateResult === "ready" ? "ready" as const : readiness.gateResult === "review_required" ? "staged" as const : "blocked" as const,
+    reason: readiness.nextAction,
+    evidenceRefs: [
+      `readiness:${detail.workpack.id}`,
+      `replay:${detail.workpack.id}`,
+    ],
+  };
+  const releaseGate = buildEnterpriseReleaseGate({
+    tenantId: detail.workpack.tenantId,
+    workpackId: detail.workpack.id,
+    kind: latestBenchmark ? "promotion" : "readiness",
+    traceEnvelope,
+    governedContext,
+    readinessRecord,
+    packManifest,
+    replayGateStatus: replay.gateStatus === "blocked" ? "blocked" : replay.gateStatus === "review_required" ? "review_required" : "ready",
+    evidenceRefs: [
+      ...traceEnvelope.evidenceRefs,
+      ...governedContext.items.flatMap((item) => item.evidenceRefs),
+      ...readinessRecord.evidenceRefs,
+    ],
+  });
+  const sdkContract = buildEnterpriseSdkContract({
+    tenantId: detail.workpack.tenantId,
+    workpackId: detail.workpack.id,
+    governedContext,
+    traceEnvelope,
+    readinessRecord,
+    packManifest,
+  });
+
+  return {
+    traceEnvelope,
+    governedContext,
+    packManifest,
+    readinessRecord,
+    releaseGate,
+    sdkContract,
+  };
+}
+
+type WorkpackRoadmapPhaseStatus = "ready" | "review_required" | "blocked";
+
+type WorkpackRoadmapSummary = {
+  workpackCount: number;
+  phaseCounts: {
+    ready: number;
+    review_required: number;
+    blocked: number;
+  };
+  blockerCounts: Array<{
+    blocker: string;
+    count: number;
+  }>;
+};
+
+type WorkpackRoadmapTrendPoint = {
+  workpackId: string;
+  title: string;
+  updatedAt: string;
+  sequence: number;
+  ready: number;
+  review_required: number;
+  blocked: number;
+  totalPhases: number;
+};
+
+function buildWorkpackRoadmapProgress(detail: NonNullable<Awaited<ReturnType<typeof getWorkpackDetail>>>, enterprise: ReturnType<typeof buildWorkpackEnterpriseEvidence>) {
+  const governedContext = enterprise.governedContext ?? {
+    selectedCount: 0,
+    items: [],
+  };
+  const releaseGate = enterprise.releaseGate ?? {
+    gateResult: "review_required" as const,
+    failedChecks: ["enterprise_release_gate_missing"],
+    evidenceRefs: [],
+    explanation: "Enterprise release gate data is unavailable.",
+  };
+  const readinessRecord = enterprise.readinessRecord ?? {
+    status: "blocked" as const,
+    reason: "Readiness record unavailable.",
+    evidenceRefs: [],
+  };
+  const sdkContract = enterprise.sdkContract ?? {
+    requiredSignals: [],
+  };
+  const packManifest = enterprise.packManifest ?? null;
+  const phase1Blockers = [
+    ...(governedContext.selectedCount > 0 ? [] : ["no_scoped_context"]),
+    ...(governedContext.items.some((item) => item.included && item.trustTier === "untrusted") ? ["untrusted_context_selected"] : []),
+  ];
+  const phase1: {
+    phase: number;
+    title: string;
+    status: WorkpackRoadmapPhaseStatus;
+    owner: string;
+    reviewer: string;
+    blockers: string[];
+    nextAction: string;
+    evidenceRefs: string[];
+  } = {
+    phase: 1,
+    title: "Governed Context Fabric",
+    status: phase1Blockers.length === 0 ? "ready" : "review_required",
+    owner: "platform owner",
+    reviewer: "security owner",
+    blockers: phase1Blockers,
+    nextAction: phase1Blockers.length === 0
+      ? "Context assembly is stable and can be reused as a durable input."
+      : "Tighten context scope and remove untrusted items before expanding use.",
+    evidenceRefs: governedContext.items.flatMap((item) => item.evidenceRefs),
+  };
+
+  const phase2Blockers = [
+    ...(releaseGate.gateResult === "blocked" ? releaseGate.failedChecks : []),
+  ];
+  const phase2: typeof phase1 = {
+    phase: 2,
+    title: "Tracing, Replay, And Release Gates",
+    status: releaseGate.gateResult === "ready"
+      ? "ready"
+      : releaseGate.gateResult === "review_required"
+        ? "review_required"
+        : "blocked",
+    owner: "observability owner",
+    reviewer: "security owner",
+    blockers: phase2Blockers,
+    nextAction: releaseGate.explanation,
+    evidenceRefs: releaseGate.evidenceRefs,
+  };
+
+  const phase3Blockers = [
+    ...(packManifest ? [] : ["pack_manifest_missing"]),
+    ...(packManifest && !packManifest.reversible ? ["pack_not_reversible"] : []),
+    ...(detail.benchmarks.length > 0 ? [] : ["benchmark_not_published"]),
+  ];
+  const phase3: typeof phase1 = {
+    phase: 3,
+    title: "Workforce Exchange Packs",
+    status: phase3Blockers.length === 0 ? "ready" : packManifest ? "review_required" : "blocked",
+    owner: "platform owner",
+    reviewer: "observability owner",
+    blockers: phase3Blockers,
+    nextAction: phase3Blockers.length === 0
+      ? "Pack manifest is available for exchange and promotion."
+      : "Publish or harden the pack manifest before exchange.",
+    evidenceRefs: packManifest ? [packManifest.packId] : [],
+  };
+
+  const phase4Blockers = [
+    ...(readinessRecord.status === "blocked" ? ["readiness_blocked"] : []),
+    ...(sdkContract.requiredSignals.some((signal) => signal.includes(":missing")) ? ["required_signal_missing"] : []),
+  ];
+  const phase4: typeof phase1 = {
+    phase: 4,
+    title: "Readiness, Economics, And SDK Standards",
+    status: readinessRecord.status === "ready"
+      ? "ready"
+      : readinessRecord.status === "staged"
+        ? "review_required"
+        : "blocked",
+    owner: "product owner",
+    reviewer: "platform owner",
+    blockers: phase4Blockers,
+    nextAction: readinessRecord.reason,
+    evidenceRefs: readinessRecord.evidenceRefs,
+  };
+
+  return [phase1, phase2, phase3, phase4];
+}
+
+function summarizeWorkpackRoadmapProgress(roadmapProgress: Array<{
+  workpackId: string;
+  title: string;
+  phases: Array<{
+    phase: number;
+    title: string;
+    status: WorkpackRoadmapPhaseStatus;
+    owner: string;
+    reviewer: string;
+    blockers: string[];
+    nextAction: string;
+    evidenceRefs: string[];
+  }>;
+}>): WorkpackRoadmapSummary {
+  const phaseCounts = {
+    ready: 0,
+    review_required: 0,
+    blocked: 0,
+  } as const;
+  const blockerCounts = new Map<string, number>();
+
+  for (const item of roadmapProgress) {
+    for (const phase of item.phases ?? []) {
+      phaseCounts[phase.status] += 1;
+      for (const blocker of phase.blockers ?? []) {
+        blockerCounts.set(blocker, (blockerCounts.get(blocker) ?? 0) + 1);
+      }
+    }
+  }
+
+  return {
+    workpackCount: roadmapProgress.length,
+    phaseCounts,
+    blockerCounts: Array.from(blockerCounts.entries())
+      .map(([blocker, count]) => ({ blocker, count }))
+      .sort((left, right) => right.count - left.count)
+      .slice(0, 6),
+  };
+}
+
+function buildWorkpackRoadmapTrend(roadmapProgress: Array<{
+  workpackId: string;
+  title: string;
+  updatedAt: string;
+  phases: Array<{
+    phase: number;
+    title: string;
+    status: WorkpackRoadmapPhaseStatus;
+    owner: string;
+    reviewer: string;
+    blockers: string[];
+    nextAction: string;
+    evidenceRefs: string[];
+  }>;
+}>): WorkpackRoadmapTrendPoint[] {
+  const ordered = [...roadmapProgress].sort((left, right) => left.updatedAt.localeCompare(right.updatedAt));
+  const accumulator = {
+    ready: 0,
+    review_required: 0,
+    blocked: 0,
+  };
+
+  return ordered.map((item, index) => {
+    for (const phase of item.phases ?? []) {
+      accumulator[phase.status] += 1;
+    }
+    return {
+      workpackId: item.workpackId,
+      title: item.title,
+      updatedAt: item.updatedAt,
+      sequence: index + 1,
+      ready: accumulator.ready,
+      review_required: accumulator.review_required,
+      blocked: accumulator.blocked,
+      totalPhases: accumulator.ready + accumulator.review_required + accumulator.blocked,
+    };
+  });
+}
 
 const workpackSourceInputSchema = z.object({
   type: z.enum([
@@ -139,9 +468,16 @@ export const workpackRouter = router({
       throw new TRPCError({ code: "NOT_FOUND", message: "Workpack not found" });
     }
 
+    const readiness = await getWorkpackReadinessSummary(detail.workpack.id);
+    const replay = await analyzeWorkpackReplay({
+      workpackId: detail.workpack.id,
+      runId: detail.runs[0]?.id ?? null,
+    });
+    const enterprise = buildWorkpackEnterpriseEvidence(detail, readiness, replay);
+
     return {
       ...detail,
-      readiness: await getWorkpackReadinessSummary(detail.workpack.id),
+      readiness,
       connectorStudio: await getConnectorStudioView(detail.workpack.id),
       learningBundle: await deriveWorkpackImprovementProposals(detail.workpack.id),
       promotionEligibility: await evaluateWorkpackPromotionEligibility(detail.workpack.id),
@@ -151,6 +487,7 @@ export const workpackRouter = router({
         tenantId,
         workpackId: detail.workpack.id,
       }),
+      enterprise,
     };
   }),
 
@@ -502,9 +839,33 @@ export const workpackRouter = router({
     const tenantId = requireTenantId(ctx);
     const workpackDetails = await listWorkpackDetailsByTenant(tenantId);
     const readiness = await listWorkpackReadinessSummaries(tenantId);
+    const readinessByWorkpackId = new Map(readiness.map((item) => [item.workpackId, item]));
     const snapshots = await Promise.all(workpackDetails.map(async (detail) => (
       detail.metricSnapshots[0] ?? await captureWorkpackMetricSnapshot(detail.workpack.id)
     )));
+    const enterprise = await Promise.all(workpackDetails.map(async (detail) => {
+      const readinessItem = readinessByWorkpackId.get(detail.workpack.id) ?? await getWorkpackReadinessSummary(detail.workpack.id);
+      const replay = await analyzeWorkpackReplay({
+        workpackId: detail.workpack.id,
+        runId: detail.runs[0]?.id ?? null,
+      });
+      const evidence = buildWorkpackEnterpriseEvidence(detail, readinessItem, replay);
+      return {
+        workpackId: detail.workpack.id,
+        title: detail.workpack.title,
+        releaseGate: evidence.releaseGate,
+        sdkContract: evidence.sdkContract,
+        manifest: evidence.packManifest,
+      };
+    }));
+    const roadmapProgress = workpackDetails.map((detail, index) => ({
+      workpackId: detail.workpack.id,
+      title: detail.workpack.title,
+      updatedAt: detail.workpack.updatedAt,
+      phases: buildWorkpackRoadmapProgress(detail, enterprise[index]!),
+    }));
+    const roadmapSummary = summarizeWorkpackRoadmapProgress(roadmapProgress);
+    const roadmapTrend = buildWorkpackRoadmapTrend(roadmapProgress);
 
     const totals = snapshots.reduce((acc, snapshot) => ({
       completionRate: acc.completionRate + snapshot.completionRate,
@@ -600,6 +961,10 @@ export const workpackRouter = router({
         promotionVelocity: totals.promotionVelocity,
       },
       readiness,
+      enterprise,
+      roadmapProgress,
+      roadmapSummary,
+      roadmapTrend,
       snapshots,
       slices: normalizedSlices,
       recommendations: Object.values(recommendations)
@@ -611,6 +976,7 @@ export const workpackRouter = router({
   discovery: protectedProcedure.query(async ({ ctx }) => {
     const tenantId = requireTenantId(ctx);
     const details = await listWorkpackDetailsByTenant(tenantId);
+    const detailsByWorkpackId = new Map(details.map((detail) => [detail.workpack.id, detail]));
     return {
       starters: details.map((detail) => ({
         workpackId: detail.workpack.id,
@@ -619,7 +985,13 @@ export const workpackRouter = router({
         lifecycleState: detail.workpack.lifecycleState,
         benchmarkCount: detail.benchmarks.length,
       })),
-      benchmarks: await listBenchmarksByTenant(tenantId),
+      benchmarks: (await listBenchmarksByTenant(tenantId)).map((benchmark) => {
+        const sourceDetail = detailsByWorkpackId.get(benchmark.sourceWorkpackId) ?? null;
+        return {
+          ...benchmark,
+          manifest: sourceDetail ? buildPackManifest({ benchmarkPack: benchmark, detail: sourceDetail }) : null,
+        };
+      }),
     };
   }),
 

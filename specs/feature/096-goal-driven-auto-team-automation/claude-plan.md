@@ -14,6 +14,9 @@ Turn `auto_team` into a goal-driven automation loop that keeps working until the
 
 The implementation must:
 
+- explore candidate approaches before committing to execution for ambiguous or high-impact work
+- compare candidate plans on safety, speed, determinism, evidence quality, and Work OS continuity
+- persist the comparison result durably so Teams can see why one path was selected
 - plan every incoming topic/objective/spec before execution begins
 - split work into persona-aware subtasks instead of sending one large prompt to a single LLM pass
 - persist a durable plan artifact with ownership, review, verification, and repair rules
@@ -30,13 +33,14 @@ This is not a new workflow engine. It is a control-model upgrade for the existin
 ## Plan Structure
 
 1. Planning artifact and persona-aware decomposition
-2. Durable runtime state and evidence model
-3. Goal-driven orchestration loop and stop-policy integration
-4. Async worker dispatch, polling, and completion lifecycle
-5. Verification, reviewer routing, risk classes, and escalation
-6. Runtime status projection and UI visibility
-7. Teams UI plan visibility and continuous plan inspection
-8. Tests, compatibility, and rollout
+2. Exploration candidate generation and comparison
+3. Durable runtime state and evidence model
+4. Goal-driven orchestration loop and stop-policy integration
+5. Async worker dispatch, polling, and completion lifecycle
+6. Verification, reviewer routing, risk classes, and escalation
+7. Runtime status projection and UI visibility
+8. Teams UI plan visibility and continuous plan inspection
+9. Tests, compatibility, and rollout
 
 ## 1. Planning artifact and persona-aware decomposition
 
@@ -61,6 +65,9 @@ This is not a new workflow engine. It is a control-model upgrade for the existin
 - The UI and runtime must consume the plan through one normalized read helper or service, not by reconstructing it ad hoc from scattered work items.
 - The plan read contract must merge the durable decomposition artifact with the latest execution status, evidence references, and reviewer / owner assignments for each step.
 - The plan record should remain versioned so retries and repairs can update the same plan identity without losing history.
+- The first generated plan must be reviewable and repairable before any execution work is allowed to move into `in_progress`.
+- The review result must be durably written with the plan so the UI can show whether the plan passed, how many repair loops ran, and what issues remained.
+- The review gate should also enforce persona separation on non-trivial steps when the team context allows distinct owner and reviewer roles.
 
 ### Why this is first
 
@@ -71,10 +78,51 @@ The stakeholder explicitly wants the system to stop treating incoming work as on
 - Reuse the existing planning-directory workflow as the blueprint for a durable plan artifact.
 - If the runtime needs to persist the plan in the product DB later, keep the initial shape compatible with a document-based plan record.
 - Make the plan readable by both humans and agents.
+- Plan review should be explicit and automation-first: if the initial decomposition is incomplete, the system should repair it and re-review it before execution starts.
+- If the plan cannot be persisted durably, the run should fail closed or remain paused rather than entering execution.
 - Likely files:
   - planning artifacts under `specs/feature/096-goal-driven-auto-team-automation/`
   - any planning service used to persist work decomposition if one already exists
   - tests that validate the plan artifact shape and review requirements
+
+## 2. Exploration candidate generation and comparison
+
+### What to build
+
+- Add a bounded exploration phase before execution for ambiguous, high-impact, or naturally multi-solution work.
+- Generate at least two candidate approaches when feasible.
+- Capture for each candidate:
+  - route or strategy
+  - personas involved
+  - strengths
+  - tradeoffs
+  - risk profile
+  - evidence that would distinguish success
+- Compare candidates on:
+  - speed
+  - safety
+  - determinism
+  - evidence quality
+  - parallelization potential
+  - cost
+  - Work OS continuity
+- Persist the comparison result durably so Teams can inspect why one path was selected.
+- Escalate to a human only when the system cannot justify one safe path from the candidate set.
+
+### Why this is second
+
+The new exploration phase should happen before the durable plan commit, but it should not replace plan review or execution. It is a pre-plan chooser that feeds the main plan artifact.
+
+### Implementation notes
+
+- Reuse the existing hybrid comparison patterns in the repo where possible instead of inventing a new comparison UI or strategy engine.
+- Keep the exploration budget bounded so brainstorming does not turn into infinite ideation.
+- Ensure the selected path is still written into the durable plan artifact before execution begins.
+- Likely files:
+  - `apps/web/server/services/runEngine.ts`
+  - `apps/web/server/services/workAutomationPolicyService.ts`
+  - `apps/web/client/src/pages/HybridOrchestrationPreview.tsx`
+  - planning artifact docs and tests under `specs/feature/096-goal-driven-auto-team-automation/`
 
 ## 2. Durable runtime state and evidence model
 
