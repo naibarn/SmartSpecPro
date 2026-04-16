@@ -288,6 +288,144 @@ function deriveRunStatusFromStep(
   }
 }
 
+function normalizeApprovalState(value: unknown): "pending" | "approved" | "rejected" | "not_required" | null {
+  if (value === "pending" || value === "approved" || value === "rejected" || value === "not_required") {
+    return value;
+  }
+  return null;
+}
+
+function normalizeVerificationGate(input: {
+  route: ReturnType<typeof resolveAutomationStepRoute>;
+  status: RecordAutomationRunStepProgressInput["status"];
+  detailJson: Record<string, unknown>;
+}) {
+  const policyDetail = input.detailJson.verificationPolicy as Record<string, unknown> | undefined;
+  const riskTier = input.route.riskTier ?? "medium";
+  const requiresHumanApproval = Boolean(input.route.requiresApproval || policyDetail?.requiresHumanApproval === true || riskTier === "critical");
+  const approvalState = normalizeApprovalState(
+    policyDetail?.approvalState ?? input.detailJson.approvalState ?? null,
+  );
+  const retryCount = typeof input.detailJson.retryCount === "number" && Number.isFinite(input.detailJson.retryCount)
+    ? input.detailJson.retryCount
+    : null;
+  const maxRepairLoops = typeof policyDetail?.maxRepairLoops === "number" && Number.isFinite(policyDetail.maxRepairLoops)
+    ? policyDetail.maxRepairLoops
+    : null;
+  const verificationEvidence = Array.isArray(input.detailJson.verificationEvidenceRefs)
+    ? input.detailJson.verificationEvidenceRefs.filter((item): item is string => typeof item === "string")
+    : Array.isArray(input.detailJson.outputRefsJson)
+      ? input.detailJson.outputRefsJson.filter((item): item is string => typeof item === "string")
+    : [];
+  const explicitResult = typeof input.detailJson.verificationResult === "string"
+    ? input.detailJson.verificationResult
+    : null;
+  const policyTriggers = Array.isArray(policyDetail?.escalationTriggers)
+    ? policyDetail.escalationTriggers.filter((item): item is string => typeof item === "string")
+    : [];
+  const policyEvidenceRequirements = Array.isArray(policyDetail?.evidenceRequirements)
+    ? policyDetail.evidenceRequirements.filter((item): item is string => typeof item === "string")
+    : [];
+  const reasonText = [
+    input.detailJson.error,
+    input.detailJson.summary,
+    input.detailJson.finalDispositionReason,
+    input.detailJson.reason,
+  ]
+    .filter((item): item is string => typeof item === "string")
+    .join(" ")
+    .toLowerCase();
+  const triggerMatched = policyTriggers.find((trigger) => reasonText.includes(trigger.toLowerCase())) ?? null;
+
+  if (input.status === "succeeded") {
+    if (requiresHumanApproval && approvalState !== "approved") {
+      return {
+        status: "awaiting_approval" as RecordAutomationRunStepProgressInput["status"],
+        runStatus: "waiting_for_approval" as WorkAutomationRunStatus,
+        verificationState: "pending" as const,
+        gateStatus: "blocked" as const,
+        reason: "Approval is required before the step can succeed",
+      };
+    }
+
+    if (policyEvidenceRequirements.length > 0 && verificationEvidence.length === 0) {
+      return {
+        status: "blocked" as RecordAutomationRunStepProgressInput["status"],
+        runStatus: "waiting_for_input" as WorkAutomationRunStatus,
+        verificationState: "pending" as const,
+        gateStatus: "blocked" as const,
+        reason: `Verification evidence is required before the step can succeed (${policyEvidenceRequirements.join(", ")})`,
+      };
+    }
+
+    if ((riskTier === "high" || riskTier === "critical" || input.route.requiresApproval) && explicitResult !== "passed" && verificationEvidence.length === 0) {
+      return {
+        status: "blocked" as RecordAutomationRunStepProgressInput["status"],
+        runStatus: "waiting_for_input" as WorkAutomationRunStatus,
+        verificationState: "pending" as const,
+        gateStatus: "blocked" as const,
+        reason: "Verification evidence is required before the step can succeed",
+      };
+    }
+
+    return {
+      status: input.status,
+      runStatus: null as const,
+      verificationState: "passed" as const,
+      gateStatus: "passed" as const,
+      reason: null,
+    };
+  }
+
+  if (input.status === "awaiting_approval") {
+    return {
+      status: input.status,
+      runStatus: "waiting_for_approval" as WorkAutomationRunStatus,
+      verificationState: approvalState === "approved" ? "passed" : "pending",
+      gateStatus: approvalState === "approved" ? "passed" : "pending",
+      reason: null,
+    };
+  }
+
+  if (input.status === "failed") {
+    if (triggerMatched) {
+      return {
+        status: "blocked" as RecordAutomationRunStepProgressInput["status"],
+        runStatus: "waiting_for_input" as WorkAutomationRunStatus,
+        verificationState: "failed" as const,
+        gateStatus: "blocked" as const,
+        reason: `Policy escalation triggered: ${triggerMatched}`,
+      };
+    }
+
+    if (retryCount !== null && maxRepairLoops !== null && retryCount >= maxRepairLoops) {
+      return {
+        status: "blocked" as RecordAutomationRunStepProgressInput["status"],
+        runStatus: "waiting_for_input" as WorkAutomationRunStatus,
+        verificationState: "failed" as const,
+        gateStatus: "blocked" as const,
+        reason: `Repair loop exhausted (${retryCount}/${maxRepairLoops})`,
+      };
+    }
+
+    return {
+      status: input.status,
+      runStatus: "failed" as WorkAutomationRunStatus,
+      verificationState: "failed" as const,
+      gateStatus: "failed" as const,
+      reason: typeof input.detailJson.error === "string" ? input.detailJson.error : "Step failed",
+    };
+  }
+
+  return {
+    status: input.status,
+    runStatus: input.status === "blocked" ? "waiting_for_input" : null,
+    verificationState: "unknown" as const,
+    gateStatus: "unknown" as const,
+    reason: null,
+  };
+}
+
 function deriveRunStatusFromCheckpoint(
   checkpointStatus: RecordAutomationCheckpointInput["checkpointStatus"],
   approvalState: RecordAutomationCheckpointInput["approvalState"],
@@ -443,9 +581,22 @@ export async function recordAutomationRunStepProgress(input: RecordAutomationRun
     policy,
     requestedSurface: input.surface ?? null,
   });
-
-  const stepStatus = input.status;
-  const nextRunStatus = deriveRunStatusFromStep(stepStatus, input.runStatus);
+  const baseDetailJson = input.detailJson ?? {};
+  const verificationGate = normalizeVerificationGate({
+    route: stepRoute,
+    status: input.status,
+    detailJson: baseDetailJson,
+  });
+  const stepStatus = verificationGate.status;
+  const nextRunStatus = verificationGate.runStatus ?? deriveRunStatusFromStep(stepStatus, input.runStatus);
+  const detailJson = {
+    ...baseDetailJson,
+    verificationGate: {
+      status: verificationGate.gateStatus,
+      reason: verificationGate.reason,
+    },
+    verificationState: verificationGate.verificationState,
+  };
   const stepPayload = {
     id: crypto.randomUUID(),
     tenantId: input.tenantId,
@@ -463,7 +614,7 @@ export async function recordAutomationRunStepProgress(input: RecordAutomationRun
     retryCount: input.retryCount ?? 0,
     idempotencyKey: input.idempotencyKey ?? null,
     summary: input.summary ?? null,
-    detailJson: input.detailJson ?? {},
+    detailJson,
     actorUserId: input.createdByUserId ?? null,
     actorAssistantId: input.createdByAssistantId ?? null,
     startedAt: input.startedAt ?? (stepStatus === "running" ? now() : null),
@@ -527,6 +678,8 @@ export async function recordAutomationRunStepProgress(input: RecordAutomationRun
       outputRefsJson: step.outputRefsJson,
       retryCount: step.retryCount,
       idempotencyKey: step.idempotencyKey ?? null,
+      verificationGate: detailJson.verificationGate,
+      verificationState: detailJson.verificationState,
     }) ?? {},
     actorUserId: input.createdByUserId ?? null,
     actorAssistantId: input.createdByAssistantId ?? null,
@@ -560,9 +713,22 @@ export async function updateAutomationRunStepProgress(input: RecordAutomationRun
     policy,
     requestedSurface: input.surface ?? existingStep.surface,
   });
-
-  const stepStatus = input.status;
-  const nextRunStatus = deriveRunStatusFromStep(stepStatus, input.runStatus);
+  const baseDetailJson = input.detailJson ?? existingStep.detailJson ?? {};
+  const verificationGate = normalizeVerificationGate({
+    route: stepRoute,
+    status: input.status,
+    detailJson: baseDetailJson,
+  });
+  const stepStatus = verificationGate.status;
+  const nextRunStatus = verificationGate.runStatus ?? deriveRunStatusFromStep(stepStatus, input.runStatus);
+  const detailJson = {
+    ...baseDetailJson,
+    verificationGate: {
+      status: verificationGate.gateStatus,
+      reason: verificationGate.reason,
+    },
+    verificationState: verificationGate.verificationState,
+  };
 
   const [step] = await db
     .update(workAutomationRunSteps)
@@ -576,7 +742,7 @@ export async function updateAutomationRunStepProgress(input: RecordAutomationRun
       retryCount: input.retryCount ?? existingStep.retryCount ?? 0,
       idempotencyKey: input.idempotencyKey ?? existingStep.idempotencyKey ?? null,
       summary: input.summary ?? existingStep.summary ?? null,
-      detailJson: input.detailJson ?? existingStep.detailJson ?? {},
+      detailJson,
       actorUserId: input.createdByUserId ?? existingStep.actorUserId ?? null,
       actorAssistantId: input.createdByAssistantId ?? existingStep.actorAssistantId ?? null,
       startedAt: input.startedAt ?? existingStep.startedAt ?? (stepStatus === "running" ? now() : null),
@@ -639,6 +805,8 @@ export async function updateAutomationRunStepProgress(input: RecordAutomationRun
       outputRefsJson: step.outputRefsJson,
       retryCount: step.retryCount,
       idempotencyKey: step.idempotencyKey ?? null,
+      verificationGate: detailJson.verificationGate,
+      verificationState: detailJson.verificationState,
     }) ?? {},
     actorUserId: input.createdByUserId ?? null,
     actorAssistantId: input.createdByAssistantId ?? null,

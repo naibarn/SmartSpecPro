@@ -46,6 +46,7 @@ import {
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 import {
   AreaChart,
   Area,
@@ -2318,6 +2319,62 @@ export default function AdminMonitoring() {
                 onClick={() => setLocation("/admin/work-os")}
               >
                 Work OS
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setLocation(
+                    buildWorkpackEntrypointHref({
+                      entrypoint: "dashboard",
+                      surface: "intake",
+                    }),
+                  )
+                }
+              >
+                Workpack Intake
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setLocation(
+                    buildWorkpackEntrypointHref({
+                      entrypoint: "dashboard",
+                      surface: "discovery",
+                    }),
+                  )
+                }
+              >
+                Workpack Discovery
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setLocation(
+                    buildWorkpackEntrypointHref({
+                      entrypoint: "dashboard",
+                      surface: "roi",
+                    }),
+                  )
+                }
+              >
+                Workpack ROI
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setLocation(
+                    buildWorkpackEntrypointHref({
+                      entrypoint: "dashboard",
+                      surface: "exceptions",
+                    }),
+                  )
+                }
+              >
+                Workpack Exceptions
               </Button>
               <Button
                 variant="outline"

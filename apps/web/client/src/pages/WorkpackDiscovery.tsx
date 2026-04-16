@@ -55,6 +55,11 @@ export default function WorkpackDiscovery() {
                   <p className="mt-1 text-xs text-slate-500">
                     Scope: {benchmark.publicationScope} • Trust: {benchmark.trustTags.join(", ")}
                   </p>
+                  {benchmark.manifest ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Manifest: {benchmark.manifest.packId} • reversible {String(benchmark.manifest.reversible)} • connectors {benchmark.manifest.connectorFamilies.join(", ") || "n/a"}
+                    </p>
+                  ) : null}
                 </div>
               ))
             )}

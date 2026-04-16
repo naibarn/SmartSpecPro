@@ -49,6 +49,8 @@ Keep the Work OS case and request projection aligned with the same status model 
 
 If the work originated in Work OS, the Teams status panel should read as a projection of that same case rather than a separate local interpretation.
 
+If a Work OS mirror write is pending or failed, the UI should surface that sync state explicitly instead of implying the case is fully settled.
+
 ### 4. Freshness and invalidation
 
 Preserve the existing invalidation and refetch behavior so the UI remains reactive when runtime state changes.
@@ -72,6 +74,7 @@ Preserve the existing invalidation and refetch behavior so the UI remains reacti
 - The Work OS projection should mirror the same underlying transition history for the same case or request.
 - The mapping between team-run states and Work OS states should be deterministic and consistent with the canonical status matrix in the spec.
 - The terminal `team_runs.status` still matters, but it should not be the only thing the operator sees.
+- The current slice adds a runtime summary banner to `RoomWorkflowPanel` and forwards `runtimeState` from `Teams.tsx`, so operators can see phase, reviewer, evidence, and mirror state without leaving the room.
 
 ## Completion Criteria
 

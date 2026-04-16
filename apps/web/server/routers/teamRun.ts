@@ -71,6 +71,47 @@ export const teamRunRouter = router({
       return runEngine.resumeRun(input.runId, tenantId);
     }),
 
+  chooseExplorationCandidate: protectedProcedure
+    .input(z.object({
+      runId: z.string().min(1),
+      candidateId: z.string().min(1),
+      comment: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return runEngine.chooseExplorationCandidate(input.runId, tenantId, input.candidateId, input.comment ?? null);
+    }),
+
+  rejectExplorationCandidates: protectedProcedure
+    .input(z.object({
+      runId: z.string().min(1),
+      reason: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return runEngine.rejectExplorationCandidates(input.runId, tenantId, input.reason ?? null);
+    }),
+
+  approveFinalReview: protectedProcedure
+    .input(z.object({
+      runId: z.string().min(1),
+      comment: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return runEngine.approveFinalReview(input.runId, tenantId, input.comment ?? null);
+    }),
+
+  rejectFinalReview: protectedProcedure
+    .input(z.object({
+      runId: z.string().min(1),
+      reason: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return runEngine.rejectFinalReview(input.runId, tenantId, input.reason ?? null);
+    }),
+
   advance: protectedProcedure
     .use(createRateLimitMiddleware({ namespace: "team-run-advance", limit: 30, windowMs: 60_000 }))
     .input(z.object({

@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc";
 import { RoleHealthBadge } from "@/components/role-monitor/RoleHealthBadge";
 import { RoleCommsStream } from "@/components/role-monitor/RoleCommsStream";
 import { RoleWorkpackLinks } from "@/components/role-monitor/RoleWorkpackLinks";
+import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 
 function toneForGate(gateResult: string): "healthy" | "warning" | "danger" | "muted" {
   if (gateResult === "ready") return "healthy";
@@ -107,6 +108,40 @@ export default function AutonomousTeamMonitor() {
           <p className="text-3xl font-semibold text-rose-700">{blockedRoles}</p>
         </DashboardCard>
       </div>
+
+      <DashboardCard
+        title="Workpack Hub"
+        description="Jump from role operations into the workpack surfaces that drive recovery and review."
+      >
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {[
+            {
+              label: "Intake",
+              href: buildWorkpackEntrypointHref({ entrypoint: "teams", surface: "intake" }),
+            },
+            {
+              label: "Discovery",
+              href: buildWorkpackEntrypointHref({ entrypoint: "teams", surface: "discovery" }),
+            },
+            {
+              label: "ROI",
+              href: buildWorkpackEntrypointHref({ entrypoint: "teams", surface: "roi" }),
+            },
+            {
+              label: "Exceptions",
+              href: buildWorkpackEntrypointHref({ entrypoint: "teams", surface: "exceptions" }),
+            },
+          ].map((action) => (
+            <Link
+              key={action.label}
+              href={action.href}
+              className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-5 text-left text-sm font-medium text-slate-700 transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50"
+            >
+              {action.label}
+            </Link>
+          ))}
+        </div>
+      </DashboardCard>
 
       <div className="grid gap-6 xl:grid-cols-[0.8fr,1.2fr,0.8fr]">
         <DashboardCard title="Role Roster" description="Role-centric status instead of run-centric noise">

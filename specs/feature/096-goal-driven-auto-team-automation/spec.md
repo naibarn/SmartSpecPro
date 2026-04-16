@@ -257,7 +257,93 @@ The planning system should prefer:
 
 If the first decomposition is too coarse, missing evidence, or unclear about reviewer responsibility, the system must loop and refine the plan before starting execution.
 
-Planning is complete only when the plan itself has been reviewed and written down durably.
+Planning is complete only when the plan itself has been reviewed, repaired if necessary, and written down durably.
+
+## 10. Exploration and Comparison Policy
+
+Not every task should go straight from plan to execution with only one path.
+For objectives that are ambiguous, high-impact, or naturally multi-solution, the system should explore multiple candidate approaches before it commits to a single execution plan.
+
+### 10.1 When exploration is required
+
+Exploration should happen when one or more of the following are true:
+
+- the objective can reasonably be solved in multiple ways
+- the team is uncertain which persona or surface is best for the first move
+- the task is large enough that the first plan may hide a better branch
+- the risk class is medium or higher and the choice of approach affects downstream cost, speed, or safety
+- the user asks for options, alternatives, comparison, brainstorming, or recommendation
+
+Exploration may be skipped when:
+
+- the task is trivially small
+- the path is deterministic and policy-approved
+- the workflow must proceed immediately for safety or time-sensitive reasons
+
+### 10.2 Exploration output
+
+When exploration runs, the system should generate at least 2 candidate approaches when feasible.
+Each candidate should capture:
+
+- the proposed route or strategy
+- the personas involved
+- the expected strengths
+- the tradeoffs
+- the risk profile
+- the evidence or validation that would distinguish success
+
+The system should then compare the candidates and select one execution plan, or explicitly state why no candidate is safe enough to continue.
+
+### 10.3 Exploration budget
+
+Exploration must be bounded.
+The system should use a limited exploration budget so that brainstorming does not replace execution.
+
+Recommended guardrails:
+
+- cap the number of candidate plans generated
+- cap the number of comparison loops
+- stop exploring once the selected plan is clearly better than the alternatives
+- do not keep exploring after the evidence is sufficient to choose
+
+### 10.4 Candidate comparison
+
+Candidate plans should be compared on criteria such as:
+
+- speed
+- safety
+- determinism
+- evidence quality
+- ability to parallelize
+- cost
+- fit to Work OS identity and case continuity
+
+The comparison result should be written durably so Teams can inspect why one path was chosen over another.
+
+### 10.5 Relationship to execution
+
+Exploration is a pre-execution phase, not a replacement for planning or verification.
+
+The sequence should be:
+
+1. explore candidate approaches when needed
+2. select a preferred candidate
+3. write the durable plan artifact
+4. review and repair the plan
+5. execute with goal-driven continuation
+
+If exploration reveals that a human must choose between materially different safe options, the system should escalate with a clear comparison instead of silently guessing.
+
+The reviewed plan must show:
+
+- the plan review status
+- the number of review / repair loops performed
+- the remaining issues, if any
+- whether the plan is ready to move into execution
+- whether owner and reviewer separation is preserved for the non-trivial steps
+
+The system must not advance into `in_progress` until the reviewed plan has passed the required checks.
+If the plan cannot be written durably, the run must remain blocked or paused rather than silently continuing into execution.
 
 ## 10. Human Confirmation Boundary
 

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { DashboardCard } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { WorkpackHistoryTimeline } from "@/components/workpack/WorkpackHistoryTimeline";
 import { WorkpackSourcePanel } from "@/components/workpack/WorkpackSourcePanel";
@@ -148,6 +149,63 @@ export default function WorkpackDetail() {
           </div>
         </DashboardCard>
       </div>
+
+      {data.enterprise ? (
+        <div className="grid gap-6 xl:grid-cols-[1fr,1fr]">
+          <DashboardCard title="Enterprise Release Gate" description="Trace, replay, readiness, and pack evidence combined into one machine-readable gate">
+            <div className="space-y-3 text-sm text-slate-600">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline">{data.enterprise.releaseGate.gateResult}</Badge>
+                <Badge variant="outline">Trace {data.enterprise.releaseGate.traceId ?? "n/a"}</Badge>
+                {data.enterprise.releaseGate.packId ? <Badge variant="outline">Pack {data.enterprise.releaseGate.packId}</Badge> : null}
+              </div>
+              <p>{data.enterprise.releaseGate.explanation}</p>
+              <p>Readiness status: {data.enterprise.releaseGate.readinessStatus ?? "n/a"}</p>
+              <p>Replay gate: {data.enterprise.releaseGate.replayGateStatus ?? "n/a"}</p>
+              {data.enterprise.packManifest ? (
+                <p>
+                  Pack manifest: {data.enterprise.packManifest.packId} • {data.enterprise.packManifest.publicationScope} • reversible {String(data.enterprise.packManifest.reversible)}
+                </p>
+              ) : null}
+              {data.enterprise.releaseGate.failedChecks.length > 0 ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Failed checks</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-amber-900">
+                    {data.enterprise.releaseGate.failedChecks.map((check: string) => (
+                      <li key={check}>{check}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          </DashboardCard>
+
+          <DashboardCard title="SDK Standards" description="Internal contract for safe reuse of this workpack pattern">
+            <div className="space-y-3 text-sm text-slate-600">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Supported patterns</p>
+                <ul className="mt-2 space-y-1">
+                  {data.enterprise.sdkContract.supportedPatterns.map((pattern: string) => (
+                    <li key={pattern}>• {pattern}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Blocked patterns</p>
+                <ul className="mt-2 space-y-1">
+                  {data.enterprise.sdkContract.blockedPatterns.map((pattern: string) => (
+                    <li key={pattern}>• {pattern}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Required signals</p>
+                <p className="mt-2 text-xs text-slate-600">{data.enterprise.sdkContract.requiredSignals.join(" · ")}</p>
+              </div>
+            </div>
+          </DashboardCard>
+        </div>
+      ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1fr,1fr]">
         <DashboardCard title="Schedules" description="Recurring routine execution for day-to-day automation">

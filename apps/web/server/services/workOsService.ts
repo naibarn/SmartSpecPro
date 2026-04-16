@@ -33,6 +33,12 @@ import {
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { describeStatusBridge, mapTeamRunStatusToWorkOsState } from "./workStatusBridge";
+import * as monitoringService from "./monitoringService";
+import {
+  extractEnterpriseArtifacts,
+  type GovernedContextSnapshot,
+  type ReadinessMetricRecord,
+} from "./enterprisePlatformArtifacts";
 import {
   buildAutomationTimelineEntries,
   getAutomationProjectionForCase,
@@ -184,12 +190,104 @@ export interface WorkCaseProjection {
   timeline: WorkTimelineEntry[];
 }
 
+export interface WorkInboxCase extends WorkCase {
+  latestExploration: {
+    selectedCandidateId: string;
+    selectionReason: string;
+    candidateCount: number;
+  } | null;
+  latestFinalReview: {
+    reviewerPersona: string | null;
+    score: number | null;
+    recommendation: string | null;
+    comment: string | null;
+  } | null;
+  latestTraceId: string | null;
+  latestContext: GovernedContextSnapshot | null;
+  latestReadiness: ReadinessMetricRecord | null;
+}
+
 function now(): Date {
   return new Date();
 }
 
+async function withWorkOsTransaction<T>(
+  db: Awaited<ReturnType<typeof getDb>>,
+  fn: (tx: Awaited<ReturnType<typeof getDb>>) => Promise<T>,
+): Promise<T> {
+  if (db && typeof (db as { transaction?: unknown }).transaction === "function") {
+    return (db as { transaction: <R>(fn: (tx: Awaited<ReturnType<typeof getDb>>) => Promise<R>) => Promise<R> }).transaction(fn);
+  }
+  return fn(db);
+}
+
 function eventPayload(detailJson: Record<string, unknown> | null | undefined): Record<string, unknown> | null {
   return detailJson && Object.keys(detailJson).length > 0 ? detailJson : null;
+}
+
+function summarizePlanExploration(planArtifact: monitoringService.RunPlanArtifact | null | undefined): Record<string, unknown> | null {
+  const exploration = planArtifact?.exploration;
+  if (!exploration) return null;
+
+  return {
+    selectedCandidateId: exploration.selectedCandidateId,
+    selectionReason: exploration.selectionReason,
+    criteria: exploration.criteria,
+    candidateCount: exploration.candidates.length,
+    candidates: exploration.candidates.map((candidate) => ({
+      candidateId: candidate.candidateId,
+      title: candidate.title,
+      strategy: candidate.strategy,
+      summary: candidate.summary,
+      riskClass: candidate.riskClass,
+      strengths: candidate.strengths,
+      tradeoffs: candidate.tradeoffs,
+    })),
+  };
+}
+
+function summarizeFinalReview(snapshot: Pick<RunSnapshot, "artifactCountJson"> | null | undefined): Record<string, unknown> | null {
+  const payload = snapshot?.artifactCountJson as Record<string, unknown> | null | undefined;
+  if (!payload) return null;
+  const runtimeState = payload.runtimeState as Record<string, unknown> | undefined;
+  const finalReview = (runtimeState?.finalReview as Record<string, unknown> | undefined) ?? (payload.finalReview as Record<string, unknown> | undefined);
+  if (!finalReview) return null;
+
+  const score = typeof finalReview.score === "number" ? finalReview.score : null;
+  const reviewerPersona = typeof finalReview.reviewerPersona === "string" ? finalReview.reviewerPersona : null;
+  const recommendation = typeof finalReview.recommendation === "string" ? finalReview.recommendation : null;
+  const comment = typeof finalReview.comment === "string" ? finalReview.comment : null;
+
+  if (score === null && !reviewerPersona && !recommendation && !comment) return null;
+
+  return {
+    reviewerPersona,
+    score,
+    recommendation,
+    comment,
+  };
+}
+
+function summarizeTeamRunArtifacts(snapshot: Pick<RunSnapshot, "artifactCountJson"> | null | undefined): {
+  traceId: string | null;
+  governedContext: GovernedContextSnapshot | null;
+  readinessRecord: ReadinessMetricRecord | null;
+} {
+  const payload = snapshot?.artifactCountJson as Record<string, unknown> | null | undefined;
+  if (!payload) {
+    return {
+      traceId: null,
+      governedContext: null,
+      readinessRecord: null,
+    };
+  }
+
+  const artifacts = extractEnterpriseArtifacts({ payload });
+  return {
+    traceId: artifacts.traceEnvelope?.traceId ?? null,
+    governedContext: artifacts.governedContext,
+    readinessRecord: artifacts.readinessRecord,
+  };
 }
 
 function toDate(value: string | Date | null | undefined): Date {
@@ -199,15 +297,15 @@ function toDate(value: string | Date | null | undefined): Date {
   return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
 }
 
-async function insertWorkOsEvent(input: InsertWorkOsEvent): Promise<void> {
-  const db = await getDb();
+async function insertWorkOsEvent(input: InsertWorkOsEvent, tx?: Awaited<ReturnType<typeof getDb>>): Promise<void> {
+  const db = tx ?? await getDb();
   if (!db) throw new Error("Database not available");
 
   await db.insert(workOsEvents).values(input).returning();
 }
 
-async function insertWorkAssignment(input: InsertWorkAssignment): Promise<WorkAssignment> {
-  const db = await getDb();
+async function insertWorkAssignment(input: InsertWorkAssignment, tx?: Awaited<ReturnType<typeof getDb>>): Promise<WorkAssignment> {
+  const db = tx ?? await getDb();
   if (!db) throw new Error("Database not available");
 
   const [assignment] = await db.insert(workAssignments).values(input).returning();
@@ -246,8 +344,9 @@ async function syncRequestAndCaseState(
   caseId: string,
   nextState: typeof workCases.$inferSelect["currentState"],
   requestId?: string | null,
+  tx?: Awaited<ReturnType<typeof getDb>>,
 ): Promise<void> {
-  const db = await getDb();
+  const db = tx ?? await getDb();
   if (!db) throw new Error("Database not available");
 
   const linkedRequestId = requestId ?? (await loadCaseRecord(caseId, tenantId))?.requestId ?? null;
@@ -304,7 +403,7 @@ function resolveAssignmentOwner(input: {
   return null;
 }
 
-async function recordAssignmentChange(input: RecordAssignmentInput): Promise<WorkAssignment | null> {
+async function recordAssignmentChange(input: RecordAssignmentInput, tx?: Awaited<ReturnType<typeof getDb>>): Promise<WorkAssignment | null> {
   const resolvedOwner = resolveAssignmentOwner({
     ownerType: input.ownerType,
     ownerId: input.ownerId ?? null,
@@ -328,7 +427,7 @@ async function recordAssignmentChange(input: RecordAssignmentInput): Promise<Wor
     actorAssistantId: input.actorAssistantId ?? null,
     actorUserId: input.actorUserId ?? null,
     createdAt: now(),
-  } satisfies InsertWorkAssignment);
+  } satisfies InsertWorkAssignment, tx);
 }
 
 function mapTaskStatusToCaseState(taskStatus: TeamWorkItem["status"]): typeof workCases.$inferSelect["currentState"] {
@@ -444,6 +543,22 @@ async function buildTeamRunTimelineEntries(
     .where(and(eq(teamRooms.tenantId, tenantId), inArray(teamRuns.id, runIds)))
     .orderBy(desc(teamRuns.startedAt));
 
+  const explorationByRunId = new Map<string, Record<string, unknown> | null>();
+  const finalReviewByRunId = new Map<string, Record<string, unknown> | null>();
+  const traceIdByRunId = new Map<string, string | null>();
+  const contextByRunId = new Map<string, GovernedContextSnapshot | null>();
+  const readinessByRunId = new Map<string, ReadinessMetricRecord | null>();
+  await Promise.all(runs.map(async ({ run }) => {
+    const latestSnapshot = await monitoringService.getLatestRunSnapshot(run.id).catch(() => null);
+    const planArtifact = monitoringService.extractRunPlanArtifact(latestSnapshot);
+    explorationByRunId.set(run.id, summarizePlanExploration(planArtifact));
+    finalReviewByRunId.set(run.id, summarizeFinalReview(latestSnapshot));
+    const artifacts = summarizeTeamRunArtifacts(latestSnapshot);
+    traceIdByRunId.set(run.id, artifacts.traceId);
+    contextByRunId.set(run.id, artifacts.governedContext);
+    readinessByRunId.set(run.id, artifacts.readinessRecord);
+  }));
+
   return runs.map(({ run }) => ({
     id: `team-run-${run.id}`,
     source: "team_run",
@@ -466,6 +581,11 @@ async function buildTeamRunTimelineEntries(
       stopReason: run.stopReason ?? null,
       activeAssistantId: run.activeAssistantId ?? null,
       summaryArtifactId: run.summaryArtifactId ?? null,
+      exploration: explorationByRunId.get(run.id),
+      finalReview: finalReviewByRunId.get(run.id),
+      traceId: traceIdByRunId.get(run.id),
+      governedContext: contextByRunId.get(run.id),
+      readinessRecord: readinessByRunId.get(run.id),
     },
   }));
 }
@@ -530,7 +650,7 @@ export async function createWorkRequest(input: CreateWorkRequestInput): Promise<
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return db.transaction(async (tx) => {
+  return withWorkOsTransaction(db, async (tx) => {
     const initialAssignment = resolveAssignmentOwner({
       defaultQueueId: input.defaultQueueId ?? null,
       defaultOwnerType: input.defaultOwnerType ?? null,
@@ -654,54 +774,63 @@ export async function createWorkTask(input: CreateWorkTaskInput): Promise<{ case
   }
   const request = await loadRequestRecord(currentCase.requestId, input.tenantId);
 
-  const task = await workItemService.createWorkItem({
-    tenantId: input.tenantId,
-    teamId: input.teamId,
-    roomId: input.roomId,
-    runId: input.runId ?? undefined,
-    sourceType: input.sourceType ?? "work_os",
-    sourceRef: input.sourceRef ?? currentCase.id,
-    title: input.title,
-    objective: input.objective ?? currentCase.summary ?? undefined,
-    priority: input.priority ?? currentCase.priority,
-    riskClass: input.riskClass ?? (currentCase.riskLevel as "low" | "medium" | "high" | "critical"),
-    actorUserId: input.actorUserId ?? undefined,
-    actorAssistantId: input.actorAssistantId ?? undefined,
-    requiresApproval: input.requiresApproval,
-    autoAssignByRole: true,
-  });
-
-  const nextState = mapTaskStatusToCaseState(task.status);
-  const [updatedCase] = await db
-    .update(workCases)
-    .set({
-      primaryTaskId: task.id,
-      currentState: nextState,
-      updatedAt: now(),
-    })
-    .where(eq(workCases.id, currentCase.id))
-    .returning();
-
-  await syncRequestAndCaseState(input.tenantId, updatedCase.id, nextState, currentCase.requestId);
-
-  await insertWorkOsEvent({
-    id: crypto.randomUUID(),
-    tenantId: input.tenantId,
-    requestId: request?.id ?? currentCase.requestId,
-    caseId: updatedCase.id,
-    taskId: task.id,
-    actorAssistantId: input.actorAssistantId ?? null,
-    actorUserId: input.actorUserId ?? null,
-    eventType: "work_task_linked",
-    fromState: currentCase.currentState,
-    toState: nextState,
-    detailJson: eventPayload({
+  let task: TeamWorkItem | null = null;
+  const [updatedCase] = await withWorkOsTransaction(db, async (tx) => {
+    task = await workItemService.createWorkItem({
+      tenantId: input.tenantId,
       teamId: input.teamId,
       roomId: input.roomId,
-      runId: input.runId ?? null,
-    }),
-    createdAt: now(),
+      runId: input.runId ?? undefined,
+      sourceType: input.sourceType ?? "work_os",
+      sourceRef: input.sourceRef ?? currentCase.id,
+      title: input.title,
+      objective: input.objective ?? currentCase.summary ?? undefined,
+      priority: input.priority ?? currentCase.priority,
+      riskClass: input.riskClass ?? (currentCase.riskLevel as "low" | "medium" | "high" | "critical"),
+      actorUserId: input.actorUserId ?? undefined,
+      actorAssistantId: input.actorAssistantId ?? undefined,
+      requiresApproval: input.requiresApproval,
+      autoAssignByRole: true,
+    }, tx);
+
+    const nextState = mapTaskStatusToCaseState(task.status);
+    const [caseRow] = await tx
+      .update(workCases)
+      .set({
+        primaryTaskId: task.id,
+        currentState: nextState,
+        updatedAt: now(),
+      })
+      .where(eq(workCases.id, currentCase.id))
+      .returning();
+
+    await syncRequestAndCaseState(input.tenantId, caseRow.id, nextState, currentCase.requestId, tx);
+
+    await insertWorkOsEvent({
+      id: crypto.randomUUID(),
+      tenantId: input.tenantId,
+      requestId: request?.id ?? currentCase.requestId,
+      caseId: caseRow.id,
+      taskId: task.id,
+      actorAssistantId: input.actorAssistantId ?? null,
+      actorUserId: input.actorUserId ?? null,
+      eventType: "work_task_linked",
+      fromState: currentCase.currentState,
+      toState: nextState,
+      detailJson: eventPayload({
+        teamId: input.teamId,
+        roomId: input.roomId,
+        runId: input.runId ?? null,
+      }),
+      createdAt: now(),
+    }, tx);
+
+    return [caseRow];
   });
+
+  if (!task) {
+    throw new Error("Work task creation failed");
+  }
 
   return { case: updatedCase, task };
 }
@@ -725,49 +854,53 @@ export async function reassignWorkCase(input: {
 
   const previousOwnerType = currentCase.ownerType ?? null;
   const previousOwnerId = currentCase.ownerId ?? null;
-  const [updatedCase] = await db
-    .update(workCases)
-    .set({
+  const [updatedCase] = await withWorkOsTransaction(db, async (tx) => {
+    const [caseRow] = await tx
+      .update(workCases)
+      .set({
+        ownerType: input.ownerType,
+        ownerId: input.ownerId ?? null,
+        updatedAt: now(),
+      })
+      .where(eq(workCases.id, currentCase.id))
+      .returning();
+
+    await recordAssignmentChange({
+      tenantId: input.tenantId,
+      requestId: currentCase.requestId,
+      caseId: caseRow.id,
       ownerType: input.ownerType,
       ownerId: input.ownerId ?? null,
-      updatedAt: now(),
-    })
-    .where(eq(workCases.id, currentCase.id))
-    .returning();
-
-  await recordAssignmentChange({
-    tenantId: input.tenantId,
-    requestId: currentCase.requestId,
-    caseId: updatedCase.id,
-    ownerType: input.ownerType,
-    ownerId: input.ownerId ?? null,
-    previousOwnerType,
-    previousOwnerId,
-    assignmentSource: "reassignment",
-    reason: input.reason ?? null,
-    actorUserId: input.actorUserId ?? null,
-    actorAssistantId: input.actorAssistantId ?? null,
-  });
-
-  await insertWorkOsEvent({
-    id: crypto.randomUUID(),
-    tenantId: input.tenantId,
-    requestId: currentCase.requestId,
-    caseId: updatedCase.id,
-    taskId: currentCase.primaryTaskId ?? null,
-    actorAssistantId: input.actorAssistantId ?? null,
-    actorUserId: input.actorUserId ?? null,
-    eventType: "assignment_changed",
-    fromState: currentCase.currentState,
-    toState: currentCase.currentState,
-    detailJson: eventPayload({
       previousOwnerType,
       previousOwnerId,
-      ownerType: input.ownerType,
-      ownerId: input.ownerId ?? null,
+      assignmentSource: "reassignment",
       reason: input.reason ?? null,
-    }),
-    createdAt: now(),
+      actorUserId: input.actorUserId ?? null,
+      actorAssistantId: input.actorAssistantId ?? null,
+    }, tx);
+
+    await insertWorkOsEvent({
+      id: crypto.randomUUID(),
+      tenantId: input.tenantId,
+      requestId: currentCase.requestId,
+      caseId: caseRow.id,
+      taskId: currentCase.primaryTaskId ?? null,
+      actorAssistantId: input.actorAssistantId ?? null,
+      actorUserId: input.actorUserId ?? null,
+      eventType: "assignment_changed",
+      fromState: currentCase.currentState,
+      toState: currentCase.currentState,
+      detailJson: eventPayload({
+        previousOwnerType,
+        previousOwnerId,
+        ownerType: input.ownerType,
+        ownerId: input.ownerId ?? null,
+        reason: input.reason ?? null,
+      }),
+      createdAt: now(),
+    }, tx);
+
+    return [caseRow];
   });
 
   return getWorkCaseProjection(updatedCase.id, input.tenantId);
@@ -795,31 +928,35 @@ export async function attachLegacyTaskToCase(input: {
   if (!task) throw new Error(`Work task ${input.taskId} not found`);
 
   const nextState = mapTaskStatusToCaseState(task.status);
-  const [updatedCase] = await db
-    .update(workCases)
-    .set({
-      primaryTaskId: task.id,
-      currentState: nextState,
-      updatedAt: now(),
-    })
-    .where(eq(workCases.id, currentCase.id))
-    .returning();
+  const [updatedCase] = await withWorkOsTransaction(db, async (tx) => {
+    const [caseRow] = await tx
+      .update(workCases)
+      .set({
+        primaryTaskId: task.id,
+        currentState: nextState,
+        updatedAt: now(),
+      })
+      .where(eq(workCases.id, currentCase.id))
+      .returning();
 
-  await syncRequestAndCaseState(input.tenantId, updatedCase.id, nextState, currentCase.requestId);
+    await syncRequestAndCaseState(input.tenantId, caseRow.id, nextState, currentCase.requestId, tx);
 
-  await insertWorkOsEvent({
-    id: crypto.randomUUID(),
-    tenantId: input.tenantId,
-    requestId: currentCase.requestId,
-    caseId: updatedCase.id,
-    taskId: task.id,
-    actorAssistantId: input.actorAssistantId ?? null,
-    actorUserId: input.actorUserId ?? null,
-    eventType: "legacy_task_projected",
-    fromState: currentCase.currentState,
-    toState: nextState,
-    detailJson: eventPayload({ taskStatus: task.status }),
-    createdAt: now(),
+    await insertWorkOsEvent({
+      id: crypto.randomUUID(),
+      tenantId: input.tenantId,
+      requestId: currentCase.requestId,
+      caseId: caseRow.id,
+      taskId: task.id,
+      actorAssistantId: input.actorAssistantId ?? null,
+      actorUserId: input.actorUserId ?? null,
+      eventType: "legacy_task_projected",
+      fromState: currentCase.currentState,
+      toState: nextState,
+      detailJson: eventPayload({ taskStatus: task.status }),
+      createdAt: now(),
+    }, tx);
+
+    return [caseRow];
   });
 
   return getWorkCaseProjection(updatedCase.id, input.tenantId);
@@ -837,41 +974,45 @@ export async function recordApproval(input: RecordApprovalInput): Promise<WorkAp
       ? "waiting_for_input"
       : previousState;
 
-  const [approval] = await db.insert(workApprovals).values({
-    tenantId: input.tenantId,
-    requestId: input.requestId ?? null,
-    caseId: input.caseId,
-    taskId: input.taskId ?? null,
-    approvalTransportId: input.approvalTransportId ?? null,
-    approvalStatus: input.decision ?? "pending",
-    approverType: input.approverType ?? "human",
-    approverId: input.approverId ?? null,
-    comment: input.comment ?? null,
-    metadataJson: input.metadataJson ?? null,
-    requestedAt: now(),
-    respondedAt: input.decision && input.decision !== "pending" ? now() : null,
-  } satisfies InsertWorkApproval).returning();
-
-  if (caseRecord) {
-    await syncRequestAndCaseState(input.tenantId, caseRecord.id, nextState, input.requestId ?? caseRecord.requestId);
-  }
-
-  await insertWorkOsEvent({
-    id: crypto.randomUUID(),
-    tenantId: input.tenantId,
-    requestId: input.requestId ?? null,
-    caseId: input.caseId,
-    taskId: input.taskId ?? null,
-    actorAssistantId: input.actorAssistantId ?? null,
-    actorUserId: input.actorUserId ?? null,
-    eventType: "approval_recorded",
-    fromState: previousState,
-    toState: nextState,
-    detailJson: eventPayload({
+  const [approval] = await withWorkOsTransaction(db, async (tx) => {
+    const [approvalRow] = await tx.insert(workApprovals).values({
+      tenantId: input.tenantId,
+      requestId: input.requestId ?? null,
+      caseId: input.caseId,
+      taskId: input.taskId ?? null,
       approvalTransportId: input.approvalTransportId ?? null,
       approvalStatus: input.decision ?? "pending",
-    }),
-    createdAt: now(),
+      approverType: input.approverType ?? "human",
+      approverId: input.approverId ?? null,
+      comment: input.comment ?? null,
+      metadataJson: input.metadataJson ?? null,
+      requestedAt: now(),
+      respondedAt: input.decision && input.decision !== "pending" ? now() : null,
+    } satisfies InsertWorkApproval).returning();
+
+    if (caseRecord) {
+      await syncRequestAndCaseState(input.tenantId, caseRecord.id, nextState, input.requestId ?? caseRecord.requestId, tx);
+    }
+
+    await insertWorkOsEvent({
+      id: crypto.randomUUID(),
+      tenantId: input.tenantId,
+      requestId: input.requestId ?? null,
+      caseId: input.caseId,
+      taskId: input.taskId ?? null,
+      actorAssistantId: input.actorAssistantId ?? null,
+      actorUserId: input.actorUserId ?? null,
+      eventType: "approval_recorded",
+      fromState: previousState,
+      toState: nextState,
+      detailJson: eventPayload({
+        approvalTransportId: input.approvalTransportId ?? null,
+        approvalStatus: input.decision ?? "pending",
+      }),
+      createdAt: now(),
+    }, tx);
+
+    return [approvalRow];
   });
 
   return approval;
@@ -885,45 +1026,49 @@ export async function recordException(input: RecordExceptionInput): Promise<Work
   const previousState = caseRecord?.currentState ?? "new";
   const nextState = input.status === "resolved" ? "in_progress" : "escalated";
 
-  const [exception] = await db.insert(workExceptions).values({
-    tenantId: input.tenantId,
-    requestId: input.requestId ?? null,
-    caseId: input.caseId,
-    taskId: input.taskId ?? null,
-    exceptionType: input.exceptionType,
-    severity: input.severity ?? "medium",
-    status: input.status ?? "open",
-    reason: input.reason ?? null,
-    ownerType: input.ownerType ?? null,
-    ownerId: input.ownerId ?? null,
-    metadataJson: input.metadataJson ?? null,
-    createdAt: now(),
-    resolvedAt: input.status === "resolved" ? now() : null,
-    updatedAt: now(),
-  } satisfies InsertWorkException).returning();
-
-  if (caseRecord) {
-    await syncRequestAndCaseState(input.tenantId, input.caseId, nextState, input.requestId ?? caseRecord.requestId);
-  }
-
-  await insertWorkOsEvent({
-    id: crypto.randomUUID(),
-    tenantId: input.tenantId,
-    requestId: input.requestId ?? null,
-    caseId: input.caseId,
-    taskId: input.taskId ?? null,
-    actorAssistantId: input.actorAssistantId ?? null,
-    actorUserId: input.actorUserId ?? null,
-    eventType: "exception_recorded",
-    fromState: previousState,
-    toState: nextState,
-    detailJson: eventPayload({
+  const [exception] = await withWorkOsTransaction(db, async (tx) => {
+    const [exceptionRow] = await tx.insert(workExceptions).values({
+      tenantId: input.tenantId,
+      requestId: input.requestId ?? null,
+      caseId: input.caseId,
+      taskId: input.taskId ?? null,
       exceptionType: input.exceptionType,
       severity: input.severity ?? "medium",
       status: input.status ?? "open",
       reason: input.reason ?? null,
-    }),
-    createdAt: now(),
+      ownerType: input.ownerType ?? null,
+      ownerId: input.ownerId ?? null,
+      metadataJson: input.metadataJson ?? null,
+      createdAt: now(),
+      resolvedAt: input.status === "resolved" ? now() : null,
+      updatedAt: now(),
+    } satisfies InsertWorkException).returning();
+
+    if (caseRecord) {
+      await syncRequestAndCaseState(input.tenantId, input.caseId, nextState, input.requestId ?? caseRecord.requestId, tx);
+    }
+
+    await insertWorkOsEvent({
+      id: crypto.randomUUID(),
+      tenantId: input.tenantId,
+      requestId: input.requestId ?? null,
+      caseId: input.caseId,
+      taskId: input.taskId ?? null,
+      actorAssistantId: input.actorAssistantId ?? null,
+      actorUserId: input.actorUserId ?? null,
+      eventType: "exception_recorded",
+      fromState: previousState,
+      toState: nextState,
+      detailJson: eventPayload({
+        exceptionType: input.exceptionType,
+        severity: input.severity ?? "medium",
+        status: input.status ?? "open",
+        reason: input.reason ?? null,
+      }),
+      createdAt: now(),
+    }, tx);
+
+    return [exceptionRow];
   });
 
   return exception;
@@ -936,39 +1081,43 @@ export async function recordOutcome(input: RecordOutcomeInput): Promise<WorkOutc
   const caseRecord = await loadCaseRecord(input.caseId, input.tenantId);
   const previousState = caseRecord?.currentState ?? "new";
 
-  const [outcome] = await db.insert(workOutcomes).values({
-    tenantId: input.tenantId,
-    requestId: input.requestId ?? null,
-    caseId: input.caseId,
-    taskId: input.taskId ?? null,
-    disposition: input.disposition,
-    resolutionCode: input.resolutionCode ?? null,
-    customerImpact: input.customerImpact ?? null,
-    reviewerResult: input.reviewerResult ?? null,
-    followUpRequired: input.followUpRequired ?? false,
-    summary: input.summary ?? null,
-    metadataJson: input.metadataJson ?? null,
-  } satisfies InsertWorkOutcome).returning();
-
-  await syncRequestAndCaseState(input.tenantId, input.caseId, "completed", input.requestId);
-
-  await insertWorkOsEvent({
-    id: crypto.randomUUID(),
-    tenantId: input.tenantId,
-    requestId: input.requestId ?? null,
-    caseId: input.caseId,
-    taskId: input.taskId ?? null,
-    actorAssistantId: input.actorAssistantId ?? null,
-    actorUserId: input.actorUserId ?? null,
-    eventType: "outcome_recorded",
-    fromState: previousState,
-    toState: "completed",
-    detailJson: eventPayload({
+  const [outcome] = await withWorkOsTransaction(db, async (tx) => {
+    const [outcomeRow] = await tx.insert(workOutcomes).values({
+      tenantId: input.tenantId,
+      requestId: input.requestId ?? null,
+      caseId: input.caseId,
+      taskId: input.taskId ?? null,
       disposition: input.disposition,
       resolutionCode: input.resolutionCode ?? null,
+      customerImpact: input.customerImpact ?? null,
+      reviewerResult: input.reviewerResult ?? null,
       followUpRequired: input.followUpRequired ?? false,
-    }),
-    createdAt: now(),
+      summary: input.summary ?? null,
+      metadataJson: input.metadataJson ?? null,
+    } satisfies InsertWorkOutcome).returning();
+
+    await syncRequestAndCaseState(input.tenantId, input.caseId, "completed", input.requestId, tx);
+
+    await insertWorkOsEvent({
+      id: crypto.randomUUID(),
+      tenantId: input.tenantId,
+      requestId: input.requestId ?? null,
+      caseId: input.caseId,
+      taskId: input.taskId ?? null,
+      actorAssistantId: input.actorAssistantId ?? null,
+      actorUserId: input.actorUserId ?? null,
+      eventType: "outcome_recorded",
+      fromState: previousState,
+      toState: "completed",
+      detailJson: eventPayload({
+        disposition: input.disposition,
+        resolutionCode: input.resolutionCode ?? null,
+        followUpRequired: input.followUpRequired ?? false,
+      }),
+      createdAt: now(),
+    }, tx);
+
+    return [outcomeRow];
   });
 
   return outcome;
@@ -986,81 +1135,85 @@ export async function recordSla(input: RecordSlaInput): Promise<WorkSla> {
       ? "escalated"
       : previousState;
 
-  const [sla] = await db.insert(workSlas).values({
-    tenantId: input.tenantId,
-    requestId: input.requestId ?? null,
-    caseId: input.caseId,
-    taskId: input.taskId ?? null,
-    policyId: input.policyId ?? null,
-    dueAt: input.dueAt ?? null,
-    serviceWindowStartAt: input.serviceWindowStartAt ?? null,
-    serviceWindowEndAt: input.serviceWindowEndAt ?? null,
-    urgency: input.urgency ?? "normal",
-    breachState: input.breachState ?? "none",
-    breachedAt: input.breachedAt ?? null,
-    escalatedAt: input.escalatedAt ?? null,
-    createdAt: now(),
-    updatedAt: now(),
-  } satisfies InsertWorkSla).returning();
-
-  if (sla.breachState === "at_risk" || sla.breachState === "breached") {
-    const exceptionType = sla.breachState === "breached" ? "sla_breached" : "sla_at_risk";
-    const [existingException] = await db
-      .select()
-      .from(workExceptions)
-      .where(and(
-        eq(workExceptions.caseId, input.caseId),
-        eq(workExceptions.tenantId, input.tenantId),
-        eq(workExceptions.exceptionType, exceptionType),
-        eq(workExceptions.status, "open"),
-      ))
-      .limit(1);
-
-    if (!existingException) {
-      await db.insert(workExceptions).values({
-        id: crypto.randomUUID(),
-        tenantId: input.tenantId,
-        requestId: input.requestId ?? null,
-        caseId: input.caseId,
-        taskId: input.taskId ?? null,
-        exceptionType,
-        severity: sla.breachState === "breached" ? "critical" : "high",
-        status: "open",
-        reason: sla.breachState === "breached"
-          ? "SLA breached"
-          : "SLA at risk",
-        metadataJson: {
-          policyId: input.policyId ?? null,
-          breachState: sla.breachState,
-          dueAt: input.dueAt?.toISOString() ?? null,
-        },
-        createdAt: now(),
-        updatedAt: now(),
-      } satisfies InsertWorkException).returning();
-    }
-  }
-
-  if (caseRecord && nextState !== previousState) {
-    await syncRequestAndCaseState(input.tenantId, input.caseId, nextState, input.requestId ?? caseRecord.requestId);
-  }
-
-  await insertWorkOsEvent({
-    id: crypto.randomUUID(),
-    tenantId: input.tenantId,
-    requestId: input.requestId ?? null,
-    caseId: input.caseId,
-    taskId: input.taskId ?? null,
-    actorAssistantId: input.actorAssistantId ?? null,
-    actorUserId: input.actorUserId ?? null,
-    eventType: "sla_recorded",
-    fromState: previousState,
-    toState: nextState === previousState ? null : nextState,
-    detailJson: eventPayload({
+  const [sla] = await withWorkOsTransaction(db, async (tx) => {
+    const [slaRow] = await tx.insert(workSlas).values({
+      tenantId: input.tenantId,
+      requestId: input.requestId ?? null,
+      caseId: input.caseId,
+      taskId: input.taskId ?? null,
       policyId: input.policyId ?? null,
-      dueAt: input.dueAt?.toISOString() ?? null,
+      dueAt: input.dueAt ?? null,
+      serviceWindowStartAt: input.serviceWindowStartAt ?? null,
+      serviceWindowEndAt: input.serviceWindowEndAt ?? null,
+      urgency: input.urgency ?? "normal",
       breachState: input.breachState ?? "none",
-    }),
-    createdAt: now(),
+      breachedAt: input.breachedAt ?? null,
+      escalatedAt: input.escalatedAt ?? null,
+      createdAt: now(),
+      updatedAt: now(),
+    } satisfies InsertWorkSla).returning();
+
+    if (slaRow.breachState === "at_risk" || slaRow.breachState === "breached") {
+      const exceptionType = slaRow.breachState === "breached" ? "sla_breached" : "sla_at_risk";
+      const [existingException] = await tx
+        .select()
+        .from(workExceptions)
+        .where(and(
+          eq(workExceptions.caseId, input.caseId),
+          eq(workExceptions.tenantId, input.tenantId),
+          eq(workExceptions.exceptionType, exceptionType),
+          eq(workExceptions.status, "open"),
+        ))
+        .limit(1);
+
+      if (!existingException) {
+        await tx.insert(workExceptions).values({
+          id: crypto.randomUUID(),
+          tenantId: input.tenantId,
+          requestId: input.requestId ?? null,
+          caseId: input.caseId,
+          taskId: input.taskId ?? null,
+          exceptionType,
+          severity: slaRow.breachState === "breached" ? "critical" : "high",
+          status: "open",
+          reason: slaRow.breachState === "breached"
+            ? "SLA breached"
+            : "SLA at risk",
+          metadataJson: {
+            policyId: input.policyId ?? null,
+            breachState: slaRow.breachState,
+            dueAt: input.dueAt?.toISOString() ?? null,
+          },
+          createdAt: now(),
+          updatedAt: now(),
+        } satisfies InsertWorkException).returning();
+      }
+    }
+
+    if (caseRecord && nextState !== previousState) {
+      await syncRequestAndCaseState(input.tenantId, input.caseId, nextState, input.requestId ?? caseRecord.requestId, tx);
+    }
+
+    await insertWorkOsEvent({
+      id: crypto.randomUUID(),
+      tenantId: input.tenantId,
+      requestId: input.requestId ?? null,
+      caseId: input.caseId,
+      taskId: input.taskId ?? null,
+      actorAssistantId: input.actorAssistantId ?? null,
+      actorUserId: input.actorUserId ?? null,
+      eventType: "sla_recorded",
+      fromState: previousState,
+      toState: nextState === previousState ? null : nextState,
+      detailJson: eventPayload({
+        policyId: input.policyId ?? null,
+        dueAt: input.dueAt?.toISOString() ?? null,
+        breachState: input.breachState ?? "none",
+      }),
+      createdAt: now(),
+    }, tx);
+
+    return [slaRow];
   });
 
   return sla;
@@ -1136,7 +1289,7 @@ export async function getWorkCaseProjection(caseId: string, tenantId: string): P
   return { request, case: workCase, task, automation, assignments, approvals, exceptions, outcomes, slas, timeline };
 }
 
-export async function getInbox(tenantId: string, ownerType?: string | null, ownerId?: string | null): Promise<WorkCase[]> {
+export async function getInbox(tenantId: string, ownerType?: string | null, ownerId?: string | null): Promise<WorkInboxCase[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -1148,7 +1301,71 @@ export async function getInbox(tenantId: string, ownerType?: string | null, owne
     filters.push(eq(workCases.ownerId, ownerId));
   }
 
-  return db.select().from(workCases).where(and(...filters)).orderBy(desc(workCases.updatedAt));
+  const cases = await db.select().from(workCases).where(and(...filters)).orderBy(desc(workCases.updatedAt));
+  const enriched = await Promise.all(cases.map(async (workCase) => {
+    const runIds = uniqueIds(workCase.linkedRoleRoutineRunIdsJson ?? []);
+    if (runIds.length === 0) {
+    return {
+      ...workCase,
+      latestExploration: null,
+      latestFinalReview: null,
+      latestTraceId: null,
+      latestContext: null,
+      latestReadiness: null,
+    } satisfies WorkInboxCase;
+  }
+
+    const runs = await db
+      .select({ run: teamRuns })
+      .from(teamRuns)
+      .innerJoin(teamRooms, eq(teamRooms.id, teamRuns.roomId))
+      .where(and(eq(teamRooms.tenantId, tenantId), inArray(teamRuns.id, runIds)))
+      .orderBy(desc(teamRuns.startedAt));
+
+    for (const { run } of runs) {
+      const latestSnapshot = await monitoringService.getLatestRunSnapshot(run.id).catch(() => null);
+      const planArtifact = monitoringService.extractRunPlanArtifact(latestSnapshot);
+      const exploration = planArtifact?.exploration;
+      const finalReview = summarizeFinalReview(latestSnapshot);
+      const artifacts = summarizeTeamRunArtifacts(latestSnapshot);
+      if (exploration || finalReview || artifacts.traceId || artifacts.governedContext || artifacts.readinessRecord) {
+        const latestExploration = exploration
+          ? {
+              selectedCandidateId: exploration.selectedCandidateId,
+              selectionReason: exploration.selectionReason,
+              candidateCount: exploration.candidates.length,
+            }
+          : null;
+        const latestFinalReview = finalReview
+          ? {
+              reviewerPersona: finalReview.reviewerPersona as string | null,
+              score: finalReview.score as number | null,
+              recommendation: finalReview.recommendation as string | null,
+              comment: finalReview.comment as string | null,
+            }
+          : null;
+        return {
+          ...workCase,
+          latestExploration,
+          latestFinalReview,
+          latestTraceId: artifacts.traceId,
+          latestContext: artifacts.governedContext,
+          latestReadiness: artifacts.readinessRecord,
+        } satisfies WorkInboxCase;
+      }
+    }
+
+    return {
+      ...workCase,
+      latestExploration: null,
+      latestFinalReview: null,
+      latestTraceId: null,
+      latestContext: null,
+      latestReadiness: null,
+    } satisfies WorkInboxCase;
+  }));
+
+  return enriched;
 }
 
 export async function getOverview(tenantId: string): Promise<{

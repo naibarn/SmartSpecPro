@@ -5,6 +5,7 @@ import {
   workpackPromotionRecordSchema,
 } from "../../shared/workpackPromotion";
 import { deriveWorkpackImprovementProposals } from "./workpackLearningService";
+import { buildPackManifest, type PackManifest } from "./enterprisePlatformArtifacts";
 import {
   createWorkpackId,
   getPromotionRecordForTenant,
@@ -118,6 +119,7 @@ export async function publishBenchmarkPack(input: {
   publisherId?: number | null;
 }): Promise<{
   benchmarkPack: ReturnType<typeof benchmarkPackSchema.parse> | null;
+  manifest: PackManifest | null;
   promotionRecord: ReturnType<typeof workpackPromotionRecordSchema.parse>;
   eligibility: WorkpackPromotionEligibility;
 }> {
@@ -161,6 +163,7 @@ export async function publishBenchmarkPack(input: {
     });
     return {
       benchmarkPack: null,
+      manifest: null,
       promotionRecord,
       eligibility,
     };
@@ -221,6 +224,7 @@ export async function publishBenchmarkPack(input: {
     });
     return {
       benchmarkPack: null,
+      manifest: null,
       promotionRecord,
       eligibility: {
         ...eligibility,
@@ -259,9 +263,14 @@ export async function publishBenchmarkPack(input: {
     }), session);
     return record;
   });
+  const manifest = buildPackManifest({
+    benchmarkPack,
+    detail,
+  });
 
   return {
     benchmarkPack,
+    manifest,
     promotionRecord,
     eligibility,
   };

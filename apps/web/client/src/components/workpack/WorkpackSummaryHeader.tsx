@@ -3,7 +3,7 @@ import { ArrowRightLeft, Bot, ShieldCheck } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
 import { WorkpackStatusRail } from "./WorkpackStatusRail";
-import { buildWorkpackDetailHref } from "@/lib/workpackNavigation";
+import { buildWorkpackDetailHref, buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 
 type WorkpackSummaryHeaderProps = {
   workpackId: string;
@@ -52,6 +52,17 @@ export function WorkpackSummaryHeader(props: WorkpackSummaryHeaderProps) {
             Next action: {props.nextAction}
           </p>
         ) : null}
+        <div className="flex flex-wrap gap-2">
+          <Link href={buildWorkpackEntrypointHref({ entrypoint: "dashboard", surface: "roi" })}>
+            <Button variant="outline" size="sm">ROI</Button>
+          </Link>
+          <Link href={buildWorkpackEntrypointHref({ entrypoint: "dashboard", surface: "discovery" })}>
+            <Button variant="outline" size="sm">Discovery</Button>
+          </Link>
+          <Link href={buildWorkpackEntrypointHref({ entrypoint: "dashboard", surface: "exceptions" })}>
+            <Button variant="outline" size="sm">Exceptions</Button>
+          </Link>
+        </div>
       </div>
     </DashboardCard>
   );

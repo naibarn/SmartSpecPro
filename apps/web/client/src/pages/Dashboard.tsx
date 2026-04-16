@@ -984,6 +984,55 @@ export default function Dashboard() {
     },
   ];
 
+  const workpackAccessActions = [
+    {
+      label: "Intake Studio",
+      description: "Turn incoming work into a governed workpack.",
+      href: buildWorkpackEntrypointHref({
+        entrypoint: "dashboard",
+        surface: "intake",
+      }),
+      icon: ClipboardList,
+    },
+    {
+      label: "Discovery Library",
+      description: "Browse reusable starter packs and benchmarks.",
+      href: buildWorkpackEntrypointHref({
+        entrypoint: "dashboard",
+        surface: "discovery",
+      }),
+      icon: Layers,
+    },
+    {
+      label: "ROI Dashboard",
+      description: "Track progress, readiness, and blockers.",
+      href: buildWorkpackEntrypointHref({
+        entrypoint: "dashboard",
+        surface: "roi",
+      }),
+      icon: Workflow,
+    },
+    {
+      label: "Exceptions Inbox",
+      description: "Review policy and connector exceptions.",
+      href: buildWorkpackEntrypointHref({
+        entrypoint: "dashboard",
+        surface: "exceptions",
+      }),
+      icon: AlertCircle,
+    },
+    ...(isAdminLike
+      ? [
+          {
+            label: "Work OS Console",
+            description: "Open the mirrored Work OS control plane.",
+            href: "/admin/work-os",
+            icon: MonitorPlay,
+          },
+        ]
+      : []),
+  ];
+
   // Status badge config
   const statusConfig: Record<
     string,
@@ -2286,6 +2335,41 @@ export default function Dashboard() {
             transition={{ delay: 0.2 }}
             className="mb-8"
           >
+            <div className="mb-5 rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+              <DashboardSectionHeader
+                eyebrow="Workpacks"
+                title="Workpack Hub"
+                description="Open intake, discovery, ROI, exceptions, and Work OS without hunting through menus."
+                trailing={
+                  <Badge
+                    variant="secondary"
+                    className="border-slate-200 bg-slate-50 text-slate-700"
+                  >
+                    {workpackAccessActions.length} paths
+                  </Badge>
+                }
+              />
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                {workpackAccessActions.map((action) => (
+                  <button
+                    key={action.label}
+                    onClick={() => setLocation(action.href)}
+                    className="group flex h-full items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm transition-transform duration-200 group-hover:scale-[1.03]">
+                      <action.icon className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className={dashboardCardTitleClass}>{action.label}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        {action.description}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <DashboardSectionHeader
               eyebrow={t("dashboard:quickActions.eyebrow")}
               title={t("dashboard:quickActions.titleAttr")}

@@ -6,9 +6,11 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { getStatusBridgeBadgeClass, mapWorkOsStateToTeamRunStatus } from "../../../shared/workStatusBridge";
 
 function formatDate(value: string | Date | null | undefined): string {
   if (!value) return "n/a";
@@ -88,6 +90,47 @@ function sourceDescription(source: string): string {
   }
 }
 
+function explorationBadgeClass(candidateId: string | null | undefined): string {
+  switch (candidateId) {
+    case "workflow-first":
+      return "border-sky-200 bg-sky-50 text-sky-700";
+    case "swarm-first":
+      return "border-cyan-200 bg-cyan-50 text-cyan-700";
+    case "balanced-hybrid":
+      return "border-violet-200 bg-violet-50 text-violet-700";
+    default:
+      return "border-slate-200 bg-slate-50 text-slate-700";
+  }
+}
+
+function finalReviewRecommendationClass(recommendation: string | null | undefined): string {
+  switch (recommendation?.toLowerCase()) {
+    case "proceed":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "revise":
+      return "border-amber-200 bg-amber-50 text-amber-700";
+    case "block":
+      return "border-rose-200 bg-rose-50 text-rose-700";
+    case "review":
+      return "border-slate-200 bg-slate-50 text-slate-700";
+    default:
+      return "border-slate-200 bg-slate-50 text-slate-700";
+  }
+}
+
+function readinessRecordClass(status: string | null | undefined): string {
+  switch (status) {
+    case "ready":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "staged":
+      return "border-amber-200 bg-amber-50 text-amber-700";
+    case "blocked":
+      return "border-rose-200 bg-rose-50 text-rose-700";
+    default:
+      return "border-slate-200 bg-slate-50 text-slate-700";
+  }
+}
+
 function buildCasePath(caseId: string, timelineSource?: string | null): string {
   const params = new URLSearchParams();
   params.set("caseId", caseId);
@@ -109,12 +152,62 @@ function copyCaseLink(caseId: string, timelineSource?: string | null, successMes
     });
 }
 
+function getExplorationSummary(detail: Record<string, unknown> | null): {
+  selectedCandidateId: string | null;
+  selectionReason: string | null;
+  candidateCount: number;
+  criteria: string[];
+} | null {
+  if (!detail) return null;
+
+  const exploration =
+    (detail.exploration as Record<string, unknown> | undefined)
+    ?? ((detail.planArtifact as Record<string, unknown> | undefined)?.exploration as Record<string, unknown> | undefined);
+  if (!exploration || typeof exploration !== "object") return null;
+
+  const selectedCandidateId = typeof exploration.selectedCandidateId === "string" ? exploration.selectedCandidateId : null;
+  const selectionReason = typeof exploration.selectionReason === "string" ? exploration.selectionReason : null;
+  const criteria = Array.isArray(exploration.criteria)
+    ? exploration.criteria.filter((item): item is string => typeof item === "string")
+    : [];
+  const candidates = Array.isArray(exploration.candidates) ? exploration.candidates : [];
+  const candidateCount = typeof exploration.candidateCount === "number" && Number.isFinite(exploration.candidateCount)
+    ? exploration.candidateCount
+    : candidates.length;
+
+  if (!selectedCandidateId && !selectionReason && criteria.length === 0 && candidates.length === 0) {
+    return null;
+  }
+
+  return {
+    selectedCandidateId,
+    selectionReason,
+    candidateCount,
+    criteria,
+  };
+}
+
 function timelineSummary(entry: {
   source: string;
   eventType: string;
   detailJson: Record<string, unknown> | null;
 }): string {
   const detail = entry.detailJson ?? {};
+  const verificationGate = detail.verificationGate as Record<string, unknown> | undefined;
+  const gateReason = typeof verificationGate?.reason === "string" ? verificationGate.reason.trim() : null;
+  const gateStatus = typeof verificationGate?.status === "string" ? verificationGate.status.trim() : null;
+  const exploration = getExplorationSummary(detail);
+  const finalReview = detail.finalReview as Record<string, unknown> | undefined;
+  const traceEnvelope = detail.traceEnvelope as Record<string, unknown> | undefined;
+  const traceId = typeof detail.traceId === "string" ? detail.traceId : (typeof traceEnvelope?.traceId === "string" ? traceEnvelope.traceId : null);
+  const readinessRecord = detail.readinessRecord as Record<string, unknown> | undefined;
+  const finalReviewSummary = finalReview
+    ? [
+        typeof finalReview.reviewerPersona === "string" ? `reviewer ${finalReview.reviewerPersona}` : null,
+        typeof finalReview.score === "number" ? `score ${finalReview.score.toFixed(2)}` : null,
+        typeof finalReview.recommendation === "string" ? finalReview.recommendation : null,
+      ].filter(Boolean).join(" · ")
+    : null;
 
   if (entry.source === "role_routine") {
     const routineId = typeof detail.routineId === "string" ? detail.routineId : null;
@@ -129,6 +222,27 @@ function timelineSummary(entry: {
     const status = typeof detail.status === "string" ? detail.status : null;
     const teamId = typeof detail.teamId === "string" ? detail.teamId : null;
     const parts = [runId ? `run ${runId}` : null, teamId ? `team ${teamId}` : null, status ? `status ${status}` : null].filter(Boolean);
+    if (exploration) {
+      parts.push("exploration");
+      if (exploration.selectedCandidateId) {
+        parts.push(`selected ${exploration.selectedCandidateId}`);
+      }
+      parts.push(`${exploration.candidateCount} candidates`);
+    }
+    if (gateStatus || gateReason) {
+      parts.push(gateStatus ? `gate ${gateStatus}` : "gate");
+      if (gateReason) parts.push(gateReason);
+    }
+    if (finalReviewSummary) {
+      parts.push("final review");
+      parts.push(finalReviewSummary);
+    }
+    if (traceId) {
+      parts.push(`trace ${traceId.slice(0, 12)}`);
+    }
+    if (readinessRecord && typeof readinessRecord.status === "string") {
+      parts.push(`readiness ${readinessRecord.status}`);
+    }
     return parts.length > 0 ? parts.join(" · ") : "Team run evidence";
   }
 
@@ -159,6 +273,13 @@ function timelineSummary(entry: {
     const parts = [entry.eventType.replaceAll("_", " ")];
     if (typeof detail.sourceType === "string") parts.push(detail.sourceType);
     if (typeof detail.teamId === "string") parts.push(`team ${detail.teamId}`);
+    if (gateStatus || gateReason) {
+      parts.push(gateStatus ? `gate ${gateStatus}` : "gate");
+      if (gateReason) parts.push(gateReason);
+    }
+    if (traceId) {
+      parts.push(`trace ${traceId.slice(0, 12)}`);
+    }
     return parts.join(" · ");
   }
 
@@ -234,6 +355,8 @@ export default function AdminWorkOsDashboard() {
   const timelineSourceFromUrl = urlParams.get("timelineSource");
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(selectedCaseIdFromUrl);
   const [timelineSourceFilter, setTimelineSourceFilter] = useState<string | null>(timelineSourceFromUrl);
+  const [explorationOnlyFilter, setExplorationOnlyFilter] = useState(false);
+  const [showRawTimelineJson, setShowRawTimelineJson] = useState(false);
 
   const selectCase = (caseId: string) => {
     setSelectedCaseId(caseId);
@@ -320,9 +443,27 @@ export default function AdminWorkOsDashboard() {
   const automationLatestCheckpoint = automation?.checkpoints?.[0] ?? null;
   const automationLatestEvent = automation?.events?.[0] ?? null;
   const timeline = caseQuery.data?.timeline ?? [];
+  const latestTeamRunExploration = useMemo(() => {
+    for (const entry of timeline) {
+      if (entry.source !== "team_run") continue;
+      const exploration = getExplorationSummary(entry.detailJson);
+      if (exploration) return exploration;
+    }
+    return null;
+  }, [timeline]);
+  const selectedCaseBridgeStatus = selectedCase ? mapWorkOsStateToTeamRunStatus(selectedCase.currentState) : null;
   const timelineSourceOptions = useMemo(
     () => Array.from(new Set(timeline.map((entry) => entry.source))).sort(),
     [timeline],
+  );
+  const inboxCases = useMemo(() => {
+    const items = inboxQuery.data ?? [];
+    if (!explorationOnlyFilter) return items;
+    return items.filter((item) => item.latestExploration);
+  }, [explorationOnlyFilter, inboxQuery.data]);
+  const selectedInboxCase = useMemo(
+    () => inboxCases.find((item) => item.id === selectedCase?.id) ?? null,
+    [inboxCases, selectedCase?.id],
   );
   const filteredTimeline = timelineSourceFilter
     ? timeline.filter((entry) => entry.source === timelineSourceFilter)
@@ -414,10 +555,22 @@ export default function AdminWorkOsDashboard() {
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_1.2fr]">
           <DashboardCard title="Work Inbox" description="Tenant-scoped queue of open business work">
             <div className="space-y-3">
-              {(inboxQuery.data ?? []).length === 0 ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant={explorationOnlyFilter ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setExplorationOnlyFilter((current) => !current)}
+                >
+                  {explorationOnlyFilter ? "Exploration only" : "Show exploration-backed"}
+                </Button>
+                <Badge variant="outline" className="border-violet-200 bg-violet-50 text-violet-700">
+                  {inboxCases.filter((item) => item.latestExploration).length} with exploration
+                </Badge>
+              </div>
+              {inboxCases.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No work cases are available yet.</p>
               ) : (
-                (inboxQuery.data ?? []).map((item) => (
+                inboxCases.map((item) => (
                   <button
                     key={item.id}
                     type="button"
@@ -431,6 +584,56 @@ export default function AdminWorkOsDashboard() {
                       <div>
                         <p className="font-semibold text-slate-900">{item.title}</p>
                         <p className="text-sm text-slate-600">Case {item.id}</p>
+                        <p className={cn("mt-1 text-[10px] font-medium", getStatusBridgeBadgeClass(item.currentState as any))}>
+                          Bridge: {mapWorkOsStateToTeamRunStatus(item.currentState)}
+                        </p>
+                        {item.latestExploration ? (
+                          <Badge variant="outline" className={cn("mt-2 text-[10px] font-medium", explorationBadgeClass(item.latestExploration.selectedCandidateId))}>
+                            Exploration: {item.latestExploration.selectedCandidateId}
+                          </Badge>
+                        ) : null}
+                        {item.latestFinalReview ? (
+                          <div className="mt-2 space-y-1">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px] font-medium",
+                                finalReviewRecommendationClass(item.latestFinalReview.recommendation),
+                              )}
+                              title="Final review recommendation"
+                            >
+                              Final review: {item.latestFinalReview.recommendation ?? "n/a"}
+                            </Badge>
+                            <p className="text-[11px] text-slate-500">
+                              Reviewer {item.latestFinalReview.reviewerPersona ?? "n/a"} · Score{" "}
+                              {item.latestFinalReview.score != null ? item.latestFinalReview.score.toFixed(2) : "n/a"}
+                            </p>
+                          </div>
+                        ) : null}
+                        {item.latestTraceId ? (
+                          <Badge variant="outline" className="mt-2 border-slate-200 bg-slate-50 font-mono text-[10px] text-slate-700">
+                            Trace: {item.latestTraceId.slice(0, 12)}
+                          </Badge>
+                        ) : null}
+                        {item.latestReadiness ? (
+                          <div className="mt-2 space-y-1">
+                            <Badge
+                              variant="outline"
+                              className={cn("text-[10px] font-medium", readinessRecordClass(item.latestReadiness.status))}
+                              title="Latest enterprise readiness record"
+                            >
+                              Readiness: {item.latestReadiness.status}
+                            </Badge>
+                            <p className="text-[11px] text-slate-500">
+                              Score {item.latestReadiness.score.toFixed(2)} · {item.latestReadiness.reason}
+                            </p>
+                          </div>
+                        ) : null}
+                        {item.latestContext ? (
+                          <p className="mt-2 text-[11px] text-slate-500">
+                            Context: {item.latestContext.summary}
+                          </p>
+                        ) : null}
                       </div>
                       <Badge variant="outline" className={cn("capitalize", stateBadgeClass(item.currentState))}>
                         {item.currentState}
@@ -463,6 +666,11 @@ export default function AdminWorkOsDashboard() {
                       <Badge variant="outline" className={stateBadgeClass(selectedCase.currentState)}>
                         {selectedCase.currentState}
                       </Badge>
+                      {selectedCaseBridgeStatus ? (
+                        <Badge variant="secondary" className={cn("capitalize", getStatusBridgeBadgeClass(selectedCase.currentState))}>
+                          Bridge: {selectedCaseBridgeStatus}
+                        </Badge>
+                      ) : null}
                       <Button
                         variant="outline"
                         size="sm"
@@ -481,7 +689,7 @@ export default function AdminWorkOsDashboard() {
                       </Button>
                     </div>
                   </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <p className="text-slate-500">Owner</p>
                       <p className="font-medium text-slate-900">
@@ -502,9 +710,87 @@ export default function AdminWorkOsDashboard() {
                       <p className="font-medium text-slate-900">{formatDate(selectedCase.updatedAt)}</p>
                     </div>
                   </div>
+
+                {selectedInboxCase?.latestExploration ? (
+                  <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-slate-900">Inbox exploration</p>
+                        <Badge variant="outline" className={cn("border-violet-200 bg-white text-violet-700", explorationBadgeClass(selectedInboxCase.latestExploration.selectedCandidateId))}>
+                          Selected: {selectedInboxCase.latestExploration.selectedCandidateId}
+                        </Badge>
+                        <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">
+                          {selectedInboxCase.latestExploration.candidateCount} candidates
+                        </Badge>
+                      </div>
+                      <p className="mt-2 text-sm text-slate-600">{selectedInboxCase.latestExploration.selectionReason}</p>
+                    </div>
+                  ) : null}
+
+                {selectedInboxCase?.latestFinalReview ? (
+                  <div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-slate-900">Final review</p>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-xs font-medium",
+                            finalReviewRecommendationClass(selectedInboxCase.latestFinalReview.recommendation),
+                          )}
+                          title="Final review recommendation"
+                        >
+                          {selectedInboxCase.latestFinalReview.recommendation ?? "n/a"}
+                        </Badge>
+                      </div>
+                      <p className="mt-2 text-sm text-slate-600">
+                        Reviewer {selectedInboxCase.latestFinalReview.reviewerPersona ?? "n/a"} · Score{" "}
+                        {selectedInboxCase.latestFinalReview.score != null
+                          ? selectedInboxCase.latestFinalReview.score.toFixed(2)
+                          : "n/a"}
+                      </p>
+                      {selectedInboxCase.latestFinalReview.comment ? (
+                        <p className="mt-1 text-sm text-slate-600">{selectedInboxCase.latestFinalReview.comment}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {selectedInboxCase?.latestTraceId || selectedInboxCase?.latestReadiness || selectedInboxCase?.latestContext ? (
+                    <div className="rounded-2xl border border-slate-200 p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-slate-900">Enterprise context</p>
+                        {selectedInboxCase.latestTraceId ? (
+                          <Badge variant="outline" className="border-slate-200 bg-slate-50 font-mono text-[10px] text-slate-700">
+                            Trace: {selectedInboxCase.latestTraceId.slice(0, 12)}
+                          </Badge>
+                        ) : null}
+                        {selectedInboxCase.latestReadiness ? (
+                          <Badge
+                            variant="outline"
+                            className={cn("text-[10px] font-medium", readinessRecordClass(selectedInboxCase.latestReadiness.status))}
+                          >
+                            Readiness: {selectedInboxCase.latestReadiness.status}
+                          </Badge>
+                        ) : null}
+                      </div>
+                      {selectedInboxCase.latestContext ? (
+                        <p className="mt-2 text-sm text-slate-600">{selectedInboxCase.latestContext.summary}</p>
+                      ) : null}
+                      {selectedInboxCase.latestReadiness ? (
+                        <p className="mt-1 text-sm text-slate-600">
+                          Score {selectedInboxCase.latestReadiness.score.toFixed(2)} · {selectedInboxCase.latestReadiness.reason}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
 
-                {automationRun ? (
+                <Tabs defaultValue="summary" className="space-y-4">
+                  <TabsList className="flex h-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+                    <TabsTrigger value="summary">Summary</TabsTrigger>
+                    <TabsTrigger value="evidence">Evidence</TabsTrigger>
+                    <TabsTrigger value="raw">Raw</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="summary" className="space-y-6">
+                    {automationRun ? (
                   <div className="rounded-2xl border border-cyan-100 bg-cyan-50/60 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
@@ -629,13 +915,35 @@ export default function AdminWorkOsDashboard() {
                       ) : null}
                     </div>
                   </div>
-                ) : (
+                    ) : (
                   <div className="rounded-2xl border border-dashed border-cyan-100 bg-cyan-50/40 p-4 text-sm text-slate-600">
                     No automation run recorded yet for this case.
                   </div>
-                )}
+                    )}
 
-                {assignment ? (
+                    {latestTeamRunExploration ? (
+                  <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-slate-900">Planning exploration</p>
+                      <Badge variant="outline" className="border-violet-200 bg-white text-violet-700">
+                        Selected: {latestTeamRunExploration.selectedCandidateId ?? "n/a"}
+                      </Badge>
+                      <Badge variant="outline" className="border-slate-200 bg-white text-slate-700">
+                        {latestTeamRunExploration.candidateCount} candidates
+                      </Badge>
+                    </div>
+                    {latestTeamRunExploration.selectionReason ? (
+                      <p className="mt-2 text-sm text-slate-600">{latestTeamRunExploration.selectionReason}</p>
+                    ) : null}
+                    {latestTeamRunExploration.criteria.length > 0 ? (
+                      <p className="mt-1 text-xs text-slate-500">
+                        Criteria: {latestTeamRunExploration.criteria.join(", ")}
+                      </p>
+                    ) : null}
+                  </div>
+                    ) : null}
+
+                    {assignment ? (
                   <div className="rounded-2xl border border-slate-200 p-4">
                     <p className="text-sm font-semibold text-slate-900">Latest assignment</p>
                     <p className="mt-1 text-sm text-slate-600">
@@ -646,9 +954,9 @@ export default function AdminWorkOsDashboard() {
                     </p>
                     {assignment.reason ? <p className="mt-2 text-sm text-slate-600">{assignment.reason}</p> : null}
                   </div>
-                ) : null}
+                    ) : null}
 
-                <div className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
+                    <div className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-slate-900">Share current view</p>
@@ -680,8 +988,10 @@ export default function AdminWorkOsDashboard() {
                       </Button>
                     </div>
                   </div>
-                </div>
+                    </div>
+                  </TabsContent>
 
+                <TabsContent value="evidence" className="space-y-6">
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div className="rounded-2xl border border-slate-200 p-4">
                     <p className="text-sm font-semibold text-slate-900">Approvals</p>
@@ -850,6 +1160,33 @@ export default function AdminWorkOsDashboard() {
                           id={`timeline-${entry.source}-${entry.id}`}
                           className="rounded-xl border border-slate-200 p-3 text-sm"
                         >
+                          {entry.source === "team_run" && entry.detailJson?.finalReview ? (() => {
+                            const finalReview = entry.detailJson.finalReview as Record<string, unknown>;
+                            const recommendation = typeof finalReview.recommendation === "string" ? finalReview.recommendation : null;
+                            const reviewerPersona = typeof finalReview.reviewerPersona === "string" ? finalReview.reviewerPersona : null;
+                            const score = typeof finalReview.score === "number" ? finalReview.score : null;
+                            const comment = typeof finalReview.comment === "string" ? finalReview.comment : null;
+                            return (
+                              <div className="mb-2 space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      "text-[10px] font-medium",
+                                      finalReviewRecommendationClass(recommendation),
+                                    )}
+                                    title="Final review recommendation"
+                                  >
+                                    Final review: {recommendation ?? "n/a"}
+                                  </Badge>
+                                  <span className="text-[11px] text-slate-500">
+                                    Reviewer {reviewerPersona ?? "n/a"} · Score {score != null ? score.toFixed(2) : "n/a"}
+                                  </span>
+                                </div>
+                                {comment ? <p className="text-[11px] text-slate-500">Comment: {comment}</p> : null}
+                              </div>
+                            );
+                          })() : null}
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-medium text-slate-900">{entry.eventType.replaceAll("_", " ")}</span>
@@ -860,16 +1197,70 @@ export default function AdminWorkOsDashboard() {
                             <span className="text-xs text-slate-500">{formatDate(entry.createdAt)}</span>
                           </div>
                           <p className="mt-1 text-sm text-slate-700">{timelineSummary(entry)}</p>
-                          {entry.detailJson ? (
-                            <pre className="mt-2 overflow-auto rounded-lg bg-slate-50 p-3 text-xs text-slate-700">
-                              {JSON.stringify(entry.detailJson, null, 2)}
-                            </pre>
-                          ) : null}
                         </div>
                       ))
                     )}
                   </div>
                 </div>
+                  </TabsContent>
+
+                  <TabsContent value="raw" className="space-y-6">
+                    <div className="rounded-2xl border border-slate-200 p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">Raw timeline payloads</p>
+                          <p className="text-xs text-slate-600">
+                            Use this layer when you need the full event payload without the curated summary view.
+                          </p>
+                        </div>
+                        <Button
+                          variant={showRawTimelineJson ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setShowRawTimelineJson((current) => !current)}
+                        >
+                          {showRawTimelineJson ? "Hide raw JSON" : "Show raw JSON"}
+                        </Button>
+                      </div>
+                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs text-slate-600">
+                        <p className="font-medium text-slate-800">Raw layer guidance</p>
+                        <p className="mt-1">
+                          This tab is intentionally verbose and intended for operators or engineers who need to inspect
+                          the source payloads behind the summary and evidence views.
+                        </p>
+                      </div>
+                      <div className="mt-3 space-y-3">
+                        {filteredTimeline.length === 0 ? (
+                          <p className="text-sm text-slate-500">No timeline entries available.</p>
+                        ) : (
+                          filteredTimeline.map((entry) => (
+                            <div
+                              key={`raw-${entry.source}-${entry.id}`}
+                              className="rounded-xl border border-slate-200 p-3 text-sm"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-medium text-slate-900">{entry.eventType.replaceAll("_", " ")}</span>
+                                  <Badge variant="outline" className={cn("text-xs font-medium", sourceBadgeClass(entry.source))}>
+                                    {sourceLabel(entry.source)}
+                                  </Badge>
+                                </div>
+                                <span className="text-xs text-slate-500">{formatDate(entry.createdAt)}</span>
+                              </div>
+                              <p className="mt-1 text-sm text-slate-700">{timelineSummary(entry)}</p>
+                              {showRawTimelineJson && entry.detailJson ? (
+                                <pre className="mt-2 overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">
+                                  {JSON.stringify(entry.detailJson, null, 2)}
+                                </pre>
+                              ) : (
+                                <p className="mt-2 text-xs text-slate-500">Toggle raw JSON to inspect the underlying payload.</p>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
             )}
           </DashboardCard>

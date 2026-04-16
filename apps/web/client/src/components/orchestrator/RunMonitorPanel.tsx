@@ -9,6 +9,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { useRunStream, type RunStreamEvent } from "@/hooks/useRunStream";
 import { cn } from "@/lib/utils";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { getStatusBridgeBadgeClass, type StatusBridge } from "../../../../shared/workStatusBridge";
 
 interface AgentStatus {
   id: string;
@@ -24,6 +25,7 @@ interface RunMonitorPanelProps {
   teamName?: string;
   runStatus?: "queued" | "running" | "paused" | "completed" | "failed" | "stopped";
   runStatusReason?: string | null;
+  statusBridge?: StatusBridge | null;
   agents?: Array<{ id: string; displayName: string | null; isLead: boolean }>;
   onStartNewRun?: () => void;
   onPause?: () => void;
@@ -34,11 +36,20 @@ interface RunMonitorPanelProps {
   className?: string;
 }
 
+function getVerificationGateReason(event: RunStreamEvent): string | null {
+  const detail = event.data as Record<string, unknown> | null | undefined;
+  if (!detail || typeof detail !== "object") return null;
+  const gate = detail.verificationGate as Record<string, unknown> | undefined;
+  const reason = gate?.reason;
+  return typeof reason === "string" && reason.trim() ? reason.trim() : null;
+}
+
 export function RunMonitorPanel({
   runId,
   teamName,
   runStatus = "running",
   runStatusReason,
+  statusBridge,
   agents = [],
   onStartNewRun,
   onPause,
@@ -101,6 +112,9 @@ export function RunMonitorPanel({
 
   const getStatusLabel = (status: RunMonitorPanelProps["runStatus"]) =>
     status ? t(`orchestrator.runMonitor.status.${status}`) : "";
+  const bridgeLabel = statusBridge
+    ? `${statusBridge.teamRunStatus} → ${statusBridge.workOsState}`
+    : null;
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col border-l bg-background", className)}>
@@ -108,7 +122,12 @@ export function RunMonitorPanel({
       <div className="border-b px-4 py-3">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold">{t("orchestrator.runMonitor.title")}</h3>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {statusBridge ? (
+              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", getStatusBridgeBadgeClass(statusBridge.workOsState))}>
+                Bridge: {bridgeLabel}
+              </span>
+            ) : null}
             <span className={`h-2 w-2 rounded-full ${connected ? "bg-green-500 animate-pulse" : "bg-gray-400"}`} />
             <span className={`text-xs font-medium capitalize ${statusColor[runStatus] ?? "text-gray-500"}`}>
               {getStatusLabel(runStatus)}
@@ -138,6 +157,12 @@ export function RunMonitorPanel({
             {runStatusReason}
           </div>
         )}
+        {statusBridge ? (
+          <div className={cn("mt-2 rounded-lg px-3 py-2 text-xs", getStatusBridgeBadgeClass(statusBridge.workOsState))}>
+            Work OS mirrors this run as <span className="font-medium">{statusBridge.workOsState}</span>
+            {statusBridge.note ? <span className="block opacity-80">{statusBridge.note}</span> : null}
+          </div>
+        ) : null}
       </div>
 
       {/* Agent roster */}
@@ -279,6 +304,11 @@ export function RunMonitorPanel({
                   <div className="text-[10px] text-muted-foreground">
                     {event.actorId.slice(0, 12)} · {new Date(event.ts).toLocaleTimeString()}
                   </div>
+                  {getVerificationGateReason(event) ? (
+                    <div className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] text-amber-800">
+                      Policy gate: {getVerificationGateReason(event)}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))

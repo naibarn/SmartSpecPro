@@ -1581,6 +1581,13 @@ async function main() {
     console.error("[Startup] Failed to initialize browser automation claim reconciler job:", error);
   }
 
+  try {
+    const { startAutoTeamRecoverySweep } = await import("../services/autoTeamRecoveryService");
+    startAutoTeamRecoverySweep();
+  } catch (error) {
+    console.error("[Startup] Failed to start auto-team recovery sweep:", error);
+  }
+
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
@@ -1660,6 +1667,9 @@ process.on("SIGTERM", async () => {
   }).catch(() => {});
   import("../services/virtualAdmin/guardianScheduler").then(({ stopGuardian }) => {
     stopGuardian();
+  }).catch(() => {});
+  import("../services/autoTeamRecoveryService").then(({ stopAutoTeamRecoverySweep }) => {
+    stopAutoTeamRecoverySweep();
   }).catch(() => {});
 
   // 1. Stop accepting new connections

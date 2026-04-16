@@ -196,6 +196,7 @@ describe("Monitoring Schema (section 02)", () => {
       expect(cols).toContain("agentStatusesJson");
       expect(cols).toContain("tokenUsageJson");
       expect(cols).toContain("costJson");
+      expect(cols).toContain("artifactCountJson");
       expect(cols).toContain("pendingApprovalsCount");
     });
   });

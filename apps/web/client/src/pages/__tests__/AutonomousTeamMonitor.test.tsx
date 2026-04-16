@@ -171,5 +171,25 @@ describe("AutonomousTeamMonitor", () => {
     expect(screen.getByText("Internal Comms")).toBeInTheDocument();
     expect(screen.getByText(/Shift summary ready/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Replay" })).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: "Intake" }).some(
+        (link) => link.getAttribute("href") === "/workpacks/intake?entrypoint=teams"
+      )
+    ).toBe(true);
+    expect(
+      screen.getAllByRole("link", { name: "Discovery" }).some(
+        (link) => link.getAttribute("href") === "/workpacks/discovery?entrypoint=teams"
+      )
+    ).toBe(true);
+    expect(
+      screen.getAllByRole("link", { name: "ROI" }).some(
+        (link) => link.getAttribute("href") === "/workpacks/roi?entrypoint=teams"
+      )
+    ).toBe(true);
+    expect(
+      screen.getAllByRole("link", { name: "Exceptions" }).some(
+        (link) => link.getAttribute("href") === "/workpacks/exceptions?entrypoint=teams"
+      )
+    ).toBe(true);
   });
 });

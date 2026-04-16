@@ -17,6 +17,8 @@ The engine needs a reliable place to store:
 
 The first slice should keep `team_runs.status` as the compatibility layer and layer richer state onto run snapshots.
 
+The initial plan should also be reviewable before execution begins so the system can hold back the first `in_progress` transition until the plan passes review.
+
 ## What This Section Must Change
 
 ### 1. Snapshot contract
@@ -60,6 +62,8 @@ The capture path should remain additive:
 
 Add or update helpers that can read the latest snapshot for a run and derive the current runtime overlay from it.
 
+The read helper should be the canonical consumer contract for the runtime overlay so UI and orchestration code do not reconstruct the plan or runtime state independently.
+
 The reader should be able to answer:
 
 - what state is the run in right now
@@ -94,6 +98,15 @@ The section should not require a destructive migration of historical run rows.
 ## Completion Criteria
 
 - The system can persist and read the richer runtime state.
+- The system can persist and read the plan review result and repair-loop evidence.
 - Older runs still load and behave correctly.
 - Snapshot capture includes enough information for downstream orchestration and UI rendering.
 - The evidence model is durable enough to support step verification and review in later sections.
+
+## Implementation Notes (Current Slice)
+
+- `apps/web/server/services/monitoringService.ts` now builds a durable `runtimeState` overlay into `run_snapshots.artifactCountJson` and exposes helpers to derive it from the latest snapshot.
+- `apps/web/server/services/runEngine.ts` now includes the latest derived `runtimeState` on `teamRun.get` responses so read paths can consume one canonical runtime contract.
+- `apps/web/server/services/__tests__/monitoringService.test.ts` now covers the runtime overlay builder and snapshot extractor, including a legacy bridge-only fallback.
+- `apps/web/server/services/__tests__/teamRoomRunSchema.test.ts` now asserts that `runSnapshots` still includes `artifactCountJson` as the durable overlay slot.
+- No destructive schema migration was required for this slice; the runtime overlay lives in the existing snapshot JSON payload for backward compatibility.

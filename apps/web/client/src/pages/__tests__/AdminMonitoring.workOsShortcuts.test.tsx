@@ -197,13 +197,25 @@ describe("AdminMonitoring Work OS shortcuts", () => {
     fireEvent.click(screen.getByRole("button", { name: /open guide/i }));
     expect(mockNavigate).toHaveBeenCalledWith("/help/work-os");
 
+    fireEvent.click(screen.getByRole("button", { name: /workpack intake/i }));
+    expect(mockNavigate).toHaveBeenCalledWith("/workpacks/intake?entrypoint=dashboard");
+
+    fireEvent.click(screen.getByRole("button", { name: /workpack discovery/i }));
+    expect(mockNavigate).toHaveBeenCalledWith("/workpacks/discovery?entrypoint=dashboard");
+
+    fireEvent.click(screen.getByRole("button", { name: /workpack roi/i }));
+    expect(mockNavigate).toHaveBeenCalledWith("/workpacks/roi?entrypoint=dashboard");
+
+    fireEvent.click(screen.getByRole("button", { name: /workpack exceptions/i }));
+    expect(mockNavigate).toHaveBeenCalledWith("/workpacks/exceptions?entrypoint=dashboard");
+
     fireEvent.click(screen.getByRole("button", { name: /role routine/i }));
     expect(mockNavigate).toHaveBeenCalledWith("/admin/work-os?timelineSource=role_routine");
 
     fireEvent.click(screen.getByRole("button", { name: /team run/i }));
     expect(mockNavigate).toHaveBeenCalledWith("/admin/work-os?timelineSource=team_run");
 
-    fireEvent.click(screen.getAllByRole("button", { name: /workpack/i })[0]);
+    fireEvent.click(screen.getByRole("button", { name: /^workpack$/i }));
     expect(mockNavigate).toHaveBeenCalledWith("/admin/work-os?timelineSource=workpack_record");
 
     fireEvent.click(screen.getByRole("button", { name: /browser automation/i }));

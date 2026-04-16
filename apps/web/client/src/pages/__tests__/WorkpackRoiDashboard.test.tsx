@@ -36,6 +36,54 @@ describe("WorkpackRoiDashboard", () => {
             nextAction: "Expand supervised usage",
           },
         ],
+        roadmapProgress: [
+          {
+            workpackId: "wp_1",
+            title: "Support ops",
+            updatedAt: "2026-04-16T10:00:00.000Z",
+            phases: [
+              {
+                phase: 1,
+                title: "Governed Context Fabric",
+                status: "ready",
+                owner: "platform owner",
+                reviewer: "security owner",
+                blockers: [],
+                nextAction: "Context assembly is stable.",
+                evidenceRefs: [],
+              },
+              {
+                phase: 2,
+                title: "Tracing, Replay, And Release Gates",
+                status: "review_required",
+                owner: "observability owner",
+                reviewer: "security owner",
+                blockers: ["release_gate_missing"],
+                nextAction: "Tighten release gate.",
+                evidenceRefs: [],
+              },
+            ],
+          },
+        ],
+        roadmapSummary: {
+          workpackCount: 1,
+          phaseCounts: { ready: 4, review_required: 1, blocked: 0 },
+          blockerCounts: [
+            { blocker: "no_scoped_context", count: 1 },
+          ],
+        },
+        roadmapTrend: [
+          {
+            workpackId: "wp_1",
+            title: "Support ops",
+            updatedAt: "2026-04-16T10:00:00.000Z",
+            sequence: 1,
+            ready: 4,
+            review_required: 1,
+            blocked: 0,
+            totalPhases: 5,
+          },
+        ],
         recommendations: [],
         slices: [],
       },
@@ -48,6 +96,13 @@ describe("WorkpackRoiDashboard", () => {
 
     expect(screen.getByText("Completion rate")).toBeInTheDocument();
     expect(screen.getByText("82%")).toBeInTheDocument();
+    expect(screen.getByText("097 Roadmap Control Plane")).toBeInTheDocument();
+    expect(screen.getByText("097 Roadmap Trend")).toBeInTheDocument();
+    expect(screen.getByText("Trend scope")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Workpack" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Phase owner" })).toBeInTheDocument();
+    expect(screen.getAllByText(/Showing 1 point\(s\) · scope All workpacks/i).length).toBeGreaterThan(0);
+    expect(screen.getByText("no_scoped_context · 1")).toBeInTheDocument();
     expect(screen.getByText(/expand supervised usage/i)).toBeInTheDocument();
   });
 });

@@ -1,0 +1,57 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/096-goal-driven-auto-team-automation/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/096-goal-driven-auto-team-automation/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-runtime-state-and-evidence-model",
+    "section-02-goal-driven-orchestration-loop",
+    "section-03-async-worker-polling",
+    "section-04-verification-review-risk-escalation",
+    "section-05-runtime-status-projection-ui",
+    "section-06-teams-ui-plan-visibility",
+    "section-07-tests-compatibility-rollout"
+  ],
+  "sections_state": {
+    "section-01-runtime-state-and-evidence-model": {
+      "status": "complete",
+      "commit_hash": "eed85b40"
+    },
+    "section-02-goal-driven-orchestration-loop": {
+      "status": "complete",
+      "commit_hash": "b0346216"
+    },
+    "section-03-async-worker-polling": {
+      "status": "complete",
+      "commit_hash": "2186a9da"
+    },
+    "section-04-verification-review-risk-escalation": {
+      "status": "complete",
+      "commit_hash": "2186a9da"
+    },
+    "section-05-runtime-status-projection-ui": {
+      "status": "complete",
+      "commit_hash": "2186a9da"
+    },
+    "section-06-teams-ui-plan-visibility": {
+      "status": "complete",
+      "commit_hash": "2186a9da"
+    },
+    "section-07-tests-compatibility-rollout": {
+      "status": "complete",
+      "commit_hash": "2186a9da"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-15T13:37:31.840480+00:00"
+}

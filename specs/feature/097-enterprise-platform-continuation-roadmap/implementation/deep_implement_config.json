@@ -1,0 +1,27 @@
+{
+  "plugin_root": "/home/dev/projects/SmartSpecPro/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/097-enterprise-platform-continuation-roadmap/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/097-enterprise-platform-continuation-roadmap/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "workflow_backend": "compatible",
+  "task_tracking_backend": "compatible",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-governed-context-fabric-and-memory",
+    "section-02-agentops-tracing-evaluation-and-release-gates",
+    "section-03-workforce-exchange-and-installable-operations-packs",
+    "section-04-enterprise-readiness-economics-and-sdk-standards"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-16T02:29:41.478756+00:00"
+}

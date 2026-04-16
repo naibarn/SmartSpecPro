@@ -6,6 +6,10 @@ import {
   deriveOpsOverview,
   buildOpsIncidentTimeline,
   shouldSkipOpsAlertEmission,
+  describeRunStatusBridge,
+  buildRunRuntimeState,
+  extractRunRuntimeState,
+  extractRunPlanArtifact,
 } from "../monitoringService";
 
 describe("monitoringService", () => {
@@ -278,6 +282,193 @@ describe("monitoringService", () => {
       expect(overview.health).toBe("healthy");
       expect(overview.anomalies).toHaveLength(0);
       expect(overview.summary.totalAnomalies).toBe(0);
+    });
+
+    it("maps run statuses into a deterministic Work OS bridge", () => {
+      expect(describeRunStatusBridge("running")).toEqual(expect.objectContaining({
+        teamRunStatus: "running",
+        workOsState: "in_progress",
+      }));
+      expect(describeRunStatusBridge("paused", "awaiting_human_approval")).toEqual(expect.objectContaining({
+        teamRunStatus: "paused",
+        workOsState: "waiting_for_approval",
+      }));
+      expect(describeRunStatusBridge("stopped", "user_requested")).toEqual(expect.objectContaining({
+        teamRunStatus: "stopped",
+        workOsState: "cancelled",
+      }));
+    });
+
+    it("builds a durable runtime overlay from the current run shape", () => {
+      const runtimeState = buildRunRuntimeState({
+        status: "running",
+        stopReason: null,
+        summaryArtifactId: "summary-1",
+        roomId: "room-1",
+        teamId: "team-1",
+      } as any);
+
+      expect(runtimeState).toEqual(expect.objectContaining({
+        currentPhase: "running",
+        waitingReason: null,
+        verificationState: "unknown",
+        evidenceRefs: ["summary:summary-1"],
+      }));
+      expect(runtimeState.statusBridge.workOsState).toBe("in_progress");
+      expect(runtimeState.workOsLinkage).toEqual(expect.objectContaining({
+        teamId: "team-1",
+        roomId: "room-1",
+        projectedWorkOsState: "in_progress",
+      }));
+    });
+
+    it("extracts the runtime overlay from newer or legacy snapshot payloads", () => {
+      const runtimeState = {
+        currentPhase: "awaiting_human_approval",
+        waitingReason: "awaiting_human_approval",
+        policyGateReason: "approval is required",
+        traceId: "trace-1",
+        nextPollAt: null,
+        riskClass: "high",
+        reviewerPersona: "safety-reviewer",
+        verificationState: "pending",
+        evidenceRefs: ["summary:summary-1"],
+        jobHandle: { provider: "hermes" },
+        governedContext: {
+          version: 1,
+          tenantId: "tenant-1",
+          principalScope: "team-1",
+          objective: "Launch objective",
+          generatedAt: "2026-04-15T12:00:00.000Z",
+          selectedCount: 1,
+          excludedCount: 0,
+          summary: "1 context item(s) selected, 0 excluded for Launch objective",
+          items: [],
+        },
+        traceEnvelope: {
+          version: 1,
+          traceId: "trace-1",
+          tenantId: "tenant-1",
+          source: "monitoring",
+          entityId: "run-1",
+          eventType: "snapshot",
+          generatedAt: "2026-04-15T12:00:00.000Z",
+          summary: "Snapshot created",
+          evidenceRefs: [],
+        },
+        readinessRecord: {
+          version: 1,
+          kind: "team_run",
+          entityId: "run-1",
+          generatedAt: "2026-04-15T12:00:00.000Z",
+          score: 0.8,
+          status: "ready",
+          reason: "Ready",
+          evidenceRefs: [],
+        },
+        statusBridge: describeRunStatusBridge("paused", "awaiting_human_approval"),
+        workOsLinkage: {
+          teamId: "team-1",
+          roomId: "room-1",
+          projectedWorkOsState: "waiting_for_approval",
+        },
+      };
+
+      expect(extractRunRuntimeState({
+        artifactCountJson: {
+          statusBridge: describeRunStatusBridge("paused", "awaiting_human_approval"),
+          runtimeState,
+        },
+      } as any)).toEqual(expect.objectContaining({
+        currentPhase: "awaiting_human_approval",
+        waitingReason: "awaiting_human_approval",
+        policyGateReason: "approval is required",
+        traceId: "trace-1",
+        riskClass: "high",
+        reviewerPersona: "safety-reviewer",
+        verificationState: "pending",
+        governedContext: expect.objectContaining({
+          tenantId: "tenant-1",
+        }),
+        traceEnvelope: expect.objectContaining({
+          traceId: "trace-1",
+        }),
+        readinessRecord: expect.objectContaining({
+          status: "ready",
+        }),
+      }));
+
+      expect(extractRunRuntimeState({
+        artifactCountJson: {
+          statusBridge: describeRunStatusBridge("running"),
+        },
+      } as any)).toEqual(expect.objectContaining({
+        currentPhase: "running",
+        statusBridge: expect.objectContaining({
+          workOsState: "in_progress",
+        }),
+      }));
+    });
+
+    it("extracts the durable plan artifact from snapshot payloads", () => {
+      expect(extractRunPlanArtifact({
+        artifactCountJson: {
+          planArtifact: {
+            version: 1,
+            runId: "run-1",
+            roomId: "room-1",
+            teamId: "team-1",
+            caseId: null,
+            requestId: null,
+            objective: "Launch objective",
+            source: "team_run",
+            status: "ready",
+            generatedAt: "2026-04-15T12:00:00.000Z",
+            lastUpdatedAt: "2026-04-15T12:30:00.000Z",
+            exploration: {
+              selectedCandidateId: "balanced-hybrid",
+              selectionReason: "Balanced hybrid keeps exploration bounded while preserving choice quality.",
+              criteria: ["safety", "speed", "determinism"],
+              candidates: [
+                {
+                  candidateId: "workflow-first",
+                  title: "Workflow first",
+                  strategy: "deterministic, review-heavy execution",
+                  summary: "Keep the path narrow.",
+                  strengths: ["tight evidence discipline"],
+                  tradeoffs: ["less exploratory breadth"],
+                  riskClass: "medium",
+                },
+                {
+                  candidateId: "balanced-hybrid",
+                  title: "Balanced hybrid",
+                  strategy: "bounded exploration then commit",
+                  summary: "Explore then lock a plan.",
+                  strengths: ["balance of creativity and control"],
+                  tradeoffs: ["not fully exhaustive"],
+                  riskClass: "medium",
+                },
+              ],
+            },
+            steps: [],
+            evidenceRefs: [],
+            planEvidenceRefs: [],
+            reviewerMatrix: [],
+            review: {
+              status: "passed",
+              iteration: 1,
+              reviewedAt: "2026-04-15T12:31:00.000Z",
+              reviewerPersona: "safety-reviewer",
+              issues: [],
+              score: 0.92,
+              recommendation: "Proceed to execution.",
+            },
+          },
+        },
+      } as any)).toEqual(expect.objectContaining({
+        objective: "Launch objective",
+        status: "ready",
+      }));
     });
 
     it("downgrades a one-off failed service snapshot when the previous snapshot was healthy", () => {

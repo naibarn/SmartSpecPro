@@ -24,6 +24,7 @@ The implementation should follow the existing Vitest style in this repo:
   - Test that the plan artifact records reviewer persona, verification method, and repair-loop rules for each subtask.
   - Test that the plan is written durably before the first execution step starts.
   - Test that clearly parallel work is split into separate subtasks instead of remaining as one large prompt.
+  - Test that the plan read contract resolves a single canonical plan view instead of reconstructing from scattered work items.
 
 ## 1. Durable runtime state and evidence model
 
@@ -44,6 +45,7 @@ The implementation should follow the existing Vitest style in this repo:
   - Test that Work OS projections keep the same case identity and history when the run is repaired, retried, or resumed.
   - Test that unmapped or conflicting states are surfaced as exceptions or blocked states instead of silently diverging.
   - Test that Work OS-originated work keeps the same case identity through plan creation, execution, repair, and completion.
+  - Test that Work OS mirror write failures surface a blocked or exception state and are retried idempotently instead of being treated as settled.
 
 - `apps/web/server/services/__tests__/runEngine.migration.test.ts`
   - Test that the compatibility path still recognizes old `team_runs.status` values.
@@ -116,6 +118,7 @@ The implementation should follow the existing Vitest style in this repo:
   - Test that the plan panel stays visible and refreshable while the run is planning, executing, waiting, blocked, or reviewing.
   - Test that the plan panel is tied to the durable plan artifact rather than only to transient UI state.
   - Test that plan visibility remains usable for partially planned or newly started runs.
+  - Test that plan visibility shows the latest Work OS mirror sync state when the work originates from intake.
 
 - `apps/web/client/src/pages/__tests__/AutonomousTeamMonitor.test.tsx`
   - Test that the monitor shows waiting-for-worker / waiting-for-poll / awaiting-human-approval states clearly.
@@ -152,6 +155,7 @@ The implementation should follow the existing Vitest style in this repo:
 - `apps/web/server/services/__tests__/workOsService.test.ts`
   - Test that Work OS overview and case projection remain compatible with the team-run overlay and do not show contradictory terminal states.
   - Test that the status mapping table stays deterministic across queued/running/waiting/blocked/completed transitions.
+  - Test that a projection failure is surfaced as blocked/exception instead of a clean terminal sync state.
 
 ## Section-by-Section Execution Notes
 

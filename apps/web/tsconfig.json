@@ -4,6 +4,7 @@
     "client/src/**/*",
     "shared/**/*",
     "server/**/*",
+    "server/services/workStatusBridge.ts",
     "drizzle/**/*",
     "skills/**/*",
     "vite.config.ts",

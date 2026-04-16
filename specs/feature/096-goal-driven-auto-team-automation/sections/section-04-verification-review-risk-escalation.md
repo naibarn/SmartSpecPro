@@ -70,6 +70,7 @@ Reuse existing work-item fields and events for:
 - Reuse existing risk and approval fields instead of inventing a second approval model.
 - Make failure reasons explainable so the UI can surface them clearly.
 - The policy should work for both async worker steps and directly executed steps.
+- The current slice centralizes the reviewer/risk mapping in `apps/web/server/services/verificationPolicy.ts`, threads verification evidence into work-item events, and records step-level verification policy metadata in `workAutomationExecutionService` so the UI and backend can render the same gate logic.
 
 ## Completion Criteria
 

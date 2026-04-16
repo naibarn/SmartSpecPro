@@ -38,4 +38,13 @@ describe("useMenuItems", () => {
     expect(workRequest?.path).toBe("/work/request");
     expect(workRequest?.label).toBe("Start Work");
   });
+
+  it("shows workpack shortcuts in the main sidebar for regular users", () => {
+    const items = getResolvedMenuItems("user", "main");
+
+    expect(items.find((item) => item.id === "workpack-intake")?.path).toBe("/workpacks/intake");
+    expect(items.find((item) => item.id === "workpack-discovery")?.path).toBe("/workpacks/discovery");
+    expect(items.find((item) => item.id === "workpack-roi")?.path).toBe("/workpacks/roi");
+    expect(items.find((item) => item.id === "workpack-exceptions")?.path).toBe("/workpacks/exceptions");
+  });
 });

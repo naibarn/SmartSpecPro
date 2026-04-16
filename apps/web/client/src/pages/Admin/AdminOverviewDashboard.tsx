@@ -53,6 +53,8 @@ import {
   Brain,
   Cpu,
   PlayCircle,
+  ClipboardList,
+  MonitorPlay,
   Settings,
   Building2,
   Package,
@@ -202,6 +204,43 @@ export default function AdminOverviewDashboard() {
     undefined,
     queryOpts
   );
+  const workpackReleaseHealth = trpc.adminOps.workpackReleaseHealth.useQuery(
+    undefined,
+    queryOpts
+  );
+
+  const workpackAccessActions = [
+    {
+      label: "Intake Studio",
+      description: "Launch and shape incoming workpack intake.",
+      href: "/workpacks/intake",
+      icon: ClipboardList,
+    },
+    {
+      label: "Discovery Library",
+      description: "Browse starter and benchmark packs.",
+      href: "/workpacks/discovery",
+      icon: Package,
+    },
+    {
+      label: "ROI Dashboard",
+      description: "Monitor readiness, blockers, and roadmap progress.",
+      href: "/workpacks/roi",
+      icon: Gauge,
+    },
+    {
+      label: "Exceptions Inbox",
+      description: "Review policy and connector exceptions.",
+      href: "/workpacks/exceptions",
+      icon: AlertTriangle,
+    },
+    {
+      label: "Work OS Console",
+      description: "Inspect mirrored case state and automation flow.",
+      href: "/admin/work-os",
+      icon: MonitorPlay,
+    },
+  ];
 
   // --- Hooks: useMemo MUST be called before any early return (Rules of Hooks) ---
 
@@ -579,6 +618,66 @@ export default function AdminOverviewDashboard() {
             </div>
           </DashboardCard>
         )}
+
+        {/* Workpack Release Health Banner */}
+        {workpackReleaseHealth.data?.blockers?.length ? (
+          <DashboardCard className="border-sky-300 bg-sky-50/60 dark:bg-sky-950/20 dark:border-sky-700">
+            <div className="py-3 px-4 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-sky-100 dark:bg-sky-900 flex items-center justify-center shrink-0">
+                  <CheckCircle className="h-4.5 w-4.5 text-sky-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-sky-800 dark:text-sky-200">
+                    {workpackReleaseHealth.data.blockers.length} workpack(s) need release attention
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-0.5">
+                    {workpackReleaseHealth.data.blockers.slice(0, 4).map((item: any) => (
+                      <Badge
+                        key={item.workpackId}
+                        variant="secondary"
+                        className="text-[10px] bg-sky-100 text-sky-700"
+                      >
+                        {item.workpackId} · {item.gateResult}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                className="bg-sky-600 hover:bg-sky-700 text-white"
+                onClick={() => setLocation("/workpacks/roi")}
+              >
+                Open ROI
+                <ExternalLink className="ml-1.5 h-3 w-3" />
+              </Button>
+            </div>
+          </DashboardCard>
+        ) : null}
+
+        <DashboardCard
+          title="Workpack Access"
+          description="Jump straight to the workpack surfaces that are reachable from this dashboard."
+        >
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            {workpackAccessActions.map((action) => (
+              <button
+                key={action.label}
+                onClick={() => setLocation(action.href)}
+                className="group flex items-start gap-3 rounded-2xl border border-slate-200 bg-white/90 px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50"
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm">
+                  <action.icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900">{action.label}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">{action.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </DashboardCard>
 
         {/* Section B: Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

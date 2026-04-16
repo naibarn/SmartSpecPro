@@ -20,4 +20,13 @@ describe("Private Files menu entry", () => {
     expect(item).toBeDefined();
     expect(item?.section).toBe("documents");
   });
+
+  it("exposes workpack entries in the main menu", () => {
+    const items = getMenuItemsByGroup("web", "user", "main");
+
+    expect(items.find((menuItem) => menuItem.id === "workpack-intake")?.path).toBe("/workpacks/intake");
+    expect(items.find((menuItem) => menuItem.id === "workpack-discovery")?.path).toBe("/workpacks/discovery");
+    expect(items.find((menuItem) => menuItem.id === "workpack-roi")?.path).toBe("/workpacks/roi");
+    expect(items.find((menuItem) => menuItem.id === "workpack-exceptions")?.path).toBe("/workpacks/exceptions");
+  });
 });

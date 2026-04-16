@@ -58,7 +58,7 @@ function buildDiff(workpackId: string, stepId: string | null, category: ReplayDi
   };
 }
 
-export async function replayWorkpackRun(input: {
+export async function analyzeWorkpackReplay(input: {
   workpackId: string;
   runId?: string | null;
   simulationRunId?: string | null;
@@ -218,16 +218,6 @@ export async function replayWorkpackRun(input: {
       ? `Inspect ${diffs[0].remediationPointer} before rerunning a fresh execution.`
       : "Inspect replay evidence before rerunning a fresh execution.";
 
-  await saveTelemetryEvent({
-    id: `evt_${Date.now().toString(36)}`,
-    tenantId: detail.workpack.tenantId,
-    workpackId: detail.workpack.id,
-    versionId: detail.version.id,
-    eventName: gateStatus === "clean" ? "simulation_passed" : "simulation_failed",
-    detail: `Inspection-only replay produced ${diffs.length} diff markers`,
-    createdAt: nowIso(),
-  });
-
   return {
     workpackId: detail.workpack.id,
     versionId: detail.version.id,
@@ -239,4 +229,28 @@ export async function replayWorkpackRun(input: {
     canReemitSideEffects: false,
     nextAction,
   };
+}
+
+export async function replayWorkpackRun(input: {
+  workpackId: string;
+  runId?: string | null;
+  simulationRunId?: string | null;
+}): Promise<WorkpackReplayResult> {
+  const replay = await analyzeWorkpackReplay(input);
+  const detail = await getWorkpackDetail(input.workpackId);
+  if (!detail) {
+    throw new Error(`Unknown workpack: ${input.workpackId}`);
+  }
+
+  await saveTelemetryEvent({
+    id: `evt_${Date.now().toString(36)}`,
+    tenantId: detail.workpack.tenantId,
+    workpackId: detail.workpack.id,
+    versionId: detail.version.id,
+    eventName: replay.gateStatus === "clean" ? "simulation_passed" : "simulation_failed",
+    detail: `Inspection-only replay produced ${replay.diffs.length} diff markers`,
+    createdAt: nowIso(),
+  });
+
+  return replay;
 }

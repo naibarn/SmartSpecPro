@@ -105,7 +105,27 @@ jobs:
         env:
           RUN_SOCKET_TESTS: "true"
           JWT_SECRET: ${{ steps.jwt-secret.outputs.value }}
+          SKIP_WORKOS_TEAMS_REGRESSION: "true"
         run: bash scripts/ci/node_tests.sh apps/web
+      - name: Run Work OS + Teams regression
+        id: workos_teams_regression
+        env:
+          JWT_SECRET: ${{ steps.jwt-secret.outputs.value }}
+        run: |
+          cd apps/web
+          npm run test:workos-teams-regression
+      - name: Summarize Work OS + Teams regression
+        if: always()
+        run: |
+          {
+            echo "### Work OS + Teams regression"
+            echo ""
+            if [ "${{ steps.workos_teams_regression.outcome }}" = "success" ]; then
+              echo "✅ Bridge regression passed: Teams plan visibility, Work OS console bridge badge, and shared status mapping are aligned."
+            else
+              echo "❌ Bridge regression did not pass. Check the dedicated step above for the failing suite."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Run SmartSpecWeb DB integration suite
         env:
           DATABASE_URL: postgresql://smartspec:smartspec123@localhost:5432/smartspec_test

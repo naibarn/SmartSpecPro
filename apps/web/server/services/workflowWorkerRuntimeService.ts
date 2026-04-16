@@ -5,6 +5,7 @@ import { getDb } from "../db";
 import { workerArtifacts, workerJobEvents, workerJobs } from "../../drizzle/schema";
 import type { WorkerResourceProfile, WorkerRuntimeType } from "../../shared/workerRuntime";
 import { sanitizeWorkerPayload } from "./workerPayloadSanitizer";
+import { buildWorkerJobHandle, shouldPollAsyncJobHandle } from "./asyncJobHandle";
 import {
   HERMES_SUPPORTED_JOB_TYPES,
   OPENCLAW_SUPPORTED_JOB_TYPES,
@@ -177,6 +178,7 @@ function simplifyPublicationResult(result: WorkerArtifactPublicationResult): Rec
 }
 
 function simplifyJobRecord(job: WorkerJobRecord): Record<string, unknown> {
+  const jobHandle = buildWorkerJobHandle(job);
   return {
     id: String(job.id),
     tenantId: String(job.tenantId),
@@ -198,6 +200,8 @@ function simplifyJobRecord(job: WorkerJobRecord): Record<string, unknown> {
     input: sanitizeWorkerPayload(job.inputJson ?? {}),
     instructions: sanitizeWorkerPayload(job.instructionsJson ?? {}),
     output: sanitizeWorkerPayload(job.outputJson ?? {}),
+    jobHandle,
+    pollable: shouldPollAsyncJobHandle(jobHandle),
     createdAt: serializeDate(job.createdAt),
     startedAt: serializeDate(job.startedAt),
     finishedAt: serializeDate(job.finishedAt),
@@ -426,6 +430,7 @@ export async function getWorkflowWorkerJobStatus(
     terminal: TERMINAL_WORKER_JOB_STATUSES.has(job.status),
     failureReason: typeof job.failureReason === "string" ? job.failureReason : null,
     workerJob: simplifyJobRecord(job),
+    jobHandle: buildWorkerJobHandle(job),
     artifacts: artifacts.map(simplifyArtifactRecord),
     artifactRefs: artifacts.map(simplifyArtifactRecord),
     recentEvents: events.map(simplifyEventRecord),

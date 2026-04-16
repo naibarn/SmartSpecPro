@@ -20,6 +20,10 @@ import {
   type WorkAutomationSurface,
 } from "./workAutomationPolicyService";
 import { getWorkCaseProjection } from "./workOsService";
+import {
+  buildVerificationPolicyEvidence,
+  resolveVerificationPolicyForRiskClass,
+} from "./verificationPolicy";
 import type {
   WorkAutomationRun,
   WorkAutomationRunCheckpoint,
@@ -172,6 +176,21 @@ function buildExecutionPrompt(context: StepExecutionContext): string {
     || context.title;
 }
 
+function buildStepVerificationDetail(input: {
+  route: ReturnType<typeof resolveAutomationStepRoute>;
+  approvalState?: "pending" | "approved" | "rejected" | "not_required" | null;
+}) {
+  const policy = resolveVerificationPolicyForRiskClass(input.route.riskTier ?? "medium", {
+    requiresHumanApproval: input.route.requiresApproval ?? false,
+  });
+  return buildVerificationPolicyEvidence(policy, {
+    routeRiskTier: input.route.riskTier ?? "medium",
+    routeSurface: input.route.surface,
+    routeRequiresApproval: input.route.requiresApproval,
+    approvalState: input.approvalState ?? null,
+  });
+}
+
 function buildOutputRef(prefix: string, value: string | number | null | undefined): string | null {
   if (value === null || value === undefined) return null;
   const normalized = String(value).trim();
@@ -299,6 +318,7 @@ async function recordAwaitingApprovalStep(
     stepIndex: context.stepIndex,
     title: context.title,
     status: "awaiting_approval",
+    riskTier: route.riskTier,
     surface: route.surface,
     inputRefsJson: context.inputRefsJson ?? [],
     outputRefsJson: checkpoint ? [buildOutputRef("automation-checkpoint", checkpoint.id)].filter(Boolean) as string[] : [],
@@ -315,6 +335,10 @@ async function recordAwaitingApprovalStep(
         checkpointKey: route.checkpointKey,
         requiresApproval: route.requiresApproval,
       },
+      verificationPolicy: buildStepVerificationDetail({
+        route,
+        approvalState: "pending",
+      }),
     },
     runStatus: "waiting_for_approval",
     createdByUserId: context.actorUserId,
@@ -935,6 +959,7 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
         stepIndex: input.stepIndex,
         title: input.title,
         status: "running",
+        riskTier: route.riskTier,
         surface: route.surface,
         inputRefsJson: input.inputRefsJson ?? [],
         outputRefsJson: adapterResult.outputRefsJson,
@@ -1094,6 +1119,12 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
           adapterKind: adapterResult.adapterKind,
           adapterDetail: adapterResult.adapterDetail,
           checkpointId: checkpoint?.id ?? null,
+          verificationPolicy: buildStepVerificationDetail({
+            route,
+            approvalState: input.approvalState ?? "approved",
+          }),
+          verificationResult: "passed",
+          verificationEvidenceRefs: outputRefs,
         },
         runStatus,
         finalDisposition,
@@ -1136,6 +1167,7 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
       stepIndex: input.stepIndex,
       title: input.title,
       status: "failed",
+      riskTier: route.riskTier,
       surface: route.surface,
       inputRefsJson: input.inputRefsJson ?? [],
       outputRefsJson: [],
@@ -1149,6 +1181,11 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
           requiresApproval: route.requiresApproval,
         },
         error: finalDispositionReason,
+        verificationPolicy: buildStepVerificationDetail({
+          route,
+          approvalState: input.approvalState ?? null,
+        }),
+        verificationResult: "failed",
       },
       runStatus,
       finalDisposition,
@@ -1171,6 +1208,7 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
     stepIndex: input.stepIndex,
     title: input.title,
     status: "succeeded",
+    riskTier: route.riskTier,
     surface: route.surface,
     inputRefsJson: input.inputRefsJson ?? [],
     outputRefsJson: outputRefs,
@@ -1186,6 +1224,12 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
       adapterKind: adapterResult.adapterKind,
       adapterDetail: adapterResult.adapterDetail,
       checkpointId: checkpoint?.id ?? null,
+      verificationPolicy: buildStepVerificationDetail({
+        route,
+        approvalState: input.approvalState ?? "approved",
+      }),
+      verificationResult: "passed",
+      verificationEvidenceRefs: outputRefs,
     },
     runStatus,
     finalDisposition,

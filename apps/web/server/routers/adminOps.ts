@@ -42,9 +42,11 @@ export const adminOpsRouter = router({
     const { listWorkpackReadinessSummaries } = await import("../services/workpackReadinessService");
     const summary = await getWorkpackMonitoringSummary(tenantId);
     const readiness = await listWorkpackReadinessSummaries(tenantId);
+    const totals = summary.totals ?? { workpackCount: 0, eventCount: 0, snapshotCount: 0 };
 
     return {
-      summary,
+      summary: totals,
+      monitoringSummary: summary,
       readiness,
       blockers: readiness.filter((item) => item.gateResult !== "ready"),
     };
