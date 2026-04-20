@@ -1,6 +1,7 @@
 import type { AgentRuntimeTraceEvent } from "../../../shared/agentRuntime/runtimeEvents";
 import { AgentRuntimeTraceEventSchema } from "../../../shared/agentRuntime/runtimeEvents";
 import type { AgentRuntimeSurface } from "../../../shared/agentRuntime/types";
+import { redactRuntimeMetadata } from "./redaction";
 
 export interface RuntimeTracePersistenceRecord {
   tenantId: string;
@@ -54,36 +55,10 @@ export interface PersistAgentRuntimeTraceEventsResult {
   duplicatesSkipped: number;
 }
 
-const TRACE_REDACTED_KEY_PATTERN =
-  /(authorization|cookie|token|api[-_]?key|secret|signature|provider[_-]?api[_-]?key)/i;
-
-function redactTracePayloadValue(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(item => redactTracePayloadValue(item));
-  }
-  if (value && typeof value === "object") {
-    const output: Record<string, unknown> = {};
-    for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
-      if (TRACE_REDACTED_KEY_PATTERN.test(key)) {
-        output[key] = "[REDACTED]";
-      } else {
-        output[key] = redactTracePayloadValue(nested);
-      }
-    }
-    return output;
-  }
-  if (typeof value === "string") {
-    return value
-      .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [REDACTED]")
-      .replace(/\b(?:sk|rk|pk)-[A-Za-z0-9_-]+\b/g, "[REDACTED]");
-  }
-  return value;
-}
-
 export function redactTracePayload(
   payload: Record<string, unknown>,
 ): Record<string, unknown> {
-  return redactTracePayloadValue(payload) as Record<string, unknown>;
+  return redactRuntimeMetadata(payload);
 }
 
 export function dedupeTraceEvents(

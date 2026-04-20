@@ -1051,6 +1051,27 @@
       "when": 1776221000000,
       "tag": "0153_work_os_browser_task_claims",
       "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "7",
+      "when": 1776222000000,
+      "tag": "0154_team_room_language",
+      "breakpoints": true
+    },
+    {
+      "idx": 151,
+      "version": "7",
+      "when": 1776223000000,
+      "tag": "0155_auto_team_execution_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1776224000000,
+      "tag": "0156_openai_agents_runtime_persistence",
+      "breakpoints": true
     }
   ]
 }

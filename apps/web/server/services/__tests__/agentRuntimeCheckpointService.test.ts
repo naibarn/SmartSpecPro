@@ -32,6 +32,10 @@ describe("persistAgentRuntimeCheckpoint", () => {
     const checkpoint = AgentRuntimeCheckpointSchema.parse({
       ...readJsonFixture<Record<string, unknown>>("checkpoint.json"),
       surface: "chat",
+      checkpointPayload: {
+        authorization: "Bearer secret-token",
+        state: "awaiting_human_review",
+      },
     });
 
     const result = await persistAgentRuntimeCheckpoint({
@@ -49,6 +53,8 @@ describe("persistAgentRuntimeCheckpoint", () => {
     expect(result.storage).toBe("generic");
     expect(generic).toHaveLength(1);
     expect(workOs).toHaveLength(0);
+    expect(JSON.stringify(generic[0])).not.toContain("secret-token");
+    expect(JSON.stringify(generic[0])).toContain("[REDACTED]");
   });
 
   it("uses Work OS checkpoint persistence for work-backed Team approvals", async () => {

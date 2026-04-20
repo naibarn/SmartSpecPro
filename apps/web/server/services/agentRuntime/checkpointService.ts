@@ -3,6 +3,7 @@ import {
   type AgentRuntimeCheckpoint,
 } from "../../../shared/agentRuntime/runtimeEvents";
 import type { AgentRuntimeSurface } from "../../../shared/agentRuntime/types";
+import { redactRuntimeMetadata } from "./redaction";
 
 export interface GenericCheckpointRecord {
   checkpointId: string;
@@ -51,7 +52,7 @@ function toBaseRecord(
     requestId: checkpoint.requestId,
     status: checkpoint.status,
     resumeCursor: checkpoint.resumeCursor ?? null,
-    checkpointPayload: checkpoint.checkpointPayload ?? {},
+    checkpointPayload: redactRuntimeMetadata(checkpoint.checkpointPayload ?? {}),
     originalCheckpointId: input.originalCheckpointId ?? null,
     attemptId: input.attemptId ?? null,
   };

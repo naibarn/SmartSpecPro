@@ -8827,6 +8827,7 @@ export const teamRooms = pgTable("team_rooms", {
   roomType: teamRoomTypeEnum("roomType").notNull(),
   title: varchar("title", { length: 255 }),
   goalPrompt: text("goalPrompt"),
+  language: text("language").notNull().default("en"),
   projectId: integer("projectId"),
   viewMode: varchar("viewMode", { length: 30 }).default("transparent"),
   summaryMode: varchar("summaryMode", { length: 30 }),
@@ -8937,6 +8938,17 @@ export const teamRuns = pgTable("team_runs", {
   budgetSnapshotJson: jsonb("budgetSnapshotJson").$type<BudgetSnapshot>(),
   summaryArtifactId: varchar("summaryArtifactId", { length: 36 }),
   stopReason: text("stopReason"),
+  runtimeEngine: varchar("runtimeEngine", { length: 32 }),
+  runtimeMode: varchar("runtimeMode", { length: 32 }),
+  runtimeSdkVersion: varchar("runtimeSdkVersion", { length: 32 }),
+  runtimeAdapterVersion: varchar("runtimeAdapterVersion", { length: 32 }),
+  runtimeTraceId: varchar("runtimeTraceId", { length: 255 }),
+  runtimeGatewayRouteId: varchar("runtimeGatewayRouteId", { length: 255 }),
+  runtimeFrozenAt: timestamp("runtimeFrozenAt", { withTimezone: true }),
+  runtimeTerminalReason: varchar("runtimeTerminalReason", { length: 120 }),
+  runtimeCurrentStepKey: varchar("runtimeCurrentStepKey", { length: 180 }),
+  runtimeApprovalState: varchar("runtimeApprovalState", { length: 64 }),
+  runtimeStateJson: jsonb("runtimeStateJson").$type<Record<string, unknown>>(),
   startedAt: timestamp("startedAt", { withTimezone: true }),
   endedAt: timestamp("endedAt", { withTimezone: true }),
 }, (t) => [
@@ -8947,6 +8959,82 @@ export const teamRuns = pgTable("team_runs", {
 
 export type TeamRun = typeof teamRuns.$inferSelect;
 export type InsertTeamRun = typeof teamRuns.$inferInsert;
+
+/**
+ * agent_runtime_traces — generic redacted runtime archive for Chat, Team, Responses, and shared skill callers.
+ */
+export const agentRuntimeTraces = pgTable("agent_runtime_traces", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  surface: varchar("surface", { length: 32 }).notNull(),
+  roomId: varchar("roomId", { length: 36 }),
+  runId: varchar("runId", { length: 36 }),
+  messageId: varchar("messageId", { length: 36 }),
+  stepKey: varchar("stepKey", { length: 180 }),
+  attemptId: varchar("attemptId", { length: 120 }),
+  traceId: varchar("traceId", { length: 255 }).notNull(),
+  eventId: varchar("eventId", { length: 255 }).notNull(),
+  sequence: integer("sequence").notNull(),
+  eventName: varchar("eventName", { length: 160 }).notNull(),
+  sourceComponent: varchar("sourceComponent", { length: 120 }).notNull(),
+  severity: varchar("severity", { length: 16 }).notNull().default("info"),
+  summary: text("summary"),
+  redactedMetadataJson: jsonb("redactedMetadataJson").notNull().default(sql`'{}'::jsonb`),
+  runtimeSdkVersion: varchar("runtimeSdkVersion", { length: 32 }),
+  runtimeAdapterVersion: varchar("runtimeAdapterVersion", { length: 32 }),
+  modelId: varchar("modelId", { length: 180 }),
+  providerId: varchar("providerId", { length: 120 }),
+  gatewayRouteId: varchar("gatewayRouteId", { length: 255 }),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("agent_runtime_traces_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
+  uniqueIndex("agent_runtime_traces_tenant_run_sequence_unique").on(t.tenantId, t.runId, t.sequence),
+  index("agent_runtime_traces_tenant_trace_idx").on(t.tenantId, t.traceId),
+  index("agent_runtime_traces_tenant_event_idx").on(t.tenantId, t.eventName, t.createdAt),
+]);
+
+export type AgentRuntimeTrace = typeof agentRuntimeTraces.$inferSelect;
+export type InsertAgentRuntimeTrace = typeof agentRuntimeTraces.$inferInsert;
+
+/**
+ * agent_runtime_checkpoints — generic pause/resume snapshots for Chat, Responses, and shared-skill runtime.
+ */
+export const agentRuntimeCheckpoints = pgTable("agent_runtime_checkpoints", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  surface: varchar("surface", { length: 32 }).notNull(),
+  roomId: varchar("roomId", { length: 36 }),
+  runId: varchar("runId", { length: 36 }),
+  messageId: varchar("messageId", { length: 36 }),
+  stepKey: varchar("stepKey", { length: 180 }),
+  attemptId: varchar("attemptId", { length: 120 }),
+  checkpointId: varchar("checkpointId", { length: 255 }).notNull(),
+  checkpointStatus: varchar("checkpointStatus", { length: 32 }).notNull(),
+  approvalState: varchar("approvalState", { length: 64 }),
+  resumeCursor: text("resumeCursor"),
+  snapshotJson: jsonb("snapshotJson").notNull().default(sql`'{}'::jsonb`),
+  detailJson: jsonb("detailJson").notNull().default(sql`'{}'::jsonb`),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  requestedBy: varchar("requestedBy", { length: 120 }),
+  approvedBy: varchar("approvedBy", { length: 120 }),
+  rejectedBy: varchar("rejectedBy", { length: 120 }),
+  resumedBy: varchar("resumedBy", { length: 120 }),
+  requestedAt: timestamp("requestedAt", { withTimezone: true }).defaultNow().notNull(),
+  approvedAt: timestamp("approvedAt", { withTimezone: true }),
+  rejectedAt: timestamp("rejectedAt", { withTimezone: true }),
+  resumedAt: timestamp("resumedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("agent_runtime_checkpoints_tenant_checkpoint_unique").on(t.tenantId, t.checkpointId),
+  uniqueIndex("agent_runtime_checkpoints_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
+  index("agent_runtime_checkpoints_tenant_run_step_idx").on(t.tenantId, t.runId, t.stepKey),
+  index("agent_runtime_checkpoints_tenant_status_updated_idx").on(t.tenantId, t.checkpointStatus, t.updatedAt),
+]);
+
+export type AgentRuntimeCheckpointRow = typeof agentRuntimeCheckpoints.$inferSelect;
+export type InsertAgentRuntimeCheckpointRow = typeof agentRuntimeCheckpoints.$inferInsert;
 
 /**
  * team_work_items — durable work objects for orchestrated routines and revisions.
@@ -9444,6 +9532,260 @@ export const workAutomationRunEvents = pgTable("work_automation_run_events", {
 
 export type WorkAutomationRunEvent = typeof workAutomationRunEvents.$inferSelect;
 export type InsertWorkAutomationRunEvent = typeof workAutomationRunEvents.$inferInsert;
+
+/**
+ * auto_team_route_decisions — canonical route classification and policy snapshot for an Auto-Team run.
+ */
+export const autoTeamRouteDecisions = pgTable("auto_team_route_decisions", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).references(() => teamRuns.id, { onDelete: "cascade" }),
+  workRequestId: varchar("workRequestId", { length: 36 }).references(() => workRequests.id, { onDelete: "set null" }),
+  workCaseId: varchar("workCaseId", { length: 36 }).references(() => workCases.id, { onDelete: "set null" }),
+  routeClass: varchar("routeClass", { length: 64 }).notNull(),
+  routeConfidence: real("routeConfidence"),
+  allowedCapabilityFamiliesJson: jsonb("allowedCapabilityFamiliesJson").$type<string[]>().notNull().default([]),
+  selectedPolicyJson: jsonb("selectedPolicyJson").$type<Record<string, unknown>>(),
+  selectedOrchestratorPersonaId: varchar("selectedOrchestratorPersonaId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  language: varchar("language", { length: 8 }).notNull().default("en"),
+  decisionReason: text("decisionReason"),
+  source: varchar("source", { length: 64 }).notNull().default("auto_team_route_policy"),
+  blockedReason: text("blockedReason"),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("auto_team_route_decisions_tenant_run_idempotency_unique")
+    .on(t.tenantId, t.runId, t.idempotencyKey),
+  index("auto_team_route_decisions_tenant_room_idx").on(t.tenantId, t.roomId, t.createdAt),
+  index("auto_team_route_decisions_tenant_request_idx").on(t.tenantId, t.workRequestId, t.createdAt),
+  index("auto_team_route_decisions_tenant_route_idx").on(t.tenantId, t.routeClass, t.createdAt),
+]);
+
+export type AutoTeamRouteDecisionRow = typeof autoTeamRouteDecisions.$inferSelect;
+export type InsertAutoTeamRouteDecisionRow = typeof autoTeamRouteDecisions.$inferInsert;
+
+/**
+ * auto_team_execution_stages — durable, ordered stage history for an Auto-Team run.
+ */
+export const autoTeamExecutionStages = pgTable("auto_team_execution_stages", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => teamRuns.id, { onDelete: "cascade" }),
+  routeDecisionId: varchar("routeDecisionId", { length: 36 }).references(() => autoTeamRouteDecisions.id, { onDelete: "cascade" }),
+  workItemId: varchar("workItemId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  planStepKey: varchar("planStepKey", { length: 120 }).notNull(),
+  stageType: varchar("stageType", { length: 64 }).notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("queued"),
+  assignedPersonaId: varchar("assignedPersonaId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  expectedCapabilityFamily: varchar("expectedCapabilityFamily", { length: 64 }),
+  selectedSkillId: varchar("selectedSkillId", { length: 180 }),
+  selectedProvider: varchar("selectedProvider", { length: 120 }),
+  inputArtifactRefsJson: jsonb("inputArtifactRefsJson").$type<string[]>().notNull().default([]),
+  outputArtifactRefsJson: jsonb("outputArtifactRefsJson").$type<string[]>().notNull().default([]),
+  jobRefIdsJson: jsonb("jobRefIdsJson").$type<string[]>().notNull().default([]),
+  attempt: integer("attempt").notNull().default(1),
+  maxAttempts: integer("maxAttempts").notNull().default(3),
+  claimToken: varchar("claimToken", { length: 128 }),
+  claimExpiresAt: timestamp("claimExpiresAt", { withTimezone: true }),
+  claimedBy: varchar("claimedBy", { length: 180 }),
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  deadlineAt: timestamp("deadlineAt", { withTimezone: true }),
+  blockedReason: text("blockedReason"),
+  errorCode: varchar("errorCode", { length: 120 }),
+  errorMessage: text("errorMessage"),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("auto_team_execution_stages_tenant_run_step_attempt_unique")
+    .on(t.tenantId, t.runId, t.planStepKey, t.attempt),
+  uniqueIndex("auto_team_execution_stages_tenant_run_idempotency_unique")
+    .on(t.tenantId, t.runId, t.idempotencyKey),
+  index("auto_team_execution_stages_tenant_run_status_idx").on(t.tenantId, t.runId, t.status),
+  index("auto_team_execution_stages_tenant_room_idx").on(t.tenantId, t.roomId, t.updatedAt),
+  index("auto_team_execution_stages_tenant_work_item_idx").on(t.tenantId, t.workItemId),
+  index("auto_team_execution_stages_tenant_route_decision_idx").on(t.tenantId, t.routeDecisionId),
+]);
+
+export type AutoTeamExecutionStageRow = typeof autoTeamExecutionStages.$inferSelect;
+export type InsertAutoTeamExecutionStageRow = typeof autoTeamExecutionStages.$inferInsert;
+
+/**
+ * auto_team_media_job_refs — provider task references for media execution.
+ */
+export const autoTeamMediaJobRefs = pgTable("auto_team_media_job_refs", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => teamRuns.id, { onDelete: "cascade" }),
+  stageId: varchar("stageId", { length: 36 }).references(() => autoTeamExecutionStages.id, { onDelete: "cascade" }),
+  workItemId: varchar("workItemId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  mediaType: varchar("mediaType", { length: 16 }).notNull(),
+  provider: varchar("provider", { length: 120 }).notNull(),
+  model: varchar("model", { length: 180 }).notNull(),
+  providerTaskId: varchar("providerTaskId", { length: 255 }),
+  providerStatus: varchar("providerStatus", { length: 64 }).notNull().default("queued"),
+  submittedPromptArtifactRef: varchar("submittedPromptArtifactRef", { length: 255 }),
+  resultArtifactRefsJson: jsonb("resultArtifactRefsJson").$type<string[]>().notNull().default([]),
+  providerRequestHash: varchar("providerRequestHash", { length: 128 }),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  lastPolledAt: timestamp("lastPolledAt", { withTimezone: true }),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  failedAt: timestamp("failedAt", { withTimezone: true }),
+  errorCode: varchar("errorCode", { length: 120 }),
+  errorMessage: text("errorMessage"),
+  metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("auto_team_media_job_refs_tenant_idempotency_unique")
+    .on(t.tenantId, t.idempotencyKey),
+  index("auto_team_media_job_refs_provider_task_idx").on(t.tenantId, t.provider, t.providerTaskId),
+  index("auto_team_media_job_refs_run_status_idx").on(t.tenantId, t.runId, t.providerStatus),
+  index("auto_team_media_job_refs_stage_idx").on(t.tenantId, t.stageId),
+  index("auto_team_media_job_refs_work_item_idx").on(t.tenantId, t.workItemId),
+]);
+
+export type AutoTeamMediaJobRefRow = typeof autoTeamMediaJobRefs.$inferSelect;
+export type InsertAutoTeamMediaJobRefRow = typeof autoTeamMediaJobRefs.$inferInsert;
+
+/**
+ * auto_team_review_records — reviewer scores and repair instructions.
+ */
+export const autoTeamReviewRecords = pgTable("auto_team_review_records", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => teamRuns.id, { onDelete: "cascade" }),
+  stageId: varchar("stageId", { length: 36 }).references(() => autoTeamExecutionStages.id, { onDelete: "cascade" }),
+  workItemId: varchar("workItemId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  reviewerPersonaId: varchar("reviewerPersonaId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  reviewType: varchar("reviewType", { length: 120 }).notNull(),
+  score: doublePrecision("score").notNull().default(0),
+  passThreshold: doublePrecision("passThreshold").notNull().default(0),
+  passed: boolean("passed").notNull().default(false),
+  reviewedArtifactRefsJson: jsonb("reviewedArtifactRefsJson").$type<string[]>().notNull().default([]),
+  reviewedJobRefIdsJson: jsonb("reviewedJobRefIdsJson").$type<string[]>().notNull().default([]),
+  comments: text("comments"),
+  repairInstructions: text("repairInstructions"),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("auto_team_review_records_tenant_run_review_idempotency_unique")
+    .on(t.tenantId, t.runId, t.reviewType, t.idempotencyKey),
+  index("auto_team_review_records_tenant_run_passed_idx").on(t.tenantId, t.runId, t.passed),
+  index("auto_team_review_records_tenant_stage_idx").on(t.tenantId, t.stageId),
+]);
+
+export type AutoTeamReviewRecordRow = typeof autoTeamReviewRecords.$inferSelect;
+export type InsertAutoTeamReviewRecordRow = typeof autoTeamReviewRecords.$inferInsert;
+
+/**
+ * auto_team_final_results — route completion and finalization evidence.
+ */
+export const autoTeamFinalResults = pgTable("auto_team_final_results", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => teamRuns.id, { onDelete: "cascade" }),
+  routeDecisionId: varchar("routeDecisionId", { length: 36 }).references(() => autoTeamRouteDecisions.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 64 }).notNull().default("legacy_unverified"),
+  finalArtifactRefsJson: jsonb("finalArtifactRefsJson").$type<string[]>().notNull().default([]),
+  mediaJobRefIdsJson: jsonb("mediaJobRefIdsJson").$type<string[]>().notNull().default([]),
+  reviewRecordRefIdsJson: jsonb("reviewRecordRefIdsJson").$type<string[]>().notNull().default([]),
+  humanApprovalStatus: varchar("humanApprovalStatus", { length: 32 }).notNull().default("not_required"),
+  summary: text("summary"),
+  failureReason: text("failureReason"),
+  blockedReason: text("blockedReason"),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("auto_team_final_results_tenant_run_idempotency_unique")
+    .on(t.tenantId, t.runId, t.idempotencyKey),
+  index("auto_team_final_results_tenant_route_decision_idx").on(t.tenantId, t.routeDecisionId),
+  index("auto_team_final_results_tenant_run_status_idx").on(t.tenantId, t.runId, t.status),
+]);
+
+export type AutoTeamFinalResultRow = typeof autoTeamFinalResults.$inferSelect;
+export type InsertAutoTeamFinalResultRow = typeof autoTeamFinalResults.$inferInsert;
+
+/**
+ * auto_team_trace_events — append-only durable trace log for Auto-Team runs.
+ */
+export const autoTeamTraceEvents = pgTable("auto_team_trace_events", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => teamRuns.id, { onDelete: "cascade" }),
+  stageId: varchar("stageId", { length: 36 }).references(() => autoTeamExecutionStages.id, { onDelete: "cascade" }),
+  workItemId: varchar("workItemId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  traceEventId: varchar("traceEventId", { length: 120 }).notNull(),
+  sequence: integer("sequence").notNull(),
+  eventName: varchar("eventName", { length: 160 }).notNull(),
+  sourceComponent: varchar("sourceComponent", { length: 120 }).notNull(),
+  severity: varchar("severity", { length: 16 }).notNull().default("info"),
+  summary: text("summary"),
+  redactedMetadataJson: jsonb("redactedMetadataJson").$type<Record<string, unknown>>().notNull().default({}),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("auto_team_trace_events_tenant_run_sequence_unique")
+    .on(t.tenantId, t.runId, t.sequence),
+  uniqueIndex("auto_team_trace_events_tenant_run_idempotency_unique")
+    .on(t.tenantId, t.runId, t.idempotencyKey),
+  index("auto_team_trace_events_tenant_event_idx").on(t.tenantId, t.eventName, t.createdAt),
+  index("auto_team_trace_events_tenant_trace_idx").on(t.tenantId, t.traceEventId),
+]);
+
+export type AutoTeamTraceEventRow = typeof autoTeamTraceEvents.$inferSelect;
+export type InsertAutoTeamTraceEventRow = typeof autoTeamTraceEvents.$inferInsert;
+
+/**
+ * auto_team_artifact_refs — canonical evidence handles for prompt/storyboard/media/review/final assets.
+ */
+export const autoTeamArtifactRefs = pgTable("auto_team_artifact_refs", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).references(() => teamRuns.id, { onDelete: "cascade" }),
+  stageId: varchar("stageId", { length: 36 }).references(() => autoTeamExecutionStages.id, { onDelete: "cascade" }),
+  workItemId: varchar("workItemId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  artifactType: varchar("artifactType", { length: 120 }).notNull(),
+  artifactRole: varchar("artifactRole", { length: 64 }).notNull(),
+  storageRef: text("storageRef"),
+  externalRef: text("externalRef"),
+  contentHash: varchar("contentHash", { length: 128 }),
+  visibility: varchar("visibility", { length: 32 }).notNull().default("tenant"),
+  retentionPolicyJson: jsonb("retentionPolicyJson").$type<Record<string, unknown>>().notNull().default({}),
+  safetyStatus: varchar("safetyStatus", { length: 32 }).notNull().default("unknown"),
+  source: varchar("source", { length: 120 }),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("auto_team_artifact_refs_tenant_run_idempotency_unique")
+    .on(t.tenantId, t.runId, t.idempotencyKey),
+  index("auto_team_artifact_refs_tenant_type_idx").on(t.tenantId, t.artifactType, t.createdAt),
+  index("auto_team_artifact_refs_tenant_stage_idx").on(t.tenantId, t.stageId),
+  index("auto_team_artifact_refs_tenant_visibility_idx").on(t.tenantId, t.visibility),
+]);
+
+export type AutoTeamArtifactRefRow = typeof autoTeamArtifactRefs.$inferSelect;
+export type InsertAutoTeamArtifactRefRow = typeof autoTeamArtifactRefs.$inferInsert;
 
 /**
  * agent_activity_events — append-only event log for monitoring.
