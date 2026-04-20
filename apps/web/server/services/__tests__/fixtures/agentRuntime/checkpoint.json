@@ -1,0 +1,14 @@
+{
+  "runtimeContractVersion": 2,
+  "traceSchemaVersion": 2,
+  "checkpointSchemaVersion": 2,
+  "checkpointId": "checkpoint-1",
+  "surface": "team",
+  "requestId": "req-checkpoint-1",
+  "tenantId": "tenant-1",
+  "resumeCursor": "cursor-1",
+  "status": "pending",
+  "checkpointPayload": {
+    "state": "awaiting_human_review"
+  }
+}

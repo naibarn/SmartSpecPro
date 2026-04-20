@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  AgentRuntimeEventSchema,
   AgentRuntimeRequestSchema,
+  AgentRuntimeResponseSchema,
   AgentRuntimeStepLinkSchema,
   CURRENT_CHECKPOINT_SCHEMA_VERSION,
   CURRENT_RUNTIME_CONTRACT_VERSION,
@@ -251,6 +253,159 @@ describe("Agent runtime shared DTO schemas", () => {
     expect(parsed.success).toBe(false);
   });
 
+  it("rejects a request when execution envelope tenant does not match", () => {
+    const parsed = AgentRuntimeRequestSchema.safeParse({
+      ...baseVersions,
+      surface: "chat",
+      entryPoint: "chat_turn",
+      tenantId: "tenant-1",
+      requestId: "req-envelope-mismatch",
+      idempotencyKey: "idem-envelope-mismatch",
+      objective: "Answer the prompt.",
+      contextEvidenceItems: [],
+      candidateSkillManifests: [],
+      allowedTools: [],
+      allowedSkills: [],
+      allowedAgents: [],
+      completionPolicy: {},
+      reviewPolicy: {},
+      retryPolicy: {},
+      traceCorrelationIds: {},
+      modelConfig: baseModel,
+      executionEnvelope: {
+        ...baseEnvelope,
+        tenantId: "tenant-2",
+      },
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("accepts a runtime event fixture that matches the Python adapter contract", () => {
+    const parsed = AgentRuntimeEventSchema.safeParse({
+      ...baseVersions,
+      eventId: "evt-1",
+      eventName: "response.output_text.delta",
+      surface: "chat",
+      requestId: "req-chat-1",
+      idempotencyKey: "idem-chat-1",
+      sequence: 1,
+      sourceComponent: "openai_agents_adapter",
+      traceId: "trace-1",
+      stepId: null,
+      stepKey: null,
+      attemptId: null,
+      sdkVersion: "0.14.2",
+      adapterVersion: "0.1.0",
+      redactedPayload: {
+        delta: "hello",
+      },
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("accepts a runtime response fixture that includes status, events, and checkpoint metadata", () => {
+    const parsed = AgentRuntimeResponseSchema.safeParse({
+      ...baseVersions,
+      status: "paused",
+      selectedAgentName: "Planner",
+      selectedSkillSlug: "brainstorm",
+      providerId: "openrouter",
+      modelId: "openai/gpt-4.1-mini",
+      gatewayRouteId: "gateway-auto",
+      resolvedGatewayModelId: "openai/gpt-4.1-mini",
+      finalOutput: {
+        summary: "Need approval before continuing.",
+      },
+      artifacts: [
+        {
+          artifactId: "artifact-1",
+          artifactType: "plan_draft",
+          contentRef: "artifact://plan/1",
+          metadata: {
+            origin: "chat",
+          },
+        },
+      ],
+      actingPersona: null,
+      stepAssignment: null,
+      toolCallsMade: ["search"],
+      handoffsExecuted: [],
+      reviewVerdict: {
+        status: "needs_repair",
+        issues: ["Need a clearer reviewer gate."],
+      },
+      repairInstructions: ["Clarify the quality gate before execution."],
+      evidenceRefs: ["artifact://plan/1"],
+      events: [
+        {
+          ...baseVersions,
+          eventId: "evt-1",
+          eventName: "response.output_text.done",
+          surface: "team",
+          requestId: "req-team-1",
+          idempotencyKey: "idem-team-1",
+          sequence: 0,
+          sourceComponent: "openai_agents_adapter",
+          traceId: "trace-team-1",
+          stepId: "step-id-1",
+          stepKey: "research-cultural-angle",
+          attemptId: "attempt-1",
+          sdkVersion: "0.14.2",
+          adapterVersion: "0.1.0",
+          redactedPayload: {
+            outputText: "Draft ready",
+          },
+        },
+      ],
+      traceId: "trace-team-1",
+      traceMetadata: {
+        groupId: "run-1",
+      },
+      adapterVersion: "0.1.0",
+      sdkVersion: "0.14.2",
+      checkpoint: {
+        ...baseVersions,
+        checkpointId: "checkpoint-1",
+        surface: "team",
+        requestId: "req-team-1",
+        tenantId: "tenant-1",
+        resumeCursor: "cursor-1",
+        status: "pending",
+        checkpointPayload: {
+          state: "waiting_for_review",
+        },
+      },
+      terminalReason: "approval_required",
+      nextAction: "Await human approval",
+      stepId: "step-id-1",
+      attemptId: "attempt-1",
+      checkpointMetadata: {
+        checkpointRef: "checkpoint-1",
+      },
+      eventSequenceMetadata: {
+        latest: 1,
+      },
+      stepLinks: [
+        {
+          linkType: "checkpoint",
+          stepKey: "research-cultural-angle",
+          attemptId: "attempt-1",
+          traceId: "trace-team-1",
+          checkpointId: "checkpoint-1",
+          messageId: "message-1",
+          anchorId: "checkpoint-anchor",
+          label: "Checkpoint",
+          isPrimary: true,
+          status: "available",
+        },
+      ],
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
   it("accepts valid owner_result and review_result step links", () => {
     expect(
       AgentRuntimeStepLinkSchema.safeParse({
@@ -283,4 +438,3 @@ describe("Agent runtime shared DTO schemas", () => {
     ).toBe(true);
   });
 });
-

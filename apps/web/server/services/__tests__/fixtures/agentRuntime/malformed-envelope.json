@@ -1,0 +1,10 @@
+{
+  "envelopeId": "",
+  "tenantId": "",
+  "issuedAt": "",
+  "expiresAt": "",
+  "allowedTools": [],
+  "allowedSkills": [],
+  "allowedAgents": [],
+  "sideEffectPolicy": "read_only"
+}

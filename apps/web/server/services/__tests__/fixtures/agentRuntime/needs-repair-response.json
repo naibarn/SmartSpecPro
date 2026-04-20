@@ -1,0 +1,91 @@
+{
+  "runtimeContractVersion": 2,
+  "traceSchemaVersion": 2,
+  "checkpointSchemaVersion": 2,
+  "status": "paused",
+  "selectedAgentName": "Trend Researcher",
+  "selectedSkillSlug": "general-article-writer",
+  "providerId": "openrouter",
+  "modelId": "openai/gpt-4.1-mini",
+  "gatewayRouteId": "gateway-auto",
+  "resolvedGatewayModelId": "openai/gpt-4.1-mini",
+  "finalOutput": {
+    "summary": "Needs cultural-source revision."
+  },
+  "artifacts": [
+    {
+      "artifactId": "artifact-repair-1",
+      "artifactType": "research_summary",
+      "contentRef": "artifact://research/retry",
+      "metadata": {
+        "origin": "team"
+      }
+    }
+  ],
+  "reviewVerdict": {
+    "status": "needs_repair",
+    "score": 0.61,
+    "issues": [
+      "Need stronger evidence for the modern-vs-traditional comparison."
+    ],
+    "recommendation": "Add supporting sources and separate facts from assumptions."
+  },
+  "events": [],
+  "traceMetadata": {
+    "groupId": "run-repair-1"
+  },
+  "traceId": "trace-repair-1",
+  "adapterVersion": "0.1.0",
+  "sdkVersion": "0.14.2",
+  "toolCallsMade": [],
+  "handoffsExecuted": [],
+  "actingPersona": null,
+  "stepAssignment": {
+    "ownerMemberId": "member-owner",
+    "ownerPersonaId": "persona-owner",
+    "ownerDisplayLabel": "Trend Researcher",
+    "reviewerMemberId": "member-reviewer",
+    "reviewerPersonaId": "persona-reviewer",
+    "reviewerDisplayLabel": "Content Director"
+  },
+  "nextAction": "Revise step 1 with stronger evidence.",
+  "stepId": "step-research-1",
+  "attemptId": "attempt-repair-1",
+  "checkpointMetadata": {
+    "pendingReview": true
+  },
+  "eventSequenceMetadata": {},
+  "evidenceRefs": [
+    "artifact://research/retry"
+  ],
+  "repairInstructions": [
+    "Collect at least two explicit cultural references."
+  ],
+  "terminalReason": null,
+  "stepLinks": [
+    {
+      "linkType": "review_result",
+      "stepKey": "research-context",
+      "attemptId": "attempt-repair-1",
+      "traceId": "trace-repair-1",
+      "checkpointId": null,
+      "messageId": "msg-review-repair-1",
+      "anchorId": "review-repair-anchor",
+      "label": "Review result",
+      "isPrimary": true,
+      "status": "available"
+    },
+    {
+      "linkType": "repair_result",
+      "stepKey": "research-context",
+      "attemptId": "attempt-repair-1",
+      "traceId": "trace-repair-1",
+      "checkpointId": "checkpoint-repair-1",
+      "messageId": "msg-repair-1",
+      "anchorId": "repair-result-anchor",
+      "label": "Repair result",
+      "isPrimary": false,
+      "status": "pending"
+    }
+  ]
+}

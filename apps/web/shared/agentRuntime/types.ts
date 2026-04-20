@@ -34,6 +34,13 @@ export const AGENT_RUNTIME_ENTRY_POINTS = [
 
 export const AGENT_RUNTIME_ENGINES = ["legacy", "openai_agents"] as const;
 export const AGENT_RUNTIME_MODES = ["legacy", "shadow", "active"] as const;
+export const AGENT_RUNTIME_STATUSES = [
+  "completed",
+  "paused",
+  "cancelled",
+  "failed",
+  "running",
+] as const;
 
 export const REVIEW_VERDICT_STATUSES = [
   "pass",
@@ -108,6 +115,7 @@ export const AgentRuntimeEntryPointSchema = z.enum(
 );
 export const AgentRuntimeEngineSchema = z.enum(AGENT_RUNTIME_ENGINES);
 export const AgentRuntimeModeSchema = z.enum(AGENT_RUNTIME_MODES);
+export const AgentRuntimeStatusSchema = z.enum(AGENT_RUNTIME_STATUSES);
 export const ReviewVerdictStatusSchema = z.enum(REVIEW_VERDICT_STATUSES);
 export const RuntimeTerminalReasonSchema = z.enum(RUNTIME_TERMINAL_REASONS);
 export const AgentContextTrustLevelSchema = z.enum(
@@ -261,6 +269,13 @@ export const ReviewVerdictSchema = z.object({
   checkpointRequired: z.boolean().optional(),
 });
 
+export const RuntimeArtifactSchema = z.object({
+  artifactId: z.string().min(1),
+  artifactType: z.string().min(1),
+  contentRef: z.string().min(1).nullable().optional(),
+  metadata: z.record(z.unknown()).default({}),
+});
+
 export const AgentRuntimeStepLinkSchema = z.object({
   linkType: AgentRuntimeStepLinkTypeSchema,
   stepKey: z.string().min(1),
@@ -286,18 +301,22 @@ export const StepExecutionRecordSchema = z.object({
 
 export const AgentRuntimeEventSchema = AgentRuntimeContractVersionsSchema.extend({
   eventId: z.string().min(1),
-  eventType: z.string().min(1),
+  eventName: z.string().min(1),
   surface: AgentRuntimeSurfaceSchema,
   requestId: z.string().min(1),
+  idempotencyKey: z.string().min(1),
   sequence: z.number().int().nonnegative(),
+  sourceComponent: z.string().min(1),
   traceId: z.string().min(1).nullable().optional(),
+  stepId: z.string().min(1).nullable().optional(),
   stepKey: z.string().min(1).nullable().optional(),
   attemptId: z.string().min(1).nullable().optional(),
-});
-
-export const AgentRuntimeTraceEventSchema = AgentRuntimeEventSchema.extend({
+  sdkVersion: z.string().min(1),
+  adapterVersion: z.string().min(1),
   redactedPayload: z.record(z.unknown()).default({}),
 });
+
+export const AgentRuntimeTraceEventSchema = AgentRuntimeEventSchema;
 
 export const AgentRuntimeCheckpointSchema =
   AgentRuntimeContractVersionsSchema.extend({
@@ -307,6 +326,7 @@ export const AgentRuntimeCheckpointSchema =
     tenantId: z.string().min(1),
     resumeCursor: z.string().min(1).nullable().optional(),
     status: z.enum(["pending", "resumed", "cancelled"]),
+    checkpointPayload: z.record(z.unknown()).default({}),
   });
 
 export const AgentRuntimeRequestSchema = AgentRuntimeContractVersionsSchema.extend(
@@ -355,16 +375,27 @@ export const AgentRuntimeRequestSchema = AgentRuntimeContractVersionsSchema.exte
     modelConfig: RuntimeModelConfigSchema,
     executionEnvelope: AgentExecutionEnvelopeSchema,
   }
-);
+).superRefine((value, ctx) => {
+  if (value.executionEnvelope.tenantId !== value.tenantId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["executionEnvelope", "tenantId"],
+      message: "execution_envelope_tenant_mismatch",
+    });
+  }
+});
 
 export const AgentRuntimeResponseSchema = AgentRuntimeContractVersionsSchema.extend(
   {
-    selectedAgentName: z.string().min(1),
+    status: AgentRuntimeStatusSchema,
+    selectedAgentName: z.string().min(1).nullable().optional(),
     selectedSkillSlug: z.string().min(1).nullable().optional(),
-    providerId: z.string().min(1),
-    modelId: z.string().min(1),
+    providerId: z.string().min(1).nullable().optional(),
+    modelId: z.string().min(1).nullable().optional(),
     gatewayRouteId: z.string().min(1).nullable().optional(),
     resolvedGatewayModelId: z.string().min(1).nullable().optional(),
+    finalOutput: z.unknown().nullable().optional(),
+    artifacts: z.array(RuntimeArtifactSchema).default([]),
     actingPersona: AgentRuntimePersonaSnapshotSchema.nullable().optional(),
     stepAssignment: AgentRuntimeStepAssignmentSchema.nullable().optional(),
     toolCallsMade: z.array(z.string().min(1)).default([]),
@@ -372,8 +403,12 @@ export const AgentRuntimeResponseSchema = AgentRuntimeContractVersionsSchema.ext
     reviewVerdict: ReviewVerdictSchema.nullable().optional(),
     repairInstructions: z.array(z.string().min(1)).default([]),
     evidenceRefs: z.array(z.string().min(1)).default([]),
+    events: z.array(AgentRuntimeEventSchema).default([]),
     traceId: z.string().min(1).nullable().optional(),
+    traceMetadata: z.record(z.unknown()).default({}),
     adapterVersion: z.string().min(1),
+    sdkVersion: z.string().min(1),
+    checkpoint: AgentRuntimeCheckpointSchema.nullable().optional(),
     terminalReason: RuntimeTerminalReasonSchema.nullable().optional(),
     nextAction: z.string().min(1).nullable().optional(),
     stepId: z.string().min(1).nullable().optional(),
@@ -393,6 +428,7 @@ export type AgentRuntimeEntryPoint = z.infer<
 >;
 export type AgentRuntimeEngine = z.infer<typeof AgentRuntimeEngineSchema>;
 export type AgentRuntimeMode = z.infer<typeof AgentRuntimeModeSchema>;
+export type AgentRuntimeStatus = z.infer<typeof AgentRuntimeStatusSchema>;
 export type AgentRuntimeContractVersions = z.infer<
   typeof AgentRuntimeContractVersionsSchema
 >;
@@ -416,6 +452,7 @@ export type AgentCapabilityManifest = z.infer<
   typeof AgentCapabilityManifestSchema
 >;
 export type ReviewVerdict = z.infer<typeof ReviewVerdictSchema>;
+export type RuntimeArtifact = z.infer<typeof RuntimeArtifactSchema>;
 export type RuntimeTerminalReason = z.infer<
   typeof RuntimeTerminalReasonSchema
 >;
@@ -456,4 +493,3 @@ export function isSupportedCheckpointSchemaVersion(version: number): boolean {
     MINIMUM_COMPATIBLE_CHECKPOINT_SCHEMA_VERSION
   );
 }
-
