@@ -73,6 +73,16 @@ export interface TenantFeatureFlags {
   hermesTaskModes: boolean; // F65 — Hermes task mode summaries and work-mode mapping
   hermesVisibilitySummaries: boolean; // F66 — Hermes progress and observability summaries
   agentRegistryEnabled: boolean; // F67 — Governed agent registry surface and rollout gates
+  openAiAgentsRuntimeEnabled: boolean; // F68 — Shared OpenAI Agents SDK runtime master gate
+  openAiAgentsRuntimeChatShadow: boolean; // F69 — Chat shadow runtime via OpenAI Agents adapter
+  openAiAgentsRuntimeTeamShadow: boolean; // F70 — Team shadow runtime via OpenAI Agents adapter
+  openAiAgentsRuntimeChatActive: boolean; // F71 — Chat active runtime via OpenAI Agents adapter
+  openAiAgentsRuntimeTeamActive: boolean; // F72 — Team active runtime via OpenAI Agents adapter
+  openAiAgentsRuntimeResponsesShadow: boolean; // F73 — Responses shadow runtime via OpenAI Agents adapter
+  openAiAgentsRuntimeResponsesActive: boolean; // F74 — Responses active runtime via OpenAI Agents adapter
+  openAiAgentsRuntimeSkillShadow: boolean; // F75 — Shared skill shadow runtime via OpenAI Agents adapter
+  openAiAgentsRuntimeSkillActive: boolean; // F76 — Shared skill active runtime via OpenAI Agents adapter
+  openAiAgentsRuntimeForceRollback: boolean; // F77 — Force new runtime selections back to legacy
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -149,6 +159,16 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "hermesTaskModes",
   "hermesVisibilitySummaries",
   "agentRegistryEnabled",
+  "openAiAgentsRuntimeEnabled",
+  "openAiAgentsRuntimeChatShadow",
+  "openAiAgentsRuntimeTeamShadow",
+  "openAiAgentsRuntimeChatActive",
+  "openAiAgentsRuntimeTeamActive",
+  "openAiAgentsRuntimeResponsesShadow",
+  "openAiAgentsRuntimeResponsesActive",
+  "openAiAgentsRuntimeSkillShadow",
+  "openAiAgentsRuntimeSkillActive",
+  "openAiAgentsRuntimeForceRollback",
 ]);
 
 /**
@@ -224,6 +244,16 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   hermesTaskModes: false, // Hermes task mode summaries stay rollout-gated until operator surfaces are ready
   hermesVisibilitySummaries: false, // Hermes visibility summaries stay admin-gated until rollout evidence exists
   agentRegistryEnabled: false, // Governed registry rollout remains tenant opt-in until staged adoption is ready
+  openAiAgentsRuntimeEnabled: false, // Shared OpenAI Agents SDK runtime stays disabled until replay and rollout gates pass
+  openAiAgentsRuntimeChatShadow: false, // Chat shadow stays off until adapter and comparison traces are ready
+  openAiAgentsRuntimeTeamShadow: false, // Team shadow stays off until plan/ledger parity is verified
+  openAiAgentsRuntimeChatActive: false, // Chat active stays off until shadow parity is proven
+  openAiAgentsRuntimeTeamActive: false, // Team active stays off until plan execution and review loops are verified
+  openAiAgentsRuntimeResponsesShadow: false, // Responses shadow stays off until schema parity is verified
+  openAiAgentsRuntimeResponsesActive: false, // Responses active stays off until structured-call parity is verified
+  openAiAgentsRuntimeSkillShadow: false, // Shared skill shadow stays off until manifest-driven selection is ready
+  openAiAgentsRuntimeSkillActive: false, // Shared skill active stays off until typed caller contracts are proven
+  openAiAgentsRuntimeForceRollback: false, // Rollback remains available but disabled by default
 };
 
 export type HermesRolloutSurface =
