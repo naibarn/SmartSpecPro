@@ -24,6 +24,14 @@ import {
   normalizeMediaProviderName,
   WAVESPEED_PROVIDER,
 } from "./mediaProviderUtils";
+import {
+  GEMINI_3_1_FLASH_TTS_CREDIT_COST,
+  GEMINI_3_1_FLASH_TTS_MODEL_ID,
+  GEMINI_3_1_FLASH_TTS_VOICES,
+  assertGemini31FlashTtsAudioRequest,
+  assertGemini31FlashTtsExtraParams,
+  normalizeGemini31FlashTtsExtraParams,
+} from "./falGeminiTts";
 
 // ==================== Types ====================
 
@@ -310,6 +318,15 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     creditCost: 20,
   },
   // Audio models
+  [GEMINI_3_1_FLASH_TTS_MODEL_ID]: {
+    id: GEMINI_3_1_FLASH_TTS_MODEL_ID,
+    type: "audio",
+    name: "Gemini 3.1 Flash TTS",
+    provider: "fal_ai",
+    description: "Single- and multi-speaker text-to-speech with language steering",
+    supportsVoices: [...GEMINI_3_1_FLASH_TTS_VOICES],
+    creditCost: GEMINI_3_1_FLASH_TTS_CREDIT_COST,
+  },
   "elevenlabs-tts": {
     id: "elevenlabs-tts",
     type: "audio",
@@ -556,28 +573,92 @@ export function resolveReferenceUrl(url: string, publicUrl?: string | null): str
   return url;
 }
 
+function normalizeExtraParamKey(key: string): string {
+  return String(key ?? "").trim().replace(/[^a-z0-9]/gi, "").toLowerCase();
+}
+
+function isLikelyUrlLikeExtraParamKey(key: string): boolean {
+  const normalizedKey = normalizeExtraParamKey(key);
+  if (!normalizedKey) {
+    return false;
+  }
+
+  return (
+    normalizedKey === "url"
+    || normalizedKey.endsWith("url")
+    || normalizedKey.endsWith("urls")
+    || normalizedKey === "uri"
+    || normalizedKey.endsWith("uri")
+    || normalizedKey.endsWith("uris")
+    || normalizedKey.includes("referenceimage")
+    || normalizedKey.includes("referencevideo")
+    || normalizedKey.includes("referenceaudio")
+    || normalizedKey.includes("imageurl")
+    || normalizedKey.includes("videourl")
+    || normalizedKey.includes("audiourl")
+    || normalizedKey.includes("imageinput")
+    || normalizedKey.includes("videoinput")
+    || normalizedKey.includes("audioinput")
+    || normalizedKey.includes("fileurl")
+    || normalizedKey.includes("filepath")
+    || normalizedKey.includes("sourceurl")
+    || normalizedKey.includes("asseturl")
+    || normalizedKey.includes("mediaurl")
+  );
+}
+
 /**
- * Process extraParams and resolve any relative URLs (e.g., image_input field)
- * This ensures public asset URLs like /uploads/... and /api/storage/files/... are converted to full URLs for the Python backend
- * @param extraParams The extra parameters object
- * @param publicUrl Optional public URL from request context (tenant domain)
+ * Process extraParams and resolve relative media URLs only for URL-like keys.
+ * This keeps plain text fields such as style_instructions untouched even when
+ * they happen to start with '/'.
  */
 function resolveExtraParamsUrls(extraParams: Record<string, any>, publicUrl?: string | null): Record<string, any> {
   const resolved = { ...extraParams };
   for (const [key, value] of Object.entries(resolved)) {
-    // If value is an array of strings that look like relative URLs, resolve them
-    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string') {
-      const firstVal = value[0] as string;
-      if (firstVal.startsWith('/') && !firstVal.startsWith('//')) {
+    if (!isLikelyUrlLikeExtraParamKey(key)) {
+      continue;
+    }
+
+    // Resolve arrays of URL-like strings, preserving existing absolute URLs.
+    if (Array.isArray(value) && value.length > 0 && value.every((entry) => typeof entry === "string")) {
+      const firstVal = String(value[0] ?? "").trim();
+      if (firstVal.startsWith("/") && !firstVal.startsWith("//")) {
         resolved[key] = value.map((url: string) => resolveReferenceUrl(url, publicUrl));
       }
+      continue;
     }
-    // If value is a single string that looks like a relative URL
-    else if (typeof value === 'string' && value.startsWith('/') && !value.startsWith('//')) {
+
+    // Resolve a single URL-like string if it references a relative asset path.
+    if (typeof value === "string" && value.startsWith("/") && !value.startsWith("//")) {
       resolved[key] = resolveReferenceUrl(value, publicUrl);
     }
   }
   return resolved;
+}
+
+function assertValidAudioModelExtraParams(modelId: string, extraParams: Record<string, unknown> | undefined): void {
+  const normalizedModelId = mapToApiModelId(modelId);
+  if (normalizedModelId === GEMINI_3_1_FLASH_TTS_MODEL_ID) {
+    assertGemini31FlashTtsExtraParams(extraParams);
+  }
+}
+
+function assertValidAudioModelRequest(modelId: string, request: Pick<AudioGenerationRequest, "speed">): void {
+  const normalizedModelId = mapToApiModelId(modelId);
+  if (normalizedModelId === GEMINI_3_1_FLASH_TTS_MODEL_ID) {
+    assertGemini31FlashTtsAudioRequest(request);
+  }
+}
+
+function normalizeValidAudioModelExtraParams(
+  modelId: string,
+  extraParams: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  const normalizedModelId = mapToApiModelId(modelId);
+  if (normalizedModelId === GEMINI_3_1_FLASH_TTS_MODEL_ID) {
+    return normalizeGemini31FlashTtsExtraParams(extraParams);
+  }
+  return extraParams;
 }
 
 function getReferenceImageLimitForModel(modelId: string): number {
@@ -1308,6 +1389,9 @@ export class MediaGenerationService {
     userToken: string
   ): Promise<MediaGenerationResponse> {
     const modelId = request.model || DEFAULT_MODELS.audio;
+    assertValidAudioModelRequest(modelId, request);
+    const normalizedExtraParams = normalizeValidAudioModelExtraParams(modelId, request.extraParams);
+    assertValidAudioModelExtraParams(modelId, normalizedExtraParams);
     const provider = resolveProvider(modelId, request.apiConfig);
     const payload: Record<string, unknown> = {
       text: request.text,
@@ -1322,8 +1406,8 @@ export class MediaGenerationService {
     }
 
     // Add extraParams for model-specific fields
-    if (request.extraParams) {
-      payload.extra_params = resolveExtraParamsUrls(request.extraParams, request.publicUrl);
+    if (normalizedExtraParams) {
+      payload.extra_params = resolveExtraParamsUrls(normalizedExtraParams, request.publicUrl);
     }
 
     this.logMediaRequest({
@@ -1630,6 +1714,9 @@ export class MediaGenerationService {
     userToken: string
   ): Promise<MediaTask> {
     const modelId = request.model || DEFAULT_MODELS.audio;
+    assertValidAudioModelRequest(modelId, request);
+    const normalizedExtraParams = normalizeValidAudioModelExtraParams(modelId, request.extraParams);
+    assertValidAudioModelExtraParams(modelId, normalizedExtraParams);
     const provider = resolveProvider(modelId, request.apiConfig);
     const payload: Record<string, unknown> = {
       text: request.text,
@@ -1644,8 +1731,8 @@ export class MediaGenerationService {
     }
 
     // Add extraParams for model-specific fields
-    if (request.extraParams) {
-      payload.extra_params = resolveExtraParamsUrls(request.extraParams, request.publicUrl);
+    if (normalizedExtraParams) {
+      payload.extra_params = resolveExtraParamsUrls(normalizedExtraParams, request.publicUrl);
     }
 
     this.logMediaRequest({

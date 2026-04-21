@@ -5,6 +5,7 @@
  * Credit conversion:
  * - Platform: 1 USD = 1000 credits (1 credit = $0.001)
  * - fal.ai LTX-2.3 video: $0.036–$0.24 per clip (resolution × duration matrix)
+ * - fal.ai Gemini 3.1 Flash TTS: ~$0.15 per 1000 characters
  * - fal.ai Lux TTS: ~$0.0014 per 1000 characters
  * - fal.ai Flux image: $0.01–$0.03 per image (flat)
  *
@@ -16,6 +17,11 @@
  */
 
 import postgres from "postgres";
+import {
+  GEMINI_3_1_FLASH_TTS_CREDIT_COST,
+  GEMINI_3_1_FLASH_TTS_MODEL_ID,
+  buildGemini31FlashTtsInputFields,
+} from "../server/services/falGeminiTts";
 
 const DATABASE_URL = process.env.DATABASE_URL || "postgresql://smartspec:smartspec_dev@localhost:5432/smartspec";
 
@@ -27,9 +33,15 @@ interface InputField {
   label: string;
   type: "select" | "text" | "number" | "boolean" | "image_urls" | "video_urls" | "audio_urls" | "array";
   options?: { value: string; label: string }[];
-  default?: string | number | boolean;
+  default?: unknown;
   required?: boolean;
   affectsPricing?: boolean;
+  placeholder?: string;
+  description?: string;
+  searchable?: boolean;
+  itemLabel?: string;
+  itemFields?: InputField[];
+  maxItems?: number;
   syncWith?: "none" | "reference_images" | "prompt" | "aspect_ratio";
 }
 
@@ -531,9 +543,34 @@ const VIDEO_MODELS: VideoModelEntry[] = [
 ];
 
 // ============================================================
-// Audio Model — Lux TTS (synchronous)
+// Audio Models — Gemini 3.1 Flash TTS + Lux TTS (synchronous)
 // ============================================================
 const AUDIO_MODELS: AudioModelEntry[] = [
+  {
+    modelId: GEMINI_3_1_FLASH_TTS_MODEL_ID,
+    name: "Gemini 3.1 Flash TTS",
+    description: "fal.ai Gemini 3.1 Flash TTS — language-steered single-speaker voice presets and multi-speaker dialogue support. Per-unit pricing based on character count.",
+    modelType: "audio",
+    provider: "fal_ai",
+    aliases: ["gemini 3.1 flash tts", "gemini-3.1-flash-tts", "gemini tts", "fal gemini tts"],
+    creditCost: GEMINI_3_1_FLASH_TTS_CREDIT_COST,
+    priority: 66,
+    sortOrder: 66,
+    configJson: {
+      apiPayloadFormat: "custom",
+      generateType: "text-to-speech",
+      pricingFormula: "per_unit",
+      pricingUnitMetric: "characters",
+      pricingUnitField: "text",
+      pricingUnitSize: 1000,
+      pricingUnitRounding: "ceil",
+      pricingMinUnits: 1,
+      inputFields: buildGemini31FlashTtsInputFields() as InputField[],
+      pricingTiers: {
+        "default": GEMINI_3_1_FLASH_TTS_CREDIT_COST,
+      },
+    },
+  },
   {
     modelId: "fal-ai/lux-tts",
     name: "Lux TTS",
@@ -714,7 +751,7 @@ async function seed() {
     console.log(`\nAdded ${VIDEO_MODELS.length} video models\n`);
 
     // Insert Audio Models
-    console.log("=== AUDIO MODELS (Lux TTS) ===");
+    console.log("=== AUDIO MODELS (Gemini 3.1 Flash TTS, Lux TTS) ===");
     for (const model of AUDIO_MODELS) {
       await sql`
         INSERT INTO media_models (
@@ -737,7 +774,7 @@ async function seed() {
       `;
       console.log(`  + ${model.name} (${model.creditCost} credits per 1000 chars)`);
     }
-    console.log(`\nAdded ${AUDIO_MODELS.length} audio model\n`);
+    console.log(`\nAdded ${AUDIO_MODELS.length} audio models\n`);
 
     // Insert Image Models
     console.log("=== IMAGE MODELS (Flux) ===");
@@ -772,7 +809,7 @@ async function seed() {
     console.log("=".repeat(50));
     console.log(`TOTAL: ${total} fal.ai models seeded successfully!`);
     console.log(`  - Video: ${VIDEO_MODELS.length} models (LTX-2.3)`);
-    console.log(`  - Audio: ${AUDIO_MODELS.length} model (Lux TTS)`);
+    console.log(`  - Audio: ${AUDIO_MODELS.length} models (Gemini 3.1 Flash TTS, Lux TTS)`);
     console.log(`  - Image: ${IMAGE_MODELS.length} models (Flux)`);
     console.log("=".repeat(50));
     console.log("\nNext step: Verify in Admin > Media Models (filter by fal_ai)");

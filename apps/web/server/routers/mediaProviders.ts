@@ -43,7 +43,7 @@ export const PROVIDER_TEMPLATES = [
   {
     providerName: "fal_ai",
     displayName: "fal.ai",
-    description: "Fast inference platform for generative AI - LTX-2.3 video generation, Lux TTS voice synthesis, and Flux image generation",
+    description: "Fast inference platform for generative AI - LTX-2.3 video generation, Gemini/Lux TTS voice synthesis, and Flux image generation",
     providerType: "multimodal" as const,
     baseUrl: "https://fal.run",
     defaultModel: "fal-ai/flux/schnell",
@@ -65,6 +65,7 @@ export const PROVIDER_TEMPLATES = [
       { id: "fal-ai/ltx-2.3/extend-video", name: "LTX-2.3 Extend Video", type: "video" as const, description: "Extend existing video clips" },
       { id: "fal-ai/ltx-2.3/retake-video", name: "LTX-2.3 Retake Video", type: "video" as const, description: "Re-generate video with modified parameters" },
       // Audio models
+      { id: "fal-ai/gemini-3.1-flash-tts", name: "Gemini 3.1 Flash TTS", type: "audio" as const, description: "Single- and multi-speaker text-to-speech with language steering" },
       { id: "fal-ai/lux-tts", name: "Lux TTS", type: "audio" as const, description: "Text-to-speech with voice cloning" },
     ],
   },

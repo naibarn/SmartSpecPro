@@ -40,6 +40,15 @@ describe("PROVIDER_TEMPLATES fal_ai entry", () => {
     expect(luxTts!.type).toBe("audio");
   });
 
+  it("contains Gemini 3.1 Flash TTS audio model", () => {
+    const geminiTts = falAiTemplate!.availableModels.find(
+      (m) => m.id === "fal-ai/gemini-3.1-flash-tts"
+    );
+    expect(geminiTts).toBeDefined();
+    expect(geminiTts!.type).toBe("audio");
+    expect(geminiTts!.description).toContain("multi-speaker");
+  });
+
   it("retains existing 4 Flux image models", () => {
     const fluxIds = [
       "fal-ai/flux/schnell",
@@ -81,8 +90,8 @@ describe("PROVIDER_TEMPLATES fal_ai entry", () => {
     expect(luxTts!.type).toBe("audio");
   });
 
-  it("has 14 total entries", () => {
-    expect(falAiTemplate!.availableModels).toHaveLength(14);
+  it("has 15 total entries", () => {
+    expect(falAiTemplate!.availableModels).toHaveLength(15);
   });
 });
 

@@ -164,10 +164,13 @@ import { buildStoryboardVideoProject } from "@/lib/storyboardVideoProject";
 import {
   clampReferenceImagesToModelLimit,
   getAllowedLibraryExtensionsForField,
+  getMissingRequiredModelFields,
   getModelGenerationModeLabel,
   getModelInputField,
   getModelReferenceImageLimit,
   getModelReferenceInputSupport,
+  parseModelInputFields,
+  type ModelInputField,
 } from "@/lib/mediaModelInputs";
 import { buildMediaStudioCommonPayload } from "@/lib/mediaStudioPayload";
 import { buildPricingTierKey } from "@shared/mediaModelPricing";
@@ -175,6 +178,7 @@ import { videoEditorRenderService } from "@/services/videoEditorService";
 import { sanitizeProjectName } from "@smartspec/shared";
 
 import DynamicSkillForm, { type SkillInputSchema, type StyleAction } from "@/components/media/DynamicSkillForm";
+import { ModelInputArrayFieldEditor } from "@/components/media/ModelInputArrayFieldEditor";
 import { LibraryFilePicker } from "@/components/library/LibraryFilePicker";
 import {
   COMMON_GRIDS,
@@ -198,6 +202,7 @@ type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
 type StudioSidebarTab = "history" | "library";
 type HistoryGalleryTab = "image" | "video";
 const MEDIA_STUDIO_CREDIT_ORIGIN = "media_studio" as const;
+const GEMINI_3_1_FLASH_TTS_MODEL_ID = "fal-ai/gemini-3.1-flash-tts";
 
 interface ReferenceImage {
   url: string;
@@ -636,6 +641,67 @@ function isUvoiceVoiceSelectionField(
   field: Record<string, any> | null | undefined,
 ): boolean {
   return String(providerName ?? "").trim().toLowerCase() === "uvoice" && isVoiceSelectionField(field);
+}
+
+function getDuplicateGeminiSpeakerIds(extraParams: Record<string, unknown> | undefined): string[] {
+  const speakers = extraParams?.speakers;
+  if (!Array.isArray(speakers)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const speaker of speakers) {
+    if (!speaker || typeof speaker !== "object" || Array.isArray(speaker)) {
+      continue;
+    }
+
+    const speakerIdValue = (speaker as Record<string, unknown>).speaker_id;
+    const speakerId = typeof speakerIdValue === "string" ? speakerIdValue.trim() : "";
+    if (!speakerId) {
+      continue;
+    }
+
+    if (seen.has(speakerId)) {
+      duplicates.add(speakerId);
+    } else {
+      seen.add(speakerId);
+    }
+  }
+
+  return Array.from(duplicates);
+}
+
+function getMediaStudioModelInputValidationErrors(params: {
+  modelId?: string | null;
+  fields: ModelInputField[];
+  extraParams: Record<string, unknown> | undefined;
+  prompt: string;
+  aspectRatio: string;
+  referenceImageUrls: string[];
+  referenceVideoUrls: string[];
+}): string[] {
+  const errors: string[] = [];
+  const missingRequiredFields = getMissingRequiredModelFields(params.fields, {
+    extraParams: params.extraParams,
+    prompt: params.prompt,
+    aspectRatio: params.aspectRatio,
+    referenceImageUrls: params.referenceImageUrls,
+    referenceVideoUrls: params.referenceVideoUrls,
+  });
+  if (missingRequiredFields.length > 0) {
+    errors.push(`Please fill required model inputs: ${missingRequiredFields.join(", ")}`);
+  }
+
+  if (params.modelId === GEMINI_3_1_FLASH_TTS_MODEL_ID) {
+    const duplicateSpeakerIds = getDuplicateGeminiSpeakerIds(params.extraParams);
+    if (duplicateSpeakerIds.length > 0) {
+      errors.push(`Speaker IDs must be unique: ${duplicateSpeakerIds.join(", ")}`);
+    }
+  }
+
+  return errors;
 }
 
 function inferModelInputSyncTarget(field: Record<string, any> | null | undefined): string {
@@ -1463,6 +1529,10 @@ export default function MediaStudio() {
   const selectedMediaModelForInputFields = useMemo(
     () => (selectedMediaModel ? { ...selectedMediaModel, configJson: selectedMediaModelConfig ?? undefined } : undefined),
     [selectedMediaModel, selectedMediaModelConfig],
+  );
+  const selectedMediaModelParsedInputFields = useMemo(
+    () => parseModelInputFields(selectedMediaModelForInputFields),
+    [selectedMediaModelForInputFields],
   );
   const selectedMediaModelReferenceImageLimit = useMemo(
     () => getModelReferenceImageLimit(selectedMediaModelForInputFields as any),
@@ -2937,6 +3007,9 @@ export default function MediaStudio() {
 
         const rawVal = modelInputValues[field.key];
         const val = resolveFieldValue(field, rawVal);
+        if (field.key === "language_code" && String(val) === "__auto__") {
+          continue;
+        }
         if (
           val !== undefined
           && val !== null
@@ -2961,6 +3034,19 @@ export default function MediaStudio() {
       ...extraParams,
       ...omnivoiceExtraParams,
     };
+    const modelInputValidationErrors = getMediaStudioModelInputValidationErrors({
+      modelId: selectedMediaModel?.modelId,
+      fields: selectedMediaModelParsedInputFields,
+      extraParams: mergedExtraParams,
+      prompt: finalPrompt,
+      aspectRatio: finalAspectRatio,
+      referenceImageUrls: effectiveReferenceImages.map((item) => item.url),
+      referenceVideoUrls: effectiveReferenceVideos.map((item) => item.url),
+    });
+    if (modelInputValidationErrors.length > 0) {
+      toast.error(modelInputValidationErrors.join(" "));
+      return;
+    }
     const storyboardGenerationContext: StoryboardVideoGenerationContext | undefined =
       activeTab === "video"
       ? {
@@ -3634,6 +3720,120 @@ export default function MediaStudio() {
 
     const tabState = tabStates[targetTab];
     const retryModel = task.model || tabState.selectedModel || selectedModel || "";
+    const selectedModelData = visibleMediaModels.find((m: any) => m.modelId === retryModel);
+    const rawConfig = selectedModelData?.configJson;
+    const modelConfig = (typeof rawConfig === "string" ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })() : rawConfig) as any;
+    const retryModelForInputFields = selectedModelData
+      ? { ...selectedModelData, configJson: modelConfig ?? undefined }
+      : undefined;
+    const retryDurationField = getModelInputField({ configJson: modelConfig } as any, "duration");
+    const extraParams: Record<string, any> = {};
+    const omnivoiceExtraParams = buildOmnivoiceDesktopExtraParams();
+    const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
+      (modelConfig as Record<string, unknown>) ?? null,
+    );
+    const templateBaseContext = {
+      prompt: retryPrompt,
+      aspectRatio: tabState.aspectRatio,
+      activeTab: targetTab,
+      fields: tabState.modelInputValues,
+    } as Record<string, unknown>;
+    const retryModelReferenceSupport = getModelReferenceInputSupport(retryModelForInputFields as any);
+    const effectiveReferenceImages = retryModelReferenceSupport.imageUrls
+      ? tabState.referenceImages
+      : [];
+    const effectiveReferenceVideos = retryModelReferenceSupport.videoUrls
+      ? tabState.referenceVideos
+      : [];
+    const finalAspectRatio = tabState.useAdvancedMode && tabState.dynamicFormValues.aspectRatio
+      ? tabState.dynamicFormValues.aspectRatio
+      : tabState.aspectRatio;
+
+    if (modelConfig) {
+      const resolveFieldValue = (field: any, value: unknown): unknown => {
+        if (field.type === "array") {
+          return resolveArrayFieldRuntimeValue(field, value, templateBaseContext);
+        }
+        return value;
+      };
+
+      for (const field of (modelConfig.inputFields as any[] | undefined ?? [])) {
+        const syncWith = inferModelInputSyncTarget(field);
+        if (syncWith === "reference_images") {
+          if (tabState.referenceImages.length > 0) {
+            extraParams[field.key] = tabState.referenceImages.map((r) => r.url);
+          }
+          continue;
+        }
+
+        if (syncWith === "reference_videos") {
+          if (tabState.referenceVideos.length > 0) {
+            extraParams[field.key] = tabState.referenceVideos.map((r) => r.url);
+          }
+          continue;
+        }
+
+        if (syncWith === "prompt") {
+          extraParams[field.key] = resolveFieldValue(field, retryPrompt);
+          continue;
+        }
+
+        if (syncWith === "aspect_ratio") {
+          extraParams[field.key] = resolveFieldValue(field, tabState.aspectRatio);
+          continue;
+        }
+
+        if (field.key === "aspect_ratio" || field.key === "aspect.ratio") continue;
+        if (field.key === "duration" && targetTab === "video") continue;
+
+        const rawVal = tabState.modelInputValues[field.key];
+        const val = resolveFieldValue(field, rawVal);
+        if (field.key === "language_code" && String(val) === "__auto__") {
+          continue;
+        }
+        if (
+          val !== undefined
+          && val !== null
+          && val !== ""
+          && !(Array.isArray(val) && val.length === 0)
+        ) {
+          extraParams[field.key] = val;
+        }
+      }
+    }
+    const mergedExtraParams = {
+      ...extraParams,
+      ...omnivoiceExtraParams,
+    };
+    const retryModelInputFields = parseModelInputFields(retryModelForInputFields);
+    const modelInputValidationErrors = getMediaStudioModelInputValidationErrors({
+      modelId: retryModel,
+      fields: retryModelInputFields,
+      extraParams: mergedExtraParams,
+      prompt: retryPrompt,
+      aspectRatio: finalAspectRatio,
+      referenceImageUrls: effectiveReferenceImages.map((item) => item.url),
+      referenceVideoUrls: effectiveReferenceVideos.map((item) => item.url),
+    });
+    if (modelInputValidationErrors.length > 0) {
+      toast.error(modelInputValidationErrors.join(" "));
+      return;
+    }
+
+    const outputFormatValue = tabState.modelInputValues.outputFormat ?? tabState.modelInputValues.output_format;
+    const referenceStyleUrl = (tabState.modelInputValues.referenceStyleUrl ?? tabState.modelInputValues.reference_style_url) as string | undefined;
+    const referenceVideoUrl = (tabState.modelInputValues.referenceVideoUrl ?? tabState.modelInputValues.reference_video_url) as string | undefined;
+    const commonPayload = buildMediaStudioCommonPayload({
+      prompt: retryPrompt,
+      model: retryModel || undefined,
+      aspectRatio: finalAspectRatio,
+      referenceImages: effectiveReferenceImages,
+      referenceVideos: targetTab === "video" ? effectiveReferenceVideos : [],
+      extraParams: Object.keys(extraParams).length > 0 ? extraParams : undefined,
+      apiConfig: Object.keys(apiConfig).length > 0 ? apiConfig : undefined,
+      resolution: tabState.modelInputValues.resolution || undefined,
+    });
+
     const nowMs = Date.now();
     const retryTaskId = `task-${nowMs}-${Math.random().toString(36).slice(2, 11)}`;
 
@@ -3666,106 +3866,13 @@ export default function MediaStudio() {
       );
     };
 
+    let resultUrl: string | undefined;
+    let creditsUsed: number | undefined;
+    let startedAsyncTask = false;
+    let asyncTask: any | null = null;
+
     try {
       updateRetryTask({ status: "generating", statusDetail: t('mediaStudio.generationStatus.retryInProgress') });
-
-      const selectedModelData = visibleMediaModels.find((m: any) => m.modelId === retryModel);
-      const rawConfig = selectedModelData?.configJson;
-      const modelConfig = (typeof rawConfig === "string" ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })() : rawConfig) as any;
-      const retryDurationField = getModelInputField({ configJson: modelConfig } as any, "duration");
-      const extraParams: Record<string, any> = {};
-      const omnivoiceExtraParams = buildOmnivoiceDesktopExtraParams();
-      const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
-        (modelConfig as Record<string, unknown>) ?? null,
-      );
-      const templateBaseContext = {
-        prompt: retryPrompt,
-        aspectRatio: tabState.aspectRatio,
-        activeTab: targetTab,
-        fields: tabState.modelInputValues,
-      } as Record<string, unknown>;
-
-      if (modelConfig) {
-        const resolveFieldValue = (field: any, value: unknown): unknown => {
-          if (field.type === "array") {
-            return resolveArrayFieldRuntimeValue(field, value, templateBaseContext);
-          }
-          return value;
-        };
-
-        for (const field of (modelConfig.inputFields as any[] | undefined ?? [])) {
-          const syncWith = inferModelInputSyncTarget(field);
-          if (syncWith === "reference_images") {
-            if (tabState.referenceImages.length > 0) {
-              extraParams[field.key] = tabState.referenceImages.map((r) => r.url);
-            }
-            continue;
-          }
-
-          if (syncWith === "reference_videos") {
-            if (tabState.referenceVideos.length > 0) {
-              extraParams[field.key] = tabState.referenceVideos.map((r) => r.url);
-            }
-            continue;
-          }
-
-          if (syncWith === "prompt") {
-            extraParams[field.key] = resolveFieldValue(field, retryPrompt);
-            continue;
-          }
-
-          if (syncWith === "aspect_ratio") {
-            extraParams[field.key] = resolveFieldValue(field, tabState.aspectRatio);
-            continue;
-          }
-
-          if (field.key === "aspect_ratio" || field.key === "aspect.ratio") continue;
-          if (field.key === "duration" && targetTab === "video") continue;
-
-          const rawVal = tabState.modelInputValues[field.key];
-          const val = resolveFieldValue(field, rawVal);
-          if (
-            val !== undefined
-            && val !== null
-            && val !== ""
-            && !(Array.isArray(val) && val.length === 0)
-          ) {
-            extraParams[field.key] = val;
-          }
-        }
-      }
-      const mergedExtraParams = {
-        ...extraParams,
-        ...omnivoiceExtraParams,
-      };
-
-      const outputFormatValue = tabState.modelInputValues.outputFormat ?? tabState.modelInputValues.output_format;
-      const referenceStyleUrl = (tabState.modelInputValues.referenceStyleUrl ?? tabState.modelInputValues.reference_style_url) as string | undefined;
-      const referenceVideoUrl = (tabState.modelInputValues.referenceVideoUrl ?? tabState.modelInputValues.reference_video_url) as string | undefined;
-      const effectiveReferenceImages = selectedMediaModelReferenceSupport.imageUrls
-        ? tabState.referenceImages
-        : [];
-      const effectiveReferenceVideos = selectedMediaModelReferenceSupport.videoUrls
-        ? tabState.referenceVideos
-        : [];
-      const finalAspectRatio = tabState.useAdvancedMode && tabState.dynamicFormValues.aspectRatio
-        ? tabState.dynamicFormValues.aspectRatio
-        : tabState.aspectRatio;
-      const commonPayload = buildMediaStudioCommonPayload({
-        prompt: retryPrompt,
-        model: retryModel || undefined,
-        aspectRatio: finalAspectRatio,
-        referenceImages: effectiveReferenceImages,
-        referenceVideos: targetTab === "video" ? effectiveReferenceVideos : [],
-        extraParams: Object.keys(extraParams).length > 0 ? extraParams : undefined,
-        apiConfig: Object.keys(apiConfig).length > 0 ? apiConfig : undefined,
-        resolution: tabState.modelInputValues.resolution || undefined,
-      });
-
-      let resultUrl: string | undefined;
-      let creditsUsed: number | undefined;
-      let startedAsyncTask = false;
-      let asyncTask: any | null = null;
 
       if (targetTab === "image") {
         const taskResult = await generateImageAsyncMutation.mutateAsync({
@@ -3788,7 +3895,7 @@ export default function MediaStudio() {
                   : tabState.duration,
               }
             : {}),
-          ...(selectedMediaModelReferenceSupport.videoUrls && effectiveReferenceVideos.length === 0 && referenceVideoUrl
+          ...(retryModelReferenceSupport.videoUrls && effectiveReferenceVideos.length === 0 && referenceVideoUrl
             ? { referenceVideoUrl }
             : {}),
         } as any);
@@ -3821,7 +3928,7 @@ export default function MediaStudio() {
             id: `${Date.now()}-${Math.random()}`,
             taskId: retryTaskId,
             type: targetTab,
-            url: resultUrl,
+            url: resultUrl!,
             prompt: retryPrompt,
             model: retryModel,
             createdAt: new Date().toISOString(),
@@ -6101,6 +6208,12 @@ export default function MediaStudio() {
                               />
                               <span className="text-sm">{modelInputValues[field.key] ? t('mediaStudio.on') : t('mediaStudio.off')}</span>
                             </div>
+                          ) : field.type === "array" && field.itemFields?.length ? (
+                            <ModelInputArrayFieldEditor
+                              field={field}
+                              value={modelInputValues[field.key]}
+                              onChange={(nextValue) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: nextValue }))}
+                            />
                           ) : field.type === "array" ? (
                             <Textarea
                               rows={4}
@@ -6123,7 +6236,7 @@ export default function MediaStudio() {
                           ) : (
                             <Input
                               type="text"
-                              placeholder={field.label}
+                              placeholder={field.placeholder || field.label}
                               value={modelInputValues[field.key] ?? ""}
                               onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: e.target.value }))}
                             />

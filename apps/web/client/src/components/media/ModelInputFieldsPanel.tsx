@@ -19,6 +19,7 @@ import {
   type ModelInputSyncTarget,
   getAllowedLibraryExtensionsForField,
 } from "@/lib/mediaModelInputs";
+import { ModelInputArrayFieldEditor } from "@/components/media/ModelInputArrayFieldEditor";
 import { trpc } from "@/lib/trpc";
 
 interface ModelInputFieldsPanelProps {
@@ -590,6 +591,18 @@ export function ModelInputFieldsPanel({
             </label>
           );
         }
+        if (field.type === "array" && field.itemFields?.length) {
+          return (
+            <ModelInputArrayFieldEditor
+              key={field.key}
+              field={field}
+              value={value}
+              onChange={(nextValue) => onChange(field.key, nextValue)}
+              variant={variant}
+              ariaLabelPrefix={ariaLabelPrefix}
+            />
+          );
+        }
         if (field.type === "image_urls" || field.type === "video_urls" || field.type === "audio_urls") {
           const currentUrls = Array.isArray(value)
             ? value.filter((entry): entry is string => typeof entry === "string")
@@ -639,6 +652,7 @@ export function ModelInputFieldsPanel({
             <Input
               type="text"
               aria-label={`${ariaLabelPrefix} ${field.label}`}
+              placeholder={field.placeholder || field.label}
               value={String(value ?? "")}
               onChange={(event) => onChange(field.key, event.target.value)}
             />

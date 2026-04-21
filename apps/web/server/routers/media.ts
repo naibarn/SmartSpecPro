@@ -46,7 +46,14 @@ import {
   getModelsByTypeAsync,
   getStaticModelById,
   refreshModelCache,
+  mapToApiModelId,
 } from "../services/modelRegistry";
+import {
+  GEMINI_3_1_FLASH_TTS_MODEL_ID,
+  validateGemini31FlashTtsAudioRequest,
+  validateGemini31FlashTtsExtraParams,
+  normalizeGemini31FlashTtsExtraParams,
+} from "../services/falGeminiTts";
 
 import { validateExtraParamsNoSsrf } from "../services/ssrfValidation";
 
@@ -111,6 +118,21 @@ function assertOmnivoiceReferenceAudioSize(extraParams: Record<string, unknown> 
       code: "PAYLOAD_TOO_LARGE",
       message: `OmniVoice reference audio exceeds the ${Math.floor(maxBytes / (1024 * 1024))} MB limit.`,
     });
+  }
+}
+
+function assertAudioModelExtraParamsValid(
+  modelId: string,
+  extraParams: Record<string, unknown> | undefined,
+): void {
+  if (mapToApiModelId(modelId) === GEMINI_3_1_FLASH_TTS_MODEL_ID) {
+    const errors = validateGemini31FlashTtsExtraParams(extraParams);
+    if (errors.length > 0) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Gemini 3.1 Flash TTS input validation failed: ${errors.join("; ")}`,
+      });
+    }
   }
 }
 
@@ -1177,6 +1199,51 @@ async function resolveModelMeta(
   });
 }
 
+function stableSerializeForAudioHash(value: unknown): string {
+  if (value === undefined) {
+    return "undefined";
+  }
+  if (value === null) {
+    return "null";
+  }
+  if (typeof value !== "object") {
+    const json = JSON.stringify(value);
+    return json === undefined ? String(value) : json;
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableSerializeForAudioHash(item)).join(",")}]`;
+  }
+
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableSerializeForAudioHash(record[key])}`).join(",")}}`;
+}
+
+function buildAudioAbuseGuardHash(params: {
+  text: string;
+  model?: string;
+  voice?: string;
+  speed?: number;
+  extraParams?: Record<string, unknown>;
+}): string {
+  const normalizedModelId = mapToApiModelId(params.model ?? "");
+  const hasGeminiSpeakers =
+    normalizedModelId === GEMINI_3_1_FLASH_TTS_MODEL_ID
+    && Array.isArray(params.extraParams?.speakers)
+    && (params.extraParams?.speakers as unknown[]).length > 0;
+  return hashPrompt(
+    params.text,
+    stableSerializeForAudioHash({
+      model: params.model ?? "",
+      // Gemini ignores top-level voice whenever multi-speaker dialogue is present,
+      // so do not let a cosmetic top-level voice change the duplicate key.
+      voice: hasGeminiSpeakers ? "" : (params.voice ?? ""),
+      speed: params.speed ?? "",
+      extraParams: params.extraParams ?? {},
+    }),
+  );
+}
+
 // ==================== Zod Schemas ====================
 
 const mediaTypeSchema = z.enum(["image", "video", "audio"]);
@@ -1655,8 +1722,25 @@ export const mediaRouter = router({
         });
       }
 
+      const model = input.model || await getDefaultModelId("audio");
+      const modelMeta = await resolveModelMeta(model, "audio");
+      const normalizedModelId = mapToApiModelId(model);
+      if (normalizedModelId === GEMINI_3_1_FLASH_TTS_MODEL_ID) {
+        const errors = validateGemini31FlashTtsAudioRequest(input);
+        if (errors.length > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Gemini 3.1 Flash TTS input validation failed: ${errors.join("; ")}`,
+          });
+        }
+      }
+      const normalizedExtraParams = normalizedModelId === GEMINI_3_1_FLASH_TTS_MODEL_ID
+        ? normalizeGemini31FlashTtsExtraParams(input.extraParams)
+        : input.extraParams;
+      assertAudioModelExtraParamsValid(model, normalizedExtraParams);
+
       // Lux TTS rate limit (5 requests per 10 minutes)
-      if (isLuxTtsModel(input.model)) {
+      if (isLuxTtsModel(model)) {
         const luxLimit = await checkLuxTtsRateLimit(ctx.user.id);
         if (!luxLimit.allowed) {
           throw new TRPCError({
@@ -1670,7 +1754,13 @@ export const mediaRouter = router({
       const abuseResult = await checkAbuseGuard({
         userId: ctx.user.id,
         namespace: "media:audio",
-        promptHash: hashPrompt(input.text, input.model),
+        promptHash: buildAudioAbuseGuardHash({
+          text: input.text,
+          model,
+          voice: input.voice,
+          speed: input.speed,
+          extraParams: normalizedExtraParams,
+        }),
       });
       if (!abuseResult.allowed) {
         throw new TRPCError({
@@ -1678,9 +1768,6 @@ export const mediaRouter = router({
           message: `Request blocked: ${abuseResult.reason}. Retry after ${abuseResult.retryAfter}s.`,
         });
       }
-
-      const model = input.model || await getDefaultModelId("audio");
-      const modelMeta = await resolveModelMeta(model, "audio");
 
       if (normalizeMediaProviderName(modelMeta.provider) === "omnivoice" && !isDesktopMediaRequest(ctx.req)) {
         throw new TRPCError({
@@ -1698,11 +1785,11 @@ export const mediaRouter = router({
         fieldLabel: "Text",
       });
       if (normalizeMediaProviderName(modelMeta.provider) === "omnivoice") {
-        assertOmnivoiceReferenceAudioSize(input.extraParams);
+        assertOmnivoiceReferenceAudioSize(normalizedExtraParams);
       }
       const creditCost = calculateCreditCost(dbModel, {
         text: input.text,
-        ...(input.extraParams ?? {}),
+        ...(normalizedExtraParams ?? {}),
       });
 
       // Check credits
@@ -1730,7 +1817,7 @@ export const mediaRouter = router({
             voice: input.voice,
             speed: input.speed,
             apiConfig: apiConfigWithProvider,
-            extraParams: input.extraParams,
+            extraParams: normalizedExtraParams,
             publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
               userId: ctx.user.id,
@@ -1789,8 +1876,25 @@ export const mediaRouter = router({
         });
       }
 
+      const model = input.model || await getDefaultModelId("audio");
+      const modelMeta = await resolveModelMeta(model, "audio");
+      const normalizedModelId = mapToApiModelId(model);
+      if (normalizedModelId === GEMINI_3_1_FLASH_TTS_MODEL_ID) {
+        const errors = validateGemini31FlashTtsAudioRequest(input);
+        if (errors.length > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Gemini 3.1 Flash TTS input validation failed: ${errors.join("; ")}`,
+          });
+        }
+      }
+      const normalizedExtraParams = normalizedModelId === GEMINI_3_1_FLASH_TTS_MODEL_ID
+        ? normalizeGemini31FlashTtsExtraParams(input.extraParams)
+        : input.extraParams;
+      assertAudioModelExtraParamsValid(model, normalizedExtraParams);
+
       // Lux TTS rate limit (5 requests per 10 minutes)
-      if (isLuxTtsModel(input.model)) {
+      if (isLuxTtsModel(model)) {
         const luxLimit = await checkLuxTtsRateLimit(ctx.user.id);
         if (!luxLimit.allowed) {
           throw new TRPCError({
@@ -1803,7 +1907,13 @@ export const mediaRouter = router({
       const abuseResult = await checkAbuseGuard({
         userId: ctx.user.id,
         namespace: "media:audio_async",
-        promptHash: hashPrompt(input.text, input.model),
+        promptHash: buildAudioAbuseGuardHash({
+          text: input.text,
+          model,
+          voice: input.voice,
+          speed: input.speed,
+          extraParams: normalizedExtraParams,
+        }),
       });
       if (!abuseResult.allowed) {
         throw new TRPCError({
@@ -1812,8 +1922,6 @@ export const mediaRouter = router({
         });
       }
 
-      const model = input.model || await getDefaultModelId("audio");
-      const modelMeta = await resolveModelMeta(model, "audio");
       if (normalizeMediaProviderName(modelMeta.provider) === "omnivoice" && !isDesktopMediaRequest(ctx.req)) {
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -1828,11 +1936,11 @@ export const mediaRouter = router({
         fieldLabel: "Text",
       });
       if (normalizeMediaProviderName(modelMeta.provider) === "omnivoice") {
-        assertOmnivoiceReferenceAudioSize(input.extraParams);
+        assertOmnivoiceReferenceAudioSize(normalizedExtraParams);
       }
       const creditCost = calculateCreditCost(dbModel, {
         text: input.text,
-        ...(input.extraParams ?? {}),
+        ...(normalizedExtraParams ?? {}),
       });
 
       const hasCredits = await hasEnoughCredits(ctx.user.id, creditCost);
@@ -1875,7 +1983,7 @@ export const mediaRouter = router({
             voice: input.voice,
             speed: input.speed,
             apiConfig: apiConfigWithProvider,
-            extraParams: input.extraParams,
+            extraParams: normalizedExtraParams,
             publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
               userId: ctx.user.id,
