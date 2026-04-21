@@ -7,10 +7,23 @@ import {
   resolveAutomationLaunchPolicy,
   resolveAutomationStepRoute,
 } from "../services/workAutomationPolicyService";
+import {
+  getDefaultContractCompatibility,
+  skillStudioActionValues,
+  workOrchestratorSurfaceValues,
+  type SkillStudioAction,
+  type WorkOrchestratorSurface,
+} from "../../shared/workOrchestrator";
 import { executeAutomationStep } from "../services/workAutomationExecutionService";
 import * as automationFabricService from "../services/workAutomationFabricService";
 import { getBrowserAutomationHealth, reconcileBrowserAutomationTaskClaims } from "../services/workAutomationBrowserTaskService";
 import * as workOsService from "../services/workOsService";
+import { buildPreflightRevisionFingerprint } from "../services/preflightRevisionService";
+import {
+  redactPreflightDiagnostics,
+  resolvePreflightPreviewAccess,
+} from "../services/preflightAccessPolicyService";
+import { resolveTeamForAutomation } from "../services/teamResolutionPolicyService";
 
 function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: number | null } | null }): string {
   const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
@@ -18,6 +31,138 @@ function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantI
     throw new TRPCError({ code: "FORBIDDEN", message: "Tenant context required" });
   }
   return tenantId;
+}
+
+
+function isPlaceholderAutomationObjective(
+  objective: string | null | undefined,
+  title: string
+): boolean {
+  if (!objective) return true;
+  const normalized = objective.trim().toLowerCase();
+  const normalizedTitle = title.trim().toLowerCase();
+  return (
+    normalized.length === 0 ||
+    normalized === normalizedTitle ||
+    normalized === `start automation for ${normalizedTitle}` ||
+    normalized.startsWith("start automation for ")
+  );
+}
+
+function resolveAutomationObjective(input: {
+  title: string;
+  objective?: string | null;
+  requestObjective?: string | null;
+  caseSummary?: string | null;
+  caseTitle?: string | null;
+}): {
+  objective: string | null;
+  source: "input" | "request.objective" | "case.summary" | "case.title";
+} {
+  const title = input.title.trim();
+  const rawObjective = input.objective?.trim() || null;
+  const requestObjective = input.requestObjective?.trim() || null;
+  const caseSummary = input.caseSummary?.trim() || null;
+  const caseTitle = input.caseTitle?.trim() || title || null;
+
+  if (rawObjective && !isPlaceholderAutomationObjective(rawObjective, title)) {
+    return { objective: rawObjective, source: "input" };
+  }
+  if (requestObjective) {
+    return { objective: requestObjective, source: "request.objective" };
+  }
+  if (caseSummary) {
+    return { objective: caseSummary, source: "case.summary" };
+  }
+  if (caseTitle) {
+    return { objective: caseTitle, source: "case.title" };
+  }
+  return { objective: rawObjective, source: "input" };
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.map(item => String(item).trim()).filter(Boolean)
+    : [];
+}
+
+function surfaceGateFor(surface: WorkOrchestratorSurface) {
+  switch (surface) {
+    case "skill":
+      return "manifest_risk_policy" as const;
+    case "agency":
+      return "capability_risk_policy" as const;
+    case "workflow":
+      return "feature_flag_runtime_permission_approval" as const;
+    case "browser":
+      return "connector_domain_policy" as const;
+    case "document_management":
+      return "bounded_write_scope" as const;
+    case "media_studio":
+      return "provider_allowlist_quota" as const;
+    case "skill_studio":
+      return "skill_studio_action_policy" as const;
+    case "manual":
+      return "human_action" as const;
+    case "video_editor":
+    case "work_os":
+    default:
+      return "explicit_approval" as const;
+  }
+}
+
+function buildCapabilityEntry(input: {
+  surface: WorkOrchestratorSurface;
+  action?: SkillStudioAction | null;
+  selected: boolean;
+}) {
+  const contractCompatibility = getDefaultContractCompatibility(input.surface);
+  const approvalRequired =
+    input.surface === "workflow" ||
+    input.surface === "skill_studio" ||
+    input.surface === "video_editor" ||
+    input.surface === "manual" ||
+    input.surface === "work_os";
+  return {
+    id: input.action ? `${input.surface}:${input.action}` : input.surface,
+    surface: input.surface,
+    action: input.action ?? null,
+    title: input.action
+      ? `Skill Studio: ${input.action.replace(/_/g, " ")}`
+      : input.surface.replace(/_/g, " "),
+    description: input.selected
+      ? "Selected by the legacy launch policy allowlist."
+      : "Planner-visible capability candidate.",
+    governance: {
+      surface: input.surface,
+      action: input.action ?? null,
+      plannerVisible: true,
+      autoExecutableByDefault:
+        input.surface === "skill" || input.surface === "agency",
+      approvalRequired,
+      minimumGate: surfaceGateFor(input.surface),
+      requiredFeatureFlags:
+        input.surface === "workflow"
+          ? ["workflow_surface_planning"]
+          : input.surface === "skill_studio"
+            ? ["skill_studio_planning"]
+            : [],
+      requiredPermissions:
+        input.surface === "workflow"
+          ? ["workflow:execute"]
+          : input.surface === "skill_studio"
+            ? ["skill_studio:launch"]
+            : [],
+    },
+    contractCompatibility,
+    blockedReason:
+      contractCompatibility.state === "blocked_contract_not_migrated"
+        ? contractCompatibility.reasonCode
+        : null,
+    metadata: {
+      selected: input.selected,
+    },
+  };
 }
 
 const assignmentTypeSchema = z.enum(["human", "queue", "role", "hybrid"]);
@@ -272,6 +417,188 @@ export const workOsRouter = router({
         tenantId,
         ...input,
       });
+    }),
+
+
+  resolvePreflightPreview: protectedProcedure
+    .input(z.object({
+      caseId: z.string().min(1),
+      title: z.string().max(500).optional(),
+      objective: z.string().max(10000).optional(),
+      mode: automationModeSchema.optional(),
+      templateKey: z.string().min(1).max(120).optional(),
+      templateVersion: z.string().max(50).optional(),
+      linkedConversationIds: z.array(z.string().min(1)).optional(),
+      linkedWorkpackRunIds: z.array(z.string().min(1)).optional(),
+      linkedRoleRoutineRunIds: z.array(z.string().min(1)).optional(),
+      selectedSourceIds: z.array(z.string().min(1)).optional(),
+      explicitTeamId: z.string().min(1).optional(),
+    }))
+    .query(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      const projection = await workOsService.getWorkCaseProjection(input.caseId, tenantId);
+      const access = resolvePreflightPreviewAccess({
+        actorUserId: ctx.user?.id ?? null,
+        actorRole: ctx.user?.role ?? null,
+        requesterId: projection.request?.requesterId ?? null,
+      });
+      if (!access.allowed) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only preview automation for your own request or as an admin.",
+        });
+      }
+
+      const policy = resolveAutomationLaunchPolicy({
+        caseRecord: projection.case,
+        requestRecord: projection.request,
+        templateKey: input.templateKey ?? null,
+        templateVersion: input.templateVersion ?? null,
+        mode: input.mode ?? null,
+      });
+      const policyJson = buildAutomationPolicySnapshot(policy);
+      const title = input.title?.trim() || projection.case.title;
+      const resolvedObjective = resolveAutomationObjective({
+        title,
+        objective: input.objective ?? null,
+        requestObjective: projection.request?.objective ?? null,
+        caseSummary: projection.case.summary ?? null,
+        caseTitle: projection.case.title ?? null,
+      });
+
+      const requestRecord = projection.request as Record<string, unknown> | null;
+      const linkedConversationIds =
+        input.linkedConversationIds ??
+        asStringArray(requestRecord?.linkedConversationIdsJson);
+      const linkedWorkpackRunIds =
+        input.linkedWorkpackRunIds ??
+        asStringArray(requestRecord?.linkedWorkpackRunIdsJson);
+      const linkedRoleRoutineRunIds =
+        input.linkedRoleRoutineRunIds ??
+        asStringArray(requestRecord?.linkedRoleRoutineRunIdsJson);
+
+      const sourceRefs = [
+        {
+          sourceType: "case" as const,
+          sourceId: projection.case.id,
+          label: projection.case.title,
+          required: true,
+          trust: "trusted" as const,
+          freshness: "current" as const,
+        },
+        projection.request
+          ? {
+              sourceType: "request" as const,
+              sourceId: projection.request.id,
+              label: projection.request.title,
+              required: true,
+              trust: "trusted" as const,
+              freshness: "current" as const,
+            }
+          : null,
+        ...linkedConversationIds.map(sourceId => ({
+          sourceType: "conversation" as const,
+          sourceId,
+          label: `Conversation ${sourceId}`,
+          required: true,
+          trust: "derived" as const,
+          freshness: "recent" as const,
+        })),
+        ...linkedWorkpackRunIds.map(sourceId => ({
+          sourceType: "workpack_run" as const,
+          sourceId,
+          label: `Workpack run ${sourceId}`,
+          required: false,
+          trust: "derived" as const,
+          freshness: "recent" as const,
+        })),
+        ...linkedRoleRoutineRunIds.map(sourceId => ({
+          sourceType: "role_routine_run" as const,
+          sourceId,
+          label: `Role routine run ${sourceId}`,
+          required: false,
+          trust: "derived" as const,
+          freshness: "recent" as const,
+        })),
+      ].filter((source): source is NonNullable<typeof source> => Boolean(source));
+
+      const selectedSourceIds =
+        input.selectedSourceIds && input.selectedSourceIds.length > 0
+          ? input.selectedSourceIds
+          : sourceRefs.map(source => source.sourceId);
+      const preflightRevision = buildPreflightRevisionFingerprint({
+        requestTitle: title,
+        requestObjective: resolvedObjective.objective,
+        linkedConversationIds,
+        linkedWorkpackRunIds,
+        linkedRoleRoutineRunIds,
+        selectedSourceIds,
+        policyInputs: policyJson,
+        explicitTeamId: input.explicitTeamId ?? null,
+      });
+      const explicitTeamAuthorized =
+        Boolean(input.explicitTeamId) &&
+        (ctx.user?.role === "admin" || ctx.user?.role === "domain_admin");
+      const teamResolution = resolveTeamForAutomation({
+        explicitTeamId: input.explicitTeamId ?? null,
+        explicitTeamAuthorized,
+        caseOwnerType: projection.case.ownerType,
+        caseOwnerId: projection.case.ownerId,
+        requestDefaultQueueId: projection.request?.defaultQueueId ?? null,
+        requestDefaultOwnerType: projection.request?.defaultOwnerType ?? null,
+        requestDefaultOwnerId: projection.request?.defaultOwnerId ?? null,
+      });
+
+      const selectedSurfaces = new Set<string>(policy.surfaceAllowlist ?? []);
+      const capabilityCatalog = workOrchestratorSurfaceValues.flatMap(surface => {
+        if (surface === "skill_studio") {
+          return skillStudioActionValues.map(action =>
+            buildCapabilityEntry({
+              surface,
+              action,
+              selected: selectedSurfaces.has(surface),
+            })
+          );
+        }
+        return [
+          buildCapabilityEntry({
+            surface,
+            selected: selectedSurfaces.has(surface),
+          }),
+        ];
+      });
+
+      const diagnostics = redactPreflightDiagnostics({
+        visibleReasonCodes: capabilityCatalog
+          .map(entry => entry.blockedReason)
+          .filter(Boolean),
+        policyJson,
+        teamResolution,
+        contractCompatibility: capabilityCatalog.map(entry => ({
+          id: entry.id,
+          state: entry.contractCompatibility.state,
+          reasonCode: entry.contractCompatibility.reasonCode,
+        })),
+      }, access);
+
+      return {
+        access,
+        caseId: input.caseId,
+        requestId: projection.request?.id ?? null,
+        previewView: access.view,
+        brief: {
+          title,
+          objective: resolvedObjective.objective,
+          summary: resolvedObjective.objective ?? title,
+          sourceRefs,
+          approvalSnapshots: [],
+          generatedAt: preflightRevision.generatedAt,
+        },
+        capabilityCatalog,
+        teamResolution,
+        preflightRevision,
+        diagnostics,
+      };
     }),
 
   resolveAutomationPlan: domainAdminProcedure

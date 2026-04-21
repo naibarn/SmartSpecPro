@@ -15,6 +15,7 @@ vi.mock("../../_core/trpc", () => {
     router: (routes: any) => routes,
     protectedProcedure: createProcedure(),
     domainAdminProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -397,6 +398,181 @@ describe("workOsRouter", () => {
       caseId: "case-1",
       title: "Generate launch assets",
     }));
+  });
+
+
+  it("resolves requester-safe preflight preview with compatibility-blocked new surfaces", async () => {
+    mocks.getWorkCaseProjection.mockResolvedValue({
+      request: {
+        id: "req-10",
+        requesterId: "42",
+        title: "Launch campaign",
+        objective: "Create launch assets",
+        defaultQueueId: "team-10",
+        linkedConversationIdsJson: ["chat-1"],
+        linkedWorkpackRunIdsJson: [],
+        linkedRoleRoutineRunIdsJson: [],
+      },
+      case: {
+        id: "case-10",
+        title: "Launch campaign",
+        summary: "Create launch assets",
+        ownerType: null,
+        ownerId: null,
+      },
+    });
+    policyMocks.resolveAutomationLaunchPolicy.mockReturnValue({
+      templateKey: "content-production",
+      templateFamily: "content-production",
+      templateVersion: "content-production.v1",
+      templateSource: "case_intake",
+      templateTitle: "Content Production Fabric",
+      modeResolution: {
+        requestedMode: "fully_auto",
+        effectiveMode: "fully_auto",
+        recommendedMode: "fully_auto",
+        downgraded: false,
+        reasonCode: "explicit",
+        reason: "Requested fully_auto",
+        confidence: 0.9,
+      },
+      stepBlueprints: [],
+      approvalGateStepKeys: [],
+      surfaceAllowlist: ["skill", "agency"],
+      policyJson: {},
+    });
+    policyMocks.buildAutomationPolicySnapshot.mockReturnValue({
+      templateKey: "content-production",
+    });
+
+    const result = await workOsRouter.resolvePreflightPreview({
+      input: {
+        caseId: "case-10",
+      },
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 42, currentTenantId: 1, role: "member" },
+      },
+    } as any);
+
+    expect(result.previewView).toBe("requester_safe");
+    expect(result.diagnostics).toEqual({
+      redacted: true,
+      visibleReasonCodes: expect.arrayContaining([
+        "surface_contract_not_migrated",
+      ]),
+    });
+    expect(result.teamResolution).toEqual(expect.objectContaining({
+      code: "resolved_request_default_queue",
+      teamId: "team-10",
+    }));
+    expect(result.capabilityCatalog).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          surface: "workflow",
+          blockedReason: "surface_contract_not_migrated",
+        }),
+        expect.objectContaining({
+          surface: "skill_studio",
+          action: "create_private_or_pending_review",
+          blockedReason: "surface_contract_not_migrated",
+        }),
+      ])
+    );
+  });
+
+  it("keeps preflight diagnostics visible to admins", async () => {
+    mocks.getWorkCaseProjection.mockResolvedValue({
+      request: {
+        id: "req-11",
+        requesterId: "7",
+        title: "Admin preview",
+        objective: "Review execution plan",
+        defaultQueueId: "team-admin",
+      },
+      case: {
+        id: "case-11",
+        title: "Admin preview",
+        summary: "Review execution plan",
+        ownerType: "queue",
+        ownerId: "team-case",
+      },
+    });
+    policyMocks.resolveAutomationLaunchPolicy.mockReturnValue({
+      templateKey: "content-production",
+      templateFamily: "content-production",
+      templateVersion: "content-production.v1",
+      templateSource: "case_intake",
+      templateTitle: "Content Production Fabric",
+      modeResolution: {
+        requestedMode: "fully_auto",
+        effectiveMode: "fully_auto",
+        recommendedMode: "fully_auto",
+        downgraded: false,
+        reasonCode: "explicit",
+        reason: "Requested fully_auto",
+        confidence: 0.9,
+      },
+      stepBlueprints: [],
+      approvalGateStepKeys: [],
+      surfaceAllowlist: ["skill"],
+      policyJson: {},
+    });
+    policyMocks.buildAutomationPolicySnapshot.mockReturnValue({
+      templateKey: "content-production",
+    });
+
+    const result = await workOsRouter.resolvePreflightPreview({
+      input: {
+        caseId: "case-11",
+        explicitTeamId: "team-override",
+      },
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 42, currentTenantId: 1, role: "domain_admin" },
+      },
+    } as any);
+
+    expect(result.previewView).toBe("admin_diagnostic");
+    expect(result.diagnostics).toEqual(
+      expect.objectContaining({
+        policyJson: { templateKey: "content-production" },
+        teamResolution: expect.objectContaining({
+          code: "resolved_plan_override",
+          teamId: "team-override",
+        }),
+      })
+    );
+  });
+
+  it("blocks preflight preview for unrelated non-admin users", async () => {
+    mocks.getWorkCaseProjection.mockResolvedValue({
+      request: {
+        id: "req-12",
+        requesterId: "42",
+        title: "Private request",
+        objective: "Do work",
+      },
+      case: {
+        id: "case-12",
+        title: "Private request",
+        summary: "Do work",
+        ownerType: null,
+        ownerId: null,
+      },
+    });
+
+    await expect(
+      workOsRouter.resolvePreflightPreview({
+        input: {
+          caseId: "case-12",
+        },
+        ctx: {
+          tenantId: "tenant-1",
+          user: { id: 7, currentTenantId: 1, role: "member" },
+        },
+      } as any)
+    ).rejects.toThrow("You can only preview automation");
   });
 
   it("resolves a step route through the policy service boundary", async () => {
