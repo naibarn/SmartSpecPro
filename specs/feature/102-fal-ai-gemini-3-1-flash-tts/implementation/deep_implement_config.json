@@ -11,7 +11,20 @@
     "section-02-shared-input-schema-and-ui",
     "section-03-audio-payload-and-tests"
   ],
-  "sections_state": {},
+  "sections_state": {
+    "section-02-shared-input-schema-and-ui": {
+      "status": "complete",
+      "commit_hash": "fd5614b5"
+    },
+    "section-01-catalog-and-seed": {
+      "status": "complete",
+      "commit_hash": "fd5614b5"
+    },
+    "section-03-audio-payload-and-tests": {
+      "status": "complete",
+      "commit_hash": "fd5614b5"
+    }
+  },
   "pre_commit": {
     "present": false,
     "type": "none",
