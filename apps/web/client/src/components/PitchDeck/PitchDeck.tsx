@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import ReactPlayer from 'react-player';
 import { Maximize, Minimize, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PitchDeckProps {
@@ -10,18 +9,34 @@ interface PitchDeckProps {
 export const PitchDeck: React.FC<PitchDeckProps> = ({ children }) => {
     const [[page, direction], setPage] = useState([0, 0]);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isCompactLayout, setIsCompactLayout] = useState(() =>
+        typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+            ? window.matchMedia('(max-width: 1023px)').matches
+            : false
+    );
 
     // Cast children to array to ensure we can map and read length
     const slides = React.Children.toArray(children);
     const totalSlides = slides.length;
 
-    const activeIndex = Math.abs(page % totalSlides);
+    useEffect(() => {
+        if (typeof window.matchMedia !== 'function') return;
+
+        const mediaQuery = window.matchMedia('(max-width: 1023px)');
+        const handleChange = () => setIsCompactLayout(mediaQuery.matches);
+
+        handleChange();
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+    }, []);
+
+    const activeIndex = totalSlides > 0 ? Math.abs(page % totalSlides) : 0;
 
     const paginate = useCallback((newDirection: number) => {
         setPage(([currentPage]) => {
             const nextPage = currentPage + newDirection;
             // Prevent wrapping around if we are at the boundaries
-            if (nextPage < 0 || nextPage >= totalSlides) {
+            if (totalSlides === 0 || nextPage < 0 || nextPage >= totalSlides) {
                 return [currentPage, 0];
             }
             return [nextPage, newDirection];
@@ -69,7 +84,73 @@ export const PitchDeck: React.FC<PitchDeckProps> = ({ children }) => {
     }, []);
 
     // Progress calculation
-    const progress = ((activeIndex) / (totalSlides - 1)) * 100;
+    const progress = totalSlides > 1 ? ((activeIndex) / (totalSlides - 1)) * 100 : 100;
+
+    if (totalSlides === 0) {
+        return null;
+    }
+
+    if (isCompactLayout) {
+        return (
+            <div className="relative min-h-screen w-full overflow-x-hidden bg-background pt-20 pb-8 text-foreground select-none">
+                <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-gradient-to-br from-slate-50 via-background to-blue-50/40">
+                    <svg
+                        className="absolute left-1/2 top-0 h-[120vh] w-[180vw] -translate-x-1/2 opacity-20 mix-blend-screen"
+                        viewBox="0 0 100 100"
+                        preserveAspectRatio="none"
+                    >
+                        {[...Array(6)].map((_, i) => (
+                            <motion.path
+                                key={i}
+                                d={`M-20,${42 + i * 7} Q30,${28 + i * 12} 55,${50 + i * 4} T120,${48 - i * 4}`}
+                                fill="none"
+                                stroke={i % 2 === 0 ? "url(#compactGradient1)" : "url(#compactGradient2)"}
+                                strokeWidth="0.24"
+                                initial={{ pathLength: 0, opacity: 0.1 }}
+                                animate={{
+                                    pathLength: [0, 1, 1, 0],
+                                    opacity: [0.1, 0.35, 0.1],
+                                }}
+                                transition={{
+                                    duration: 18 + i * 2,
+                                    repeat: Infinity,
+                                    ease: "easeInOut",
+                                    delay: i * 0.4
+                                }}
+                            />
+                        ))}
+                        <defs>
+                            <linearGradient id="compactGradient1" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#3b82f6" />
+                                <stop offset="55%" stopColor="#06b6d4" />
+                                <stop offset="100%" stopColor="#14b8a6" />
+                            </linearGradient>
+                            <linearGradient id="compactGradient2" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#14b8a6" />
+                                <stop offset="55%" stopColor="#06b6d4" />
+                                <stop offset="100%" stopColor="#3b82f6" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <div className="absolute inset-0 bg-gradient-to-b from-background/92 via-background/82 to-background/96" />
+                </div>
+
+                <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 sm:gap-6 sm:px-6">
+                    {slides.map((slide, index) => {
+                        if (React.isValidElement(slide)) {
+                            return React.cloneElement(slide as React.ReactElement<any>, {
+                                key: index,
+                                isActive: true,
+                                direction: 0,
+                                compact: true
+                            });
+                        }
+                        return null;
+                    })}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="relative w-screen h-screen overflow-hidden bg-background text-foreground select-none">

@@ -12,6 +12,7 @@ import { Menu, X, Sparkles, ChevronDown, Zap, Bot } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
 import { LocaleToggle } from '@/components/LocaleToggle';
 import { useScopedTranslation } from '@/i18n/useScopedTranslation';
+import { cn } from '@/lib/utils';
 
 interface NavLink {
   href: string;
@@ -71,6 +72,24 @@ export function Navbar() {
 
   // Close dropdown on outside click
   useEffect(() => {
+    if (!isMobileMenuOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isMobileMenuOpen]);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setOpenDropdown(null);
+  }, [location]);
+
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setOpenDropdown(null);
@@ -108,14 +127,14 @@ export function Navbar() {
                 <img
                   src={tenant.websiteLogoUrl || tenant.logoUrl}
                   alt={tenant.name || "Logo"}
-                  className="h-8 sm:h-10 lg:h-12 w-auto max-w-[160px] lg:max-w-[200px] object-contain"
+                  className="h-8 w-auto max-w-[128px] object-contain sm:h-10 sm:max-w-[160px] lg:h-12 lg:max-w-[200px]"
                 />
               ) : (
                 <>
                   <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl bg-gradient-to-br from-blue-500 via-cyan-400 to-teal-400 flex items-center justify-center shadow-lg shrink-0">
                     <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
                   </div>
-                  <span className="text-lg sm:text-xl lg:text-2xl font-bold gradient-text">SmartAIHub</span>
+                  <span className="text-base sm:text-xl lg:text-2xl font-bold gradient-text">SmartAIHub</span>
                   <span className="hidden sm:inline-block px-2 py-0.5 text-xs font-semibold bg-primary/10 text-primary rounded-full">
                     Pro
                   </span>
@@ -224,8 +243,10 @@ export function Navbar() {
 
           {/* Mobile Menu Button */}
           <button
-            className="lg:hidden p-2 rounded-lg hover:bg-muted/50 transition-colors"
+            className="lg:hidden flex h-11 w-11 items-center justify-center rounded-lg hover:bg-muted/50 transition-colors"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isMobileMenuOpen}
           >
             {isMobileMenuOpen ? (
               <X className="w-6 h-6" />
@@ -244,17 +265,18 @@ export function Navbar() {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
-            className="lg:hidden bg-background/95 backdrop-blur-xl border-b border-border/50"
+            className="lg:hidden bg-background/96 backdrop-blur-xl border-b border-border/50 shadow-xl"
           >
-            <div className="container mx-auto px-4 py-4 space-y-2">
+            <div className="container mx-auto max-h-[calc(100dvh-4rem)] space-y-2 overflow-y-auto px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
               {mobileLinks.map((link) => (
                 <Link key={link.href} href={link.href}>
                   <motion.div
-                    className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    className={cn(
+                      'block rounded-xl px-4 py-3 text-base font-medium leading-snug transition-colors',
                       location === link.href
-                        ? 'text-primary bg-primary/10'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    }`}
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                    )}
                     onClick={() => setIsMobileMenuOpen(false)}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -262,18 +284,18 @@ export function Navbar() {
                   </motion.div>
                 </Link>
               ))}
-              <div className="pt-4 space-y-2">
+              <div className="space-y-3 pt-4">
                 <div className="flex justify-center pb-2">
                   <LocaleToggle />
                 </div>
                 <Link href="/login">
-                  <Button variant="outline" className="w-full" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button variant="outline" className="h-11 w-full" onClick={() => setIsMobileMenuOpen(false)}>
                     {t('navbar.signIn')}
                   </Button>
                 </Link>
                 <Link href="/signup">
                   <Button
-                    className="w-full bg-gradient-to-r from-blue-500 to-teal-400 text-white"
+                    className="h-11 w-full bg-gradient-to-r from-blue-500 to-teal-400 text-white"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     {t('navbar.getStarted')}

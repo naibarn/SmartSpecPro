@@ -265,7 +265,7 @@ export default function Features() {
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-16 overflow-hidden">
+      <section className="relative overflow-hidden pt-24 pb-12 sm:pt-28 sm:pb-14 lg:pt-32 lg:pb-16">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 via-transparent to-transparent" />
         <div className="absolute top-20 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
         <div className="absolute top-40 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl" />
@@ -280,22 +280,22 @@ export default function Features() {
               <Sparkles className="w-4 h-4" />
               Enterprise Capabilities
             </span>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
+            <h1 className="mb-5 text-4xl font-bold leading-tight sm:mb-6 sm:text-5xl md:text-6xl">
               {heroSection?.title || parsed?.heroTitle || (<>Everything You Need to{' '}<span className="gradient-text">Ship Skills</span></>)}
             </h1>
-            <p className="text-lg text-muted-foreground mb-8">
+            <p className="mb-7 text-base leading-7 text-muted-foreground sm:mb-8 sm:text-lg">
               {heroSection?.subtitle || heroSection?.content || parsed?.heroDesc || 'SmartAIHub combines a skill marketplace, workflow orchestration, and swarm execution to supercharge enterprise output.'}
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="mx-auto flex w-full max-w-sm flex-col justify-center gap-3 sm:max-w-none sm:flex-row sm:gap-4">
               <Button 
                 size="lg" 
-                className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white"
+                className="h-auto min-h-12 w-full bg-gradient-to-r from-blue-500 to-cyan-400 py-3 text-white sm:w-auto"
               >
                 Start Free Trial
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
               <Link href="/pricing">
-                <Button size="lg" variant="outline">
+                <Button size="lg" variant="outline" className="h-auto min-h-12 w-full py-3 sm:w-auto">
                   View Pricing
                 </Button>
               </Link>
@@ -305,7 +305,7 @@ export default function Features() {
       </section>
 
       {/* Main Features */}
-      <section className="py-24">
+      <section className="py-14 sm:py-20 lg:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           {displayMainFeatures.map((feature, index) => (
             <motion.div
@@ -314,26 +314,26 @@ export default function Features() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className={`flex flex-col ${index % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'} gap-12 items-center mb-24 last:mb-0`}
+              className={`mb-16 flex flex-col items-center gap-8 last:mb-0 sm:mb-20 lg:mb-24 lg:gap-12 ${index % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'}`}
             >
               {/* Image */}
               <div className="flex-1">
-                <div className="glass-card rounded-2xl p-4 shadow-2xl">
+                <div className="glass-card rounded-2xl p-3 shadow-2xl sm:p-4">
                   <img 
                     src={feature.image} 
                     alt={feature.title}
-                    className="w-full rounded-xl"
+                    className="w-full rounded-xl object-cover"
                   />
                 </div>
               </div>
               
               {/* Content */}
               <div className="flex-1">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center mb-6">
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 sm:mb-6 sm:h-14 sm:w-14">
                   <feature.icon className="w-7 h-7 text-white" />
                 </div>
-                <h2 className="text-3xl sm:text-4xl font-bold mb-4">{feature.title}</h2>
-                <p className="text-lg text-muted-foreground mb-6">{feature.description}</p>
+                <h2 className="mb-3 text-2xl font-bold leading-tight sm:mb-4 sm:text-4xl">{feature.title}</h2>
+                <p className="mb-5 text-base leading-7 text-muted-foreground sm:mb-6 sm:text-lg">{feature.description}</p>
                 <ul className="space-y-3">
                   {feature.benefits.map((benefit) => (
                     <li key={benefit} className="flex items-center gap-3">
@@ -349,27 +349,27 @@ export default function Features() {
       </section>
 
       {/* Additional Features Grid */}
-      <section className="py-24 bg-muted/30">
+      <section className="bg-muted/30 py-14 sm:py-20 lg:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="mb-10 text-center sm:mb-16"
           >
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
               <Zap className="w-4 h-4" />
               And Much More
             </span>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+            <h2 className="mb-3 text-3xl font-bold leading-tight sm:mb-4 sm:text-4xl">
               {featuresSection?.title || parsed?.addTitle || (<>Packed with <span className="gradient-text">Powerful Tools</span></>)}
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
               Every feature is designed to help you turn reusable skills into repeatable business outcomes.
             </p>
           </motion.div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
             {displayAdditionalFeatures.map((feature: any, index: number) => (
               <motion.div
                 key={feature.title}
@@ -379,7 +379,7 @@ export default function Features() {
                 transition={{ delay: index * 0.05 }}
               >
                 <DashboardCard className="glass-card h-full hover:shadow-xl transition-all duration-300 group">
-                  <div className="p-6">
+                  <div className="p-5 sm:p-6">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-teal-400/20 flex items-center justify-center mb-4 group-hover:from-blue-500 group-hover:to-teal-400 transition-all duration-300">
                       <feature.icon className="w-6 h-6 text-primary group-hover:text-white transition-colors" />
                     </div>
@@ -394,27 +394,27 @@ export default function Features() {
       </section>
 
       {/* Integrations */}
-      <section className="py-24">
+      <section className="py-14 sm:py-20 lg:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="mb-10 text-center sm:mb-16"
           >
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
               <GitBranch className="w-4 h-4" />
               Delivery Surfaces
             </span>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+            <h2 className="mb-3 text-3xl font-bold leading-tight sm:mb-4 sm:text-4xl">
               Ships to the Right <span className="gradient-text">Output Surface</span>
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
               Publish the same skill to chat, presentation, and video workflows without rewriting the core logic.
             </p>
           </motion.div>
 
-          <div className="flex flex-wrap justify-center gap-6">
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-6">
             {displayIntegrations.map((integration, index) => (
               <motion.div
                 key={integration.name}
@@ -422,9 +422,9 @@ export default function Features() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.05 }}
-                className="glass-card rounded-xl p-6 text-center hover:shadow-lg transition-shadow"
+                className="glass-card min-w-[8.5rem] rounded-xl p-4 text-center transition-shadow hover:shadow-lg sm:p-6"
               >
-                <div className="text-4xl mb-2">{integration.logo}</div>
+                <div className="mb-2 text-3xl sm:text-4xl">{integration.logo}</div>
                 <div className="text-sm font-medium">{integration.name}</div>
               </motion.div>
             ))}
@@ -433,31 +433,31 @@ export default function Features() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 bg-muted/30">
+      <section className="bg-muted/30 py-14 sm:py-20 lg:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="glass-card rounded-2xl p-8 sm:p-12 text-center max-w-4xl mx-auto"
+            className="glass-card mx-auto max-w-4xl rounded-2xl p-6 text-center sm:p-12"
           >
-            <Sparkles className="w-16 h-16 mx-auto mb-6 text-primary" />
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+            <Sparkles className="mx-auto mb-5 h-12 w-12 text-primary sm:mb-6 sm:h-16 sm:w-16" />
+            <h2 className="mb-3 text-3xl font-bold leading-tight sm:mb-4 sm:text-4xl">
               {ctaSection?.title || parsed?.ctaTitle || 'Ready to Build an Enterprise Skill Platform?'}
             </h2>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <p className="mx-auto mb-7 max-w-2xl text-base leading-7 text-muted-foreground sm:mb-8 sm:text-lg">
               {ctaSection?.subtitle || ctaSection?.content || parsed?.ctaDesc || 'Join teams that are packaging skills, orchestrating workflows, and launching swarms with SmartAIHub.'}
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="mx-auto flex w-full max-w-sm flex-col justify-center gap-3 sm:max-w-none sm:flex-row sm:gap-4">
               <Button 
                 size="lg" 
-                className="bg-gradient-to-r from-blue-500 to-teal-400 text-white"
+                className="h-auto min-h-12 w-full bg-gradient-to-r from-blue-500 to-teal-400 py-3 text-white sm:w-auto"
               >
                 Start Free Trial
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
               <Link href="/docs">
-                <Button size="lg" variant="outline">
+                <Button size="lg" variant="outline" className="h-auto min-h-12 w-full py-3 sm:w-auto">
                   Read Documentation
                 </Button>
               </Link>
