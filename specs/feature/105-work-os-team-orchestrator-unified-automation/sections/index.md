@@ -70,3 +70,12 @@ Deliver the request-review UX, telemetry, flags, and rollout controls needed for
 
 - `../appendices/contracts-and-migration.md`
 - `../appendices/security-and-authorization.md`
+- `../appendices/preflight-lifecycle-and-api-contracts.md`
+- `../appendices/runtime-budget-dispatch-policy.md`
+- `../appendices/observability-event-taxonomy.md`
+
+## Implementation Status
+
+- 2026-04-22: sections 01-07 are now backed by shared contracts, Work OS preflight lifecycle APIs, Team runtime plan hydration, learning services, and request-page preflight review UI.
+- Verification: `npm run -w @smartspec/web test -- client/src/pages/__tests__/WorkRequest.test.tsx`
+- Verification: `npm run -w @smartspec/web test -- server/routers/__tests__/workOs.test.ts server/services/__tests__/teamRunSkillExecutorUnifiedWiring.test.ts server/services/__tests__/workIntakeSourceResolver.test.ts server/services/__tests__/workIntakeBriefService.test.ts server/services/__tests__/orchestratorCapabilityCatalogService.test.ts server/services/__tests__/preflightApprovalLifecycleService.test.ts server/services/__tests__/teamExecutionPlanService.test.ts server/services/__tests__/orchestratorLearningService.test.ts`

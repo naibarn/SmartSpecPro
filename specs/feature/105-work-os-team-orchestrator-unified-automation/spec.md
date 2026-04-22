@@ -1,6 +1,6 @@
 # Feature 105 - Work OS + Team Orchestrator Unified Automation
 
-Version: 1.2
+Version: 1.3
 Date: 2026-04-21
 Status: Draft
 Depends-on: 101-openai-agents-sdk-chat-team-orchestration, 103-obsidian-inspired-md-knowledge-vault, 104-md-knowledge-vault-production-readiness
@@ -100,6 +100,9 @@ The repo already has workpack replay, readiness, promotion, and skill-improvemen
 - No reliance on budget previews alone; approved plan budgets must become enforced runtime caps.
 - No dispatch to a surface whose shared/router/persistence contracts have not been migrated yet.
 - No launch from a stale preflight preview after request fields, linked sources, or approval inputs have changed.
+- No launch from an invalid `PreflightApprovalBundle` lifecycle state.
+- No context or capability decision may trust client-provided tenant, role, permission, or private-vault unlock fields.
+- No runtime retry, cancellation, or dead-letter recovery may bypass the approved dispatch policy for side-effecting surfaces.
 
 ---
 
@@ -349,6 +352,7 @@ Primary additions:
 - `Create Work Request from Chat` entry point
 - `Send to Work OS` action from chat or Team room
 - source selector for linked conversations, docs, workpacks, and role routines
+- server-derived `WorkIntakeActorContext` for every source-resolution and preview path
 
 ### 7.2 Layer 2 - Governed Context Fabric
 
@@ -370,6 +374,7 @@ This layer should extend the current `contextPackBuilder` pattern into a broader
 Outputs:
 
 - `CompiledWorkBrief`
+- `WorkIntakeActorContext`
 - `GovernedContextSnapshot`
 - `ApprovalSourceSnapshot[]`
 - traceable evidence references
@@ -419,6 +424,7 @@ Required outputs:
 - enforced execution budget envelope
 - team-resolution decision
 - preflight revision fingerprint
+- `PreflightApprovalBundle` lifecycle state
 
 This planner should be mostly deterministic up to the point where LLM reasoning is actually useful. LLMs can help with decomposition and tradeoffs, but not with unconstrained surface discovery.
 
@@ -434,6 +440,7 @@ Required behavior:
 - `teamRunSkillExecutor` respects the plan's explicit step surface and capability choices
 - heuristic routing becomes fallback-only
 - runtime requests carry the governed context snapshot and approved surface set
+- runtime dispatch compiles a `RuntimeDispatchPolicy` for each executable step before calling a surface
 
 ### 7.6 Layer 6 - Learning and Packaging
 
@@ -448,6 +455,7 @@ Required outputs:
 - workflow-refinement proposals
 - maintenance tasks
 - promotion and readiness signals
+- learning proposal lifecycle records
 
 This layer should reuse existing Workpack and Skill Studio systems instead of inventing a second learning product.
 
@@ -465,6 +473,7 @@ Required outputs:
 - execution budget envelope
 - launch drift diagnostics
 - release-gate status for privileged surfaces
+- stable reason-code and telemetry event taxonomy
 
 ---
 
@@ -478,6 +487,7 @@ Required outputs:
 - Launch is still a deliberate user action.
 - Request-scoped preflight preview must be accessible to the requester and admins/domain admins.
 - Non-admin preview callers must receive a user-safe view that redacts privileged diagnostics, permission internals, and secret-bearing excerpts.
+- Source resolution, preview generation, approval, and launch must receive server-derived actor context. Client payloads may request sources or teams but may not declare trusted tenant, role, permission, or private-vault unlock state.
 
 ### 8.2 Compiled work brief
 
@@ -491,6 +501,9 @@ Required outputs:
 - If a required source changes after approval in a way that invalidates its snapshot, the run must not launch until it is re-reviewed.
 - Any change to request title, objective, linked sources, policy inputs, or selected approval sources after preview must invalidate the approved preflight bundle until it is regenerated.
 - Launch must compare the current `PreflightRevisionFingerprint` to the approved revision before kickoff.
+- `PreflightApprovalBundle` must follow a valid lifecycle: `draft`, `previewed`, `approved`, `stale`, `launch_blocked`, `launching`, `launched`, `cancelled`, or `superseded`.
+- Mutating preflight APIs must be idempotent and must reject idempotency-key reuse with different inputs.
+- Concurrent launch attempts must not create duplicate automation runs or Team rooms.
 
 ### 8.3 Capability planning
 
@@ -532,6 +545,8 @@ Required outputs:
   - per-surface max attempts
   - media/render quotas
   - retry disposition for side-effecting steps
+- Runtime budget enforcement must use stable units for tokens, tool calls, media jobs, workflow runs, agency runs, wall-clock duration, retry count, and internal cost credits.
+- Runtime dispatch must define timeout, cancellation, retry, idempotency, and dead-letter behavior for every long-running or side-effecting step.
 - Privileged surfaces must re-check execution authority at runtime before dispatch.
 
 ### 8.5 Learning and improvement
@@ -540,6 +555,8 @@ Required outputs:
 - Improvement hotspots should generate skill/workflow maintenance proposals.
 - Workpack readiness and replay signals should be available as future planning inputs.
 - Maintenance surfaces must remain governed and optionally approval-gated.
+- Learning proposals must move through explicit lifecycle states such as generated, deduped, triaged, accepted, scheduled, applied, rejected, expired, or superseded.
+- Rejected, expired, and superseded proposals must remain auditable but must not re-trigger automatic follow-up work.
 
 ### 8.6 Observability and safety
 
@@ -552,6 +569,8 @@ Required outputs:
 - The system must record any governance downgrade where the planner requested a surface that runtime refused.
 - The system must record the approved `PreflightRevisionFingerprint`, the current fingerprint at launch time, and the reason when launch is invalidated as stale.
 - The system must record contract-compatibility blocks separately from authorization or feature-flag blocks.
+- Observability events must use a shared taxonomy with stable event names, correlation ids, redaction mode, actor class, and primary reason code.
+- UI telemetry must record launch-disabled states, regeneration actions, rollout-gate decisions, and requester-safe reason codes without exposing admin-only diagnostics.
 
 ### 8.7 Security and authorization
 
@@ -563,6 +582,8 @@ Required outputs:
 - Private-vault, restricted library, and connector-backed sources must be re-authorized at read time even after planning.
 - Delegated workers must not inherit broader privileges than the approved plan and runtime actor explicitly grant.
 - Approval snapshots must never store raw secrets or connector credentials; only redacted excerpts and integrity markers are allowed.
+- Dead-letter recovery and side-effecting retries require explicit authority and idempotency verification.
+- Requester-safe diagnostics must be created by redacting canonical admin decisions, not by making a separate weaker policy decision.
 
 ---
 
@@ -571,6 +592,7 @@ Required outputs:
 ### 9.1 New logical artifacts
 
 - `CompiledWorkBrief`
+- `WorkIntakeActorContext`
 - `ApprovalSourceSnapshot`
 - `PreflightRevisionFingerprint`
 - `PreflightApprovalBundle`
@@ -579,7 +601,10 @@ Required outputs:
 - `TeamExecutionPlan`
 - `TeamResolutionDecision`
 - `ExecutionBudgetEnvelope`
+- `RuntimeDispatchPolicy`
 - `OrchestratorLearningRecord`
+- `LearningProposal`
+- `OrchestratorTelemetryEvent`
 
 ### 9.2 Storage strategy
 
@@ -592,10 +617,21 @@ Phase 1:
 - persist immutable approval snapshots alongside the approved launch record so source drift can be detected before dispatch
 - persist the approved preflight revision fingerprint and launch-time fingerprint comparison outcome alongside the launch record
 - until Work OS surface contracts are migrated, store compatibility blocks and preview-only capability diagnostics without attempting dispatch against unsupported surfaces
+- enforce a formal persistence decision gate before requester-visible launch UI leaves preview/beta:
+  - JSON metadata may remain the v1 storage path only if approved bundles are read mostly by a single run, do not need cross-run search, and can be validated with schema guards at read time
+  - a dedicated migration is required before broader rollout if approved plans must be queried across runs, audited in bulk, filtered in dashboards, retained independently, or joined with Team ledger/workpack learning records
+- document the selected storage path in the decision log before enabling Feature 105 launch enforcement beyond internal/admin users
 
 Phase 2:
 
 - normalize into dedicated tables if the product needs cross-run querying, dashboards, and bulk governance workflows
+- if Phase 2 is triggered, normalize at minimum:
+  - approved preflight bundles
+  - approval source snapshots
+  - plan step graph records
+  - budget envelope state
+  - team-resolution decisions
+  - governance/compatibility block records
 
 ### 9.3 Shared schemas
 
@@ -603,6 +639,7 @@ Add shared contracts under `apps/web/shared/` for:
 
 - intake brief schema
 - source-ref schema
+- actor-context schema
 - approval-source snapshot schema
 - preflight revision schema
 - preflight approval bundle schema
@@ -610,9 +647,11 @@ Add shared contracts under `apps/web/shared/` for:
 - surface-governance policy schema
 - execution-plan schema
 - execution-budget envelope schema
+- runtime-dispatch policy schema
 - team-resolution decision schema
 - review decision schema
 - learning proposal handoff schema
+- observability event envelope schema
 
 ---
 
@@ -650,6 +689,10 @@ Each slice is detailed in the section files.
 - `workflow` and `skill_studio` cannot auto-execute in v1 without explicit governance approval.
 - Requesters can review a redacted preflight preview for their own request without needing domain-admin access.
 - Surfaces whose shared/router/persistence contracts are not yet migrated remain blocked with explicit compatibility reasons instead of failing later at dispatch.
+- Preflight preview, regeneration, approval, invalidation, bundle-read, and launch APIs follow one lifecycle contract.
+- Runtime dispatch records retry, timeout, cancellation, and dead-letter outcomes with stable reason codes.
+- Learning proposals have explicit lifecycle states and cannot auto-apply or publish without action-specific governance.
+- Preflight UI supports keyboard/screen-reader use, progressive disclosure, and localization through stable reason-code translation keys.
 
 ---
 
@@ -673,17 +716,31 @@ Each slice is detailed in the section files.
 - Make routing plan-first and heuristic-second.
 - Keep capability expansion behind flags.
 - Keep `workflow` and `skill_studio` in preview-only or blocked state until shared surface contracts, router schemas, and persistence enums are migrated.
+- run the storage decision gate before exposing requester-visible final launch approval:
+  - continue JSON-only if this remains a narrow beta with focused run-scoped read paths
+  - add migrations first if operators need searchable audit, dashboards, or cross-run learning over approved plan data
 
 ### 12.4 Phase 4 - Security and release gates
 
 - Enforce approval snapshots, team-resolution policy, and budget envelopes.
 - Gate `workflow` and `skill_studio` surfaces behind explicit security and rollout controls.
 - Enforce requester-safe preview ACLs and stale-preview invalidation before broad release.
+- Enforce `PreflightApprovalBundle` lifecycle transitions and idempotency before requester-visible launch approval.
+- Enforce runtime dispatch policy for retries, timeouts, cancellations, and dead-letter recovery before enabling long-running privileged surfaces.
+- Adopt the shared observability event taxonomy before operator dashboards or broad rollout decisions depend on telemetry.
+- split shared security implementation into small policy modules before parallel implementation:
+  - surface governance and reason codes
+  - approval snapshot drift checks
+  - budget envelope enforcement
+  - requester/admin preflight redaction
+  - contract compatibility gates
+  - team-resolution launch gate integration
 
 ### 12.5 Phase 5 - Learning loop
 
 - Feed successful runs into workpack and skill improvement systems.
 - Add readiness and replay-aware suggestions for future requests.
+- Add learning proposal lifecycle UI or admin review surfaces before any automatic proposal follow-up.
 
 ### 12.6 Phase 6 - Expand autonomy carefully
 
@@ -695,3 +752,6 @@ Each slice is detailed in the section files.
 
 - `appendices/contracts-and-migration.md`
 - `appendices/security-and-authorization.md`
+- `appendices/preflight-lifecycle-and-api-contracts.md`
+- `appendices/runtime-budget-dispatch-policy.md`
+- `appendices/observability-event-taxonomy.md`

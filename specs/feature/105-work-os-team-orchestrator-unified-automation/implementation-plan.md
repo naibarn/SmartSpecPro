@@ -41,16 +41,20 @@ Likely new shared/server modules:
 - `apps/web/shared/workOrchestrator.ts`
 - `apps/web/server/services/workIntakeBriefService.ts`
 - `apps/web/server/services/workIntakeSourceResolver.ts`
+- `apps/web/server/services/workIntakeActorContext.ts`
 - `apps/web/server/services/orchestratorCapabilityCatalogService.ts`
 - `apps/web/server/services/preflightRevisionService.ts`
 - `apps/web/server/services/preflightAccessPolicyService.ts`
+- `apps/web/server/services/preflightApprovalLifecycleService.ts`
 - `apps/web/server/services/workOrchestratorPlanningService.ts`
 - `apps/web/server/services/workOrchestratorSecurityPolicy.ts`
 - `apps/web/server/services/approvalSourceSnapshotService.ts`
+- `apps/web/server/services/runtimeDispatchPolicyService.ts`
 - `apps/web/server/services/teamResolutionPolicyService.ts`
 - `apps/web/server/services/teamExecutionPlanService.ts`
 - `apps/web/server/services/teamExecutionLaunchService.ts`
 - `apps/web/server/services/orchestratorLearningService.ts`
+- `apps/web/server/services/workOrchestratorTelemetryService.ts`
 
 Likely new client modules:
 
@@ -60,21 +64,24 @@ Likely new client modules:
 
 ## Implementation approach
 
-1. Define shared schemas for intake sources, compiled brief, approval snapshots, preflight revision fingerprints, capability entries, execution budgets, and execution plans.
-2. Build a source resolver that can turn linked conversations, library refs, workpack refs, and policy blocks into governed planning context.
+1. Define shared schemas for intake sources, actor context, compiled brief, approval snapshots, preflight revision fingerprints, preflight approval bundles, capability entries, execution budgets, runtime dispatch policies, learning proposals, telemetry events, and execution plans.
+2. Build a source resolver that can turn linked conversations, library refs, workpack refs, and policy blocks into governed planning context using server-derived `WorkIntakeActorContext`.
 3. Build a compiled-work-brief service for Work OS, persist approval-time source snapshots with integrity markers, and compute a preflight revision fingerprint that invalidates stale previews.
 4. Build a capability catalog service that merges skill manifests, workflow support, agency support, media/video capability, and maintenance surfaces into one view.
 5. Extend the planning model with capability action variants and contract-compatibility state so `workflow` and `skill_studio` can be previewed safely before full contract migration.
 6. Define a surface-governance policy service that determines which surfaces are planner-visible, auto-executable, approval-gated, or blocked, including `skill_studio` sub-actions.
 7. Build a preflight planner that selects execution surfaces, outputs an explicit plan, and records blocked alternatives.
-8. Add requester-safe preview access policy and redaction logic for preflight review.
-9. Add deterministic team-resolution policy so launch can select a valid orchestration team or fail closed with review diagnostics.
-10. Convert plan forecasts into an enforced execution-budget envelope and runtime caps.
-11. Add plan preview and source review to the Work Request launch flow.
-12. Persist the approved plan into the automation run and Team kickoff path.
-13. Update Team runtime to honor the approved plan before falling back to heuristics.
-14. Expand Work OS surface contracts across shared types, router schemas, and persistence before enabling runtime dispatch for new surfaces.
-15. Feed post-run outcomes into workpack and skill-maintenance proposal generation.
+8. Implement `PreflightApprovalBundle` lifecycle and explicit APIs for preview, regenerate, approve, read, invalidate, and launch.
+9. Add requester-safe preview access policy and redaction logic for preflight review.
+10. Add deterministic team-resolution policy so launch can select a valid orchestration team or fail closed with review diagnostics.
+11. Convert plan forecasts into an enforced execution-budget envelope and runtime caps with stable units.
+12. Add plan preview and source review to the Work Request launch flow.
+13. Persist the approved plan into the automation run and Team kickoff path.
+14. Update Team runtime to honor the approved plan before falling back to heuristics.
+15. Compile `RuntimeDispatchPolicy` before each executable step so retry, timeout, cancellation, idempotency, budget reservation, and dead-letter behavior is deterministic.
+16. Expand Work OS surface contracts across shared types, router schemas, and persistence before enabling runtime dispatch for new surfaces.
+17. Feed post-run outcomes into workpack and skill-maintenance proposal generation with explicit proposal lifecycle states.
+18. Add the shared observability event taxonomy and map UI reason codes through accessibility/i18n-friendly translation keys.
 
 ## Risks and mitigations
 
@@ -100,10 +107,16 @@ Likely new client modules:
   - Mitigation: split `skill_studio` policy by sub-action: create, improve, auto-apply, publish.
 - Risk: budget previews do not actually prevent runaway execution.
   - Mitigation: translate approved budgets into hard runtime caps and stop policies.
+- Risk: long-running surface retries duplicate media, workflow, agency, or external side effects.
+  - Mitigation: require runtime dispatch policy, idempotency keys, input hashes, side-effect classes, and dead-letter recovery rules.
+- Risk: preflight lifecycle becomes inconsistent across UI and router code.
+  - Mitigation: centralize lifecycle transitions and API contracts around `PreflightApprovalBundle`.
+- Risk: telemetry becomes hard to join across Work OS and Team.
+  - Mitigation: require a shared observability event taxonomy with correlation ids and stable reason codes.
 - Risk: rollout destabilizes existing direct Team room creation.
   - Mitigation: keep the new path additive; do not break direct `auto_team` room flows.
 - Risk: learning loop creates noisy maintenance suggestions.
-  - Mitigation: reuse workpack replay/readiness thresholds and existing auto-apply eligibility rules.
+  - Mitigation: reuse workpack replay/readiness thresholds, proposal lifecycle states, and existing auto-apply eligibility rules.
 
 ## Acceptance criteria
 
@@ -120,6 +133,10 @@ Likely new client modules:
 - Team resolution follows a deterministic precedence order with explicit resolution codes.
 - `workflow` and `skill_studio` remain blocked with compatibility diagnostics until Work OS surface contracts are migrated.
 - Runtime budgets are enforced, not only estimated.
+- Runtime dispatch has deterministic retry, timeout, cancellation, and dead-letter behavior.
+- Preflight preview/approval/launch follows a valid lifecycle and prevents duplicate launch.
+- Learning proposals move through explicit auditable lifecycle states.
+- Preflight UI uses progressive disclosure, accessibility support, and localized reason-code labels.
 - Existing Work Request, Team room, and direct room creation flows remain functional during rollout.
 
 ## Rollout and testing notes
@@ -132,4 +149,6 @@ Likely new client modules:
 - Ship requester-safe preview ACLs together with the first user-visible preflight screen.
 - Add security telemetry for snapshot drift, governance downgrades, and team-resolution failures before broad rollout.
 - Add telemetry for stale-preview invalidations and contract-compatibility blocks.
+- Add telemetry for lifecycle transitions, launch-disabled UI states, runtime dead-letter outcomes, and learning proposal state changes.
 - Reuse Team ledger and Work OS timeline outputs for observability before adding new dashboards.
+- Validate accessibility and i18n behavior before broad requester-visible UI rollout.

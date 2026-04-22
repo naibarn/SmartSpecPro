@@ -36,6 +36,36 @@ Make the rollout of `workflow` and `skill_studio` safe by defining how planner-v
    - ensure Work OS and Team ledger surfaces render new surface labels cleanly
    - record compatibility blocks separately from auth/flag failures
 
+## Approved-plan persistence decision gate
+
+Before Feature 105 leaves internal/admin-only preview, engineering must decide whether approved preflight bundles remain in JSON metadata or move into dedicated tables.
+
+JSON metadata is acceptable for v1 only when:
+
+- approved bundles are loaded primarily by automation run id
+- Team kickoff and runtime dispatch can validate the bundle with shared schemas at read time
+- operators do not need cross-run filtering or dashboards over plan steps, snapshots, or budget envelopes
+- retention/audit can be satisfied by existing Work OS timeline and run metadata
+
+Dedicated migrations are required before broader rollout when any of these are true:
+
+- approved bundles must be searched, filtered, or joined across runs
+- approval source snapshots need independent retention or audit lifecycle
+- Team ledger, workpack learning, or monitoring needs reliable joins to individual plan steps
+- operators need dashboards over blocked surfaces, budget caps, or team-resolution outcomes
+- JSON blobs become too large or too expensive to hydrate for routine list views
+
+Minimum normalized records, if the gate chooses migration:
+
+- approved preflight bundle header
+- approval source snapshot rows
+- execution plan step rows
+- budget envelope rows or immutable budget snapshots
+- team-resolution decision rows
+- governance and contract-compatibility block rows
+
+The decision must be recorded in `decision-log.md` and referenced by the rollout checklist before enabling requester-visible launch enforcement.
+
 ## Rollout phases
 
 ### Phase A - Preview-only compatibility mode
@@ -54,6 +84,7 @@ Make the rollout of `workflow` and `skill_studio` safe by defining how planner-v
 - Land persistence enum changes.
 - Land service union/switch updates.
 - Add compatibility regression tests before enabling execution.
+- If approved-plan metadata needs cross-run queryability, land the approved-bundle persistence migration before enabling requester-visible launch approval.
 
 ### Phase C - Controlled execution enablement
 

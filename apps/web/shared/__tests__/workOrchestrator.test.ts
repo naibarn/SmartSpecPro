@@ -60,8 +60,12 @@ describe("workOrchestrator contracts", () => {
     const now = "2026-04-21T00:00:00.000Z";
     const bundle = preflightApprovalBundleSchema.parse({
       id: "preflight-1",
+      tenantId: "tenant-1",
       requestId: "req-1",
       caseId: "case-1",
+      state: "previewed",
+      createdAt: now,
+      updatedAt: now,
       previewView: "requester_safe",
       brief: {
         title: "Launch campaign",

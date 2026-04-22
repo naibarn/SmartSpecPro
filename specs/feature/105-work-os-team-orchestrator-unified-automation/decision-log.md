@@ -88,6 +88,54 @@
 - Decision: team resolution follows an explicit precedence order and emits stable resolution codes.
 - Why: The current kickoff logic already implies an order, but the product needs that behavior exposed as a testable contract.
 
+### 17. Approved-plan storage requires an explicit rollout gate
+
+- Decision: Phase 1 may continue to store approved preflight bundles, source snapshots, budget envelopes, and team-resolution results in JSON metadata, but requester-visible launch enforcement cannot leave preview/beta until engineering records a storage decision.
+- Why: JSON metadata is faster and safer for early rollout, but dashboards, audit, retention, Team ledger joins, and workpack learning may need normalized tables.
+- Gate: keep JSON-only only for narrow run-scoped reads; add migrations first if cross-run queryability, independent retention, or reliable joins become product requirements.
+
+### 18. Shared security policy must be decomposed before implementation
+
+- Decision: `workOrchestratorSecurityPolicy` is a shared concept, but implementation should be split into small modules or clearly owned helper groups for surface governance, snapshot drift, budget enforcement, preflight redaction, contract compatibility, and team-resolution launch gates.
+- Why: Section 02, Section 03, Section 04, Section 06, and Section 07 all consume security decisions. A monolithic file would create merge conflicts and make enforcement rules easier to bypass.
+- Gate: before parallel `/deep-implement` work begins, section owners must agree which helper owns each stable reason-code family and which section is allowed to edit it.
+
+### 19. Actor context is server-derived only
+
+- Decision: source resolution, preview generation, approval, and launch consume a server-derived `WorkIntakeActorContext`.
+- Why: Client payloads can request sources or teams, but they must never become the source of truth for tenant, role, permission, or private-vault unlock state.
+- Gate: Section 01 and Section 02 tests must prove client-provided trusted actor fields are ignored.
+
+### 20. Preflight approval has an explicit lifecycle and API contract
+
+- Decision: `PreflightApprovalBundle` state transitions and APIs are part of the implementation contract, not UI-only behavior.
+- Why: preview, regeneration, approval, invalidation, blocked launch, and final launch have different safety semantics and must remain idempotent under retries and double-clicks.
+- Gate: requester-visible launch approval cannot enable until lifecycle transition tests and API contract tests pass.
+
+### 21. Runtime dispatch policy governs long-running and side-effecting steps
+
+- Decision: every executable plan step compiles a `RuntimeDispatchPolicy` immediately before dispatch.
+- Why: media, workflow, agency, video, document, and skill-maintenance actions may be long-running or side-effecting; retry/cancel/dead-letter behavior must be explicit.
+- Gate: privileged or long-running surface dispatch cannot enable until retry, timeout, cancellation, idempotency, budget-reservation, and dead-letter tests pass.
+
+### 22. Observability uses one shared taxonomy
+
+- Decision: Feature 105 telemetry uses a shared event envelope, event names, correlation fields, redaction mode, actor class, and primary reason code.
+- Why: Work OS, Team ledger, monitoring, and UI need to explain the same decision path without leaking privileged diagnostics.
+- Gate: dashboards, alerts, or rollout gates cannot depend on Feature 105 events until taxonomy contract tests pass.
+
+### 23. Learning proposals have lifecycle governance
+
+- Decision: generated workpack, workflow, and skill-improvement proposals move through explicit states before they can be applied or closed.
+- Why: repeated automation should improve the system, but rejected/expired/superseded ideas must remain auditable without auto-reopening noisy work.
+- Gate: automatic follow-up work is disabled until proposal lifecycle and action-specific governance tests pass.
+
+### 24. Preflight UI must be accessible, localized, and progressively disclosed
+
+- Decision: requester-safe preflight review must support keyboard/screen-reader usage, translation-key mapped reason summaries, and progressive disclosure of detail.
+- Why: users need to understand expensive automation decisions without reading admin policy internals or inaccessible dense diagnostics.
+- Gate: broad requester-visible UI rollout requires accessibility, i18n, and progressive-disclosure tests.
+
 ## Risks accepted during planning
 
 - The initial version will still rely on some heuristics while migrating to capability-driven planning.
@@ -104,3 +152,6 @@
 - Round 6: No new material issues found; the plan stayed aligned with the current repo and rollout constraints.
 - Round 7: Closed the remaining production gaps around privileged-surface governance, approval-source snapshots, team-resolution fail-closed rules, and runtime budget enforcement.
 - Round 8: Closed the remaining gaps around surface-contract migration, requester-safe preview ACLs, dirty-state invalidation, deterministic team resolution, and `skill_studio` sub-action governance.
+- Round 9: Canonicalized deep-plan outputs and added section-level interface/done-when criteria.
+- Round 10: Promoted the optional JSON-vs-migration and security-policy-splitting suggestions into explicit implementation gates.
+- Round 11: Promoted lifecycle/API contracts, runtime budget/dispatch policy, observability taxonomy, actor-context propagation, learning proposal lifecycle, and UI accessibility/i18n/progressive disclosure into explicit plan requirements and tests.
