@@ -24,6 +24,8 @@ vi.mock('@/features/local-ai/skills/useTauriLocalSkillRuntimeStatus', () => ({
 }));
 
 vi.mock('@/features/local-ai/adapters/externalLocalTextBackend', () => ({
+  shouldAllowExternalLocalBackend: () => false,
+  shouldAllowOnDeviceLocalEngine: () => true,
   useExternalLocalTextBackendAvailability: () => ({
     scope: {
       tenantId: 'tenant-1',
@@ -61,6 +63,8 @@ const mockSkills = [
     icon: 'image',
     category: 'Media',
     priority: 100,
+    nativeBundleReady: true,
+    nativeBundleFiles: ['SKILL.md', 'skill.lock.json', 'scripts/run.sh', 'scripts/verify.sh'],
   },
   {
     id: 2,
@@ -131,6 +135,18 @@ describe('SkillSelector', () => {
       );
 
       expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('shows native bundle badge for native skills', () => {
+      render(
+        <SkillSelector
+          open={true}
+          onClose={mockOnClose}
+          onSelect={mockOnSelect}
+        />
+      );
+
+      expect(screen.getByText('Native')).toBeInTheDocument();
     });
 
     it('shows empty state when no skills', () => {

@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { Fragment, useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -72,6 +73,7 @@ import { SkillStudioDialog } from "@/components/skills/SkillStudioDialog";
 import { SkillModelPreviewPanel } from "@/components/chat/settings/SkillModelPreviewPanel";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { cn } from "@/lib/utils";
 import {
   getAllowedExecutionModesForSkillCategory,
   getMediaModelTypeForSkillCategory,
@@ -126,6 +128,11 @@ interface Skill {
   approvedAt: string | null;
   rejectionReason: string | null;
   ownerName?: string | null;
+  hasLocalFolder?: boolean;
+  nativeBundleReady?: boolean;
+  nativeBundleFiles?: string[];
+  nativeBundlePath?: string | null;
+  nativeBundleLockPath?: string | null;
 }
 
 interface FolderInfo {
@@ -169,6 +176,24 @@ interface MaintenanceRecommendation {
     executionMode: string | null;
     sandboxProfileSlug: string | null;
   } | null;
+}
+
+interface MaintenanceRecommendationGroup {
+  skillId: number;
+  skill: MaintenanceRecommendation["skill"] | null;
+  recommendations: MaintenanceRecommendation[];
+  primaryRecommendation: MaintenanceRecommendation;
+  highestRiskLevel: MaintenanceRecommendation["riskLevel"];
+  worstCompatibilityStatus: MaintenanceRecommendation["compatibilityStatus"];
+  highestQualityScore: number | null;
+  currentRuntime: string | null;
+}
+
+interface LegacyUpgradeQueueItem extends MaintenanceRecommendation {
+  upgradePriorityScore: number;
+  upgradePriorityTier: "low" | "medium" | "high" | "urgent" | "critical";
+  parallelUpgradeEligible: boolean;
+  legacyUpgradeSignals: Record<string, unknown> | null;
 }
 
 interface MaintenanceSchedule {
@@ -423,6 +448,16 @@ function getExecutionModeHelperText(
   return "Uses the skill manifest markdown as system prompt for LLM (default).";
 }
 
+function getNativeBundleLabel(skill: Pick<Skill, "hasLocalFolder" | "nativeBundleReady">): string {
+  if (skill.nativeBundleReady) {
+    return "Native";
+  }
+  if (skill.hasLocalFolder) {
+    return "Legacy";
+  }
+  return "Missing";
+}
+
 function getMediaModelsForCategory(
   category: string,
   imageModels?: { models?: any[] },
@@ -507,11 +542,12 @@ function buildScheduleDraftFromExisting(schedule: MaintenanceSchedule) {
 
 export default function AdminSkills() {
   const { user, isLoading: authLoading } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const { t } = useScopedTranslation("admin");
   const utils = trpc.useUtils();
   const zipInputRef = useRef<HTMLInputElement>(null);
+  const legacyUpgradeQueueFilterStorageKey = "admin.skills.legacyQueueFilter";
 
   // UI state
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -530,6 +566,11 @@ export default function AdminSkills() {
   const [previewProposal, setPreviewProposal] = useState<{ skillName: string; diffFile: string; recommendationId?: number } | null>(null);
   const [maintenanceSkillFilter, setMaintenanceSkillFilter] = useState<number | null>(null);
   const [maintenanceStatusFilter, setMaintenanceStatusFilter] = useState<string>("pending_review");
+  const [expandedMaintenanceSkillIds, setExpandedMaintenanceSkillIds] = useState<number[]>([]);
+  const [legacyUpgradeIncludeApplied, setLegacyUpgradeIncludeApplied] = useState(false);
+  const [legacyUpgradeQueueFilter, setLegacyUpgradeQueueFilter] = useState<"all" | "critical" | "high" | "parallel" | "eligible">("all");
+  const [selectedLegacyUpgradeIds, setSelectedLegacyUpgradeIds] = useState<number[]>([]);
+  const [expandedLegacyUpgradeIds, setExpandedLegacyUpgradeIds] = useState<number[]>([]);
   const [selectedRecommendationId, setSelectedRecommendationId] = useState<number | null>(null);
   const [pendingMaintenanceApply, setPendingMaintenanceApply] = useState<PendingMaintenanceApply | null>(null);
   const openedSkillIdFromQueryRef = useRef<number | null>(null);
@@ -584,6 +625,14 @@ export default function AdminSkills() {
   // Check auth — any authenticated user can access, not just admins
   const isAdmin = user?.role === "admin";
   const search = useSearch();
+  const openTabFromQuery = useMemo(() => {
+    const params = new URLSearchParams(search);
+    const value = params.get("tab");
+    if (value === "skills" || value === "import" || value === "iscProposals" || value === "maintenance" || value === "pendingApproval") {
+      return value;
+    }
+    return null;
+  }, [search]);
   const openSkillIdFromQuery = useMemo(() => {
     const params = new URLSearchParams(search);
     const value = params.get("skillId");
@@ -591,6 +640,27 @@ export default function AdminSkills() {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
   }, [search]);
+  const legacyUpgradeQueueFilterFromQuery = useMemo<"all" | "critical" | "high" | "parallel" | "eligible" | null>(() => {
+    const params = new URLSearchParams(search);
+    const value = params.get("legacyQueueFilter");
+    if (value === "all" || value === "critical" || value === "high" || value === "parallel" || value === "eligible") {
+      return value;
+    }
+    return null;
+  }, [search]);
+  const legacyUpgradeQueueFilterFromStorage = useMemo<"all" | "critical" | "high" | "parallel" | "eligible" | null>(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    const value = window.localStorage.getItem(legacyUpgradeQueueFilterStorageKey);
+    if (value === "all" || value === "critical" || value === "high" || value === "parallel" || value === "eligible") {
+      return value;
+    }
+    return null;
+  }, []);
+  const [legacyUpgradeQueueFilterRestoredFromStorage] = useState(() => (
+    !legacyUpgradeQueueFilterFromQuery && !!legacyUpgradeQueueFilterFromStorage
+  ));
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -692,6 +762,42 @@ export default function AdminSkills() {
     }
   }, [audioModels, editingSkill, imageModels, videoModels, visionModels?.models]);
 
+  useEffect(() => {
+    if (openTabFromQuery) {
+      setActiveTab(openTabFromQuery);
+    }
+  }, [openTabFromQuery]);
+
+  useEffect(() => {
+    if (!legacyUpgradeQueueFilterFromQuery && !legacyUpgradeQueueFilterFromStorage) {
+      return;
+    }
+    const nextFilter = legacyUpgradeQueueFilterFromQuery || legacyUpgradeQueueFilterFromStorage;
+    if (!nextFilter) {
+      return;
+    }
+    setLegacyUpgradeQueueFilter((current) => (current === nextFilter ? current : nextFilter));
+  }, [legacyUpgradeQueueFilterFromQuery, legacyUpgradeQueueFilterFromStorage]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(legacyUpgradeQueueFilterStorageKey, legacyUpgradeQueueFilter);
+    }
+
+    const params = new URLSearchParams(search);
+    if (legacyUpgradeQueueFilter !== "all") {
+      params.set("legacyQueueFilter", legacyUpgradeQueueFilter);
+    } else {
+      params.delete("legacyQueueFilter");
+    }
+
+    const nextSearch = params.toString();
+    const nextLocation = nextSearch ? `${location.split("?")[0]}?${nextSearch}` : location.split("?")[0];
+    if (nextLocation !== location) {
+      setLocation(nextLocation);
+    }
+  }, [legacyUpgradeQueueFilter, location, search, setLocation]);
+
   // Fetch pending skills for admin approval tab
   const { data: pendingSkills } = trpc.skills.listPending.useQuery(undefined, {
     enabled: !!isAdmin,
@@ -720,6 +826,38 @@ export default function AdminSkills() {
   const { data: maintenanceSchedules } = trpc.skills.listMaintenanceSchedules.useQuery(undefined, {
     enabled: !!isAdmin,
   });
+  const {
+    data: legacyUpgradeQueue,
+    refetch: refetchLegacyUpgradeQueue,
+    isFetching: isLegacyUpgradeQueueFetching,
+  } = trpc.skills.getLegacyUpgradeQueue.useQuery(
+    {
+      includeApplied: legacyUpgradeIncludeApplied,
+      limit: 100,
+    },
+    { enabled: !!isAdmin },
+  );
+  const applyLegacyUpgradeRecommendationsMutation = trpc.skills.applyLegacyUpgradeRecommendations.useMutation({
+    onSuccess: (result) => {
+      utils.skills.getLegacyUpgradeQueue.invalidate();
+      utils.skills.getUpgradeRecommendations.invalidate();
+      if (selectedRecommendationId) {
+        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
+      }
+      setSelectedLegacyUpgradeIds([]);
+      toast({
+        title: "Legacy Upgrade Batch Queued",
+        description: `${result.appliedCount} upgrade(s) queued, ${result.failedCount} failed.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Bulk Apply Failed",
+        description: error.message || "Failed to apply selected upgrades.",
+        variant: "destructive",
+      });
+    },
+  });
   const latestProposalBySkillName = new Map<string, { skillName: string; diffFile: string; createdAt: string }>();
   for (const proposal of (iscProposals?.proposals || [])) {
     if (!latestProposalBySkillName.has(proposal.skillName)) {
@@ -735,6 +873,237 @@ export default function AdminSkills() {
     if (!latestRecommendationBySkillId.has(item.skillId)) {
       latestRecommendationBySkillId.set(item.skillId, item);
     }
+  }
+  const maintenanceRecommendationGroups = useMemo<MaintenanceRecommendationGroup[]>(() => {
+    const groups = new Map<number, MaintenanceRecommendationGroup>();
+
+    for (const item of sortMaintenanceRecommendationsForDisplay((maintenanceRecommendations || []) as MaintenanceRecommendation[])) {
+      const existing = groups.get(item.skillId);
+      if (!existing) {
+        groups.set(item.skillId, {
+          skillId: item.skillId,
+          skill: item.skill ?? null,
+          recommendations: [item],
+          primaryRecommendation: item,
+          highestRiskLevel: item.riskLevel,
+          worstCompatibilityStatus: item.compatibilityStatus,
+          highestQualityScore: item.qualityScore,
+          currentRuntime: item.currentRuntime,
+        });
+        continue;
+      }
+
+      existing.recommendations = sortMaintenanceRecommendationsForDisplay([...existing.recommendations, item]);
+      existing.highestRiskLevel = getMaintenanceWorstRiskLevel(existing.highestRiskLevel, item.riskLevel);
+      existing.worstCompatibilityStatus = getMaintenanceWorstCompatibilityStatus(
+        existing.worstCompatibilityStatus,
+        item.compatibilityStatus,
+      );
+      if (typeof item.qualityScore === "number") {
+        existing.highestQualityScore = existing.highestQualityScore === null
+          ? item.qualityScore
+          : Math.max(existing.highestQualityScore, item.qualityScore);
+      }
+      if (!existing.currentRuntime && item.currentRuntime) {
+        existing.currentRuntime = item.currentRuntime;
+      }
+      if (item.analyzedAt > existing.primaryRecommendation.analyzedAt) {
+        existing.primaryRecommendation = existing.recommendations[0] || item;
+        existing.skill = item.skill ?? existing.skill;
+      }
+    }
+
+    for (const group of groups.values()) {
+      group.primaryRecommendation = group.recommendations[0] || group.primaryRecommendation;
+    }
+
+    return Array.from(groups.values());
+  }, [maintenanceRecommendations]);
+  const maintenanceExpandedSkillIdSet = useMemo(() => new Set(expandedMaintenanceSkillIds), [expandedMaintenanceSkillIds]);
+  const legacyUpgradeQueueItems = (legacyUpgradeQueue || []) as LegacyUpgradeQueueItem[];
+  const legacyUpgradeFilteredItems = useMemo(() => {
+    switch (legacyUpgradeQueueFilter) {
+      case "critical":
+        return legacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "critical");
+      case "high":
+        return legacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "high");
+      case "parallel":
+        return legacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible);
+      case "eligible":
+        return legacyUpgradeQueueItems.filter((item) => item.status !== "applied" && item.status !== "dismissed");
+      default:
+        return legacyUpgradeQueueItems;
+    }
+  }, [legacyUpgradeQueueFilter, legacyUpgradeQueueItems]);
+  const selectedLegacyUpgradeIdSet = useMemo(() => new Set(selectedLegacyUpgradeIds), [selectedLegacyUpgradeIds]);
+  const expandedLegacyUpgradeIdSet = useMemo(() => new Set(expandedLegacyUpgradeIds), [expandedLegacyUpgradeIds]);
+  const legacyUpgradeQueueById = useMemo(
+    () => new Map(legacyUpgradeQueueItems.map((item) => [item.id, item])),
+    [legacyUpgradeQueueItems],
+  );
+  const selectableLegacyUpgradeIds = useMemo(
+    () => legacyUpgradeQueueItems
+      .filter((item) => item.status !== "applied" && item.status !== "dismissed")
+      .map((item) => item.id),
+    [legacyUpgradeQueueItems],
+  );
+  const selectedSelectableLegacyUpgradeIds = useMemo(
+    () => selectedLegacyUpgradeIds.filter((id) => selectableLegacyUpgradeIds.includes(id)),
+    [selectedLegacyUpgradeIds, selectableLegacyUpgradeIds],
+  );
+  const selectedEligibleLegacyUpgradeIds = useMemo(
+    () => selectedSelectableLegacyUpgradeIds.filter((id) => legacyUpgradeQueueById.get(id)?.parallelUpgradeEligible),
+    [legacyUpgradeQueueById, selectedSelectableLegacyUpgradeIds],
+  );
+  const selectedCriticalHighLegacyUpgradeIds = useMemo(
+    () => selectedSelectableLegacyUpgradeIds.filter((id) => {
+      const tier = legacyUpgradeQueueById.get(id)?.upgradePriorityTier;
+      return tier === "critical" || tier === "high";
+    }),
+    [legacyUpgradeQueueById, selectedSelectableLegacyUpgradeIds],
+  );
+  const visibleSelectableLegacyUpgradeIds = useMemo(
+    () => legacyUpgradeFilteredItems
+      .filter((item) => item.status !== "applied" && item.status !== "dismissed")
+      .map((item) => item.id),
+    [legacyUpgradeFilteredItems],
+  );
+  const legacyUpgradeCriticalCount = legacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "critical").length;
+  const legacyUpgradeHighCount = legacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "high").length;
+  const allVisibleLegacySelected = visibleSelectableLegacyUpgradeIds.length > 0
+    && visibleSelectableLegacyUpgradeIds.every((id) => selectedLegacyUpgradeIdSet.has(id));
+  const someVisibleLegacySelected = visibleSelectableLegacyUpgradeIds.some((id) => selectedLegacyUpgradeIdSet.has(id));
+  const visibleLegacyIds = legacyUpgradeFilteredItems.map((item) => item.id);
+  const allExpandedLegacySelected = visibleLegacyIds.length > 0
+    && visibleLegacyIds.every((id) => expandedLegacyUpgradeIdSet.has(id));
+
+  function toggleLegacyUpgradeSelection(recommendationId: number, checked: boolean) {
+    setSelectedLegacyUpgradeIds((current) => {
+      if (checked) {
+        return current.includes(recommendationId) ? current : [...current, recommendationId];
+      }
+      return current.filter((id) => id !== recommendationId);
+    });
+  }
+
+  function toggleAllVisibleLegacyUpgrades(checked: boolean) {
+    if (!checked) {
+      setSelectedLegacyUpgradeIds((current) => current.filter((id) => !visibleSelectableLegacyUpgradeIds.includes(id)));
+      return;
+    }
+    setSelectedLegacyUpgradeIds((current) => Array.from(new Set([...current, ...visibleSelectableLegacyUpgradeIds])));
+  }
+
+  function toggleLegacyUpgradeDetails(recommendationId: number, checked: boolean) {
+    setExpandedLegacyUpgradeIds((current) => {
+      if (checked) {
+        return current.includes(recommendationId) ? current : [...current, recommendationId];
+      }
+      return current.filter((id) => id !== recommendationId);
+    });
+  }
+
+  function toggleAllLegacyUpgradeDetails(checked: boolean) {
+    if (!checked) {
+      setExpandedLegacyUpgradeIds([]);
+      return;
+    }
+    setExpandedLegacyUpgradeIds(legacyUpgradeQueueItems.map((item) => item.id));
+  }
+
+  function collapseAllLegacyUpgradeDetails() {
+    setExpandedLegacyUpgradeIds([]);
+  }
+
+  useEffect(() => {
+    const criticalIds = legacyUpgradeQueueItems
+      .filter((item) => item.upgradePriorityTier === "critical")
+      .map((item) => item.id);
+
+    if (criticalIds.length === 0) {
+      return;
+    }
+
+    setExpandedLegacyUpgradeIds((current) => Array.from(new Set([...current, ...criticalIds])));
+  }, [legacyUpgradeQueueItems]);
+
+  function describeLegacyUpgradeSignal(key: string, value: unknown): string {
+    const friendlyKeyMap: Record<string, string> = {
+      hasRunScript: "run.sh",
+      hasVerifyScript: "verify.sh",
+      hasModelCompatibilityDoc: "MODEL_COMPATIBILITY.md",
+      hasSkillLock: "skill.lock.json",
+      hasCompatibilityMirror: "mirror docs",
+      hasSchemas: "schemas",
+      hasTests: "tests",
+      hasFixtures: "fixtures",
+      hasNativeBundleSurface: "native surface",
+    };
+
+    const label = friendlyKeyMap[key] || key;
+    return `${label}: ${value ? "yes" : "no"}`;
+  }
+
+  function getMaintenanceWorstRiskLevel(
+    current: MaintenanceRecommendation["riskLevel"],
+    next: MaintenanceRecommendation["riskLevel"],
+  ): MaintenanceRecommendation["riskLevel"] {
+    const order: Record<MaintenanceRecommendation["riskLevel"], number> = {
+      low: 1,
+      medium: 2,
+      high: 3,
+      critical: 4,
+    };
+    return order[next] > order[current] ? next : current;
+  }
+
+  function getMaintenanceWorstCompatibilityStatus(
+    current: MaintenanceRecommendation["compatibilityStatus"],
+    next: MaintenanceRecommendation["compatibilityStatus"],
+  ): MaintenanceRecommendation["compatibilityStatus"] {
+    const order: Record<MaintenanceRecommendation["compatibilityStatus"], number> = {
+      compatible: 1,
+      unknown: 2,
+      warning: 3,
+      blocked: 4,
+    };
+    return order[next] > order[current] ? next : current;
+  }
+
+  function getMaintenanceRiskRank(riskLevel: MaintenanceRecommendation["riskLevel"]): number {
+    const order: Record<MaintenanceRecommendation["riskLevel"], number> = {
+      low: 1,
+      medium: 2,
+      high: 3,
+      critical: 4,
+    };
+    return order[riskLevel];
+  }
+
+  function getMaintenanceCompatibilityRank(status: MaintenanceRecommendation["compatibilityStatus"]): number {
+    const order: Record<MaintenanceRecommendation["compatibilityStatus"], number> = {
+      compatible: 1,
+      unknown: 2,
+      warning: 3,
+      blocked: 4,
+    };
+    return order[status];
+  }
+
+  function sortMaintenanceRecommendationsForDisplay(items: MaintenanceRecommendation[]): MaintenanceRecommendation[] {
+    return [...items].sort((left, right) => {
+      const riskDelta = getMaintenanceRiskRank(right.riskLevel) - getMaintenanceRiskRank(left.riskLevel);
+      if (riskDelta !== 0) return riskDelta;
+
+      const compatibilityDelta = getMaintenanceCompatibilityRank(right.compatibilityStatus) - getMaintenanceCompatibilityRank(left.compatibilityStatus);
+      if (compatibilityDelta !== 0) return compatibilityDelta;
+
+      if ((right.qualityScore ?? -1) !== (left.qualityScore ?? -1)) {
+        return (right.qualityScore ?? -1) - (left.qualityScore ?? -1);
+      }
+
+      return new Date(right.analyzedAt).getTime() - new Date(left.analyzedAt).getTime();
+    });
   }
 
   function requestRecommendationApply(recommendation: MaintenanceRecommendation, skillName: string) {
@@ -754,6 +1123,37 @@ export default function AdminSkills() {
       isAutoApplySafe: false,
       hasProposalReady: proposalReady,
     });
+  }
+
+  function requestMaintenanceGroupApply(group: MaintenanceRecommendationGroup) {
+    applyMaintenanceRecommendationsMutation.mutate({
+      recommendationIds: group.recommendations.map((item) => item.id),
+    });
+  }
+
+  function requestEligibleMaintenanceGroupApply(group: MaintenanceRecommendationGroup) {
+    applyMaintenanceRecommendationsMutation.mutate({
+      recommendationIds: group.recommendations
+        .filter((item) => item.isAutoApplySafe && item.status !== "applied" && item.status !== "dismissed")
+        .map((item) => item.id),
+    });
+  }
+
+  function toggleMaintenanceSkillDetails(skillId: number, checked: boolean) {
+    setExpandedMaintenanceSkillIds((current) => {
+      if (checked) {
+        return current.includes(skillId) ? current : [...current, skillId];
+      }
+      return current.filter((id) => id !== skillId);
+    });
+  }
+
+  function toggleAllMaintenanceSkillDetails(checked: boolean) {
+    if (!checked) {
+      setExpandedMaintenanceSkillIds([]);
+      return;
+    }
+    setExpandedMaintenanceSkillIds(maintenanceRecommendationGroups.map((group) => group.skillId));
   }
 
   function saveMaintenanceSchedule() {
@@ -1070,6 +1470,29 @@ export default function AdminSkills() {
     },
   });
 
+  const applyMaintenanceRecommendationsMutation = trpc.skills.applyMaintenanceRecommendations.useMutation({
+    onSuccess: (result) => {
+      utils.skills.getUpgradeRecommendations.invalidate();
+      if (selectedRecommendationId) {
+        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
+      }
+      utils.skills.listFromDb.invalidate();
+      utils.skills.listIscProposals.invalidate();
+      setExpandedMaintenanceSkillIds([]);
+      toast({
+        title: "Maintenance Recommendations Queued",
+        description: `${result.appliedCount} recommendation(s) queued, ${result.failedCount} failed.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Bulk Apply Failed",
+        description: error.message || "Failed to apply selected maintenance recommendations.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const runMaintenanceSweepMutation = trpc.skills.runMaintenanceSweep.useMutation({
     onSuccess: (data) => {
       utils.skills.getUpgradeRecommendations.invalidate();
@@ -1249,7 +1672,9 @@ export default function AdminSkills() {
       icon: editingSkill.icon || undefined,
       tags: editingSkill.tags,
       isAutoTrigger: editingSkill.isAutoTrigger,
-      triggerPatterns: editingSkill.triggerPatterns,
+      triggerPatterns: (editingSkill.triggerPatterns || []).map((pattern) => (
+        pattern
+      )),
       isEnabled: editingSkill.isEnabled,
       enabledByDefault: editingSkill.enabledByDefault,
       visibleByDefault: editingSkill.visibleByDefault,
@@ -1446,6 +1871,16 @@ export default function AdminSkills() {
                 {maintenanceRecommendations.length}
               </Badge>
             )}
+            {legacyUpgradeCriticalCount > 0 && (
+              <Badge className="ml-2" variant="destructive">
+                Critical {legacyUpgradeCriticalCount}
+              </Badge>
+            )}
+            {legacyUpgradeHighCount > 0 && (
+              <Badge className="ml-2" variant="outline">
+                High {legacyUpgradeHighCount}
+              </Badge>
+            )}
           </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="pending">
@@ -1545,13 +1980,14 @@ export default function AdminSkills() {
                       <TableHead>Priority</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Source</TableHead>
+                      <TableHead>Bundle</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {skills?.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center text-muted-foreground">
+                        <TableCell colSpan={11} className="text-center text-muted-foreground">
                           No skills found. Create one or import from folders.
                         </TableCell>
                       </TableRow>
@@ -1638,6 +2074,33 @@ export default function AdminSkills() {
                             <Badge variant="secondary">
                               {skill.importSource || "manual"}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "border",
+                                  skill.nativeBundleReady
+                                    ? "border-emerald-500 text-emerald-700 bg-emerald-50"
+                                    : skill.hasLocalFolder
+                                      ? "border-amber-500 text-amber-700 bg-amber-50"
+                                      : "border-slate-300 text-slate-500 bg-slate-50",
+                                )}
+                                title={
+                                  skill.nativeBundleFiles?.length
+                                    ? skill.nativeBundleFiles.join(", ")
+                                    : skill.nativeBundlePath || skill.folderPath || undefined
+                                }
+                              >
+                                {getNativeBundleLabel(skill)}
+                              </Badge>
+                              {skill.nativeBundleFiles?.length ? (
+                                <span className="text-xs text-muted-foreground">
+                                  {skill.nativeBundleFiles.length} files
+                                </span>
+                              ) : null}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -1981,6 +2444,28 @@ export default function AdminSkills() {
                 </Button>
               </div>
 
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toggleAllMaintenanceSkillDetails(true)}
+                  disabled={maintenanceRecommendationGroups.length === 0}
+                >
+                  Expand all groups
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setExpandedMaintenanceSkillIds([])}
+                  disabled={expandedMaintenanceSkillIds.length === 0}
+                >
+                  Collapse all groups
+                </Button>
+                <Badge variant="outline" className="rounded-full">
+                  {maintenanceRecommendationGroups.length} skill groups
+                </Badge>
+              </div>
+
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1994,83 +2479,582 @@ export default function AdminSkills() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {!maintenanceRecommendations?.length ? (
+                  {!maintenanceRecommendationGroups.length ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground">
                         No maintenance recommendations in this view yet.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    ((maintenanceRecommendations || []) as any[]).map((item: MaintenanceRecommendation) => (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <div className="font-medium">{item.skill?.name || `Skill #${item.skillId}`}</div>
-                          <div className="text-xs text-muted-foreground">{item.skill?.slug || item.skillId}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">{item.title}</div>
-                          <div className="text-xs text-muted-foreground">{item.recommendationType}</div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={
-                              item.riskLevel === "critical" ? "border-red-500 text-red-600" :
-                              item.riskLevel === "high" ? "border-orange-500 text-orange-600" :
-                              item.riskLevel === "medium" ? "border-amber-500 text-amber-600" :
-                              "border-green-500 text-green-600"
-                            }
-                          >
-                            {item.riskLevel}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={
-                              item.compatibilityStatus === "blocked" ? "border-red-500 text-red-600" :
-                              item.compatibilityStatus === "warning" ? "border-amber-500 text-amber-600" :
-                              item.compatibilityStatus === "compatible" ? "border-green-500 text-green-600" :
-                              ""
-                            }
-                          >
-                            {item.compatibilityStatus}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{item.qualityScore ?? "-"}</TableCell>
-                        <TableCell>
-                          <div className="text-sm">{item.currentRuntime || "unknown"}</div>
-                          {item.isGenjsCandidate && (
-                            <Badge variant="secondary" className="mt-1">GenJS Candidate</Badge>
+                    maintenanceRecommendationGroups.map((group) => {
+                      const isExpanded = maintenanceExpandedSkillIdSet.has(group.skillId);
+                      const recommendationCount = group.recommendations.length;
+
+                      return (
+                        <Fragment key={group.skillId}>
+                          <TableRow>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div>
+                                  <div className="font-medium">{group.skill?.name || `Skill #${group.skillId}`}</div>
+                                  <div className="text-xs text-muted-foreground">{group.skill?.slug || group.skillId}</div>
+                                </div>
+                                <Badge variant="secondary" className="rounded-full">
+                                  {recommendationCount}
+                                </Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium">{group.primaryRecommendation.title}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {group.primaryRecommendation.recommendationType}
+                                {recommendationCount > 1 ? ` · ${recommendationCount} recommendations` : ""}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  group.highestRiskLevel === "critical" ? "border-red-500 text-red-600" :
+                                  group.highestRiskLevel === "high" ? "border-orange-500 text-orange-600" :
+                                  group.highestRiskLevel === "medium" ? "border-amber-500 text-amber-600" :
+                                  "border-green-500 text-green-600"
+                                }
+                              >
+                                {group.highestRiskLevel}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  group.worstCompatibilityStatus === "blocked" ? "border-red-500 text-red-600" :
+                                  group.worstCompatibilityStatus === "warning" ? "border-amber-500 text-amber-600" :
+                                  group.worstCompatibilityStatus === "compatible" ? "border-green-500 text-green-600" :
+                                  ""
+                                }
+                              >
+                                {group.worstCompatibilityStatus}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{group.highestQualityScore ?? "-"}</TableCell>
+                            <TableCell>
+                              <div className="text-sm">{group.currentRuntime || "unknown"}</div>
+                              {group.recommendations.some((item) => item.isGenjsCandidate) && (
+                                <Badge variant="secondary" className="mt-1">GenJS Candidate</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedRecommendationId(group.primaryRecommendation.id)}
+                                >
+                                  View Advice
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => requestMaintenanceGroupApply(group)}
+                                  disabled={applyMaintenanceRecommendationsMutation.isPending}
+                                >
+                                  Apply All ({recommendationCount})
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => requestEligibleMaintenanceGroupApply(group)}
+                                  disabled={
+                                    applyMaintenanceRecommendationsMutation.isPending
+                                    || group.recommendations.filter((item) => item.isAutoApplySafe && item.status !== "applied" && item.status !== "dismissed").length === 0
+                                  }
+                                >
+                                  Apply Eligible ({group.recommendations.filter((item) => item.isAutoApplySafe && item.status !== "applied" && item.status !== "dismissed").length})
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => toggleMaintenanceSkillDetails(group.skillId, !isExpanded)}
+                                >
+                                  {isExpanded ? "Hide Details" : "Details"}
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                          {isExpanded && (
+                            <TableRow>
+                              <TableCell colSpan={7} className="bg-muted/20">
+                                <div className="space-y-3 p-3">
+                                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                                    Recommendations
+                                  </div>
+                                  <div className="space-y-3">
+                                    {group.recommendations.map((item) => (
+                                      <div key={item.id} className="rounded-lg border bg-background p-3">
+                                        <div className="flex flex-wrap items-start justify-between gap-3">
+                                          <div className="space-y-1">
+                                            <div className="font-medium">{item.title}</div>
+                                            <div className="text-xs text-muted-foreground">
+                                              {item.recommendationType} · {item.status}
+                                            </div>
+                                          </div>
+                                          <div className="flex flex-wrap items-center gap-2">
+                                            <Badge
+                                              variant="outline"
+                                              className={
+                                                item.riskLevel === "critical" ? "border-red-500 text-red-600" :
+                                                item.riskLevel === "high" ? "border-orange-500 text-orange-600" :
+                                                item.riskLevel === "medium" ? "border-amber-500 text-amber-600" :
+                                                "border-green-500 text-green-600"
+                                              }
+                                            >
+                                              {item.riskLevel}
+                                            </Badge>
+                                            <Badge
+                                              variant="outline"
+                                              className={
+                                                item.compatibilityStatus === "blocked" ? "border-red-500 text-red-600" :
+                                                item.compatibilityStatus === "warning" ? "border-amber-500 text-amber-600" :
+                                                item.compatibilityStatus === "compatible" ? "border-green-500 text-green-600" :
+                                                ""
+                                              }
+                                            >
+                                              {item.compatibilityStatus}
+                                            </Badge>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => setSelectedRecommendationId(item.id)}
+                                            >
+                                              View Advice
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              onClick={() => requestRecommendationApply(item, group.skill?.name || `Skill #${group.skillId}`)}
+                                              disabled={item.status === "applied" || applyUpgradeMutation.isPending}
+                                            >
+                                              {item.isAutoApplySafe ? "Apply Upgrade" : "Generate Proposal"}
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => dismissRecommendationMutation.mutate({ recommendationId: item.id })}
+                                              disabled={dismissRecommendationMutation.isPending}
+                                            >
+                                              Dismiss
+                                            </Button>
+                                          </div>
+                                        </div>
+                                        {Array.isArray(item.recommendationJson?.affectedFiles) && item.recommendationJson.affectedFiles.length > 0 && (
+                                          <div className="mt-2 text-xs text-muted-foreground">
+                                            Affects: {item.recommendationJson.affectedFiles.join(", ")}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button
+                        </Fragment>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </DashboardCard>
+
+          <DashboardCard
+            title="Legacy Upgrade Queue"
+            description="Prioritized legacy skill upgrades that can move to the native bundle contract in parallel."
+            leading={<FolderSync className="h-5 w-5 text-slate-500" />}
+          >
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id="legacy-upgrade-include-applied"
+                      checked={legacyUpgradeIncludeApplied}
+                      onCheckedChange={(checked) => setLegacyUpgradeIncludeApplied(Boolean(checked))}
+                    />
+                    <Label htmlFor="legacy-upgrade-include-applied" className="cursor-pointer">
+                      Include applied items
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                  <Checkbox
+                    id="legacy-upgrade-select-all"
+                    checked={someVisibleLegacySelected ? "indeterminate" : allVisibleLegacySelected}
+                    onCheckedChange={(checked) => toggleAllVisibleLegacyUpgrades(Boolean(checked))}
+                  />
+                    <Label htmlFor="legacy-upgrade-select-all" className="cursor-pointer">
+                      Select visible
+                    </Label>
+                    <span className="text-xs text-muted-foreground">
+                      {selectedLegacyUpgradeIds.length} selected
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id="legacy-upgrade-expand-all"
+                      checked={allExpandedLegacySelected}
+                      onCheckedChange={(checked) => toggleAllLegacyUpgradeDetails(Boolean(checked))}
+                    />
+                    <Label htmlFor="legacy-upgrade-expand-all" className="cursor-pointer">
+                      Expand all
+                    </Label>
+                    <Button variant="ghost" size="sm" onClick={collapseAllLegacyUpgradeDetails} disabled={expandedLegacyUpgradeIds.length === 0}>
+                      Collapse all
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedLegacyUpgradeIds([])}
+                    disabled={selectedLegacyUpgradeIds.length === 0}
+                  >
+                    Clear Selection
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => applyLegacyUpgradeRecommendationsMutation.mutate({
+                      recommendationIds: selectedEligibleLegacyUpgradeIds,
+                    })}
+                    disabled={selectedEligibleLegacyUpgradeIds.length === 0 || applyLegacyUpgradeRecommendationsMutation.isPending}
+                  >
+                    {applyLegacyUpgradeRecommendationsMutation.isPending
+                      ? "Queuing eligible..."
+                      : `Queue only eligible (${selectedEligibleLegacyUpgradeIds.length})`}
+                  </Button>
+                  <Button
+                    onClick={() => applyLegacyUpgradeRecommendationsMutation.mutate({
+                      recommendationIds: selectedSelectableLegacyUpgradeIds,
+                    })}
+                    disabled={selectedSelectableLegacyUpgradeIds.length === 0 || applyLegacyUpgradeRecommendationsMutation.isPending}
+                  >
+                    {applyLegacyUpgradeRecommendationsMutation.isPending
+                      ? "Queuing..."
+                      : `Queue all selected (${selectedSelectableLegacyUpgradeIds.length})`}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => applyLegacyUpgradeRecommendationsMutation.mutate({
+                      recommendationIds: selectedCriticalHighLegacyUpgradeIds,
+                    })}
+                    disabled={selectedCriticalHighLegacyUpgradeIds.length === 0 || applyLegacyUpgradeRecommendationsMutation.isPending}
+                  >
+                    {applyLegacyUpgradeRecommendationsMutation.isPending
+                      ? "Queuing priority..."
+                      : `Queue critical/high (${selectedCriticalHighLegacyUpgradeIds.length})`}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => refetchLegacyUpgradeQueue()}
+                    disabled={isLegacyUpgradeQueueFetching}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    {isLegacyUpgradeQueueFetching ? "Refreshing..." : "Refresh Upgrade Queue"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Filter View
+                </span>
+                {legacyUpgradeQueueFilterRestoredFromStorage && (
+                  <Badge variant="outline" className="rounded-full border-dashed px-2 py-0.5 text-[11px] text-muted-foreground">
+                    Loaded from saved preference
+                  </Badge>
+                )}
+                {[
+                  { key: "all", label: "All", count: legacyUpgradeQueueItems.length },
+                  { key: "critical", label: "Critical", count: legacyUpgradeCriticalCount },
+                  { key: "high", label: "High", count: legacyUpgradeHighCount },
+                  { key: "parallel", label: "Parallel", count: legacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible).length },
+                  { key: "eligible", label: "Eligible", count: legacyUpgradeQueueItems.filter((item) => item.status !== "applied" && item.status !== "dismissed").length },
+                ].map((filter) => (
+                  <Button
+                    key={filter.key}
+                    variant={legacyUpgradeQueueFilter === filter.key ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setLegacyUpgradeQueueFilter(filter.key as typeof legacyUpgradeQueueFilter)}
+                    className="rounded-full"
+                  >
+                    {filter.label}
+                    <Badge variant={legacyUpgradeQueueFilter === filter.key ? "secondary" : "outline"} className="ml-2 rounded-full px-2 text-[11px]">
+                      {filter.count}
+                    </Badge>
+                  </Button>
+                ))}
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-4">
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Queued</div>
+                  <div className="mt-1 text-2xl font-semibold">{legacyUpgradeQueueItems.length}</div>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Parallel Eligible</div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {legacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible).length}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Critical</div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {legacyUpgradeCriticalCount}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">High</div>
+                  <div className="mt-1 text-2xl font-semibold">{legacyUpgradeHighCount}</div>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3 md:col-span-4">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary" className="rounded-full">
+                      {legacyUpgradeQueueItems.length} total
+                    </Badge>
+                    <Badge variant="secondary" className="rounded-full">
+                      {legacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible).length} parallel eligible
+                    </Badge>
+                    <Badge variant="secondary" className="rounded-full">
+                      {legacyUpgradeCriticalCount} critical
+                    </Badge>
+                    <Badge variant="secondary" className="rounded-full">
+                      {legacyUpgradeHighCount} high
+                    </Badge>
+                    <Badge variant="secondary" className="rounded-full">
+                      {selectedLegacyUpgradeIds.length} selected
+                    </Badge>
+                    <Badge variant="secondary" className="rounded-full">
+                      {legacyUpgradeIncludeApplied ? "applied included" : "applied hidden"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={allVisibleLegacySelected}
+                        onCheckedChange={(checked) => toggleAllVisibleLegacyUpgrades(Boolean(checked))}
+                        aria-label="Select all visible legacy upgrades"
+                      />
+                    </TableHead>
+                    <TableHead>Skill</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Signals</TableHead>
+                    <TableHead>Runtime</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!legacyUpgradeQueueItems.length ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground">
+                        No legacy upgrade recommendations in this view yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    legacyUpgradeFilteredItems.map((item, index) => (
+                      <Fragment key={item.id}>
+                        <TableRow>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedLegacyUpgradeIdSet.has(item.id)}
+                              onCheckedChange={(checked) => toggleLegacyUpgradeSelection(item.id, Boolean(checked))}
+                              disabled={item.status === "applied" || item.status === "dismissed"}
+                              aria-label={`Select ${item.skill?.name || `Skill #${item.skillId}`}`}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+                                #{index + 1}
+                              </div>
+                              <div>
+                                <div className="font-medium">{item.skill?.name || `Skill #${item.skillId}`}</div>
+                                <div className="text-xs text-muted-foreground">{item.skill?.slug || item.skillId}</div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-2">
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  item.upgradePriorityTier === "urgent" && "border-red-500 text-red-600 bg-red-50",
+                                  item.upgradePriorityTier === "high" && "border-orange-500 text-orange-600 bg-orange-50",
+                                  item.upgradePriorityTier === "medium" && "border-amber-500 text-amber-600 bg-amber-50",
+                                  item.upgradePriorityTier === "low" && "border-slate-400 text-slate-600 bg-slate-50",
+                                )}
+                              >
+                                {item.upgradePriorityTier}
+                              </Badge>
+                              <div className="text-xs text-muted-foreground">
+                                Score {item.upgradePriorityScore.toFixed(1)}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-2">
+                              {item.parallelUpgradeEligible && (
+                                <Badge variant="secondary">Parallel</Badge>
+                              )}
+                              {item.isGenjsCandidate && (
+                                <Badge variant="secondary">GenJS Candidate</Badge>
+                              )}
+                              <Badge variant="outline">{item.recommendationType}</Badge>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {Object.entries(item.legacyUpgradeSignals || {}).map(([key, value]) => (
+                                <Badge
+                                  key={key}
+                                  variant="outline"
+                                  className={cn(
+                                    value ? "border-emerald-500 text-emerald-700 bg-emerald-50" : "border-slate-300 text-slate-500 bg-slate-50",
+                                  )}
+                                >
+                                  {describeLegacyUpgradeSignal(key, value)}
+                                </Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">{item.currentRuntime || "unknown"}</div>
+                            {item.proposedRuntime && (
+                              <div className="text-xs text-muted-foreground">→ {item.proposedRuntime}</div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
                               variant="outline"
-                              size="sm"
-                              onClick={() => setSelectedRecommendationId(item.id)}
+                              className={cn(
+                                item.status === "applied" && "border-green-500 text-green-600 bg-green-50",
+                                item.status === "blocked" && "border-red-500 text-red-600 bg-red-50",
+                                item.status === "failed" && "border-orange-500 text-orange-600 bg-orange-50",
+                                item.status === "pending_review" && "border-slate-400 text-slate-600 bg-slate-50",
+                              )}
                             >
-                              View Advice
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => requestRecommendationApply(item, item.skill?.name || `Skill #${item.skillId}`)}
-                              disabled={item.status === "applied" || applyUpgradeMutation.isPending}
-                            >
-                              {item.isAutoApplySafe ? "Apply Upgrade" : "Generate Proposal"}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => dismissRecommendationMutation.mutate({ recommendationId: item.id })}
-                              disabled={dismissRecommendationMutation.isPending}
-                            >
-                              Dismiss
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                              {item.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedRecommendationId(item.id)}
+                              >
+                                View Advice
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => requestRecommendationApply(item, item.skill?.name || `Skill #${item.skillId}`)}
+                                disabled={item.status === "applied" || applyUpgradeMutation.isPending}
+                              >
+                                {item.isAutoApplySafe ? "Apply Upgrade" : "Generate Proposal"}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => toggleLegacyUpgradeDetails(item.id, !expandedLegacyUpgradeIdSet.has(item.id))}
+                              >
+                                {expandedLegacyUpgradeIdSet.has(item.id) ? "Hide Details" : "Details"}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleLegacyUpgradeSelection(item.id, !selectedLegacyUpgradeIdSet.has(item.id))}
+                              >
+                                {selectedLegacyUpgradeIdSet.has(item.id) ? "Unselect" : "Select"}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        {expandedLegacyUpgradeIdSet.has(item.id) && (
+                          <TableRow>
+                            <TableCell colSpan={8} className="bg-slate-50/70 p-0">
+                              <div className="border-t border-slate-200 px-4 py-4">
+                                <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+                                  <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+                                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                      Priority Snapshot
+                                    </div>
+                                    <div className="space-y-2 text-sm text-slate-700">
+                                      <div className="flex items-center justify-between gap-3">
+                                        <span className="text-slate-500">Priority score</span>
+                                        <span className="font-medium">{item.upgradePriorityScore.toFixed(1)}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between gap-3">
+                                        <span className="text-slate-500">Priority tier</span>
+                                        <span className="font-medium">{item.upgradePriorityTier}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between gap-3">
+                                        <span className="text-slate-500">Parallel eligible</span>
+                                        <span className="font-medium">{item.parallelUpgradeEligible ? "Yes" : "No"}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between gap-3">
+                                        <span className="text-slate-500">Current runtime</span>
+                                        <span className="font-medium">{item.currentRuntime || "unknown"}</span>
+                                      </div>
+                                      <div className="flex items-center justify-between gap-3">
+                                        <span className="text-slate-500">Proposed runtime</span>
+                                        <span className="font-medium">{item.proposedRuntime || "unchanged"}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+                                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                      Signal Breakdown
+                                    </div>
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                      {Object.entries(item.legacyUpgradeSignals || {}).length > 0 ? (
+                                        Object.entries(item.legacyUpgradeSignals || {}).map(([key, value]) => (
+                                          <div key={key} className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+                                            <div className="flex items-center justify-between gap-3">
+                                              <div className="text-sm font-medium text-slate-800">
+                                                {key}
+                                              </div>
+                                              <Badge
+                                                variant="outline"
+                                                className={cn(
+                                                  value ? "border-emerald-500 text-emerald-700 bg-emerald-50" : "border-slate-300 text-slate-500 bg-slate-50",
+                                                )}
+                                              >
+                                                {value ? "present" : "missing"}
+                                              </Badge>
+                                            </div>
+                                            <div className="mt-2 text-xs text-slate-600">
+                                              {describeLegacyUpgradeSignal(key, value)}
+                                            </div>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-sm text-slate-600 md:col-span-2">
+                                          No legacy upgrade signals were recorded for this recommendation.
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </Fragment>
                     ))
                   )}
                 </TableBody>
