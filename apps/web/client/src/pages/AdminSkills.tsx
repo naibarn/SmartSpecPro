@@ -4040,6 +4040,9 @@ export default function AdminSkills() {
               >
                 2. Preview & Advanced
               </button>
+              <div className="ml-auto px-2 text-[11px] text-muted-foreground">
+                Step {createDialogStep} of 2
+              </div>
             </div>
 
             {createDialogStep === 1 && (
@@ -4047,32 +4050,41 @@ export default function AdminSkills() {
                 <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <Label htmlFor="slug">{t("admin.skillsPage.fields.slug")}</Label>
-              <Input
-                  id="slug"
-                  placeholder={t("admin.skillsPage.createDialog.slugPlaceholder")}
-                  value={newSkillData.slug}
-                  ref={createSlugInputRef}
+                  <Input
+                    id="slug"
+                    placeholder={t("admin.skillsPage.createDialog.slugPlaceholder")}
+                    value={newSkillData.slug}
+                    ref={createSlugInputRef}
                   onChange={(e) => {
                     const slug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-");
-                    setNewSkillData({ ...newSkillData, slug });
-                  }}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("admin.skillsPage.createDialog.slugHelp")}
-                </p>
-              </div>
-              <div>
-                <Label htmlFor="name">{t("admin.skillsPage.fields.name")}</Label>
-                <Input
+                      setNewSkillData({ ...newSkillData, slug });
+                    }}
+                  />
+                  <p className={cn(
+                    "text-xs mt-1",
+                    createSkillBasicIssues.some((issue) => issue.startsWith("Slug")) ? "text-amber-700" : "text-muted-foreground",
+                  )}>
+                    {createSkillBasicIssues.find((issue) => issue.startsWith("Slug")) || t("admin.skillsPage.createDialog.slugHelp")}
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="name">{t("admin.skillsPage.fields.name")}</Label>
+                  <Input
                   id="name"
                   placeholder={t("admin.skillsPage.createDialog.namePlaceholder")}
                   value={newSkillData.name}
-                  onChange={(e) =>
-                    setNewSkillData({ ...newSkillData, name: e.target.value })
-                  }
-                />
+                    onChange={(e) =>
+                      setNewSkillData({ ...newSkillData, name: e.target.value })
+                    }
+                  />
+                  <p className={cn(
+                    "text-xs mt-1",
+                    createSkillBasicIssues.some((issue) => issue.startsWith("Name")) ? "text-amber-700" : "text-muted-foreground",
+                  )}>
+                    {createSkillBasicIssues.find((issue) => issue.startsWith("Name")) || "This becomes the display name shown in the registry."}
+                  </p>
+                </div>
               </div>
-            </div>
 
                 <div>
                   <Label htmlFor="description">{t("admin.skillsPage.fields.description")}</Label>
@@ -4112,91 +4124,7 @@ export default function AdminSkills() {
                   </Select>
                   <div className="rounded-lg bg-background/80 p-3 text-xs text-muted-foreground">
                     <p className="font-medium text-foreground">Native bundle creates a scaffold, then lets you refine it in step 2.</p>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div>
-                    <Label>{t("admin.skillsPage.fields.category")}</Label>
-                    <Select
-                      value={newSkillData.category}
-                      onValueChange={(value) => {
-                        const nextExecutionMode = isExecutionModeCompatibleWithSkillCategory(
-                          value,
-                          newSkillData.executionMode,
-                        )
-                          ? newSkillData.executionMode
-                          : (getRecommendedExecutionModeForSkillCategory(value) || "llm-only");
-                        setNewSkillData(applySandboxDefaultsToNewSkill({
-                          ...newSkillData,
-                          category: value,
-                        }, nextExecutionMode));
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(categoryLabels).map(([key, label]) => (
-                          <SelectItem key={key} value={key}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label>{t("admin.skillsPage.fields.executionMode")}</Label>
-                    <Select
-                      value={newSkillData.executionMode}
-                      onValueChange={(value) =>
-                        setNewSkillData(applySandboxDefaultsToNewSkill(newSkillData, value as SkillExecutionMode))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getAllowedExecutionModesForSkillCategory(newSkillData.category).map((mode) => (
-                          <SelectItem key={mode} value={mode}>
-                            {executionModeLabels[mode]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {getExecutionModeHelperText(t, newSkillData.category, newSkillData.executionMode)}
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="priority">{t("admin.skillsPage.fields.priority")}</Label>
-                    <Input
-                      id="priority"
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={newSkillData.priority}
-                      onChange={(e) =>
-                        setNewSkillData({ ...newSkillData, priority: parseInt(e.target.value) || 50 })
-                      }
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="creditMultiplier">{t("admin.skillsPage.fields.creditMultiplier")}</Label>
-                    <Input
-                      id="creditMultiplier"
-                      type="number"
-                      min={0}
-                      max={100}
-                      step={0.1}
-                      value={newSkillData.creditMultiplier}
-                      onChange={(e) =>
-                        setNewSkillData({ ...newSkillData, creditMultiplier: parseFloat(e.target.value) || 1 })
-                      }
-                    />
+                    <p className="mt-1">Press Enter to continue once slug and name are ready.</p>
                   </div>
                 </div>
               </div>
@@ -4216,6 +4144,94 @@ export default function AdminSkills() {
                       Ready
                     </Badge>
                   </div>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="space-y-2 lg:col-span-2">
+                      <Label>{t("admin.skillsPage.fields.category")}</Label>
+                      <Select
+                        value={newSkillData.category}
+                        onValueChange={(value) => {
+                          const nextExecutionMode = isExecutionModeCompatibleWithSkillCategory(
+                            value,
+                            newSkillData.executionMode,
+                          )
+                            ? newSkillData.executionMode
+                            : (getRecommendedExecutionModeForSkillCategory(value) || "llm-only");
+                          setNewSkillData(applySandboxDefaultsToNewSkill({
+                            ...newSkillData,
+                            category: value,
+                          }, nextExecutionMode));
+                        }}
+                      >
+                        <SelectTrigger className="min-w-0">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(categoryLabels).map(([key, label]) => (
+                            <SelectItem key={key} value={key}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        This changes the allowed runtime modes and default sandbox settings.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>{t("admin.skillsPage.fields.executionMode")}</Label>
+                      <Select
+                        value={newSkillData.executionMode}
+                        onValueChange={(value) =>
+                          setNewSkillData(applySandboxDefaultsToNewSkill(newSkillData, value as SkillExecutionMode))
+                        }
+                      >
+                        <SelectTrigger className="min-w-0">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getAllowedExecutionModesForSkillCategory(newSkillData.category).map((mode) => (
+                            <SelectItem key={mode} value={mode}>
+                              {executionModeLabels[mode]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {getExecutionModeHelperText(t, newSkillData.category, newSkillData.executionMode)}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="priority">{t("admin.skillsPage.fields.priority")}</Label>
+                      <Input
+                        id="priority"
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={newSkillData.priority}
+                        onChange={(e) =>
+                          setNewSkillData({ ...newSkillData, priority: parseInt(e.target.value) || 50 })
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="creditMultiplier">{t("admin.skillsPage.fields.creditMultiplier")}</Label>
+                      <Input
+                        id="creditMultiplier"
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.1}
+                        value={newSkillData.creditMultiplier}
+                        onChange={(e) =>
+                          setNewSkillData({ ...newSkillData, creditMultiplier: parseFloat(e.target.value) || 1 })
+                        }
+                      />
+                    </div>
+                  </div>
+
                   {newSkillData.bundleType === "native" ? (
                     <div className="space-y-3 rounded-lg bg-background/80 p-3">
                       <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
@@ -4249,18 +4265,25 @@ export default function AdminSkills() {
                           </ul>
                         </div>
                       </div>
-                      <div className="rounded-md border bg-muted/10 p-3 text-xs text-muted-foreground space-y-1.5">
-                        <p className="font-medium text-foreground">This scaffold will include:</p>
-                        <ul className="grid gap-1 sm:grid-cols-2">
-                          <li>• `SKILL.md` + `skill.md`</li>
-                          <li>• `skill.lock.json`</li>
-                          <li>• `scripts/run.sh`</li>
-                          <li>• `scripts/verify.sh`</li>
-                          <li>• `references/input_contract.md`</li>
-                          <li>• `references/output_contract.md`</li>
-                          <li>• `references/maintenance.md`</li>
-                          <li>• `MODEL_COMPATIBILITY.md`</li>
-                        </ul>
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        <div className="rounded-md border bg-muted/10 p-3 text-xs text-muted-foreground space-y-1.5">
+                          <p className="font-medium text-foreground">Required files</p>
+                          <ul className="grid gap-1">
+                            <li>• `SKILL.md` + `skill.md`</li>
+                            <li>• `skill.lock.json`</li>
+                            <li>• `scripts/run.sh`</li>
+                            <li>• `scripts/verify.sh`</li>
+                          </ul>
+                        </div>
+                        <div className="rounded-md border bg-muted/10 p-3 text-xs text-muted-foreground space-y-1.5">
+                          <p className="font-medium text-foreground">Optional docs</p>
+                          <ul className="grid gap-1">
+                            <li>• `references/input_contract.md`</li>
+                            <li>• `references/output_contract.md`</li>
+                            <li>• `references/maintenance.md`</li>
+                            <li>• `MODEL_COMPATIBILITY.md`</li>
+                          </ul>
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -4504,7 +4527,7 @@ export default function AdminSkills() {
                 onClick={() => setCreateDialogStep(2)}
                 disabled={createSkillBasicIssues.length > 0}
               >
-                Review Preview
+                {createSkillBasicIssues.length > 0 ? "Fix required fields" : "Review Preview"}
               </Button>
             ) : (
               <>
