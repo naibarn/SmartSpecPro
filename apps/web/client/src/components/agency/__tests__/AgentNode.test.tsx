@@ -6,7 +6,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { createElement } from "react";
 
-vi.mock("reactflow", () => ({
+vi.mock("@xyflow/react", () => ({
   Handle: ({ type, position }: any) =>
     createElement("div", { "data-testid": `handle-${type}-${position}` }),
   Position: { Top: "top", Bottom: "bottom", Left: "left", Right: "right" },

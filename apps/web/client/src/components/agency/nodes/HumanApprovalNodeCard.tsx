@@ -1,14 +1,13 @@
 import { memo } from "react";
-import { Handle, Position } from "reactflow";
-import type { NodeProps } from "reactflow";
+import { Handle, Position } from "@xyflow/react";
 import { UserCheck, Clock, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AgencyNodeData } from "./types";
+import type { AgencyFlowNodeProps } from "./types";
 
 export const HumanApprovalNodeCard = memo(function HumanApprovalNodeCard({
   data,
   selected,
-}: NodeProps<AgencyNodeData>) {
+}: AgencyFlowNodeProps) {
   const hasErrors = (data.validationErrors?.length ?? 0) > 0;
   const timeoutHours = (data.nodeConfig?.timeoutHours as number) ?? 24;
   const onTimeout = (data.nodeConfig?.onTimeout as string) ?? "auto_reject";

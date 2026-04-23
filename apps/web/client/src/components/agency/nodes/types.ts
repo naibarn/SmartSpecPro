@@ -1,3 +1,5 @@
+import type { Edge, EdgeProps, Node, NodeProps } from "@xyflow/react";
+
 export type AgencyNodeType =
   | "agent"
   | "supervisor"
@@ -16,7 +18,12 @@ export type AgencyNodeType =
   | "autonomous_agent"
   | "engine_boundary";
 
-export interface AgencyNodeData {
+export type AgencyCommunicationFlowType =
+  | "delegation"
+  | "handoff"
+  | "parallel";
+
+export interface AgencyNodeData extends Record<string, unknown> {
   nodeType: AgencyNodeType;
   name: string;
   description?: string;
@@ -52,3 +59,16 @@ export interface AgencyNodeData {
   engineHint?: "agency_swarm" | "adk2" | null;
   runtimeConfig?: Record<string, unknown> | null;
 }
+
+export type AgencyFlowNode = Node<AgencyNodeData>;
+export type AgencyFlowNodeProps = NodeProps<AgencyFlowNode>;
+
+export interface AgencyCommunicationEdgeData extends Record<string, unknown> {
+  flowType: AgencyCommunicationFlowType;
+}
+
+export type AgencyCommunicationEdge = Edge<
+  AgencyCommunicationEdgeData,
+  "communication"
+>;
+export type AgencyCommunicationEdgeProps = EdgeProps<AgencyCommunicationEdge>;

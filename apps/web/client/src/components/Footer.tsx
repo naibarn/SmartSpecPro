@@ -54,13 +54,13 @@ export function Footer() {
         <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl" />
       </div>
 
-      <div className="container relative mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="container relative mx-auto px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         {/* Newsletter Section */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="glass-card rounded-2xl p-8 mb-16"
+          className="glass-card mb-12 rounded-2xl p-5 sm:mb-16 sm:p-8"
         >
           <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
             <div className="text-center lg:text-left">
@@ -69,13 +69,13 @@ export function Footer() {
                 Get the latest news, updates, and tips delivered to your inbox.
               </p>
             </div>
-            <div className="flex w-full lg:w-auto gap-3">
+            <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
               <Input 
                 type="email" 
                 placeholder="Enter your email" 
-                className="w-full lg:w-80 bg-background/50"
+                className="h-11 w-full bg-background/50 lg:w-80"
               />
-              <Button className="bg-gradient-to-r from-violet-500 to-teal-400 text-white whitespace-nowrap">
+              <Button className="h-11 w-full bg-gradient-to-r from-violet-500 to-teal-400 text-white whitespace-nowrap sm:w-auto">
                 Subscribe
               </Button>
             </div>
@@ -83,7 +83,7 @@ export function Footer() {
         </motion.div>
 
         {/* Main Footer Content */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 mb-12">
+        <div className="grid grid-cols-2 gap-7 sm:gap-8 md:grid-cols-3 lg:grid-cols-6 mb-12">
           {/* Brand Column */}
           <div className="col-span-2 md:col-span-3 lg:col-span-2">
             <Link href="/">
@@ -185,13 +185,13 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="pt-8 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} SmartAIHub. All rights reserved.
           </p>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
             <Mail className="w-4 h-4" />
-            <a href="mailto:hello@smartaihub.app" className="hover:text-foreground transition-colors">
+            <a href="mailto:hello@smartaihub.app" className="break-all hover:text-foreground transition-colors">
               hello@smartaihub.app
             </a>
           </div>

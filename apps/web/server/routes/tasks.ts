@@ -11,6 +11,7 @@
 
 import { Router, Request, Response, NextFunction } from "express";
 import { deliverScheduledMessage, sweepUndeliveredMessages } from "../services/scheduler";
+import { runLibraryKnowledgeRefreshWorker } from "../services/libraryKnowledgeRefreshWorker";
 
 const USE_CLOUD_TASKS = () => process.env.USE_CLOUD_TASKS === "true";
 
@@ -24,6 +25,15 @@ function deriveJobId(body: any): string | null {
   if (!body || typeof body !== "object") return null;
   const raw = body.scheduleId ?? body.skillId ?? body.jobId ?? body.job_id ?? null;
   return raw === null || raw === undefined ? null : String(raw);
+}
+
+function parseOptionalPositiveInt(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === "") return undefined;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error("Expected a positive integer");
+  }
+  return parsed;
 }
 
 async function recordCloudTaskEvent(
@@ -213,6 +223,44 @@ export function createTasksRouter(): Router {
       console.error("[Tasks] execute-skill-step failed:", err);
       await recordCloudTaskEvent(req, "failed", err?.message);
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  /**
+   * POST /tasks/library-knowledge-refresh
+   *
+   * Processes due knowledge-refresh side effects for markdown/library mutations.
+   * Supports optional scoping to a specific job or library item for single-note refresh.
+   */
+  router.post("/library-knowledge-refresh", async (req: Request, res: Response) => {
+    try {
+      const limit = req.body?.limit === undefined
+        ? undefined
+        : parseOptionalPositiveInt(req.body.limit);
+      const jobId = parseOptionalPositiveInt(req.body?.jobId);
+      const libraryItemId = parseOptionalPositiveInt(req.body?.libraryItemId);
+      const tenantId = typeof req.body?.tenantId === "string" && req.body.tenantId.trim().length > 0
+        ? req.body.tenantId.trim()
+        : undefined;
+
+      const result = await runLibraryKnowledgeRefreshWorker({
+        limit,
+        ...(jobId ? { jobIds: [jobId] } : {}),
+        ...(libraryItemId ? { libraryItemId } : {}),
+        ...(tenantId ? { tenantId } : {}),
+      });
+
+      await recordCloudTaskEvent(req, "completed");
+      res.status(200).json({ success: true, ...result });
+    } catch (err: any) {
+      const message = err?.message || "Failed to process library knowledge refresh";
+      console.error("[Tasks] library-knowledge-refresh failed:", err);
+      await recordCloudTaskEvent(req, "failed", message);
+      if (message === "Expected a positive integer") {
+        res.status(400).json({ error: "limit, jobId, and libraryItemId must be positive integers when provided" });
+        return;
+      }
+      res.status(500).json({ error: message });
     }
   });
 

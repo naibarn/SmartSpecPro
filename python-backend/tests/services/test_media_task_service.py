@@ -4,6 +4,7 @@ Tests for MediaTaskService
 
 import pytest
 import uuid
+from decimal import Decimal
 
 from app.services.media_task_service import MediaTaskService, normalize_media_prompt
 from app.models.media_task import MediaTask, TaskStatus, MediaType
@@ -41,6 +42,33 @@ class TestMediaTaskService:
         assert task.status == TaskStatus.PENDING
         assert task.model == "dalle-3"
         assert task.prompt == "A beautiful sunset"
+
+    @pytest.mark.asyncio
+    async def test_create_task_sanitizes_json_unsafe_parameters(self, test_db):
+        """create_task should normalize JSON-unsafe parameter payloads."""
+        user = User(
+            id=str(uuid.uuid4()),
+            email="test-safe@example.com",
+            password_hash="hash",
+            credits_balance=1000
+        )
+        test_db.add(user)
+        await test_db.commit()
+
+        task = await MediaTaskService.create_task(
+            test_db,
+            user,
+            MediaType.VIDEO,
+            "veo-3-1",
+            "Test",
+            {
+                "duration": Decimal("5"),
+                "nested": {"ratio": Decimal("1.25")},
+            },
+        )
+
+        assert task.parameters["duration"] == 5
+        assert task.parameters["nested"]["ratio"] == 1.25
 
     def test_normalize_media_prompt_unwraps_fenced_json(self):
         """Normalize helper should unwrap markdown fenced prompt blocks."""
@@ -217,6 +245,45 @@ class TestMediaTaskService:
         assert updated.credits_used == 50
         assert updated.credits_balance == 950
         assert updated.completed_at is not None
+
+    @pytest.mark.asyncio
+    async def test_update_task_status_sanitizes_result_data(self, test_db):
+        """result_data should be JSON safe before persistence."""
+        user = User(
+            id=str(uuid.uuid4()),
+            email="test4b@example.com",
+            password_hash="hash",
+            credits_balance=1000
+        )
+        test_db.add(user)
+        await test_db.commit()
+
+        task = await MediaTaskService.create_task(
+            test_db,
+            user,
+            MediaType.VIDEO,
+            "sora-2",
+            "Test"
+        )
+
+        updated = await MediaTaskService.update_task_status(
+            test_db,
+            task.id,
+            TaskStatus.COMPLETED,
+            result_data={
+                "response": {
+                    "credits_used": Decimal("12"),
+                    "credits_balance": Decimal("988"),
+                },
+                "metrics": {
+                    "ratio": Decimal("1.5"),
+                },
+            },
+        )
+
+        assert updated.result_data["response"]["credits_used"] == 12
+        assert updated.result_data["response"]["credits_balance"] == 988
+        assert updated.result_data["metrics"]["ratio"] == 1.5
 
     @pytest.mark.asyncio
     async def test_update_task_status_failed(self, test_db):

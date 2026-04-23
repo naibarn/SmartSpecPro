@@ -8,6 +8,8 @@ import { randomUUID } from "node:crypto";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
+import { isJtiRevoked } from "./revocation";
+import { verifyBearerToken } from "./tokens";
 import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
@@ -18,6 +20,23 @@ import type {
 // Utility function
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.length > 0;
+
+function decodeJwtPayloadUnverified(token: string): Record<string, unknown> | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    return JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function looksLikeBearerAccessToken(token: string): boolean {
+  const payload = decodeJwtPayloadUnverified(token);
+  if (!payload) return false;
+  const tokenType = typeof payload.type === "string" ? payload.type.toLowerCase() : "";
+  return tokenType === "access" || tokenType === "refresh" || payload.userId != null || Array.isArray(payload.scopes);
+}
 
 export type SessionPayload = {
   openId: string;
@@ -257,23 +276,13 @@ class SDKServer {
     } as GetUserInfoWithJwtResponse;
   }
 
-  async authenticateRequest(req: Request): Promise<User> {
-    // Regular authentication flow
-    const cookies = this.parseCookies(req.headers.cookie);
-    const sessionCookie = cookies.get(COOKIE_NAME);
-
-    // Also check Authorization bearer header
-    const authHeader = req.headers.authorization;
-    const tokenToVerify = authHeader?.startsWith("Bearer ")
-      ? authHeader.substring(7)
-      : sessionCookie;
-
-    const session = await this.verifySession(tokenToVerify);
-
+  private async resolveUserFromSession(
+    session: Awaited<ReturnType<SDKServer["verifySession"]>>,
+    syncJwtToken: string | undefined | null,
+  ): Promise<User> {
     if (!session) {
       throw ForbiddenError("Invalid session cookie");
     }
-
     // Handle system user JWT (has userId instead of openId)
     if ((session as any).userId === -1 && (session as any).role === "system_agent") {
       const systemUser = await db.getUserById(-1);
@@ -293,7 +302,7 @@ class SDKServer {
 
     // If user not in DB, try to sync from OAuth server
     try {
-      const userInfo = await this.getUserInfoWithJwt(sessionCookie ?? "");
+      const userInfo = await this.getUserInfoWithJwt(syncJwtToken ?? "");
       await db.upsertUser({
         openId: userInfo.openId,
         name: userInfo.name || null,
@@ -312,6 +321,75 @@ class SDKServer {
     }
 
     return user;
+  }
+
+  private async resolveUserFromBearerAccessToken(token: string): Promise<User> {
+    const claims = await verifyBearerToken(token);
+    const tokenType = typeof claims.type === "string" ? claims.type.toLowerCase() : "";
+    if (tokenType === "refresh") {
+      throw ForbiddenError("Refresh token cannot authenticate requests");
+    }
+
+    const tokenUse = typeof claims.tokenUse === "string" ? claims.tokenUse : "";
+    if (tokenUse === "worker_gateway_delegate") {
+      throw ForbiddenError("Delegated worker token cannot authenticate web UI requests");
+    }
+
+    const jti = typeof claims.jti === "string" ? claims.jti : "";
+    if (jti && await isJtiRevoked(jti)) {
+      throw ForbiddenError("Token revoked");
+    }
+
+    const subject =
+      typeof claims.sub === "string" && claims.sub.trim()
+        ? claims.sub.trim()
+        : typeof (claims as any).openId === "string" && (claims as any).openId.trim()
+          ? (claims as any).openId.trim()
+          : "";
+    const userIdCandidate = claims.userId ?? Number.parseInt(subject, 10);
+    const userId = Number.isInteger(userIdCandidate) && Number(userIdCandidate) > 0
+      ? Number(userIdCandidate)
+      : null;
+
+    let user = userId ? await db.getUserById(userId) as User | undefined : undefined;
+    if (!user && subject) {
+      user = await db.getUserByOpenId(subject) as User | undefined;
+    }
+
+    if (!user) {
+      throw ForbiddenError("User not found");
+    }
+
+    await db.updateLastSignedIn(user.openId);
+    return user;
+  }
+
+  async authenticateRequest(req: Request): Promise<User> {
+    // Regular authentication flow
+    const cookies = this.parseCookies(req.headers.cookie);
+    const sessionCookie = cookies.get(COOKIE_NAME);
+
+    // Desktop/device auth sends short-lived bearer access tokens. Older internal
+    // callers may still send a session-shaped JWT in Authorization, so support both.
+    const authHeader = req.headers.authorization;
+    const bearerToken = authHeader?.startsWith("Bearer ")
+      ? authHeader.substring(7).trim()
+      : "";
+
+    if (bearerToken) {
+      if (looksLikeBearerAccessToken(bearerToken)) {
+        return this.resolveUserFromBearerAccessToken(bearerToken);
+      }
+
+      const bearerSession = await this.verifySession(bearerToken);
+      if (bearerSession) {
+        return this.resolveUserFromSession(bearerSession, bearerToken);
+      }
+      return this.resolveUserFromBearerAccessToken(bearerToken);
+    }
+
+    const session = await this.verifySession(sessionCookie);
+    return this.resolveUserFromSession(session, sessionCookie);
   }
 }
 

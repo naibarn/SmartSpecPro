@@ -19,6 +19,7 @@ import {
   type ModelInputSyncTarget,
   getAllowedLibraryExtensionsForField,
 } from "@/lib/mediaModelInputs";
+import { ModelInputArrayFieldEditor } from "@/components/media/ModelInputArrayFieldEditor";
 import { trpc } from "@/lib/trpc";
 
 interface ModelInputFieldsPanelProps {
@@ -86,6 +87,18 @@ function normalizeFieldOptions(raw: unknown): SearchableFieldOption[] {
     });
   }
   return options;
+}
+
+function renderFieldDescription(field: { description?: string } | null | undefined) {
+  if (!field?.description) {
+    return null;
+  }
+
+  return (
+    <p className="text-[11px] leading-snug text-muted-foreground">
+      {field.description}
+    </p>
+  );
 }
 
 export function ModelInputFieldsPanel({
@@ -290,6 +303,7 @@ export function ModelInputFieldsPanel({
               </span>
             </div>
             <Input value={preview} readOnly />
+            {renderFieldDescription(field)}
           </label>
         );
       })}
@@ -469,6 +483,7 @@ export function ModelInputFieldsPanel({
                   Option list unavailable right now. You can still enter a value manually.
                 </span>
               ) : null}
+              {renderFieldDescription(field)}
             </label>
           );
         }
@@ -532,6 +547,7 @@ export function ModelInputFieldsPanel({
                   No matching options. Showing current selected value.
                 </span>
               ) : null}
+              {renderFieldDescription(field)}
             </label>
           );
         }
@@ -551,6 +567,7 @@ export function ModelInputFieldsPanel({
                 checked={checked}
                 onCheckedChange={(checkedState) => onChange(field.key, checkedState)}
               />
+              {renderFieldDescription(field)}
             </label>
           );
         }
@@ -574,6 +591,7 @@ export function ModelInputFieldsPanel({
                   onChange(field.key, Number.isFinite(parsed) ? parsed : raw);
                 }}
               />
+              {renderFieldDescription(field)}
             </label>
           );
         }
@@ -587,7 +605,20 @@ export function ModelInputFieldsPanel({
                 value={String(value ?? "")}
                 onValueChange={(url) => onChange(field.key, url)}
               />
+              {renderFieldDescription(field)}
             </label>
+          );
+        }
+        if (field.type === "array" && field.itemFields?.length) {
+          return (
+            <ModelInputArrayFieldEditor
+              key={field.key}
+              field={field}
+              value={value}
+              onChange={(nextValue) => onChange(field.key, nextValue)}
+              variant={variant}
+              ariaLabelPrefix={ariaLabelPrefix}
+            />
           );
         }
         if (field.type === "image_urls" || field.type === "video_urls" || field.type === "audio_urls") {
@@ -628,6 +659,7 @@ export function ModelInputFieldsPanel({
                 }}
                 allowedExtensions={getAllowedLibraryExtensionsForField(field)}
               />
+              {renderFieldDescription(field)}
             </label>
           );
         }
@@ -639,9 +671,11 @@ export function ModelInputFieldsPanel({
             <Input
               type="text"
               aria-label={`${ariaLabelPrefix} ${field.label}`}
+              placeholder={field.placeholder || field.label}
               value={String(value ?? "")}
               onChange={(event) => onChange(field.key, event.target.value)}
             />
+            {renderFieldDescription(field)}
           </label>
         );
       })}

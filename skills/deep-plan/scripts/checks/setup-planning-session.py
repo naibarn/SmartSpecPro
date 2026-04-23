@@ -242,9 +242,9 @@ def main():
     )
     parser.add_argument(
         "--review-mode",
-        choices=["external_llm", "opus_subagent", "skip"],
-        default="external_llm",
-        help="How plan review should be performed (default: external_llm)"
+        choices=["self_review", "external_llm", "opus_subagent", "skip"],
+        default="self_review",
+        help="How plan review should be performed (default: self_review)"
     )
     parser.add_argument(
         "--force",
@@ -539,41 +539,27 @@ def main():
         semantic_to_position,
     )
 
-    # Write tasks directly to disk with dependencies
+    # Write tasks directly to disk with dependencies when a task list exists.
+    # In file-based mode we keep the session config and workflow state only in
+    # the planning directory and skip Claude task storage entirely.
     tasks_written = 0
     task_write_error = None
+    workflow_backend = "file_based"
 
-    # CRITICAL: Must have task_list_id to proceed
-    if not context.task_list_id:
-        result = {
-            "success": False,
-            "mode": "no_task_list",
-            "planning_dir": str(planning_dir),
-            "initial_file": str(file_path),
-            "plugin_root": str(plugin_root),
-            "error": "No task list ID available. Cannot write tasks.",
-            "error_details": {
-                "cause": "Neither CLAUDE_CODE_TASK_LIST_ID nor DEEP_SESSION_ID is set.",
-                "likely_reason": "The SessionStart hook did not run or failed to capture the session ID.",
-                "troubleshooting": [
-                    "1. Verify the plugin is loaded: check that /deep-plan skill is available",
-                    "2. Check hooks/hooks.json exists in the plugin directory",
-                    "3. Try starting a fresh Claude session (the hook runs on session start)",
-                ],
-            },
-        }
-        print(json.dumps(result, indent=2))
-        return 1
+    if context.task_list_id:
+        workflow_backend = "task_list"
+        write_result = write_tasks(
+            context.task_list_id,
+            tasks_to_write,
+            dependency_graph=dependency_graph,
+        )
+        if write_result.success:
+            tasks_written = write_result.tasks_written
+        else:
+            task_write_error = write_result.error
 
-    write_result = write_tasks(
-        context.task_list_id,
-        tasks_to_write,
-        dependency_graph=dependency_graph,
-    )
-    if write_result.success:
-        tasks_written = write_result.tasks_written
-    else:
-        task_write_error = write_result.error
+    if workflow_backend == "file_based" and mode != "complete":
+        message = f"{message} Using file-based backend."
 
     # Build output
     result = {
@@ -583,6 +569,7 @@ def main():
         "initial_file": str(file_path),
         "plugin_root": str(plugin_root),
         "review_mode": review_mode,
+        "workflow_backend": workflow_backend,
         "resume_from_step": resume_step,
         "message": message,
         "files_found": files_summary,

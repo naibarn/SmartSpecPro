@@ -18,17 +18,24 @@ vi.mock("./taskPlannerMiddleware", () => ({
   runPlanner: vi.fn(),
   recordStepAttempt: vi.fn(),
 }));
+vi.mock("./chatModelSelection", () => ({
+  resolveStructuredAutoChatModelSelection: vi.fn(),
+}));
 
 import { callLLMStructured } from "./callLLMStructured";
 import { executeWithFallback } from "./llmRouter";
 import { deductCreditsForModel } from "./creditService";
 import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
+import { resolveStructuredAutoChatModelSelection } from "./chatModelSelection";
 import { z } from "zod";
 
 const mockExecuteWithFallback = vi.mocked(executeWithFallback);
 const mockDeductCredits = vi.mocked(deductCreditsForModel);
 const mockRunPlanner = vi.mocked(runPlanner);
 const mockRecordStepAttempt = vi.mocked(recordStepAttempt);
+const mockResolveStructuredAutoChatModelSelection = vi.mocked(
+  resolveStructuredAutoChatModelSelection,
+);
 
 const testSchema = z.object({ name: z.string() });
 
@@ -73,6 +80,20 @@ function setupSuccessfulLLMResponse(content = '{"name": "test"}') {
 describe("callLLMStructured planner wiring", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockResolveStructuredAutoChatModelSelection.mockResolvedValue({
+      selectionMode: "auto-global",
+      selection: { mode: "auto-global" },
+      requestedModelId: null,
+      resolvedModelId: "openai/gpt-4.1-mini",
+      resolvedProviderId: 1,
+      resolvedProviderName: "openrouter",
+      preferredProviderId: 1,
+      strictProviderPin: false,
+      routeFamily: "chat-completions",
+      requirements: { supportsStructuredOutputs: true },
+      continuityApplied: false,
+      shouldPersistSelectionState: false,
+    });
   });
 
   it("runs planner once before the retry loop", async () => {
@@ -185,6 +206,21 @@ describe("callLLMStructured planner wiring", () => {
 
     expect(mockRunPlanner).toHaveBeenCalledWith(
       expect.objectContaining({ skillSlug: "my-skill" }),
+    );
+  });
+
+  it("resolves the structured model from chat auto-selection when the caller omits model", async () => {
+    mockRunPlanner.mockResolvedValue(null);
+    setupSuccessfulLLMResponse();
+
+    await callLLMStructured(baseParams);
+
+    expect(mockResolveStructuredAutoChatModelSelection).toHaveBeenCalledTimes(1);
+    expect(mockExecuteWithFallback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "openai/gpt-4.1-mini",
+        preferredProvider: 1,
+      }),
     );
   });
 });

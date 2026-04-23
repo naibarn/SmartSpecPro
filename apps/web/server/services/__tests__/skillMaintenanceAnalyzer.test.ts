@@ -51,8 +51,12 @@ describe("skillMaintenanceAnalyzer", () => {
     });
 
     expect(result.recommendations.some((item) => item.recommendationType === "tests-missing")).toBe(true);
+    expect(result.recommendations.some((item) => item.recommendationType === "native-bundle-upgrade")).toBe(true);
     expect(result.facts.hasTests).toBe(false);
     expect(result.qualityScore).toBeLessThan(100);
+    expect(result.upgradePriorityScore).toBeGreaterThanOrEqual(35);
+    expect(result.parallelUpgradeEligible).toBe(true);
+    expect(result.upgradePriorityTier).not.toBe("low");
   });
 
   it("flags a strong classic-JS skill as a GenJS migration candidate", () => {
@@ -103,6 +107,22 @@ describe("skillMaintenanceAnalyzer", () => {
     expect(result.isGenjsCandidate).toBe(true);
     expect(result.genjsCandidateScore).toBeGreaterThanOrEqual(8);
     expect(result.recommendations.some((item) => item.recommendationType === "migrate-to-genjs")).toBe(true);
+  });
+
+  it("creates a legacy upgrade recommendation even for sparse legacy skills", () => {
+    const skillDir = createSkillDir({
+      "SKILL.md": "---\nname: Old Skill\ncategory: automation\n---\n# Old Skill\n",
+    });
+
+    const result = analyzeSkillForMaintenance({
+      slug: "old-skill",
+      name: "Old Skill",
+      folderPath: skillDir,
+      executionMode: "llm-only",
+    });
+
+    expect(result.recommendations.some((item) => item.recommendationType === "native-bundle-upgrade")).toBe(true);
+    expect(result.parallelUpgradeEligible).toBe(true);
   });
 
   it("flags sandbox-command skills without a sandbox profile", () => {

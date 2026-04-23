@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   applyModelSyncTargets,
+  buildDefaultModelInputArrayItem,
+  buildDefaultExtraParamsForModel,
   clampReferenceImagesToModelLimit,
   getModelGenerationModeLabel,
   getMissingRequiredModelFields,
@@ -48,6 +50,44 @@ describe("mediaModelInputs", () => {
       affectsPricing: true,
     });
     expect(getModelInputField(model, "missing")).toBeUndefined();
+  });
+
+  it("parses nested array itemFields and resolves them by key", () => {
+    const model = {
+      id: "test-audio-model",
+      name: "Test Audio Model",
+      configJson: {
+        inputFields: [
+          {
+            key: "speakers",
+            label: "Speakers",
+            type: "array",
+            itemLabel: "Speaker",
+            itemFields: [
+              { key: "speaker_id", label: "Speaker ID", type: "text", required: true },
+              {
+                key: "voice",
+                label: "Voice",
+                type: "select",
+                required: true,
+                options: [{ value: "Kore", label: "Kore" }],
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    const fields = parseModelInputFields(model);
+    expect(fields[0]?.itemFields?.[0]).toMatchObject({
+      key: "speaker_id",
+      label: "Speaker ID",
+      required: true,
+    });
+    expect(getModelInputField(model, "speaker_id")).toMatchObject({
+      key: "speaker_id",
+      label: "Speaker ID",
+    });
   });
 
   it("preserves maxItems metadata for synchronized image fields", () => {
@@ -145,6 +185,64 @@ describe("mediaModelInputs", () => {
         generateType: "text-to-video",
       },
     })).toBe("Text to Video");
+
+    expect(getModelGenerationModeLabel({
+      id: "generic-text-to-speech",
+      name: "Generic Audio Model",
+      configJson: {
+        generateType: "text-to-speech",
+      },
+    })).toBe("Text to Speech");
+  });
+
+  it("builds default rows for structured array fields", () => {
+    const item = buildDefaultModelInputArrayItem([
+      { key: "speaker_id", label: "Speaker ID", type: "text", required: true },
+      {
+        key: "voice",
+        label: "Voice",
+        type: "select",
+        required: true,
+        options: [{ value: "Kore", label: "Kore" }],
+      },
+    ]);
+
+    expect(item).toEqual({
+      speaker_id: "Speaker1",
+      voice: "Kore",
+    });
+  });
+
+  it("preserves optional Gemini language_code select fields with auto-detect as an unset value", () => {
+    const model = {
+      id: "test-audio-model",
+      name: "Test Audio Model",
+      configJson: {
+        inputFields: [
+          {
+            key: "language_code",
+            label: "Language Code",
+            type: "select",
+            searchable: true,
+            options: [
+              { value: "__auto__", label: "Auto-detect" },
+              { value: "English (US)", label: "English (US)" },
+            ],
+          },
+        ],
+      },
+    };
+
+    const fields = parseModelInputFields(model);
+    expect(fields[0]).toMatchObject({
+      key: "language_code",
+      searchable: true,
+    });
+    expect(fields[0]?.options?.[0]).toEqual({
+      value: "__auto__",
+      label: "Auto-detect",
+    });
+    expect(buildDefaultExtraParamsForModel(model)).toBeUndefined();
   });
 
   it("applies reference video sync values and validates required fields", () => {
@@ -179,6 +277,42 @@ describe("mediaModelInputs", () => {
         referenceVideoUrls: [],
       }),
     ).toEqual(["Motion References"]);
+  });
+
+  it("reports missing required nested array item fields", () => {
+    const model = {
+      id: "test-audio-model",
+      name: "Test Audio Model",
+      configJson: {
+        inputFields: [
+          {
+            key: "speakers",
+            label: "Speakers",
+            type: "array",
+            itemLabel: "Speaker",
+            itemFields: [
+              { key: "speaker_id", label: "Speaker ID", type: "text", required: true },
+              {
+                key: "voice",
+                label: "Voice",
+                type: "select",
+                required: true,
+                options: [{ value: "Kore", label: "Kore" }],
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    const fields = parseModelInputFields(model);
+    const missing = getMissingRequiredModelFields(fields, {
+      extraParams: {
+        speakers: [{ voice: "Kore" }],
+      },
+    });
+
+    expect(missing).toEqual(["Speakers 1 Speaker ID"]);
   });
 
   it("clamps synced reference images to the model-declared maxItems limit", () => {

@@ -23,6 +23,9 @@ from app.llm_proxy.models import (
     AudioGenerationRequest,
 )
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
+from enum import Enum
+from uuid import UUID
 from sqlalchemy import or_, select, text
 from typing import Any, Optional
 import re
@@ -70,6 +73,51 @@ def _run_async(coro):
     return loop.run_until_complete(coro)
 
 
+def _make_json_safe(value: Any) -> Any:
+    """Convert provider payloads into JSON-serializable primitives."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+
+    if isinstance(value, Decimal):
+        try:
+            if value == value.to_integral_value():
+                return int(value)
+            return float(value)
+        except Exception:
+            return str(value)
+
+    if isinstance(value, (datetime,)):
+        return value.isoformat()
+
+    if isinstance(value, UUID):
+        return str(value)
+
+    if isinstance(value, Enum):
+        return _make_json_safe(value.value)
+
+    if isinstance(value, dict):
+        return {str(key): _make_json_safe(item) for key, item in value.items()}
+
+    if isinstance(value, (list, tuple, set)):
+        return [_make_json_safe(item) for item in value]
+
+    model_dump = getattr(value, "model_dump", None)
+    if callable(model_dump):
+        try:
+            return _make_json_safe(model_dump())
+        except Exception:
+            return str(value)
+
+    to_dict = getattr(value, "dict", None)
+    if callable(to_dict):
+        try:
+            return _make_json_safe(to_dict())
+        except Exception:
+            return str(value)
+
+    return str(value)
+
+
 def _merge_task_result_data(
     existing: Any,
     patch: dict[str, Any],
@@ -81,7 +129,7 @@ def _merge_task_result_data(
     for key in remove_keys:
         merged.pop(key, None)
     merged.update(patch)
-    return merged
+    return _make_json_safe(merged)
 
 
 def _enum_value_or_str(value: Any) -> Optional[str]:
@@ -978,7 +1026,7 @@ async def _send_failure_notifications(task_id: str, user_id: str, media_type: st
 
             # Notify the user who owns the task
             await notify_task_failed(
-                db=db, user_id=user_id, task_id=task_id,
+                db=db, user_id=str(user_id), task_id=task_id,
                 media_type=media_type, error=error,
             )
 
@@ -1051,7 +1099,7 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
 
             result_url = response.data[0].get("url") if response.data else None
             task.result_url = result_url
-            task.result_data = {"response": response.dict()}
+            task.result_data = _make_json_safe({"response": response.dict()})
             task.credits_used = int(response.credits_used) if response.credits_used else None
             task.credits_balance = int(response.credits_balance) if response.credits_balance else None
             if result_url:
@@ -1226,7 +1274,7 @@ async def _generate_video_async(task_id: str, user_id: str, request_data: dict):
                 finally:
                     await wavespeed_provider.aclose()
 
-            task.result_data = {
+            task.result_data = _make_json_safe({
                 **({"submission": submission_record} if submission_record else {"submission": response.dict()}),
                 "response": response.dict(),
                 **(
@@ -1243,7 +1291,7 @@ async def _generate_video_async(task_id: str, user_id: str, request_data: dict):
                     if response.provider == "wavespeed_ai"
                     else {}
                 ),
-            }
+            })
             task.credits_used = int(response.credits_used) if response.credits_used else None
             task.credits_balance = int(response.credits_balance) if response.credits_balance else None
 
@@ -1395,7 +1443,7 @@ async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
 
             result_url = response.data[0].get("url") if response.data else None
             task.result_url = result_url
-            task.result_data = {
+            task.result_data = _make_json_safe({
                 "response": response.dict(),
                 "debug": {
                     "trace_id": trace_id,
@@ -1404,7 +1452,7 @@ async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
                     "log_file": debug_log_file,
                     "api": audio_debug_snapshot.get("api"),
                 },
-            }
+            })
             task.credits_used = int(response.credits_used) if response.credits_used else None
             task.credits_balance = int(response.credits_balance) if response.credits_balance else None
             if result_url:
@@ -1465,7 +1513,7 @@ async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
                         if isinstance(audio_debug_snapshot.get("api"), dict)
                         else {}
                     )
-                    task.result_data = {
+                    task.result_data = _make_json_safe({
                         **{
                             key: value
                             for key, value in existing_result_data.items()
@@ -1488,7 +1536,7 @@ async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
                             "provider_message": exception_debug.get("message"),
                             "provider_detail": exception_debug.get("detail"),
                         },
-                    }
+                    })
                     await db.commit()
             except Exception:
                 pass
@@ -1977,7 +2025,7 @@ async def _recover_stuck_tasks_async():
                                 if result_url:
                                     task.status = TaskStatus.COMPLETED
                                     task.result_url = result_url
-                                    task.result_data = status_response
+                                    task.result_data = _make_json_safe(status_response)
                                     task.completed_at = datetime.now(timezone.utc)
                                     recovered_count += 1
                                     logger.info(
@@ -1998,7 +2046,7 @@ async def _recover_stuck_tasks_async():
                                 )
                                 task.status = TaskStatus.FAILED
                                 task.error_message = f"BytePlus failed: {error_msg[:200]}"
-                                task.result_data = status_response
+                                task.result_data = _make_json_safe(status_response)
                                 task.completed_at = datetime.now(timezone.utc)
                                 failed_count += 1
                                 logger.warning(
@@ -2051,7 +2099,7 @@ async def _recover_stuck_tasks_async():
                                 if result_url:
                                     task.status = TaskStatus.COMPLETED
                                     task.result_url = result_url
-                                    task.result_data = status_response
+                                    task.result_data = _make_json_safe(status_response)
                                     task.completed_at = datetime.now(timezone.utc)
                                     recovered_count += 1
                                     logger.info(
@@ -2072,7 +2120,7 @@ async def _recover_stuck_tasks_async():
                                 )
                                 task.status = TaskStatus.FAILED
                                 task.error_message = f"KNPLabs failed: {str(error_msg)[:200]}"
-                                task.result_data = status_response
+                                task.result_data = _make_json_safe(status_response)
                                 task.completed_at = datetime.now(timezone.utc)
                                 failed_count += 1
                                 logger.warning(
@@ -2140,7 +2188,7 @@ async def _recover_stuck_tasks_async():
                                         task.result_url = None
                                 else:
                                     task.result_url = None
-                                task.result_data = result
+                                task.result_data = _make_json_safe(result)
                                 task.completed_at = datetime.now(timezone.utc)
                                 recovered_count += 1
                                 logger.info(
@@ -2254,7 +2302,7 @@ async def _recover_stuck_tasks_async():
                             if result_url:
                                 task.status = TaskStatus.COMPLETED
                                 task.result_url = result_url
-                                task.result_data = status_response
+                                task.result_data = _make_json_safe(status_response)
                                 task.completed_at = datetime.now(timezone.utc)
                                 recovered_count += 1
                                 logger.info("recover_stuck_task_completed", task_id=task.id, result_url=result_url)
@@ -2277,7 +2325,7 @@ async def _recover_stuck_tasks_async():
                             )
                             task.status = TaskStatus.FAILED
                             task.error_message = f"Provider failed: {error_msg}"
-                            task.result_data = status_response
+                            task.result_data = _make_json_safe(status_response)
                             task.completed_at = datetime.now(timezone.utc)
                             failed_count += 1
                             logger.warning("recover_stuck_task_failed", task_id=task.id, error=error_msg)

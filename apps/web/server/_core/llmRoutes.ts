@@ -20,6 +20,7 @@ import { debugLog, debugError } from "./logger";
 import { handleChatWithRouter, handleStreamWithRouter } from "../services/llmRoutesHandler";
 import { auditLogger } from "../services/auditLogger";
 import { getTraceId } from "../services/traceContext";
+import { buildContextStateMessages } from "../services/contextEngineAdapter";
 import {
   acquireDelegatedWorkerConcurrencySlot,
   buildDelegatedWorkerOriginMetadata,
@@ -3634,6 +3635,9 @@ export function registerLLMRoutes(app: Express) {
           if (lastUserMsg?.content) {
             const result = await fetchDocsForMessage(lastUserMsg.content, userContext7Key);
             if (result?.docs) {
+              const contextStateMessages = result.contextState
+                ? buildContextStateMessages(result.contextState)
+                : [];
               // Inject docs as a system message right before the last user message
               const docsMessage = {
                 role: "system",
@@ -3641,12 +3645,16 @@ export function registerLLMRoutes(app: Express) {
               };
               // Insert after the first system message but before user messages
               const firstNonSystem = req.body.messages.findIndex((m: any) => m.role !== "system");
+              const docsMessages = [
+                ...contextStateMessages,
+                docsMessage,
+              ];
               if (firstNonSystem > 0) {
-                req.body.messages.splice(firstNonSystem, 0, docsMessage);
+                req.body.messages.splice(firstNonSystem, 0, ...docsMessages);
               } else {
-                req.body.messages.unshift(docsMessage);
+                req.body.messages.unshift(...docsMessages);
               }
-              debugLog("LLM", `Context7: injected ${result.docs.length} chars of ${result.libraryName} docs`);
+              debugLog("LLM", `Context7: injected ${result.docs.length} chars of ${result.libraryName} docs${contextStateMessages.length > 0 ? ` and ${contextStateMessages.length} context hints` : ""}`);
             }
           }
         } catch (err: any) {

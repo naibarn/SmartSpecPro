@@ -274,12 +274,12 @@ export default function Pricing() {
       <Navbar />
 
       {/* Hero Section with Aurora Background */}
-      <section className="relative pt-32 pb-20 overflow-hidden">
+      <section className="relative overflow-hidden pt-24 pb-12 sm:pt-28 sm:pb-16 lg:pt-32 lg:pb-20">
         {/* Animated Aurora Background */}
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-100/40 via-transparent to-cyan-100/40" />
           <motion.div
-            className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-gradient-to-br from-blue-400/20 via-cyan-400/20 to-teal-400/20 rounded-full blur-3xl"
+            className="absolute top-0 left-1/4 hidden h-[600px] w-[600px] rounded-full bg-gradient-to-br from-blue-400/20 via-cyan-400/20 to-teal-400/20 blur-3xl sm:block"
             animate={{
               x: [0, 50, 0],
               y: [0, 30, 0],
@@ -292,7 +292,7 @@ export default function Pricing() {
             }}
           />
           <motion.div
-            className="absolute top-20 right-1/4 w-[500px] h-[500px] bg-gradient-to-br from-teal-400/20 via-emerald-400/20 to-cyan-400/20 rounded-full blur-3xl"
+            className="absolute top-20 right-1/4 hidden h-[500px] w-[500px] rounded-full bg-gradient-to-br from-teal-400/20 via-emerald-400/20 to-cyan-400/20 blur-3xl sm:block"
             animate={{
               x: [0, -40, 0],
               y: [0, 50, 0],
@@ -317,13 +317,13 @@ export default function Pricing() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.1 }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-500/10 via-cyan-500/10 to-teal-500/10 border border-blue-200/50 backdrop-blur-sm mb-6"
+              className="mb-5 inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-full border border-blue-200/50 bg-gradient-to-r from-blue-500/10 via-cyan-500/10 to-teal-500/10 px-4 py-2.5 backdrop-blur-sm sm:mb-6 sm:px-5"
             >
               <Crown className="w-4 h-4 text-blue-600" />
               <span className="text-sm font-semibold bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">
                 Simple, Transparent Pricing
               </span>
-              <span className="px-2 py-0.5 text-xs font-medium bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-full">
+              <span className="whitespace-nowrap rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 px-2 py-0.5 text-xs font-medium text-white">
                 No Hidden Fees
               </span>
             </motion.div>
@@ -333,7 +333,7 @@ export default function Pricing() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-5xl sm:text-6xl md:text-7xl font-bold mb-6 tracking-tight"
+              className="mb-5 text-4xl font-bold leading-tight sm:mb-6 sm:text-5xl md:text-6xl lg:text-7xl"
             >
               {heroSection?.title || parsed?.heroTitle || (<><span className="text-gray-900">Choose Your</span><br /><span className="bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-500 bg-clip-text text-transparent">Perfect Plan</span></>)}
             </motion.h1>
@@ -342,7 +342,7 @@ export default function Pricing() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto"
+              className="mx-auto mb-8 max-w-2xl text-base leading-7 text-gray-600 sm:mb-10 sm:text-lg md:text-xl"
             >
               {heroSection?.subtitle || heroSection?.content || parsed?.heroDesc || 'All plans include full access to every feature. Choose based on the credits you need.'}
             </motion.p>
@@ -352,13 +352,13 @@ export default function Pricing() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="inline-flex items-center gap-2 p-2 rounded-2xl bg-white/80 backdrop-blur-sm border border-gray-200 shadow-lg shadow-gray-200/50"
+              className="mx-auto grid w-full max-w-sm grid-cols-2 items-center gap-2 rounded-2xl border border-gray-200 bg-white/80 p-2 shadow-lg shadow-gray-200/50 backdrop-blur-sm sm:inline-flex sm:w-auto sm:max-w-none"
             >
               {(['monthly', 'quarterly', 'semi_annual', 'yearly'] as BillingPeriod[]).map((period) => (
                 <button
                   key={period}
                   onClick={() => setBillingPeriod(period)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                  className={`min-h-11 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-300 sm:px-4 ${
                     billingPeriod === period
                       ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/30'
                       : 'text-gray-600 hover:text-gray-900'
@@ -371,7 +371,7 @@ export default function Pricing() {
                 <motion.span
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="px-3 py-1.5 text-xs font-bold bg-gradient-to-r from-emerald-400 to-teal-500 text-white rounded-full shadow-lg shadow-emerald-500/30"
+                  className="col-span-2 justify-self-center rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-emerald-500/30 sm:col-span-1"
                 >
                   Save {getSavingsPercent()}%
                 </motion.span>
@@ -383,7 +383,7 @@ export default function Pricing() {
 
       {/* Loading State */}
       {isLoading && (
-        <section className="py-16">
+        <section className="py-12 sm:py-16">
           <div className="container mx-auto px-4 text-center">
             <Loader2 className="w-12 h-12 animate-spin mx-auto text-blue-500" />
             <p className="mt-4 text-gray-600">Loading pricing plans...</p>
@@ -393,7 +393,7 @@ export default function Pricing() {
 
       {/* Error State */}
       {error && (
-        <section className="py-16">
+        <section className="py-12 sm:py-16">
           <div className="container mx-auto px-4 text-center">
             <p className="text-red-600">Failed to load pricing plans. Please try again later.</p>
           </div>
@@ -402,9 +402,9 @@ export default function Pricing() {
 
       {/* Subscription Plans */}
       {!isLoading && !error && subscriptionPackages.length > 0 && (
-        <section className="py-16 relative">
+        <section className="relative py-12 sm:py-16">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            <div className="mx-auto grid max-w-7xl gap-5 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
               {subscriptionPackages.map((pkg, index) => {
                 const style = getPlanStyle(pkg.packageType, index, pkg.isFeatured);
                 const Icon = style.icon;
@@ -425,7 +425,7 @@ export default function Pricing() {
                         <motion.div
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="px-6 py-2 text-sm font-bold bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 text-white rounded-full shadow-xl shadow-blue-500/40 flex items-center gap-2"
+                          className="flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 px-4 py-2 text-sm font-bold text-white shadow-xl shadow-blue-500/40 sm:px-6"
                         >
                           <Star className="w-4 h-4 fill-current" />
                           Most Popular
@@ -434,12 +434,12 @@ export default function Pricing() {
                     )}
 
                     {/* Card */}
-                    <div className={`relative h-full rounded-3xl overflow-hidden transition-all duration-500 ${
+                    <div className={`relative h-full overflow-hidden rounded-2xl transition-all duration-500 sm:rounded-3xl ${
                       pkg.isFeatured
                         ? 'bg-gradient-to-b from-white to-blue-50/50 border-2 border-blue-300 shadow-2xl shadow-blue-500/20 hover:shadow-blue-500/30'
                         : 'bg-white/80 backdrop-blur-sm border border-gray-200 shadow-xl shadow-gray-200/50 hover:shadow-2xl hover:shadow-gray-300/50 hover:border-gray-300'
                     }`}>
-                      <div className="relative p-6">
+                      <div className="relative p-5 sm:p-6">
                         {/* Icon */}
                         <div className={`w-14 h-14 rounded-2xl mb-4 flex items-center justify-center bg-gradient-to-br ${style.gradient} shadow-lg`}>
                           <Icon className="w-7 h-7 text-white" />
@@ -482,7 +482,7 @@ export default function Pricing() {
                         {/* CTA Button */}
                         <Link href="/signup">
                           <Button
-                            className={`w-full py-5 text-sm font-semibold rounded-xl transition-all duration-300 ${
+                            className={`h-auto min-h-11 w-full whitespace-normal rounded-xl py-3 text-center text-sm font-semibold leading-snug transition-all duration-300 ${
                               pkg.isFeatured
                                 ? 'bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 text-white hover:from-blue-600 hover:via-cyan-600 hover:to-teal-600 shadow-lg shadow-blue-500/30'
                                 : 'bg-gray-900 text-white hover:bg-gray-800'
@@ -505,7 +505,7 @@ export default function Pricing() {
 
       {/* Agency White Label Section */}
       {!isLoading && !error && agencyPackages.length > 0 && (
-        <section className="py-16 relative overflow-hidden">
+        <section className="relative overflow-hidden py-12 sm:py-16">
           <div className="absolute inset-0 bg-gradient-to-b from-blue-50/50 via-cyan-50/30 to-white" />
 
           <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
@@ -513,14 +513,14 @@ export default function Pricing() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-center mb-10"
+              className="mb-8 text-center sm:mb-10"
             >
               <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-200/50 text-blue-700 text-sm font-medium mb-4">
                 <Globe className="w-4 h-4" />
                 White Label Solution
               </span>
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">Agency White Label Plan</h2>
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              <h2 className="mb-3 text-3xl font-bold leading-tight text-gray-900 sm:mb-4 sm:text-4xl">Agency White Label Plan</h2>
+              <p className="mx-auto max-w-2xl text-base leading-7 text-gray-600 sm:text-xl">
                 Build your own AI platform with your brand. Manage users and credits under your domain.
               </p>
             </motion.div>
@@ -537,13 +537,13 @@ export default function Pricing() {
                   viewport={{ once: true }}
                   className="max-w-4xl mx-auto"
                 >
-                  <div className="relative bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 rounded-3xl p-1">
-                    <div className="bg-white rounded-[22px] p-8 md:p-10">
-                      <div className="grid md:grid-cols-2 gap-8 items-center">
+                  <div className="relative rounded-2xl bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 p-1 sm:rounded-3xl">
+                    <div className="rounded-[1.125rem] bg-white p-5 sm:p-8 md:p-10">
+                      <div className="grid items-center gap-8 md:grid-cols-2">
                         {/* Left: Features */}
                         <div>
-                          <h3 className="text-2xl font-bold text-gray-900 mb-4">{pkg.name}</h3>
-                          <p className="text-gray-600 mb-6">
+                          <h3 className="mb-3 text-2xl font-bold text-gray-900 sm:mb-4">{pkg.name}</h3>
+                          <p className="mb-5 leading-7 text-gray-600 sm:mb-6">
                             Everything in subscription plans, plus exclusive white label features:
                           </p>
                           <ul className="space-y-3">
@@ -565,7 +565,7 @@ export default function Pricing() {
                             {pkg.credits.toLocaleString()} credits/month
                           </div>
                           <div className="mb-2">
-                            <span className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+                            <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-4xl font-bold text-transparent sm:text-5xl md:text-6xl">
                               ${Math.round(monthlyEquiv)}
                             </span>
                             <span className="text-gray-500 text-xl">/mo</span>
@@ -578,7 +578,7 @@ export default function Pricing() {
                           <Link href="/contact">
                             <Button
                               size="lg"
-                              className="bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 text-white hover:from-blue-600 hover:via-cyan-600 hover:to-teal-600 px-8 py-6 text-base font-semibold shadow-xl shadow-blue-500/30"
+                              className="h-auto min-h-12 w-full bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 px-8 py-3 text-base font-semibold text-white shadow-xl shadow-blue-500/30 hover:from-blue-600 hover:via-cyan-600 hover:to-teal-600 sm:w-auto sm:py-6"
                             >
                               Contact Sales
                               <ArrowRight className="ml-2 w-5 h-5" />
@@ -597,7 +597,7 @@ export default function Pricing() {
 
       {/* Credit Packs Section */}
       {!isLoading && !error && oneTimePackages.length > 0 && (
-        <section className="py-20 relative overflow-hidden">
+        <section className="relative overflow-hidden py-14 sm:py-20">
           <div className="absolute inset-0 bg-gradient-to-b from-gray-50 via-blue-50/30 to-gray-50" />
           <motion.div
             className="absolute top-1/2 left-0 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl -translate-y-1/2"
@@ -610,19 +610,19 @@ export default function Pricing() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-center mb-14"
+              className="mb-10 text-center sm:mb-14"
             >
               <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-teal-500/10 to-emerald-500/10 border border-teal-200/50 text-teal-700 text-sm font-medium mb-4">
                 <CreditCard className="w-4 h-4" />
                 Flexible Credits
               </span>
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">Need More Credits?</h2>
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              <h2 className="mb-3 text-3xl font-bold leading-tight text-gray-900 sm:mb-4 sm:text-4xl">Need More Credits?</h2>
+              <p className="mx-auto max-w-2xl text-base leading-7 text-gray-600 sm:text-xl">
                 Purchase additional credit packs anytime. The more you buy, the more you save.
               </p>
             </motion.div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+            <div className="mx-auto grid max-w-6xl gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
               {oneTimePackages.map((pkg, index) => (
                 <motion.div
                   key={pkg.id}
@@ -639,7 +639,7 @@ export default function Pricing() {
                       </span>
                     </div>
                   )}
-                  <div className={`relative h-full rounded-2xl p-6 transition-all duration-300 ${
+                  <div className={`relative h-full rounded-2xl p-5 transition-all duration-300 sm:p-6 ${
                     pkg.isFeatured
                       ? 'bg-gradient-to-b from-teal-50 to-emerald-50 border-2 border-teal-300 shadow-xl shadow-teal-500/20'
                       : 'bg-white border border-gray-200 shadow-lg hover:shadow-xl hover:border-gray-300'
@@ -666,7 +666,7 @@ export default function Pricing() {
                     <Link href="/credits">
                       <Button
                         variant={pkg.isFeatured ? 'default' : 'outline'}
-                        className={`w-full ${
+                        className={`h-11 w-full ${
                           pkg.isFeatured
                             ? 'bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white'
                             : ''
@@ -684,27 +684,27 @@ export default function Pricing() {
       )}
 
       {/* Features Included Section */}
-      <section className="py-20">
+      <section className="py-14 sm:py-20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-14"
+            className="mb-10 text-center sm:mb-14"
           >
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-200/50 text-blue-700 text-sm font-medium mb-4">
               <Shield className="w-4 h-4" />
               All Plans Include
             </span>
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Full Feature Access</h2>
-            <p className="text-xl text-gray-600">
+            <h2 className="mb-3 text-3xl font-bold leading-tight text-gray-900 sm:mb-4 sm:text-4xl">Full Feature Access</h2>
+            <p className="text-base leading-7 text-gray-600 sm:text-xl">
               {parsed?.infoTexts && parsed.infoTexts.length > 0
                 ? parsed.infoTexts.join(' ')
                 : 'Every plan gives you complete access to all features'}
             </p>
           </motion.div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+          <div className="mx-auto grid max-w-5xl gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
             {[
               { icon: Code2, title: 'AI Code Generation', desc: 'Generate code in any language' },
               { icon: Image, title: 'Image Generation', desc: 'Create stunning visuals with AI' },
@@ -721,7 +721,7 @@ export default function Pricing() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.05 }}
-                className="p-6 rounded-2xl bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
+                className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md sm:p-6"
               >
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center mb-4">
                   <feature.icon className="w-6 h-6 text-blue-600" />
@@ -735,7 +735,7 @@ export default function Pricing() {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-20 relative overflow-hidden">
+      <section className="relative overflow-hidden py-14 sm:py-20">
         <div className="absolute inset-0 bg-gradient-to-b from-gray-50 to-white" />
 
         <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
@@ -743,14 +743,14 @@ export default function Pricing() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-14"
+            className="mb-10 text-center sm:mb-14"
           >
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-200/50 text-orange-700 text-sm font-medium mb-4">
               <HelpCircle className="w-4 h-4" />
               Got Questions?
             </span>
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">{faqSection?.title || parsed?.faqTitle || 'Frequently Asked Questions'}</h2>
-            <p className="text-xl text-gray-600">
+            <h2 className="mb-3 text-3xl font-bold leading-tight text-gray-900 sm:mb-4 sm:text-4xl">{faqSection?.title || parsed?.faqTitle || 'Frequently Asked Questions'}</h2>
+            <p className="text-base leading-7 text-gray-600 sm:text-xl">
               Everything you need to know about our pricing and plans
             </p>
           </motion.div>
@@ -767,9 +767,9 @@ export default function Pricing() {
                 >
                   <AccordionItem
                     value={`item-${index}`}
-                    className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow px-6 overflow-hidden"
+                    className="overflow-hidden rounded-2xl border border-gray-200 bg-white px-4 shadow-sm transition-shadow hover:shadow-md sm:px-6"
                   >
-                    <AccordionTrigger className="text-left hover:no-underline py-5 text-gray-900 font-medium">
+                    <AccordionTrigger className="py-5 text-left font-medium text-gray-900 hover:no-underline">
                       {faq.question}
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600 pb-5">
@@ -784,7 +784,7 @@ export default function Pricing() {
       </section>
 
       {/* Enterprise CTA */}
-      <section className="py-20">
+      <section className="py-14 sm:py-20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -792,28 +792,28 @@ export default function Pricing() {
             viewport={{ once: true }}
             className="relative max-w-5xl mx-auto"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-500 rounded-3xl transform rotate-1" />
-            <div className="relative bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 rounded-3xl p-10 sm:p-14 overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+            <div className="absolute inset-0 hidden rotate-1 transform rounded-3xl bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-500 sm:block" />
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 p-6 sm:rounded-3xl sm:p-10 lg:p-14">
+              <div className="absolute top-0 right-0 hidden h-64 w-64 rounded-full bg-white/10 blur-3xl sm:block" />
+              <div className="absolute bottom-0 left-0 hidden h-64 w-64 rounded-full bg-white/10 blur-3xl sm:block" />
 
-              <div className="relative flex flex-col lg:flex-row items-center gap-10">
+              <div className="relative flex flex-col items-center gap-8 lg:flex-row lg:gap-10">
                 <div className="flex-1 text-center lg:text-left">
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm text-white text-sm font-medium mb-6">
                     <Building2 className="w-4 h-4" />
                     Enterprise Solutions
                   </div>
-                  <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
+                  <h2 className="mb-4 text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl">
                     {ctaSection?.title || parsed?.ctaTitle || 'Need a Custom Solution?'}
                   </h2>
-                  <p className="text-xl text-white/80 mb-8 max-w-xl">
+                  <p className="mb-6 max-w-xl text-base leading-7 text-white/80 sm:mb-8 sm:text-xl">
                     {ctaSection?.subtitle || ctaSection?.content || parsed?.ctaDesc || 'Get dedicated support, custom integrations, on-premise deployment, and volume discounts tailored to your organization.'}
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                     <Link href="/contact">
                       <Button
                         size="lg"
-                      className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-6 text-base font-semibold shadow-xl"
+                        className="h-auto min-h-12 w-full bg-white px-8 py-3 text-base font-semibold text-blue-600 shadow-xl hover:bg-gray-100 sm:w-auto sm:py-6"
                       >
                         Contact Sales
                         <ArrowRight className="ml-2 w-5 h-5" />
@@ -823,7 +823,7 @@ export default function Pricing() {
                       <Button
                         size="lg"
                         variant="outline"
-                        className="border-2 border-white/50 text-white hover:bg-white/10 px-8 py-6 text-base font-semibold"
+                        className="h-auto min-h-12 w-full border-2 border-white/50 px-8 py-3 text-base font-semibold text-white hover:bg-white/10 sm:w-auto sm:py-6"
                       >
                         View Documentation
                       </Button>
@@ -832,15 +832,15 @@ export default function Pricing() {
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid w-full grid-cols-2 gap-3 sm:gap-6 lg:w-auto">
                   {[
                     { value: '99.9%', label: 'Uptime SLA' },
                     { value: '24/7', label: 'Support' },
                     { value: '500+', label: 'Enterprise Clients' },
                     { value: '<1hr', label: 'Response Time' },
                   ].map((stat, index) => (
-                    <div key={index} className="text-center p-4 rounded-2xl bg-white/10 backdrop-blur-sm">
-                      <div className="text-3xl font-bold text-white">{stat.value}</div>
+                    <div key={index} className="rounded-2xl bg-white/10 p-4 text-center backdrop-blur-sm">
+                      <div className="text-2xl font-bold text-white sm:text-3xl">{stat.value}</div>
                       <div className="text-sm text-white/70">{stat.label}</div>
                     </div>
                   ))}

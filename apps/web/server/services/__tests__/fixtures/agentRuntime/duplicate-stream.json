@@ -1,0 +1,44 @@
+[
+  {
+    "runtimeContractVersion": 2,
+    "traceSchemaVersion": 2,
+    "checkpointSchemaVersion": 2,
+    "eventId": "evt-duplicate-1",
+    "eventName": "response.output_text.delta",
+    "surface": "team",
+    "requestId": "req-duplicate-1",
+    "idempotencyKey": "idem-duplicate-1",
+    "sequence": 1,
+    "sourceComponent": "openai_agents_adapter",
+    "traceId": "trace-duplicate-1",
+    "stepId": "step-duplicate-1",
+    "stepKey": "research-context",
+    "attemptId": "attempt-duplicate-1",
+    "sdkVersion": "0.14.2",
+    "adapterVersion": "0.1.0",
+    "redactedPayload": {
+      "authorization": "Bearer secret-token"
+    }
+  },
+  {
+    "runtimeContractVersion": 2,
+    "traceSchemaVersion": 2,
+    "checkpointSchemaVersion": 2,
+    "eventId": "evt-duplicate-1",
+    "eventName": "response.output_text.delta",
+    "surface": "team",
+    "requestId": "req-duplicate-1",
+    "idempotencyKey": "idem-duplicate-1",
+    "sequence": 1,
+    "sourceComponent": "openai_agents_adapter",
+    "traceId": "trace-duplicate-1",
+    "stepId": "step-duplicate-1",
+    "stepKey": "research-context",
+    "attemptId": "attempt-duplicate-1",
+    "sdkVersion": "0.14.2",
+    "adapterVersion": "0.1.0",
+    "redactedPayload": {
+      "authorization": "Bearer secret-token"
+    }
+  }
+]

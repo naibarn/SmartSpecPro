@@ -1,6 +1,6 @@
 # Feature Specs Map
 
-Last updated: 2026-04-16
+Last updated: 2026-04-21
 
 - **001-workflow-scripts**: local workflow engine (`.smartspec/ss_autopilot`) used by Desktop (004) and tests (008)
 - **002-auth-generator**: generator/template (CLI) used optionally by Web server (003) or Python backend (007)
@@ -36,3 +36,10 @@ Last updated: 2026-04-16
 - **089-workforce-exchange-and-installable-operations-packs**: roadmap item for installable workpacks and exchange bundles
 - **090-enterprise-readiness-autonomy-economics-and-agent-dev-platform**: roadmap item for identity, evidence, ROI, and SDK readiness
 - **097-enterprise-platform-continuation-roadmap**: umbrella roadmap for the remaining enterprise platform layers that are not yet core runtime blockers
+- **098-auto-team-real-execution-and-media-completion**: hardens auto-team execution so Work OS requests progress from plan to real work items, media/swarm jobs, reviewer evidence, and final results instead of discussion-only room messages
+- **099-context-engineering-ready-chat-and-team**: shared context-engineering layer for Chat and Team with state tiers, hybrid retrieval, context packs, compaction, tool/MCP flows, and evals
+- **100-team-orchestration-audit-trail-and-completion**: team orchestration audit trail, reviewer loops, revision evidence, and deterministic auto-completion for managed work
+- **101-openai-agents-sdk-chat-team-orchestration**: version-isolated OpenAI Agents SDK adapter for Chat, Team, Responses, shared skills, tracing, and orchestration release safety
+- **102-fal-ai-gemini-3-1-flash-tts**: fal.ai Gemini 3.1 Flash TTS model integration with multi-speaker Media Studio authoring
+- **103-obsidian-inspired-md-knowledge-vault**: Obsidian-inspired Markdown vault foundation with properties, links, backlinks, saved views, context packs, and canvas persistence
+- **104-md-knowledge-vault-production-readiness**: production-ready vault hardening for agent memory, context-pack approvals, citations, observability, rollout controls, snapshots, and end-to-end adoption flows

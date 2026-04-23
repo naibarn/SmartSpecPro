@@ -47,6 +47,21 @@ const iconMap: Record<string, React.ElementType> = {
 type DetectionMode = "ask" | "auto" | "explicit";
 type SessionRuntimeMode = "account_default" | "local_only" | "cloud_only";
 
+interface VisibleSkillItem {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  type: string;
+  models: string[];
+  defaultModel: string | undefined;
+  enabledByDefault: boolean;
+  creditMultiplier: number;
+  priority: number;
+  nativeBundleReady: boolean;
+  nativeBundleFiles: string[];
+}
+
 interface SkillSettingsProps {
   conversationId: number;
   onClose?: () => void;
@@ -87,7 +102,9 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
     enabledByDefault: s.enabledByDefault,
     creditMultiplier: Number(s.creditMultiplier ?? 1),
     priority: s.priority,
-  }));
+    nativeBundleReady: Boolean((s as any).nativeBundleReady),
+    nativeBundleFiles: Array.isArray((s as any).nativeBundleFiles) ? (s as any).nativeBundleFiles : [],
+  })) as VisibleSkillItem[] | undefined;
 
   // Fetch conversation skill preferences
   const { data: preferences, isLoading: loadingPreferences } = trpc.chat.getSkillPreferences.useQuery({
@@ -254,7 +271,7 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
   const isSaving = saveStatus === "saving";
 
   return (
-    <DashboardCard className="flex h-full min-h-0 flex-col overflow-hidden">
+    <DashboardCard className="flex h-full min-h-0 flex-col overflow-hidden" bodyClassName="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -417,11 +434,27 @@ export function SkillSettings({ conversationId, onClose }: SkillSettingsProps) {
                       <Icon className="h-4 w-4 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{skill.name}</span>
-                        {skill.creditMultiplier > 1 && (
-                          <TooltipProvider>
-                            <Tooltip>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm">{skill.name}</span>
+                {skill.nativeBundleReady && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Badge variant="outline" className="text-xs border-emerald-200 bg-emerald-50 text-emerald-700">
+                          Native
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {skill.nativeBundleFiles.length > 0
+                          ? skill.nativeBundleFiles.join(", ")
+                          : "Native bundle ready"}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                {skill.creditMultiplier > 1 && (
+                  <TooltipProvider>
+                    <Tooltip>
                               <TooltipTrigger>
                                 <Badge variant="outline" className="text-xs">
                                   {skill.creditMultiplier}x credits

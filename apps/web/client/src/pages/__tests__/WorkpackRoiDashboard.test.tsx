@@ -7,6 +7,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const roiMock = vi.fn();
 
+vi.mock("wouter", () => ({
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
+}));
+
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     workpack: {
@@ -94,6 +98,7 @@ describe("WorkpackRoiDashboard", () => {
   it("renders KPI cards and readiness summaries", () => {
     render(<WorkpackRoiDashboard />);
 
+    expect(screen.getByRole("link", { name: /dashboard/i })).toBeInTheDocument();
     expect(screen.getByText("Completion rate")).toBeInTheDocument();
     expect(screen.getByText("82%")).toBeInTheDocument();
     expect(screen.getByText("097 Roadmap Control Plane")).toBeInTheDocument();

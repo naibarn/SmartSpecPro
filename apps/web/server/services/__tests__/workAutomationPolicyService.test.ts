@@ -24,7 +24,8 @@ describe("workAutomationPolicyService", () => {
         riskLevel: "medium",
         classificationConfidence: 0.93,
         title: "Launch campaign assets",
-        objective: "Research, draft, storyboard, media, and video for the launch",
+        objective:
+          "Research, draft, storyboard, media, and video for the launch",
       },
       mode: "fully_auto",
     });
@@ -35,7 +36,7 @@ describe("workAutomationPolicyService", () => {
     expect(policy.modeResolution.effectiveMode).toBe("fully_auto");
     expect(policy.modeResolution.downgraded).toBe(false);
     expect(policy.approvalGateStepKeys).toContain("review");
-    expect(policy.stepBlueprints.map((step) => step.stepKey)).toEqual([
+    expect(policy.stepBlueprints.map(step => step.stepKey)).toEqual([
       "research",
       "brief",
       "draft",
@@ -75,6 +76,36 @@ describe("workAutomationPolicyService", () => {
     expect(policy.modeResolution.downgraded).toBe(true);
   });
 
+  it("preserves an explicit fully_auto mode for user-initiated automation", () => {
+    const policy = resolveAutomationLaunchPolicy({
+      caseRecord: {
+        id: "case-2a",
+        title: "Unclear request",
+        summary: "Need some help with something",
+        riskLevel: "medium",
+        automationMode: "manual_assist",
+        currentState: "new",
+      },
+      requestRecord: {
+        sourceType: "webhook",
+        workType: "misc",
+        businessDomain: "ops",
+        urgency: "normal",
+        riskLevel: "medium",
+        classificationConfidence: 0.22,
+        title: "Unclear request",
+        objective: "Need some help with something",
+      },
+      mode: "fully_auto",
+      preserveRequestedMode: true,
+    });
+
+    expect(policy.modeResolution.requestedMode).toBe("fully_auto");
+    expect(policy.modeResolution.effectiveMode).toBe("fully_auto");
+    expect(policy.modeResolution.downgraded).toBe(false);
+    expect(policy.modeResolution.reason).toContain("preserved");
+  });
+
   it("blocks unsafe mode upgrades when a checkpoint is unresolved", () => {
     const policy = resolveAutomationLaunchPolicy({
       caseRecord: {
@@ -93,7 +124,8 @@ describe("workAutomationPolicyService", () => {
         riskLevel: "medium",
         classificationConfidence: 0.9,
         title: "Launch campaign assets",
-        objective: "Research, draft, storyboard, media, and video for the launch",
+        objective:
+          "Research, draft, storyboard, media, and video for the launch",
       },
       mode: "semi_auto",
     });
@@ -129,7 +161,8 @@ describe("workAutomationPolicyService", () => {
         riskLevel: "medium",
         classificationConfidence: 0.86,
         title: "Launch campaign assets",
-        objective: "Research, draft, storyboard, media, and video for the launch",
+        objective:
+          "Research, draft, storyboard, media, and video for the launch",
       },
       mode: "semi_auto",
     });
@@ -141,15 +174,19 @@ describe("workAutomationPolicyService", () => {
     });
 
     expect(route.surface).toBe("agency");
-    expect(resolveAutomationStepRoute({
-      stepKey: "research",
-      policy,
-      requestedSurface: "browser",
-    }).surface).toBe("browser");
-    expect(() => resolveAutomationStepRoute({
-      stepKey: "research",
-      policy,
-      requestedSurface: "media_studio",
-    })).toThrow("Surface media_studio is not allowed for step research");
+    expect(
+      resolveAutomationStepRoute({
+        stepKey: "research",
+        policy,
+        requestedSurface: "browser",
+      }).surface
+    ).toBe("browser");
+    expect(() =>
+      resolveAutomationStepRoute({
+        stepKey: "research",
+        policy,
+        requestedSurface: "media_studio",
+      })
+    ).toThrow("Surface media_studio is not allowed for step research");
   });
 });

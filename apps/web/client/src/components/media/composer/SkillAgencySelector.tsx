@@ -79,7 +79,7 @@ export function SkillAgencySelector({
         <RadioGroup
           value={executionSource}
           onValueChange={(value) => dispatch({ type: "SET_EXECUTION_SOURCE", payload: value as "skill" | "agency" })}
-          className="grid grid-cols-2 gap-3"
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2"
         >
           {[
             { value: "skill", label: "Skill" },
@@ -101,14 +101,14 @@ export function SkillAgencySelector({
             onValueChange={(value) => dispatch({ type: "SET_SKILL", payload: value || null })}
             disabled={skillsQuery.isLoading}
           >
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue placeholder={skillsQuery.isLoading ? "Loading skills…" : "Choose a skill"} />
             </SelectTrigger>
             <SelectContent>
               {filteredSkills.map((skill: any) => (
                 <SelectItem key={skill.id} value={String(skill.id)}>
-                  <div className="flex items-center justify-between gap-2">
-                    <span>{skill.name}</span>
+                  <div className="flex min-w-0 items-center justify-between gap-2">
+                    <span className="truncate">{skill.name}</span>
                     {skill.category && (
                       <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
                         {skill.category}
@@ -124,9 +124,9 @@ export function SkillAgencySelector({
 
       {executionSource === "agency" && (
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm font-medium">Agency</div>
-            <Button variant="outline" size="sm" onClick={() => setAgencyModalOpen(true)}>
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => setAgencyModalOpen(true)}>
               <Bot className="mr-2 h-4 w-4" />
               {agencyId ? "Change Agency" : "Pick Agency"}
             </Button>
@@ -149,7 +149,7 @@ export function SkillAgencySelector({
 
       {showBanner && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-start gap-2">
               <AlertCircle className="mt-0.5 h-4 w-4 text-amber-700" />
               <div>
@@ -157,10 +157,11 @@ export function SkillAgencySelector({
                 <p className="text-amber-800">Consider switching to an agency before generating the article.</p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Button
                 variant="secondary"
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={() => {
                   dispatch({ type: "SET_EXECUTION_SOURCE", payload: "agency" });
                   setAgencyModalOpen(true);
@@ -168,7 +169,7 @@ export function SkillAgencySelector({
               >
                 Switch
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setBannerDismissed(true)}>
+              <Button variant="ghost" size="sm" className="w-full sm:w-auto" onClick={() => setBannerDismissed(true)}>
                 Dismiss
               </Button>
             </div>

@@ -12,7 +12,9 @@ const {
   mockToastSuccess,
   mockToastError,
   mockSetAuthToken,
+  mockSetAuthRefreshToken,
   mockSetDesktopAuthUser,
+  mockSignInDesktopWithBrowser,
 } = vi.hoisted(() => ({
   mockSetLocation: vi.fn(),
   mockFetch: vi.fn(),
@@ -20,7 +22,9 @@ const {
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
   mockSetAuthToken: vi.fn(),
+  mockSetAuthRefreshToken: vi.fn(),
   mockSetDesktopAuthUser: vi.fn(),
+  mockSignInDesktopWithBrowser: vi.fn(),
 }));
 
 function makeResponse(status: number, body: unknown): Response {
@@ -110,10 +114,16 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
     t: (key: string) => {
       const values: Record<string, string> = {
         "login.signIn": "Sign In",
+        "login.continueWithEmailDivider": "or continue with email",
+        "login.desktopBrowserCode": "Browser sign-in code: {{code}}",
+        "login.desktopBrowserSignIn": "Sign in via browser",
+        "login.desktopBrowserSignInHint": "Use this for Google, GitHub, or two-factor accounts.",
+        "login.desktopBrowserWaiting": "Waiting for browser sign-in...",
         "login.toast.success": "Login successful! Redirecting...",
         "login.toast.failed": "Login failed. Please try again.",
         "login.toast.networkError": "Unable to reach the sign-in server. Please check your connection and try again.",
         "login.toast.desktopBrowserRequired": "This account must sign in through the browser. Please use Sign in via browser.",
+        "login.toast.desktopBrowserFailed": "Browser sign-in failed. Please try again.",
         "login.invalidCredentials": "Invalid email or password.",
         "login.toast.emailVerificationRequired": "Please verify your email before logging in.",
         "login.toast.accountLocked": "Your account is temporarily locked. Please try again later.",
@@ -139,8 +149,10 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("@/services/authService", () => ({
+  setAuthRefreshToken: mockSetAuthRefreshToken,
   setAuthToken: mockSetAuthToken,
   setUser: mockSetDesktopAuthUser,
+  signInDesktopWithBrowser: mockSignInDesktopWithBrowser,
 }));
 
 import Login from "../Login";
@@ -194,6 +206,7 @@ describe("Login desktop auth flow", () => {
     });
 
     expect(mockSetAuthToken).not.toHaveBeenCalled();
+    expect(mockSetAuthRefreshToken).not.toHaveBeenCalled();
     expect(mockToastSuccess).toHaveBeenCalledWith("Login successful! Redirecting...");
     expect(mockSetLocation).toHaveBeenCalledWith("/dashboard");
   });
@@ -233,6 +246,7 @@ describe("Login desktop auth flow", () => {
     });
 
     expect(mockSetAuthToken).toHaveBeenCalledWith("desktop-token");
+    expect(mockSetAuthRefreshToken).toHaveBeenCalledWith("desktop-refresh");
     expect(mockSetDesktopAuthUser).toHaveBeenCalledWith({
       id: "7",
       email: "admin@smartaihub.app",
@@ -272,7 +286,31 @@ describe("Login desktop auth flow", () => {
     });
 
     expect(mockSetAuthToken).not.toHaveBeenCalled();
+    expect(mockSetAuthRefreshToken).not.toHaveBeenCalled();
     expect(mockSetDesktopAuthUser).not.toHaveBeenCalled();
     expect(mockSetLocation).not.toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("starts desktop browser sign-in and redirects after tokens are stored", async () => {
+    mockHasTauriRuntime.mockReturnValue(true);
+    mockSignInDesktopWithBrowser.mockImplementationOnce(async ({ onUserCode }) => {
+      onUserCode?.("ABCD-1234");
+      return {
+        id: "7",
+        email: "admin@smartaihub.app",
+        full_name: "Admin",
+        is_admin: true,
+      };
+    });
+
+    render(<Login />);
+
+    fireEvent.click(screen.getByRole("button", { name: /sign in via browser/i }));
+
+    await waitFor(() => {
+      expect(mockSignInDesktopWithBrowser).toHaveBeenCalled();
+    });
+    expect(mockToastSuccess).toHaveBeenCalledWith("Login successful! Redirecting...");
+    expect(mockSetLocation).toHaveBeenCalledWith("/dashboard");
   });
 });

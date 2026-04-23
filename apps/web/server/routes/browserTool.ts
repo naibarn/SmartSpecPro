@@ -31,6 +31,7 @@ import { assertBrowserPolicySurfaceReady } from "../services/browserPolicyReleas
 import { resolveEffectiveUserAutomationPolicy } from "../services/browserPolicyUserSettings";
 import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
 import { getTraceId } from "../services/traceContext";
+import { buildContextToolStateHintsFromResult } from "../services/contextToolService";
 import { ENV } from "../_core/env";
 
 const router = Router();
@@ -93,6 +94,67 @@ export function validateBrowserDomains(
 }
 
 const BROWSER_RESERVE_CREDITS = 20;
+
+function attachBrowserContextState(
+  userId: number,
+  tenantId: string,
+  result: unknown,
+): unknown {
+  const contextState = buildContextToolStateHintsFromResult({
+    title: "Browser tool result",
+    content: result,
+    ownerType: "user",
+    ownerId: String(userId),
+    sourceRef: `browser:${tenantId}`,
+    source: typeof result === "string" ? "semantic" : "structured",
+    includedReason: "Browser tool result",
+    trust: "derived",
+    freshness: "recent",
+  });
+
+  if (Object.keys(contextState).length === 0) {
+    return result;
+  }
+
+  if (result && typeof result === "object" && !Array.isArray(result)) {
+    const record = result as Record<string, unknown>;
+    const existingMeta =
+      record._meta && typeof record._meta === "object"
+        ? (record._meta as Record<string, unknown>)
+        : {};
+    return {
+      ...record,
+      _meta: {
+        ...existingMeta,
+        contextState: existingMeta.contextState ?? contextState,
+        contextSource: existingMeta.contextSource ?? "browser_tool_result",
+        toolName: existingMeta.toolName ?? "browser.execute",
+      },
+    };
+  }
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: typeof result === "string"
+          ? result
+          : (() => {
+              try {
+                return JSON.stringify(result);
+              } catch {
+                return String(result);
+              }
+            })(),
+      },
+    ],
+    _meta: {
+      contextState,
+      contextSource: "browser_tool_result",
+      toolName: "browser.execute",
+    },
+  };
+}
 
 // ── Internal token check ───────────────────────────────────────────────────
 
@@ -392,7 +454,7 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
       },
     });
 
-    res.json(result);
+    res.json(attachBrowserContextState(userId, tenantId, result));
   } catch (err) {
     if (creditsReserved && !usingParentReservation) {
       await refundCredits({

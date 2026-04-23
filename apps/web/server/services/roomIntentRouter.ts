@@ -8,6 +8,7 @@ import { applyFallbackLadder, type RoutingStrategy } from "./routingFallbackLadd
 import { getSkillCatalogSummary } from "./skillCatalog";
 import { recordRoutingDecision } from "./routingTelemetry";
 import { buildHybridOrchestrationPlan } from "./hybridOrchestrationService";
+import { looksLikeSkillRequest } from "@shared/chatSkillRouting";
 
 /** Fallback skill for assistant/system turns when detection confidence is too low.
  * Must be a real skill in the registry. See also: teamRunSkillExecutor.ts (section-03 ensures eligibility). */
@@ -45,7 +46,6 @@ export interface RoomIntentDecision {
   hybridPlan?: import("@shared/orchestration/hybridOrchestration").HybridOrchestrationPlan | null;
 }
 
-const TASK_SIGNAL_RE = /\b(ทำ|ช่วย|สร้าง|เขียน|สรุป|วิเคราะห์|รีวิว|review|draft|plan|research|generate|compose|design|build|fix|analyze|compare|evaluate|outline)\b/i;
 const CHAT_SIGNAL_RE = /\b(hi|hello|สวัสดี|ขอบคุณ|thanks|how are you|เป็นไง|คุย|chat)\b/i;
 const AGENCY_SIGNAL_RE = /\b(agency|multi[- ]step|หลายขั้น|workflow|orchestrate|delegate|coordinate|escalate|escalation)\b/i;
 const MODEL_QUERY_TOPIC_RE = /(llm|model|models|โมเดล|รุ่น|provider|providers|พรอไวเดอร์|openrouter|openai|claude|gemini|qwen)/i;
@@ -71,7 +71,7 @@ function isConversationalModelQuery(message: string): boolean {
     return true;
   }
 
-  return !TASK_SIGNAL_RE.test(message);
+  return !looksLikeSkillRequest(message);
 }
 
 export async function routeRoomIntent(input: RoomIntentRouterInput): Promise<RoomIntentDecision> {
@@ -85,6 +85,15 @@ export async function routeRoomIntent(input: RoomIntentRouterInput): Promise<Roo
       route: "chat",
       reason: "model_selection_query",
       confidence: 0.78,
+      source: "rules",
+    };
+  }
+
+  if (input.origin === "human_user" && !looksLikeSkillRequest(normalized)) {
+    return {
+      route: "chat",
+      reason: "plain_chat_message",
+      confidence: 0.56,
       source: "rules",
     };
   }
@@ -227,7 +236,7 @@ async function routeWithAdvancedPipeline(
   }
 
   // Step 9: Apply fallback ladder (with task signal detection)
-  const hasTaskSignal = TASK_SIGNAL_RE.test(normalized) ||
+  const hasTaskSignal = looksLikeSkillRequest(normalized) ||
     normalized.startsWith("/") ||
     normalized.length > 50 ||
     profile.modalities.length > 1 ||
@@ -300,6 +309,15 @@ async function routeLegacy(
     };
   }
 
+  if (input.origin === "human_user" && !looksLikeSkillRequest(normalized)) {
+    return {
+      route: "chat",
+      reason: "plain_chat_message",
+      confidence: 0.56,
+      source: "rules",
+    };
+  }
+
   // For assistant/run_turn: attempt skill detection with conversation context,
   // then fall back to general content skill.
   if (input.origin !== "human_user") {
@@ -335,11 +353,7 @@ async function routeLegacy(
     };
   }
 
-  const shouldClassify =
-    TASK_SIGNAL_RE.test(normalized) ||
-    normalized.startsWith("/") ||
-    normalized.includes("?") ||
-    normalized.length > 30;
+  const shouldClassify = looksLikeSkillRequest(normalized) || normalized.startsWith("/");
 
   if (shouldClassify) {
     try {

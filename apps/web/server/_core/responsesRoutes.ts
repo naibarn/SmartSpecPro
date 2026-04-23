@@ -26,6 +26,13 @@ import { logRequest as logCostRequest } from "../services/costTracker";
 import { getPreferredInternalToken } from "../services/appRuntimeConfig";
 import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 import { getFeatureFlag, getTenantFeatureFlag } from "../services/featureFlags";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import {
+  buildContextStateMessages,
+  extractContextHintsFromDynamicParams,
+  mergeContextStateHints,
+  type ContextStateHints,
+} from "../services/contextEngineAdapter";
 import {
   deductCreditsForModel,
   calculateCreditsForLLM,
@@ -54,6 +61,7 @@ import {
 } from "../services/llmProviderCatalog";
 import { normalizeLlmUsage } from "../services/llmUsage";
 import { authorizeRequest, type AuthResult } from "./authz";
+import { selectResponsesRuntimeSelection } from "../services/agentRuntime/responsesRuntimeOrchestrator";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -222,6 +230,86 @@ export function sanitizeToolOutputForLLM(raw: string): string {
     cleaned = cleaned.slice(0, MAX_TOOL_OUTPUT_LENGTH);
   }
   return cleaned;
+}
+
+function extractToolContextHintsFromParsedOutput(
+  parsed: Record<string, unknown>,
+): ContextStateHints | undefined {
+  let hints: ContextStateHints | undefined;
+
+  const directHints = extractContextHintsFromDynamicParams(parsed);
+  if (directHints) {
+    hints = mergeContextStateHints(hints, directHints);
+  }
+
+  const topLevelContextState = parsed.contextState;
+  if (topLevelContextState && typeof topLevelContextState === "object") {
+    const nestedHints = extractContextHintsFromDynamicParams({
+      contextState: topLevelContextState as Record<string, unknown>,
+    });
+    hints = mergeContextStateHints(hints, nestedHints);
+  }
+
+  const meta = parsed._meta;
+  if (meta && typeof meta === "object") {
+    const metaRecord = meta as Record<string, unknown>;
+    const metaContextState = metaRecord.contextState;
+    if (metaContextState && typeof metaContextState === "object") {
+      const nestedHints = extractContextHintsFromDynamicParams({
+        contextState: metaContextState as Record<string, unknown>,
+      });
+      hints = mergeContextStateHints(hints, nestedHints);
+    }
+  }
+
+  return hints;
+}
+
+function normalizeToolDispatchOutput(rawOutput: string): {
+  output: string;
+  contextState?: ContextStateHints | null;
+} {
+  const sanitized = sanitizeToolOutputForLLM(rawOutput);
+
+  try {
+    const parsed = JSON.parse(rawOutput);
+    if (Array.isArray(parsed)) {
+      return {
+        output: sanitizeToolOutputForLLM(JSON.stringify(parsed)),
+      };
+    }
+    if (parsed && typeof parsed === "object") {
+      const parsedRecord = parsed as Record<string, unknown>;
+      const outputRecord = { ...parsedRecord };
+      delete outputRecord._meta;
+      delete outputRecord.contextState;
+      return {
+        output: sanitizeToolOutputForLLM(JSON.stringify(outputRecord)),
+        contextState: extractToolContextHintsFromParsedOutput(parsedRecord),
+      };
+    }
+  } catch {
+    // Fall back to sanitized raw output below.
+  }
+
+  return { output: sanitized };
+}
+
+function appendRoundToolMessages(
+  currentInput: unknown,
+  toolOutputs: Array<{
+    type: "function_call_output";
+    call_id: string;
+    output: string;
+  }>,
+  contextState?: ContextStateHints | null,
+): unknown[] {
+  const input = Array.isArray(currentInput) ? [...currentInput] : [];
+  input.push(...toolOutputs);
+  if (contextState) {
+    input.push(...buildContextStateMessages(contextState));
+  }
+  return input;
 }
 
 /**
@@ -643,6 +731,10 @@ export function registerResponsesRoutes(
           .json({ error: { message: "Feature flag service unavailable" } });
       }
 
+      const runtimeSelection = selectResponsesRuntimeSelection(
+        await getTenantFeatureFlags(tenantId).catch(() => null),
+      );
+
       // --- Sanitize body ---
       const sanitizeResult = sanitizeResponsesBody(req.body);
       if (!sanitizeResult.ok) {
@@ -857,6 +949,8 @@ export function registerResponsesRoutes(
         stream,
         userId,
         traceId,
+        runtimeMode: runtimeSelection.mode,
+        runtimeEngine: runtimeSelection.engine,
       });
 
       // --- Audit: log request ---
@@ -869,16 +963,19 @@ export function registerResponsesRoutes(
         model: effectiveModelId,
         endpoint: "/v1/responses",
         requestType: "responses",
-        requestPayload: {
-          requestedModel: requestedModelId,
-          model: effectiveModelId,
-          stream,
-          toolCount: Array.isArray(sanitizedBody.tools)
-            ? (sanitizedBody.tools as unknown[]).length
-            : 0,
-          maxBudgetCredits,
-        },
-      });
+          requestPayload: {
+            requestedModel: requestedModelId,
+            model: effectiveModelId,
+            stream,
+            toolCount: Array.isArray(sanitizedBody.tools)
+              ? (sanitizedBody.tools as unknown[]).length
+              : 0,
+            maxBudgetCredits,
+            runtimeMode: runtimeSelection.mode,
+            runtimeEngine: runtimeSelection.engine,
+            runtimeSelectionReason: runtimeSelection.selectionReason,
+          },
+        });
 
       // --- Rate limiting ---
       const isFreeModel =
@@ -1180,6 +1277,7 @@ async function proxyResponsesJson(
       call_id: string;
       output: string;
     }> = [];
+    let roundContextState: ContextStateHints | undefined;
 
     for (const fc of functionCalls) {
       auditLogger.log({
@@ -1201,18 +1299,25 @@ async function proxyResponsesJson(
         userId,
       );
 
-      // Sanitize tool output to prevent prompt injection via untrusted content
-      const output = sanitizeToolOutputForLLM(rawOutput);
+      const normalized = normalizeToolDispatchOutput(rawOutput);
+      roundContextState = mergeContextStateHints(
+        roundContextState,
+        normalized.contextState,
+      );
 
       toolOutputs.push({
         type: "function_call_output",
         call_id: fc.callId,
-        output,
+        output: normalized.output,
       });
     }
 
     // Build next input with tool outputs appended
-    currentInput = [...(Array.isArray(currentInput) ? currentInput : []), ...toolOutputs];
+    currentInput = appendRoundToolMessages(
+      currentInput,
+      toolOutputs,
+      roundContextState,
+    );
   }
 
   // --- Deduct credits ---
@@ -1680,6 +1785,7 @@ async function proxyResponsesStream(
         call_id: string;
         output: string;
       }> = [];
+      let roundContextState: ContextStateHints | undefined;
 
       for (const fc of functionCalls) {
         auditLogger.log({
@@ -1697,13 +1803,16 @@ async function proxyResponsesStream(
           userId,
         );
 
-        // Sanitize tool output to prevent prompt injection via untrusted content
-        const output = sanitizeToolOutputForLLM(rawOutput);
+        const normalized = normalizeToolDispatchOutput(rawOutput);
+        roundContextState = mergeContextStateHints(
+          roundContextState,
+          normalized.contextState,
+        );
 
         toolOutputs.push({
           type: "function_call_output",
           call_id: fc.callId,
-          output,
+          output: normalized.output,
         });
 
         // Notify client about tool execution progress
@@ -1715,10 +1824,11 @@ async function proxyResponsesStream(
       }
 
       // Build next input
-      currentInput = [
-        ...(Array.isArray(currentInput) ? currentInput : []),
-        ...toolOutputs,
-      ];
+      currentInput = appendRoundToolMessages(
+        currentInput,
+        toolOutputs,
+        roundContextState,
+      );
       }
     } finally {
       await delegatedExecutionHandle.release();

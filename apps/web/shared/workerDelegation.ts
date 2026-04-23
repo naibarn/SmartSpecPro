@@ -50,6 +50,7 @@ export const delegatedGrantTypeValues = [
   "skill",
   "agency",
   "library_item",
+  "library_context_pack",
   "library_search_scope",
   "library_upload_policy",
   "rag_scope",
@@ -107,6 +108,7 @@ export const delegatedGrantRequestSchema = z.object({
   skills: z.array(z.string().min(1)).max(25).default([]),
   agencies: z.array(z.string().min(1)).max(25).default([]),
   libraryItemIds: z.array(z.number().int().positive()).max(50).default([]),
+  libraryContextPackIds: z.array(z.number().int().positive()).max(50).default([]),
   mcpNamespaces: z.array(z.string().min(1)).max(25).default([]),
   knowledge: delegatedKnowledgeGrantRequestSchema.default({}),
 });
@@ -179,6 +181,7 @@ export const delegatedCapabilityManifestSchema = z.object({
     skills: z.array(z.string().min(1)).default([]),
     agencies: z.array(z.string().min(1)).default([]),
     libraryItemIds: z.array(z.number().int().positive()).default([]),
+    libraryContextPackIds: z.array(z.number().int().positive()).default([]),
     mcpNamespaces: z.array(z.string().min(1)).default([]),
   }),
   uploadPolicy: z.object({

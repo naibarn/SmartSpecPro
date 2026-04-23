@@ -16,6 +16,7 @@ import { RouteLoadingSkeleton } from "@/components/RouteLoadingSkeleton";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { cleanupLegacyAuth } from "@/lib/cleanupLegacyAuth";
 import { WelcomeLanguagePicker } from "@/components/WelcomeLanguagePicker";
+import { RuntimePerformanceOverlay } from "@/components/diagnostics/RuntimePerformanceOverlay";
 
 // Route-based code splitting — all page components are loaded lazily
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -512,6 +513,7 @@ function App() {
                 <WelcomeLanguagePicker />
                 <Router />
                 <FeedbackButton />
+                <RuntimePerformanceOverlay />
               </TooltipProvider>
             </TenantProvider>
           </AuthProvider>

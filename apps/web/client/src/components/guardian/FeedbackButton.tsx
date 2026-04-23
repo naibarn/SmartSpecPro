@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@smartspec/ui/src/components/ui/button";
@@ -24,6 +24,117 @@ import { MessageSquarePlus, Paperclip, X, FileText, Image, RefreshCw } from "luc
 const MAX_FILES = 5;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "pdf", "md"]);
+const FEEDBACK_STORAGE_KEY = "feedback-button-position";
+const FEEDBACK_STORAGE_VERSION = 1;
+const FEEDBACK_MARGIN = 16;
+const FEEDBACK_DEFAULT_WIDTH = 138;
+const FEEDBACK_DEFAULT_HEIGHT = 40;
+const FEEDBACK_DRAG_THRESHOLD = 4;
+
+type FeedbackPosition = {
+  x: number;
+  y: number;
+};
+
+type FeedbackPlacement =
+  | { mode: "docked" }
+  | ({ mode: "custom" } & FeedbackPosition);
+
+type FeedbackPlacementStorage = {
+  version: number;
+  placement: FeedbackPlacement;
+};
+
+type FeedbackDragState = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  originX: number;
+  originY: number;
+  width: number;
+  height: number;
+  moved: boolean;
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getDockedFeedbackPosition(
+  viewportWidth: number,
+  viewportHeight: number,
+  size: { width: number; height: number } = {
+    width: FEEDBACK_DEFAULT_WIDTH,
+    height: FEEDBACK_DEFAULT_HEIGHT,
+  },
+): FeedbackPosition {
+  return {
+    x: Math.max(FEEDBACK_MARGIN, viewportWidth - size.width - FEEDBACK_MARGIN),
+    y: Math.max(FEEDBACK_MARGIN, viewportHeight - size.height - FEEDBACK_MARGIN),
+  };
+}
+
+function clampFeedbackPosition(
+  position: FeedbackPosition,
+  viewportWidth: number,
+  viewportHeight: number,
+  size: { width: number; height: number } = {
+    width: FEEDBACK_DEFAULT_WIDTH,
+    height: FEEDBACK_DEFAULT_HEIGHT,
+  },
+) {
+  return {
+    x: clamp(position.x, FEEDBACK_MARGIN, Math.max(FEEDBACK_MARGIN, viewportWidth - size.width - FEEDBACK_MARGIN)),
+    y: clamp(position.y, FEEDBACK_MARGIN, Math.max(FEEDBACK_MARGIN, viewportHeight - size.height - FEEDBACK_MARGIN)),
+  };
+}
+
+function getInitialFeedbackPlacement(): FeedbackPlacement {
+  if (typeof window === "undefined") {
+    return { mode: "docked" };
+  }
+
+  try {
+    const saved = window.localStorage.getItem(FEEDBACK_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved) as Partial<FeedbackPlacementStorage> & Partial<FeedbackPlacement>;
+      if (parsed.version === FEEDBACK_STORAGE_VERSION) {
+        const placement = parsed.placement;
+        if (placement?.mode === "custom" && typeof placement.x === "number" && typeof placement.y === "number") {
+          return {
+            mode: "custom",
+            ...clampFeedbackPosition({ x: placement.x, y: placement.y }, window.innerWidth, window.innerHeight),
+          };
+        }
+      }
+    }
+  } catch {
+    // Ignore malformed storage and fall back to the default docked position.
+  }
+
+  return { mode: "docked" };
+}
+
+function persistFeedbackPlacement(placement: FeedbackPlacement) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    if (placement.mode === "custom") {
+      const payload: FeedbackPlacementStorage = {
+        version: FEEDBACK_STORAGE_VERSION,
+        placement,
+      };
+      window.localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify(payload));
+      return;
+    }
+
+    window.localStorage.removeItem(FEEDBACK_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures in private mode / restricted environments.
+  }
+}
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -48,9 +159,103 @@ export function FeedbackButton() {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [feedbackPlacement, setFeedbackPlacement] = useState<FeedbackPlacement>(() => getInitialFeedbackPlacement());
+  const [isButtonDragging, setIsButtonDragging] = useState(false);
   // Holds the ticket ID when ticket was created but file upload failed
   const [pendingUploadTicketId, setPendingUploadTicketId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const feedbackButtonRef = useRef<HTMLButtonElement>(null);
+  const dragStateRef = useRef<FeedbackDragState | null>(null);
+  const suppressNextClickRef = useRef(false);
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || dragState.pointerId !== event.pointerId) {
+        return;
+      }
+
+      const deltaX = event.clientX - dragState.startX;
+      const deltaY = event.clientY - dragState.startY;
+
+      if (!dragState.moved) {
+        if (Math.abs(deltaX) + Math.abs(deltaY) < FEEDBACK_DRAG_THRESHOLD) {
+          return;
+        }
+        dragState.moved = true;
+      }
+
+      event.preventDefault();
+      const nextPosition = clampFeedbackPosition(
+        {
+          x: dragState.originX + deltaX,
+          y: dragState.originY + deltaY,
+        },
+        window.innerWidth,
+        window.innerHeight,
+        {
+          width: dragState.width,
+          height: dragState.height,
+        },
+      );
+      setFeedbackPlacement({
+        mode: "custom",
+        ...nextPosition,
+      });
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || dragState.pointerId !== event.pointerId) {
+        return;
+      }
+
+      suppressNextClickRef.current = dragState.moved;
+      dragStateRef.current = null;
+      setIsButtonDragging(false);
+    };
+
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
+    document.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
+      document.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    persistFeedbackPlacement(feedbackPlacement);
+  }, [feedbackPlacement]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const rect = feedbackButtonRef.current?.getBoundingClientRect();
+      setFeedbackPlacement((current) => {
+        if (current.mode !== "custom") {
+          return current;
+        }
+
+        const nextPosition = clampFeedbackPosition(
+          { x: current.x, y: current.y },
+          window.innerWidth,
+          window.innerHeight,
+          {
+            width: rect?.width ?? FEEDBACK_DEFAULT_WIDTH,
+            height: rect?.height ?? FEEDBACK_DEFAULT_HEIGHT,
+          },
+        );
+        return {
+          mode: "custom",
+          ...nextPosition,
+        };
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   async function uploadFiles(ticketId: number): Promise<boolean> {
     if (files.length === 0) return true;
@@ -179,20 +384,74 @@ export function FeedbackButton() {
   );
 
   const isSubmitting = submitMutation.isPending || uploading;
+  const feedbackButtonStyle = feedbackPlacement.mode === "custom"
+    ? {
+      left: `${feedbackPlacement.x}px`,
+      top: `${feedbackPlacement.y}px`,
+    }
+    : {
+      right: `${FEEDBACK_MARGIN}px`,
+      bottom: `calc(${FEEDBACK_MARGIN}px + env(safe-area-inset-bottom))`,
+    };
+
+  const handleFeedbackPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    suppressNextClickRef.current = false;
+    setIsButtonDragging(true);
+
+    const rect = feedbackButtonRef.current?.getBoundingClientRect();
+    const fallbackPosition = feedbackPlacement.mode === "custom"
+      ? { x: feedbackPlacement.x, y: feedbackPlacement.y }
+      : getDockedFeedbackPosition(window.innerWidth, window.innerHeight, {
+        width: rect?.width ?? FEEDBACK_DEFAULT_WIDTH,
+        height: rect?.height ?? FEEDBACK_DEFAULT_HEIGHT,
+      });
+
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: rect?.left ?? fallbackPosition.x,
+      originY: rect?.top ?? fallbackPosition.y,
+      width: rect?.width ?? FEEDBACK_DEFAULT_WIDTH,
+      height: rect?.height ?? FEEDBACK_DEFAULT_HEIGHT,
+      moved: false,
+    };
+  };
+
+  const handleFeedbackClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    if (suppressNextClickRef.current) {
+      event.preventDefault();
+      suppressNextClickRef.current = false;
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!isSubmitting) { setOpen(v); if (!v) resetForm(); } }}>
       <DialogTrigger asChild>
         <Button
+          ref={feedbackButtonRef}
           size="sm"
           variant="outline"
-          className="fixed bottom-20 right-4 z-50 rounded-full shadow-lg gap-2"
+          aria-label="Open feedback dialog"
+          className="z-50 h-11 w-11 rounded-full p-0 shadow-lg sm:h-8 sm:w-auto sm:gap-2 sm:px-3"
+          style={{
+            position: "fixed",
+            touchAction: "none",
+            cursor: isButtonDragging ? "grabbing" : "grab",
+            ...feedbackButtonStyle,
+          }}
+          onPointerDown={handleFeedbackPointerDown}
+          onClick={handleFeedbackClick}
         >
           <MessageSquarePlus className="h-4 w-4" />
-          Feedback
+          <span className="hidden sm:inline">Feedback</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-md overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Send Feedback</DialogTitle>
         </DialogHeader>

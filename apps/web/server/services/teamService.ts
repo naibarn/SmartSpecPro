@@ -658,7 +658,12 @@ async function createTeamRecords(
     slug,
     name: input.name,
     description: input.description ?? null,
+    creditMultiplier: "1.00",
+    maxAgents: 10,
+    maxRunTimeSeconds: 600,
     status: "active",
+    isFallbackSafe: false,
+    isPublished: false,
     createdBy: input.ownerUserId,
   });
 

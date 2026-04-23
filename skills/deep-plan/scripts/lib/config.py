@@ -26,6 +26,29 @@ class ConfigError(Exception):
     pass
 
 
+def _find_global_config_path(plugin_root: str | Path) -> Path:
+    """Find config.json for this plugin, searching the plugin root and parent.
+
+    The installed layout sometimes places config.json one level above the
+    skill directory, so we probe a small set of likely locations instead of
+    assuming a single hard-coded root.
+    """
+    root = Path(plugin_root).resolve()
+    candidates = [
+        root / "config.json",
+        root.parent / "config.json",
+        root.parent.parent / "config.json",
+    ]
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+
+    raise FileNotFoundError(
+        f"config.json not found. Looked in: {', '.join(str(p) for p in candidates)}"
+    )
+
+
 # =============================================================================
 # Global Config (plugin-wide settings)
 # =============================================================================
@@ -45,9 +68,9 @@ def load_global_config() -> dict:
     """
     plugin_root = os.environ.get(
         "CLAUDE_PLUGIN_ROOT",
-        Path(__file__).parent.parent.parent
+        Path(__file__).resolve().parent.parent.parent,
     )
-    config_path = Path(plugin_root) / "config.json"
+    config_path = _find_global_config_path(plugin_root)
     return json.loads(config_path.read_text())
 
 
@@ -151,10 +174,10 @@ def create_session_config(
     """
     # Start with a copy of the global config
     plugin_root_path = Path(plugin_root)
-    global_config_path = plugin_root_path / "config.json"
-
-    if not global_config_path.exists():
-        raise ConfigError(f"Global config not found: {global_config_path}")
+    try:
+        global_config_path = _find_global_config_path(plugin_root_path)
+    except FileNotFoundError as e:
+        raise ConfigError(str(e))
 
     try:
         with open(global_config_path) as f:

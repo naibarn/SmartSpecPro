@@ -31,6 +31,24 @@ function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantI
   return tid;
 }
 
+function normalizeStopPolicyForExecutionMode(
+  executionMode: "team_chat" | "auto_team" | "review",
+  stopPolicy: z.infer<typeof stopPolicySchema>,
+) {
+  if (executionMode !== "auto_team") {
+    return stopPolicy;
+  }
+
+  return {
+    ...stopPolicy,
+    stopOnConsensus: false,
+    stopOnArtifactReady: false,
+    stopOnLeadSummary: false,
+    requireFinalSummary: true,
+    idleTimeoutSeconds: Math.max(stopPolicy.idleTimeoutSeconds, 600),
+  };
+}
+
 export const teamRunRouter = router({
   start: teamRunStartProcedure
     .input(z.object({
@@ -48,10 +66,15 @@ export const teamRunRouter = router({
         room.roomType as roomService.TeamRoomType,
         input.executionMode,
       );
+      const normalizedStopPolicy = normalizeStopPolicyForExecutionMode(
+        resolvedExecutionMode,
+        input.stopPolicy,
+      );
 
       return runEngine.startRun({
         ...input,
         executionMode: resolvedExecutionMode,
+        stopPolicy: normalizedStopPolicy,
         tenantId,
         initiatedByUserId: ctx.user!.id,
       });

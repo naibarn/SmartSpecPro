@@ -39,8 +39,8 @@ When scope is `large`:
 2. Write a backlog entry with the expected planning artifacts.
 3. Read `../../deep-plan/SKILL.md` and execute that workflow immediately.
 4. Verify these artifacts exist:
-   - `implementation-plan.md`
-   - `implementation-plan-tdd.md`
+   - `claude-plan.md`
+   - `claude-plan-tdd.md`
    - `sections/index.md`
 5. Record completion in `orchestra/progress.md` and `orchestra/decisions.md`.
 6. Continue directly into `deep-implement` using the generated `sections/` directory.

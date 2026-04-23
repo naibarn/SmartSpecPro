@@ -1,11 +1,11 @@
 import { memo } from "react";
-import { Handle, Position } from "reactflow";
-import type { NodeProps } from "reactflow";
+import { Handle, Position } from "@xyflow/react";
+import type { Node, NodeProps } from "@xyflow/react";
 import { Badge } from "@/components/ui/badge";
 import { Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export interface AgentNodeData {
+export interface AgentNodeData extends Record<string, unknown> {
   name: string;
   description: string;
   instructions: string;
@@ -16,10 +16,12 @@ export interface AgentNodeData {
   tools: Array<{ toolId: string; toolName: string }>;
 }
 
+type AgentFlowNode = Node<AgentNodeData, "agent">;
+
 export const AgentNode = memo(function AgentNode({
   data,
   selected,
-}: NodeProps<AgentNodeData>) {
+}: NodeProps<AgentFlowNode>) {
   return (
     <div
       className={cn(

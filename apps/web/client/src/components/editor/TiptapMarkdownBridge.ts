@@ -11,6 +11,7 @@ import { ImageExtension } from "./extensions/imageExtension";
 import { VideoExtension } from "./extensions/videoExtension";
 import { AudioExtension } from "./extensions/audioExtension";
 import { AttachmentExtension } from "./extensions/attachmentExtension";
+import { WikiLinkExtension } from "./extensions/wikiLinkExtension";
 import { escapeAttr, isAllowedLinkUri } from "./extensions/mediaSerializationRules";
 
 import type { JSONContent } from "@tiptap/core";
@@ -32,6 +33,7 @@ export function getDefaultExtensions(): Extension[] {
     VideoExtension,
     AudioExtension,
     AttachmentExtension,
+    WikiLinkExtension,
     Link.configure({
       openOnClick: false,
       isAllowedUri: (url) => isAllowedLinkUri(url),

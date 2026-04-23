@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   resolveDetectedSkillForSend,
   resolveChatLocalRuntimeReadiness,
+  looksLikeSkillRequest,
+  shouldAutoRunDetectedSkill,
   shouldBlockPendingCloudKeepInChat,
 } from "./chatLocalRouting";
 
@@ -23,6 +25,33 @@ describe("chatLocalRouting", () => {
         detectedSkill: { id: "image-creator" },
       }),
     ).toEqual({ id: "image-creator" });
+  });
+
+  it("treats ordinary follow-up questions as chat, not skills", () => {
+    expect(looksLikeSkillRequest("ขยายรายละเอียดข้อ 3")).toBe(false);
+    expect(
+      shouldAutoRunDetectedSkill({
+        text: "ขยายรายละเอียดข้อ 3",
+        detectedSkill: { confidence: 0.95 },
+      }),
+    ).toBe(false);
+  });
+
+  it("allows explicit task requests to auto-run detected skills", () => {
+    expect(looksLikeSkillRequest("ช่วยเขียนบทความเกี่ยวกับธุรกิจ")).toBe(true);
+    expect(looksLikeSkillRequest("ต้องการสร้างวีดีโอความยาว 24-30 วินาที")).toBe(true);
+    expect(
+      shouldAutoRunDetectedSkill({
+        text: "ช่วยเขียนบทความเกี่ยวกับธุรกิจ",
+        detectedSkill: { confidence: 0.8 },
+      }),
+    ).toBe(true);
+  });
+
+  it("does not treat model-selection questions as skill requests", () => {
+    expect(
+      looksLikeSkillRequest("qwen 3.6 llm model เหมาะกับงานสร้างภาพกราฟิกหรือไม่"),
+    ).toBe(false);
   });
 
   it("blocks pending hybrid keep-in-chat actions in Local AI chats", () => {

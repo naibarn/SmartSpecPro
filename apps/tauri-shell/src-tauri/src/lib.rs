@@ -121,6 +121,8 @@ pub fn run() {
             desktop_worker_credentials::desktop_host_clear_device_runtime_credentials,
             desktop_auth_credentials::get_auth_token,
             desktop_auth_credentials::set_auth_token,
+            desktop_auth_credentials::get_auth_refresh_token,
+            desktop_auth_credentials::set_auth_refresh_token,
             desktop_auth_credentials::get_user_data,
             desktop_auth_credentials::set_user_data,
             desktop_auth_credentials::clear_all_credentials,

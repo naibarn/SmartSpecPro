@@ -34,6 +34,16 @@ function makeResponse(status: number, body?: any): Response {
   } as Response;
 }
 
+function makeTrpcMe(user: any) {
+  return {
+    result: {
+      data: {
+        json: user,
+      },
+    },
+  };
+}
+
 describe("authService — browser context (hasTauri=false)", () => {
   let authService: typeof import("../../services/authService");
 
@@ -82,10 +92,11 @@ describe("authService — browser context (hasTauri=false)", () => {
   });
 
   describe("isTokenExpired()", () => {
-    it("makes a server ping to /api/auth/me with credentials:'include'", async () => {
-      mockFetch.mockResolvedValueOnce(makeResponse(200));
+    it("makes a server ping to /trpc/auth.me with credentials:'include'", async () => {
+      mockFetch.mockResolvedValueOnce(makeResponse(200, makeTrpcMe({ id: "1", email: "a@b.com" })));
       await authService.isTokenExpired();
-      expect(mockFetch).toHaveBeenCalledWith("/api/auth/me", {
+      expect(mockFetch).toHaveBeenCalledWith("/trpc/auth.me", {
+        method: "GET",
         credentials: "include",
       });
     });
@@ -97,7 +108,7 @@ describe("authService — browser context (hasTauri=false)", () => {
     });
 
     it("returns false when server returns 200", async () => {
-      mockFetch.mockResolvedValueOnce(makeResponse(200));
+      mockFetch.mockResolvedValueOnce(makeResponse(200, makeTrpcMe({ id: "1", email: "a@b.com" })));
       const result = await authService.isTokenExpired();
       expect(result).toBe(false);
     });
@@ -112,7 +123,7 @@ describe("authService — browser context (hasTauri=false)", () => {
   describe("verifyToken()", () => {
     it("uses credentials:'include' instead of Authorization Bearer header", async () => {
       mockFetch.mockResolvedValueOnce(
-        makeResponse(200, { id: "1", email: "a@b.com", is_admin: false }),
+        makeResponse(200, makeTrpcMe({ id: "1", email: "a@b.com", role: "user" })),
       );
       await authService.verifyToken();
       const call = mockFetch.mock.calls[0];
@@ -125,7 +136,7 @@ describe("authService — browser context (hasTauri=false)", () => {
 
     it("returns true on 200 response", async () => {
       mockFetch.mockResolvedValueOnce(
-        makeResponse(200, { id: "1", email: "a@b.com", is_admin: false }),
+        makeResponse(200, makeTrpcMe({ id: "1", email: "a@b.com", role: "user" })),
       );
       const result = await authService.verifyToken();
       expect(result).toBe(true);
@@ -181,10 +192,11 @@ describe("authService — browser context (hasTauri=false)", () => {
 
   describe("isAuthenticated()", () => {
     it("makes a server ping instead of checking local token", async () => {
-      mockFetch.mockResolvedValueOnce(makeResponse(200));
+      mockFetch.mockResolvedValueOnce(makeResponse(200, makeTrpcMe({ id: "1", email: "a@b.com" })));
       const result = await authService.isAuthenticated();
       expect(result).toBe(true);
-      expect(mockFetch).toHaveBeenCalledWith("/api/auth/me", {
+      expect(mockFetch).toHaveBeenCalledWith("/trpc/auth.me", {
+        method: "GET",
         credentials: "include",
       });
     });
@@ -225,7 +237,7 @@ describe("authService — browser context (hasTauri=false)", () => {
           : input instanceof URL
             ? input.href
             : String(input);
-        if (url === "/api/auth/me") {
+        if (url === "/trpc/auth.me") {
           return Promise.resolve(makeResponse(401));
         }
         return Promise.resolve(makeResponse(401));
@@ -264,8 +276,8 @@ describe("authService — browser context (hasTauri=false)", () => {
           : input instanceof URL
             ? input.href
             : String(input);
-        if (url === "/api/auth/me") {
-          return Promise.resolve(makeResponse(200, { id: "1", email: "a@b.com", is_admin: false }));
+        if (url === "/trpc/auth.me") {
+          return Promise.resolve(makeResponse(200, makeTrpcMe({ id: "1", email: "a@b.com", role: "user" })));
         }
         return Promise.resolve(makeResponse(403));
       });
@@ -398,6 +410,16 @@ describe("authService — Tauri context (hasTauri=true)", () => {
     });
   });
 
+  describe("setAuthRefreshToken()", () => {
+    it("writes the desktop refresh token to Tauri secure store", async () => {
+      tauriInvoke.mockResolvedValueOnce(undefined);
+      await authService.setAuthRefreshToken("refresh-token");
+      expect(tauriInvoke).toHaveBeenCalledWith("set_auth_refresh_token", {
+        refreshToken: "refresh-token",
+      });
+    });
+  });
+
   describe("isTokenExpired()", () => {
     it("decodes JWT from secure store and checks exp claim", async () => {
       // Create a JWT with exp in the future
@@ -435,6 +457,48 @@ describe("authService — Tauri context (hasTauri=true)", () => {
       tauriInvoke.mockResolvedValueOnce(null);
       const result = await authService.isTokenExpired();
       expect(result).toBe(true);
+    });
+
+    it("logs out when refresh token rotation returns invalid_grant", async () => {
+      const originalLocation = window.location;
+      const mockLocation = { ...originalLocation, href: "/dashboard", pathname: "/dashboard" };
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: mockLocation,
+      });
+
+      const nearExp = Math.floor(Date.now() / 1000) + 200;
+      const payload = btoa(JSON.stringify({ exp: nearExp }));
+      const fakeJwt = `header.${payload}.signature`;
+
+      tauriInvoke
+        .mockResolvedValueOnce(fakeJwt)
+        .mockResolvedValueOnce("refresh-token")
+        .mockResolvedValueOnce(undefined);
+      mockFetch
+        .mockResolvedValueOnce(
+          makeResponse(400, {
+            error: "invalid_grant",
+            error_description: "Invalid or expired refresh token",
+          }),
+        )
+        .mockResolvedValueOnce(makeResponse(200, { success: true }));
+
+      const result = await authService.isTokenExpired();
+      expect(result).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/auth/device/revoke"),
+        expect.objectContaining({
+          method: "POST",
+        }),
+      );
+      expect(tauriInvoke).toHaveBeenCalledWith("clear_all_credentials", undefined);
+      expect(mockLocation.href).toBe("/login");
+
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: originalLocation,
+      });
     });
 
     it("returns false for malformed JWT (non-base64 payload)", async () => {
@@ -494,7 +558,36 @@ describe("authService — Tauri context (hasTauri=true)", () => {
   });
 
   describe("logout()", () => {
+    it("revokes the desktop session before clearing Tauri credentials", async () => {
+      mockFetch.mockResolvedValueOnce(makeResponse(200, { success: true }));
+      tauriInvoke
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(undefined);
+
+      await authService.setAuthToken("desktop-access-token");
+      await authService.setAuthRefreshToken("desktop-refresh-token");
+
+      const navigate = vi.fn();
+      await authService.logout(navigate);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/auth/device/revoke"),
+        expect.objectContaining({
+          method: "POST",
+          credentials: "omit",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            access_token: "desktop-access-token",
+            refresh_token: "desktop-refresh-token",
+          }),
+        }),
+      );
+      expect(tauriInvoke).toHaveBeenCalledWith("clear_all_credentials", undefined);
+    });
+
     it("calls Tauri clear_all_credentials", async () => {
+      tauriInvoke.mockResolvedValueOnce(undefined);
       tauriInvoke.mockResolvedValueOnce(undefined);
       const navigate = vi.fn();
       await authService.logout(navigate);
@@ -521,11 +614,18 @@ describe("authService — Tauri context (hasTauri=true)", () => {
   });
 
   describe("isAuthenticated()", () => {
-    it("checks via Tauri secure store", async () => {
-      tauriInvoke.mockResolvedValueOnce(true);
+    it("verifies the secure-store bearer token against the desktop auth endpoint", async () => {
+      tauriInvoke.mockResolvedValueOnce("desktop-token");
+      mockFetch.mockResolvedValueOnce(makeResponse(200, { id: "1", email: "a@b.com", role: "user" }));
       const result = await authService.isAuthenticated();
       expect(result).toBe(true);
-      expect(tauriInvoke).toHaveBeenCalledWith("is_authenticated", undefined);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/auth/me"),
+        expect.objectContaining({
+          headers: { Authorization: "Bearer desktop-token" },
+          credentials: "omit",
+        }),
+      );
     });
   });
 });

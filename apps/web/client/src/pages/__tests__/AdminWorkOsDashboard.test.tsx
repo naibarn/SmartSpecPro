@@ -1,17 +1,23 @@
 /**
  * @vitest-environment jsdom
  */
-import { fireEvent, render, screen } from "@testing-library/react";
+import React from "react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockNavigate = vi.fn();
 const mockClipboardWriteText = vi.fn().mockResolvedValue(undefined);
 const mockScrollIntoView = vi.fn();
 const mockResumeAutomationCheckpoint = vi.fn();
+const mockCreateAutomationRun = vi.fn();
+const mockUpdateRequest = vi.fn();
 let currentLocation = "/admin/work-os?caseId=case-2";
 
 vi.mock("wouter", () => ({
   useLocation: () => [currentLocation, mockNavigate],
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <a href={href}>{children}</a>
+  ),
 }));
 
 vi.mock("@/_core/hooks/useAuth", () => ({
@@ -23,8 +29,32 @@ vi.mock("@/_core/hooks/useAuth", () => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    monitoring: {
+      getContextEngineHealth: {
+        useQuery: () => ({
+          data: null,
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }),
+      },
+    },
     workOs: {
-      resumeAutomationCheckpoint: { useMutation: () => ({ mutate: mockResumeAutomationCheckpoint, isPending: false }) },
+      resumeAutomationCheckpoint: {
+        useMutation: () => ({
+          mutate: mockResumeAutomationCheckpoint,
+          isPending: false,
+        }),
+      },
+      createAutomationRun: {
+        useMutation: () => ({
+          mutate: mockCreateAutomationRun,
+          isPending: false,
+        }),
+      },
+      updateRequest: {
+        useMutation: () => ({ mutate: mockUpdateRequest, isPending: false }),
+      },
       overview: {
         useQuery: () => ({
           data: {
@@ -83,7 +113,8 @@ vi.mock("@/lib/trpc", () => ({
               run: {
                 id: "run-1",
                 title: "Launch asset production",
-                objective: "Create research, copy, storyboard, media, and video",
+                objective:
+                  "Create research, copy, storyboard, media, and video",
                 currentMode: "semi_auto",
                 status: "running",
                 templateKey: "content-production",
@@ -191,6 +222,10 @@ vi.mock("@/lib/trpc", () => ({
                   runId: "team-run-3",
                   status: "completed",
                   teamId: "queue-1",
+                  runtimeMetadata: {
+                    selectedSkillId: "skill-orchestrator",
+                    routeReason: "auto_team_orchestrator",
+                  },
                 },
               },
               {
@@ -236,7 +271,7 @@ vi.mock("@/components/dashboard", () => {
 });
 
 vi.mock("@/components/ui/button", () => ({
-  Button: ({ children, onClick, ...props }: any) => (
+  Button: ({ children, onClick, asChild: _asChild, ...props }: any) => (
     <button type="button" onClick={onClick} {...props}>
       {children}
     </button>
@@ -247,8 +282,20 @@ vi.mock("@/components/ui/badge", () => ({
   Badge: ({ children }: any) => <span>{children}</span>,
 }));
 
+vi.mock("@/components/ui/tabs", () => ({
+  Tabs: ({ children }: any) => <div>{children}</div>,
+  TabsList: ({ children }: any) => <div>{children}</div>,
+  TabsTrigger: ({ children, ...props }: any) => (
+    <button type="button" role="tab" {...props}>
+      {children}
+    </button>
+  ),
+  TabsContent: ({ children }: any) => <div>{children}</div>,
+}));
+
 vi.mock("@/lib/utils", () => ({
-  cn: (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(" "),
+  cn: (...values: Array<string | false | null | undefined>) =>
+    values.filter(Boolean).join(" "),
 }));
 
 vi.mock("sonner", () => ({
@@ -277,33 +324,59 @@ describe("AdminWorkOsDashboard", () => {
     window.HTMLElement.prototype.scrollIntoView = mockScrollIntoView;
   });
 
-  it("opens the selected case from the URL and renders evidence summaries", () => {
+  it("opens the selected case from the URL and renders evidence summaries", async () => {
     render(<AdminWorkOsDashboard />);
 
-    expect(screen.getByRole("heading", { name: /work os console/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Escalate billing issue" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /work os console/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Escalate billing issue" })
+    ).toBeInTheDocument();
     expect(screen.getByText("Open Exceptions")).toBeInTheDocument();
     expect(screen.getByText("Automation Run Summary")).toBeInTheDocument();
-    expect(screen.getByText("Launch asset production")).toBeInTheDocument();
-    expect(screen.getByText("Draft")).toBeInTheDocument();
-    expect(screen.getByText("routine routine-9 · run role-run-7 · family support_ops")).toBeInTheDocument();
-    expect(screen.getByText("task completed · task completed")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Launch asset production").length
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("Draft").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("tab", { name: "Evidence" }));
+    await waitFor(() =>
+      expect(
+        screen.getAllByText(
+          "routine routine-9 · run role-run-7 · family support_ops"
+        ).length
+      ).toBeGreaterThan(0)
+    );
+    expect(
+      screen.getAllByText("task completed · task completed").length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/skill skill-orchestrator/i).length
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("Skill orchestrator").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/auto_team_orchestrator/i).length
+    ).toBeGreaterThan(0);
   });
 
   it("copies a deep link for the selected case", async () => {
     render(<AdminWorkOsDashboard />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: /copy permalink/i })[0]);
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /copy permalink/i })[0]
+    );
 
     expect(mockClipboardWriteText).toHaveBeenCalledWith(
-      `${window.location.origin}/admin/work-os?caseId=case-2`,
+      `${window.location.origin}/admin/work-os?caseId=case-2`
     );
   });
 
   it("resumes the latest checkpoint from the automation summary", () => {
     render(<AdminWorkOsDashboard />);
 
-    fireEvent.click(screen.getByRole("button", { name: /resume checkpoint/i }));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /resume checkpoint/i })[0]
+    );
 
     expect(mockResumeAutomationCheckpoint).toHaveBeenCalledWith({
       caseId: "case-2",
@@ -321,14 +394,17 @@ describe("AdminWorkOsDashboard", () => {
   });
 
   it("copies the filtered case view when a timeline source is present in the URL", () => {
-    currentLocation = "/admin/work-os?caseId=case-2&timelineSource=role_routine";
+    currentLocation =
+      "/admin/work-os?caseId=case-2&timelineSource=role_routine";
 
     render(<AdminWorkOsDashboard />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: /copy permalink/i })[0]);
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /copy permalink/i })[0]
+    );
 
     expect(mockClipboardWriteText).toHaveBeenCalledWith(
-      `${window.location.origin}/admin/work-os?caseId=case-2&timelineSource=role_routine`,
+      `${window.location.origin}/admin/work-os?caseId=case-2&timelineSource=role_routine`
     );
   });
 
@@ -337,48 +413,83 @@ describe("AdminWorkOsDashboard", () => {
 
     render(<AdminWorkOsDashboard />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: /copy permalink/i })[1]);
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /copy permalink/i })[1]
+    );
 
     expect(mockClipboardWriteText).toHaveBeenCalledWith(
-      `${window.location.origin}/admin/work-os?caseId=case-2&timelineSource=team_run`,
+      `${window.location.origin}/admin/work-os?caseId=case-2&timelineSource=team_run`
     );
   });
 
-  it("copies source-specific case links from the timeline source chips", () => {
+  it("copies source-specific case links from the timeline source chips", async () => {
     render(<AdminWorkOsDashboard />);
-
-    fireEvent.click(screen.getAllByRole("button", { name: /copy role routine evidence/i })[0]);
-    expect(mockClipboardWriteText).toHaveBeenCalledWith(
-      `${window.location.origin}/admin/work-os?caseId=case-2&timelineSource=role_routine`,
+    fireEvent.click(screen.getByRole("tab", { name: "Evidence" }));
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("button", {
+          name: /copy role routine evidence/i,
+        })[0]
+      ).toBeInTheDocument()
     );
 
-    fireEvent.click(screen.getAllByRole("button", { name: /copy team run evidence/i })[0]);
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /copy role routine evidence/i })[0]
+    );
     expect(mockClipboardWriteText).toHaveBeenCalledWith(
-      `${window.location.origin}/admin/work-os?caseId=case-2&timelineSource=team_run`,
+      `${window.location.origin}/admin/work-os?caseId=case-2&timelineSource=role_routine`
     );
 
-    fireEvent.click(screen.getAllByRole("button", { name: /copy workpack evidence/i })[0]);
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /copy team run evidence/i })[0]
+    );
     expect(mockClipboardWriteText).toHaveBeenCalledWith(
-      `${window.location.origin}/admin/work-os?caseId=case-2&timelineSource=workpack_record`,
+      `${window.location.origin}/admin/work-os?caseId=case-2&timelineSource=team_run`
+    );
+
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /copy workpack evidence/i })[0]
+    );
+    expect(mockClipboardWriteText).toHaveBeenCalledWith(
+      `${window.location.origin}/admin/work-os?caseId=case-2&timelineSource=workpack_record`
     );
   });
 
-  it("filters the timeline by evidence source", () => {
+  it("filters the timeline by evidence source", async () => {
     render(<AdminWorkOsDashboard />);
+    fireEvent.click(screen.getByRole("tab", { name: "Evidence" }));
+    await waitFor(() =>
+      expect(screen.getByText(/timeline source glossary/i)).toBeInTheDocument()
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /^role routine$/i }));
 
-    expect(mockNavigate).toHaveBeenCalledWith("/admin/work-os?caseId=case-2&timelineSource=role_routine", { replace: true });
+    expect(mockNavigate).toHaveBeenCalledWith(
+      "/admin/work-os?caseId=case-2&timelineSource=role_routine",
+      { replace: true }
+    );
     expect(screen.getByText("1 of 4 entries")).toBeInTheDocument();
-    expect(screen.getByText("routine routine-9 · run role-run-7 · family support_ops")).toBeInTheDocument();
-    expect(screen.queryByText("task completed · task completed")).not.toBeInTheDocument();
-    expect(mockScrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
+    expect(
+      screen.getAllByText(
+        "routine routine-9 · run role-run-7 · family support_ops"
+      ).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByText("task completed · task completed")
+    ).not.toBeInTheDocument();
+    expect(mockScrollIntoView).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "start",
+    });
   });
 
-  it("explains timeline source keys and links to the Work OS guide", () => {
+  it("explains timeline source keys and links to the Work OS guide", async () => {
     render(<AdminWorkOsDashboard />);
 
-    expect(screen.getByText(/timeline source glossary/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Evidence" }));
+    await waitFor(() =>
+      expect(screen.getByText(/timeline source glossary/i)).toBeInTheDocument()
+    );
 
     fireEvent.click(screen.getAllByRole("button", { name: /open guide/i })[0]);
 
@@ -390,6 +501,8 @@ describe("AdminWorkOsDashboard", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /review refund/i }));
 
-    expect(mockNavigate).toHaveBeenCalledWith("/admin/work-os?caseId=case-1", { replace: true });
+    expect(mockNavigate).toHaveBeenCalledWith("/admin/work-os?caseId=case-1", {
+      replace: true,
+    });
   });
 });

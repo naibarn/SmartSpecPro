@@ -22,6 +22,10 @@ import { auditLogger } from "./auditLogger";
 import { getCachedInternalNodeUrl } from "./appRuntimeConfig";
 import { getModelById } from "./modelRegistry";
 import { MEDIA_MODELS, MediaGenerationService, resolveReferenceUrl } from "./mediaGenerationService";
+import {
+  GEMINI_3_1_FLASH_TTS_MAX_SPEAKERS,
+  buildGemini31FlashTtsInputFields,
+} from "./falGeminiTts";
 
 const fetchMock = vi.fn();
 global.fetch = fetchMock as typeof fetch;
@@ -245,6 +249,293 @@ describe("MediaGenerationService retry behavior", () => {
       reference_image_input_label: "Reference Images",
       reference_image_input_type: "array",
     });
+  });
+
+  it("preserves structured Gemini TTS speaker rows in extraParams", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+
+    const service = new MediaGenerationService("http://localhost:8000");
+    const speakers = [
+      { speaker_id: "Host", voice: "Kore" },
+      { speaker_id: "Guest", voice: "Aoede" },
+    ];
+
+    await service.generateAudioAsync(
+      {
+        text: "Host: Welcome back. Guest: Thanks for having me.",
+        model: "fal-ai/gemini-3.1-flash-tts",
+        apiConfig: { provider: "fal_ai" },
+        extraParams: {
+          voice: "Kore",
+          language_code: "English (US)",
+          speakers,
+        },
+      },
+      "test-token",
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const requestInit = fetchMock.mock.calls[0]?.[1];
+    expect(requestInit).toBeDefined();
+    const payload = JSON.parse(String(requestInit?.body));
+    expect(payload.extra_params).toMatchObject({
+      voice: "Kore",
+      language_code: "English (US)",
+    });
+    expect(payload.extra_params.speakers).toEqual(speakers);
+  });
+
+  it.each([
+    "generateAudio",
+    "generateAudioAsync",
+  ] as const)("rejects Gemini top-level speed before submitting in %s", async (method) => {
+    const service = new MediaGenerationService("http://localhost:8000");
+    const invoke = method === "generateAudio"
+      ? service.generateAudio.bind(service)
+      : service.generateAudioAsync.bind(service);
+
+    await expect(invoke(
+      {
+        text: "Host: Welcome back. Guest: Thanks for having me.",
+        model: "fal-ai/gemini-3.1-flash-tts",
+        voice: "Kore",
+        speed: 1.25,
+        apiConfig: { provider: "fal_ai" },
+        extraParams: {
+          voice: "Kore",
+        },
+      },
+      "test-token",
+    )).rejects.toThrow(/speed is not supported by Gemini 3\.1 Flash TTS/);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-string Gemini TTS text fields before submitting", async () => {
+    const service = new MediaGenerationService("http://localhost:8000");
+
+    await expect(service.generateAudioAsync(
+      {
+        text: "Host: Welcome back. Guest: Thanks for having me.",
+        model: "fal-ai/gemini-3.1-flash-tts",
+        apiConfig: { provider: "fal_ai" },
+        extraParams: {
+          language_code: false,
+          output_format: {},
+          style_instructions: [],
+          voice: 123,
+        } as unknown as Record<string, unknown>,
+      },
+      "test-token",
+    )).rejects.toThrow(/style_instructions must be a string[\s\S]*language_code must be a string[\s\S]*voice must be a string[\s\S]*output_format must be a string/);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("preserves style instructions text while still resolving URL-like audio fields", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+
+    const service = new MediaGenerationService("http://localhost:8000");
+
+    await service.generateAudioAsync(
+      {
+        text: "Please read this carefully.",
+        model: "uvoice/tts-standard",
+        apiConfig: { provider: "uvoice" },
+        publicUrl: "https://tenant.example.com",
+        extraParams: {
+          audio_url: "/uploads/reference.wav",
+          style_instructions: "/softly, in a whisper",
+        },
+      },
+      "test-token",
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const requestInit = fetchMock.mock.calls[0]?.[1];
+    expect(requestInit).toBeDefined();
+    const payload = JSON.parse(String(requestInit?.body));
+    expect(payload.extra_params).toMatchObject({
+      audio_url: "https://tenant.example.com/uploads/reference.wav",
+      style_instructions: "/softly, in a whisper",
+    });
+  });
+
+  it("trims Gemini TTS speaker aliases and voices before submitting", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+
+    const service = new MediaGenerationService("http://localhost:8000");
+
+    await service.generateAudioAsync(
+      {
+        text: "Host: Welcome back. Guest: Thanks for having me.",
+        model: "fal-ai/gemini-3.1-flash-tts",
+        apiConfig: { provider: "fal_ai" },
+        extraParams: {
+          voice: " Kore ",
+          language_code: " English (US) ",
+          speakers: [
+            { speaker_id: " Host ", voice: " Kore " },
+            { speaker_id: " Guest ", voice: " Aoede " },
+          ],
+        },
+      },
+      "test-token",
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const requestInit = fetchMock.mock.calls[0]?.[1];
+    expect(requestInit).toBeDefined();
+    const payload = JSON.parse(String(requestInit?.body));
+    expect(payload.extra_params).toEqual({
+      voice: "Kore",
+      language_code: "English (US)",
+      speakers: [
+        { speaker_id: "Host", voice: "Kore" },
+        { speaker_id: "Guest", voice: "Aoede" },
+      ],
+    });
+  });
+
+  it("strips Gemini TTS auto-detect language sentinels before sending the payload", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+
+    const service = new MediaGenerationService("http://localhost:8000");
+
+    await service.generateAudioAsync(
+      {
+        text: "Host: Welcome back. Guest: Thanks for having me.",
+        model: "fal-ai/gemini-3.1-flash-tts",
+        apiConfig: { provider: "fal_ai" },
+        extraParams: {
+          language_code: "__auto__",
+          voice: "Kore",
+        },
+      },
+      "test-token",
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const requestInit = fetchMock.mock.calls[0]?.[1];
+    expect(requestInit).toBeDefined();
+    const payload = JSON.parse(String(requestInit?.body));
+    expect(payload.extra_params).toEqual({
+      voice: "Kore",
+    });
+    expect(payload.extra_params).not.toHaveProperty("language_code");
+  });
+
+  it("includes the Gemini TTS language_code field and caps speaker rows", () => {
+    const fields = buildGemini31FlashTtsInputFields();
+    const languageField = fields.find((field) => field.key === "language_code");
+    const speakersField = fields.find((field) => field.key === "speakers");
+
+    expect(languageField).toMatchObject({
+      key: "language_code",
+      type: "select",
+      searchable: true,
+    });
+    expect(languageField?.options?.[0]).toEqual({
+      value: "__auto__",
+      label: "Auto-detect",
+    });
+    expect(speakersField).toMatchObject({
+      key: "speakers",
+      type: "array",
+      maxItems: GEMINI_3_1_FLASH_TTS_MAX_SPEAKERS,
+    });
+  });
+
+  it("rejects malformed Gemini TTS speaker payloads before submitting", async () => {
+    const service = new MediaGenerationService("http://localhost:8000");
+    const speakers = [
+      { speaker_id: "Host One", voice: "Kore" },
+    ];
+
+    await expect(service.generateAudioAsync(
+      {
+        text: "Host: Welcome back. Guest: Thanks for having me.",
+        model: "fal-ai/gemini-3.1-flash-tts",
+        apiConfig: { provider: "fal_ai" },
+        extraParams: {
+          language_code: "Klingon",
+          speakers,
+        },
+      },
+      "test-token",
+    )).rejects.toThrow(/Gemini 3\.1 Flash TTS input validation failed/);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects unknown Gemini TTS extraParams keys before submitting", async () => {
+    const service = new MediaGenerationService("http://localhost:8000");
+
+    await expect(service.generateAudioAsync(
+      {
+        text: "Host: Welcome back. Guest: Thanks for having me.",
+        model: "fal-ai/gemini-3.1-flash-tts",
+        apiConfig: { provider: "fal_ai" },
+        extraParams: {
+          speakers: [{ speaker_id: "Host", voice: "Kore" }],
+          unknown_key: "value",
+        },
+      },
+      "test-token",
+    )).rejects.toThrow(/not supported by Gemini 3\.1 Flash TTS/);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects duplicate Gemini TTS speaker aliases before submitting", async () => {
+    const service = new MediaGenerationService("http://localhost:8000");
+
+    await expect(service.generateAudioAsync(
+      {
+        text: "Host: Welcome back. Guest: Thanks for having me.",
+        model: "fal-ai/gemini-3.1-flash-tts",
+        apiConfig: { provider: "fal_ai" },
+        extraParams: {
+          speakers: [
+            { speaker_id: "Host", voice: "Kore" },
+            { speaker_id: "Host", voice: "Aoede" },
+          ],
+        },
+      },
+      "test-token",
+    )).rejects.toThrow(/speaker_id duplicates speakers\[0\]\.speaker_id/);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects Gemini TTS speaker lists above the configured limit", async () => {
+    const service = new MediaGenerationService("http://localhost:8000");
+    const speakers = Array.from({ length: GEMINI_3_1_FLASH_TTS_MAX_SPEAKERS + 1 }, (_, index) => ({
+      speaker_id: `Speaker${index + 1}`,
+      voice: "Kore",
+    }));
+
+    await expect(service.generateAudioAsync(
+      {
+        text: "Host: Welcome back. Guest: Thanks for having me.",
+        model: "fal-ai/gemini-3.1-flash-tts",
+        apiConfig: { provider: "fal_ai" },
+        extraParams: {
+          speakers,
+        },
+      },
+      "test-token",
+    )).rejects.toThrow(new RegExp(`must not exceed ${GEMINI_3_1_FLASH_TTS_MAX_SPEAKERS} rows`));
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

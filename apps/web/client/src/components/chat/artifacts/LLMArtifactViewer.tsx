@@ -24,7 +24,7 @@ interface LLMArtifactViewerProps {
 
 const EXT_MAP: Record<string, string> = {
   "text/html": "html",
-  "application/react": "jsx",
+  "application/reactflow": "jsx",
   "text/markdown": "md",
   "application/javascript": "js",
   "text/css": "css",
@@ -32,7 +32,7 @@ const EXT_MAP: Record<string, string> = {
 };
 
 const LANG_MAP: Record<string, string> = {
-  "application/react": "jsx",
+  "application/reactflow": "jsx",
   "application/javascript": "javascript",
   "text/css": "css",
   "application/json": "json",
@@ -89,7 +89,7 @@ export function LLMArtifactViewer({ artifact, onClose }: LLMArtifactViewerProps)
           </div>
         );
 
-      case "application/react":
+      case "application/reactflow":
       case "application/javascript":
       case "text/css":
       case "application/json": {

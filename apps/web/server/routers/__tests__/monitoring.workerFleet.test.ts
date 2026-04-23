@@ -32,6 +32,9 @@ const {
   mockGetWorkerMcpInsights,
   mockGetTenantWorkerMcpOverview,
   mockGetWorkOsOverview,
+  mockGetContextEngineHealth,
+  mockListContextEngineEvaluations,
+  mockBuildContextEngineParitySummary,
   mockUpdateWorkerFleetState,
   mockCleanupWorkerFleetRetention,
   mockRedactLegacyWorkerData,
@@ -41,6 +44,9 @@ const {
   mockGetWorkerMcpInsights: vi.fn(),
   mockGetTenantWorkerMcpOverview: vi.fn(),
   mockGetWorkOsOverview: vi.fn(),
+  mockGetContextEngineHealth: vi.fn(),
+  mockListContextEngineEvaluations: vi.fn(),
+  mockBuildContextEngineParitySummary: vi.fn(),
   mockUpdateWorkerFleetState: vi.fn(),
   mockCleanupWorkerFleetRetention: vi.fn(),
   mockRedactLegacyWorkerData: vi.fn(),
@@ -75,6 +81,7 @@ vi.mock("../../services/monitoringService", () => ({
   checkStuckAgent: vi.fn(),
   getChecks: vi.fn(),
   getAlerts: vi.fn(),
+  getContextEngineHealth: mockGetContextEngineHealth,
   acknowledgeAlert: vi.fn(),
   recordIncidentAction: vi.fn(),
   pushMetrics: vi.fn(),
@@ -82,6 +89,21 @@ vi.mock("../../services/monitoringService", () => ({
   getCurrentStatus: vi.fn(),
   getOpsOverview: vi.fn(),
   getOpsIncidentTimeline: vi.fn(),
+}));
+
+vi.mock("../../services/contextEngineEvaluationService", () => ({
+  listContextEngineEvaluations: mockListContextEngineEvaluations,
+  buildContextEngineParitySummary: mockBuildContextEngineParitySummary,
+  buildContextEngineTrendSeries: vi.fn((records: Array<{ details?: { surface?: string | null } }>) =>
+    records.map((record, index) => ({
+      bucket: `2026-04-17T${String(index).padStart(2, "0")}`,
+      surface: record.details?.surface ?? "unknown",
+      averageHealthScore: 0.8,
+      averageGroundingScore: 0.7,
+      averageRetrievalCoverage: 0.6,
+      averageLatencyMs: 500,
+    })),
+  ),
 }));
 
 vi.mock("../../services/workOsService", () => ({
@@ -113,6 +135,136 @@ describe("monitoringRouter worker fleet", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveTenantIdVarchar.mockReturnValue("tenant-1");
+    mockGetContextEngineHealth.mockResolvedValue({
+      scope: {
+        tenantId: "tenant-1",
+        teamId: "team-1",
+        roomId: "room-1",
+        runId: "run-1",
+        skillId: null,
+        userId: null,
+        since: new Date("2026-04-17T00:00:00.000Z").toISOString(),
+        limit: 12,
+      },
+      window: {
+        matchedChecks: 1,
+        latestCreatedAt: new Date("2026-04-17T00:10:00.000Z").toISOString(),
+      },
+      totals: {
+        total: 1,
+        ok: 1,
+        warning: 0,
+        critical: 0,
+        error: 0,
+      },
+      latest: null,
+      recentChecks: [],
+      averages: {
+        healthScore: 0.88,
+        groundingScore: 0.76,
+        retrievalCoverage: 0.61,
+        freshnessScore: 0.73,
+        staleContextRatio: 0.14,
+        tokenPressureRatio: 0.42,
+        latencyMs: 530,
+      },
+      sourceBreakdown: [{ source: "team_run", count: 1 }],
+    });
+  });
+
+  it("returns context engine evaluation report for admins", async () => {
+    mockListContextEngineEvaluations.mockResolvedValue([
+      {
+        id: 1,
+        checkType: "context_engine_eval",
+        status: "ok",
+        source: "team_run",
+        createdAt: new Date("2026-04-18T00:00:00.000Z").toISOString(),
+        details: {
+          tenantId: "tenant-1",
+          surface: "team_room",
+          intent: "work_execution",
+          teamId: "team-1",
+          roomId: "room-1",
+          runId: "run-1",
+          projectId: "project-1",
+          userId: 1,
+          skillId: "skill-1",
+          healthScore: 0.91,
+          groundingScore: 0.8,
+          retrievalCoverage: 0.7,
+          freshnessScore: 0.82,
+          staleContextRatio: 0.12,
+          tokenPressureRatio: 0.31,
+          latencyMs: 150,
+        },
+      },
+    ]);
+    mockBuildContextEngineParitySummary.mockResolvedValue([
+      {
+        surface: "team_room",
+        total: 1,
+        ok: 1,
+        warning: 0,
+        critical: 0,
+        averageHealthScore: 0.91,
+        averageGroundingScore: 0.8,
+        averageRetrievalCoverage: 0.7,
+      },
+    ]);
+
+    const result = await monitoringRouter.getContextEngineEvaluationReport({
+      input: {
+        teamId: "team-1",
+        roomId: "room-1",
+        runId: "run-1",
+        limit: 25,
+      },
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 7, role: "admin", currentTenantId: 1 },
+      },
+    } as any);
+
+    expect(mockListContextEngineEvaluations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-1",
+        teamId: "team-1",
+        roomId: "room-1",
+        runId: "run-1",
+        limit: 25,
+      }),
+    );
+    expect(mockBuildContextEngineParitySummary).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-1",
+        teamId: "team-1",
+        roomId: "room-1",
+        runId: "run-1",
+        limit: 25,
+      }),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        records: expect.arrayContaining([
+          expect.objectContaining({
+            details: expect.objectContaining({
+              projectId: "project-1",
+            }),
+          }),
+        ]),
+        parity: expect.arrayContaining([
+          expect.objectContaining({
+            surface: "team_room",
+          }),
+        ]),
+        trend: expect.arrayContaining([
+          expect.objectContaining({
+            surface: "team_room",
+          }),
+        ]),
+      }),
+    );
   });
 
   it("lists tenant workers for admins", async () => {
@@ -247,6 +399,38 @@ describe("monitoringRouter worker fleet", () => {
       tenantId: "tenant-1",
       totalWorkers: 3,
     }));
+  });
+
+  it("returns context engine health for admins", async () => {
+    const result = await monitoringRouter.getContextEngineHealth({
+      input: {
+        teamId: "team-1",
+        roomId: "room-1",
+        runId: "run-1",
+        limit: 12,
+      },
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 7, role: "admin", currentTenantId: 1 },
+      },
+    } as any);
+
+    expect(mockGetContextEngineHealth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-1",
+        teamId: "team-1",
+        roomId: "room-1",
+        runId: "run-1",
+        limit: 12,
+      }),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        scope: expect.objectContaining({
+          tenantId: "tenant-1",
+        }),
+      }),
+    );
   });
 
   it("updates worker fleet state with the acting admin id", async () => {

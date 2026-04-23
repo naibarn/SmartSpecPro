@@ -45,7 +45,10 @@ import {
   verifyDesktopUpdateDescriptor,
 } from "../services/desktopUpdateService";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
-import { getAvailableSkillsAsync, getSkillByIdAsync } from "../services/skillRegistry";
+import {
+  getAvailableSkillsAsync,
+  getSkillByIdAsync,
+} from "../services/skillRegistry";
 import type { SignedDesktopPackageEnvelope } from "../services/packageSigningService";
 import {
   buildRevocationFeedSnapshot,
@@ -89,7 +92,9 @@ export interface DesktopHostRouteDeps {
   resolveRevocationFeed: (input: {
     tenantId: string;
   }) => Promise<DesktopRevocationFeedSnapshot>;
-  resolveTrustedSigners?: () => Promise<ReturnType<typeof resolveConfiguredDesktopTrustedSigners>>;
+  resolveTrustedSigners?: () => Promise<
+    ReturnType<typeof resolveConfiguredDesktopTrustedSigners>
+  >;
 }
 
 export function createDesktopHostRouter(deps: DesktopHostRouteDeps): Router {
@@ -104,7 +109,10 @@ export function createDesktopHostRouter(deps: DesktopHostRouteDeps): Router {
       res.json(buildManagedDesktopHostPolicySnapshot(policyInput));
     } catch (error) {
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_build_policy_snapshot",
+        error:
+          error instanceof Error
+            ? error.message
+            : "failed_to_build_policy_snapshot",
       });
     }
   });
@@ -123,7 +131,8 @@ export function createDesktopHostRouter(deps: DesktopHostRouteDeps): Router {
       res.json(envelope);
     } catch (error) {
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_resolve_package",
+        error:
+          error instanceof Error ? error.message : "failed_to_resolve_package",
       });
     }
   });
@@ -136,7 +145,10 @@ export function createDesktopHostRouter(deps: DesktopHostRouteDeps): Router {
       res.json(buildRevocationFeedSnapshot(snapshot));
     } catch (error) {
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_resolve_revocation_feed",
+        error:
+          error instanceof Error
+            ? error.message
+            : "failed_to_resolve_revocation_feed",
       });
     }
   });
@@ -146,7 +158,10 @@ export function createDesktopHostRouter(deps: DesktopHostRouteDeps): Router {
       res.json(buildDesktopLocalRootPolicy(req.body ?? {}));
     } catch (error) {
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_build_root_policy",
+        error:
+          error instanceof Error
+            ? error.message
+            : "failed_to_build_root_policy",
       });
     }
   });
@@ -156,7 +171,10 @@ export function createDesktopHostRouter(deps: DesktopHostRouteDeps): Router {
       res.json(buildDesktopWorkspaceProfile(req.body ?? {}));
     } catch (error) {
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_build_workspace_profile",
+        error:
+          error instanceof Error
+            ? error.message
+            : "failed_to_build_workspace_profile",
       });
     }
   });
@@ -166,7 +184,10 @@ export function createDesktopHostRouter(deps: DesktopHostRouteDeps): Router {
       res.json(buildDesktopOffboardingPlan(req.body ?? {}));
     } catch (error) {
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_build_offboarding_plan",
+        error:
+          error instanceof Error
+            ? error.message
+            : "failed_to_build_offboarding_plan",
       });
     }
   });
@@ -176,7 +197,8 @@ export function createDesktopHostRouter(deps: DesktopHostRouteDeps): Router {
       res.json(evaluateDesktopManagedRollout(req.body ?? {}));
     } catch (error) {
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_evaluate_rollout",
+        error:
+          error instanceof Error ? error.message : "failed_to_evaluate_rollout",
       });
     }
   });
@@ -190,14 +212,17 @@ export function createDesktopHostRouter(deps: DesktopHostRouteDeps): Router {
       const trustedSigners = deps.resolveTrustedSigners
         ? await deps.resolveTrustedSigners()
         : resolveConfiguredDesktopTrustedSigners();
-      res.json(verifyDesktopUpdateDescriptor({
-        descriptor: coerceDesktopUpdateDescriptor(body.descriptor ?? body),
-        trustedSigners,
-        allowDowngrade: body.allowDowngrade,
-      }));
+      res.json(
+        verifyDesktopUpdateDescriptor({
+          descriptor: coerceDesktopUpdateDescriptor(body.descriptor ?? body),
+          trustedSigners,
+          allowDowngrade: body.allowDowngrade,
+        })
+      );
     } catch (error) {
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_verify_update",
+        error:
+          error instanceof Error ? error.message : "failed_to_verify_update",
       });
     }
   });
@@ -205,26 +230,31 @@ export function createDesktopHostRouter(deps: DesktopHostRouteDeps): Router {
   return router;
 }
 
-function coerceDesktopUpdateDescriptor(value: unknown): DesktopUpdateDescriptor {
-  const descriptor = value && typeof value === "object"
-    ? value as Record<string, unknown>
-    : null;
+function coerceDesktopUpdateDescriptor(
+  value: unknown
+): DesktopUpdateDescriptor {
+  const descriptor =
+    value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : null;
   if (!descriptor) {
     throw new Error("desktop update descriptor is required");
   }
 
-  const currentVersion = typeof descriptor.currentVersion === "string"
-    ? descriptor.currentVersion.trim()
-    : "";
-  const bundleVersion = typeof descriptor.bundleVersion === "string"
-    ? descriptor.bundleVersion.trim()
-    : "";
-  const signerId = typeof descriptor.signerId === "string"
-    ? descriptor.signerId.trim()
-    : "";
-  const signatureSha256 = typeof descriptor.signatureSha256 === "string"
-    ? descriptor.signatureSha256.trim()
-    : "";
+  const currentVersion =
+    typeof descriptor.currentVersion === "string"
+      ? descriptor.currentVersion.trim()
+      : "";
+  const bundleVersion =
+    typeof descriptor.bundleVersion === "string"
+      ? descriptor.bundleVersion.trim()
+      : "";
+  const signerId =
+    typeof descriptor.signerId === "string" ? descriptor.signerId.trim() : "";
+  const signatureSha256 =
+    typeof descriptor.signatureSha256 === "string"
+      ? descriptor.signatureSha256.trim()
+      : "";
 
   if (!currentVersion || !bundleVersion || !signerId || !signatureSha256) {
     throw new Error("desktop update descriptor is missing required fields");
@@ -239,15 +269,21 @@ function coerceDesktopUpdateDescriptor(value: unknown): DesktopUpdateDescriptor 
 }
 
 function resolveDesktopPackageSigner() {
-  const signerSecret = process.env.DESKTOP_PACKAGE_SIGNER_SECRET
-    ?? (process.env.NODE_ENV !== "production" ? "desktop-host-dev-signer-secret" : null);
+  const signerSecret =
+    process.env.DESKTOP_PACKAGE_SIGNER_SECRET ??
+    (process.env.NODE_ENV !== "production"
+      ? "desktop-host-dev-signer-secret"
+      : null);
   if (!signerSecret) {
     throw new Error("desktop package signer secret is not configured");
   }
 
   return {
-    signerId: process.env.DESKTOP_PACKAGE_SIGNER_ID ?? "desktop-host-dev-signer",
-    keyVersion: process.env.DESKTOP_PACKAGE_SIGNER_KEY_VERSION ?? DESKTOP_HOST_PROTOCOL_VERSION,
+    signerId:
+      process.env.DESKTOP_PACKAGE_SIGNER_ID ?? "desktop-host-dev-signer",
+    keyVersion:
+      process.env.DESKTOP_PACKAGE_SIGNER_KEY_VERSION ??
+      DESKTOP_HOST_PROTOCOL_VERSION,
     signerSecret,
   };
 }
@@ -290,7 +326,10 @@ async function resolveDesktopAgencyPackageEnvelope(input: {
     .where(eq(agencies.id, input.packageId))
     .limit(1);
 
-  if (!agency || (agency.tenantId !== input.tenantId && agency.tenantId !== "__system__")) {
+  if (
+    !agency ||
+    (agency.tenantId !== input.tenantId && agency.tenantId !== "__system__")
+  ) {
     return null;
   }
 
@@ -340,7 +379,7 @@ async function resolveDesktopAgencyPackageEnvelope(input: {
       .where(eq(agencySubgraphs.agencyId, input.packageId)),
   ]);
 
-  const agentNames = new Map(agentRows.map((row) => [row.id, row.name]));
+  const agentNames = new Map(agentRows.map(row => [row.id, row.name]));
   const document = buildAgencyDocumentFromRows({
     agency: {
       name: agency.name,
@@ -349,7 +388,7 @@ async function resolveDesktopAgencyPackageEnvelope(input: {
       compileMode: agency.compileMode,
       compatibilityMode: agency.compatibilityMode,
     },
-    nodes: agentRows.map((row) => ({
+    nodes: agentRows.map(row => ({
       id: row.id,
       name: row.name,
       description: row.description ?? undefined,
@@ -359,40 +398,50 @@ async function resolveDesktopAgencyPackageEnvelope(input: {
       isEntryPoint: row.isEntryPoint ?? undefined,
       isOptional: row.isOptional ?? undefined,
       position: (row.position as { x: number; y: number } | null) ?? undefined,
-      nodeConfig: (row.nodeConfig as Record<string, unknown> | null) ?? undefined,
-      outputSchema: (row.outputSchema as Record<string, unknown> | null) ?? undefined,
-      examples: (row.examples as Array<Array<{ role: "user" | "assistant"; content: string }>>) ?? undefined,
+      nodeConfig:
+        (row.nodeConfig as Record<string, unknown> | null) ?? undefined,
+      outputSchema:
+        (row.outputSchema as Record<string, unknown> | null) ?? undefined,
+      examples:
+        (row.examples as Array<
+          Array<{ role: "user" | "assistant"; content: string }>
+        >) ?? undefined,
       parallelToolCalls: row.parallelToolCalls ?? undefined,
       maxTurns: row.maxTurns ?? undefined,
       subgraphId: row.subgraphId ?? undefined,
-      engineHint: (row.engineHint as "agency_swarm" | "adk2" | null) ?? undefined,
-      runtimeConfig: (row.runtimeConfig as Record<string, unknown> | null) ?? undefined,
+      engineHint:
+        (row.engineHint as "agency_swarm" | "adk2" | null) ?? undefined,
+      runtimeConfig:
+        (row.runtimeConfig as Record<string, unknown> | null) ?? undefined,
     })),
-    edges: flowRows.map((row) => ({
+    edges: flowRows.map(row => ({
       fromAgentName: agentNames.get(row.fromAgentId) ?? row.fromAgentId,
       toAgentName: agentNames.get(row.toAgentId) ?? row.toAgentId,
       flowType: row.flowType ?? undefined,
-      flowConfig: (row.flowConfig as Record<string, unknown> | null) ?? undefined,
+      flowConfig:
+        (row.flowConfig as Record<string, unknown> | null) ?? undefined,
     })),
-    subgraphs: subgraphRows.map((row) => ({
+    subgraphs: subgraphRows.map(row => ({
       id: row.id,
       name: row.name,
       engine: row.engine as "agency_swarm" | "adk2",
       entryNodeIds: row.entryNodeIds ?? [],
       exitNodeIds: row.exitNodeIds ?? [],
       nodeIds: row.nodeIds ?? [],
-      boundaryPolicy: (row.boundaryPolicy as Record<string, unknown> | null) ?? null,
+      boundaryPolicy:
+        (row.boundaryPolicy as Record<string, unknown> | null) ?? null,
     })),
   });
 
   return buildDesktopAgencyPackEnvelope({
     agencyId: agency.id,
     version: `${Math.max(document.documentVersion, 1)}.0.0`,
-    trustClass: agency.tenantId === "__system__" ? "built_in_verified" : "org_verified",
+    trustClass:
+      agency.tenantId === "__system__" ? "built_in_verified" : "org_verified",
     topology: document as unknown as Record<string, unknown>,
     instructions: {
       agencyName: document.name,
-      agents: document.nodes.map((node) => ({
+      agents: document.nodes.map(node => ({
         id: node.id ?? null,
         name: node.name,
         instructions: node.instructions ?? null,
@@ -400,7 +449,7 @@ async function resolveDesktopAgencyPackageEnvelope(input: {
     },
     capabilityManifest: {
       defaultEngine: document.defaultEngine,
-      subgraphs: document.subgraphs.map((subgraph) => ({
+      subgraphs: document.subgraphs.map(subgraph => ({
         id: subgraph.id,
         engine: subgraph.engine,
         nodeIds: subgraph.nodeIds,
@@ -439,22 +488,27 @@ async function resolveDesktopAgencyCatalogItems(input: {
     .from(agencies);
 
   return agenciesForTenant
-    .filter((agency) =>
-      agency.tenantId === input.tenantId
-      || agency.tenantId === "__system__"
-      || agency.visibility === "public"
-      || agency.isPublished,
+    .filter(
+      agency =>
+        agency.tenantId === input.tenantId ||
+        agency.tenantId === "__system__" ||
+        agency.visibility === "public" ||
+        agency.isPublished
     )
-    .map((agency) =>
+    .map(agency =>
       buildDesktopAgencyCatalogItem({
         agencyId: agency.id,
         name: agency.name,
         summary: agency.description ?? null,
         version: `${Math.max(agency.documentVersion ?? 1, 1)}.0.0`,
-        trustClass: agency.tenantId === "__system__" ? "built_in_verified" : "org_verified",
+        trustClass:
+          agency.tenantId === "__system__"
+            ? "built_in_verified"
+            : "org_verified",
         signer: resolveDesktopPackageSigner(),
         revocationFeed: input.revocationFeed,
-      }))
+      })
+    )
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
@@ -481,9 +535,10 @@ export interface RegisterDesktopHostRoutesDeps {
 
 export function registerDesktopHostRoutes(
   app: Express,
-  deps: RegisterDesktopHostRoutesDeps = {},
+  deps: RegisterDesktopHostRoutesDeps = {}
 ): void {
-  const authenticateRequest = deps.authenticateRequest ?? sdk.authenticateRequest.bind(sdk);
+  const authenticateRequest =
+    deps.authenticateRequest ?? sdk.authenticateRequest.bind(sdk);
   const getTenantFlags = deps.getTenantFeatureFlags ?? getTenantFeatureFlags;
   const lookupSkill = deps.getSkillByIdAsync ?? getSkillByIdAsync;
   const registerDesktopDeviceImpl =
@@ -499,7 +554,8 @@ export function registerDesktopHostRoutes(
   const listTenantDesktopDevicesForActorImpl =
     deps.listTenantDesktopDevicesForActor ?? listTenantDesktopDevicesForActor;
   const updateDesktopDevicePolicyOverridesImpl =
-    deps.updateDesktopDevicePolicyOverrides ?? updateDesktopDevicePolicyOverrides;
+    deps.updateDesktopDevicePolicyOverrides ??
+    updateDesktopDevicePolicyOverrides;
   const queueDesktopDeviceActionImpl =
     deps.queueDesktopDeviceAction ?? queueDesktopDeviceAction;
   const queueDesktopRootActionImpl =
@@ -517,9 +573,13 @@ export function registerDesktopHostRoutes(
 
   function clampWritebackMode(
     currentMode: string,
-    maximumMode: string | null | undefined,
+    maximumMode: string | null | undefined
   ): string {
-    if (!maximumMode || writebackRank[maximumMode] == null || writebackRank[currentMode] == null) {
+    if (
+      !maximumMode ||
+      writebackRank[maximumMode] == null ||
+      writebackRank[currentMode] == null
+    ) {
       return currentMode;
     }
     return writebackRank[currentMode] <= writebackRank[maximumMode]
@@ -529,7 +589,9 @@ export function registerDesktopHostRoutes(
 
   function applyDeviceOverridesToFeatureFlags(
     featureFlags: Awaited<ReturnType<typeof getTenantFlags>>,
-    overrides: ReturnType<typeof summarizeDesktopDeviceRecord>["policyOverrides"] | null,
+    overrides:
+      | ReturnType<typeof summarizeDesktopDeviceRecord>["policyOverrides"]
+      | null
   ) {
     if (!overrides) {
       return featureFlags;
@@ -537,42 +599,51 @@ export function registerDesktopHostRoutes(
 
     return {
       ...featureFlags,
-      desktopAdvancedLocalMode: featureFlags.desktopAdvancedLocalMode
-        && overrides.allowAdvancedLocalMode !== false,
-      desktopPackageSync: featureFlags.desktopPackageSync
-        && overrides.allowPackageSync !== false,
-      desktopAgencyRuntime: featureFlags.desktopAgencyRuntime
-        && overrides.allowAgencyRuntime !== false,
-      desktopWorkerProjection: featureFlags.desktopWorkerProjection
-        && overrides.allowWorkerProjection !== false,
+      desktopAdvancedLocalMode:
+        featureFlags.desktopAdvancedLocalMode &&
+        overrides.allowAdvancedLocalMode !== false,
+      desktopPackageSync:
+        featureFlags.desktopPackageSync && overrides.allowPackageSync !== false,
+      desktopAgencyRuntime:
+        featureFlags.desktopAgencyRuntime &&
+        overrides.allowAgencyRuntime !== false,
+      desktopWorkerProjection:
+        featureFlags.desktopWorkerProjection &&
+        overrides.allowWorkerProjection !== false,
     };
   }
 
   async function buildTenantPolicySnapshot(
     tenantId: string,
     deviceId: string,
-    workerProjectionEnabled?: boolean,
+    workerProjectionEnabled?: boolean
   ): Promise<BuildManagedDesktopHostPolicySnapshotInput> {
     const tenantFeatureFlags = await getTenantFlags(tenantId);
-    const device = await getDesktopDeviceByIdForTenantImpl({ tenantId, deviceId }).catch(
-      () => null,
-    );
+    const device = await getDesktopDeviceByIdForTenantImpl({
+      tenantId,
+      deviceId,
+    }).catch(() => null);
     const timestamp = now();
-    const summarizedDevice = device ? summarizeDesktopDeviceRecord(device) : null;
+    const summarizedDevice = device
+      ? summarizeDesktopDeviceRecord(device)
+      : null;
     const effectiveFeatureFlags = applyDeviceOverridesToFeatureFlags(
       tenantFeatureFlags,
-      summarizedDevice?.policyOverrides ?? null,
+      summarizedDevice?.policyOverrides ?? null
     );
-    const localRoots = (summarizedDevice?.localRoots ?? []).map((root) => ({
+    const localRoots = (summarizedDevice?.localRoots ?? []).map(root => ({
       ...root,
       writebackMode: clampWritebackMode(
         root.writebackMode,
-        summarizedDevice?.policyOverrides.outputWritebackMode ?? null,
+        summarizedDevice?.policyOverrides.outputWritebackMode ?? null
       ) as typeof root.writebackMode,
     }));
-    const packageCachePath = summarizedDevice?.packageCachePaths[0] ?? `/workspace/${deviceId}/packages`;
-    const workspaceProfile = summarizedDevice?.currentWorkspaceProfile
-      ?? buildDesktopWorkspaceProfile({
+    const packageCachePath =
+      summarizedDevice?.packageCachePaths[0] ??
+      `/workspace/${deviceId}/packages`;
+    const workspaceProfile =
+      summarizedDevice?.currentWorkspaceProfile ??
+      buildDesktopWorkspaceProfile({
         profileName: effectiveFeatureFlags.desktopAdvancedLocalMode
           ? "advanced_local"
           : "pi_sidecar_managed",
@@ -586,16 +657,17 @@ export function registerDesktopHostRoutes(
       ...workspaceProfile,
       writebackMode: clampWritebackMode(
         workspaceProfile.writebackMode,
-        summarizedDevice?.policyOverrides.outputWritebackMode ?? null,
+        summarizedDevice?.policyOverrides.outputWritebackMode ?? null
       ) as typeof workspaceProfile.writebackMode,
     };
-    const effectiveWorkerProjectionEnabled = Boolean(
-      workerProjectionEnabled ?? summarizedDevice?.workerProjectionEnabled,
-    )
-      && effectiveFeatureFlags.desktopWorkerProjection
-      && summarizedDevice?.accessState !== "reauth_required"
-      && summarizedDevice?.accessState !== "quarantined"
-      && summarizedDevice?.accessState !== "disabled";
+    const effectiveWorkerProjectionEnabled =
+      Boolean(
+        workerProjectionEnabled ?? summarizedDevice?.workerProjectionEnabled
+      ) &&
+      effectiveFeatureFlags.desktopWorkerProjection &&
+      summarizedDevice?.accessState !== "reauth_required" &&
+      summarizedDevice?.accessState !== "quarantined" &&
+      summarizedDevice?.accessState !== "disabled";
 
     return {
       tenantId,
@@ -610,10 +682,10 @@ export function registerDesktopHostRoutes(
       workspaceProfiles: [effectiveWorkspaceProfile],
       rolloutGates: buildDesktopRolloutGateStates({
         deviceBindingReady: device
-          ? effectiveFeatureFlags.desktopHostEnabled
-            && !device.disabledAt
-            && summarizedDevice?.accessState !== "reauth_required"
-            && summarizedDevice?.accessState !== "quarantined"
+          ? effectiveFeatureFlags.desktopHostEnabled &&
+            !device.disabledAt &&
+            summarizedDevice?.accessState !== "reauth_required" &&
+            summarizedDevice?.accessState !== "quarantined"
           : effectiveFeatureFlags.desktopHostEnabled,
         signedPackagesEnforced: effectiveFeatureFlags.desktopPackageSync,
         signedUpdatesEnforced: true,
@@ -631,7 +703,7 @@ export function registerDesktopHostRoutes(
       throw new DesktopDeviceRegistryError(
         "feature_disabled",
         403,
-        "Desktop Host is disabled for this tenant",
+        "Desktop Host is disabled for this tenant"
       );
     }
   }
@@ -640,7 +712,9 @@ export function registerDesktopHostRoutes(
   router.use(async (req, res, next) => {
     try {
       const user = await authenticateRequest(req);
-      const tenantId = user.currentTenantId ? String(user.currentTenantId) : null;
+      const tenantId = user.currentTenantId
+        ? String(user.currentTenantId)
+        : null;
       if (!tenantId) {
         res.status(403).json({ error: "desktop_host_tenant_required" });
         return;
@@ -654,7 +728,8 @@ export function registerDesktopHostRoutes(
 
       res.locals.desktopHostTenantId = tenantId;
       res.locals.desktopHostUserId = String(user.id);
-      res.locals.desktopHostUserRole = typeof user.role === "string" ? user.role : null;
+      res.locals.desktopHostUserRole =
+        typeof user.role === "string" ? user.role : null;
       next();
     } catch {
       res.status(401).json({ error: "desktop_host_auth_required" });
@@ -667,14 +742,16 @@ export function registerDesktopHostRoutes(
         tenantId: String(res.locals.desktopHostTenantId || ""),
         userId: String(res.locals.desktopHostUserId || ""),
       };
-      const payload = desktopDeviceRegistrationPayloadSchema.parse(req.body ?? {});
+      const payload = desktopDeviceRegistrationPayloadSchema.parse(
+        req.body ?? {}
+      );
       const result = await registerDesktopDeviceImpl({ actor, payload });
       const policySnapshot = buildManagedDesktopHostPolicySnapshot(
         await buildTenantPolicySnapshot(
           actor.tenantId,
           payload.deviceId,
-          Boolean(result.device.workerProjectionEnabled),
-        ),
+          Boolean(result.device.workerProjectionEnabled)
+        )
       );
 
       res.status(result.created ? 201 : 200).json({
@@ -683,11 +760,14 @@ export function registerDesktopHostRoutes(
       });
     } catch (error) {
       if (error instanceof DesktopDeviceRegistryError) {
-        res.status(error.statusCode).json({ error: error.code, message: error.message });
+        res
+          .status(error.statusCode)
+          .json({ error: error.code, message: error.message });
         return;
       }
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_register_device",
+        error:
+          error instanceof Error ? error.message : "failed_to_register_device",
       });
     }
   });
@@ -708,8 +788,8 @@ export function registerDesktopHostRoutes(
         await buildTenantPolicySnapshot(
           actor.tenantId,
           req.params.deviceId,
-          Boolean(result.device.workerProjectionEnabled),
-        ),
+          Boolean(result.device.workerProjectionEnabled)
+        )
       );
 
       res.json({
@@ -718,11 +798,16 @@ export function registerDesktopHostRoutes(
       });
     } catch (error) {
       if (error instanceof DesktopDeviceRegistryError) {
-        res.status(error.statusCode).json({ error: error.code, message: error.message });
+        res
+          .status(error.statusCode)
+          .json({ error: error.code, message: error.message });
         return;
       }
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_record_device_heartbeat",
+        error:
+          error instanceof Error
+            ? error.message
+            : "failed_to_record_device_heartbeat",
       });
     }
   });
@@ -732,9 +817,10 @@ export function registerDesktopHostRoutes(
       const actor = {
         tenantId: String(res.locals.desktopHostTenantId || ""),
         userId: String(res.locals.desktopHostUserId || ""),
-        role: typeof res.locals.desktopHostUserRole === "string"
-          ? String(res.locals.desktopHostUserRole)
-          : null,
+        role:
+          typeof res.locals.desktopHostUserRole === "string"
+            ? String(res.locals.desktopHostUserRole)
+            : null,
       };
       const payload = desktopDeviceDisableRequestSchema.parse(req.body ?? {});
       const result = await disableDesktopDeviceImpl({
@@ -745,11 +831,14 @@ export function registerDesktopHostRoutes(
       res.json(result);
     } catch (error) {
       if (error instanceof DesktopDeviceRegistryError) {
-        res.status(error.statusCode).json({ error: error.code, message: error.message });
+        res
+          .status(error.statusCode)
+          .json({ error: error.code, message: error.message });
         return;
       }
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_disable_device",
+        error:
+          error instanceof Error ? error.message : "failed_to_disable_device",
       });
     }
   });
@@ -759,23 +848,37 @@ export function registerDesktopHostRoutes(
       const actor = {
         tenantId: String(res.locals.desktopHostTenantId || ""),
         userId: String(res.locals.desktopHostUserId || ""),
-        role: typeof res.locals.desktopHostUserRole === "string"
-          ? String(res.locals.desktopHostUserRole)
-          : null,
+        role:
+          typeof res.locals.desktopHostUserRole === "string"
+            ? String(res.locals.desktopHostUserRole)
+            : null,
       };
-      await assertDesktopHostEnabled(actor.tenantId);
+      const featureFlags = await getTenantFlags(actor.tenantId);
+      if (!featureFlags.desktopHostEnabled) {
+        res.json({
+          generatedAt: new Date().toISOString(),
+          devices: [],
+        });
+        return;
+      }
       const scope = req.query.scope === "tenant" ? "tenant" : "user";
-      const status = scope === "tenant"
-        ? await listTenantDesktopDevicesForActorImpl({ actor }, { now })
-        : await listDesktopDevicesForActorImpl({ actor }, { now });
+      const status =
+        scope === "tenant"
+          ? await listTenantDesktopDevicesForActorImpl({ actor }, { now })
+          : await listDesktopDevicesForActorImpl({ actor }, { now });
       res.json(status);
     } catch (error) {
       if (error instanceof DesktopDeviceRegistryError) {
-        res.status(error.statusCode).json({ error: error.code, message: error.message });
+        res
+          .status(error.statusCode)
+          .json({ error: error.code, message: error.message });
         return;
       }
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_list_desktop_devices",
+        error:
+          error instanceof Error
+            ? error.message
+            : "failed_to_list_desktop_devices",
       });
     }
   });
@@ -785,9 +888,10 @@ export function registerDesktopHostRoutes(
       const actor = {
         tenantId: String(res.locals.desktopHostTenantId || ""),
         userId: String(res.locals.desktopHostUserId || ""),
-        role: typeof res.locals.desktopHostUserRole === "string"
-          ? String(res.locals.desktopHostUserRole)
-          : null,
+        role:
+          typeof res.locals.desktopHostUserRole === "string"
+            ? String(res.locals.desktopHostUserRole)
+            : null,
       };
       await assertDesktopHostEnabled(actor.tenantId);
 
@@ -800,9 +904,9 @@ export function registerDesktopHostRoutes(
         return;
       }
       if (
-        !["admin", "domain_admin", "system_agent"].includes(actor.role ?? "")
-        && device.userId != null
-        && String(device.userId) !== String(actor.userId)
+        !["admin", "domain_admin", "system_agent"].includes(actor.role ?? "") &&
+        device.userId != null &&
+        String(device.userId) !== String(actor.userId)
       ) {
         res.status(403).json({ error: "desktop_device_forbidden" });
         return;
@@ -812,20 +916,27 @@ export function registerDesktopHostRoutes(
         await buildTenantPolicySnapshot(
           actor.tenantId,
           req.params.deviceId,
-          Boolean(device.workerProjectionEnabled),
-        ),
+          Boolean(device.workerProjectionEnabled)
+        )
       );
-      res.json(desktopDeviceControlPlaneStateSchema.parse({
-        device: summarizeDesktopDeviceRecord(device),
-        policySnapshot,
-      }));
+      res.json(
+        desktopDeviceControlPlaneStateSchema.parse({
+          device: summarizeDesktopDeviceRecord(device),
+          policySnapshot,
+        })
+      );
     } catch (error) {
       if (error instanceof DesktopDeviceRegistryError) {
-        res.status(error.statusCode).json({ error: error.code, message: error.message });
+        res
+          .status(error.statusCode)
+          .json({ error: error.code, message: error.message });
         return;
       }
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_load_device_control_plane_state",
+        error:
+          error instanceof Error
+            ? error.message
+            : "failed_to_load_device_control_plane_state",
       });
     }
   });
@@ -835,36 +946,49 @@ export function registerDesktopHostRoutes(
       const actor = {
         tenantId: String(res.locals.desktopHostTenantId || ""),
         userId: String(res.locals.desktopHostUserId || ""),
-        role: typeof res.locals.desktopHostUserRole === "string"
-          ? String(res.locals.desktopHostUserRole)
-          : null,
+        role:
+          typeof res.locals.desktopHostUserRole === "string"
+            ? String(res.locals.desktopHostUserRole)
+            : null,
       };
       await assertDesktopHostEnabled(actor.tenantId);
-      const payload = desktopDevicePolicyOverrideRequestSchema.parse(req.body ?? {});
-      const device = await updateDesktopDevicePolicyOverridesImpl({
-        actor,
-        deviceId: req.params.deviceId,
-        overrides: payload.overrides,
-        note: payload.note,
-      }, { now });
+      const payload = desktopDevicePolicyOverrideRequestSchema.parse(
+        req.body ?? {}
+      );
+      const device = await updateDesktopDevicePolicyOverridesImpl(
+        {
+          actor,
+          deviceId: req.params.deviceId,
+          overrides: payload.overrides,
+          note: payload.note,
+        },
+        { now }
+      );
       const policySnapshot = buildManagedDesktopHostPolicySnapshot(
         await buildTenantPolicySnapshot(
           actor.tenantId,
           req.params.deviceId,
-          Boolean(device.workerProjectionEnabled),
-        ),
+          Boolean(device.workerProjectionEnabled)
+        )
       );
-      res.json(desktopDevicePolicyOverrideResponseSchema.parse({
-        device,
-        policySnapshot,
-      }));
+      res.json(
+        desktopDevicePolicyOverrideResponseSchema.parse({
+          device,
+          policySnapshot,
+        })
+      );
     } catch (error) {
       if (error instanceof DesktopDeviceRegistryError) {
-        res.status(error.statusCode).json({ error: error.code, message: error.message });
+        res
+          .status(error.statusCode)
+          .json({ error: error.code, message: error.message });
         return;
       }
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_update_device_policy_overrides",
+        error:
+          error instanceof Error
+            ? error.message
+            : "failed_to_update_device_policy_overrides",
       });
     }
   });
@@ -874,26 +998,35 @@ export function registerDesktopHostRoutes(
       const actor = {
         tenantId: String(res.locals.desktopHostTenantId || ""),
         userId: String(res.locals.desktopHostUserId || ""),
-        role: typeof res.locals.desktopHostUserRole === "string"
-          ? String(res.locals.desktopHostUserRole)
-          : null,
+        role:
+          typeof res.locals.desktopHostUserRole === "string"
+            ? String(res.locals.desktopHostUserRole)
+            : null,
       };
       await assertDesktopHostEnabled(actor.tenantId);
       const payload = desktopDeviceActionRequestSchema.parse(req.body ?? {});
-      const result = await queueDesktopDeviceActionImpl({
-        actor,
-        deviceId: req.params.deviceId,
-        actionType: payload.actionType,
-        note: payload.note,
-      }, { now });
+      const result = await queueDesktopDeviceActionImpl(
+        {
+          actor,
+          deviceId: req.params.deviceId,
+          actionType: payload.actionType,
+          note: payload.note,
+        },
+        { now }
+      );
       res.json(desktopDeviceActionResponseSchema.parse(result));
     } catch (error) {
       if (error instanceof DesktopDeviceRegistryError) {
-        res.status(error.statusCode).json({ error: error.code, message: error.message });
+        res
+          .status(error.statusCode)
+          .json({ error: error.code, message: error.message });
         return;
       }
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_queue_device_action",
+        error:
+          error instanceof Error
+            ? error.message
+            : "failed_to_queue_device_action",
       });
     }
   });
@@ -903,27 +1036,36 @@ export function registerDesktopHostRoutes(
       const actor = {
         tenantId: String(res.locals.desktopHostTenantId || ""),
         userId: String(res.locals.desktopHostUserId || ""),
-        role: typeof res.locals.desktopHostUserRole === "string"
-          ? String(res.locals.desktopHostUserRole)
-          : null,
+        role:
+          typeof res.locals.desktopHostUserRole === "string"
+            ? String(res.locals.desktopHostUserRole)
+            : null,
       };
       await assertDesktopHostEnabled(actor.tenantId);
       const payload = desktopRootActionRequestSchema.parse(req.body ?? {});
-      const result = await queueDesktopRootActionImpl({
-        actor,
-        deviceId: req.params.deviceId,
-        rootId: req.params.rootId,
-        actionType: payload.actionType,
-        note: payload.note,
-      }, { now });
+      const result = await queueDesktopRootActionImpl(
+        {
+          actor,
+          deviceId: req.params.deviceId,
+          rootId: req.params.rootId,
+          actionType: payload.actionType,
+          note: payload.note,
+        },
+        { now }
+      );
       res.json(result);
     } catch (error) {
       if (error instanceof DesktopDeviceRegistryError) {
-        res.status(error.statusCode).json({ error: error.code, message: error.message });
+        res
+          .status(error.statusCode)
+          .json({ error: error.code, message: error.message });
         return;
       }
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_queue_root_action",
+        error:
+          error instanceof Error
+            ? error.message
+            : "failed_to_queue_root_action",
       });
     }
   });
@@ -938,30 +1080,38 @@ export function registerDesktopHostRoutes(
         return;
       }
 
-      const revocationFeed = resolveConfiguredDesktopRevocationFeed(now().toISOString());
+      const revocationFeed = resolveConfiguredDesktopRevocationFeed(
+        now().toISOString()
+      );
       const signer = resolveDesktopPackageSigner();
       const skills = await listAvailableSkillsImpl();
       const skillItems = skills
-        .filter((skill) => Boolean(skill.skillFilePath))
-        .map((skill) =>
+        .filter(skill => Boolean(skill.skillFilePath))
+        .map(skill =>
           buildDesktopSkillCatalogItem({
             skill,
             signer,
             revocationFeed,
-          }))
+          })
+        )
         .sort((left, right) => left.name.localeCompare(right.name));
       const agencyItems = await resolveDesktopAgencyCatalogItems({
         tenantId,
         revocationFeed,
       });
 
-      res.json(desktopPackageCatalogResponseSchema.parse({
-        generatedAt: now().toISOString(),
-        packages: [...skillItems, ...agencyItems],
-      }));
+      res.json(
+        desktopPackageCatalogResponseSchema.parse({
+          generatedAt: now().toISOString(),
+          packages: [...skillItems, ...agencyItems],
+        })
+      );
     } catch (error) {
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_list_desktop_package_catalog",
+        error:
+          error instanceof Error
+            ? error.message
+            : "failed_to_list_desktop_package_catalog",
       });
     }
   });
@@ -970,7 +1120,9 @@ export function registerDesktopHostRoutes(
     try {
       const actorTenantId = String(res.locals.desktopHostTenantId || "");
       await assertDesktopHostEnabled(actorTenantId);
-      const payload = desktopEnrollmentChallengeRequestSchema.parse(req.body ?? {});
+      const payload = desktopEnrollmentChallengeRequestSchema.parse(
+        req.body ?? {}
+      );
       const challenge = createDesktopEnrollmentChallenge({
         tenantId: actorTenantId,
         deviceId: payload.deviceId,
@@ -983,11 +1135,16 @@ export function registerDesktopHostRoutes(
       res.status(201).json(challenge);
     } catch (error) {
       if (error instanceof DesktopDeviceRegistryError) {
-        res.status(error.statusCode).json({ error: error.code, message: error.message });
+        res
+          .status(error.statusCode)
+          .json({ error: error.code, message: error.message });
         return;
       }
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_create_enrollment_challenge",
+        error:
+          error instanceof Error
+            ? error.message
+            : "failed_to_create_enrollment_challenge",
       });
     }
   });
@@ -996,36 +1153,42 @@ export function registerDesktopHostRoutes(
     try {
       const actorTenantId = String(res.locals.desktopHostTenantId || "");
       await assertDesktopHostEnabled(actorTenantId);
-      const payload = desktopEnrollmentVerifyRequestSchema.parse(req.body ?? {});
+      const payload = desktopEnrollmentVerifyRequestSchema.parse(
+        req.body ?? {}
+      );
       if (payload.challenge.tenantId !== actorTenantId) {
         res.status(403).json({ error: "desktop_host_tenant_mismatch" });
         return;
       }
 
-      const verified = payload.proofKind === "ed25519_signature"
-        ? verifyDesktopAsymmetricEnrollmentProof({
-          challenge: payload.challenge,
-          signatureBase64: payload.signatureBase64 ?? "",
-          devicePublicKeyPem: payload.devicePublicKeyPem,
-        })
-        : verifyDesktopEnrollmentProof({
-          challenge: payload.challenge,
-          proofSha256: payload.proofSha256 ?? "",
-          devicePublicKey: payload.devicePublicKeyPem,
-          deviceSharedSecret: payload.deviceSharedSecret ?? "",
-        });
+      const verified =
+        payload.proofKind === "ed25519_signature"
+          ? verifyDesktopAsymmetricEnrollmentProof({
+              challenge: payload.challenge,
+              signatureBase64: payload.signatureBase64 ?? "",
+              devicePublicKeyPem: payload.devicePublicKeyPem,
+            })
+          : verifyDesktopEnrollmentProof({
+              challenge: payload.challenge,
+              proofSha256: payload.proofSha256 ?? "",
+              devicePublicKey: payload.devicePublicKeyPem,
+              deviceSharedSecret: payload.deviceSharedSecret ?? "",
+            });
 
       const runtimeBinding = verified
         ? buildDesktopRuntimeTokenBinding({
-          tenantId: payload.challenge.tenantId,
-          deviceId: payload.challenge.deviceId,
-          runtimeScope: payload.runtimeScope,
-          challengeId: payload.challenge.challengeId,
-          deviceKeyVersion: payload.challenge.deviceKeyVersion,
-          proofSha256: payload.proofKind === "ed25519_signature"
-            ? buildDesktopAsymmetricProofDigest(payload.signatureBase64 ?? "")
-            : payload.proofSha256 ?? "",
-        })
+            tenantId: payload.challenge.tenantId,
+            deviceId: payload.challenge.deviceId,
+            runtimeScope: payload.runtimeScope,
+            challengeId: payload.challenge.challengeId,
+            deviceKeyVersion: payload.challenge.deviceKeyVersion,
+            proofSha256:
+              payload.proofKind === "ed25519_signature"
+                ? buildDesktopAsymmetricProofDigest(
+                    payload.signatureBase64 ?? ""
+                  )
+                : (payload.proofSha256 ?? ""),
+          })
         : null;
 
       res.json({
@@ -1037,38 +1200,48 @@ export function registerDesktopHostRoutes(
       });
     } catch (error) {
       if (error instanceof DesktopDeviceRegistryError) {
-        res.status(error.statusCode).json({ error: error.code, message: error.message });
+        res
+          .status(error.statusCode)
+          .json({ error: error.code, message: error.message });
         return;
       }
       res.status(400).json({
-        error: error instanceof Error ? error.message : "failed_to_verify_enrollment_proof",
+        error:
+          error instanceof Error
+            ? error.message
+            : "failed_to_verify_enrollment_proof",
       });
     }
   });
 
-  router.use(createDesktopHostRouter({
-    resolvePolicy: ({ tenantId, deviceId }) => buildTenantPolicySnapshot(tenantId, deviceId),
-    resolvePackageEnvelope: async ({ tenantId, packageId }) => {
-      const featureFlags = await getTenantFlags(tenantId);
-      if (!featureFlags.desktopPackageSync) {
-        return null;
-      }
+  router.use(
+    createDesktopHostRouter({
+      resolvePolicy: ({ tenantId, deviceId }) =>
+        buildTenantPolicySnapshot(tenantId, deviceId),
+      resolvePackageEnvelope: async ({ tenantId, packageId }) => {
+        const featureFlags = await getTenantFlags(tenantId);
+        if (!featureFlags.desktopPackageSync) {
+          return null;
+        }
 
-      const skill = await lookupSkill(packageId);
-      if (!skill) {
-        return resolveDesktopAgencyPackageEnvelope({ tenantId, packageId });
-      }
+        const skill = await lookupSkill(packageId);
+        if (!skill) {
+          return resolveDesktopAgencyPackageEnvelope({ tenantId, packageId });
+        }
 
-      return buildDesktopSkillPackageEnvelope({
-        skill,
-        trustClass: resolveDesktopPublishedSkillTrustClass(skill),
-        version: resolveDesktopPublishedSkillVersion(skill),
-        signer: resolveDesktopPackageSigner(),
-      });
-    },
-    resolveRevocationFeed: async () => resolveConfiguredDesktopRevocationFeed(now().toISOString()),
-    resolveTrustedSigners: async () => resolveConfiguredDesktopTrustedSigners(),
-  }));
+        return buildDesktopSkillPackageEnvelope({
+          skill,
+          trustClass: resolveDesktopPublishedSkillTrustClass(skill),
+          version: resolveDesktopPublishedSkillVersion(skill),
+          signer: resolveDesktopPackageSigner(),
+        });
+      },
+      resolveRevocationFeed: async () =>
+        resolveConfiguredDesktopRevocationFeed(now().toISOString()),
+      resolveTrustedSigners: async () =>
+        resolveConfiguredDesktopTrustedSigners(),
+    })
+  );
 
   app.use("/api/desktop-host", router);
 }

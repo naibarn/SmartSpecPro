@@ -4,10 +4,15 @@
  * Provides the isValidConnection callback that enforces port type compatibility.
  */
 
-import type { Connection, Node } from "reactflow";
+import type { Connection, Node } from "@xyflow/react";
 import { useNodeRegistry } from "./useNodeRegistry";
 import { isCompatibleConnection, getDataTypeLabel } from "./dataTypes";
 import type { NodeTypeSpec } from "./useNodeRegistry";
+import type {
+  WorkflowCanvasNode,
+  WorkflowNodeData,
+} from "@/components/workflow/nodes/types";
+import { isWorkflowFlowNode } from "@/components/workflow/nodes/types";
 
 /**
  * Returns a human-readable error message if the connection is invalid, or null if valid.
@@ -18,7 +23,7 @@ import type { NodeTypeSpec } from "./useNodeRegistry";
  */
 export function getConnectionError(
   connection: Connection,
-  nodes: Node[],
+  nodes: WorkflowCanvasNode[],
   nodeTypes: NodeTypeSpec[]
 ): string | null {
   if (!connection.source || !connection.target) return null;
@@ -27,7 +32,12 @@ export function getConnectionError(
   const sourceNode = nodes.find((n) => n.id === connection.source);
   const targetNode = nodes.find((n) => n.id === connection.target);
 
-  if (!sourceNode || !targetNode) return null;
+  if (
+    !sourceNode ||
+    !targetNode ||
+    !isWorkflowFlowNode(sourceNode) ||
+    !isWorkflowFlowNode(targetNode)
+  ) return null;
 
   const sourceNodeType = nodeTypes.find((nt) => nt.type === sourceNode.data.nodeType);
   const targetNodeType = nodeTypes.find((nt) => nt.type === targetNode.data.nodeType);
@@ -93,7 +103,7 @@ export function getConnectionError(
  */
 export function isValidConnection(
   connection: Connection,
-  nodes: Node[],
+  nodes: WorkflowCanvasNode[],
   nodeTypes: NodeTypeSpec[]
 ): boolean {
   return getConnectionError(connection, nodes, nodeTypes) === null;
@@ -104,7 +114,7 @@ export function isValidConnection(
  *
  * @returns isValidConnection function that validates port type compatibility
  */
-export function useIsValidConnection(nodes: Node[]) {
+export function useIsValidConnection(nodes: WorkflowCanvasNode[]) {
   const { getNodeType } = useNodeRegistry();
 
   /**
@@ -121,7 +131,12 @@ export function useIsValidConnection(nodes: Node[]) {
     const sourceNode = nodes.find((n) => n.id === connection.source);
     const targetNode = nodes.find((n) => n.id === connection.target);
 
-    if (!sourceNode || !targetNode) return false;
+    if (
+      !sourceNode ||
+      !targetNode ||
+      !isWorkflowFlowNode(sourceNode) ||
+      !isWorkflowFlowNode(targetNode)
+    ) return false;
 
     // Get node type definitions from registry
     const sourceNodeType = getNodeType(sourceNode.data.nodeType);

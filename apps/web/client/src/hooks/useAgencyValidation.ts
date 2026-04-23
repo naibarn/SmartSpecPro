@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import type { AgencyNodeData } from "@/components/agency/nodes/types";
 import { getNodeSupport, type HybridEngine } from "@/components/agency/hybridNodeSupport";
 

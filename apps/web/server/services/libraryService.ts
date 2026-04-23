@@ -59,6 +59,11 @@ import {
   type LibraryUploadPipelineStage,
   validateLibraryUploadSignature,
 } from "./libraryUploadPipeline";
+import {
+  buildLibraryKnowledgeRefreshMetadata,
+  type LibraryKnowledgeRefreshReason,
+} from "./libraryKnowledgeBackfillService";
+import { dispatchLibraryKnowledgeRefreshWorker } from "./libraryKnowledgeRefreshWorker";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import { getTraceId } from "./traceContext";
 import {
@@ -513,6 +518,7 @@ export interface SaveLibraryMarkdownInput {
   content: string;
   expectedUpdatedAt?: Date;
   changeDescription?: string;
+  knowledgeRefreshReason?: LibraryKnowledgeRefreshReason;
 }
 
 export interface SaveLibraryMarkdownResult {
@@ -529,6 +535,14 @@ export interface LibraryEnqueueResult {
   throttled?: boolean;
   error?: string;
 }
+
+type LibraryKnowledgeRefreshExecutionStatus =
+  | "pending"
+  | "processing"
+  | "retry_pending"
+  | "completed"
+  | "failed"
+  | "skipped";
 
 type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type DbTransaction = Parameters<Parameters<DbClient["transaction"]>[0]>[0];
@@ -1186,6 +1200,90 @@ export function resolveLibraryVectorIndexName(): string {
   }
 
   return "library-index";
+}
+
+function extractKnowledgeRefreshMetadata(
+  sourceMetadata: Record<string, unknown> | undefined,
+): { reason: LibraryKnowledgeRefreshReason } | null {
+  const raw = sourceMetadata?.knowledgeRefresh;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return null;
+  }
+
+  const reason = (raw as { reason?: unknown }).reason;
+  if (
+    reason === "markdown_save"
+    || reason === "item_update"
+    || reason === "restore"
+    || reason === "permission_change"
+  ) {
+    return { reason };
+  }
+
+  return null;
+}
+
+function buildLibraryIndexJobPersistence(
+  payload: ReturnType<typeof buildLibraryIndexJobPayload>,
+  now: Date,
+): Pick<
+  typeof libraryIndexJobs.$inferInsert,
+  | "payloadVersion"
+  | "payloadJson"
+  | "source"
+  | "sourceMetadataJson"
+  | "dedupeKey"
+  | "knowledgeRefreshReason"
+  | "knowledgeRefreshStatus"
+  | "knowledgeRefreshAttemptCount"
+  | "knowledgeRefreshRequestedAt"
+  | "knowledgeRefreshCompletedAt"
+  | "knowledgeRefreshError"
+> {
+  const refreshMetadata = extractKnowledgeRefreshMetadata(payload.sourceMetadata);
+  const refreshStatus: LibraryKnowledgeRefreshExecutionStatus | null = refreshMetadata
+    ? "pending"
+    : null;
+
+  return {
+    payloadVersion: payload.version,
+    payloadJson: payload as unknown as Record<string, unknown>,
+    source: payload.source,
+    sourceMetadataJson: payload.sourceMetadata,
+    dedupeKey: payload.dedupeKey,
+    knowledgeRefreshReason: refreshMetadata?.reason ?? null,
+    knowledgeRefreshStatus: refreshStatus,
+    knowledgeRefreshAttemptCount: 0,
+    knowledgeRefreshRequestedAt: refreshMetadata ? now : null,
+    knowledgeRefreshCompletedAt: null,
+    knowledgeRefreshError: null,
+  };
+}
+
+async function maybeDispatchLibraryKnowledgeRefreshWorker(input: {
+  jobId: number;
+  libraryItemId: number;
+  tenantId: string;
+  knowledgeRefreshStatus: LibraryKnowledgeRefreshExecutionStatus | null;
+}): Promise<void> {
+  if (!input.knowledgeRefreshStatus) {
+    return;
+  }
+
+  try {
+    await dispatchLibraryKnowledgeRefreshWorker({
+      jobIds: [input.jobId],
+      libraryItemId: input.libraryItemId,
+      tenantId: input.tenantId,
+    });
+  } catch (error) {
+    console.warn("[library] failed to dispatch knowledge refresh worker", {
+      tenantId: input.tenantId,
+      libraryItemId: input.libraryItemId,
+      jobId: input.jobId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 function resolveProcessingMimeType(
@@ -2031,7 +2129,7 @@ export async function publishLibraryItemToGallery(
 
   const payload = buildGalleryPayloadFromLibraryItem(item);
 
-  return await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const galleryLink = await getLibraryGalleryLinkRow(tx, item.id);
 
     if (galleryLink?.galleryItemId) {
@@ -2085,6 +2183,7 @@ export async function publishLibraryItemToGallery(
       created: true,
     };
   });
+  return result;
 }
 
 export async function unpublishLibraryItemFromGallery(
@@ -3300,6 +3399,7 @@ export async function updateLibraryItem(
     return null;
   }
 
+  const updatedFieldKeys = Object.keys(input);
   await safeEnqueueLibraryIndexJob(
     {
       libraryItemId: updated[0].id,
@@ -3309,7 +3409,12 @@ export async function updateLibraryItem(
       operation: "index",
       source: "library.update",
       sourceMetadata: {
-        fields: Object.keys(input),
+        fields: updatedFieldKeys,
+        ...buildLibraryKnowledgeRefreshMetadata({
+          reason: "item_update",
+          actorUserId: actor.userId,
+          fieldKeys: updatedFieldKeys,
+        }),
       },
       allowThrottle: true,
     },
@@ -3458,6 +3563,13 @@ export async function softDeleteLibraryItem(
       domain: "library",
       operation: "delete",
       source: "library.delete",
+      sourceMetadata: {
+        ...buildLibraryKnowledgeRefreshMetadata({
+          reason: "item_update",
+          actorUserId: actor.userId,
+          fieldKeys: ["deletedAt", "status"],
+        }),
+      },
       allowThrottle: false,
     },
     db,
@@ -3678,6 +3790,31 @@ export async function shareLibraryItem(
 
   // Recompute allowed_scopes after sharing
   await recomputeAndPropagateScopes(input.itemId, actorTenantId, db);
+
+  await safeEnqueueLibraryIndexJob(
+    {
+      libraryItemId: input.itemId,
+      tenantId: actorTenantId,
+      jobType: "update_index",
+      domain: "library",
+      operation: "index",
+      source: "library.share",
+      sourceMetadata: {
+        shares: {
+          subjectType: input.subjectType,
+          subjectId: input.subjectId,
+          permissionLevel: input.permissionLevel,
+        },
+        ...buildLibraryKnowledgeRefreshMetadata({
+          reason: "permission_change",
+          actorUserId: actor.userId,
+          fieldKeys: ["shares"],
+        }),
+      },
+      allowThrottle: true,
+    },
+    db,
+  );
 
   return true;
 }
@@ -3915,6 +4052,9 @@ export async function enqueueLibraryIndexJob(
     };
   }
 
+  const now = new Date();
+  const persistence = buildLibraryIndexJobPersistence(payload, now);
+
   const existing = await db
     .select({
       id: libraryIndexJobs.id,
@@ -3932,6 +4072,23 @@ export async function enqueueLibraryIndexJob(
     .limit(1);
 
   if (existing[0]) {
+    await db
+      .update(libraryIndexJobs)
+      .set({
+        ...persistence,
+        updatedAt: now,
+      })
+      .where(eq(libraryIndexJobs.id, existing[0].id));
+
+    await maybeDispatchLibraryKnowledgeRefreshWorker({
+      jobId: existing[0].id,
+      libraryItemId: input.libraryItemId,
+      tenantId,
+      knowledgeRefreshStatus: (persistence.knowledgeRefreshStatus ?? null) as
+        | LibraryKnowledgeRefreshExecutionStatus
+        | null,
+    });
+
     return {
       jobId: existing[0].id,
       status: existing[0].status,
@@ -3941,7 +4098,6 @@ export async function enqueueLibraryIndexJob(
     };
   }
 
-  const now = new Date();
   const inserted = await db
     .insert(libraryIndexJobs)
     .values({
@@ -3949,6 +4105,7 @@ export async function enqueueLibraryIndexJob(
       libraryItemId: input.libraryItemId,
       projectId: resolvedProjectId ?? null,
       jobType,
+      ...persistence,
       status: "pending",
       attemptCount: 0,
       maxAttempts: 5,
@@ -3973,6 +4130,15 @@ export async function enqueueLibraryIndexJob(
       updatedAt: new Date(),
     })
     .where(and(eq(libraryItems.id, input.libraryItemId), eq(libraryItems.tenantId, tenantId)));
+
+  await maybeDispatchLibraryKnowledgeRefreshWorker({
+    jobId: created.id,
+    libraryItemId: input.libraryItemId,
+    tenantId,
+    knowledgeRefreshStatus: (persistence.knowledgeRefreshStatus ?? null) as
+      | LibraryKnowledgeRefreshExecutionStatus
+      | null,
+  });
 
   return {
     jobId: created.id,
@@ -4527,6 +4693,11 @@ export async function saveLibraryMarkdown(
       source: "library.markdown_update",
       sourceMetadata: {
         ingestion: "document_management_editor",
+        ...buildLibraryKnowledgeRefreshMetadata({
+          reason: input.knowledgeRefreshReason ?? "markdown_save",
+          actorUserId: actor.userId,
+          fieldKeys: ["content"],
+        }),
       },
       allowThrottle: true,
     },
@@ -4790,6 +4961,11 @@ export async function restoreContentVersion(
         sourceMetadata: {
           ingestion: "file_version_restore",
           restoredVersionNumber: version.versionNumber,
+          ...buildLibraryKnowledgeRefreshMetadata({
+            reason: "restore",
+            actorUserId: actor.userId,
+            fieldKeys: ["sourceUrl", "metadata"],
+          }),
         },
         allowThrottle: true,
       },
@@ -4808,6 +4984,7 @@ export async function restoreContentVersion(
       itemId: version.libraryItemId,
       content: version.content,
       changeDescription: `Restored from version ${version.versionNumber}`,
+      knowledgeRefreshReason: "restore",
     },
     actor,
     db,
@@ -5134,6 +5311,31 @@ export async function removeLibraryShare(
   // Recompute allowed_scopes after unsharing (immediate revocation)
   await recomputeAndPropagateScopes(input.itemId, actorTenantId, db);
 
+  await safeEnqueueLibraryIndexJob(
+    {
+      libraryItemId: input.itemId,
+      tenantId: actorTenantId,
+      jobType: "update_index",
+      domain: "library",
+      operation: "index",
+      source: "library.unshare",
+      sourceMetadata: {
+        shares: {
+          subjectType: input.subjectType,
+          subjectId: input.subjectId,
+          action: "remove",
+        },
+        ...buildLibraryKnowledgeRefreshMetadata({
+          reason: "permission_change",
+          actorUserId: actor.userId,
+          fieldKeys: ["shares"],
+        }),
+      },
+      allowThrottle: true,
+    },
+    db,
+  );
+
   return true;
 }
 
@@ -5179,6 +5381,31 @@ export async function updateLibrarySharePermission(
 
   // Recompute allowed_scopes after permission level change
   await recomputeAndPropagateScopes(input.itemId, actorTenantId, db);
+
+  await safeEnqueueLibraryIndexJob(
+    {
+      libraryItemId: input.itemId,
+      tenantId: actorTenantId,
+      jobType: "update_index",
+      domain: "library",
+      operation: "index",
+      source: "library.update_share_permission",
+      sourceMetadata: {
+        shares: {
+          subjectType: input.subjectType,
+          subjectId: input.subjectId,
+          permissionLevel: input.permissionLevel,
+        },
+        ...buildLibraryKnowledgeRefreshMetadata({
+          reason: "permission_change",
+          actorUserId: actor.userId,
+          fieldKeys: ["shares"],
+        }),
+      },
+      allowThrottle: true,
+    },
+    db,
+  );
 
   return true;
 }
@@ -5356,7 +5583,7 @@ export async function restoreFromLibraryTrash(
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
 
-  return await db.transaction(async (tx) => {
+  const restored = await db.transaction(async (tx) => {
     const rows = await tx
       .select({
         id: libraryItems.id,
@@ -5405,6 +5632,28 @@ export async function restoreFromLibraryTrash(
 
     return true;
   });
+
+  await safeEnqueueLibraryIndexJob(
+    {
+      libraryItemId: itemId,
+      tenantId: actorTenantId,
+      jobType: "update_index",
+      domain: "library",
+      operation: "index",
+      source: "library.restore_from_trash",
+      sourceMetadata: {
+        ...buildLibraryKnowledgeRefreshMetadata({
+          reason: "restore",
+          actorUserId: actor.userId,
+          fieldKeys: ["deletedAt", "status"],
+        }),
+      },
+      allowThrottle: true,
+    },
+    db,
+  );
+
+  return restored;
 }
 
 /**

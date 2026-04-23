@@ -6,6 +6,14 @@ import type {
   MessageRuntimeMetadata,
   TeamRoomMessageMetadata,
 } from "../../../packages/local-ai-core/src/index";
+import type {
+  AutoTeamCapabilityFamily,
+  AutoTeamFinalResultStatus,
+  AutoTeamMediaType,
+  AutoTeamRouteClass,
+  AutoTeamStageStatus,
+  AutoTeamStageType,
+} from "../shared/autoTeamExecution";
 
 /**
  * pgvector custom column type for 1536-dimension embeddings (OpenAI text-embedding-3-small).
@@ -2052,6 +2060,69 @@ export const libraryIndexJobStatusEnum = pgEnum("library_index_job_status", [
   "completed",
   "failed",
 ]);
+export const libraryContextPackStatusEnum = pgEnum("library_context_pack_status", [
+  "draft",
+  "active",
+  "archived",
+]);
+export const libraryContextPackSourceModeEnum = pgEnum("library_context_pack_source_mode", [
+  "manual",
+  "view_backed",
+  "snapshot",
+]);
+export const libraryContextPackMemberModeEnum = pgEnum("library_context_pack_member_mode", [
+  "include",
+  "exclude",
+  "pin",
+]);
+export const libraryContextPackRuntimeTierEnum = pgEnum("library_context_pack_runtime_tier", [
+  "durable_memory",
+  "retrieved_evidence",
+]);
+export const libraryContextPackReadinessStatusEnum = pgEnum("library_context_pack_readiness_status", [
+  "draft",
+  "review_pending",
+  "trusted",
+  "stale",
+]);
+export const libraryContextPackRelationPolicyEnum = pgEnum("library_context_pack_relation_policy", [
+  "none",
+  "manual_only",
+  "one_hop_gated",
+]);
+export const libraryKnowledgeRelationKindEnum = pgEnum("library_knowledge_relation_kind", [
+  "wikilink",
+  "markdown",
+]);
+export const libraryKnowledgeResolutionStatusEnum = pgEnum("library_knowledge_resolution_status", [
+  "resolved",
+  "ambiguous",
+  "unresolved",
+  "forbidden",
+]);
+export const libraryKnowledgeMatchedByEnum = pgEnum("library_knowledge_matched_by", [
+  "logical_path",
+  "title",
+  "alias",
+]);
+export const libraryKnowledgeBackfillRunStatusEnum = pgEnum("library_knowledge_backfill_run_status", [
+  "queued",
+  "running",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+export const librarySavedViewVisibilityEnum = pgEnum("library_saved_view_visibility", [
+  "private",
+  "team",
+]);
+export const librarySavedViewScopeEnum = pgEnum("library_saved_view_scope", [
+  "all",
+  "my_library",
+  "private_vault",
+  "shared_with_me",
+  "shared_groups",
+]);
 
 export const financeTransactionTypeEnum = pgEnum("finance_transaction_type", [
   "income",
@@ -2278,9 +2349,20 @@ export const libraryIndexJobs = pgTable("library_index_jobs", {
   libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
   projectId: varchar("project_id", { length: 100 }),
   jobType: varchar("job_type", { length: 64 }).notNull(),
+  payloadVersion: varchar("payload_version", { length: 16 }).notNull().default("v2"),
+  payloadJson: json("payload_json").$type<Record<string, unknown>>().notNull().default({}),
+  source: varchar("source", { length: 255 }),
+  sourceMetadataJson: json("source_metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+  dedupeKey: varchar("dedupe_key", { length: 255 }),
   status: libraryIndexJobStatusEnum("status").notNull().default("pending"),
   attemptCount: integer("attempt_count").notNull().default(0),
   maxAttempts: integer("max_attempts").notNull().default(5),
+  knowledgeRefreshReason: varchar("knowledge_refresh_reason", { length: 64 }),
+  knowledgeRefreshStatus: varchar("knowledge_refresh_status", { length: 32 }),
+  knowledgeRefreshAttemptCount: integer("knowledge_refresh_attempt_count").notNull().default(0),
+  knowledgeRefreshRequestedAt: timestamp("knowledge_refresh_requested_at", { withTimezone: true }),
+  knowledgeRefreshCompletedAt: timestamp("knowledge_refresh_completed_at", { withTimezone: true }),
+  knowledgeRefreshError: text("knowledge_refresh_error"),
   runAt: timestamp("run_at", { withTimezone: true }).defaultNow().notNull(),
   nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
   lastError: text("last_error"),
@@ -2293,10 +2375,336 @@ export const libraryIndexJobs = pgTable("library_index_jobs", {
   index("library_index_jobs_tenant_project_idx").on(t.tenantId, t.projectId),
   index("library_index_jobs_status_retry_idx").on(t.status, t.nextRetryAt),
   index("library_index_jobs_item_status_idx").on(t.libraryItemId, t.status),
+  index("library_index_jobs_knowledge_refresh_idx").on(t.tenantId, t.knowledgeRefreshStatus, t.knowledgeRefreshRequestedAt),
 ]);
 
 export type LibraryIndexJob = typeof libraryIndexJobs.$inferSelect;
 export type InsertLibraryIndexJob = typeof libraryIndexJobs.$inferInsert;
+
+export const librarySavedViews = pgTable("library_saved_views", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  managingGroupId: integer("managing_group_id").references(() => userGroups.id, { onDelete: "set null" }),
+  slug: varchar("slug", { length: 160 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  visibilityMode: librarySavedViewVisibilityEnum("visibility_mode").notNull().default("private"),
+  scopeMode: librarySavedViewScopeEnum("scope_mode").notNull().default("all"),
+  queryDefinition: json("query_definition").$type<Record<string, unknown>>().notNull().default({}),
+  presentationDefinition: json("presentation_definition").$type<Record<string, unknown>>().notNull().default({}),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("library_saved_views_tenant_slug_unique").on(t.tenantId, t.slug),
+  index("library_saved_views_tenant_owner_idx").on(t.tenantId, t.ownerUserId, t.updatedAt),
+  index("library_saved_views_tenant_visibility_idx").on(t.tenantId, t.visibilityMode, t.updatedAt),
+]);
+
+export type LibrarySavedView = typeof librarySavedViews.$inferSelect;
+export type InsertLibrarySavedView = typeof librarySavedViews.$inferInsert;
+
+export const libraryContextPacks = pgTable("library_context_packs", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  managingGroupId: integer("managing_group_id").references(() => userGroups.id, { onDelete: "set null" }),
+  slug: varchar("slug", { length: 160 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  status: libraryContextPackStatusEnum("status").notNull().default("draft"),
+  sourceMode: libraryContextPackSourceModeEnum("source_mode").notNull(),
+  savedViewId: integer("saved_view_id").references(() => librarySavedViews.id, { onDelete: "set null" }),
+  relationExpansionPolicy: libraryContextPackRelationPolicyEnum("relation_expansion_policy")
+    .notNull()
+    .default("none"),
+  defaultRuntimeTier: libraryContextPackRuntimeTierEnum("default_runtime_tier")
+    .notNull()
+    .default("retrieved_evidence"),
+  budgetProfile: varchar("budget_profile", { length: 32 }).notNull().default("retrieval"),
+  maxNoteCount: integer("max_note_count"),
+  maxTokenHint: integer("max_token_hint"),
+  freshnessExpectation: varchar("freshness_expectation", { length: 32 }),
+  readinessStatus: libraryContextPackReadinessStatusEnum("readiness_status")
+    .notNull()
+    .default("draft"),
+  approvedForAgents: boolean("approved_for_agents").notNull().default(false),
+  submittedForReviewAt: timestamp("submitted_for_review_at", { withTimezone: true }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  reviewerUserId: integer("reviewer_user_id").references(() => users.id, { onDelete: "set null" }),
+  lastSourceMutationAt: timestamp("last_source_mutation_at", { withTimezone: true }),
+  freshUntil: timestamp("fresh_until", { withTimezone: true }),
+  metadata: json("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("library_context_packs_tenant_slug_unique").on(t.tenantId, t.slug),
+  index("library_context_packs_tenant_status_idx").on(t.tenantId, t.status, t.updatedAt),
+  index("library_context_packs_tenant_owner_idx").on(t.tenantId, t.ownerUserId, t.updatedAt),
+  index("library_context_packs_tenant_readiness_idx").on(
+    t.tenantId,
+    t.readinessStatus,
+    t.approvedForAgents,
+  ),
+  index("library_context_packs_saved_view_idx").on(t.savedViewId),
+]);
+
+export type LibraryContextPack = typeof libraryContextPacks.$inferSelect;
+export type InsertLibraryContextPack = typeof libraryContextPacks.$inferInsert;
+
+export const libraryContextPackReviewEvents = pgTable("library_context_pack_review_events", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  contextPackId: integer("context_pack_id").notNull().references(() => libraryContextPacks.id, { onDelete: "cascade" }),
+  actorUserId: integer("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  action: varchar("action", { length: 64 }).notNull(),
+  previousReadinessStatus: libraryContextPackReadinessStatusEnum("previous_readiness_status"),
+  nextReadinessStatus: libraryContextPackReadinessStatusEnum("next_readiness_status"),
+  previousApprovedForAgents: boolean("previous_approved_for_agents").notNull().default(false),
+  nextApprovedForAgents: boolean("next_approved_for_agents").notNull().default(false),
+  reason: text("reason"),
+  metadata: json("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("library_context_pack_review_events_pack_idx").on(t.contextPackId, t.createdAt),
+  index("library_context_pack_review_events_tenant_idx").on(t.tenantId, t.createdAt),
+]);
+
+export type LibraryContextPackReviewEvent = typeof libraryContextPackReviewEvents.$inferSelect;
+export type InsertLibraryContextPackReviewEvent = typeof libraryContextPackReviewEvents.$inferInsert;
+
+export const libraryContextPackMembers = pgTable("library_context_pack_members", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  contextPackId: integer("context_pack_id").notNull().references(() => libraryContextPacks.id, { onDelete: "cascade" }),
+  libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+  memberMode: libraryContextPackMemberModeEnum("member_mode").notNull(),
+  orderIndex: integer("order_index").notNull().default(0),
+  rationale: text("rationale"),
+  snapshotMetadata: json("snapshot_metadata").$type<Record<string, unknown>>().notNull().default({}),
+  createdByUserId: integer("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("library_context_pack_members_unique").on(
+    t.contextPackId,
+    t.libraryItemId,
+    t.memberMode,
+  ),
+  index("library_context_pack_members_pack_idx").on(
+    t.contextPackId,
+    t.memberMode,
+    t.orderIndex,
+  ),
+  index("library_context_pack_members_item_idx").on(t.libraryItemId, t.memberMode),
+  index("library_context_pack_members_tenant_idx").on(t.tenantId, t.contextPackId),
+]);
+
+export type LibraryContextPackMember = typeof libraryContextPackMembers.$inferSelect;
+export type InsertLibraryContextPackMember = typeof libraryContextPackMembers.$inferInsert;
+
+export const libraryKnowledgeNotes = pgTable("library_knowledge_notes", {
+  libraryItemId: integer("library_item_id")
+    .primaryKey()
+    .references(() => libraryItems.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  logicalPath: varchar("logical_path", { length: 512 }),
+  normalizedTitle: varchar("normalized_title", { length: 512 }).notNull(),
+  aliases: json("aliases").$type<string[]>().notNull().default([]),
+  tags: json("tags").$type<string[]>().notNull().default([]),
+  properties: json("properties").$type<Record<string, unknown>>().notNull().default({}),
+  headings: json("headings").$type<Array<{
+    depth: number;
+    text: string;
+    slug: string;
+  }>>().notNull().default([]),
+  diagnostics: json("diagnostics").$type<Record<string, unknown>>().notNull().default({}),
+  contentFingerprint: varchar("content_fingerprint", { length: 128 }),
+  sourceUpdatedAt: timestamp("source_updated_at", { withTimezone: true }).notNull(),
+  lastExtractedAt: timestamp("last_extracted_at", { withTimezone: true }).defaultNow().notNull(),
+  lastVisibilityRefreshAt: timestamp("last_visibility_refresh_at", { withTimezone: true }),
+  lastBackfilledAt: timestamp("last_backfilled_at", { withTimezone: true }),
+  isStale: boolean("is_stale").notNull().default(false),
+  staleReason: varchar("stale_reason", { length: 64 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("library_knowledge_notes_tenant_logical_path_idx").on(
+    t.tenantId,
+    t.logicalPath,
+  ),
+  index("library_knowledge_notes_tenant_title_idx").on(
+    t.tenantId,
+    t.normalizedTitle,
+  ),
+  index("library_knowledge_notes_tenant_stale_idx").on(
+    t.tenantId,
+    t.isStale,
+    t.updatedAt,
+  ),
+]);
+
+export type LibraryKnowledgeNote = typeof libraryKnowledgeNotes.$inferSelect;
+export type InsertLibraryKnowledgeNote = typeof libraryKnowledgeNotes.$inferInsert;
+
+export const libraryKnowledgeRelations = pgTable("library_knowledge_relations", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  sourceLibraryItemId: integer("source_library_item_id")
+    .notNull()
+    .references(() => libraryItems.id, { onDelete: "cascade" }),
+  targetLibraryItemId: integer("target_library_item_id").references(() => libraryItems.id, {
+    onDelete: "cascade",
+  }),
+  relationKind: libraryKnowledgeRelationKindEnum("relation_kind").notNull(),
+  rawReference: text("raw_reference").notNull(),
+  displayText: text("display_text"),
+  targetPath: varchar("target_path", { length: 512 }),
+  targetHeading: varchar("target_heading", { length: 255 }),
+  resolutionStatus: libraryKnowledgeResolutionStatusEnum("resolution_status").notNull(),
+  matchedBy: libraryKnowledgeMatchedByEnum("matched_by"),
+  matchedValue: varchar("matched_value", { length: 512 }),
+  candidateLibraryItemIds: json("candidate_library_item_ids").$type<number[]>().notNull().default([]),
+  diagnostics: json("diagnostics").$type<Record<string, unknown>>().notNull().default({}),
+  extractedAt: timestamp("extracted_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("library_knowledge_relations_source_idx").on(
+    t.sourceLibraryItemId,
+    t.relationKind,
+  ),
+  index("library_knowledge_relations_target_idx").on(
+    t.targetLibraryItemId,
+    t.resolutionStatus,
+  ),
+  index("library_knowledge_relations_tenant_status_idx").on(
+    t.tenantId,
+    t.resolutionStatus,
+    t.updatedAt,
+  ),
+]);
+
+export type LibraryKnowledgeRelation = typeof libraryKnowledgeRelations.$inferSelect;
+export type InsertLibraryKnowledgeRelation = typeof libraryKnowledgeRelations.$inferInsert;
+
+export const libraryKnowledgeBackfillRuns = pgTable("library_knowledge_backfill_runs", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestedByUserId: integer("requested_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  status: libraryKnowledgeBackfillRunStatusEnum("status").notNull().default("queued"),
+  totalNotes: integer("total_notes").notNull().default(0),
+  processedNotes: integer("processed_notes").notNull().default(0),
+  successfulNotes: integer("successful_notes").notNull().default(0),
+  failedNotes: integer("failed_notes").notNull().default(0),
+  retryCount: integer("retry_count").notNull().default(0),
+  lastCursorLibraryItemId: integer("last_cursor_library_item_id"),
+  lastError: text("last_error"),
+  startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("library_knowledge_backfill_runs_tenant_status_idx").on(
+    t.tenantId,
+    t.status,
+    t.updatedAt,
+  ),
+  index("library_knowledge_backfill_runs_tenant_started_idx").on(
+    t.tenantId,
+    t.startedAt,
+  ),
+]);
+
+export type LibraryKnowledgeBackfillRun = typeof libraryKnowledgeBackfillRuns.$inferSelect;
+export type InsertLibraryKnowledgeBackfillRun = typeof libraryKnowledgeBackfillRuns.$inferInsert;
+
+export const libraryKnowledgeTelemetryEvents = pgTable("library_knowledge_telemetry_events", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  eventType: varchar("event_type", { length: 64 }).notNull(),
+  surface: varchar("surface", { length: 64 }),
+  status: varchar("status", { length: 64 }),
+  sampleCount: integer("sample_count").notNull().default(1),
+  metricJson: json("metric_json").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("library_knowledge_telemetry_events_tenant_created_idx").on(t.tenantId, t.createdAt),
+  index("library_knowledge_telemetry_events_tenant_type_created_idx").on(t.tenantId, t.eventType, t.createdAt),
+  index("library_knowledge_telemetry_events_tenant_surface_created_idx").on(t.tenantId, t.surface, t.createdAt),
+]);
+
+export type LibraryKnowledgeTelemetryEvent = typeof libraryKnowledgeTelemetryEvents.$inferSelect;
+export type InsertLibraryKnowledgeTelemetryEvent = typeof libraryKnowledgeTelemetryEvents.$inferInsert;
+
+export const libraryKnowledgeTelemetryRollups = pgTable("library_knowledge_telemetry_rollups", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+  windowEnd: timestamp("window_end", { withTimezone: true }).notNull(),
+  eventType: varchar("event_type", { length: 64 }).notNull(),
+  surface: varchar("surface", { length: 64 }),
+  status: varchar("status", { length: 64 }),
+  sampleCount: integer("sample_count").notNull().default(0),
+  metricJson: json("metric_json").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("library_knowledge_telemetry_rollups_tenant_window_idx").on(
+    t.tenantId,
+    t.windowStart,
+    t.windowEnd,
+  ),
+  index("library_knowledge_telemetry_rollups_tenant_type_idx").on(
+    t.tenantId,
+    t.eventType,
+    t.windowStart,
+  ),
+]);
+
+export type LibraryKnowledgeTelemetryRollup = typeof libraryKnowledgeTelemetryRollups.$inferSelect;
+export type InsertLibraryKnowledgeTelemetryRollup = typeof libraryKnowledgeTelemetryRollups.$inferInsert;
+
+export const libraryKnowledgeReleaseGateOverrides = pgTable("library_knowledge_release_gate_overrides", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  scopeType: varchar("scope_type", { length: 16 }).notNull(),
+  scopeId: varchar("scope_id", { length: 64 }),
+  actorUserId: integer("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  approvedByUserId: integer("approved_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  overrideMode: varchar("override_mode", { length: 32 }).notNull().default("standard"),
+  reason: text("reason").notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("active"),
+  metadata: json("metadata").$type<Record<string, unknown>>().notNull().default({}),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  approvalReason: text("approval_reason"),
+  rejectedAt: timestamp("rejected_at", { withTimezone: true }),
+  rejectedByUserId: integer("rejected_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  rejectedReason: text("rejected_reason"),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  revokedByUserId: integer("revoked_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  revokedReason: text("revoked_reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("library_knowledge_release_gate_overrides_tenant_active_idx").on(
+    t.tenantId,
+    t.status,
+    t.expiresAt,
+  ),
+  index("library_knowledge_release_gate_overrides_scope_idx").on(
+    t.scopeType,
+    t.scopeId,
+    t.status,
+    t.expiresAt,
+  ),
+]);
+
+export type LibraryKnowledgeReleaseGateOverrideRow = typeof libraryKnowledgeReleaseGateOverrides.$inferSelect;
+export type InsertLibraryKnowledgeReleaseGateOverrideRow = typeof libraryKnowledgeReleaseGateOverrides.$inferInsert;
 
 export const financeCounterparties = pgTable("finance_counterparties", {
   id: serial("id").primaryKey(),
@@ -8827,6 +9235,7 @@ export const teamRooms = pgTable("team_rooms", {
   roomType: teamRoomTypeEnum("roomType").notNull(),
   title: varchar("title", { length: 255 }),
   goalPrompt: text("goalPrompt"),
+  language: text("language").notNull().default("en"),
   projectId: integer("projectId"),
   viewMode: varchar("viewMode", { length: 30 }).default("transparent"),
   summaryMode: varchar("summaryMode", { length: 30 }),
@@ -8937,6 +9346,17 @@ export const teamRuns = pgTable("team_runs", {
   budgetSnapshotJson: jsonb("budgetSnapshotJson").$type<BudgetSnapshot>(),
   summaryArtifactId: varchar("summaryArtifactId", { length: 36 }),
   stopReason: text("stopReason"),
+  runtimeEngine: varchar("runtimeEngine", { length: 32 }),
+  runtimeMode: varchar("runtimeMode", { length: 32 }),
+  runtimeSdkVersion: varchar("runtimeSdkVersion", { length: 32 }),
+  runtimeAdapterVersion: varchar("runtimeAdapterVersion", { length: 32 }),
+  runtimeTraceId: varchar("runtimeTraceId", { length: 255 }),
+  runtimeGatewayRouteId: varchar("runtimeGatewayRouteId", { length: 255 }),
+  runtimeFrozenAt: timestamp("runtimeFrozenAt", { withTimezone: true }),
+  runtimeTerminalReason: varchar("runtimeTerminalReason", { length: 120 }),
+  runtimeCurrentStepKey: varchar("runtimeCurrentStepKey", { length: 180 }),
+  runtimeApprovalState: varchar("runtimeApprovalState", { length: 64 }),
+  runtimeStateJson: jsonb("runtimeStateJson").$type<Record<string, unknown>>(),
   startedAt: timestamp("startedAt", { withTimezone: true }),
   endedAt: timestamp("endedAt", { withTimezone: true }),
 }, (t) => [
@@ -8947,6 +9367,82 @@ export const teamRuns = pgTable("team_runs", {
 
 export type TeamRun = typeof teamRuns.$inferSelect;
 export type InsertTeamRun = typeof teamRuns.$inferInsert;
+
+/**
+ * agent_runtime_traces — generic redacted runtime archive for Chat, Team, Responses, and shared skill callers.
+ */
+export const agentRuntimeTraces = pgTable("agent_runtime_traces", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  surface: varchar("surface", { length: 32 }).notNull(),
+  roomId: varchar("roomId", { length: 36 }),
+  runId: varchar("runId", { length: 36 }),
+  messageId: varchar("messageId", { length: 36 }),
+  stepKey: varchar("stepKey", { length: 180 }),
+  attemptId: varchar("attemptId", { length: 120 }),
+  traceId: varchar("traceId", { length: 255 }).notNull(),
+  eventId: varchar("eventId", { length: 255 }).notNull(),
+  sequence: integer("sequence").notNull(),
+  eventName: varchar("eventName", { length: 160 }).notNull(),
+  sourceComponent: varchar("sourceComponent", { length: 120 }).notNull(),
+  severity: varchar("severity", { length: 16 }).notNull().default("info"),
+  summary: text("summary"),
+  redactedMetadataJson: jsonb("redactedMetadataJson").notNull().default(sql`'{}'::jsonb`),
+  runtimeSdkVersion: varchar("runtimeSdkVersion", { length: 32 }),
+  runtimeAdapterVersion: varchar("runtimeAdapterVersion", { length: 32 }),
+  modelId: varchar("modelId", { length: 180 }),
+  providerId: varchar("providerId", { length: 120 }),
+  gatewayRouteId: varchar("gatewayRouteId", { length: 255 }),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("agent_runtime_traces_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
+  uniqueIndex("agent_runtime_traces_tenant_run_sequence_unique").on(t.tenantId, t.runId, t.sequence),
+  index("agent_runtime_traces_tenant_trace_idx").on(t.tenantId, t.traceId),
+  index("agent_runtime_traces_tenant_event_idx").on(t.tenantId, t.eventName, t.createdAt),
+]);
+
+export type AgentRuntimeTrace = typeof agentRuntimeTraces.$inferSelect;
+export type InsertAgentRuntimeTrace = typeof agentRuntimeTraces.$inferInsert;
+
+/**
+ * agent_runtime_checkpoints — generic pause/resume snapshots for Chat, Responses, and shared-skill runtime.
+ */
+export const agentRuntimeCheckpoints = pgTable("agent_runtime_checkpoints", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  surface: varchar("surface", { length: 32 }).notNull(),
+  roomId: varchar("roomId", { length: 36 }),
+  runId: varchar("runId", { length: 36 }),
+  messageId: varchar("messageId", { length: 36 }),
+  stepKey: varchar("stepKey", { length: 180 }),
+  attemptId: varchar("attemptId", { length: 120 }),
+  checkpointId: varchar("checkpointId", { length: 255 }).notNull(),
+  checkpointStatus: varchar("checkpointStatus", { length: 32 }).notNull(),
+  approvalState: varchar("approvalState", { length: 64 }),
+  resumeCursor: text("resumeCursor"),
+  snapshotJson: jsonb("snapshotJson").notNull().default(sql`'{}'::jsonb`),
+  detailJson: jsonb("detailJson").notNull().default(sql`'{}'::jsonb`),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  requestedBy: varchar("requestedBy", { length: 120 }),
+  approvedBy: varchar("approvedBy", { length: 120 }),
+  rejectedBy: varchar("rejectedBy", { length: 120 }),
+  resumedBy: varchar("resumedBy", { length: 120 }),
+  requestedAt: timestamp("requestedAt", { withTimezone: true }).defaultNow().notNull(),
+  approvedAt: timestamp("approvedAt", { withTimezone: true }),
+  rejectedAt: timestamp("rejectedAt", { withTimezone: true }),
+  resumedAt: timestamp("resumedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("agent_runtime_checkpoints_tenant_checkpoint_unique").on(t.tenantId, t.checkpointId),
+  uniqueIndex("agent_runtime_checkpoints_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
+  index("agent_runtime_checkpoints_tenant_run_step_idx").on(t.tenantId, t.runId, t.stepKey),
+  index("agent_runtime_checkpoints_tenant_status_updated_idx").on(t.tenantId, t.checkpointStatus, t.updatedAt),
+]);
+
+export type AgentRuntimeCheckpointRow = typeof agentRuntimeCheckpoints.$inferSelect;
+export type InsertAgentRuntimeCheckpointRow = typeof agentRuntimeCheckpoints.$inferInsert;
 
 /**
  * team_work_items — durable work objects for orchestrated routines and revisions.
@@ -9444,6 +9940,260 @@ export const workAutomationRunEvents = pgTable("work_automation_run_events", {
 
 export type WorkAutomationRunEvent = typeof workAutomationRunEvents.$inferSelect;
 export type InsertWorkAutomationRunEvent = typeof workAutomationRunEvents.$inferInsert;
+
+/**
+ * auto_team_route_decisions — canonical route classification and policy snapshot for an Auto-Team run.
+ */
+export const autoTeamRouteDecisions = pgTable("auto_team_route_decisions", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).references(() => teamRuns.id, { onDelete: "cascade" }),
+  workRequestId: varchar("workRequestId", { length: 36 }).references(() => workRequests.id, { onDelete: "set null" }),
+  workCaseId: varchar("workCaseId", { length: 36 }).references(() => workCases.id, { onDelete: "set null" }),
+  routeClass: varchar("routeClass", { length: 64 }).$type<AutoTeamRouteClass>().notNull(),
+  routeConfidence: real("routeConfidence"),
+  allowedCapabilityFamiliesJson: jsonb("allowedCapabilityFamiliesJson").$type<AutoTeamCapabilityFamily[]>().notNull().default([]),
+  selectedPolicyJson: jsonb("selectedPolicyJson").$type<Record<string, unknown>>(),
+  selectedOrchestratorPersonaId: varchar("selectedOrchestratorPersonaId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  language: varchar("language", { length: 8 }).$type<"en" | "th">().notNull().default("en"),
+  decisionReason: text("decisionReason"),
+  source: varchar("source", { length: 64 }).notNull().default("auto_team_route_policy"),
+  blockedReason: text("blockedReason"),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("auto_team_route_decisions_tenant_run_idempotency_unique")
+    .on(t.tenantId, t.runId, t.idempotencyKey),
+  index("auto_team_route_decisions_tenant_room_idx").on(t.tenantId, t.roomId, t.createdAt),
+  index("auto_team_route_decisions_tenant_request_idx").on(t.tenantId, t.workRequestId, t.createdAt),
+  index("auto_team_route_decisions_tenant_route_idx").on(t.tenantId, t.routeClass, t.createdAt),
+]);
+
+export type AutoTeamRouteDecisionRow = typeof autoTeamRouteDecisions.$inferSelect;
+export type InsertAutoTeamRouteDecisionRow = typeof autoTeamRouteDecisions.$inferInsert;
+
+/**
+ * auto_team_execution_stages — durable, ordered stage history for an Auto-Team run.
+ */
+export const autoTeamExecutionStages = pgTable("auto_team_execution_stages", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => teamRuns.id, { onDelete: "cascade" }),
+  routeDecisionId: varchar("routeDecisionId", { length: 36 }).references(() => autoTeamRouteDecisions.id, { onDelete: "cascade" }),
+  workItemId: varchar("workItemId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  planStepKey: varchar("planStepKey", { length: 120 }).notNull(),
+  stageType: varchar("stageType", { length: 64 }).$type<AutoTeamStageType>().notNull(),
+  status: varchar("status", { length: 32 }).$type<AutoTeamStageStatus>().notNull().default("queued"),
+  assignedPersonaId: varchar("assignedPersonaId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  expectedCapabilityFamily: varchar("expectedCapabilityFamily", { length: 64 }).$type<AutoTeamCapabilityFamily>(),
+  selectedSkillId: varchar("selectedSkillId", { length: 180 }),
+  selectedProvider: varchar("selectedProvider", { length: 120 }),
+  inputArtifactRefsJson: jsonb("inputArtifactRefsJson").$type<string[]>().notNull().default([]),
+  outputArtifactRefsJson: jsonb("outputArtifactRefsJson").$type<string[]>().notNull().default([]),
+  jobRefIdsJson: jsonb("jobRefIdsJson").$type<string[]>().notNull().default([]),
+  attempt: integer("attempt").notNull().default(1),
+  maxAttempts: integer("maxAttempts").notNull().default(3),
+  claimToken: varchar("claimToken", { length: 128 }),
+  claimExpiresAt: timestamp("claimExpiresAt", { withTimezone: true }),
+  claimedBy: varchar("claimedBy", { length: 180 }),
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  deadlineAt: timestamp("deadlineAt", { withTimezone: true }),
+  blockedReason: text("blockedReason"),
+  errorCode: varchar("errorCode", { length: 120 }),
+  errorMessage: text("errorMessage"),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("auto_team_execution_stages_tenant_run_step_attempt_unique")
+    .on(t.tenantId, t.runId, t.planStepKey, t.attempt),
+  uniqueIndex("auto_team_execution_stages_tenant_run_idempotency_unique")
+    .on(t.tenantId, t.runId, t.idempotencyKey),
+  index("auto_team_execution_stages_tenant_run_status_idx").on(t.tenantId, t.runId, t.status),
+  index("auto_team_execution_stages_tenant_room_idx").on(t.tenantId, t.roomId, t.updatedAt),
+  index("auto_team_execution_stages_tenant_work_item_idx").on(t.tenantId, t.workItemId),
+  index("auto_team_execution_stages_tenant_route_decision_idx").on(t.tenantId, t.routeDecisionId),
+]);
+
+export type AutoTeamExecutionStageRow = typeof autoTeamExecutionStages.$inferSelect;
+export type InsertAutoTeamExecutionStageRow = typeof autoTeamExecutionStages.$inferInsert;
+
+/**
+ * auto_team_media_job_refs — provider task references for media execution.
+ */
+export const autoTeamMediaJobRefs = pgTable("auto_team_media_job_refs", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => teamRuns.id, { onDelete: "cascade" }),
+  stageId: varchar("stageId", { length: 36 }).references(() => autoTeamExecutionStages.id, { onDelete: "cascade" }),
+  workItemId: varchar("workItemId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  mediaType: varchar("mediaType", { length: 16 }).$type<AutoTeamMediaType>().notNull(),
+  provider: varchar("provider", { length: 120 }).notNull(),
+  model: varchar("model", { length: 180 }).notNull(),
+  providerTaskId: varchar("providerTaskId", { length: 255 }),
+  providerStatus: varchar("providerStatus", { length: 64 }).notNull().default("queued"),
+  submittedPromptArtifactRef: varchar("submittedPromptArtifactRef", { length: 255 }),
+  resultArtifactRefsJson: jsonb("resultArtifactRefsJson").$type<string[]>().notNull().default([]),
+  providerRequestHash: varchar("providerRequestHash", { length: 128 }),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  lastPolledAt: timestamp("lastPolledAt", { withTimezone: true }),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  failedAt: timestamp("failedAt", { withTimezone: true }),
+  errorCode: varchar("errorCode", { length: 120 }),
+  errorMessage: text("errorMessage"),
+  metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("auto_team_media_job_refs_tenant_idempotency_unique")
+    .on(t.tenantId, t.idempotencyKey),
+  index("auto_team_media_job_refs_provider_task_idx").on(t.tenantId, t.provider, t.providerTaskId),
+  index("auto_team_media_job_refs_run_status_idx").on(t.tenantId, t.runId, t.providerStatus),
+  index("auto_team_media_job_refs_stage_idx").on(t.tenantId, t.stageId),
+  index("auto_team_media_job_refs_work_item_idx").on(t.tenantId, t.workItemId),
+]);
+
+export type AutoTeamMediaJobRefRow = typeof autoTeamMediaJobRefs.$inferSelect;
+export type InsertAutoTeamMediaJobRefRow = typeof autoTeamMediaJobRefs.$inferInsert;
+
+/**
+ * auto_team_review_records — reviewer scores and repair instructions.
+ */
+export const autoTeamReviewRecords = pgTable("auto_team_review_records", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => teamRuns.id, { onDelete: "cascade" }),
+  stageId: varchar("stageId", { length: 36 }).references(() => autoTeamExecutionStages.id, { onDelete: "cascade" }),
+  workItemId: varchar("workItemId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  reviewerPersonaId: varchar("reviewerPersonaId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  reviewType: varchar("reviewType", { length: 120 }).notNull(),
+  score: doublePrecision("score").notNull().default(0),
+  passThreshold: doublePrecision("passThreshold").notNull().default(0),
+  passed: boolean("passed").notNull().default(false),
+  reviewedArtifactRefsJson: jsonb("reviewedArtifactRefsJson").$type<string[]>().notNull().default([]),
+  reviewedJobRefIdsJson: jsonb("reviewedJobRefIdsJson").$type<string[]>().notNull().default([]),
+  comments: text("comments"),
+  repairInstructions: text("repairInstructions"),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("auto_team_review_records_tenant_run_review_idempotency_unique")
+    .on(t.tenantId, t.runId, t.reviewType, t.idempotencyKey),
+  index("auto_team_review_records_tenant_run_passed_idx").on(t.tenantId, t.runId, t.passed),
+  index("auto_team_review_records_tenant_stage_idx").on(t.tenantId, t.stageId),
+]);
+
+export type AutoTeamReviewRecordRow = typeof autoTeamReviewRecords.$inferSelect;
+export type InsertAutoTeamReviewRecordRow = typeof autoTeamReviewRecords.$inferInsert;
+
+/**
+ * auto_team_final_results — route completion and finalization evidence.
+ */
+export const autoTeamFinalResults = pgTable("auto_team_final_results", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => teamRuns.id, { onDelete: "cascade" }),
+  routeDecisionId: varchar("routeDecisionId", { length: 36 }).references(() => autoTeamRouteDecisions.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 64 }).$type<AutoTeamFinalResultStatus>().notNull().default("legacy_unverified"),
+  finalArtifactRefsJson: jsonb("finalArtifactRefsJson").$type<string[]>().notNull().default([]),
+  mediaJobRefIdsJson: jsonb("mediaJobRefIdsJson").$type<string[]>().notNull().default([]),
+  reviewRecordRefIdsJson: jsonb("reviewRecordRefIdsJson").$type<string[]>().notNull().default([]),
+  humanApprovalStatus: varchar("humanApprovalStatus", { length: 32 }).$type<"pending" | "approved" | "rejected" | "not_required">().notNull().default("not_required"),
+  summary: text("summary"),
+  failureReason: text("failureReason"),
+  blockedReason: text("blockedReason"),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("auto_team_final_results_tenant_run_idempotency_unique")
+    .on(t.tenantId, t.runId, t.idempotencyKey),
+  index("auto_team_final_results_tenant_route_decision_idx").on(t.tenantId, t.routeDecisionId),
+  index("auto_team_final_results_tenant_run_status_idx").on(t.tenantId, t.runId, t.status),
+]);
+
+export type AutoTeamFinalResultRow = typeof autoTeamFinalResults.$inferSelect;
+export type InsertAutoTeamFinalResultRow = typeof autoTeamFinalResults.$inferInsert;
+
+/**
+ * auto_team_trace_events — append-only durable trace log for Auto-Team runs.
+ */
+export const autoTeamTraceEvents = pgTable("auto_team_trace_events", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => teamRuns.id, { onDelete: "cascade" }),
+  stageId: varchar("stageId", { length: 36 }).references(() => autoTeamExecutionStages.id, { onDelete: "cascade" }),
+  workItemId: varchar("workItemId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  traceEventId: varchar("traceEventId", { length: 120 }).notNull(),
+  sequence: integer("sequence").notNull(),
+  eventName: varchar("eventName", { length: 160 }).notNull(),
+  sourceComponent: varchar("sourceComponent", { length: 120 }).notNull(),
+  severity: varchar("severity", { length: 16 }).$type<"debug" | "info" | "warn" | "error">().notNull().default("info"),
+  summary: text("summary"),
+  redactedMetadataJson: jsonb("redactedMetadataJson").$type<Record<string, unknown>>().notNull().default({}),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("auto_team_trace_events_tenant_run_sequence_unique")
+    .on(t.tenantId, t.runId, t.sequence),
+  uniqueIndex("auto_team_trace_events_tenant_run_idempotency_unique")
+    .on(t.tenantId, t.runId, t.idempotencyKey),
+  index("auto_team_trace_events_tenant_event_idx").on(t.tenantId, t.eventName, t.createdAt),
+  index("auto_team_trace_events_tenant_trace_idx").on(t.tenantId, t.traceEventId),
+]);
+
+export type AutoTeamTraceEventRow = typeof autoTeamTraceEvents.$inferSelect;
+export type InsertAutoTeamTraceEventRow = typeof autoTeamTraceEvents.$inferInsert;
+
+/**
+ * auto_team_artifact_refs — canonical evidence handles for prompt/storyboard/media/review/final assets.
+ */
+export const autoTeamArtifactRefs = pgTable("auto_team_artifact_refs", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).references(() => assistantTeams.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).references(() => teamRuns.id, { onDelete: "cascade" }),
+  stageId: varchar("stageId", { length: 36 }).references(() => autoTeamExecutionStages.id, { onDelete: "cascade" }),
+  workItemId: varchar("workItemId", { length: 36 }).references(() => teamWorkItems.id, { onDelete: "set null" }),
+  artifactType: varchar("artifactType", { length: 120 }).notNull(),
+  artifactRole: varchar("artifactRole", { length: 64 }).notNull(),
+  storageRef: text("storageRef"),
+  externalRef: text("externalRef"),
+  contentHash: varchar("contentHash", { length: 128 }),
+  visibility: varchar("visibility", { length: 32 }).notNull().default("tenant"),
+  retentionPolicyJson: jsonb("retentionPolicyJson").$type<Record<string, unknown>>().notNull().default({}),
+  safetyStatus: varchar("safetyStatus", { length: 32 }).notNull().default("unknown"),
+  source: varchar("source", { length: 120 }),
+  idempotencyKey: varchar("idempotencyKey", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("auto_team_artifact_refs_tenant_run_idempotency_unique")
+    .on(t.tenantId, t.runId, t.idempotencyKey),
+  index("auto_team_artifact_refs_tenant_type_idx").on(t.tenantId, t.artifactType, t.createdAt),
+  index("auto_team_artifact_refs_tenant_stage_idx").on(t.tenantId, t.stageId),
+  index("auto_team_artifact_refs_tenant_visibility_idx").on(t.tenantId, t.visibility),
+]);
+
+export type AutoTeamArtifactRefRow = typeof autoTeamArtifactRefs.$inferSelect;
+export type InsertAutoTeamArtifactRefRow = typeof autoTeamArtifactRefs.$inferInsert;
 
 /**
  * agent_activity_events — append-only event log for monitoring.

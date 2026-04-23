@@ -618,6 +618,14 @@ vi.mock("@/lib/trpc", () => ({
         useQuery: vi.fn(() => ({ data: { tasks: [], total: 0 }, isLoading: false })),
       },
     },
+    skills: {
+      getLegacyUpgradeQueueSummary: {
+        useQuery: vi.fn(() => ({
+          data: { count: 7 },
+          isLoading: false,
+        })),
+      },
+    },
     credits: {
       stats: {
         useQuery: vi.fn(() => ({ data: { totalUsage: 0 }, isLoading: false })),
@@ -1065,5 +1073,26 @@ describe("Dashboard", () => {
       screen.getByRole("button", { name: /open governance console/i })
     );
     expect(setLocationMock).toHaveBeenCalledWith("/admin/desktop-host/governance");
+  });
+
+  it("links admins directly to the skill maintenance queue from the dashboard", () => {
+    authState.role = "admin";
+
+    render(<Dashboard />);
+
+    const maintenanceButton = screen.getAllByRole("button", { name: /open maintenance queue/i })[0];
+    expect(maintenanceButton).toBeInTheDocument();
+
+    fireEvent.click(maintenanceButton);
+    expect(setLocationMock).toHaveBeenCalledWith("/admin/skills?tab=maintenance");
+  });
+
+  it("shows a legacy upgrade count badge and maintenance shortcut for admins", () => {
+    authState.role = "admin";
+
+    render(<Dashboard />);
+
+    expect(screen.getByText("7 legacy upgrades pending")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /skill maintenance \(7\)/i })).toBeInTheDocument();
   });
 });

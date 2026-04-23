@@ -7,6 +7,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const getItemSharesMock = vi.fn(() => ({
   data: { shares: [] },
 }));
+const quickSwitchNotesMock = vi.fn(() => ({
+  data: { results: [] },
+  isLoading: false,
+}));
+const knowledgeInspectorMock = vi.fn(() => ({
+  data: null,
+  isLoading: false,
+}));
+const getMarkdownContentMock = vi.fn(() => ({
+  data: null,
+  isLoading: false,
+}));
 
 const processingMetaMock = vi.fn(() => ({
   label: "Ready",
@@ -32,6 +44,15 @@ vi.mock("@/lib/trpc", () => ({
     library: {
       getItemShares: {
         useQuery: (...args: any[]) => getItemSharesMock(...args),
+      },
+      quickSwitchNotes: {
+        useQuery: (...args: any[]) => quickSwitchNotesMock(...args),
+      },
+      getKnowledgeInspector: {
+        useQuery: (...args: any[]) => knowledgeInspectorMock(...args),
+      },
+      getMarkdownContent: {
+        useQuery: (...args: any[]) => getMarkdownContentMock(...args),
       },
       exportMarkdownArtifact: {
         useMutation: () => ({
@@ -167,5 +188,38 @@ describe("DocumentPreviewPanel media previews", () => {
 
     expect(screen.getByTestId("share-button")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /copy link/i })).toBeNull();
+  });
+
+  it("renders clickable backlink badges for markdown notes", () => {
+    const onOpenKnowledgeItem = vi.fn();
+
+    render(
+      <DocumentPreviewPanel
+        item={{
+          id: 1,
+          title: "Notes.md",
+          source_url: "https://example.com/notes.md",
+          status: "ready",
+          item_type: "document",
+          metadata: {},
+        } as any}
+        previewType="markdown"
+        markdownValue="# Notes"
+        documentId={1}
+        knowledgeBacklinks={[
+          {
+            libraryItemId: 22,
+            title: "Ops Runbook",
+            logicalPath: "ops/runbook",
+            rawReference: "Ops Runbook",
+          },
+        ]}
+        onOpenKnowledgeItem={onOpenKnowledgeItem}
+      />,
+    );
+
+    expect(screen.getByText(/backlinks/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /ops runbook/i }));
+    expect(onOpenKnowledgeItem).toHaveBeenCalledWith(22, "Ops Runbook");
   });
 });

@@ -13,6 +13,12 @@ import { eq, asc } from "drizzle-orm";
 import {
   buildWaveSpeedModelSeeds,
 } from "./mediaProviderUtils";
+import {
+  GEMINI_3_1_FLASH_TTS_CREDIT_COST,
+  GEMINI_3_1_FLASH_TTS_MODEL_ID,
+  GEMINI_3_1_FLASH_TTS_VOICES,
+  buildGemini31FlashTtsInputFields,
+} from "./falGeminiTts";
 
 export type MediaType = "image" | "video" | "audio";
 
@@ -264,6 +270,37 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
   })),
 
   // ==================== Audio Models ====================
+  {
+    id: GEMINI_3_1_FLASH_TTS_MODEL_ID,
+    type: "audio",
+    name: "Gemini 3.1 Flash TTS",
+    provider: "fal_ai",
+    description: "Single- and multi-speaker text-to-speech with language steering, style instructions, and output format control",
+    aliases: [
+      "gemini 3.1 flash tts",
+      "gemini-3.1-flash-tts",
+      "gemini tts",
+      "fal gemini tts",
+    ],
+    creditCost: GEMINI_3_1_FLASH_TTS_CREDIT_COST,
+    voices: [...GEMINI_3_1_FLASH_TTS_VOICES],
+    isEnabled: true,
+    priority: 3,
+    configJson: {
+      apiPayloadFormat: "custom",
+      generateType: "text-to-speech",
+      pricingFormula: "per_unit",
+      pricingUnitMetric: "characters",
+      pricingUnitField: "text",
+      pricingUnitSize: 1000,
+      pricingUnitRounding: "ceil",
+      pricingMinUnits: 1,
+      inputFields: buildGemini31FlashTtsInputFields(),
+      pricingTiers: {
+        default: GEMINI_3_1_FLASH_TTS_CREDIT_COST,
+      },
+    },
+  },
   {
     id: "elevenlabs-tts",
     type: "audio",

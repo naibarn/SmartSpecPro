@@ -1,0 +1,130 @@
+{
+  "runtimeContractVersion": 2,
+  "traceSchemaVersion": 2,
+  "checkpointSchemaVersion": 2,
+  "status": "completed",
+  "selectedAgentName": "Content Director",
+  "selectedSkillSlug": "brainstorm",
+  "providerId": "openrouter",
+  "modelId": "openai/gpt-4.1-mini",
+  "gatewayRouteId": "gateway-auto",
+  "resolvedGatewayModelId": "openai/gpt-4.1-mini",
+  "finalOutput": {
+    "summary": "Approved step output ready."
+  },
+  "artifacts": [
+    {
+      "artifactId": "artifact-plan-1",
+      "artifactType": "plan_brief",
+      "contentRef": "artifact://plan/approved",
+      "metadata": {
+        "origin": "team"
+      }
+    }
+  ],
+  "reviewVerdict": {
+    "status": "pass",
+    "score": 0.94,
+    "issues": [],
+    "recommendation": "Proceed to the next step."
+  },
+  "events": [
+    {
+      "runtimeContractVersion": 2,
+      "traceSchemaVersion": 2,
+      "checkpointSchemaVersion": 2,
+      "eventId": "evt-pass-1",
+      "eventName": "response.completed",
+      "surface": "team",
+      "requestId": "req-pass-1",
+      "idempotencyKey": "idem-pass-1",
+      "sequence": 1,
+      "sourceComponent": "openai_agents_adapter",
+      "traceId": "trace-pass-1",
+      "stepId": "step-plan-1",
+      "stepKey": "plan-decompose",
+      "attemptId": "attempt-pass-1",
+      "sdkVersion": "0.14.2",
+      "adapterVersion": "0.1.0",
+      "redactedPayload": {
+        "summary": "approved"
+      }
+    }
+  ],
+  "traceMetadata": {
+    "groupId": "run-pass-1"
+  },
+  "traceId": "trace-pass-1",
+  "adapterVersion": "0.1.0",
+  "sdkVersion": "0.14.2",
+  "toolCallsMade": [
+    "search"
+  ],
+  "handoffsExecuted": [],
+  "actingPersona": {
+    "personaId": "persona-cd",
+    "displayLabel": "Content Director",
+    "nickname": "CD",
+    "provenance": "room_member_roster",
+    "promptSegmentRef": "persona:content-director",
+    "guidanceSummary": "Lead reviewer"
+  },
+  "stepAssignment": {
+    "ownerMemberId": "member-owner",
+    "ownerPersonaId": "persona-owner",
+    "ownerDisplayLabel": "Trend Researcher",
+    "reviewerMemberId": "member-reviewer",
+    "reviewerPersonaId": "persona-reviewer",
+    "reviewerDisplayLabel": "Content Director"
+  },
+  "nextAction": "Move to step 2.",
+  "stepId": "step-plan-1",
+  "attemptId": "attempt-pass-1",
+  "checkpointMetadata": null,
+  "eventSequenceMetadata": {
+    "latestSequence": 1
+  },
+  "evidenceRefs": [
+    "artifact://plan/approved"
+  ],
+  "repairInstructions": [],
+  "terminalReason": "plan_completed",
+  "stepLinks": [
+    {
+      "linkType": "plan_step",
+      "stepKey": "plan-decompose",
+      "attemptId": "attempt-pass-1",
+      "traceId": "trace-pass-1",
+      "checkpointId": null,
+      "messageId": "msg-plan-1",
+      "anchorId": "plan-step-anchor",
+      "label": "Plan step",
+      "isPrimary": true,
+      "status": "available"
+    },
+    {
+      "linkType": "owner_result",
+      "stepKey": "plan-decompose",
+      "attemptId": "attempt-pass-1",
+      "traceId": "trace-pass-1",
+      "checkpointId": null,
+      "messageId": "msg-owner-1",
+      "anchorId": "owner-result-anchor",
+      "label": "Owner result",
+      "isPrimary": false,
+      "status": "available"
+    },
+    {
+      "linkType": "review_result",
+      "stepKey": "plan-decompose",
+      "attemptId": "attempt-pass-1",
+      "traceId": "trace-pass-1",
+      "checkpointId": null,
+      "messageId": "msg-review-1",
+      "anchorId": "review-result-anchor",
+      "label": "Review result",
+      "isPrimary": false,
+      "status": "available"
+    }
+  ]
+}

@@ -25,17 +25,29 @@ export function SocialAccountPicker({ items, selectedId, onSelect, className, em
         <p className="text-sm text-muted-foreground">{emptyMessage}</p>
       ) : (
         items.map((item) => (
-          <div key={item.id} className={cn("flex items-center justify-between gap-3 rounded-xl border p-3", selectedId === item.id && "border-cyan-400 bg-cyan-50/60")}>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="truncate text-sm font-medium">{item.label}</span>
+          <div
+            key={item.id}
+            className={cn(
+              "flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between",
+              selectedId === item.id && "border-cyan-400 bg-cyan-50/60",
+            )}
+          >
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-sm font-medium sm:flex-none">{item.label}</span>
                 <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
                   {item.provider}
                 </Badge>
               </div>
               {!item.ready && item.issue && <p className="text-xs text-amber-700">{item.issue}</p>}
             </div>
-            <Button type="button" variant={selectedId === item.id ? "secondary" : "outline"} size="sm" onClick={() => onSelect(item.id)}>
+            <Button
+              type="button"
+              variant={selectedId === item.id ? "secondary" : "outline"}
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={() => onSelect(item.id)}
+            >
               {selectedId === item.id ? "Selected" : "Select"}
             </Button>
           </div>

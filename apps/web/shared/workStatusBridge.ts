@@ -15,7 +15,15 @@ export type WorkOsStateHint =
   | "failed"
   | "new";
 
-export type TeamRunStatusHint = TeamRun["status"] | "cancelled" | "waiting_for_worker" | "waiting_for_poll" | "awaiting_human_approval" | "awaiting_human_choice" | "awaiting_final_review" | "awaiting_final_approval";
+export type TeamRunStatusHint =
+  | TeamRun["status"]
+  | "cancelled"
+  | "waiting_for_worker"
+  | "waiting_for_poll"
+  | "awaiting_human_approval"
+  | "awaiting_human_choice"
+  | "awaiting_final_review"
+  | "awaiting_final_approval";
 
 export interface StatusBridge {
   teamRunStatus: TeamRunStatusHint;
@@ -27,7 +35,7 @@ export type StatusBridgeTone = "sky" | "amber" | "emerald" | "rose" | "slate";
 
 export function mapTeamRunStatusToWorkOsState(
   status: TeamRun["status"],
-  stopReason?: string | null,
+  stopReason?: string | null
 ): WorkOsStateHint {
   switch (status) {
     case "queued":
@@ -35,10 +43,13 @@ export function mapTeamRunStatusToWorkOsState(
     case "running":
       return "in_progress";
     case "paused":
+      if (stopReason === "repeated_turn_detected") return "blocked";
       if (stopReason === "awaiting_human_choice") return "waiting_for_choice";
       if (stopReason === "awaiting_final_review") return "waiting_for_review";
-      if (stopReason === "awaiting_final_approval") return "waiting_for_approval";
-      if (stopReason === "awaiting_human_approval") return "waiting_for_approval";
+      if (stopReason === "awaiting_final_approval")
+        return "waiting_for_approval";
+      if (stopReason === "awaiting_human_approval")
+        return "waiting_for_approval";
       if (stopReason === "awaiting_external_member") return "in_progress";
       if (stopReason === "user_paused") return "waiting_for_input";
       return "blocked";
@@ -53,7 +64,9 @@ export function mapTeamRunStatusToWorkOsState(
   }
 }
 
-export function mapWorkOsStateToTeamRunStatus(state: string | null | undefined): TeamRunStatusHint {
+export function mapWorkOsStateToTeamRunStatus(
+  state: string | null | undefined
+): TeamRunStatusHint {
   switch (state) {
     case "planned":
     case "triaged":
@@ -83,17 +96,21 @@ export function mapWorkOsStateToTeamRunStatus(state: string | null | undefined):
 
 export function describeStatusBridge(
   status: TeamRun["status"],
-  stopReason?: string | null,
+  stopReason?: string | null
 ): StatusBridge {
   const workOsState = mapTeamRunStatusToWorkOsState(status, stopReason);
   return {
     teamRunStatus: status,
     workOsState,
-    note: stopReason ? `Mapped from ${status} (${stopReason})` : `Mapped from ${status}`,
+    note: stopReason
+      ? `Mapped from ${status} (${stopReason})`
+      : `Mapped from ${status}`,
   };
 }
 
-export function getStatusBridgeTone(workOsState: WorkOsStateHint): StatusBridgeTone {
+export function getStatusBridgeTone(
+  workOsState: WorkOsStateHint
+): StatusBridgeTone {
   switch (workOsState) {
     case "completed":
       return "emerald";
@@ -117,7 +134,9 @@ export function getStatusBridgeTone(workOsState: WorkOsStateHint): StatusBridgeT
   }
 }
 
-export function getStatusBridgeBadgeClass(workOsState: WorkOsStateHint): string {
+export function getStatusBridgeBadgeClass(
+  workOsState: WorkOsStateHint
+): string {
   switch (getStatusBridgeTone(workOsState)) {
     case "emerald":
       return "border-emerald-200 bg-emerald-50 text-emerald-700";

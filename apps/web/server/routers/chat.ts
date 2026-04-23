@@ -73,6 +73,15 @@ import {
   resolveConversationLocalAiMode,
   resolveExplicitChatSessionLocalAiMode,
 } from "@smartspec/local-ai-core";
+import {
+  buildContextStateMessages,
+  buildChatExecutionContextPack,
+  extractContextHintsFromDynamicParams,
+  mergeContextStateHints,
+  type ContextStateHints,
+} from "../services/contextEngineAdapter";
+import { executeChatRuntimeTurn } from "../services/agentRuntime/chatRuntimeOrchestrator";
+import { recordContextEngineMetric } from "../services/monitoringService";
 
 const localSkillPlatformSchema = z.enum(["web", "tauri"]).default("web");
 const localSkillOriginSchema = z
@@ -221,6 +230,129 @@ function createSkillToken(userId: number): string {
     scopes: ["skill:execute"],
     jti: `skill_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
   }, "15m");
+}
+
+function stringifyChatContent(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(stringifyChatContent).filter(Boolean).join("\n");
+  }
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    for (const key of ["content", "text", "body", "value", "summary"]) {
+      const raw = record[key];
+      if (typeof raw === "string" && raw.trim()) {
+        return raw.trim();
+      }
+    }
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
+export function buildChatSkillContextState(input: {
+  conversationId: number | null;
+  conversationTitle?: string | null;
+  conversationModel?: string | null;
+  activePersonaId?: string | null;
+  skillName: string;
+  activeNoteContent: string;
+  recentMessages: Array<{
+    role: "user" | "assistant" | "system";
+    content: unknown;
+    createdAt?: Date | string;
+  }>;
+  summaries: Array<{
+    summary: string;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+  }>;
+}): ContextStateHints {
+  const conversationScope = input.conversationId != null
+    ? `conversation:${input.conversationId}`
+    : "conversation:unknown";
+  const recentMessages = input.recentMessages
+    .filter((message) => message.role !== "system")
+    .slice(-4)
+    .map((message, index) => ({
+      title: `${message.role === "assistant" ? "Assistant" : "User"} note ${index + 1}`,
+      content: stringifyChatContent(message.content),
+      source: conversationScope,
+      freshness: "recent" as const,
+      trust: message.role === "assistant" ? "derived" as const : "trusted" as const,
+    }))
+    .filter((block) => block.content.trim().length > 0);
+
+  const latestSummary = [...input.summaries].reverse().find((summary) =>
+    typeof summary.summary === "string" && summary.summary.trim().length > 0,
+  );
+
+  const recentAssistant = [...input.recentMessages]
+    .reverse()
+    .find((message) => message.role === "assistant" && stringifyChatContent(message.content).trim().length > 0);
+
+  const workingSummaryText =
+    latestSummary?.summary?.trim() ||
+    stringifyChatContent(recentAssistant?.content);
+
+  const projectStateParts = [
+    input.conversationTitle ? `Conversation title: ${input.conversationTitle}` : null,
+    input.conversationModel ? `Conversation model: ${input.conversationModel}` : null,
+    input.activePersonaId ? `Active persona: ${input.activePersonaId}` : null,
+    `Skill: ${input.skillName}`,
+    `Current room: chat`,
+  ].filter((part): part is string => Boolean(part));
+
+  return {
+    sessionState: {
+      title: "Session state",
+      content: [
+        `Conversation: ${conversationScope}`,
+        input.conversationTitle ? `Title: ${input.conversationTitle}` : null,
+        input.conversationModel ? `Model: ${input.conversationModel}` : null,
+        input.activePersonaId ? `Persona: ${input.activePersonaId}` : null,
+        `Skill: ${input.skillName}`,
+        `Surface: chat`,
+      ].filter((part): part is string => Boolean(part)).join("\n"),
+      source: "chat.executeSkill",
+      trust: "trusted",
+      freshness: "fresh",
+    },
+    activeNote: {
+      title: "Current request",
+      content: input.activeNoteContent.trim(),
+      source: "chat.executeSkill",
+      trust: "trusted",
+      freshness: "fresh",
+    },
+    recentNotes: recentMessages,
+    projectState: {
+      title: "Conversation state",
+      content: projectStateParts.join("\n"),
+      source: conversationScope,
+      trust: "trusted",
+      freshness: "recent",
+    },
+    ...(workingSummaryText
+      ? {
+          workingSummary: {
+            title: "Working summary",
+            content: workingSummaryText,
+            source: conversationScope,
+            trust: "derived",
+            freshness: "recent",
+          },
+        }
+      : {}),
+  };
 }
 
 // ==================== Zod Schemas ====================
@@ -1731,6 +1863,7 @@ export const chatRouter = router({
         quality: skillQualitySchema.optional(),
         style: skillStyleSchema.optional(),
         conversationId: z.number().optional(),
+        projectId: z.string().max(100).nullable().optional(),
         platform: localSkillPlatformSchema.optional(),
         origin: localSkillOriginSchema.optional(),
         requestedExecutionRoute: localSkillRequestedRouteSchema.optional(),
@@ -1872,6 +2005,15 @@ export const chatRouter = router({
         }
       }
 
+      let conversationRecord: Awaited<ReturnType<typeof getConversationById>> | null = null;
+      let conversationModel: string | undefined;
+      let activePersonaId: string | null = null;
+      if (input.conversationId) {
+        conversationRecord = await getConversationById(input.conversationId, ctx.user.id);
+        conversationModel = conversationRecord?.model ?? undefined;
+        activePersonaId = (conversationRecord as any)?.activePersonaId ?? null;
+      }
+
       const localAiContext = await getRequesterLocalAiSurfaceContext({
         userId: ctx.user.id,
         tenantId: ctx.tenantId ?? String(ctx.user.currentTenantId ?? ""),
@@ -1880,9 +2022,7 @@ export const chatRouter = router({
       const conversationLocalAiOverride =
         typeof input.conversationId === "number" && input.conversationId > 0
           ? readLocalAiConversationOverride(
-              (
-                await getConversationById(input.conversationId, ctx.user.id)
-              )?.skillSettings?.localAiConversation,
+              conversationRecord?.skillSettings?.localAiConversation,
             )
           : null;
       const effectiveLocalAiExecutionMode =
@@ -1951,6 +2091,50 @@ export const chatRouter = router({
       // Sync skill if SKILL.md has changed since last load (updates systemPrompt in DB)
       await syncSingleSkillIfChanged(input.skillId);
 
+      let recentConversationMessages: Array<{
+        role: "user" | "assistant" | "system";
+        content: unknown;
+        createdAt?: Date | string;
+      }> = [];
+      let conversationSummaries: Array<{
+        summary: string;
+        createdAt?: Date | string;
+        updatedAt?: Date | string;
+      }> = [];
+      if (input.conversationId) {
+        recentConversationMessages = await getRecentMessages(input.conversationId, 8);
+        conversationSummaries = await getSummaries(input.conversationId);
+      }
+
+      const skillRequestPrompt =
+        input.prompt
+        || (input.extraParams?.request as string)
+        || (input.dynamicParams?.request as string)
+        || (input.extraParams?.prompt as string)
+        || (input.dynamicParams?.prompt as string)
+        || "";
+
+      const chatContextBuildStartMs = Date.now();
+      const chatContextState = buildChatSkillContextState({
+        conversationId: input.conversationId ?? null,
+        conversationTitle: conversationRecord?.title ?? null,
+        conversationModel,
+        activePersonaId,
+        skillName: skill.name,
+        activeNoteContent: skillRequestPrompt,
+        recentMessages: recentConversationMessages,
+        summaries: conversationSummaries,
+      });
+      const incomingContextState = extractContextHintsFromDynamicParams(
+        mergedExtraParams,
+      );
+      const executionDynamicParams = {
+        ...mergedExtraParams,
+        contextState:
+          mergeContextStateHints(incomingContextState, chatContextState) ??
+          chatContextState,
+      };
+
       // Check execution mode for LLM-based skills (enhance-prompt, llm-only)
       const isLLMSkill = executionMode === "enhance-prompt" || executionMode === "llm-only";
 
@@ -1985,15 +2169,6 @@ export const chatRouter = router({
           if (flags.unifiedSkillExecution) {
             const { executeUnified } = await import("../services/unifiedOrchestrator");
 
-            // Load conversation context (shared with legacy path below)
-            let conversationModel: string | undefined;
-            let activePersonaId: string | null = null;
-            if (input.conversationId) {
-              const conversation = await getConversationById(input.conversationId, ctx.user.id);
-              conversationModel = conversation?.model ?? undefined;
-              activePersonaId = (conversation as any)?.activePersonaId ?? null;
-            }
-
             // Build attachments from reference images
             const refImages = (input.referenceImageUrls && input.referenceImageUrls.length > 0)
               ? input.referenceImageUrls
@@ -2011,9 +2186,9 @@ export const chatRouter = router({
               channel: "chat",
               userId: ctx.user.id,
               tenantId,
-              userMessage: input.prompt || "",
+              userMessage: skillRequestPrompt,
               attachments: attachments.length > 0 ? attachments : undefined,
-              dynamicParams: mergedExtraParams as Record<string, unknown>,
+              dynamicParams: executionDynamicParams as Record<string, unknown>,
               conversationContext: {
                 conversationId: input.conversationId,
                 conversationModel,
@@ -2097,14 +2272,14 @@ export const chatRouter = router({
 
         // Build LLM messages — content can be string or multimodal array
         const llmMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [];
-        let userPrompt = input.prompt || "";
+        let userPrompt = skillRequestPrompt;
 
         // For image_prompt_engineer, use the specialized prompt builder
         if (input.skillId === "image_prompt_engineer" || input.skillId === "create-image-prompt") {
           try {
             const { buildSystemPrompt, buildUserPrompt } = await import("../services/promptEnhancementService");
             const request = {
-              userInput: mergedExtraParams.request || input.prompt || "",
+              userInput: mergedExtraParams.request || skillRequestPrompt || "",
               ...mergedExtraParams,
             };
             llmMessages.push({ role: "system", content: buildSystemPrompt(request) });
@@ -2139,6 +2314,14 @@ export const chatRouter = router({
           }
         }
 
+        const fallbackActiveNote: ContextStateHints["activeNote"] = {
+          title: "Current request",
+          content: (userPrompt || input.prompt || `Use ${skill.name}`).trim(),
+          source: "chat.executeSkill",
+          trust: "trusted",
+          freshness: "fresh",
+        };
+
         // Build user message — multimodal with images when referenceImageUrls provided
         // Also check dynamicParams.reference_images (from ImageSourcePicker / skill form)
         const refImageUrls: string[] = (input.referenceImageUrls && input.referenceImageUrls.length > 0)
@@ -2147,6 +2330,9 @@ export const chatRouter = router({
             ? (mergedExtraParams.reference_images as unknown[]).filter((u): u is string => typeof u === "string" && u.length > 0)
             : []);
         const hasRefImages = refImageUrls.length > 0;
+        const attachments = hasRefImages
+          ? refImageUrls.map((url: string) => ({ type: "image" as const, url }))
+          : undefined;
         if (hasRefImages) {
           const baseUrl = (ctx.publicUrl || "").replace(/\/+$/, "");
           const contentParts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
@@ -2167,14 +2353,80 @@ export const chatRouter = router({
           llmMessages.push({ role: "user", content: userPrompt || `Use ${skill.name}` });
         }
 
-        // Determine model: skill policy first, conversation model as fallback
-        let conversationModel: string | null | undefined;
-        if (input.conversationId) {
-          const conversation = await getConversationById(input.conversationId, ctx.user.id);
-          if (conversation?.model) {
-            conversationModel = conversation.model;
+        const fallbackContextState: ContextStateHints =
+          mergeContextStateHints(incomingContextState, {
+            ...chatContextState,
+            activeNote: fallbackActiveNote,
+          }) ?? {
+            ...chatContextState,
+            activeNote: fallbackActiveNote,
+          };
+
+        if (input.skillId === "image_prompt_engineer" || input.skillId === "create-image-prompt") {
+          const contextStateMessages = buildContextStateMessages(fallbackContextState);
+          if (contextStateMessages.length > 0) {
+            const insertAt = llmMessages.findIndex((message) => message.role !== "system");
+            const position = insertAt === -1 ? llmMessages.length : insertAt;
+            llmMessages.splice(position, 0, ...contextStateMessages);
+          }
+        } else {
+          try {
+            const effectiveSkillSystemPrompt = skillRow?.systemPrompt
+              ? `${skillRow.systemPrompt.substring(0, 12000)}${
+                  skillRow.knowledgebase
+                    ? `\n\n[DOMAIN KNOWLEDGE]\n${skillRow.knowledgebase.substring(0, 8000)}`
+                    : ""
+                }`
+              : "";
+            const fallbackContextPack = await buildChatExecutionContextPack(
+              {
+                channel: "chat",
+                userId: ctx.user.id,
+                tenantId: ctx.tenantId ?? String(ctx.user.currentTenantId ?? ""),
+                userMessage: userPrompt || `Use ${skill.name}`,
+                attachments,
+                dynamicParams: executionDynamicParams as Record<string, unknown>,
+                conversationContext: {
+                  conversationId: input.conversationId,
+                  conversationModel,
+                  activePersonaId,
+                  publicUrl: ctx.publicUrl ?? undefined,
+                },
+              },
+              {
+                skillSystemPrompt: effectiveSkillSystemPrompt,
+                knowledgebase: null,
+                dynamicParams: { ...executionDynamicParams, contextState: fallbackContextState },
+                label: "chat.executeSkill",
+              },
+            );
+            llmMessages.length = 0;
+            llmMessages.push(...fallbackContextPack.messages);
+          } catch (err) {
+            console.warn("[executeSkill] shared chat context pack failed, falling back to legacy state injection:", err);
+            const contextStateMessages = buildContextStateMessages(fallbackContextState);
+            if (contextStateMessages.length > 0) {
+              const insertAt = llmMessages.findIndex((message) => message.role !== "system");
+              const position = insertAt === -1 ? llmMessages.length : insertAt;
+              llmMessages.splice(position, 0, ...contextStateMessages);
+            }
           }
         }
+        void recordContextEngineMetric({
+          source: "chat_skill_fallback",
+          surface: "chat",
+          contextState: fallbackContextState,
+          tenantId: ctx.tenantId ?? String(ctx.user.currentTenantId ?? ""),
+          userId: ctx.user.id,
+          conversationId: input.conversationId ?? null,
+          projectId: input.projectId ?? null,
+          skillId: input.skillId,
+          latencyMs: Date.now() - chatContextBuildStartMs,
+        }).catch((err) => {
+          console.warn("[executeSkill] context-engine metric failed:", err);
+        });
+
+        // Determine model: skill policy first, conversation model as fallback
         // Build dynamic model requirements based on context
         // skill.executionPolicy may be a raw JSON string from DB — parse if needed
         let parsedPolicy: Record<string, any> | null = null;
@@ -2306,14 +2558,53 @@ export const chatRouter = router({
         const skillRequiresThinking = parsedPolicy?.requires_thinking === true
           || parsedPolicy?.thinking_level_hint === "high"
           || parsedPolicy?.thinking_level_hint === "medium";
-        const fallbackResult = await executeSkillLlmWithFallback({
-          messages: llmMessages,
-          skillSlug: input.skillId,
+        const fallbackExecution = await executeChatRuntimeTurn({
+          tenantId: skillTenantId,
           userId: ctx.user.id,
+          objective: userPrompt || `Use ${skill.name}`,
+          skillSlug: input.skillId,
           executionPolicy,
-          enableThinking: skillRequiresThinking || undefined,
-          maxTokens: parsedPolicy?.max_tokens_hint ?? undefined,
+          contextPackRequest: {
+            surface: "chat",
+            request: {
+              channel: "chat",
+              userId: ctx.user.id,
+              tenantId: skillTenantId,
+              userMessage: userPrompt || `Use ${skill.name}`,
+              attachments,
+              dynamicParams: executionDynamicParams as Record<string, unknown>,
+              conversationContext: {
+                conversationId: input.conversationId,
+                conversationModel,
+                activePersonaId,
+                publicUrl: ctx.publicUrl ?? undefined,
+              },
+            },
+            tenantId: skillTenantId,
+            skillSystemPrompt: skillRow?.systemPrompt
+              ? skillRow.systemPrompt.substring(0, 12000)
+              : null,
+            knowledgebase: skillRow?.knowledgebase
+              ? skillRow.knowledgebase.substring(0, 8000)
+              : null,
+            dynamicParams: {
+              ...executionDynamicParams,
+              contextState: fallbackContextState,
+            },
+            label: "chat.executeSkill",
+          },
+          requestLabel: `chat:${input.skillId}`,
+          legacyExecute: async () =>
+            executeSkillLlmWithFallback({
+              messages: llmMessages,
+              skillSlug: input.skillId,
+              userId: ctx.user.id,
+              executionPolicy,
+              enableThinking: skillRequiresThinking || undefined,
+              maxTokens: parsedPolicy?.max_tokens_hint ?? undefined,
+            }),
         });
+        const fallbackResult = fallbackExecution.value;
 
         if (!fallbackResult.success) {
           // Log attempt history summary

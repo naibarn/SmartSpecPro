@@ -36,9 +36,9 @@ def load_plan(planning_dir: Path) -> str:
 
 def call_with_retry(func, config):
     """Call function with retry logic from config."""
-    llm_config = config["llm_client"]
-    max_retries = llm_config["max_retries"]
-    retry_codes = llm_config["retry_codes"]
+    llm_config = config.get("llm_client", {})
+    max_retries = llm_config.get("max_retries", 3)
+    retry_codes = llm_config.get("retry_codes", [429, 500, 502, 503, 504])
 
     for attempt in range(max_retries):
         try:
@@ -123,7 +123,13 @@ def review_with_gemini(plan_content: str, system_prompt: str, user_prompt: str, 
     if not client:
         return {"success": False, "provider": "gemini", "error": f"No auth available: {auth_method}"}
 
-    model_name = os.environ.get("GEMINI_MODEL", config["models"]["gemini"])
+    model_name = os.environ.get("GEMINI_MODEL") or config.get("models", {}).get("gemini")
+    if not model_name:
+        return {
+            "success": False,
+            "provider": "gemini",
+            "error": "No Gemini model configured"
+        }
 
     try:
         response = call_with_retry(
@@ -161,8 +167,15 @@ def review_with_openai(plan_content: str, system_prompt: str, user_prompt: str, 
     except ImportError:
         return {"success": False, "provider": "openai", "error": "openai package not installed"}
 
-    model_name = os.environ.get("OPENAI_MODEL", config["models"]["chatgpt"])
-    timeout = config["llm_client"]["timeout_seconds"]
+    model_name = os.environ.get("OPENAI_MODEL") or config.get("models", {}).get("chatgpt")
+    if not model_name:
+        return {
+            "success": False,
+            "provider": "openai",
+            "error": "No OpenAI model configured"
+        }
+
+    timeout = config.get("llm_client", {}).get("timeout_seconds", 60)
 
     try:
         client = OpenAI(api_key=api_key, timeout=timeout)
@@ -233,11 +246,22 @@ def main():
 
     config = load_session_config(args.planning_dir)
 
-    # Load prompts from plugin_root (stored in session config)
-    plugin_root = config.get("plugin_root", Path(__file__).parent.parent.parent)
-    prompts_dir = Path(plugin_root) / "prompts" / "plan_reviewer"
-    system_prompt, user_template, _ = load_prompts(str(prompts_dir))
-    user_prompt = format_prompt(user_template, PLAN_CONTENT=plan_content)
+    # Load prompts from plugin_root (stored in session config).
+    # Fall back to a built-in prompt if the packaged prompt files are absent.
+    plugin_root = Path(config.get("plugin_root", Path(__file__).resolve().parent.parent.parent))
+    prompts_dir = plugin_root / "prompts" / "plan_reviewer"
+    if prompts_dir.exists():
+        system_prompt, user_template, _ = load_prompts(str(prompts_dir))
+        user_prompt = format_prompt(user_template, PLAN_CONTENT=plan_content)
+    else:
+        system_prompt = (
+            "You are a senior software architect reviewing an implementation plan. "
+            "Be specific, actionable, and honest about risks, gaps, and ambiguities."
+        )
+        user_prompt = (
+            "Review the following implementation plan thoroughly.\n\n"
+            f"{plan_content}"
+        )
 
     # Check which LLMs are available
     gemini_client, gemini_auth = get_gemini_client(config)

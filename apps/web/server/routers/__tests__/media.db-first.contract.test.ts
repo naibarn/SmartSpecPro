@@ -9,6 +9,7 @@ const {
   mockHasEnoughCredits,
   mockGetDb,
   mockCheckAbuseGuard,
+  mockHashPrompt,
   mockDecrypt,
 } = vi.hoisted(() => ({
   mockGenerateImage: vi.fn(),
@@ -19,6 +20,7 @@ const {
   mockHasEnoughCredits: vi.fn(),
   mockGetDb: vi.fn(),
   mockCheckAbuseGuard: vi.fn(),
+  mockHashPrompt: vi.fn((text: string, serialized: string) => `${text}::${serialized}`),
   mockDecrypt: vi.fn(),
 }));
 
@@ -37,6 +39,13 @@ vi.mock("../../services/mediaGenerationService", () => ({
       name: "Google Nano Banana Pro",
       provider: "kie.ai",
       creditCost: 10,
+    },
+    "fal-ai/gemini-3.1-flash-tts": {
+      id: "fal-ai/gemini-3.1-flash-tts",
+      type: "audio",
+      name: "Gemini 3.1 Flash TTS",
+      provider: "fal_ai",
+      creditCost: 150,
     },
   },
   DEFAULT_MODELS: { image: "google-nano-banana-pro", video: "veo-3-1", audio: "elevenlabs-tts" },
@@ -111,7 +120,7 @@ vi.mock("../../services/sandbox/dispatchService", () => ({
 
 vi.mock("../../services/abuseGuard", () => ({
   checkAbuseGuard: mockCheckAbuseGuard,
-  hashPrompt: vi.fn().mockReturnValue("prompt-hash"),
+  hashPrompt: mockHashPrompt,
 }));
 
 vi.mock("../../services/crypto", () => ({
@@ -887,6 +896,98 @@ describe("media router DB-first model contract", () => {
         },
       }),
     ).resolves.toBeDefined();
+  });
+
+  it("generateAudio rejects malformed Gemini TTS payloads before abuse checks and service calls", async () => {
+    mockGetDb.mockResolvedValue(null as any);
+
+    const fn = mediaRouter.generateAudio as Function;
+    await expect(
+      fn({
+        ctx: makeCtx("https://smartaihub.app"),
+        input: {
+          model: "fal-ai/gemini-3.1-flash-tts",
+          text: "Host: Welcome back.",
+          extraParams: {
+            language_code: "Klingon",
+            speakers: [
+              { speaker_id: "Host One", voice: "Kore" },
+            ],
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: expect.stringContaining("Gemini 3.1 Flash TTS input validation failed"),
+    });
+
+    expect(mockCheckAbuseGuard).not.toHaveBeenCalled();
+    expect(mockGenerateAudio).not.toHaveBeenCalled();
+  });
+
+  it("generateAudio rejects Gemini top-level speed before abuse checks and service calls", async () => {
+    mockGetDb.mockResolvedValue(null as any);
+
+    const fn = mediaRouter.generateAudio as Function;
+    await expect(
+      fn({
+        ctx: makeCtx("https://smartaihub.app"),
+        input: {
+          model: "fal-ai/gemini-3.1-flash-tts",
+          text: "Host: Welcome back.",
+          speed: 1.25,
+          extraParams: {
+            voice: "Kore",
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: expect.stringContaining("speed is not supported by Gemini 3.1 Flash TTS"),
+    });
+
+    expect(mockCheckAbuseGuard).not.toHaveBeenCalled();
+    expect(mockGenerateAudio).not.toHaveBeenCalled();
+  });
+
+  it("generateAudio ignores top-level Gemini voice in the abuse hash when speakers are present", async () => {
+    mockGetDb.mockResolvedValue(null as any);
+
+    const fn = mediaRouter.generateAudio as Function;
+    const baseInput = {
+      model: "fal-ai/gemini-3.1-flash-tts",
+      text: "Host: Welcome back.",
+      extraParams: {
+        speakers: [
+          { speaker_id: "Host", voice: "Kore" },
+        ],
+      },
+    } as const;
+
+    await fn({
+      ctx: makeCtx("https://smartaihub.app"),
+      input: {
+        ...baseInput,
+        voice: "Kore",
+      },
+    });
+    const firstHash = mockCheckAbuseGuard.mock.calls[0]?.[0]?.promptHash;
+
+    mockCheckAbuseGuard.mockClear();
+    mockGenerateAudio.mockClear();
+
+    await fn({
+      ctx: makeCtx("https://smartaihub.app"),
+      input: {
+        ...baseInput,
+        voice: "Zephyr",
+      },
+    });
+    const secondHash = mockCheckAbuseGuard.mock.calls[0]?.[0]?.promptHash;
+
+    expect(firstHash).toBe(secondHash);
+    expect(mockCheckAbuseGuard).toHaveBeenCalledTimes(1);
+    expect(mockGenerateAudio).toHaveBeenCalledTimes(1);
   });
 
   it("listModelFieldOptions returns static options from configJson input fields", async () => {

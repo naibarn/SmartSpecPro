@@ -17,7 +17,14 @@ import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { trpc } from "@/lib/trpc";
+import { useRuntimePerformanceDiagnostics } from "@/hooks/useRuntimePerformanceDiagnostics";
+import {
+  formatPerformanceOperationLabel,
+  formatRuntimeMetricMs,
+} from "@/lib/runtimePerformanceLabels";
+import { useRuntimePerformanceOverlayPreference } from "@/lib/runtimePerformanceOverlayPreference";
 import { resolveLocalAiSyncedPreferences } from "../state/localAiSettingsStore";
 import { useLocalAiCapability } from "../hooks/useLocalAiCapability";
 import { useModelDownload } from "../hooks/useModelDownload";
@@ -394,6 +401,13 @@ export function LocalAiSettingsSection({
     message: null,
     checkedAt: null,
   });
+  const performanceDiagnostics = useRuntimePerformanceDiagnostics(
+    activePanel === "device",
+  );
+  const [
+    performanceOverlayEnabled,
+    setPerformanceOverlayEnabled,
+  ] = useRuntimePerformanceOverlayPreference();
 
   const prefsQuery = trpc.users.getPreferences.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -817,6 +831,10 @@ export function LocalAiSettingsSection({
   };
   const latestActionLabel = formatModelActionLabel(t, modelDownload.action);
   const latestActionTime = formatModelActionTime(modelDownload.updatedAt);
+  const recentRuntimeOperations = useMemo(
+    () => performanceDiagnostics.localRuntime.operations.slice(0, 6),
+    [performanceDiagnostics.localRuntime.operations],
+  );
   const handleModelActionFailure = () => {
     toast.error(
       getLatestDownloadReason() ?? t("settings.localAi.download.reason.generic"),
@@ -2107,6 +2125,170 @@ export function LocalAiSettingsSection({
                 ) : null}
               </div>
             )}
+
+            <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+              <div className="font-medium text-slate-800">
+                {t("settings.localAi.diagnostics.performance.title")}
+              </div>
+              <div className="mt-1 text-[11px] text-slate-500">
+                {t("settings.localAi.diagnostics.performance.sessionNote")}
+              </div>
+
+              <div className="mt-3 flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="font-medium text-slate-800">
+                    {t("settings.localAi.diagnostics.performance.overlayToggleLabel")}
+                  </div>
+                  <div className="mt-1 text-[11px] text-slate-500">
+                    {t(
+                      "settings.localAi.diagnostics.performance.overlayToggleDescription",
+                    )}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <Badge variant="outline">
+                    {runtimePlatform === "tauri"
+                      ? performanceOverlayEnabled
+                        ? t(
+                            "settings.localAi.diagnostics.performance.overlayStatusOn",
+                          )
+                        : t(
+                            "settings.localAi.diagnostics.performance.overlayStatusOff",
+                          )
+                      : t(
+                          "settings.localAi.diagnostics.performance.overlayStatusDesktopOnly",
+                        )}
+                  </Badge>
+                  <Switch
+                    aria-label={t(
+                      "settings.localAi.diagnostics.performance.overlayToggleLabel",
+                    )}
+                    checked={runtimePlatform === "tauri" && performanceOverlayEnabled}
+                    disabled={runtimePlatform !== "tauri"}
+                    onCheckedChange={setPerformanceOverlayEnabled}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <div className="font-medium text-slate-800">
+                    {t("settings.localAi.diagnostics.performance.rendererTitle")}
+                  </div>
+                  {performanceDiagnostics.renderer.sampleCount > 0 ? (
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <div>
+                        {t("settings.localAi.diagnostics.performance.avgFps")}:{" "}
+                        <span className="font-medium text-slate-900">
+                          {performanceDiagnostics.renderer.averageFps?.toFixed(1) ??
+                            t("settings.localAi.common.notRecorded")}
+                        </span>
+                      </div>
+                      <div>
+                        {t("settings.localAi.diagnostics.performance.avgFrame")}:{" "}
+                        <span className="font-medium text-slate-900">
+                          {formatRuntimeMetricMs(
+                            performanceDiagnostics.renderer.averageFrameTimeMs,
+                            t("settings.localAi.common.notRecorded"),
+                          )}
+                        </span>
+                      </div>
+                      <div>
+                        {t("settings.localAi.diagnostics.performance.worstFrame")}:{" "}
+                        <span className="font-medium text-slate-900">
+                          {formatRuntimeMetricMs(
+                            performanceDiagnostics.renderer.worstFrameTimeMs,
+                            t("settings.localAi.common.notRecorded"),
+                          )}
+                        </span>
+                      </div>
+                      <div>
+                        {t("settings.localAi.diagnostics.performance.slowFrames")}:{" "}
+                        <span className="font-medium text-slate-900">
+                          {performanceDiagnostics.renderer.slowFrameCount.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-[11px] text-slate-500">
+                      {t("settings.localAi.diagnostics.performance.noRendererSamples")}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <div className="font-medium text-slate-800">
+                    {t("settings.localAi.diagnostics.performance.localRuntimeTitle")}
+                  </div>
+                  {recentRuntimeOperations.length > 0 ? (
+                    <div className="mt-2 space-y-2">
+                      {recentRuntimeOperations.map((operation) => (
+                        <div
+                          className="rounded-md border border-slate-200 bg-white p-2"
+                          key={`${operation.operation}-${operation.updatedAt}`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium text-slate-900">
+                              {formatPerformanceOperationLabel(operation.operation)}
+                            </span>
+                            <Badge variant="outline">
+                              {t("settings.localAi.diagnostics.performance.samples", {
+                                count: operation.count,
+                              })}
+                            </Badge>
+                          </div>
+                          <div className="mt-1 grid gap-1 text-[11px] text-slate-600 sm:grid-cols-2">
+                            <div>
+                              {t("settings.localAi.diagnostics.performance.avgLatency")}:{" "}
+                              <span className="font-medium text-slate-900">
+                                {formatRuntimeMetricMs(
+                                  operation.averageDurationMs,
+                                  t("settings.localAi.common.notRecorded"),
+                                )}
+                              </span>
+                            </div>
+                            <div>
+                              {t("settings.localAi.diagnostics.performance.p95Latency")}:{" "}
+                              <span className="font-medium text-slate-900">
+                                {formatRuntimeMetricMs(
+                                  operation.p95DurationMs,
+                                  t("settings.localAi.common.notRecorded"),
+                                )}
+                              </span>
+                            </div>
+                            <div>
+                              {t("settings.localAi.diagnostics.performance.lastLatency")}:{" "}
+                              <span className="font-medium text-slate-900">
+                                {formatRuntimeMetricMs(
+                                  operation.lastDurationMs,
+                                  t("settings.localAi.common.notRecorded"),
+                                )}
+                              </span>
+                            </div>
+                            <div>
+                              {t("settings.localAi.diagnostics.performance.errors")}:{" "}
+                              <span className="font-medium text-slate-900">
+                                {operation.errorCount.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mt-2 text-[11px] text-slate-500">
+                      {runtimePlatform === "tauri"
+                        ? t(
+                            "settings.localAi.diagnostics.performance.noLocalRuntimeSamples",
+                          )
+                        : t(
+                            "settings.localAi.diagnostics.performance.localRuntimeTauriOnly",
+                          )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
           </LocalAiSubsection>
           </div>

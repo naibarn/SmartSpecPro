@@ -286,12 +286,15 @@ describe("buildTeamContext", () => {
 
     const req = makeRequest({
       channel: "team_room",
+      userId: 7,
+      userMessage: "Latest guided message",
       teamContext: {
         assistantId: "a1",
         roomId: "r1",
         teamId: "t1",
         runId: "run1",
         objective: "Write an article",
+        memoryMode: "full",
       },
     });
 
@@ -304,6 +307,9 @@ describe("buildTeamContext", () => {
       teamId: "t1",
       objective: "Write an article",
       tenantId: "tenant1",
+      initiatedByUserId: 7,
+      currentMessage: "Latest guided message",
+      memoryMode: "full",
     });
   });
 

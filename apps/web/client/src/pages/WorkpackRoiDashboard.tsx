@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
+import { Link } from "wouter";
 import { DashboardCard, DashboardKpiCard, DashboardSectionHeader } from "@/components/dashboard";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { WorkpackMetricCards } from "@/components/workpack/WorkpackMetricCards";
-import { AlertTriangle, CheckCircle2, CircleDashed, PackageSearch } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, CircleDashed, PackageSearch } from "lucide-react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
@@ -100,14 +102,248 @@ export default function WorkpackRoiDashboard() {
   }
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
-      <DashboardSectionHeader
-        eyebrow="ROI Dashboard"
-        title="Measure where autonomous work is actually improving"
-        description="Track completion, intervention, rollback pressure, policy friction, and evidence-based recommendations for the next workpack to automate."
-      />
+    <div className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-sky-50/40">
+      <div className="flex min-h-screen w-full flex-col">
+        <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/85 backdrop-blur-xl">
+          <div className="mx-auto flex w-full max-w-none flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button asChild variant="ghost" size="sm" className="gap-1">
+                <Link href="/dashboard">
+                  <ArrowLeft className="h-4 w-4" />
+                  Dashboard
+                </Link>
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">ROI Dashboard</h1>
+                <p className="max-w-3xl text-sm text-slate-600">
+                  Track completion, intervention, rollback pressure, policy friction, and evidence-based recommendations for the next workpack to automate.
+                </p>
+              </div>
+            </div>
+          </div>
+        </header>
 
-      <WorkpackMetricCards metrics={data.totals} />
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto flex w-full max-w-none flex-col gap-6">
+            <DashboardSectionHeader
+              eyebrow="ROI Dashboard"
+              title="Measure where autonomous work is actually improving"
+              description="Track completion, intervention, rollback pressure, policy friction, and evidence-based recommendations for the next workpack to automate."
+            />
+
+            <WorkpackMetricCards metrics={data.totals} />
+
+      <DashboardCard
+        title="097 Roadmap Control Plane"
+        description="Monitor the overall progress of governed context, tracing, exchange, and readiness across all workpacks."
+      >
+        <div className="grid gap-3 md:grid-cols-4">
+          <DashboardKpiCard
+            icon={PackageSearch}
+            label="Workpacks"
+            value={roadmapSummary.workpackCount}
+            subLabel={<Badge variant="outline">Across roadmap</Badge>}
+          />
+          <DashboardKpiCard
+            icon={CheckCircle2}
+            label="Ready phases"
+            value={roadmapSummary.phaseCounts.ready}
+            subLabel={<Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">Stable</Badge>}
+          />
+          <DashboardKpiCard
+            icon={CircleDashed}
+            label="Review required"
+            value={roadmapSummary.phaseCounts.review_required}
+            subLabel={<Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">Needs attention</Badge>}
+          />
+          <DashboardKpiCard
+            icon={AlertTriangle}
+            label="Blocked phases"
+            value={roadmapSummary.phaseCounts.blocked}
+            subLabel={<Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">Needs action</Badge>}
+          />
+        </div>
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-slate-900">Top blockers</p>
+            <p className="text-xs text-slate-500">Aggregated from all roadmap phases</p>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {roadmapSummary.blockerCounts.length === 0 ? (
+              <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                No blockers detected
+              </Badge>
+            ) : (
+              roadmapSummary.blockerCounts.map((item) => (
+                <Badge
+                  key={item.blocker}
+                  variant="outline"
+                  className="border-slate-200 bg-white text-slate-700"
+                  title={`Appears in ${item.count} phase(s)`}
+                >
+                  {item.blocker} · {item.count}
+                </Badge>
+              ))
+            )}
+          </div>
+        </div>
+      </DashboardCard>
+
+      <DashboardCard
+        title="097 Roadmap Trend"
+        description="Cumulative ready, review-required, and blocked phase counts ordered by workpack recency."
+      >
+        <div className="mb-4 grid gap-3 md:grid-cols-3">
+          <label className="space-y-2 text-sm text-slate-600">
+            <span>Trend scope</span>
+            <select
+              className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900"
+              value={roadmapTrendScope}
+              onChange={(event) => setRoadmapTrendScope(event.target.value as typeof roadmapTrendScope)}
+            >
+              <option value="all">All workpacks</option>
+              <option value="workpack">Single workpack</option>
+              <option value="owner">Phase owner</option>
+            </select>
+          </label>
+          <label className="space-y-2 text-sm text-slate-600">
+            <span>Workpack</span>
+            <select
+              className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900"
+              value={roadmapTrendWorkpackId}
+              onChange={(event) => setRoadmapTrendWorkpackId(event.target.value)}
+              disabled={roadmapTrendScope !== "workpack"}
+            >
+              {roadmapTrendWorkpackOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-2 text-sm text-slate-600">
+            <span>Phase owner</span>
+            <select
+              className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900"
+              value={roadmapTrendOwner}
+              onChange={(event) => setRoadmapTrendOwner(event.target.value)}
+              disabled={roadmapTrendScope !== "owner"}
+            >
+              {roadmapTrendOwnerOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <p className="mb-3 text-xs text-slate-500">
+          Showing {displayedRoadmapTrend.length} point(s) · scope {roadmapTrendScopeLabel}
+        </p>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">Ready</Badge>
+          <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">Review required</Badge>
+          <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">Blocked</Badge>
+          <Badge variant="outline" className="border-slate-200 bg-white text-slate-700" title="Currently selected filter context">
+            {roadmapTrendScopeLabel}
+          </Badge>
+        </div>
+        {displayedRoadmapTrend.length === 0 ? (
+          <p className="text-sm text-slate-500">No roadmap trend data yet.</p>
+        ) : (
+          <ChartContainer
+            config={{
+              ready: { label: "Ready", color: "hsl(142, 71%, 45%)" },
+              review_required: { label: "Review required", color: "hsl(38, 92%, 50%)" },
+              blocked: { label: "Blocked", color: "hsl(0, 84%, 60%)" },
+            }}
+            className="h-[260px] w-full"
+          >
+            <LineChart data={displayedRoadmapTrend}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis
+                dataKey="sequence"
+                tickLine={false}
+                axisLine={false}
+                fontSize={11}
+                tickFormatter={(value) => `#${value}`}
+              />
+              <YAxis tickLine={false} axisLine={false} fontSize={11} width={36} />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(_, payload) => {
+                      const item = payload?.[0]?.payload as { title?: string; updatedAt?: string; owner?: string } | undefined;
+                      if (!item) return "Roadmap trend";
+                      const dateText = item.updatedAt ? new Date(item.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
+                      const ownerText = item.owner && item.owner !== "all" ? ` • ${item.owner}` : "";
+                      return `${item.title ?? "Workpack"}${ownerText}${dateText ? ` • ${dateText}` : ""}`;
+                    }}
+                  />
+                }
+              />
+              <Line type="monotone" dataKey="ready" stroke="var(--color-ready)" strokeWidth={3} dot={false} />
+              <Line type="monotone" dataKey="review_required" stroke="var(--color-review_required)" strokeWidth={3} dot={false} />
+              <Line type="monotone" dataKey="blocked" stroke="var(--color-blocked)" strokeWidth={3} dot={false} />
+            </LineChart>
+          </ChartContainer>
+        )}
+      </DashboardCard>
+
+      <DashboardCard title="097 Roadmap Progress" description="Phase-by-phase status for governed context, tracing, exchange, and readiness">
+        <div className="space-y-3">
+          {roadmapProgress.length === 0 ? (
+            <p className="text-sm text-slate-500">No roadmap progress records yet.</p>
+          ) : (
+            roadmapProgress.map((item: any) => {
+              const phases = Array.isArray(item?.phases) ? item.phases : [];
+              return (
+                <div key={item.workpackId} className="rounded-2xl border border-slate-200 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                      <p className="text-xs text-slate-500">{item.workpackId}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {phases.map((phase: any) => (
+                        <Badge
+                          key={`${item.workpackId}-${phase.phase}`}
+                          variant="outline"
+                          className={
+                            phase.status === "ready"
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                              : phase.status === "review_required"
+                                ? "border-amber-200 bg-amber-50 text-amber-700"
+                                : "border-rose-200 bg-rose-50 text-rose-700"
+                          }
+                          title={`${phase.title} • ${phase.nextAction}`}
+                        >
+                          P{phase.phase} {phase.status}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    {phases.map((phase: any) => (
+                      <div key={`${item.workpackId}-${phase.phase}-panel`} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-slate-900">{phase.title}</p>
+                          <span className="text-xs text-slate-500">P{phase.phase}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Owner: {phase.owner} • Reviewer: {phase.reviewer}
+                        </p>
+                        <p className="mt-2 text-sm text-slate-600">{phase.nextAction}</p>
+                        {phase.blockers?.length > 0 ? (
+                          <p className="mt-2 text-xs text-rose-700">Blockers: {phase.blockers.join(", ")}</p>
+                        ) : (
+                          <p className="mt-2 text-xs text-emerald-700">No blocking issues detected</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </DashboardCard>
 
       <DashboardCard
         title="097 Roadmap Control Plane"
@@ -425,6 +661,9 @@ export default function WorkpackRoiDashboard() {
           )}
         </div>
       </DashboardCard>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

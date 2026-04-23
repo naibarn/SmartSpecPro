@@ -3,7 +3,7 @@
  */
 
 import { render, screen } from "@testing-library/react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const executionStoreState = {

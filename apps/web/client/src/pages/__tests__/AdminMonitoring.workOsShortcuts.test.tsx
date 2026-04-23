@@ -137,6 +137,213 @@ vi.mock("@/lib/trpc", () => ({
       redactLegacyWorkerData: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       updateWorkerBudget: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       forceFreshCheck: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      getContextEngineHealth: {
+        useQuery: () =>
+          queryResult({
+            scope: {
+              tenantId: "tenant-1",
+              teamId: null,
+              roomId: null,
+              runId: null,
+              skillId: null,
+              userId: null,
+              since: new Date().toISOString(),
+              limit: 12,
+            },
+            window: { matchedChecks: 2, latestCreatedAt: new Date().toISOString() },
+            totals: { total: 2, ok: 2, warning: 0, critical: 0, error: 0 },
+            latest: {
+              id: 2,
+              checkType: "context_engine_eval",
+              status: "ok",
+              source: "team_run",
+              createdAt: new Date().toISOString(),
+              details: {
+                source: "team_run",
+                surface: "team_room",
+                traceId: "trace-context-2",
+                tenantId: "tenant-1",
+                roomId: "room-2",
+                runId: "run-2",
+                latencyMs: 18,
+                notes: "Fresh context pack",
+                intent: "summarize",
+                budgetProfile: "balanced",
+                retrievalModes: ["lexical", "semantic"],
+                estimatedTokens: 1400,
+                tokenHeadroom: 8000,
+                dedupedMessages: 4,
+                injectedMessages: 3,
+                totalSlots: 10,
+                activeNoteSlots: 1,
+                recentNoteSlots: 2,
+                projectStateSlots: 1,
+                workingSummarySlots: 1,
+                durableMemorySlots: 1,
+                retrievedEvidenceSlots: 2,
+                toolResultSlots: 0,
+                resourceSlots: 0,
+                promptAssetSlots: 0,
+                freshSlots: 5,
+                recentSlots: 3,
+                staleSlots: 0,
+                retrievalCoverage: 0.75,
+                groundingScore: 0.88,
+                staleContextRatio: 0.1,
+                freshnessScore: 0.9,
+                tokenPressureRatio: 0.25,
+                healthScore: 0.87,
+              },
+            },
+            recentChecks: [
+              {
+                id: 2,
+                checkType: "context_engine_eval",
+                status: "ok",
+                source: "team_run",
+                createdAt: new Date().toISOString(),
+                details: {
+                  source: "team_run",
+                  surface: "team_room",
+                  traceId: "trace-context-2",
+                  tenantId: "tenant-1",
+                  roomId: "room-2",
+                  runId: "run-2",
+                  latencyMs: 18,
+                  notes: "Fresh context pack",
+                  intent: "summarize",
+                  budgetProfile: "balanced",
+                  retrievalModes: ["lexical", "semantic"],
+                  estimatedTokens: 1400,
+                  tokenHeadroom: 8000,
+                  dedupedMessages: 4,
+                  injectedMessages: 3,
+                  totalSlots: 10,
+                  activeNoteSlots: 1,
+                  recentNoteSlots: 2,
+                  projectStateSlots: 1,
+                  workingSummarySlots: 1,
+                  durableMemorySlots: 1,
+                  retrievedEvidenceSlots: 2,
+                  toolResultSlots: 0,
+                  resourceSlots: 0,
+                  promptAssetSlots: 0,
+                  freshSlots: 5,
+                  recentSlots: 3,
+                  staleSlots: 0,
+                  retrievalCoverage: 0.75,
+                  groundingScore: 0.88,
+                  staleContextRatio: 0.1,
+                  freshnessScore: 0.9,
+                  tokenPressureRatio: 0.25,
+                  healthScore: 0.87,
+                },
+              },
+            ],
+            averages: {
+              healthScore: 0.87,
+              groundingScore: 0.88,
+              retrievalCoverage: 0.75,
+              freshnessScore: 0.9,
+              staleContextRatio: 0.1,
+              tokenPressureRatio: 0.25,
+              latencyMs: 18,
+            },
+            sourceBreakdown: [{ source: "team_run", count: 2 }],
+            scopeBreakdown: [
+              {
+                teamId: "team-1",
+                roomId: "room-1",
+                runId: "run-1",
+                skillId: null,
+                count: 1,
+                latestCreatedAt: new Date().toISOString(),
+                latestStatus: "ok",
+                latestSource: "team_run",
+                latestHealthScore: 0.93,
+                latestGroundingScore: 0.91,
+                latestRetrievalCoverage: 0.82,
+              },
+              {
+                teamId: "team-1",
+                roomId: "room-2",
+                runId: "run-2",
+                skillId: null,
+                count: 1,
+                latestCreatedAt: new Date().toISOString(),
+                latestStatus: "ok",
+                latestSource: "team_run",
+                latestHealthScore: 0.87,
+                latestGroundingScore: 0.88,
+                latestRetrievalCoverage: 0.75,
+              },
+            ],
+          }),
+      },
+      getContextEngineEvaluationReport: {
+        useQuery: () =>
+          queryResult({
+            query: {
+              tenantId: "tenant-1",
+              teamId: null,
+              roomId: null,
+              runId: null,
+              skillId: null,
+              userId: null,
+              since: new Date().toISOString(),
+              limit: 12,
+            },
+            records: [
+              {
+                id: 2,
+                checkType: "context_engine_eval",
+                status: "ok",
+                source: "team_run",
+                createdAt: new Date().toISOString(),
+                details: {
+                  tenantId: "tenant-1",
+                  surface: "team_room",
+                  intent: "summarize",
+                  teamId: "team-1",
+                  roomId: "room-2",
+                  runId: "run-2",
+                  projectId: null,
+                  userId: 7,
+                  skillId: "skill-2",
+                  healthScore: 0.87,
+                  groundingScore: 0.88,
+                  retrievalCoverage: 0.75,
+                  freshnessScore: 0.9,
+                  staleContextRatio: 0.1,
+                  tokenPressureRatio: 0.25,
+                  latencyMs: 18,
+                },
+              },
+            ],
+            parity: [
+              {
+                surface: "team_room",
+                total: 1,
+                ok: 1,
+                warning: 0,
+                critical: 0,
+                averageHealthScore: 0.87,
+                averageGroundingScore: 0.88,
+                averageRetrievalCoverage: 0.75,
+              },
+            ],
+            trend: [
+              {
+                bucket: "2026-04-18T00",
+                surface: "team_room",
+                averageHealthScore: 0.87,
+                averageGroundingScore: 0.88,
+                averageRetrievalCoverage: 0.75,
+                averageLatencyMs: 18,
+              },
+            ],
+          }),
+      },
       getCurrentStatus: { useQuery: () => queryResult({ services: [], alerts: { critical: 0, warning: 0 }, lastCheck: null }) },
       getOpsOverview: { useQuery: () => queryResult({ health: "healthy", anomalies: [], summary: { totalAnomalies: 0, criticalCount: 0, warningCount: 0, resourceCount: 0, serviceCount: 0, monitoringCount: 0, auditCount: 0, orchestrationCount: 0 }, leadingSignals: { memoryPercent: null, cpuPercent: null, diskPercent: null, maxRestartDelta: null, llmErrorRate: null, mediaErrorRate: null, llmP95LatencyMs: null, mediaP95LatencyMs: null, fallbackRate: null, qualityRiskRate: null }, windows: { metricsHours: 6, auditHours: 6, orchestrationHours: 6 }, updatedAt: new Date().toISOString() }) },
       getWorkOsOverview: { useQuery: () => queryResult({ byState: {}, openExceptions: 0, overdueSla: 0, completed: 0 }) },
@@ -255,6 +462,26 @@ describe("AdminMonitoring Work OS shortcuts", () => {
     expect(screen.getByText(/browser automation health/i)).toBeInTheDocument();
     expect(screen.getByText(/2 pending/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /reconcile browser/i })).toBeInTheDocument();
+  });
+
+  it("opens the context evaluation dashboard and drills into a room/run slice", () => {
+    render(<AdminMonitoring />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^context$/i }));
+    expect(
+      screen.getByRole("heading", { name: /context engine evaluation/i })
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/room room-1/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/run run-1/i).length).toBeGreaterThan(0);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /team team-1.*room room-1.*run run-1/i,
+      })
+    );
+
+    expect(screen.getByLabelText(/room id/i)).toHaveValue("room-1");
+    expect(screen.getByLabelText(/run id/i)).toHaveValue("run-1");
   });
 
   it("reconciles browser automation tasks from the coverage card", () => {

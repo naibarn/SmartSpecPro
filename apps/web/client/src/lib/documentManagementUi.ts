@@ -5,6 +5,14 @@ export type DocumentScopeTab = "my_library" | "private_vault" | "my_drive" | "my
 export type DocumentSortOrder = "updated_desc" | "created_desc";
 export type DocumentViewMode = "library" | "editor";
 export type DocumentAccessSource = "owner" | "shared_direct" | "shared_group";
+export type KnowledgeVaultMode =
+  | "browse"
+  | "related"
+  | "properties"
+  | "views"
+  | "graph"
+  | "canvas"
+  | "memory_packs";
 export type DocumentPreviewType =
   | "markdown"
   | "image"
@@ -41,11 +49,114 @@ export interface DocumentQueryState {
   scope: DocumentScopeTab;
   sort: DocumentSortOrder;
   viewMode: DocumentViewMode;
+  knowledgeMode: KnowledgeVaultMode;
   query: string;
   itemType?: string;
   status?: string;
   docId?: number;
   folderId?: number | null;
+}
+
+export interface KnowledgeVaultSurfaceAvailability {
+  quickSwitcher: boolean;
+  inspector: boolean;
+  savedViews: boolean;
+  contextPacks: boolean;
+  graph: boolean;
+  canvas: boolean;
+}
+
+export interface KnowledgeVaultNavigationMode {
+  mode: KnowledgeVaultMode;
+  label: string;
+  description: string;
+  enabled: boolean;
+}
+
+export const KNOWLEDGE_VAULT_NAVIGATION_MODES: KnowledgeVaultNavigationMode[] = [
+  {
+    mode: "browse",
+    label: "Browse",
+    description: "Browse Markdown files and folders.",
+    enabled: true,
+  },
+  {
+    mode: "related",
+    label: "Related",
+    description: "Inspect backlinks, outgoing links, mentions, and local context.",
+    enabled: true,
+  },
+  {
+    mode: "properties",
+    label: "Fields",
+    description: "Explore tags, aliases, and frontmatter-style properties.",
+    enabled: true,
+  },
+  {
+    mode: "views",
+    label: "Saved Views",
+    description: "Open curated saved views for repeatable knowledge workflows.",
+    enabled: true,
+  },
+  {
+    mode: "graph",
+    label: "Graph",
+    description: "Navigate safe visual relationships without expanding runtime context.",
+    enabled: true,
+  },
+  {
+    mode: "canvas",
+    label: "Canvas Boards",
+    description: "Inspect and organize lightweight boards for planning and synthesis.",
+    enabled: true,
+  },
+  {
+    mode: "memory_packs",
+    label: "Memory Packs",
+    description: "Curate approved context packs for agent and skill runtime.",
+    enabled: true,
+  },
+];
+
+export function getKnowledgeVaultNavigationModes(
+  availability: KnowledgeVaultSurfaceAvailability,
+): KnowledgeVaultNavigationMode[] {
+  const modeEnabled: Record<KnowledgeVaultMode, boolean> = {
+    browse: true,
+    related: availability.inspector,
+    properties: availability.inspector,
+    views: availability.savedViews,
+    graph: availability.graph,
+    canvas: availability.canvas,
+    memory_packs: availability.contextPacks,
+  };
+
+  return KNOWLEDGE_VAULT_NAVIGATION_MODES.map((mode) => ({
+    ...mode,
+    enabled: mode.enabled && modeEnabled[mode.mode],
+  }));
+}
+
+export function resolveKnowledgeVaultMode(
+  value: string | null | undefined,
+  availability: KnowledgeVaultSurfaceAvailability,
+): KnowledgeVaultMode {
+  const candidate = KNOWLEDGE_VAULT_NAVIGATION_MODES.some(
+    (mode) => mode.mode === value,
+  )
+    ? value as KnowledgeVaultMode
+    : "browse";
+  const enabledModes = getKnowledgeVaultNavigationModes(availability)
+    .filter((mode) => mode.enabled)
+    .map((mode) => mode.mode);
+
+  return enabledModes.includes(candidate) ? candidate : "browse";
+}
+
+export function getKnowledgeVaultModeQueryParam(
+  mode: KnowledgeVaultMode,
+): string | null {
+  return mode === "browse" ? null : mode;
 }
 
 export function toDocumentLibraryItem(item: any): DocumentLibraryItem {
@@ -80,14 +191,27 @@ export const DEFAULT_DOCUMENT_QUERY_STATE: DocumentQueryState = {
   scope: "my_library",
   sort: "updated_desc",
   viewMode: "library",
+  knowledgeMode: "browse",
   query: "",
 };
+
+export function supportsKnowledgeVaultScope(
+  scope: DocumentScopeTab,
+): boolean {
+  return (
+    scope === "my_library"
+    || scope === "private_vault"
+    || scope === "shared_with_me"
+    || scope === "shared_groups"
+  );
+}
 
 export function parseDocumentQueryState(search: string): DocumentQueryState {
   const params = new URLSearchParams(search);
   const scope = params.get("scope");
   const sort = params.get("sort");
   const mode = params.get("mode");
+  const knowledgeMode = params.get("kv");
   const docIdRaw = params.get("doc");
   const folderIdRaw = params.get("folder");
   const query = params.get("q") || "";
@@ -110,6 +234,15 @@ export function parseDocumentQueryState(search: string): DocumentQueryState {
         : "my_library",
     sort: sort === "created_desc" ? "created_desc" : "updated_desc",
     viewMode: mode === "editor" ? "editor" : "library",
+    knowledgeMode:
+      knowledgeMode === "related"
+      || knowledgeMode === "properties"
+      || knowledgeMode === "views"
+      || knowledgeMode === "graph"
+      || knowledgeMode === "canvas"
+      || knowledgeMode === "memory_packs"
+        ? knowledgeMode
+        : "browse",
     query,
     itemType,
     status,
@@ -124,6 +257,10 @@ export function buildDocumentQueryString(state: DocumentQueryState): string {
   params.set("sort", state.sort);
   if (state.viewMode === "editor") {
     params.set("mode", "editor");
+  }
+  const knowledgeMode = getKnowledgeVaultModeQueryParam(state.knowledgeMode);
+  if (knowledgeMode) {
+    params.set("kv", knowledgeMode);
   }
   if (state.docId && Number.isFinite(state.docId) && state.docId > 0) {
     params.set("doc", String(state.docId));

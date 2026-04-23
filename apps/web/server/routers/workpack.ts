@@ -106,8 +106,8 @@ function buildWorkpackEnterpriseEvidence(detail: NonNullable<Awaited<ReturnType<
         label: map.connectorFamily,
         sourceType: "connector",
         scope: "workpack" as const,
-        trustTier: map.validationStatus === "validated" ? "trusted" : "derived",
-        freshnessTier: map.validationStatus === "validated" ? "fresh" : "warm",
+        trustTier: map.validationStatus === "validated" ? "trusted" as const : "derived" as const,
+        freshnessTier: map.validationStatus === "validated" ? "fresh" as const : "warm" as const,
         reason: `Connector validation is ${map.validationStatus}`,
         score: map.validationStatus === "validated" ? 0.88 : map.validationStatus === "stale" ? 0.54 : 0.2,
         evidenceRefs: [`connector:${map.connectorFamily}`],
@@ -309,7 +309,7 @@ function summarizeWorkpackRoadmapProgress(roadmapProgress: Array<{
     ready: 0,
     review_required: 0,
     blocked: 0,
-  } as const;
+  };
   const blockerCounts = new Map<string, number>();
 
   for (const item of roadmapProgress) {
@@ -853,6 +853,7 @@ export const workpackRouter = router({
       return {
         workpackId: detail.workpack.id,
         title: detail.workpack.title,
+        ...evidence,
         releaseGate: evidence.releaseGate,
         sdkContract: evidence.sdkContract,
         manifest: evidence.packManifest,

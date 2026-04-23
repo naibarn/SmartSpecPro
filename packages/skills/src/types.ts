@@ -102,6 +102,18 @@ export interface SkillDefinition {
   /** Reference to external skill file path */
   skillFilePath?: string;
 
+  /** True when the skill resolves to a native Agents Python bundle. */
+  nativeBundleReady?: boolean;
+
+  /** Canonical path to the native skill lock file when available. */
+  nativeBundleLockPath?: string;
+
+  /** Canonical path to the native skill bundle root when available. */
+  nativeBundlePath?: string;
+
+  /** Native bundle surface files discovered on disk. */
+  nativeBundleFiles?: string[];
+
   /** Execution mode for skill dispatch routing */
   executionMode?:
     | "llm-only"         // Legacy: LLM-only text processing

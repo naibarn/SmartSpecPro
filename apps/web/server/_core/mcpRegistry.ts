@@ -37,6 +37,20 @@ import {
   searchLibraryItems,
   uploadLibraryFile,
 } from "../services/libraryService";
+import {
+  getLibraryContextPack,
+  listLibraryContextPacks,
+  resolveLibraryContextPack,
+} from "../services/libraryContextPackService";
+import {
+  assertKnowledgeVaultSurfaceEnabledAsync,
+  isKnowledgeVaultSurfaceEnabledAsync,
+} from "../services/libraryFeatureFlags";
+import {
+  incrementLibraryKnowledgeCounter,
+  recordLibraryKnowledgeLeakageProbe,
+  sanitizeLibraryKnowledgeLeakageProbe,
+} from "../services/libraryKnowledgeObservabilityService";
 import { getRedisClient } from "../services/redis";
 import { getSkillByIdAsync, getAvailableSkillsAsync } from "../services/skillRegistry";
 import { executeSkill } from "../services/skillExecutor";
@@ -72,6 +86,7 @@ import {
   promoteMessageToWorkItem,
   requestWorkItemChangesByAssistant,
 } from "../services/orchestratorRoomActionsService";
+import { buildContextToolStateHintsFromResult } from "../services/contextToolService";
 
 export type McpSessionMode = "api_key" | "session" | "bearer" | "delegated_worker";
 export type McpToolActionClass = "read" | "compute" | "media" | "mcp_write";
@@ -656,6 +671,210 @@ async function getOwnerLibraryItem(
     throw new Error("Library item not found");
   }
   return item;
+}
+
+function isAgentReadableContextPack(detail: {
+  approvedForAgents: boolean;
+  readinessStatus: string;
+  status?: string;
+  archivedAt?: Date | string | null;
+}): boolean {
+  return detail.approvedForAgents === true
+    && detail.readinessStatus === "trusted"
+    && detail.status !== "archived"
+    && !detail.archivedAt;
+}
+
+async function listOwnerLibraryContextPacks(
+  args: Record<string, unknown>,
+  ctx: McpExecutionContext,
+): Promise<unknown> {
+  await assertKnowledgeVaultSurfaceEnabledAsync(
+    "contextPacksDelegatedMcp",
+    ctx.session.tenantId,
+  );
+  try {
+    await assertDelegatedWorkerGrant(ctx.session as any, {
+      grantType: "library_context_pack",
+    });
+  } catch (error) {
+    incrementLibraryKnowledgeCounter({
+      tenantId: ctx.session.tenantId,
+      counter: "delegatedUnauthorizedResolveCount",
+    });
+    recordLibraryKnowledgeLeakageProbe(
+      sanitizeLibraryKnowledgeLeakageProbe({
+        probeId: `delegated-context-pack-list-${Date.now()}`,
+        probeType: "delegated_context_pack_without_grant",
+        tenantId: ctx.session.tenantId,
+        actorUserId: ctx.session.userId,
+        leaked: false,
+        blockedReason: "delegated_worker_grant_missing",
+      }),
+    );
+    throw error;
+  }
+
+  return runWithDelegatedWorkerExecution({
+    auth: ctx.session as any,
+    actionClass: "read",
+  }, async () => {
+    const input = {
+      query: typeof args.query === "string" ? args.query : undefined,
+      approvedForAgents:
+        typeof args.approved_for_agents === "boolean"
+          ? args.approved_for_agents
+          : undefined,
+      limit: Number.isFinite(Number(args.limit)) ? Number(args.limit) : undefined,
+      offset: Number.isFinite(Number(args.offset)) ? Number(args.offset) : undefined,
+    };
+    const actor = {
+      userId: ctx.session.userId,
+      tenantId: ctx.session.tenantId,
+      role: "user",
+    } as any;
+
+    if (ctx.session.authMode !== "delegated_worker") {
+      const packs = await listLibraryContextPacks(input, actor);
+      return packs.filter(isAgentReadableContextPack);
+    }
+
+    const grantedIds = Array.from(
+      new Set(ctx.delegatedManifest?.grantSummary.libraryContextPackIds ?? []),
+    );
+    const query = input.query?.trim().toLowerCase();
+    const filtered = [];
+
+    for (const contextPackId of grantedIds) {
+      try {
+        await assertDelegatedWorkerGrant(ctx.session as any, {
+          grantType: "library_context_pack",
+          resourceId: contextPackId,
+        });
+      } catch {
+        continue;
+      }
+
+      const detail = await getLibraryContextPack({ id: contextPackId }, actor);
+      if (!detail) {
+        continue;
+      }
+      if (!isAgentReadableContextPack(detail)) {
+        continue;
+      }
+      if (
+        input.approvedForAgents !== undefined
+        && detail.approvedForAgents !== input.approvedForAgents
+      ) {
+        continue;
+      }
+      if (
+        query
+        && !detail.title.toLowerCase().includes(query)
+        && !detail.slug.toLowerCase().includes(query)
+        && !(detail.description ?? "").toLowerCase().includes(query)
+      ) {
+        continue;
+      }
+
+      filtered.push({
+        id: detail.id,
+        slug: detail.slug,
+        title: detail.title,
+        status: detail.status,
+        sourceMode: detail.sourceMode,
+        approvedForAgents: detail.approvedForAgents,
+        readinessStatus: detail.readinessStatus,
+        defaultRuntimeTier: detail.defaultRuntimeTier,
+        memberCounts: detail.memberCounts,
+        estimatedTokenHint: detail.estimatedTokenHint,
+        updatedAt: detail.updatedAt,
+      });
+    }
+
+    const offset = Math.max(0, input.offset ?? 0);
+    const limit = Math.min(Math.max(input.limit ?? 25, 1), 50);
+    return filtered.slice(offset, offset + limit);
+  });
+}
+
+async function resolveOwnerLibraryContextPack(
+  args: Record<string, unknown>,
+  ctx: McpExecutionContext,
+): Promise<unknown> {
+  await assertKnowledgeVaultSurfaceEnabledAsync(
+    "contextPacksDelegatedMcp",
+    ctx.session.tenantId,
+  );
+  const contextPackId = Number(args.context_pack_id);
+  if (!Number.isInteger(contextPackId) || contextPackId <= 0) {
+    throw new Error("context_pack_id must be a positive integer");
+  }
+
+  try {
+    await assertDelegatedWorkerGrant(ctx.session as any, {
+      grantType: "library_context_pack",
+      resourceId: contextPackId,
+    });
+  } catch (error) {
+    incrementLibraryKnowledgeCounter({
+      tenantId: ctx.session.tenantId,
+      counter: "delegatedUnauthorizedResolveCount",
+    });
+    recordLibraryKnowledgeLeakageProbe(
+      sanitizeLibraryKnowledgeLeakageProbe({
+        probeId: `delegated-context-pack-resolve-${contextPackId}-${Date.now()}`,
+        probeType: "delegated_context_pack_without_grant",
+        tenantId: ctx.session.tenantId,
+        actorUserId: ctx.session.userId,
+        leaked: false,
+        blockedReason: "delegated_worker_grant_missing",
+        hiddenResourceId: contextPackId,
+      }),
+    );
+    throw error;
+  }
+
+  return runWithDelegatedWorkerExecution({
+    auth: ctx.session as any,
+    actionClass: "read",
+  }, async () => {
+    const actor = {
+      userId: ctx.session.userId,
+      tenantId: ctx.session.tenantId,
+      role: "user",
+    } as any;
+    const detail = await getLibraryContextPack({ id: contextPackId }, actor);
+    if (!detail) {
+      throw new Error("Context pack not found");
+    }
+    if (!isAgentReadableContextPack(detail)) {
+      throw new Error(
+        "Context pack is not trusted and approved for agent use",
+      );
+    }
+
+    return resolveLibraryContextPack(
+      {
+        ref: { id: contextPackId },
+        maxItems: Number.isFinite(Number(args.max_items))
+          ? Number(args.max_items)
+          : undefined,
+        tokenBudgetHint: Number.isFinite(Number(args.token_budget_hint))
+          ? Number(args.token_budget_hint)
+          : undefined,
+        includeCitations:
+          typeof args.include_citations === "boolean"
+            ? args.include_citations
+            : true,
+        failIfPartial:
+          typeof args.fail_if_partial === "boolean"
+            ? args.fail_if_partial
+            : false,
+      },
+      actor,
+    );
+  });
 }
 
 async function uploadOwnerLibraryFile(
@@ -1687,6 +1906,73 @@ async function executeBrowserActions(args: Record<string, unknown>, ctx: McpExec
   };
 }
 
+function attachContextStateToResult(
+  toolName: string,
+  ctx: McpExecutionContext,
+  result: unknown,
+): unknown {
+  const ownerType = ctx.session.teamId ? "team" : "user";
+  const ownerId = ctx.session.teamId ? ctx.session.teamId : String(ctx.session.userId);
+  if (!ownerId) {
+    return result;
+  }
+
+  const contextState = buildContextToolStateHintsFromResult({
+    title: `MCP tool result: ${toolName}`,
+    content: result,
+    ownerType,
+    ownerId,
+    sourceRef: `mcp:${toolName}`,
+    source: typeof result === "string" ? "semantic" : "structured",
+    includedReason: `MCP tool result from ${toolName}`,
+    trust: "derived",
+    freshness: "recent",
+  });
+
+  if (Object.keys(contextState).length === 0) {
+    return result;
+  }
+
+  if (result && typeof result === "object" && !Array.isArray(result)) {
+    const record = result as Record<string, unknown>;
+    const existingMeta =
+      record._meta && typeof record._meta === "object"
+        ? (record._meta as Record<string, unknown>)
+        : {};
+    return {
+      ...record,
+      _meta: {
+        ...existingMeta,
+        contextState: existingMeta.contextState ?? contextState,
+        contextSource: existingMeta.contextSource ?? "mcp_tool_result",
+        toolName: existingMeta.toolName ?? toolName,
+      },
+    };
+  }
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: typeof result === "string"
+          ? result
+          : (() => {
+              try {
+                return JSON.stringify(result);
+              } catch {
+                return String(result);
+              }
+            })(),
+      },
+    ],
+    _meta: {
+      contextState,
+      contextSource: "mcp_tool_result",
+      toolName,
+    },
+  };
+}
+
 const TOOL_REGISTRY: McpToolDefinition[] = [
   {
     name: "smartspec.gateway.models.list",
@@ -1822,6 +2108,72 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
       ctx.session.authMode !== "delegated_worker"
       || ((ctx.delegatedManifest?.grantSummary.libraryItemIds?.length ?? 0) > 0 || ctx.delegatedManifest?.knowledgeAccess.libraryRead === true),
     execute: getOwnerLibraryItem,
+  },
+  {
+    name: "smartspec.knowledge.context_packs.list",
+    family: "knowledge",
+    namespace: "knowledge",
+    toolGroup: "knowledge_read",
+    description: "List Library context packs granted to this worker job",
+    requiredScope: "library:read",
+    readWrite: "Read",
+    delegatedWorkerEligible: true,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        approved_for_agents: { type: "boolean" },
+        limit: { type: "integer" },
+        offset: { type: "integer" },
+      },
+      additionalProperties: false,
+    },
+    listVisibleWhen: async (ctx) =>
+      (await isKnowledgeVaultSurfaceEnabledAsync(
+        "contextPacksDelegatedMcp",
+        ctx.session.tenantId,
+      ))
+      && (ctx.session.authMode !== "delegated_worker"
+        || ((ctx.delegatedManifest?.grantSummary.libraryContextPackIds?.length ?? 0) > 0)),
+    execute: listOwnerLibraryContextPacks,
+  },
+  {
+    name: "smartspec.knowledge.context_packs.resolve",
+    family: "knowledge",
+    namespace: "knowledge",
+    toolGroup: "knowledge_read",
+    description: "Resolve a granted Library context pack into permission-filtered note context",
+    requiredScope: "library:read",
+    readWrite: "Read",
+    delegatedWorkerEligible: true,
+    executionMode: "implemented",
+    resultSafetyClass: "structured_json",
+    idempotencyMode: "none",
+    actionClass: "read",
+    inputSchema: {
+      type: "object",
+      required: ["context_pack_id"],
+      properties: {
+        context_pack_id: { type: "integer" },
+        max_items: { type: "integer" },
+        token_budget_hint: { type: "integer" },
+        include_citations: { type: "boolean" },
+        fail_if_partial: { type: "boolean" },
+      },
+      additionalProperties: false,
+    },
+    listVisibleWhen: async (ctx) =>
+      (await isKnowledgeVaultSurfaceEnabledAsync(
+        "contextPacksDelegatedMcp",
+        ctx.session.tenantId,
+      ))
+      && (ctx.session.authMode !== "delegated_worker"
+        || ((ctx.delegatedManifest?.grantSummary.libraryContextPackIds?.length ?? 0) > 0)),
+    execute: resolveOwnerLibraryContextPack,
   },
   {
     name: "smartspec.knowledge.library.upload",
@@ -2941,7 +3293,8 @@ export async function executeMcpToolByName(
     );
   }
 
-  const result = await tool.execute(args, ctx);
+  const rawResult = await tool.execute(args, ctx);
+  const result = attachContextStateToResult(toolName, ctx, rawResult);
   return {
     result,
     idempotencyRequired: tool.idempotencyMode !== "none",

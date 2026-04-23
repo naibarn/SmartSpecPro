@@ -31,6 +31,8 @@ import {
 import {
   resolveRelativeSkillManifestPath,
   resolveSkillManifestPath,
+  resolveSkillLockPath,
+  isNativeSkillBundle,
 } from "./skillFiles";
 import { clearSchemaCache } from "./skillSchemaLoader";
 import { clearSkillCatalogCache } from "./skillCatalog";
@@ -171,6 +173,22 @@ function dbSkillToDefinition(dbSkill: {
     skillContent: dbSkill.skillContent || undefined,
     skillFilePath: dbSkill.folderPath
       ? resolveRelativeSkillManifestPath(dbSkill.folderPath) ?? `${dbSkill.folderPath}/skill.md`
+      : undefined,
+    nativeBundleReady: dbSkill.folderPath ? isNativeSkillBundle(dbSkill.folderPath) : undefined,
+    nativeBundleLockPath: dbSkill.folderPath ? resolveSkillLockPath(dbSkill.folderPath) ?? undefined : undefined,
+    nativeBundlePath: dbSkill.folderPath || undefined,
+    nativeBundleFiles: dbSkill.folderPath && isNativeSkillBundle(dbSkill.folderPath)
+      ? [
+          "SKILL.md",
+          "skill.md",
+          "scripts/run.sh",
+          "scripts/verify.sh",
+          "references/input_contract.md",
+          "references/output_contract.md",
+          "references/maintenance.md",
+          "MODEL_COMPATIBILITY.md",
+          "skill.lock.json",
+        ].filter((relativePath) => fs.existsSync(path.join(dbSkill.folderPath as string, relativePath)))
       : undefined,
     executionMode: (dbSkill.executionMode as any) || "llm-only",
     chainTo: dbSkill.chainTo || undefined,

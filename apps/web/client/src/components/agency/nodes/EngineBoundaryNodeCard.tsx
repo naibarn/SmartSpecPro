@@ -1,15 +1,14 @@
 import { memo } from "react";
-import { Handle, Position } from "reactflow";
-import type { NodeProps } from "reactflow";
+import { Handle, Position } from "@xyflow/react";
 import { ArrowLeftRight, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { AgencyNodeData } from "./types";
+import type { AgencyFlowNodeProps } from "./types";
 
 export const EngineBoundaryNodeCard = memo(function EngineBoundaryNodeCard({
   data,
   selected,
-}: NodeProps<AgencyNodeData>) {
+}: AgencyFlowNodeProps) {
   const hasErrors = (data.validationErrors?.length ?? 0) > 0;
   const config = (data.nodeConfig ?? {}) as Record<string, unknown>;
 

@@ -1,14 +1,13 @@
 import { memo } from "react";
-import { Handle, Position } from "reactflow";
-import type { NodeProps } from "reactflow";
+import { Handle, Position } from "@xyflow/react";
 import { RefreshCw, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AgencyNodeData } from "./types";
+import type { AgencyFlowNodeProps } from "./types";
 
 export const LoopRetryNodeCard = memo(function LoopRetryNodeCard({
   data,
   selected,
-}: NodeProps<AgencyNodeData>) {
+}: AgencyFlowNodeProps) {
   const hasErrors = (data.validationErrors?.length ?? 0) > 0;
   const exitMode = (data.nodeConfig?.exitCondition as any)?.mode ?? "max_iterations";
   const maxIterations = (data.nodeConfig?.exitCondition as any)?.maxIterations ?? 5;

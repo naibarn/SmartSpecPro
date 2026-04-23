@@ -1,15 +1,14 @@
 import { memo } from "react";
-import { Handle, Position } from "reactflow";
-import type { NodeProps } from "reactflow";
+import { Handle, Position } from "@xyflow/react";
 import { Badge } from "@/components/ui/badge";
 import { Bot, Wrench, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AgencyNodeData } from "./types";
+import type { AgencyFlowNodeProps } from "./types";
 
 export const AgentNodeCard = memo(function AgentNodeCard({
   data,
   selected,
-}: NodeProps<AgencyNodeData>) {
+}: AgencyFlowNodeProps) {
   const hasErrors = (data.validationErrors?.length ?? 0) > 0;
 
   return (

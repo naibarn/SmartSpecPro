@@ -6,16 +6,10 @@
  */
 
 import { memo } from "react";
-import { type NodeProps } from "reactflow";
 import { ChevronDown, ChevronRight, Layers } from "lucide-react";
+import type { WorkflowGroupNodeProps } from "./types";
 
-export interface GroupNodeData {
-  label: string;
-  collapsed: boolean;
-  onToggleCollapse: (groupId: string) => void;
-}
-
-function GroupNode({ id, data, selected }: NodeProps<GroupNodeData>) {
+function GroupNode({ id, data, selected }: WorkflowGroupNodeProps) {
   const { label, collapsed, onToggleCollapse } = data;
 
   return (

@@ -111,9 +111,12 @@ export function getResolvedMenuItems(
 ): ResolvedMenuItem[] {
   const platform = detectPlatform();
   const items = getMenuItemsByGroup(platform, role, group, overrides, enabledFeatures);
+  const exists = typeof i18next.exists === "function"
+    ? i18next.exists.bind(i18next)
+    : () => false;
   return items.map(item => {
     const navKey = `nav:sidebar.${item.id}`;
-    const translatedLabel = i18next.exists(navKey) ? i18next.t(navKey) : item.label;
+    const translatedLabel = exists(navKey) ? i18next.t(navKey) : item.label;
     return {
       ...item,
       label: translatedLabel,

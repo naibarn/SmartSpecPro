@@ -209,21 +209,6 @@ def main() -> int:
             )
             return 1
 
-    # Check if we have a task list ID
-    if not task_context.task_list_id:
-        print(
-            json.dumps(
-                {
-                    "success": False,
-                    "mode": "no_task_list",
-                    "error": "No session ID available. SessionStart hook may not have run.",
-                    "hint": "Restart the Claude Code session to trigger the hook.",
-                },
-                indent=2,
-            )
-        )
-        return 1
-
     # Generate expected tasks based on workflow state
     tasks_to_write = generate_expected_tasks(
         current_step=resume_from_step,
@@ -240,12 +225,21 @@ def main() -> int:
         semantic_to_position,
     )
 
-    # Write tasks directly to disk
-    write_result = write_tasks(
-        task_context.task_list_id,
-        tasks_to_write,
-        dependency_graph=dependency_graph,
-    )
+    # Write tasks directly to disk when a session ID is available.
+    # If the hook did not run, continue in file-based mode and keep the
+    # session state on disk so the workflow can still progress.
+    workflow_backend = "file_based"
+    write_result = None
+    task_write_error = None
+    if task_context.task_list_id:
+        workflow_backend = "task_list"
+        write_result = write_tasks(
+            task_context.task_list_id,
+            tasks_to_write,
+            dependency_graph=dependency_graph,
+        )
+    else:
+        task_write_error = "No session ID available. Continuing in file-based mode."
 
     # Compute split directories (full paths) and which need specs
     splits = state.get("splits", [])
@@ -266,15 +260,18 @@ def main() -> int:
         "warnings": warnings,
         "message": f"{'Starting new' if mode == 'new' else 'Resuming'} session in: {planning_dir}",
         # New task system fields
-        "tasks_written": write_result.tasks_written,
+        "workflow_backend": workflow_backend,
+        "tasks_written": write_result.tasks_written if write_result else 0,
         "task_list_id": task_context.task_list_id,
         "session_id_source": str(task_context.source),
         "session_id_matched": task_context.session_id_matched,
     }
 
     # Add error if task write failed
-    if not write_result.success:
+    if write_result and not write_result.success:
         result["task_write_error"] = write_result.error
+    if task_write_error:
+        result["task_write_error"] = task_write_error
 
     print(json.dumps(result, indent=2))
     return 0

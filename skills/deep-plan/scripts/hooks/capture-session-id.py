@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Capture session_id and expose it via Claude's context.
+"""Capture session_id and plugin root, expose them via Claude's context.
 
 This hook reads session_id from the JSON payload on stdin and:
 1. Outputs it to stdout as additionalContext (Claude sees this directly)
-2. Optionally writes to CLAUDE_ENV_FILE if available (fallback for bash)
+2. Also captures CLAUDE_PLUGIN_ROOT as DEEP_PLUGIN_ROOT for downstream scripts
+3. Optionally writes to CLAUDE_ENV_FILE if available (fallback for bash)
 
 The additionalContext approach is primary because:
 - CLAUDE_ENV_FILE is unreliable (empty string bug, not sourced on resume)
@@ -63,6 +64,7 @@ def main() -> int:
 
     session_id = payload.get("session_id")
     transcript_path = payload.get("transcript_path")
+    plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT", "")
 
     # Need at least session_id to proceed
     if not session_id:
@@ -72,14 +74,21 @@ def main() -> int:
     if not re.fullmatch(r'[a-zA-Z0-9_\-]{1,128}', session_id):
         return 0
 
-    # Check if DEEP_SESSION_ID is already set correctly
+    # Build additionalContext lines for both session and plugin root.
+    context_parts = []
+
     existing_session_id = os.environ.get("DEEP_SESSION_ID")
     if existing_session_id != session_id:
-        # Not set or doesn't match - output to Claude's context via additionalContext
+        context_parts.append(f"DEEP_SESSION_ID={session_id}")
+
+    if plugin_root:
+        context_parts.append(f"DEEP_PLUGIN_ROOT={plugin_root}")
+
+    if context_parts:
         output = {
             "hookSpecificOutput": {
                 "hookEventName": "SessionStart",
-                "additionalContext": f"DEEP_SESSION_ID={session_id}",
+                "additionalContext": "\n".join(context_parts),
             }
         }
         print(json.dumps(output))

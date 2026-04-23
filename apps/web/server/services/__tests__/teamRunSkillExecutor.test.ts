@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+process.env.JWT_SECRET ??=
+  "test-jwt-secret-32-chars-minimum-1234567890";
+
 // Mocks must be set up before importing the module under test
 vi.mock("../skillRegistry", () => ({
   getSkillByIdAsync: vi.fn(),
@@ -22,8 +25,22 @@ vi.mock("../taskPlannerMiddleware", () => ({
 vi.mock("../creditService", () => ({
   calculateCreditsForLLMDynamic: vi.fn().mockResolvedValue(5),
 }));
+vi.mock("../monitoringService", () => ({
+  recordContextEngineMetric: vi.fn().mockResolvedValue({ checkId: 1 }),
+}));
+vi.mock("../tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: vi.fn().mockResolvedValue({
+    unifiedSkillExecution: false,
+  }),
+}));
+vi.mock("../unifiedOrchestrator", () => ({
+  executeUnified: vi.fn(),
+}));
 
-import { executeTeamRunSkillTurn, type TeamRunSkillExecutionInput } from "../teamRunSkillExecutor";
+import {
+  executeTeamRunSkillTurn,
+  type TeamRunSkillExecutionInput,
+} from "../teamRunSkillExecutor";
 import { getSkillByIdAsync } from "../skillRegistry";
 import { executeSkillLlmWithFallback } from "../skillModelFallback";
 import { composePrompt } from "../promptComposer";
@@ -32,14 +49,20 @@ import { calculateCreditsForLLMDynamic } from "../creditService";
 
 // --- Helpers ---
 
-function makeInput(overrides: Partial<TeamRunSkillExecutionInput> = {}): TeamRunSkillExecutionInput {
+function makeInput(
+  overrides: Partial<TeamRunSkillExecutionInput> = {}
+): TeamRunSkillExecutionInput {
   return {
     run: { id: "run-1" } as any,
     tenantId: "tenant-1",
     userId: 1,
     assistantId: "agent-A",
     assistantContext: {
-      profile: { preferredModelId: "gpt-4o", displayName: "Agent A", roleTitle: "Writer" },
+      profile: {
+        preferredModelId: "gpt-4o",
+        displayName: "Agent A",
+        roleTitle: "Writer",
+      },
       agentModel: null,
       personaContext: "You are a helpful assistant",
     },
@@ -75,7 +98,18 @@ function makeFallbackResult(overrides: Record<string, unknown> = {}) {
     provider: { providerName: "openai" },
     inputTokens: 500,
     outputTokens: 300,
-    attempts: [{ attempt: 1, modelId: "gpt-4o", providerName: "openai", success: true, statusCode: 200, errorType: null, errorMessage: null, durationMs: 1200 }],
+    attempts: [
+      {
+        attempt: 1,
+        modelId: "gpt-4o",
+        providerName: "openai",
+        success: true,
+        statusCode: 200,
+        errorType: null,
+        errorMessage: null,
+        durationMs: 1200,
+      },
+    ],
     totalDurationMs: 1200,
     ...overrides,
   };
@@ -89,7 +123,10 @@ beforeEach(() => {
     messages: [
       { role: "system", content: "Persona context: You are Agent A..." },
       { role: "user", content: "[User] Write about AI trends" },
-      { role: "assistant", content: "[Agent B] Here is some prior analysis..." },
+      {
+        role: "assistant",
+        content: "[Agent B] Here is some prior analysis...",
+      },
     ],
   } as any);
   vi.mocked(resolveSkillExecutionPolicy).mockResolvedValue({
@@ -97,7 +134,9 @@ beforeEach(() => {
     maxTokens: 4096,
     temperature: 0.7,
   } as any);
-  vi.mocked(executeSkillLlmWithFallback).mockResolvedValue(makeFallbackResult() as any);
+  vi.mocked(executeSkillLlmWithFallback).mockResolvedValue(
+    makeFallbackResult() as any
+  );
   vi.mocked(calculateCreditsForLLMDynamic).mockResolvedValue(5);
 });
 
@@ -113,7 +152,10 @@ describe("executeTeamRunSkillTurn", () => {
 
   it("should use detected skill's systemPrompt in messages", async () => {
     vi.mocked(getSkillByIdAsync).mockResolvedValue(
-      makeSkill({ systemPrompt: "You are a Thai article writer with expertise in fashion." }) as any,
+      makeSkill({
+        systemPrompt:
+          "You are a Thai article writer with expertise in fashion.",
+      }) as any
     );
 
     await executeTeamRunSkillTurn(makeInput());
@@ -139,6 +181,23 @@ describe("executeTeamRunSkillTurn", () => {
     }
   });
 
+  it("should compose the team prompt with initiator memory context", async () => {
+    await executeTeamRunSkillTurn(makeInput());
+
+    expect(composePrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assistantId: "agent-A",
+        roomId: "room-1",
+        teamId: "team-1",
+        runId: "run-1",
+        objective: "Write an article about AI",
+        tenantId: "tenant-1",
+        initiatedByUserId: 1,
+        currentMessage: "Write an article about AI",
+      }),
+    );
+  });
+
   it("should return inputTokens and outputTokens as flat fields", async () => {
     const result = await executeTeamRunSkillTurn(makeInput());
 
@@ -162,12 +221,18 @@ describe("executeTeamRunSkillTurn", () => {
 
     expect(result.costCredits).toBe(42);
     expect(result.costCredits).not.toBe(0);
-    expect(calculateCreditsForLLMDynamic).toHaveBeenCalledWith(500, 300, "gpt-4o");
+    expect(calculateCreditsForLLMDynamic).toHaveBeenCalledWith(
+      500,
+      300,
+      "gpt-4o"
+    );
   });
 
   it("should parse nextSpeakerHint from LLM response content", async () => {
     vi.mocked(executeSkillLlmWithFallback).mockResolvedValue(
-      makeFallbackResult({ content: "Great analysis of the topic. [NEXT: Content Director]" }) as any,
+      makeFallbackResult({
+        content: "Great analysis of the topic. [NEXT: Content Director]",
+      }) as any
     );
 
     const result = await executeTeamRunSkillTurn(makeInput());
@@ -179,7 +244,7 @@ describe("executeTeamRunSkillTurn", () => {
 
   it("should return undefined nextSpeakerHint when no hint in content", async () => {
     vi.mocked(executeSkillLlmWithFallback).mockResolvedValue(
-      makeFallbackResult({ content: "Great analysis of the topic." }) as any,
+      makeFallbackResult({ content: "Great analysis of the topic." }) as any
     );
 
     const result = await executeTeamRunSkillTurn(makeInput());
@@ -187,15 +252,79 @@ describe("executeTeamRunSkillTurn", () => {
     expect(result.nextSpeakerHint).toBeUndefined();
     expect(result.content).toBe("Great analysis of the topic.");
   });
+
+  it("should short-circuit execution when runtime dispatch policy blocks the active step", async () => {
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "workflow",
+                  title: "Run workflow",
+                  objective: "Run workflow",
+                  surface: "workflow",
+                  selectedCapabilityId: "workflow",
+                  status: "planned",
+                  runtimeDispatchPolicy: {
+                    stepId: "step-1",
+                    surface: "workflow",
+                    selectedCapabilityId: "workflow",
+                    authorityDecision: "blocked",
+                    contractCompatibilityState: "blocked_contract_not_migrated",
+                    sideEffectClass: "external_side_effect",
+                    idempotencyKey: "idem-1",
+                    inputHash: "hash-1",
+                    budgetReservation: {
+                      tokens: 0,
+                      toolCalls: 0,
+                      mediaJobs: 0,
+                      workflowRuns: 1,
+                      agencyRuns: 0,
+                      costCredits: 0,
+                    },
+                    maxAttempts: 1,
+                    timeoutSeconds: 60,
+                    retryBackoff: "none",
+                    resumeCursor: null,
+                    cancelBehavior: "mark_cancel_requested",
+                    deadLetterPolicy: {
+                      reasonCode: "surface_contract_not_migrated",
+                      recoveryHint: "Review and migrate the workflow contract.",
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    );
+
+    expect(executeSkillLlmWithFallback).not.toHaveBeenCalled();
+    expect(result.content).toContain("blocked");
+    expect(result.metadata.routeReason).toBe("runtime_dispatch_policy:blocked");
+    expect(result.metadata.runtimeDispatchOutcome).toBe("blocked");
+  });
 });
 
 describe("executeTeamRunSkillTurn — skill resolution", () => {
   it("should use route.selectedSkillId when available", async () => {
-    const customSkill = makeSkill({ id: "custom-skill", systemPrompt: "Custom prompt" });
+    const customSkill = makeSkill({
+      id: "custom-skill",
+      systemPrompt: "Custom prompt",
+    });
     vi.mocked(getSkillByIdAsync).mockResolvedValue(customSkill as any);
 
     const result = await executeTeamRunSkillTurn(
-      makeInput({ route: { route: "skill", reason: "detected", selectedSkillId: "custom-skill" } }),
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "detected",
+          selectedSkillId: "custom-skill",
+        },
+      })
     );
 
     expect(getSkillByIdAsync).toHaveBeenCalledWith("custom-skill");
@@ -203,13 +332,22 @@ describe("executeTeamRunSkillTurn — skill resolution", () => {
   });
 
   it("should fall back to general skill when selectedSkillId not found", async () => {
-    const fallbackSkill = makeSkill({ id: "general-article-writer", systemPrompt: "General fallback" });
+    const fallbackSkill = makeSkill({
+      id: "general-article-writer",
+      systemPrompt: "General fallback",
+    });
     vi.mocked(getSkillByIdAsync)
-      .mockResolvedValueOnce(undefined as any)  // nonexistent-skill not found
-      .mockResolvedValueOnce(fallbackSkill as any);  // general-article-writer found
+      .mockResolvedValueOnce(undefined as any) // nonexistent-skill not found
+      .mockResolvedValueOnce(fallbackSkill as any); // general-article-writer found
 
     const result = await executeTeamRunSkillTurn(
-      makeInput({ route: { route: "skill", reason: "detected", selectedSkillId: "nonexistent-skill" } }),
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "detected",
+          selectedSkillId: "nonexistent-skill",
+        },
+      })
     );
 
     expect(result.skillId).toBe("general-article-writer");
@@ -220,8 +358,14 @@ describe("executeTeamRunSkillTurn — skill resolution", () => {
 
     await expect(
       executeTeamRunSkillTurn(
-        makeInput({ route: { route: "skill", reason: "detected", selectedSkillId: "nonexistent-skill" } }),
-      ),
+        makeInput({
+          route: {
+            route: "skill",
+            reason: "detected",
+            selectedSkillId: "nonexistent-skill",
+          },
+        })
+      )
     ).rejects.toThrow(/No skill resolved/);
   });
 });

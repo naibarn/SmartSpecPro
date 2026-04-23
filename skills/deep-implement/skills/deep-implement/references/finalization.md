@@ -51,48 +51,6 @@ Before generating output, do one final sweep:
 
 **Rule: If you're 80%+ confident it should be done → just do it.** Only genuinely optional or ambiguous items go to [SUGGEST].
 
-**Cadence rule:**
-- do at least 5 review rounds
-- allow up to 7 rounds if findings keep surfacing
-- each round must check completeness, security, and obvious extra improvements
-- stop only after 2 consecutive rounds with no [AUTO-FIX] findings
-
----
-
-## Post-Completion Self-Revision
-
-After the final quality pass succeeds, do one more self-revision round before declaring completion.
-
-This pass is intentionally different from bug-fixing:
-- you are no longer asking "does it pass?"
-- you are asking "now that the full feature exists, what should be revised?"
-
-### Revision Checklist
-
-- Is any code awkward because it was written section-by-section rather than as a finished whole?
-- Did review fixes create naming drift or duplicated logic?
-- Is there cleanup or consolidation that is now clearly safe?
-- Is there a missing integration test that only became obvious at the end?
-
-### Procedure
-
-1. Re-read the final changed files and section plans together
-2. Identify:
-   - **[AUTO-FIX]** low-risk revisions that clearly improve the result
-   - **[SUGGEST]** optional or product-sensitive revisions
-3. Apply all [AUTO-FIX] revisions
-4. Re-run relevant tests
-5. Repeat this revision pass until stable:
-   - target 5 rounds
-   - max 7 rounds
-   - require 2 consecutive no-op rounds before stopping
-6. If code changed materially, create a final revision commit:
-   ```bash
-   git add -u && git commit -m "refactor: final revision pass"
-   ```
-
-The workflow should not end immediately after the first green build if this revision pass reveals something clearly worth fixing.
-
 ---
 
 ## Generate usage.md

@@ -53,6 +53,9 @@ function buildCandidates(key: string): Array<{ ns: Namespace; key: string }> {
 export function useScopedTranslation(defaultNamespaces: Namespace | Namespace[]) {
   const namespaces = Array.isArray(defaultNamespaces) ? defaultNamespaces : [defaultNamespaces];
   const { t: i18nT, i18n } = useTranslation(namespaces);
+  const exists = typeof i18n.exists === "function"
+    ? i18n.exists.bind(i18n)
+    : () => false;
   const rawLang = i18n.resolvedLanguage ?? i18n.language;
   const locale: Locale = (AVAILABLE_LOCALES as readonly string[]).includes(rawLang)
     ? (rawLang as Locale)
@@ -77,13 +80,13 @@ export function useScopedTranslation(defaultNamespaces: Namespace | Namespace[])
         : (params ?? {});
     const candidates = buildCandidates(key);
     for (const ns of namespaces) {
-      if (i18n.exists(key, { ns })) {
+      if (exists(key, { ns })) {
         return i18nT(key, { ns, ...options }) as string;
       }
     }
 
     for (const candidate of candidates) {
-      if (i18n.exists(candidate.key, { ns: candidate.ns })) {
+      if (exists(candidate.key, { ns: candidate.ns })) {
         return i18nT(candidate.key, { ns: candidate.ns, ...options }) as string;
       }
     }

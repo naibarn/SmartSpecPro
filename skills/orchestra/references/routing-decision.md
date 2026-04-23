@@ -58,7 +58,7 @@ Execution:
 3. Apply planner-owned technical improvements automatically.
 4. Ask the user only if product intent is still ambiguous.
 5. Read `../../deep-plan/SKILL.md` and execute it.
-6. Verify `implementation-plan.md`, `implementation-plan-tdd.md`, and `sections/index.md` exist.
+6. Verify `claude-plan.md`, `claude-plan-tdd.md`, and `sections/index.md` exist.
 7. Continue directly into `deep-implement`.
 
 ## Route: `full-pipeline`

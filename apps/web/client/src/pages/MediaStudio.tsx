@@ -164,10 +164,13 @@ import { buildStoryboardVideoProject } from "@/lib/storyboardVideoProject";
 import {
   clampReferenceImagesToModelLimit,
   getAllowedLibraryExtensionsForField,
+  getMissingRequiredModelFields,
   getModelGenerationModeLabel,
   getModelInputField,
   getModelReferenceImageLimit,
   getModelReferenceInputSupport,
+  parseModelInputFields,
+  type ModelInputField,
 } from "@/lib/mediaModelInputs";
 import { buildMediaStudioCommonPayload } from "@/lib/mediaStudioPayload";
 import { buildPricingTierKey } from "@shared/mediaModelPricing";
@@ -175,6 +178,8 @@ import { videoEditorRenderService } from "@/services/videoEditorService";
 import { sanitizeProjectName } from "@smartspec/shared";
 
 import DynamicSkillForm, { type SkillInputSchema, type StyleAction } from "@/components/media/DynamicSkillForm";
+import { ModelInputArrayFieldEditor } from "@/components/media/ModelInputArrayFieldEditor";
+import { GeminiTtsPromptGuidance } from "@/components/media/GeminiTtsPromptGuidance";
 import { LibraryFilePicker } from "@/components/library/LibraryFilePicker";
 import {
   COMMON_GRIDS,
@@ -198,6 +203,7 @@ type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
 type StudioSidebarTab = "history" | "library";
 type HistoryGalleryTab = "image" | "video";
 const MEDIA_STUDIO_CREDIT_ORIGIN = "media_studio" as const;
+const GEMINI_3_1_FLASH_TTS_MODEL_ID = "fal-ai/gemini-3.1-flash-tts";
 
 interface ReferenceImage {
   url: string;
@@ -636,6 +642,79 @@ function isUvoiceVoiceSelectionField(
   field: Record<string, any> | null | undefined,
 ): boolean {
   return String(providerName ?? "").trim().toLowerCase() === "uvoice" && isVoiceSelectionField(field);
+}
+
+function getDuplicateGeminiSpeakerIds(extraParams: Record<string, unknown> | undefined): string[] {
+  const speakers = extraParams?.speakers;
+  if (!Array.isArray(speakers)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const speaker of speakers) {
+    if (!speaker || typeof speaker !== "object" || Array.isArray(speaker)) {
+      continue;
+    }
+
+    const speakerIdValue = (speaker as Record<string, unknown>).speaker_id;
+    const speakerId = typeof speakerIdValue === "string" ? speakerIdValue.trim() : "";
+    if (!speakerId) {
+      continue;
+    }
+
+    if (seen.has(speakerId)) {
+      duplicates.add(speakerId);
+    } else {
+      seen.add(speakerId);
+    }
+  }
+
+  return Array.from(duplicates);
+}
+
+function getMediaStudioModelInputValidationErrors(params: {
+  modelId?: string | null;
+  fields: ModelInputField[];
+  extraParams: Record<string, unknown> | undefined;
+  prompt: string;
+  aspectRatio: string;
+  referenceImageUrls: string[];
+  referenceVideoUrls: string[];
+}): string[] {
+  const errors: string[] = [];
+  const missingRequiredFields = getMissingRequiredModelFields(params.fields, {
+    extraParams: params.extraParams,
+    prompt: params.prompt,
+    aspectRatio: params.aspectRatio,
+    referenceImageUrls: params.referenceImageUrls,
+    referenceVideoUrls: params.referenceVideoUrls,
+  });
+  if (missingRequiredFields.length > 0) {
+    errors.push(`Please fill required model inputs: ${missingRequiredFields.join(", ")}`);
+  }
+
+  if (params.modelId === GEMINI_3_1_FLASH_TTS_MODEL_ID) {
+    const duplicateSpeakerIds = getDuplicateGeminiSpeakerIds(params.extraParams);
+    if (duplicateSpeakerIds.length > 0) {
+      errors.push(`Speaker IDs must be unique: ${duplicateSpeakerIds.join(", ")}`);
+    }
+  }
+
+  return errors;
+}
+
+function renderMediaStudioFieldDescription(field: { description?: string } | null | undefined) {
+  if (!field?.description) {
+    return null;
+  }
+
+  return (
+    <p className="text-[11px] leading-snug text-muted-foreground">
+      {field.description}
+    </p>
+  );
 }
 
 function inferModelInputSyncTarget(field: Record<string, any> | null | undefined): string {
@@ -1372,6 +1451,8 @@ export default function MediaStudio() {
       enabledByDefault: s.enabledByDefault ?? true,
       priority: s.priority ?? 50,
       hasSkillFile: false,
+      nativeBundleReady: Boolean((s as any).nativeBundleReady),
+      nativeBundleFiles: Array.isArray((s as any).nativeBundleFiles) ? (s as any).nativeBundleFiles : [],
       // executionMode determines which endpoint to use:
       // "enhance-prompt" -> enhancePrompt endpoint
       // "llm-only" or undefined -> executeCustomSkill endpoint
@@ -1421,6 +1502,8 @@ export default function MediaStudio() {
     () => getModelGenerationModeLabel(selectedMediaModel as any),
     [selectedMediaModel],
   );
+  const isGeminiFlashTtsAudioModel =
+    activeTab === "audio" && selectedMediaModel?.modelId === GEMINI_3_1_FLASH_TTS_MODEL_ID;
   const isOmnivoiceDesktopCloneMode =
     activeTab === "audio" &&
     isDesktopPlatform &&
@@ -1463,6 +1546,10 @@ export default function MediaStudio() {
   const selectedMediaModelForInputFields = useMemo(
     () => (selectedMediaModel ? { ...selectedMediaModel, configJson: selectedMediaModelConfig ?? undefined } : undefined),
     [selectedMediaModel, selectedMediaModelConfig],
+  );
+  const selectedMediaModelParsedInputFields = useMemo(
+    () => parseModelInputFields(selectedMediaModelForInputFields),
+    [selectedMediaModelForInputFields],
   );
   const selectedMediaModelReferenceImageLimit = useMemo(
     () => getModelReferenceImageLimit(selectedMediaModelForInputFields as any),
@@ -2937,6 +3024,9 @@ export default function MediaStudio() {
 
         const rawVal = modelInputValues[field.key];
         const val = resolveFieldValue(field, rawVal);
+        if (field.key === "language_code" && String(val) === "__auto__") {
+          continue;
+        }
         if (
           val !== undefined
           && val !== null
@@ -2961,6 +3051,19 @@ export default function MediaStudio() {
       ...extraParams,
       ...omnivoiceExtraParams,
     };
+    const modelInputValidationErrors = getMediaStudioModelInputValidationErrors({
+      modelId: selectedMediaModel?.modelId,
+      fields: selectedMediaModelParsedInputFields,
+      extraParams: mergedExtraParams,
+      prompt: finalPrompt,
+      aspectRatio: finalAspectRatio,
+      referenceImageUrls: effectiveReferenceImages.map((item) => item.url),
+      referenceVideoUrls: effectiveReferenceVideos.map((item) => item.url),
+    });
+    if (modelInputValidationErrors.length > 0) {
+      toast.error(modelInputValidationErrors.join(" "));
+      return;
+    }
     const storyboardGenerationContext: StoryboardVideoGenerationContext | undefined =
       activeTab === "video"
       ? {
@@ -3634,6 +3737,120 @@ export default function MediaStudio() {
 
     const tabState = tabStates[targetTab];
     const retryModel = task.model || tabState.selectedModel || selectedModel || "";
+    const selectedModelData = visibleMediaModels.find((m: any) => m.modelId === retryModel);
+    const rawConfig = selectedModelData?.configJson;
+    const modelConfig = (typeof rawConfig === "string" ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })() : rawConfig) as any;
+    const retryModelForInputFields = selectedModelData
+      ? { ...selectedModelData, configJson: modelConfig ?? undefined }
+      : undefined;
+    const retryDurationField = getModelInputField({ configJson: modelConfig } as any, "duration");
+    const extraParams: Record<string, any> = {};
+    const omnivoiceExtraParams = buildOmnivoiceDesktopExtraParams();
+    const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
+      (modelConfig as Record<string, unknown>) ?? null,
+    );
+    const templateBaseContext = {
+      prompt: retryPrompt,
+      aspectRatio: tabState.aspectRatio,
+      activeTab: targetTab,
+      fields: tabState.modelInputValues,
+    } as Record<string, unknown>;
+    const retryModelReferenceSupport = getModelReferenceInputSupport(retryModelForInputFields as any);
+    const effectiveReferenceImages = retryModelReferenceSupport.imageUrls
+      ? tabState.referenceImages
+      : [];
+    const effectiveReferenceVideos = retryModelReferenceSupport.videoUrls
+      ? tabState.referenceVideos
+      : [];
+    const finalAspectRatio = tabState.useAdvancedMode && tabState.dynamicFormValues.aspectRatio
+      ? tabState.dynamicFormValues.aspectRatio
+      : tabState.aspectRatio;
+
+    if (modelConfig) {
+      const resolveFieldValue = (field: any, value: unknown): unknown => {
+        if (field.type === "array") {
+          return resolveArrayFieldRuntimeValue(field, value, templateBaseContext);
+        }
+        return value;
+      };
+
+      for (const field of (modelConfig.inputFields as any[] | undefined ?? [])) {
+        const syncWith = inferModelInputSyncTarget(field);
+        if (syncWith === "reference_images") {
+          if (tabState.referenceImages.length > 0) {
+            extraParams[field.key] = tabState.referenceImages.map((r) => r.url);
+          }
+          continue;
+        }
+
+        if (syncWith === "reference_videos") {
+          if (tabState.referenceVideos.length > 0) {
+            extraParams[field.key] = tabState.referenceVideos.map((r) => r.url);
+          }
+          continue;
+        }
+
+        if (syncWith === "prompt") {
+          extraParams[field.key] = resolveFieldValue(field, retryPrompt);
+          continue;
+        }
+
+        if (syncWith === "aspect_ratio") {
+          extraParams[field.key] = resolveFieldValue(field, tabState.aspectRatio);
+          continue;
+        }
+
+        if (field.key === "aspect_ratio" || field.key === "aspect.ratio") continue;
+        if (field.key === "duration" && targetTab === "video") continue;
+
+        const rawVal = tabState.modelInputValues[field.key];
+        const val = resolveFieldValue(field, rawVal);
+        if (field.key === "language_code" && String(val) === "__auto__") {
+          continue;
+        }
+        if (
+          val !== undefined
+          && val !== null
+          && val !== ""
+          && !(Array.isArray(val) && val.length === 0)
+        ) {
+          extraParams[field.key] = val;
+        }
+      }
+    }
+    const mergedExtraParams = {
+      ...extraParams,
+      ...omnivoiceExtraParams,
+    };
+    const retryModelInputFields = parseModelInputFields(retryModelForInputFields);
+    const modelInputValidationErrors = getMediaStudioModelInputValidationErrors({
+      modelId: retryModel,
+      fields: retryModelInputFields,
+      extraParams: mergedExtraParams,
+      prompt: retryPrompt,
+      aspectRatio: finalAspectRatio,
+      referenceImageUrls: effectiveReferenceImages.map((item) => item.url),
+      referenceVideoUrls: effectiveReferenceVideos.map((item) => item.url),
+    });
+    if (modelInputValidationErrors.length > 0) {
+      toast.error(modelInputValidationErrors.join(" "));
+      return;
+    }
+
+    const outputFormatValue = tabState.modelInputValues.outputFormat ?? tabState.modelInputValues.output_format;
+    const referenceStyleUrl = (tabState.modelInputValues.referenceStyleUrl ?? tabState.modelInputValues.reference_style_url) as string | undefined;
+    const referenceVideoUrl = (tabState.modelInputValues.referenceVideoUrl ?? tabState.modelInputValues.reference_video_url) as string | undefined;
+    const commonPayload = buildMediaStudioCommonPayload({
+      prompt: retryPrompt,
+      model: retryModel || undefined,
+      aspectRatio: finalAspectRatio,
+      referenceImages: effectiveReferenceImages,
+      referenceVideos: targetTab === "video" ? effectiveReferenceVideos : [],
+      extraParams: Object.keys(extraParams).length > 0 ? extraParams : undefined,
+      apiConfig: Object.keys(apiConfig).length > 0 ? apiConfig : undefined,
+      resolution: tabState.modelInputValues.resolution || undefined,
+    });
+
     const nowMs = Date.now();
     const retryTaskId = `task-${nowMs}-${Math.random().toString(36).slice(2, 11)}`;
 
@@ -3666,106 +3883,13 @@ export default function MediaStudio() {
       );
     };
 
+    let resultUrl: string | undefined;
+    let creditsUsed: number | undefined;
+    let startedAsyncTask = false;
+    let asyncTask: any | null = null;
+
     try {
       updateRetryTask({ status: "generating", statusDetail: t('mediaStudio.generationStatus.retryInProgress') });
-
-      const selectedModelData = visibleMediaModels.find((m: any) => m.modelId === retryModel);
-      const rawConfig = selectedModelData?.configJson;
-      const modelConfig = (typeof rawConfig === "string" ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })() : rawConfig) as any;
-      const retryDurationField = getModelInputField({ configJson: modelConfig } as any, "duration");
-      const extraParams: Record<string, any> = {};
-      const omnivoiceExtraParams = buildOmnivoiceDesktopExtraParams();
-      const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
-        (modelConfig as Record<string, unknown>) ?? null,
-      );
-      const templateBaseContext = {
-        prompt: retryPrompt,
-        aspectRatio: tabState.aspectRatio,
-        activeTab: targetTab,
-        fields: tabState.modelInputValues,
-      } as Record<string, unknown>;
-
-      if (modelConfig) {
-        const resolveFieldValue = (field: any, value: unknown): unknown => {
-          if (field.type === "array") {
-            return resolveArrayFieldRuntimeValue(field, value, templateBaseContext);
-          }
-          return value;
-        };
-
-        for (const field of (modelConfig.inputFields as any[] | undefined ?? [])) {
-          const syncWith = inferModelInputSyncTarget(field);
-          if (syncWith === "reference_images") {
-            if (tabState.referenceImages.length > 0) {
-              extraParams[field.key] = tabState.referenceImages.map((r) => r.url);
-            }
-            continue;
-          }
-
-          if (syncWith === "reference_videos") {
-            if (tabState.referenceVideos.length > 0) {
-              extraParams[field.key] = tabState.referenceVideos.map((r) => r.url);
-            }
-            continue;
-          }
-
-          if (syncWith === "prompt") {
-            extraParams[field.key] = resolveFieldValue(field, retryPrompt);
-            continue;
-          }
-
-          if (syncWith === "aspect_ratio") {
-            extraParams[field.key] = resolveFieldValue(field, tabState.aspectRatio);
-            continue;
-          }
-
-          if (field.key === "aspect_ratio" || field.key === "aspect.ratio") continue;
-          if (field.key === "duration" && targetTab === "video") continue;
-
-          const rawVal = tabState.modelInputValues[field.key];
-          const val = resolveFieldValue(field, rawVal);
-          if (
-            val !== undefined
-            && val !== null
-            && val !== ""
-            && !(Array.isArray(val) && val.length === 0)
-          ) {
-            extraParams[field.key] = val;
-          }
-        }
-      }
-      const mergedExtraParams = {
-        ...extraParams,
-        ...omnivoiceExtraParams,
-      };
-
-      const outputFormatValue = tabState.modelInputValues.outputFormat ?? tabState.modelInputValues.output_format;
-      const referenceStyleUrl = (tabState.modelInputValues.referenceStyleUrl ?? tabState.modelInputValues.reference_style_url) as string | undefined;
-      const referenceVideoUrl = (tabState.modelInputValues.referenceVideoUrl ?? tabState.modelInputValues.reference_video_url) as string | undefined;
-      const effectiveReferenceImages = selectedMediaModelReferenceSupport.imageUrls
-        ? tabState.referenceImages
-        : [];
-      const effectiveReferenceVideos = selectedMediaModelReferenceSupport.videoUrls
-        ? tabState.referenceVideos
-        : [];
-      const finalAspectRatio = tabState.useAdvancedMode && tabState.dynamicFormValues.aspectRatio
-        ? tabState.dynamicFormValues.aspectRatio
-        : tabState.aspectRatio;
-      const commonPayload = buildMediaStudioCommonPayload({
-        prompt: retryPrompt,
-        model: retryModel || undefined,
-        aspectRatio: finalAspectRatio,
-        referenceImages: effectiveReferenceImages,
-        referenceVideos: targetTab === "video" ? effectiveReferenceVideos : [],
-        extraParams: Object.keys(extraParams).length > 0 ? extraParams : undefined,
-        apiConfig: Object.keys(apiConfig).length > 0 ? apiConfig : undefined,
-        resolution: tabState.modelInputValues.resolution || undefined,
-      });
-
-      let resultUrl: string | undefined;
-      let creditsUsed: number | undefined;
-      let startedAsyncTask = false;
-      let asyncTask: any | null = null;
 
       if (targetTab === "image") {
         const taskResult = await generateImageAsyncMutation.mutateAsync({
@@ -3788,7 +3912,7 @@ export default function MediaStudio() {
                   : tabState.duration,
               }
             : {}),
-          ...(selectedMediaModelReferenceSupport.videoUrls && effectiveReferenceVideos.length === 0 && referenceVideoUrl
+          ...(retryModelReferenceSupport.videoUrls && effectiveReferenceVideos.length === 0 && referenceVideoUrl
             ? { referenceVideoUrl }
             : {}),
         } as any);
@@ -3821,7 +3945,7 @@ export default function MediaStudio() {
             id: `${Date.now()}-${Math.random()}`,
             taskId: retryTaskId,
             type: targetTab,
-            url: resultUrl,
+            url: resultUrl!,
             prompt: retryPrompt,
             model: retryModel,
             createdAt: new Date().toISOString(),
@@ -4858,27 +4982,27 @@ export default function MediaStudio() {
           <div className="lg:col-span-2 space-y-4">
             {/* Media Type Tabs */}
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MediaType)}>
-              <TabsList className="w-full bg-muted/50 p-1">
+              <TabsList className="grid h-auto w-full grid-cols-3 bg-muted/50 p-1">
                 <TabsTrigger
                   value="image"
-                  className="flex-1 gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                  className="min-w-0 gap-1 px-2 py-2 text-xs transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md sm:gap-2 sm:px-3 sm:text-sm"
                 >
-                  <Image className="h-4 w-4" />
-                  {t('mediaStudio.tabs.image')}
+                  <Image className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{t('mediaStudio.tabs.image')}</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="video"
-                  className="flex-1 gap-2 data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                  className="min-w-0 gap-1 px-2 py-2 text-xs transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md sm:gap-2 sm:px-3 sm:text-sm"
                 >
-                  <Video className="h-4 w-4" />
-                  {t('mediaStudio.tabs.video')}
+                  <Video className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{t('mediaStudio.tabs.video')}</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="audio"
-                  className="flex-1 gap-2 data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+                  className="min-w-0 gap-1 px-2 py-2 text-xs transition-all data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md sm:gap-2 sm:px-3 sm:text-sm"
                 >
-                  <Music className="h-4 w-4" />
-                  {t('mediaStudio.tabs.audio')}
+                  <Music className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{t('mediaStudio.tabs.audio')}</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -4893,17 +5017,20 @@ export default function MediaStudio() {
                   title="Article and social draft workspace"
                   description="Draft content, attach library assets, and prepare blog or social delivery from one place."
                 />
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="border-cyan-200 bg-cyan-50 text-cyan-800">
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                  <Badge variant="outline" className="w-fit border-cyan-200 bg-cyan-50 text-cyan-800">
                     Draft workspace
                   </Badge>
                   <Button
                     variant={isComposerOpen ? "outline" : "default"}
                     className={cn(
+                      "w-full sm:w-auto",
                       isComposerOpen
                         ? "border-cyan-200 text-cyan-900"
                         : "bg-cyan-600 text-white hover:bg-cyan-700",
                     )}
+                    aria-controls="content-composer-panel"
+                    aria-expanded={isComposerOpen}
                     onClick={() => setIsComposerOpen((value) => !value)}
                   >
                     {isComposerOpen ? "Collapse composer" : "Open composer"}
@@ -4914,60 +5041,34 @@ export default function MediaStudio() {
 
               <div className="mt-4">
                 <Collapsible open={isComposerOpen} onOpenChange={setIsComposerOpen}>
-                  <CollapsibleContent className="space-y-4">
+                  <CollapsibleContent id="content-composer-panel" className="space-y-4">
                     <ContentComposerPanel className="mt-2" />
                   </CollapsibleContent>
                   <div className={cn(
-                    "rounded-3xl border border-cyan-200/70 bg-white/90 p-5 shadow-sm transition-all",
+                    "rounded-2xl border border-cyan-200/70 bg-white/90 px-4 py-3 shadow-sm transition-all",
                     isComposerOpen && "hidden",
                   )}>
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.34em] text-cyan-700">
-                          Ready when you need it
-                        </p>
-                        <h3 className="text-xl font-semibold text-slate-900">
-                          Compose articles, route them to Docs or Blog, and publish from one focused panel.
-                        </h3>
-                        <p className="max-w-3xl text-sm leading-6 text-slate-600">
-                          The composer stays collapsed by default so Media Studio feels light. Open it when you need to draft, target a destination, or generate a social caption.
-                        </p>
-                      </div>
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <Button
-                          onClick={() => setIsComposerOpen(true)}
-                          className="bg-cyan-600 text-white hover:bg-cyan-700"
-                        >
-                          Open Content Composer
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setIsComposerOpen(true);
-                            window.setTimeout(() => {
-                              const el = document.querySelector('[data-content-composer-panel="true"]');
-                              if (el instanceof HTMLElement) {
-                                el.scrollIntoView({ behavior: "smooth", block: "start" });
-                              }
-                            }, 0);
-                          }}
-                        >
-                          Jump to editor
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {[
-                        "Docs ready",
-                        "Blog ready",
-                        "Social caption generation",
-                        "Autosave drafts",
-                      ].map((label) => (
-                        <Badge key={label} variant="secondary" className="bg-cyan-50 text-cyan-800">
-                          {label}
-                        </Badge>
-                      ))}
-                    </div>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-3 text-left"
+                      onClick={() => {
+                        setIsComposerOpen(true);
+                        window.setTimeout(() => {
+                          const el = document.querySelector('[data-content-composer-panel="true"]');
+                          if (el instanceof HTMLElement) {
+                            el.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }
+                        }, 0);
+                      }}
+                    >
+                      <p className="min-w-0 flex-1 truncate text-sm text-slate-600">
+                        Composer is collapsed by default. Open it when you need to draft, route content, or generate social captions.
+                      </p>
+                      <span className="hidden shrink-0 text-sm font-medium text-cyan-700 sm:inline">
+                        Open composer
+                      </span>
+                      <ChevronDown className="h-4 w-4 shrink-0 text-cyan-700" />
+                    </button>
                   </div>
                 </Collapsible>
               </div>
@@ -4983,14 +5084,15 @@ export default function MediaStudio() {
                   <Badge variant="outline">{getModelCost()} credits</Badge>
                 )}
               />
-              <div className="flex items-center justify-end gap-2">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           variant={isPttRecording ? "destructive" : "outline"}
                           size="sm"
+                          className="w-full sm:w-auto"
                           onPointerDown={pttStart}
                           onPointerUp={pttStop}
                           onPointerLeave={isPttRecording ? pttStop : undefined}
@@ -5015,6 +5117,7 @@ export default function MediaStudio() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="w-full sm:w-auto"
                           onClick={() => {
                             const text = enhancedPrompt || prompt;
                             if (!text.trim()) return;
@@ -5043,6 +5146,7 @@ export default function MediaStudio() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="w-full sm:w-auto"
                           onClick={handleAutoPrompt}
                           disabled={!canRunAutoPrompt || isEnhancing}
                         >
@@ -5070,6 +5174,7 @@ export default function MediaStudio() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="w-full text-muted-foreground hover:text-destructive sm:w-auto"
                             onClick={() => {
                               setPrompt("");
                               setEnhancedPrompt("");
@@ -5077,7 +5182,6 @@ export default function MediaStudio() {
                               setImageTabPrompt(null);
                               setVideoTabPrompt(null);
                             }}
-                            className="text-muted-foreground hover:text-destructive"
                           >
                             <X className="h-4 w-4" />
                             <span className="ml-1">{t('common.clear')}</span>
@@ -5102,9 +5206,17 @@ export default function MediaStudio() {
                     setPrompt(e.target.value);
                   }
                 }}
-                placeholder={`Describe the ${activeTab} you want to create...`}
+                placeholder={
+                  isGeminiFlashTtsAudioModel
+                    ? "Host: Welcome back.\nGuest: Glad to be here."
+                    : `Describe the ${activeTab} you want to create...`
+                }
                 className="min-h-[120px] resize-y"
               />
+
+              {isGeminiFlashTtsAudioModel && (
+                <GeminiTtsPromptGuidance className="mt-3" />
+              )}
 
               {hasPromptSupportNotes && (
                 <div className="space-y-3">
@@ -5192,18 +5304,18 @@ export default function MediaStudio() {
                           className="min-h-[120px] bg-white/90"
                           placeholder={t('mediaStudio.promptSupportNotes.referencePlaceholder')}
                         />
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="border-emerald-200 text-emerald-800 hover:bg-emerald-100"
+                            className="w-full border-emerald-200 text-emerald-800 hover:bg-emerald-100 sm:w-auto"
                             onClick={() => setReferenceNotesEditorOpen(false)}
                           >
                             {t('common.cancel')}
                           </Button>
                           <Button
                             size="sm"
-                            className="bg-emerald-600 text-white hover:bg-emerald-700"
+                            className="w-full bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
                             onClick={saveReferenceNotes}
                           >
                             {t('mediaStudio.promptSupportNotes.saveReference')}
@@ -5297,18 +5409,18 @@ export default function MediaStudio() {
                           className="min-h-[120px] bg-white/90"
                           placeholder={t('mediaStudio.promptSupportNotes.continuityPlaceholder')}
                         />
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="border-sky-200 text-sky-800 hover:bg-sky-100"
+                            className="w-full border-sky-200 text-sky-800 hover:bg-sky-100 sm:w-auto"
                             onClick={() => setContinuityNotesEditorOpen(false)}
                           >
                             {t('common.cancel')}
                           </Button>
                           <Button
                             size="sm"
-                            className="bg-sky-600 text-white hover:bg-sky-700"
+                            className="w-full bg-sky-600 text-white hover:bg-sky-700 sm:w-auto"
                             onClick={saveContinuityNotes}
                           >
                             {t('mediaStudio.promptSupportNotes.saveContinuity')}
@@ -5331,7 +5443,7 @@ export default function MediaStudio() {
                 const isNearLimit = maxLength !== null ? currentPromptLength > maxLength * 0.95 : false;
 
                 return (
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                     <span className={cn(
                       isOverLimit && "text-red-600 font-medium",
                       isNearLimit && !isOverLimit && "text-amber-600"
@@ -5433,7 +5545,7 @@ export default function MediaStudio() {
                   onDragLeave={selectedModel && selectedMediaModelReferenceSupport.imageUrls ? handleDragLeave : undefined}
                   onDrop={selectedModel && selectedMediaModelReferenceSupport.imageUrls ? handleDrop : undefined}
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <label className="text-sm font-medium">
                       {t('mediaStudio.referenceImages', { count: referenceImages.length, max: maxReferenceImages })}
                     </label>
@@ -5448,6 +5560,7 @@ export default function MediaStudio() {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="w-full sm:w-auto"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={Boolean(selectedModel && !selectedMediaModelReferenceSupport.imageUrls) || referenceImages.length >= maxReferenceImages || uploadMutation.isPending}
                     >
@@ -5520,7 +5633,7 @@ export default function MediaStudio() {
                   onDragLeave={selectedModel && selectedMediaModelReferenceSupport.videoUrls ? handleVideoDragLeave : undefined}
                   onDrop={selectedModel && selectedMediaModelReferenceSupport.videoUrls ? handleVideoDrop : undefined}
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <label className="text-sm font-medium">
                       Reference Videos ({referenceVideos.length}{maxReferenceVideos > 0 ? `/${maxReferenceVideos}` : ""})
                     </label>
@@ -5535,6 +5648,7 @@ export default function MediaStudio() {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="w-full sm:w-auto"
                       onClick={() => videoFileInputRef.current?.click()}
                       disabled={Boolean(selectedModel && !selectedMediaModelReferenceSupport.videoUrls) || referenceVideos.length >= maxReferenceVideos || uploadMutation.isPending}
                     >
@@ -5642,9 +5756,9 @@ export default function MediaStudio() {
                 {t('mediaStudio.settingsHint')}
               </p>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {/* Model Selection */}
-                <div className="space-y-1 col-span-2 md:col-span-1">
+                <div className="space-y-1 sm:col-span-2 xl:col-span-1">
                   <label className="text-sm text-muted-foreground">{t('mediaStudio.modelLabel')}</label>
                   <Button
                     variant="outline"
@@ -5868,6 +5982,7 @@ export default function MediaStudio() {
                             <div className="flex min-h-9 cursor-not-allowed items-center rounded-md border border-dashed bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground select-none">
                               {preview}
                             </div>
+                            {renderMediaStudioFieldDescription(field)}
                           </div>
                         );
                       })}
@@ -6025,20 +6140,24 @@ export default function MediaStudio() {
                                   {t('mediaStudio.optionListUnavailable')}
                                 </p>
                               )}
+                              {renderMediaStudioFieldDescription(field)}
                                   </>
                                 );
                               })()}
                             </div>
                           ) : field.type === "library_file" ? (
-                            <LibraryFilePicker
-                              value={String(modelInputValues[field.key] ?? "")}
-                              onValueChange={(url) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: url }))}
-                              allowedExtensions={
-                                field.allowedExtensions
-                                  ? String(field.allowedExtensions).split(",").map((e: string) => e.trim().replace(/^\./, "")).filter(Boolean)
-                                  : undefined
-                              }
-                            />
+                            <>
+                              <LibraryFilePicker
+                                value={String(modelInputValues[field.key] ?? "")}
+                                onValueChange={(url) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: url }))}
+                                allowedExtensions={
+                                  field.allowedExtensions
+                                    ? String(field.allowedExtensions).split(",").map((e: string) => e.trim().replace(/^\./, "")).filter(Boolean)
+                                    : undefined
+                                }
+                              />
+                              {renderMediaStudioFieldDescription(field)}
+                            </>
                           ) : field.type === "image_urls" || field.type === "video_urls" || field.type === "audio_urls" ? (
                             <div className="space-y-2">
                               <Textarea
@@ -6076,57 +6195,90 @@ export default function MediaStudio() {
                                 }}
                                 allowedExtensions={getAllowedLibraryExtensionsForField(field)}
                               />
+                              {renderMediaStudioFieldDescription(field)}
                             </div>
                           ) : field.type === "select" && field.options ? (
-                            <Select
-                              value={String(modelInputValues[field.key] ?? field.default ?? field.options?.[0]?.value ?? "")}
-                              onValueChange={(v) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: v }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(field.options as any[]).filter((opt) => opt.value != null && opt.value !== "").map((opt) => (
-                                  <SelectItem key={String(opt.value)} value={String(opt.value)}>
-                                    {opt.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <>
+                              <Select
+                                value={String(modelInputValues[field.key] ?? field.default ?? field.options?.[0]?.value ?? "")}
+                                onValueChange={(v) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: v }))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {(field.options as any[]).filter((opt) => opt.value != null && opt.value !== "").map((opt) => (
+                                    <SelectItem key={String(opt.value)} value={String(opt.value)}>
+                                      {opt.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {renderMediaStudioFieldDescription(field)}
+                            </>
                           ) : field.type === "boolean" ? (
-                            <div className="flex items-center gap-2 h-10">
-                              <Switch
-                                checked={!!modelInputValues[field.key]}
-                                onCheckedChange={(v) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: v }))}
-                              />
-                              <span className="text-sm">{modelInputValues[field.key] ? t('mediaStudio.on') : t('mediaStudio.off')}</span>
-                            </div>
+                            <>
+                              <div className="flex items-center gap-2 h-10">
+                                <Switch
+                                  checked={!!modelInputValues[field.key]}
+                                  onCheckedChange={(v) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: v }))}
+                                />
+                                <span className="text-sm">{modelInputValues[field.key] ? t('mediaStudio.on') : t('mediaStudio.off')}</span>
+                              </div>
+                              {renderMediaStudioFieldDescription(field)}
+                            </>
+                          ) : field.type === "array" && field.itemFields?.length ? (
+                            <ModelInputArrayFieldEditor
+                              field={field}
+                              value={modelInputValues[field.key]}
+                              onChange={(nextValue) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: nextValue }))}
+                            />
                           ) : field.type === "array" ? (
-                            <Textarea
-                              rows={4}
-                              placeholder={t('mediaStudio.arrayPlaceholder', { field: String(field.label) })}
-                              value={
-                                typeof modelInputValues[field.key] === "string"
-                                  ? modelInputValues[field.key]
-                                  : modelInputValues[field.key] === undefined || modelInputValues[field.key] === null
-                                  ? ""
-                                  : JSON.stringify(modelInputValues[field.key], null, 2)
-                              }
-                              onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: e.target.value }))}
-                            />
+                            <>
+                              <Textarea
+                                rows={4}
+                                placeholder={t('mediaStudio.arrayPlaceholder', { field: String(field.label) })}
+                                value={
+                                  typeof modelInputValues[field.key] === "string"
+                                    ? modelInputValues[field.key]
+                                    : modelInputValues[field.key] === undefined || modelInputValues[field.key] === null
+                                    ? ""
+                                    : JSON.stringify(modelInputValues[field.key], null, 2)
+                                }
+                                onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: e.target.value }))}
+                              />
+                              {renderMediaStudioFieldDescription(field)}
+                            </>
                           ) : field.type === "number" ? (
-                            <Input
-                              type="number"
-                              value={modelInputValues[field.key] ?? field.default ?? ""}
-                              onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: Number(e.target.value) }))}
-                            />
+                            <>
+                              <Input
+                                type="number"
+                                value={modelInputValues[field.key] ?? field.default ?? ""}
+                                onChange={(e) => {
+                                  const raw = e.target.value;
+                                  if (raw.trim() === "") {
+                                    setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: "" }));
+                                    return;
+                                  }
+                                  const parsed = Number(raw);
+                                  setModelInputValues((prev: Record<string, any>) => ({
+                                    ...prev,
+                                    [field.key]: Number.isFinite(parsed) ? parsed : raw,
+                                  }));
+                                }}
+                              />
+                              {renderMediaStudioFieldDescription(field)}
+                            </>
                           ) : (
-                            <Input
-                              type="text"
-                              placeholder={field.label}
-                              value={modelInputValues[field.key] ?? ""}
-                              onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: e.target.value }))}
-                            />
+                            <>
+                              <Input
+                                type="text"
+                                placeholder={field.placeholder || field.label}
+                                value={modelInputValues[field.key] ?? ""}
+                                onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: e.target.value }))}
+                              />
+                              {renderMediaStudioFieldDescription(field)}
+                            </>
                           )}
                         </div>
                       ))}
@@ -6230,7 +6382,7 @@ export default function MediaStudio() {
 
               {/* VFX and Advanced Options (for image only) */}
               {activeTab === "image" && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
+                <div className="grid grid-cols-1 gap-4 border-t pt-4 sm:grid-cols-2 xl:grid-cols-4">
                   {/* VFX Selection */}
                   <div className="space-y-1">
                     <label className={cn(
@@ -6534,9 +6686,19 @@ export default function MediaStudio() {
                                       {skill.description && (
                                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{skill.description}</p>
                                       )}
-                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 mt-2">
-                                        {skill.type.replace(/-/g, " ")}
-                                      </Badge>
+                                      <div className="mt-2 flex flex-wrap gap-2">
+                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                          {skill.type.replace(/-/g, " ")}
+                                        </Badge>
+                                        {skill.nativeBundleReady && (
+                                          <Badge
+                                            variant="outline"
+                                            className="border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px] px-1.5 py-0"
+                                          >
+                                            Native
+                                          </Badge>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                 </button>
@@ -6756,7 +6918,7 @@ export default function MediaStudio() {
             {/* Generated Media History */}
             {generatedMedia.filter((m) => !expiredUrls.has(m.url)).length > 0 && (
               <div className="bg-white/70 backdrop-blur rounded-xl border p-4 space-y-3 overflow-hidden">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="font-semibold">{t('mediaStudio.generatedMedia')}</h3>
                   <Badge variant="outline">
                     {t('mediaStudio.items', { count: generatedMedia.filter((m) => !expiredUrls.has(m.url)).length })}
@@ -6764,7 +6926,7 @@ export default function MediaStudio() {
                 </div>
 
                 <ScrollArea className="h-[200px] overflow-hidden">
-                  <div className="grid grid-cols-4 gap-2 pr-2">
+                  <div className="grid grid-cols-2 gap-2 pr-2 sm:grid-cols-3 xl:grid-cols-4">
                     {generatedMedia.filter((m) => !expiredUrls.has(m.url)).map((media) => (
                       <div
                         key={media.id}
@@ -6840,7 +7002,7 @@ export default function MediaStudio() {
           {/* Right Panel - Preview */}
           <div className="space-y-4">
             <div className={cn(
-              "isolate overflow-hidden bg-white/70 backdrop-blur rounded-xl border sticky top-24 z-20",
+              "isolate overflow-hidden rounded-xl border bg-white/70 backdrop-blur z-20 lg:sticky lg:top-24",
               isPreviewCollapsed ? "p-3" : "p-4",
             )}>
               <div className="mb-3 flex items-center justify-between gap-2">
@@ -6882,7 +7044,7 @@ export default function MediaStudio() {
                 <div className={cn(
                   "grid gap-2 mb-4",
                   generationTasks.length === 2 && "grid-cols-2",
-                  generationTasks.length === 3 && "grid-cols-3",
+                  generationTasks.length === 3 && "grid-cols-2 sm:grid-cols-3",
                   generationTasks.length === 4 && "grid-cols-2",
                 )}>
                   {generationTasks.map((task) => (
@@ -7020,10 +7182,10 @@ export default function MediaStudio() {
                       {attachTarget.id}
                     </div>
                   )}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                   <Button
                     variant="outline"
-                    className="flex-1 min-w-[160px]"
+                    className="w-full sm:flex-1 sm:min-w-[160px]"
                     onClick={() => downloadMedia(previewUrl, `generated-${activeTab}.${activeTab === "image" ? "png" : activeTab === "video" ? "mp4" : "mp3"}`)}
                   >
                     <Download className="h-4 w-4 mr-2" />
@@ -7032,7 +7194,7 @@ export default function MediaStudio() {
                   {attachTarget && activeTab !== "audio" && (
                     <Button
                       variant="outline"
-                      className="min-w-[220px] border-cyan-200 text-cyan-700 hover:bg-cyan-50"
+                      className="w-full border-cyan-200 text-cyan-700 hover:bg-cyan-50 sm:w-auto sm:min-w-[220px]"
                       onClick={handleAttachCurrentMediaToContent}
                       disabled={isAttachingContent}
                     >
@@ -7092,32 +7254,32 @@ export default function MediaStudio() {
               onValueChange={(value) => setActiveSidebarTab(value as StudioSidebarTab)}
               className="relative z-0"
             >
-              <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1">
-                <TabsTrigger value="history" className="gap-2">
+              <TabsList className="grid h-auto w-full grid-cols-2 bg-muted/50 p-1">
+                <TabsTrigger value="history" className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm">
                   <History className="h-4 w-4" />
-                  {t('mediaStudio.historyGallery')}
+                  <span className="truncate">{t('mediaStudio.historyGallery')}</span>
                 </TabsTrigger>
-                <TabsTrigger value="library" className="gap-2">
+                <TabsTrigger value="library" className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm">
                   <Search className="h-4 w-4" />
-                  {t('mediaStudio.searchLibrary')}
+                  <span className="truncate">{t('mediaStudio.searchLibrary')}</span>
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="history" className="mt-4">
-                <div className="pr-3">
+                <div className="pr-0 sm:pr-3">
                     <Tabs value={historyGalleryTab} onValueChange={(value) => setHistoryGalleryTab(value as HistoryGalleryTab)}>
-                        <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1">
-                          <TabsTrigger value="image" className="gap-2">
+                        <TabsList className="grid h-auto w-full grid-cols-2 bg-muted/50 p-1">
+                          <TabsTrigger value="image" className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm">
                             <Image className="h-4 w-4" />
-                            {t('mediaStudio.tabs.image')}
+                            <span className="truncate">{t('mediaStudio.tabs.image')}</span>
                           </TabsTrigger>
-                          <TabsTrigger value="video" className="gap-2">
+                          <TabsTrigger value="video" className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm">
                             <Video className="h-4 w-4" />
-                            {t('mediaStudio.tabs.video')}
+                            <span className="truncate">{t('mediaStudio.tabs.video')}</span>
                           </TabsTrigger>
                         </TabsList>
 
-                        <div className="mt-4 flex items-center justify-between mb-3">
+                        <div className="mb-3 mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                           <h3 className="font-semibold flex items-center gap-2">
                             <History className="h-4 w-4" />
                             {t('mediaStudio.historyGallery')}
@@ -7129,9 +7291,9 @@ export default function MediaStudio() {
                           </Badge>
                         </div>
 
-                        <div className="pr-3">
+                        <div className="pr-0 sm:pr-3">
                           {/* Completed tasks grid */}
-                          <div className="grid grid-cols-3 gap-2 mb-4 pb-2">
+                          <div className="mb-4 grid grid-cols-2 gap-2 pb-2 sm:grid-cols-3">
                             {historyGalleryCompletedTasks.map((task) => {
                               const resultUrl = extractTaskResultUrl(task);
                               if (!resultUrl) return null;

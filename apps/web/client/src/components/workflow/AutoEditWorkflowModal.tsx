@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import type { Node, Edge } from "reactflow";
+import type { Node, Edge } from "@xyflow/react";
 
 const MAX_INSTRUCTIONS = 5000;
 const POLL_INTERVAL_MS = 3000;

@@ -673,6 +673,8 @@ export async function executeWithFallback(params: {
   temperature?: number;
   /** Extra body params forwarded verbatim to the provider (e.g. response_format). */
   extraBodyParams?: Record<string, unknown>;
+  /** When true, only the first resolved provider is attempted. */
+  disableProviderFallbacks?: boolean;
 }): Promise<ExecuteResult> {
   const resolvedModel = await resolveEnabledLlmModelId([params.model]);
   if (!resolvedModel) {
@@ -705,8 +707,10 @@ export async function executeWithFallback(params: {
     return { type: "error", error: "No providers available for model", statusCode: 503 };
   }
 
-  // 1 primary + maxFallbacks retries
-  const maxAttempts = Math.min(targets.length, maxFallbacks + 1);
+  // 1 primary + optional provider fallbacks.
+  const maxAttempts = params.disableProviderFallbacks
+    ? 1
+    : Math.min(targets.length, maxFallbacks + 1);
 
   for (let i = 0; i < maxAttempts; i++) {
     const candidate = targets[i];

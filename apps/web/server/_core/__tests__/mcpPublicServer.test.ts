@@ -689,6 +689,8 @@ describe("POST /v1/mcp — protocol", () => {
       targetStep: "research",
     }));
     expect(res.body.result.content[0].text).toContain("\"workItem\"");
+    expect(res.body.result.content[0].text).not.toContain("\"_meta\"");
+    expect(res.body.result._meta.contextState.toolResults[0].content).toContain("workItem");
   });
 
   it("rejects invalid JSON-RPC format (missing jsonrpc field)", async () => {

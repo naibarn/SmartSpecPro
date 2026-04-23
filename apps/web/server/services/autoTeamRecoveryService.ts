@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import { getDb } from "../db";
-import { teamRuns } from "../../drizzle/schema";
+import { teamRooms, teamRuns } from "../../drizzle/schema";
 import * as runEngine from "./runEngine";
 
 const AUTO_TEAM_RECOVERY_INTERVAL_MS = 30_000;
@@ -13,11 +13,12 @@ export async function sweepPendingAutoTeamRuns(): Promise<number> {
   const candidateRuns = await db
     .select({
       id: teamRuns.id,
-      tenantId: teamRuns.tenantId,
+      tenantId: teamRooms.tenantId,
       status: teamRuns.status,
       stopReason: teamRuns.stopReason,
     })
     .from(teamRuns)
+    .innerJoin(teamRooms, eq(teamRooms.id, teamRuns.roomId))
     .where(eq(teamRuns.executionMode, "auto_team"))
     .limit(100);
 

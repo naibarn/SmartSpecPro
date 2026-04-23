@@ -2,16 +2,93 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { PRESENTATION_ITEM_TYPE } from "@shared/presentation/constants";
 import { isPresentationTemplateItem } from "@shared/presentation/template";
+import {
+  libraryArchiveContextPackInputSchema,
+  libraryApproveContextPackForAgentsInputSchema,
+  libraryApproveContextPackInputSchema,
+  libraryConvertContextPackToSnapshotInputSchema,
+  libraryContextPackListInputSchema,
+  libraryCreateContextPackInputSchema,
+  libraryDuplicateContextPackAsSnapshotInputSchema,
+  libraryGetContextPackInputSchema,
+  libraryMarkContextPackStaleInputSchema,
+  libraryPublishSavedViewAsContextPackInputSchema,
+  libraryRequestContextPackReReviewInputSchema,
+  libraryRevokeContextPackAgentApprovalInputSchema,
+  libraryResolveContextPackInputSchema,
+  librarySubmitContextPackForReviewInputSchema,
+  libraryUpdateContextPackInputSchema,
+} from "../../shared/libraryContextPacks";
+import {
+  libraryArchiveSavedViewInputSchema,
+  libraryCreateSavedViewInputSchema,
+  libraryExecuteSavedViewInputSchema,
+  librarySavedViewListInputSchema,
+  librarySavedViewRefSchema,
+  libraryUpdateSavedViewInputSchema,
+} from "../../shared/librarySavedViews";
+import {
+  libraryKnowledgeInspectorInputSchema,
+  libraryKnowledgePropertyCatalogInputSchema,
+  libraryKnowledgeQuickSwitchInputSchema,
+  libraryKnowledgeTagCatalogInputSchema,
+} from "../../shared/libraryKnowledgeRead";
+import {
+  createLibraryCanvasInputSchema,
+  getLibraryCanvasInputSchema,
+  updateLibraryCanvasInputSchema,
+} from "../../shared/libraryCanvas";
 
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
 import { shouldUseSandbox, dispatchToSandbox } from "../services/sandbox/dispatchService";
 import { auditLogger } from "../services/auditLogger";
 import { shareOperationLimiter } from "../services/rateLimiter";
-import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
+import {
+  assertKnowledgeVaultSurfaceEnabledAsync,
+  getKnowledgeVaultAccessPolicyAsync,
+  isLibraryEnabledForTenant,
+  type KnowledgeVaultSurface,
+} from "../services/libraryFeatureFlags";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { getPrivateVaultPinVersion, validatePrivateVaultAccessToken } from "../services/privateVaultService";
 import { federatedSearch } from "../services/federatedSearch";
+import {
+  archiveLibraryContextPack,
+  approveLibraryContextPack,
+  approveLibraryContextPackForAgents,
+  convertLibraryContextPackToSnapshot,
+  createLibraryContextPack,
+  duplicateLibraryContextPackAsSnapshot,
+  getLibraryContextPack,
+  listLibraryContextPacks,
+  markLibraryContextPackStale,
+  publishSavedViewAsLibraryContextPack,
+  requestLibraryContextPackReReview,
+  revokeLibraryContextPackAgentApproval,
+  resolveLibraryContextPack,
+  submitLibraryContextPackForReview,
+  updateLibraryContextPack,
+} from "../services/libraryContextPackService";
+import {
+  archiveLibrarySavedView,
+  createLibrarySavedView,
+  executeLibrarySavedView,
+  getLibrarySavedView,
+  listLibrarySavedViews,
+  updateLibrarySavedView,
+} from "../services/librarySavedViewService";
+import {
+  getLibraryKnowledgeInspector,
+  listLibraryPropertyCatalog,
+  listLibraryTagCatalog,
+  quickSwitchLibraryNotes,
+} from "../services/libraryKnowledgeReadService";
+import {
+  createLibraryCanvasBoard,
+  getLibraryCanvasBoard,
+  updateLibraryCanvasBoard,
+} from "../services/libraryCanvasService";
 import {
   createLibraryItem,
   createLibraryFolder,
@@ -183,6 +260,22 @@ function assertLibraryEnabled(tenantId: string): void {
   }
 }
 
+async function assertKnowledgeVaultSurface(
+  tenantId: string,
+  surface: KnowledgeVaultSurface,
+): Promise<void> {
+  try {
+    await assertKnowledgeVaultSurfaceEnabledAsync(surface, tenantId);
+  } catch (error) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: error instanceof Error
+        ? error.message
+        : "Knowledge Vault surface is disabled",
+    });
+  }
+}
+
 function toClientLibraryMutationError(error: unknown): TRPCError | null {
   if (!(error instanceof Error)) {
     return null;
@@ -272,6 +365,656 @@ export const libraryRouter = router({
         actor,
       );
       return result;
+    }),
+
+  listContextPacks: protectedProcedure
+    .input(libraryContextPackListInputSchema.optional())
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacks");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      return listLibraryContextPacks(input, actor);
+    }),
+
+  listSavedViews: protectedProcedure
+    .input(librarySavedViewListInputSchema.optional())
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "savedViews");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      return listLibrarySavedViews(input, actor);
+    }),
+
+  getKnowledgeVaultPolicy: protectedProcedure
+    .query(async ({ ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      return getKnowledgeVaultAccessPolicyAsync(tenantIdResolved);
+    }),
+
+  getSavedView: protectedProcedure
+    .input(librarySavedViewRefSchema)
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "savedViews");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await getLibrarySavedView(input, actor);
+      if (!result) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Saved view not found",
+        });
+      }
+
+      return result;
+    }),
+
+  createSavedView: protectedProcedure
+    .input(libraryCreateSavedViewInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "savedViews");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await createLibrarySavedView(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.createSavedView",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          title: input.title,
+          visibilityMode: input.visibilityMode,
+        },
+        responsePayload: {
+          savedViewId: result.id,
+          slug: result.slug,
+        },
+      });
+
+      return result;
+    }),
+
+  updateSavedView: protectedProcedure
+    .input(libraryUpdateSavedViewInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "savedViews");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await updateLibrarySavedView(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.updateSavedView",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          ref: input.ref,
+        },
+        responsePayload: {
+          savedViewId: result.id,
+          slug: result.slug,
+        },
+      });
+
+      return result;
+    }),
+
+  archiveSavedView: protectedProcedure
+    .input(libraryArchiveSavedViewInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "savedViews");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await archiveLibrarySavedView(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.archiveSavedView",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          ref: input,
+        },
+        responsePayload: result,
+      });
+
+      return result;
+    }),
+
+  executeSavedView: protectedProcedure
+    .input(libraryExecuteSavedViewInputSchema)
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "savedViews");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      return executeLibrarySavedView(input, actor);
+    }),
+
+  getKnowledgeInspector: protectedProcedure
+    .input(libraryKnowledgeInspectorInputSchema)
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "inspector");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await getLibraryKnowledgeInspector(input, actor);
+      if (!result) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Knowledge note not found",
+        });
+      }
+
+      return result;
+    }),
+
+  quickSwitchNotes: protectedProcedure
+    .input(libraryKnowledgeQuickSwitchInputSchema)
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "quickSwitcher");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      return quickSwitchLibraryNotes(input, actor);
+    }),
+
+  listPropertyCatalog: protectedProcedure
+    .input(libraryKnowledgePropertyCatalogInputSchema.optional())
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "inspector");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      return listLibraryPropertyCatalog(input, actor);
+    }),
+
+  listTagCatalog: protectedProcedure
+    .input(libraryKnowledgeTagCatalogInputSchema.optional())
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "inspector");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      return listLibraryTagCatalog(input, actor);
+    }),
+
+  createCanvasBoard: protectedProcedure
+    .input(createLibraryCanvasInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "canvas");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await createLibraryCanvasBoard(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.createCanvasBoard",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          title: input.title,
+          visibility: input.visibility,
+        },
+        responsePayload: {
+          itemId: result.itemId,
+        },
+      });
+
+      return result;
+    }),
+
+  getCanvasBoard: protectedProcedure
+    .input(getLibraryCanvasInputSchema)
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "canvas");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      return getLibraryCanvasBoard(input, actor);
+    }),
+
+  updateCanvasBoard: protectedProcedure
+    .input(updateLibraryCanvasInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "canvas");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await updateLibraryCanvasBoard(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.updateCanvasBoard",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          itemId: input.itemId,
+        },
+        responsePayload: {
+          itemId: result.itemId,
+        },
+      });
+
+      return result;
+    }),
+
+  getContextPack: protectedProcedure
+    .input(libraryGetContextPackInputSchema)
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacks");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await getLibraryContextPack(input, actor);
+      if (!result) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Context pack not found",
+        });
+      }
+
+      return result;
+    }),
+
+  createContextPack: protectedProcedure
+    .input(libraryCreateContextPackInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacks");
+      if (input.sourceMode === "snapshot") {
+        await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacksSnapshot");
+      }
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await createLibraryContextPack(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.createContextPack",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          title: input.title,
+          sourceMode: input.sourceMode,
+          approvedForAgents: input.approvedForAgents,
+        },
+        responsePayload: {
+          contextPackId: result.id,
+          slug: result.slug,
+        },
+      });
+
+      return result;
+    }),
+
+  convertContextPackToSnapshot: protectedProcedure
+    .input(libraryConvertContextPackToSnapshotInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacks");
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacksSnapshot");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await convertLibraryContextPackToSnapshot(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.convertContextPackToSnapshot",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          ref: input.ref,
+        },
+        responsePayload: {
+          contextPackId: result.id,
+          slug: result.slug,
+          sourceMode: result.sourceMode,
+        },
+      });
+
+      return result;
+    }),
+
+  duplicateContextPackAsSnapshot: protectedProcedure
+    .input(libraryDuplicateContextPackAsSnapshotInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacks");
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacksSnapshot");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await duplicateLibraryContextPackAsSnapshot(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.duplicateContextPackAsSnapshot",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          ref: input.ref,
+          title: input.title ?? null,
+        },
+        responsePayload: {
+          contextPackId: result.id,
+          slug: result.slug,
+          sourceMode: result.sourceMode,
+        },
+      });
+
+      return result;
+    }),
+
+  updateContextPack: protectedProcedure
+    .input(libraryUpdateContextPackInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacks");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await updateLibraryContextPack(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.updateContextPack",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          ref: input.ref,
+          approvedForAgents: input.approvedForAgents,
+        },
+        responsePayload: {
+          contextPackId: result.id,
+          slug: result.slug,
+        },
+      });
+
+      return result;
+    }),
+
+  submitContextPackForReview: protectedProcedure
+    .input(librarySubmitContextPackForReviewInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacks");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await submitLibraryContextPackForReview(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.submitContextPackForReview",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          ref: input.ref,
+          reason: input.reason ?? null,
+        },
+        responsePayload: {
+          contextPackId: result.id,
+          slug: result.slug,
+          readinessStatus: result.readinessStatus,
+        },
+      });
+
+      return result;
+    }),
+
+  approveContextPack: protectedProcedure
+    .input(libraryApproveContextPackInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacks");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await approveLibraryContextPack(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.approveContextPack",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          ref: input.ref,
+          reason: input.reason ?? null,
+        },
+        responsePayload: {
+          contextPackId: result.id,
+          slug: result.slug,
+          readinessStatus: result.readinessStatus,
+        },
+      });
+
+      return result;
+    }),
+
+  approveContextPackForAgents: protectedProcedure
+    .input(libraryApproveContextPackForAgentsInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacks");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await approveLibraryContextPackForAgents(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.approveContextPackForAgents",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          ref: input.ref,
+          reason: input.reason ?? null,
+        },
+        responsePayload: {
+          contextPackId: result.id,
+          slug: result.slug,
+          approvedForAgents: result.approvedForAgents,
+        },
+      });
+
+      return result;
+    }),
+
+  revokeContextPackAgentApproval: protectedProcedure
+    .input(libraryRevokeContextPackAgentApprovalInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacks");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await revokeLibraryContextPackAgentApproval(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.revokeContextPackAgentApproval",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          ref: input.ref,
+          reason: input.reason ?? null,
+        },
+        responsePayload: {
+          contextPackId: result.id,
+          slug: result.slug,
+          approvedForAgents: result.approvedForAgents,
+        },
+      });
+
+      return result;
+    }),
+
+  markContextPackStale: protectedProcedure
+    .input(libraryMarkContextPackStaleInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacks");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await markLibraryContextPackStale(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.markContextPackStale",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          ref: input.ref,
+          reason: input.reason,
+        },
+        responsePayload: {
+          contextPackId: result.id,
+          slug: result.slug,
+          readinessStatus: result.readinessStatus,
+          approvedForAgents: result.approvedForAgents,
+        },
+      });
+
+      return result;
+    }),
+
+  requestContextPackReReview: protectedProcedure
+    .input(libraryRequestContextPackReReviewInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacks");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await requestLibraryContextPackReReview(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.requestContextPackReReview",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          ref: input.ref,
+          reason: input.reason ?? null,
+        },
+        responsePayload: {
+          contextPackId: result.id,
+          slug: result.slug,
+          readinessStatus: result.readinessStatus,
+        },
+      });
+
+      return result;
+    }),
+
+  archiveContextPack: protectedProcedure
+    .input(libraryArchiveContextPackInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacks");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await archiveLibraryContextPack(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.archiveContextPack",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          ref: input,
+        },
+        responsePayload: result,
+      });
+
+      return result;
+    }),
+
+  publishSavedViewAsContextPack: protectedProcedure
+    .input(libraryPublishSavedViewAsContextPackInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacks");
+      await assertKnowledgeVaultSurface(tenantIdResolved, "savedViews");
+      if (input.snapshot) {
+        await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacksSnapshot");
+      }
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      const result = await publishSavedViewAsLibraryContextPack(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.publishSavedViewAsContextPack",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          savedViewId: input.savedViewId,
+          title: input.title,
+        },
+        responsePayload: {
+          contextPackId: result.id,
+          slug: result.slug,
+        },
+      });
+
+      return result;
+    }),
+
+  resolveContextPack: protectedProcedure
+    .input(libraryResolveContextPackInputSchema)
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      await assertKnowledgeVaultSurface(tenantIdResolved, "contextPacks");
+      const actor = await createLibraryActor(ctx, tenantIdResolved);
+
+      return resolveLibraryContextPack(input, actor);
     }),
 
   getUploadStatus: protectedProcedure

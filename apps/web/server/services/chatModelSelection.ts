@@ -65,6 +65,13 @@ export interface ResolvedChatModelSelection {
   shouldPersistSelectionState: boolean;
 }
 
+export async function resolveStructuredAutoChatModelSelection(): Promise<ResolvedChatModelSelection> {
+  return resolveChatModelSelection({
+    bodyModelSelection: { mode: "auto-global" },
+    selectionContext: { featureModes: ["structured_output"] },
+  });
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;

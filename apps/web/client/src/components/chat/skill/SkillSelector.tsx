@@ -7,8 +7,10 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { describeSkillLocalExecution } from '@/features/local-ai/skills/skillLocalExecutionPolicy';
 import { useTauriLocalSkillRuntimeStatus } from '@/features/local-ai/skills/useTauriLocalSkillRuntimeStatus';
@@ -52,6 +54,8 @@ interface SkillSelectorProps {
   onClose: () => void;
   onSelect: (skillId: string, hasSchema: boolean) => void;
   conversationId?: number;
+  skillIntentEnabled?: boolean;
+  onToggleSkillIntent?: () => void;
 }
 
 interface SkillWithSchema {
@@ -66,6 +70,8 @@ interface SkillWithSchema {
   localExecutionPolicy?: ResolvedLocalSkillPolicy | null;
   localExecutionBadge?: 'Local Assist' | 'Local Safe' | null;
   localExecutionReason?: string | null;
+  nativeBundleReady?: boolean;
+  nativeBundleFiles?: string[];
 }
 
 export function SkillSelector({
@@ -73,6 +79,8 @@ export function SkillSelector({
   onClose,
   onSelect,
   conversationId,
+  skillIntentEnabled,
+  onToggleSkillIntent,
 }: SkillSelectorProps) {
   const [search, setSearch] = useState('');
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
@@ -164,6 +172,10 @@ export function SkillSelector({
             ? localExecutionState.badgeLabel
             : null,
         localExecutionReason: localExecutionState?.reason ?? null,
+        nativeBundleReady: Boolean((skill as any).nativeBundleReady),
+        nativeBundleFiles: Array.isArray((skill as any).nativeBundleFiles)
+          ? (skill as any).nativeBundleFiles
+          : [],
       };
     });
 
@@ -337,6 +349,28 @@ export function SkillSelector({
 
         {/* Footer Help */}
         <div className="px-6 py-3 border-t bg-muted/30 text-xs text-muted-foreground shrink-0">
+          {typeof skillIntentEnabled === 'boolean' && onToggleSkillIntent && (
+            <div className="mb-3 flex items-center justify-between rounded-md border border-border/70 bg-background/80 px-3 py-2 text-foreground">
+              <div className="min-w-0">
+                <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Skill routing
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Keep auto skill detection off for plain chat.
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[11px] text-muted-foreground">
+                  {skillIntentEnabled ? 'On' : 'Off'}
+                </span>
+                <Switch
+                  checked={skillIntentEnabled}
+                  onCheckedChange={onToggleSkillIntent}
+                  aria-label="Toggle automatic skill routing"
+                />
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 bg-background rounded border text-[10px]">↑↓</kbd>
@@ -401,6 +435,15 @@ function SkillItem({ skill, isSelected, onClick }: SkillItemProps) {
             >
               {skill.localExecutionBadge}
             </span>
+          )}
+          {skill.nativeBundleReady && (
+            <Badge
+              variant="outline"
+              className="shrink-0 border-emerald-500/40 bg-emerald-500/10 px-2 py-0 text-[10px] font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-300"
+              title={skill.nativeBundleFiles?.length ? skill.nativeBundleFiles.join(', ') : undefined}
+            >
+              Native
+            </Badge>
           )}
         </div>
         <p className="text-sm text-muted-foreground line-clamp-1 sm:line-clamp-2">

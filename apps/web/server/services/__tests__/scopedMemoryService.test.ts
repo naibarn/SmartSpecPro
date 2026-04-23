@@ -151,4 +151,44 @@ describe("scopedMemoryService", () => {
       expect(factor).toBeCloseTo(0.5, 1);
     });
   });
+
+  describe("buildPromptScopeList", () => {
+    it("includes agent, run, room, team, project, and user scopes in priority order", () => {
+      expect(
+        service.buildPromptScopeList({
+          assistantId: "assistant-1",
+          runId: "run-1",
+          roomId: "room-1",
+          teamId: "team-1",
+          projectId: "project-1",
+          initiatedByUserId: 77,
+        }),
+      ).toEqual([
+        { type: "agent", id: "assistant-1" },
+        { type: "run", id: "run-1" },
+        { type: "room", id: "room-1" },
+        { type: "team", id: "team-1" },
+        { type: "project", id: "project-1" },
+        { type: "user", id: "77" },
+      ]);
+    });
+
+    it("deduplicates repeated scopes", () => {
+      expect(
+        service.buildPromptScopeList({
+          assistantId: "assistant-1",
+          roomId: "room-1",
+          additionalScopes: [
+            { type: "room", id: "room-1" },
+            { type: "team", id: "team-1" },
+            { type: "team", id: "team-1" },
+          ],
+        }),
+      ).toEqual([
+        { type: "agent", id: "assistant-1" },
+        { type: "room", id: "room-1" },
+        { type: "team", id: "team-1" },
+      ]);
+    });
+  });
 });

@@ -106,7 +106,7 @@ function truncateForLog(value: string, limit = 200): string {
   return value.length <= limit ? value : `${value.slice(0, limit)}…`;
 }
 
-async function resolveExtractionModel(): Promise<string> {
+async function resolveExtractionModel(): Promise<string | undefined> {
   let settingValue: string | undefined;
 
   try {
@@ -128,7 +128,7 @@ async function resolveExtractionModel(): Promise<string> {
     // ignore — fallback below
   }
 
-  return "claude-sonnet-4-6";
+  return undefined;
 }
 
 function buildLatestConversationPair(messages: ConversationMessage[]): ConversationMessage[] {
@@ -308,7 +308,7 @@ export async function extractFacts(
     const result = await callLLMStructured<unknown>({
       systemPrompt: FACT_EXTRACTION_SYSTEM_PROMPT,
       userMessage: conversationText,
-      model,
+      ...(model ? { model } : {}),
       zodSchema: factOutputSchema,
       maxRetries: 0,
       userId,

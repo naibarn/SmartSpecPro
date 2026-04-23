@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { ArrowRightLeft, Bot, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Bot, ShieldCheck } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
 import { WorkpackStatusRail } from "./WorkpackStatusRail";
@@ -25,6 +25,12 @@ export function WorkpackSummaryHeader(props: WorkpackSummaryHeaderProps) {
       leading={<Bot className="h-5 w-5 text-sky-600" />}
       trailing={(
         <div className="flex items-center gap-2">
+          <Link href="/dashboard">
+            <Button variant="ghost" size="sm" className="gap-1">
+              <ArrowLeft className="h-4 w-4" />
+              Dashboard
+            </Button>
+          </Link>
           <Link href={buildWorkpackDetailHref(props.workpackId, "replay")}>
             <Button variant="outline" size="sm">
               Replay

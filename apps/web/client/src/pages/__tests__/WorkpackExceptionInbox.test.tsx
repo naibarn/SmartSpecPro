@@ -9,6 +9,10 @@ const exceptionInboxMock = vi.fn();
 const resolveExceptionMock = vi.fn();
 const invalidateMock = vi.fn();
 
+vi.mock("wouter", () => ({
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
+}));
+
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({
@@ -63,6 +67,7 @@ describe("WorkpackExceptionInbox", () => {
   it("groups exceptions by reason code and exposes next actions", () => {
     render(<WorkpackExceptionInbox />);
 
+    expect(screen.getByRole("link", { name: /dashboard/i })).toBeInTheDocument();
     expect(screen.getByText("Open Exceptions")).toBeInTheDocument();
     expect(screen.getAllByText(/connector scope missing/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/refresh connector auth/i).length).toBe(2);

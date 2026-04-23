@@ -1,0 +1,71 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/101-openai-agents-sdk-chat-team-orchestration/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/101-openai-agents-sdk-chat-team-orchestration/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-shared-contracts-flags",
+    "section-02-persistence-migrations",
+    "section-03-python-openai-agents-adapter",
+    "section-04-node-runtime-client",
+    "section-05-skill-capability-manifests",
+    "section-06-chat-runtime-integration",
+    "section-07-team-runtime-integration",
+    "section-08-responses-runtime-integration",
+    "section-09-shared-skill-runtime-integration",
+    "section-10-ledger-ui-debug",
+    "section-11-rollout-replay-release-gates"
+  ],
+  "sections_state": {
+    "section-01-shared-contracts-flags": {
+      "status": "complete",
+      "commit_hash": "42db9f9b"
+    },
+    "section-02-persistence-migrations": {
+      "status": "complete",
+      "commit_hash": "264dbcd1"
+    },
+    "section-03-python-openai-agents-adapter": {
+      "status": "complete",
+      "commit_hash": "c3056971"
+    },
+    "section-04-node-runtime-client": {
+      "status": "complete",
+      "commit_hash": "c903041a"
+    },
+    "section-05-skill-capability-manifests": {
+      "status": "complete",
+      "commit_hash": "b67921a2"
+    },
+    "section-06-chat-runtime-integration": {
+      "status": "complete"
+    },
+    "section-07-team-runtime-integration": {
+      "status": "complete"
+    },
+    "section-08-responses-runtime-integration": {
+      "status": "complete"
+    },
+    "section-09-shared-skill-runtime-integration": {
+      "status": "complete"
+    },
+    "section-10-ledger-ui-debug": {
+      "status": "complete"
+    },
+    "section-11-rollout-replay-release-gates": {
+      "status": "complete"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-20T14:04:15.850896+00:00"
+}

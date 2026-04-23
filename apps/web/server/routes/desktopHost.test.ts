@@ -37,11 +37,11 @@ describe("desktopHost routes", () => {
             status: "trusted",
           },
         ],
-      }),
+      })
     );
 
     const response = await request(app).get(
-      "/api/desktop-host/policy/tenant-1/device-1",
+      "/api/desktop-host/policy/tenant-1/device-1"
     );
 
     expect(response.status).toBe(200);
@@ -103,15 +103,38 @@ describe("desktopHost routes", () => {
             status: "trusted",
           },
         ],
-      }),
+      })
     );
 
     const response = await request(app).get(
-      "/api/desktop-host/packages/tenant-1/storyboard-writer",
+      "/api/desktop-host/packages/tenant-1/storyboard-writer"
     );
 
     expect(response.status).toBe(200);
     expect(response.body.manifest.packageId).toBe("storyboard-writer");
+  });
+
+  it("returns an empty device list instead of 403 when Desktop Host is disabled", async () => {
+    const app = express();
+    app.use(express.json());
+    registerDesktopHostRoutes(app, {
+      authenticateRequest: async () => ({
+        id: "user-1",
+        currentTenantId: "tenant-1",
+      }),
+      getTenantFeatureFlags: async () => ({
+        ...FEATURE_FLAG_DEFAULTS,
+        desktopHostEnabled: false,
+      }),
+    });
+
+    const response = await request(app).get(
+      "/api/desktop-host/devices?scope=tenant"
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.devices).toEqual([]);
+    expect(typeof response.body.generatedAt).toBe("string");
   });
 
   it("returns revocation feed snapshots", async () => {
@@ -134,11 +157,11 @@ describe("desktopHost routes", () => {
           revokedPackageIds: ["storyboard-writer"],
           revokedSignerIds: [],
         }),
-      }),
+      })
     );
 
     const response = await request(app).get(
-      "/api/desktop-host/revocations/tenant-1",
+      "/api/desktop-host/revocations/tenant-1"
     );
 
     expect(response.status).toBe(200);
@@ -172,7 +195,7 @@ describe("desktopHost routes", () => {
             status: "trusted",
           },
         ],
-      }),
+      })
     );
 
     const rootPolicyResponse = await request(app)
@@ -594,8 +617,10 @@ describe("desktopHost routes", () => {
           deviceId,
           displayName: "Ops Desktop",
           machineName: "ops-desktop",
-          healthStatus: actionType === "quarantine_device" ? "unhealthy" : "online",
-          accessState: actionType === "quarantine_device" ? "quarantined" : "active",
+          healthStatus:
+            actionType === "quarantine_device" ? "unhealthy" : "online",
+          accessState:
+            actionType === "quarantine_device" ? "quarantined" : "active",
           platform: {
             os: "windows",
             osVersion: "11",
@@ -606,7 +631,8 @@ describe("desktopHost routes", () => {
           lastSeenAt: "2026-04-09T10:00:00.000Z",
           workerProjectionEnabled: true,
           projectedWorkerRuntimeType: "desktop_zeroclaw_managed",
-          warningFlags: actionType === "quarantine_device" ? ["device_quarantined"] : [],
+          warningFlags:
+            actionType === "quarantine_device" ? ["device_quarantined"] : [],
           capabilities: {},
           owner: {
             userId: "1",
@@ -729,7 +755,7 @@ describe("desktopHost routes", () => {
     });
 
     const okResponse = await request(app).get(
-      "/api/desktop-host/policy/tenant-1/device-1",
+      "/api/desktop-host/policy/tenant-1/device-1"
     );
     const registerResponse = await request(app)
       .post("/api/desktop-host/devices/register")
@@ -769,14 +795,12 @@ describe("desktopHost routes", () => {
         warningFlagsJson: [],
         policyCursor: "policy-v2",
       });
-    const devicesResponse = await request(app).get(
-      "/api/desktop-host/devices",
-    );
+    const devicesResponse = await request(app).get("/api/desktop-host/devices");
     const tenantDevicesResponse = await request(app).get(
-      "/api/desktop-host/devices?scope=tenant",
+      "/api/desktop-host/devices?scope=tenant"
     );
     const deviceStateResponse = await request(app).get(
-      "/api/desktop-host/devices/device-1/state",
+      "/api/desktop-host/devices/device-1/state"
     );
     const policyOverrideResponse = await request(app)
       .post("/api/desktop-host/devices/device-1/policy-overrides")
@@ -798,10 +822,10 @@ describe("desktopHost routes", () => {
         actionType: "reindex_root",
       });
     const catalogResponse = await request(app).get(
-      "/api/desktop-host/packages/catalog",
+      "/api/desktop-host/packages/catalog"
     );
     const mismatchResponse = await request(app).get(
-      "/api/desktop-host/policy/tenant-2/device-1",
+      "/api/desktop-host/policy/tenant-2/device-1"
     );
 
     expect(okResponse.status).toBe(200);
@@ -812,38 +836,45 @@ describe("desktopHost routes", () => {
           gate: "device_binding_ready",
           satisfied: true,
         }),
-      ]),
+      ])
     );
     expect(registerResponse.status).toBe(201);
     expect(registerResponse.body.device.id).toBe("device-1");
     expect(registerResponse.body.workerProjection.registrationToken).toBe(
-      "desktop-worker-registration-token",
+      "desktop-worker-registration-token"
     );
-    expect(registerResponse.body.policySnapshot.workerProjectionRuntimeType).toBe(
-      "desktop_zeroclaw_managed",
-    );
+    expect(
+      registerResponse.body.policySnapshot.workerProjectionRuntimeType
+    ).toBe("desktop_zeroclaw_managed");
     expect(heartbeatResponse.status).toBe(200);
     expect(heartbeatResponse.body.device.id).toBe("device-1");
     expect(heartbeatResponse.body.workerProjection.registrationToken).toBe(
-      "desktop-worker-registration-token-refresh",
+      "desktop-worker-registration-token-refresh"
     );
     expect(devicesResponse.status).toBe(200);
-    expect(devicesResponse.body.devices[0]?.capabilities.deviceIdentity.keyAlgorithm).toBe(
-      "ed25519",
-    );
-    expect(devicesResponse.body.devices[0]?.capabilities.localFileService.isolationMode).toBe(
-      "python_subprocess_bounded",
-    );
+    expect(
+      devicesResponse.body.devices[0]?.capabilities.deviceIdentity.keyAlgorithm
+    ).toBe("ed25519");
+    expect(
+      devicesResponse.body.devices[0]?.capabilities.localFileService
+        .isolationMode
+    ).toBe("python_subprocess_bounded");
     expect(tenantDevicesResponse.status).toBe(200);
-    expect(tenantDevicesResponse.body.devices[0]?.packageSyncState.syncStatus).toBe("ready");
+    expect(
+      tenantDevicesResponse.body.devices[0]?.packageSyncState.syncStatus
+    ).toBe("ready");
     expect(deviceStateResponse.status).toBe(200);
-    expect(deviceStateResponse.body.policySnapshot.localRoots[0]?.absolutePath).toBe(
-      "C:/Users/demo/Documents/Quotes",
-    );
+    expect(
+      deviceStateResponse.body.policySnapshot.localRoots[0]?.absolutePath
+    ).toBe("C:/Users/demo/Documents/Quotes");
     expect(policyOverrideResponse.status).toBe(200);
-    expect(policyOverrideResponse.body.device.policyOverrides.allowAdvancedLocalMode).toBe(false);
+    expect(
+      policyOverrideResponse.body.device.policyOverrides.allowAdvancedLocalMode
+    ).toBe(false);
     expect(deviceActionResponse.status).toBe(200);
-    expect(deviceActionResponse.body.action.actionType).toBe("quarantine_device");
+    expect(deviceActionResponse.body.action.actionType).toBe(
+      "quarantine_device"
+    );
     expect(rootActionResponse.status).toBe(200);
     expect(rootActionResponse.body.action.actionType).toBe("reindex_root");
     expect(catalogResponse.status).toBe(200);
@@ -868,7 +899,9 @@ describe("desktopHost routes", () => {
     });
 
     const { privateKey, publicKey } = crypto.generateKeyPairSync("ed25519");
-    const publicKeyPem = publicKey.export({ type: "spki", format: "pem" }).toString();
+    const publicKeyPem = publicKey
+      .export({ type: "spki", format: "pem" })
+      .toString();
 
     const challengeResponse = await request(app)
       .post("/api/desktop-host/security/enrollment/challenge")
@@ -897,9 +930,9 @@ describe("desktopHost routes", () => {
             String(challengeResponse.body.issuedAtEpochMs),
             String(challengeResponse.body.expiresAtEpochMs),
             challengeResponse.body.challengeSha256,
-          ].join(":"),
+          ].join(":")
         ),
-        privateKey,
+        privateKey
       )
       .toString("base64");
 
@@ -915,7 +948,9 @@ describe("desktopHost routes", () => {
 
     expect(verifyResponse.status).toBe(200);
     expect(verifyResponse.body.verified).toBe(true);
-    expect(verifyResponse.body.runtimeBinding.bindingSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(verifyResponse.body.runtimeBinding.bindingSha256).toMatch(
+      /^[a-f0-9]{64}$/
+    );
   });
 
   it("fails closed for enrollment routes when Desktop Host is disabled", async () => {
@@ -936,7 +971,8 @@ describe("desktopHost routes", () => {
       .post("/api/desktop-host/security/enrollment/challenge")
       .send({
         deviceId: "device-1",
-        devicePublicKeyPem: "-----BEGIN PUBLIC KEY-----\nabc\n-----END PUBLIC KEY-----",
+        devicePublicKeyPem:
+          "-----BEGIN PUBLIC KEY-----\nabc\n-----END PUBLIC KEY-----",
         purpose: "bootstrap",
         deviceKeyVersion: 1,
         ttlSeconds: 300,
@@ -1071,12 +1107,14 @@ describe("desktopHost routes", () => {
         ],
       });
     const policyResponse = await request(app).get(
-      "/api/desktop-host/policy/tenant-1/device-1",
+      "/api/desktop-host/policy/tenant-1/device-1"
     );
 
     expect(disableResponse.status).toBe(200);
     expect(disableResponse.body.device.healthStatus).toBe("disabled");
-    expect(disableResponse.body.offboardingPlan.localRootIds).toEqual(["quotes"]);
+    expect(disableResponse.body.offboardingPlan.localRootIds).toEqual([
+      "quotes",
+    ]);
     expect(policyResponse.status).toBe(200);
     expect(policyResponse.body.rolloutGates).toEqual(
       expect.arrayContaining([
@@ -1084,7 +1122,7 @@ describe("desktopHost routes", () => {
           gate: "device_binding_ready",
           satisfied: false,
         }),
-      ]),
+      ])
     );
   });
 });

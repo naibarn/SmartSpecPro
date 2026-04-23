@@ -1,14 +1,13 @@
 import { memo } from "react";
-import { Handle, Position } from "reactflow";
-import type { NodeProps } from "reactflow";
+import { Handle, Position } from "@xyflow/react";
 import { Search, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AgencyNodeData } from "./types";
+import type { AgencyFlowNodeProps } from "./types";
 
 export const SkillDiscoveryNodeCard = memo(function SkillDiscoveryNodeCard({
   data,
   selected,
-}: NodeProps<AgencyNodeData>) {
+}: AgencyFlowNodeProps) {
   const hasErrors = (data.validationErrors?.length ?? 0) > 0;
   const taskSource = (data.nodeConfig?.taskSource as string) ?? "";
   const threshold = (data.nodeConfig?.confidenceThreshold as number) ?? 0.7;

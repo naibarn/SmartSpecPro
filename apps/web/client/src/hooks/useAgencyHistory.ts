@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import type { Node, Edge } from "reactflow";
+import type { Node, Edge } from "@xyflow/react";
 import type { AgencyNodeData } from "@/components/agency/nodes/types";
 
 interface Snapshot {

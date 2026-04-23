@@ -1,0 +1,50 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/105-work-os-team-orchestrator-unified-automation/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/105-work-os-team-orchestrator-unified-automation/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "npm run -w @smartspec/web test",
+  "sections": [
+    "section-01-intake-review-and-compiled-brief",
+    "section-02-governed-context-and-capability-catalog",
+    "section-03-preflight-plan-and-launch-bridge",
+    "section-04-team-execution-graph-and-surface-adapters",
+    "section-05-learning-loop-workpacks-and-skill-maintenance",
+    "section-06-security-surface-governance-and-release-gates",
+    "section-07-ui-observability-and-rollout-controls"
+  ],
+  "sections_state": {
+    "section-01-intake-review-and-compiled-brief": {
+      "status": "completed"
+    },
+    "section-02-governed-context-and-capability-catalog": {
+      "status": "completed"
+    },
+    "section-03-preflight-plan-and-launch-bridge": {
+      "status": "completed"
+    },
+    "section-04-team-execution-graph-and-surface-adapters": {
+      "status": "completed"
+    },
+    "section-05-learning-loop-workpacks-and-skill-maintenance": {
+      "status": "completed"
+    },
+    "section-06-security-surface-governance-and-release-gates": {
+      "status": "completed"
+    },
+    "section-07-ui-observability-and-rollout-controls": {
+      "status": "completed"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-21T15:13:34.808413+00:00"
+}

@@ -6,24 +6,18 @@
  */
 
 import React from "react";
-import { Handle, Position } from "reactflow";
-import type { NodeProps } from "reactflow";
+import { Handle, Position } from "@xyflow/react";
 import { useNodeRegistry } from "@/lib/workflow/useNodeRegistry";
 import { dataTypeColorMap, nodeColorMap } from "@/lib/workflow/colorMap";
 import * as LucideIcons from "lucide-react";
 import { useExecutionStore } from "@/stores/executionStore";
 import { ExecutionOverlay } from "../execution/ExecutionOverlay";
-
-export interface WorkflowNodeData {
-  nodeType: string;
-  label: string;
-  config: Record<string, unknown>;
-}
+import type { WorkflowFlowNodeProps } from "./types";
 
 /**
  * BaseNode component for all workflow nodes.
  */
-export function BaseNode({ id, data, selected }: NodeProps<WorkflowNodeData>) {
+export function BaseNode({ id, data, selected }: WorkflowFlowNodeProps) {
   const { getNodeType } = useNodeRegistry();
   const nodeTypeDef = getNodeType(data.nodeType);
   const { getNodeStatus } = useExecutionStore();

@@ -1,7 +1,6 @@
 import { memo } from "react";
-import type { NodeProps } from "reactflow";
 import { Badge } from "@/components/ui/badge";
-import type { AgencyNodeData } from "./types";
+import type { AgencyFlowNodeProps } from "./types";
 import { AgentNodeCard } from "./AgentNodeCard";
 import { SupervisorNodeCard } from "./SupervisorNodeCard";
 import { RouterNodeCard } from "./RouterNodeCard";
@@ -25,7 +24,7 @@ import { EngineBoundaryNodeCard } from "./EngineBoundaryNodeCard";
  * Renders the appropriate card sub-component based on data.nodeType.
  * Register as: { agency: BaseAgencyNode }
  */
-export const BaseAgencyNode = memo(function BaseAgencyNode(props: NodeProps<AgencyNodeData>) {
+export const BaseAgencyNode = memo(function BaseAgencyNode(props: AgencyFlowNodeProps) {
   const { nodeType = "agent" } = props.data;
 
   const renderNodeCard = () => {

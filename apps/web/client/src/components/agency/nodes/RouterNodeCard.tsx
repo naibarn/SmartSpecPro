@@ -1,15 +1,14 @@
 import { memo } from "react";
-import { Handle, Position } from "reactflow";
-import type { NodeProps } from "reactflow";
+import { Handle, Position } from "@xyflow/react";
 import { GitBranch, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getRouterRouteHandleId, normalizeRouterRoutes } from "../nodeGraphSync";
-import type { AgencyNodeData } from "./types";
+import type { AgencyFlowNodeProps } from "./types";
 
 export const RouterNodeCard = memo(function RouterNodeCard({
   data,
   selected,
-}: NodeProps<AgencyNodeData>) {
+}: AgencyFlowNodeProps) {
   const hasErrors = (data.validationErrors?.length ?? 0) > 0;
   const routingMode = (data.nodeConfig?.routingMode as string) ?? "keyword";
   const routes = normalizeRouterRoutes(data.nodeConfig?.routes);

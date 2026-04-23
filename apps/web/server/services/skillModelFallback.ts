@@ -63,11 +63,14 @@ export interface FallbackAttempt {
 
 export interface SkillLlmResult {
   success: boolean;
+  skillId?: string;
+  type?: "text";
   content?: string;
   modelId?: string;
   provider?: ProviderCandidate;
   inputTokens?: number;
   outputTokens?: number;
+  creditsUsed?: number;
   rawData?: Record<string, unknown>;
   error?: string;
   attempts: FallbackAttempt[];

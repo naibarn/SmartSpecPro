@@ -34,7 +34,9 @@ export type WorkUpdateMessageType =
   | "revision"
   | "approval"
   | "decision"
-  | "summary";
+  | "summary"
+  | "plan_summary"
+  | "step_result";
 
 export interface WorkCitationRef {
   id?: string;
@@ -57,10 +59,13 @@ export interface CreateRoomInput {
   orchestratorUserId: number;
   roomType: "direct" | "team" | "auto_team" | "job_review";
   goalPrompt: string;
+  language?: RoomLanguage;
   projectId?: number;
   viewMode?: string;
   autonomyLevel?: string;
 }
+
+export type RoomLanguage = "en" | "th";
 
 export interface SendMessageInput {
   roomId: string;
@@ -78,7 +83,11 @@ export interface SendMessageInput {
   artifactRefsJson?: unknown;
   memoryRefsJson?: unknown;
   metadataJson?: Record<string, unknown>;
-  tokenUsageJson?: { inputTokens?: number; outputTokens?: number; model?: string };
+  tokenUsageJson?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    model?: string;
+  };
   runId?: string;
 }
 
@@ -124,7 +133,13 @@ export interface RoomViewerState {
 export type TeamRoomType = CreateRoomInput["roomType"];
 export type TeamRunExecutionMode = "team_chat" | "auto_team" | "review";
 
-export function getDefaultExecutionModeForRoomType(roomType: TeamRoomType): Exclude<TeamRunExecutionMode, "review"> {
+export function normalizeRoomLanguage(value?: string | null): RoomLanguage {
+  return value === "th" ? "th" : "en";
+}
+
+export function getDefaultExecutionModeForRoomType(
+  roomType: TeamRoomType
+): Exclude<TeamRunExecutionMode, "review"> {
   switch (roomType) {
     case "auto_team":
       return "auto_team";
@@ -138,7 +153,7 @@ export function getDefaultExecutionModeForRoomType(roomType: TeamRoomType): Excl
 
 export function mapRoomTypeToExecutionMode(
   roomType: TeamRoomType,
-  requestedExecutionMode?: TeamRunExecutionMode | null,
+  requestedExecutionMode?: TeamRunExecutionMode | null
 ): Exclude<TeamRunExecutionMode, "review"> {
   if (requestedExecutionMode === "auto_team") {
     return "auto_team";
@@ -151,7 +166,10 @@ export function mapRoomTypeToExecutionMode(
   return getDefaultExecutionModeForRoomType(roomType);
 }
 
-function sanitizeRoomString(value: string): { value: string; changed: boolean } {
+function sanitizeRoomString(value: string): {
+  value: string;
+  changed: boolean;
+} {
   let sanitized = value;
   for (const pattern of ROOM_SECRET_PATTERNS) {
     sanitized = sanitized.replace(pattern, "[REDACTED]");
@@ -159,13 +177,16 @@ function sanitizeRoomString(value: string): { value: string; changed: boolean } 
   return { value: sanitized, changed: sanitized !== value };
 }
 
-function sanitizeRoomJsonValue(value: unknown): { value: unknown; changed: boolean } {
+function sanitizeRoomJsonValue(value: unknown): {
+  value: unknown;
+  changed: boolean;
+} {
   if (typeof value === "string") {
     return sanitizeRoomString(value);
   }
   if (Array.isArray(value)) {
     let changed = false;
-    const sanitized = value.map((item) => {
+    const sanitized = value.map(item => {
       const result = sanitizeRoomJsonValue(item);
       if (result.changed) changed = true;
       return result.value;
@@ -175,7 +196,9 @@ function sanitizeRoomJsonValue(value: unknown): { value: unknown; changed: boole
   if (value !== null && typeof value === "object") {
     let changed = false;
     const sanitized: Record<string, unknown> = {};
-    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    for (const [key, item] of Object.entries(
+      value as Record<string, unknown>
+    )) {
       const result = sanitizeRoomJsonValue(item);
       if (result.changed) changed = true;
       sanitized[key] = result.value;
@@ -191,7 +214,9 @@ function buildSummaryContent(content: string): string {
   return `${normalized.slice(0, ROOM_SUMMARY_LIMIT - 3).trimEnd()}...`;
 }
 
-function mapMessageTypeToTurnType(messageType: WorkUpdateMessageType): NonNullable<SendMessageInput["turnType"]> {
+function mapMessageTypeToTurnType(
+  messageType: WorkUpdateMessageType
+): NonNullable<SendMessageInput["turnType"]> {
   switch (messageType) {
     case "critique":
     case "suggestion":
@@ -200,6 +225,8 @@ function mapMessageTypeToTurnType(messageType: WorkUpdateMessageType): NonNullab
     case "decision":
       return "decision";
     case "summary":
+    case "plan_summary":
+    case "step_result":
       return "summary";
     case "revision":
     case "work_update":
@@ -208,13 +235,18 @@ function mapMessageTypeToTurnType(messageType: WorkUpdateMessageType): NonNullab
   }
 }
 
-function defaultVisibilityForMessageType(messageType: WorkUpdateMessageType): NonNullable<SendMessageInput["visibility"]> {
+function defaultVisibilityForMessageType(
+  messageType: WorkUpdateMessageType
+): NonNullable<SendMessageInput["visibility"]> {
   switch (messageType) {
     case "approval":
     case "decision":
       return "milestone";
     case "summary":
+    case "plan_summary":
       return "summary_only";
+    case "step_result":
+      return "milestone";
     case "critique":
     case "suggestion":
     case "revision":
@@ -238,9 +270,11 @@ export function prepareWorkUpdate(input: PostWorkUpdateInput): {
   const sanitizedMetadata = sanitizeRoomJsonValue(input.metadataJson ?? {});
   const summaryContent = buildSummaryContent(sanitizedContent.value);
   const replyToMessageId = input.replyToMessageId ?? null;
-  const threadRootMessageId = input.threadRootMessageId ?? input.replyToMessageId ?? null;
+  const threadRootMessageId =
+    input.threadRootMessageId ?? input.replyToMessageId ?? null;
   const redactToSummary = input.sensitivity === "high";
-  const redactionApplied = redactToSummary || sanitizedContent.changed || sanitizedMetadata.changed;
+  const redactionApplied =
+    redactToSummary || sanitizedContent.changed || sanitizedMetadata.changed;
 
   const redactionDecision: RoomRedactionDecision = {
     applied: redactionApplied,
@@ -257,7 +291,8 @@ export function prepareWorkUpdate(input: PostWorkUpdateInput): {
     content: redactToSummary ? summaryContent : sanitizedContent.value,
     summaryContent,
     turnType: mapMessageTypeToTurnType(messageType),
-    visibility: input.visibility ?? defaultVisibilityForMessageType(messageType),
+    visibility:
+      input.visibility ?? defaultVisibilityForMessageType(messageType),
     artifactRefsJson: input.artifactRefs ?? null,
     memoryRefsJson: input.memoryRefs ?? null,
     metadataJson: {
@@ -275,16 +310,17 @@ export function prepareWorkUpdate(input: PostWorkUpdateInput): {
 export function projectMessageForView(
   message: TeamRoomMessage,
   viewMode: string,
-  callerType: "user" | "system",
+  callerType: "user" | "system"
 ): TeamRoomMessage {
   if (callerType !== "user") return message;
 
   const metadata = (message.metadataJson ?? {}) as Record<string, any>;
-  const roomRedaction = metadata.roomRedaction as RoomRedactionDecision | undefined;
-  const shouldUseSummary = Boolean(message.summaryContent) && (
-    viewMode === "summary" ||
-    roomRedaction?.applied === true
-  );
+  const roomRedaction = metadata.roomRedaction as
+    | RoomRedactionDecision
+    | undefined;
+  const shouldUseSummary =
+    Boolean(message.summaryContent) &&
+    (viewMode === "summary" || roomRedaction?.applied === true);
 
   if (!shouldUseSummary) return message;
   return {
@@ -298,9 +334,9 @@ export function projectMessageForView(
 export function filterMessagesByViewMode(
   messages: TeamRoomMessage[],
   viewMode: string,
-  callerType: "user" | "system",
+  callerType: "user" | "system"
 ): TeamRoomMessage[] {
-  return messages.filter((msg) => {
+  return messages.filter(msg => {
     const vis = msg.visibility;
 
     // System callers see everything in transparent mode
@@ -335,8 +371,8 @@ export async function createRoom(input: CreateRoomInput): Promise<TeamRoom> {
     .where(
       and(
         eq(assistantTeams.id, input.teamId),
-        eq(assistantTeams.tenantId, input.tenantId),
-      ),
+        eq(assistantTeams.tenantId, input.tenantId)
+      )
     )
     .limit(1);
 
@@ -353,13 +389,13 @@ export async function createRoom(input: CreateRoomInput): Promise<TeamRoom> {
     .where(
       and(
         eq(assistantProfiles.teamId, input.teamId),
-        eq(assistantProfiles.isActive, true),
-      ),
+        eq(assistantProfiles.isActive, true)
+      )
     );
 
   let room: typeof import("../../drizzle/schema").teamRooms.$inferSelect;
 
-  await db.transaction(async (tx) => {
+  await db.transaction(async tx => {
     // Create room
     const [inserted] = await tx
       .insert(teamRooms)
@@ -371,9 +407,11 @@ export async function createRoom(input: CreateRoomInput): Promise<TeamRoom> {
         roomType: input.roomType,
         title: input.goalPrompt.substring(0, 255),
         goalPrompt: input.goalPrompt,
+        language: normalizeRoomLanguage(input.language),
         projectId: input.projectId ?? null,
         viewMode: input.viewMode ?? team.defaultViewMode ?? "transparent",
-        autonomyLevel: input.autonomyLevel ?? team.defaultAutonomyLevel ?? "guided",
+        autonomyLevel:
+          input.autonomyLevel ?? team.defaultAutonomyLevel ?? "guided",
         status: "active",
       })
       .returning();
@@ -407,7 +445,8 @@ export async function createRoom(input: CreateRoomInput): Promise<TeamRoom> {
           roomId,
           participantType: "observer",
           participantUserId: member.humanUserId,
-          participantLabel: member.displayName ?? member.nickname ?? "Human Member",
+          participantLabel:
+            member.displayName ?? member.nickname ?? "Human Member",
           roleInRoom: member.isLead ? "lead_observer" : "observer",
         });
       }
@@ -417,7 +456,9 @@ export async function createRoom(input: CreateRoomInput): Promise<TeamRoom> {
   return room!;
 }
 
-export async function sendMessage(input: SendMessageInput): Promise<TeamRoomMessage> {
+export async function sendMessage(
+  input: SendMessageInput
+): Promise<TeamRoomMessage> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -425,7 +466,12 @@ export async function sendMessage(input: SendMessageInput): Promise<TeamRoomMess
   const [room] = await db
     .select()
     .from(teamRooms)
-    .where(and(eq(teamRooms.id, input.roomId), eq(teamRooms.tenantId, input.tenantId)))
+    .where(
+      and(
+        eq(teamRooms.id, input.roomId),
+        eq(teamRooms.tenantId, input.tenantId)
+      )
+    )
     .limit(1);
 
   if (!room) {
@@ -440,8 +486,8 @@ export async function sendMessage(input: SendMessageInput): Promise<TeamRoomMess
       .where(
         and(
           eq(teamRoomParticipants.roomId, input.roomId),
-          eq(teamRoomParticipants.participantUserId, input.senderUserId),
-        ),
+          eq(teamRoomParticipants.participantUserId, input.senderUserId)
+        )
       )
       .limit(1);
 
@@ -458,8 +504,11 @@ export async function sendMessage(input: SendMessageInput): Promise<TeamRoomMess
       .where(
         and(
           eq(teamRoomParticipants.roomId, input.roomId),
-          eq(teamRoomParticipants.participantAssistantId, input.senderAssistantId),
-        ),
+          eq(
+            teamRoomParticipants.participantAssistantId,
+            input.senderAssistantId
+          )
+        )
       )
       .limit(1);
 
@@ -495,33 +544,42 @@ export async function sendMessage(input: SendMessageInput): Promise<TeamRoomMess
 
   // Publish to Redis pub/sub for SSE (Section 11)
   try {
-    const { publishEvent, createEvent } = await import("./orchestratorEventBus");
+    const { publishEvent, createEvent } =
+      await import("./orchestratorEventBus");
     // Find active run for this room to include runId
     const [activeRun] = await db
       .select({ id: teamRuns.id, teamId: teamRuns.teamId })
       .from(teamRuns)
-      .where(and(eq(teamRuns.roomId, input.roomId), sql`${teamRuns.status} IN ('running', 'queued')`))
+      .where(
+        and(
+          eq(teamRuns.roomId, input.roomId),
+          sql`${teamRuns.status} IN ('running', 'queued')`
+        )
+      )
       .limit(1);
 
     if (activeRun) {
-      await publishEvent(createEvent("message", {
-        tenantId: input.tenantId,
-        teamId: activeRun.teamId,
-        roomId: input.roomId,
-        runId: activeRun.id,
-        actorType: input.senderType,
-        actorId: input.senderAssistantId ?? String(input.senderUserId ?? "system"),
-        visibility: (input.visibility as any) ?? "transparent",
-        data: {
-          messageId: message.id,
-          content: input.content.slice(0, 200),
-          turnType: (input.turnType as any) ?? "discussion",
-          metadata: input.metadataJson ?? null,
-          artifactRefsJson: input.artifactRefsJson ?? null,
-          summaryContent: input.summaryContent ?? null,
-        },
-        userId: input.senderUserId ?? undefined,
-      }));
+      await publishEvent(
+        createEvent("message", {
+          tenantId: input.tenantId,
+          teamId: activeRun.teamId,
+          roomId: input.roomId,
+          runId: activeRun.id,
+          actorType: input.senderType,
+          actorId:
+            input.senderAssistantId ?? String(input.senderUserId ?? "system"),
+          visibility: (input.visibility as any) ?? "transparent",
+          data: {
+            messageId: message.id,
+            content: input.content.slice(0, 200),
+            turnType: (input.turnType as any) ?? "discussion",
+            metadata: input.metadataJson ?? null,
+            artifactRefsJson: input.artifactRefsJson ?? null,
+            summaryContent: input.summaryContent ?? null,
+          },
+          userId: input.senderUserId ?? undefined,
+        })
+      );
     }
   } catch {
     // Non-critical — SSE update missed but message persisted
@@ -530,7 +588,9 @@ export async function sendMessage(input: SendMessageInput): Promise<TeamRoomMess
   return message;
 }
 
-export async function postWorkUpdate(input: PostWorkUpdateInput): Promise<TeamRoomMessage> {
+export async function postWorkUpdate(
+  input: PostWorkUpdateInput
+): Promise<TeamRoomMessage> {
   const prepared = prepareWorkUpdate(input);
   return sendMessage({
     roomId: input.roomId,
@@ -553,7 +613,7 @@ export async function postWorkUpdate(input: PostWorkUpdateInput): Promise<TeamRo
 export async function getViewerState(
   roomId: string,
   tenantId: string,
-  userId: number,
+  userId: number
 ): Promise<RoomViewerState> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -574,8 +634,8 @@ export async function getViewerState(
     .where(
       and(
         eq(teamRoomParticipants.roomId, roomId),
-        eq(teamRoomParticipants.participantUserId, userId),
-      ),
+        eq(teamRoomParticipants.participantUserId, userId)
+      )
     )
     .limit(1);
 
@@ -586,10 +646,34 @@ export async function getViewerState(
   };
 }
 
-export async function markRoomViewed(
+export async function hasRoomParticipantAccess(
   roomId: string,
   tenantId: string,
   userId: number,
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [participant] = await db
+    .select({ id: teamRoomParticipants.id })
+    .from(teamRoomParticipants)
+    .innerJoin(teamRooms, eq(teamRooms.id, teamRoomParticipants.roomId))
+    .where(
+      and(
+        eq(teamRooms.id, roomId),
+        eq(teamRooms.tenantId, tenantId),
+        eq(teamRoomParticipants.participantUserId, userId),
+      ),
+    )
+    .limit(1);
+
+  return Boolean(participant);
+}
+
+export async function markRoomViewed(
+  roomId: string,
+  tenantId: string,
+  userId: number
 ): Promise<RoomViewerState> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -611,8 +695,8 @@ export async function markRoomViewed(
     .where(
       and(
         eq(teamRoomParticipants.roomId, roomId),
-        eq(teamRoomParticipants.participantUserId, userId),
-      ),
+        eq(teamRoomParticipants.participantUserId, userId)
+      )
     )
     .limit(1);
 
@@ -653,7 +737,7 @@ export async function markRoomViewed(
 export async function getMessages(
   roomId: string,
   tenantId: string,
-  filters: MessageFilters,
+  filters: MessageFilters
 ): Promise<TeamRoomMessage[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -686,17 +770,19 @@ export async function getMessages(
   return filterMessagesByViewMode(
     messages,
     filters.viewMode ?? "transparent",
-    filters.callerType,
-  ).map((message) => projectMessageForView(
-    message,
-    filters.viewMode ?? "transparent",
-    filters.callerType,
-  ));
+    filters.callerType
+  ).map(message =>
+    projectMessageForView(
+      message,
+      filters.viewMode ?? "transparent",
+      filters.callerType
+    )
+  );
 }
 
 export async function listRoomsByTeam(
   teamId: string,
-  tenantId: string,
+  tenantId: string
 ): Promise<TeamRoom[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -704,19 +790,14 @@ export async function listRoomsByTeam(
   return db
     .select()
     .from(teamRooms)
-    .where(
-      and(
-        eq(teamRooms.teamId, teamId),
-        eq(teamRooms.tenantId, tenantId),
-      ),
-    )
+    .where(and(eq(teamRooms.teamId, teamId), eq(teamRooms.tenantId, tenantId)))
     .orderBy(desc(teamRooms.createdAt))
     .limit(50);
 }
 
 export async function getRoom(
   roomId: string,
-  tenantId: string,
+  tenantId: string
 ): Promise<TeamRoom | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -724,12 +805,7 @@ export async function getRoom(
   const [room] = await db
     .select()
     .from(teamRooms)
-    .where(
-      and(
-        eq(teamRooms.id, roomId),
-        eq(teamRooms.tenantId, tenantId),
-      ),
-    )
+    .where(and(eq(teamRooms.id, roomId), eq(teamRooms.tenantId, tenantId)))
     .limit(1);
 
   return room ?? null;

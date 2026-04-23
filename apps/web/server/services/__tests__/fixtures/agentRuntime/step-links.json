@@ -1,0 +1,50 @@
+[
+  {
+    "linkType": "plan_step",
+    "stepKey": "visual-direction",
+    "attemptId": "attempt-visual-1",
+    "traceId": "trace-visual-1",
+    "checkpointId": null,
+    "messageId": "msg-plan-visual",
+    "anchorId": "plan-visual-anchor",
+    "label": "Plan step",
+    "isPrimary": true,
+    "status": "available"
+  },
+  {
+    "linkType": "owner_result",
+    "stepKey": "visual-direction",
+    "attemptId": "attempt-visual-1",
+    "traceId": "trace-visual-1",
+    "checkpointId": null,
+    "messageId": "msg-owner-visual",
+    "anchorId": "owner-visual-anchor",
+    "label": "Owner result",
+    "isPrimary": false,
+    "status": "available"
+  },
+  {
+    "linkType": "review_result",
+    "stepKey": "visual-direction",
+    "attemptId": "attempt-visual-1",
+    "traceId": "trace-visual-1",
+    "checkpointId": null,
+    "messageId": "msg-review-visual",
+    "anchorId": "review-visual-anchor",
+    "label": "Review result",
+    "isPrimary": false,
+    "status": "available"
+  },
+  {
+    "linkType": "repair_result",
+    "stepKey": "visual-direction",
+    "attemptId": "attempt-visual-2",
+    "traceId": "trace-visual-2",
+    "checkpointId": "checkpoint-visual-1",
+    "messageId": "msg-repair-visual",
+    "anchorId": "repair-visual-anchor",
+    "label": "Repair result",
+    "isPrimary": false,
+    "status": "pending"
+  }
+]

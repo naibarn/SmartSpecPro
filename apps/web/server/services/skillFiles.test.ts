@@ -7,8 +7,10 @@ import AdmZip from "adm-zip";
 import {
   buildUpdatedSkillManifest,
   extractZipToDirectory,
+  isNativeSkillBundle,
   resolveRelativeSkillManifestPath,
   resolveSkillBundleDir,
+  resolveSkillLockPath,
   resolveSkillManifestPath,
   updateSkillManifestFiles,
 } from "./skillFiles";
@@ -132,6 +134,38 @@ category: slide_generation
     } finally {
       process.chdir(originalCwd);
     }
+  });
+
+  it("recognizes a native agents_python bundle", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "skill-files-native-test-"));
+    tempDirs.push(tempDir);
+
+    const skillDir = path.join(tempDir, "native-skill");
+    fs.mkdirSync(path.join(skillDir, "scripts"), { recursive: true });
+    fs.mkdirSync(path.join(skillDir, "references"), { recursive: true });
+    fs.writeFileSync(path.join(skillDir, "SKILL.md"), `---
+name: native-skill
+description: Native skill
+version: 1.0.0
+target_platform: agents_python
+---
+# Native
+`, "utf-8");
+    fs.writeFileSync(path.join(skillDir, "skill.lock.json"), JSON.stringify({
+      name: "native-skill",
+      version: "1.0.0",
+      target_platform: "agents_python",
+      entrypoints: { run: "scripts/run.sh", verify: "scripts/verify.sh" },
+      outputs: ["SKILL.md", "skill.md"],
+      supported_modes: ["create", "improve", "maintenance"],
+      compatibility_mirror_policy: "mirror-skill-md",
+    }), "utf-8");
+    fs.writeFileSync(path.join(skillDir, "scripts", "run.sh"), "#!/usr/bin/env bash\nset -euo pipefail\n", "utf-8");
+    fs.writeFileSync(path.join(skillDir, "scripts", "verify.sh"), "#!/usr/bin/env bash\nset -euo pipefail\n", "utf-8");
+
+    expect(resolveSkillBundleDir(skillDir)).toBe(skillDir);
+    expect(resolveSkillLockPath(skillDir)).toBe(path.join(skillDir, "skill.lock.json"));
+    expect(isNativeSkillBundle(skillDir)).toBe(true);
   });
 
   it("flattens a single wrapper folder when extracting a ZIP bundle", () => {

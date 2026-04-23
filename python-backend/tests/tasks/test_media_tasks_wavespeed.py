@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -13,6 +14,7 @@ from app.tasks.media_tasks import (
     _generate_video_async,
     _poll_wavespeed_video_task_async,
     _recover_stuck_tasks_async,
+    _make_json_safe,
 )
 
 
@@ -125,6 +127,53 @@ async def test_generate_video_async_persists_sanitized_wavespeed_submission_and_
     }
     assert "prompt" not in task.result_data["submission"]["request_summary"]
     assert "reference_image_urls" not in task.result_data["submission"]["request_summary"]
+    enqueue_mock.assert_called_once_with(task.id, 3)
+
+
+@pytest.mark.asyncio
+async def test_generate_video_async_sanitizes_decimal_payload_before_db_commit():
+    task = _make_media_task()
+    user = _make_user()
+    response = MagicMock()
+    response.id = "ws-pred-456"
+    response.provider = "wavespeed_ai"
+    response.data = []
+    response.credits_used = Decimal("150")
+    response.credits_balance = Decimal("9850")
+    response.dict.return_value = {
+        "id": "ws-pred-456",
+        "provider": "wavespeed_ai",
+        "data": [],
+        "credits_used": Decimal("150"),
+        "credits_balance": Decimal("9850"),
+        "metrics": {
+            "ratio": Decimal("1.25"),
+            "nested": [Decimal("2")],
+        },
+    }
+
+    session = _make_async_session(_scalar_result(task), _scalar_result(user))
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), \
+         patch("app.tasks.media_tasks.LLMGateway", side_effect=lambda db: _FakeGateway(db, response)), \
+         patch("app.services.media_provider_service.get_media_provider_key", new_callable=AsyncMock, return_value={"apiKey": "ws-key", "baseUrl": "https://api.wavespeed.ai"}), \
+         patch("app.tasks.media_tasks._enqueue_wavespeed_poll") as enqueue_mock:
+        result = await _generate_video_async(
+            task.id,
+            str(user.id),
+            {
+                "model": "wavespeed-ai/cinematic-video-generator",
+                "prompt": "Decimal payload test",
+                "duration": 10,
+            },
+        )
+
+    assert result["status"] == "submitted"
+    assert task.result_data["response"]["credits_used"] == 150
+    assert task.result_data["response"]["credits_balance"] == 9850
+    assert task.result_data["response"]["metrics"]["ratio"] == 1.25
+    assert task.result_data["response"]["metrics"]["nested"] == [2]
+    assert _make_json_safe({"value": Decimal("7")}) == {"value": 7}
     enqueue_mock.assert_called_once_with(task.id, 3)
 
 

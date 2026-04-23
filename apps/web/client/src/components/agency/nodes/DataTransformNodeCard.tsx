@@ -1,14 +1,13 @@
 import { memo } from "react";
-import { Handle, Position } from "reactflow";
-import type { NodeProps } from "reactflow";
+import { Handle, Position } from "@xyflow/react";
 import { Braces, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AgencyNodeData } from "./types";
+import type { AgencyFlowNodeProps } from "./types";
 
 export const DataTransformNodeCard = memo(function DataTransformNodeCard({
   data,
   selected,
-}: NodeProps<AgencyNodeData>) {
+}: AgencyFlowNodeProps) {
   const hasErrors = (data.validationErrors?.length ?? 0) > 0;
   const transformMode = (data.nodeConfig?.transformMode as string) ?? "jsonpath";
   const jsonpathExpr = (data.nodeConfig?.jsonpathExpression as string) ?? "";

@@ -292,6 +292,13 @@ export default function SkillBrowser() {
 
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
 
+  function getNativeBundleTooltip(skill: any): string | undefined {
+    if (!skill.nativeBundleFiles?.length) {
+      return undefined;
+    }
+    return skill.nativeBundleFiles.join(", ");
+  }
+
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -405,6 +412,23 @@ export default function SkillBrowser() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                                 <span className="font-medium text-sm truncate">{skill.name}</span>
+                                {skill.nativeBundleReady && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs shrink-0 border-emerald-200 bg-emerald-50 text-emerald-700"
+                                        >
+                                          Native
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        {getNativeBundleTooltip(skill) || "Native bundle ready"}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
                                 <Badge variant="outline" className="text-xs shrink-0">
                                   {categoryLabels[skill.category] ?? skill.category}
                                 </Badge>

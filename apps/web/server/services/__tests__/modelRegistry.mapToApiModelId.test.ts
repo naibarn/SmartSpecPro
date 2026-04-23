@@ -11,6 +11,11 @@ describe("mapToApiModelId", () => {
     expect(mapToApiModelId("google_banana_2")).toBe("google-banana-2");
   });
 
+  it("resolves Gemini TTS aliases", () => {
+    expect(mapToApiModelId("gemini tts")).toBe("fal-ai/gemini-3.1-flash-tts");
+    expect(mapToApiModelId("fal gemini tts")).toBe("fal-ai/gemini-3.1-flash-tts");
+  });
+
   it("returns exact model ID unchanged", () => {
     expect(mapToApiModelId("google-banana-2")).toBe("google-banana-2");
   });

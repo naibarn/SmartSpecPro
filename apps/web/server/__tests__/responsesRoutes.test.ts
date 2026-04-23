@@ -905,6 +905,73 @@ describe("/v1/responses endpoint", () => {
       expect(mockFetch).toHaveBeenCalledTimes(3);
     });
 
+    it("injects tool context hints into the next round after parsing _meta.contextState", async () => {
+      const firstResponse = makeResponsesApiResponse({
+        output: [
+          {
+            type: "function_call",
+            id: "fc_1",
+            call_id: "call_1",
+            name: "browser.execute_actions",
+            arguments: '{"action":"click","selector":"#btn"}',
+          },
+        ],
+      });
+
+      const secondResponse = makeResponsesApiResponse();
+      const toolPayload = {
+        result: "clicked",
+        _meta: {
+          contextState: {
+            toolResults: [
+              {
+                title: "Browser step",
+                content: "Clicked CTA button",
+                source: "browser.execute_actions",
+                trust: "trusted",
+                freshness: "fresh",
+              },
+            ],
+          },
+        },
+      };
+
+      mockFetch
+        .mockResolvedValueOnce(makeFetchResponse(firstResponse))
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: () => Promise.resolve(JSON.stringify(toolPayload)),
+        })
+        .mockResolvedValueOnce(makeFetchResponse(secondResponse));
+
+      const res = await request(app)
+        .post("/v1/responses")
+        .send({
+          model: "gpt-5.4",
+          input: [{ role: "user", content: "click the button" }],
+        });
+
+      expect(res.status).toBe(200);
+
+      const secondOpenAICall = mockFetch.mock.calls[2];
+      const secondBody = JSON.parse(secondOpenAICall[1].body);
+      const toolOutputs = secondBody.input.filter(
+        (item: any) => item.type === "function_call_output",
+      );
+      expect(toolOutputs.length).toBe(1);
+      expect(toolOutputs[0].output).not.toContain("_meta");
+      expect(JSON.parse(toolOutputs[0].output)).toEqual(
+        expect.objectContaining({ result: "clicked" }),
+      );
+
+      const contextMessages = secondBody.input.filter(
+        (item: any) => item.role === "system" && typeof item.content === "string",
+      );
+      expect(contextMessages.some((item: any) => item.content.includes("[TOOL RESULT]"))).toBe(true);
+      expect(contextMessages.some((item: any) => item.content.includes("Clicked CTA button"))).toBe(true);
+    });
+
     it("stops loop after MAX_TOOL_ROUNDS", async () => {
       // Always return a function call to trigger loop
       const fcResponse = makeResponsesApiResponse({

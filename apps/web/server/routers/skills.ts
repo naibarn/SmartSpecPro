@@ -47,6 +47,7 @@ import { deductCredits, calculateCreditsForLLM, hasEnoughCredits } from "../serv
 import { executeWithFallback, getProviderForModel } from "../services/llmRouter";
 import { buildModelLookupCandidates } from "../services/modelLookup";
 import { getUploadsDir } from "../storage";
+import { getCachedPublicAppUrl } from "../services/appRuntimeConfig";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
@@ -98,6 +99,10 @@ import { resolveSkillExecutionPolicy } from "../services/skillExecutionPolicy";
 import { loadEnabledLlmModelRows } from "../services/enabledLlmModels";
 import { resolveMediaTypeFromSkillCategory, sanitizeMediaModelSelection } from "../services/mediaModelSelection";
 import { buildCustomSkillUserPrompt } from "../services/skillExecutionPromptBuilder";
+import {
+  buildRuntimeModelConfig,
+  executeSharedSkillTextRuntime,
+} from "../services/agentRuntime/skillRuntimeOrchestrator";
 import { resolveEffectiveLocalSkillExecutionPolicy } from "../services/localAiSkillPolicy";
 import { getRequesterLocalAiSurfaceContext } from "../services/localAiUserContext";
 import { getConversationById } from "../services/chatService";
@@ -114,6 +119,63 @@ import type { Message, MessageContent } from "../_core/llm";
 
 // Skills directory path
 const SKILLS_DIR = path.resolve(process.cwd(), "skills");
+const LEGACY_UPGRADE_RECOMMENDATION_TYPES = [
+  "native-bundle-upgrade",
+  "migrate-to-native-bundle",
+] as const;
+const legacyUpgradeSeedLocks = new Map<string, Promise<void>>();
+
+async function maybeSeedLegacyUpgradeQueue(params: {
+  dbInstance: any;
+  tenantId?: string | null;
+  requestedBy?: number | null;
+}): Promise<void> {
+  const { dbInstance, tenantId = null, requestedBy = null } = params;
+  const lockKey = tenantId ?? "__global__";
+  const existing = legacyUpgradeSeedLocks.get(lockKey);
+  if (existing) {
+    return existing;
+  }
+
+  const seedPromise = (async () => {
+    const conditions = [
+      or(
+        eq(skillImprovementRecommendations.recommendationType, LEGACY_UPGRADE_RECOMMENDATION_TYPES[0]),
+        eq(skillImprovementRecommendations.recommendationType, LEGACY_UPGRADE_RECOMMENDATION_TYPES[1]),
+      ),
+    ];
+    if (tenantId) {
+      conditions.unshift(eq(skillImprovementRecommendations.tenantId, tenantId));
+    }
+
+    const [row] = await dbInstance
+      .select({
+        count: sql<number>`count(*)::int`,
+      })
+      .from(skillImprovementRecommendations)
+      .where(and(...conditions));
+
+    if ((row?.count ?? 0) > 0) {
+      return;
+    }
+
+    await executeSkillMaintenanceSweep({
+      db: dbInstance,
+      requestedBy,
+      triggerSource: "legacy-upgrade-seed",
+      tenantId,
+      filters: {
+        limit: 200,
+      },
+    });
+  })().finally(() => {
+    legacyUpgradeSeedLocks.delete(lockKey);
+  });
+
+  legacyUpgradeSeedLocks.set(lockKey, seedPromise);
+  return seedPromise;
+}
+
 const SKILL_EXECUTION_MODE_VALUES = [
   "llm-only",
   "media-generate",
@@ -210,6 +272,24 @@ function attachLocalExecutionPolicy<T extends Record<string, unknown>>(
       userEnabled: input?.userEnabled ?? false,
       executionMode: input?.executionMode ?? "off",
     }),
+  };
+}
+
+function attachNativeBundleMetadata<T extends Record<string, unknown>>(
+  data: T,
+  skill: SkillDefinition | undefined,
+): T & {
+  nativeBundleReady: boolean | undefined;
+  nativeBundleFiles: string[] | undefined;
+  nativeBundlePath: string | undefined;
+  nativeBundleLockPath: string | undefined;
+} {
+  return {
+    ...data,
+    nativeBundleReady: skill?.nativeBundleReady,
+    nativeBundleFiles: skill?.nativeBundleFiles,
+    nativeBundlePath: skill?.nativeBundlePath,
+    nativeBundleLockPath: skill?.nativeBundleLockPath,
   };
 }
 
@@ -470,23 +550,40 @@ function decryptApiKey(text: string): string {
 
 // Note: getActiveLlmProvider removed — now uses getProviderForModel from llmRouter
 
+const PROMPT_IMAGE_PREFIXES = ["/uploads/", "/api/storage/files/"] as const;
+
+function buildAbsoluteReferenceUrl(url: string, publicUrl?: string | null): string | null {
+  if (!url.startsWith("/")) {
+    return null;
+  }
+
+  const baseUrl = (publicUrl || getCachedPublicAppUrl() || "").replace(/\/+$/, "");
+  if (!baseUrl) {
+    return null;
+  }
+
+  return `${baseUrl}${url}`;
+}
+
 /**
  * Convert image URL to a format the LLM can use
- * - Relative URLs (/uploads/...) are converted to base64 data URLs
+ * - Relative URLs (/uploads/... or /api/storage/files/...) are converted to base64 data URLs when possible
  * - Full URLs are passed through as-is
  */
-async function convertImageUrlForLLM(url: string): Promise<string> {
+export async function convertImageUrlForLLM(url: string, publicUrl?: string | null): Promise<string> {
   // If it's already a data URL or full HTTP URL, return as-is
   if (url.startsWith("data:") || url.startsWith("http://") || url.startsWith("https://")) {
     return url;
   }
 
   // If it's a relative URL, read the file and convert to base64
-  if (url.startsWith("/uploads/")) {
+  if (PROMPT_IMAGE_PREFIXES.some((prefix) => url.startsWith(prefix))) {
     try {
       // Use the same uploads directory as storage.ts
-      const uploadsDir = getUploadsDir();
-      const relativePath = url.replace("/uploads/", "");
+      const uploadsDir = getUploadsDir() || path.resolve(process.cwd(), "uploads");
+      const relativePath = url.startsWith("/api/storage/files/")
+        ? url.replace("/api/storage/files/", "")
+        : url.replace("/uploads/", "");
       const filePath = path.join(uploadsDir, relativePath);
 
       if (fs.existsSync(filePath)) {
@@ -523,12 +620,20 @@ async function convertImageUrlForLLM(url: string): Promise<string> {
           const mimeType = mimeTypes[ext] || "image/png";
           return `data:${mimeType};base64,${base64}`;
         }
-        console.error(`[Skills] Image not found at either path`);
-        return url; // Return original URL as fallback
+        const absoluteUrl = buildAbsoluteReferenceUrl(url, publicUrl);
+        if (absoluteUrl) {
+          console.warn(`[Skills] Falling back to absolute image URL: ${absoluteUrl}`);
+          return absoluteUrl;
+        }
+        throw new Error(`Unable to resolve reference image URL: ${url}`);
       }
     } catch (error) {
       console.error(`[Skills] Failed to convert image to base64:`, error);
-      return url; // Return original URL as fallback
+      const absoluteUrl = buildAbsoluteReferenceUrl(url, publicUrl);
+      if (absoluteUrl) {
+        return absoluteUrl;
+      }
+      throw error;
     }
   }
 
@@ -547,7 +652,7 @@ async function callLLMWithVision(
   imageUrls: string[] = [],
   model?: string,
   maxTokens: number = 2000,
-  options?: { extraBodyParams?: Record<string, unknown>; systemPromptSuffix?: string },
+  options?: { extraBodyParams?: Record<string, unknown>; systemPromptSuffix?: string; publicUrl?: string | null },
 ): Promise<{ content: string; usage: { promptTokens: number; completionTokens: number }; rawResponse?: any }> {
   const useModel = resolveVisionModelId(await getVisionModelOptions(), model);
   if (!useModel) {
@@ -560,7 +665,7 @@ async function callLLMWithVision(
   // Add images if provided (for vision analysis)
   // Convert relative URLs to base64 data URLs so LLM can access them
   for (const imageUrl of imageUrls) {
-    const convertedUrl = await convertImageUrlForLLM(imageUrl);
+    const convertedUrl = await convertImageUrlForLLM(imageUrl, options?.publicUrl);
     userContent.push({ type: "image_url", image_url: { url: convertedUrl } });
   }
 
@@ -1602,6 +1707,7 @@ export const skillsRouter = router({
             message: "No enabled vision model configured",
           });
         }
+        const runtimeProvider = await getProviderForModel(visionModel);
 
         // Calculate max tokens from the requested character budget and language hint.
         // This keeps the completion budget aligned with the selected media model limit.
@@ -1609,15 +1715,79 @@ export const skillsRouter = router({
         const promptLanguageHint = resolvePromptLanguageHintFromInputs(input as unknown as Record<string, unknown>);
         const promptLengthPlan = buildPromptLengthPlan(maxCharLength, promptLanguageHint)
           ?? buildPromptLengthPlan(5000, promptLanguageHint)!;
-
-        const result = await callLLMWithVision(
+        const execution = await executeSharedSkillTextRuntime({
+          tenantId: ctx.tenantId ?? "default",
+          userId,
+          objective: `Enhance prompt with skill '${resolvedSkillId}' for Media Studio while respecting the prompt length budget.`,
+          originSurface: input.originSurface ?? "media_studio",
+          entryPoint: "enhance_prompt",
+          requestLabel: `enhance_prompt:${resolvedSkillId}`,
+          skillSlugs: [resolvedSkillId],
           systemPrompt,
           userPrompt,
-          userId,
-          input.referenceImages || [],
-          visionModel,
-          promptLengthPlan.maxTokens
-        );
+          referenceImages: input.referenceImages || [],
+          schemaHint: {
+            name: "prompt_enhancement_text_output",
+            validationMode: "text_output",
+          },
+          planContext: {
+            skillId: resolvedSkillId,
+            skillName,
+            maxPromptLength: input.maxPromptLength ?? null,
+          },
+          modelConfig: buildRuntimeModelConfig({
+            modelId: visionModel,
+            providerId: runtimeProvider?.providerId ?? null,
+            gatewayRouteId: null,
+            resolvedGatewayModelId: visionModel,
+          }),
+          legacyExecute: async () => {
+            const result = await callLLMWithVision(
+              systemPrompt,
+              userPrompt,
+              userId,
+              input.referenceImages || [],
+              visionModel,
+              promptLengthPlan.maxTokens,
+              {
+                publicUrl: ctx.publicUrl ?? null,
+              }
+            );
+
+            const creditsUsed = calculateCreditsForLLM(
+              result.usage.promptTokens,
+              result.usage.completionTokens,
+              visionModel
+            );
+
+            await deductCredits({
+              userId,
+              amount: creditsUsed,
+              description: `Auto Prompt enhancement (${skillName})`,
+              skillSlug: resolvedSkillId,
+              sourceType: "skill",
+              metadata: {
+                model: visionModel,
+                skill: resolvedSkillId,
+                inputTokens: result.usage.promptTokens,
+                outputTokens: result.usage.completionTokens,
+                hasReferenceImages: (input.referenceImages?.length || 0) > 0,
+                referenceImageCount: input.referenceImages?.length || 0,
+                ...(input.originSurface ? { originSurface: input.originSurface } : {}),
+              },
+            });
+
+            return {
+              rawContent: result.content,
+              usage: result.usage,
+              creditsUsed,
+              providerName: runtimeProvider?.providerName ?? null,
+              modelId: visionModel,
+              rawResponse: result.rawResponse,
+            };
+          },
+        });
+        const result = execution.value;
 
         // Check if LLM refused the request (safety filter)
         const refusalPatterns = [
@@ -1632,10 +1802,10 @@ export const skillsRouter = router({
           /not appropriate/i,
         ];
 
-        const isRefusal = refusalPatterns.some(pattern => pattern.test(result.content));
+        const isRefusal = refusalPatterns.some(pattern => pattern.test(result.rawContent));
 
         if (isRefusal) {
-          console.warn("[Skills] LLM refused prompt enhancement:", result.content.substring(0, 200));
+          console.warn("[Skills] LLM refused prompt enhancement:", result.rawContent.substring(0, 200));
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "Unable to generate prompt. Please try with different text or images.",
@@ -1643,7 +1813,7 @@ export const skillsRouter = router({
         }
 
         // Parse the response to extract prompts
-        const parsed = parsePromptResponse(result.content);
+        const parsed = parsePromptResponse(result.rawContent);
 
         // HARD LIMIT ENFORCEMENT: Truncate prompt if it exceeds maxPromptLength
         // LLMs don't always follow character limit instructions strictly,
@@ -1668,38 +1838,15 @@ export const skillsRouter = router({
           wasTruncated = wasTruncated || truncatedPrompt.wasTruncated;
         }
 
-        // Calculate and deduct credits based on the model used
-        const creditsUsed = calculateCreditsForLLM(
-          result.usage.promptTokens,
-          result.usage.completionTokens,
-          visionModel
-        );
-
-        await deductCredits({
-          userId,
-          amount: creditsUsed,
-          description: `Auto Prompt enhancement (${skillName})`,
-          skillSlug: resolvedSkillId,
-          sourceType: "skill",
-          metadata: {
-            model: visionModel,
-            skill: resolvedSkillId,
-            inputTokens: result.usage.promptTokens,
-            outputTokens: result.usage.completionTokens,
-            hasReferenceImages: (input.referenceImages?.length || 0) > 0,
-            referenceImageCount: input.referenceImages?.length || 0,
-            ...(input.originSurface ? { originSurface: input.originSurface } : {}),
-          },
-        });
-
         return {
           success: true,
           promptEn: finalPromptEn,
           promptTh: finalPromptTh,
           wasTruncated,
-          creditsUsed,
+          creditsUsed: result.creditsUsed,
           usage: result.usage,
           skillId: resolvedSkillId,
+          runtime: execution.runtime,
         };
       } catch (error) {
         console.error("[Skills] enhancePrompt error:", error);
@@ -1859,6 +2006,7 @@ export const skillsRouter = router({
             message: "No enabled vision model configured",
           });
         }
+        const runtimeProvider = await getProviderForModel(visionModel);
 
         // Check if skill requires web search grounding
         let webSearchOptions: { extraBodyParams?: Record<string, unknown>; systemPromptSuffix?: string } | undefined;
@@ -1877,51 +2025,92 @@ export const skillsRouter = router({
         }
 
         if (requiresWebSearch) {
-          const provider = await getProviderForModel(visionModel);
-          if (provider) {
+          if (runtimeProvider) {
             const { detectProviderFamily, buildWebSearchParams } = await import("../services/webSearchToolInjector");
-            const family = detectProviderFamily(provider.providerName);
+            const family = detectProviderFamily(runtimeProvider.providerName);
             webSearchOptions = buildWebSearchParams(family);
           }
         }
 
-        // Call LLM with substituted system prompt
-        const result = await callLLMWithVision(
+        const execution = await executeSharedSkillTextRuntime({
+          tenantId: ctx.tenantId ?? "default",
+          userId,
+          objective: `Execute custom skill '${input.skillId}' for Media Studio and preserve the caller's prompt contract.`,
+          originSurface: input.originSurface ?? "media_studio",
+          entryPoint: "execute_custom_skill",
+          requestLabel: `execute_custom_skill:${input.skillId}`,
+          skillSlugs: [input.skillId],
           systemPrompt,
           userPrompt,
-          userId,
-          input.referenceImages || [],
-          visionModel,
-          promptLengthPlan?.maxTokens ?? 4000,
-          webSearchOptions,
-        );
+          dynamicParams: mergedUserInputs,
+          referenceImages: input.referenceImages || [],
+          schemaHint: {
+            name: "custom_skill_text_output",
+            validationMode: "text_output",
+          },
+          planContext: {
+            skillId: input.skillId,
+            skillName: skill.name,
+            responseMode: mergedUserInputs.response_mode ?? null,
+            requiresWebSearch,
+            maxPromptLength: promptLengthPlan?.maxPromptLength ?? null,
+          },
+          modelConfig: buildRuntimeModelConfig({
+            modelId: visionModel,
+            providerId: runtimeProvider?.providerId ?? null,
+            gatewayRouteId: null,
+            resolvedGatewayModelId: visionModel,
+          }),
+          legacyExecute: async () => {
+            const result = await callLLMWithVision(
+              systemPrompt,
+              userPrompt,
+              userId,
+              input.referenceImages || [],
+              visionModel,
+              promptLengthPlan?.maxTokens ?? 4000,
+              {
+                ...webSearchOptions,
+                publicUrl: ctx.publicUrl ?? null,
+              },
+            );
 
+            const creditsUsed = calculateCreditsForLLM(
+              result.usage.promptTokens,
+              result.usage.completionTokens,
+              visionModel
+            );
 
-        // Calculate and deduct credits
-        const creditsUsed = calculateCreditsForLLM(
-          result.usage.promptTokens,
-          result.usage.completionTokens,
-          visionModel
-        );
+            await deductCredits({
+              userId,
+              amount: creditsUsed,
+              description: `Skill execution: ${skill.name}`,
+              skillSlug: input.skillId,
+              sourceType: "skill",
+              metadata: {
+                model: visionModel,
+                skill: input.skillId,
+                inputTokens: result.usage.promptTokens,
+                outputTokens: result.usage.completionTokens,
+                ...(input.originSurface ? { originSurface: input.originSurface } : {}),
+              },
+            });
 
-        await deductCredits({
-          userId,
-          amount: creditsUsed,
-          description: `Skill execution: ${skill.name}`,
-          skillSlug: input.skillId,
-          sourceType: "skill",
-          metadata: {
-            model: visionModel,
-            skill: input.skillId,
-            inputTokens: result.usage.promptTokens,
-            outputTokens: result.usage.completionTokens,
-            ...(input.originSurface ? { originSurface: input.originSurface } : {}),
+            return {
+              rawContent: result.content,
+              usage: result.usage,
+              creditsUsed,
+              providerName: runtimeProvider?.providerName ?? null,
+              modelId: visionModel,
+              rawResponse: result.rawResponse,
+            };
           },
         });
+        const result = execution.value;
 
         // Post-process CMS output if response_mode is cms_json
         const responseMode = mergedUserInputs.response_mode as string | undefined;
-        let processedContent = result.content;
+        let processedContent = result.rawContent;
         let qualityReport: Record<string, unknown> | undefined;
 
         if (responseMode === "cms_json" && skill.category) {
@@ -1955,7 +2144,7 @@ export const skillsRouter = router({
 
               const { processContentOutput } = await import("../services/contentOutputProcessor");
               const processed = processContentOutput({
-                llmOutput: result.content,
+                llmOutput: result.rawContent,
                 outputFormat,
                 skillSlug: input.skillId,
                 contentQuality: contentQuality as any,
@@ -2008,10 +2197,11 @@ export const skillsRouter = router({
           content: processedContent,
           skillId: input.skillId,
           skillName: skill.name,
-          creditsUsed,
+          creditsUsed: result.creditsUsed,
           usage: result.usage,
           wasTruncated,
           ...(qualityReport ? { qualityReport } : {}),
+          runtime: execution.runtime,
         };
       } catch (error) {
         console.error("[Skills] executeCustomSkill error:", error);
@@ -2324,6 +2514,10 @@ export const skillsRouter = router({
         tags: skill.tags || [],
         triggerPatterns: skill.triggerPatterns || [],
         hasLocalFolder: hasRelativeSkillManifest(path.join("skills", skill.slug)),
+        nativeBundleReady: getSkillById(skill.slug)?.nativeBundleReady ?? false,
+        nativeBundleFiles: getSkillById(skill.slug)?.nativeBundleFiles ?? [],
+        nativeBundlePath: getSkillById(skill.slug)?.nativeBundlePath ?? null,
+        nativeBundleLockPath: getSkillById(skill.slug)?.nativeBundleLockPath ?? null,
       }));
     }),
 
@@ -2359,6 +2553,10 @@ export const skillsRouter = router({
         creditMultiplier: Number(skill.creditMultiplier) || 1,
         tags: skill.tags || [],
         triggerPatterns: skill.triggerPatterns || [],
+        nativeBundleReady: getSkillById(skill.slug)?.nativeBundleReady ?? false,
+        nativeBundleFiles: getSkillById(skill.slug)?.nativeBundleFiles ?? [],
+        nativeBundlePath: getSkillById(skill.slug)?.nativeBundlePath ?? null,
+        nativeBundleLockPath: getSkillById(skill.slug)?.nativeBundleLockPath ?? null,
       };
     }),
 
@@ -3682,18 +3880,21 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
       return {
         ...result,
         skills: result.skills.map((skill) =>
-          attachLocalExecutionPolicy(
-            skill,
+          attachNativeBundleMetadata(
+            attachLocalExecutionPolicy(
+              skill,
+              getSkillById(skill.slug),
+              {
+                platform: input?.platform,
+                origin: input?.origin,
+                userPresent: true,
+                featureEnabled: localAiContext.policy.featureEnabled,
+                forceCloudOnly: localAiContext.policy.forceCloudOnly,
+                userEnabled: localAiContext.syncedPreferences.enabled,
+                executionMode,
+              },
+            ),
             getSkillById(skill.slug),
-            {
-              platform: input?.platform,
-              origin: input?.origin,
-              userPresent: true,
-              featureEnabled: localAiContext.policy.featureEnabled,
-              forceCloudOnly: localAiContext.policy.forceCloudOnly,
-              userEnabled: localAiContext.syncedPreferences.enabled,
-              executionMode,
-            },
           ),
         ),
       };
@@ -3731,18 +3932,21 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
       return {
         ...result,
         skills: result.skills.map((skill) =>
-          attachLocalExecutionPolicy(
-            skill,
+          attachNativeBundleMetadata(
+            attachLocalExecutionPolicy(
+              skill,
+              getSkillById(skill.slug),
+              {
+                platform: input?.platform,
+                origin: input?.origin,
+                userPresent: true,
+                featureEnabled: localAiContext.policy.featureEnabled,
+                forceCloudOnly: localAiContext.policy.forceCloudOnly,
+                userEnabled: localAiContext.syncedPreferences.enabled,
+                executionMode,
+              },
+            ),
             getSkillById(skill.slug),
-            {
-              platform: input?.platform,
-              origin: input?.origin,
-              userPresent: true,
-              featureEnabled: localAiContext.policy.featureEnabled,
-              forceCloudOnly: localAiContext.policy.forceCloudOnly,
-              userEnabled: localAiContext.syncedPreferences.enabled,
-              executionMode,
-            },
           ),
         ),
       };
@@ -3901,8 +4105,11 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
                 skillDir: null,
                 bundleDir: null,
                 manifestPath: baselineSnapshotRow.manifestPath,
+                lockPath: null,
                 executionMode: baselineSnapshotRow.executionMode,
                 runtimeProfile: baselineSnapshotRow.runtimeProfile ?? "unknown",
+                nativeBundleReady: false,
+                nativeBundleFiles: [],
                 inputSchemaHash: baselineSnapshotRow.inputSchemaHash,
                 outputSchemaHash: baselineSnapshotRow.outputSchemaHash,
                 testsHash: baselineSnapshotRow.testsHash,
@@ -4102,6 +4309,166 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
       }));
     }),
 
+  getLegacyUpgradeQueue: adminProcedure
+    .input(z.object({
+      includeApplied: z.boolean().optional(),
+      limit: z.number().int().min(1).max(200).optional(),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const statuses = input?.includeApplied
+        ? (["pending_review", "approved", "blocked", "failed", "applied"] as const)
+        : (["pending_review", "approved", "blocked", "failed"] as const);
+
+      const rows = await dbInstance
+        .select()
+        .from(skillImprovementRecommendations)
+        .where(and(
+          inArray(skillImprovementRecommendations.status, statuses),
+          or(
+            eq(skillImprovementRecommendations.recommendationType, "native-bundle-upgrade"),
+            eq(skillImprovementRecommendations.recommendationType, "migrate-to-native-bundle"),
+          ),
+        ))
+        .orderBy(desc(skillImprovementRecommendations.analyzedAt))
+        .limit(input?.limit ?? 100);
+
+      if (rows.length === 0) {
+        await maybeSeedLegacyUpgradeQueue({
+          dbInstance,
+          tenantId: null,
+          requestedBy: null,
+        });
+      }
+
+      const seededRows = rows.length === 0
+        ? await dbInstance
+          .select()
+          .from(skillImprovementRecommendations)
+          .where(and(
+            inArray(skillImprovementRecommendations.status, statuses),
+            or(
+              eq(skillImprovementRecommendations.recommendationType, "native-bundle-upgrade"),
+              eq(skillImprovementRecommendations.recommendationType, "migrate-to-native-bundle"),
+            ),
+          ))
+          .orderBy(desc(skillImprovementRecommendations.analyzedAt))
+          .limit(input?.limit ?? 100)
+        : rows;
+
+      const skillIds = Array.from(new Set(seededRows.map((row) => row.skillId)));
+      const relatedSkills = skillIds.length > 0
+        ? await dbInstance
+          .select({
+            id: skills.id,
+            slug: skills.slug,
+            name: skills.name,
+            category: skills.category,
+            executionMode: skills.executionMode,
+            sandboxProfileSlug: skills.sandboxProfileSlug,
+          })
+        .from(skills)
+        .where(inArray(skills.id, skillIds))
+        : [];
+      const skillMap = new Map(relatedSkills.map((skill) => [skill.id, skill]));
+
+      const queue = seededRows.map((row) => {
+        const recommendationJson = (row.recommendationJson as Record<string, unknown> | null) ?? {};
+        const upgradePriorityScore = typeof recommendationJson.upgradePriorityScore === "number"
+          ? recommendationJson.upgradePriorityScore
+          : 0;
+        const upgradePriorityTier = typeof recommendationJson.upgradePriorityTier === "string"
+          ? recommendationJson.upgradePriorityTier
+          : "low";
+        const parallelUpgradeEligible = Boolean(recommendationJson.parallelUpgradeEligible);
+        const legacyUpgradeSignals = recommendationJson.legacyUpgradeSignals && typeof recommendationJson.legacyUpgradeSignals === "object"
+          ? recommendationJson.legacyUpgradeSignals as Record<string, unknown>
+          : null;
+
+        return {
+          ...row,
+          upgradePriorityScore,
+          upgradePriorityTier,
+          parallelUpgradeEligible,
+          legacyUpgradeSignals,
+          skill: skillMap.get(row.skillId) ?? null,
+        };
+      });
+
+      queue.sort((left, right) => {
+        if (right.upgradePriorityScore !== left.upgradePriorityScore) {
+          return right.upgradePriorityScore - left.upgradePriorityScore;
+        }
+        const leftQuality = left.qualityScore ?? 0;
+        const rightQuality = right.qualityScore ?? 0;
+        if (rightQuality !== leftQuality) {
+          return rightQuality - leftQuality;
+        }
+        return String(left.skill?.slug ?? "").localeCompare(String(right.skill?.slug ?? ""));
+      });
+
+      return queue;
+    }),
+
+  getLegacyUpgradeQueueSummary: adminProcedure
+    .input(z.object({
+      includeApplied: z.boolean().optional(),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const statuses = input?.includeApplied
+        ? (["pending_review", "approved", "blocked", "failed", "applied"] as const)
+        : (["pending_review", "approved", "blocked", "failed"] as const);
+
+      const [row] = await dbInstance
+        .select({
+          count: sql<number>`count(*)::int`,
+        })
+        .from(skillImprovementRecommendations)
+        .where(and(
+          inArray(skillImprovementRecommendations.status, statuses),
+          or(
+            eq(skillImprovementRecommendations.recommendationType, "native-bundle-upgrade"),
+            eq(skillImprovementRecommendations.recommendationType, "migrate-to-native-bundle"),
+          ),
+        ));
+
+      if ((row?.count ?? 0) === 0) {
+        await maybeSeedLegacyUpgradeQueue({
+          dbInstance,
+          tenantId: null,
+          requestedBy: null,
+        });
+      }
+
+      const [seededRow] = ((row?.count ?? 0) === 0
+        ? await dbInstance
+          .select({
+            count: sql<number>`count(*)::int`,
+          })
+          .from(skillImprovementRecommendations)
+          .where(and(
+            inArray(skillImprovementRecommendations.status, statuses),
+            or(
+              eq(skillImprovementRecommendations.recommendationType, "native-bundle-upgrade"),
+              eq(skillImprovementRecommendations.recommendationType, "migrate-to-native-bundle"),
+            ),
+          ))
+        : [row]);
+
+      return {
+        count: seededRow?.count ?? 0,
+      };
+    }),
+
   getUpgradeRecommendationDetail: adminProcedure
     .input(z.object({
       recommendationId: z.number().int().positive(),
@@ -4218,6 +4585,100 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
           message: error instanceof Error ? error.message : "Failed to apply upgrade recommendation",
         });
       }
+    }),
+
+  applyMaintenanceRecommendations: adminProcedure
+    .input(z.object({
+      recommendationIds: z.array(z.number().int().positive()).min(1).max(50),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const uniqueIds = Array.from(new Set(input.recommendationIds));
+      const results = await Promise.all(uniqueIds.map(async (recommendationId) => {
+        try {
+          const result = await applySkillUpgradeRecommendation({
+            db: dbInstance,
+            recommendationId,
+            requestedBy: ctx.user?.id ?? null,
+            tenantId: ctx.tenantId ?? null,
+            userRole: ctx.user?.role ?? "admin",
+            userToken: ctx.userToken ?? null,
+            publicUrl: ctx.publicUrl ?? null,
+          });
+
+          return {
+            recommendationId,
+            success: true,
+            mode: result.mode,
+            applyStrategy: result.applyStrategy,
+            taskId: result.taskId ?? null,
+          };
+        } catch (error) {
+          return {
+            recommendationId,
+            success: false,
+            error: error instanceof Error ? error.message : "Failed to apply upgrade recommendation",
+          };
+        }
+      }));
+
+      return {
+        requestedIds: uniqueIds,
+        appliedCount: results.filter((item) => item.success).length,
+        failedCount: results.filter((item) => !item.success).length,
+        results,
+      };
+    }),
+
+  applyLegacyUpgradeRecommendations: adminProcedure
+    .input(z.object({
+      recommendationIds: z.array(z.number().int().positive()).min(1).max(50),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const uniqueIds = Array.from(new Set(input.recommendationIds));
+      const results = await Promise.all(uniqueIds.map(async (recommendationId) => {
+        try {
+          const result = await applySkillUpgradeRecommendation({
+            db: dbInstance,
+            recommendationId,
+            requestedBy: ctx.user?.id ?? null,
+            tenantId: ctx.tenantId ?? null,
+            userRole: ctx.user?.role ?? "admin",
+            userToken: ctx.userToken ?? null,
+            publicUrl: ctx.publicUrl ?? null,
+          });
+
+          return {
+            recommendationId,
+            success: true,
+            mode: result.mode,
+            applyStrategy: result.applyStrategy,
+            taskId: result.taskId ?? null,
+          };
+        } catch (error) {
+          return {
+            recommendationId,
+            success: false,
+            error: error instanceof Error ? error.message : "Failed to apply upgrade recommendation",
+          };
+        }
+      }));
+
+      return {
+        requestedIds: uniqueIds,
+        appliedCount: results.filter((item) => item.success).length,
+        failedCount: results.filter((item) => !item.success).length,
+        results,
+      };
     }),
 
   runMaintenanceSweep: adminProcedure

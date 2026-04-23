@@ -1,0 +1,29 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/103-obsidian-inspired-md-knowledge-vault/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/103-obsidian-inspired-md-knowledge-vault/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-vault-and-knowledge-cache",
+    "section-02-note-navigation-and-relationship-panels",
+    "section-03-properties-bases-and-search-facets",
+    "section-04-canvas-rollout-and-compatibility",
+    "section-05-agent-skill-context-packs-and-business-memory",
+    "section-06-runtime-and-mcp-integration",
+    "section-07-schema-and-router-contracts",
+    "section-08-end-to-end-sequence-flows"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-21T11:35:36.616012+00:00"
+}

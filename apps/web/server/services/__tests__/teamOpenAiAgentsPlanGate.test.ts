@@ -1,0 +1,108 @@
+import { describe, expect, it } from "vitest";
+
+import { buildAutoTeamLedgerReadModel } from "../autoTeamLedgerService";
+
+describe("team OpenAI Agents plan gate", () => {
+  it("keeps the plan gate pending when execution evidence exists but the audited plan artifact is still incomplete", () => {
+    const readModel = buildAutoTeamLedgerReadModel({
+      snapshot: {
+        tenantId: "tenant-1",
+        room: {
+          id: "room-1",
+          tenantId: "tenant-1",
+          teamId: "team-1",
+          roomType: "auto_team",
+          goalPrompt: "Create a Songkran video",
+          createdAt: new Date("2026-04-18T10:00:00.000Z"),
+        },
+        team: { id: "team-1", tenantId: "tenant-1", name: "Creative Content" },
+        request: null,
+        workCase: null,
+        run: {
+          id: "run-1",
+          tenantId: "tenant-1",
+          roomId: "room-1",
+          teamId: "team-1",
+          initiatedByUserId: 42,
+          status: "running",
+          stopReason: null,
+          endedAt: null,
+        },
+        execution: {
+          routeDecision: { id: "route-1", routeClass: "media.video", language: "th" },
+          executionMode: "enforced",
+          frozenAt: null,
+          rolloutFlags: {},
+          canonicalSnapshot: {
+            tenantId: "tenant-1",
+            teamId: "team-1",
+            roomId: "room-1",
+            runId: "run-1",
+            routeDecision: { id: "route-1", routeClass: "media.video", language: "th" },
+            currentStage: null,
+            stages: [],
+            mediaJobs: [],
+            reviews: [],
+            finalResult: null,
+            traceEvents: [],
+            updatedAt: "2026-04-18T10:17:00.000Z",
+            latestMonitoringSnapshot: { artifactCountJson: {} },
+          },
+        },
+        stages: [
+          {
+            id: "stage-1",
+            tenantId: "tenant-1",
+            teamId: "team-1",
+            roomId: "room-1",
+            runId: "run-1",
+            routeDecisionId: "route-1",
+            workItemId: "work-1",
+            planStepKey: "storyboard",
+            stageType: "storyboard",
+            status: "completed",
+            assignedPersonaId: "assistant-1",
+            expectedCapabilityFamily: "research.synthesis",
+            selectedSkillId: "storyboard-skill",
+            selectedProvider: "openai",
+            inputArtifactRefsJson: [],
+            outputArtifactRefsJson: ["artifact-1"],
+            jobRefIdsJson: [],
+            attempt: 1,
+            maxAttempts: 3,
+            startedAt: new Date("2026-04-18T10:00:00.000Z"),
+            completedAt: new Date("2026-04-18T10:05:00.000Z"),
+            blockedReason: null,
+            errorCode: null,
+            errorMessage: null,
+            metadataJson: {
+              selectedModel: "gpt-5",
+            },
+            createdAt: new Date("2026-04-18T10:00:00.000Z"),
+          },
+        ],
+        roomMessages: [],
+        mediaJobs: [],
+        reviews: [],
+        finalResult: null,
+        workItems: [],
+        agencyRuns: [],
+        migrationVerification: null,
+        missingEvidenceSummary: "plan_artifact",
+        loopGuard: { triggered: false, reason: null, repeatCount: 0, fingerprint: "abc" },
+        timeout: null,
+        observability: { budgetDecision: null, providerDecision: null, safetyStatus: "unknown", timeout: null },
+        contextEngineHealth: null,
+        memoryContinuity: null,
+        retention: { routeDecisions: 1, executionStages: 1, mediaJobs: 0, reviewRecords: 0, finalResults: 0, traceEvents: 0, artifactRefs: 0 },
+        traceSummary: [],
+        rawDiagnostics: null,
+      } as any,
+      messages: [],
+      workItemEvents: [],
+      accessLevel: "summary",
+    });
+
+    expect(readModel.gates.find((gate) => gate.key === "plan")?.status).toBe("pending");
+  });
+});

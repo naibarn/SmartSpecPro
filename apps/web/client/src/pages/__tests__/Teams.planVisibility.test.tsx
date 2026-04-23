@@ -58,7 +58,12 @@ vi.mock("@/components/orchestrator/TeamRoomView", () => ({
 vi.mock("@/components/orchestrator/RunMonitorPanel", () => ({
   RunMonitorPanel: (props: any) => {
     runMonitorPanelPropsRef.current = props;
-    return <div data-testid="run-monitor-panel" data-status={props.statusBridge?.workOsState ?? ""} />;
+    return (
+      <div
+        data-testid="run-monitor-panel"
+        data-status={props.statusBridge?.workOsState ?? ""}
+      />
+    );
   },
 }));
 
@@ -76,7 +81,9 @@ vi.mock("@/components/orchestrator/RoomWorkflowPanel", () => ({
 }));
 
 vi.mock("@/components/ui/button", () => ({
-  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  Button: ({ children, ...props }: any) => (
+    <button {...props}>{children}</button>
+  ),
 }));
 
 vi.mock("@/components/ui/input", () => ({
@@ -115,6 +122,12 @@ vi.mock("@/components/ui/badge", () => ({
   Badge: ({ children }: any) => <span>{children}</span>,
 }));
 
+vi.mock("@/components/LocaleToggle", () => ({
+  LocaleToggle: ({ className }: { className?: string }) => (
+    <div className={className} data-testid="locale-toggle" />
+  ),
+}));
+
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({
@@ -126,13 +139,23 @@ vi.mock("@/lib/trpc", () => ({
       },
       teamRoom: {
         listByTeam: { invalidate: vi.fn() },
+        getActiveRun: { invalidate: vi.fn() },
+        getAutoTeamLedger: { invalidate: vi.fn() },
       },
       teamRun: {
         get: { invalidate: vi.fn() },
-        chooseExplorationCandidate: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-        rejectExplorationCandidates: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-        approveFinalReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-        rejectFinalReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+        chooseExplorationCandidate: {
+          useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+        },
+        rejectExplorationCandidates: {
+          useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+        },
+        approveFinalReview: {
+          useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+        },
+        rejectFinalReview: {
+          useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+        },
       },
       teamWorkItem: {
         listByRoom: { invalidate: vi.fn() },
@@ -142,20 +165,41 @@ vi.mock("@/lib/trpc", () => ({
       },
     }),
     team: {
-      list: { useQuery: () => ({ data: teamListDataRef.current, isLoading: false }) },
+      list: {
+        useQuery: () => ({ data: teamListDataRef.current, isLoading: false }),
+      },
       get: { useQuery: () => ({ data: teamGetDataRef.current }) },
       listBindableWorkers: { useQuery: () => ({ data: [] }) },
-      getOwnedWorkerBudget: { useQuery: () => ({ data: null, isLoading: false }) },
-      updateOwnedWorkerBudget: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      create: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
+      getOwnedWorkerBudget: {
+        useQuery: () => ({ data: null, isLoading: false }),
+      },
+      updateOwnedWorkerBudget: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      create: {
+        useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+      },
       archive: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       addMember: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      updateMember: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      updateMember: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
     },
     teamRoom: {
       listByTeam: { useQuery: () => ({ data: teamRoomsRef.current }) },
+      getActiveRun: { useQuery: () => ({ data: null }) },
+      getAutoTeamLedger: { useQuery: () => ({ data: null }) },
+      getContextEngineHealth: {
+        useQuery: () => ({
+          data: null,
+          isLoading: false,
+          error: null,
+        }),
+      },
       create: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      sendMessage: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
+      sendMessage: {
+        useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+      },
     },
     teamRun: {
       get: { useQuery: () => ({ data: teamRunDetailRef.current }) },
@@ -163,11 +207,21 @@ vi.mock("@/lib/trpc", () => ({
       stop: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       pause: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       resume: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      advance: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
-      chooseExplorationCandidate: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      rejectExplorationCandidates: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      approveFinalReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      rejectFinalReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      advance: {
+        useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+      },
+      chooseExplorationCandidate: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      rejectExplorationCandidates: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      approveFinalReview: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      rejectFinalReview: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
     },
     teamWorkItem: {
       listByRoom: { useQuery: () => ({ data: [] }) },
@@ -186,7 +240,11 @@ import Teams from "../Teams";
 
 describe("Teams plan visibility", () => {
   beforeEach(() => {
-    window.history.replaceState({}, "", "/teams/team-1?roomId=room-1&panel=workflow");
+    window.history.replaceState(
+      {},
+      "",
+      "/teams/team-1?roomId=room-1&panel=workflow"
+    );
     Object.defineProperty(window, "innerWidth", {
       value: 1440,
       configurable: true,
@@ -265,34 +323,99 @@ describe("Teams plan visibility", () => {
   it("surfaces the current runtime plan summary in the Teams workflow panel", async () => {
     render(<Teams />);
 
-    const teamButton = await screen.findByRole("button", { name: /Automation Team/i });
+    const teamButton = await screen.findByRole("button", {
+      name: /Automation Team/i,
+    });
     fireEvent.click(teamButton);
-
-    const roomObjective = await screen.findByText("Launch objective");
-    fireEvent.click(roomObjective.closest("button") as HTMLButtonElement);
 
     const panel = await screen.findByTestId("workflow-panel");
     expect(panel).toHaveAttribute("data-phase", "waiting_for_poll");
     expect(panel).toHaveAttribute("data-reviewer", "qa_validator");
     const runMonitorPanel = await screen.findByTestId("run-monitor-panel");
     expect(runMonitorPanel).toHaveAttribute("data-status", "in_progress");
-    expect(workflowPanelPropsRef.current).toEqual(expect.objectContaining({
-      runtimeState: expect.objectContaining({
-        currentPhase: "waiting_for_poll",
-        waitingReason: "awaiting media job",
-        policyGateReason: "verification evidence is missing",
-        reviewerPersona: "qa_validator",
+    expect(workflowPanelPropsRef.current).toEqual(
+      expect.objectContaining({
+        runtimeState: expect.objectContaining({
+          currentPhase: "waiting_for_poll",
+          waitingReason: "awaiting media job",
+          policyGateReason: "verification evidence is missing",
+          reviewerPersona: "qa_validator",
+          statusBridge: expect.objectContaining({
+            teamRunStatus: "running",
+            workOsState: "in_progress",
+          }),
+        }),
+      })
+    );
+    expect(runMonitorPanelPropsRef.current).toEqual(
+      expect.objectContaining({
         statusBridge: expect.objectContaining({
           teamRunStatus: "running",
           workOsState: "in_progress",
         }),
-      }),
-    }));
-    expect(runMonitorPanelPropsRef.current).toEqual(expect.objectContaining({
-      statusBridge: expect.objectContaining({
-        teamRunStatus: "running",
-        workOsState: "in_progress",
-      }),
-    }));
+      })
+    );
+  });
+
+  it("shows the auto_team plan panel beside chat on desktop and lets it collapse and resize", async () => {
+    teamRoomsRef.current = [
+      {
+        id: "room-1",
+        teamId: "team-1",
+        roomType: "auto_team",
+        lastRunId: "run-1",
+        goalPrompt: "Launch objective",
+      },
+    ];
+
+    render(<Teams />);
+
+    const teamButton = await screen.findByRole("button", {
+      name: /Automation Team/i,
+    });
+    fireEvent.click(teamButton);
+
+    expect(await screen.findByTestId("team-room-view")).toBeInTheDocument();
+    expect(await screen.findByTestId("workflow-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("auto-team-plan-sidebar")).toHaveStyle({
+      width: "440px",
+    });
+    expect(
+      screen.getByText("teams.rooms.sidebar.pinnedObjective")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("auto-team-plan-objective-details")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /teams\.rooms\.sidebar\.hideObjective/i,
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("auto-team-plan-resize-handle")).toBeInTheDocument();
+
+    fireEvent.mouseDown(screen.getByTestId("auto-team-plan-resize-handle"), {
+      clientX: 1000,
+    });
+    fireEvent.mouseMove(document, { clientX: 900 });
+    fireEvent.mouseUp(document);
+
+    expect(screen.getByTestId("auto-team-plan-sidebar")).toHaveStyle({
+      width: "540px",
+    });
+
+    fireEvent.click(screen.getByTestId("auto-team-plan-collapse-button"));
+
+    expect(
+      screen.queryByTestId("auto-team-plan-objective-details")
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("workflow-panel")).not.toBeInTheDocument();
+    expect(screen.getByTestId("auto-team-plan-expand-button")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("auto-team-plan-expand-button"));
+
+    expect(
+      screen.getByTestId("auto-team-plan-objective-details")
+    ).toBeInTheDocument();
+    expect(await screen.findByTestId("workflow-panel")).toBeInTheDocument();
   });
 });
