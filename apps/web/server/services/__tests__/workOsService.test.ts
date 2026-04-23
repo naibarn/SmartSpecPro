@@ -864,6 +864,129 @@ describe("workOsService", () => {
     expect(inbox[0]?.latestExploration).toBeNull();
   });
 
+  it("includes final review evidence in the inbox even when the run has no exploration payload", async () => {
+    const teamRun = {
+      id: "run-final-1",
+      roomId: "room-1",
+      teamId: "team-1",
+      backingAgencyRunId: null,
+      initiatedByUserId: 42,
+      executionMode: "supervised",
+      objective: "Do the thing",
+      constraintsJson: null,
+      status: "running",
+      activeAssistantId: null,
+      stopPolicyJson: null,
+      approvalPolicyJson: null,
+      budgetSnapshotJson: null,
+      summaryArtifactId: null,
+      stopReason: null,
+      startedAt: new Date("2026-04-10T03:00:00.000Z"),
+      endedAt: null,
+    };
+    const caseRecord = {
+      id: "case-final-1",
+      tenantId: "tenant-1",
+      requestId: "req-final-1",
+      primaryTaskId: "task-final-1",
+      currentState: "in_progress",
+      title: "Finalize invoice",
+      summary: "Review final output",
+      priority: "normal",
+      riskLevel: "medium",
+      dataClassification: "internal",
+      ownerType: "queue",
+      ownerId: "queue-1",
+      linkedConversationIdsJson: [],
+      linkedWorkpackRunIdsJson: [],
+      linkedRoleRoutineRunIdsJson: ["run-final-1"],
+      createdAt: new Date("2026-04-10T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+    };
+    const task = {
+      id: "task-final-1",
+      tenantId: "tenant-1",
+      teamId: "team-1",
+      roomId: "room-1",
+      routineId: null,
+      runId: null,
+      status: "planned",
+      title: "Finalize invoice",
+      objective: "Review final output",
+      priority: "normal",
+      riskClass: "medium",
+      createdAt: new Date("2026-04-10T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+    };
+
+    const db = {
+      select(fields?: any) {
+        if (fields?.run === teamRuns) {
+          return {
+            from() {
+              return {
+                innerJoin() {
+                  return {
+                    where() {
+                      return {
+                        orderBy: async () => [{ run: teamRun }],
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        return {
+          from(table: any) {
+            if (table === teamWorkItems) {
+              return { where: () => ({ limit: async () => [task] }) };
+            }
+            if (table === workCases) {
+              return { where: () => ({ orderBy: async () => [caseRecord] }) };
+            }
+            if (table === workRequests) {
+              return { where: () => ({ limit: async () => [{ id: "req-final-1", tenantId: "tenant-1", currentState: "new" }] }) };
+            }
+            if (table === workAssignments || table === workOsEvents || table === workItemEvents || table === workpackRecords) {
+              return { where: () => ({ orderBy: async () => [] }) };
+            }
+            if (table === workAutomationRuns) {
+              return { where: () => ({ orderBy: () => ({ limit: async () => [] }) }) };
+            }
+            return { where: () => ({ orderBy: async () => [] }) };
+          },
+        };
+      },
+    };
+
+    mockGetDb.mockResolvedValue(db as any);
+    mockGetLatestRunSnapshot.mockResolvedValue({
+      artifactCountJson: {
+        runtimeState: {
+          finalReview: {
+            reviewerPersona: "qa_validator",
+            score: 0.71,
+            recommendation: "Revise",
+            comment: "Needs one more pass.",
+          },
+        },
+      },
+    } as any);
+    mockExtractRunPlanArtifact.mockReturnValue(null);
+
+    const inbox = await getInbox("tenant-1");
+    expect(inbox[0]?.latestFinalReview).toEqual({
+      reviewerPersona: "qa_validator",
+      score: 0.71,
+      recommendation: "Revise",
+      comment: "Needs one more pass.",
+    });
+    expect(inbox[0]?.latestExploration).toBeNull();
+  });
+
   it("includes role-routine evidence in the case timeline", async () => {
     const roleRun = {
       id: "rrun-1",
@@ -1165,6 +1288,154 @@ describe("workOsService", () => {
         score: 0.82,
       })
     );
+  });
+
+  it("enriches inbox cases with latest exploration summary when linked runs have plan comparisons", async () => {
+    const workCase = {
+      id: "case-1",
+      tenantId: "tenant-1",
+      requestId: "req-1",
+      primaryTaskId: "task-1",
+      currentState: "in_progress",
+      title: "Process invoice",
+      summary: "Collect invoice data",
+      priority: "normal",
+      riskLevel: "medium",
+      dataClassification: "internal",
+      ownerType: "queue",
+      ownerId: "queue-1",
+      linkedConversationIdsJson: [],
+      linkedWorkpackRunIdsJson: [],
+      linkedRoleRoutineRunIdsJson: ["run-1"],
+      createdAt: new Date("2026-04-10T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+    };
+    const teamRun = {
+      id: "run-1",
+      roomId: "room-1",
+      teamId: "team-1",
+      backingAgencyRunId: null,
+      initiatedByUserId: 42,
+      executionMode: "supervised",
+      objective: "Do the thing",
+      constraintsJson: null,
+      status: "running",
+      activeAssistantId: null,
+      stopPolicyJson: null,
+      approvalPolicyJson: null,
+      budgetSnapshotJson: null,
+      summaryArtifactId: null,
+      stopReason: null,
+      startedAt: new Date("2026-04-10T03:00:00.000Z"),
+      endedAt: null,
+    };
+
+    const db = {
+      select(fields?: any) {
+        if (fields?.run === teamRuns) {
+          return {
+            from() {
+              return {
+                innerJoin() {
+                  return {
+                    where() {
+                      return {
+                        orderBy: async () => [{ run: teamRun }],
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+
+        return {
+          from(table: any) {
+            if (table === workCases) {
+              return { where: () => ({ orderBy: async () => [workCase] }) };
+            }
+            if (table === workRequests) {
+              return { where: () => ({ limit: async () => [] }) };
+            }
+            return { where: () => ({ orderBy: async () => [], limit: async () => [] }) };
+          },
+        };
+      },
+    };
+
+    mockGetDb.mockResolvedValue(db as any);
+    mockGetLatestRunSnapshot.mockResolvedValue({
+      artifactCountJson: {
+        traceEnvelope: {
+          version: 1,
+          traceId: "trace-123",
+          tenantId: "tenant-1",
+          source: "team_run_snapshot",
+          entityId: "run-1",
+          eventType: "run_snapshot",
+          generatedAt: "2026-04-10T03:10:00.000Z",
+          summary: "Do the thing · running",
+          evidenceRefs: [],
+        },
+        governedContext: {
+          version: 1,
+          tenantId: "tenant-1",
+          principalScope: "team-1",
+          objective: "Do the thing",
+          generatedAt: "2026-04-10T03:10:00.000Z",
+          selectedCount: 1,
+          excludedCount: 0,
+          summary: "1 context item(s) selected, 0 excluded for Do the thing",
+          items: [],
+        },
+        readinessRecord: {
+          version: 1,
+          kind: "team_run",
+          entityId: "run-1",
+          generatedAt: "2026-04-10T03:10:00.000Z",
+          score: 0.82,
+          status: "ready",
+          reason: "Ready to continue",
+          evidenceRefs: [],
+        },
+        planArtifact: {
+          exploration: {
+            selectedCandidateId: "balanced-hybrid",
+            selectionReason: "Choose the balanced path for best coverage.",
+            criteria: ["safety", "speed"],
+            candidates: [
+              {
+                candidateId: "balanced-hybrid",
+                title: "Balanced hybrid",
+                strategy: "bounded exploration",
+                summary: "Explore enough to avoid brittle decisions.",
+                strengths: ["balanced"],
+                tradeoffs: ["slightly slower"],
+                riskClass: "medium",
+              },
+            ],
+          },
+        },
+      },
+    } as any);
+    mockExtractRunPlanArtifact.mockImplementation((snapshot: any) => snapshot?.artifactCountJson?.planArtifact ?? null);
+
+    const inbox = await getInbox("tenant-1");
+    expect(inbox[0]?.latestExploration).toEqual(expect.objectContaining({
+      selectedCandidateId: "balanced-hybrid",
+      candidateCount: 1,
+      selectionReason: "Choose the balanced path for best coverage.",
+    }));
+    expect(inbox[0]?.latestTraceId).toBe("trace-123");
+    expect(inbox[0]?.latestContext).toEqual(expect.objectContaining({
+      tenantId: "tenant-1",
+      selectedCount: 1,
+    }));
+    expect(inbox[0]?.latestReadiness).toEqual(expect.objectContaining({
+      status: "ready",
+      score: 0.82,
+    }));
   });
 
   it("includes automation run evidence in the case timeline", async () => {

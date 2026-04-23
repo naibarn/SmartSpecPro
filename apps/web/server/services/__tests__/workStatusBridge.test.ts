@@ -82,4 +82,17 @@ describe("workStatusBridge", () => {
     expect(getStatusBridgeBadgeClass("completed")).toContain("emerald");
     expect(getStatusBridgeBadgeClass("blocked")).toContain("rose");
   });
+
+  it("assigns bridge tone and badge class by outcome family", () => {
+    expect(getStatusBridgeTone("in_progress")).toBe("sky");
+    expect(getStatusBridgeTone("waiting_for_approval")).toBe("amber");
+    expect(getStatusBridgeTone("waiting_for_choice")).toBe("amber");
+    expect(getStatusBridgeTone("waiting_for_review")).toBe("amber");
+    expect(getStatusBridgeTone("completed")).toBe("emerald");
+    expect(getStatusBridgeTone("blocked")).toBe("rose");
+    expect(getStatusBridgeBadgeClass("in_progress")).toContain("sky");
+    expect(getStatusBridgeBadgeClass("waiting_for_approval")).toContain("amber");
+    expect(getStatusBridgeBadgeClass("completed")).toContain("emerald");
+    expect(getStatusBridgeBadgeClass("blocked")).toContain("rose");
+  });
 });

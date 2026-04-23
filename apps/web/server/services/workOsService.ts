@@ -1282,6 +1282,10 @@ export async function createWorkTask(
     throw new Error("Work task creation failed");
   }
 
+  if (!task) {
+    throw new Error("Work task creation failed");
+  }
+
   return { case: updatedCase, task };
 }
 

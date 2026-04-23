@@ -1437,6 +1437,46 @@ export default function Teams() {
     onError: err => toast.error(err.message),
   });
 
+  const chooseExplorationCandidateMutation = trpc.teamRun.chooseExplorationCandidate.useMutation({
+    onSuccess: () => {
+      if (activeRunId) {
+        utils.teamRun.get.invalidate({ runId: activeRunId });
+      }
+      toast.success("Exploration candidate selected");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const rejectExplorationCandidatesMutation = trpc.teamRun.rejectExplorationCandidates.useMutation({
+    onSuccess: () => {
+      if (activeRunId) {
+        utils.teamRun.get.invalidate({ runId: activeRunId });
+      }
+      toast.success("Exploration candidates rejected; replanning started");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const approveFinalResultMutation = trpc.teamRun.approveFinalReview.useMutation({
+    onSuccess: () => {
+      if (activeRunId) {
+        utils.teamRun.get.invalidate({ runId: activeRunId });
+      }
+      toast.success("Final result approved");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const rejectFinalResultMutation = trpc.teamRun.rejectFinalReview.useMutation({
+    onSuccess: () => {
+      if (activeRunId) {
+        utils.teamRun.get.invalidate({ runId: activeRunId });
+      }
+      toast.success("Final result rejected; replanning started");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   const advanceRunMutation = trpc.teamRun.advance.useMutation({
     onSuccess: (results, variables) => {
       setRunStatus("running");

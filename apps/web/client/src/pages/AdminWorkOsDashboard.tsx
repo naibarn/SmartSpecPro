@@ -1771,7 +1771,7 @@ export default function AdminWorkOsDashboard() {
                       </Button>
                     </div>
                   </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <p className="text-slate-500">Owner</p>
                       <p className="font-medium text-slate-900">
