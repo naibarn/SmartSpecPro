@@ -164,6 +164,20 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       if (key === "admin.skillsPage.tabs.iscProposals") return "Proposals";
       if (key === "admin.skillsPage.tabs.maintenance") return "Maintenance";
       if (key === "admin.skillsPage.tabs.pendingApproval") return "Pending";
+      if (key === "admin.skillsPage.editDialog.exportedFromAgencyBuilder") return "Exported from Agency Builder";
+      if (key === "admin.skillsPage.editDialog.openSourceGraph") return "Open source graph";
+      if (key === "admin.skillsPage.editDialog.duplicateFromSourceGraph") return "Duplicate from source graph";
+      if (key === "admin.skillsPage.editDialog.copyDuplicateLink") return "Copy duplicate link";
+      if (key === "admin.skillsPage.legacyQueue.loadedFromPreference") return "Loaded from saved preference";
+      if (key === "admin.skillsPage.legacyQueue.filters.all") return "All";
+      if (key === "admin.skillsPage.legacyQueue.filters.critical") return "Critical";
+      if (key === "admin.skillsPage.legacyQueue.filters.high") return "High";
+      if (key === "admin.skillsPage.legacyQueue.filters.parallel") return "Parallel";
+      if (key === "admin.skillsPage.legacyQueue.filters.eligible") return "Eligible";
+      if (key === "admin.skillsPage.maintenance.applyAll") return `Apply all (${values?.count ?? 0})`;
+      if (key === "admin.skillsPage.maintenance.applyEligible") return `Apply eligible (${values?.count ?? 0})`;
+      if (key === "admin.skillsPage.maintenance.applyEligibleAcrossView") return `Apply eligible across view (${values?.count ?? 0})`;
+      if (key === "admin.skillsPage.maintenance.highestPriority") return "Highest priority";
       return key;
     },
   }),
