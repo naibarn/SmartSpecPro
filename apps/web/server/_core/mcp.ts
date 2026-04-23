@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { buildContextToolStateHintsFromResult } from "../services/contextToolService";
 
 const GATEWAY_KEY = process.env.SMARTSPEC_WEB_GATEWAY_KEY ?? "";
 const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT ?? process.cwd();
@@ -91,6 +92,72 @@ function sanitizeTraceId(value: string | undefined) {
     .replace(/[^A-Za-z0-9_-]/g, "")
     .slice(0, 128);
   return normalized || crypto.randomUUID();
+}
+
+function attachContextStateToGatewayResult(
+  toolName: string,
+  userId: number | null,
+  result: unknown,
+): unknown {
+  const ownerId = userId == null ? "" : String(userId).trim();
+  if (!ownerId) {
+    return result;
+  }
+
+  const contextState = buildContextToolStateHintsFromResult({
+    title: `MCP gateway result: ${toolName}`,
+    content: result,
+    ownerType: "user",
+    ownerId,
+    sourceRef: `mcp_gateway:${toolName}`,
+    source: typeof result === "string" ? "semantic" : "structured",
+    includedReason: `MCP gateway result from ${toolName}`,
+    trust: "derived",
+    freshness: "recent",
+  });
+
+  if (Object.keys(contextState).length === 0) {
+    return result;
+  }
+
+  if (result && typeof result === "object" && !Array.isArray(result)) {
+    const record = result as Record<string, unknown>;
+    const existingMeta =
+      record._meta && typeof record._meta === "object"
+        ? (record._meta as Record<string, unknown>)
+        : {};
+    return {
+      ...record,
+      _meta: {
+        ...existingMeta,
+        contextState: existingMeta.contextState ?? contextState,
+        contextSource: existingMeta.contextSource ?? "mcp_gateway_result",
+        toolName: existingMeta.toolName ?? toolName,
+      },
+    };
+  }
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: typeof result === "string"
+          ? result
+          : (() => {
+              try {
+                return JSON.stringify(result);
+              } catch {
+                return String(result);
+              }
+            })(),
+      },
+    ],
+    _meta: {
+      contextState,
+      contextSource: "mcp_gateway_result",
+      toolName,
+    },
+  };
 }
 
 function requireGatewayKey(req: any, res: any): boolean {
@@ -284,7 +351,12 @@ export function registerMcpRoutes(app: any) {
 
     const argsHash = sha256Json(args || {});
     try {
-      const result = await tool.handler(args || {}, traceId);
+      const rawResult = await tool.handler(args || {}, traceId);
+      const result = attachContextStateToGatewayResult(
+        name,
+        Number.isFinite(Number(args?.userId)) ? Number(args?.userId) : null,
+        rawResult,
+      );
       const tookMs = Date.now() - started;
       const resultHash = sha256Json(result);
 

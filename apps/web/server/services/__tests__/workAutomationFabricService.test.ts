@@ -107,10 +107,14 @@ function buildDbMock(config: {
         values(payload: unknown) {
           inserted.push({
             table:
-              table === workAutomationRuns ? "workAutomationRuns"
-                : table === workAutomationRunSteps ? "workAutomationRunSteps"
-                  : table === workAutomationRunCheckpoints ? "workAutomationRunCheckpoints"
-                    : table === workAutomationRunEvents ? "workAutomationRunEvents"
+              table === workAutomationRuns
+                ? "workAutomationRuns"
+                : table === workAutomationRunSteps
+                  ? "workAutomationRunSteps"
+                  : table === workAutomationRunCheckpoints
+                    ? "workAutomationRunCheckpoints"
+                    : table === workAutomationRunEvents
+                      ? "workAutomationRunEvents"
                       : "other",
             values: payload,
           });
@@ -136,7 +140,8 @@ function buildDbMock(config: {
               finalDispositionReason: null,
               resumeCursor: null,
               policyJson: record.policyJson ?? {},
-              resolvedAt: record.resolvedAt ?? new Date("2026-04-10T00:00:00.000Z"),
+              resolvedAt:
+                record.resolvedAt ?? new Date("2026-04-10T00:00:00.000Z"),
               createdByUserId: 42,
               createdByAssistantId: null,
               startedAt: null,
@@ -194,8 +199,10 @@ function buildDbMock(config: {
               requestedByUserId: record.requestedByUserId ?? 42,
               approvedByUserId: record.approvedByUserId ?? 42,
               actorAssistantId: record.actorAssistantId ?? null,
-              requestedAt: record.requestedAt ?? new Date("2026-04-10T00:05:00.000Z"),
-              approvedAt: record.approvedAt ?? new Date("2026-04-10T00:06:00.000Z"),
+              requestedAt:
+                record.requestedAt ?? new Date("2026-04-10T00:05:00.000Z"),
+              approvedAt:
+                record.approvedAt ?? new Date("2026-04-10T00:06:00.000Z"),
               resumedAt: record.resumedAt ?? null,
               createdAt: new Date("2026-04-10T00:05:00.000Z"),
               updatedAt: new Date("2026-04-10T00:05:00.000Z"),
@@ -233,13 +240,18 @@ function buildDbMock(config: {
               return returning({
                 ...(payload as Record<string, unknown>),
                 id: "case-1",
-                currentMode: (payload as Record<string, unknown>)?.currentMode ?? "semi_auto",
+                currentMode:
+                  (payload as Record<string, unknown>)?.currentMode ??
+                  "semi_auto",
                 automationRunId: "run-1",
-                automationMode: (payload as Record<string, unknown>)?.automationMode ?? "semi_auto",
+                automationMode:
+                  (payload as Record<string, unknown>)?.automationMode ??
+                  "semi_auto",
                 automationStepId: "step-1",
                 automationCheckpointId: "checkpoint-1",
                 automationDisposition: "approved",
-                automationSummary: "Create research, copy, storyboard, media, and video",
+                automationSummary:
+                  "Create research, copy, storyboard, media, and video",
                 automationUpdatedAt: new Date("2026-04-10T00:00:00.000Z"),
                 updatedAt: new Date("2026-04-10T00:00:00.000Z"),
               });
@@ -259,61 +271,67 @@ describe("workAutomationFabricService", () => {
 
   it("creates a tenant-scoped automation run and writes a case snapshot", async () => {
     const inserted: Array<{ table: string; values: unknown }> = [];
-    mockGetDb.mockResolvedValue(buildDbMock({
-      caseRows: [{
-        id: "case-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        primaryTaskId: "task-1",
-        title: "Generate launch assets",
-        summary: "Create research, copy, storyboard, media, and video",
-        ownerType: "queue",
-        ownerId: "queue-1",
-        priority: "normal",
-        riskLevel: "medium",
-        dataClassification: "internal",
-        currentState: "planned",
-        automationRunId: null,
-        automationMode: "manual_assist",
-        automationStepId: null,
-        automationCheckpointId: null,
-        automationDisposition: null,
-        automationSummary: null,
-        automationUpdatedAt: null,
-        linkedConversationIdsJson: [],
-        linkedWorkpackRunIdsJson: [],
-        linkedRoleRoutineRunIdsJson: [],
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      requestRows: [{
-        id: "req-1",
-        tenantId: "tenant-1",
-        projectId: null,
-        sourceType: "chat",
-        sourceRef: null,
-        requesterType: "human",
-        requesterId: "42",
-        workType: "content",
-        businessDomain: "marketing",
-        urgency: "normal",
-        riskLevel: "medium",
-        classificationConfidence: 0.93,
-        defaultOwnerType: "queue",
-        defaultOwnerId: "queue-1",
-        defaultQueueId: "queue-1",
-        title: "Generate launch assets",
-        objective: "Create research, copy, storyboard, media, and video",
-        currentState: "new",
-        linkedConversationIdsJson: [],
-        linkedWorkpackRunIdsJson: [],
-        linkedRoleRoutineRunIdsJson: [],
-        linkedCaseId: "case-1",
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      inserted,
-    }) as any);
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        caseRows: [
+          {
+            id: "case-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            primaryTaskId: "task-1",
+            title: "Generate launch assets",
+            summary: "Create research, copy, storyboard, media, and video",
+            ownerType: "queue",
+            ownerId: "queue-1",
+            priority: "normal",
+            riskLevel: "medium",
+            dataClassification: "internal",
+            currentState: "planned",
+            automationRunId: null,
+            automationMode: "manual_assist",
+            automationStepId: null,
+            automationCheckpointId: null,
+            automationDisposition: null,
+            automationSummary: null,
+            automationUpdatedAt: null,
+            linkedConversationIdsJson: [],
+            linkedWorkpackRunIdsJson: [],
+            linkedRoleRoutineRunIdsJson: [],
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        requestRows: [
+          {
+            id: "req-1",
+            tenantId: "tenant-1",
+            projectId: null,
+            sourceType: "chat",
+            sourceRef: null,
+            requesterType: "human",
+            requesterId: "42",
+            workType: "content",
+            businessDomain: "marketing",
+            urgency: "normal",
+            riskLevel: "medium",
+            classificationConfidence: 0.93,
+            defaultOwnerType: "queue",
+            defaultOwnerId: "queue-1",
+            defaultQueueId: "queue-1",
+            title: "Generate launch assets",
+            objective: "Create research, copy, storyboard, media, and video",
+            currentState: "new",
+            linkedConversationIdsJson: [],
+            linkedWorkpackRunIdsJson: [],
+            linkedRoleRoutineRunIdsJson: [],
+            linkedCaseId: "case-1",
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        inserted,
+      }) as any
+    );
 
     const run = await createAutomationRun({
       tenantId: "tenant-1",
@@ -330,98 +348,203 @@ describe("workAutomationFabricService", () => {
 
     expect(run.id).toBe("run-1");
     expect(run.currentMode).toBe("semi_auto");
-    expect(inserted.map((item) => item.table)).toEqual(["workAutomationRuns", "workAutomationRunEvents"]);
-    expect((inserted[0]?.values as Record<string, unknown>)?.templateFamily).toBe("content-production");
-    expect((inserted[0]?.values as Record<string, unknown>)?.policyJson).toMatchObject({
+    expect(inserted.map(item => item.table)).toEqual([
+      "workAutomationRuns",
+      "workAutomationRunEvents",
+    ]);
+    expect(
+      (inserted[0]?.values as Record<string, unknown>)?.templateFamily
+    ).toBe("content-production");
+    expect(
+      (inserted[0]?.values as Record<string, unknown>)?.policyJson
+    ).toMatchObject({
       templateKey: "content-production",
+    });
+  });
+
+  it("preserves an explicit fully_auto mode when requested by the caller", async () => {
+    const inserted: Array<{ table: string; values: unknown }> = [];
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        caseRows: [
+          {
+            id: "case-2",
+            tenantId: "tenant-1",
+            requestId: "req-2",
+            primaryTaskId: null,
+            title: "Generate launch assets",
+            summary: "Create research, copy, storyboard, media, and video",
+            ownerType: "queue",
+            ownerId: "queue-1",
+            priority: "normal",
+            riskClass: "medium",
+            riskLevel: "medium",
+            dataClassification: "internal",
+            currentState: "new",
+            automationRunId: null,
+            automationMode: null,
+            automationStepId: null,
+            automationCheckpointId: null,
+            automationDisposition: null,
+            automationSummary: null,
+            automationUpdatedAt: null,
+            linkedConversationIdsJson: [],
+            linkedWorkpackRunIdsJson: [],
+            linkedRoleRoutineRunIdsJson: [],
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        requestRows: [
+          {
+            id: "req-2",
+            tenantId: "tenant-1",
+            projectId: null,
+            sourceType: "chat",
+            sourceRef: null,
+            requesterType: "human",
+            requesterId: "42",
+            workType: "content",
+            businessDomain: "marketing",
+            urgency: "normal",
+            riskLevel: "medium",
+            classificationConfidence: 0.2,
+            defaultOwnerType: "queue",
+            defaultOwnerId: "queue-1",
+            defaultQueueId: "queue-1",
+            title: "Generate launch assets",
+            objective: "Create research, copy, storyboard, media, and video",
+            currentState: "new",
+            linkedConversationIdsJson: [],
+            linkedWorkpackRunIdsJson: [],
+            linkedRoleRoutineRunIdsJson: [],
+            linkedCaseId: "case-2",
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        inserted,
+      }) as any
+    );
+
+    const run = await createAutomationRun({
+      tenantId: "tenant-1",
+      caseId: "case-2",
+      requestId: "req-2",
+      title: "Generate launch assets",
+      objective: "Create research, copy, storyboard, media, and video",
+      mode: "fully_auto",
+      preserveRequestedMode: true,
+      createdByUserId: 42,
+    });
+
+    expect(run.currentMode).toBe("fully_auto");
+    expect((inserted[0]?.values as Record<string, unknown>)?.currentMode).toBe(
+      "fully_auto"
+    );
+    expect(
+      (inserted[0]?.values as Record<string, unknown>)?.policyJson
+    ).toMatchObject({
+      modeResolution: expect.objectContaining({
+        requestedMode: "fully_auto",
+        effectiveMode: "fully_auto",
+      }),
     });
   });
 
   it("records step, checkpoint, and mode changes with immutable history", async () => {
     const inserted: Array<{ table: string; values: unknown }> = [];
-    mockGetDb.mockResolvedValue(buildDbMock({
-      caseRows: [{
-        id: "case-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        primaryTaskId: "task-1",
-        title: "Generate launch assets",
-        summary: "Create research, copy, storyboard, media, and video",
-        ownerType: "queue",
-        ownerId: "queue-1",
-        priority: "normal",
-        riskLevel: "medium",
-        dataClassification: "internal",
-        currentState: "planned",
-        automationRunId: "run-1",
-        automationMode: "semi_auto",
-        automationStepId: "step-1",
-        automationCheckpointId: null,
-        automationDisposition: null,
-        automationSummary: null,
-        automationUpdatedAt: null,
-        linkedConversationIdsJson: [],
-        linkedWorkpackRunIdsJson: [],
-        linkedRoleRoutineRunIdsJson: [],
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      requestRows: [{
-        id: "req-1",
-        tenantId: "tenant-1",
-        projectId: null,
-        sourceType: "chat",
-        sourceRef: null,
-        requesterType: "human",
-        requesterId: "42",
-        workType: "content",
-        businessDomain: "marketing",
-        urgency: "normal",
-        riskLevel: "medium",
-        classificationConfidence: 0.92,
-        defaultOwnerType: "queue",
-        defaultOwnerId: "queue-1",
-        defaultQueueId: "queue-1",
-        title: "Generate launch assets",
-        objective: "Create research, copy, storyboard, media, and video",
-        currentState: "new",
-        linkedConversationIdsJson: [],
-        linkedWorkpackRunIdsJson: [],
-        linkedRoleRoutineRunIdsJson: [],
-        linkedCaseId: "case-1",
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      runRows: [{
-        id: "run-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        caseId: "case-1",
-        taskId: "task-1",
-        templateKey: "content-production",
-        templateVersion: "v1",
-        templateFamily: "content-production",
-        templateSource: "case_intake",
-        title: "Generate launch assets",
-        objective: "Create research, copy, storyboard, media, and video",
-        currentMode: "semi_auto",
-        status: "pending",
-        currentStepId: null,
-        currentCheckpointId: null,
-        finalDisposition: null,
-        finalDispositionReason: null,
-        resumeCursor: null,
-        policyJson: {},
-        resolvedAt: new Date("2026-04-10T00:00:00.000Z"),
-        createdByUserId: 42,
-        createdByAssistantId: null,
-        startedAt: null,
-        completedAt: null,
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      inserted,
-    }) as any);
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        caseRows: [
+          {
+            id: "case-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            primaryTaskId: "task-1",
+            title: "Generate launch assets",
+            summary: "Create research, copy, storyboard, media, and video",
+            ownerType: "queue",
+            ownerId: "queue-1",
+            priority: "normal",
+            riskLevel: "medium",
+            dataClassification: "internal",
+            currentState: "planned",
+            automationRunId: "run-1",
+            automationMode: "semi_auto",
+            automationStepId: "step-1",
+            automationCheckpointId: null,
+            automationDisposition: null,
+            automationSummary: null,
+            automationUpdatedAt: null,
+            linkedConversationIdsJson: [],
+            linkedWorkpackRunIdsJson: [],
+            linkedRoleRoutineRunIdsJson: [],
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        requestRows: [
+          {
+            id: "req-1",
+            tenantId: "tenant-1",
+            projectId: null,
+            sourceType: "chat",
+            sourceRef: null,
+            requesterType: "human",
+            requesterId: "42",
+            workType: "content",
+            businessDomain: "marketing",
+            urgency: "normal",
+            riskLevel: "medium",
+            classificationConfidence: 0.92,
+            defaultOwnerType: "queue",
+            defaultOwnerId: "queue-1",
+            defaultQueueId: "queue-1",
+            title: "Generate launch assets",
+            objective: "Create research, copy, storyboard, media, and video",
+            currentState: "new",
+            linkedConversationIdsJson: [],
+            linkedWorkpackRunIdsJson: [],
+            linkedRoleRoutineRunIdsJson: [],
+            linkedCaseId: "case-1",
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        runRows: [
+          {
+            id: "run-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            caseId: "case-1",
+            taskId: "task-1",
+            templateKey: "content-production",
+            templateVersion: "v1",
+            templateFamily: "content-production",
+            templateSource: "case_intake",
+            title: "Generate launch assets",
+            objective: "Create research, copy, storyboard, media, and video",
+            currentMode: "semi_auto",
+            status: "pending",
+            currentStepId: null,
+            currentCheckpointId: null,
+            finalDisposition: null,
+            finalDispositionReason: null,
+            resumeCursor: null,
+            policyJson: {},
+            resolvedAt: new Date("2026-04-10T00:00:00.000Z"),
+            createdByUserId: 42,
+            createdByAssistantId: null,
+            startedAt: null,
+            completedAt: null,
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        inserted,
+      }) as any
+    );
 
     const stepResult = await recordAutomationRunStepProgress({
       tenantId: "tenant-1",
@@ -463,7 +586,7 @@ describe("workAutomationFabricService", () => {
     expect(stepResult.step.stepKey).toBe("research");
     expect(checkpointResult.checkpoint.checkpointKey).toBe("research-approval");
     expect(modeChangeResult.run.currentMode).toBe("fully_auto");
-    expect(inserted.map((item) => item.table)).toEqual([
+    expect(inserted.map(item => item.table)).toEqual([
       "workAutomationRunSteps",
       "workAutomationRunEvents",
       "workAutomationRunCheckpoints",
@@ -473,104 +596,116 @@ describe("workAutomationFabricService", () => {
   });
 
   it("keeps automation case access tenant-scoped", async () => {
-    mockGetDb.mockResolvedValue(buildDbMock({
-      caseRows: [],
-      requestRows: [],
-    }) as any);
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        caseRows: [],
+        requestRows: [],
+      }) as any
+    );
 
-    await expect(createAutomationRun({
-      tenantId: "tenant-1",
-      caseId: "missing-case",
-      templateKey: "content-production",
-      title: "Missing case",
-    })).rejects.toThrow("Work case missing-case not found");
+    await expect(
+      createAutomationRun({
+        tenantId: "tenant-1",
+        caseId: "missing-case",
+        templateKey: "content-production",
+        title: "Missing case",
+      })
+    ).rejects.toThrow("Work case missing-case not found");
   });
 
   it("holds a succeeded automation step at the approval gate when human approval is still required", async () => {
     const inserted: Array<{ table: string; values: unknown }> = [];
-    mockGetDb.mockResolvedValue(buildDbMock({
-      caseRows: [{
-        id: "case-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        primaryTaskId: null,
-        title: "Generate launch assets",
-        summary: "Create research, copy, storyboard, media, and video",
-        ownerType: null,
-        ownerId: null,
-        priority: "normal",
-        riskLevel: "medium",
-        dataClassification: "internal",
-        currentState: "in_progress",
-        automationRunId: null,
-        automationMode: "manual_assist",
-        automationTemplateKey: null,
-        automationTemplateFamily: "content-production",
-        automationTemplateSource: "case_intake",
-        automationPolicyJson: {},
-        automationStepId: null,
-        automationCheckpointId: null,
-        automationDisposition: null,
-        automationSummary: null,
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      requestRows: [{
-        id: "req-1",
-        tenantId: "tenant-1",
-        projectId: null,
-        sourceType: "work_os",
-        sourceRef: null,
-        requesterType: "human",
-        requesterId: null,
-        workType: null,
-        businessDomain: null,
-        urgency: "normal",
-        riskLevel: "medium",
-        classificationConfidence: 0.92,
-        defaultOwnerType: null,
-        defaultOwnerId: null,
-        defaultQueueId: null,
-        title: "Generate launch assets",
-        objective: "Create research, copy, storyboard, media, and video",
-        currentState: "in_progress",
-        linkedConversationIdsJson: [],
-        linkedWorkpackRunIdsJson: [],
-        linkedRoleRoutineRunIdsJson: [],
-        linkedCaseId: "case-1",
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      runRows: [{
-        id: "run-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        caseId: "case-1",
-        taskId: "task-1",
-        templateKey: "content-production",
-        templateVersion: "v1",
-        templateFamily: "content-production",
-        templateSource: "case_intake",
-        title: "Generate launch assets",
-        objective: "Create research, copy, storyboard, media, and video",
-        currentMode: "semi_auto",
-        status: "pending",
-        currentStepId: null,
-        currentCheckpointId: null,
-        finalDisposition: null,
-        finalDispositionReason: null,
-        resumeCursor: null,
-        policyJson: {},
-        resolvedAt: new Date("2026-04-10T00:00:00.000Z"),
-        createdByUserId: 42,
-        createdByAssistantId: null,
-        startedAt: null,
-        completedAt: null,
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      inserted,
-    }) as any);
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        caseRows: [
+          {
+            id: "case-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            primaryTaskId: null,
+            title: "Generate launch assets",
+            summary: "Create research, copy, storyboard, media, and video",
+            ownerType: null,
+            ownerId: null,
+            priority: "normal",
+            riskLevel: "medium",
+            dataClassification: "internal",
+            currentState: "in_progress",
+            automationRunId: null,
+            automationMode: "manual_assist",
+            automationTemplateKey: null,
+            automationTemplateFamily: "content-production",
+            automationTemplateSource: "case_intake",
+            automationPolicyJson: {},
+            automationStepId: null,
+            automationCheckpointId: null,
+            automationDisposition: null,
+            automationSummary: null,
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        requestRows: [
+          {
+            id: "req-1",
+            tenantId: "tenant-1",
+            projectId: null,
+            sourceType: "work_os",
+            sourceRef: null,
+            requesterType: "human",
+            requesterId: null,
+            workType: null,
+            businessDomain: null,
+            urgency: "normal",
+            riskLevel: "medium",
+            classificationConfidence: 0.92,
+            defaultOwnerType: null,
+            defaultOwnerId: null,
+            defaultQueueId: null,
+            title: "Generate launch assets",
+            objective: "Create research, copy, storyboard, media, and video",
+            currentState: "in_progress",
+            linkedConversationIdsJson: [],
+            linkedWorkpackRunIdsJson: [],
+            linkedRoleRoutineRunIdsJson: [],
+            linkedCaseId: "case-1",
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        runRows: [
+          {
+            id: "run-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            caseId: "case-1",
+            taskId: "task-1",
+            templateKey: "content-production",
+            templateVersion: "v1",
+            templateFamily: "content-production",
+            templateSource: "case_intake",
+            title: "Generate launch assets",
+            objective: "Create research, copy, storyboard, media, and video",
+            currentMode: "semi_auto",
+            status: "pending",
+            currentStepId: null,
+            currentCheckpointId: null,
+            finalDisposition: null,
+            finalDispositionReason: null,
+            resumeCursor: null,
+            policyJson: {},
+            resolvedAt: new Date("2026-04-10T00:00:00.000Z"),
+            createdByUserId: 42,
+            createdByAssistantId: null,
+            startedAt: null,
+            completedAt: null,
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        inserted,
+      }) as any
+    );
 
     await recordAutomationRunStepProgress({
       tenantId: "tenant-1",
@@ -590,101 +725,117 @@ describe("workAutomationFabricService", () => {
       createdByUserId: 42,
     });
 
-    const stepInsert = inserted.find((item) => item.table === "workAutomationRunSteps");
-    const runUpdate = inserted.find((item) => item.table === "workAutomationRunEvents");
-    expect(stepInsert?.values).toEqual(expect.objectContaining({
-      status: "awaiting_approval",
-    }));
-    expect(runUpdate?.values).toEqual(expect.objectContaining({
-      status: "waiting_for_approval",
-    }));
+    const stepInsert = inserted.find(
+      item => item.table === "workAutomationRunSteps"
+    );
+    const runUpdate = inserted.find(
+      item => item.table === "workAutomationRunEvents"
+    );
+    expect(stepInsert?.values).toEqual(
+      expect.objectContaining({
+        status: "awaiting_approval",
+      })
+    );
+    expect(runUpdate?.values).toEqual(
+      expect.objectContaining({
+        status: "waiting_for_approval",
+      })
+    );
   });
 
   it("blocks a succeeded automation step when the required evidence is missing", async () => {
     const inserted: Array<{ table: string; values: unknown }> = [];
-    mockGetDb.mockResolvedValue(buildDbMock({
-      caseRows: [{
-        id: "case-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        primaryTaskId: null,
-        title: "Generate launch assets",
-        summary: "Create research, copy, storyboard, media, and video",
-        ownerType: null,
-        ownerId: null,
-        priority: "normal",
-        riskLevel: "medium",
-        dataClassification: "internal",
-        currentState: "in_progress",
-        automationRunId: null,
-        automationMode: "manual_assist",
-        automationTemplateKey: null,
-        automationTemplateFamily: "content-production",
-        automationTemplateSource: "case_intake",
-        automationPolicyJson: {},
-        automationStepId: null,
-        automationCheckpointId: null,
-        automationDisposition: null,
-        automationSummary: null,
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      requestRows: [{
-        id: "req-1",
-        tenantId: "tenant-1",
-        projectId: null,
-        sourceType: "work_os",
-        sourceRef: null,
-        requesterType: "human",
-        requesterId: null,
-        workType: null,
-        businessDomain: null,
-        urgency: "normal",
-        riskLevel: "medium",
-        classificationConfidence: 0.92,
-        defaultOwnerType: null,
-        defaultOwnerId: null,
-        defaultQueueId: null,
-        title: "Generate launch assets",
-        objective: "Create research, copy, storyboard, media, and video",
-        currentState: "in_progress",
-        linkedConversationIdsJson: [],
-        linkedWorkpackRunIdsJson: [],
-        linkedRoleRoutineRunIdsJson: [],
-        linkedCaseId: "case-1",
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      runRows: [{
-        id: "run-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        caseId: "case-1",
-        taskId: "task-1",
-        templateKey: "content-production",
-        templateVersion: "v1",
-        templateFamily: "content-production",
-        templateSource: "case_intake",
-        title: "Generate launch assets",
-        objective: "Create research, copy, storyboard, media, and video",
-        currentMode: "semi_auto",
-        status: "pending",
-        currentStepId: null,
-        currentCheckpointId: null,
-        finalDisposition: null,
-        finalDispositionReason: null,
-        resumeCursor: null,
-        policyJson: {},
-        resolvedAt: new Date("2026-04-10T00:00:00.000Z"),
-        createdByUserId: 42,
-        createdByAssistantId: null,
-        startedAt: null,
-        completedAt: null,
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      inserted,
-    }) as any);
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        caseRows: [
+          {
+            id: "case-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            primaryTaskId: null,
+            title: "Generate launch assets",
+            summary: "Create research, copy, storyboard, media, and video",
+            ownerType: null,
+            ownerId: null,
+            priority: "normal",
+            riskLevel: "medium",
+            dataClassification: "internal",
+            currentState: "in_progress",
+            automationRunId: null,
+            automationMode: "manual_assist",
+            automationTemplateKey: null,
+            automationTemplateFamily: "content-production",
+            automationTemplateSource: "case_intake",
+            automationPolicyJson: {},
+            automationStepId: null,
+            automationCheckpointId: null,
+            automationDisposition: null,
+            automationSummary: null,
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        requestRows: [
+          {
+            id: "req-1",
+            tenantId: "tenant-1",
+            projectId: null,
+            sourceType: "work_os",
+            sourceRef: null,
+            requesterType: "human",
+            requesterId: null,
+            workType: null,
+            businessDomain: null,
+            urgency: "normal",
+            riskLevel: "medium",
+            classificationConfidence: 0.92,
+            defaultOwnerType: null,
+            defaultOwnerId: null,
+            defaultQueueId: null,
+            title: "Generate launch assets",
+            objective: "Create research, copy, storyboard, media, and video",
+            currentState: "in_progress",
+            linkedConversationIdsJson: [],
+            linkedWorkpackRunIdsJson: [],
+            linkedRoleRoutineRunIdsJson: [],
+            linkedCaseId: "case-1",
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        runRows: [
+          {
+            id: "run-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            caseId: "case-1",
+            taskId: "task-1",
+            templateKey: "content-production",
+            templateVersion: "v1",
+            templateFamily: "content-production",
+            templateSource: "case_intake",
+            title: "Generate launch assets",
+            objective: "Create research, copy, storyboard, media, and video",
+            currentMode: "semi_auto",
+            status: "pending",
+            currentStepId: null,
+            currentCheckpointId: null,
+            finalDisposition: null,
+            finalDispositionReason: null,
+            resumeCursor: null,
+            policyJson: {},
+            resolvedAt: new Date("2026-04-10T00:00:00.000Z"),
+            createdByUserId: 42,
+            createdByAssistantId: null,
+            startedAt: null,
+            completedAt: null,
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        inserted,
+      }) as any
+    );
 
     await recordAutomationRunStepProgress({
       tenantId: "tenant-1",
@@ -707,101 +858,117 @@ describe("workAutomationFabricService", () => {
       createdByUserId: 42,
     });
 
-    const stepInsert = inserted.find((item) => item.table === "workAutomationRunSteps");
-    const runUpdate = inserted.find((item) => item.table === "workAutomationRunEvents");
-    expect(stepInsert?.values).toEqual(expect.objectContaining({
-      status: "blocked",
-    }));
-    expect(runUpdate?.values).toEqual(expect.objectContaining({
-      status: "waiting_for_input",
-    }));
+    const stepInsert = inserted.find(
+      item => item.table === "workAutomationRunSteps"
+    );
+    const runUpdate = inserted.find(
+      item => item.table === "workAutomationRunEvents"
+    );
+    expect(stepInsert?.values).toEqual(
+      expect.objectContaining({
+        status: "blocked",
+      })
+    );
+    expect(runUpdate?.values).toEqual(
+      expect.objectContaining({
+        status: "waiting_for_input",
+      })
+    );
   });
 
   it("blocks a failed automation step when the repair loop is exhausted", async () => {
     const inserted: Array<{ table: string; values: unknown }> = [];
-    mockGetDb.mockResolvedValue(buildDbMock({
-      caseRows: [{
-        id: "case-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        primaryTaskId: null,
-        title: "Generate launch assets",
-        summary: "Create research, copy, storyboard, media, and video",
-        ownerType: null,
-        ownerId: null,
-        priority: "normal",
-        riskLevel: "medium",
-        dataClassification: "internal",
-        currentState: "in_progress",
-        automationRunId: null,
-        automationMode: "manual_assist",
-        automationTemplateKey: null,
-        automationTemplateFamily: "content-production",
-        automationTemplateSource: "case_intake",
-        automationPolicyJson: {},
-        automationStepId: null,
-        automationCheckpointId: null,
-        automationDisposition: null,
-        automationSummary: null,
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      requestRows: [{
-        id: "req-1",
-        tenantId: "tenant-1",
-        projectId: null,
-        sourceType: "work_os",
-        sourceRef: null,
-        requesterType: "human",
-        requesterId: null,
-        workType: null,
-        businessDomain: null,
-        urgency: "normal",
-        riskLevel: "medium",
-        classificationConfidence: 0.92,
-        defaultOwnerType: null,
-        defaultOwnerId: null,
-        defaultQueueId: null,
-        title: "Generate launch assets",
-        objective: "Create research, copy, storyboard, media, and video",
-        currentState: "in_progress",
-        linkedConversationIdsJson: [],
-        linkedWorkpackRunIdsJson: [],
-        linkedRoleRoutineRunIdsJson: [],
-        linkedCaseId: "case-1",
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      runRows: [{
-        id: "run-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        caseId: "case-1",
-        taskId: "task-1",
-        templateKey: "content-production",
-        templateVersion: "v1",
-        templateFamily: "content-production",
-        templateSource: "case_intake",
-        title: "Generate launch assets",
-        objective: "Create research, copy, storyboard, media, and video",
-        currentMode: "semi_auto",
-        status: "pending",
-        currentStepId: null,
-        currentCheckpointId: null,
-        finalDisposition: null,
-        finalDispositionReason: null,
-        resumeCursor: null,
-        policyJson: {},
-        resolvedAt: new Date("2026-04-10T00:00:00.000Z"),
-        createdByUserId: 42,
-        createdByAssistantId: null,
-        startedAt: null,
-        completedAt: null,
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      inserted,
-    }) as any);
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        caseRows: [
+          {
+            id: "case-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            primaryTaskId: null,
+            title: "Generate launch assets",
+            summary: "Create research, copy, storyboard, media, and video",
+            ownerType: null,
+            ownerId: null,
+            priority: "normal",
+            riskLevel: "medium",
+            dataClassification: "internal",
+            currentState: "in_progress",
+            automationRunId: null,
+            automationMode: "manual_assist",
+            automationTemplateKey: null,
+            automationTemplateFamily: "content-production",
+            automationTemplateSource: "case_intake",
+            automationPolicyJson: {},
+            automationStepId: null,
+            automationCheckpointId: null,
+            automationDisposition: null,
+            automationSummary: null,
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        requestRows: [
+          {
+            id: "req-1",
+            tenantId: "tenant-1",
+            projectId: null,
+            sourceType: "work_os",
+            sourceRef: null,
+            requesterType: "human",
+            requesterId: null,
+            workType: null,
+            businessDomain: null,
+            urgency: "normal",
+            riskLevel: "medium",
+            classificationConfidence: 0.92,
+            defaultOwnerType: null,
+            defaultOwnerId: null,
+            defaultQueueId: null,
+            title: "Generate launch assets",
+            objective: "Create research, copy, storyboard, media, and video",
+            currentState: "in_progress",
+            linkedConversationIdsJson: [],
+            linkedWorkpackRunIdsJson: [],
+            linkedRoleRoutineRunIdsJson: [],
+            linkedCaseId: "case-1",
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        runRows: [
+          {
+            id: "run-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            caseId: "case-1",
+            taskId: "task-1",
+            templateKey: "content-production",
+            templateVersion: "v1",
+            templateFamily: "content-production",
+            templateSource: "case_intake",
+            title: "Generate launch assets",
+            objective: "Create research, copy, storyboard, media, and video",
+            currentMode: "semi_auto",
+            status: "pending",
+            currentStepId: null,
+            currentCheckpointId: null,
+            finalDisposition: null,
+            finalDispositionReason: null,
+            resumeCursor: null,
+            policyJson: {},
+            resolvedAt: new Date("2026-04-10T00:00:00.000Z"),
+            createdByUserId: 42,
+            createdByAssistantId: null,
+            startedAt: null,
+            completedAt: null,
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        inserted,
+      }) as any
+    );
 
     await recordAutomationRunStepProgress({
       tenantId: "tenant-1",
@@ -825,263 +992,302 @@ describe("workAutomationFabricService", () => {
       createdByUserId: 42,
     });
 
-    const stepInsert = inserted.find((item) => item.table === "workAutomationRunSteps");
-    const runUpdate = inserted.find((item) => item.table === "workAutomationRunEvents");
-    expect(stepInsert?.values).toEqual(expect.objectContaining({
-      status: "blocked",
-    }));
-    expect(runUpdate?.values).toEqual(expect.objectContaining({
-      status: "waiting_for_input",
-    }));
+    const stepInsert = inserted.find(
+      item => item.table === "workAutomationRunSteps"
+    );
+    const runUpdate = inserted.find(
+      item => item.table === "workAutomationRunEvents"
+    );
+    expect(stepInsert?.values).toEqual(
+      expect.objectContaining({
+        status: "blocked",
+      })
+    );
+    expect(runUpdate?.values).toEqual(
+      expect.objectContaining({
+        status: "waiting_for_input",
+      })
+    );
   });
 
   it("projects automation evidence for a case timeline", async () => {
-    mockGetDb.mockResolvedValue(buildDbMock({
-      runRows: [{
-        id: "run-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        caseId: "case-1",
-        taskId: null,
-        templateKey: "content-production",
-        templateVersion: "v1",
-        templateFamily: "content-production",
-        templateSource: "case_intake",
-        title: "Generate launch assets",
-        objective: "Create research, copy, storyboard, media, and video",
-        currentMode: "semi_auto",
-        status: "running",
-        currentStepId: "step-1",
-        currentCheckpointId: "checkpoint-1",
-        finalDisposition: null,
-        finalDispositionReason: null,
-        resumeCursor: "cursor-1",
-        policyJson: {},
-        resolvedAt: new Date("2026-04-10T00:00:00.000Z"),
-        createdByUserId: 42,
-        createdByAssistantId: null,
-        startedAt: new Date("2026-04-10T00:00:00.000Z"),
-        completedAt: null,
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      requestRows: [{
-        id: "req-1",
-        tenantId: "tenant-1",
-        projectId: null,
-        sourceType: "chat",
-        sourceRef: null,
-        requesterType: "human",
-        requesterId: "42",
-        workType: "content",
-        businessDomain: "marketing",
-        urgency: "normal",
-        riskLevel: "medium",
-        classificationConfidence: 0.92,
-        defaultOwnerType: "queue",
-        defaultOwnerId: "queue-1",
-        defaultQueueId: "queue-1",
-        title: "Generate launch assets",
-        objective: "Create research, copy, storyboard, media, and video",
-        currentState: "new",
-        linkedConversationIdsJson: [],
-        linkedWorkpackRunIdsJson: [],
-        linkedRoleRoutineRunIdsJson: [],
-        linkedCaseId: "case-1",
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      stepRows: [{
-        id: "step-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        caseId: "case-1",
-        runId: "run-1",
-        stepKey: "research",
-        stepIndex: 0,
-        title: "Research",
-        status: "running",
-        riskTier: "medium",
-        surface: "agency",
-        inputRefsJson: ["doc-1"],
-        outputRefsJson: [],
-        retryCount: 0,
-        idempotencyKey: "idem-1",
-        summary: "Research started",
-        detailJson: { scope: "launch" },
-        actorUserId: 42,
-        actorAssistantId: null,
-        startedAt: new Date("2026-04-10T00:01:00.000Z"),
-        completedAt: null,
-        createdAt: new Date("2026-04-10T00:01:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:01:00.000Z"),
-      }],
-      checkpointRows: [{
-        id: "checkpoint-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        caseId: "case-1",
-        runId: "run-1",
-        stepId: "step-1",
-        stepKey: "research",
-        checkpointKey: "research-approval",
-        resumeCursor: "resume:research",
-        approvalState: "approved",
-        checkpointStatus: "approved",
-        editSnapshotRefsJson: ["doc-2"],
-        snapshotJson: { revision: 2 },
-        detailJson: { note: "human review" },
-        requestedByUserId: 42,
-        approvedByUserId: 42,
-        actorAssistantId: null,
-        requestedAt: new Date("2026-04-10T00:05:00.000Z"),
-        approvedAt: new Date("2026-04-10T00:06:00.000Z"),
-        resumedAt: new Date("2026-04-10T00:07:00.000Z"),
-        createdAt: new Date("2026-04-10T00:05:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:05:00.000Z"),
-      }],
-      eventRows: [{
-        id: "evt-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        caseId: "case-1",
-        runId: "run-1",
-        stepId: null,
-        checkpointId: null,
-        eventType: "automation_run_created",
-        fromMode: null,
-        toMode: "semi_auto",
-        status: "running",
-        detailJson: { templateKey: "content-production" },
-        actorUserId: 42,
-        actorAssistantId: null,
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-    }) as any);
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        runRows: [
+          {
+            id: "run-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            caseId: "case-1",
+            taskId: null,
+            templateKey: "content-production",
+            templateVersion: "v1",
+            templateFamily: "content-production",
+            templateSource: "case_intake",
+            title: "Generate launch assets",
+            objective: "Create research, copy, storyboard, media, and video",
+            currentMode: "semi_auto",
+            status: "running",
+            currentStepId: "step-1",
+            currentCheckpointId: "checkpoint-1",
+            finalDisposition: null,
+            finalDispositionReason: null,
+            resumeCursor: "cursor-1",
+            policyJson: {},
+            resolvedAt: new Date("2026-04-10T00:00:00.000Z"),
+            createdByUserId: 42,
+            createdByAssistantId: null,
+            startedAt: new Date("2026-04-10T00:00:00.000Z"),
+            completedAt: null,
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        requestRows: [
+          {
+            id: "req-1",
+            tenantId: "tenant-1",
+            projectId: null,
+            sourceType: "chat",
+            sourceRef: null,
+            requesterType: "human",
+            requesterId: "42",
+            workType: "content",
+            businessDomain: "marketing",
+            urgency: "normal",
+            riskLevel: "medium",
+            classificationConfidence: 0.92,
+            defaultOwnerType: "queue",
+            defaultOwnerId: "queue-1",
+            defaultQueueId: "queue-1",
+            title: "Generate launch assets",
+            objective: "Create research, copy, storyboard, media, and video",
+            currentState: "new",
+            linkedConversationIdsJson: [],
+            linkedWorkpackRunIdsJson: [],
+            linkedRoleRoutineRunIdsJson: [],
+            linkedCaseId: "case-1",
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        stepRows: [
+          {
+            id: "step-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            caseId: "case-1",
+            runId: "run-1",
+            stepKey: "research",
+            stepIndex: 0,
+            title: "Research",
+            status: "running",
+            riskTier: "medium",
+            surface: "agency",
+            inputRefsJson: ["doc-1"],
+            outputRefsJson: [],
+            retryCount: 0,
+            idempotencyKey: "idem-1",
+            summary: "Research started",
+            detailJson: { scope: "launch" },
+            actorUserId: 42,
+            actorAssistantId: null,
+            startedAt: new Date("2026-04-10T00:01:00.000Z"),
+            completedAt: null,
+            createdAt: new Date("2026-04-10T00:01:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:01:00.000Z"),
+          },
+        ],
+        checkpointRows: [
+          {
+            id: "checkpoint-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            caseId: "case-1",
+            runId: "run-1",
+            stepId: "step-1",
+            stepKey: "research",
+            checkpointKey: "research-approval",
+            resumeCursor: "resume:research",
+            approvalState: "approved",
+            checkpointStatus: "approved",
+            editSnapshotRefsJson: ["doc-2"],
+            snapshotJson: { revision: 2 },
+            detailJson: { note: "human review" },
+            requestedByUserId: 42,
+            approvedByUserId: 42,
+            actorAssistantId: null,
+            requestedAt: new Date("2026-04-10T00:05:00.000Z"),
+            approvedAt: new Date("2026-04-10T00:06:00.000Z"),
+            resumedAt: new Date("2026-04-10T00:07:00.000Z"),
+            createdAt: new Date("2026-04-10T00:05:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:05:00.000Z"),
+          },
+        ],
+        eventRows: [
+          {
+            id: "evt-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            caseId: "case-1",
+            runId: "run-1",
+            stepId: null,
+            checkpointId: null,
+            eventType: "automation_run_created",
+            fromMode: null,
+            toMode: "semi_auto",
+            status: "running",
+            detailJson: { templateKey: "content-production" },
+            actorUserId: 42,
+            actorAssistantId: null,
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+      }) as any
+    );
 
-    const projection = await getAutomationProjectionForCase("case-1", "tenant-1");
+    const projection = await getAutomationProjectionForCase(
+      "case-1",
+      "tenant-1"
+    );
     const entries = await buildAutomationTimelineEntries("case-1", "tenant-1");
 
     expect(projection.run?.id).toBe("run-1");
     expect(projection.steps[0]?.id).toBe("step-1");
     expect(projection.checkpoints[0]?.id).toBe("checkpoint-1");
-    expect(entries.some((entry) => entry.eventType === "automation_step_running")).toBe(true);
-    expect(entries.some((entry) => entry.eventType === "automation_checkpoint_approved")).toBe(true);
+    expect(
+      entries.some(entry => entry.eventType === "automation_step_running")
+    ).toBe(true);
+    expect(
+      entries.some(
+        entry => entry.eventType === "automation_checkpoint_approved"
+      )
+    ).toBe(true);
   });
 
   it("resumes an automation checkpoint without mutating the prior snapshot", async () => {
     const inserted: Array<{ table: string; values: unknown }> = [];
-    mockGetDb.mockResolvedValue(buildDbMock({
-      caseRows: [{
-        id: "case-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        primaryTaskId: "task-1",
-        title: "Generate launch assets",
-        summary: "Create research, copy, storyboard, media, and video",
-        ownerType: "queue",
-        ownerId: "queue-1",
-        priority: "normal",
-        riskLevel: "medium",
-        dataClassification: "internal",
-        currentState: "planned",
-        automationRunId: "run-1",
-        automationMode: "semi_auto",
-        automationTemplateKey: "content-production",
-        automationTemplateFamily: "content-production",
-        automationTemplateSource: "case_intake",
-        automationPolicyJson: {},
-        automationStepId: "step-1",
-        automationCheckpointId: "checkpoint-1",
-        automationDisposition: null,
-        automationSummary: null,
-        automationUpdatedAt: null,
-        linkedConversationIdsJson: [],
-        linkedWorkpackRunIdsJson: [],
-        linkedRoleRoutineRunIdsJson: [],
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      requestRows: [{
-        id: "req-1",
-        tenantId: "tenant-1",
-        projectId: null,
-        sourceType: "chat",
-        sourceRef: null,
-        requesterType: "human",
-        requesterId: "42",
-        workType: "content",
-        businessDomain: "marketing",
-        urgency: "normal",
-        riskLevel: "medium",
-        classificationConfidence: 0.92,
-        defaultOwnerType: "queue",
-        defaultOwnerId: "queue-1",
-        defaultQueueId: "queue-1",
-        title: "Generate launch assets",
-        objective: "Create research, copy, storyboard, media, and video",
-        currentState: "new",
-        linkedConversationIdsJson: [],
-        linkedWorkpackRunIdsJson: [],
-        linkedRoleRoutineRunIdsJson: [],
-        linkedCaseId: "case-1",
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      runRows: [{
-        id: "run-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        caseId: "case-1",
-        taskId: "task-1",
-        templateKey: "content-production",
-        templateVersion: "v1",
-        templateFamily: "content-production",
-        templateSource: "case_intake",
-        title: "Generate launch assets",
-        objective: "Create research, copy, storyboard, media, and video",
-        currentMode: "semi_auto",
-        status: "waiting_for_approval",
-        currentStepId: "step-1",
-        currentCheckpointId: "checkpoint-1",
-        finalDisposition: null,
-        finalDispositionReason: null,
-        resumeCursor: null,
-        policyJson: {},
-        resolvedAt: new Date("2026-04-10T00:00:00.000Z"),
-        createdByUserId: 42,
-        createdByAssistantId: null,
-        startedAt: new Date("2026-04-10T00:00:00.000Z"),
-        completedAt: null,
-        createdAt: new Date("2026-04-10T00:00:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:00:00.000Z"),
-      }],
-      checkpointRows: [{
-        id: "checkpoint-1",
-        tenantId: "tenant-1",
-        requestId: "req-1",
-        caseId: "case-1",
-        runId: "run-1",
-        stepId: "step-1",
-        stepKey: "research",
-        checkpointKey: "research-approval",
-        resumeCursor: "resume:research",
-        approvalState: "pending",
-        checkpointStatus: "open",
-        editSnapshotRefsJson: ["doc-1"],
-        snapshotJson: { revision: 1 },
-        detailJson: { note: "original checkpoint" },
-        requestedByUserId: 42,
-        approvedByUserId: null,
-        actorAssistantId: null,
-        requestedAt: new Date("2026-04-10T00:05:00.000Z"),
-        approvedAt: null,
-        resumedAt: null,
-        createdAt: new Date("2026-04-10T00:05:00.000Z"),
-        updatedAt: new Date("2026-04-10T00:05:00.000Z"),
-      }],
-      inserted,
-    }) as any);
+    mockGetDb.mockResolvedValue(
+      buildDbMock({
+        caseRows: [
+          {
+            id: "case-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            primaryTaskId: "task-1",
+            title: "Generate launch assets",
+            summary: "Create research, copy, storyboard, media, and video",
+            ownerType: "queue",
+            ownerId: "queue-1",
+            priority: "normal",
+            riskLevel: "medium",
+            dataClassification: "internal",
+            currentState: "planned",
+            automationRunId: "run-1",
+            automationMode: "semi_auto",
+            automationTemplateKey: "content-production",
+            automationTemplateFamily: "content-production",
+            automationTemplateSource: "case_intake",
+            automationPolicyJson: {},
+            automationStepId: "step-1",
+            automationCheckpointId: "checkpoint-1",
+            automationDisposition: null,
+            automationSummary: null,
+            automationUpdatedAt: null,
+            linkedConversationIdsJson: [],
+            linkedWorkpackRunIdsJson: [],
+            linkedRoleRoutineRunIdsJson: [],
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        requestRows: [
+          {
+            id: "req-1",
+            tenantId: "tenant-1",
+            projectId: null,
+            sourceType: "chat",
+            sourceRef: null,
+            requesterType: "human",
+            requesterId: "42",
+            workType: "content",
+            businessDomain: "marketing",
+            urgency: "normal",
+            riskLevel: "medium",
+            classificationConfidence: 0.92,
+            defaultOwnerType: "queue",
+            defaultOwnerId: "queue-1",
+            defaultQueueId: "queue-1",
+            title: "Generate launch assets",
+            objective: "Create research, copy, storyboard, media, and video",
+            currentState: "new",
+            linkedConversationIdsJson: [],
+            linkedWorkpackRunIdsJson: [],
+            linkedRoleRoutineRunIdsJson: [],
+            linkedCaseId: "case-1",
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        runRows: [
+          {
+            id: "run-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            caseId: "case-1",
+            taskId: "task-1",
+            templateKey: "content-production",
+            templateVersion: "v1",
+            templateFamily: "content-production",
+            templateSource: "case_intake",
+            title: "Generate launch assets",
+            objective: "Create research, copy, storyboard, media, and video",
+            currentMode: "semi_auto",
+            status: "waiting_for_approval",
+            currentStepId: "step-1",
+            currentCheckpointId: "checkpoint-1",
+            finalDisposition: null,
+            finalDispositionReason: null,
+            resumeCursor: null,
+            policyJson: {},
+            resolvedAt: new Date("2026-04-10T00:00:00.000Z"),
+            createdByUserId: 42,
+            createdByAssistantId: null,
+            startedAt: new Date("2026-04-10T00:00:00.000Z"),
+            completedAt: null,
+            createdAt: new Date("2026-04-10T00:00:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+          },
+        ],
+        checkpointRows: [
+          {
+            id: "checkpoint-1",
+            tenantId: "tenant-1",
+            requestId: "req-1",
+            caseId: "case-1",
+            runId: "run-1",
+            stepId: "step-1",
+            stepKey: "research",
+            checkpointKey: "research-approval",
+            resumeCursor: "resume:research",
+            approvalState: "pending",
+            checkpointStatus: "open",
+            editSnapshotRefsJson: ["doc-1"],
+            snapshotJson: { revision: 1 },
+            detailJson: { note: "original checkpoint" },
+            requestedByUserId: 42,
+            approvedByUserId: null,
+            actorAssistantId: null,
+            requestedAt: new Date("2026-04-10T00:05:00.000Z"),
+            approvedAt: null,
+            resumedAt: null,
+            createdAt: new Date("2026-04-10T00:05:00.000Z"),
+            updatedAt: new Date("2026-04-10T00:05:00.000Z"),
+          },
+        ],
+        inserted,
+      }) as any
+    );
 
     const result = await resumeAutomationRunFromCheckpoint({
       tenantId: "tenant-1",
@@ -1097,6 +1303,8 @@ describe("workAutomationFabricService", () => {
       resumedFromCheckpointId: "checkpoint-1",
       resumedFromCheckpointKey: "research-approval",
     });
-    expect(inserted.map((item) => item.table)).toContain("workAutomationRunCheckpoints");
+    expect(inserted.map(item => item.table)).toContain(
+      "workAutomationRunCheckpoints"
+    );
   });
 });

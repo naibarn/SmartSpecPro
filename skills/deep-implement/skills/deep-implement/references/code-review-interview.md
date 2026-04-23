@@ -4,7 +4,7 @@ Process for triaging code review findings and interviewing the user on important
 
 ## Overview
 
-After the review agent writes its review to `section-NN-review.md`, triage the findings and interview the user only on items that genuinely need their input.
+After the code-reviewer subagent writes its review to `section-NN-review.md`, triage the findings and interview the user only on items that genuinely need their input.
 
 **Key principles:**
 - Not everything needs to be an interview question
@@ -84,7 +84,7 @@ Issue: {brief title}
 {options for resolution}
 ```
 
-Use AskUserQuestion for each. Record their decision.
+Ask concise direct questions in the main conversation for each item worth escalating. If the host offers a structured question helper, you may use it. Record the user's decision either way.
 
 If nothing needs discussion, that's fine - just mention you reviewed the findings and are proceeding with auto-fixes (if any).
 

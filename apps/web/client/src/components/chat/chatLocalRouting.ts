@@ -1,3 +1,9 @@
+export {
+  looksLikeSkillRequest,
+  shouldAttemptSkillRouting,
+  shouldAutoRunDetectedSkill,
+} from "@shared/chatSkillRouting";
+
 export function resolveDetectedSkillForSend<T>(input: {
   sessionLocalOnlyEnabled: boolean;
   detectedSkill: T | null;

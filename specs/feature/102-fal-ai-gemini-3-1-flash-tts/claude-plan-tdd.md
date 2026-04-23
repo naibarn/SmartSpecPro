@@ -44,6 +44,11 @@ Write the tests first for:
   - assert add/remove row behavior for structured arrays
   - assert nested select inputs and text inputs render for speaker rows
 
+- `apps/web/client/src/components/media/ModelInputFieldsPanel.tsx` or the closest panel test coverage
+  - assert the shared panel renders Gemini structured arrays with nested `itemFields`
+  - assert the shared panel still falls back to a textarea for flat arrays
+  - assert `style_instructions` remains plain text helper content in the shared panel path
+
 - `apps/web/client/src/pages/MediaStudio.tsx`
   - assert duplicate `speaker_id` aliases are rejected before submit
   - assert `language_code=__auto__` is stripped before submission

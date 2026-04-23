@@ -4,10 +4,13 @@ import {
   buildDocumentQueryString,
   buildDocumentShareUrl,
   buildPublicDocumentShareUrl,
+  getKnowledgeVaultModeQueryParam,
+  getKnowledgeVaultNavigationModes,
   getMarkdownPreviewFallbackContent,
   getDocumentAccessLabel,
   isMarkdownLibraryItem,
   parseDocumentQueryState,
+  resolveKnowledgeVaultMode,
   resolveDocumentPreviewType,
 } from "./documentManagementUi";
 
@@ -18,6 +21,7 @@ describe("documentManagementUi", () => {
       scope: "shared_groups",
       sort: "created_desc",
       viewMode: "library",
+      knowledgeMode: "browse",
       query: "guide",
       itemType: "md",
       status: "ready",
@@ -39,8 +43,24 @@ describe("documentManagementUi", () => {
   it("supports editor mode with selected doc id in query", () => {
     const parsed = parseDocumentQueryState("?mode=editor&doc=42");
     expect(parsed.viewMode).toBe("editor");
+    expect(parsed.knowledgeMode).toBe("browse");
     expect(parsed.docId).toBe(42);
     expect(buildDocumentQueryString(parsed)).toBe("scope=my_library&sort=updated_desc&mode=editor&doc=42");
+  });
+
+  it("persists Knowledge Vault mode in the URL only when non-browse", () => {
+    const parsed = parseDocumentQueryState("?kv=memory_packs");
+    expect(parsed.knowledgeMode).toBe("memory_packs");
+
+    expect(
+      buildDocumentQueryString({
+        ...parsed,
+        scope: "my_library",
+        sort: "updated_desc",
+        viewMode: "library",
+        query: "",
+      }),
+    ).toContain("kv=memory_packs");
   });
 
   it("builds a share URL for the active document", () => {
@@ -50,6 +70,7 @@ describe("documentManagementUi", () => {
           scope: "shared_groups",
           sort: "created_desc",
           viewMode: "library",
+          knowledgeMode: "browse",
           query: "guide",
           itemType: "md",
           status: "ready",
@@ -149,5 +170,39 @@ describe("documentManagementUi", () => {
     expect(getDocumentAccessLabel("owner")).toBe("Owner");
     expect(getDocumentAccessLabel("shared_direct")).toBe("Shared: Direct");
     expect(getDocumentAccessLabel("shared_group")).toBe("Shared: Group");
+  });
+
+  it("builds Knowledge Vault navigation modes from surface availability", () => {
+    const modes = getKnowledgeVaultNavigationModes({
+      quickSwitcher: true,
+      inspector: true,
+      savedViews: false,
+      contextPacks: true,
+      graph: false,
+      canvas: true,
+    });
+
+    expect(modes.find((mode) => mode.mode === "browse")?.enabled).toBe(true);
+    expect(modes.find((mode) => mode.mode === "related")?.enabled).toBe(true);
+    expect(modes.find((mode) => mode.mode === "views")?.enabled).toBe(false);
+    expect(modes.find((mode) => mode.mode === "graph")?.enabled).toBe(false);
+    expect(modes.find((mode) => mode.mode === "memory_packs")?.enabled).toBe(true);
+  });
+
+  it("falls back to browse when a requested Knowledge Vault mode is disabled", () => {
+    const availability = {
+      quickSwitcher: true,
+      inspector: false,
+      savedViews: false,
+      contextPacks: false,
+      graph: false,
+      canvas: false,
+    };
+
+    expect(resolveKnowledgeVaultMode("related", availability)).toBe("browse");
+    expect(resolveKnowledgeVaultMode("unknown", availability)).toBe("browse");
+    expect(resolveKnowledgeVaultMode("browse", availability)).toBe("browse");
+    expect(getKnowledgeVaultModeQueryParam("browse")).toBeNull();
+    expect(getKnowledgeVaultModeQueryParam("memory_packs")).toBe("memory_packs");
   });
 });

@@ -11,7 +11,7 @@
 
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { useLocation, useRoute } from 'wouter';
-import ReactFlow, {
+import { ReactFlow,
   ReactFlowProvider,
   addEdge,
   useNodesState,
@@ -26,8 +26,8 @@ import ReactFlow, {
   type Connection,
   type NodeTypes,
   type ReactFlowInstance,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { HelpButton } from '@/components/help';
@@ -84,6 +84,12 @@ import { WorkflowVersionHistory } from '@/components/workflow/WorkflowVersionHis
 // Step 1: Import BaseNode and registry hook
 import { BaseNode } from '@/components/workflow/nodes/BaseNode';
 import GroupNode from '@/components/workflow/nodes/GroupNode';
+import type {
+  WorkflowCanvasNode,
+  WorkflowFlowNode,
+  WorkflowGroupNode,
+} from '@/components/workflow/nodes/types';
+import { isWorkflowFlowNode } from '@/components/workflow/nodes/types';
 import { useNodeRegistry } from '@/lib/workflow/useNodeRegistry';
 import { filterWorkflowNodeTypes } from '@/lib/workflow/browserSessionNodeTypes';
 import {
@@ -126,13 +132,6 @@ import { TemplateBrowser } from '@/components/workflow/TemplateBrowser';
 // Import LLM Model Selector
 import LLMModelSelector, { type LLMModel } from '@/components/workflow/LLMModelSelector';
 
-// Node data structure for registry-driven nodes
-interface WorkflowNodeData {
-  nodeType: string;  // Logical type from registry (e.g., 'llm_call', 'rag_query')
-  label: string;
-  config: Record<string, unknown>;
-}
-
 // Step 1: Node types (workflow + group)
 const nodeTypes: NodeTypes = {
   workflow: BaseNode,
@@ -162,12 +161,12 @@ function FlowEditor() {
       localStorage.setItem('workflow-default-model', modelId);
     }
   }, []);
-  const [nodes, setNodes, onNodesChange] = useNodesState<WorkflowNodeData>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<WorkflowCanvasNode>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const lastConnectionError = useRef<string | null>(null);
   const connectionCompleted = useRef(false);
-  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<WorkflowCanvasNode, Edge> | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -312,8 +311,8 @@ function FlowEditor() {
       const savedModel = workflow.defaultModel || localStorage.getItem('workflow-default-model') || '';
       setDefaultModel(savedModel);
       if (workflow.workflowJson) {
-        setNodes(workflow.workflowJson.nodes || []);
-        setEdges(workflow.workflowJson.edges || []);
+        setNodes((workflow.workflowJson.nodes || []) as WorkflowCanvasNode[]);
+        setEdges((workflow.workflowJson.edges || []) as Edge[]);
       }
     }
   }, [loadWorkflowQuery.data, setNodes, setEdges]);
@@ -518,18 +517,25 @@ function FlowEditor() {
   ]);
 
   // Selected node
-  const selectedNode = nodes.find(n => n.id === selectedNodeId);
+  const selectedNode = nodes.find(n => n.id === selectedNodeId) ?? null;
+  const workflowNodes = useMemo(
+    () => nodes.filter(isWorkflowFlowNode),
+    [nodes],
+  );
+  const selectedWorkflowNode = selectedNode && isWorkflowFlowNode(selectedNode)
+    ? selectedNode
+    : null;
 
   // Step 4: Compute connections for selected node
   const connections = useMemo(() => {
-    if (!selectedNode) return {};
+    if (!selectedWorkflowNode) return {};
     return edges.reduce((acc, edge) => {
-      if (edge.target === selectedNode.id && edge.targetHandle) {
+      if (edge.target === selectedWorkflowNode.id && edge.targetHandle) {
         acc[edge.targetHandle] = true;
       }
       return acc;
     }, {} as Record<string, boolean>);
-  }, [selectedNode, edges]);
+  }, [selectedWorkflowNode, edges]);
 
   // Step 5: Port type validation
   const isValidConnection = useCallback(
@@ -630,7 +636,7 @@ function FlowEditor() {
         position = { x: 250, y: 250 };
       }
 
-      const newNode: Node<WorkflowNodeData> = {
+      const newNode: WorkflowFlowNode = {
         id: `${nodeType}-${Date.now()}`,
         type: 'workflow',  // Always use 'workflow' type
         data: {
@@ -641,7 +647,7 @@ function FlowEditor() {
         position,
       };
 
-      setNodes((nodes: Node<WorkflowNodeData>[]) => [...nodes, newNode]);
+      setNodes((nodes: WorkflowCanvasNode[]) => [...nodes, newNode]);
       
       // Select the new node automatically
       setSelectedNodeId(newNode.id);
@@ -753,7 +759,7 @@ function FlowEditor() {
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  const onNodeClick = useCallback((_: any, node: Node<WorkflowNodeData>) => {
+  const onNodeClick = useCallback((_: any, node: WorkflowCanvasNode) => {
     setSelectedNodeId(node.id);
     setContextMenu(null);
   }, []);
@@ -816,7 +822,7 @@ function FlowEditor() {
 
   // ---- Delete node ----
   const handleDeleteNode = useCallback((nodeId: string) => {
-    setNodes((nds: Node[]) => nds.filter(n => n.id !== nodeId));
+    setNodes((nds: WorkflowCanvasNode[]) => nds.filter(n => n.id !== nodeId));
     setEdges((eds: Edge[]) => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
     if (selectedNodeId === nodeId) setSelectedNodeId(null);
     setContextMenu(null);
@@ -838,7 +844,7 @@ function FlowEditor() {
       toast.error('Node ID already exists');
       return;
     }
-    setNodes((nds: Node[]) => nds.map(n => n.id === oldId ? { ...n, id: newId } : n));
+    setNodes((nds: WorkflowCanvasNode[]) => nds.map(n => n.id === oldId ? { ...n, id: newId } : n));
     setEdges((eds: Edge[]) => eds.map(e => ({
       ...e,
       source: e.source === oldId ? newId : e.source,
@@ -852,13 +858,15 @@ function FlowEditor() {
   // ---- Help ----
   const openHelp = useCallback((nodeId: string) => {
     const node = nodes.find(n => n.id === nodeId);
-    if (node) setHelpDialog(node.data.nodeType);
+    if (node && isWorkflowFlowNode(node)) setHelpDialog(node.data.nodeType);
     setContextMenu(null);
   }, [nodes]);
 
   // ---- Group selected nodes ----
   const handleGroupSelected = useCallback(() => {
-    const selected = nodes.filter(n => n.selected && n.type !== 'group');
+    const selected = nodes.filter(
+      (n): n is WorkflowFlowNode => Boolean(n.selected) && isWorkflowFlowNode(n)
+    );
     if (selected.length < 2) {
       toast.error('Select 2 or more nodes to create a group (hold Shift to multi-select)');
       setContextMenu(null);
@@ -874,7 +882,7 @@ function FlowEditor() {
     const maxX = Math.max(...selected.map(n => n.position.x + NODE_W)) + PAD_X;
     const maxY = Math.max(...selected.map(n => n.position.y + NODE_H)) + PAD_BOTTOM;
     const groupId = `group-${Date.now()}`;
-    const groupNode: Node = {
+    const groupNode: WorkflowGroupNode = {
       id: groupId,
       type: 'group',
       position: { x: minX, y: minY },
@@ -885,12 +893,12 @@ function FlowEditor() {
         onToggleCollapse: handleToggleGroupCollapse,
       },
     };
-    setNodes((nds: Node[]) => [
+    setNodes((nds: WorkflowCanvasNode[]) => [
       ...nds.filter(n => !selected.find(s => s.id === n.id)),
       groupNode,
       ...selected.map(n => ({
         ...n,
-        parentNode: groupId,
+        parentId: groupId,
         extent: 'parent' as const,
         position: { x: n.position.x - minX, y: n.position.y - minY },
       })),
@@ -901,18 +909,27 @@ function FlowEditor() {
 
   // ---- Toggle group collapse ----
   // Use a ref to access current nodes inside the edge updater without stale closure
-  const nodesRef = useRef<Node[]>([]);
+  const nodesRef = useRef<WorkflowCanvasNode[]>([]);
   useEffect(() => { nodesRef.current = nodes; }, [nodes]);
 
   const handleToggleGroupCollapse = useCallback((groupId: string) => {
     const currentNodes = nodesRef.current;
     const group = currentNodes.find(n => n.id === groupId);
     const collapsed = !group?.data?.collapsed;
-    const childIds = new Set(currentNodes.filter(n => n.parentNode === groupId).map(n => n.id));
+    const childIds = new Set(currentNodes.filter(n => n.parentId === groupId).map(n => n.id));
 
-    setNodes((nds: Node[]) => nds.map(n => {
-      if (n.id === groupId) return { ...n, data: { ...n.data, collapsed, onToggleCollapse: handleToggleGroupCollapse } };
-      if (n.parentNode === groupId) return { ...n, hidden: collapsed };
+    setNodes((nds: WorkflowCanvasNode[]) => nds.map(n => {
+      if (n.id === groupId && n.type === 'group') {
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            collapsed,
+            onToggleCollapse: handleToggleGroupCollapse,
+          },
+        };
+      }
+      if (n.parentId === groupId) return { ...n, hidden: collapsed };
       return n;
     }));
 
@@ -936,20 +953,20 @@ function FlowEditor() {
     }));
 
     if (mode === 'replace') {
-      setNodes(generatedNodes);
+      setNodes(generatedNodes as WorkflowCanvasNode[]);
       setEdges(edgesWithIds);
     } else {
       // Append: offset nodes to the right of existing content
       const offsetX = nodes.length > 0
         ? Math.max(...nodes.map(n => n.position.x)) + 350
         : 0;
-      setNodes((nds: Node[]) => [
+      setNodes((nds: WorkflowCanvasNode[]) => [
         ...nds,
         ...generatedNodes.map(n => ({
           ...n,
           id: `${n.id}-${timestamp}`,
           position: { x: n.position.x + offsetX, y: n.position.y },
-        })),
+        }) as WorkflowCanvasNode),
       ]);
       // Remap edge source/target to match new node IDs and ensure unique edge IDs
       const nodeIdMap = new Map(generatedNodes.map(n => [n.id, `${n.id}-${timestamp}`]));
@@ -977,7 +994,7 @@ function FlowEditor() {
       ...edge,
       id: edge.id || `edge-${edge.source}-${edge.target}-${index}-${timestamp}`,
     }));
-    setNodes(editedNodes);
+    setNodes(editedNodes as WorkflowCanvasNode[]);
     setEdges(edgesWithIds);
     setCompiledManifest(null); // require re-compile after AI edits
     setValidationErrors([]);
@@ -1007,9 +1024,9 @@ function FlowEditor() {
   const handleConfigChange = useCallback(
     (newConfig: Record<string, unknown>) => {
       if (!selectedNodeId) return;
-      setNodes((nodes: Node<WorkflowNodeData>[]) =>
-        nodes.map((n: Node<WorkflowNodeData>) =>
-          n.id === selectedNodeId
+      setNodes((nodes: WorkflowCanvasNode[]) =>
+        nodes.map((n) =>
+          n.id === selectedNodeId && isWorkflowFlowNode(n)
             ? { ...n, data: { ...n.data, config: newConfig } }
             : n
         )
@@ -1293,8 +1310,8 @@ function FlowEditor() {
         setValidationErrors(['Invalid template: missing workflow data']);
         return;
       }
-      const templateNodes = Array.isArray(wf.nodes) ? wf.nodes : [];
-      const templateEdges = Array.isArray(wf.edges) ? wf.edges : [];
+      const templateNodes = Array.isArray(wf.nodes) ? wf.nodes as WorkflowCanvasNode[] : [];
+      const templateEdges = Array.isArray(wf.edges) ? wf.edges as Edge[] : [];
       if (templateNodes.length > 500) {
         setValidationErrors(['Template too large: maximum 500 nodes allowed']);
         return;
@@ -2151,7 +2168,7 @@ function FlowEditor() {
 
         {/* ReactFlow Canvas */}
         <div className="flex-1 relative" ref={reactFlowWrapper}>
-          <ReactFlow
+          <ReactFlow<WorkflowCanvasNode, Edge>
             nodes={nodes}
             edges={edges}
             onNodesChange={onNodesChange}
@@ -2175,7 +2192,7 @@ function FlowEditor() {
             onReconnectEnd={onConnectEnd}
             reconnectRadius={10}
             nodeTypes={nodeTypes}
-            isValidConnection={isValidConnection}
+            isValidConnection={(connection) => isValidConnection(connection as Connection)}
             deleteKeyCode={isExecuting ? null : ['Delete', 'Backspace']}
             multiSelectionKeyCode={['Shift', 'Meta']}
             defaultEdgeOptions={{
@@ -2184,10 +2201,9 @@ function FlowEditor() {
               style: { stroke: '#3b82f6', strokeWidth: 2 },
               markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
               reconnectable: true,
-              selected: false,
             }}
             edgesFocusable={!isExecuting}
-            edgesUpdatable={!isExecuting}
+            edgesReconnectable={!isExecuting}
             fitView
             className="bg-gray-50 dark:bg-gray-900"
           >
@@ -2202,7 +2218,7 @@ function FlowEditor() {
         </div>
 
         {/* Right Sidebar - Config Panel */}
-        {selectedEdgeId && !selectedNode && (
+        {selectedEdgeId && !selectedWorkflowNode && (
           <div className="w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
             <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 z-10">
               <div className="flex items-center justify-between mb-2">
@@ -2260,7 +2276,7 @@ function FlowEditor() {
           </div>
         )}
 
-        {selectedNode && (
+        {selectedWorkflowNode && (
           <div className="w-96 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
             <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 z-10">
               <div className="flex items-center justify-between mb-2">
@@ -2276,10 +2292,10 @@ function FlowEditor() {
               </div>
               <div className="flex items-center gap-2">
                 <code className="text-xs font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-600 dark:text-gray-300">
-                  ID: {selectedNode.id}
+                  ID: {selectedWorkflowNode.id}
                 </code>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {selectedNode.data.nodeType}
+                  {selectedWorkflowNode.data.nodeType}
                 </span>
               </div>
             </div>
@@ -2287,9 +2303,9 @@ function FlowEditor() {
             <div className="p-4">
               {/* Step 4: Dynamic Node Config */}
               <DynamicNodeConfig
-                nodeId={selectedNode.id}
-                nodeType={selectedNode.data.nodeType}
-                config={selectedNode.data.config}
+                nodeId={selectedWorkflowNode.id}
+                nodeType={selectedWorkflowNode.data.nodeType}
+                config={selectedWorkflowNode.data.config}
                 connections={connections}
                 onConfigChange={handleConfigChange}
                 llmModels={llmModels}
@@ -2301,7 +2317,7 @@ function FlowEditor() {
               {!isExecuting && user && (
                 <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                   <CostEstimation
-                    nodes={nodes}
+                    nodes={workflowNodes}
                     edges={edges}
                     userBalance={user.credits || 0}
                   />
@@ -2358,7 +2374,7 @@ function FlowEditor() {
         open={showRunDialog}
         onClose={() => setShowRunDialog(false)}
         onRun={handleRunWithInputs}
-        nodes={nodes}
+        nodes={workflowNodes}
         isRunning={isExecuting}
       />
 

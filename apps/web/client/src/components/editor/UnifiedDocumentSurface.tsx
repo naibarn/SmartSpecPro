@@ -34,6 +34,7 @@ export default function UnifiedDocumentSurface({
   editorHeaderActions,
   editorUploadMetadata,
   editorLibraryScope = "all",
+  onOpenWikiLink,
 }: UnifiedDocumentSurfaceProps) {
   const [mode, setMode] = useState<EditorMode>("view");
   const [editorTemplate, setEditorTemplate] =
@@ -467,6 +468,7 @@ export default function UnifiedDocumentSurface({
           uploadMetadata={editorUploadMetadata}
           libraryScope={editorLibraryScope}
           viewZoom={viewZoom}
+          onOpenWikiLink={onOpenWikiLink}
         />
       </div>
 

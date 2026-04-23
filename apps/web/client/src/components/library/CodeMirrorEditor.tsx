@@ -1,5 +1,16 @@
-import React, { useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from "react";
-import CodeMirror, { EditorView, ReactCodeMirrorProps, ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import React, {
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  forwardRef,
+} from "react";
+import CodeMirror, {
+  EditorView,
+  ReactCodeMirrorProps,
+  ReactCodeMirrorRef,
+} from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { javascript } from "@codemirror/lang-javascript";
 import { python } from "@codemirror/lang-python";
@@ -63,7 +74,9 @@ export const LANGUAGE_EXTENSIONS: Record<string, () => Extension> = {
 /**
  * Detect language extension from file extension
  */
-export function detectLanguageExtension(fileExtension: string | undefined): Extension[] {
+export function detectLanguageExtension(
+  fileExtension: string | undefined
+): Extension[] {
   if (!fileExtension) {
     return [];
   }
@@ -123,6 +136,7 @@ interface CodeMirrorEditorProps {
   value: string;
   onChange: (value: string) => void;
   fileExtension?: string;
+  extensions?: Extension[];
   showLineNumbers?: boolean;
   height?: string;
   minHeight?: string;
@@ -144,213 +158,236 @@ export interface CodeMirrorEditorMethods {
 /**
  * CodeMirror-based code editor with syntax highlighting and line numbers
  */
-const CodeMirrorEditor = forwardRef<CodeMirrorEditorMethods, CodeMirrorEditorProps>(({
-  value,
-  onChange,
-  fileExtension,
-  showLineNumbers = true,
-  height = "70vh",
-  minHeight,
-  maxHeight,
-  placeholder = "Start typing...",
-  disabled = false,
-  className = "",
-}, ref: React.Ref<CodeMirrorEditorMethods>) => {
-  const editorRef = useRef<ReactCodeMirrorRef>(null);
-  const [internalShowLineNumbers, setInternalShowLineNumbers] = useState(() => {
-    if (typeof window === "undefined") {
-      return showLineNumbers;
-    }
-    const stored = localStorage.getItem("codemirror-line-numbers");
-    return stored !== null ? stored === "true" : showLineNumbers;
-  });
+const CodeMirrorEditor = forwardRef<
+  CodeMirrorEditorMethods,
+  CodeMirrorEditorProps
+>(
+  (
+    {
+      value,
+      onChange,
+      fileExtension,
+      extensions: externalExtensions = [],
+      showLineNumbers = true,
+      height = "70vh",
+      minHeight,
+      maxHeight,
+      placeholder = "Start typing...",
+      disabled = false,
+      className = "",
+    },
+    ref: React.Ref<CodeMirrorEditorMethods>
+  ) => {
+    const editorRef = useRef<ReactCodeMirrorRef>(null);
+    const [internalShowLineNumbers, setInternalShowLineNumbers] = useState(
+      () => {
+        if (typeof window === "undefined") {
+          return showLineNumbers;
+        }
+        const stored = localStorage.getItem("codemirror-line-numbers");
+        return stored !== null ? stored === "true" : showLineNumbers;
+      }
+    );
 
-  // Sync internal state with prop
-  useEffect(() => {
-    setInternalShowLineNumbers(showLineNumbers);
-  }, [showLineNumbers]);
+    // Sync internal state with prop
+    useEffect(() => {
+      setInternalShowLineNumbers(showLineNumbers);
+    }, [showLineNumbers]);
 
-  // Save to localStorage when changed
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("codemirror-line-numbers", String(internalShowLineNumbers));
-    }
-  }, [internalShowLineNumbers]);
+    // Save to localStorage when changed
+    useEffect(() => {
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          "codemirror-line-numbers",
+          String(internalShowLineNumbers)
+        );
+      }
+    }, [internalShowLineNumbers]);
 
-  // Expose methods to parent component
-  useImperativeHandle(ref, () => ({
-    insertText: (text: string) => {
-      const view = editorRef.current?.view;
-      if (!view) return;
+    // Expose methods to parent component
+    useImperativeHandle(ref, () => ({
+      insertText: (text: string) => {
+        const view = editorRef.current?.view;
+        if (!view) return;
 
-      const { from, to } = view.state.selection.main;
-      view.dispatch({
-        changes: { from, to, insert: text },
-        selection: { anchor: from + text.length },
+        const { from, to } = view.state.selection.main;
+        view.dispatch({
+          changes: { from, to, insert: text },
+          selection: { anchor: from + text.length },
+        });
+      },
+      wrapSelection: (before: string, after: string, defaultText = "") => {
+        const view = editorRef.current?.view;
+        if (!view) return;
+
+        const { from, to } = view.state.selection.main;
+        const selectedText = view.state.sliceDoc(from, to) || defaultText;
+        const newText = `${before}${selectedText}${after}`;
+
+        view.dispatch({
+          changes: { from, to, insert: newText },
+          selection: {
+            anchor: from + before.length,
+            head: from + before.length + selectedText.length,
+          },
+        });
+      },
+      replaceSelection: (text: string) => {
+        const view = editorRef.current?.view;
+        if (!view) return;
+
+        const { from, to } = view.state.selection.main;
+        view.dispatch({
+          changes: { from, to, insert: text },
+          selection: { anchor: from + text.length },
+        });
+      },
+      getSelection: () => {
+        const view = editorRef.current?.view;
+        if (!view) return "";
+
+        const { from, to } = view.state.selection.main;
+        return view.state.sliceDoc(from, to);
+      },
+      undo: () => {
+        const view = editorRef.current?.view;
+        if (!view) return;
+        cmUndo(view);
+      },
+      redo: () => {
+        const view = editorRef.current?.view;
+        if (!view) return;
+        cmRedo(view);
+      },
+    }));
+
+    const extensions = useMemo(() => {
+      const languageExt = detectLanguageExtension(fileExtension);
+      // Add editable extension
+      const editableExt = disabled ? [EditorView.editable.of(false)] : [];
+      // Add base theme for selection colors (higher specificity than regular theme)
+      const selectionTheme = EditorView.baseTheme({
+        "&light .cm-selectionBackground": {
+          backgroundColor: "#3b82f6 !important",
+        },
+        "&light.cm-focused .cm-selectionBackground": {
+          backgroundColor: "#3b82f6 !important",
+        },
+        "&light .cm-line::selection": {
+          backgroundColor: "#3b82f6 !important",
+          color: "#ffffff !important",
+        },
+        "&light .cm-content ::selection": {
+          backgroundColor: "#3b82f6 !important",
+          color: "#ffffff !important",
+        },
+        "&light ::selection": {
+          backgroundColor: "#3b82f6 !important",
+          color: "#ffffff !important",
+        },
       });
-    },
-    wrapSelection: (before: string, after: string, defaultText = "") => {
-      const view = editorRef.current?.view;
-      if (!view) return;
+      return [
+        ...languageExt,
+        ...editableExt,
+        drawSelection(),
+        selectionTheme,
+        ...externalExtensions,
+      ];
+    }, [fileExtension, disabled, externalExtensions]);
 
-      const { from, to } = view.state.selection.main;
-      const selectedText = view.state.sliceDoc(from, to) || defaultText;
-      const newText = `${before}${selectedText}${after}`;
-
-      view.dispatch({
-        changes: { from, to, insert: newText },
-        selection: { anchor: from + before.length, head: from + before.length + selectedText.length },
-      });
-    },
-    replaceSelection: (text: string) => {
-      const view = editorRef.current?.view;
-      if (!view) return;
-
-      const { from, to } = view.state.selection.main;
-      view.dispatch({
-        changes: { from, to, insert: text },
-        selection: { anchor: from + text.length },
-      });
-    },
-    getSelection: () => {
-      const view = editorRef.current?.view;
-      if (!view) return "";
-
-      const { from, to } = view.state.selection.main;
-      return view.state.sliceDoc(from, to);
-    },
-    undo: () => {
-      const view = editorRef.current?.view;
-      if (!view) return;
-      cmUndo(view);
-    },
-    redo: () => {
-      const view = editorRef.current?.view;
-      if (!view) return;
-      cmRedo(view);
-    },
-  }));
-
-  const extensions = useMemo(() => {
-    const languageExt = detectLanguageExtension(fileExtension);
-    // Add editable extension
-    const editableExt = disabled ? [EditorView.editable.of(false)] : [];
-    // Add base theme for selection colors (higher specificity than regular theme)
-    const selectionTheme = EditorView.baseTheme({
-      "&light .cm-selectionBackground": {
-        backgroundColor: "#3b82f6 !important",
-      },
-      "&light.cm-focused .cm-selectionBackground": {
-        backgroundColor: "#3b82f6 !important",
-      },
-      "&light .cm-line::selection": {
-        backgroundColor: "#3b82f6 !important",
-        color: "#ffffff !important",
-      },
-      "&light .cm-content ::selection": {
-        backgroundColor: "#3b82f6 !important",
-        color: "#ffffff !important",
-      },
-      "&light ::selection": {
-        backgroundColor: "#3b82f6 !important",
-        color: "#ffffff !important",
-      },
-    });
-    return [...languageExt, ...editableExt, drawSelection(), selectionTheme];
-  }, [fileExtension, disabled]);
-
-  const editorOptions: ReactCodeMirrorProps["basicSetup"] = useMemo(
-    () => ({
-      lineNumbers: internalShowLineNumbers,
-      highlightActiveLineGutter: internalShowLineNumbers,
-      highlightActiveLine: true,
-      foldGutter: true,
-      dropCursor: true,
-      allowMultipleSelections: true,
-      indentOnInput: true,
-      bracketMatching: true,
-      closeBrackets: true,
-      autocompletion: true,
-      rectangularSelection: true,
-      crosshairCursor: true,
-      highlightSelectionMatches: true,
-      closeBracketsKeymap: true,
-      searchKeymap: true,
-      foldKeymap: true,
-      completionKeymap: true,
-      lintKeymap: true,
-    }),
-    [internalShowLineNumbers]
-  );
-
-  const theme = useMemo(
-    () =>
-      EditorView.theme({
-        "&": {
-          height: height || "auto",
-          minHeight: minHeight || "320px",
-          maxHeight: maxHeight || "none",
-          fontSize: "14px",
-          backgroundColor: "#ffffff",
-          border: "1px solid #e2e8f0",
-          borderRadius: "0.375rem",
-        },
-        ".cm-scroller": {
-          fontFamily: '"Fira Code", "JetBrains Mono", "Courier New", monospace',
-          lineHeight: "1.6",
-        },
-        ".cm-gutters": {
-          backgroundColor: "#f8fafc",
-          color: "#64748b",
-          border: "none",
-          borderRight: "1px solid #e2e8f0",
-        },
-        ".cm-activeLineGutter": {
-          backgroundColor: "#e0f2fe",
-          color: "#0c4a6e",
-        },
-        ".cm-activeLine": {
-          backgroundColor: "#f0f9ff",
-        },
-        ".cm-selectionBackground": {
-          backgroundColor: "#3b82f6",
-        },
-        "&.cm-focused .cm-selectionBackground": {
-          backgroundColor: "#3b82f6",
-        },
-        ".cm-content ::selection": {
-          backgroundColor: "#3b82f6",
-          color: "#ffffff",
-        },
-        ".cm-line ::selection": {
-          backgroundColor: "#3b82f6",
-          color: "#ffffff",
-        },
-        "::selection": {
-          backgroundColor: "#3b82f6",
-          color: "#ffffff",
-        },
-        ".cm-selectionMatch": {
-          backgroundColor: "#fef08a !important", // Yellow-200 for search matches
-        },
-        ".cm-content": {
-          caretColor: "#2563eb",
-          padding: "8px 0",
-        },
-        ".cm-line": {
-          padding: "0 8px",
-        },
-        "&.cm-focused": {
-          outline: "2px solid #3b82f6",
-          outlineOffset: "2px",
-        },
+    const editorOptions: ReactCodeMirrorProps["basicSetup"] = useMemo(
+      () => ({
+        lineNumbers: internalShowLineNumbers,
+        highlightActiveLineGutter: internalShowLineNumbers,
+        highlightActiveLine: true,
+        foldGutter: true,
+        dropCursor: true,
+        allowMultipleSelections: true,
+        indentOnInput: true,
+        bracketMatching: true,
+        closeBrackets: true,
+        autocompletion: true,
+        rectangularSelection: true,
+        crosshairCursor: true,
+        highlightSelectionMatches: true,
+        closeBracketsKeymap: true,
+        searchKeymap: true,
+        foldKeymap: true,
+        completionKeymap: true,
+        lintKeymap: true,
       }),
-    [height, minHeight, maxHeight]
-  );
+      [internalShowLineNumbers]
+    );
 
-  return (
-    <div className={className}>
-      <style>{`
+    const theme = useMemo(
+      () =>
+        EditorView.theme({
+          "&": {
+            height: height || "auto",
+            minHeight: minHeight || "320px",
+            maxHeight: maxHeight || "none",
+            fontSize: "14px",
+            backgroundColor: "#ffffff",
+            border: "1px solid #e2e8f0",
+            borderRadius: "0.375rem",
+          },
+          ".cm-scroller": {
+            fontFamily:
+              '"Fira Code", "JetBrains Mono", "Courier New", monospace',
+            lineHeight: "1.6",
+          },
+          ".cm-gutters": {
+            backgroundColor: "#f8fafc",
+            color: "#64748b",
+            border: "none",
+            borderRight: "1px solid #e2e8f0",
+          },
+          ".cm-activeLineGutter": {
+            backgroundColor: "#e0f2fe",
+            color: "#0c4a6e",
+          },
+          ".cm-activeLine": {
+            backgroundColor: "#f0f9ff",
+          },
+          ".cm-selectionBackground": {
+            backgroundColor: "#3b82f6",
+          },
+          "&.cm-focused .cm-selectionBackground": {
+            backgroundColor: "#3b82f6",
+          },
+          ".cm-content ::selection": {
+            backgroundColor: "#3b82f6",
+            color: "#ffffff",
+          },
+          ".cm-line ::selection": {
+            backgroundColor: "#3b82f6",
+            color: "#ffffff",
+          },
+          "::selection": {
+            backgroundColor: "#3b82f6",
+            color: "#ffffff",
+          },
+          ".cm-selectionMatch": {
+            backgroundColor: "#fef08a !important", // Yellow-200 for search matches
+          },
+          ".cm-content": {
+            caretColor: "#2563eb",
+            padding: "8px 0",
+          },
+          ".cm-line": {
+            padding: "0 8px",
+          },
+          "&.cm-focused": {
+            outline: "2px solid #3b82f6",
+            outlineOffset: "2px",
+          },
+        }),
+      [height, minHeight, maxHeight]
+    );
+
+    return (
+      <div className={className}>
+        <style>{`
         .cm-editor .cm-selectionBackground {
           background-color: #3b82f6 !important;
         }
@@ -370,19 +407,20 @@ const CodeMirrorEditor = forwardRef<CodeMirrorEditorMethods, CodeMirrorEditorPro
           color: #ffffff !important;
         }
       `}</style>
-      <CodeMirror
-        ref={editorRef}
-        value={value}
-        height={height}
-        extensions={[...extensions, theme]}
-        onChange={(val) => onChange(val)}
-        placeholder={placeholder}
-        editable={!disabled}
-        basicSetup={editorOptions}
-      />
-    </div>
-  );
-});
+        <CodeMirror
+          ref={editorRef}
+          value={value}
+          height={height}
+          extensions={[...extensions, theme]}
+          onChange={val => onChange(val)}
+          placeholder={placeholder}
+          editable={!disabled}
+          basicSetup={editorOptions}
+        />
+      </div>
+    );
+  }
+);
 
 CodeMirrorEditor.displayName = "CodeMirrorEditor";
 
@@ -401,7 +439,7 @@ export function useLineNumbersToggle(initialValue = true) {
   });
 
   const toggleLineNumbers = () => {
-    setShowLineNumbers((prev) => {
+    setShowLineNumbers(prev => {
       const next = !prev;
       if (typeof window !== "undefined") {
         localStorage.setItem("codemirror-line-numbers", String(next));

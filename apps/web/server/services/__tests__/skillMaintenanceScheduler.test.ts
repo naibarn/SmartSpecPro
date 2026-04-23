@@ -85,10 +85,26 @@ describe("skillMaintenanceScheduler", () => {
     ]);
 
     analyzeSkillForMaintenanceMock
-      .mockReturnValueOnce({ isGenjsCandidate: false })
-      .mockReturnValueOnce({ isGenjsCandidate: true });
+      .mockReturnValueOnce({
+        isGenjsCandidate: false,
+        parallelUpgradeEligible: false,
+        upgradePriorityScore: 12,
+        upgradePriorityTier: "low",
+      })
+      .mockReturnValueOnce({
+        isGenjsCandidate: true,
+        parallelUpgradeEligible: true,
+        upgradePriorityScore: 88,
+        upgradePriorityTier: "critical",
+      });
     persistSkillMaintenanceAnalysisMock.mockResolvedValue({
-      analysis: { qualityScore: 88, isGenjsCandidate: true },
+      analysis: {
+        qualityScore: 88,
+        isGenjsCandidate: true,
+        upgradePriorityScore: 88,
+        upgradePriorityTier: "critical",
+        parallelUpgradeEligible: true,
+      },
       recommendations: [{ id: 1 }],
     });
 
@@ -120,9 +136,20 @@ describe("skillMaintenanceScheduler", () => {
     };
 
     const releaseWhereMock = vi.fn().mockResolvedValue(undefined);
-    analyzeSkillForMaintenanceMock.mockReturnValue({ isGenjsCandidate: true });
+    analyzeSkillForMaintenanceMock.mockReturnValue({
+      isGenjsCandidate: true,
+      parallelUpgradeEligible: true,
+      upgradePriorityScore: 91,
+      upgradePriorityTier: "critical",
+    });
     persistSkillMaintenanceAnalysisMock.mockResolvedValue({
-      analysis: { qualityScore: 91, isGenjsCandidate: true },
+      analysis: {
+        qualityScore: 91,
+        isGenjsCandidate: true,
+        upgradePriorityScore: 91,
+        upgradePriorityTier: "critical",
+        parallelUpgradeEligible: true,
+      },
       recommendations: [{ id: 1 }],
     });
 
@@ -177,5 +204,59 @@ describe("skillMaintenanceScheduler", () => {
     expect(result.scannedSchedules).toBe(1);
     expect(result.executedSchedules).toBe(1);
     expect(releaseWhereMock).toHaveBeenCalled();
+  });
+
+  it("sorts maintenance sweep results by upgrade priority", async () => {
+    const db = buildSweepDb([
+      { id: 1, slug: "low-priority", name: "Low", description: null, folderPath: "/low", executionMode: "llm-only", configJson: {}, sandboxProfileSlug: null, requiresNetwork: null, requiresBrowser: null },
+      { id: 2, slug: "high-priority", name: "High", description: null, folderPath: "/high", executionMode: "llm-only", configJson: {}, sandboxProfileSlug: null, requiresNetwork: null, requiresBrowser: null },
+    ]);
+
+    analyzeSkillForMaintenanceMock
+      .mockReturnValueOnce({
+        isGenjsCandidate: false,
+        parallelUpgradeEligible: true,
+        upgradePriorityScore: 20,
+        upgradePriorityTier: "low",
+      })
+      .mockReturnValueOnce({
+        isGenjsCandidate: false,
+        parallelUpgradeEligible: true,
+        upgradePriorityScore: 85,
+        upgradePriorityTier: "critical",
+      });
+
+    persistSkillMaintenanceAnalysisMock.mockResolvedValueOnce({
+      analysis: {
+        qualityScore: 70,
+        isGenjsCandidate: false,
+        upgradePriorityScore: 20,
+        upgradePriorityTier: "low",
+        parallelUpgradeEligible: true,
+      },
+      recommendations: [],
+    });
+    persistSkillMaintenanceAnalysisMock.mockResolvedValueOnce({
+      analysis: {
+        qualityScore: 90,
+        isGenjsCandidate: false,
+        upgradePriorityScore: 85,
+        upgradePriorityTier: "critical",
+        parallelUpgradeEligible: true,
+      },
+      recommendations: [],
+    });
+
+    const result = await executeSkillMaintenanceSweep({
+      db,
+      filters: {
+        limit: 10,
+        upgradeLaneOnly: true,
+      },
+    });
+
+    expect(result.results.map((item) => item.skillSlug)).toEqual(["high-priority", "low-priority"]);
+    expect(result.results[0]?.upgradePriorityScore).toBe(85);
+    expect(result.results[0]?.upgradePriorityTier).toBe("critical");
   });
 });

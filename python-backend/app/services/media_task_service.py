@@ -5,7 +5,11 @@ Handles async media generation task management
 
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
+from decimal import Decimal
+from enum import Enum
+from uuid import UUID
+from datetime import timedelta
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -21,6 +25,51 @@ MARKDOWN_FENCED_BLOCK_GLOBAL_PATTERN = re.compile(
 )
 MARKDOWN_FENCE_LINE_PATTERN = re.compile(r"^\s*```[A-Za-z0-9_-]*\s*$", re.MULTILINE)
 LEADING_JSON_LABEL_PATTERN = re.compile(r"^json\s*\n([\s\S]*)$", re.IGNORECASE)
+
+
+def _make_json_safe(value):
+    """Recursively convert values into JSON-serializable primitives."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+
+    if isinstance(value, Decimal):
+        try:
+            if value == value.to_integral_value():
+                return int(value)
+            return float(value)
+        except Exception:
+            return str(value)
+
+    if isinstance(value, datetime):
+        return value.isoformat()
+
+    if isinstance(value, UUID):
+        return str(value)
+
+    if isinstance(value, Enum):
+        return _make_json_safe(value.value)
+
+    if isinstance(value, dict):
+        return {str(key): _make_json_safe(item) for key, item in value.items()}
+
+    if isinstance(value, (list, tuple, set)):
+        return [_make_json_safe(item) for item in value]
+
+    model_dump = getattr(value, "model_dump", None)
+    if callable(model_dump):
+        try:
+            return _make_json_safe(model_dump())
+        except Exception:
+            return str(value)
+
+    to_dict = getattr(value, "dict", None)
+    if callable(to_dict):
+        try:
+            return _make_json_safe(to_dict())
+        except Exception:
+            return str(value)
+
+    return str(value)
 
 
 def normalize_media_prompt(prompt: Optional[str]) -> str:
@@ -78,7 +127,7 @@ class MediaTaskService:
             status=TaskStatus.PENDING.value,
             model=model,
             prompt=normalized_prompt,
-            parameters=parameters or {},
+            parameters=_make_json_safe(parameters or {}),
         )
         db.add(task)
         await db.commit()
@@ -123,7 +172,7 @@ class MediaTaskService:
         if result_url:
             task.result_url = result_url
         if result_data:
-            task.result_data = result_data
+            task.result_data = _make_json_safe(result_data)
         if error_message:
             task.error_message = error_message
         if credits_used is not None:
@@ -335,7 +384,7 @@ class MediaTaskService:
         if result_url:
             task.result_url = result_url
         if result_data:
-            task.result_data = result_data
+            task.result_data = _make_json_safe(result_data)
         if error_message:
             task.error_message = error_message
         if credits_used is not None:

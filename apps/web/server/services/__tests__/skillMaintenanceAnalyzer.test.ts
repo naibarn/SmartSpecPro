@@ -109,6 +109,22 @@ describe("skillMaintenanceAnalyzer", () => {
     expect(result.recommendations.some((item) => item.recommendationType === "migrate-to-genjs")).toBe(true);
   });
 
+  it("creates a legacy upgrade recommendation even for sparse legacy skills", () => {
+    const skillDir = createSkillDir({
+      "SKILL.md": "---\nname: Old Skill\ncategory: automation\n---\n# Old Skill\n",
+    });
+
+    const result = analyzeSkillForMaintenance({
+      slug: "old-skill",
+      name: "Old Skill",
+      folderPath: skillDir,
+      executionMode: "llm-only",
+    });
+
+    expect(result.recommendations.some((item) => item.recommendationType === "native-bundle-upgrade")).toBe(true);
+    expect(result.parallelUpgradeEligible).toBe(true);
+  });
+
   it("flags sandbox-command skills without a sandbox profile", () => {
     const skillDir = createSkillDir({
       "SKILL.md": "---\nname: Command Skill\ncategory: automation\nexecution_mode: sandbox-command\n---\n# Command\n",

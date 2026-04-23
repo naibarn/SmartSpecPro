@@ -58,7 +58,7 @@ Search strategy (use web_search):
 1. `"{functionality} library {language}"` 
 2. `"{functionality} open source"`
 3. `"{functionality} SaaS tool"`
-4. `"best {functionality} solution 2024"`
+4. `"best {functionality} solution"`
 5. `"{functionality} npm/pip/cargo package"` (based on ecosystem)
 
 Categorize findings:
@@ -227,7 +227,7 @@ Score each solution based on:
 
 For features with meaningful cost implications (auth, payments, email, infrastructure), provide a Total Cost of Ownership (TCO) comparison.
 
-#### 8.1 When to Include Cost Analysis
+#### 9.1 When to Include Cost Analysis
 
 Include cost table when:
 - SaaS options have monthly fees > $10
@@ -236,9 +236,10 @@ Include cost table when:
 - Comparing multiple paid services
 - Security-sensitive features (auth, payments)
 
-#### 8.2 Cost Calculation
+#### 9.2 Cost Calculation
 
 Use the pricing reference: [references/pricing-data.md](references/pricing-data.md)
+Treat those price tables as a baseline only and verify live pricing before making a final recommendation.
 
 **Formula:**
 ```
@@ -250,7 +251,7 @@ Where:
 - Maintenance (SaaS) = $0
 ```
 
-#### 8.3 Cost Table Format
+#### 9.3 Cost Table Format
 
 ```markdown
 ## 💰 Cost Analysis
@@ -266,7 +267,7 @@ Where:
 ⚠️ **Hidden costs:** [Security audits, compliance, on-call burden]
 ```
 
-#### 8.4 Hidden Costs to Surface
+#### 9.4 Hidden Costs to Surface
 
 Always mention relevant hidden costs:
 - **Security audits**: $5K-50K for custom auth systems
@@ -275,7 +276,7 @@ Always mention relevant hidden costs:
 - **Opportunity cost**: Time not spent on core product
 - **Technical debt**: Custom code needs maintenance forever
 
-#### 8.5 Hidden Costs to Surface
+#### 9.5 Hidden Costs to Surface
 
 Always mention relevant hidden costs:
 - **Auth complexity**: "DIY is 3x longer than estimated"
@@ -288,7 +289,7 @@ Always mention relevant hidden costs:
 
 ---
 
-### Step 9: Thailand Market Context (NEW - v2.1.0)
+### Step 10: Thailand Market Context (NEW - v2.1.0)
 
 When Thailand-specific context is detected:
 
@@ -328,7 +329,7 @@ Include section:
 
 ---
 
-### Step 10: Alternative Recommendations by Scenario (NEW - v2.1.0)
+### Step 11: Alternative Recommendations by Scenario (NEW - v2.1.0)
 
 Provide multiple recommendation paths based on user priorities:
 

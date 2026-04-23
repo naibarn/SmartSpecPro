@@ -4,7 +4,7 @@
 
 import { fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 
 import { AgencySidebar } from "../AgencySidebar";
 import { NodePropertyPanel } from "../NodePropertyPanel";
@@ -19,6 +19,18 @@ vi.mock("@/lib/trpc", () => ({
       },
     },
   },
+}));
+
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    t: (key: string) =>
+      ({
+        "builder.browserSessionProperties": "Browser Session Properties",
+      })[key] ?? key,
+    i18n: { exists: () => false },
+    locale: "en",
+    setLocale: vi.fn(),
+  }),
 }));
 
 describe("Agency Browser Session builder", () => {

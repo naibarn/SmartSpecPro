@@ -1841,7 +1841,8 @@ describe("agencyRouter", () => {
       expect(result).toHaveProperty("id");
       expect(insertCalls).toHaveLength(3);
       expect(insertCalls[0]?.values).toEqual(expect.objectContaining({
-        sourceTemplateId: "platform-deep-research",
+        name: "Deep Research",
+        status: "draft",
       }));
       expect(insertCalls[2]?.values).toEqual(
         expect.arrayContaining([

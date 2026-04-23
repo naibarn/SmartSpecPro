@@ -5,6 +5,7 @@ import type {
   LocalSkillStagedFileDescriptor,
   ResolvedLocalSkillPolicy,
 } from "../types/capability";
+import { measureLocalRuntimeCall } from "../../../lib/runtimePerformanceProfiler";
 
 export interface TauriLocalSkillExecutionResult {
   success: boolean;
@@ -248,9 +249,20 @@ export function isTauriDesktopRuntime(): boolean {
   return typeof window !== "undefined" && (window as any).__TAURI__ != null;
 }
 
-async function invokeTauri<T>(command: string, payload?: Record<string, unknown>): Promise<T> {
+async function invokeTauri<T>(
+  command: string,
+  payload?: Record<string, unknown>,
+  options?: {
+    profileOperation?: string | false;
+  },
+): Promise<T> {
   const { invoke } = await import("@tauri-apps/api/core");
-  return invoke<T>(command, payload);
+  if (options?.profileOperation === false) {
+    return invoke<T>(command, payload);
+  }
+  return measureLocalRuntimeCall(options?.profileOperation ?? command, () =>
+    invoke<T>(command, payload),
+  );
 }
 
 export async function executeTauriLocalHttpBackendChatCompletion(
@@ -628,109 +640,126 @@ export async function executeTauriLocalGemmaTextStream(
   };
   const handleAbort = () => {
     abortRequested = true;
-    void invokeTauri<boolean>("local_llm_cancel_stream", {
-      request: {
-        requestId,
-      },
-    }).catch(() => false);
-  };
-  try {
-    const { listen } = await import("@tauri-apps/api/event");
-    const completionPromise = new Promise<TauriLocalGemmaTextResult>(
-      (resolve) => {
-        resolveCompletion = resolve;
-      },
-    );
-
-    chunkUnlisten = await listen<TauriLocalGemmaTextChunkEvent>(
-      "local-llm-chunk",
-      (event) => {
-        const payload = event.payload;
-        if (payload.requestId !== requestId) {
-          return;
-        }
-        receivedChunkCount += 1;
-        input.onChunk?.(payload.accumulatedText, payload.chunk);
-      },
-    );
-
-    completeUnlisten = await listen<TauriLocalGemmaTextCompleteEvent>(
-      "local-llm-complete",
-      (event) => {
-        const payload = event.payload;
-        if (payload.requestId !== requestId || !resolveCompletion) {
-          return;
-        }
-        cleanup();
-        const complete = async () => {
-          const finalText = payload.text ?? "";
-          if (abortRequested) {
-            resolveCompletion?.({
-              success: false,
-              profileId: payload.profileId,
-              text: "",
-              error: TAURI_LOCAL_RUNTIME_ABORTED_ERROR,
-            });
-            return;
-          }
-          if (
-            payload.success &&
-            finalText.trim().length > 0 &&
-            receivedChunkCount <= 1
-          ) {
-            await emitPseudoStreamingText({
-              text: finalText,
-              onChunk: input.onChunk,
-            });
-          }
-          resolveCompletion?.({
-            success: payload.success,
-            profileId: payload.profileId,
-            text: finalText,
-            error: payload.error,
-          });
-        };
-        void complete();
-      },
-    );
-
-    streamTimeout = setTimeout(() => {
-      if (!resolveCompletion) {
-        return;
-      }
-      void invokeTauri<boolean>("local_llm_cancel_stream", {
+    void invokeTauri<boolean>(
+      "local_llm_cancel_stream",
+      {
         request: {
           requestId,
         },
-      }).catch(() => false);
-      cleanup();
-      resolveCompletion({
-        success: false,
-        profileId: input.profileId,
-        text: "",
-        error: abortRequested
-          ? TAURI_LOCAL_RUNTIME_ABORTED_ERROR
-          : "local_llm_stream_timeout",
-      });
-    }, input.timeoutMs ?? 180_000);
-
-    input.signal?.addEventListener("abort", handleAbort, { once: true });
-    if (abortRequested) {
-      throw new Error(TAURI_LOCAL_RUNTIME_ABORTED_ERROR);
-    }
-
-    await invokeTauri<void>("local_llm_generate_stream", {
-      request: {
-        requestId,
-        profileId: input.profileId,
-        prompt: input.prompt,
       },
-    });
-    const result = await completionPromise;
-    if (result.error === TAURI_LOCAL_RUNTIME_ABORTED_ERROR) {
-      throw new Error(TAURI_LOCAL_RUNTIME_ABORTED_ERROR);
-    }
-    return result;
+      { profileOperation: false },
+    ).catch(() => false);
+  };
+  try {
+    return await measureLocalRuntimeCall(
+      "local_llm_generate_stream_end_to_end",
+      async () => {
+        const { listen } = await import("@tauri-apps/api/event");
+        const completionPromise = new Promise<TauriLocalGemmaTextResult>(
+          (resolve) => {
+            resolveCompletion = resolve;
+          },
+        );
+
+        chunkUnlisten = await listen<TauriLocalGemmaTextChunkEvent>(
+          "local-llm-chunk",
+          (event) => {
+            const payload = event.payload;
+            if (payload.requestId !== requestId) {
+              return;
+            }
+            receivedChunkCount += 1;
+            input.onChunk?.(payload.accumulatedText, payload.chunk);
+          },
+        );
+
+        completeUnlisten = await listen<TauriLocalGemmaTextCompleteEvent>(
+          "local-llm-complete",
+          (event) => {
+            const payload = event.payload;
+            if (payload.requestId !== requestId || !resolveCompletion) {
+              return;
+            }
+            cleanup();
+            const complete = async () => {
+              const finalText = payload.text ?? "";
+              if (abortRequested) {
+                resolveCompletion?.({
+                  success: false,
+                  profileId: payload.profileId,
+                  text: "",
+                  error: TAURI_LOCAL_RUNTIME_ABORTED_ERROR,
+                });
+                return;
+              }
+              if (
+                payload.success &&
+                finalText.trim().length > 0 &&
+                receivedChunkCount <= 1
+              ) {
+                await emitPseudoStreamingText({
+                  text: finalText,
+                  onChunk: input.onChunk,
+                });
+              }
+              resolveCompletion?.({
+                success: payload.success,
+                profileId: payload.profileId,
+                text: finalText,
+                error: payload.error,
+              });
+            };
+            void complete();
+          },
+        );
+
+        streamTimeout = setTimeout(() => {
+          if (!resolveCompletion) {
+            return;
+          }
+          void invokeTauri<boolean>(
+            "local_llm_cancel_stream",
+            {
+              request: {
+                requestId,
+              },
+            },
+            { profileOperation: false },
+          ).catch(() => false);
+          cleanup();
+          resolveCompletion({
+            success: false,
+            profileId: input.profileId,
+            text: "",
+            error: abortRequested
+              ? TAURI_LOCAL_RUNTIME_ABORTED_ERROR
+              : "local_llm_stream_timeout",
+          });
+        }, input.timeoutMs ?? 180_000);
+
+        input.signal?.addEventListener("abort", handleAbort, { once: true });
+        if (abortRequested) {
+          throw new Error(TAURI_LOCAL_RUNTIME_ABORTED_ERROR);
+        }
+
+        await invokeTauri<void>(
+          "local_llm_generate_stream",
+          {
+            request: {
+              requestId,
+              profileId: input.profileId,
+              prompt: input.prompt,
+            },
+          },
+          { profileOperation: false },
+        );
+        const result = await completionPromise;
+        if (result.error === TAURI_LOCAL_RUNTIME_ABORTED_ERROR) {
+          throw new Error(TAURI_LOCAL_RUNTIME_ABORTED_ERROR);
+        }
+        return result;
+      },
+    );
   } catch (error) {
     cleanup();
     if (abortRequested) {

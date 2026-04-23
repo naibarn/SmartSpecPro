@@ -1,0 +1,31 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/104-md-knowledge-vault-production-readiness/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/104-md-knowledge-vault-production-readiness/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-index-job-payload-and-refresh-worker",
+    "section-02-migration-integration-tests-and-db-safety",
+    "section-03-context-pack-approval-workflow",
+    "section-04-agent-skill-memory-picker-and-citations",
+    "section-05-knowledge-vault-ui-navigation-and-curation",
+    "section-06-observability-release-gates-and-leakage-safety",
+    "section-07-snapshot-context-packs-and-auditability",
+    "section-08-feature-flags-rollout-and-access-policy",
+    "section-09-canvas-graph-and-spatial-knowledge-productization",
+    "section-10-end-to-end-adoption-flows"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-21T12:46:50.781555+00:00"
+}

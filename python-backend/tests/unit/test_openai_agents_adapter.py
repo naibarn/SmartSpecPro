@@ -4,6 +4,7 @@ import pytest
 
 from app.services.openai_agents_adapter import (
     OpenAIAgentsAdapterError,
+    OpenAIAgentsAdapter,
     RegisteredRuntimeHandoff,
     RegisteredRuntimeTool,
     RuntimeScope,
@@ -149,3 +150,13 @@ def test_tool_output_is_labeled_untrusted():
     assert envelope["trusted"] is False
     assert envelope["trustLevel"] == "tool_generated_untrusted"
     assert envelope["toolSlug"] == "research_tool"
+
+
+def test_health_reports_supported_contract_versions():
+    adapter = OpenAIAgentsAdapter()
+
+    health = adapter.health()
+
+    assert health["supportedRuntimeContractVersions"] == [1, 2]
+    assert health["supportedTraceSchemaVersions"] == [1, 2]
+    assert health["supportedCheckpointSchemaVersions"] == [1, 2]

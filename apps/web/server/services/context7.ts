@@ -4,6 +4,9 @@
  * Uses the MCP Streamable HTTP transport (JSON-RPC 2.0 over HTTP).
  */
 
+import type { ContextStateHints } from "../../shared/contextEngine";
+import { buildContextToolStateHintsFromResult } from "./contextToolService";
+
 const CONTEXT7_MCP_URL = "https://mcp.context7.com/mcp";
 const REQUEST_TIMEOUT = 15_000; // 15 seconds
 
@@ -133,7 +136,7 @@ export async function queryDocs(
 export async function fetchDocsForMessage(
   message: string,
   apiKey?: string,
-): Promise<{ docs: string; libraryName: string } | null> {
+): Promise<{ docs: string; libraryName: string; contextState?: ContextStateHints } | null> {
   // Extract library name from message
   const libraryName = extractLibraryName(message);
   if (!libraryName) return null;
@@ -169,7 +172,23 @@ export async function fetchDocsForMessage(
     `[Context7] Fetched ${docs.length} chars of documentation for ${library.name}`,
   );
 
-  return { docs, libraryName: library.name };
+  const contextState = buildContextToolStateHintsFromResult({
+    title: `Context7 docs: ${library.name}`,
+    content: docs,
+    ownerType: "agent",
+    ownerId: "context7",
+    sourceRef: `context7:${library.libraryId}`,
+    source: "semantic",
+    includedReason: `Context7 documentation for ${library.name}`,
+    trust: "derived",
+    freshness: "recent",
+  });
+
+  return {
+    docs,
+    libraryName: library.name,
+    contextState: Object.keys(contextState).length > 0 ? contextState : undefined,
+  };
 }
 
 /**

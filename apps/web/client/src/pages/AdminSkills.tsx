@@ -241,43 +241,43 @@ const categoryIcons: Record<string, typeof Sparkles> = {
   other: Brain,
 };
 
-// Category labels
-const categoryLabels: Record<string, string> = {
-  image_generation: "Image Generation",
-  image_prompt_generation: "Create Prompt for Image Generation",
-  video_generation: "Video Generation",
-  video_prompt_generation: "Create Prompt for Video Generation",
-  image_video_generation: "Image/Video Generation",
-  audio_generation: "Audio Generation",
-  article_generation: "Article Generation",
-  slide_generation: "Slide Generation",
-  product_review: "Product Review",
-  sound_effects: "Sound Effects",
-  prompt_enhancement: "Prompt Enhancement",
-  code_assistant: "Code Assistant",
-  document_analysis: "Document Analysis",
-  web_search: "Web Search",
-  data_analysis: "Data Analysis",
-  translation: "Translation",
-  summarization: "Summarization",
-  chat_assistant: "Chat Assistant",
-  automation: "Automation",
-  other: "Other",
+// Category label keys
+const categoryLabelKeys: Record<string, string> = {
+  image_generation: "admin.skillsPage.categoryLabels.imageGeneration",
+  image_prompt_generation: "admin.skillsPage.categoryLabels.imagePromptGeneration",
+  video_generation: "admin.skillsPage.categoryLabels.videoGeneration",
+  video_prompt_generation: "admin.skillsPage.categoryLabels.videoPromptGeneration",
+  image_video_generation: "admin.skillsPage.categoryLabels.imageVideoGeneration",
+  audio_generation: "admin.skillsPage.categoryLabels.audioGeneration",
+  article_generation: "admin.skillsPage.categoryLabels.articleGeneration",
+  slide_generation: "admin.skillsPage.categoryLabels.slideGeneration",
+  product_review: "admin.skillsPage.categoryLabels.productReview",
+  sound_effects: "admin.skillsPage.categoryLabels.soundEffects",
+  prompt_enhancement: "admin.skillsPage.categoryLabels.promptEnhancement",
+  code_assistant: "admin.skillsPage.categoryLabels.codeAssistant",
+  document_analysis: "admin.skillsPage.categoryLabels.documentAnalysis",
+  web_search: "admin.skillsPage.categoryLabels.webSearch",
+  data_analysis: "admin.skillsPage.categoryLabels.dataAnalysis",
+  translation: "admin.skillsPage.categoryLabels.translation",
+  summarization: "admin.skillsPage.categoryLabels.summarization",
+  chat_assistant: "admin.skillsPage.categoryLabels.chatAssistant",
+  automation: "admin.skillsPage.categoryLabels.automation",
+  other: "admin.skillsPage.categoryLabels.other",
 };
 
-const executionModeLabels: Record<
+const executionModeLabelKeys: Record<
   SkillExecutionMode,
   string
 > = {
-  "llm-only": "LLM Only (uses skill manifest markdown as system prompt)",
-  "enhance-prompt": "Enhance Prompt (specialized prompt enhancement endpoint)",
-  "media-generate": "Media Generate (LLM prompt + media API)",
-  python: "Python (runs python/skill.py via subprocess)",
-  "sandbox-code": "Sandbox Code (isolated code execution container)",
-  "sandbox-command": "Sandbox Command (stages skill files and runs entry commands)",
-  "sandbox-browser": "Sandbox Browser (browser automation container)",
-  "sandbox-file": "Sandbox File (isolated document/file processing)",
-  "sandbox-media": "Sandbox Media (isolated media processing container)",
+  "llm-only": "admin.skillsPage.executionModes.llmOnly",
+  "enhance-prompt": "admin.skillsPage.executionModes.enhancePrompt",
+  "media-generate": "admin.skillsPage.executionModes.mediaGenerate",
+  python: "admin.skillsPage.executionModes.python",
+  "sandbox-code": "admin.skillsPage.executionModes.sandboxCode",
+  "sandbox-command": "admin.skillsPage.executionModes.sandboxCommand",
+  "sandbox-browser": "admin.skillsPage.executionModes.sandboxBrowser",
+  "sandbox-file": "admin.skillsPage.executionModes.sandboxFile",
+  "sandbox-media": "admin.skillsPage.executionModes.sandboxMedia",
 };
 
 function isSandboxExecutionMode(
@@ -405,57 +405,61 @@ function applySandboxDefaultsToNewSkill<
 }
 
 function getExecutionModeHelperText(
+  t: (key: string, params?: string | Record<string, string | number>) => string,
   category: string,
   executionMode: SkillExecutionMode | null | undefined,
 ): string {
   if (category === "slide_generation" && executionMode === "sandbox-command") {
-    return "Recommended for Node/MJS slide skills such as modern-editorial-slide. Stages the skill bundle in sandbox, installs package.json dependencies, then runs the declared entry command.";
+    return t("admin.skillsPage.executionModeHelp.slideSandboxCommand");
   }
   if (category === "slide_generation" && executionMode === "llm-only") {
-    return "Uses the skill markdown as a slide-layout planning prompt only. This does not execute src/*.mjs renderers.";
+    return t("admin.skillsPage.executionModeHelp.slideLlmOnly");
   }
   if (executionMode === "media-generate") {
     const mediaType = getMediaModelTypeForSkillCategory(category);
     if (mediaType === "audio") {
-      return "LLM generates structured audio prompt JSON, then auto-calls the audio API.";
+      return t("admin.skillsPage.executionModeHelp.mediaGenerateAudio");
     }
     if (mediaType === "video") {
-      return "LLM generates optimized video prompt JSON, then auto-calls the video generation API.";
+      return t("admin.skillsPage.executionModeHelp.mediaGenerateVideo");
     }
-    return "LLM generates optimized prompt JSON, then auto-calls the media generation API.";
+    return t("admin.skillsPage.executionModeHelp.mediaGenerateDefault");
   }
   if (executionMode === "enhance-prompt") {
-    return "Uses the specialized prompt-enhancement endpoint for prompt-creation skills.";
+    return t("admin.skillsPage.executionModeHelp.enhancePrompt");
   }
   if (executionMode === "python") {
-    return "Runs python/skill.py as subprocess. Input: JSON stdin. Output: JSON stdout {success, output}.";
+    return t("admin.skillsPage.executionModeHelp.python");
   }
   if (executionMode === "sandbox-command") {
-    return "Stages the skill bundle into an isolated sandbox, runs shell commands, and collects declared output artifacts.";
+    return t("admin.skillsPage.executionModeHelp.sandboxCommand");
   }
   if (executionMode === "sandbox-code") {
-    return "Runs code inside an isolated sandbox profile without falling back to the local server process.";
+    return t("admin.skillsPage.executionModeHelp.sandboxCode");
   }
   if (executionMode === "sandbox-browser") {
-    return "Runs browser-enabled automation inside a Playwright-capable sandbox profile.";
+    return t("admin.skillsPage.executionModeHelp.sandboxBrowser");
   }
   if (executionMode === "sandbox-file") {
-    return "Processes files inside an isolated sandbox profile for document/file workflows.";
+    return t("admin.skillsPage.executionModeHelp.sandboxFile");
   }
   if (executionMode === "sandbox-media") {
-    return "Processes media inside an isolated sandbox profile for heavy render/transcode tasks.";
+    return t("admin.skillsPage.executionModeHelp.sandboxMedia");
   }
-  return "Uses the skill manifest markdown as system prompt for LLM (default).";
+  return t("admin.skillsPage.executionModeHelp.llmOnly");
 }
 
-function getNativeBundleLabel(skill: Pick<Skill, "hasLocalFolder" | "nativeBundleReady">): string {
+function getNativeBundleLabel(
+  t: (key: string, params?: string | Record<string, string | number>) => string,
+  skill: Pick<Skill, "hasLocalFolder" | "nativeBundleReady">,
+): string {
   if (skill.nativeBundleReady) {
-    return "Native";
+    return t("admin.skillsPage.nativeBundleLabels.native");
   }
   if (skill.hasLocalFolder) {
-    return "Legacy";
+    return t("admin.skillsPage.nativeBundleLabels.legacy");
   }
-  return "Missing";
+  return t("admin.skillsPage.nativeBundleLabels.missing");
 }
 
 function getMediaModelsForCategory(
@@ -548,6 +552,20 @@ export default function AdminSkills() {
   const utils = trpc.useUtils();
   const zipInputRef = useRef<HTMLInputElement>(null);
   const legacyUpgradeQueueFilterStorageKey = "admin.skills.legacyQueueFilter";
+  const categoryLabels = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(categoryLabelKeys).map(([key, translationKey]) => [key, t(translationKey)]),
+      ) as Record<string, string>,
+    [t],
+  );
+  const executionModeLabels = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(executionModeLabelKeys).map(([key, translationKey]) => [key, t(translationKey)]),
+      ) as Record<SkillExecutionMode, string>,
+    [t],
+  );
 
   // UI state
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -919,6 +937,14 @@ export default function AdminSkills() {
 
     return Array.from(groups.values());
   }, [maintenanceRecommendations]);
+  const maintenanceEligibleRecommendationIds = useMemo(
+    () => maintenanceRecommendationGroups.flatMap((group) => (
+      group.recommendations
+        .filter((item) => item.isAutoApplySafe && item.status !== "applied" && item.status !== "dismissed")
+        .map((item) => item.id)
+    )),
+    [maintenanceRecommendationGroups],
+  );
   const maintenanceExpandedSkillIdSet = useMemo(() => new Set(expandedMaintenanceSkillIds), [expandedMaintenanceSkillIds]);
   const legacyUpgradeQueueItems = (legacyUpgradeQueue || []) as LegacyUpgradeQueueItem[];
   const legacyUpgradeFilteredItems = useMemo(() => {
@@ -1136,6 +1162,12 @@ export default function AdminSkills() {
       recommendationIds: group.recommendations
         .filter((item) => item.isAutoApplySafe && item.status !== "applied" && item.status !== "dismissed")
         .map((item) => item.id),
+    });
+  }
+
+  function requestEligibleMaintenanceApplyForView() {
+    applyMaintenanceRecommendationsMutation.mutate({
+      recommendationIds: maintenanceEligibleRecommendationIds,
     });
   }
 
@@ -2093,7 +2125,7 @@ export default function AdminSkills() {
                                     : skill.nativeBundlePath || skill.folderPath || undefined
                                 }
                               >
-                                {getNativeBundleLabel(skill)}
+                              {getNativeBundleLabel(t, skill)}
                               </Badge>
                               {skill.nativeBundleFiles?.length ? (
                                 <span className="text-xs text-muted-foreground">
@@ -2464,6 +2496,13 @@ export default function AdminSkills() {
                 <Badge variant="outline" className="rounded-full">
                   {maintenanceRecommendationGroups.length} skill groups
                 </Badge>
+                <Button
+                  size="sm"
+                  onClick={requestEligibleMaintenanceApplyForView}
+                  disabled={maintenanceEligibleRecommendationIds.length === 0 || applyMaintenanceRecommendationsMutation.isPending}
+                >
+                  Apply Eligible Across View ({maintenanceEligibleRecommendationIds.length})
+                </Button>
               </div>
 
               <Table>
@@ -2505,7 +2544,12 @@ export default function AdminSkills() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="font-medium">{group.primaryRecommendation.title}</div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="font-medium">{group.primaryRecommendation.title}</div>
+                                <Badge variant="secondary" className="rounded-full">
+                                  Highest priority
+                                </Badge>
+                              </div>
                               <div className="text-xs text-muted-foreground">
                                 {group.primaryRecommendation.recommendationType}
                                 {recommendationCount > 1 ? ` · ${recommendationCount} recommendations` : ""}
@@ -2593,7 +2637,14 @@ export default function AdminSkills() {
                                       <div key={item.id} className="rounded-lg border bg-background p-3">
                                         <div className="flex flex-wrap items-start justify-between gap-3">
                                           <div className="space-y-1">
-                                            <div className="font-medium">{item.title}</div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                              <div className="font-medium">{item.title}</div>
+                                              {item.id === group.primaryRecommendation.id && (
+                                                <Badge variant="secondary" className="rounded-full">
+                                                  Highest priority
+                                                </Badge>
+                                              )}
+                                            </div>
                                             <div className="text-xs text-muted-foreground">
                                               {item.recommendationType} · {item.status}
                                             </div>
@@ -3754,7 +3805,7 @@ export default function AdminSkills() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {getExecutionModeHelperText(newSkillData.category, newSkillData.executionMode)}
+                  {getExecutionModeHelperText(t, newSkillData.category, newSkillData.executionMode)}
                 </p>
               </div>
 
@@ -4303,7 +4354,7 @@ export default function AdminSkills() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  {getExecutionModeHelperText(editingSkill.category, editingSkill.executionMode)}
+                  {getExecutionModeHelperText(t, editingSkill.category, editingSkill.executionMode)}
                 </p>
               </div>
 

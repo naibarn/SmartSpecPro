@@ -1,14 +1,13 @@
 import { memo } from "react";
-import { Handle, Position } from "reactflow";
-import type { NodeProps } from "reactflow";
+import { Handle, Position } from "@xyflow/react";
 import { Database, AlertCircle, Globe, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AgencyNodeData } from "./types";
+import type { AgencyFlowNodeProps } from "./types";
 
 export const KnowledgeBaseNodeCard = memo(function KnowledgeBaseNodeCard({
   data,
   selected,
-}: NodeProps<AgencyNodeData>) {
+}: AgencyFlowNodeProps) {
   const hasErrors = (data.validationErrors?.length ?? 0) > 0;
   const searchScope = (data.nodeConfig?.searchScope as string) ?? "all";
   const collectionId = (data.nodeConfig?.collectionId as string) ?? "";

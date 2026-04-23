@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
+import { Link } from "wouter";
 import { DashboardCard, DashboardKpiCard, DashboardSectionHeader } from "@/components/dashboard";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { WorkpackMetricCards } from "@/components/workpack/WorkpackMetricCards";
-import { AlertTriangle, CheckCircle2, CircleDashed, PackageSearch } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, CircleDashed, PackageSearch } from "lucide-react";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
@@ -100,14 +102,36 @@ export default function WorkpackRoiDashboard() {
   }
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
-      <DashboardSectionHeader
-        eyebrow="ROI Dashboard"
-        title="Measure where autonomous work is actually improving"
-        description="Track completion, intervention, rollback pressure, policy friction, and evidence-based recommendations for the next workpack to automate."
-      />
+    <div className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-sky-50/40">
+      <div className="flex min-h-screen w-full flex-col">
+        <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/85 backdrop-blur-xl">
+          <div className="mx-auto flex w-full max-w-none flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button asChild variant="ghost" size="sm" className="gap-1">
+                <Link href="/dashboard">
+                  <ArrowLeft className="h-4 w-4" />
+                  Dashboard
+                </Link>
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">ROI Dashboard</h1>
+                <p className="max-w-3xl text-sm text-slate-600">
+                  Track completion, intervention, rollback pressure, policy friction, and evidence-based recommendations for the next workpack to automate.
+                </p>
+              </div>
+            </div>
+          </div>
+        </header>
 
-      <WorkpackMetricCards metrics={data.totals} />
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto flex w-full max-w-none flex-col gap-6">
+            <DashboardSectionHeader
+              eyebrow="ROI Dashboard"
+              title="Measure where autonomous work is actually improving"
+              description="Track completion, intervention, rollback pressure, policy friction, and evidence-based recommendations for the next workpack to automate."
+            />
+
+            <WorkpackMetricCards metrics={data.totals} />
 
       <DashboardCard
         title="097 Roadmap Control Plane"
@@ -425,6 +449,9 @@ export default function WorkpackRoiDashboard() {
           )}
         </div>
       </DashboardCard>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

@@ -401,13 +401,15 @@ export function buildGemini31FlashTtsInputFields(): GeminiTtsInputField[] {
       label: "Prompt",
       type: "text",
       required: true,
-      placeholder: "Host: Welcome back to the show!",
+      placeholder: "Host: Welcome back.\nGuest: Glad to be here.",
+      description: "Write dialogue with speaker aliases like Host: and Guest: on separate lines.",
     },
     {
       key: "style_instructions",
       label: "Style Instructions",
       type: "text",
       placeholder: "Speak warmly and slowly",
+      description: "Plain text helper content that prepends to the prompt.",
     },
     {
       key: "voice",
@@ -443,6 +445,7 @@ export function buildGemini31FlashTtsInputFields(): GeminiTtsInputField[] {
           type: "text",
           required: true,
           placeholder: "Host",
+          description: "Unique alias used to prefix that speaker's dialogue lines.",
         },
         {
           key: "voice",
@@ -451,6 +454,7 @@ export function buildGemini31FlashTtsInputFields(): GeminiTtsInputField[] {
           required: true,
           searchable: true,
           default: "Kore",
+          description: "Voice preset for this speaker row.",
           options: [...GEMINI_3_1_FLASH_TTS_VOICE_OPTIONS],
         },
       ],

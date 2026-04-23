@@ -51,6 +51,8 @@ class NotificationService:
         Returns:
             Created notification
         """
+        user_id = str(user_id)
+
         # Create in-app notification
         notification_id = str(uuid.uuid4())
         notification = Notification(

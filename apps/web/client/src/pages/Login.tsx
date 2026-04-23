@@ -17,7 +17,12 @@ import {
 import { getSmartSpecWebEndpoint } from '@/lib/webRuntime';
 import { hasTauriRuntime } from '@/lib/webRuntime';
 import { useAuth } from '@/_core/hooks/useAuth';
-import { setAuthToken, setUser as setDesktopAuthUser } from '@/services/authService';
+import {
+  setAuthRefreshToken,
+  setAuthToken,
+  setUser as setDesktopAuthUser,
+  signInDesktopWithBrowser,
+} from '@/services/authService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -184,6 +189,8 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isBrowserSignInLoading, setIsBrowserSignInLoading] = useState(false);
+  const [browserSignInCode, setBrowserSignInCode] = useState('');
   const [needsVerification, setNeedsVerification] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
@@ -282,8 +289,9 @@ export default function Login() {
       if (isDesktop) {
         const payload = data as DesktopLoginResponse | null;
         const desktopUser = payload?.user ?? null;
-        if (response.ok && payload?.access_token && desktopUser) {
+        if (response.ok && payload?.access_token && payload?.refresh_token && desktopUser) {
           await setAuthToken(payload.access_token);
+          await setAuthRefreshToken(payload.refresh_token);
           await setDesktopAuthUser(toDesktopAuthUser(desktopUser));
 
           const loginUserId = desktopUser.id;
@@ -352,6 +360,34 @@ export default function Login() {
       );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDesktopBrowserSignIn = async () => {
+    getPostHog()?.capture("login_started", { auth_method: "browser", runtime: "desktop" });
+    rememberAuthReturnUrl(getReturnUrl());
+    setIsBrowserSignInLoading(true);
+    setBrowserSignInCode('');
+
+    try {
+      const desktopUser = await signInDesktopWithBrowser({
+        onUserCode: setBrowserSignInCode,
+      });
+      if (desktopUser.id) getPostHog()?.identify(String(desktopUser.id));
+      getPostHog()?.capture("login_succeeded", { auth_method: "browser", runtime: "desktop" });
+      toast.success(t('login.toast.success'));
+      clearPendingOAuthTwoFactor();
+      redirectToReturnUrl(getReturnUrl());
+    } catch (error) {
+      console.error('Desktop browser sign-in error:', error);
+      getPostHog()?.capture("login_failed", {
+        failure_reason: "browser_sign_in_failed",
+        auth_method: "browser",
+        runtime: "desktop",
+      });
+      toast.error(error instanceof Error ? error.message : t('login.toast.desktopBrowserFailed'));
+    } finally {
+      setIsBrowserSignInLoading(false);
     }
   };
 
@@ -487,6 +523,8 @@ export default function Login() {
       toast.error(t('login.toast.oauthFailed'));
     }
   };
+
+  const isDesktopRuntime = hasTauriRuntime();
 
   // Show loading while checking auth or redirecting
   if (authLoading || user) {
@@ -711,8 +749,48 @@ export default function Login() {
               </p>
             </div>
 
+            {isDesktopRuntime && (
+              <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50/80 p-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleDesktopBrowserSignIn}
+                  disabled={isLoading || isBrowserSignInLoading}
+                  className="w-full border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
+                >
+                  {isBrowserSignInLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      {t('login.desktopBrowserWaiting')}
+                    </>
+                  ) : (
+                    <>
+                      <Chrome className="w-5 h-5 mr-2 text-[#4285F4]" />
+                      {t('login.desktopBrowserSignIn')}
+                    </>
+                  )}
+                </Button>
+                <p className="mt-3 text-xs leading-5 text-blue-800">
+                  {t('login.desktopBrowserSignInHint')}
+                </p>
+                {browserSignInCode && (
+                  <p className="mt-2 rounded-lg bg-white px-3 py-2 text-center text-xs font-semibold text-blue-900">
+                    {t('login.desktopBrowserCode', { code: browserSignInCode })}
+                  </p>
+                )}
+                <div className="relative mt-5">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-blue-200" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-3 bg-blue-50 text-blue-700">{t('login.continueWithEmailDivider')}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Social Login Buttons */}
-            {(oauthProviders || hasAnySocial) && (
+            {!isDesktopRuntime && (oauthProviders || hasAnySocial) && (
               <>
                 <div className={`grid ${githubLoginEnabled ? 'grid-cols-2' : 'grid-cols-1'} gap-3 mb-3`}>
                   <Button
@@ -816,7 +894,7 @@ export default function Login() {
 
               <Button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || isBrowserSignInLoading}
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white py-3 rounded-xl shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all duration-300"
               >
                 {isLoading ? (

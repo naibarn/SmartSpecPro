@@ -87,5 +87,6 @@ describeSocketSuite("mcpRoutes orchestrator tools", () => {
         targetStep: "research",
       }),
     );
+    expect(res.body._meta.contextState.toolResults[0].content).toContain("workItem");
   });
 });

@@ -76,6 +76,7 @@ import {
   Download,
   ReceiptText,
   ClipboardList,
+  ClipboardCheck,
 } from "lucide-react";
 
 type ReviewAgencySummary = {
@@ -277,6 +278,7 @@ export default function Dashboard() {
   // Tenant feature flags for menu gating
   const tenantFlags = useTenantFeatureFlags();
   const isAdminLike = user?.role === "admin" || user?.role === "domain_admin";
+  const analyticsEnabled = isAuthenticated && isAdminLike;
   const desktopGovernanceEnabled =
     isAuthenticated && tenantFlags.desktopHostEnabled && isAdminLike;
   const desktopGovernanceStatus = useDesktopHostStatus(
@@ -289,47 +291,62 @@ export default function Dashboard() {
     user?.role === "admin"
       ? "/admin/desktop-host/governance"
       : "/domain-admin/desktop-host/governance";
-  const { data: agencyListData } = useAgencyList();
+  const adminSkillMaintenancePath = "/admin/skills?tab=maintenance";
+  const { data: agencyListData } = useAgencyList({ enabled: analyticsEnabled });
+  const { data: legacyUpgradeQueueSummary } = trpc.skills.getLegacyUpgradeQueueSummary.useQuery(
+    undefined,
+    { enabled: analyticsEnabled && user?.role === "admin" },
+  );
 
   const { data: agencyReviewDashboardRaw } =
     trpc.agency.reviewDashboard.useQuery(undefined, {
-      enabled: isAuthenticated && !tenantLoading,
+      enabled: analyticsEnabled && !tenantLoading,
       refetchInterval: 60_000,
     });
   const agencyReviewDashboard = agencyReviewDashboardRaw as
     | ReviewDashboardData
     | undefined;
 
-  const { data: analyticsSummary } = useQuery<AnalyticsSummaryResponse>({
+  const { data: analyticsSummary } = useQuery<AnalyticsSummaryResponse | null>({
     queryKey: ["dashboard-analytics-summary", user?.id],
     queryFn: async () => {
-      const params = new URLSearchParams({ days: "30" });
-      const response = await fetch(`/api/v1/analytics/summary?${params}`, {
-        credentials: "include",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to fetch dashboard analytics summary");
+      try {
+        const params = new URLSearchParams({ days: "30" });
+        const response = await fetch(`/api/v1/analytics/summary?${params}`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          return null;
+        }
+        return response.json() as Promise<AnalyticsSummaryResponse>;
+      } catch {
+        return null;
       }
-      return response.json() as Promise<AnalyticsSummaryResponse>;
     },
-    enabled: isAuthenticated,
+    enabled: analyticsEnabled,
+    retry: false,
     staleTime: 60_000,
     refetchInterval: 60_000,
   });
 
-  const { data: analyticsTimeSeries } = useQuery<AnalyticsTimeSeriesResponse>({
+  const { data: analyticsTimeSeries } = useQuery<AnalyticsTimeSeriesResponse | null>({
     queryKey: ["dashboard-analytics-time-series", user?.id],
     queryFn: async () => {
-      const params = new URLSearchParams({ days: "7", granularity: "day" });
-      const response = await fetch(`/api/v1/analytics/time-series?${params}`, {
-        credentials: "include",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to fetch dashboard analytics time series");
+      try {
+        const params = new URLSearchParams({ days: "7", granularity: "day" });
+        const response = await fetch(`/api/v1/analytics/time-series?${params}`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          return null;
+        }
+        return response.json() as Promise<AnalyticsTimeSeriesResponse>;
+      } catch {
+        return null;
       }
-      return response.json() as Promise<AnalyticsTimeSeriesResponse>;
     },
-    enabled: isAuthenticated,
+    enabled: analyticsEnabled,
+    retry: false,
     staleTime: 60_000,
     refetchInterval: 60_000,
   });
@@ -517,6 +534,7 @@ export default function Dashboard() {
   const recentReviews = agencyReviewDashboard?.recentReviews ?? [];
   const recentImprovements = agencyReviewDashboard?.recentImprovements ?? [];
   const reviewAgencies = agencyListData?.agencies ?? [];
+  const legacyUpgradeCount = legacyUpgradeQueueSummary?.count ?? 0;
   const selectedReviewAgency =
     selectedReviewAgencyId === "all"
       ? null
@@ -696,6 +714,17 @@ export default function Dashboard() {
       });
     }
 
+    if (user.role === "admin" && legacyUpgradeCount > 0) {
+      notices.push({
+        key: "legacy-upgrades",
+        title: `Legacy skill upgrades pending (${legacyUpgradeCount})`,
+        detail: "Open the maintenance queue to review and batch legacy migrations.",
+        tone: "warning",
+        ctaLabel: "Open maintenance queue",
+        ctaHref: adminSkillMaintenancePath,
+      });
+    }
+
     if (reviewOverview && reviewOverview.reviewCoverage < 0.75) {
       notices.push({
         key: "review-coverage",
@@ -719,8 +748,10 @@ export default function Dashboard() {
     return notices.slice(0, 4);
   }, [
     activeWorkflows?.workflows?.length,
+    adminSkillMaintenancePath,
     pendingApprovals?.requests?.length,
     recentTaskStats.failed,
+    legacyUpgradeCount,
     reviewOverview,
     user.credits,
   ]);
@@ -761,6 +792,16 @@ export default function Dashboard() {
           ? "See enrolled desktop devices, last contact, and access restrictions."
           : t("dashboard:nextBestActions.manageDesktopReleasesDetail"),
         color: "from-slate-700 to-indigo-700",
+      });
+    }
+
+    if (user.role === "admin") {
+      actions.push({
+        label: legacyUpgradeCount > 0 ? `Skill maintenance (${legacyUpgradeCount})` : "Skill maintenance",
+        href: adminSkillMaintenancePath,
+        icon: ClipboardCheck,
+        description: "Review legacy upgrades and open the maintenance queue.",
+        color: "from-slate-700 to-emerald-700",
       });
     }
 
@@ -849,9 +890,11 @@ export default function Dashboard() {
     activeWorkflows?.workflows?.length,
     analyticsSummary?.usage.total_requests,
     chatData?.conversations?.length,
+    legacyUpgradeCount,
     pendingApprovals?.requests?.length,
     recentTaskStats.failed,
     reviewOverview,
+    adminSkillMaintenancePath,
     tenantFlags.desktopHostEnabled,
     user.role,
     user.credits,
@@ -1592,6 +1635,22 @@ export default function Dashboard() {
               <div className="flex items-center gap-2">
                 <LocaleToggle />
                 <HelpButton page="/dashboard" variant="outline" size="sm" />
+                {user.role === "admin" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => navigateTo(adminSkillMaintenancePath)}
+                  >
+                    <ClipboardCheck className="h-4 w-4" />
+                    <span>Maintenance</span>
+                    {legacyUpgradeCount > 0 && (
+                      <Badge variant="secondary" className="h-5 rounded-full px-2 text-[11px]">
+                        {legacyUpgradeCount}
+                      </Badge>
+                    )}
+                  </Button>
+                )}
                 <a
                   href="/"
                   target="_blank"
@@ -1865,6 +1924,71 @@ export default function Dashboard() {
                     {t("dashboard:admin.desktopGovernanceUnavailable")}
                   </div>
                 ) : null}
+              </div>
+            </motion.section>
+          )}
+
+          {user.role === "admin" && (
+            <motion.section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.095 }}
+              className="mb-8"
+            >
+              <div className="relative overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-600 via-sky-500 to-slate-400" />
+                <DashboardSectionHeader
+                  eyebrow="Managed skills"
+                  title="Skill maintenance"
+                  description="Open the maintenance queue to review legacy upgrades, safe bundles, and scheduled skill work."
+                trailing={
+                  <Button
+                    size="sm"
+                    onClick={() => navigateTo(adminSkillMaintenancePath)}
+                  >
+                    <span className="flex items-center gap-2">
+                      Open maintenance queue
+                      {legacyUpgradeCount > 0 && (
+                        <Badge variant="secondary" className="h-5 rounded-full px-2 text-[11px]">
+                          {legacyUpgradeCount}
+                        </Badge>
+                      )}
+                    </span>
+                  </Button>
+                }
+              />
+
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                      Legacy upgrades
+                    </p>
+                    <p className={`mt-2 ${dashboardCardBodyClass}`}>
+                      Review upgrade recommendations that are ready to be migrated to the native bundle contract.
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                      Maintenance queue
+                    </p>
+                    <p className={`mt-2 ${dashboardCardBodyClass}`}>
+                      Open the admin maintenance tab and sort by priority, compatibility, and runtime.
+                    </p>
+                    {legacyUpgradeCount > 0 && (
+                      <Badge variant="secondary" className="mt-3 h-6 rounded-full px-2 text-[11px]">
+                        {legacyUpgradeCount} legacy upgrades pending
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                      Safe rollout
+                    </p>
+                    <p className={`mt-2 ${dashboardCardBodyClass}`}>
+                      Keep legacy skills online while the newer bundle contract is rolled out in parallel.
+                    </p>
+                  </div>
+                </div>
               </div>
             </motion.section>
           )}

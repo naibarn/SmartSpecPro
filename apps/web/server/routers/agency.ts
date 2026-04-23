@@ -1372,12 +1372,15 @@ export const agencyRouter = router({
       await db.insert(agencies).values({
         id: newAgencyId,
         tenantId,
-        sourceTemplateId: template.id,
         name: template.name,
         slug,
         description: template.description,
-        systemPrompt: template.systemPrompt,
+        creditMultiplier: "1.00",
+        maxAgents: 10,
+        maxRunTimeSeconds: 600,
         status: "draft",
+        isFallbackSafe: false,
+        isPublished: false,
         createdBy: userId,
       });
 
@@ -1547,12 +1550,10 @@ export const agencyRouter = router({
           slug: input.slug,
           name: input.name,
           description: input.description ?? null,
-          systemPrompt: input.systemPrompt ?? null,
           creditMultiplier: String(input.creditMultiplier),
           maxAgents: input.maxAgents,
           maxRunTimeSeconds: input.maxRunTimeSeconds,
           isFallbackSafe: input.isFallbackSafe,
-          creatorFeeCredits: input.creatorFeeCredits,
           status: "draft",
           createdBy: userId,
         });
@@ -3952,15 +3953,11 @@ export const agencyRouter = router({
           slug,
           name: `${source.name} (Copy)`,
           description: source.description,
-          systemPrompt: source.systemPrompt,
           creditMultiplier: source.creditMultiplier,
-          defaultModel: source.defaultModel,
           maxAgents: source.maxAgents,
           maxRunTimeSeconds: source.maxRunTimeSeconds,
           status: "draft",
           isPublished: false,
-          visibility: "private",
-          previewSvg: source.previewSvg,
           createdBy: userId,
         });
 

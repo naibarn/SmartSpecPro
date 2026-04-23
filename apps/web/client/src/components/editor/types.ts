@@ -36,4 +36,5 @@ export interface UnifiedDocumentSurfaceProps {
   editorUploadMetadata?: Record<string, unknown>;
   editorLibraryScope?: "all" | "my_library" | "private_vault";
   viewZoom?: number;
+  onOpenWikiLink?: (reference: string) => void;
 }

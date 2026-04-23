@@ -172,6 +172,9 @@ export async function authorizeRequest(
           };
         }
         const claims = previewClaims;
+        if ((claims as any).type === "refresh") {
+          return { ok: false, error: "Refresh token cannot authenticate requests" };
+        }
         const jti = String((claims as any).jti || "");
         if (jti) {
           const revoked = await isJtiRevoked(jti);

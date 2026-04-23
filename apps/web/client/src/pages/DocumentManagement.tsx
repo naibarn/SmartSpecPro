@@ -18,6 +18,7 @@ import {
   Folder,
   FolderOpen,
   FolderPlus,
+  GitBranch,
   Home,
   ImagePlus,
   Info,
@@ -37,10 +38,18 @@ import {
 } from "lucide-react";
 
 import DocumentGridList from "@/components/library/DocumentGridList";
+import ContextPackManager from "@/components/library/ContextPackManager";
 import DocumentLibraryTabs from "@/components/library/DocumentLibraryTabs";
+import KnowledgeNoteSpotlight from "@/components/library/KnowledgeNoteSpotlight";
 import DocumentPreviewPanel from "@/components/library/DocumentPreviewPanel";
 import GoogleDriveBrowser from "@/components/library/GoogleDriveBrowser";
+import KnowledgeCanvasPanel from "@/components/library/KnowledgeCanvasPanel";
+import KnowledgeInspectorPanel from "@/components/library/KnowledgeInspectorPanel";
+import KnowledgeQuickSwitcherDialog from "@/components/library/KnowledgeQuickSwitcherDialog";
+import KnowledgeVaultOverviewPanel from "@/components/library/KnowledgeVaultOverviewPanel";
 import OneDriveBrowser from "@/components/library/OneDriveBrowser";
+import PropertyCatalogPanel from "@/components/library/PropertyCatalogPanel";
+import SavedViewsPanel from "@/components/library/SavedViewsPanel";
 import { TrashPanel } from "@/components/library/TrashPanel";
 import CreateFolderDialog from "@/components/library/CreateFolderDialog";
 import ShareLibraryDialog from "@/components/library/ShareLibraryDialog";
@@ -79,13 +88,18 @@ import {
   buildDocumentQueryString,
   DEFAULT_DOCUMENT_QUERY_STATE,
   DOCUMENT_MANAGEMENT_ROUTE,
+  getKnowledgeVaultNavigationModes,
   getMarkdownPreviewFallbackContent,
+  resolveKnowledgeVaultMode,
   parseDocumentQueryState,
   resolveDocumentPreviewType,
   buildPublicDocumentShareUrl,
+  supportsKnowledgeVaultScope,
+  isMarkdownLibraryItem,
   toDocumentLibraryItem,
   type DocumentLibraryItem,
   type DocumentQueryState,
+  type KnowledgeVaultMode,
 } from "@/lib/documentManagementUi";
 import {
   getPrivateVaultAccessToken,
@@ -93,6 +107,10 @@ import {
 } from "@/lib/privateVault";
 import { getAcceptString } from "@/components/editor/uploadMedia";
 import { getEditorOpenRouteForItem } from "@/lib/presentationRouting";
+import {
+  matchesWikiLinkReference,
+  normalizeWikiLinkToken,
+} from "@/lib/wikiLink";
 import {
   closeDocumentEditorTab,
   syncDocumentEditorTabsFromDocuments,
@@ -110,6 +128,7 @@ interface MarkdownDraftState {
 const DESKTOP_BREAKPOINT_QUERY = "(min-width: 1280px)";
 const MIN_LIBRARY_PANEL_WIDTH = 320;
 const MIN_EDITOR_PANEL_WIDTH = 420;
+const MIN_KNOWLEDGE_PANEL_WIDTH = 320;
 const COLLAPSED_PANEL_WIDTH = 72;
 const RESIZE_HANDLE_WIDTH = 8;
 const MARKDOWN_SYNC_POLL_INTERVAL_MS = 15_000;
@@ -117,6 +136,20 @@ const QUICK_MEDIA_FILTERS = [
   { value: "all", labelKey: "documentManagement.fileType.all" },
   { value: "image", labelKey: "documentManagement.fileType.image" },
   { value: "video", labelKey: "documentManagement.fileType.video" },
+] as const;
+const KNOWLEDGE_VAULT_UI_SURFACES = [
+  "quickSwitcher",
+  "inspector",
+  "savedViews",
+  "contextPacks",
+  "graph",
+  "canvas",
+] as const;
+const KNOWLEDGE_VAULT_NOTE_SURFACES = [
+  "quickSwitcher",
+  "inspector",
+  "graph",
+  "contextPacks",
 ] as const;
 
 function clamp(value: number, min: number, max: number): number {
@@ -138,11 +171,12 @@ export default function DocumentManagement() {
   const editorWorkspaceRef = useRef<HTMLDivElement | null>(null);
   const desktopLayoutRef = useRef<HTMLDivElement | null>(null);
   const activeResizeRef = useRef<{
-    panel: "library";
+    panel: "library" | "knowledge";
     startX: number;
-    startLibraryWidth: number;
+    startWidth: number;
     containerWidth: number;
     libraryOpenAtStart: boolean;
+    knowledgeOpenAtStart: boolean;
   } | null>(null);
 
   const [queryState, setQueryState] = useState<DocumentQueryState>(() => {
@@ -174,12 +208,14 @@ export default function DocumentManagement() {
   );
   const [previewText, setPreviewText] = useState<string | undefined>(undefined);
   const [isLibraryPanelOpen, setIsLibraryPanelOpen] = useState(true);
+  const [isKnowledgePanelOpen, setIsKnowledgePanelOpen] = useState(true);
   const [isEditorPanelCollapsed, setIsEditorPanelCollapsed] = useState(false);
   const [isDesktopLayout, setIsDesktopLayout] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.matchMedia(DESKTOP_BREAKPOINT_QUERY).matches;
   });
   const [libraryPanelWidth, setLibraryPanelWidth] = useState(440);
+  const [knowledgePanelWidth, setKnowledgePanelWidth] = useState(360);
   const [importingDriveFileId, setImportingDriveFileId] = useState<
     string | null
   >(null);
@@ -192,7 +228,11 @@ export default function DocumentManagement() {
   const [isShareLibraryOpen, setIsShareLibraryOpen] = useState(false);
   const [isReindexConfirmOpen, setIsReindexConfirmOpen] = useState(false);
   const [isReindexing, setIsReindexing] = useState(false);
-  const [mobileTab, setMobileTab] = useState<"library" | "editor">("library");
+  const [mobileTab, setMobileTab] = useState<
+    "library" | "knowledge" | "editor"
+  >("library");
+  const [isKnowledgeQuickSwitcherOpen, setIsKnowledgeQuickSwitcherOpen] =
+    useState(false);
   const [isLibraryHeaderCollapsed, setIsLibraryHeaderCollapsed] =
     useState(false);
   const [privateVaultUnlockPin, setPrivateVaultUnlockPin] = useState("");
@@ -298,6 +338,11 @@ export default function DocumentManagement() {
     trpc.users.getPreferences.useQuery(undefined, {
       enabled: isAuthenticated,
     });
+  const knowledgeVaultPolicyQuery =
+    trpc.library.getKnowledgeVaultPolicy.useQuery(undefined, {
+      enabled: isAuthenticated,
+      refetchOnWindowFocus: false,
+    });
   const privateVaultConfigured = Boolean(
     privateVaultPrefs?.privateVault?.enabled
   );
@@ -315,6 +360,89 @@ export default function DocumentManagement() {
     queryState.scope === "my_onedrive"
       ? "my_library"
       : queryState.scope;
+  const knowledgeVaultScopeSupported = supportsKnowledgeVaultScope(
+    queryState.scope
+  );
+  const knowledgeVaultPolicyPending =
+    knowledgeVaultScopeSupported &&
+    !knowledgeVaultPolicyQuery.data &&
+    !knowledgeVaultPolicyQuery.error;
+  const knowledgeVaultAvailability = useMemo(
+    () => ({
+      quickSwitcher:
+        knowledgeVaultPolicyQuery.data?.surfaces.quickSwitcher ?? false,
+      inspector: knowledgeVaultPolicyQuery.data?.surfaces.inspector ?? false,
+      savedViews: knowledgeVaultPolicyQuery.data?.surfaces.savedViews ?? false,
+      contextPacks:
+        knowledgeVaultPolicyQuery.data?.surfaces.contextPacks ?? false,
+      graph: knowledgeVaultPolicyQuery.data?.surfaces.graph ?? false,
+      canvas: knowledgeVaultPolicyQuery.data?.surfaces.canvas ?? false,
+    }),
+    [knowledgeVaultPolicyQuery.data]
+  );
+  const requestedKnowledgeVaultMode = knowledgeVaultScopeSupported
+    ? queryState.knowledgeMode
+    : "browse";
+  const knowledgeVaultMode = knowledgeVaultPolicyPending
+    ? requestedKnowledgeVaultMode
+    : resolveKnowledgeVaultMode(
+        requestedKnowledgeVaultMode,
+        knowledgeVaultAvailability
+      );
+  const knowledgeVaultModes = getKnowledgeVaultNavigationModes(
+    knowledgeVaultAvailability
+  );
+  const showKnowledgeVaultNavigation =
+    knowledgeVaultScopeSupported &&
+    knowledgeVaultPolicyQuery.data?.enabled === true;
+  const knowledgeVaultBlockedReasons = useMemo(() => {
+    if (!knowledgeVaultPolicyQuery.data) {
+      return [];
+    }
+    const nextReasons = new Set<string>();
+    KNOWLEDGE_VAULT_UI_SURFACES.forEach(surface => {
+      if (!knowledgeVaultPolicyQuery.data?.surfaces[surface]) {
+        (knowledgeVaultPolicyQuery.data?.surfaceReasons[surface] ?? []).forEach(
+          reason => nextReasons.add(reason)
+        );
+      }
+    });
+    return Array.from(nextReasons);
+  }, [knowledgeVaultPolicyQuery.data]);
+  const selectedNoteBlockedReasons = useMemo(() => {
+    if (!knowledgeVaultPolicyQuery.data) {
+      return [];
+    }
+    const nextReasons = new Set<string>();
+    KNOWLEDGE_VAULT_NOTE_SURFACES.forEach(surface => {
+      if (!knowledgeVaultPolicyQuery.data?.surfaces[surface]) {
+        (knowledgeVaultPolicyQuery.data?.surfaceReasons[surface] ?? []).forEach(
+          reason => nextReasons.add(reason)
+        );
+      }
+    });
+    return Array.from(nextReasons);
+  }, [knowledgeVaultPolicyQuery.data]);
+
+  useEffect(() => {
+    setQueryState(prev => {
+      if (prev.knowledgeMode === knowledgeVaultMode) {
+        return prev;
+      }
+      if (knowledgeVaultScopeSupported && knowledgeVaultPolicyPending) {
+        return prev;
+      }
+      return {
+        ...prev,
+        knowledgeMode: knowledgeVaultMode,
+      };
+    });
+  }, [
+    knowledgeVaultMode,
+    knowledgeVaultPolicyPending,
+    knowledgeVaultScopeSupported,
+  ]);
+
   const listInput = useMemo(
     () => ({
       scope: listScope,
@@ -441,6 +569,8 @@ export default function DocumentManagement() {
   const previewType = selectedItem
     ? resolveDocumentPreviewType(selectedItem)
     : "fallback";
+  const selectedMarkdownItem =
+    selectedItem && isMarkdownLibraryItem(selectedItem) ? selectedItem : null;
   const selectedMarkdownDraft = selectedItem
     ? markdownDraftByDocId[selectedItem.id]
     : undefined;
@@ -474,6 +604,36 @@ export default function DocumentManagement() {
     selectedMarkdownDraft?.updatedAt ||
     markdownContentQuery.data?.updated_at ||
     selectedItem?.updated_at;
+  const selectedKnowledgeInspectorQuery =
+    trpc.library.getKnowledgeInspector.useQuery(
+      selectedMarkdownItem && knowledgeVaultAvailability.inspector
+        ? { itemId: selectedMarkdownItem.id, localGraphLimit: 16 }
+        : { itemId: 0, localGraphLimit: 16 },
+      {
+        enabled: Boolean(
+          selectedMarkdownItem && knowledgeVaultAvailability.inspector
+        ),
+        refetchOnWindowFocus: false,
+      }
+    );
+  const selectedKnowledgeSummary = selectedKnowledgeInspectorQuery.data
+    ? {
+        logicalPath: selectedKnowledgeInspectorQuery.data.note.logicalPath,
+        aliases: selectedKnowledgeInspectorQuery.data.note.aliases,
+        tags: selectedKnowledgeInspectorQuery.data.note.tags,
+        backlinksCount: selectedKnowledgeInspectorQuery.data.backlinks.length,
+        outgoingCount: selectedKnowledgeInspectorQuery.data.outgoing.length,
+        mentionCount:
+          selectedKnowledgeInspectorQuery.data.unlinkedMentions.length,
+        graphEdgeCount:
+          selectedKnowledgeInspectorQuery.data.localGraph.edges.length,
+        sharedTagsCount: selectedKnowledgeInspectorQuery.data.sharedTags.length,
+        semanticRelatedCount:
+          selectedKnowledgeInspectorQuery.data.semanticRelated.length,
+      }
+    : null;
+  const selectedKnowledgeBacklinks =
+    selectedKnowledgeInspectorQuery.data?.backlinks ?? [];
 
   const saveMarkdownMutation = trpc.library.saveMarkdown.useMutation();
   const uploadFileMutation = trpc.library.uploadFile.useMutation();
@@ -604,6 +764,25 @@ export default function DocumentManagement() {
     return () => window.removeEventListener("storage", syncVaultToken);
   }, []);
 
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      !knowledgeVaultAvailability.quickSwitcher
+    ) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setIsKnowledgeQuickSwitcherOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [knowledgeVaultAvailability.quickSwitcher]);
+
   async function handleConfirmReindex() {
     setIsReindexConfirmOpen(false);
     await triggerReindexMutation.mutateAsync();
@@ -720,6 +899,9 @@ export default function DocumentManagement() {
       viewMode: "editor",
       docId: tabId,
     }));
+    if (!isDesktopLayout) {
+      setMobileTab("editor");
+    }
   }
 
   function closeEditorTab(tabId: number) {
@@ -872,8 +1054,328 @@ export default function DocumentManagement() {
     setQueryState(prev => ({
       ...prev,
       scope,
+      knowledgeMode: supportsKnowledgeVaultScope(scope)
+        ? prev.knowledgeMode
+        : "browse",
       folderId: scope === "my_library" ? prev.folderId : null,
     }));
+  }
+
+  function handleKnowledgeModeChange(mode: KnowledgeVaultMode) {
+    if (!isDesktopLayout && mode !== "browse") {
+      setMobileTab("knowledge");
+    }
+    setQueryState(prev => ({
+      ...prev,
+      knowledgeMode: mode,
+    }));
+  }
+
+  function openKnowledgeItem(itemId: number, title: string) {
+    const matchedItem =
+      documents.find(item => item.id === itemId) ??
+      ({
+        id: itemId,
+        title,
+        item_type: "md",
+      } as Pick<DocumentLibraryItem, "id" | "title" | "item_type">);
+
+    setPendingAutoSelectId(null);
+    setProvisionalSelectedItem(null);
+    openEditorTab(matchedItem, { scope: queryState.scope });
+  }
+
+  async function handleCopyCurrentNoteWikilink() {
+    if (
+      !selectedMarkdownItem ||
+      typeof navigator === "undefined" ||
+      !navigator.clipboard
+    ) {
+      return;
+    }
+
+    const logicalPath =
+      selectedKnowledgeSummary?.logicalPath ??
+      (typeof selectedMarkdownItem.metadata?.logical_path === "string"
+        ? selectedMarkdownItem.metadata.logical_path
+        : null);
+    const baseReference = logicalPath
+      ? logicalPath
+      : selectedMarkdownItem.title.replace(/\.(md|markdown)$/i, "").trim();
+
+    try {
+      await navigator.clipboard.writeText(`[[${baseReference}]]`);
+      toast.success("Wikilink copied");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to copy wikilink"
+      );
+    }
+  }
+
+  async function handleOpenWikiLink(reference: string) {
+    const normalizedReference = normalizeWikiLinkToken(reference);
+    if (!normalizedReference) {
+      return;
+    }
+
+    const localMatch = documents.find(
+      item =>
+        isMarkdownLibraryItem(item) &&
+        matchesWikiLinkReference(normalizedReference, {
+          title: item.title,
+          logicalPath:
+            typeof item.metadata?.logical_path === "string"
+              ? item.metadata.logical_path
+              : null,
+        })
+    );
+
+    if (localMatch) {
+      openEditorTab(localMatch, {
+        scope: isPrivateVaultDocument(localMatch)
+          ? "private_vault"
+          : queryState.scope,
+      });
+      return;
+    }
+
+    try {
+      const result = await trpcUtils.library.quickSwitchNotes.fetch({
+        query: normalizedReference,
+        limit: 12,
+      });
+      const matchedNote =
+        result.results.find(entry =>
+          matchesWikiLinkReference(normalizedReference, {
+            title: entry.title,
+            logicalPath: entry.logicalPath,
+          })
+        ) ?? result.results[0];
+
+      if (!matchedNote) {
+        toast.error(`Linked note "${normalizedReference}" was not found.`);
+        return;
+      }
+
+      openKnowledgeItem(matchedNote.libraryItemId, matchedNote.title);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to open linked note"
+      );
+    }
+  }
+
+  function renderKnowledgeVaultNavigation() {
+    if (!knowledgeVaultScopeSupported) {
+      return null;
+    }
+
+    return (
+      <KnowledgeVaultOverviewPanel
+        pending={knowledgeVaultPolicyPending}
+        enabled={Boolean(knowledgeVaultPolicyQuery.data?.enabled)}
+        activeMode={knowledgeVaultMode}
+        blockedReasons={knowledgeVaultBlockedReasons}
+        modes={knowledgeVaultModes}
+        quickSwitcherEnabled={knowledgeVaultAvailability.quickSwitcher}
+        releaseGateStatus={knowledgeVaultPolicyQuery.data?.releaseGateStatus}
+        selectedMarkdownTitle={selectedMarkdownItem?.title ?? null}
+        compact={isDesktopLayout ? isKnowledgePanelOpen : true}
+        onChangeMode={handleKnowledgeModeChange}
+        onOpenQuickSwitch={() => setIsKnowledgeQuickSwitcherOpen(true)}
+      />
+    );
+  }
+
+  function renderKnowledgeVaultContent() {
+    switch (knowledgeVaultMode) {
+      case "related":
+        return (
+          <KnowledgeInspectorPanel
+            selectedItem={selectedItem}
+            onOpenItem={openKnowledgeItem}
+            onBrowseNotes={() => handleKnowledgeModeChange("browse")}
+            onOpenQuickSwitch={
+              knowledgeVaultAvailability.quickSwitcher
+                ? () => setIsKnowledgeQuickSwitcherOpen(true)
+                : undefined
+            }
+          />
+        );
+      case "graph":
+        return (
+          <KnowledgeInspectorPanel
+            selectedItem={selectedItem}
+            onOpenItem={openKnowledgeItem}
+            focus="graph"
+            onBrowseNotes={() => handleKnowledgeModeChange("browse")}
+            onOpenQuickSwitch={
+              knowledgeVaultAvailability.quickSwitcher
+                ? () => setIsKnowledgeQuickSwitcherOpen(true)
+                : undefined
+            }
+          />
+        );
+      case "properties":
+        return <PropertyCatalogPanel />;
+      case "views":
+        return (
+          <SavedViewsPanel
+            currentQueryState={queryState}
+            onOpenItem={openKnowledgeItem}
+          />
+        );
+      case "memory_packs":
+        return (
+          <ContextPackManager
+            selectedItemIds={Array.from(selectedItemIds)}
+            onOpenItem={openKnowledgeItem}
+          />
+        );
+      case "canvas":
+        return (
+          <KnowledgeCanvasPanel
+            selectedNote={
+              selectedMarkdownItem
+                ? {
+                    libraryItemId: selectedMarkdownItem.id,
+                    title: selectedMarkdownItem.title,
+                    logicalPath:
+                      selectedKnowledgeSummary?.logicalPath ??
+                      (typeof selectedMarkdownItem.metadata?.logical_path ===
+                      "string"
+                        ? selectedMarkdownItem.metadata.logical_path
+                        : null),
+                  }
+                : null
+            }
+            onOpenBoard={openKnowledgeItem}
+          />
+        );
+      default:
+        return null;
+    }
+  }
+
+  function renderKnowledgeNoteSpotlight() {
+    if (!knowledgeVaultScopeSupported || !selectedItem) {
+      return null;
+    }
+
+    if (!selectedMarkdownItem) {
+      return (
+        <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600 shadow-sm">
+          <div>
+            Knowledge Vault actions light up on Markdown notes. Open an `md`
+            file or use Quick switch to jump into connected note workflows.
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {knowledgeVaultAvailability.quickSwitcher ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsKnowledgeQuickSwitcherOpen(true)}
+              >
+                <Search className="mr-2 h-4 w-4" />
+                Quick switch
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleKnowledgeModeChange("browse")}
+            >
+              Browse notes
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    const errorMessage = selectedKnowledgeInspectorQuery.error
+      ? "Knowledge note details are temporarily unavailable. You can keep editing and try Quick switch again in a moment."
+      : !knowledgeVaultPolicyPending && !knowledgeVaultPolicyQuery.data?.enabled
+        ? "Knowledge Vault is still locked for this workspace."
+        : !knowledgeVaultAvailability.inspector
+          ? "Inspector details are still limited in the current rollout."
+          : null;
+    const selectedLogicalPathFromMetadata =
+      typeof selectedMarkdownItem.metadata?.logical_path === "string"
+        ? selectedMarkdownItem.metadata.logical_path
+        : null;
+
+    return (
+      <KnowledgeNoteSpotlight
+        title={selectedMarkdownItem.title}
+        logicalPath={
+          selectedKnowledgeSummary?.logicalPath ??
+          selectedLogicalPathFromMetadata ??
+          null
+        }
+        aliases={selectedKnowledgeSummary?.aliases ?? []}
+        tags={selectedKnowledgeSummary?.tags ?? []}
+        backlinksCount={selectedKnowledgeSummary?.backlinksCount}
+        outgoingCount={selectedKnowledgeSummary?.outgoingCount}
+        mentionCount={selectedKnowledgeSummary?.mentionCount}
+        graphEdgeCount={selectedKnowledgeSummary?.graphEdgeCount}
+        sharedTagsCount={selectedKnowledgeSummary?.sharedTagsCount}
+        semanticRelatedCount={selectedKnowledgeSummary?.semanticRelatedCount}
+        isLoading={selectedKnowledgeInspectorQuery.isLoading}
+        errorMessage={errorMessage}
+        quickSwitcherEnabled={knowledgeVaultAvailability.quickSwitcher}
+        inspectorEnabled={knowledgeVaultAvailability.inspector}
+        graphEnabled={knowledgeVaultAvailability.graph}
+        contextPacksEnabled={knowledgeVaultAvailability.contextPacks}
+        blockedReasons={selectedNoteBlockedReasons}
+        compact={isDesktopLayout ? isKnowledgePanelOpen : true}
+        onChangeMode={handleKnowledgeModeChange}
+        onOpenQuickSwitch={() => setIsKnowledgeQuickSwitcherOpen(true)}
+        onCopyWikiLink={handleCopyCurrentNoteWikilink}
+      />
+    );
+  }
+
+  function renderKnowledgeVaultBrowseState() {
+    return (
+      <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-5 text-sm text-slate-600 shadow-sm">
+        <div className="font-medium text-slate-900">
+          Browse mode keeps files on the left and knowledge tools on the right.
+        </div>
+        <div className="mt-2 leading-6">
+          Open a markdown note, then jump into backlinks, graph, memory packs,
+          tags, and saved views without squeezing the file list.
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {knowledgeVaultAvailability.quickSwitcher ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsKnowledgeQuickSwitcherOpen(true)}
+            >
+              <Search className="mr-2 h-4 w-4" />
+              Quick switch
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleKnowledgeModeChange("related")}
+            disabled={!knowledgeVaultAvailability.inspector}
+          >
+            Related notes
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleKnowledgeModeChange("graph")}
+            disabled={!knowledgeVaultAvailability.graph}
+          >
+            Graph explorer
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   function renderPrivateVaultGate() {
@@ -1431,7 +1933,7 @@ export default function DocumentManagement() {
     }
   }
 
-  async function handleCreateNewDocument() {
+  async function handleCreateNewDocument(customTitle?: string) {
     if (queryState.scope === "private_vault" && privateVaultActionLocked) {
       toast.error(
         t("documentManagement.privateVault.unlockBeforeCreateDocument")
@@ -1440,7 +1942,8 @@ export default function DocumentManagement() {
     }
     try {
       const now = new Date();
-      const title = `New Document ${now.toLocaleString()}`;
+      const title =
+        customTitle?.trim() || `New Document ${now.toLocaleString()}`;
       const createResult = await createItemMutation.mutateAsync({
         itemType: "md",
         source: "document_management",
@@ -1608,17 +2111,21 @@ export default function DocumentManagement() {
     }
   }
 
-  function beginHorizontalResize(event: ReactMouseEvent<HTMLDivElement>) {
+  function beginHorizontalResize(
+    event: ReactMouseEvent<HTMLDivElement>,
+    panel: "library" | "knowledge"
+  ) {
     if (!isDesktopLayout) return;
     const container = desktopLayoutRef.current;
     if (!container) return;
     const rect = container.getBoundingClientRect();
     activeResizeRef.current = {
-      panel: "library",
+      panel,
       startX: event.clientX,
-      startLibraryWidth: libraryPanelWidth,
+      startWidth: panel === "library" ? libraryPanelWidth : knowledgePanelWidth,
       containerWidth: rect.width,
       libraryOpenAtStart: isLibraryPanelOpen,
+      knowledgeOpenAtStart: isKnowledgePanelOpen,
     };
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
@@ -1631,17 +2138,46 @@ export default function DocumentManagement() {
 
       const deltaX = event.clientX - session.startX;
       const containerWidth = session.containerWidth;
+      const reservedHandleCount =
+        Number(session.libraryOpenAtStart) +
+        Number(session.knowledgeOpenAtStart);
+      const reservedLibraryWidth = session.libraryOpenAtStart
+        ? libraryPanelWidth
+        : 0;
+      const reservedKnowledgeWidth = session.knowledgeOpenAtStart
+        ? knowledgePanelWidth
+        : 0;
 
-      const maxLibraryWidth = Math.max(
-        MIN_LIBRARY_PANEL_WIDTH,
-        containerWidth - MIN_EDITOR_PANEL_WIDTH - RESIZE_HANDLE_WIDTH
+      if (session.panel === "library") {
+        const maxLibraryWidth = Math.max(
+          MIN_LIBRARY_PANEL_WIDTH,
+          containerWidth -
+            MIN_EDITOR_PANEL_WIDTH -
+            (session.knowledgeOpenAtStart ? reservedKnowledgeWidth : 0) -
+            reservedHandleCount * RESIZE_HANDLE_WIDTH
+        );
+        const nextLibraryWidth = clamp(
+          session.startWidth + deltaX,
+          MIN_LIBRARY_PANEL_WIDTH,
+          maxLibraryWidth
+        );
+        setLibraryPanelWidth(nextLibraryWidth);
+        return;
+      }
+
+      const maxKnowledgeWidth = Math.max(
+        MIN_KNOWLEDGE_PANEL_WIDTH,
+        containerWidth -
+          MIN_EDITOR_PANEL_WIDTH -
+          (session.libraryOpenAtStart ? reservedLibraryWidth : 0) -
+          reservedHandleCount * RESIZE_HANDLE_WIDTH
       );
-      const nextLibraryWidth = clamp(
-        session.startLibraryWidth + deltaX,
-        MIN_LIBRARY_PANEL_WIDTH,
-        maxLibraryWidth
+      const nextKnowledgeWidth = clamp(
+        session.startWidth - deltaX,
+        MIN_KNOWLEDGE_PANEL_WIDTH,
+        maxKnowledgeWidth
       );
-      setLibraryPanelWidth(nextLibraryWidth);
+      setKnowledgePanelWidth(nextKnowledgeWidth);
     };
 
     const handleMouseUp = () => stopHorizontalResizeSession();
@@ -1757,7 +2293,9 @@ export default function DocumentManagement() {
                     {t("documentManagement.uploadFile")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={handleCreateNewDocument}
+                    onClick={() => {
+                      void handleCreateNewDocument();
+                    }}
                     disabled={
                       createItemMutation.isPending ||
                       saveMarkdownMutation.isPending ||
@@ -1857,7 +2395,9 @@ export default function DocumentManagement() {
               </Button>
               <Button
                 size="sm"
-                onClick={handleCreateNewDocument}
+                onClick={() => {
+                  void handleCreateNewDocument();
+                }}
                 disabled={
                   createItemMutation.isPending ||
                   saveMarkdownMutation.isPending ||
@@ -2082,6 +2622,15 @@ export default function DocumentManagement() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <KnowledgeQuickSwitcherDialog
+        open={isKnowledgeQuickSwitcherOpen}
+        onOpenChange={setIsKnowledgeQuickSwitcherOpen}
+        onSelectNote={({ libraryItemId, title }) =>
+          openKnowledgeItem(libraryItemId, title)
+        }
+        onCreateNote={title => handleCreateNewDocument(title)}
+      />
+
       <main
         className={cn(
           isDesktopLayout
@@ -2265,6 +2814,29 @@ export default function DocumentManagement() {
                       </div>
                     )}
 
+                    {knowledgeVaultScopeSupported ? (
+                      <button
+                        type="button"
+                        className="shrink-0 rounded-3xl border border-sky-200 bg-gradient-to-r from-sky-50 via-white to-cyan-50 px-3.5 py-3.5 text-left shadow-sm"
+                        onClick={() => setMobileTab("knowledge")}
+                      >
+                        <div className="text-sm font-semibold text-slate-900">
+                          Open Knowledge workspace
+                        </div>
+                        <div className="mt-1 text-xs leading-5 text-slate-600">
+                          Explore graph, backlinks, shared tags, semantic
+                          related notes, and memory packs for markdown notes.
+                        </div>
+                        {selectedMarkdownItem ? (
+                          <div className="mt-2 inline-flex max-w-full rounded-full border border-sky-200 bg-white/80 px-2.5 py-1 text-[11px] text-sky-700">
+                            <span className="truncate">
+                              Current note: {selectedMarkdownItem.title}
+                            </span>
+                          </div>
+                        ) : null}
+                      </button>
+                    ) : null}
+
                     <div className="shrink-0 rounded-2xl border border-slate-200 bg-slate-50/80 p-2.5 shadow-sm">
                       <div className="grid gap-2 sm:grid-cols-2">
                         <div className="relative sm:col-span-2">
@@ -2428,6 +3000,92 @@ export default function DocumentManagement() {
               </div>
             )}
 
+            {mobileTab === "knowledge" && (
+              <div className="flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-b from-white via-white to-slate-50/70 shadow-md">
+                <div className="sticky top-0 z-10 shrink-0 border-b bg-white/95 px-3 pt-3 pb-3 backdrop-blur">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                        onClick={() => setMobileTab("library")}
+                      >
+                        <FolderOpen className="h-3.5 w-3.5" />
+                        {t("documentManagement.libraryPanelTitle")}
+                      </button>
+                      <span className="text-sm font-semibold text-slate-900">
+                        Knowledge
+                      </span>
+                    </div>
+                    {selectedMarkdownItem ? (
+                      <Badge
+                        variant="outline"
+                        className="rounded-full border-sky-200 bg-sky-50 text-sky-700"
+                      >
+                        Markdown note
+                      </Badge>
+                    ) : null}
+                  </div>
+                  {selectedMarkdownItem ? (
+                    <div className="mt-2 max-w-full text-sm font-medium text-slate-900">
+                      <span className="line-clamp-2">
+                        {selectedMarkdownItem.title}
+                      </span>
+                    </div>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {knowledgeVaultAvailability.quickSwitcher ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 rounded-full"
+                        onClick={() => setIsKnowledgeQuickSwitcherOpen(true)}
+                      >
+                        <Search className="mr-2 h-3.5 w-3.5" />
+                        Quick switch
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 rounded-full"
+                      onClick={() => handleKnowledgeModeChange("graph")}
+                      disabled={!knowledgeVaultAvailability.graph}
+                    >
+                      <GitBranch className="mr-2 h-3.5 w-3.5" />
+                      Graph
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 rounded-full"
+                      onClick={() => setMobileTab("editor")}
+                    >
+                      <FileText className="mr-2 h-3.5 w-3.5" />
+                      Open editor
+                    </Button>
+                  </div>
+                </div>
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
+                  {renderKnowledgeVaultNavigation()}
+                  {renderKnowledgeNoteSpotlight()}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-2.5">
+                    {showKnowledgeVaultNavigation ? (
+                      renderKnowledgeVaultContent()
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-sm text-slate-500">
+                        Knowledge tools are not available for this scope yet.
+                        Open a markdown note in your library to continue.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {mobileTab === "editor" && (
               <div className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white shadow-md overflow-hidden">
                 <div className="shrink-0 flex items-center justify-between border-b px-3 pt-3 pb-2">
@@ -2499,55 +3157,64 @@ export default function DocumentManagement() {
                     </div>
                   )}
                 </div>
-                <div className="flex-1 min-h-0 overflow-hidden p-2">
-                  <DocumentPreviewPanel
-                    key={selectedPreviewPanelKey}
-                    item={selectedItem}
-                    previewType={previewType}
-                    previewText={previewText}
-                    initialEditorTemplate="page"
-                    markdownValue={selectedMarkdownValue}
-                    markdownUpdatedAt={selectedMarkdownUpdatedAt}
-                    markdownError={markdownError}
-                    isMarkdownSaving={saveMarkdownMutation.isPending}
-                    isRenamingTitle={updateItemMutation.isPending}
-                    documentId={selectedItem?.id}
-                    shareUrl={selectedShareUrl}
-                    onMarkdownChange={value => {
-                      if (!selectedItem) return;
-                      const docId = selectedItem.id;
-                      setMarkdownDraftByDocId(prev => {
-                        const current = prev[docId];
-                        const fallbackUpdatedAt = selectedItem.updated_at;
-                        return {
-                          ...prev,
-                          [docId]: {
-                            value,
-                            savedValue: current?.savedValue ?? "",
-                            updatedAt: current?.updatedAt ?? fallbackUpdatedAt,
-                          },
-                        };
-                      });
-                    }}
-                    onMarkdownSave={handleSaveMarkdown}
-                    onVersionRestore={handleVersionRestore}
-                    onRenameTitle={handleRenameDocument}
-                    onReplaceFile={
-                      previewType !== "markdown" ? handleReplaceFile : undefined
-                    }
-                    isReplacingFile={replaceFileMutation.isPending}
-                  />
-                  {!selectedItem && selectedItemQuery.isLoading ? (
-                    <div className="p-2 text-sm text-muted-foreground">
-                      {t("documentManagement.loadingDocument")}
-                    </div>
-                  ) : null}
-                  {!selectedItem && !selectedItemQuery.isLoading ? (
-                    <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground">
-                      <FolderOpen className="h-4 w-4" />
-                      {t("documentManagement.openFromLibraryTab")}
-                    </div>
-                  ) : null}
+                <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden p-2">
+                  {renderKnowledgeNoteSpotlight()}
+                  <div className="min-h-0 flex-1 overflow-hidden">
+                    <DocumentPreviewPanel
+                      key={selectedPreviewPanelKey}
+                      item={selectedItem}
+                      previewType={previewType}
+                      previewText={previewText}
+                      initialEditorTemplate="page"
+                      markdownValue={selectedMarkdownValue}
+                      markdownUpdatedAt={selectedMarkdownUpdatedAt}
+                      markdownError={markdownError}
+                      isMarkdownSaving={saveMarkdownMutation.isPending}
+                      isRenamingTitle={updateItemMutation.isPending}
+                      documentId={selectedItem?.id}
+                      shareUrl={selectedShareUrl}
+                      onMarkdownChange={value => {
+                        if (!selectedItem) return;
+                        const docId = selectedItem.id;
+                        setMarkdownDraftByDocId(prev => {
+                          const current = prev[docId];
+                          const fallbackUpdatedAt = selectedItem.updated_at;
+                          return {
+                            ...prev,
+                            [docId]: {
+                              value,
+                              savedValue: current?.savedValue ?? "",
+                              updatedAt:
+                                current?.updatedAt ?? fallbackUpdatedAt,
+                            },
+                          };
+                        });
+                      }}
+                      onMarkdownSave={handleSaveMarkdown}
+                      onVersionRestore={handleVersionRestore}
+                      onRenameTitle={handleRenameDocument}
+                      onReplaceFile={
+                        previewType !== "markdown"
+                          ? handleReplaceFile
+                          : undefined
+                      }
+                      isReplacingFile={replaceFileMutation.isPending}
+                      onOpenWikiLink={handleOpenWikiLink}
+                      knowledgeBacklinks={selectedKnowledgeBacklinks}
+                      onOpenKnowledgeItem={openKnowledgeItem}
+                    />
+                    {!selectedItem && selectedItemQuery.isLoading ? (
+                      <div className="p-2 text-sm text-muted-foreground">
+                        {t("documentManagement.loadingDocument")}
+                      </div>
+                    ) : null}
+                    {!selectedItem && !selectedItemQuery.isLoading ? (
+                      <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground">
+                        <FolderOpen className="h-4 w-4" />
+                        {t("documentManagement.openFromLibraryTab")}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             )}
@@ -2751,7 +3418,6 @@ export default function DocumentManagement() {
                         </div>
                       </div>
                     )}
-
                     <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3 shadow-sm">
                       <div className="grid gap-2 sm:grid-cols-2">
                         <div className="relative sm:col-span-2">
@@ -2936,7 +3602,7 @@ export default function DocumentManagement() {
               <div
                 className="hidden cursor-col-resize items-stretch justify-center rounded-full transition-colors hover:bg-sky-100 xl:flex"
                 style={{ width: `${RESIZE_HANDLE_WIDTH}px` }}
-                onMouseDown={event => beginHorizontalResize(event)}
+                onMouseDown={event => beginHorizontalResize(event, "library")}
                 role="separator"
                 aria-orientation="vertical"
                 aria-label="Resize library and editor panels"
@@ -2980,6 +3646,22 @@ export default function DocumentManagement() {
                         <ChevronsRight className="h-4 w-4 text-slate-600" />
                       )}
                     </Button>
+                    {knowledgeVaultScopeSupported ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full hover:bg-slate-100 transition-colors"
+                        onClick={() => setIsKnowledgePanelOpen(prev => !prev)}
+                        title={
+                          isKnowledgePanelOpen
+                            ? "Hide Knowledge Vault"
+                            : "Show Knowledge Vault"
+                        }
+                      >
+                        <GitBranch className="h-4 w-4 text-slate-600" />
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
 
@@ -3041,58 +3723,66 @@ export default function DocumentManagement() {
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-2 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
-                  <DocumentPreviewPanel
-                    key={selectedPreviewPanelKey}
-                    item={selectedItem}
-                    previewType={previewType}
-                    previewText={previewText}
-                    initialEditorTemplate="page"
-                    markdownValue={selectedMarkdownValue}
-                    markdownUpdatedAt={selectedMarkdownUpdatedAt}
-                    markdownError={markdownError}
-                    isMarkdownSaving={saveMarkdownMutation.isPending}
-                    isRenamingTitle={updateItemMutation.isPending}
-                    documentId={selectedItem?.id}
-                    shareUrl={selectedShareUrl}
-                    onMarkdownChange={value => {
-                      if (!selectedItem) return;
-                      const docId = selectedItem.id;
-                      setMarkdownDraftByDocId(prev => {
-                        const current = prev[docId];
-                        const fallbackUpdatedAt = selectedItem.updated_at;
-                        return {
-                          ...prev,
-                          [docId]: {
-                            value,
-                            savedValue: current?.savedValue ?? "",
-                            updatedAt: current?.updatedAt ?? fallbackUpdatedAt,
-                          },
-                        };
-                      });
-                    }}
-                    onMarkdownSave={handleSaveMarkdown}
-                    onVersionRestore={handleVersionRestore}
-                    onEnterEditMode={() => {
-                      /* No-op: preview panel removed in S10; surface manages mode internally */
-                    }}
-                    onRenameTitle={handleRenameDocument}
-                    onReplaceFile={
-                      previewType !== "markdown" ? handleReplaceFile : undefined
-                    }
-                    isReplacingFile={replaceFileMutation.isPending}
-                  />
-                  {!selectedItem && selectedItemQuery.isLoading ? (
-                    <div className="text-sm text-muted-foreground">
-                      {t("documentManagement.loadingDocument")}
-                    </div>
-                  ) : null}
-                  {!selectedItem && !selectedItemQuery.isLoading ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <FolderOpen className="h-4 w-4" />
-                      {t("documentManagement.noDocumentSelected")}
-                    </div>
-                  ) : null}
+                <div className="flex flex-col gap-3 xl:min-h-0 xl:flex-1">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-2 xl:min-h-0 xl:flex-1 xl:overflow-hidden">
+                    <DocumentPreviewPanel
+                      key={selectedPreviewPanelKey}
+                      item={selectedItem}
+                      previewType={previewType}
+                      previewText={previewText}
+                      initialEditorTemplate="page"
+                      markdownValue={selectedMarkdownValue}
+                      markdownUpdatedAt={selectedMarkdownUpdatedAt}
+                      markdownError={markdownError}
+                      isMarkdownSaving={saveMarkdownMutation.isPending}
+                      isRenamingTitle={updateItemMutation.isPending}
+                      documentId={selectedItem?.id}
+                      shareUrl={selectedShareUrl}
+                      onMarkdownChange={value => {
+                        if (!selectedItem) return;
+                        const docId = selectedItem.id;
+                        setMarkdownDraftByDocId(prev => {
+                          const current = prev[docId];
+                          const fallbackUpdatedAt = selectedItem.updated_at;
+                          return {
+                            ...prev,
+                            [docId]: {
+                              value,
+                              savedValue: current?.savedValue ?? "",
+                              updatedAt:
+                                current?.updatedAt ?? fallbackUpdatedAt,
+                            },
+                          };
+                        });
+                      }}
+                      onMarkdownSave={handleSaveMarkdown}
+                      onVersionRestore={handleVersionRestore}
+                      onEnterEditMode={() => {
+                        /* No-op: preview panel removed in S10; surface manages mode internally */
+                      }}
+                      onRenameTitle={handleRenameDocument}
+                      onReplaceFile={
+                        previewType !== "markdown"
+                          ? handleReplaceFile
+                          : undefined
+                      }
+                      isReplacingFile={replaceFileMutation.isPending}
+                      onOpenWikiLink={handleOpenWikiLink}
+                      knowledgeBacklinks={selectedKnowledgeBacklinks}
+                      onOpenKnowledgeItem={openKnowledgeItem}
+                    />
+                    {!selectedItem && selectedItemQuery.isLoading ? (
+                      <div className="text-sm text-muted-foreground">
+                        {t("documentManagement.loadingDocument")}
+                      </div>
+                    ) : null}
+                    {!selectedItem && !selectedItemQuery.isLoading ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <FolderOpen className="h-4 w-4" />
+                        {t("documentManagement.noDocumentSelected")}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </section>
             ) : (
@@ -3109,6 +3799,121 @@ export default function DocumentManagement() {
                 </Button>
               </div>
             )}
+
+            {knowledgeVaultScopeSupported &&
+            isKnowledgePanelOpen &&
+            isDesktopLayout ? (
+              <div
+                className="hidden cursor-col-resize items-stretch justify-center rounded-full transition-colors hover:bg-sky-100 xl:flex"
+                style={{ width: `${RESIZE_HANDLE_WIDTH}px` }}
+                onMouseDown={event => beginHorizontalResize(event, "knowledge")}
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize editor and knowledge panels"
+              >
+                <div className="my-6 w-px rounded-full bg-slate-300" />
+              </div>
+            ) : null}
+
+            {knowledgeVaultScopeSupported ? (
+              isKnowledgePanelOpen ? (
+                <aside
+                  className="flex flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md transition-all duration-300 xl:min-h-0 xl:shrink-0"
+                  style={
+                    isDesktopLayout
+                      ? { width: `${knowledgePanelWidth}px` }
+                      : undefined
+                  }
+                >
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-sky-50 text-sky-700">
+                          <GitBranch className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-base font-semibold text-slate-900">
+                            Knowledge Vault
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            Backlinks, graph, tags, memory packs, and reviewed
+                            note context.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full hover:bg-slate-100 transition-colors"
+                      onClick={() => setIsKnowledgePanelOpen(false)}
+                      title="Collapse Knowledge Vault"
+                    >
+                      <ChevronsRight className="h-4 w-4 text-slate-600" />
+                    </Button>
+                  </div>
+
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {knowledgeVaultAvailability.quickSwitcher ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 rounded-full"
+                        onClick={() => setIsKnowledgeQuickSwitcherOpen(true)}
+                      >
+                        <Search className="mr-2 h-3.5 w-3.5" />
+                        Quick switch
+                      </Button>
+                    ) : null}
+                    {selectedMarkdownItem ? (
+                      <Badge
+                        variant="outline"
+                        className="max-w-full rounded-full border-sky-200 bg-sky-50 text-sky-700"
+                        title={selectedMarkdownItem.title}
+                      >
+                        <span className="truncate">
+                          {selectedMarkdownItem.title}
+                        </span>
+                      </Badge>
+                    ) : null}
+                  </div>
+
+                  <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+                    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+                      {renderKnowledgeNoteSpotlight()}
+                      {renderKnowledgeVaultNavigation()}
+                      {showKnowledgeVaultNavigation ? (
+                        knowledgeVaultMode === "browse" ? (
+                          renderKnowledgeVaultBrowseState()
+                        ) : (
+                          renderKnowledgeVaultContent()
+                        )
+                      ) : (
+                        <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-5 text-sm text-slate-500 shadow-sm">
+                          Knowledge tools are not available for this scope yet.
+                          Open a markdown note in your library to continue.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </aside>
+              ) : (
+                <div className="flex items-center justify-center xl:w-[72px] xl:shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12 rounded-2xl border-2 border-sky-200 bg-gradient-to-br from-white to-sky-50 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                    onClick={() => setIsKnowledgePanelOpen(true)}
+                    title="Show Knowledge Vault"
+                  >
+                    <GitBranch className="h-6 w-6 text-sky-600" />
+                  </Button>
+                </div>
+              )
+            ) : null}
           </div>
         )}{" "}
         {/* end isDesktopLayout */}
@@ -3116,7 +3921,7 @@ export default function DocumentManagement() {
 
       {/* ── MOBILE / TABLET BOTTOM TAB BAR ── */}
       {!isDesktopLayout && (
-        <div className="fixed bottom-0 left-0 right-0 z-20 flex h-14 shrink-0 border-t bg-white/90 shadow-lg backdrop-blur-md">
+        <div className="fixed bottom-0 left-0 right-0 z-20 flex h-[calc(3.5rem+env(safe-area-inset-bottom))] shrink-0 border-t bg-white/90 pb-[env(safe-area-inset-bottom)] shadow-lg backdrop-blur-md">
           {(
             [
               {
@@ -3124,6 +3929,15 @@ export default function DocumentManagement() {
                 Icon: FolderOpen,
                 label: t("documentManagement.libraryPanelTitle"),
               },
+              ...(knowledgeVaultScopeSupported
+                ? [
+                    {
+                      tab: "knowledge",
+                      Icon: GitBranch,
+                      label: "Knowledge",
+                    } as const,
+                  ]
+                : []),
               {
                 tab: "editor",
                 Icon: FileText,

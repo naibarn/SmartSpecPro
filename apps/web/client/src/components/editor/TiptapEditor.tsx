@@ -10,9 +10,14 @@ import { handleDrop } from "./dropHandler";
 import type { JSONContent } from "./types";
 import type { TiptapEditorTemplate } from "./types";
 import { createSlashCommandExtension } from "./slashCommandExtension";
+import { createWikiLinkSuggestionExtension } from "./wikiLinkSuggestionExtension";
+import { createTagSuggestionExtension } from "./tagSuggestionExtension";
+import { createPropertyReferenceSuggestionExtension } from "./propertyReferenceSuggestionExtension";
 import EditorFormattingBar from "./EditorFormattingBar";
 import { getEditorTemplatePreset } from "./editorTemplates";
 import MediaInsertMenu, { type MediaInsertAttrs } from "./MediaInsertMenu";
+import { resolveWikiLinkTargetFromNote } from "@/lib/wikiLink";
+import { trpc } from "@/lib/trpc";
 import "./editor.css";
 
 interface TiptapEditorProps {
@@ -28,6 +33,7 @@ interface TiptapEditorProps {
   uploadMetadata?: Record<string, unknown>;
   libraryScope?: "all" | "my_library" | "private_vault";
   viewZoom?: number;
+  onOpenWikiLink?: (reference: string) => void;
 }
 
 export default function TiptapEditor({
@@ -43,8 +49,10 @@ export default function TiptapEditor({
   uploadMetadata,
   libraryScope = "all",
   viewZoom = 100,
+  onOpenWikiLink,
 }: TiptapEditorProps) {
   const editorRef = useRef<Editor | null>(null);
+  const trpcUtils = trpc.useUtils();
   const [insertMenuOpen, setInsertMenuOpen] = useState(false);
   const [insertMenuType, setInsertMenuType] = useState<"image" | "video" | "audio" | "file">("image");
   const templateMode = template;
@@ -66,6 +74,68 @@ export default function TiptapEditor({
   }, []);
   const insertMedia = onInsertMedia ?? openInsertMenu;
   const insertFile = onInsertFile ?? (() => openInsertMenu("file"));
+  const wikiLinkItems = useCallback(async (query: string) => {
+    try {
+      const result = await trpcUtils.library.quickSwitchNotes.fetch({
+        query: query.trim() || undefined,
+        limit: 8,
+      });
+
+      return result.results.map((note) => {
+        const target = resolveWikiLinkTargetFromNote({
+          title: note.title,
+          logicalPath: note.logicalPath,
+        });
+
+        return {
+          id: String(note.libraryItemId),
+          label: target.label,
+          reference: target.reference,
+          logicalPath: note.logicalPath,
+          aliases: note.aliases ?? [],
+          matchType: note.matchType,
+          disambiguation: note.disambiguation,
+        };
+      });
+    } catch (error) {
+      console.error("[TiptapEditor] wiki link suggestions failed:", error);
+      return [];
+    }
+  }, [trpcUtils]);
+  const tagItems = useCallback(async (query: string) => {
+    try {
+      const result = await trpcUtils.library.listTagCatalog.fetch({
+        query: query.trim() || undefined,
+      });
+
+      return result.tags.slice(0, 8).map((entry) => ({
+        id: entry.tag,
+        label: entry.tag,
+        detail: `Used in ${entry.usageCount} note${entry.usageCount === 1 ? "" : "s"}`,
+        meta: "tag",
+      }));
+    } catch (error) {
+      console.error("[TiptapEditor] tag suggestions failed:", error);
+      return [];
+    }
+  }, [trpcUtils]);
+  const propertyReferenceItems = useCallback(async (query: string) => {
+    try {
+      const result = await trpcUtils.library.listPropertyCatalog.fetch({
+        query: query.trim() || undefined,
+      });
+
+      return result.properties.slice(0, 8).map((entry) => ({
+        id: entry.key,
+        label: entry.key,
+        detail: `Used in ${entry.usageCount} note${entry.usageCount === 1 ? "" : "s"}`,
+        meta: entry.inferredType,
+      }));
+    } catch (error) {
+      console.error("[TiptapEditor] property suggestions failed:", error);
+      return [];
+    }
+  }, [trpcUtils]);
   const extensions = useMemo(
     () => [
       ...getDefaultExtensions(),
@@ -73,9 +143,25 @@ export default function TiptapEditor({
         onMediaInsert: insertMedia,
         onFileInsert: insertFile,
       }),
+      createWikiLinkSuggestionExtension({
+        getItems: wikiLinkItems,
+      }),
+      createTagSuggestionExtension({
+        getItems: tagItems,
+      }),
+      createPropertyReferenceSuggestionExtension({
+        getItems: propertyReferenceItems,
+      }),
       Placeholder.configure({ placeholder }),
     ] as Extension[],
-    [insertMedia, insertFile, placeholder],
+    [
+      insertMedia,
+      insertFile,
+      placeholder,
+      wikiLinkItems,
+      tagItems,
+      propertyReferenceItems,
+    ],
   );
 
   const handleInsertAsset = useCallback((attrs: MediaInsertAttrs) => {
@@ -146,6 +232,29 @@ export default function TiptapEditor({
         "aria-multiline": "true",
         "aria-label": "Document editor",
       },
+      handleClick: (_view, _pos, event) => {
+        if (!onOpenWikiLink) {
+          return false;
+        }
+
+        if (!(event.target instanceof Element)) {
+          return false;
+        }
+
+        const wikiLinkElement = event.target.closest<HTMLElement>("[data-wikilink='true']");
+        const reference = wikiLinkElement?.dataset.reference?.trim();
+        if (!reference) {
+          return false;
+        }
+
+        if (editable && !(event.metaKey || event.ctrlKey)) {
+          return false;
+        }
+
+        event.preventDefault();
+        onOpenWikiLink(reference);
+        return true;
+      },
       handlePaste: (view, event, slice) => {
         if (!editorRef.current) return false;
         return handlePaste(view, event, slice, editorRef.current, {
@@ -188,6 +297,19 @@ export default function TiptapEditor({
                 {templatePreset.label} editor
               </div>
               <div className="hidden text-xs text-slate-500 sm:block">{templatePreset.description}</div>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700">
+                  Type <span className="font-semibold">[[</span> to link notes
+                </span>
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                  Reuse <span className="font-semibold">#tag</span> and <span className="font-semibold">owner::</span>
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white/80 px-2 py-0.5 text-[11px] text-slate-500">
+                  {editable
+                    ? "Ctrl/Cmd+Click opens note links while editing"
+                    : "Tap a note link to jump across the vault"}
+                </span>
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               {headerActions ? (

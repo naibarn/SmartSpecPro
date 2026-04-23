@@ -15,9 +15,14 @@ import {
   teamRooms,
   type TeamRoomMessage,
 } from "../../drizzle/schema";
-import { retrieveForPrompt, type MemorySearchResult } from "./scopedMemoryService";
+import {
+  retrieveForPrompt,
+  getRuleMemories,
+  type MemorySearchResult,
+} from "./scopedMemoryService";
 import { buildPersonaPromptSegments, type PersonaPromptSegments } from "./personaService";
 import { getEntityMemories } from "./chatService";
+import { getProjectSummaries } from "./memoryService";
 import {
   estimateTokens,
   truncateToTokenBudget,
@@ -39,6 +44,9 @@ export interface ComposePromptInput {
   tenantId: string;
   tokenBudget?: number;
   initiatedByUserId?: number;
+  projectId?: string | null;
+  currentMessage?: string;
+  memoryMode?: "full" | "no_long" | "off";
 }
 
 export interface ComposePromptResult {
@@ -66,9 +74,9 @@ const ENTITY_MEMORY_FLOOR = 500;
 /** Number of most-recent messages always included as raw (not summarized) */
 const RAW_TAIL_TURNS = 6;
 
-type BudgetProfile = "balanced" | "follow_up" | "personalized" | "retrieval";
+export type BudgetProfile = "balanced" | "follow_up" | "personalized" | "retrieval";
 
-interface BudgetAllocation {
+export interface BudgetAllocation {
   persona: number;
   scopedMemory: number;
   entityMemory: number;
@@ -294,14 +302,26 @@ export async function composePrompt(
   const totalBudget = input.tokenBudget ?? DEFAULT_TOKEN_BUDGET;
   const messages: PromptMessage[] = [];
   let usedTokens = 0;
+  const memoryMode = input.memoryMode ?? "full";
 
   // 0. Tenant validation — verify room belongs to tenant (prevents IDOR)
   const [room] = await db
-    .select({ tenantId: teamRooms.tenantId })
+    .select({
+      tenantId: teamRooms.tenantId,
+      language: teamRooms.language,
+      projectId: teamRooms.projectId,
+    })
     .from(teamRooms)
     .where(and(eq(teamRooms.id, input.roomId), eq(teamRooms.tenantId, input.tenantId)))
     .limit(1);
   if (!room) throw new Error("Room not found or tenant mismatch");
+  const roomLanguage = room.language === "th" ? "th" : "en";
+  const resolvedProjectId =
+    input.projectId ??
+    (room.projectId !== null && room.projectId !== undefined
+      ? String(room.projectId)
+      : null);
+  const promptQuery = input.currentMessage?.trim() || input.objective;
 
   // Pre-fetch history count for adaptive budget detection
   const historyWhere = input.runId
@@ -364,6 +384,13 @@ export async function composePrompt(
     usedTokens += estimateTokens(personaSection);
   }
 
+  const roomLanguageInstruction =
+    roomLanguage === "th"
+      ? "Room language: Thai. Respond in Thai unless quoting source text."
+      : "Room language: English. Respond in English unless quoting source text.";
+  messages.push({ role: "system", content: roomLanguageInstruction });
+  usedTokens += estimateTokens(roomLanguageInstruction);
+
   // 2. Load team members for context
   const participants = await db
     .select()
@@ -381,33 +408,136 @@ export async function composePrompt(
   }
 
   // 3. Retrieve scoped memories (dedicated budget — not shared with entity)
+  const rulesBudget =
+    memoryMode === "off" || !input.initiatedByUserId
+      ? 0
+      : Math.min(800, Math.floor(budget.scopedMemory * 0.25));
+  const projectSummaryBudget =
+    memoryMode === "off" || !input.initiatedByUserId || !resolvedProjectId
+      ? 0
+      : Math.min(900, Math.floor(budget.scopedMemory * 0.25));
+  const scopedMemoryBudget = Math.max(
+    400,
+    budget.scopedMemory - rulesBudget - projectSummaryBudget,
+  );
+
   let memoryResults: MemorySearchResult[] = [];
-  try {
-    memoryResults = await retrieveForPrompt(
-      input.tenantId,
-      input.assistantId,
-      input.runId ?? "",
-      input.roomId,
-      input.teamId,
-      input.objective,
-      budget.scopedMemory,
-    );
-  } catch (err) {
-    console.warn("Memory retrieval failed:", err);
+  if (memoryMode !== "off") {
+    try {
+      memoryResults = await retrieveForPrompt(
+        input.tenantId,
+        input.assistantId,
+        input.runId ?? "",
+        input.roomId,
+        input.teamId,
+        promptQuery,
+        scopedMemoryBudget,
+        undefined,
+        {
+          initiatedByUserId: input.initiatedByUserId,
+          projectId: resolvedProjectId,
+        },
+      );
+    } catch (err) {
+      console.warn("Memory retrieval failed:", err);
+    }
+  }
+
+  let ruleMemories: Awaited<ReturnType<typeof getRuleMemories>> = [];
+  if (
+    memoryMode !== "off" &&
+    input.initiatedByUserId &&
+    profile &&
+    rulesBudget > 0
+  ) {
+    try {
+      ruleMemories = await getRuleMemories(
+        input.tenantId,
+        input.initiatedByUserId,
+        profile.personaId ?? null,
+      );
+    } catch (err) {
+      console.warn("Rule memory retrieval failed:", err);
+    }
+  }
+
+  if (ruleMemories.length > 0) {
+    const ruleContent = ruleMemories
+      .map((rule) => `- ${rule.title}: ${rule.content}`)
+      .join("\n");
+    const truncatedRules = truncateToTokenBudget(ruleContent, rulesBudget);
+    messages.push({
+      role: "system",
+      content: `Persistent user rules and preferences:\n${truncatedRules}`,
+    });
+    usedTokens += estimateTokens(truncatedRules);
   }
 
   if (memoryResults.length > 0) {
-    const memoryContent = memoryResults
-      .map((r) => `- [${r.memory.memoryKind}] ${r.memory.title}: ${r.memory.content}`)
-      .join("\n");
+    const filteredMemoryResults = memoryResults.filter(
+      (result) => result.memory.memoryKind !== "rule",
+    );
 
-    const truncatedMemory = truncateToTokenBudget(memoryContent, budget.scopedMemory);
-    messages.push({ role: "system", content: `Relevant memories:\n${truncatedMemory}` });
-    usedTokens += estimateTokens(truncatedMemory);
+    if (filteredMemoryResults.length > 0) {
+      const memoryContent = filteredMemoryResults
+        .map(
+          (result) =>
+            `- [${result.memory.ownerType}:${result.memory.memoryKind}] ${result.memory.title}: ${result.memory.content}`,
+        )
+        .join("\n");
+
+      const truncatedMemory = truncateToTokenBudget(
+        memoryContent,
+        scopedMemoryBudget,
+      );
+      messages.push({
+        role: "system",
+        content: `Relevant workspace memories:\n${truncatedMemory}`,
+      });
+      usedTokens += estimateTokens(truncatedMemory);
+    }
+  }
+
+  let projectSummaries: Awaited<ReturnType<typeof getProjectSummaries>> = [];
+  if (
+    memoryMode !== "off" &&
+    input.initiatedByUserId &&
+    resolvedProjectId &&
+    projectSummaryBudget > 0
+  ) {
+    try {
+      projectSummaries = await getProjectSummaries(
+        resolvedProjectId,
+        input.initiatedByUserId,
+        3,
+      );
+    } catch (err) {
+      console.warn("Project summary retrieval failed:", err);
+    }
+  }
+
+  if (projectSummaries.length > 0) {
+    const summaryContent = projectSummaries
+      .map((summary) => `- ${summary.summary}`)
+      .join("\n");
+    const truncatedSummary = truncateToTokenBudget(
+      summaryContent,
+      projectSummaryBudget,
+    );
+    messages.push({
+      role: "system",
+      content: `Project continuity notes:\n${truncatedSummary}`,
+    });
+    usedTokens += estimateTokens(truncatedSummary);
   }
 
   // 3b. Entity memory injection (dedicated budget with floor guarantee)
-  if (input.initiatedByUserId && profile && budget.entityMemory >= ENTITY_MEMORY_FLOOR) {
+  if (
+    memoryMode !== "off" &&
+    input.initiatedByUserId &&
+    profile &&
+    budget.entityMemory >= ENTITY_MEMORY_FLOOR
+  ) {
     try {
       const entityMems = await getEntityMemories(
         input.initiatedByUserId,

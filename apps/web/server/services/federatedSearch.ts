@@ -9,6 +9,8 @@ import { eq, and, isNull, ilike, or, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { libraryItems, libraryLinks, systemSettings } from "../../drizzle/schema";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
+import { buildContextToolStateHintsFromResult } from "./contextToolService";
+import type { ContextStateHints } from "../../shared/contextEngine";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -54,6 +56,7 @@ export interface FederatedSearchResponse {
   has_more: boolean;
   results: FederatedSearchResult[];
   driveResultsStatus: DriveResultsStatus;
+  contextState?: ContextStateHints;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -141,6 +144,17 @@ export async function federatedSearch(
   // Paginate
   const total = merged.length;
   const paged = merged.slice(offset, offset + limit);
+  const contextState = buildContextToolStateHintsFromResult({
+    title: `Federated search results for "${input.query}"`,
+    content: paged,
+    ownerType: "user",
+    ownerId: String(actor.userId),
+    sourceRef: `federated:${input.query}`,
+    source: "hybrid",
+    includedReason: "Federated search results",
+    trust: "derived",
+    freshness: "recent",
+  });
 
   return {
     query: input.query,
@@ -150,6 +164,7 @@ export async function federatedSearch(
     has_more: offset + limit < total,
     results: paged,
     driveResultsStatus: driveStatus,
+    contextState: Object.keys(contextState).length > 0 ? contextState : undefined,
   };
 }
 

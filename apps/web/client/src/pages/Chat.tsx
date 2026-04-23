@@ -1196,10 +1196,12 @@ export default function Chat() {
             />
           )}
           {rightPanel === "skills" && selectedConversationId && (
-            <SkillSettings
-              conversationId={selectedConversationId}
-              onClose={() => setRightPanel("none")}
-            />
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              <SkillSettings
+                conversationId={selectedConversationId}
+                onClose={() => setRightPanel("none")}
+              />
+            </div>
           )}
           {rightPanel === "artifacts" && (
             <ArtifactPanel

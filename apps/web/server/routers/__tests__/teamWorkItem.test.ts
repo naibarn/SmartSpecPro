@@ -71,14 +71,17 @@ vi.mock("../../services/workItemService", () => ({
 const {
   mockPrepareWorkUpdate,
   mockSendMessage,
+  mockGetRoom,
 } = vi.hoisted(() => ({
   mockPrepareWorkUpdate: vi.fn(),
   mockSendMessage: vi.fn(),
+  mockGetRoom: vi.fn(),
 }));
 
 vi.mock("../../services/roomService", () => ({
   prepareWorkUpdate: mockPrepareWorkUpdate,
   sendMessage: mockSendMessage,
+  getRoom: mockGetRoom,
 }));
 
 import { teamWorkItemRouter } from "../teamWorkItem";
@@ -88,6 +91,7 @@ describe("teamWorkItemRouter", () => {
     vi.clearAllMocks();
     mockResolveTenantIdVarchar.mockReturnValue("tenant-1");
     mockSuggestAutoAdvanceStep.mockReturnValue(null);
+    mockGetRoom.mockResolvedValue({ language: "en" });
     mockPrepareWorkUpdate.mockReturnValue({
       content: "safe trace",
       summaryContent: "safe trace",
@@ -257,7 +261,9 @@ describe("teamWorkItemRouter", () => {
       threadRootMessageId: "msg-root",
       riskClass: "medium",
     });
-    mockSendMessage.mockResolvedValue({ id: "msg-approve" });
+    mockSendMessage
+      .mockResolvedValueOnce({ id: "msg-approve" })
+      .mockResolvedValueOnce({ id: "msg-approve-step-result" });
 
     await teamWorkItemRouter.approve({
       input: {
@@ -275,10 +281,15 @@ describe("teamWorkItemRouter", () => {
       tenantId: "tenant-1",
       approverMemberId: "assistant-3",
     }));
-    expect(mockPrepareWorkUpdate).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockPrepareWorkUpdate).toHaveBeenNthCalledWith(1, expect.objectContaining({
       messageType: "approval",
       replyToMessageId: "msg-root",
     }));
+    expect(mockPrepareWorkUpdate).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      messageType: "step_result",
+      replyToMessageId: "msg-approve",
+    }));
+    expect(mockSendMessage).toHaveBeenCalledTimes(2);
   });
 
   it("reject auto-routes the work item back to research", async () => {
@@ -310,6 +321,7 @@ describe("teamWorkItemRouter", () => {
     mockSuggestAutoAdvanceStep.mockReturnValue("research");
     mockSendMessage
       .mockResolvedValueOnce({ id: "msg-reject" })
+      .mockResolvedValueOnce({ id: "msg-reject-step-result" })
       .mockResolvedValueOnce({ id: "msg-requeue" });
 
     const result = await teamWorkItemRouter.reject({
@@ -329,6 +341,15 @@ describe("teamWorkItemRouter", () => {
       targetStep: "research",
       actorAssistantId: "assistant-3",
     }));
+    expect(mockPrepareWorkUpdate).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      messageType: "decision",
+      replyToMessageId: "msg-root",
+    }));
+    expect(mockPrepareWorkUpdate).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      messageType: "step_result",
+      replyToMessageId: "msg-reject",
+    }));
+    expect(mockSendMessage).toHaveBeenCalledTimes(3);
     expect(result.autoAdvanced).toEqual({
       targetStep: "research",
       roomMessage: { id: "msg-requeue" },

@@ -12,6 +12,7 @@ import {
   FileUp,
   Italic,
   Link as LinkIcon,
+  Link2,
   List,
   ListOrdered,
   Minus,
@@ -254,6 +255,17 @@ export default function EditorFormattingBar({
       icon: <LinkIcon className={iconSize} />,
       onClick: onInsertLink,
       disabled: !editor,
+    },
+    {
+      id: "knowledge-link",
+      label: "Knowledge Link",
+      title: "Knowledge Link ([[...]])",
+      ariaLabel: "Knowledge Link",
+      icon: <Link2 className={iconSize} />,
+      onClick: () => editor?.chain().focus().insertContent("[[").run(),
+      disabled: !editor,
+      tooltip: "Insert a knowledge vault note link",
+      testId: "toolbar-knowledge-link",
     },
   ];
 
@@ -629,6 +641,7 @@ export default function EditorFormattingBar({
                       inlineActions[1],
                       inlineActions[2],
                       inlineActions[3],
+                      inlineActions[5],
                     ])}
                     {renderMenuSection("Blocks", [
                       blockActions[0],
@@ -647,6 +660,7 @@ export default function EditorFormattingBar({
                     ])}
                     {renderMenuSection("Insert", [
                       inlineActions[4],
+                      inlineActions[5],
                       ...mediaActions,
                     ])}
                   </div>

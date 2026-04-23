@@ -14,6 +14,8 @@ import { collectServiceRuntimeSnapshot } from "./services";
 import * as workerFleetService from "../services/workerFleetService";
 import * as workerBudgetService from "../services/workerBudgetService";
 import * as workOsService from "../services/workOsService";
+import * as contextEngineEvaluationService from "../services/contextEngineEvaluationService";
+import * as libraryKnowledgeObservabilityService from "../services/libraryKnowledgeObservabilityService";
 
 function requireTenantId(ctx: { tenantId: string | null; user?: { currentTenantId?: number | null } | null }): string {
   const tid = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
@@ -57,6 +59,201 @@ export const monitoringRouter = router({
     const tenantId = requireTenantId(ctx);
     return workOsService.getOverview(tenantId);
   }),
+
+  getContextEngineHealth: adminProcedure
+    .input(
+      z.object({
+        teamId: z.string().min(1).optional(),
+        roomId: z.string().min(1).optional(),
+        runId: z.string().min(1).optional(),
+        skillId: z.string().min(1).optional(),
+        userId: z.number().int().positive().optional(),
+        since: z.string().datetime().optional(),
+        limit: z.number().int().min(1).max(50).default(12),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return monitoringService.getContextEngineHealth({
+        tenantId,
+        teamId: input.teamId ?? null,
+        roomId: input.roomId ?? null,
+        runId: input.runId ?? null,
+        skillId: input.skillId ?? null,
+        userId: input.userId ?? null,
+        since: input.since ?? null,
+        limit: input.limit,
+      });
+    }),
+
+  getContextEngineEvaluationReport: adminProcedure
+    .input(
+      z.object({
+        teamId: z.string().min(1).optional(),
+        roomId: z.string().min(1).optional(),
+        runId: z.string().min(1).optional(),
+        skillId: z.string().min(1).optional(),
+        userId: z.number().int().positive().optional(),
+        since: z.string().datetime().optional(),
+        limit: z.number().int().min(1).max(200).default(100),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      const query = {
+        tenantId,
+        teamId: input.teamId ?? null,
+        roomId: input.roomId ?? null,
+        runId: input.runId ?? null,
+        skillId: input.skillId ?? null,
+        userId: input.userId ?? null,
+        since: input.since ?? null,
+        limit: input.limit,
+      };
+
+      const [records, parity] = await Promise.all([
+        contextEngineEvaluationService.listContextEngineEvaluations(query),
+        contextEngineEvaluationService.buildContextEngineParitySummary(query),
+      ]);
+
+      return {
+        query,
+        records,
+        parity,
+        trend: contextEngineEvaluationService.buildContextEngineTrendSeries(records),
+      };
+    }),
+
+  getKnowledgeVaultReadiness: adminProcedure
+    .input(
+      z.object({
+        phase: z.enum(["internal", "canary", "production"]).optional(),
+      }).optional(),
+    )
+    .query(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return libraryKnowledgeObservabilityService.getLibraryKnowledgeObservabilityReport({
+        tenantId,
+        phase: input?.phase,
+      });
+    }),
+
+  listKnowledgeVaultReleaseGateOverrides: adminProcedure
+    .input(
+      z.object({
+        status: z.enum([
+          "pending_approval",
+          "active",
+          "rejected",
+          "revoked",
+          "expired",
+          "all",
+        ]).optional(),
+        limit: z.number().int().min(1).max(50).optional(),
+      }).optional(),
+    )
+    .query(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return libraryKnowledgeObservabilityService.listLibraryKnowledgeReleaseGateOverrides({
+        tenantId,
+        status: input?.status,
+        limit: input?.limit,
+      });
+    }),
+
+  requestKnowledgeVaultReleaseGateOverride: adminProcedure
+    .input(
+      z.object({
+        reason: z.string().min(8).max(2_000),
+        expiresAt: z.string().datetime(),
+        scopeType: z.literal("tenant").default("tenant"),
+        mode: z.enum(["standard", "break_glass"]).default("standard"),
+        metadata: z.record(z.unknown()).optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return libraryKnowledgeObservabilityService.requestLibraryKnowledgeReleaseGateOverride({
+        tenantId,
+        actorUserId: ctx.user.id,
+        reason: input.reason,
+        scopeType: input.scopeType,
+        scopeId: tenantId,
+        expiresAt: input.expiresAt,
+        mode: input.mode,
+        metadata: input.metadata,
+      });
+    }),
+
+  createKnowledgeVaultReleaseGateOverride: adminProcedure
+    .input(
+      z.object({
+        reason: z.string().min(8).max(2_000),
+        expiresAt: z.string().datetime(),
+        scopeType: z.literal("tenant").default("tenant"),
+        mode: z.enum(["standard", "break_glass"]).default("standard"),
+        metadata: z.record(z.unknown()).optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      return libraryKnowledgeObservabilityService.requestLibraryKnowledgeReleaseGateOverride({
+        tenantId,
+        actorUserId: ctx.user.id,
+        reason: input.reason,
+        scopeType: input.scopeType,
+        scopeId: tenantId,
+        expiresAt: input.expiresAt,
+        mode: input.mode,
+        metadata: input.metadata,
+      });
+    }),
+
+  approveKnowledgeVaultReleaseGateOverride: adminProcedure
+    .input(
+      z.object({
+        overrideId: z.number().int().positive(),
+        reason: z.string().min(4).max(2_000),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      return libraryKnowledgeObservabilityService.approveLibraryKnowledgeReleaseGateOverride({
+        overrideId: input.overrideId,
+        approvedByUserId: ctx.user.id,
+        reason: input.reason,
+      });
+    }),
+
+  rejectKnowledgeVaultReleaseGateOverride: adminProcedure
+    .input(
+      z.object({
+        overrideId: z.number().int().positive(),
+        reason: z.string().min(4).max(2_000),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      return libraryKnowledgeObservabilityService.rejectLibraryKnowledgeReleaseGateOverride({
+        overrideId: input.overrideId,
+        rejectedByUserId: ctx.user.id,
+        reason: input.reason,
+      });
+    }),
+
+  revokeKnowledgeVaultReleaseGateOverride: adminProcedure
+    .input(
+      z.object({
+        overrideId: z.number().int().positive(),
+        reason: z.string().min(4).max(2_000),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      await libraryKnowledgeObservabilityService.revokeLibraryKnowledgeReleaseGateOverride({
+        overrideId: input.overrideId,
+        revokedByUserId: ctx.user.id,
+        reason: input.reason,
+      });
+      return { ok: true };
+    }),
 
   getRunEvents: protectedProcedure
     .input(z.object({

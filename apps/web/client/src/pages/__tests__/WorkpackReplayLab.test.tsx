@@ -73,6 +73,7 @@ describe("WorkpackReplayLab", () => {
   it("renders replay diffs and remediation paths", () => {
     render(<WorkpackReplayLab />);
 
+    expect(screen.getByRole("link", { name: /dashboard/i })).toBeInTheDocument();
     expect(screen.getByText("Replay Diffs")).toBeInTheDocument();
     expect(screen.getByText(/connector scope drifted/i)).toBeInTheDocument();
     expect(screen.getAllByText(/inspect connector drift/i).length).toBeGreaterThan(0);

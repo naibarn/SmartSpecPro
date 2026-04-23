@@ -16,6 +16,10 @@ vi.mock("../chatService", () => ({
 }));
 vi.mock("../scopedMemoryService", () => ({
   retrieveForPrompt: vi.fn(),
+  getRuleMemories: vi.fn(),
+}));
+vi.mock("../memoryService", () => ({
+  getProjectSummaries: vi.fn(),
 }));
 
 // Track table results for the mock DB
@@ -37,7 +41,9 @@ function makeChain(resolvedValue: unknown[] = []) {
       c.limit = vi.fn().mockResolvedValue(result);
       c.then = (res: any) => Promise.resolve(result).then(res);
       // Allow direct await (for participants which have no limit/orderBy)
-      c[Symbol.iterator] = function* () { yield* result; };
+      c[Symbol.iterator] = function* () {
+        yield* result;
+      };
       return c;
     });
     innerChain.orderBy = vi.fn().mockReturnValue({
@@ -57,12 +63,15 @@ vi.mock("../../db", () => ({
 
 import { buildPersonaPromptSegments } from "../personaService";
 import { getEntityMemories } from "../chatService";
-import { retrieveForPrompt } from "../scopedMemoryService";
+import { retrieveForPrompt, getRuleMemories } from "../scopedMemoryService";
+import { getProjectSummaries } from "../memoryService";
 import { composePrompt, estimateTokens } from "../promptComposer";
 
 const mockBuildPersonaSegments = vi.mocked(buildPersonaPromptSegments);
 const mockGetEntityMemories = vi.mocked(getEntityMemories);
 const mockRetrieveForPrompt = vi.mocked(retrieveForPrompt);
+const mockGetRuleMemories = vi.mocked(getRuleMemories);
+const mockGetProjectSummaries = vi.mocked(getProjectSummaries);
 
 const baseInput = {
   assistantId: "asst-1",
@@ -74,7 +83,7 @@ const baseInput = {
 };
 
 function setupMockDb(opts: {
-  room?: { tenantId: string } | null;
+  room?: { tenantId: string; language?: string | null } | null;
   profile?: Record<string, unknown> | null;
   persona?: Record<string, unknown> | null;
   participants?: Record<string, unknown>[];
@@ -82,25 +91,34 @@ function setupMockDb(opts: {
 }) {
   tableResults.clear();
 
-  const room = opts.room === undefined ? { tenantId: "tenant-1" } : opts.room;
-  const profile = opts.profile === undefined ? {
-    id: "asst-1",
-    tenantId: "tenant-1",
-    personaId: "persona-1",
-    displayName: "Content Director",
-    roleTitle: "Editorial Lead",
-    specialtyTags: ["content strategy", "SEO"],
-  } : opts.profile;
-  const persona = opts.persona === undefined ? {
-    id: "persona-1",
-    name: "Content Expert",
-    systemPromptPrefix: "You are an expert content writer.",
-    responseStyle: null,
-    restrictions: null,
-    tone: null,
-    assistantNickname: null,
-    assistantGender: null,
-  } : opts.persona;
+  const room =
+    opts.room === undefined
+      ? { tenantId: "tenant-1", language: "en" }
+      : opts.room;
+  const profile =
+    opts.profile === undefined
+      ? {
+          id: "asst-1",
+          tenantId: "tenant-1",
+          personaId: "persona-1",
+          displayName: "Content Director",
+          roleTitle: "Editorial Lead",
+          specialtyTags: ["content strategy", "SEO"],
+        }
+      : opts.profile;
+  const persona =
+    opts.persona === undefined
+      ? {
+          id: "persona-1",
+          name: "Content Expert",
+          systemPromptPrefix: "You are an expert content writer.",
+          responseStyle: null,
+          restrictions: null,
+          tone: null,
+          assistantNickname: null,
+          assistantGender: null,
+        }
+      : opts.persona;
 
   tableResults.set(teamRooms, room ? [room] : []);
   tableResults.set(assistantProfiles, profile ? [profile] : []);
@@ -116,11 +134,14 @@ describe("composePrompt -- persona segments", () => {
     vi.clearAllMocks();
     mockRetrieveForPrompt.mockResolvedValue([]);
     mockGetEntityMemories.mockResolvedValue([]);
+    mockGetRuleMemories.mockResolvedValue([]);
+    mockGetProjectSummaries.mockResolvedValue([]);
   });
 
   it("should call buildPersonaPromptSegments when persona exists", async () => {
     mockBuildPersonaSegments.mockReturnValue({
-      prefix: "[PERSONA START]\nYou are an expert content writer.\n[PERSONA END]",
+      prefix:
+        "[PERSONA START]\nYou are an expert content writer.\n[PERSONA END]",
       styleInstructions: null,
       restrictionsBulletPoints: null,
     });
@@ -130,7 +151,7 @@ describe("composePrompt -- persona segments", () => {
 
     expect(mockBuildPersonaSegments).toHaveBeenCalledTimes(1);
     const personaMsg = result.messages.find(
-      (m) => m.role === "system" && m.content.includes("[PERSONA START]"),
+      m => m.role === "system" && m.content.includes("[PERSONA START]")
     );
     expect(personaMsg).toBeDefined();
     expect(personaMsg!.content).toContain("Content Director");
@@ -140,7 +161,8 @@ describe("composePrompt -- persona segments", () => {
   it("should include styleInstructions in persona system message", async () => {
     mockBuildPersonaSegments.mockReturnValue({
       prefix: "[PERSONA START]\nWriter persona.\n[PERSONA END]",
-      styleInstructions: "Respond in a professional tone. If responding in Thai, use feminine polite particles such as ค่ะ or คะ when natural.",
+      styleInstructions:
+        "Respond in a professional tone. If responding in Thai, use feminine polite particles such as ค่ะ or คะ when natural.",
       restrictionsBulletPoints: null,
     });
     setupMockDb({});
@@ -148,7 +170,7 @@ describe("composePrompt -- persona segments", () => {
     const result = await composePrompt(baseInput);
 
     const personaMsg = result.messages.find(
-      (m) => m.role === "system" && m.content.includes("professional tone"),
+      m => m.role === "system" && m.content.includes("professional tone")
     );
     expect(personaMsg).toBeDefined();
     expect(personaMsg!.content).toContain("ค่ะ");
@@ -159,19 +181,43 @@ describe("composePrompt -- persona segments", () => {
     mockBuildPersonaSegments.mockReturnValue({
       prefix: "[PERSONA START]\nWriter persona.\n[PERSONA END]",
       styleInstructions: null,
-      restrictionsBulletPoints: "Restrictions:\n- No political topics\n- No profanity",
+      restrictionsBulletPoints:
+        "Restrictions:\n- No political topics\n- No profanity",
     });
     setupMockDb({});
 
     const result = await composePrompt(baseInput);
 
     const personaMsg = result.messages.find(
-      (m) => m.role === "system" && m.content.includes("Restrictions:"),
+      m => m.role === "system" && m.content.includes("Restrictions:")
     );
     expect(personaMsg).toBeDefined();
     expect(personaMsg!.content).toContain("No political topics");
     // Should NOT have double "Restrictions:" prefix
     expect(personaMsg!.content).not.toContain("Restrictions:\nRestrictions:");
+  });
+
+  it("should add a Thai room language instruction when the room language is Thai", async () => {
+    mockBuildPersonaSegments.mockReturnValue({
+      prefix: "[PERSONA START]\nWriter persona.\n[PERSONA END]",
+      styleInstructions: null,
+      restrictionsBulletPoints: null,
+    });
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "th" },
+    });
+
+    const result = await composePrompt(baseInput);
+
+    const roomLanguageMsg = result.messages.find(
+      message =>
+        message.role === "system" &&
+        message.content.includes("Room language: Thai")
+    );
+    expect(roomLanguageMsg).toBeDefined();
+    expect(roomLanguageMsg!.content).toContain(
+      "Respond in Thai unless quoting source text"
+    );
   });
 
   it("should handle missing persona gracefully", async () => {
@@ -180,7 +226,9 @@ describe("composePrompt -- persona segments", () => {
       styleInstructions: null,
       restrictionsBulletPoints: null,
     });
-    setupMockDb({ profile: { id: "asst-1", tenantId: "tenant-1", personaId: null } });
+    setupMockDb({
+      profile: { id: "asst-1", tenantId: "tenant-1", personaId: null },
+    });
 
     const result = await composePrompt(baseInput);
 
@@ -199,7 +247,9 @@ describe("composePrompt -- tenant isolation", () => {
   it("should throw when room does not belong to tenant", async () => {
     setupMockDb({ room: null });
 
-    await expect(composePrompt(baseInput)).rejects.toThrow("Room not found or tenant mismatch");
+    await expect(composePrompt(baseInput)).rejects.toThrow(
+      "Room not found or tenant mismatch"
+    );
   });
 });
 
@@ -220,8 +270,8 @@ describe("composePrompt -- objective injection safety", () => {
 
     const result = await composePrompt(baseInput);
 
-    const objectiveMsg = result.messages.find(
-      (m) => m.content.includes("[OBJECTIVE]"),
+    const objectiveMsg = result.messages.find(m =>
+      m.content.includes("[OBJECTIVE]")
     );
     expect(objectiveMsg).toBeDefined();
     expect(objectiveMsg!.role).toBe("user");
@@ -233,6 +283,8 @@ describe("composePrompt -- entity memory injection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRetrieveForPrompt.mockResolvedValue([]);
+    mockGetRuleMemories.mockResolvedValue([]);
+    mockGetProjectSummaries.mockResolvedValue([]);
   });
 
   it("should call getEntityMemories with run initiator userId", async () => {
@@ -246,13 +298,25 @@ describe("composePrompt -- entity memory injection", () => {
 
     await composePrompt({ ...baseInput, initiatedByUserId: 42 });
 
-    expect(mockGetEntityMemories).toHaveBeenCalledWith(42, undefined, "persona-1");
+    expect(mockGetEntityMemories).toHaveBeenCalledWith(
+      42,
+      undefined,
+      "persona-1"
+    );
   });
 
   it("should include entity memories as system message", async () => {
     mockGetEntityMemories.mockResolvedValue([
-      { entityType: "preference", entityName: "coding style", facts: ["prefers TypeScript", "uses tabs"] } as any,
-      { entityType: "user", entityName: "background", facts: ["senior developer"] } as any,
+      {
+        entityType: "preference",
+        entityName: "coding style",
+        facts: ["prefers TypeScript", "uses tabs"],
+      } as any,
+      {
+        entityType: "user",
+        entityName: "background",
+        facts: ["senior developer"],
+      } as any,
     ]);
     mockBuildPersonaSegments.mockReturnValue({
       prefix: "[PERSONA START]\nWriter.\n[PERSONA END]",
@@ -264,7 +328,8 @@ describe("composePrompt -- entity memory injection", () => {
     const result = await composePrompt({ ...baseInput, initiatedByUserId: 42 });
 
     const entityMsg = result.messages.find(
-      (m) => m.role === "system" && m.content.includes("Known facts about the user"),
+      m =>
+        m.role === "system" && m.content.includes("Known facts about the user")
     );
     expect(entityMsg).toBeDefined();
     expect(entityMsg!.content).toContain("coding style");
@@ -304,6 +369,8 @@ describe("composePrompt -- history sanitization", () => {
     vi.clearAllMocks();
     mockRetrieveForPrompt.mockResolvedValue([]);
     mockGetEntityMemories.mockResolvedValue([]);
+    mockGetRuleMemories.mockResolvedValue([]);
+    mockGetProjectSummaries.mockResolvedValue([]);
   });
 
   it("should sanitize prompt injection attempts in history messages", async () => {
@@ -340,10 +407,111 @@ describe("composePrompt -- history sanitization", () => {
     const result = await composePrompt(baseInput);
 
     const historyMsg = result.messages.find(
-      (m) => m.role === "user" && m.content.includes("[filtered]"),
+      m => m.role === "user" && m.content.includes("[filtered]")
     );
     expect(historyMsg).toBeDefined();
     expect(historyMsg!.content).not.toContain("Ignore all previous");
     expect(historyMsg!.content).toContain("[SYS]");
+  });
+});
+
+describe("composePrompt -- workspace memory parity", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetEntityMemories.mockResolvedValue([]);
+    mockGetRuleMemories.mockResolvedValue([]);
+    mockGetProjectSummaries.mockResolvedValue([]);
+    mockBuildPersonaSegments.mockReturnValue({
+      prefix: "[PERSONA START]\nWriter.\n[PERSONA END]",
+      styleInstructions: null,
+      restrictionsBulletPoints: null,
+    });
+  });
+
+  it("passes initiator user and project scope into scoped retrieval", async () => {
+    mockRetrieveForPrompt.mockResolvedValue([]);
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "en", projectId: 99 } as any,
+    });
+
+    await composePrompt({
+      ...baseInput,
+      initiatedByUserId: 42,
+      currentMessage: "Need a sharper follow-up",
+    });
+
+    expect(mockRetrieveForPrompt).toHaveBeenCalledWith(
+      "tenant-1",
+      "asst-1",
+      "run-1",
+      "room-1",
+      "team-1",
+      "Need a sharper follow-up",
+      expect.any(Number),
+      undefined,
+      {
+        initiatedByUserId: 42,
+        projectId: "99",
+      },
+    );
+  });
+
+  it("injects user rules and project summaries as system context", async () => {
+    mockRetrieveForPrompt.mockResolvedValue([
+      {
+        memory: {
+          ownerType: "team",
+          memoryKind: "fact",
+          title: "Creative preference",
+          content: "Prefer energetic openings.",
+        },
+        score: 0.9,
+        matchType: "keyword",
+      } as any,
+    ]);
+    mockGetRuleMemories.mockResolvedValue([
+      {
+        id: "rule-1",
+        title: "Language rule",
+        content: "Keep the reply concise and action-oriented.",
+      },
+    ] as any);
+    mockGetProjectSummaries.mockResolvedValue([
+      {
+        id: 1,
+        summary: "Previous project summary: the user likes Thai-first creative directions.",
+      },
+    ] as any);
+    setupMockDb({
+      room: { tenantId: "tenant-1", language: "en", projectId: 77 } as any,
+    });
+
+    const result = await composePrompt({
+      ...baseInput,
+      initiatedByUserId: 42,
+      currentMessage: "Create the next version",
+    });
+
+    expect(
+      result.messages.some(
+        message =>
+          message.role === "system" &&
+          message.content.includes("Persistent user rules and preferences"),
+      ),
+    ).toBe(true);
+    expect(
+      result.messages.some(
+        message =>
+          message.role === "system" &&
+          message.content.includes("Project continuity notes"),
+      ),
+    ).toBe(true);
+    expect(
+      result.messages.some(
+        message =>
+          message.role === "system" &&
+          message.content.includes("Relevant workspace memories"),
+      ),
+    ).toBe(true);
   });
 });

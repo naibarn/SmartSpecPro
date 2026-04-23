@@ -299,8 +299,9 @@ function buildGrantRows(
   const jobInput = job.inputJson && typeof job.inputJson === "object"
     ? job.inputJson as Record<string, unknown>
     : {};
+  const knowledgeGrants = grants.knowledge ?? {};
 
-  for (const skillId of grants.skills) {
+  for (const skillId of grants.skills ?? []) {
     rows.push({
       delegatedSessionId: sessionId,
       tenantId,
@@ -312,7 +313,7 @@ function buildGrantRows(
     });
   }
 
-  for (const agencyId of grants.agencies) {
+  for (const agencyId of grants.agencies ?? []) {
     rows.push({
       delegatedSessionId: sessionId,
       tenantId,
@@ -324,7 +325,7 @@ function buildGrantRows(
     });
   }
 
-  for (const libraryItemId of grants.libraryItemIds) {
+  for (const libraryItemId of grants.libraryItemIds ?? []) {
     rows.push({
       delegatedSessionId: sessionId,
       tenantId,
@@ -336,7 +337,19 @@ function buildGrantRows(
     });
   }
 
-  for (const namespace of grants.mcpNamespaces) {
+  for (const contextPackId of grants.libraryContextPackIds ?? []) {
+    rows.push({
+      delegatedSessionId: sessionId,
+      tenantId,
+      workerJobId,
+      grantType: "library_context_pack",
+      resourceId: String(contextPackId),
+      resourceScopeJson: {},
+      expiresAt,
+    });
+  }
+
+  for (const namespace of grants.mcpNamespaces ?? []) {
     rows.push({
       delegatedSessionId: sessionId,
       tenantId,
@@ -348,7 +361,7 @@ function buildGrantRows(
     });
   }
 
-  if (grants.knowledge.librarySearch) {
+  if (knowledgeGrants.librarySearch) {
     rows.push({
       delegatedSessionId: sessionId,
       tenantId,
@@ -360,7 +373,7 @@ function buildGrantRows(
     });
   }
 
-  if (grants.knowledge.libraryUpload) {
+  if (knowledgeGrants.libraryUpload) {
     rows.push({
       delegatedSessionId: sessionId,
       tenantId,
@@ -375,7 +388,7 @@ function buildGrantRows(
     });
   }
 
-  if (grants.knowledge.ragSearch || grants.knowledge.ragIngest) {
+  if (knowledgeGrants.ragSearch || knowledgeGrants.ragIngest) {
     rows.push({
       delegatedSessionId: sessionId,
       tenantId,
@@ -383,8 +396,8 @@ function buildGrantRows(
       grantType: "rag_scope",
       resourceId: null,
       resourceScopeJson: {
-        search: grants.knowledge.ragSearch,
-        ingest: grants.knowledge.ragIngest,
+        search: Boolean(knowledgeGrants.ragSearch),
+        ingest: Boolean(knowledgeGrants.ragIngest),
         scope: "owner_library",
       },
       expiresAt,
@@ -496,29 +509,33 @@ function getRequiredDelegatedSessionScopes(
 ): WorkerAccessPermissionScope[] {
   const profileDefinition = getProfileDefinition(scopeProfile);
   const required = new Set<WorkerAccessPermissionScope>(profileDefinition.scopes as WorkerAccessPermissionScope[]);
+  const knowledgeGrants = grants.knowledge ?? {};
 
-  if (grants.skills.length > 0) {
+  if ((grants.skills ?? []).length > 0) {
     required.add("skills:execute");
   }
-  if (grants.agencies.length > 0) {
+  if ((grants.agencies ?? []).length > 0) {
     required.add("agents:execute");
   }
-  if (grants.libraryItemIds.length > 0) {
+  if ((grants.libraryItemIds ?? []).length > 0) {
     required.add("library:read");
   }
-  if (grants.knowledge.librarySearch) {
+  if ((grants.libraryContextPackIds ?? []).length > 0) {
     required.add("library:read");
   }
-  if (grants.knowledge.libraryUpload) {
+  if (knowledgeGrants.librarySearch) {
+    required.add("library:read");
+  }
+  if (knowledgeGrants.libraryUpload) {
     required.add("library:write");
   }
-  if (grants.knowledge.ragSearch) {
+  if (knowledgeGrants.ragSearch) {
     required.add("rag:read");
   }
-  if (grants.knowledge.ragIngest) {
+  if (knowledgeGrants.ragIngest) {
     required.add("rag:write");
   }
-  if (grants.mcpNamespaces.length > 0) {
+  if ((grants.mcpNamespaces ?? []).length > 0) {
     required.add("delegate:mcp");
   }
   if (runtimeCapabilities.supportsCallbacks && profileDefinition.routeFamilies.includes("callbacks")) {
@@ -887,6 +904,7 @@ async function buildManifest(
       skills: readGrantIds(grants, "skill"),
       agencies: readGrantIds(grants, "agency"),
       libraryItemIds: readGrantIds(grants, "library_item").map((value) => Number(value)).filter(Number.isFinite),
+      libraryContextPackIds: readGrantIds(grants, "library_context_pack").map((value) => Number(value)).filter(Number.isFinite),
       mcpNamespaces: allowedMcpNamespaces,
     },
     uploadPolicy: {
@@ -1334,6 +1352,7 @@ export async function getDelegatedWorkerManifest(
       skills: readGrantIds(sessionGrants, "skill"),
       agencies: readGrantIds(sessionGrants, "agency"),
       libraryItemIds: readGrantIds(sessionGrants, "library_item").map((value) => Number(value)).filter(Number.isFinite),
+      libraryContextPackIds: readGrantIds(sessionGrants, "library_context_pack").map((value) => Number(value)).filter(Number.isFinite),
       mcpNamespaces: readGrantIds(sessionGrants, "mcp_server"),
       knowledge: {
         librarySearch: hasScopedGrant(sessionGrants, "library_search_scope"),

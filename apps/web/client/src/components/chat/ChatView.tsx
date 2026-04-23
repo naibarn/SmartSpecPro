@@ -15,6 +15,14 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   AlertTriangle,
   Check,
   Loader2,
@@ -193,9 +201,12 @@ import {
 } from "@/lib/teamRoomActionLinks";
 import type { HybridOrchestrationPlan } from "@shared/orchestration/hybridOrchestration";
 import { shouldPreserveLocalMessages } from "@/lib/chatMessageSync";
+import { buildWorkRequestLaunchPath } from "@/lib/workRequestLinks";
 import {
   resolveChatLocalRuntimeReadiness,
+  looksLikeSkillRequest,
   resolveDetectedSkillForSend,
+  shouldAutoRunDetectedSkill,
   shouldBlockPendingCloudKeepInChat,
 } from "./chatLocalRouting";
 
@@ -2674,6 +2685,7 @@ export function ChatView({
   };
 
   // Skill detection state
+  const [skillIntentEnabled, setSkillIntentEnabled] = useState(false);
   const [detectedSkill, setDetectedSkill] = useState<{
     id: string;
     name: string;
@@ -2685,6 +2697,11 @@ export function ChatView({
     /** Per-pattern chainTo from matched trigger pattern */
     patternChainTo: string | null;
   } | null>(null);
+
+  useEffect(() => {
+    setSkillIntentEnabled(false);
+    setDetectedSkill(null);
+  }, [conversationId]);
 
   // Filter media models by detected skill type (image / video)
   const filteredMediaModels = useMemo<MediaModelOption[]>(() => {
@@ -2896,11 +2913,15 @@ export function ChatView({
   // Detect skills when input changes
   useEffect(() => {
     const detectSkills = async () => {
+      const trimmedInput = debouncedInput.trim();
+      const isSlashCommand = trimmedInput.startsWith("/");
       if (
         !conversationId ||
         sessionLocalOnlyEnabled ||
-        !debouncedInput.trim() ||
-        debouncedInput.length < 3
+        !trimmedInput ||
+        trimmedInput.length < 3 ||
+        (!skillIntentEnabled && !isSlashCommand) ||
+        !looksLikeSkillRequest(trimmedInput)
       ) {
         setDetectedSkill(null);
         return;
@@ -2909,7 +2930,7 @@ export function ChatView({
       try {
         // Skill triggers always appear at the start — truncate to first 500 chars
         // to avoid hitting the server 5000-char limit on very long prompts
-        const detectionMessage = debouncedInput.slice(0, 500);
+        const detectionMessage = trimmedInput.slice(0, 500);
         const result = await detectSkillMutation.mutateAsync({
           message: detectionMessage,
           conversationId,
@@ -2937,7 +2958,12 @@ export function ChatView({
     };
 
     detectSkills();
-  }, [debouncedInput, conversationId, sessionLocalOnlyEnabled]);
+  }, [
+    debouncedInput,
+    conversationId,
+    sessionLocalOnlyEnabled,
+    skillIntentEnabled,
+  ]);
 
   // Parse language/aspectRatio intent from natural language and return cleaned input
   const parseEnhanceIntent = (
@@ -3894,14 +3920,27 @@ export function ChatView({
     // Capture the detected skill before clearing it
     // If message starts with "/" and debounced detection hasn't fired yet,
     // do an immediate detection so explicit slash commands always work.
+    const isSlashCommand = text.trim().startsWith("/");
+    const isExplicitSkillRequest =
+      skillIntentEnabled && looksLikeSkillRequest(text);
+    const shouldAutoRunSkill = isSlashCommand
+      ? shouldAutoRunDetectedSkill({
+          text,
+          detectedSkill,
+        })
+      : skillIntentEnabled &&
+        shouldAutoRunDetectedSkill({
+          text,
+          detectedSkill,
+        });
     let resolvedSkill = resolveDetectedSkillForSend({
       sessionLocalOnlyEnabled,
-      detectedSkill,
+      detectedSkill: shouldAutoRunSkill ? detectedSkill : null,
     });
     if (
       !resolvedSkill &&
       sessionLocalOnlyEnabled &&
-      text.startsWith("/") &&
+      isSlashCommand &&
       conversationId
     ) {
       const slashMatch = text.trim().match(/^\/([a-zA-Z0-9-_]+)/);
@@ -3934,7 +3973,7 @@ export function ChatView({
     if (
       !resolvedSkill &&
       !sessionLocalOnlyEnabled &&
-      text.startsWith("/") &&
+      isSlashCommand &&
       conversationId
     ) {
       try {
@@ -3962,7 +4001,12 @@ export function ChatView({
     // ── Intent-based routing (shared logic with Teams via routeRoomIntent) ────
     // Use analyzeIntent for routing decisions UNLESS we already have an explicit
     // slash command. This ensures Chat and Teams use the same routing pipeline.
-    if (!resolvedSkill && !text.startsWith("/") && !sessionLocalOnlyEnabled) {
+    if (
+      !resolvedSkill &&
+      !sessionLocalOnlyEnabled &&
+      isExplicitSkillRequest &&
+      !isSlashCommand
+    ) {
       try {
         const intent = await analyzeIntentMutation.mutateAsync({
           message: text,
@@ -5819,7 +5863,24 @@ export function ChatView({
                           variant="default"
                           size="sm"
                           className="gap-2"
-                          onClick={() => navigate("/work/request")}
+                          onClick={() =>
+                            navigate(
+                              buildWorkRequestLaunchPath({
+                                sourceType:
+                                  conversationId !== null
+                                    ? "chat"
+                                    : null,
+                                sourceRef:
+                                  conversationId !== null
+                                    ? String(conversationId)
+                                    : null,
+                                linkedConversationIds:
+                                  conversationId !== null
+                                    ? [String(conversationId)]
+                                    : [],
+                              }),
+                            )
+                          }
                         >
                           {t("workStart.openRequest")}
                           <ArrowRight className="h-4 w-4" />
@@ -6716,51 +6777,47 @@ export function ChatView({
 
         <div className="flex gap-2 items-center">
           <TooltipProvider>
-            {/* Attach File Button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handlePickFile}
-                  disabled={uploadMutation.isPending || isStreaming}
-                  className="shrink-0"
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant={ocrOnlyMode ? "default" : "outline"}
+                      size="icon"
+                      disabled={uploadMutation.isPending || isStreaming}
+                      className={cn(
+                        "shrink-0",
+                        ocrOnlyMode
+                          ? "bg-amber-500 text-white hover:bg-amber-600"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                      )}
+                    >
+                      <ImagePlus className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>
+                    {ocrOnlyMode
+                      ? "Attach files. OCR only is enabled."
+                      : "Attach image or file"}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuItem onSelect={() => handlePickFile()}>
+                  <ImagePlus className="mr-2 h-4 w-4" />
+                  Attach image or file
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuCheckboxItem
+                  checked={ocrOnlyMode}
+                  onCheckedChange={checked => setOcrOnlyMode(Boolean(checked))}
                 >
-                  <ImagePlus className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Attach image or file</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={ocrOnlyMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setOcrOnlyMode(current => !current)}
-                  disabled={isStreaming}
-                  className={cn(
-                    "shrink-0 gap-2",
-                    ocrOnlyMode
-                      ? "bg-amber-500 text-white hover:bg-amber-600"
-                      : "text-amber-600 hover:bg-amber-50 hover:text-amber-700",
-                  )}
-                  aria-pressed={ocrOnlyMode}
-                >
-                  <FileText className="h-4 w-4" />
-                  <span className="hidden sm:inline">OCR only</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>
-                  {ocrOnlyMode
-                    ? "OCR only is enabled. Attached documents and photos will be read directly."
-                    : "Turn on OCR only to read attached documents and photos directly."}
-                </p>
-              </TooltipContent>
-            </Tooltip>
+                  OCR only
+                </DropdownMenuCheckboxItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {librarySourcePickerEnabled && (
               <>
@@ -7131,7 +7188,19 @@ export function ChatView({
       />
 
       {/* Skill Selector Dialog */}
-      {isSkillFormEnabled && skillForm.renderSkillSelector()}
+      {isSkillFormEnabled &&
+        skillForm.renderSkillSelector({
+          skillIntentEnabled,
+          onToggleSkillIntent: () => {
+            setSkillIntentEnabled(current => {
+              const next = !current;
+              if (!next) {
+                setDetectedSkill(null);
+              }
+              return next;
+            });
+          },
+        })}
     </div>
   );
 }

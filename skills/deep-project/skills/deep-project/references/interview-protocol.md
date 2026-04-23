@@ -11,6 +11,8 @@ The interview surfaces the user's mental model. Claude has freedom to ask questi
 
 **Key principle: Only ask what you cannot determine yourself.** Technical decisions should be made by Claude based on codebase analysis. Business and domain decisions require user input.
 
+Use short direct questions in the main conversation. If the host offers a structured question helper, you may use it, but the protocol must also work in plain chat.
+
 ## What to Ask vs What to Decide Yourself
 
 **ASK the user:**

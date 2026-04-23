@@ -1,16 +1,6 @@
 # Implementation Review Loop Protocol
 
-After implementing each section, and again after all sections are complete, run iterative self-review to catch completeness gaps and revise work that technically passes but is still weak.
-
-## Review Cadence
-
-Treat review as a stabilization loop, not a single checkpoint.
-
-Default rule:
-- minimum 5 rounds
-- maximum 7 rounds
-- each round must check completeness, security, and "what obvious extra improvement is still missing?"
-- stop only after 2 consecutive rounds with no meaningful [AUTO-FIX] items
+After implementing each section (Step 5, before code review subagent), and again during finalization (after all sections complete), run iterative self-review to catch completeness gaps.
 
 ## Why This Exists
 
@@ -56,20 +46,13 @@ For each implemented section, verify:
    - [SUGGEST] — genuinely optional, would need user input → log for final summary
 4. Fix all [AUTO-FIX] items
 5. Run tests after each fix
-6. Re-check if fixes introduced new gaps
+6. Re-check if fixes introduced new gaps (max 3 rounds)
 7. Collect [SUGGEST] items for the finalization summary
 ```
 
 **Rule: If it's clearly needed based on the plan → it's [AUTO-FIX], not [SUGGEST].**
 Missing tests, missing error handlers, missing validation — these are always [AUTO-FIX].
 Only truly optional enhancements (performance tuning, extra features) are [SUGGEST].
-
-Also check security each round:
-- missing authorization
-- unsafe parsing or deserialization
-- injection surfaces
-- missing boundary validation
-- secret leakage in logs or outputs
 
 **Output per round:**
 ```
@@ -127,47 +110,9 @@ After ALL sections are implemented, verify they work together correctly.
    - [SUGGEST] — genuinely optional → collect for summary
 5. Fix all [AUTO-FIX] items
 6. Re-run full test suite
-7. Repeat until no [AUTO-FIX] remains and you have 2 consecutive no-op rounds
+7. Repeat until no [AUTO-FIX] remains (max 3 rounds)
 8. Pass [SUGGEST] items to finalization summary
 ```
-
----
-
-## Phase C: Post-Completion Revision Pass
-
-After Phase B is clean, perform one more revision pass over the finished implementation.
-
-### Goal
-
-Catch issues that only become obvious once the whole feature exists:
-- architecture drift introduced by review fixes
-- duplicated logic that should now be consolidated
-- naming or API awkwardness across sections
-- cleanup that was not safe earlier but is now clearly correct
-
-### Procedure
-
-```
-1. Re-read the implemented sections and the final changed files together
-2. Ask:
-   - Would I structure any part differently now that I see the whole feature?
-   - Is any code only present because of an earlier intermediate step?
-   - Did I leave low-risk cleanup behind because I was focused on passing tests?
-3. Classify findings:
-   - [AUTO-FIX] — clearly beneficial, low-risk, improves correctness or maintainability
-   - [SUGGEST] — optional or product-sensitive
-4. Apply [AUTO-FIX] items
-5. Re-run relevant tests
-6. Repeat until stable (target 5 rounds, max 7)
-7. If code changed materially, create a final revision commit
-```
-
-### Examples of Valid Revision Fixes
-
-- Replace duplicated validation code introduced across two sections with one shared helper
-- Rename a misleading interface after seeing the full integration surface
-- Remove temporary glue code that is no longer needed after the final section landed
-- Add one missing integration regression test revealed by the full system view
 
 **Output:**
 ```

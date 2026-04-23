@@ -1,11 +1,10 @@
 import { memo } from "react";
-import { Handle, Position } from "reactflow";
-import type { NodeProps } from "reactflow";
+import { Handle, Position } from "@xyflow/react";
 import { AlertCircle, MonitorPlay } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { BROWSER_SESSION_COPY } from "@shared/browserSession";
-import type { AgencyNodeData } from "./types";
+import type { AgencyFlowNodeProps } from "./types";
 
 const HANDOFF_LABELS: Record<string, string> = {
   continue_running: BROWSER_SESSION_COPY.continue,
@@ -16,7 +15,7 @@ const HANDOFF_LABELS: Record<string, string> = {
 export const BrowserSessionNodeCard = memo(function BrowserSessionNodeCard({
   data,
   selected,
-}: NodeProps<AgencyNodeData>) {
+}: AgencyFlowNodeProps) {
   const hasErrors = (data.validationErrors?.length ?? 0) > 0;
   const goal = (data.nodeConfig?.goal as string) ?? "";
   const handoffMode = (data.nodeConfig?.handoffMode as string) ?? "continue_running";

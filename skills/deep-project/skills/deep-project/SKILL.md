@@ -92,7 +92,7 @@ The SessionStart hook injects `DEEP_PLUGIN_ROOT=<path>` into your context. Look 
 
 **Only if `DEEP_PLUGIN_ROOT` is NOT in your context** (hook didn't run), fall back to search:
 ```bash
-find "$(pwd)" -name "setup-session.py" -path "*/scripts/checks/*" -type f 2>/dev/null | head -1
+find "${HOME}/.codex/skills" "$(pwd)" -name "setup-session.py" -path "*/scripts/checks/*" -type f 2>/dev/null | head -1
 ```
 If not found: `find ~ -name "setup-session.py" -path "*/scripts/checks/*" -path "*deep*project*" -type f 2>/dev/null | head -1`
 
@@ -117,15 +117,13 @@ Parse the JSON output.
 
 **Check the output for these modes:**
 
-1. **If `success == true` and `tasks_written > 0`:** Tasks have been written. Call `TaskList` to see them. The tasks will guide your workflow.
+1. **If `success == true` and `workflow_backend == "task_list"` and `tasks_written > 0`:** Task-list mode is active. If the host exposes a task-list viewer, you may inspect it, but the JSON output and session files remain the source of truth.
 
-2. **If `mode == "conflict"`:** User has CLAUDE_CODE_TASK_LIST_ID set with existing tasks. Use AskUserQuestion to ask:
-   - "Overwrite existing tasks with deep-project workflow?"
-   - If yes, re-run with `--force` flag
+2. **If `mode == "conflict"`:** The user explicitly pinned `CLAUDE_CODE_TASK_LIST_ID` and it already has tasks. Ask one concise direct question whether to overwrite those tasks. If yes, re-run with `--force`.
 
-3. **If `mode == "no_task_list"`:** Session ID not available (hook didn't run). This is a fatal error - user must restart session.
+3. **If `mode == "file_based"` or `task_list_id` is null:** Continue in file-based mode; the workflow still progresses using session state on disk.
 
-4. **If `task_write_error` is present:** Task write failed. Use AskUserQuestion to determine how to proceed.
+4. **If `task_write_error` is present:** Log the error and continue using file-based state unless the user explicitly wants task-list recovery.
 
 **Diagnostic fields in output:**
 - `session_id_source`: Where session ID came from ("context", "user_env", "session", "none")
@@ -133,7 +131,7 @@ Parse the JSON output.
   - `true`: Normal operation
   - `false`: After `/clear reset` - context has correct value, env has stale value
 
-**After successful setup:** Run `TaskList` to verify workflow tasks are visible.
+**After successful setup:** Inspect task-list state only when `workflow_backend == "task_list"` and the host actually supports a task-list tool.
 
 ### E. Handle Session State
 
@@ -156,7 +154,7 @@ Note: Steps 3 and 5 are never resume points - they run inline after steps 2 and 
 Warning: The requirements file has changed since the last session.
 Changes may affect previous decisions.
 ```
-Ask user whether to continue with existing session or start fresh.
+Ask one concise direct question whether to continue with the existing session or start fresh.
 
 ### F. Print Session Report
 
@@ -183,7 +181,8 @@ See [interview-protocol.md](references/interview-protocol.md) for detailed guida
 - `{initial_file}` - The requirements file passed by user
 
 **Approach:**
-- Use AskUserQuestion adaptively
+- Ask concise direct questions in the main conversation when needed
+- If the host offers a structured question tool, you may use it; otherwise plain chat questions are fine
 - No fixed number of questions - stop when you have enough to propose splits
 - Build understanding incrementally
 

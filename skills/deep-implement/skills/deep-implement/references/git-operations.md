@@ -31,16 +31,7 @@ At setup, check current branch:
 git branch --show-current
 ```
 
-If on `main` or `master`:
-```
-AskUserQuestion:
-  question: "You're on the {branch} branch. Committing here may not be ideal."
-  options:
-    - label: "Continue on {branch}"
-      description: "Proceed with implementation on this branch"
-    - label: "Exit to create feature branch"
-      description: "Stop to create a dedicated branch first"
-```
+If on `main` or `master`, warn clearly and continue by default. Only stop when the user explicitly asked for branch hygiene before implementation.
 
 ## Working Tree Check
 

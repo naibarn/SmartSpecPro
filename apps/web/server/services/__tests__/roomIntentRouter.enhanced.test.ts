@@ -118,6 +118,27 @@ describe("routeRoomIntent -- assistant origin skill detection", () => {
     expect(mockRetrieveAndScoreCandidates).not.toHaveBeenCalled();
   });
 
+  it("should keep ordinary follow-up questions on chat without skill detection", async () => {
+    mockGetTenantFeatureFlag.mockResolvedValue(true);
+
+    const decision = await routeRoomIntent({
+      ...baseInput,
+      origin: "human_user",
+      context: "room_message",
+      message: "ขยายรายละเอียดข้อ 3",
+    });
+
+    expect(decision).toMatchObject({
+      route: "chat",
+      reason: "plain_chat_message",
+      source: "rules",
+    });
+    expect(mockDetectSkill).not.toHaveBeenCalled();
+    expect(mockClassifyIntent).not.toHaveBeenCalled();
+    expect(mockRetrieveAndScoreCandidates).not.toHaveBeenCalled();
+    expect(mockGetTenantFeatureFlag).not.toHaveBeenCalled();
+  });
+
   it("should return detected skill when confidence >= 0.6", async () => {
     mockDetectSkill.mockResolvedValue({
       detected: true,

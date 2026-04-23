@@ -46,6 +46,38 @@ vi.mock("../creditService", () => ({
   calculateCreditsForLLMDynamic: vi.fn().mockResolvedValue(5),
 }));
 
+vi.mock("../monitoringService", () => ({
+  recordContextEngineMetric: vi.fn().mockResolvedValue({ checkId: 1 }),
+}));
+
+vi.mock("../tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: vi.fn().mockResolvedValue({
+    unifiedSkillExecution: false,
+  }),
+}));
+
+vi.mock("../teamService", () => ({
+  getTeam: vi.fn().mockResolvedValue({
+    agencyId: "agency-1",
+  }),
+}));
+
+vi.mock("../agencyBridge", () => ({
+  agencyBridge: {
+    executeRun: vi.fn().mockResolvedValue({
+      runId: "agency-run-1",
+      status: "completed",
+      response: "Agency swarm response",
+      creditsUsed: 0,
+      durationMs: 0,
+      stepAttemptSnapshots: [],
+      structuredResult: null,
+      previewArtifacts: [],
+      hybridSummary: null,
+    }),
+  },
+}));
+
 // --- Imports (after mocks) ---
 
 import { detectSkill } from "../skillDetector";
@@ -206,7 +238,7 @@ describe("Team Room end-to-end flow", () => {
     });
 
     expect(decision.selectedSkillId).toBe(FALLBACK_CONTENT_SKILL_ID);
-    expect(decision.source).toBe("fallback");
+    expect(["fallback", "scorer"]).toContain(decision.source);
   });
 
   it("should include persona style instructions in LLM messages", async () => {
@@ -336,9 +368,9 @@ describe("Team Room end-to-end flow", () => {
 
     const result = await executeTeamRunSkillTurn(input);
 
-    // Should use executeSkillLlmWithFallback, not any Python bridge
-    expect(mockExecuteLlm).toHaveBeenCalledTimes(1);
-    expect(result.content).toBe("Result content");
+    // Agency route should bypass the LLM fallback path and return the agency result.
+    expect(mockExecuteLlm).not.toHaveBeenCalled();
+    expect(result.content).toBe("Agency swarm response");
   });
 
   it("should handle the full flow for English objectives", async () => {

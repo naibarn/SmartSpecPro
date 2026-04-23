@@ -1,26 +1,29 @@
 import { memo, useState } from "react";
-import { getBezierPath, EdgeLabelRenderer, useReactFlow } from "reactflow";
-import type { EdgeProps } from "reactflow";
+import { getBezierPath, EdgeLabelRenderer, useReactFlow } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import type {
+  AgencyCommunicationEdgeProps,
+  AgencyCommunicationFlowType,
+} from "./nodes/types";
 
-export interface CommunicationEdgeData {
-  flowType: "delegation" | "handoff" | "parallel";
-}
-
-const EDGE_COLORS: Record<string, string> = {
+const EDGE_COLORS: Record<AgencyCommunicationFlowType, string> = {
   delegation: "#6366f1",  // indigo-500
   handoff: "#8b5cf6",     // violet-500
   parallel: "#0891b2",    // cyan-600
 };
 
-const LABEL_STYLES: Record<string, string> = {
+const LABEL_STYLES: Record<AgencyCommunicationFlowType, string> = {
   delegation: "bg-indigo-100 text-indigo-800 border-indigo-300",
   handoff: "bg-violet-100 text-violet-800 border-violet-300",
   parallel: "bg-cyan-100 text-cyan-800 border-cyan-300",
 };
 
-const FLOW_OPTIONS: Array<{ value: "delegation" | "handoff" | "parallel"; label: string; desc: string }> = [
+const FLOW_OPTIONS: Array<{
+  value: AgencyCommunicationFlowType;
+  label: string;
+  desc: string;
+}> = [
   { value: "delegation", label: "Delegation", desc: "Assigns a subtask and waits for the result" },
   { value: "handoff", label: "Handoff", desc: "Transfers conversation entirely, does not wait" },
   { value: "parallel", label: "Parallel", desc: "Sends to both agents simultaneously" },
@@ -37,7 +40,7 @@ export const CommunicationEdge = memo(function CommunicationEdge({
   data,
   style = {},
   markerEnd,
-}: EdgeProps<CommunicationEdgeData>) {
+}: AgencyCommunicationEdgeProps) {
   const { setEdges } = useReactFlow();
   const [open, setOpen] = useState(false);
   const flowType = data?.flowType ?? "delegation";
@@ -52,10 +55,12 @@ export const CommunicationEdge = memo(function CommunicationEdge({
     targetPosition,
   });
 
-  const handleChangeFlowType = (newType: "delegation" | "handoff" | "parallel") => {
+  const handleChangeFlowType = (newType: AgencyCommunicationFlowType) => {
     setEdges((eds) =>
       eds.map((e) =>
-        e.id === id ? { ...e, data: { ...e.data, flowType: newType } } : e,
+        e.id === id
+          ? { ...e, data: { ...(e.data ?? {}), flowType: newType } }
+          : e,
       ),
     );
     setOpen(false);

@@ -2,13 +2,14 @@
  * Work Item Service — revision/version-safe team work primitives.
  */
 
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   assistantProfiles,
   teamWorkItems,
   workItemEvents,
   type TeamWorkItem,
+  type WorkItemEvent,
 } from "../../drizzle/schema";
 import {
   buildVerificationPolicyEvidence,
@@ -713,6 +714,23 @@ export async function listWorkItemsByRoom(
     .select()
     .from(teamWorkItems)
     .where(and(eq(teamWorkItems.roomId, roomId), eq(teamWorkItems.tenantId, tenantId)));
+}
+
+export async function listWorkItemEventsByRoom(
+  roomId: string,
+  tenantId: string,
+): Promise<WorkItemEvent[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const rows = await db
+    .select({ event: workItemEvents })
+    .from(workItemEvents)
+    .innerJoin(teamWorkItems, eq(teamWorkItems.id, workItemEvents.workItemId))
+    .where(and(eq(workItemEvents.roomId, roomId), eq(teamWorkItems.tenantId, tenantId)))
+    .orderBy(asc(workItemEvents.createdAt));
+
+  return rows.map((row) => row.event);
 }
 
 function resolveWorkflowTransition(

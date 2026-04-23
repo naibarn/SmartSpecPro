@@ -1,6 +1,6 @@
 # Pricing Data Reference
 
-Use this data to calculate total cost of ownership comparisons. Prices as of 2024.
+Use this data to calculate total cost of ownership comparisons. Treat it as an illustrative baseline and verify live pricing before making a final recommendation.
 
 ## Cost Calculation Formula
 

@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useRoute, useLocation, useSearch } from "wouter";
-import ReactFlow, {
+import { ReactFlow,
   ReactFlowProvider,
   addEdge,
   useNodesState,
@@ -16,14 +16,17 @@ import ReactFlow, {
   type Connection,
   type NodeTypes,
   type EdgeTypes,
-} from "reactflow";
-import "reactflow/dist/style.css";
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { useAuth } from "@/contexts/AuthContext";
 import { BaseAgencyNode } from "@/components/agency/nodes/BaseAgencyNode";
-import type { AgencyNodeData } from "@/components/agency/nodes/types";
+import type {
+  AgencyFlowNode,
+  AgencyNodeData,
+} from "@/components/agency/nodes/types";
 import { CommunicationEdge } from "@/components/agency/CommunicationEdge";
 import { NodePropertyPanel } from "@/components/agency/NodePropertyPanel";
 import { AgencyToolbar } from "@/components/agency/AgencyToolbar";
@@ -323,8 +326,8 @@ function AgencyCanvas() {
   const agencyId = (params as Record<string, string>)?.id as string | undefined;
   const isNew = agencyId === "new";
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<AgencyNodeData>([]);
-  const [edges, setEdges, onEdgesChangeBase] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<AgencyFlowNode>([]);
+  const [edges, setEdges, onEdgesChangeBase] = useEdgesState<Edge>([]);
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 
   // Wrap onEdgesChange to auto-remove Router routes when edges are deleted
@@ -733,7 +736,7 @@ function AgencyCanvas() {
       if (handleId === "true") edgeColor = "#22c55e"; // green
       else if (handleId === "false") edgeColor = "#ef4444"; // red
 
-      const newEdge = {
+      const newEdge: Edge = {
         ...connection,
         id: `e-${connection.source}-${connection.target}-${handleId ?? "out"}-${Date.now()}`,
         type: "communication",

@@ -395,9 +395,9 @@ export function analyzeSkillForMaintenance(skill: SkillMaintenanceTarget): Skill
     },
   });
   const upgradePriorityTier = computeUpgradePriorityTier(upgradePriorityScore);
-  const parallelUpgradeEligible = upgradePriorityScore >= 35 && !snapshot.nativeBundleReady;
+  const parallelUpgradeEligible = !snapshot.nativeBundleReady;
 
-  if (parallelUpgradeEligible) {
+  if (!snapshot.nativeBundleReady) {
     pushRecommendation(recommendations, {
       recommendationType: "native-bundle-upgrade",
       title: "Upgrade this skill to the native bundle contract",

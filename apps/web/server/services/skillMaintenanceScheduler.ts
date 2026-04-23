@@ -22,6 +22,7 @@ export interface MaintenanceSweepInput {
   category?: string;
   executionMode?: string;
   genjsCandidatesOnly?: boolean;
+  upgradeLaneOnly?: boolean;
 }
 
 export interface MaintenanceSweepResult {
@@ -33,6 +34,9 @@ export interface MaintenanceSweepResult {
     qualityScore: number;
     recommendationCount: number;
     isGenjsCandidate: boolean;
+    upgradePriorityScore: number;
+    upgradePriorityTier: "low" | "medium" | "high" | "critical";
+    parallelUpgradeEligible: boolean;
   }>;
 }
 
@@ -92,11 +96,21 @@ export function resolveMaintenanceSweepInput(
     };
   }
 
+  if (schedule.scopeType === "upgrade_lane") {
+    return {
+      ...base,
+      category: typeof scopeJson.category === "string" ? scopeJson.category : undefined,
+      executionMode: typeof scopeJson.executionMode === "string" ? scopeJson.executionMode : undefined,
+      upgradeLaneOnly: true,
+    };
+  }
+
   return {
     ...base,
     category: typeof scopeJson.category === "string" ? scopeJson.category : undefined,
     executionMode: typeof scopeJson.executionMode === "string" ? scopeJson.executionMode : undefined,
     genjsCandidatesOnly: Boolean(scopeJson.genjsCandidatesOnly),
+    upgradeLaneOnly: Boolean(scopeJson.upgradeLaneOnly),
   };
 }
 
@@ -193,6 +207,7 @@ export async function executeSkillMaintenanceSweep(params: {
     category: filters.category,
     executionMode: filters.executionMode,
     genjsCandidatesOnly: filters.genjsCandidatesOnly,
+    upgradeLaneOnly: filters.upgradeLaneOnly,
   }, tenantId);
 
   const results: MaintenanceSweepResult["results"] = [];
@@ -217,6 +232,9 @@ export async function executeSkillMaintenanceSweep(params: {
     if (filters.genjsCandidatesOnly && !preview.isGenjsCandidate) {
       continue;
     }
+    if (filters.upgradeLaneOnly && !preview.parallelUpgradeEligible) {
+      continue;
+    }
 
     const persisted = await persistSkillMaintenanceAnalysis({
       db,
@@ -232,8 +250,21 @@ export async function executeSkillMaintenanceSweep(params: {
       qualityScore: persisted.analysis.qualityScore,
       recommendationCount: persisted.recommendations.length,
       isGenjsCandidate: persisted.analysis.isGenjsCandidate,
+      upgradePriorityScore: persisted.analysis.upgradePriorityScore,
+      upgradePriorityTier: persisted.analysis.upgradePriorityTier,
+      parallelUpgradeEligible: persisted.analysis.parallelUpgradeEligible,
     });
   }
+
+  results.sort((left, right) => {
+    if (right.upgradePriorityScore !== left.upgradePriorityScore) {
+      return right.upgradePriorityScore - left.upgradePriorityScore;
+    }
+    if (right.qualityScore !== left.qualityScore) {
+      return right.qualityScore - left.qualityScore;
+    }
+    return left.skillSlug.localeCompare(right.skillSlug);
+  });
 
   return {
     scannedCount,

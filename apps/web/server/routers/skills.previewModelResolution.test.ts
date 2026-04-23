@@ -1,9 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import fs from "fs";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-const { mockDbSelect, mockResolvePolicy, mockLoadRows } = vi.hoisted(() => ({
+const { mockDbSelect, mockResolvePolicy, mockLoadRows, mockGetCachedPublicAppUrl } = vi.hoisted(() => ({
   mockDbSelect: vi.fn(),
   mockResolvePolicy: vi.fn(),
   mockLoadRows: vi.fn(),
+  mockGetCachedPublicAppUrl: vi.fn(),
 }));
 
 vi.mock("../db", () => ({
@@ -48,6 +50,10 @@ vi.mock("../services/skillRegistry", () => ({
   SkillDefinition: {},
   refreshSkillCache: vi.fn(),
   syncSingleSkillIfChanged: vi.fn(),
+}));
+
+vi.mock("../services/appRuntimeConfig", () => ({
+  getCachedPublicAppUrl: mockGetCachedPublicAppUrl,
 }));
 
 vi.mock("../services/promptEnhancementService", () => ({
@@ -214,6 +220,10 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 function mockSelectChain(result: any[]) {
   const limitMock = vi.fn().mockResolvedValue(result);
   const whereMock = vi.fn().mockReturnValue({ limit: limitMock });
@@ -354,6 +364,36 @@ describe("skills.previewModelResolution", () => {
     const result = await (skillsRouter as any).previewModelResolution({ input: { skillId: 5 } });
 
     expect(result.availableModelCount).toBe(5);
+  });
+
+  it("converts api storage image paths to base64 when the local file exists", async () => {
+    mockGetCachedPublicAppUrl.mockReturnValue("https://smartaihub.app");
+
+    const existsSpy = vi.spyOn(fs, "existsSync").mockImplementation((targetPath) => {
+      return typeof targetPath === "string" && targetPath.endsWith("uploads/chat/uploads/110/sample.jpg");
+    });
+    const readSpy = vi.spyOn(fs, "readFileSync").mockReturnValue(Buffer.from("fake-image-bytes"));
+
+    const { convertImageUrlForLLM } = await import("./skills");
+    const converted = await convertImageUrlForLLM("/api/storage/files/chat/uploads/110/sample.jpg");
+
+    expect(converted).toBe("data:image/jpeg;base64," + Buffer.from("fake-image-bytes").toString("base64"));
+    expect(existsSpy).toHaveBeenCalled();
+    expect(readSpy).toHaveBeenCalled();
+  });
+
+  it("falls back to an absolute public URL when a local api storage image is missing", async () => {
+    mockGetCachedPublicAppUrl.mockReturnValue("https://smartaihub.app");
+    vi.spyOn(fs, "existsSync").mockReturnValue(false);
+    const readSpy = vi.spyOn(fs, "readFileSync").mockImplementation(() => {
+      throw new Error("should not read missing file");
+    });
+
+    const { convertImageUrlForLLM } = await import("./skills");
+    const converted = await convertImageUrlForLLM("/api/storage/files/chat/uploads/110/sample.jpg");
+
+    expect(converted).toBe("https://smartaihub.app/api/storage/files/chat/uploads/110/sample.jpg");
+    expect(readSpy).not.toHaveBeenCalled();
   });
 
   it("throws NOT_FOUND when skillId does not exist", async () => {

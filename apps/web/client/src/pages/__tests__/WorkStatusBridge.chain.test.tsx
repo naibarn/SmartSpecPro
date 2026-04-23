@@ -23,7 +23,7 @@ const {
   teamRunDetailRef: { current: undefined as any },
   workflowPanelPropsRef: { current: null as any },
   runMonitorPanelPropsRef: { current: null as any },
-  currentLocationRef: { current: "/admin/work-os?caseId=case-bridge" },
+  currentLocationRef: { current: "/teams/team-1?roomId=room-1&panel=workflow" },
   inboxDataRef: { current: [] as any[] },
   caseDataRef: { current: undefined as any },
 }));
@@ -73,19 +73,31 @@ vi.mock("@/components/orchestrator/TeamRoomView", () => ({
 vi.mock("@/components/orchestrator/RunMonitorPanel", () => ({
   RunMonitorPanel: (props: any) => {
     runMonitorPanelPropsRef.current = props;
-    return <div data-testid="run-monitor-panel" data-status={props.statusBridge?.workOsState ?? ""} />;
+    return (
+      <div
+        data-testid="run-monitor-panel"
+        data-status={props.statusBridge?.workOsState ?? ""}
+      />
+    );
   },
 }));
 
 vi.mock("@/components/orchestrator/RoomWorkflowPanel", () => ({
   RoomWorkflowPanel: (props: any) => {
     workflowPanelPropsRef.current = props;
-    return <div data-testid="workflow-panel" data-phase={props.runtimeState?.currentPhase ?? ""} />;
+    return (
+      <div
+        data-testid="workflow-panel"
+        data-phase={props.runtimeState?.currentPhase ?? ""}
+      />
+    );
   },
 }));
 
 vi.mock("@/components/ui/button", () => ({
-  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  Button: ({ children, ...props }: any) => (
+    <button {...props}>{children}</button>
+  ),
 }));
 
 vi.mock("@/components/ui/input", () => ({
@@ -105,6 +117,7 @@ vi.mock("@/components/ui/dialog", () => ({
   DialogContent: ({ children }: any) => <div>{children}</div>,
   DialogHeader: ({ children }: any) => <div>{children}</div>,
   DialogTitle: ({ children }: any) => <div>{children}</div>,
+  DialogDescription: ({ children }: any) => <div>{children}</div>,
   DialogFooter: ({ children }: any) => <div>{children}</div>,
 }));
 
@@ -124,6 +137,12 @@ vi.mock("@/components/ui/badge", () => ({
   Badge: ({ children }: any) => <span>{children}</span>,
 }));
 
+vi.mock("@/components/LocaleToggle", () => ({
+  LocaleToggle: ({ className }: { className?: string }) => (
+    <div className={className} data-testid="locale-toggle" />
+  ),
+}));
+
 vi.mock("@/components/dashboard", () => ({
   DashboardCard: ({ title, description, children }: any) => (
     <section>
@@ -141,7 +160,8 @@ vi.mock("@/components/dashboard", () => ({
 }));
 
 vi.mock("@/lib/utils", () => ({
-  cn: (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(" "),
+  cn: (...values: Array<string | false | null | undefined>) =>
+    values.filter(Boolean).join(" "),
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -158,10 +178,18 @@ vi.mock("@/lib/trpc", () => ({
       },
       teamRun: {
         get: { invalidate: vi.fn() },
-        chooseExplorationCandidate: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-        rejectExplorationCandidates: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-        approveFinalReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-        rejectFinalReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+        chooseExplorationCandidate: {
+          useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+        },
+        rejectExplorationCandidates: {
+          useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+        },
+        approveFinalReview: {
+          useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+        },
+        rejectFinalReview: {
+          useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+        },
       },
       teamWorkItem: {
         listByRoom: { invalidate: vi.fn() },
@@ -171,20 +199,39 @@ vi.mock("@/lib/trpc", () => ({
       },
     }),
     team: {
-      list: { useQuery: () => ({ data: teamListDataRef.current, isLoading: false }) },
+      list: {
+        useQuery: () => ({ data: teamListDataRef.current, isLoading: false }),
+      },
       get: { useQuery: () => ({ data: teamGetDataRef.current }) },
       listBindableWorkers: { useQuery: () => ({ data: [] }) },
-      getOwnedWorkerBudget: { useQuery: () => ({ data: null, isLoading: false }) },
-      updateOwnedWorkerBudget: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      create: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
+      getOwnedWorkerBudget: {
+        useQuery: () => ({ data: null, isLoading: false }),
+      },
+      updateOwnedWorkerBudget: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      create: {
+        useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+      },
       archive: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       addMember: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      updateMember: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      updateMember: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
     },
     teamRoom: {
       listByTeam: { useQuery: () => ({ data: teamRoomsRef.current }) },
+      getContextEngineHealth: {
+        useQuery: () => ({
+          data: null,
+          isLoading: false,
+          error: null,
+        }),
+      },
       create: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      sendMessage: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
+      sendMessage: {
+        useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+      },
     },
     teamRun: {
       get: { useQuery: () => ({ data: teamRunDetailRef.current }) },
@@ -192,11 +239,21 @@ vi.mock("@/lib/trpc", () => ({
       stop: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       pause: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       resume: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      advance: { useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }) },
-      chooseExplorationCandidate: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      rejectExplorationCandidates: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      approveFinalReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
-      rejectFinalReview: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      advance: {
+        useMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+      },
+      chooseExplorationCandidate: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      rejectExplorationCandidates: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      approveFinalReview: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      rejectFinalReview: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
     },
     teamWorkItem: {
       listByRoom: { useQuery: () => ({ data: [] }) },
@@ -209,7 +266,15 @@ vi.mock("@/lib/trpc", () => ({
       searchTenantUsers: { useQuery: () => ({ data: [], isLoading: false }) },
     },
     workOs: {
-      resumeAutomationCheckpoint: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      createAutomationRun: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      resumeAutomationCheckpoint: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      updateRequest: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
       overview: {
         useQuery: () => ({
           data: { byState: {}, openExceptions: 0, overdueSla: 0, completed: 0 },
@@ -228,6 +293,16 @@ vi.mock("@/lib/trpc", () => ({
         }),
       },
     },
+    monitoring: {
+      getContextEngineHealth: {
+        useQuery: () => ({
+          data: null,
+          isLoading: false,
+          error: null,
+          refetch: vi.fn(),
+        }),
+      },
+    },
   },
 }));
 
@@ -236,19 +311,46 @@ import AdminWorkOsDashboard from "../AdminWorkOsDashboard";
 
 describe("Work status bridge chain", () => {
   beforeEach(() => {
-    Object.defineProperty(window, "innerWidth", { value: 1440, configurable: true });
-    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { value: vi.fn(), configurable: true });
+    Object.defineProperty(window, "innerWidth", {
+      value: 1440,
+      configurable: true,
+    });
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      value: vi.fn(),
+      configurable: true,
+    });
 
     teamListDataRef.current = [
-      { id: "team-1", name: "Automation Team", description: null, category: "operations", status: "active", memberCount: 1 },
+      {
+        id: "team-1",
+        name: "Automation Team",
+        description: null,
+        category: "operations",
+        status: "active",
+        memberCount: 1,
+      },
     ];
     teamGetDataRef.current = {
       id: "team-1",
       name: "Automation Team",
-      members: [{ id: "assistant-1", memberKind: "assistant", memberRole: "orchestrator", displayName: "Orchestrator", isLead: true }],
+      members: [
+        {
+          id: "assistant-1",
+          memberKind: "assistant",
+          memberRole: "orchestrator",
+          displayName: "Orchestrator",
+          isLead: true,
+        },
+      ],
     };
     teamRoomsRef.current = [
-      { id: "room-1", teamId: "team-1", roomType: "team", lastRunId: "run-1", goalPrompt: "Launch objective" },
+      {
+        id: "room-1",
+        teamId: "team-1",
+        roomType: "team",
+        lastRunId: "run-1",
+        goalPrompt: "Launch objective",
+      },
     ];
     teamRunDetailRef.current = {
       id: "run-1",
@@ -284,7 +386,7 @@ describe("Work status bridge chain", () => {
     runMonitorPanelPropsRef.current = null;
     workflowPanelPropsRef.current = null;
 
-    currentLocationRef.current = "/admin/work-os?caseId=case-bridge";
+    currentLocationRef.current = "/teams/team-1?roomId=room-1&panel=workflow";
     inboxDataRef.current = [
       {
         id: "case-bridge",
@@ -318,30 +420,42 @@ describe("Work status bridge chain", () => {
     };
   });
 
-  it("keeps the team run, Teams workflow panel, and Work OS console aligned", () => {
-    expect(describeStatusBridge("running")).toEqual(expect.objectContaining({
-      teamRunStatus: "running",
-      workOsState: "in_progress",
-    }));
+  it("keeps the team run, Teams workflow panel, and Work OS console aligned", async () => {
+    expect(describeStatusBridge("running")).toEqual(
+      expect.objectContaining({
+        teamRunStatus: "running",
+        workOsState: "in_progress",
+      })
+    );
 
     render(<Teams />);
-    fireEvent.click(screen.getByRole("button", { name: /Automation Team/i }));
-    fireEvent.click(screen.getByText("Launch objective").closest("button") as HTMLButtonElement);
 
-    expect(screen.getByTestId("workflow-panel")).toHaveAttribute("data-phase", "waiting_for_poll");
-    expect(screen.getByTestId("run-monitor-panel")).toHaveAttribute("data-status", "in_progress");
-    expect(workflowPanelPropsRef.current).toEqual(expect.objectContaining({
-      runtimeState: expect.objectContaining({
-        policyGateReason: "verification evidence is missing",
-        statusBridge: expect.objectContaining({
-          teamRunStatus: "running",
-          workOsState: "in_progress",
+    expect(await screen.findByTestId("workflow-panel")).toHaveAttribute(
+      "data-phase",
+      "waiting_for_poll"
+    );
+    expect(screen.getByTestId("run-monitor-panel")).toHaveAttribute(
+      "data-status",
+      "in_progress"
+    );
+    expect(workflowPanelPropsRef.current).toEqual(
+      expect.objectContaining({
+        runtimeState: expect.objectContaining({
+          policyGateReason: "verification evidence is missing",
+          statusBridge: expect.objectContaining({
+            teamRunStatus: "running",
+            workOsState: "in_progress",
+          }),
         }),
-      }),
-    }));
+      })
+    );
 
     render(<AdminWorkOsDashboard />);
-    expect(screen.getAllByText("Bridge: running").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByRole("heading", { name: "Bridge review" })).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Bridge: running").length
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      screen.getByRole("heading", { name: "Bridge review" })
+    ).toBeInTheDocument();
   });
 });

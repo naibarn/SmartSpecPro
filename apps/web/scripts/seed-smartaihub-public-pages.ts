@@ -8,7 +8,9 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import { tenants, tenantPages } from "../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://smartspec:smartspec123@localhost:5432/smartspec";
+const DATABASE_URL =
+  process.env.DATABASE_URL ||
+  "postgresql://smartspec:smartspec123@localhost:5432/smartspec";
 
 const pages = [
   {
@@ -17,20 +19,159 @@ const pages = [
     slug: "home",
     sortOrder: 1,
     metadata: {
-      description: "SmartAIHub is an enterprise skill marketplace with virtual workflows and swarm execution for chat, presentation, and video outputs.",
-      keywords: ["SmartAIHub", "skill marketplace", "virtual workflows", "swarm execution", "chat output", "presentation output", "video output", "enterprise AI"],
+      description:
+        "Turn prompts and documents into answers, decks, and videos in one AI workspace. SmartAIHub helps teams run reusable AI workflows from a shared marketplace, so they can ship better outputs faster.",
+      keywords: [
+        "SmartAIHub",
+        "AI workspace",
+        "shared marketplace",
+        "reusable AI workflows",
+        "answers",
+        "decks",
+        "videos",
+        "Thai English",
+        "docs support status",
+      ],
     },
+    sections: [
+      {
+        id: "hero-1",
+        type: "hero",
+        title:
+          "Turn prompts and documents into answers, decks, and videos — in one AI workspace.",
+        subtitle:
+          "SmartAIHub helps teams run reusable AI workflows from a shared marketplace, so they can ship better outputs faster.",
+        buttons: [
+          {
+            text: "Try a sample workflow",
+            link: "/marketplace",
+            style: "primary",
+          },
+          { text: "Watch 2-minute demo", link: "/gallery", style: "outline" },
+        ],
+        settings: {
+          badge: "AI workspace for teams",
+          trustLine:
+            "Thai & English • Docs, Support, and Status • Built for teams",
+          backgroundVideo: "/line_video.mp4",
+          backgroundOpacity: 0.18,
+          seoTitle: "SmartAIHub | AI Workspace for Answers, Decks & Videos",
+          seoDescription:
+            "Turn prompts and documents into answers, decks, and videos in one AI workspace.",
+        },
+      },
+      {
+        id: "stats-1",
+        type: "stats",
+        items: [
+          { value: "Thai & English" },
+          { value: "Docs" },
+          { value: "Support" },
+          { value: "Status" },
+          { value: "Built for teams" },
+        ],
+        settings: {
+          variant: "pills",
+        },
+      },
+      {
+        id: "features-1",
+        type: "features",
+        title: "Reusable AI workflows from a shared marketplace",
+        subtitle:
+          "Publish once, reuse everywhere, and keep every team moving from the same source of truth.",
+        items: [
+          {
+            title: "Shared marketplace",
+            description:
+              "Discover approved prompts, documents, and workflows in one catalog.",
+            points: ["Reuse", "Govern", "Share"],
+          },
+          {
+            title: "Reusable workflows",
+            description:
+              "Turn a single workflow into a repeatable path for answers, decks, and videos.",
+            points: ["Prompt", "Doc", "Output"],
+          },
+          {
+            title: "Ship faster",
+            description:
+              "Let teams start from the same building blocks instead of rebuilding every time.",
+            points: ["Faster", "Consistent", "Scalable"],
+          },
+        ],
+        settings: {
+          badge: "Shared marketplace",
+        },
+      },
+      {
+        id: "outputs-1",
+        type: "content",
+        title: "One workflow, three outputs",
+        subtitle:
+          "The same source material can become grounded answers, slide-ready decks, or video briefs.",
+        items: [
+          {
+            title: "Answers",
+            description:
+              "Turn prompts and documents into clear, grounded responses.",
+          },
+          {
+            title: "Decks",
+            description:
+              "Convert the same workflow into a structured presentation.",
+          },
+          {
+            title: "Videos",
+            description:
+              "Package the output into a video script and production cue.",
+          },
+        ],
+        settings: {
+          sectionType: "outputs",
+          badge: "Answers • Decks • Videos",
+        },
+      },
+      {
+        id: "cta-1",
+        type: "cta",
+        title: "See SmartAIHub in action",
+        subtitle:
+          "Start with a sample workflow or watch the 2-minute demo to see the full loop.",
+        buttons: [
+          {
+            text: "Try a sample workflow",
+            link: "/marketplace",
+            style: "primary",
+          },
+          { text: "Watch 2-minute demo", link: "/gallery", style: "outline" },
+        ],
+      },
+    ],
     content: `<section class="hero">
-  <h1>Skill marketplace. Virtual workflows. Swarm execution.</h1>
-  <p>SmartAIHub helps teams package reusable skills and deliver chat, presentation, and video outputs from one enterprise platform.</p>
+  <h1>Turn prompts and documents into answers, decks, and videos — in one AI workspace.</h1>
+  <p>SmartAIHub helps teams run reusable AI workflows from a shared marketplace, so they can ship better outputs faster.</p>
+  <p>Thai & English • Docs, Support, and Status • Built for teams</p>
 </section>
-<section class="content">
-  <h2>What makes SmartAIHub different</h2>
+<section class="features">
+  <h2>Reusable AI workflows from a shared marketplace</h2>
   <ul>
-    <li>Publish skills once and reuse them everywhere</li>
-    <li>Compose workflows with approvals and routing</li>
-    <li>Run coordinated swarms for higher quality output</li>
+    <li>Shared marketplace: discover approved prompts, documents, and workflows in one catalog.</li>
+    <li>Reusable workflows: turn a single workflow into a repeatable path for answers, decks, and videos.</li>
+    <li>Ship faster: start from the same building blocks instead of rebuilding every time.</li>
   </ul>
+</section>
+<section class="outputs">
+  <h2>One workflow, three outputs</h2>
+  <ul>
+    <li>Answers: turn prompts and documents into clear, grounded responses.</li>
+    <li>Decks: convert the same workflow into a structured presentation.</li>
+    <li>Videos: package the output into a video script and production cue.</li>
+  </ul>
+</section>
+<section class="cta">
+  <h2>See SmartAIHub in action</h2>
+  <p>Start with a sample workflow or watch the 2-minute demo to see the full loop.</p>
 </section>`,
   },
   {
@@ -39,8 +180,18 @@ const pages = [
     slug: "features",
     sortOrder: 2,
     metadata: {
-      description: "Explore SmartAIHub enterprise capabilities for skill publishing, workflow orchestration, swarm governance, and output delivery.",
-      keywords: ["SmartAIHub features", "skill marketplace", "workflow orchestration", "swarm governance", "enterprise capabilities", "chat output", "presentation output", "video output"],
+      description:
+        "Explore SmartAIHub enterprise capabilities for skill publishing, workflow orchestration, swarm governance, and output delivery.",
+      keywords: [
+        "SmartAIHub features",
+        "skill marketplace",
+        "workflow orchestration",
+        "swarm governance",
+        "enterprise capabilities",
+        "chat output",
+        "presentation output",
+        "video output",
+      ],
     },
     content: `<section class="hero">
   <h1>Enterprise capabilities for skills, workflows, and swarms.</h1>
@@ -80,8 +231,16 @@ const pages = [
     slug: "pricing",
     sortOrder: 3,
     metadata: {
-      description: "Flexible SmartAIHub pricing for teams that need enterprise skill automation, workflow runs, and white-label deployment.",
-      keywords: ["SmartAIHub pricing", "enterprise AI pricing", "skill automation", "workflow runs", "credit packages", "white-label deployment"],
+      description:
+        "Flexible SmartAIHub pricing for teams that need enterprise skill automation, workflow runs, and white-label deployment.",
+      keywords: [
+        "SmartAIHub pricing",
+        "enterprise AI pricing",
+        "skill automation",
+        "workflow runs",
+        "credit packages",
+        "white-label deployment",
+      ],
     },
     content: `<section class="hero">
   <h1>Simple pricing for enterprise skill automation.</h1>
@@ -106,8 +265,16 @@ const pages = [
     slug: "contact",
     sortOrder: 4,
     metadata: {
-      description: "Contact SmartAIHub for enterprise support, product questions, pricing, and partnership discussions.",
-      keywords: ["contact SmartAIHub", "enterprise support", "sales inquiry", "partnership", "technical support", "pricing questions"],
+      description:
+        "Contact SmartAIHub for enterprise support, product questions, pricing, and partnership discussions.",
+      keywords: [
+        "contact SmartAIHub",
+        "enterprise support",
+        "sales inquiry",
+        "partnership",
+        "technical support",
+        "pricing questions",
+      ],
     },
     content: `<section class="hero">
   <h1>Contact SmartAIHub</h1>
@@ -160,9 +327,13 @@ async function seed() {
           .update(tenantPages)
           .set({
             title: page.title,
+            slug: page.slug,
             content: page.content,
+            sections: page.sections,
             metadata: page.metadata,
             isPublished: true,
+            showInMenu: true,
+            sortOrder: page.sortOrder,
             updatedAt: new Date(),
           })
           .where(eq(tenantPages.id, existing.id));
@@ -174,6 +345,7 @@ async function seed() {
           title: page.title,
           slug: page.slug,
           content: page.content,
+          sections: page.sections,
           metadata: page.metadata,
           isPublished: true,
           showInMenu: true,

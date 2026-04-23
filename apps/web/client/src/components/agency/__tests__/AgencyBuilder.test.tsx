@@ -17,7 +17,7 @@ const mockSetEdges = vi.fn((next: any) => {
 });
 
 // ── React Flow mock ────────────────────────────────────────
-vi.mock("reactflow", () => {
+vi.mock("@xyflow/react", () => {
   const useNodesState = vi.fn(() => [mockNodesState, mockSetNodes, vi.fn()]);
   const useEdgesState = vi.fn(() => [mockEdgesState, mockSetEdges, vi.fn()]);
   const useReactFlow = vi.fn(() => ({
@@ -29,7 +29,7 @@ vi.mock("reactflow", () => {
 
   return {
     __esModule: true,
-    default: ({ children, nodes, edges, onNodeClick, onPaneClick, onConnect }: any) =>
+    ReactFlow: ({ children, nodes, edges, onNodeClick, onPaneClick, onConnect }: any) =>
       createElement(
         "div",
         {
@@ -286,7 +286,7 @@ vi.mock("@/hooks/useTenantFeatureFlag", () => ({
 }));
 
 // ── Reactflow CSS no-op ────────────────────────────────────
-vi.mock("reactflow/dist/style.css", () => ({}));
+vi.mock("@xyflow/react/dist/style.css", () => ({}));
 
 describe("AgencyBuilder", () => {
   beforeEach(() => {

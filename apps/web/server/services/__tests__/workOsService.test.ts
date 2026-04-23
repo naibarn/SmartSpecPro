@@ -22,14 +22,20 @@ vi.mock("../../db", () => ({
 const { mockCreateWorkItem } = vi.hoisted(() => ({
   mockCreateWorkItem: vi.fn(),
 }));
+const { mockGetWorkItem } = vi.hoisted(() => ({
+  mockGetWorkItem: vi.fn(),
+}));
 vi.mock("../workItemService", () => ({
   createWorkItem: mockCreateWorkItem,
+  getWorkItem: mockGetWorkItem,
 }));
 
-const { mockGetRoleRoutineRun, mockListRoleRoutineRunsForRoutine } = vi.hoisted(() => ({
-  mockGetRoleRoutineRun: vi.fn(),
-  mockListRoleRoutineRunsForRoutine: vi.fn(),
-}));
+const { mockGetRoleRoutineRun, mockListRoleRoutineRunsForRoutine } = vi.hoisted(
+  () => ({
+    mockGetRoleRoutineRun: vi.fn(),
+    mockListRoleRoutineRunsForRoutine: vi.fn(),
+  })
+);
 vi.mock("../rolePersistence", () => ({
   getRoleRoutineRun: mockGetRoleRoutineRun,
   listRoleRoutineRunsForRoutine: mockListRoleRoutineRunsForRoutine,
@@ -39,19 +45,28 @@ const { mockBuildBrowserAutomationTimelineEntries } = vi.hoisted(() => ({
   mockBuildBrowserAutomationTimelineEntries: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("../workAutomationBrowserTaskService", () => ({
-  buildBrowserAutomationTimelineEntries: mockBuildBrowserAutomationTimelineEntries,
+  buildBrowserAutomationTimelineEntries:
+    mockBuildBrowserAutomationTimelineEntries,
 }));
 
-const { mockGetLatestRunSnapshot, mockExtractRunPlanArtifact } = vi.hoisted(() => ({
-  mockGetLatestRunSnapshot: vi.fn(),
-  mockExtractRunPlanArtifact: vi.fn(),
-}));
+const { mockGetLatestRunSnapshot, mockExtractRunPlanArtifact } = vi.hoisted(
+  () => ({
+    mockGetLatestRunSnapshot: vi.fn(),
+    mockExtractRunPlanArtifact: vi.fn(),
+  })
+);
 vi.mock("../monitoringService", () => ({
   getLatestRunSnapshot: mockGetLatestRunSnapshot,
   extractRunPlanArtifact: mockExtractRunPlanArtifact,
 }));
 
-import { createWorkRequest, createWorkTask, getWorkCaseProjection, projectTaskAsCase } from "../workOsService";
+import {
+  createWorkRequest,
+  createWorkTask,
+  getWorkCaseProjection,
+  listMyWorkRequests,
+  projectTaskAsCase,
+} from "../workOsService";
 import { getInbox } from "../workOsService";
 
 function buildReturning<T>(value: T) {
@@ -67,6 +82,7 @@ describe("workOsService", () => {
     vi.clearAllMocks();
     mockGetLatestRunSnapshot.mockResolvedValue(null);
     mockExtractRunPlanArtifact.mockReturnValue(null);
+    mockGetWorkItem.mockReset();
   });
 
   it("creates linked request and case records", async () => {
@@ -78,15 +94,34 @@ describe("workOsService", () => {
           values(payload: unknown) {
             inserted.push({
               table:
-                table === workRequests ? "workRequests"
-                  : table === workCases ? "workCases"
-                    : table === workAssignments ? "workAssignments"
+                table === workRequests
+                  ? "workRequests"
+                  : table === workCases
+                    ? "workCases"
+                    : table === workAssignments
+                      ? "workAssignments"
                       : "other",
               values: payload,
             });
-            if (table === workRequests) return buildReturning({ id: "req-1", tenantId: "tenant-1", currentState: "new" });
-            if (table === workCases) return buildReturning({ id: "case-1", tenantId: "tenant-1", requestId: "req-1", currentState: "new", title: "Process invoice" });
-            if (table === workAssignments) return buildReturning({ id: "assignment-1", tenantId: "tenant-1" });
+            if (table === workRequests)
+              return buildReturning({
+                id: "req-1",
+                tenantId: "tenant-1",
+                currentState: "new",
+              });
+            if (table === workCases)
+              return buildReturning({
+                id: "case-1",
+                tenantId: "tenant-1",
+                requestId: "req-1",
+                currentState: "new",
+                title: "Process invoice",
+              });
+            if (table === workAssignments)
+              return buildReturning({
+                id: "assignment-1",
+                tenantId: "tenant-1",
+              });
             if (table === workOsEvents) return buildReturning({ id: "evt-1" });
             return buildReturning({ id: "unknown" });
           },
@@ -121,7 +156,144 @@ describe("workOsService", () => {
 
     expect(result.request.id).toBe("req-1");
     expect(result.case.id).toBe("case-1");
-    expect(inserted.map((item) => item.table)).toEqual(["workRequests", "workCases", "workAssignments", "other"]);
+    expect(inserted.map(item => item.table)).toEqual([
+      "workRequests",
+      "workCases",
+      "workAssignments",
+      "other",
+    ]);
+  });
+
+  it("lists my requests with the latest execution trail for handed off work", async () => {
+    mockGetWorkItem.mockResolvedValue({
+      id: "task-1",
+      tenantId: "tenant-1",
+      teamId: "team-1",
+      roomId: "room-1",
+      runId: "team-run-1",
+      routineId: null,
+      sourceType: "work_os",
+      sourceRef: "case-1",
+      title: "Kickoff: Generate launch assets",
+      objective: "Create a concise launch plan",
+      status: "in_progress",
+      revisionVersion: 1,
+      threadRootMessageId: null,
+      activeDraftArtifactId: null,
+      priority: "high",
+      riskClass: "medium",
+      assignedMemberId: null,
+      reviewerMemberId: null,
+      approverMemberId: null,
+      artifactRefsJson: null,
+      approvalState: "not_required",
+      dueAt: null,
+      createdAt: new Date("2026-04-10T00:00:00.000Z"),
+      updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+      supersededByWorkItemId: null,
+      completedAt: null,
+    } as any);
+
+    const db = {
+      select() {
+        return {
+          from(table: any) {
+            if (table === workRequests) {
+              return {
+                where: () => ({
+                  orderBy: () => ({
+                    limit: async () => [
+                      {
+                        id: "req-1",
+                        tenantId: "tenant-1",
+                        currentState: "new",
+                        title: "Review refund request",
+                        objective: "Check refund eligibility",
+                        sourceType: "chat",
+                        requesterId: "42",
+                        requesterType: "human",
+                        businessDomain: "finance",
+                        urgency: "high",
+                        riskLevel: "medium",
+                        defaultOwnerType: "queue",
+                        defaultOwnerId: "queue-1",
+                        defaultQueueId: "team-1",
+                        linkedCaseId: "case-1",
+                        createdAt: new Date("2026-04-11T10:00:00.000Z"),
+                        updatedAt: new Date("2026-04-11T10:00:00.000Z"),
+                      },
+                    ],
+                  }),
+                }),
+              };
+            }
+            if (table === workCases) {
+              return {
+                where: () => ({
+                  limit: async () => [
+                    {
+                      id: "case-1",
+                      tenantId: "tenant-1",
+                      requestId: "req-1",
+                      primaryTaskId: "task-1",
+                      title: "Review refund request",
+                      summary: "Check refund eligibility",
+                      ownerType: "queue",
+                      ownerId: "team-1",
+                      currentState: "in_progress",
+                    },
+                  ],
+                }),
+              };
+            }
+            if (table === teamRuns) {
+              return {
+                innerJoin: () => ({
+                  where: () => ({
+                    limit: async () => [
+                      {
+                        run: {
+                          id: "team-run-1",
+                          tenantId: "tenant-1",
+                          roomId: "room-1",
+                          teamId: "team-1",
+                          status: "running",
+                          executionMode: "auto_team",
+                        },
+                      },
+                    ],
+                  }),
+                }),
+              };
+            }
+            return { where: () => ({ limit: async () => [] }) };
+          },
+        };
+      },
+    };
+
+    mockGetDb.mockResolvedValue(db as any);
+
+    const requests = await listMyWorkRequests({
+      tenantId: "tenant-1",
+      requesterId: "42",
+      limit: 10,
+    });
+
+    expect(requests).toEqual([
+      expect.objectContaining({
+        id: "req-1",
+        executionTrail: expect.objectContaining({
+          teamId: "team-1",
+          roomId: "room-1",
+          teamRunId: "team-run-1",
+          teamRunStatus: "running",
+          teamRunMode: "auto_team",
+          workItemId: "task-1",
+          workItemStatus: "in_progress",
+        }),
+      }),
+    ]);
   });
 
   it("creates a task through the legacy work-item service and links the case", async () => {
@@ -139,11 +311,40 @@ describe("workOsService", () => {
     });
 
     const taskSelect = {
-      limit: async () => [{ id: "task-1", tenantId: "tenant-1", status: "planned", title: "Follow up", objective: "Collect invoice data", priority: "normal", riskClass: "medium", createdAt: new Date("2026-04-10T00:00:00.000Z"), updatedAt: new Date("2026-04-10T00:00:00.000Z") }],
+      limit: async () => [
+        {
+          id: "task-1",
+          tenantId: "tenant-1",
+          status: "planned",
+          title: "Follow up",
+          objective: "Collect invoice data",
+          priority: "normal",
+          riskClass: "medium",
+          createdAt: new Date("2026-04-10T00:00:00.000Z"),
+          updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+        },
+      ],
     };
 
     const caseSelect = {
-      limit: async () => [{ id: "case-1", tenantId: "tenant-1", requestId: "req-1", currentState: "new", title: "Process invoice", summary: "Collect invoice data", priority: "normal", riskLevel: "medium", dataClassification: "internal", linkedConversationIdsJson: [], linkedWorkpackRunIdsJson: [], linkedRoleRoutineRunIdsJson: [], createdAt: new Date("2026-04-10T00:00:00.000Z"), updatedAt: new Date("2026-04-10T00:00:00.000Z") }],
+      limit: async () => [
+        {
+          id: "case-1",
+          tenantId: "tenant-1",
+          requestId: "req-1",
+          currentState: "new",
+          title: "Process invoice",
+          summary: "Collect invoice data",
+          priority: "normal",
+          riskLevel: "medium",
+          dataClassification: "internal",
+          linkedConversationIdsJson: [],
+          linkedWorkpackRunIdsJson: [],
+          linkedRoleRoutineRunIdsJson: [],
+          createdAt: new Date("2026-04-10T00:00:00.000Z"),
+          updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+        },
+      ],
     };
 
     const db = {
@@ -154,7 +355,13 @@ describe("workOsService", () => {
               return { where: () => caseSelect };
             }
             if (table === workRequests) {
-              return { where: () => ({ limit: async () => [{ id: "req-1", tenantId: "tenant-1", currentState: "new" }] }) };
+              return {
+                where: () => ({
+                  limit: async () => [
+                    { id: "req-1", tenantId: "tenant-1", currentState: "new" },
+                  ],
+                }),
+              };
             }
             if (table === teamWorkItems) {
               return { where: () => taskSelect, orderBy: () => taskSelect };
@@ -163,7 +370,9 @@ describe("workOsService", () => {
               return { where: () => ({ orderBy: async () => [] }) };
             }
             if (table === workAutomationRuns) {
-              return { where: () => ({ orderBy: () => ({ limit: async () => [] }) }) };
+              return {
+                where: () => ({ orderBy: () => ({ limit: async () => [] }) }),
+              };
             }
             return { where: () => ({ limit: async () => [] }) };
           },
@@ -212,7 +421,7 @@ describe("workOsService", () => {
         sourceType: "work_os",
         title: "Follow up",
       }),
-      expect.any(Object),
+      expect.any(Object)
     );
     expect(result.case.id).toBe("case-1");
     expect(result.task.id).toBe("task-1");
@@ -244,10 +453,23 @@ describe("workOsService", () => {
               return { where: () => ({ limit: async () => [] }) };
             }
             if (table === workItemEvents) {
-              return { where: () => ({ orderBy: async () => [{ id: "evt-legacy-1", eventType: "created", createdAt: new Date("2026-04-10T00:00:00.000Z"), detailJson: { ok: true } }] }) };
+              return {
+                where: () => ({
+                  orderBy: async () => [
+                    {
+                      id: "evt-legacy-1",
+                      eventType: "created",
+                      createdAt: new Date("2026-04-10T00:00:00.000Z"),
+                      detailJson: { ok: true },
+                    },
+                  ],
+                }),
+              };
             }
             if (table === workAutomationRuns) {
-              return { where: () => ({ orderBy: () => ({ limit: async () => [] }) }) };
+              return {
+                where: () => ({ orderBy: () => ({ limit: async () => [] }) }),
+              };
             }
             return { where: () => ({ limit: async () => [] }) };
           },
@@ -337,24 +559,57 @@ describe("workOsService", () => {
         return {
           from(table: any) {
             if (table === teamWorkItems) {
-              return { where: () => ({ limit: async () => [{ id: "task-1", tenantId: "tenant-1", runId: "run-1", status: "planned", title: "Follow up", objective: "Collect invoice data", priority: "normal", riskClass: "medium", createdAt: new Date("2026-04-10T00:00:00.000Z"), updatedAt: new Date("2026-04-10T00:00:00.000Z") }] }) };
+              return {
+                where: () => ({
+                  limit: async () => [
+                    {
+                      id: "task-1",
+                      tenantId: "tenant-1",
+                      runId: "run-1",
+                      status: "planned",
+                      title: "Follow up",
+                      objective: "Collect invoice data",
+                      priority: "normal",
+                      riskClass: "medium",
+                      createdAt: new Date("2026-04-10T00:00:00.000Z"),
+                      updatedAt: new Date("2026-04-10T00:00:00.000Z"),
+                    },
+                  ],
+                }),
+              };
             }
             if (table === workCases) {
               return { where: () => ({ limit: async () => [caseRecord] }) };
             }
             if (table === workRequests) {
-              return { where: () => ({ limit: async () => [{ id: "req-1", tenantId: "tenant-1", currentState: "new" }] }) };
+              return {
+                where: () => ({
+                  limit: async () => [
+                    { id: "req-1", tenantId: "tenant-1", currentState: "new" },
+                  ],
+                }),
+              };
             }
-            if (table === workAssignments || table === workOsEvents || table === workItemEvents) {
+            if (
+              table === workAssignments ||
+              table === workOsEvents ||
+              table === workItemEvents
+            ) {
               return { where: () => ({ orderBy: async () => [] }) };
             }
             if (table === workpackRecords) {
-              return { where: () => ({ orderBy: async () => [workPackRecord] }) };
+              return {
+                where: () => ({ orderBy: async () => [workPackRecord] }),
+              };
             }
             if (table === workAutomationRuns) {
-              return { where: () => ({ orderBy: () => ({ limit: async () => [] }) }) };
+              return {
+                where: () => ({ orderBy: () => ({ limit: async () => [] }) }),
+              };
             }
-            return { where: () => ({ orderBy: async () => [], limit: async () => [] }) };
+            return {
+              where: () => ({ orderBy: async () => [], limit: async () => [] }),
+            };
           },
         };
       },
@@ -423,35 +678,45 @@ describe("workOsService", () => {
         },
       },
     } as any);
-    mockExtractRunPlanArtifact.mockImplementation((snapshot: any) => snapshot?.artifactCountJson?.planArtifact ?? null);
+    mockExtractRunPlanArtifact.mockImplementation(
+      (snapshot: any) => snapshot?.artifactCountJson?.planArtifact ?? null
+    );
 
     const projection = await projectTaskAsCase("task-1", "tenant-1");
-    const workpackEntry = projection.timeline.find((entry) => entry.source === "workpack_record");
-    const teamRunEntry = projection.timeline.find((entry) => entry.source === "team_run");
+    const workpackEntry = projection.timeline.find(
+      entry => entry.source === "workpack_record"
+    );
+    const teamRunEntry = projection.timeline.find(
+      entry => entry.source === "team_run"
+    );
 
     expect(workpackEntry?.eventType).toBe("workpack_run");
     expect(teamRunEntry?.eventType).toBe("team_run_snapshot");
-    expect(workpackEntry?.detailJson).toEqual(expect.objectContaining({ recordId: "wpr-1" }));
-    expect(teamRunEntry?.detailJson).toEqual(expect.objectContaining({
-      runId: "run-1",
-      status: "running",
-      workOsState: "in_progress",
-      statusBridge: expect.objectContaining({
-        teamRunStatus: "running",
+    expect(workpackEntry?.detailJson).toEqual(
+      expect.objectContaining({ recordId: "wpr-1" })
+    );
+    expect(teamRunEntry?.detailJson).toEqual(
+      expect.objectContaining({
+        runId: "run-1",
+        status: "running",
         workOsState: "in_progress",
-      }),
-      exploration: expect.objectContaining({
-        selectedCandidateId: "balanced-hybrid",
-        candidateCount: 1,
-        selectionReason: "Choose the balanced path for best coverage.",
-      }),
-      finalReview: expect.objectContaining({
-        reviewerPersona: "qa_validator",
-        score: 0.88,
-        recommendation: "Proceed",
-        comment: "Strong final result.",
-      }),
-    }));
+        statusBridge: expect.objectContaining({
+          teamRunStatus: "running",
+          workOsState: "in_progress",
+        }),
+        exploration: expect.objectContaining({
+          selectedCandidateId: "balanced-hybrid",
+          candidateCount: 1,
+          selectionReason: "Choose the balanced path for best coverage.",
+        }),
+        finalReview: expect.objectContaining({
+          reviewerPersona: "qa_validator",
+          score: 0.88,
+          recommendation: "Proceed",
+          comment: "Strong final result.",
+        }),
+      })
+    );
   });
 
   it("includes final review evidence in the inbox even when the run has no exploration payload", async () => {
@@ -538,13 +803,30 @@ describe("workOsService", () => {
               return { where: () => ({ orderBy: async () => [caseRecord] }) };
             }
             if (table === workRequests) {
-              return { where: () => ({ limit: async () => [{ id: "req-final-1", tenantId: "tenant-1", currentState: "new" }] }) };
+              return {
+                where: () => ({
+                  limit: async () => [
+                    {
+                      id: "req-final-1",
+                      tenantId: "tenant-1",
+                      currentState: "new",
+                    },
+                  ],
+                }),
+              };
             }
-            if (table === workAssignments || table === workOsEvents || table === workItemEvents || table === workpackRecords) {
+            if (
+              table === workAssignments ||
+              table === workOsEvents ||
+              table === workItemEvents ||
+              table === workpackRecords
+            ) {
               return { where: () => ({ orderBy: async () => [] }) };
             }
             if (table === workAutomationRuns) {
-              return { where: () => ({ orderBy: () => ({ limit: async () => [] }) }) };
+              return {
+                where: () => ({ orderBy: () => ({ limit: async () => [] }) }),
+              };
             }
             return { where: () => ({ orderBy: async () => [] }) };
           },
@@ -574,6 +856,11 @@ describe("workOsService", () => {
       recommendation: "Revise",
       comment: "Needs one more pass.",
     });
+    expect(inbox[0]?.latestTeamId).toBe("team-1");
+    expect(inbox[0]?.latestTeamRoomId).toBe("room-1");
+    expect(inbox[0]?.latestTeamRunId).toBe("run-final-1");
+    expect(inbox[0]?.latestTeamRunStatus).toBe("running");
+    expect(inbox[0]?.latestTeamRunMode).toBe("supervised");
     expect(inbox[0]?.latestExploration).toBeNull();
   });
 
@@ -673,15 +960,30 @@ describe("workOsService", () => {
               return { where: () => ({ limit: async () => [caseRecord] }) };
             }
             if (table === workRequests) {
-              return { where: () => ({ limit: async () => [{ id: "req-1", tenantId: "tenant-1", currentState: "new" }] }) };
+              return {
+                where: () => ({
+                  limit: async () => [
+                    { id: "req-1", tenantId: "tenant-1", currentState: "new" },
+                  ],
+                }),
+              };
             }
-            if (table === workAssignments || table === workOsEvents || table === workItemEvents || table === workpackRecords) {
+            if (
+              table === workAssignments ||
+              table === workOsEvents ||
+              table === workItemEvents ||
+              table === workpackRecords
+            ) {
               return { where: () => ({ orderBy: async () => [] }) };
             }
             if (table === workAutomationRuns) {
-              return { where: () => ({ orderBy: () => ({ limit: async () => [] }) }) };
+              return {
+                where: () => ({ orderBy: () => ({ limit: async () => [] }) }),
+              };
             }
-            return { where: () => ({ orderBy: async () => [], limit: async () => [] }) };
+            return {
+              where: () => ({ orderBy: async () => [], limit: async () => [] }),
+            };
           },
         };
       },
@@ -690,14 +992,18 @@ describe("workOsService", () => {
     mockGetDb.mockResolvedValue(db as any);
 
     const projection = await getWorkCaseProjection("case-1", "tenant-1");
-    const roleRoutineEntry = projection.timeline.find((entry) => entry.source === "role_routine");
+    const roleRoutineEntry = projection.timeline.find(
+      entry => entry.source === "role_routine"
+    );
 
     expect(roleRoutineEntry?.eventType).toBe("role_routine_running");
-    expect(roleRoutineEntry?.detailJson).toEqual(expect.objectContaining({
-      routineId: "routine-1",
-      routineRunId: "rrun-1",
-      selectedWorkpackFamily: "family-1",
-    }));
+    expect(roleRoutineEntry?.detailJson).toEqual(
+      expect.objectContaining({
+        routineId: "routine-1",
+        routineRunId: "rrun-1",
+        selectedWorkpackFamily: "family-1",
+      })
+    );
   });
 
   it("enriches inbox cases with latest exploration summary when linked runs have plan comparisons", async () => {
@@ -768,7 +1074,9 @@ describe("workOsService", () => {
             if (table === workRequests) {
               return { where: () => ({ limit: async () => [] }) };
             }
-            return { where: () => ({ orderBy: async () => [], limit: async () => [] }) };
+            return {
+              where: () => ({ orderBy: async () => [], limit: async () => [] }),
+            };
           },
         };
       },
@@ -829,23 +1137,34 @@ describe("workOsService", () => {
         },
       },
     } as any);
-    mockExtractRunPlanArtifact.mockImplementation((snapshot: any) => snapshot?.artifactCountJson?.planArtifact ?? null);
+    mockExtractRunPlanArtifact.mockImplementation(
+      (snapshot: any) => snapshot?.artifactCountJson?.planArtifact ?? null
+    );
 
     const inbox = await getInbox("tenant-1");
-    expect(inbox[0]?.latestExploration).toEqual(expect.objectContaining({
-      selectedCandidateId: "balanced-hybrid",
-      candidateCount: 1,
-      selectionReason: "Choose the balanced path for best coverage.",
-    }));
+    expect(inbox[0]?.latestExploration).toEqual(
+      expect.objectContaining({
+        selectedCandidateId: "balanced-hybrid",
+        candidateCount: 1,
+        selectionReason: "Choose the balanced path for best coverage.",
+      })
+    );
     expect(inbox[0]?.latestTraceId).toBe("trace-123");
-    expect(inbox[0]?.latestContext).toEqual(expect.objectContaining({
-      tenantId: "tenant-1",
-      selectedCount: 1,
-    }));
-    expect(inbox[0]?.latestReadiness).toEqual(expect.objectContaining({
-      status: "ready",
-      score: 0.82,
-    }));
+    expect(inbox[0]?.latestContext).toEqual(
+      expect.objectContaining({
+        tenantId: "tenant-1",
+        selectedCount: 1,
+      })
+    );
+    expect(inbox[0]?.latestTeamId).toBe("team-1");
+    expect(inbox[0]?.latestTeamRoomId).toBe("room-1");
+    expect(inbox[0]?.latestTeamRunId).toBe("run-1");
+    expect(inbox[0]?.latestReadiness).toEqual(
+      expect.objectContaining({
+        status: "ready",
+        score: 0.82,
+      })
+    );
   });
 
   it("includes automation run evidence in the case timeline", async () => {
@@ -962,18 +1281,37 @@ describe("workOsService", () => {
               return { where: () => ({ limit: async () => [caseRecord] }) };
             }
             if (table === workRequests) {
-              return { where: () => ({ limit: async () => [{ id: "req-1", tenantId: "tenant-1", currentState: "new" }] }) };
+              return {
+                where: () => ({
+                  limit: async () => [
+                    { id: "req-1", tenantId: "tenant-1", currentState: "new" },
+                  ],
+                }),
+              };
             }
-            if (table === workAssignments || table === workOsEvents || table === workItemEvents || table === workpackRecords) {
+            if (
+              table === workAssignments ||
+              table === workOsEvents ||
+              table === workItemEvents ||
+              table === workpackRecords
+            ) {
               return { where: () => ({ orderBy: async () => [] }) };
             }
             if (table === workAutomationRuns) {
-              return { where: () => ({ orderBy: () => ({ limit: async () => [automationRun] }) }) };
+              return {
+                where: () => ({
+                  orderBy: () => ({ limit: async () => [automationRun] }),
+                }),
+              };
             }
             if (table === workAutomationRunEvents) {
-              return { where: () => ({ orderBy: async () => [automationEvent] }) };
+              return {
+                where: () => ({ orderBy: async () => [automationEvent] }),
+              };
             }
-            return { where: () => ({ orderBy: async () => [], limit: async () => [] }) };
+            return {
+              where: () => ({ orderBy: async () => [], limit: async () => [] }),
+            };
           },
         };
       },
@@ -982,13 +1320,17 @@ describe("workOsService", () => {
     mockGetDb.mockResolvedValue(db as any);
 
     const projection = await getWorkCaseProjection("case-1", "tenant-1");
-    const automationEntry = projection.timeline.find((entry) => entry.eventType === "automation_run_created");
+    const automationEntry = projection.timeline.find(
+      entry => entry.eventType === "automation_run_created"
+    );
 
     expect(projection.automation.run?.id).toBe("run-automation-1");
     expect(automationEntry?.source).toBe("work_os");
-    expect(automationEntry?.detailJson).toEqual(expect.objectContaining({
-      runId: "run-automation-1",
-      templateKey: "content-production",
-    }));
+    expect(automationEntry?.detailJson).toEqual(
+      expect.objectContaining({
+        runId: "run-automation-1",
+        templateKey: "content-production",
+      })
+    );
   });
 });

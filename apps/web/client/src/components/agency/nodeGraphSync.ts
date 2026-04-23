@@ -1,5 +1,5 @@
-import type { Connection, Edge, Node } from "reactflow";
-import { MarkerType } from "reactflow";
+import type { Connection, Edge, Node } from "@xyflow/react";
+import { MarkerType } from "@xyflow/react";
 
 import type { AgencyNodeData } from "./nodes/types";
 

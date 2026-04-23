@@ -24,14 +24,19 @@
 
 set -euo pipefail
 
-# Derive plugin root from script location
-# This works regardless of how the plugin was installed (cache, dev mode, etc.)
+# Derive plugin root from script location.
+# The installed layout keeps the skill directory one level below the shared
+# plugin config, so we probe the script root and its parent for config.json.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+PLUGIN_CONFIG=""
 
-# Sanity check: verify we found the right place
-if [[ ! -f "$PLUGIN_ROOT/config.json" ]] && [[ ! -d "$PLUGIN_ROOT/skills" ]]; then
-    echo '{"valid": false, "errors": ["Could not locate plugin root from script location. Expected config.json or skills/ at: '"$PLUGIN_ROOT"'"], "warnings": [], "gemini_auth": null, "openai_auth": false}'
+if [[ -f "$PLUGIN_ROOT/config.json" ]]; then
+    PLUGIN_CONFIG="$PLUGIN_ROOT/config.json"
+elif [[ -f "$(dirname "$PLUGIN_ROOT")/config.json" ]]; then
+    PLUGIN_CONFIG="$(dirname "$PLUGIN_ROOT")/config.json"
+else
+    echo '{"valid": false, "errors": ["Could not locate config.json. Looked in: '"$PLUGIN_ROOT/config.json"'", '"$(dirname "$PLUGIN_ROOT")/config.json"'"], "warnings": [], "gemini_auth": null, "openai_auth": false}'
     exit 3
 fi
 
@@ -48,7 +53,7 @@ if ! command -v uv &> /dev/null; then
 fi
 
 # Load config values
-config_file="${PLUGIN_ROOT}/config.json"
+config_file="$PLUGIN_CONFIG"
 alert_if_missing="true"
 config_gcp_project=""
 config_gcp_location=""
@@ -57,7 +62,7 @@ openai_model=""
 
 if [ -f "$config_file" ]; then
     # Parse values from config using jq
-    alert_if_missing=$(jq -r '.external_review.alert_if_missing // true' "$config_file" 2>/dev/null || echo "true")
+    alert_if_missing=$(jq -r 'if .external_review.alert_if_missing == null then true else .external_review.alert_if_missing end' "$config_file" 2>/dev/null || echo "true")
 
     # Get GCP project from config (null becomes empty string)
     config_gcp_project=$(jq -r '.vertex_ai.project // empty' "$config_file" 2>/dev/null || echo "")

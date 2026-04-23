@@ -39,6 +39,10 @@ vi.mock("../creditService", () => ({
   calculateCreditsForLLMDynamic: vi.fn(),
 }));
 
+vi.mock("../monitoringService", () => ({
+  recordContextEngineMetric: vi.fn().mockResolvedValue({ checkId: 1 }),
+}));
+
 vi.mock("../auditLogger", () => ({
   auditLogger: { log: vi.fn() },
 }));

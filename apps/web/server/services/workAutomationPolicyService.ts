@@ -1,7 +1,15 @@
 import type { WorkCase, WorkRequest } from "../../drizzle/schema";
 
 export type WorkAutomationMode = "manual_assist" | "semi_auto" | "fully_auto";
-export type WorkAutomationSurface = "manual" | "work_os" | "skill" | "agency" | "browser" | "document_management" | "media_studio" | "video_editor";
+export type WorkAutomationSurface =
+  | "manual"
+  | "work_os"
+  | "skill"
+  | "agency"
+  | "browser"
+  | "document_management"
+  | "media_studio"
+  | "video_editor";
 export type WorkAutomationRiskTier = "low" | "medium" | "high" | "critical";
 
 export interface WorkAutomationStepBlueprint {
@@ -12,8 +20,20 @@ export interface WorkAutomationStepBlueprint {
   readonly riskTier: WorkAutomationRiskTier;
   readonly requiresApproval: boolean;
   readonly checkpointKey: string | null;
-  readonly evidenceType: "research" | "draft" | "storyboard" | "media" | "video" | "review" | "export" | "metadata";
-  readonly sideEffectClass: "read_only" | "bounded_write" | "external_write" | "irreversible";
+  readonly evidenceType:
+    | "research"
+    | "draft"
+    | "storyboard"
+    | "media"
+    | "video"
+    | "review"
+    | "export"
+    | "metadata";
+  readonly sideEffectClass:
+    | "read_only"
+    | "bounded_write"
+    | "external_write"
+    | "irreversible";
 }
 
 export interface WorkAutomationTemplateBlueprint {
@@ -21,7 +41,11 @@ export interface WorkAutomationTemplateBlueprint {
   readonly templateFamily: string;
   readonly templateVersion: string;
   readonly title: string;
-  readonly sourceSurface: "case_intake" | "request_intake" | "manual_override" | "fallback";
+  readonly sourceSurface:
+    | "case_intake"
+    | "request_intake"
+    | "manual_override"
+    | "fallback";
   readonly stepBlueprints: readonly WorkAutomationStepBlueprint[];
 }
 
@@ -30,7 +54,12 @@ export interface WorkAutomationModeResolution {
   readonly effectiveMode: WorkAutomationMode;
   readonly recommendedMode: WorkAutomationMode;
   readonly downgraded: boolean;
-  readonly reasonCode: "explicit" | "risk_downshift" | "confidence_downshift" | "policy_downshift" | "safe_default";
+  readonly reasonCode:
+    | "explicit"
+    | "risk_downshift"
+    | "confidence_downshift"
+    | "policy_downshift"
+    | "safe_default";
   readonly reason: string;
   readonly confidence: number;
 }
@@ -49,11 +78,25 @@ export interface WorkAutomationLaunchPolicy {
 }
 
 export interface ResolveAutomationLaunchPolicyInput {
-  readonly caseRecord: Pick<WorkCase, "id" | "title" | "summary" | "riskLevel" | "automationMode" | "currentState">;
-  readonly requestRecord?: Pick<WorkRequest, "sourceType" | "workType" | "businessDomain" | "urgency" | "riskLevel" | "classificationConfidence" | "title" | "objective"> | null;
+  readonly caseRecord: Pick<
+    WorkCase,
+    "id" | "title" | "summary" | "riskLevel" | "automationMode" | "currentState"
+  >;
+  readonly requestRecord?: Pick<
+    WorkRequest,
+    | "sourceType"
+    | "workType"
+    | "businessDomain"
+    | "urgency"
+    | "riskLevel"
+    | "classificationConfidence"
+    | "title"
+    | "objective"
+  > | null;
   readonly templateKey?: string | null;
   readonly templateVersion?: string | null;
   readonly mode?: WorkAutomationMode | null;
+  readonly preserveRequestedMode?: boolean;
 }
 
 export interface ValidateAutomationModeTransitionInput {
@@ -209,32 +252,54 @@ function normalizeText(value: string | null | undefined): string {
 }
 
 function collectSignals(parts: Array<string | null | undefined>): string {
-  return parts.filter((part): part is string => Boolean(part && part.trim())).join(" \n ");
+  return parts
+    .filter((part): part is string => Boolean(part && part.trim()))
+    .join(" \n ");
 }
 
-function detectTemplateSource(input: ResolveAutomationLaunchPolicyInput): WorkAutomationTemplateBlueprint["sourceSurface"] {
+function detectTemplateSource(
+  input: ResolveAutomationLaunchPolicyInput
+): WorkAutomationTemplateBlueprint["sourceSurface"] {
   if (input.templateKey?.trim()) return "manual_override";
   if (input.requestRecord?.sourceType?.trim()) return "request_intake";
-  if (input.caseRecord.summary?.trim() || input.caseRecord.title.trim()) return "case_intake";
+  if (input.caseRecord.summary?.trim() || input.caseRecord.title.trim())
+    return "case_intake";
   return "fallback";
 }
 
-function resolveRequestedMode(input: ResolveAutomationLaunchPolicyInput, confidence: number): WorkAutomationMode {
+function resolveRequestedMode(
+  input: ResolveAutomationLaunchPolicyInput,
+  confidence: number
+): WorkAutomationMode {
   if (input.mode) return input.mode;
-  const risk = normalizeText(input.caseRecord.riskLevel ?? input.requestRecord?.riskLevel ?? "medium");
-  if (risk === "critical" || risk === "high" || confidence < 0.5) return "manual_assist";
-  if (confidence >= 0.85 && risk !== "high" && risk !== "critical") return "fully_auto";
+  const risk = normalizeText(
+    input.caseRecord.riskLevel ?? input.requestRecord?.riskLevel ?? "medium"
+  );
+  if (risk === "critical" || risk === "high" || confidence < 0.5)
+    return "manual_assist";
+  if (confidence >= 0.85 && risk !== "high" && risk !== "critical")
+    return "fully_auto";
   return "semi_auto";
 }
 
-function inferRecommendedMode(input: ResolveAutomationLaunchPolicyInput, confidence: number): WorkAutomationMode {
-  const risk = normalizeText(input.caseRecord.riskLevel ?? input.requestRecord?.riskLevel ?? "medium");
-  if (risk === "critical" || risk === "high" || confidence < 0.55) return "manual_assist";
-  if (confidence >= 0.85 && risk !== "high" && risk !== "critical") return "fully_auto";
+function inferRecommendedMode(
+  input: ResolveAutomationLaunchPolicyInput,
+  confidence: number
+): WorkAutomationMode {
+  const risk = normalizeText(
+    input.caseRecord.riskLevel ?? input.requestRecord?.riskLevel ?? "medium"
+  );
+  if (risk === "critical" || risk === "high" || confidence < 0.55)
+    return "manual_assist";
+  if (confidence >= 0.85 && risk !== "high" && risk !== "critical")
+    return "fully_auto";
   return "semi_auto";
 }
 
-function chooseSaferMode(requested: WorkAutomationMode, safe: WorkAutomationMode): WorkAutomationMode {
+function chooseSaferMode(
+  requested: WorkAutomationMode,
+  safe: WorkAutomationMode
+): WorkAutomationMode {
   const order: Record<WorkAutomationMode, number> = {
     manual_assist: 0,
     semi_auto: 1,
@@ -246,21 +311,35 @@ function chooseSaferMode(requested: WorkAutomationMode, safe: WorkAutomationMode
 function buildModeResolution(
   input: ResolveAutomationLaunchPolicyInput,
   confidence: number,
-  templateSource: WorkAutomationTemplateBlueprint["sourceSurface"],
+  templateSource: WorkAutomationTemplateBlueprint["sourceSurface"]
 ): WorkAutomationModeResolution {
   const requestedMode = resolveRequestedMode(input, confidence);
   const recommendedMode = inferRecommendedMode(input, confidence);
-  const effectiveMode = chooseSaferMode(requestedMode, recommendedMode);
+  const explicitRequestedMode = Boolean(input.mode);
+  const effectiveMode =
+    input.preserveRequestedMode && explicitRequestedMode
+      ? requestedMode
+      : chooseSaferMode(requestedMode, recommendedMode);
   const downgraded = effectiveMode !== requestedMode;
-  const reasonCode = downgraded
-    ? confidence < 0.55 || normalizeText(input.caseRecord.riskLevel ?? input.requestRecord?.riskLevel ?? "medium") === "critical" || normalizeText(input.caseRecord.riskLevel ?? input.requestRecord?.riskLevel ?? "medium") === "high"
-      ? "risk_downshift"
-      : "confidence_downshift"
-    : input.mode ? "explicit" : "safe_default";
+  const riskLevel = normalizeText(
+    input.caseRecord.riskLevel ?? input.requestRecord?.riskLevel ?? "medium"
+  );
+  const reasonCode =
+    input.preserveRequestedMode && explicitRequestedMode
+      ? "explicit"
+      : downgraded
+        ? confidence < 0.55 || riskLevel === "critical" || riskLevel === "high"
+          ? "risk_downshift"
+          : "confidence_downshift"
+        : input.mode
+          ? "explicit"
+          : "safe_default";
   const reason = downgraded
     ? `Requested ${requestedMode} was downshifted to ${effectiveMode} for safety`
     : input.mode
-      ? `Explicit mode ${requestedMode} accepted`
+      ? input.preserveRequestedMode && explicitRequestedMode
+        ? `Explicit mode ${requestedMode} preserved for user-initiated automation`
+        : `Explicit mode ${requestedMode} accepted`
       : `Resolved ${effectiveMode} from ${templateSource} signals`;
 
   return {
@@ -274,9 +353,14 @@ function buildModeResolution(
   };
 }
 
-export function resolveContentProductionTemplate(input: ResolveAutomationLaunchPolicyInput): WorkAutomationTemplateBlueprint {
-  const templateKey = input.templateKey?.trim() || CONTENT_PRODUCTION_TEMPLATE.templateKey;
-  const templateVersion = input.templateVersion?.trim() || CONTENT_PRODUCTION_TEMPLATE.templateVersion;
+export function resolveContentProductionTemplate(
+  input: ResolveAutomationLaunchPolicyInput
+): WorkAutomationTemplateBlueprint {
+  const templateKey =
+    input.templateKey?.trim() || CONTENT_PRODUCTION_TEMPLATE.templateKey;
+  const templateVersion =
+    input.templateVersion?.trim() ||
+    CONTENT_PRODUCTION_TEMPLATE.templateVersion;
   if (templateKey !== CONTENT_PRODUCTION_TEMPLATE.templateKey) {
     return {
       ...CONTENT_PRODUCTION_TEMPLATE,
@@ -293,16 +377,20 @@ export function resolveContentProductionTemplate(input: ResolveAutomationLaunchP
   };
 }
 
-export function resolveAutomationLaunchPolicy(input: ResolveAutomationLaunchPolicyInput): WorkAutomationLaunchPolicy {
-  const combinedText = normalizeText(collectSignals([
-    input.caseRecord.title,
-    input.caseRecord.summary,
-    input.requestRecord?.title,
-    input.requestRecord?.objective,
-    input.requestRecord?.workType,
-    input.requestRecord?.businessDomain,
-    input.requestRecord?.sourceType,
-  ]));
+export function resolveAutomationLaunchPolicy(
+  input: ResolveAutomationLaunchPolicyInput
+): WorkAutomationLaunchPolicy {
+  const combinedText = normalizeText(
+    collectSignals([
+      input.caseRecord.title,
+      input.caseRecord.summary,
+      input.requestRecord?.title,
+      input.requestRecord?.objective,
+      input.requestRecord?.workType,
+      input.requestRecord?.businessDomain,
+      input.requestRecord?.sourceType,
+    ])
+  );
   const confidenceBase = input.requestRecord?.classificationConfidence ?? 0.6;
   const keywordSignals = [
     "research",
@@ -321,14 +409,30 @@ export function resolveAutomationLaunchPolicy(input: ResolveAutomationLaunchPoli
     "deck",
     "launch",
   ];
-  const matchedKeywords = keywordSignals.filter((term) => combinedText.includes(term));
-  const riskLevel = normalizeText(input.caseRecord.riskLevel ?? input.requestRecord?.riskLevel ?? "medium");
-  const keywordBoost = matchedKeywords.length > 0 ? Math.min(0.25, matchedKeywords.length * 0.04) : 0;
-  const riskPenalty = riskLevel === "critical" ? 0.35 : riskLevel === "high" ? 0.2 : 0;
-  const confidence = clampConfidence(confidenceBase + keywordBoost - riskPenalty);
+  const matchedKeywords = keywordSignals.filter(term =>
+    combinedText.includes(term)
+  );
+  const riskLevel = normalizeText(
+    input.caseRecord.riskLevel ?? input.requestRecord?.riskLevel ?? "medium"
+  );
+  const keywordBoost =
+    matchedKeywords.length > 0
+      ? Math.min(0.25, matchedKeywords.length * 0.04)
+      : 0;
+  const riskPenalty =
+    riskLevel === "critical" ? 0.35 : riskLevel === "high" ? 0.2 : 0;
+  const confidence = clampConfidence(
+    confidenceBase + keywordBoost - riskPenalty
+  );
   const template = resolveContentProductionTemplate(input);
-  const modeResolution = buildModeResolution(input, confidence, template.sourceSurface);
-  const approvalGateStepKeys = template.stepBlueprints.filter((step) => step.requiresApproval).map((step) => step.stepKey);
+  const modeResolution = buildModeResolution(
+    input,
+    confidence,
+    template.sourceSurface
+  );
+  const approvalGateStepKeys = template.stepBlueprints
+    .filter(step => step.requiresApproval)
+    .map(step => step.stepKey);
 
   return {
     templateKey: template.templateKey,
@@ -346,6 +450,7 @@ export function resolveAutomationLaunchPolicy(input: ResolveAutomationLaunchPoli
       templateVersion: template.templateVersion,
       templateSource: template.sourceSurface,
       templateTitle: template.title,
+      preserveRequestedMode: Boolean(input.preserveRequestedMode),
       requestedMode: modeResolution.requestedMode,
       effectiveMode: modeResolution.effectiveMode,
       recommendedMode: modeResolution.recommendedMode,
@@ -362,7 +467,7 @@ export function resolveAutomationLaunchPolicy(input: ResolveAutomationLaunchPoli
 }
 
 export function validateAutomationModeTransition(
-  input: ValidateAutomationModeTransitionInput,
+  input: ValidateAutomationModeTransitionInput
 ): ValidateAutomationModeTransitionResult {
   const order: Record<WorkAutomationMode, number> = {
     manual_assist: 0,
@@ -381,7 +486,10 @@ export function validateAutomationModeTransition(
     };
   }
 
-  const confidence = typeof input.policy.modeResolution.confidence === "number" ? input.policy.modeResolution.confidence : 0.6;
+  const confidence =
+    typeof input.policy.modeResolution.confidence === "number"
+      ? input.policy.modeResolution.confidence
+      : 0.6;
   const criticalException = input.hasOpenCriticalException === true;
   const unresolvedCheckpoint = input.hasUnresolvedCheckpoint === true;
   const blockedBy = criticalException
@@ -455,13 +563,17 @@ export function validateAutomationModeTransition(
 }
 
 export function resolveAutomationStepRoute(
-  input: ResolveAutomationStepRouteInput,
+  input: ResolveAutomationStepRouteInput
 ): ResolveAutomationStepRouteResult {
-  const step = input.policy.stepBlueprints.find((candidate) => candidate.stepKey === input.stepKey);
+  const step = input.policy.stepBlueprints.find(
+    candidate => candidate.stepKey === input.stepKey
+  );
   if (!step) {
     const requestedSurface = input.requestedSurface ?? "manual";
     if (!["manual", "work_os"].includes(requestedSurface)) {
-      throw new Error(`Step ${input.stepKey} is not defined by the active automation template`);
+      throw new Error(
+        `Step ${input.stepKey} is not defined by the active automation template`
+      );
     }
     return {
       stepKey: input.stepKey,
@@ -477,7 +589,9 @@ export function resolveAutomationStepRoute(
 
   const requestedSurface = input.requestedSurface ?? step.surface;
   if (!step.allowedSurfaces.includes(requestedSurface)) {
-    throw new Error(`Surface ${requestedSurface} is not allowed for step ${step.stepKey}`);
+    throw new Error(
+      `Surface ${requestedSurface} is not allowed for step ${step.stepKey}`
+    );
   }
 
   return {
@@ -492,7 +606,9 @@ export function resolveAutomationStepRoute(
   };
 }
 
-export function buildAutomationPolicySnapshot(policy: WorkAutomationLaunchPolicy): Record<string, unknown> {
+export function buildAutomationPolicySnapshot(
+  policy: WorkAutomationLaunchPolicy
+): Record<string, unknown> {
   return {
     templateKey: policy.templateKey,
     templateFamily: policy.templateFamily,

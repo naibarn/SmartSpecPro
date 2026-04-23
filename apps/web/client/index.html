@@ -27,6 +27,52 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Bangers&family=Boogaloo&family=Fredoka+One&family=Anton&family=Paytone+One&family=Righteous&family=Permanent+Marker&family=Bebas+Neue&family=Nunito:wght@700;900&family=Poppins:wght@400;600;700&family=Montserrat:wght@400;600;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet" />
+    <script>
+      (function () {
+        var cloudflareBeaconPattern = /static\.cloudflareinsights\.com\/beacon\.min\.js/i;
+        var cspPattern = /violates the following Content Security Policy directive/i;
+
+        function shouldSuppress(event) {
+          var message = "";
+          if (event && typeof event.message === "string") {
+            message = event.message;
+          } else if (event && event.error && typeof event.error.message === "string") {
+            message = event.error.message;
+          } else if (event && event.reason && typeof event.reason.message === "string") {
+            message = event.reason.message;
+          } else if (typeof event === "string") {
+            message = event;
+          }
+
+          if (cloudflareBeaconPattern.test(message) || cspPattern.test(message)) {
+            return true;
+          }
+
+          var target = event && event.target;
+          if (target && target.tagName === "SCRIPT" && typeof target.src === "string") {
+            return cloudflareBeaconPattern.test(target.src);
+          }
+
+          return false;
+        }
+
+        window.addEventListener("error", function (event) {
+          if (!shouldSuppress(event)) {
+            return;
+          }
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }, true);
+
+        window.addEventListener("unhandledrejection", function (event) {
+          if (!shouldSuppress(event)) {
+            return;
+          }
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }, true);
+      })();
+    </script>
   </head>
 
   <body>

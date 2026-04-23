@@ -130,6 +130,30 @@ def test_valid_team_step_request_fixture_validates():
     assert len(request.teamMembers) == 2
 
 
+def test_mixed_deploy_previous_contract_versions_are_accepted():
+    payload = _base_request()
+    payload["runtimeContractVersion"] = 1
+    payload["traceSchemaVersion"] = 1
+    payload["checkpointSchemaVersion"] = 1
+
+    request = validate_agent_runtime_request(payload)
+
+    assert request.runtimeContractVersion == 1
+    assert request.traceSchemaVersion == 1
+    assert request.checkpointSchemaVersion == 1
+
+
+def test_future_contract_versions_fail_closed():
+    payload = _base_request()
+    payload["runtimeContractVersion"] = 3
+
+    with pytest.raises(AgentRuntimeContractError) as exc_info:
+        validate_agent_runtime_request(payload)
+
+    assert exc_info.value.code == "invalid_request"
+    assert exc_info.value.issues
+
+
 def test_missing_execution_envelope_fails():
     payload = _base_request()
     del payload["executionEnvelope"]

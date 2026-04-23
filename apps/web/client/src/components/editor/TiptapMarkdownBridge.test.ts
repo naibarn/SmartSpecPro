@@ -83,6 +83,22 @@ describe("TiptapMarkdownBridge.parse", () => {
     expect(img!.attrs?.alt).toBe("alt text");
   });
 
+  it("parses wikilink markdown into a wikiLink node", () => {
+    const doc = parse("Connect [[product/strategy]] with the roadmap");
+    const wikiLink = findNode(doc, "wikiLink");
+    expect(wikiLink).toBeDefined();
+    expect(wikiLink!.attrs?.reference).toBe("product/strategy");
+    expect(wikiLink!.attrs?.label).toBe("product/strategy");
+  });
+
+  it("parses wikilink aliases into a wikiLink node with label", () => {
+    const doc = parse("See [[product/strategy|Strategy Note]]");
+    const wikiLink = findNode(doc, "wikiLink");
+    expect(wikiLink).toBeDefined();
+    expect(wikiLink!.attrs?.reference).toBe("product/strategy");
+    expect(wikiLink!.attrs?.label).toBe("Strategy Note");
+  });
+
   // Video/audio tests depend on section 06 custom extensions
   it.skip("parses <video> HTML tag into video node", () => {
     const doc = parse(
@@ -217,6 +233,29 @@ describe("TiptapMarkdownBridge.serialize", () => {
     expect(md).toContain('href="https://example.com/file.pdf"');
     expect(md).toContain('data-file-name="File.pdf"');
   });
+
+  it("serializes a wikiLink node to wikilink markdown", () => {
+    const doc: JSONContent = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Open " },
+            {
+              type: "wikiLink",
+              attrs: {
+                reference: "product/strategy",
+                label: "Strategy Note",
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const md = serialize(doc);
+    expect(md).toContain("[[product/strategy|Strategy Note]]");
+  });
 });
 
 describe("TiptapMarkdownBridge round-trip", () => {
@@ -256,6 +295,17 @@ describe("TiptapMarkdownBridge round-trip", () => {
     const { doc1, doc2 } = roundTrip("> quoted text");
     expect(findNode(doc1, "blockquote")).toBeDefined();
     expect(findNode(doc2, "blockquote")).toBeDefined();
+  });
+
+  it("round-trips wikilinks without degrading them into plain text", () => {
+    const { doc2, serialized } = roundTrip(
+      "Plan links to [[ops/runbook|Operations Runbook]]",
+    );
+    expect(serialized).toContain("[[ops/runbook|Operations Runbook]]");
+    const wikiLink = findNode(doc2, "wikiLink");
+    expect(wikiLink).toBeDefined();
+    expect(wikiLink!.attrs?.reference).toBe("ops/runbook");
+    expect(wikiLink!.attrs?.label).toBe("Operations Runbook");
   });
 
   it("round-trips image markdown", () => {

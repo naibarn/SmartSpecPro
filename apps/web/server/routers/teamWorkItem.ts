@@ -8,6 +8,10 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import * as workItemService from "../services/workItemService";
 import * as roomService from "../services/roomService";
+import {
+  buildAutoTeamStepResultContent,
+  buildAutoTeamStepResultMetadata,
+} from "../services/autoTeamRoomMessages";
 
 const artifactRefSchema = z.object({
   artifactId: z.string().optional(),
@@ -64,6 +68,7 @@ async function mirrorSystemWorkUpdate(params: {
   replyToMessageId?: string;
   citationRefs?: roomService.WorkCitationRef[];
   artifactRefs?: roomService.WorkArtifactRef[];
+  metadataJson?: Record<string, unknown>;
 }): Promise<Awaited<ReturnType<typeof roomService.sendMessage>>> {
   const prepared = roomService.prepareWorkUpdate({
     roomId: params.workItem.roomId,
@@ -77,6 +82,7 @@ async function mirrorSystemWorkUpdate(params: {
     threadRootMessageId: params.workItem.threadRootMessageId ?? params.replyToMessageId,
     citationRefs: params.citationRefs,
     artifactRefs: params.artifactRefs,
+    metadataJson: params.metadataJson,
     sensitivity: params.workItem.riskClass === "critical" ? "high" : "medium",
   });
 
@@ -337,19 +343,76 @@ export const teamWorkItemRouter = router({
         ...input,
         tenantId,
       });
+      const room = await roomService.getRoom(approved.roomId, tenantId);
+      const roomLanguage = room?.language === "th" ? "th" : "en";
+      const approvalContent =
+        input.roomComment ??
+        defaultLifecycleContent({
+          action: "approved",
+          title: approved.title,
+          revisionVersion: approved.revisionVersion,
+        });
 
       const roomMessage = await mirrorSystemWorkUpdate({
         tenantId,
         userId: ctx.user!.id,
         workItem: approved,
         messageType: "approval",
-        content: input.roomComment ?? defaultLifecycleContent({
-          action: "approved",
-          title: approved.title,
-          revisionVersion: approved.revisionVersion,
-        }),
+        content: approvalContent,
         replyToMessageId: input.replyToMessageId ?? approved.threadRootMessageId ?? undefined,
       });
+
+      try {
+        await mirrorSystemWorkUpdate({
+          tenantId,
+          userId: ctx.user!.id,
+          workItem: approved,
+          messageType: "step_result",
+          content: buildAutoTeamStepResultContent({
+            roomLanguage,
+            phase: "review",
+            step: {
+              stepKey: `work-item:${approved.id}:approval-review`,
+              stepTitle: approved.title,
+              stepObjective:
+                approved.objective ??
+                (roomLanguage === "th"
+                  ? "ตรวจและอนุมัติรายการงาน"
+                  : "Review and approve the work item"),
+              stepDeliverable:
+                roomLanguage === "th"
+                  ? "บันทึกผลอนุมัติและข้อความยืนยัน"
+                  : "Approval decision and confirmation",
+              ownerPersona: approved.assignedMemberId ?? approved.reviewerMemberId ?? null,
+              ownerMemberId: approved.assignedMemberId ?? approved.reviewerMemberId ?? null,
+              reviewerPersona: approved.approverMemberId,
+              reviewerMemberId: approved.approverMemberId,
+              verificationMethod:
+                roomLanguage === "th" ? "ตรวจด้วยมือ" : "Manual review",
+              retryRule:
+                roomLanguage === "th"
+                  ? "หากไม่ผ่านให้ส่งกลับแก้ไข"
+                  : "If the review fails, send the work item back for repair.",
+              attempt: approved.revisionVersion ?? null,
+            },
+            resultSummary: approvalContent,
+            reviewStatus: "passed",
+            reviewNote: input.roomComment ?? null,
+            nextAction:
+              roomLanguage === "th"
+                ? "ดำเนินการต่อไปยังขั้นตอนถัดไป"
+                : "Proceed to the next step.",
+          }),
+          replyToMessageId: roomMessage.id,
+        });
+      } catch (error) {
+        console.warn("[teamWorkItem] failed to post approval step result", {
+          tenantId,
+          workItemId: approved.id,
+          roomId: approved.roomId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
 
       return {
         workItem: approved,
@@ -372,20 +435,78 @@ export const teamWorkItemRouter = router({
         ...input,
         tenantId,
       });
+      const room = await roomService.getRoom(rejected.roomId, tenantId);
+      const roomLanguage = room?.language === "th" ? "th" : "en";
+      const rejectionContent =
+        input.roomComment ??
+        defaultLifecycleContent({
+          action: "rejected",
+          title: rejected.title,
+          revisionVersion: rejected.revisionVersion,
+          reason: input.reason,
+        });
 
       const roomMessage = await mirrorSystemWorkUpdate({
         tenantId,
         userId: ctx.user!.id,
         workItem: rejected,
         messageType: "decision",
-        content: input.roomComment ?? defaultLifecycleContent({
-          action: "rejected",
-          title: rejected.title,
-          revisionVersion: rejected.revisionVersion,
-          reason: input.reason,
-        }),
+        content: rejectionContent,
         replyToMessageId: input.replyToMessageId ?? rejected.threadRootMessageId ?? undefined,
       });
+
+      try {
+        await mirrorSystemWorkUpdate({
+          tenantId,
+          userId: ctx.user!.id,
+          workItem: rejected,
+          messageType: "step_result",
+          content: buildAutoTeamStepResultContent({
+            roomLanguage,
+            phase: "review",
+            step: {
+              stepKey: `work-item:${rejected.id}:rejection-review`,
+              stepTitle: rejected.title,
+              stepObjective:
+                rejected.objective ??
+                (roomLanguage === "th"
+                  ? "ตรวจและทบทวนรายการงาน"
+                  : "Review the work item and record required changes"),
+              stepDeliverable:
+                roomLanguage === "th"
+                  ? "บันทึกเหตุผลที่ไม่ผ่านและแนวทางแก้ไข"
+                  : "Rejection decision and repair notes",
+              ownerPersona: rejected.assignedMemberId ?? rejected.reviewerMemberId ?? null,
+              ownerMemberId: rejected.assignedMemberId ?? rejected.reviewerMemberId ?? null,
+              reviewerPersona: rejected.approverMemberId,
+              reviewerMemberId: rejected.approverMemberId,
+              verificationMethod:
+                roomLanguage === "th" ? "ตรวจด้วยมือ" : "Manual review",
+              retryRule:
+                roomLanguage === "th"
+                  ? "แก้ไขแล้วส่งตรวจใหม่"
+                  : "Repair the step and resubmit for review.",
+              attempt: rejected.revisionVersion ?? null,
+            },
+            resultSummary: rejectionContent,
+            reviewStatus: "failed",
+            reviewNote: input.reason ?? input.roomComment ?? null,
+            repairInstructions: input.reason ?? null,
+            nextAction:
+              roomLanguage === "th"
+                ? "แก้ไขขั้นตอนนี้แล้วส่งตรวจใหม่"
+                : "Repair this step and resubmit for review.",
+          }),
+          replyToMessageId: roomMessage.id,
+        });
+      } catch (error) {
+        console.warn("[teamWorkItem] failed to post rejection step result", {
+          tenantId,
+          workItemId: rejected.id,
+          roomId: rejected.roomId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
 
       const autoAdvanceStep = workItemService.suggestAutoAdvanceStep(rejected);
       if (autoAdvanceStep) {

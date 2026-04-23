@@ -57,6 +57,9 @@ export interface TeamContext {
   teamId: string;
   runId?: string;
   objective: string;
+  initiatedByUserId?: number;
+  currentMessage?: string;
+  memoryMode?: "full" | "no_long" | "off";
 }
 
 export interface RouteHint {

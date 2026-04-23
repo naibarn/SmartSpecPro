@@ -3,12 +3,17 @@ import { getSkillByIdAsync, getSkillById } from "./skillRegistry";
 import { skillExecutionLimiter } from "./rateLimiter";
 import { getExecutor } from "./executors/executorRegistry";
 import {
-  buildChatContext,
-  buildTeamContext,
   buildDynamicModelRequirements,
   buildPromptEnhancementContext,
   injectWebSearchIfNeeded,
 } from "./executors/contextBuilder";
+import {
+  buildChatExecutionContextPack,
+  buildTeamExecutionContextPack,
+  summarizeContextPack,
+  type ContextPack,
+} from "./contextEngineAdapter";
+import { recordContextEngineMetric } from "./monitoringService";
 import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
 import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
 import {
@@ -280,6 +285,8 @@ export async function executeUnified(
 
     // ─── Step 4: Build Execution Context ────────────────────
     let messages: Array<{ role: string; content: string | unknown[] }>;
+    let contextPack: ContextPack | null = null;
+    const contextAssemblyStartMs = Date.now();
 
     // Check prompt enhancement first
     const enhancement = await buildPromptEnhancementContext(
@@ -301,33 +308,61 @@ export async function executeUnified(
         0,
         SYSTEM_PROMPT_MAX_CHARS,
       );
-      messages = await buildChatContext(
+      contextPack = await buildChatExecutionContextPack(
         request,
-        cappedSysPrompt,
-        (skill as any).knowledgebase || null,
+        {
+          skillSystemPrompt: cappedSysPrompt,
+          knowledgebase: (skill as any).knowledgebase || null,
+          dynamicParams: request.dynamicParams ?? null,
+          label: request.conversationContext?.conversationId
+            ? `chat:${request.conversationContext.conversationId}`
+            : "chat",
+        },
       );
+      messages = contextPack.messages;
     } else {
       // team_room
-      const teamMessages = await buildTeamContext(request, request.tenantId);
-      // Prepend skill system prompt (capped)
       const skillPrompt = (skill as any).systemPrompt
         ? ((skill as any).systemPrompt as string).substring(
             0,
             SYSTEM_PROMPT_MAX_CHARS,
           )
         : null;
-      messages = skillPrompt
-        ? [
-            { role: "system", content: skillPrompt },
-            ...teamMessages.map((m) => ({
-              role: m.role,
-              content: m.content as string | unknown[],
-            })),
-          ]
-        : teamMessages.map((m) => ({
-            role: m.role,
-            content: m.content as string | unknown[],
-          }));
+      contextPack = await buildTeamExecutionContextPack(
+        request,
+        request.tenantId,
+        {
+          skillSystemPrompt: skillPrompt,
+          dynamicParams: request.dynamicParams ?? null,
+          label: request.teamContext?.roomId
+            ? `team:${request.teamContext.roomId}`
+            : "team_room",
+        },
+      );
+      messages = contextPack.messages;
+    }
+
+    if (contextPack) {
+      void recordContextEngineMetric({
+        source: `unified:${request.channel}`,
+        surface: contextPack.surface,
+        contextPack,
+        traceId,
+        tenantId: request.tenantId,
+        teamId: request.teamContext?.teamId ?? null,
+        userId: request.userId,
+        conversationId: request.conversationContext?.conversationId ?? null,
+        roomId: request.teamContext?.roomId ?? null,
+        runId: request.teamContext?.runId ?? null,
+        projectId:
+          typeof request.dynamicParams?.projectId === "string"
+            ? request.dynamicParams.projectId
+            : null,
+        skillId: skill.id,
+        latencyMs: Date.now() - contextAssemblyStartMs,
+      }).catch((err) => {
+        console.warn("[unifiedOrchestrator] context-engine metric failed:", err);
+      });
     }
 
     // ─── Step 5: Build Dynamic Model Requirements ───────────
@@ -559,6 +594,19 @@ export async function executeUnified(
       nextSpeakerHint: executorResult.nextSpeakerHint,
       metadata: {
         ...artifactMetadata,
+        ...(contextPack
+          ? {
+              contextEngine: {
+                summary: summarizeContextPack(contextPack),
+                surface: contextPack.surface,
+                intent: contextPack.intent,
+                budgetProfile: contextPack.budgetProfile,
+                estimatedTokens: contextPack.estimatedTokens,
+                tokenHeadroom: contextPack.compaction.tokenHeadroom,
+                dedupedMessages: contextPack.compaction.dedupedMessages,
+              },
+            }
+          : {}),
         traceId,
         success: executorResult.success,
         error: executorResult.error,

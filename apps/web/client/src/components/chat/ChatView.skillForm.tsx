@@ -62,7 +62,10 @@ export interface UseChatSkillFormReturn {
   // Render helpers
   renderSkillForm: () => React.ReactNode;
   renderSkillChip: () => React.ReactNode;
-  renderSkillSelector: () => React.ReactNode;
+  renderSkillSelector: (options?: {
+    skillIntentEnabled?: boolean;
+    onToggleSkillIntent?: () => void;
+  }) => React.ReactNode;
 }
 
 export interface ChatSkillLocalAiContext {
@@ -509,7 +512,12 @@ export function useChatSkillForm(
   }, [skillFormState, values, isSubmitting, restoreSkillForm, closeSkillForm]);
 
   // Render skill selector
-  const renderSkillSelector = useCallback(() => {
+  const renderSkillSelector = useCallback((
+    options?: {
+      skillIntentEnabled?: boolean;
+      onToggleSkillIntent?: () => void;
+    }
+  ) => {
     return (
       <SkillSelector
         open={showSkillSelector}
@@ -519,6 +527,8 @@ export function useChatSkillForm(
           setShowSkillSelector(false);
           openSkillForm(skillId);
         }}
+        skillIntentEnabled={options?.skillIntentEnabled}
+        onToggleSkillIntent={options?.onToggleSkillIntent}
       />
     );
   }, [showSkillSelector, openSkillForm]);

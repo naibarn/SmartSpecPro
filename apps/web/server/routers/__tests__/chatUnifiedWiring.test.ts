@@ -387,9 +387,48 @@ describe("Chat Router → Unified Orchestrator Wiring", () => {
 
     expect(mockExecuteUnified).toHaveBeenCalledWith(
       expect.objectContaining({
-        dynamicParams: { style: "cinematic", request: "write about AI" },
+      dynamicParams: { style: "cinematic", request: "write about AI" },
       }),
     );
+  });
+
+  it("builds chat context state from request, recent messages, and summaries", async () => {
+    const { buildChatSkillContextState } = await import("../chat");
+
+    const contextState = buildChatSkillContextState({
+      conversationId: 42,
+      conversationTitle: "Creative Brief",
+      conversationModel: "gpt-4o",
+      activePersonaId: "persona-7",
+      skillName: "image_prompt_engineer",
+      activeNoteContent: "Create a cinematic poster for Songkran.",
+      recentMessages: [
+        { role: "user", content: "Need a stronger opening." },
+        { role: "assistant", content: "Try starting with a cultural hook." },
+        { role: "system", content: "system note should be ignored" },
+      ],
+      summaries: [
+        {
+          summary: "The team agreed to keep the tone warm and modern.",
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    });
+
+    expect(contextState.activeNote?.content).toContain("Songkran");
+    expect(contextState.projectState?.content).toContain("Creative Brief");
+    expect(contextState.projectState?.content).toContain("gpt-4o");
+    expect(contextState.projectState?.content).toContain("persona-7");
+    expect(contextState.workingSummary?.content).toContain("warm and modern");
+    expect(contextState.recentNotes).toHaveLength(2);
+    expect(contextState.recentNotes?.[0]).toMatchObject({
+      title: "User note 1",
+      trust: "trusted",
+    });
+    expect(contextState.recentNotes?.[1]).toMatchObject({
+      title: "Assistant note 2",
+      trust: "derived",
+    });
   });
 
   it("result mapping: unified text result → chat return shape", () => {

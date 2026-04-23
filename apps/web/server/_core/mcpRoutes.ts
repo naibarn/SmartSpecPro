@@ -7,6 +7,7 @@ import { authorizeRequest } from "./authz";
 import { rateLimit } from "./limits";
 import { hasScope } from "./tokens";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
+import { buildContextToolStateHintsFromResult } from "../services/contextToolService";
 
 type ToolDef = {
   name: string;
@@ -339,6 +340,78 @@ async function callTool(name: string, args: any, req: Request, auth: any) {
   }
 }
 
+function attachContextStateToResult(
+  name: string,
+  args: any,
+  auth: any,
+  result: unknown,
+): unknown {
+  const ownerType =
+    typeof args?.room_id === "string" && args.room_id.trim()
+      ? "room"
+      : typeof args?.team_id === "string" && args.team_id.trim()
+        ? "team"
+        : "user";
+  const ownerId =
+    ownerType === "room"
+      ? String(args.room_id).trim()
+      : ownerType === "team"
+        ? String(args.team_id).trim()
+        : String(auth?.sub || auth?.userId || "").trim();
+
+  if (!ownerId) {
+    return result;
+  }
+
+  const contextState = buildContextToolStateHintsFromResult({
+    title: `MCP tool result: ${name}`,
+    content: result,
+    ownerType,
+    ownerId,
+    sourceRef: `mcp:${name}`,
+    source: typeof result === "string" ? "semantic" : "structured",
+    includedReason: `MCP tool result from ${name}`,
+    trust: "derived",
+    freshness: "recent",
+  });
+
+  if (Object.keys(contextState).length === 0) {
+    return result;
+  }
+
+  if (result && typeof result === "object" && !Array.isArray(result)) {
+    const base = result as Record<string, unknown>;
+    return {
+      ...base,
+      _meta: {
+        ...((base._meta && typeof base._meta === "object") ? base._meta : {}),
+        contextState,
+        contextSource: "mcp_tool_result",
+        toolName: name,
+      },
+    };
+  }
+
+  return {
+    content: [{
+      type: "text",
+      text: (() => {
+        if (typeof result === "string") return result;
+        try {
+          return JSON.stringify(result);
+        } catch {
+          return String(result);
+        }
+      })(),
+    }],
+    _meta: {
+      contextState,
+      contextSource: "mcp_tool_result",
+      toolName: name,
+    },
+  };
+}
+
 async function fetchPythonMcpTools(userId: number, tenantId: string): Promise<ToolDef[]> {
   try {
     const cacheKey = `${tenantId}:${userId}`;
@@ -506,12 +579,12 @@ export function registerMCPRoutes(app: Express) {
         const userId = parseInt(auth.sub, 10);
         const tenantId = auth.tenantId || "";
         const result = await forwardToolCallToPython(toolName, args, userId, tenantId);
-        res.json(result);
+        res.json(attachContextStateToResult(toolName, args, auth, result));
         return;
       }
 
       const result = await callTool(toolName, args, req, auth);
-      res.json(result);
+      res.json(attachContextStateToResult(toolName, args, auth, result));
     } catch (err: any) {
       res.status(400).json({ ok: false, error: { message: err?.message || "Tool error" } });
     }

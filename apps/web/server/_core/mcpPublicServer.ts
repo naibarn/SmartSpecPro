@@ -4,6 +4,7 @@ import { getRedisClient } from "../services/redis";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { auditLogger } from "../services/auditLogger";
 import { hasScope } from "./tokens";
+import { buildContextToolStateHintsFromResult } from "../services/contextToolService";
 import type { AuthResult } from "./authz";
 import {
   buildStaticMcpCatalog,
@@ -61,6 +62,20 @@ function summarizeHiddenTools(hidden: Array<{ name: string; reason: string }>): 
     name: entry.name,
     reason: entry.reason,
   }));
+}
+
+function stripContextMetaFromToolResult(result: unknown): unknown {
+  if (!result || typeof result !== "object" || Array.isArray(result)) {
+    return result;
+  }
+
+  const record = result as Record<string, unknown>;
+  if (!("_meta" in record)) {
+    return result;
+  }
+
+  const { _meta, ...rest } = record;
+  return rest;
 }
 
 function auditMcpToolEvent(input: {
@@ -460,7 +475,22 @@ async function handleToolsCall(
     TOOL_TIMEOUT_MS,
   );
 
-  const serialized = JSON.stringify(rawResult);
+  const ownerType = session.teamId ? "team" : "user";
+  const ownerId = session.teamId ? session.teamId : String(session.userId);
+  const contextState = buildContextToolStateHintsFromResult({
+    title: `MCP tool result: ${toolName}`,
+    content: rawResult,
+    ownerType,
+    ownerId,
+    sourceRef: `mcp:${toolName}`,
+    source: typeof rawResult === "string" ? "semantic" : "structured",
+    includedReason: `MCP tool result from ${toolName}`,
+    trust: "derived",
+    freshness: "recent",
+  });
+
+  const contentResult = stripContextMetaFromToolResult(rawResult);
+  const serialized = JSON.stringify(contentResult);
   const result = serialized.length > MAX_RESULT_BYTES
     ? {
         content: [
@@ -474,10 +504,18 @@ async function handleToolsCall(
         content: [
           {
             type: "text",
-            text: typeof rawResult === "string" ? rawResult : JSON.stringify(rawResult, null, 2),
+            text: typeof contentResult === "string" ? contentResult : JSON.stringify(contentResult, null, 2),
           },
         ],
       };
+
+  if (Object.keys(contextState).length > 0) {
+    (result as Record<string, unknown>)._meta = {
+      contextState,
+      contextSource: "mcp_tool_result",
+      toolName,
+    };
+  }
 
   if (idempotencyKey && redis) {
     await redis.set(

@@ -98,6 +98,7 @@ describe("WorkpackIntakeStudio", () => {
   it("renders draft queue, provenance, and clarification cues", () => {
     render(<WorkpackIntakeStudio />);
 
+    expect(screen.getByRole("link", { name: /dashboard/i })).toBeInTheDocument();
     expect(screen.getByText("Draft Queue")).toBeInTheDocument();
     expect(screen.getByText("Support Intake")).toBeInTheDocument();
     expect(screen.getByText(/request a missing sla field/i)).toBeInTheDocument();

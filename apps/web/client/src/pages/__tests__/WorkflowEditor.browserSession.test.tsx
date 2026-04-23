@@ -44,12 +44,28 @@ vi.mock("@/stores/executionStore", () => {
   return { useExecutionStore };
 });
 
-vi.mock("reactflow", async () => {
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    t: (key: string) =>
+      ({
+        "editor.browserskillPlaceholder": "Choose a browser skill",
+        "editor.browserskillGoalPlaceholder": "Example: Find the best site for this task, compare options, and continue.",
+        "editor.descriptionPlaceholder": "Describe this workflow",
+        "editor.searchNodes": "Search nodes",
+        "editor.changeDescriptionPlaceholder": "Describe the change",
+      })[key] ?? key,
+    i18n: { exists: () => false },
+    locale: "en",
+    setLocale: vi.fn(),
+  }),
+}));
+
+vi.mock("@xyflow/react", async () => {
   const ReactModule = await import("react");
 
   return {
     __esModule: true,
-    default: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+    ReactFlow: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
     ReactFlowProvider: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
     addEdge: vi.fn(),
     useNodesState: (initial: unknown[]) => {

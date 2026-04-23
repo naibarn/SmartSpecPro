@@ -6,11 +6,25 @@ import { createElement } from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const mockSetLocation = vi.fn();
-const mockUseSearch = vi.fn(() => "?skillId=99");
+let mockLocation = "/settings/skills?skillId=99";
+let mockSearch = "?skillId=99";
+const mockSetLocation = vi.fn((nextLocation: string) => {
+  mockLocation = nextLocation;
+  const searchIndex = nextLocation.indexOf("?");
+  mockSearch = searchIndex >= 0 ? nextLocation.slice(searchIndex) : "";
+});
+const mockUseSearch = vi.fn(() => mockSearch);
 const mockClipboardWriteText = vi.fn();
 
 const mockUseQuery = vi.fn(() => ({
+  data: [],
+  isLoading: false,
+}));
+const mockLegacyUpgradeQueueUseQuery = vi.fn(() => ({
+  data: [],
+  isLoading: false,
+}));
+const mockMaintenanceRecommendationsUseQuery = vi.fn(() => ({
   data: [],
   isLoading: false,
 }));
@@ -18,7 +32,7 @@ const makeQuery = (data: any = []) => ({ data, isLoading: false });
 const makeMutation = () => ({ mutateAsync: vi.fn(), isPending: false });
 
 vi.mock("wouter", () => ({
-  useLocation: () => ["/settings/skills?skillId=99", mockSetLocation],
+  useLocation: () => [mockLocation, mockSetLocation],
   useSearch: (...args: any[]) => mockUseSearch(...args),
 }));
 
@@ -40,9 +54,11 @@ vi.mock("@/lib/trpc", () => ({
         listPending: { useQuery: () => makeQuery([]) },
         listIscProposals: { useQuery: () => makeQuery({ proposals: [] }) },
         getIscProposalContent: { useQuery: () => makeQuery(null) },
-        getUpgradeRecommendations: { useQuery: () => makeQuery([]) },
+        getUpgradeRecommendations: { useQuery: (...args: any[]) => mockMaintenanceRecommendationsUseQuery(...args) },
         getUpgradeRecommendationDetail: { useQuery: () => makeQuery(null) },
         listMaintenanceSchedules: { useQuery: () => makeQuery([]) },
+        getLegacyUpgradeQueue: { useQuery: (...args: any[]) => mockLegacyUpgradeQueueUseQuery(...args) },
+        getLegacyUpgradeQueueSummary: { useQuery: () => makeQuery({ count: 0 }) },
         scanFolders: { useQuery: () => ({ data: [], refetch: vi.fn() }) },
         create: { useMutation: () => makeMutation() },
         update: { useMutation: () => makeMutation() },
@@ -52,6 +68,7 @@ vi.mock("@/lib/trpc", () => ({
         importZip: { useMutation: () => makeMutation() },
         dismissUpgradeRecommendation: { useMutation: () => makeMutation() },
         applyUpgradeRecommendation: { useMutation: () => makeMutation() },
+        applyMaintenanceRecommendations: { useMutation: () => makeMutation() },
         runMaintenanceSweep: { useMutation: () => makeMutation() },
         createMaintenanceSchedule: { useMutation: () => makeMutation() },
         updateMaintenanceSchedule: { useMutation: () => makeMutation() },
@@ -159,6 +176,9 @@ vi.mock("sonner", () => ({
 describe("AdminSkills", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLocation = "/settings/skills?skillId=99";
+    mockSearch = "?skillId=99";
+    window.localStorage.clear();
     Object.assign(navigator, {
       clipboard: {
         writeText: mockClipboardWriteText,
@@ -219,6 +239,39 @@ describe("AdminSkills", () => {
       ],
       isLoading: false,
     });
+    mockLegacyUpgradeQueueUseQuery.mockReturnValue({
+      data: [
+        {
+          id: 201,
+          skillId: 99,
+          status: "pending_review",
+          upgradePriorityScore: 95,
+          upgradePriorityTier: "critical",
+          parallelUpgradeEligible: true,
+          legacyUpgradeSignals: {
+            hasRunScript: true,
+            hasVerifyScript: true,
+          },
+        },
+        {
+          id: 202,
+          skillId: 100,
+          status: "pending_review",
+          upgradePriorityScore: 72,
+          upgradePriorityTier: "high",
+          parallelUpgradeEligible: false,
+          legacyUpgradeSignals: {
+            hasRunScript: true,
+            hasVerifyScript: false,
+          },
+        },
+      ],
+      isLoading: false,
+    });
+    mockMaintenanceRecommendationsUseQuery.mockReturnValue({
+      data: [],
+      isLoading: false,
+    });
   });
 
   it("opens a deep-linked exported skill and lets you jump back to the source graph", async () => {
@@ -267,5 +320,141 @@ describe("AdminSkills", () => {
     expect(mockClipboardWriteText).toHaveBeenCalledWith(
       `${window.location.origin}/agencies/agency-123/edit?autoExport=1&duplicateSkillName=Graph+Assistant&duplicateSkillDescription=Exported+from+agency.&duplicateSkillCategory=chat_assistant`,
     );
+  });
+
+  it("persists the legacy queue filter in the URL and shows priority badges on the maintenance tab", async () => {
+    mockUseSearch.mockReturnValue("?skillId=99&legacyQueueFilter=high");
+
+    const { default: AdminSkills } = await import("@/pages/AdminSkills");
+    render(createElement(AdminSkills));
+
+    await waitFor(() => {
+      expect(screen.getByText("High 1")).toBeTruthy();
+      expect(screen.getByText("Critical 1")).toBeTruthy();
+    });
+
+    const allFilterButton = screen
+      .getAllByRole("button", { name: /all/i })
+      .find((button) => button.textContent?.startsWith("All"));
+
+    expect(allFilterButton).toBeTruthy();
+    fireEvent.click(allFilterButton!);
+
+    expect(mockSetLocation).toHaveBeenCalledWith("/settings/skills?skillId=99");
+  });
+
+  it("restores the legacy queue filter from localStorage when the URL is missing it", async () => {
+    window.localStorage.setItem("admin.skills.legacyQueueFilter", "critical");
+    mockUseSearch.mockReturnValue("?tab=maintenance&skillId=99");
+
+    const { default: AdminSkills } = await import("@/pages/AdminSkills");
+    render(createElement(AdminSkills));
+
+    await waitFor(() => {
+      expect(mockLocation).toContain("legacyQueueFilter=critical");
+      expect(screen.getByText("Loaded from saved preference")).toBeTruthy();
+      expect(screen.getByText("Critical 1")).toBeTruthy();
+    });
+  });
+
+  it("groups maintenance recommendations by skill and allows bulk applying them", async () => {
+    mockUseSearch.mockReturnValue("?tab=maintenance&skillId=99");
+    mockMaintenanceRecommendationsUseQuery.mockReturnValue({
+      data: [
+        {
+          id: 301,
+          skillId: 99,
+          recommendationType: "native-bundle-upgrade",
+          title: "Upgrade bundle",
+          summary: null,
+          status: "pending_review",
+          riskLevel: "critical",
+          compatibilityStatus: "blocked",
+          qualityScore: 90,
+          currentRuntime: "markdown-only",
+          proposedRuntime: "agents_python",
+          proposedAction: "migrate-to-native-bundle",
+          isAutoApplySafe: false,
+          isGenjsCandidate: false,
+          recommendationJson: { affectedFiles: ["SKILL.md"] },
+          analyzedAt: new Date(),
+          updatedAt: new Date(),
+          skill: {
+            id: 99,
+            slug: "graph-assistant",
+            name: "Graph Assistant",
+            category: "chat_assistant",
+            executionMode: "llm-only",
+            sandboxProfileSlug: null,
+          },
+        },
+        {
+          id: 302,
+          skillId: 99,
+          recommendationType: "tests-missing",
+          title: "Add tests",
+          summary: null,
+          status: "pending_review",
+          riskLevel: "medium",
+          compatibilityStatus: "warning",
+          qualityScore: 65,
+          currentRuntime: "markdown-only",
+          proposedRuntime: null,
+          proposedAction: "add-tests",
+          isAutoApplySafe: false,
+          isGenjsCandidate: false,
+          recommendationJson: { affectedFiles: ["tests"] },
+          analyzedAt: new Date(),
+          updatedAt: new Date(),
+          skill: {
+            id: 99,
+            slug: "graph-assistant",
+            name: "Graph Assistant",
+            category: "chat_assistant",
+            executionMode: "llm-only",
+            sandboxProfileSlug: null,
+          },
+        },
+        {
+          id: 303,
+          skillId: 99,
+          recommendationType: "ui-schema-missing",
+          title: "Add UI schema",
+          summary: null,
+          status: "pending_review",
+          riskLevel: "low",
+          compatibilityStatus: "compatible",
+          qualityScore: 80,
+          currentRuntime: "markdown-only",
+          proposedRuntime: null,
+          proposedAction: "add-ui-schema",
+          isAutoApplySafe: true,
+          isGenjsCandidate: false,
+          recommendationJson: { affectedFiles: ["schemas/ui.schema.json"] },
+          analyzedAt: new Date(),
+          updatedAt: new Date(),
+          skill: {
+            id: 99,
+            slug: "graph-assistant",
+            name: "Graph Assistant",
+            category: "chat_assistant",
+            executionMode: "llm-only",
+            sandboxProfileSlug: null,
+          },
+        },
+      ],
+      isLoading: false,
+    });
+
+    const { default: AdminSkills } = await import("@/pages/AdminSkills");
+    render(createElement(AdminSkills));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Graph Assistant").length).toBeGreaterThan(0);
+      expect(screen.getByRole("button", { name: /apply all \(3\)/i })).toBeTruthy();
+      expect(screen.getByRole("button", { name: /apply eligible \(1\)/i })).toBeTruthy();
+      expect(screen.getByRole("button", { name: /apply eligible across view \(1\)/i })).toBeTruthy();
+      expect(screen.getByText("Highest priority")).toBeTruthy();
+    });
   });
 });

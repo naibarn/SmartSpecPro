@@ -7,7 +7,7 @@
 
 import type { Express, Request, Response } from "express";
 import crypto from "crypto";
-import { SignJWT, jwtVerify } from "jose";
+import { SignJWT, jwtVerify, compactVerify } from "jose";
 import { ENV } from "./env";
 import { authorizeRequest } from "./authz";
 import { rateLimit } from "./limits";
@@ -219,6 +219,30 @@ async function verifyRefreshToken(token: string): Promise<{
   }
 }
 
+async function revokeDesktopToken(token: string): Promise<boolean> {
+  try {
+    const { payload } = await compactVerify(token, getSigningKey());
+    const claims = JSON.parse(Buffer.from(payload).toString("utf8")) as Record<string, unknown>;
+    const tokenType = typeof claims.type === "string" ? claims.type.toLowerCase() : "";
+    if (tokenType !== "access" && tokenType !== "refresh") {
+      return false;
+    }
+
+    const jti = typeof claims.jti === "string" ? claims.jti.trim() : "";
+    if (!jti) {
+      return false;
+    }
+
+    const expiresAtMs = typeof claims.exp === "number" && Number.isFinite(claims.exp)
+      ? Math.max(Date.now(), claims.exp * 1000)
+      : Date.now();
+    await revokeJti(jti, expiresAtMs);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Clean up expired device codes from memory fallback
  */
@@ -355,6 +379,46 @@ export function registerDeviceAuthRoutes(app: Express) {
       console.error("[Desktop Login] Error:", err);
       res.status(500).json({ error: { message: "Internal server error" } });
     }
+  });
+
+  /**
+   * Revoke desktop access/refresh tokens during logout.
+   * This is best-effort and idempotent: the client clears local state regardless.
+   */
+  app.post("/auth/device/revoke", tokenLimiter, async (req: Request, res: Response) => {
+    const accessToken = typeof req.body?.access_token === "string" ? req.body.access_token.trim() : "";
+    const refreshToken = typeof req.body?.refresh_token === "string" ? req.body.refresh_token.trim() : "";
+
+    if (!accessToken && !refreshToken) {
+      res.status(400).json({
+        error: { message: "access_token or refresh_token is required" },
+      });
+      return;
+    }
+
+    const revoked = {
+      access_token: false,
+      refresh_token: false,
+    };
+
+    if (accessToken) {
+      revoked.access_token = await revokeDesktopToken(accessToken);
+    }
+    if (refreshToken) {
+      revoked.refresh_token = await revokeDesktopToken(refreshToken);
+    }
+
+    if (!revoked.access_token && !revoked.refresh_token) {
+      res.status(400).json({
+        error: { message: "Invalid desktop token" },
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      revoked,
+    });
   });
 
   /**

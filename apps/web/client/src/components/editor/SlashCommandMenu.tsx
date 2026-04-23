@@ -20,6 +20,7 @@ import {
   Video,
   Music2,
   Table,
+  Link2,
 } from "lucide-react";
 import type { SlashCommandItem } from "./slashCommandItems";
 
@@ -38,6 +39,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Video,
   Music2,
   Table,
+  Link2,
 };
 
 export interface SlashCommandMenuProps {

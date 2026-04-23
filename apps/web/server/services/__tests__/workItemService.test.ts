@@ -15,6 +15,7 @@ import {
   acquireWorkItemLock,
   approveWorkItemRevision,
   createWorkItem,
+  listWorkItemEventsByRoom,
   resolveTeamWorkflowAssignments,
   reviseWorkItem,
   routeWorkItemByRole,
@@ -389,5 +390,59 @@ describe("workItemService", () => {
     }) as any);
 
     expect(result).toBe("research");
+  });
+
+  it("lists room work item events in chronological order for the tenant", async () => {
+    const eventRows = [
+      {
+        event: {
+          id: "event-1",
+          workItemId: "work-1",
+          roomId: "room-1",
+          runId: "run-1",
+          actorAssistantId: "assistant-1",
+          actorUserId: null,
+          eventType: "created",
+          fromStatus: null,
+          toStatus: "planned",
+          revisionVersion: 1,
+          detailJson: null,
+          createdAt: new Date("2026-03-19T00:00:00Z"),
+        },
+      },
+      {
+        event: {
+          id: "event-2",
+          workItemId: "work-1",
+          roomId: "room-1",
+          runId: "run-1",
+          actorAssistantId: "assistant-2",
+          actorUserId: null,
+          eventType: "workflow_routed",
+          fromStatus: "planned",
+          toStatus: "in_progress",
+          revisionVersion: 2,
+          detailJson: { targetStep: "research" },
+          createdAt: new Date("2026-03-19T00:05:00Z"),
+        },
+      },
+    ];
+
+    const db = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          innerJoin: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              orderBy: vi.fn().mockResolvedValue(eventRows),
+            }),
+          }),
+        }),
+      }),
+    };
+    mockGetDb.mockResolvedValue(db);
+
+    const result = await listWorkItemEventsByRoom("room-1", "tenant-1");
+
+    expect(result).toEqual(eventRows.map((row) => row.event));
   });
 });

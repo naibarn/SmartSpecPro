@@ -7,7 +7,7 @@
  */
 
 import React, { useState } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Play, FileText } from "lucide-react";
+import type { WorkflowNodeData } from "../nodes/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,17 +46,18 @@ export interface WorkflowRunDialogProps {
   open: boolean;
   onClose: () => void;
   onRun: (inputData: Record<string, unknown>) => void;
-  nodes: Node[];
+  nodes: Node<WorkflowNodeData>[];
   isRunning?: boolean;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function extractFormInputNodes(nodes: Node[]): FormInputNode[] {
+function extractFormInputNodes(nodes: Node<WorkflowNodeData>[]): FormInputNode[] {
   const result: FormInputNode[] = [];
   for (const node of nodes) {
     if (node.data?.nodeType !== "form_input") continue;
-    const rawFields = node.data?.config?.fields;
+    const rawFields = (node.data?.config as Record<string, unknown> | undefined)
+      ?.fields;
     const fields: FormField[] = Array.isArray(rawFields)
       ? rawFields.map((f: any) => ({
           id: String(f.id || ""),

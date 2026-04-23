@@ -6,10 +6,11 @@
 
 import React from "react";
 import { AlertTriangle, DollarSign, Info } from "lucide-react";
-import type { Node, Edge } from "reactflow";
+import type { Node, Edge } from "@xyflow/react";
+import type { WorkflowNodeData } from "../nodes/types";
 
 export interface CostEstimationProps {
-  nodes: Node[];
+  nodes: Node<WorkflowNodeData>[];
   edges: Edge[];
   userBalance: number;
   onRunClick?: () => void;
@@ -30,7 +31,7 @@ interface CostBreakdown {
  * Estimate cost for a workflow.
  * Simplified estimation - actual costs may vary based on configuration.
  */
-function estimateCost(nodes: Node[]): CostBreakdown {
+function estimateCost(nodes: Node<WorkflowNodeData>[]): CostBreakdown {
   let llmCount = 0,
     imageCount = 0,
     videoCount = 0,

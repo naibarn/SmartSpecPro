@@ -86,6 +86,14 @@ export function getSlashCommandItems(
         editor.chain().focus().deleteRange(range).setHorizontalRule().run(),
     },
     {
+      id: "wiki-link",
+      label: "Knowledge Link",
+      icon: "Link2",
+      category: "text",
+      command: ({ editor, range }) =>
+        editor.chain().focus().deleteRange(range).insertContent("[[").run(),
+    },
+    {
       id: "image",
       label: "Image",
       icon: "ImagePlus",

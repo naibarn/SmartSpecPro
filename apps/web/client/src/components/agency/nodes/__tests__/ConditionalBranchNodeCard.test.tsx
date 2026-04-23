@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 
 // Mock reactflow to avoid canvas/DOM issues in tests
-vi.mock("reactflow", () => ({
+vi.mock("@xyflow/react", () => ({
   Handle: ({ id, type, position }: any) => (
     <div data-testid={`handle-${type}-${id ?? "default"}`} data-position={position} />
   ),

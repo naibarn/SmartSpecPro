@@ -89,6 +89,18 @@ function normalizeFieldOptions(raw: unknown): SearchableFieldOption[] {
   return options;
 }
 
+function renderFieldDescription(field: { description?: string } | null | undefined) {
+  if (!field?.description) {
+    return null;
+  }
+
+  return (
+    <p className="text-[11px] leading-snug text-muted-foreground">
+      {field.description}
+    </p>
+  );
+}
+
 export function ModelInputFieldsPanel({
   enabled,
   model,
@@ -291,6 +303,7 @@ export function ModelInputFieldsPanel({
               </span>
             </div>
             <Input value={preview} readOnly />
+            {renderFieldDescription(field)}
           </label>
         );
       })}
@@ -470,6 +483,7 @@ export function ModelInputFieldsPanel({
                   Option list unavailable right now. You can still enter a value manually.
                 </span>
               ) : null}
+              {renderFieldDescription(field)}
             </label>
           );
         }
@@ -533,6 +547,7 @@ export function ModelInputFieldsPanel({
                   No matching options. Showing current selected value.
                 </span>
               ) : null}
+              {renderFieldDescription(field)}
             </label>
           );
         }
@@ -552,6 +567,7 @@ export function ModelInputFieldsPanel({
                 checked={checked}
                 onCheckedChange={(checkedState) => onChange(field.key, checkedState)}
               />
+              {renderFieldDescription(field)}
             </label>
           );
         }
@@ -575,6 +591,7 @@ export function ModelInputFieldsPanel({
                   onChange(field.key, Number.isFinite(parsed) ? parsed : raw);
                 }}
               />
+              {renderFieldDescription(field)}
             </label>
           );
         }
@@ -588,6 +605,7 @@ export function ModelInputFieldsPanel({
                 value={String(value ?? "")}
                 onValueChange={(url) => onChange(field.key, url)}
               />
+              {renderFieldDescription(field)}
             </label>
           );
         }
@@ -641,6 +659,7 @@ export function ModelInputFieldsPanel({
                 }}
                 allowedExtensions={getAllowedLibraryExtensionsForField(field)}
               />
+              {renderFieldDescription(field)}
             </label>
           );
         }
@@ -656,6 +675,7 @@ export function ModelInputFieldsPanel({
               value={String(value ?? "")}
               onChange={(event) => onChange(field.key, event.target.value)}
             />
+            {renderFieldDescription(field)}
           </label>
         );
       })}

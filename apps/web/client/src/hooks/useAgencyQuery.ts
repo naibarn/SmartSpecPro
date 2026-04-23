@@ -1,7 +1,11 @@
 import { trpc } from "@/lib/trpc";
 
-export function useAgencyList() {
-  return trpc.agency.list.useQuery({});
+export function useAgencyList(options?: { enabled?: boolean }) {
+  return trpc.agency.list.useQuery({}, {
+    retry: false,
+    refetchOnWindowFocus: false,
+    enabled: options?.enabled ?? true,
+  });
 }
 
 export function useAgencyById(agencyId: string | undefined) {

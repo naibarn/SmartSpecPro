@@ -1,6 +1,6 @@
 # Interview Protocol
 
-The interview runs directly in this skill (not subagent) because `AskUserQuestion` only works in main conversation context.
+The interview runs directly in this skill (not subagent) in the main conversation context.
 
 ## Context
 
@@ -47,7 +47,8 @@ Auto-decided: Redis caching with 60s TTL (matches existing pattern in services/c
 
 ## Technique
 
-- Use AskUserQuestion with focused questions (1-3 per round)
+- Use focused questions (1-3 per round)
+- If the host offers a structured question helper you may use it, but plain chat questions must remain the default-compatible path
 - Ask open-ended questions about business/domain, not technical implementation
 - Don't ask obvious questions already in spec
 - Don't ask questions that can be answered by reading the codebase

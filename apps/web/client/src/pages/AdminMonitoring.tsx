@@ -20,6 +20,8 @@ import { LocaleToggle } from "@/components/LocaleToggle";
 import { Badge } from "@/components/ui/badge";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { getOpsIncidentGuidance } from "@/lib/opsMonitoringGuidance";
+import { ContextEngineEvaluationDashboard } from "@/components/admin/ContextEngineEvaluationDashboard";
+import { KnowledgeVaultReadinessDashboard } from "@/components/admin/KnowledgeVaultReadinessDashboard";
 import {
   ArrowLeft,
   RefreshCw,
@@ -631,22 +633,62 @@ function parseAlertMetadata(metadata: Record<string, unknown> | null): AlertMeta
   return metadata as AlertMetadata;
 }
 
-function parseMonitoringRoute(location: string): { incidentKey: string | null; tab: Tab | null } {
+function parseMonitoringRoute(location: string): {
+  incidentKey: string | null;
+  tab: Tab | null;
+  contextScope: ContextEngineRouteScope;
+} {
   const search = location.includes("?") ? location.slice(location.indexOf("?")) : "";
   const params = new URLSearchParams(search);
   const rawTab = params.get("tab");
-  const tab = rawTab === "checks" || rawTab === "alerts" || rawTab === "metrics" ? rawTab : null;
+  const tab =
+    rawTab === "checks" ||
+    rawTab === "alerts" ||
+    rawTab === "metrics" ||
+    rawTab === "context"
+      ? rawTab
+      : null;
+  const userId = params.get("userId");
   return {
     incidentKey: params.get("incident"),
     tab,
+    contextScope: {
+      teamId: params.get("teamId"),
+      roomId: params.get("roomId"),
+      runId: params.get("runId"),
+      skillId: params.get("skillId"),
+      userId: userId ? Number(userId) : null,
+    },
   };
 }
 
-function buildMonitoringPath(tab: Tab, incidentKey?: string | null): string {
+function buildMonitoringPath(
+  tab: Tab,
+  incidentKey?: string | null,
+  contextScope?: Partial<ContextEngineRouteScope>,
+): string {
   const params = new URLSearchParams();
   params.set("tab", tab);
   if (incidentKey) {
     params.set("incident", incidentKey);
+  }
+  if (contextScope?.teamId) {
+    params.set("teamId", contextScope.teamId);
+  }
+  if (contextScope?.roomId) {
+    params.set("roomId", contextScope.roomId);
+  }
+  if (contextScope?.runId) {
+    params.set("runId", contextScope.runId);
+  }
+  if (contextScope?.skillId) {
+    params.set("skillId", contextScope.skillId);
+  }
+  if (
+    typeof contextScope?.userId === "number" &&
+    Number.isFinite(contextScope.userId)
+  ) {
+    params.set("userId", String(contextScope.userId));
   }
   return `/admin/monitoring?${params.toString()}`;
 }
@@ -1830,7 +1872,15 @@ function MetricsTab() {
 // Main Page
 // ---------------------------------------------------------------------------
 
-type Tab = "checks" | "alerts" | "metrics";
+type Tab = "checks" | "alerts" | "metrics" | "context";
+
+type ContextEngineRouteScope = {
+  teamId: string | null;
+  roomId: string | null;
+  runId: string | null;
+  skillId: string | null;
+  userId: number | null;
+};
 
 function buildWorkOsPath(timelineSource?: "role_routine" | "team_run" | "workpack_record" | "browser_automation"): string {
   const params = new URLSearchParams();
@@ -2178,7 +2228,7 @@ export default function AdminMonitoring() {
 
   const navigateToTab = (tab: Tab) => {
     setActiveTab(tab);
-    setLocation(buildMonitoringPath(tab, routeState.incidentKey));
+    setLocation(buildMonitoringPath(tab, routeState.incidentKey, routeState.contextScope));
   };
 
   const revealSection = (target: "tabs" | "incident") => {
@@ -2198,12 +2248,12 @@ export default function AdminMonitoring() {
 
   const focusIncidentAndReveal = (incidentKey: string) => {
     setActiveTab("alerts");
-    setLocation(buildMonitoringPath("alerts", incidentKey));
+    setLocation(buildMonitoringPath("alerts", incidentKey, routeState.contextScope));
     window.setTimeout(() => revealSection("incident"), 120);
   };
 
   const clearIncidentFocus = () => {
-    setLocation(buildMonitoringPath(activeTab, null));
+    setLocation(buildMonitoringPath(activeTab, null, routeState.contextScope));
   };
 
   const handleAlertMutationRefresh = async () => {
@@ -2261,6 +2311,7 @@ export default function AdminMonitoring() {
     { id: "checks", label: "Checks" },
     { id: "alerts", label: `Alerts${criticalCount + warningCount > 0 ? ` (${criticalCount + warningCount})` : ""}` },
     { id: "metrics", label: "Metrics" },
+    { id: "context", label: "Context & Knowledge" },
   ];
 
   return (
@@ -3464,6 +3515,24 @@ export default function AdminMonitoring() {
             />
           )}
           {activeTab === "metrics" && <MetricsTab />}
+          {activeTab === "context" && (
+            <div className="space-y-6">
+              <KnowledgeVaultReadinessDashboard />
+              <ContextEngineEvaluationDashboard
+                className="space-y-6"
+                initialScope={{
+                  teamId: routeState.contextScope.teamId ?? undefined,
+                  roomId: routeState.contextScope.roomId ?? undefined,
+                  runId: routeState.contextScope.runId ?? undefined,
+                  skillId: routeState.contextScope.skillId ?? undefined,
+                  userId:
+                    routeState.contextScope.userId != null
+                      ? String(routeState.contextScope.userId)
+                      : undefined,
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -136,6 +136,9 @@ export async function buildTeamContext(
     teamId: tc.teamId,
     objective: tc.objective,
     tenantId,
+    initiatedByUserId: tc.initiatedByUserId ?? request.userId,
+    currentMessage: tc.currentMessage ?? request.userMessage,
+    memoryMode: tc.memoryMode,
   };
   const result = await composePrompt(input);
   return result.messages;

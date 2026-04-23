@@ -17,13 +17,14 @@ export interface SocialPlatformPickerProps {
 
 export function SocialPlatformPicker({ value, onChange, className }: SocialPlatformPickerProps) {
   return (
-    <div className={cn("flex flex-wrap gap-2", className)}>
+    <div className={cn("grid grid-cols-2 gap-2 sm:flex sm:flex-wrap", className)}>
       {PLATFORMS.map((platform) => (
         <Button
           key={platform.value}
           type="button"
           variant={value === platform.value ? "default" : "outline"}
           size="sm"
+          className="w-full sm:w-auto"
           onClick={() => onChange(platform.value)}
         >
           {platform.label}

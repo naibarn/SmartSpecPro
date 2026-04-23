@@ -47,7 +47,8 @@ Expected touch points:
 7. Enforce Gemini-specific validation on the server for malformed voices, languages, duplicate speaker aliases, closed-schema extraParams, unsupported top-level `speed`, and speaker lists above the supported cap.
 8. Canonicalize top-level Gemini `voice` out of abuse hashing when `speakers` is present, because the backend ignores it in multi-speaker mode.
 9. Keep URL-resolution logic key-aware so plain-text fields such as `style_instructions` are not treated as media paths, and keep that field as prepended helper text rather than a reference input.
-10. Add regression tests for catalog presence, recursive model-input parsing, nested validation, payload preservation, alias resolution, server-side Gemini rejection paths, abuse-hash canonicalization, and legacy audio-model fallback behavior.
+10. Add a brief multi-speaker prompt example and safety note to the spec copy so the feature reads clearly as dialogue generation rather than voice cloning.
+11. Add regression tests for catalog presence, recursive model-input parsing, nested validation, payload preservation, alias resolution, server-side Gemini rejection paths, abuse-hash canonicalization, and legacy audio-model fallback behavior.
 
 ## Risks and mitigations
 
@@ -67,6 +68,8 @@ Expected touch points:
   - Mitigation: keep URL resolution key-aware and explicitly treat `style_instructions` as text.
 - Risk: Gemini-specific parsing changes could accidentally regress older audio models.
   - Mitigation: include a regression test for at least one representative legacy audio model path.
+- Risk: the feature can be misunderstood as voice cloning or identity impersonation tooling.
+  - Mitigation: state the non-goal explicitly in the spec and show a dialogue-oriented prompt example in the UI copy.
 
 ## Acceptance criteria
 
@@ -76,6 +79,7 @@ Expected touch points:
 - `language_code` is available as an optional auto-detect defaulting field.
 - `temperature` defaults to `1` and `output_format` defaults to `mp3`.
 - `style_instructions` is preserved as plain text helper content and prepends to the prompt.
+- The spec includes a short dialogue prompt example and a safety note that this is not voice cloning.
 - `extraParams.speakers` reaches the media generation service as an array of objects.
 - Required nested speaker fields are validated before submit.
 - Invalid Gemini payloads are rejected on the server.

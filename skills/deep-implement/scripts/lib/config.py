@@ -83,8 +83,6 @@ def create_session_config(
         "target_dir": str(target_dir),
         "state_dir": str(state_dir),
         "git_root": str(git_root),
-        "workflow_backend": "compatible",
-        "task_tracking_backend": "compatible",
         "commit_style": commit_style,
         "test_command": test_command,
         "sections": sections or [],

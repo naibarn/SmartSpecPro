@@ -3,9 +3,7 @@
 Setup script for deep-implement sessions.
 
 Validates sections directory, detects git configuration, checks pre-commit hooks,
-infers resume state, and optionally writes Claude task-list reminders when a
-task-list backend is available. The workflow itself is file-based and can run in
-compatible mode without Claude-specific session hooks.
+infers resume state, and generates TODOs for the skill.
 
 Usage:
     uv run scripts/checks/setup-implementation-session.py \
@@ -700,13 +698,17 @@ def build_impl_dependency_graph(
 def main():
     parser = argparse.ArgumentParser(description="Setup deep-implement session")
     parser.add_argument("--sections-dir", required=True, help="Path to sections directory")
-    parser.add_argument("--target-dir", required=True, help="Path to target directory for implementation")
+    parser.add_argument(
+        "--target-dir",
+        help="Path to target directory for implementation (defaults to current working directory)",
+    )
     parser.add_argument("--plugin-root", required=True, help="Path to plugin root")
     parser.add_argument("--session-id", help="Session ID from hook context (takes precedence over env var)")
     args = parser.parse_args()
 
     sections_dir = Path(args.sections_dir).resolve()
-    target_dir = Path(args.target_dir).resolve()
+    target_dir = Path(args.target_dir).resolve() if args.target_dir else Path.cwd().resolve()
+    target_dir_source = "argument" if args.target_dir else "cwd"
     plugin_root = Path(args.plugin_root).resolve()
 
     # Validate sections directory
@@ -817,12 +819,12 @@ def main():
     # Build dependency graph
     dependency_graph = build_impl_dependency_graph(tasks_to_write, sections)
 
-    # Write tasks to disk when a Claude task-list backend is available.
+    # Write tasks to disk
     write_result = None
     task_write_error = None
-    tracking_backend = "compatible"
-    tracking_message = "Compatible mode active; task-list tracking not available."
+    workflow_backend = "file_based"
     if session_id:
+        workflow_backend = "task_list"
         write_result = write_tasks(
             session_id,
             tasks_to_write,
@@ -830,25 +832,16 @@ def main():
         )
         if not write_result.success:
             task_write_error = write_result.error
-            tracking_message = (
-                "Claude task-list tracking failed; continuing in compatible mode "
-                "with file-based resume."
-            )
-        else:
-            tracking_backend = "claude_tasks"
-            tracking_message = "Claude task-list tracking enabled."
     else:
-        task_write_error = None
+        task_write_error = "No session ID available (neither --session-id nor env vars set). Continuing in file-based mode."
 
     # Output result
     result = {
         "success": True,
         "mode": state["mode"],
-        "workflow_backend": "compatible",
-        "tracking_backend": tracking_backend,
-        "tracking_message": tracking_message,
         "sections_dir": str(sections_dir),
         "target_dir": str(target_dir),
+        "target_dir_source": target_dir_source,
         "state_dir": str(state_dir),
         "git_root": str(git_root),
         "current_branch": branch_info["branch"],
@@ -862,6 +855,7 @@ def main():
         "completed_sections": state["completed_sections"],
         "resume_from": state["resume_from"],
         "resume_section_state": state.get("resume_section_state"),
+        "workflow_backend": workflow_backend,
         "tasks_written": write_result.tasks_written if write_result else 0,
         "task_write_error": task_write_error,
         # Session ID diagnostics

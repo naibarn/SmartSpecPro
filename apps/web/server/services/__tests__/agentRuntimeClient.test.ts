@@ -145,6 +145,38 @@ describe("AgentRuntimeClient", () => {
     });
   });
 
+  it("reads adapter health with supported contract version windows", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          adapterVersion: "0.1.0",
+          sdkVersion: "0.14.2",
+          gatewayModelSupportEnabled: true,
+          traceExportMode: "platform_redacted_only",
+          productionSafeTracing: true,
+          supportedRuntimeContractVersions: [1, 2],
+          supportedTraceSchemaVersions: [1, 2],
+          supportedCheckpointSchemaVersions: [1, 2],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    );
+    const client = new AgentRuntimeClient({
+      fetchImpl,
+      runtimeConfigLoader: async () =>
+        ({
+          pythonBackendUrl: "http://python-backend.test",
+        } as any),
+      internalTokenLoader: async () => "internal-token-1",
+    });
+
+    const health = await client.health();
+
+    expect(health.supportedRuntimeContractVersions).toEqual([1, 2]);
+    expect(health.supportedTraceSchemaVersions).toEqual([1, 2]);
+    expect(health.supportedCheckpointSchemaVersions).toEqual([1, 2]);
+  });
+
   it("validates adapter response before persistence", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       new Response(

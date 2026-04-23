@@ -417,9 +417,14 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
       <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
         <DashboardCard className="h-fit">
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h3 className="text-base">Drafts</h3>
-              <Button size="sm" variant="outline" onClick={() => dispatch({ type: "START_NEW_DRAFT" })}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => dispatch({ type: "START_NEW_DRAFT" })}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 New Article
               </Button>
@@ -427,7 +432,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
             <Input value={draftSearch} onChange={(event) => setDraftSearch(event.target.value)} placeholder="Search drafts..." />
           </div>
           <div>
-            <ScrollArea className="h-[460px] pr-3">
+            <ScrollArea className="h-[320px] pr-3 sm:h-[460px]">
               <div className="space-y-2">
                 {filteredDraftItems.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No drafts yet.</p>
@@ -449,9 +454,9 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                         }
                       }}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-medium">{draft.topic || "Untitled draft"}</p>
-                        <div className="flex items-center gap-1">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <p className="min-w-0 truncate text-sm font-medium">{draft.topic || "Untitled draft"}</p>
+                        <div className="flex flex-wrap items-center gap-1 sm:justify-end">
                           <Badge variant="outline" className="text-[10px]">
                             {draft.status}
                           </Badge>
@@ -482,7 +487,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
           </div>
         </DashboardCard>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <DashboardCard>
             <div>
               <h3 className="text-base">Article Composer</h3>
@@ -526,8 +531,9 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                     Thinking
                   </label>
                 </div>
-                <div className="md:col-span-2 flex flex-wrap gap-2">
+                <div className="flex flex-col gap-2 md:col-span-2 sm:flex-row sm:flex-wrap">
                   <Button
+                    className="w-full sm:w-auto"
                     onClick={handleGenerateArticle}
                     disabled={
                       !state.topic.trim() ||
@@ -540,6 +546,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                   </Button>
                   <Button
                     variant="outline"
+                    className="w-full sm:w-auto"
                     onClick={() => dispatch({ type: "SET_ARTICLE_BODY", payload: generateArticleDraftHtml(state) })}
                     disabled={!state.topic.trim()}
                   >
@@ -550,7 +557,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
               </div>
 
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="text-sm font-medium">Article HTML</h3>
                   <Badge variant="outline">{state.articleBody.length.toLocaleString()} chars</Badge>
                 </div>
@@ -581,15 +588,15 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
             </div>
             <div className="space-y-4">
               <Input value={attachmentSearch} onChange={(event) => setAttachmentSearch(event.target.value)} placeholder="Search library assets..." />
-              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <div className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                 <p>Select 1 to 6 ready assets from the library.</p>
                 <Badge variant="outline">{state.attachmentIds.length}/6 selected</Badge>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 {selectedAttachments.map((item) => (
-                  <Badge key={String(item.item_id)} variant="secondary" className="gap-1">
-                    {String(item.title ?? item.item_id)}
+                  <Badge key={String(item.item_id)} variant="secondary" className="max-w-full gap-1">
+                    <span className="truncate">{String(item.title ?? item.item_id)}</span>
                     <button
                       type="button"
                       onClick={() => dispatch({ type: "TOGGLE_ATTACHMENT", payload: Number(item.item_id) })}
@@ -609,7 +616,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                       Searching library...
                     </div>
                   )}
-                  <div className="grid gap-2 md:grid-cols-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
                     {attachmentResults.map((item) => {
                       const itemId = Number(item.item_id);
                       const selected = state.attachmentIds.includes(itemId);
@@ -623,8 +630,8 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                           )}
                           onClick={() => dispatch({ type: "TOGGLE_ATTACHMENT", payload: itemId })}
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="truncate text-sm font-medium">{String(item.title ?? itemId)}</span>
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium">{String(item.title ?? itemId)}</span>
                             <Badge variant="outline" className="text-[10px]">
                               {String(item.item_type ?? "asset")}
                             </Badge>
@@ -651,6 +658,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                   <Button
                     key={destination}
                     type="button"
+                    className="w-full sm:w-auto"
                     variant={state.destinationKind === destination ? "default" : "outline"}
                     onClick={() => dispatch({ type: "SET_DESTINATION_KIND", payload: destination })}
                   >
@@ -673,6 +681,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                           type="button"
                           variant={state.docsSubKind === option.value ? "default" : "outline"}
                           size="sm"
+                          className="w-full sm:w-auto"
                           onClick={() => dispatch({ type: "SET_DOCS_SUB_KIND", payload: option.value })}
                         >
                           {option.label}
@@ -733,12 +742,13 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                   />
 
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <h4 className="text-sm font-medium">Social Caption</h4>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
+                        className="w-full sm:w-auto"
                         onClick={() => {
                           generateCaptionMutation.mutate(
                             {
@@ -774,8 +784,9 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <Button
+                  className="w-full sm:w-auto"
                   onClick={() => {
                     if (!state.topic.trim() && !state.articleBody.trim() && state.attachmentIds.length === 0 && !state.destinationKind && !state.socialTargetId && !state.blogTargetId && !state.docsTargetId) {
                       toast.error("Add some content before saving the draft");
@@ -788,7 +799,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                 >
                   Save Draft
                 </Button>
-                <Button onClick={handlePublish} disabled={!canPublish || state.isPublishing || publishMutation.isPending}>
+                <Button className="w-full sm:w-auto" onClick={handlePublish} disabled={!canPublish || state.isPublishing || publishMutation.isPending}>
                   {state.isPublishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                   Publish
                 </Button>

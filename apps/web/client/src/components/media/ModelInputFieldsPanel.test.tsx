@@ -1,0 +1,72 @@
+/**
+ * @vitest-environment jsdom
+ */
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { ModelInputFieldsPanel } from "./ModelInputFieldsPanel";
+import { trpc } from "@/lib/trpc";
+
+vi.mock("@/lib/trpc", () => ({
+  trpc: {
+    media: {
+      listModelFieldOptions: {
+        useQuery: vi.fn(),
+      },
+    },
+  },
+}));
+
+describe("ModelInputFieldsPanel", () => {
+  beforeEach(() => {
+    vi.mocked(trpc.media.listModelFieldOptions.useQuery).mockReturnValue({
+      data: { options: [] },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as any);
+  });
+
+  it("renders Gemini helper descriptions for synced and editable fields", () => {
+    render(
+      <ModelInputFieldsPanel
+        enabled
+        model={{ id: "gemini-tts", name: "Gemini 3.1 Flash TTS" }}
+        fields={[
+          {
+            key: "prompt",
+            label: "Prompt",
+            type: "text",
+            syncWith: "prompt",
+            description: "Write dialogue with speaker aliases like Host: and Guest: on separate lines.",
+          },
+          {
+            key: "style_instructions",
+            label: "Style Instructions",
+            type: "text",
+            syncWith: "none",
+            description: "Plain text helper content that prepends to the prompt.",
+          },
+          {
+            key: "voice",
+            label: "Voice",
+            type: "select",
+            syncWith: "none",
+            description: "Single-speaker voice preset. Ignored when speakers is set.",
+            options: [{ value: "Kore", label: "Kore" }],
+          },
+        ]}
+        extraParams={{
+          style_instructions: "Speak warmly and slowly.",
+          voice: "Kore",
+        }}
+        promptPreview="Host: Welcome back."
+      />,
+    );
+
+    expect(screen.getByText(/Write dialogue with speaker aliases/i)).toBeInTheDocument();
+    expect(screen.getByText(/Plain text helper content that prepends to the prompt/i)).toBeInTheDocument();
+    expect(screen.getByText(/Single-speaker voice preset/i)).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Host: Welcome back.")).toBeInTheDocument();
+  });
+});

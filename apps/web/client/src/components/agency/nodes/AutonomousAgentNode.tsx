@@ -1,15 +1,14 @@
 import { memo } from "react";
-import { Handle, Position } from "reactflow";
-import type { NodeProps } from "reactflow";
+import { Handle, Position } from "@xyflow/react";
 import { Badge } from "@/components/ui/badge";
 import { Brain, Wrench, AlertCircle, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AgencyNodeData } from "./types";
+import type { AgencyFlowNodeProps } from "./types";
 
 export const AutonomousAgentNode = memo(function AutonomousAgentNode({
   data,
   selected,
-}: NodeProps<AgencyNodeData>) {
+}: AgencyFlowNodeProps) {
   const nc = (data.nodeConfig ?? {}) as Record<string, unknown>;
   const delegationMode = (nc.delegationMode as string) ?? "auto";
   const enableMemory = nc.enableLongTermMemory === true;

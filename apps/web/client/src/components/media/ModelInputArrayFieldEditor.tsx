@@ -93,6 +93,18 @@ function getSearchableOptions(field: ModelInputField, searchTerm: string) {
   ));
 }
 
+function renderSubFieldDescription(field: { description?: string } | null | undefined) {
+  if (!field?.description) {
+    return null;
+  }
+
+  return (
+    <p className="text-[11px] leading-snug text-muted-foreground">
+      {field.description}
+    </p>
+  );
+}
+
 export function ModelInputArrayFieldEditor({
   field,
   value,
@@ -162,6 +174,7 @@ export function ModelInputArrayFieldEditor({
             {label}
             {subField.required ? " *" : ""}
           </div>
+          {renderSubFieldDescription(subField)}
           <ModelInputArrayFieldEditor
             field={subField}
             value={currentValue}
@@ -222,6 +235,7 @@ export function ModelInputArrayFieldEditor({
               No matching options. Showing current value.
             </span>
           ) : null}
+          {renderSubFieldDescription(subField)}
         </label>
       );
     }
@@ -247,6 +261,7 @@ export function ModelInputArrayFieldEditor({
             checked={checked}
             onCheckedChange={(checkedState) => updateSubFieldValue(index, subField, checkedState)}
           />
+          {renderSubFieldDescription(subField)}
         </label>
       );
     }
@@ -272,6 +287,7 @@ export function ModelInputArrayFieldEditor({
               updateSubFieldValue(index, subField, Number.isFinite(parsed) ? parsed : raw);
             }}
           />
+          {renderSubFieldDescription(subField)}
         </label>
       );
     }
@@ -287,6 +303,7 @@ export function ModelInputArrayFieldEditor({
             value={String(currentValue ?? "")}
             onValueChange={(url) => updateSubFieldValue(index, subField, url)}
           />
+          {renderSubFieldDescription(subField)}
         </label>
       );
     }
@@ -329,6 +346,7 @@ export function ModelInputArrayFieldEditor({
             }}
             allowedExtensions={getAllowedLibraryExtensionsForField(subField)}
           />
+          {renderSubFieldDescription(subField)}
         </label>
       );
     }
@@ -346,6 +364,7 @@ export function ModelInputArrayFieldEditor({
           value={String(currentValue ?? "")}
           onChange={(event) => updateSubFieldValue(index, subField, event.target.value)}
         />
+        {renderSubFieldDescription(subField)}
       </label>
     );
   };

@@ -18,12 +18,14 @@ const speakerField: ModelInputField = {
       label: "Speaker ID",
       type: "text",
       required: true,
+      description: "Unique alias used to prefix that speaker's dialogue lines.",
     },
     {
       key: "voice",
       label: "Voice",
       type: "select",
       required: true,
+      description: "Voice preset for this speaker row.",
       options: [
         { value: "Kore", label: "Kore" },
         { value: "Aoede", label: "Aoede" },
@@ -57,6 +59,8 @@ describe("ModelInputArrayFieldEditor", () => {
     expect(screen.getByText("Speaker 1")).toBeInTheDocument();
     expect(screen.getByLabelText("Advanced Speaker Speaker ID")).toHaveValue("Speaker1");
     expect(screen.getByLabelText("Advanced Speaker Voice")).toHaveValue("Kore");
+    expect(screen.getByText(/Unique alias used to prefix that speaker's dialogue lines/i)).toBeInTheDocument();
+    expect(screen.getByText(/Voice preset for this speaker row/i)).toBeInTheDocument();
 
     await user.click(screen.getAllByRole("button")[1]);
 

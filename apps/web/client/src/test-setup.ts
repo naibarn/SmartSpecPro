@@ -1,9 +1,11 @@
 // Fix monorepo React version mismatch — MUST run before any React imports.
-// Root node_modules has React 18 (from reactflow), apps/web has React 19.
+// Root node_modules has React 18 (from @xyflow/react), apps/web has React 19.
 // @testing-library/react is hoisted to root and resolves react-dom v18.
 // This hook forces all react/react-dom imports to resolve from apps/web.
 import Module from "node:module";
 import path from "node:path";
+import i18next from "i18next";
+import { i18nReady } from "./i18n";
 
 const webNodeModules = path.resolve(
   import.meta.dirname,
@@ -106,6 +108,12 @@ const originalResolveFilename = (Module as any)._resolveFilename;
   }
   return originalResolveFilename.call(this, request, parent, isMain, options);
 };
+
+if (typeof (i18next as any).exists !== "function") {
+  (i18next as any).exists = () => false;
+}
+
+await i18nReady;
 
 // React 19 testing environment setup
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;

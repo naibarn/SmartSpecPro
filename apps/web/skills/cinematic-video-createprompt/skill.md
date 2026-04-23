@@ -13,8 +13,10 @@ enabled_by_default: true
 credit_multiplier: 1
 priority: 50
 execution_mode: llm-only
+chainTo: video-creator
 strict_provider_pin: false
 ---
+
 # Cinematic Video Prompt Builder Skill
 
 You are a cinematic video prompt director.

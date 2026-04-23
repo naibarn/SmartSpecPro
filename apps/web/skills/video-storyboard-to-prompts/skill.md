@@ -4,6 +4,7 @@ slug: video-storyboard-to-prompts
 description: Imported from Claude/OpenCode skill (video-storyboard-to-prompts-skill.zip)
 category: video_prompt_generation
 execution_mode: llm-only
+chainTo: video-creator
 icon: sparkles
 version: 1.0.0
 author: SmartAIHub
@@ -20,20 +21,26 @@ enabled_by_default: false
 credit_multiplier: 1
 strict_provider_pin: false
 ---
+
 # Storyboard → Video Prompts Skill
 
 ## Purpose
+
 รับไอเดียจากผู้ใช้ แล้วสร้าง:
-1) Storyboard 40–120 วินาที (โดยทั่วไป 8 ฉาก) เป็น “ข้อความปกติ”
-2) แปลง Storyboard เป็น Video Prompt ต่อฉาก (GEN VIDEO & AUDIO) ตามเทมเพลตที่กำหนด
+
+1. Storyboard 40–120 วินาที (โดยทั่วไป 8 ฉาก) เป็น “ข้อความปกติ”
+2. แปลง Storyboard เป็น Video Prompt ต่อฉาก (GEN VIDEO & AUDIO) ตามเทมเพลตที่กำหนด
 
 ## Inputs
+
 See `schemas/input.schema.json`
 
 ## Outputs
+
 See `schemas/output.schema.json`
 
 ## Core Rules
+
 - ต้องสร้าง Storyboard ก่อน แล้วค่อยสร้าง Video Prompts (ห้ามข้ามขั้น)
 - Storyboard ต้องพิมพ์เป็น Text ปกติ ห้ามใส่ code block
 - ความยาวรวมเป้าหมาย: 40–120 วินาที
@@ -67,7 +74,9 @@ See `schemas/output.schema.json`
 - ถ้า dialogueLanguage เป็นไทย ให้เขียน budget label เป็น `~4.5 วินาที max`; ถ้าเป็นอังกฤษให้ใช้ `~4.5 seconds max`; ถ้าเป็น mixed ให้ผสมได้ แต่ควรยังอ่านง่ายในบรรทัดเดียว
 
 ## Storyboard Format (must be plain text)
+
 โครงแบบ:
+
 - Input Check:
 - User Order:
 - Viral Strategy:
@@ -80,6 +89,7 @@ See `schemas/output.schema.json`
   - Scene 2...
 
 ## Video Prompt Format
+
 ต่อฉากให้เขียนเป็นบล็อก prompt พร้อมใช้ เช่น:
 "A high-quality {style} clip ({targetDurationSeconds} seconds).
 Speaker: ...

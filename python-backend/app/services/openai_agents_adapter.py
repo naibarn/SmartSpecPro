@@ -138,12 +138,42 @@ class OpenAIAgentsAdapter:
 
     def health(self) -> dict[str, Any]:
         trace_config = build_trace_config()
+        runtime_versions = list(
+            range(
+                max(
+                    CURRENT_RUNTIME_CONTRACT_VERSION - 1,
+                    1,
+                ),
+                CURRENT_RUNTIME_CONTRACT_VERSION + 1,
+            )
+        )
+        trace_versions = list(
+            range(
+                max(
+                    CURRENT_TRACE_SCHEMA_VERSION - 1,
+                    1,
+                ),
+                CURRENT_TRACE_SCHEMA_VERSION + 1,
+            )
+        )
+        checkpoint_versions = list(
+            range(
+                max(
+                    CURRENT_CHECKPOINT_SCHEMA_VERSION - 1,
+                    1,
+                ),
+                CURRENT_CHECKPOINT_SCHEMA_VERSION + 1,
+            )
+        )
         return {
             "adapterVersion": self.adapter_version,
             "sdkVersion": get_effective_openai_agents_version(),
             "gatewayModelSupportEnabled": True,
             "traceExportMode": trace_config.export_mode,
             "productionSafeTracing": trace_config.production_safe,
+            "supportedRuntimeContractVersions": runtime_versions,
+            "supportedTraceSchemaVersions": trace_versions,
+            "supportedCheckpointSchemaVersions": checkpoint_versions,
         }
 
     async def run(

@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import type { Node, Edge } from "reactflow";
+import type { Node, Edge } from "@xyflow/react";
 
 const MAX_PROMPT_LENGTH = 50000;
 const ACCEPTED_FILE_TYPES = ".txt,.md,.markdown";

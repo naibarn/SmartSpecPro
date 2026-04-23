@@ -49,6 +49,7 @@ describe("WorkpackDiscovery", () => {
   it("renders starter packs and benchmark lineage", () => {
     render(<WorkpackDiscovery />);
 
+    expect(screen.getByRole("link", { name: /dashboard/i })).toBeInTheDocument();
     expect(screen.getByText("Starter Workpacks")).toBeInTheDocument();
     expect(screen.getByText("Starter Pack")).toBeInTheDocument();
     expect(screen.getByText("Benchmark Pack")).toBeInTheDocument();

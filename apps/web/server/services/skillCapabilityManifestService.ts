@@ -730,7 +730,7 @@ export const INITIAL_SKILL_CAPABILITY_EXPECTATIONS: InitialCoverageExpectation[]
 ];
 
 function includesValue(values: readonly string[], candidate: string | null | undefined): boolean {
-  return Boolean(candidate) && values.includes(candidate);
+  return typeof candidate === "string" && values.includes(candidate);
 }
 
 function normalizeSkillSlugs(skillSlugs?: string[]): Set<string> | null {

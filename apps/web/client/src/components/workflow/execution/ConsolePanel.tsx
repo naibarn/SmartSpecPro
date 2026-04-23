@@ -13,7 +13,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import {
   Terminal,
   Trash2,
@@ -143,7 +143,7 @@ export function ConsolePanel({
       if (log.eventType !== "node_complete") continue;
 
       const node = nodeMap[log.nodeId];
-      const nodeName = log.nodeName || node?.data?.label || "Workflow";
+      const nodeName = String(log.nodeName ?? node?.data?.label ?? "Workflow");
 
       const browserSessionArtifact = getWorkflowBrowserSessionArtifact(log.output);
       if (browserSessionArtifact) {
@@ -192,9 +192,8 @@ export function ConsolePanel({
           source: "console",
         });
       } else if (node.data?.nodeType === "set_variable") {
-        const varName =
-          (node.data?.config as Record<string, unknown> | undefined)
-            ?.variableName ?? "variable";
+        const nodeConfig = (node.data?.config ?? {}) as Record<string, unknown>;
+        const varName = String(nodeConfig.variableName ?? "variable");
         const value = log.output?.value;
         entries.push({
           id: log.id,

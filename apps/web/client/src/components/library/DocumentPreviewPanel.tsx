@@ -32,6 +32,7 @@ import MarkdownExportActions from "./MarkdownExportActions";
 import { ShareButton } from "./ShareButton";
 import { ShareDialog } from "./ShareDialog";
 import type { TiptapEditorTemplate } from "../editor/types";
+import KnowledgeNoteHoverPreview from "./KnowledgeNoteHoverPreview";
 
 function getFileExtension(name: string): string {
   const dot = name.lastIndexOf(".");
@@ -57,6 +58,14 @@ interface DocumentPreviewPanelProps {
   isReplacingFile?: boolean;
   initialEditorTemplate?: TiptapEditorTemplate;
   shareUrl?: string;
+  onOpenWikiLink?: (reference: string) => void;
+  knowledgeBacklinks?: Array<{
+    libraryItemId: number | null;
+    title: string | null;
+    logicalPath: string | null;
+    rawReference: string;
+  }>;
+  onOpenKnowledgeItem?: (itemId: number, title: string) => void;
 }
 
 export default function DocumentPreviewPanel({
@@ -78,6 +87,9 @@ export default function DocumentPreviewPanel({
   isReplacingFile,
   initialEditorTemplate,
   shareUrl,
+  onOpenWikiLink,
+  knowledgeBacklinks = [],
+  onOpenKnowledgeItem,
 }: DocumentPreviewPanelProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
@@ -524,25 +536,86 @@ export default function DocumentPreviewPanel({
       </div>
 
       {previewType === "markdown" ? (
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <Suspense fallback={null}>
-            <UnifiedDocumentSurface
-              initialContent={markdownValue || ""}
-              onContentChange={(value) => onMarkdownChange?.(value)}
-              onSave={(markdown) => onMarkdownSave?.(markdown)}
-              onVersionRestore={onVersionRestore}
-              onEnterEditMode={onEnterEditMode}
-              updatedAt={markdownUpdatedAt}
-              isSaving={isMarkdownSaving}
-              errorMessage={markdownError}
-              documentId={documentId}
-              initialEditorTemplate={initialEditorTemplate}
-              surfaceHeaderActions={markdownSurfaceHeaderActions}
-              editorHeaderActions={markdownEditorHeaderActions}
-              editorUploadMetadata={editorUploadMetadata}
-              editorLibraryScope={isPrivateVaultItem ? "private_vault" : "all"}
-            />
-          </Suspense>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {knowledgeBacklinks.length > 0 ? (
+            <div className="mb-3 rounded-2xl border border-slate-200 bg-slate-50/90 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    Backlinks
+                  </div>
+                  <div className="mt-1 text-sm text-slate-600">
+                    Notes already pointing to this document.
+                  </div>
+                </div>
+                <Badge variant="outline" className="rounded-full bg-white/90">
+                  {knowledgeBacklinks.length}
+                </Badge>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {knowledgeBacklinks.map((entry, index) => {
+                  const badgeLabel =
+                    entry.title ?? entry.rawReference ?? `Backlink ${index + 1}`;
+                  const badge = (
+                    <button
+                      key={`${entry.libraryItemId ?? entry.rawReference ?? index}-${index}`}
+                      type="button"
+                      className={`inline-flex max-w-full items-center rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                        entry.libraryItemId && entry.title
+                          ? "border-sky-200 bg-white text-sky-800 hover:border-sky-300 hover:bg-sky-50"
+                          : "cursor-default border-slate-200 bg-white text-slate-500"
+                      }`}
+                      onClick={() => {
+                        if (entry.libraryItemId && entry.title) {
+                          onOpenKnowledgeItem?.(entry.libraryItemId, entry.title);
+                        }
+                      }}
+                      disabled={!entry.libraryItemId || !entry.title}
+                    >
+                      <span className="truncate">{badgeLabel}</span>
+                    </button>
+                  );
+
+                  if (entry.libraryItemId && entry.title) {
+                    return (
+                      <KnowledgeNoteHoverPreview
+                        key={`${entry.libraryItemId}-${index}`}
+                        itemId={entry.libraryItemId}
+                        label={entry.title}
+                        logicalPath={entry.logicalPath}
+                        onOpenItem={onOpenKnowledgeItem}
+                      >
+                        {badge}
+                      </KnowledgeNoteHoverPreview>
+                    );
+                  }
+
+                  return badge;
+                })}
+              </div>
+            </div>
+          ) : null}
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <Suspense fallback={null}>
+              <UnifiedDocumentSurface
+                initialContent={markdownValue || ""}
+                onContentChange={(value) => onMarkdownChange?.(value)}
+                onSave={(markdown) => onMarkdownSave?.(markdown)}
+                onVersionRestore={onVersionRestore}
+                onEnterEditMode={onEnterEditMode}
+                updatedAt={markdownUpdatedAt}
+                isSaving={isMarkdownSaving}
+                errorMessage={markdownError}
+                documentId={documentId}
+                initialEditorTemplate={initialEditorTemplate}
+                surfaceHeaderActions={markdownSurfaceHeaderActions}
+                editorHeaderActions={markdownEditorHeaderActions}
+                editorUploadMetadata={editorUploadMetadata}
+                editorLibraryScope={isPrivateVaultItem ? "private_vault" : "all"}
+                onOpenWikiLink={onOpenWikiLink}
+              />
+            </Suspense>
+          </div>
         </div>
       ) : null}
 

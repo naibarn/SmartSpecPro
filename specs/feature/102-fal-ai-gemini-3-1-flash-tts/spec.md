@@ -60,6 +60,7 @@ This feature does not aim to:
 - redesign the full media generation pipeline
 - change the underlying fal.ai backend contract beyond the new model payload shape
 - introduce a brand new audio editor surface outside Media Studio
+- add voice cloning, identity impersonation, or speaker verification features
 
 ---
 
@@ -136,6 +137,7 @@ This feature does not aim to:
 5. Duplicate speaker aliases should be flagged before submit so dialogue scripts are unambiguous.
 6. The UI should reflect the documented defaults for `voice`, `temperature`, and `output_format` so users see the same baseline as the backend.
 7. The `style_instructions` field should behave like plain text helper input, not a path or file picker.
+8. The UI should show a short multi-speaker prompt example such as `Host: Welcome back.` / `Guest: Glad to be here.` and note that expressive tags like `[whispering]` or `[short pause]` are supported.
 
 ---
 

@@ -221,6 +221,23 @@ describe("factExtractor", () => {
     expect(result).toEqual({ inserted: 0, reinforced: 0, skipped: 0, factIds: [] });
   });
 
+  it("does not hardcode a fallback LLM model when extraction settings are missing", async () => {
+    mockCallLLMStructured.mockResolvedValue({ data: "[]" });
+    const { extractFacts } = await import("../factExtractor");
+
+    await extractFacts(
+      [
+        { role: "user", content: "Hello" },
+        { role: "assistant", content: "Hi there" },
+      ],
+      "tenant-1",
+      42,
+    );
+
+    const call = mockCallLLMStructured.mock.calls[0]?.[0];
+    expect(call?.model).toBeUndefined();
+  });
+
   it("handles malformed LLM output gracefully", async () => {
     mockCallLLMStructured.mockResolvedValue({ data: "I cannot extract facts from this" });
     const { extractFacts } = await import("../factExtractor");
