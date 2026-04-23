@@ -91,6 +91,7 @@ import {
   mirrorExistingSkillManifest,
   resolveSkillManifestPath,
   resolveSkillDirCandidates,
+  writeNativeSkillBundleScaffold,
   updateSkillManifestFiles,
   writeSkillManifestFiles,
 } from "../services/skillFiles";
@@ -2922,6 +2923,8 @@ export const skillsRouter = router({
         requiresBrowser: z.boolean().nullable().optional(),
         maxRuntimeSeconds: z.number().int().min(1).max(3600).nullable().optional(),
         maxInputMb: z.number().int().min(1).max(2048).nullable().optional(),
+        bundleType: z.enum(["native", "legacy"]).default("native"),
+        bundleProfile: z.enum(["general", "research", "workflow", "media", "custom"]).default("general"),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -2972,63 +2975,125 @@ export const skillsRouter = router({
         });
       }
 
-      const [newSkill] = await dbInstance
-        .insert(skills)
-        .values({
-          slug: input.slug,
-          name: input.name,
-          description: input.description,
-          category: normalizedCategory as any,
-          version: input.version || "1.0.0",
-          author: input.author,
-          icon: input.icon || "sparkles",
-          tags: input.tags || [],
-          isAutoTrigger: input.isAutoTrigger ?? false,
-          triggerPatterns: input.triggerPatterns || [],
-          isEnabled: input.isEnabled ?? true,
-          enabledByDefault: input.enabledByDefault ?? true,
-          visibleByDefault: input.visibleByDefault ?? true,
-          creditMultiplier: String(input.creditMultiplier ?? 1.0),
-          priority: input.priority ?? 50,
-          systemPrompt: input.systemPrompt,
-          skillContent: input.skillContent,
-          marketplaceContent: input.marketplaceContent || generateMarketplaceContent(input.skillContent || "", { name: input.name, description: input.description }),
-          knowledgebase: input.knowledgebase,
-          llmModelId: input.llmModelId ?? null,
-          preferredProviderId: input.preferredProviderId ?? null,
-          strictProviderPin: input.strictProviderPin ?? false,
-          executionMode: effectiveExecutionMode,
-          sandboxProfileSlug: shouldUseSandbox
-            ? (input.sandboxProfileSlug ?? getDefaultSandboxProfileSlug(effectiveExecutionMode, normalizedCategory))
-            : null,
-          requiresNetwork: shouldUseSandbox
-            ? (input.requiresNetwork ?? (
-                effectiveExecutionMode === "sandbox-command"
-                || effectiveExecutionMode === "sandbox-browser"
-                || normalizedCategory === "slide_generation"
-              ))
-            : null,
-          requiresBrowser: shouldUseSandbox
-            ? (input.requiresBrowser ?? (effectiveExecutionMode === "sandbox-browser"))
-            : null,
-          maxRuntimeSeconds: shouldUseSandbox
-            ? (input.maxRuntimeSeconds ?? (normalizedCategory === "slide_generation" ? 600 : 300))
-            : null,
-          maxInputMb: shouldUseSandbox
-            ? (input.maxInputMb ?? (normalizedCategory === "slide_generation" ? 50 : 25))
-            : null,
-          configJson: input.configJson,
-          importSource: "manual",
-          createdBy: ctx.user?.id,
-          visibility: input.visibility ?? "private",
-          ...(input.visibility === "pending_approval" ? { requestedPublishAt: new Date() } : {}),
-        })
-        .returning();
+      const createNativeBundle = input.bundleType !== "legacy";
+      const skillDir = path.join(SKILLS_DIR, input.slug);
+      const nextConfigJson = createNativeBundle
+        ? {
+            ...(input.configJson || {}),
+            nativeBundleProfile: input.bundleProfile,
+          }
+        : input.configJson;
+      let nativeBundleTempDir: string | null = null;
+      let insertedSkillId: number | null = null;
 
-      // Refresh skill cache
-      await refreshSkillCache();
+      try {
+        if (createNativeBundle) {
+          fs.mkdirSync(SKILLS_DIR, { recursive: true });
+          nativeBundleTempDir = fs.mkdtempSync(path.join(SKILLS_DIR, `.${input.slug}-native-`));
+          writeNativeSkillBundleScaffold(nativeBundleTempDir, {
+            slug: input.slug,
+            name: input.name,
+            description: input.description ?? null,
+            category: normalizedCategory,
+            version: input.version ?? "1.0.0",
+            author: input.author ?? null,
+            bundleProfile: input.bundleProfile,
+            skillContent: input.skillContent ?? null,
+            systemPrompt: input.systemPrompt ?? null,
+          });
+        }
 
-      return newSkill;
+        const [newSkill] = await dbInstance
+          .insert(skills)
+          .values({
+            slug: input.slug,
+            name: input.name,
+            description: input.description,
+            category: normalizedCategory as any,
+            version: input.version || "1.0.0",
+            author: input.author,
+            icon: input.icon || "sparkles",
+            tags: input.tags || [],
+            isAutoTrigger: input.isAutoTrigger ?? false,
+            triggerPatterns: input.triggerPatterns || [],
+            isEnabled: input.isEnabled ?? true,
+            enabledByDefault: input.enabledByDefault ?? true,
+            visibleByDefault: input.visibleByDefault ?? true,
+            creditMultiplier: String(input.creditMultiplier ?? 1.0),
+            priority: input.priority ?? 50,
+            systemPrompt: input.systemPrompt,
+            skillContent: input.skillContent,
+            marketplaceContent: input.marketplaceContent || generateMarketplaceContent(input.skillContent || "", { name: input.name, description: input.description }),
+            knowledgebase: input.knowledgebase,
+            llmModelId: input.llmModelId ?? null,
+            preferredProviderId: input.preferredProviderId ?? null,
+            strictProviderPin: input.strictProviderPin ?? false,
+            executionMode: effectiveExecutionMode,
+            sandboxProfileSlug: shouldUseSandbox
+              ? (input.sandboxProfileSlug ?? getDefaultSandboxProfileSlug(effectiveExecutionMode, normalizedCategory))
+              : null,
+            requiresNetwork: shouldUseSandbox
+              ? (input.requiresNetwork ?? (
+                  effectiveExecutionMode === "sandbox-command"
+                  || effectiveExecutionMode === "sandbox-browser"
+                  || normalizedCategory === "slide_generation"
+                ))
+              : null,
+            requiresBrowser: shouldUseSandbox
+              ? (input.requiresBrowser ?? (effectiveExecutionMode === "sandbox-browser"))
+              : null,
+            maxRuntimeSeconds: shouldUseSandbox
+              ? (input.maxRuntimeSeconds ?? (normalizedCategory === "slide_generation" ? 600 : 300))
+              : null,
+            maxInputMb: shouldUseSandbox
+              ? (input.maxInputMb ?? (normalizedCategory === "slide_generation" ? 50 : 25))
+              : null,
+            configJson: nextConfigJson,
+            folderPath: createNativeBundle ? `skills/${input.slug}` : null,
+            importSource: createNativeBundle ? "native_bundle" : "manual",
+            createdBy: ctx.user?.id,
+            visibility: input.visibility ?? "private",
+            ...(input.visibility === "pending_approval" ? { requestedPublishAt: new Date() } : {}),
+          })
+          .returning();
+
+        insertedSkillId = newSkill.id;
+
+        if (createNativeBundle) {
+          if (fs.existsSync(skillDir)) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: `Skill bundle directory '${skillDir}' already exists`,
+            });
+          }
+
+          if (!nativeBundleTempDir) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Native bundle scaffold directory was not initialized",
+            });
+          }
+
+          fs.renameSync(nativeBundleTempDir, skillDir);
+          nativeBundleTempDir = null;
+        }
+
+        // Refresh skill cache
+        await refreshSkillCache();
+
+        return newSkill;
+      } catch (error) {
+        if (insertedSkillId !== null) {
+          await dbInstance.delete(skills).where(eq(skills.id, insertedSkillId));
+        }
+        if (nativeBundleTempDir) {
+          fs.rmSync(nativeBundleTempDir, { recursive: true, force: true });
+        }
+        if (createNativeBundle && fs.existsSync(skillDir)) {
+          fs.rmSync(skillDir, { recursive: true, force: true });
+        }
+        throw error;
+      }
     }),
 
   /**

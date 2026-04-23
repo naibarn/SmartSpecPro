@@ -198,6 +198,214 @@ export function writeSkillManifestFiles(skillDir: string, content: string): stri
   return written;
 }
 
+export interface NativeSkillBundleScaffoldInput {
+  slug: string;
+  name: string;
+  description?: string | null;
+  category?: string | null;
+  version?: string | null;
+  author?: string | null;
+  bundleProfile?: "general" | "research" | "workflow" | "media" | "custom" | null;
+  skillContent?: string | null;
+  systemPrompt?: string | null;
+}
+
+function getNativeSkillBundleProfileCopy(profile: NativeSkillBundleScaffoldInput["bundleProfile"]): {
+  label: string;
+  summary: string;
+  checklist: string[];
+  guidance: string;
+} {
+  switch (profile) {
+    case "research":
+      return {
+        label: "Research",
+        summary: "Optimized for deep analysis, citations, and structured findings.",
+        checklist: [
+          "State how sources should be selected and cited.",
+          "Define what counts as a reliable source.",
+          "Keep outputs concise, traceable, and review-friendly.",
+        ],
+        guidance: "Use when the skill needs evidence gathering, synthesis, or grounded reasoning.",
+      };
+    case "workflow":
+      return {
+        label: "Workflow",
+        summary: "Optimized for repeatable automations, orchestration, and task sequencing.",
+        checklist: [
+          "List the primary workflow steps and handoff points.",
+          "Describe retry and fallback behavior.",
+          "Keep side effects within declared outputs.",
+        ],
+        guidance: "Use when the skill coordinates multiple steps, tools, or long-running processes.",
+      };
+    case "media":
+      return {
+        label: "Media",
+        summary: "Optimized for image, video, and asset generation workflows.",
+        checklist: [
+          "Specify input formats, output formats, and size limits.",
+          "Document any quality or safety constraints.",
+          "Describe model and tool dependencies explicitly.",
+        ],
+        guidance: "Use when the skill works with creative or media generation tasks.",
+      };
+    case "custom":
+      return {
+        label: "Custom",
+        summary: "A flexible starting point for specialized native bundles.",
+        checklist: [
+          "Describe the exact behavior you want from the skill.",
+          "Write explicit input and output contracts.",
+          "Add project-specific guardrails and verification steps.",
+        ],
+        guidance: "Use when none of the preset templates fit the skill well.",
+      };
+    case "general":
+    default:
+      return {
+        label: "General",
+        summary: "A balanced starter template for most OpenAI Agents Python skills.",
+        checklist: [
+          "Describe the skill's core responsibility.",
+          "Document required inputs and expected outputs.",
+          "List any safety or reliability guardrails.",
+        ],
+        guidance: "Use for most new skills when you want a broad, reusable scaffold.",
+      };
+  }
+}
+
+function renderNativeSkillMarkdown(input: NativeSkillBundleScaffoldInput): string {
+  const name = input.name.trim() || input.slug;
+  const description = input.description?.trim() || `Native skill bundle for ${name}`;
+  const version = input.version?.trim() || "1.0.0";
+  const category = input.category?.trim() || "other";
+  const author = input.author?.trim() || undefined;
+  const profile = getNativeSkillBundleProfileCopy(input.bundleProfile ?? "general");
+  const frontmatter = yaml.dump(
+    {
+      name,
+      description,
+      version,
+      category,
+      target_platform: "agents_python",
+      bundle_profile: input.bundleProfile ?? "general",
+      ...(author ? { author } : {}),
+    },
+    { lineWidth: 120, noRefs: true, sortKeys: false },
+  ).trim();
+  const skillContent = input.skillContent?.trim() || input.systemPrompt?.trim() || "Describe the skill behavior, inputs, outputs, and guardrails here.";
+
+  return [
+    "---",
+    frontmatter,
+    "---",
+    "",
+    `# ${name}`,
+    "",
+    "## Overview",
+    "",
+    description,
+    "",
+    "## Native Bundle Notes",
+    "",
+    "- This skill is scaffolded as an OpenAI Agents Python native bundle.",
+    `- Template profile: ${profile.label}.`,
+    `- ${profile.summary}`,
+    "- Entry points are declared in `skill.lock.json`.",
+    "- Keep writes confined to declared output paths.",
+    "",
+    "## Template Guidance",
+    "",
+    ...profile.checklist.map((line) => `- ${line}`),
+    "",
+    "## Skill Instructions",
+    "",
+    skillContent,
+    "",
+    "## Verification",
+    "",
+    "- Run `scripts/verify.sh` before finalizing any run.",
+    "",
+  ].join("\n");
+}
+
+export function writeNativeSkillBundleScaffold(
+  skillDir: string,
+  input: NativeSkillBundleScaffoldInput,
+): string[] {
+  fs.mkdirSync(skillDir, { recursive: true });
+  fs.mkdirSync(path.join(skillDir, "scripts"), { recursive: true });
+  fs.mkdirSync(path.join(skillDir, "references"), { recursive: true });
+
+  const skillMd = renderNativeSkillMarkdown(input);
+  const lock = JSON.stringify({
+    name: input.slug,
+    version: input.version?.trim() || "1.0.0",
+    target_platform: "agents_python",
+    bundle_profile: input.bundleProfile ?? "general",
+    entrypoints: {
+      run: "scripts/run.sh",
+      verify: "scripts/verify.sh",
+    },
+    outputs: [
+      "SKILL.md",
+      "skill.md",
+      "scripts/run.sh",
+      "scripts/verify.sh",
+      "references/input_contract.md",
+      "references/output_contract.md",
+      "references/maintenance.md",
+      "MODEL_COMPATIBILITY.md",
+      "skill.lock.json",
+    ],
+    supported_modes: ["create", "improve", "maintenance"],
+    compatibility_mirror_policy: "mirror-skill-md",
+  }, null, 2) + "\n";
+  const profile = getNativeSkillBundleProfileCopy(input.bundleProfile ?? "general");
+
+  const runScript = `#!/usr/bin/env bash
+set -euo pipefail
+
+SKILL_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")/.." && pwd)"
+echo "[native-bundle] run scaffold: ${input.slug}"
+echo "[native-bundle] skill dir: \${SKILL_DIR}"
+`;
+
+  const verifyScript = `#!/usr/bin/env bash
+set -euo pipefail
+
+SKILL_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")/.." && pwd)"
+echo "[native-bundle] verify scaffold: ${input.slug}"
+echo "[native-bundle] skill dir: \${SKILL_DIR}"
+`;
+
+  const files: Record<string, string> = {
+    "SKILL.md": skillMd,
+    "skill.md": skillMd,
+    "skill.lock.json": lock,
+    "scripts/run.sh": runScript,
+    "scripts/verify.sh": verifyScript,
+    "references/input_contract.md": "# Input Contract\n\nDescribe the expected request payload here.\n",
+    "references/output_contract.md": "# Output Contract\n\nDescribe the expected response and artifact contract here.\n",
+    "references/maintenance.md": "# Maintenance Notes\n\n- Safe changes may be auto-applied.\n- Breaking changes require approval.\n- Verification runs before finalize.\n",
+    "MODEL_COMPATIBILITY.md": `# Model Compatibility\n\n- Keep provider-specific settings explicit.\n- Native bundle profile: ${profile.label}.\n- ${profile.guidance}\n`,
+  };
+
+  const written: string[] = [];
+  for (const [relativePath, content] of Object.entries(files)) {
+    const targetPath = path.join(skillDir, relativePath);
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, content, "utf-8");
+    written.push(targetPath);
+    if (relativePath.endsWith(".sh")) {
+      fs.chmodSync(targetPath, 0o755);
+    }
+  }
+  return written;
+}
+
 export function extractZipToDirectory(
   zip: AdmZip,
   destinationDir: string,

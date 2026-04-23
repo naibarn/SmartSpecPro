@@ -12,6 +12,7 @@ import {
   resolveSkillBundleDir,
   resolveSkillLockPath,
   resolveSkillManifestPath,
+  writeNativeSkillBundleScaffold,
   updateSkillManifestFiles,
 } from "./skillFiles";
 
@@ -166,6 +167,33 @@ target_platform: agents_python
     expect(resolveSkillBundleDir(skillDir)).toBe(skillDir);
     expect(resolveSkillLockPath(skillDir)).toBe(path.join(skillDir, "skill.lock.json"));
     expect(isNativeSkillBundle(skillDir)).toBe(true);
+  });
+
+  it("writes a native agents_python bundle scaffold", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "skill-files-native-scaffold-test-"));
+    tempDirs.push(tempDir);
+
+    const skillDir = path.join(tempDir, "scaffold-skill");
+    const written = writeNativeSkillBundleScaffold(skillDir, {
+      slug: "scaffold-skill",
+      name: "Scaffold Skill",
+      description: "Scaffolded native bundle",
+      category: "code_assistant",
+      version: "1.0.0",
+      author: "Codex",
+      bundleProfile: "research",
+      skillContent: "# Skill Instructions\n\nFollow the scaffold.\n",
+    });
+
+    expect(written).toContain(path.join(skillDir, "SKILL.md"));
+    expect(written).toContain(path.join(skillDir, "skill.lock.json"));
+    expect(fs.existsSync(path.join(skillDir, "scripts", "run.sh"))).toBe(true);
+    expect(fs.existsSync(path.join(skillDir, "scripts", "verify.sh"))).toBe(true);
+    expect(isNativeSkillBundle(skillDir)).toBe(true);
+    expect(fs.readFileSync(path.join(skillDir, "SKILL.md"), "utf-8")).toContain("target_platform: agents_python");
+    expect(fs.readFileSync(path.join(skillDir, "SKILL.md"), "utf-8")).toContain("bundle_profile: research");
+    expect(fs.readFileSync(path.join(skillDir, "skill.lock.json"), "utf-8")).toContain('"target_platform": "agents_python"');
+    expect(fs.readFileSync(path.join(skillDir, "MODEL_COMPATIBILITY.md"), "utf-8")).toContain("Native bundle profile: Research.");
   });
 
   it("flattens a single wrapper folder when extracting a ZIP bundle", () => {

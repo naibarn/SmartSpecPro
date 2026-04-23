@@ -1,4 +1,5 @@
 import { Fragment, useState, useEffect, useMemo, useRef, useCallback } from "react";
+import type { KeyboardEvent } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
@@ -475,6 +476,63 @@ function getNativeBundleLabel(
   return t("admin.skillsPage.nativeBundleLabels.missing");
 }
 
+type NativeBundleProfile = "general" | "research" | "workflow" | "media" | "custom";
+
+const NATIVE_BUNDLE_PROFILE_INFO: Record<
+  NativeBundleProfile,
+  {
+    title: string;
+    description: string;
+    bullets: string[];
+  }
+> = {
+  general: {
+    title: "General",
+    description: "Balanced starter scaffold for most skills.",
+    bullets: [
+      "Good default for new skills",
+      "Keeps instructions and contracts explicit",
+      "Easy to customize later",
+    ],
+  },
+  research: {
+    title: "Research",
+    description: "Structured for source-backed reasoning and synthesis.",
+    bullets: [
+      "Emphasizes citations and traceability",
+      "Useful for analysis and findings",
+      "Biases the scaffold toward grounded outputs",
+    ],
+  },
+  workflow: {
+    title: "Workflow",
+    description: "Designed for multi-step orchestration and automation.",
+    bullets: [
+      "Clarifies handoff points and retries",
+      "Fits tools, agents, and long-running jobs",
+      "Keeps side effects tightly controlled",
+    ],
+  },
+  media: {
+    title: "Media",
+    description: "Optimized for image, video, and asset generation work.",
+    bullets: [
+      "Calls out format and size constraints",
+      "Makes model/tool dependencies visible",
+      "Great for creative pipelines",
+    ],
+  },
+  custom: {
+    title: "Custom",
+    description: "Flexible starting point for specialized bundles.",
+    bullets: [
+      "Best when no preset fits well",
+      "Encourages explicit contracts",
+      "Leave room for project-specific rules",
+    ],
+  },
+};
+
 function getMediaModelsForCategory(
   category: string,
   imageModels?: { models?: any[] },
@@ -623,6 +681,9 @@ export default function AdminSkills() {
   // ZIP import state
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [zipSlug, setZipSlug] = useState("");
+  const [createDialogStep, setCreateDialogStep] = useState<1 | 2>(1);
+  const createSlugInputRef = useRef<HTMLInputElement | null>(null);
+  const createPrimaryActionRef = useRef<HTMLButtonElement | null>(null);
 
   // New skill form state
   const [newSkillData, setNewSkillData] = useState({
@@ -647,6 +708,8 @@ export default function AdminSkills() {
     requiresBrowser: null as boolean | null,
     maxRuntimeSeconds: null as number | null,
     maxInputMb: null as number | null,
+    bundleType: "native" as "native" | "legacy",
+    bundleProfile: "general" as NativeBundleProfile,
     systemPrompt: "",
     skillContent: "",
     marketplaceContent: "",
@@ -711,6 +774,32 @@ export default function AdminSkills() {
     search: searchQuery || undefined,
     enabledOnly: showEnabledOnly || undefined,
   });
+
+  const createSkillBasicIssues = useMemo(() => {
+    const issues: string[] = [];
+    if (!newSkillData.slug.trim()) {
+      issues.push("Slug is required.");
+    } else if (!/^[a-z0-9-]+$/.test(newSkillData.slug.trim())) {
+      issues.push("Slug may contain only lowercase letters, numbers, and dashes.");
+    } else if (skills?.some((skill) => skill.slug === newSkillData.slug.trim())) {
+      issues.push("A skill with this slug already exists.");
+    }
+
+    if (!newSkillData.name.trim()) {
+      issues.push("Name is required.");
+    }
+
+    return issues;
+  }, [newSkillData.name, newSkillData.slug, skills]);
+
+  const createSkillValidationIssues = useMemo(() => {
+    const issues = [...createSkillBasicIssues];
+    if (newSkillData.bundleType === "native" && !newSkillData.skillContent.trim() && !newSkillData.systemPrompt.trim()) {
+      issues.push("Native bundles work best when you provide skill instructions or a system prompt.");
+    }
+
+    return issues;
+  }, [createSkillBasicIssues, newSkillData.bundleType, newSkillData.skillContent, newSkillData.systemPrompt]);
 
   useEffect(() => {
     if (!skills || !openSkillIdFromQuery || editingSkill || openedSkillIdFromQueryRef.current === openSkillIdFromQuery) {
@@ -1337,6 +1426,7 @@ export default function AdminSkills() {
     onSuccess: () => {
       utils.skills.listFromDb.invalidate();
       setIsCreateDialogOpen(false);
+      setCreateDialogStep(1);
       resetNewSkillForm();
       toast({
         title: "Skill Created",
@@ -1748,6 +1838,8 @@ export default function AdminSkills() {
       requiresBrowser: null,
       maxRuntimeSeconds: null,
       maxInputMb: null,
+      bundleType: "native",
+      bundleProfile: "general",
       systemPrompt: "",
       skillContent: "",
       marketplaceContent: "",
@@ -1766,11 +1858,66 @@ export default function AdminSkills() {
       requiresBrowser: newSkillData.requiresBrowser,
       maxRuntimeSeconds: newSkillData.maxRuntimeSeconds,
       maxInputMb: newSkillData.maxInputMb,
+      bundleType: newSkillData.bundleType,
+      bundleProfile: newSkillData.bundleProfile,
       systemPrompt: newSkillData.systemPrompt || undefined,
       skillContent: newSkillData.skillContent || undefined,
       marketplaceContent: newSkillData.marketplaceContent || undefined,
       visibility: newSkillData.visibility,
     });
+  };
+
+  const openCreateDialog = () => {
+    setCreateDialogStep(1);
+    setIsCreateDialogOpen(true);
+  };
+
+  const closeCreateDialog = () => {
+    setIsCreateDialogOpen(false);
+    setCreateDialogStep(1);
+  };
+
+  useEffect(() => {
+    if (!isCreateDialogOpen) {
+      return;
+    }
+    if (createDialogStep === 1) {
+      createSlugInputRef.current?.focus();
+      return;
+    }
+    createPrimaryActionRef.current?.focus();
+  }, [createDialogStep, isCreateDialogOpen]);
+
+  const handleCreateDialogKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+
+    const isTextArea = target.tagName === "TEXTAREA";
+    const isEnter = event.key === "Enter";
+    const isModifierEnter = isEnter && (event.metaKey || event.ctrlKey);
+    const isPlainEnter = isEnter && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+
+    if (event.altKey && event.key === "1") {
+      event.preventDefault();
+      setCreateDialogStep(1);
+      return;
+    }
+    if (event.altKey && event.key === "2") {
+      event.preventDefault();
+      setCreateDialogStep(2);
+      return;
+    }
+
+    if (createDialogStep === 1 && isPlainEnter && !isTextArea && createSkillBasicIssues.length === 0) {
+      event.preventDefault();
+      setCreateDialogStep(2);
+      return;
+    }
+
+    if (createDialogStep === 2 && isModifierEnter && !isTextArea && createSkillValidationIssues.length === 0) {
+      event.preventDefault();
+      handleCreateSkill();
+    }
   };
 
   const handleUpdateSkill = () => {
@@ -1963,7 +2110,7 @@ export default function AdminSkills() {
             <Upload className="mr-2 h-4 w-4" />
             {t("admin.skillsPage.actions.importZip")}
           </Button>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <Button onClick={openCreateDialog}>
             <Plus className="mr-2 h-4 w-4" />
             {t("admin.skillsPage.actions.createSkill")}
           </Button>
@@ -3858,8 +4005,13 @@ export default function AdminSkills() {
       </Dialog>
 
       {/* Create Skill Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+        setIsCreateDialogOpen(open);
+        if (!open) {
+          setCreateDialogStep(1);
+        }
+      }}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto" onKeyDown={handleCreateDialogKeyDown}>
           <DialogHeader>
             <DialogTitle>{t("admin.skillsPage.createDialog.title")}</DialogTitle>
             <DialogDescription>
@@ -3867,13 +4019,39 @@ export default function AdminSkills() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex items-center gap-2 rounded-full border bg-muted/30 p-1 text-xs">
+              <button
+                type="button"
+                className={cn(
+                  "rounded-full px-3 py-1.5 transition-colors",
+                  createDialogStep === 1 ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                )}
+                onClick={() => setCreateDialogStep(1)}
+              >
+                1. Basic Info
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "rounded-full px-3 py-1.5 transition-colors",
+                  createDialogStep === 2 ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                )}
+                onClick={() => setCreateDialogStep(2)}
+              >
+                2. Preview & Advanced
+              </button>
+            </div>
+
+            {createDialogStep === 1 && (
+              <div className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <Label htmlFor="slug">{t("admin.skillsPage.fields.slug")}</Label>
-                <Input
+              <Input
                   id="slug"
                   placeholder={t("admin.skillsPage.createDialog.slugPlaceholder")}
                   value={newSkillData.slug}
+                  ref={createSlugInputRef}
                   onChange={(e) => {
                     const slug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-");
                     setNewSkillData({ ...newSkillData, slug });
@@ -3896,326 +4074,452 @@ export default function AdminSkills() {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="description">{t("admin.skillsPage.fields.description")}</Label>
-              <Input
-                id="description"
-                placeholder={t("admin.skillsPage.createDialog.descriptionPlaceholder")}
-                value={newSkillData.description}
-                onChange={(e) =>
-                  setNewSkillData({ ...newSkillData, description: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-4">
-              <div>
-                <Label>{t("admin.skillsPage.fields.category")}</Label>
-                <Select
-                  value={newSkillData.category}
-                  onValueChange={(value) => {
-                    const nextExecutionMode = isExecutionModeCompatibleWithSkillCategory(
-                      value,
-                      newSkillData.executionMode,
-                    )
-                      ? newSkillData.executionMode
-                      : (getRecommendedExecutionModeForSkillCategory(value) || "llm-only");
-                    setNewSkillData(applySandboxDefaultsToNewSkill({
-                      ...newSkillData,
-                      category: value,
-                    }, nextExecutionMode));
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(categoryLabels).map(([key, label]) => (
-                      <SelectItem key={key} value={key}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>{t("admin.skillsPage.fields.executionMode")}</Label>
-                <Select
-                  value={newSkillData.executionMode}
-                  onValueChange={(value) =>
-                    setNewSkillData(applySandboxDefaultsToNewSkill(newSkillData, value as SkillExecutionMode))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAllowedExecutionModesForSkillCategory(newSkillData.category).map((mode) => (
-                      <SelectItem key={mode} value={mode}>
-                        {executionModeLabels[mode]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {getExecutionModeHelperText(t, newSkillData.category, newSkillData.executionMode)}
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="priority">{t("admin.skillsPage.fields.priority")}</Label>
-                <Input
-                  id="priority"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={newSkillData.priority}
-                  onChange={(e) =>
-                    setNewSkillData({ ...newSkillData, priority: parseInt(e.target.value) || 50 })
-                  }
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="creditMultiplier">{t("admin.skillsPage.fields.creditMultiplier")}</Label>
-                <Input
-                  id="creditMultiplier"
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={0.1}
-                  value={newSkillData.creditMultiplier}
-                  onChange={(e) =>
-                    setNewSkillData({ ...newSkillData, creditMultiplier: parseFloat(e.target.value) || 1 })
-                  }
-                />
-              </div>
-            </div>
-
-            {isSandboxExecutionMode(newSkillData.executionMode) && (
-              <div className="space-y-4 rounded-xl border p-4">
                 <div>
-                  <Label>{t("admin.skillsPage.sandbox.runtime.title")}</Label>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t("admin.skillsPage.sandbox.runtime.help")}
-                  </p>
+                  <Label htmlFor="description">{t("admin.skillsPage.fields.description")}</Label>
+                  <Input
+                    id="description"
+                    placeholder={t("admin.skillsPage.createDialog.descriptionPlaceholder")}
+                    value={newSkillData.description}
+                    onChange={(e) =>
+                      setNewSkillData({ ...newSkillData, description: e.target.value })
+                    }
+                  />
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>{t("admin.skillsPage.sandbox.profile")}</Label>
+                <div className="rounded-xl border bg-muted/20 p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <Label>Bundle Type</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Native bundle is the default and scaffolds OpenAI Agents Python files automatically.
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                      Default
+                    </Badge>
+                  </div>
+                  <Select
+                    value={newSkillData.bundleType}
+                    onValueChange={(value) => setNewSkillData({ ...newSkillData, bundleType: value as "native" | "legacy" })}
+                  >
+                    <SelectTrigger className="max-w-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="native">Native bundle (recommended)</SelectItem>
+                      <SelectItem value="legacy">Legacy DB-only skill</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="rounded-lg bg-background/80 p-3 text-xs text-muted-foreground">
+                    <p className="font-medium text-foreground">Native bundle creates a scaffold, then lets you refine it in step 2.</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div>
+                    <Label>{t("admin.skillsPage.fields.category")}</Label>
                     <Select
-                      value={newSkillData.sandboxProfileSlug || getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).sandboxProfileSlug || "browser-default"}
-                      onValueChange={(value) => setNewSkillData({ ...newSkillData, sandboxProfileSlug: value })}
+                      value={newSkillData.category}
+                      onValueChange={(value) => {
+                        const nextExecutionMode = isExecutionModeCompatibleWithSkillCategory(
+                          value,
+                          newSkillData.executionMode,
+                        )
+                          ? newSkillData.executionMode
+                          : (getRecommendedExecutionModeForSkillCategory(value) || "llm-only");
+                        setNewSkillData(applySandboxDefaultsToNewSkill({
+                          ...newSkillData,
+                          category: value,
+                        }, nextExecutionMode));
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {(sandboxProfiles && sandboxProfiles.length > 0 ? sandboxProfiles : [
-                          { slug: "code-default", name: "Code Execution (Default)" },
-                          { slug: "browser-default", name: "Browser Automation (Default)" },
-                          { slug: "file-parser", name: "File Parser" },
-                          { slug: "media-processing", name: "Media Processing" },
-                        ]).map((profile: any) => (
-                          <SelectItem key={profile.slug} value={profile.slug}>
-                            {profile.name} ({profile.slug})
+                        {Object.entries(categoryLabels).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>
+                            {label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="new-maxRuntimeSeconds">{t("admin.skillsPage.sandbox.maxRuntime")}</Label>
+                  <div>
+                    <Label>{t("admin.skillsPage.fields.executionMode")}</Label>
+                    <Select
+                      value={newSkillData.executionMode}
+                      onValueChange={(value) =>
+                        setNewSkillData(applySandboxDefaultsToNewSkill(newSkillData, value as SkillExecutionMode))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getAllowedExecutionModesForSkillCategory(newSkillData.category).map((mode) => (
+                          <SelectItem key={mode} value={mode}>
+                            {executionModeLabels[mode]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {getExecutionModeHelperText(t, newSkillData.category, newSkillData.executionMode)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="priority">{t("admin.skillsPage.fields.priority")}</Label>
                     <Input
-                      id="new-maxRuntimeSeconds"
+                      id="priority"
                       type="number"
-                      min={1}
-                      max={3600}
-                      value={newSkillData.maxRuntimeSeconds ?? getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).maxRuntimeSeconds ?? 300}
-                      onChange={(e) => setNewSkillData({
-                        ...newSkillData,
-                        maxRuntimeSeconds: parseInt(e.target.value, 10) || null,
-                      })}
+                      min={0}
+                      max={100}
+                      value={newSkillData.priority}
+                      onChange={(e) =>
+                        setNewSkillData({ ...newSkillData, priority: parseInt(e.target.value) || 50 })
+                      }
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="new-maxInputMb">{t("admin.skillsPage.sandbox.maxInput")}</Label>
+                  <div>
+                    <Label htmlFor="creditMultiplier">{t("admin.skillsPage.fields.creditMultiplier")}</Label>
                     <Input
-                      id="new-maxInputMb"
+                      id="creditMultiplier"
                       type="number"
-                      min={1}
-                      max={2048}
-                      value={newSkillData.maxInputMb ?? getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).maxInputMb ?? 25}
-                      onChange={(e) => setNewSkillData({
-                        ...newSkillData,
-                        maxInputMb: parseInt(e.target.value, 10) || null,
-                      })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="flex items-center justify-between rounded-lg border px-3 py-2">
-                    <div>
-                      <Label className="text-sm">{t("admin.skillsPage.sandbox.requiresNetwork.label")}</Label>
-                      <p className="text-xs text-muted-foreground">{t("admin.skillsPage.sandbox.requiresNetwork.help")}</p>
-                    </div>
-                    <Switch
-                      checked={newSkillData.requiresNetwork ?? !!getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).requiresNetwork}
-                      onCheckedChange={(checked) => setNewSkillData({ ...newSkillData, requiresNetwork: checked })}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-lg border px-3 py-2">
-                    <div>
-                      <Label className="text-sm">{t("admin.skillsPage.sandbox.requiresBrowser.label")}</Label>
-                      <p className="text-xs text-muted-foreground">{t("admin.skillsPage.sandbox.requiresBrowser.help")}</p>
-                    </div>
-                    <Switch
-                      checked={newSkillData.requiresBrowser ?? !!getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).requiresBrowser}
-                      onCheckedChange={(checked) => setNewSkillData({ ...newSkillData, requiresBrowser: checked })}
+                      min={0}
+                      max={100}
+                      step={0.1}
+                      value={newSkillData.creditMultiplier}
+                      onChange={(e) =>
+                        setNewSkillData({ ...newSkillData, creditMultiplier: parseFloat(e.target.value) || 1 })
+                      }
                     />
                   </div>
                 </div>
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label>{t("admin.skillsPage.fields.visibility")}</Label>
-              <Select
-                value={newSkillData.visibility || "private"}
-                onValueChange={(v) =>
-                  setNewSkillData({ ...newSkillData, visibility: v as "private" | "public" })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="private">{t("admin.skillsPage.visibility.privateOption")}</SelectItem>
-                  <SelectItem value="public">{t("admin.skillsPage.visibility.publicOption")}</SelectItem>
-                </SelectContent>
-              </Select>
-              {newSkillData.visibility === "public" && !isAdmin && (
-                <p className="text-xs text-muted-foreground">
-                  {t("admin.skillsPage.visibility.publicApprovalHelp")}
-                </p>
-              )}
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={newSkillData.isAutoTrigger}
-                  onCheckedChange={(checked) =>
-                    setNewSkillData({ ...newSkillData, isAutoTrigger: checked })
-                  }
-                />
-                <Label>{t("admin.skillsPage.createDialog.autoTrigger")}</Label>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={newSkillData.isEnabled}
-                    onCheckedChange={(checked) =>
-                      setNewSkillData({ ...newSkillData, isEnabled: checked })
-                    }
-                  />
-                  <Label>{t("admin.skillsPage.createDialog.enabled")}</Label>
+            {createDialogStep === 2 && (
+              <div className="space-y-4">
+                <div className="rounded-xl border bg-muted/20 p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <Label>Step 2: Preview & Advanced</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Review the scaffold and tune advanced settings before creating the skill.
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                      Ready
+                    </Badge>
+                  </div>
+                  {newSkillData.bundleType === "native" ? (
+                    <div className="space-y-3 rounded-lg bg-background/80 p-3">
+                      <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
+                        <div>
+                          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Native Profile</Label>
+                          <Select
+                            value={newSkillData.bundleProfile}
+                            onValueChange={(value) => setNewSkillData({ ...newSkillData, bundleProfile: value as NativeBundleProfile })}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="general">General</SelectItem>
+                              <SelectItem value="research">Research</SelectItem>
+                              <SelectItem value="workflow">Workflow</SelectItem>
+                              <SelectItem value="media">Media</SelectItem>
+                              <SelectItem value="custom">Custom</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                          <p className="font-medium text-foreground">
+                            {NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].title}
+                          </p>
+                          <p className="mt-1">{NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].description}</p>
+                          <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+                            {NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].bullets.map((bullet) => (
+                              <li key={bullet}>• {bullet}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                      <div className="rounded-md border bg-muted/10 p-3 text-xs text-muted-foreground space-y-1.5">
+                        <p className="font-medium text-foreground">This scaffold will include:</p>
+                        <ul className="grid gap-1 sm:grid-cols-2">
+                          <li>• `SKILL.md` + `skill.md`</li>
+                          <li>• `skill.lock.json`</li>
+                          <li>• `scripts/run.sh`</li>
+                          <li>• `scripts/verify.sh`</li>
+                          <li>• `references/input_contract.md`</li>
+                          <li>• `references/output_contract.md`</li>
+                          <li>• `references/maintenance.md`</li>
+                          <li>• `MODEL_COMPATIBILITY.md`</li>
+                        </ul>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg bg-background/80 p-3 text-xs text-muted-foreground space-y-1.5">
+                      <p className="font-medium text-foreground">Legacy DB-only skill</p>
+                      <p>This keeps the skill in the database without generating a native bundle scaffold.</p>
+                    </div>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground ml-11">{t("admin.skillsPage.createDialog.enabledHelp")}</p>
-              </div>
 
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={newSkillData.visibleByDefault}
-                    onCheckedChange={(checked) =>
-                      setNewSkillData({
-                        ...newSkillData,
-                        visibleByDefault: checked,
-                        ...(!checked && { enabledByDefault: false }),
-                      })
-                    }
-                  />
-                  <Label>{t("admin.skillsPage.createDialog.visibleByDefault")}</Label>
+                {createSkillValidationIssues.length > 0 && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 space-y-1.5">
+                    <p className="font-medium">Review before creating</p>
+                    <ul className="list-disc pl-4 space-y-1">
+                      {createSkillValidationIssues.map((issue) => (
+                        <li key={issue}>{issue}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="space-y-4 rounded-xl border p-4">
+                  <div>
+                    <Label>{t("admin.skillsPage.sandbox.runtime.title")}</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("admin.skillsPage.sandbox.runtime.help")}
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>{t("admin.skillsPage.sandbox.profile")}</Label>
+                      <Select
+                        value={newSkillData.sandboxProfileSlug || getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).sandboxProfileSlug || "browser-default"}
+                        onValueChange={(value) => setNewSkillData({ ...newSkillData, sandboxProfileSlug: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(sandboxProfiles && sandboxProfiles.length > 0 ? sandboxProfiles : [
+                            { slug: "code-default", name: "Code Execution (Default)" },
+                            { slug: "browser-default", name: "Browser Automation (Default)" },
+                            { slug: "file-parser", name: "File Parser" },
+                            { slug: "media-processing", name: "Media Processing" },
+                          ]).map((profile: any) => (
+                            <SelectItem key={profile.slug} value={profile.slug}>
+                              {profile.name} ({profile.slug})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="new-maxRuntimeSeconds">{t("admin.skillsPage.sandbox.maxRuntime")}</Label>
+                      <Input
+                        id="new-maxRuntimeSeconds"
+                        type="number"
+                        min={1}
+                        max={3600}
+                        value={newSkillData.maxRuntimeSeconds ?? getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).maxRuntimeSeconds ?? 300}
+                        onChange={(e) => setNewSkillData({
+                          ...newSkillData,
+                          maxRuntimeSeconds: parseInt(e.target.value, 10) || null,
+                        })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="new-maxInputMb">{t("admin.skillsPage.sandbox.maxInput")}</Label>
+                      <Input
+                        id="new-maxInputMb"
+                        type="number"
+                        min={1}
+                        max={2048}
+                        value={newSkillData.maxInputMb ?? getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).maxInputMb ?? 25}
+                        onChange={(e) => setNewSkillData({
+                          ...newSkillData,
+                          maxInputMb: parseInt(e.target.value, 10) || null,
+                        })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+                      <div>
+                        <Label className="text-sm">{t("admin.skillsPage.sandbox.requiresNetwork.label")}</Label>
+                        <p className="text-xs text-muted-foreground">{t("admin.skillsPage.sandbox.requiresNetwork.help")}</p>
+                      </div>
+                      <Switch
+                        checked={newSkillData.requiresNetwork ?? !!getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).requiresNetwork}
+                        onCheckedChange={(checked) => setNewSkillData({ ...newSkillData, requiresNetwork: checked })}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+                      <div>
+                        <Label className="text-sm">{t("admin.skillsPage.sandbox.requiresBrowser.label")}</Label>
+                        <p className="text-xs text-muted-foreground">{t("admin.skillsPage.sandbox.requiresBrowser.help")}</p>
+                      </div>
+                      <Switch
+                        checked={newSkillData.requiresBrowser ?? !!getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).requiresBrowser}
+                        onCheckedChange={(checked) => setNewSkillData({ ...newSkillData, requiresBrowser: checked })}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground ml-11">{t("admin.skillsPage.createDialog.visibleByDefaultHelp")}</p>
-              </div>
 
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={newSkillData.enabledByDefault}
-                    onCheckedChange={(checked) =>
-                      setNewSkillData({ ...newSkillData, enabledByDefault: checked })
+                <div className="space-y-2">
+                  <Label>{t("admin.skillsPage.fields.visibility")}</Label>
+                  <Select
+                    value={newSkillData.visibility || "private"}
+                    onValueChange={(v) =>
+                      setNewSkillData({ ...newSkillData, visibility: v as "private" | "public" })
                     }
-                    disabled={!newSkillData.visibleByDefault}
-                  />
-                  <Label className={!newSkillData.visibleByDefault ? "text-muted-foreground" : ""}>{t("admin.skillsPage.createDialog.enabledByDefault")}</Label>
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="private">{t("admin.skillsPage.visibility.privateOption")}</SelectItem>
+                      <SelectItem value="public">{t("admin.skillsPage.visibility.publicOption")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {newSkillData.visibility === "public" && !isAdmin && (
+                    <p className="text-xs text-muted-foreground">
+                      {t("admin.skillsPage.visibility.publicApprovalHelp")}
+                    </p>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground ml-11">{t("admin.skillsPage.createDialog.enabledByDefaultHelp")}</p>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={newSkillData.isAutoTrigger}
+                      onCheckedChange={(checked) =>
+                        setNewSkillData({ ...newSkillData, isAutoTrigger: checked })
+                      }
+                    />
+                    <Label>{t("admin.skillsPage.createDialog.autoTrigger")}</Label>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={newSkillData.isEnabled}
+                        onCheckedChange={(checked) =>
+                          setNewSkillData({ ...newSkillData, isEnabled: checked })
+                        }
+                      />
+                      <Label>{t("admin.skillsPage.createDialog.enabled")}</Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground ml-11">{t("admin.skillsPage.createDialog.enabledHelp")}</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={newSkillData.visibleByDefault}
+                        onCheckedChange={(checked) =>
+                          setNewSkillData({
+                            ...newSkillData,
+                            visibleByDefault: checked,
+                            ...(!checked && { enabledByDefault: false }),
+                          })
+                        }
+                      />
+                      <Label>{t("admin.skillsPage.createDialog.visibleByDefault")}</Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground ml-11">{t("admin.skillsPage.createDialog.visibleByDefaultHelp")}</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={newSkillData.enabledByDefault}
+                        onCheckedChange={(checked) =>
+                          setNewSkillData({ ...newSkillData, enabledByDefault: checked })
+                        }
+                        disabled={!newSkillData.visibleByDefault}
+                      />
+                      <Label className={!newSkillData.visibleByDefault ? "text-muted-foreground" : ""}>{t("admin.skillsPage.createDialog.enabledByDefault")}</Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground ml-11">{t("admin.skillsPage.createDialog.enabledByDefaultHelp")}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="systemPrompt">{t("admin.skillsPage.fields.systemPrompt")}</Label>
+                  <Textarea
+                    id="systemPrompt"
+                    placeholder={t("admin.skillsPage.createDialog.systemPromptPlaceholder")}
+                    value={newSkillData.systemPrompt}
+                    onChange={(e) =>
+                      setNewSkillData({ ...newSkillData, systemPrompt: e.target.value })
+                    }
+                    rows={4}
+                    className="font-mono text-sm"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="skillContent">{t("admin.skillsPage.fields.skillContent")}</Label>
+                  <Textarea
+                    id="skillContent"
+                    placeholder={t("admin.skillsPage.createDialog.skillContentPlaceholder")}
+                    value={newSkillData.skillContent}
+                    onChange={(e) =>
+                      setNewSkillData({ ...newSkillData, skillContent: e.target.value })
+                    }
+                    rows={6}
+                    className="font-mono text-sm"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="marketplaceContent">{t("admin.skillsPage.fields.marketplaceContent")}</Label>
+                  <p className="text-xs text-muted-foreground mb-1">{t("admin.skillsPage.marketplace.help")}</p>
+                  <Textarea
+                    id="marketplaceContent"
+                    placeholder={t("admin.skillsPage.marketplace.placeholder")}
+                    value={newSkillData.marketplaceContent}
+                    onChange={(e) =>
+                      setNewSkillData({ ...newSkillData, marketplaceContent: e.target.value })
+                    }
+                    rows={8}
+                    className="font-mono text-sm"
+                  />
+                </div>
               </div>
-            </div>
-
-            <div>
-              <Label htmlFor="systemPrompt">{t("admin.skillsPage.fields.systemPrompt")}</Label>
-              <Textarea
-                id="systemPrompt"
-                placeholder={t("admin.skillsPage.createDialog.systemPromptPlaceholder")}
-                value={newSkillData.systemPrompt}
-                onChange={(e) =>
-                  setNewSkillData({ ...newSkillData, systemPrompt: e.target.value })
-                }
-                rows={4}
-                className="font-mono text-sm"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="skillContent">{t("admin.skillsPage.fields.skillContent")}</Label>
-              <Textarea
-                id="skillContent"
-                placeholder={t("admin.skillsPage.createDialog.skillContentPlaceholder")}
-                value={newSkillData.skillContent}
-                onChange={(e) =>
-                  setNewSkillData({ ...newSkillData, skillContent: e.target.value })
-                }
-                rows={6}
-                className="font-mono text-sm"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="marketplaceContent">{t("admin.skillsPage.fields.marketplaceContent")}</Label>
-              <p className="text-xs text-muted-foreground mb-1">{t("admin.skillsPage.marketplace.help")}</p>
-              <Textarea
-                id="marketplaceContent"
-                placeholder={t("admin.skillsPage.marketplace.placeholder")}
-                value={newSkillData.marketplaceContent}
-                onChange={(e) =>
-                  setNewSkillData({ ...newSkillData, marketplaceContent: e.target.value })
-                }
-                rows={8}
-                className="font-mono text-sm"
-              />
-            </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+            <Button variant="outline" onClick={closeCreateDialog}>
               {t("common.cancel")}
             </Button>
-            <Button
-              onClick={handleCreateSkill}
-              disabled={!newSkillData.slug || !newSkillData.name || createMutation.isPending}
-            >
-              {createMutation.isPending ? t("admin.skillsPage.createDialog.creating") : t("admin.skillsPage.createDialog.create")}
-            </Button>
+            {createDialogStep === 1 ? (
+              <Button
+                onClick={() => setCreateDialogStep(2)}
+                disabled={createSkillBasicIssues.length > 0}
+              >
+                Review Preview
+              </Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setCreateDialogStep(1)}>
+                  Back
+                </Button>
+                <Button
+                  onClick={handleCreateSkill}
+                  disabled={createSkillValidationIssues.length > 0 || createMutation.isPending}
+                  ref={createPrimaryActionRef}
+                >
+                  {createMutation.isPending ? t("admin.skillsPage.createDialog.creating") : t("admin.skillsPage.createDialog.create")}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
