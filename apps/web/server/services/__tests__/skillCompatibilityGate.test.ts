@@ -58,6 +58,39 @@ describe("skillCompatibilityGate", () => {
     expect(snapshot.testsHash).toBeTruthy();
     expect(snapshot.schemaSummary.input.requiredFields).toEqual(["topic"]);
     expect(snapshot.schemaSummary.output.requiredFields).toEqual(["article"]);
+    expect(snapshot.nativeBundleReady).toBe(false);
+  });
+
+  it("captures native bundle readiness in the snapshot", () => {
+    const skillDir = createSkillDir({
+      "SKILL.md": "---\nname: Native Demo\ndescription: Native\nversion: 1.0.0\ntarget_platform: agents_python\n---\n# Native\n",
+      "skill.lock.json": JSON.stringify({
+        name: "Native Demo",
+        version: "1.0.0",
+        target_platform: "agents_python",
+        entrypoints: { run: "scripts/run.sh", verify: "scripts/verify.sh" },
+        outputs: ["SKILL.md", "skill.md"],
+        supported_modes: ["create", "improve", "maintenance"],
+        compatibility_mirror_policy: "mirror-skill-md",
+      }),
+      "scripts/run.sh": "#!/usr/bin/env bash\nset -euo pipefail\n",
+      "scripts/verify.sh": "#!/usr/bin/env bash\nset -euo pipefail\n",
+      "references/input_contract.md": "# Input\n",
+      "references/output_contract.md": "# Output\n",
+      "references/maintenance.md": "# Maintenance\n",
+      "MODEL_COMPATIBILITY.md": "# Model Compatibility\n",
+    });
+
+    const snapshot = buildSkillContractSnapshot({
+      slug: "native-demo",
+      folderPath: skillDir,
+      executionMode: "sandbox-command",
+    });
+
+    expect(snapshot.nativeBundleReady).toBe(true);
+    expect(snapshot.runtimeProfile).toBe("agents-python-native");
+    expect(snapshot.lockPath).toContain("skill.lock.json");
+    expect(snapshot.nativeBundleFiles).toContain("SKILL.md");
   });
 
   it("blocks removal of required input fields", () => {

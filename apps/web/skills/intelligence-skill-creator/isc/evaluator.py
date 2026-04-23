@@ -10,6 +10,7 @@ from typing import Any, List
 
 from .models import TestCase, TestResult, EvaluationReport
 from .registry import resolve_skill_bundle_dir, resolve_skill_files, resolve_skill_dir
+from .native_bundle import evaluate_native_skill_bundle, is_native_skill_bundle
 
 try:
     import jsonschema
@@ -182,6 +183,9 @@ def evaluate(skill_name: str) -> EvaluationReport:
 def evaluate_from_path(skill_dir: Path) -> EvaluationReport:
     bundle_dir = resolve_skill_bundle_dir(skill_dir) or skill_dir
     skill_name = skill_dir.name
+
+    if is_native_skill_bundle(bundle_dir):
+        return evaluate_native_skill_bundle(bundle_dir)
 
     tests_file = bundle_dir / "tests" / "tests.json"
     if not tests_file.exists():

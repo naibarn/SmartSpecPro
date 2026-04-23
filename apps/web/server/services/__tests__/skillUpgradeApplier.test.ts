@@ -138,6 +138,9 @@ describe("skillUpgradeApplier", () => {
       executionMode: "sandbox-command",
       runtimeProfile: "javascript-classic",
       manifestPath: "/skills/slide-bundle/SKILL.md",
+      lockPath: null,
+      nativeBundleReady: false,
+      nativeBundleFiles: [],
       manifestHash: "baseline-manifest",
       inputSchemaHash: "baseline-input",
       outputSchemaHash: "baseline-output",
@@ -209,6 +212,116 @@ describe("skillUpgradeApplier", () => {
     expect(compareSkillContractSnapshotsMock).toHaveBeenCalledWith(baselineSnapshot, candidateSnapshot);
   });
 
+  it("forces proposal-first flow when the maintenance change is breaking even if auto-apply is marked safe", async () => {
+    const recommendation = {
+      id: 103,
+      skillId: 9,
+      scheduleId: null,
+      recommendationType: "migrate-to-genjs",
+      title: "Upgrade to GenJS bundle",
+      summary: "Migrate this skill to GenJS.",
+      rationale: "Better modularity",
+      currentRuntime: "javascript-classic",
+      proposedRuntime: "genjs",
+      proposedAction: "migrate-to-genjs",
+      recommendationJson: {
+        affectedFiles: ["skill.manifest.json", "src/index.mjs"],
+        details: { candidateScore: 11 },
+      },
+      contractDeltaJson: {
+        inputRequiredFields: ["topic"],
+        outputRequiredFields: ["files"],
+      },
+      status: "pending_review",
+      isAutoApplySafe: true,
+    };
+
+    const skill = {
+      id: 9,
+      tenantId: "tenant-1",
+      slug: "migrate-me",
+      name: "Migrate Me",
+      description: "Runtime migration",
+      folderPath: "/skills/migrate-me",
+      executionMode: "sandbox-command",
+      configJson: {},
+      sandboxProfileSlug: "browser-default",
+      requiresNetwork: true,
+      requiresBrowser: false,
+      visibility: "private",
+    };
+
+    const run = { id: 503, skillId: 9, recommendationId: 103, status: "running" };
+    const approvedRecommendation = { ...recommendation, status: "approved" };
+    const queuedRun = { ...run, status: "running" };
+
+    const db = createMockDb({
+      selectResults: [
+        [recommendation],
+        [skill],
+        [],
+        [skill],
+      ],
+      insertReturningResults: [
+        [run],
+      ],
+      updateReturningResults: [
+        [approvedRecommendation],
+        [queuedRun],
+      ],
+    });
+
+    const baselineSnapshot = {
+      executionMode: "sandbox-command",
+      runtimeProfile: "javascript-classic",
+      manifestPath: "/skills/migrate-me/SKILL.md",
+      lockPath: null,
+      nativeBundleReady: false,
+      nativeBundleFiles: [],
+      manifestHash: "baseline-manifest",
+      inputSchemaHash: "baseline-input",
+      outputSchemaHash: "baseline-output",
+      fixtureHash: "baseline-fixture",
+      testsHash: "baseline-tests",
+      contractHash: "baseline-contract",
+      schemaSummary: {
+        input: { present: true, requiredFields: ["topic"], propertyTypes: { topic: "string" }, propertyCount: 1 },
+        output: { present: true, requiredFields: ["files"], propertyTypes: { files: "array" }, propertyCount: 1 },
+        uiPresent: true,
+      },
+      fileInventory: ["SKILL.md"],
+    };
+
+    buildSkillContractSnapshotMock
+      .mockReturnValueOnce(baselineSnapshot)
+      .mockReturnValueOnce({ ...baselineSnapshot, runtimeProfile: "genjs" });
+    compareSkillContractSnapshotsMock.mockReturnValue({
+      status: "compatible",
+      issues: [],
+    });
+
+    launchSkillStudioTaskMock.mockResolvedValue({
+      taskId: "studio-task-2",
+      mode: "improve",
+      summary: "queued",
+    });
+
+    const result = await applySkillUpgradeRecommendation({
+      db,
+      recommendationId: 103,
+      requestedBy: 11,
+      userRole: "admin",
+      userToken: "user-token",
+      publicUrl: "https://tenant.example.com",
+    });
+
+    expect(result.mode).toBe("queued");
+    expect(result.applyStrategy).toBe("proposal");
+    expect(launchSkillStudioTaskMock.mock.calls[0]?.[1]).toEqual(expect.objectContaining({
+      autoApplyProposal: false,
+    }));
+  });
+
   it("uses proposal-first flow for non-safe recommendations", async () => {
     const recommendation = {
       id: 102,
@@ -273,6 +386,9 @@ describe("skillUpgradeApplier", () => {
       executionMode: "sandbox-command",
       runtimeProfile: "javascript-classic",
       manifestPath: "/skills/deck-builder/SKILL.md",
+      lockPath: null,
+      nativeBundleReady: false,
+      nativeBundleFiles: [],
       manifestHash: "baseline-manifest",
       inputSchemaHash: "baseline-input",
       outputSchemaHash: "baseline-output",

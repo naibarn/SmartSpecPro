@@ -6,6 +6,8 @@ import {
   resolveSkillBundleDir,
   resolveSkillDirCandidates,
   resolveSkillManifestPath,
+  resolveSkillLockPath,
+  isNativeSkillBundle,
 } from "./skillFiles";
 
 export interface SkillMaintenanceTarget {
@@ -33,8 +35,11 @@ export interface SkillContractSnapshotData {
   skillDir: string | null;
   bundleDir: string | null;
   manifestPath: string | null;
+  lockPath: string | null;
   executionMode: string | null;
   runtimeProfile: string;
+  nativeBundleReady: boolean;
+  nativeBundleFiles: string[];
   inputSchemaHash: string | null;
   outputSchemaHash: string | null;
   testsHash: string | null;
@@ -189,6 +194,9 @@ function detectRuntimeProfile(bundleDir: string | null): string {
     return "unknown";
   }
 
+  if (isNativeSkillBundle(bundleDir)) {
+    return "agents-python-native";
+  }
   if (fs.existsSync(path.join(bundleDir, "skill.manifest.json")) || fs.existsSync(path.join(bundleDir, "src", "index.mjs"))) {
     return "genjs";
   }
@@ -213,6 +221,7 @@ export function buildSkillContractSnapshot(skill: SkillMaintenanceTarget): Skill
   const markdownManifestPath = skillDir ? resolveSkillManifestPath(skillDir) : null;
   const commandManifestPath = bundleDir ? path.join(bundleDir, "skill.manifest.json") : null;
   const manifestPath = markdownManifestPath ?? (commandManifestPath && fs.existsSync(commandManifestPath) ? commandManifestPath : null);
+  const lockPath = bundleDir ? resolveSkillLockPath(bundleDir) : null;
   const inputSchemaPath = bundleDir ? path.join(bundleDir, "schemas", "input.schema.json") : null;
   const outputSchemaPath = bundleDir ? path.join(bundleDir, "schemas", "output.schema.json") : null;
   const uiSchemaPath = bundleDir ? path.join(bundleDir, "schemas", "ui.schema.json") : null;
@@ -223,6 +232,20 @@ export function buildSkillContractSnapshot(skill: SkillMaintenanceTarget): Skill
   const inputSummary = summarizeSchema(inputSchema);
   const outputSummary = summarizeSchema(outputSchema);
   const runtimeProfile = detectRuntimeProfile(bundleDir);
+  const nativeBundleReady = Boolean(bundleDir && isNativeSkillBundle(bundleDir));
+  const nativeBundleFiles = bundleDir
+    ? [
+        "SKILL.md",
+        "skill.md",
+        "scripts/run.sh",
+        "scripts/verify.sh",
+        "references/input_contract.md",
+        "references/output_contract.md",
+        "references/maintenance.md",
+        "MODEL_COMPATIBILITY.md",
+        "skill.lock.json",
+      ].filter((relativePath) => fs.existsSync(path.join(bundleDir, relativePath)))
+    : [];
   const fileInventory = bundleDir ? (() => {
     const files: string[] = [];
     collectFilesRecursively(bundleDir, bundleDir, files);
@@ -243,8 +266,11 @@ export function buildSkillContractSnapshot(skill: SkillMaintenanceTarget): Skill
     skillDir,
     bundleDir,
     manifestPath,
+    lockPath,
     executionMode: skill.executionMode ?? null,
     runtimeProfile,
+    nativeBundleReady,
+    nativeBundleFiles,
     inputSchemaHash,
     outputSchemaHash,
     testsHash,
@@ -253,10 +279,13 @@ export function buildSkillContractSnapshot(skill: SkillMaintenanceTarget): Skill
     contractHash: sha256(JSON.stringify({
       executionMode: skill.executionMode ?? null,
       runtimeProfile,
+      nativeBundleReady,
+      nativeBundleFiles,
       inputSummary,
       outputSummary,
       uiPresent,
       manifestHash,
+      lockPath,
     })),
     schemaSummary: {
       input: inputSummary,
@@ -321,6 +350,15 @@ export function compareSkillContractSnapshots(
       kind: "execution-mode-changed",
       path: "executionMode",
       message: `Execution mode changed from '${baseline.executionMode}' to '${candidate.executionMode}'.`,
+    });
+  }
+
+  if (baseline.nativeBundleReady && !candidate.nativeBundleReady) {
+    issues.push({
+      severity: "blocked",
+      kind: "native-bundle-surface-removed",
+      path: "nativeBundleReady",
+      message: "Native bundle surface was removed.",
     });
   }
 

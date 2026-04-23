@@ -51,8 +51,12 @@ describe("skillMaintenanceAnalyzer", () => {
     });
 
     expect(result.recommendations.some((item) => item.recommendationType === "tests-missing")).toBe(true);
+    expect(result.recommendations.some((item) => item.recommendationType === "native-bundle-upgrade")).toBe(true);
     expect(result.facts.hasTests).toBe(false);
     expect(result.qualityScore).toBeLessThan(100);
+    expect(result.upgradePriorityScore).toBeGreaterThanOrEqual(35);
+    expect(result.parallelUpgradeEligible).toBe(true);
+    expect(result.upgradePriorityTier).not.toBe("low");
   });
 
   it("flags a strong classic-JS skill as a GenJS migration candidate", () => {

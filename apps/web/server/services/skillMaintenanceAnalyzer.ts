@@ -21,12 +21,30 @@ export interface SkillMaintenanceRecommendationDraft {
   details: Record<string, unknown>;
 }
 
+export type SkillUpgradePriorityTier = "low" | "medium" | "high" | "critical";
+
+export interface SkillLegacyUpgradeSignals {
+  hasRunScript: boolean;
+  hasVerifyScript: boolean;
+  hasModelCompatibilityDoc: boolean;
+  hasSkillLock: boolean;
+  hasCompatibilityMirror: boolean;
+  hasSchemas: boolean;
+  hasTests: boolean;
+  hasFixtures: boolean;
+  hasNativeBundleSurface: boolean;
+}
+
 export interface SkillMaintenanceAnalysisResult {
   skillSlug: string;
   qualityScore: number;
   currentRuntime: string;
   isGenjsCandidate: boolean;
   genjsCandidateScore: number;
+  upgradePriorityScore: number;
+  upgradePriorityTier: SkillUpgradePriorityTier;
+  parallelUpgradeEligible: boolean;
+  legacyUpgradeSignals: SkillLegacyUpgradeSignals;
   recommendations: SkillMaintenanceRecommendationDraft[];
   snapshot: SkillContractSnapshotData;
   facts: {
@@ -38,6 +56,7 @@ export interface SkillMaintenanceAnalysisResult {
     hasPackageJson: boolean;
     hasSandboxProfile: boolean;
     hasBundleManifest: boolean;
+    hasNativeBundle: boolean;
     entrypoint: string | null;
   };
 }
@@ -63,6 +82,85 @@ function pushRecommendation(
   draft: SkillMaintenanceRecommendationDraft,
 ): void {
   sink.push(draft);
+}
+
+function hasFile(snapshot: SkillContractSnapshotData, relativePath: string): boolean {
+  return snapshot.fileInventory.includes(relativePath);
+}
+
+function computeLegacyUpgradeSignals(snapshot: SkillContractSnapshotData): SkillLegacyUpgradeSignals {
+  const hasRunScript = hasFile(snapshot, "scripts/run.sh");
+  const hasVerifyScript = hasFile(snapshot, "scripts/verify.sh");
+  const hasModelCompatibilityDoc = hasFile(snapshot, "MODEL_COMPATIBILITY.md");
+  const hasSkillLock = hasFile(snapshot, "skill.lock.json");
+  const hasCompatibilityMirror = hasFile(snapshot, "skill.md") && hasFile(snapshot, "SKILL.md");
+  const hasSchemas = hasFile(snapshot, "schemas/input.schema.json")
+    || hasFile(snapshot, "schemas/output.schema.json")
+    || hasFile(snapshot, "schemas/ui.schema.json");
+  const hasTests = Boolean(snapshot.testsHash);
+  const hasFixtures = Boolean(snapshot.fixtureHash);
+
+  return {
+    hasRunScript,
+    hasVerifyScript,
+    hasModelCompatibilityDoc,
+    hasSkillLock,
+    hasCompatibilityMirror,
+    hasSchemas,
+    hasTests,
+    hasFixtures,
+    hasNativeBundleSurface: hasRunScript && hasVerifyScript && hasModelCompatibilityDoc && hasSkillLock,
+  };
+}
+
+function computeUpgradePriorityTier(score: number): SkillUpgradePriorityTier {
+  if (score >= 80) return "critical";
+  if (score >= 60) return "high";
+  if (score >= 35) return "medium";
+  return "low";
+}
+
+function computeUpgradePriorityScore(
+  skill: SkillMaintenanceTarget,
+  snapshot: SkillContractSnapshotData,
+  signals: SkillLegacyUpgradeSignals,
+  analysis: {
+    isGenjsCandidate: boolean;
+    genjsCandidateScore: number;
+    facts: SkillMaintenanceAnalysisResult["facts"];
+  },
+): number {
+  let score = 0;
+
+  if (skill.executionMode === "sandbox-command" || skill.executionMode === "sandbox-code") {
+    score += 18;
+  } else if (skill.executionMode === "python") {
+    score += 14;
+  } else if (skill.executionMode === "llm-only") {
+    score += 8;
+  }
+
+  if (!signals.hasRunScript) score += 18;
+  if (!signals.hasVerifyScript) score += 18;
+  if (!signals.hasSkillLock) score += 12;
+  if (!signals.hasModelCompatibilityDoc) score += 8;
+  if (!signals.hasNativeBundleSurface) score += 6;
+
+  if (analysis.facts.hasTests) score += 8;
+  if (analysis.facts.hasFixtures) score += 6;
+  if (analysis.facts.hasInputSchema) score += 4;
+  if (analysis.facts.hasOutputSchema) score += 4;
+  if (analysis.facts.hasUiSchema) score += 2;
+  if (analysis.isGenjsCandidate) score += Math.min(12, analysis.genjsCandidateScore);
+
+  if (snapshot.runtimeProfile === "markdown-only") {
+    score += 10;
+  }
+  if (snapshot.runtimeProfile === "python" || snapshot.runtimeProfile === "javascript-classic" || snapshot.runtimeProfile === "javascript-esm") {
+    score += 6;
+  }
+
+  return Math.max(0, Math.min(100, score));
 }
 
 function detectEntrypoint(bundleDir: string | null): string | null {
@@ -165,6 +263,7 @@ export function analyzeSkillForMaintenance(skill: SkillMaintenanceTarget): Skill
   const entrypoint = detectEntrypoint(bundleDir);
   const hasSandboxProfile = Boolean(skill.sandboxProfileSlug?.trim());
   const recommendations: SkillMaintenanceRecommendationDraft[] = [];
+  const legacyUpgradeSignals = computeLegacyUpgradeSignals(snapshot);
 
   if (!snapshot.schemaSummary.input.present) {
     pushRecommendation(recommendations, {
@@ -278,6 +377,54 @@ export function analyzeSkillForMaintenance(skill: SkillMaintenanceTarget): Skill
 
   const genjsCandidateScore = scoreGenjsCandidate(skill, snapshot, packageJson);
   const isGenjsCandidate = genjsCandidateScore >= 8 && snapshot.runtimeProfile !== "genjs";
+
+  const upgradePriorityScore = computeUpgradePriorityScore(skill, snapshot, legacyUpgradeSignals, {
+    isGenjsCandidate,
+    genjsCandidateScore,
+    facts: {
+      hasInputSchema: snapshot.schemaSummary.input.present,
+      hasOutputSchema: snapshot.schemaSummary.output.present,
+      hasUiSchema: snapshot.schemaSummary.uiPresent,
+      hasTests,
+      hasFixtures,
+      hasPackageJson,
+      hasSandboxProfile,
+      hasBundleManifest,
+      hasNativeBundle: snapshot.nativeBundleReady,
+      entrypoint,
+    },
+  });
+  const upgradePriorityTier = computeUpgradePriorityTier(upgradePriorityScore);
+  const parallelUpgradeEligible = upgradePriorityScore >= 35 && !snapshot.nativeBundleReady;
+
+  if (parallelUpgradeEligible) {
+    pushRecommendation(recommendations, {
+      recommendationType: "native-bundle-upgrade",
+      title: "Upgrade this skill to the native bundle contract",
+      summary: "This skill is a strong candidate for parallel migration into the native Agents Python bundle shape so it can benefit from the new runtime path.",
+      riskLevel: upgradePriorityTier === "critical" ? "critical" : upgradePriorityTier === "high" ? "high" : "medium",
+      compatibilityStatus: legacyUpgradeSignals.hasSkillLock ? "warning" : "blocked",
+      proposedAction: "migrate-to-native-bundle",
+      proposedRuntime: snapshot.runtimeProfile === "markdown-only" ? "agents_python" : null,
+      isAutoApplySafe: false,
+      isGenjsCandidate,
+      affectedFiles: [
+        "SKILL.md",
+        "skill.md",
+        "scripts/run.sh",
+        "scripts/verify.sh",
+        "references/",
+        "MODEL_COMPATIBILITY.md",
+        "skill.lock.json",
+      ],
+      details: {
+        upgradePriorityScore,
+        upgradePriorityTier,
+        legacyUpgradeSignals,
+        parallelUpgradeEligible,
+      },
+    });
+  }
   if (isGenjsCandidate) {
     pushRecommendation(recommendations, {
       recommendationType: "migrate-to-genjs",
@@ -324,6 +471,10 @@ export function analyzeSkillForMaintenance(skill: SkillMaintenanceTarget): Skill
     currentRuntime: snapshot.runtimeProfile,
     isGenjsCandidate,
     genjsCandidateScore,
+    upgradePriorityScore,
+    upgradePriorityTier,
+    parallelUpgradeEligible,
+    legacyUpgradeSignals,
     recommendations,
     snapshot,
     facts: {
@@ -335,6 +486,7 @@ export function analyzeSkillForMaintenance(skill: SkillMaintenanceTarget): Skill
       hasPackageJson,
       hasSandboxProfile,
       hasBundleManifest,
+      hasNativeBundle: snapshot.nativeBundleReady,
       entrypoint,
     },
   };

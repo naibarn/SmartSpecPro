@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List
 
-from .registry import parse_skill_frontmatter
+from .frontmatter import parse_skill_frontmatter
 
 
 @dataclass(frozen=True)

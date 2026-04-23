@@ -92,12 +92,46 @@ function stringifyList(items: unknown): string {
   return items.map((item) => String(item)).join(", ");
 }
 
-function buildUpgradeBrief(skill: Skill, recommendation: SkillImprovementRecommendation): string {
+function getRecommendationDetails(
+  recommendation: SkillImprovementRecommendation,
+): {
+  recommendationJson: Record<string, unknown>;
+  contractDeltaJson: Record<string, unknown>;
+  details: Record<string, unknown>;
+} {
   const recommendationJson = (recommendation.recommendationJson as Record<string, unknown> | null) ?? {};
   const contractDeltaJson = (recommendation.contractDeltaJson as Record<string, unknown> | null) ?? {};
   const details = recommendationJson.details && typeof recommendationJson.details === "object"
     ? recommendationJson.details as Record<string, unknown>
     : {};
+  return { recommendationJson, contractDeltaJson, details };
+}
+
+function isBreakingMaintenanceChange(recommendation: SkillImprovementRecommendation): boolean {
+  const { recommendationJson, contractDeltaJson, details } = getRecommendationDetails(recommendation);
+  const proposedRuntime = typeof recommendation.proposedRuntime === "string" ? recommendation.proposedRuntime.trim() : "";
+  const currentRuntime = typeof recommendation.currentRuntime === "string" ? recommendation.currentRuntime.trim() : "";
+  const runtimeChanged = Boolean(proposedRuntime && currentRuntime && proposedRuntime !== currentRuntime);
+  const recommendationType = (recommendation.recommendationType || "").toLowerCase();
+  const explicitBreaking = Boolean(
+    recommendationJson["breakingChange"]
+    || recommendationJson["requiresApproval"]
+    || contractDeltaJson["breakingChange"]
+    || contractDeltaJson["requiresApproval"]
+    || details["breakingChange"]
+    || details["requiresApproval"],
+  );
+  const typeSignalsBreaking = (
+    recommendationType.includes("breaking")
+    || recommendationType.includes("migrate")
+    || recommendationType.includes("runtime")
+  );
+  return runtimeChanged || explicitBreaking || typeSignalsBreaking;
+}
+
+function buildUpgradeBrief(skill: Skill, recommendation: SkillImprovementRecommendation): string {
+  const { recommendationJson, contractDeltaJson, details } = getRecommendationDetails(recommendation);
+  const breakingChange = isBreakingMaintenanceChange(recommendation);
 
   const lines = [
     `Improve the existing SmartAIHub skill "${skill.name}" (${skill.slug}).`,
@@ -117,6 +151,7 @@ function buildUpgradeBrief(skill: Skill, recommendation: SkillImprovementRecomme
     `- Current runtime: ${recommendation.currentRuntime ?? "unknown"}`,
     `- Proposed runtime: ${recommendation.proposedRuntime ?? "unchanged"}`,
     `- Proposed action: ${recommendation.proposedAction ?? "unspecified"}`,
+    `- Change classification: ${breakingChange ? "breaking" : "non-breaking"}`,
     `- Affected files: ${stringifyList(recommendationJson.affectedFiles)}`,
     `- Input required fields: ${stringifyList(contractDeltaJson.inputRequiredFields)}`,
     `- Output required fields: ${stringifyList(contractDeltaJson.outputRequiredFields)}`,
@@ -712,7 +747,8 @@ export async function applySkillUpgradeRecommendation(
 
   const baselineSnapshot = await insertBaselineSnapshot({ db, skill, recommendation, run });
   const brief = buildUpgradeBrief(skill, recommendation);
-  const useProposalFirst = !recommendation.isAutoApplySafe;
+  const isBreakingChange = isBreakingMaintenanceChange(recommendation);
+  const useProposalFirst = isBreakingChange || !recommendation.isAutoApplySafe;
 
   const [approvedRecommendation] = await db
     .update(skillImprovementRecommendations)
@@ -787,6 +823,7 @@ export async function applySkillUpgradeRecommendation(
           studioSummary: launch.summary,
           tenantId,
           applyStrategy: useProposalFirst ? "proposal" : "auto-apply",
+          maintenanceClassification: isBreakingChange ? "breaking" : "non-breaking",
         },
         updatedAt: new Date(),
       })

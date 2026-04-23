@@ -96,6 +96,29 @@ export function resolveSkillBundleDir(skillDir: string): string | null {
   }
 }
 
+export function resolveSkillLockPath(skillDir: string): string | null {
+  const bundleDir = resolveSkillBundleDir(skillDir);
+  if (!bundleDir) {
+    return null;
+  }
+
+  const lockPath = path.join(bundleDir, "skill.lock.json");
+  return fs.existsSync(lockPath) ? lockPath : null;
+}
+
+export function isNativeSkillBundle(skillDir: string): boolean {
+  const bundleDir = resolveSkillBundleDir(skillDir);
+  if (!bundleDir) {
+    return false;
+  }
+
+  const lockPath = path.join(bundleDir, "skill.lock.json");
+  const runPath = path.join(bundleDir, "scripts", "run.sh");
+  const verifyPath = path.join(bundleDir, "scripts", "verify.sh");
+  const skillMdPath = path.join(bundleDir, "SKILL.md");
+  return fs.existsSync(lockPath) && fs.existsSync(runPath) && fs.existsSync(verifyPath) && fs.existsSync(skillMdPath);
+}
+
 export function resolveSkillDirCandidates(folderPath: string): string[] {
   if (path.isAbsolute(folderPath)) {
     return [folderPath];

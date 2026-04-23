@@ -1,0 +1,26 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/106-openai-agents-python-native-skill-system/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/106-openai-agents-python-native-skill-system/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-isc-native-bundle",
+    "section-02-native-runtime-supervisor",
+    "section-03-node-registry-compatibility",
+    "section-04-maintenance-migration",
+    "section-05-security-tests-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-22T17:50:21.430744+00:00"
+}

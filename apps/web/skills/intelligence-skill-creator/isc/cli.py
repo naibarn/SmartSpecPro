@@ -10,10 +10,21 @@ from .evaluator import evaluate, report_to_json_dict
 from .runner import iterate_improve
 from .llm import load_llm_config_from_env
 from .proposals import apply_patch_payload, save_patch_proposal
+from .native_bundle import (
+    NATIVE_TARGET_PLATFORM,
+    build_native_skill_files,
+    derive_native_skill_plan_from_legacy,
+    evaluate_native_skill_bundle,
+    is_native_skill_bundle,
+    migrate_legacy_skill_bundle,
+    normalize_skill_plan,
+    write_native_skill_bundle,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RUNS_DIR = PROJECT_ROOT / "runs"
 RUNS_DIR.mkdir(exist_ok=True)
+DEFAULT_SKILLS_ROOT = PROJECT_ROOT.parent.parent
 console = Console()
 
 def cmd_list(_args):
@@ -29,7 +40,11 @@ def cmd_list(_args):
     console.print(t)
 
 def cmd_evaluate(args):
-    rep = evaluate(args.skill)
+    if getattr(args, "target_platform", None) == NATIVE_TARGET_PLATFORM:
+        skill_dir = _resolve_native_skill_dir(args.skill, getattr(args, "skills_root", None))
+        rep = evaluate_native_skill_bundle(skill_dir)
+    else:
+        rep = evaluate(args.skill)
     out_path = RUNS_DIR / f"{args.skill}.evaluation.json"
     out_path.write_text(json.dumps(report_to_json_dict(rep), ensure_ascii=False, indent=2), encoding="utf-8")
     console.print(Panel.fit(f"[bold]{args.skill}[/bold]\nPassed {rep.passed}/{rep.total} (pass_rate={rep.pass_rate:.0%})\nSaved: {out_path}"))
@@ -37,7 +52,93 @@ def cmd_evaluate(args):
 def _load_input(path: str) -> dict:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
+def _resolve_skills_root(skills_root: str | None) -> Path:
+    return Path(skills_root).resolve() if skills_root else DEFAULT_SKILLS_ROOT
+
+def _resolve_native_skill_dir(skill_name: str, skills_root: str | None = None) -> Path:
+    root = _resolve_skills_root(skills_root)
+    candidate = root / skill_name
+    if candidate.exists():
+        return candidate
+    try:
+        return resolve_skill_dir(skill_name)
+    except Exception:
+        return candidate
+
+def _extract_skill_plan(payload: dict, args) -> dict:
+    plan = dict(payload)
+    if args.skill and "skill_name" not in plan:
+        plan["skill_name"] = args.skill
+    if getattr(args, "target_platform", None):
+        plan["target_platform"] = args.target_platform
+    if getattr(args, "mirror_skill_md", None) is not None:
+        plan["mirror_skill_md"] = args.mirror_skill_md
+    return normalize_skill_plan(plan)
+
+def cmd_create(args):
+    if args.target_platform != NATIVE_TARGET_PLATFORM:
+        raise SystemExit(f"Unsupported target platform: {args.target_platform}")
+
+    payload = _load_input(args.input_file) if args.input_file else {}
+    plan = _extract_skill_plan(payload, args)
+    skills_root = _resolve_skills_root(args.skills_root)
+    bundle_dir = skills_root / plan["skill_name"]
+    written = write_native_skill_bundle(bundle_dir, plan, overwrite=bool(args.overwrite))
+    out_path = RUNS_DIR / f"{plan['skill_name']}.create.json"
+    out_path.write_text(
+        json.dumps(
+            {
+                "skill_name": plan["skill_name"],
+                "bundle_dir": str(bundle_dir),
+                "files_written": [str(path) for path in written],
+                "target_platform": NATIVE_TARGET_PLATFORM,
+                "created": True,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    console.print(
+        Panel.fit(
+            f"[bold]{plan['skill_name']}[/bold]\nBundle: {bundle_dir}\nFiles: {len(written)}\nSaved: {out_path}"
+        )
+    )
+
 def cmd_improve(args):
+    if getattr(args, "target_platform", None) == NATIVE_TARGET_PLATFORM:
+        skills_root = _resolve_skills_root(getattr(args, "skills_root", None))
+        skill_dir = _resolve_native_skill_dir(args.skill, getattr(args, "skills_root", None))
+        if not skill_dir.exists():
+            raise SystemExit(f"Skill directory not found for native improve: {skill_dir}")
+        if not is_native_skill_bundle(skill_dir):
+            plan = derive_native_skill_plan_from_legacy(skill_dir)
+        else:
+            skill_md = skill_dir / "SKILL.md"
+            payload = json.loads((skill_dir / "skill.lock.json").read_text(encoding="utf-8")) if (skill_dir / "skill.lock.json").exists() else {}
+            plan = derive_native_skill_plan_from_legacy(skill_dir)
+            if skill_md.exists():
+                plan["skill_name"] = payload.get("name") or plan["skill_name"]
+                plan["version"] = payload.get("version") or plan["version"]
+        written = write_native_skill_bundle(skill_dir, plan, overwrite=True)
+        rep = evaluate_native_skill_bundle(skill_dir)
+        out_path = RUNS_DIR / f"{args.skill}.native-improve.json"
+        out_path.write_text(
+            json.dumps(
+                {
+                    "skill_name": args.skill,
+                    "bundle_dir": str(skill_dir),
+                    "files_written": [str(path) for path in written],
+                    "pass_rate": rep.pass_rate,
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        console.print(Panel.fit(f"Bundle: {skill_dir}\nFinal: Passed {rep.passed}/{rep.total} (pass_rate={rep.pass_rate:.0%})\nSaved: {out_path}"))
+        return
+
     payload = _load_input(args.input_file) if args.input_file else {}
     skill_name = payload.get("skill_name") or args.skill
     mode = payload.get("mode") or args.mode
@@ -85,6 +186,30 @@ def cmd_improve(args):
         f"Workspace: {res.workspace}\nFinal: Passed {res.final_report.passed}/{res.final_report.total} (pass_rate={res.final_report.pass_rate:.0%})\nSaved proposals: {props_dir}"
     ))
 
+def cmd_migrate_legacy(args):
+    skills_root = _resolve_skills_root(getattr(args, "skills_root", None))
+    source_dir = _resolve_native_skill_dir(args.skill, getattr(args, "skills_root", None))
+    if not source_dir.exists():
+        raise SystemExit(f"Skill directory not found for migration: {source_dir}")
+    written = migrate_legacy_skill_bundle(source_dir, source_dir if args.in_place else skills_root / args.skill)
+    rep = evaluate_native_skill_bundle(source_dir if args.in_place else skills_root / args.skill)
+    out_path = RUNS_DIR / f"{args.skill}.migration.json"
+    out_path.write_text(
+        json.dumps(
+            {
+                "skill_name": args.skill,
+                "source_dir": str(source_dir),
+                "target_dir": str(source_dir if args.in_place else skills_root / args.skill),
+                "files_written": [str(path) for path in written],
+                "pass_rate": rep.pass_rate,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    console.print(Panel.fit(f"Source: {source_dir}\nPass rate: {rep.pass_rate:.0%}\nSaved: {out_path}"))
+
 def cmd_apply(args):
     props_dir = RUNS_DIR / "proposals" / args.skill
     proposal_files = sorted(props_dir.glob("*.json")) if props_dir.exists() else []
@@ -111,7 +236,16 @@ def build_parser():
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sp=sub.add_parser("list"); sp.set_defaults(fn=cmd_list)
-    sp=sub.add_parser("evaluate"); sp.add_argument("--skill", required=True); sp.set_defaults(fn=cmd_evaluate)
+    sp=sub.add_parser("evaluate"); sp.add_argument("--skill", required=True); sp.add_argument("--target-platform", choices=["agents_python", "legacy_platform", "dual"]); sp.add_argument("--skills-root"); sp.set_defaults(fn=cmd_evaluate)
+
+    sp=sub.add_parser("create")
+    sp.add_argument("--input-file")
+    sp.add_argument("--skill")
+    sp.add_argument("--target-platform", choices=["agents_python"], required=True)
+    sp.add_argument("--skills-root")
+    sp.add_argument("--overwrite", action="store_true")
+    sp.add_argument("--mirror-skill-md", action="store_true")
+    sp.set_defaults(fn=cmd_create)
 
     sp=sub.add_parser("improve")
     sp.add_argument("--skill", required=False)
@@ -126,7 +260,15 @@ def build_parser():
     sp.add_argument("--max-topics", type=int)
     sp.add_argument("--max-results-per-topic", type=int)
     sp.add_argument("--max-snippet-chars", type=int)
+    sp.add_argument("--target-platform", choices=["agents_python","legacy_platform","dual"])
+    sp.add_argument("--skills-root")
     sp.set_defaults(fn=cmd_improve)
+
+    sp=sub.add_parser("migrate-legacy")
+    sp.add_argument("--skill", required=True)
+    sp.add_argument("--skills-root")
+    sp.add_argument("--in-place", action="store_true")
+    sp.set_defaults(fn=cmd_migrate_legacy)
 
     sp=sub.add_parser("apply"); sp.add_argument("--skill", required=True); sp.add_argument("--latest", action="store_true"); sp.set_defaults(fn=cmd_apply)
     return p
