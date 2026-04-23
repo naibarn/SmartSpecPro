@@ -194,6 +194,9 @@ target_platform: agents_python
     expect(fs.readFileSync(path.join(skillDir, "SKILL.md"), "utf-8")).toContain("bundle_profile: research");
     expect(fs.readFileSync(path.join(skillDir, "skill.lock.json"), "utf-8")).toContain('"target_platform": "agents_python"');
     expect(fs.readFileSync(path.join(skillDir, "MODEL_COMPATIBILITY.md"), "utf-8")).toContain("Native bundle profile: Research.");
+    expect(fs.readFileSync(path.join(skillDir, "references", "performance.md"), "utf-8")).toContain("cache repeated work");
+    expect(fs.readFileSync(path.join(skillDir, "references", "quality.md"), "utf-8")).toContain("Validate inputs");
+    expect(fs.readFileSync(path.join(skillDir, "references", "failure_modes.md"), "utf-8")).toContain("Missing inputs");
   });
 
   it("flattens a single wrapper folder when extracting a ZIP bundle", () => {

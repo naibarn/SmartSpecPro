@@ -60,10 +60,17 @@ function buildDb(rows: any[], skillRows: any[]) {
     from: vi.fn(() => skillsQuery),
   };
 
+  const latestRunQuery = {
+    where: vi.fn(() => latestRunQuery),
+    orderBy: vi.fn().mockResolvedValue([]),
+    from: vi.fn(() => latestRunQuery),
+  };
+
   return {
     select: vi.fn()
       .mockReturnValueOnce(recommendationQuery)
-      .mockReturnValueOnce(skillsQuery),
+      .mockReturnValueOnce(skillsQuery)
+      .mockReturnValueOnce(latestRunQuery),
   };
 }
 

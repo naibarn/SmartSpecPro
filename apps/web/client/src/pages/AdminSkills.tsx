@@ -41,6 +41,7 @@ import {
   Plus,
   Trash2,
   RefreshCw,
+  Loader2,
   FolderOpen,
   Upload,
   Search,
@@ -169,6 +170,19 @@ interface MaintenanceRecommendation {
   recommendationJson: Record<string, any>;
   analyzedAt: Date;
   updatedAt: Date;
+  latestRun?: {
+    id: number;
+    runType: string;
+    status: string;
+    summary: string | null;
+    errorMessage: string | null;
+    verificationJson: Record<string, unknown> | null;
+    logsJson: Record<string, unknown> | null;
+    startedAt: string | null;
+    endedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
   skill?: {
     id: number;
     slug: string;
@@ -484,6 +498,8 @@ const NATIVE_BUNDLE_PROFILE_INFO: Record<
     title: string;
     description: string;
     bullets: string[];
+    performance: string[];
+    quality: string[];
   }
 > = {
   general: {
@@ -494,6 +510,16 @@ const NATIVE_BUNDLE_PROFILE_INFO: Record<
       "Keeps instructions and contracts explicit",
       "Easy to customize later",
     ],
+    performance: [
+      "Favor concise prompts and structured outputs",
+      "Avoid redundant reads and writes",
+      "Keep the critical path short",
+    ],
+    quality: [
+      "Use concise instructions and explicit outputs",
+      "Add a verify step for the critical path",
+      "Avoid unnecessary tool calls",
+    ],
   },
   research: {
     title: "Research",
@@ -502,6 +528,16 @@ const NATIVE_BUNDLE_PROFILE_INFO: Record<
       "Emphasizes citations and traceability",
       "Useful for analysis and findings",
       "Biases the scaffold toward grounded outputs",
+    ],
+    performance: [
+      "Batch source checks before summarizing",
+      "Cache repeated lookups within a run",
+      "Prefer structured summaries over verbose prose",
+    ],
+    quality: [
+      "Batch source checks before summarizing",
+      "Differentiate facts from recommendations",
+      "Surface uncertainty explicitly",
     ],
   },
   workflow: {
@@ -512,6 +548,16 @@ const NATIVE_BUNDLE_PROFILE_INFO: Record<
       "Fits tools, agents, and long-running jobs",
       "Keeps side effects tightly controlled",
     ],
+    performance: [
+      "Make each step idempotent",
+      "Group related side effects into a single pass",
+      "Cache intermediate results for repeated use",
+    ],
+    quality: [
+      "Make each step idempotent",
+      "Document rollback behavior",
+      "Keep side effects within declared outputs",
+    ],
   },
   media: {
     title: "Media",
@@ -521,6 +567,16 @@ const NATIVE_BUNDLE_PROFILE_INFO: Record<
       "Makes model/tool dependencies visible",
       "Great for creative pipelines",
     ],
+    performance: [
+      "Reuse generated assets instead of regenerating them",
+      "Keep image/video dimensions and durations bounded",
+      "Minimize expensive model calls in loops",
+    ],
+    quality: [
+      "Bound dimensions, durations, and file sizes",
+      "Prefer reuse over regeneration",
+      "Document quality thresholds",
+    ],
   },
   custom: {
     title: "Custom",
@@ -529,6 +585,16 @@ const NATIVE_BUNDLE_PROFILE_INFO: Record<
       "Best when no preset fits well",
       "Encourages explicit contracts",
       "Leave room for project-specific rules",
+    ],
+    performance: [
+      "Keep the happy path short and predictable",
+      "Avoid unnecessary tool calls and retries",
+      "Document expected latency or cost constraints",
+    ],
+    quality: [
+      "Define success and failure clearly",
+      "Write explicit verification steps",
+      "Note likely failure modes",
     ],
   },
 };
@@ -661,6 +727,7 @@ export default function AdminSkills() {
   const [selectedLegacyUpgradeIds, setSelectedLegacyUpgradeIds] = useState<number[]>([]);
   const [expandedLegacyUpgradeIds, setExpandedLegacyUpgradeIds] = useState<number[]>([]);
   const [selectedRecommendationId, setSelectedRecommendationId] = useState<number | null>(null);
+  const [selectedRecommendationViewMode, setSelectedRecommendationViewMode] = useState<"advice" | "reasoning">("advice");
   const [pendingMaintenanceApply, setPendingMaintenanceApply] = useState<PendingMaintenanceApply | null>(null);
   const openedSkillIdFromQueryRef = useRef<number | null>(null);
   const [scheduleDraft, setScheduleDraft] = useState({
@@ -922,14 +989,16 @@ export default function AdminSkills() {
   const { data: pendingSkills } = trpc.skills.listPending.useQuery(undefined, {
     enabled: !!isAdmin,
   });
-  const { data: iscProposals } = trpc.skills.listIscProposals.useQuery(undefined, {
+  const { data: iscProposals, isLoading: isIscProposalsLoading } = trpc.skills.listIscProposals.useQuery(undefined, {
     enabled: !!isAdmin,
+    refetchInterval: activeTab === "proposals" || activeTab === "maintenance" ? 5_000 : false,
+    refetchIntervalInBackground: false,
   });
-  const { data: proposalPreviewData } = trpc.skills.getIscProposalContent.useQuery(
+  const { data: proposalPreviewData, isLoading: isProposalPreviewLoading } = trpc.skills.getIscProposalContent.useQuery(
     previewProposal || { skillName: "__placeholder__", diffFile: "placeholder.diff" },
     { enabled: !!previewProposal && !!isAdmin },
   );
-  const { data: maintenanceRecommendations, refetch: refetchMaintenanceRecommendations } =
+  const { data: maintenanceRecommendations, refetch: refetchMaintenanceRecommendations, isLoading: isMaintenanceRecommendationsLoading } =
     trpc.skills.getUpgradeRecommendations.useQuery(
       {
         skillId: maintenanceSkillFilter ?? undefined,
@@ -937,9 +1006,13 @@ export default function AdminSkills() {
         includeDismissed: maintenanceStatusFilter === "all",
         limit: 200,
       },
-      { enabled: !!isAdmin },
+      {
+        enabled: !!isAdmin,
+        refetchInterval: activeTab === "maintenance" || activeTab === "proposals" ? 5_000 : false,
+        refetchIntervalInBackground: false,
+      },
     );
-  const { data: selectedRecommendationDetail } = trpc.skills.getUpgradeRecommendationDetail.useQuery(
+  const { data: selectedRecommendationDetail, isLoading: isRecommendationDetailLoading } = trpc.skills.getUpgradeRecommendationDetail.useQuery(
     selectedRecommendationId ? { recommendationId: selectedRecommendationId } : { recommendationId: 0 },
     { enabled: !!selectedRecommendationId && !!isAdmin },
   );
@@ -950,6 +1023,7 @@ export default function AdminSkills() {
     data: legacyUpgradeQueue,
     refetch: refetchLegacyUpgradeQueue,
     isFetching: isLegacyUpgradeQueueFetching,
+    isLoading: isLegacyUpgradeQueueLoading,
   } = trpc.skills.getLegacyUpgradeQueue.useQuery(
     {
       includeApplied: legacyUpgradeIncludeApplied,
@@ -995,6 +1069,24 @@ export default function AdminSkills() {
       latestRecommendationBySkillId.set(item.skillId, item);
     }
   }
+  const maintenanceQueuedProposalCount = useMemo(() => (
+    (maintenanceRecommendations || []).filter((item) => {
+      const applyStrategy = item.latestRun?.logsJson && typeof item.latestRun.logsJson === "object"
+        ? (item.latestRun.logsJson as Record<string, unknown>).applyStrategy
+        : null;
+      return item.latestRun?.status === "running" && applyStrategy === "proposal";
+    }).length
+  ), [maintenanceRecommendations]);
+  const renderTableLoadingRow = (colSpan: number, label: string) => (
+    <TableRow>
+      <TableCell colSpan={colSpan} className="py-10 text-center text-muted-foreground">
+        <div className="flex items-center justify-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>{label}</span>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
   const maintenanceRecommendationGroups = useMemo<MaintenanceRecommendationGroup[]>(() => {
     const groups = new Map<number, MaintenanceRecommendationGroup>();
 
@@ -1332,6 +1424,11 @@ export default function AdminSkills() {
     });
   }
 
+  function openRecommendationDetail(recommendationId: number, viewMode: "advice" | "reasoning" = "advice") {
+    setSelectedRecommendationViewMode(viewMode);
+    setSelectedRecommendationId(recommendationId);
+  }
+
   function requestMaintenanceGroupApply(group: MaintenanceRecommendationGroup) {
     applyMaintenanceRecommendationsMutation.mutate({
       recommendationIds: group.recommendations.map((item) => item.id),
@@ -1417,7 +1514,7 @@ export default function AdminSkills() {
   );
 
   // Scan folders
-  const { data: folders, refetch: refetchFolders } = trpc.skills.scanFolders.useQuery(undefined, {
+  const { data: folders, refetch: refetchFolders, isLoading: isFoldersLoading } = trpc.skills.scanFolders.useQuery(undefined, {
     enabled: activeTab === "import",
   });
 
@@ -1612,7 +1709,7 @@ export default function AdminSkills() {
     onSuccess: (data) => {
       utils.skills.getUpgradeRecommendations.invalidate();
       if (data.recommendations?.length > 0) {
-        setSelectedRecommendationId(data.recommendations[0].id);
+        openRecommendationDetail(data.recommendations[0].id, "advice");
         setMaintenanceSkillFilter(data.skillId);
       }
       setActiveTab("maintenance");
@@ -1662,7 +1759,7 @@ export default function AdminSkills() {
       utils.skills.listIscProposals.invalidate();
       setPendingMaintenanceApply(null);
       if (data.applyStrategy === "proposal") {
-        setActiveTab("proposals");
+        setActiveTab("maintenance");
       }
       toast({
         title: data.applyStrategy === "proposal"
@@ -1671,7 +1768,7 @@ export default function AdminSkills() {
             ? "Upgrade Started"
             : "Upgrade Applied",
         description: data.applyStrategy === "proposal"
-          ? "A proposal-first upgrade task was queued. Review the generated diff in the Proposals tab before applying it."
+          ? "A proposal-first upgrade task was queued. It will show in Maintenance while it is generating, then move to Proposals once a .diff file is written."
           : data.mode === "queued"
             ? "The maintenance upgrade task was queued and will update this recommendation when it finishes."
             : "The recommendation was applied successfully.",
@@ -2154,6 +2251,11 @@ export default function AdminSkills() {
                 High {legacyUpgradeHighCount}
               </Badge>
             )}
+            {maintenanceQueuedProposalCount > 0 && (
+              <Badge className="ml-2" variant="outline">
+                Proposal queued {maintenanceQueuedProposalCount}
+              </Badge>
+            )}
           </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="pending">
@@ -2393,7 +2495,7 @@ export default function AdminSkills() {
                                   setMaintenanceSkillFilter(skill.id);
                                   setActiveTab("maintenance");
                                   if (latest) {
-                                    setSelectedRecommendationId(latest.id);
+                                    openRecommendationDetail(latest.id, "advice");
                                   }
                                 }}
                               >
@@ -2411,7 +2513,7 @@ export default function AdminSkills() {
                                   setMaintenanceSkillFilter(skill.id);
                                   setActiveTab("maintenance");
                                   if (latest) {
-                                    setSelectedRecommendationId(latest.id);
+                                    openRecommendationDetail(latest.id, "advice");
                                   }
                                 }}
                                 disabled={applyUpgradeMutation.isPending}
@@ -2528,7 +2630,9 @@ export default function AdminSkills() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(!folders || folders.length === 0) ? (
+                  {isFoldersLoading ? (
+                    renderTableLoadingRow(7, "Loading folders...")
+                  ) : (!folders || folders.length === 0) ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground">
                         {t("admin.skillsPage.folders.empty")}
@@ -2613,10 +2717,35 @@ export default function AdminSkills() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {!iscProposals?.proposals?.length ? (
+                  {isIscProposalsLoading ? (
+                    renderTableLoadingRow(5, "Loading proposals...")
+                  ) : (!iscProposals?.proposals?.length ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
-                        {t("admin.skillsPage.proposals.empty")}
+                      <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                        <div className="mx-auto flex max-w-lg flex-col items-center gap-4">
+                          <div className="space-y-1">
+                            <p className="font-medium text-foreground">{t("admin.skillsPage.proposals.empty")}</p>
+                            <p className="text-sm text-muted-foreground">
+                              ISC proposals will appear here after Skill Studio saves
+                              <code className="mx-1 rounded bg-muted px-1 py-0.5 text-[11px] text-foreground">
+                                runs/proposals/&lt;skill&gt;/&lt;round&gt;.diff
+                              </code>
+                              files.
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              If you just started a proposal-first upgrade, it will stay in Maintenance until the diff file is written.
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center justify-center gap-2">
+                            <Button variant="outline" onClick={() => setActiveTab("skills")}>
+                              Go to Skills
+                            </Button>
+                            <Button variant="outline" onClick={() => openStudio("create")}>
+                              <Sparkles className="mr-2 h-4 w-4" />
+                              Open Skill Studio
+                            </Button>
+                          </div>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -2649,7 +2778,7 @@ export default function AdminSkills() {
                         </TableCell>
                       </TableRow>
                     ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
           </DashboardCard>
@@ -2759,7 +2888,9 @@ export default function AdminSkills() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {!maintenanceRecommendationGroups.length ? (
+                  {isMaintenanceRecommendationsLoading ? (
+                    renderTableLoadingRow(7, "Loading maintenance recommendations...")
+                  ) : (!maintenanceRecommendationGroups.length ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground">
                         {t("admin.skillsPage.maintenance.empty")}
@@ -2822,19 +2953,29 @@ export default function AdminSkills() {
                                 {group.worstCompatibilityStatus}
                               </Badge>
                             </TableCell>
-                            <TableCell>{group.highestQualityScore ?? "-"}</TableCell>
-                            <TableCell>
-                              <div className="text-sm">{group.currentRuntime || "unknown"}</div>
-                              {group.recommendations.some((item) => item.isGenjsCandidate) && (
-                                <Badge variant="secondary" className="mt-1">{t("admin.skillsPage.maintenance.genjsCandidate")}</Badge>
-                              )}
-                            </TableCell>
+                          <TableCell>{group.highestQualityScore ?? "-"}</TableCell>
+                          <TableCell>
+                            <div className="text-sm">{group.currentRuntime || "unknown"}</div>
+                            {group.recommendations.some((item) => {
+                              const applyStrategy = item.latestRun?.logsJson && typeof item.latestRun.logsJson === "object"
+                                ? (item.latestRun.logsJson as Record<string, unknown>).applyStrategy
+                                : null;
+                              return item.latestRun?.status === "running" && applyStrategy === "proposal";
+                            }) && (
+                              <Badge variant="secondary" className="mt-1">
+                                Proposal queued
+                              </Badge>
+                            )}
+                            {group.recommendations.some((item) => item.isGenjsCandidate) && (
+                              <Badge variant="secondary" className="mt-1">{t("admin.skillsPage.maintenance.genjsCandidate")}</Badge>
+                            )}
+                          </TableCell>
                             <TableCell>
                               <div className="flex flex-wrap items-center gap-2">
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => setSelectedRecommendationId(group.primaryRecommendation.id)}
+                                  onClick={() => openRecommendationDetail(group.primaryRecommendation.id, "advice")}
                                 >
                                   {t("admin.skillsPage.maintenance.viewAdvice")}
                                 </Button>
@@ -2913,13 +3054,13 @@ export default function AdminSkills() {
                                             >
                                               {item.compatibilityStatus}
                                             </Badge>
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              onClick={() => setSelectedRecommendationId(item.id)}
-                                            >
-                                              {t("admin.skillsPage.maintenance.viewAdvice")}
-                                            </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openRecommendationDetail(item.id, "advice")}
+                              >
+                                {t("admin.skillsPage.maintenance.viewAdvice")}
+                              </Button>
                                             <Button
                                               size="sm"
                                               onClick={() => requestRecommendationApply(item, group.skill?.name || `Skill #${group.skillId}`)}
@@ -2952,7 +3093,7 @@ export default function AdminSkills() {
                         </Fragment>
                       );
                     })
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </div>
@@ -3166,7 +3307,9 @@ export default function AdminSkills() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {!legacyUpgradeQueueItems.length ? (
+                  {isLegacyUpgradeQueueLoading ? (
+                    renderTableLoadingRow(7, "Loading legacy upgrade queue...")
+                  ) : (!legacyUpgradeQueueItems.length ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground">
                         {t("admin.skillsPage.legacyQueue.empty")}
@@ -3277,9 +3420,16 @@ export default function AdminSkills() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => setSelectedRecommendationId(item.id)}
+                                onClick={() => openRecommendationDetail(item.id, "advice")}
                               >
                                 {t("admin.skillsPage.legacyQueue.viewAdvice")}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openRecommendationDetail(item.id, "reasoning")}
+                              >
+                                {t("admin.skillsPage.legacyQueue.viewReasoning")}
                               </Button>
                               <Button
                                 size="sm"
@@ -3408,7 +3558,7 @@ export default function AdminSkills() {
                         )}
                       </Fragment>
                     ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </div>
@@ -3803,12 +3953,21 @@ export default function AdminSkills() {
               {previewProposal?.skillName} / {previewProposal?.diffFile}
             </DialogDescription>
           </DialogHeader>
-          <Textarea
-            value={proposalPreviewData?.content || ""}
-            readOnly
-            rows={20}
-            className="font-mono text-xs"
-          />
+          {isProposalPreviewLoading ? (
+            <div className="flex min-h-[240px] items-center justify-center rounded-lg border bg-muted/20">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading proposal preview...
+              </div>
+            </div>
+          ) : (
+            <Textarea
+              value={proposalPreviewData?.content || ""}
+              readOnly
+              rows={20}
+              className="font-mono text-xs"
+            />
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPreviewProposal(null)}>
               {t("common.close")}
@@ -3878,10 +4037,22 @@ export default function AdminSkills() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!selectedRecommendationId} onOpenChange={() => setSelectedRecommendationId(null)}>
+      <Dialog
+        open={!!selectedRecommendationId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedRecommendationId(null);
+            setSelectedRecommendationViewMode("advice");
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{t("admin.skillsPage.advice.title")}</DialogTitle>
+            <DialogTitle>
+              {selectedRecommendationViewMode === "reasoning"
+                ? t("admin.skillsPage.legacyQueue.reasoningTitle")
+                : t("admin.skillsPage.advice.title")}
+            </DialogTitle>
             <DialogDescription>
               {selectedRecommendationDetail?.skill?.name || t("admin.skillsPage.advice.selectedSkill")}
               {selectedRecommendationDetail?.recommendation?.recommendationType
@@ -3889,8 +4060,43 @@ export default function AdminSkills() {
                 : ""}
             </DialogDescription>
           </DialogHeader>
-          {selectedRecommendationDetail?.recommendation ? (
+          {isRecommendationDetailLoading ? (
+            <div className="flex min-h-[220px] items-center justify-center rounded-lg border bg-muted/20">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading maintenance advice...
+              </div>
+            </div>
+          ) : selectedRecommendationDetail?.recommendation ? (
             <div className="space-y-4">
+              {selectedRecommendationViewMode === "reasoning" && (
+                <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    {t("admin.skillsPage.legacyQueue.reasoningFocus")}
+                  </div>
+                  <div className="mt-2 text-sm leading-6 text-slate-700">
+                    {getLegacyUpgradeReason({
+                      ...selectedRecommendationDetail.recommendation,
+                      latestRun: selectedRecommendationDetail.runs?.[0]
+                        ? {
+                            id: selectedRecommendationDetail.runs[0].id,
+                            runType: selectedRecommendationDetail.runs[0].runType,
+                            status: selectedRecommendationDetail.runs[0].status,
+                            summary: selectedRecommendationDetail.runs[0].summary,
+                            errorMessage: selectedRecommendationDetail.runs[0].errorMessage,
+                            verificationJson: (selectedRecommendationDetail.runs[0].verificationJson as Record<string, unknown> | null) ?? null,
+                            logsJson: (selectedRecommendationDetail.runs[0].logsJson as Record<string, unknown> | null) ?? null,
+                            startedAt: selectedRecommendationDetail.runs[0].startedAt ? new Date(selectedRecommendationDetail.runs[0].startedAt).toISOString() : null,
+                            endedAt: selectedRecommendationDetail.runs[0].endedAt ? new Date(selectedRecommendationDetail.runs[0].endedAt).toISOString() : null,
+                            createdAt: new Date(selectedRecommendationDetail.runs[0].createdAt).toISOString(),
+                            updatedAt: new Date(selectedRecommendationDetail.runs[0].updatedAt).toISOString(),
+                          }
+                        : null,
+                    } as unknown as LegacyUpgradeQueueItem) || t("admin.skillsPage.legacyQueue.noReason")}
+                  </div>
+                </div>
+              )}
+
               {selectedRecommendationDetail.skill?.slug && latestProposalBySkillName.has(selectedRecommendationDetail.skill.slug) && (
                 <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-sm">
                   {t("admin.skillsPage.advice.proposalAvailable")}
@@ -4114,7 +4320,7 @@ export default function AdminSkills() {
                     value={newSkillData.bundleType}
                     onValueChange={(value) => setNewSkillData({ ...newSkillData, bundleType: value as "native" | "legacy" })}
                   >
-                    <SelectTrigger className="max-w-xs">
+                    <SelectTrigger className="w-full max-w-xs min-w-0 overflow-hidden">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -4162,7 +4368,7 @@ export default function AdminSkills() {
                           }, nextExecutionMode));
                         }}
                       >
-                        <SelectTrigger className="min-w-0">
+                        <SelectTrigger className="w-full min-w-0 overflow-hidden">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -4186,7 +4392,7 @@ export default function AdminSkills() {
                           setNewSkillData(applySandboxDefaultsToNewSkill(newSkillData, value as SkillExecutionMode))
                         }
                       >
-                        <SelectTrigger className="min-w-0">
+                        <SelectTrigger className="w-full min-w-0 overflow-hidden">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -4241,9 +4447,9 @@ export default function AdminSkills() {
                             value={newSkillData.bundleProfile}
                             onValueChange={(value) => setNewSkillData({ ...newSkillData, bundleProfile: value as NativeBundleProfile })}
                           >
-                            <SelectTrigger className="mt-1">
-                              <SelectValue />
-                            </SelectTrigger>
+                          <SelectTrigger className="mt-1 w-full min-w-0 overflow-hidden">
+                            <SelectValue />
+                          </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="general">General</SelectItem>
                               <SelectItem value="research">Research</SelectItem>
@@ -4258,11 +4464,32 @@ export default function AdminSkills() {
                             {NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].title}
                           </p>
                           <p className="mt-1">{NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].description}</p>
+                          <p className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+                            ISC-aligned bundle contract
+                          </p>
                           <ul className="mt-2 grid gap-1 sm:grid-cols-2">
                             {NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].bullets.map((bullet) => (
                               <li key={bullet}>• {bullet}</li>
                             ))}
                           </ul>
+                          <div className="mt-3 grid gap-2 lg:grid-cols-2">
+                            <div className="rounded-md bg-background/60 p-2">
+                              <p className="font-medium text-foreground">Performance focus</p>
+                              <ul className="mt-1 grid gap-1">
+                                {NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].performance.map((bullet) => (
+                                  <li key={bullet}>• {bullet}</li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div className="rounded-md bg-background/60 p-2">
+                              <p className="font-medium text-foreground">Quality focus</p>
+                              <ul className="mt-1 grid gap-1">
+                                {NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].quality.map((bullet) => (
+                                  <li key={bullet}>• {bullet}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
                         </div>
                       </div>
                       <div className="grid gap-3 lg:grid-cols-2">
@@ -4281,6 +4508,9 @@ export default function AdminSkills() {
                             <li>• `references/input_contract.md`</li>
                             <li>• `references/output_contract.md`</li>
                             <li>• `references/maintenance.md`</li>
+                            <li>• `references/performance.md`</li>
+                            <li>• `references/quality.md`</li>
+                            <li>• `references/failure_modes.md`</li>
                             <li>• `MODEL_COMPATIBILITY.md`</li>
                           </ul>
                         </div>
@@ -4320,7 +4550,7 @@ export default function AdminSkills() {
                         value={newSkillData.sandboxProfileSlug || getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).sandboxProfileSlug || "browser-default"}
                         onValueChange={(value) => setNewSkillData({ ...newSkillData, sandboxProfileSlug: value })}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full min-w-0 overflow-hidden">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -4402,7 +4632,7 @@ export default function AdminSkills() {
                       setNewSkillData({ ...newSkillData, visibility: v as "private" | "public" })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full min-w-0 overflow-hidden">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

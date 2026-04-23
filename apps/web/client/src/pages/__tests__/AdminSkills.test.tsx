@@ -28,6 +28,10 @@ const mockMaintenanceRecommendationsUseQuery = vi.fn(() => ({
   data: [],
   isLoading: false,
 }));
+const mockRecommendationDetailUseQuery = vi.fn(() => ({
+  data: null,
+  isLoading: false,
+}));
 const makeQuery = (data: any = []) => ({ data, isLoading: false });
 const makeMutation = () => ({ mutateAsync: vi.fn(), isPending: false });
 
@@ -55,7 +59,7 @@ vi.mock("@/lib/trpc", () => ({
         listIscProposals: { useQuery: () => makeQuery({ proposals: [] }) },
         getIscProposalContent: { useQuery: () => makeQuery(null) },
         getUpgradeRecommendations: { useQuery: (...args: any[]) => mockMaintenanceRecommendationsUseQuery(...args) },
-        getUpgradeRecommendationDetail: { useQuery: () => makeQuery(null) },
+        getUpgradeRecommendationDetail: { useQuery: (...args: any[]) => mockRecommendationDetailUseQuery(...args) },
         listMaintenanceSchedules: { useQuery: () => makeQuery([]) },
         getLegacyUpgradeQueue: { useQuery: (...args: any[]) => mockLegacyUpgradeQueueUseQuery(...args) },
         getLegacyUpgradeQueueSummary: { useQuery: () => makeQuery({ count: 0 }) },
@@ -172,6 +176,7 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       if (key === "admin.skillsPage.editDialog.duplicateFromSourceGraph") return "Duplicate from source graph";
       if (key === "admin.skillsPage.editDialog.copyDuplicateLink") return "Copy duplicate link";
       if (key === "admin.skillsPage.legacyQueue.loadedFromPreference") return "Loaded from saved preference";
+      if (key === "admin.skillsPage.legacyQueue.viewReasoning") return "View Reasoning";
       if (key === "admin.skillsPage.legacyQueue.filters.all") return "All";
       if (key === "admin.skillsPage.legacyQueue.filters.critical") return "Critical";
       if (key === "admin.skillsPage.legacyQueue.filters.high") return "High";
@@ -194,6 +199,8 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       if (key === "admin.skillsPage.legacyQueue.appliedReasonFallback") return "The upgrade was applied successfully.";
       if (key === "admin.skillsPage.legacyQueue.approvedReasonFallback") return "The recommendation is approved and waiting for execution.";
       if (key === "admin.skillsPage.legacyQueue.noReason") return "No detailed reason was recorded.";
+      if (key === "admin.skillsPage.legacyQueue.reasoningTitle") return "Legacy Upgrade Reasoning";
+      if (key === "admin.skillsPage.legacyQueue.reasoningFocus") return "Reasoning focus";
       if (key === "admin.skillsPage.maintenance.applyAll") return `Apply all (${values?.count ?? 0})`;
       if (key === "admin.skillsPage.maintenance.applyEligible") return `Apply eligible (${values?.count ?? 0})`;
       if (key === "admin.skillsPage.maintenance.applyEligibleAcrossView") return `Apply eligible across view (${values?.count ?? 0})`;
@@ -210,6 +217,10 @@ vi.mock("sonner", () => ({
 describe("AdminSkills", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRecommendationDetailUseQuery.mockImplementation(() => ({
+      data: null,
+      isLoading: false,
+    }));
     mockLocation = "/settings/skills?skillId=99";
     mockSearch = "?skillId=99";
     window.localStorage.clear();
@@ -454,6 +465,120 @@ describe("AdminSkills", () => {
       expect(screen.getAllByText("Missing verify.sh required for native bundle contract.").length).toBeGreaterThan(0);
       expect(screen.getByText("Failure reason:")).toBeTruthy();
       expect(screen.getAllByText("Skill Studio returned an error while generating the proposal.").length).toBeGreaterThan(0);
+    });
+  });
+
+  it("opens a dedicated reasoning view for a legacy upgrade", async () => {
+    mockUseSearch.mockReturnValue("?tab=maintenance&skillId=99");
+    mockLegacyUpgradeQueueUseQuery.mockReturnValue({
+      data: [
+        {
+          id: 201,
+          skillId: 99,
+          status: "blocked",
+          upgradePriorityScore: 88,
+          upgradePriorityTier: "critical",
+          parallelUpgradeEligible: false,
+          legacyUpgradeSignals: { hasRunScript: true, hasVerifyScript: false },
+          latestRun: {
+            id: 501,
+            runType: "apply",
+            status: "failed",
+            summary: "Compatibility gate blocked this upgrade.",
+            errorMessage: "Missing verify.sh required for native bundle contract.",
+            verificationJson: {
+              status: "blocked",
+              issues: [{ message: "Missing verify.sh required for native bundle contract." }],
+            },
+            logsJson: {},
+            startedAt: new Date().toISOString(),
+            endedAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      ],
+      isLoading: false,
+    });
+    mockRecommendationDetailUseQuery.mockImplementation((input: any) => {
+      if (input?.recommendationId !== 201) {
+        return { data: null, isLoading: false };
+      }
+
+      return {
+        data: {
+          recommendation: {
+            id: 201,
+            skillId: 99,
+            recommendationType: "native-bundle-upgrade",
+            title: "Upgrade bundle",
+            summary: null,
+            status: "blocked",
+            riskLevel: "critical",
+            compatibilityStatus: "blocked",
+            qualityScore: 88,
+            currentRuntime: "markdown-only",
+            proposedRuntime: "agents_python",
+            proposedAction: "migrate-to-native-bundle",
+            isAutoApplySafe: false,
+            isGenjsCandidate: false,
+            recommendationJson: { affectedFiles: ["SKILL.md"] },
+            analyzedAt: new Date(),
+            updatedAt: new Date(),
+            skill: {
+              id: 99,
+              slug: "graph-assistant",
+              name: "Graph Assistant",
+              category: "chat_assistant",
+              executionMode: "llm-only",
+              sandboxProfileSlug: null,
+            },
+          },
+          skill: {
+            id: 99,
+            slug: "graph-assistant",
+            name: "Graph Assistant",
+            category: "chat_assistant",
+            executionMode: "llm-only",
+            sandboxProfileSlug: null,
+          },
+          snapshots: [],
+          runs: [
+            {
+              id: 501,
+              runType: "apply",
+              status: "failed",
+              summary: "Compatibility gate blocked this upgrade.",
+              errorMessage: "Missing verify.sh required for native bundle contract.",
+              verificationJson: {
+                status: "blocked",
+                issues: [{ message: "Missing verify.sh required for native bundle contract." }],
+              },
+              logsJson: {},
+              startedAt: new Date().toISOString(),
+              endedAt: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          ],
+        },
+        isLoading: false,
+      };
+    });
+
+    const { default: AdminSkills } = await import("@/pages/AdminSkills");
+    render(createElement(AdminSkills));
+
+    await waitFor(() => {
+      expect(screen.getAllByText("View Reasoning").length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getAllByText("View Reasoning")[0].closest("button") as HTMLElement);
+
+    await waitFor(() => {
+      expect(screen.getByText("Legacy Upgrade Reasoning")).toBeTruthy();
+      expect(screen.getByText("Reasoning focus")).toBeTruthy();
+      expect(screen.getByText("Blocked reason:")).toBeTruthy();
     });
   });
 

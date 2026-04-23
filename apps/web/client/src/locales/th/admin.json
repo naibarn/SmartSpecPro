@@ -702,5 +702,8 @@
   "admin.skillsPage.legacyQueue.failedReasonFallback": "ความพยายามอัปเกรดล้มเหลว",
   "admin.skillsPage.legacyQueue.appliedReasonFallback": "อัปเกรดสำเร็จแล้ว",
   "admin.skillsPage.legacyQueue.approvedReasonFallback": "คำแนะนำนี้ได้รับอนุมัติและรอดำเนินการ",
-  "admin.skillsPage.legacyQueue.noReason": "ไม่มีการบันทึกเหตุผลแบบละเอียด"
+  "admin.skillsPage.legacyQueue.noReason": "ไม่มีการบันทึกเหตุผลแบบละเอียด",
+  "admin.skillsPage.legacyQueue.viewReasoning": "ดูเหตุผล",
+  "admin.skillsPage.legacyQueue.reasoningTitle": "เหตุผลของ Legacy Upgrade",
+  "admin.skillsPage.legacyQueue.reasoningFocus": "โฟกัสเหตุผล"
 }

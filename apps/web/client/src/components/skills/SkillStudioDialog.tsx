@@ -116,6 +116,7 @@ export function SkillStudioDialog({
     enabled: open && gatewayMode === "system",
     staleTime: 5 * 60 * 1000,
   });
+  const isModelsLoading = open && gatewayMode === "system" && !modelsData;
 
   const launchMutation = trpc.skills.launchStudioTask.useMutation({
     onError: (error) => {
@@ -559,16 +560,22 @@ export function SkillStudioDialog({
             {gatewayMode === "system" ? (
               <div className="space-y-2">
                 <Label>Model</Label>
-                <Select value={llmModelSearch} onValueChange={setLlmModelSearch}>
+                <Select value={llmModelSearch} onValueChange={setLlmModelSearch} disabled={isModelsLoading}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose a model" />
+                    <SelectValue placeholder={isModelsLoading ? "Loading models..." : "Choose a model"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {(modelsData?.models || []).map((model) => (
-                      <SelectItem key={model.id} value={model.id}>
-                        {model.name} ({model.providerDisplayName})
+                    {isModelsLoading ? (
+                      <SelectItem value="__loading__" disabled>
+                        Loading models...
                       </SelectItem>
-                    ))}
+                    ) : (
+                      (modelsData?.models || []).map((model) => (
+                        <SelectItem key={model.id} value={model.id}>
+                          {model.name} ({model.providerDisplayName})
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>

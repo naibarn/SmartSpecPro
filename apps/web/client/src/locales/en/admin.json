@@ -702,5 +702,8 @@
   "admin.skillsPage.legacyQueue.failedReasonFallback": "The upgrade attempt failed.",
   "admin.skillsPage.legacyQueue.appliedReasonFallback": "The upgrade was applied successfully.",
   "admin.skillsPage.legacyQueue.approvedReasonFallback": "The recommendation is approved and waiting for execution.",
-  "admin.skillsPage.legacyQueue.noReason": "No detailed reason was recorded."
+  "admin.skillsPage.legacyQueue.noReason": "No detailed reason was recorded.",
+  "admin.skillsPage.legacyQueue.viewReasoning": "View Reasoning",
+  "admin.skillsPage.legacyQueue.reasoningTitle": "Legacy Upgrade Reasoning",
+  "admin.skillsPage.legacyQueue.reasoningFocus": "Reasoning focus"
 }

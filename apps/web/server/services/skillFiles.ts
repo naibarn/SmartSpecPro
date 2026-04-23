@@ -214,6 +214,8 @@ function getNativeSkillBundleProfileCopy(profile: NativeSkillBundleScaffoldInput
   label: string;
   summary: string;
   checklist: string[];
+  performanceNotes: string[];
+  qualityNotes: string[];
   guidance: string;
 } {
   switch (profile) {
@@ -226,6 +228,16 @@ function getNativeSkillBundleProfileCopy(profile: NativeSkillBundleScaffoldInput
           "Define what counts as a reliable source.",
           "Keep outputs concise, traceable, and review-friendly.",
         ],
+        performanceNotes: [
+          "Batch source retrieval before summarizing.",
+          "Avoid repeated lookups for the same evidence.",
+          "Prefer structured summaries over verbose prose.",
+        ],
+        qualityNotes: [
+          "Cite claims that depend on external facts.",
+          "Call out uncertainty explicitly.",
+          "Separate findings from recommendations.",
+        ],
         guidance: "Use when the skill needs evidence gathering, synthesis, or grounded reasoning.",
       };
     case "workflow":
@@ -236,6 +248,16 @@ function getNativeSkillBundleProfileCopy(profile: NativeSkillBundleScaffoldInput
           "List the primary workflow steps and handoff points.",
           "Describe retry and fallback behavior.",
           "Keep side effects within declared outputs.",
+        ],
+        performanceNotes: [
+          "Make each step idempotent where possible.",
+          "Group related side effects into a single pass.",
+          "Cache intermediate results for repeated use.",
+        ],
+        qualityNotes: [
+          "Define success and failure states for every step.",
+          "Document rollback behavior before shipping.",
+          "Prefer deterministic transitions over ad hoc branching.",
         ],
         guidance: "Use when the skill coordinates multiple steps, tools, or long-running processes.",
       };
@@ -248,6 +270,16 @@ function getNativeSkillBundleProfileCopy(profile: NativeSkillBundleScaffoldInput
           "Document any quality or safety constraints.",
           "Describe model and tool dependencies explicitly.",
         ],
+        performanceNotes: [
+          "Reuse generated assets instead of regenerating them.",
+          "Keep image/video dimensions and durations bounded.",
+          "Minimize expensive model calls in loops.",
+        ],
+        qualityNotes: [
+          "State acceptable quality thresholds up front.",
+          "Note fallback behavior when generation fails.",
+          "Record licensing or attribution requirements if relevant.",
+        ],
         guidance: "Use when the skill works with creative or media generation tasks.",
       };
     case "custom":
@@ -258,6 +290,16 @@ function getNativeSkillBundleProfileCopy(profile: NativeSkillBundleScaffoldInput
           "Describe the exact behavior you want from the skill.",
           "Write explicit input and output contracts.",
           "Add project-specific guardrails and verification steps.",
+        ],
+        performanceNotes: [
+          "Keep the happy path short and predictable.",
+          "Avoid unnecessary tool calls and retries.",
+          "Document expected latency or cost constraints.",
+        ],
+        qualityNotes: [
+          "Define what a correct output looks like.",
+          "List the most likely failure modes.",
+          "Write a verify script that exercises the critical path.",
         ],
         guidance: "Use when none of the preset templates fit the skill well.",
       };
@@ -270,6 +312,16 @@ function getNativeSkillBundleProfileCopy(profile: NativeSkillBundleScaffoldInput
           "Describe the skill's core responsibility.",
           "Document required inputs and expected outputs.",
           "List any safety or reliability guardrails.",
+        ],
+        performanceNotes: [
+          "Favor concise prompts and structured outputs.",
+          "Avoid redundant reads and writes.",
+          "Keep the critical path short.",
+        ],
+        qualityNotes: [
+          "Prefer explicit contracts over implied behavior.",
+          "Capture verification steps alongside the instructions.",
+          "Note edge cases and fallback behavior.",
         ],
         guidance: "Use for most new skills when you want a broad, reusable scaffold.",
       };
@@ -320,6 +372,14 @@ function renderNativeSkillMarkdown(input: NativeSkillBundleScaffoldInput): strin
     "",
     ...profile.checklist.map((line) => `- ${line}`),
     "",
+    "## Performance Principles",
+    "",
+    ...profile.performanceNotes.map((line) => `- ${line}`),
+    "",
+    "## Quality Principles",
+    "",
+    ...profile.qualityNotes.map((line) => `- ${line}`),
+    "",
     "## Skill Instructions",
     "",
     skillContent,
@@ -357,6 +417,9 @@ export function writeNativeSkillBundleScaffold(
       "references/input_contract.md",
       "references/output_contract.md",
       "references/maintenance.md",
+      "references/performance.md",
+      "references/quality.md",
+      "references/failure_modes.md",
       "MODEL_COMPATIBILITY.md",
       "skill.lock.json",
     ],
@@ -390,6 +453,9 @@ echo "[native-bundle] skill dir: \${SKILL_DIR}"
     "references/input_contract.md": "# Input Contract\n\nDescribe the expected request payload here.\n",
     "references/output_contract.md": "# Output Contract\n\nDescribe the expected response and artifact contract here.\n",
     "references/maintenance.md": "# Maintenance Notes\n\n- Safe changes may be auto-applied.\n- Breaking changes require approval.\n- Verification runs before finalize.\n",
+    "references/performance.md": `# Performance Notes\n\n- Native bundle profile: ${profile.label}.\n- ${profile.guidance}\n- Keep the happy path short and cache repeated work.\n`,
+    "references/quality.md": `# Quality Checklist\n\n- Validate inputs before doing work.\n- Keep outputs structured and traceable.\n- Verify the critical path before finalizing.\n`,
+    "references/failure_modes.md": "# Failure Modes\n\n- Missing inputs.\n- Network or tool failures.\n- Unexpected output formats.\n",
     "MODEL_COMPATIBILITY.md": `# Model Compatibility\n\n- Keep provider-specific settings explicit.\n- Native bundle profile: ${profile.label}.\n- ${profile.guidance}\n`,
   };
 

@@ -4368,9 +4368,42 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
         : [];
       const skillMap = new Map(relatedSkills.map((skill) => [skill.id, skill]));
 
+      const latestRunRows = rows.length > 0
+        ? await dbInstance
+          .select({
+            id: skillImprovementRuns.id,
+            recommendationId: skillImprovementRuns.recommendationId,
+            runType: skillImprovementRuns.runType,
+            status: skillImprovementRuns.status,
+            summary: skillImprovementRuns.summary,
+            errorMessage: skillImprovementRuns.errorMessage,
+            verificationJson: skillImprovementRuns.verificationJson,
+            logsJson: skillImprovementRuns.logsJson,
+            startedAt: skillImprovementRuns.startedAt,
+            endedAt: skillImprovementRuns.endedAt,
+            createdAt: skillImprovementRuns.createdAt,
+            updatedAt: skillImprovementRuns.updatedAt,
+          })
+          .from(skillImprovementRuns)
+          .where(inArray(skillImprovementRuns.recommendationId, rows.map((row) => row.id)))
+          .orderBy(desc(skillImprovementRuns.createdAt))
+        : [];
+
+      const latestRunByRecommendationId = new Map<number, (typeof latestRunRows)[number]>();
+      for (const run of latestRunRows) {
+        if (run.recommendationId == null) {
+          continue;
+        }
+        const existing = latestRunByRecommendationId.get(run.recommendationId);
+        if (!existing || (existing.runType !== "apply" && run.runType === "apply")) {
+          latestRunByRecommendationId.set(run.recommendationId, run);
+        }
+      }
+
       return rows.map((row) => ({
         ...row,
         skill: skillMap.get(row.skillId) ?? null,
+        latestRun: latestRunByRecommendationId.get(row.id) ?? null,
       }));
     }),
 
