@@ -194,6 +194,19 @@ interface LegacyUpgradeQueueItem extends MaintenanceRecommendation {
   upgradePriorityTier: "low" | "medium" | "high" | "urgent" | "critical";
   parallelUpgradeEligible: boolean;
   legacyUpgradeSignals: Record<string, unknown> | null;
+  latestRun: {
+    id: number;
+    runType: string;
+    status: string;
+    summary: string | null;
+    errorMessage: string | null;
+    verificationJson: Record<string, unknown> | null;
+    logsJson: Record<string, unknown> | null;
+    startedAt: string | null;
+    endedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  } | null;
 }
 
 interface MaintenanceSchedule {
@@ -858,6 +871,7 @@ export default function AdminSkills() {
   const applyLegacyUpgradeRecommendationsMutation = trpc.skills.applyLegacyUpgradeRecommendations.useMutation({
     onSuccess: (result) => {
       utils.skills.getLegacyUpgradeQueue.invalidate();
+      utils.skills.getLegacyUpgradeQueueSummary.invalidate();
       utils.skills.getUpgradeRecommendations.invalidate();
       if (selectedRecommendationId) {
         utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
@@ -996,6 +1010,8 @@ export default function AdminSkills() {
   );
   const legacyUpgradeCriticalCount = legacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "critical").length;
   const legacyUpgradeHighCount = legacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "high").length;
+  const legacyUpgradeBlockedCount = legacyUpgradeQueueItems.filter((item) => item.status === "blocked").length;
+  const legacyUpgradeFailedCount = legacyUpgradeQueueItems.filter((item) => item.status === "failed").length;
   const allVisibleLegacySelected = visibleSelectableLegacyUpgradeIds.length > 0
     && visibleSelectableLegacyUpgradeIds.every((id) => selectedLegacyUpgradeIdSet.has(id));
   const someVisibleLegacySelected = visibleSelectableLegacyUpgradeIds.some((id) => selectedLegacyUpgradeIdSet.has(id));
@@ -1068,6 +1084,82 @@ export default function AdminSkills() {
 
     const label = friendlyKeyMap[key] || key;
     return `${label}: ${value ? "yes" : "no"}`;
+  }
+
+  function extractIssueMessages(payload: unknown): string[] {
+    if (!payload || typeof payload !== "object") {
+      return [];
+    }
+
+    const issues = (payload as { issues?: unknown }).issues;
+    if (!Array.isArray(issues)) {
+      return [];
+    }
+
+    return issues
+      .map((issue) => {
+        if (typeof issue === "string") {
+          return issue.trim();
+        }
+        if (issue && typeof issue === "object") {
+          const message = (issue as { message?: unknown }).message;
+          if (typeof message === "string") {
+            return message.trim();
+          }
+        }
+        return String(issue ?? "").trim();
+      })
+      .filter(Boolean);
+  }
+
+  function getLegacyUpgradeReason(item: LegacyUpgradeQueueItem): string | null {
+    const latestRun = item.latestRun;
+    const verificationIssues = extractIssueMessages(latestRun?.verificationJson);
+    const logIssues = extractIssueMessages(latestRun?.logsJson);
+    const recommendationDetails = item.recommendationJson?.details && typeof item.recommendationJson.details === "object"
+      ? item.recommendationJson.details as Record<string, unknown>
+      : null;
+    const detailReason =
+      typeof recommendationDetails?.reason === "string" ? recommendationDetails.reason.trim() : null;
+    const detailError =
+      typeof recommendationDetails?.errorMessage === "string" ? recommendationDetails.errorMessage.trim() : null;
+    const detailBlockedReason =
+      typeof recommendationDetails?.blockedReason === "string" ? recommendationDetails.blockedReason.trim() : null;
+    const detailFailureReason =
+      typeof recommendationDetails?.failureReason === "string" ? recommendationDetails.failureReason.trim() : null;
+
+    const runReason = [
+      latestRun?.errorMessage?.trim(),
+      latestRun?.summary?.trim(),
+      ...verificationIssues,
+      ...logIssues,
+      detailReason,
+      detailError,
+      detailBlockedReason,
+      detailFailureReason,
+    ].find(Boolean);
+
+    if (item.status === "blocked") {
+      return runReason
+        || t("admin.skillsPage.legacyQueue.blockedReasonFallback");
+    }
+
+    if (item.status === "failed") {
+      return runReason
+        || t("admin.skillsPage.legacyQueue.failedReasonFallback");
+    }
+
+    if (item.status === "applied") {
+      return runReason
+        || t("admin.skillsPage.legacyQueue.appliedReasonFallback");
+    }
+
+    if (item.status === "approved") {
+      return runReason
+        || t("admin.skillsPage.legacyQueue.approvedReasonFallback");
+    }
+
+    return runReason ?? null;
   }
 
   function getMaintenanceWorstRiskLevel(
@@ -1471,6 +1563,8 @@ export default function AdminSkills() {
   const applyUpgradeMutation = trpc.skills.applyUpgradeRecommendation.useMutation({
     onSuccess: (data) => {
       utils.skills.getUpgradeRecommendations.invalidate();
+      utils.skills.getLegacyUpgradeQueue.invalidate();
+      utils.skills.getLegacyUpgradeQueueSummary.invalidate();
       if (selectedRecommendationId) {
         utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
       }
@@ -2847,7 +2941,7 @@ export default function AdminSkills() {
                 ))}
               </div>
 
-              <div className="grid gap-3 md:grid-cols-4">
+              <div className="grid gap-3 md:grid-cols-6">
                 <div className="rounded-lg border bg-muted/30 p-3">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyQueue.stats.queued")}</div>
                   <div className="mt-1 text-2xl font-semibold">{legacyUpgradeQueueItems.length}</div>
@@ -2868,7 +2962,15 @@ export default function AdminSkills() {
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyQueue.stats.high")}</div>
                   <div className="mt-1 text-2xl font-semibold">{legacyUpgradeHighCount}</div>
                 </div>
-                <div className="rounded-lg border bg-muted/30 p-3 md:col-span-4">
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyQueue.stats.blocked")}</div>
+                  <div className="mt-1 text-2xl font-semibold">{legacyUpgradeBlockedCount}</div>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyQueue.stats.failed")}</div>
+                  <div className="mt-1 text-2xl font-semibold">{legacyUpgradeFailedCount}</div>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3 md:col-span-6">
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="secondary" className="rounded-full">
                       {t("admin.skillsPage.legacyQueue.summary.total", { count: legacyUpgradeQueueItems.length })}
@@ -2881,6 +2983,12 @@ export default function AdminSkills() {
                     </Badge>
                     <Badge variant="secondary" className="rounded-full">
                       {t("admin.skillsPage.legacyQueue.summary.high", { count: legacyUpgradeHighCount })}
+                    </Badge>
+                    <Badge variant="secondary" className="rounded-full">
+                      {t("admin.skillsPage.legacyQueue.summary.blocked", { count: legacyUpgradeBlockedCount })}
+                    </Badge>
+                    <Badge variant="secondary" className="rounded-full">
+                      {t("admin.skillsPage.legacyQueue.summary.failed", { count: legacyUpgradeFailedCount })}
                     </Badge>
                     <Badge variant="secondary" className="rounded-full">
                       {t("admin.skillsPage.legacyQueue.summary.selected", { count: selectedLegacyUpgradeIds.length })}
@@ -2989,17 +3097,33 @@ export default function AdminSkills() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                item.status === "applied" && "border-green-500 text-green-600 bg-green-50",
-                                item.status === "blocked" && "border-red-500 text-red-600 bg-red-50",
-                                item.status === "failed" && "border-orange-500 text-orange-600 bg-orange-50",
-                                item.status === "pending_review" && "border-slate-400 text-slate-600 bg-slate-50",
+                            <div className="space-y-2">
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  item.status === "applied" && "border-green-500 text-green-600 bg-green-50",
+                                  item.status === "blocked" && "border-red-500 text-red-600 bg-red-50",
+                                  item.status === "failed" && "border-orange-500 text-orange-600 bg-orange-50",
+                                  item.status === "pending_review" && "border-slate-400 text-slate-600 bg-slate-50",
+                                )}
+                              >
+                                {item.status}
+                              </Badge>
+                              {(item.status === "blocked" || item.status === "failed") && getLegacyUpgradeReason(item) && (
+                                <div className={cn(
+                                  "text-xs leading-5",
+                                  item.status === "blocked" ? "text-red-700" : "text-orange-700",
+                                )}>
+                                  <span className="font-semibold">
+                                    {item.status === "blocked"
+                                      ? t("admin.skillsPage.legacyQueue.blockedReasonLabel")
+                                      : t("admin.skillsPage.legacyQueue.failedReasonLabel")}
+                                    {":"}
+                                  </span>{" "}
+                                  {getLegacyUpgradeReason(item)}
+                                </div>
                               )}
-                            >
-                              {item.status}
-                            </Badge>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -3066,6 +3190,36 @@ export default function AdminSkills() {
                                       </div>
                                     </div>
                                   </div>
+
+                                  {(item.status === "blocked" || item.status === "failed" || item.status === "applied" || item.status === "approved") && (
+                                    <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2">
+                                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                        {t("admin.skillsPage.legacyQueue.outcomeSummary")}
+                                      </div>
+                                      <div className={cn(
+                                        "rounded-lg border p-3 text-sm",
+                                        item.status === "blocked" && "border-red-200 bg-red-50 text-red-800",
+                                        item.status === "failed" && "border-orange-200 bg-orange-50 text-orange-800",
+                                        item.status === "applied" && "border-emerald-200 bg-emerald-50 text-emerald-800",
+                                        item.status === "approved" && "border-slate-200 bg-slate-50 text-slate-700",
+                                      )}>
+                                        <div className="font-medium">
+                                          {item.status === "blocked" && t("admin.skillsPage.legacyQueue.blockedStatus")}
+                                          {item.status === "failed" && t("admin.skillsPage.legacyQueue.failedStatus")}
+                                          {item.status === "applied" && t("admin.skillsPage.legacyQueue.appliedStatus")}
+                                          {item.status === "approved" && t("admin.skillsPage.legacyQueue.approvedStatus")}
+                                        </div>
+                                        <div className="mt-1 text-sm leading-6">
+                                          {getLegacyUpgradeReason(item) || t("admin.skillsPage.legacyQueue.noReason")}
+                                        </div>
+                                        {item.latestRun && (
+                                          <div className="mt-2 text-xs text-slate-500">
+                                            {t("admin.skillsPage.legacyQueue.latestRun")} #{item.latestRun.id} · {item.latestRun.runType} · {item.latestRun.status}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
 
                                   <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
                                     <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">

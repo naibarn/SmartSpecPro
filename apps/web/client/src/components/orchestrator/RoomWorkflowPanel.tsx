@@ -916,31 +916,6 @@ export function RoomWorkflowPanel({
     () => (runtimeState ? JSON.stringify(runtimeState, null, 2) : null),
     [runtimeState]
   );
-  const policyGateMeta = useMemo(() => {
-    if (!runtimeState?.policyGateReason) return null;
-    return classifyPolicyGateReason(runtimeState.policyGateReason);
-  }, [runtimeState?.policyGateReason]);
-  const explorationChoiceCountdown = useMemo(
-    () => formatCountdown(runtimeState?.choiceDeadlineAt),
-    [clockTick, runtimeState?.choiceDeadlineAt],
-  );
-  const finalApprovalCountdown = useMemo(
-    () => formatCountdown(runtimeState?.finalReviewDeadlineAt),
-    [clockTick, runtimeState?.finalReviewDeadlineAt],
-  );
-  const runtimeStateRawJson = useMemo(
-    () => (runtimeState ? JSON.stringify(runtimeState, null, 2) : null),
-    [runtimeState],
-  );
-
-  useEffect(() => {
-    if (!runtimeState?.choiceDeadlineAt) return;
-    const interval = window.setInterval(() => {
-      setClockTick(Date.now());
-    }, 1000);
-    return () => window.clearInterval(interval);
-  }, [runtimeState?.choiceDeadlineAt]);
-
   useEffect(() => {
     if (!runtimeState?.choiceDeadlineAt) return;
     const interval = window.setInterval(() => {

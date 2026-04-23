@@ -104,6 +104,9 @@ vi.mock("@/lib/trpc", () => ({
         listPending: { invalidate: vi.fn() },
         listIscProposals: { invalidate: vi.fn() },
         getUpgradeRecommendations: { invalidate: vi.fn() },
+        getLegacyUpgradeQueue: { invalidate: vi.fn() },
+        getLegacyUpgradeQueueSummary: { invalidate: vi.fn() },
+        getUpgradeRecommendationDetail: { invalidate: vi.fn() },
       },
     }),
   },
@@ -174,6 +177,23 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       if (key === "admin.skillsPage.legacyQueue.filters.high") return "High";
       if (key === "admin.skillsPage.legacyQueue.filters.parallel") return "Parallel";
       if (key === "admin.skillsPage.legacyQueue.filters.eligible") return "Eligible";
+      if (key === "admin.skillsPage.legacyQueue.stats.blocked") return "Blocked";
+      if (key === "admin.skillsPage.legacyQueue.stats.failed") return "Failed";
+      if (key === "admin.skillsPage.legacyQueue.summary.blocked") return `${values?.count ?? 0} blocked`;
+      if (key === "admin.skillsPage.legacyQueue.summary.failed") return `${values?.count ?? 0} failed`;
+      if (key === "admin.skillsPage.legacyQueue.outcomeSummary") return "Outcome";
+      if (key === "admin.skillsPage.legacyQueue.latestRun") return "Latest run";
+      if (key === "admin.skillsPage.legacyQueue.blockedStatus") return "Blocked";
+      if (key === "admin.skillsPage.legacyQueue.failedStatus") return "Failed";
+      if (key === "admin.skillsPage.legacyQueue.appliedStatus") return "Applied";
+      if (key === "admin.skillsPage.legacyQueue.approvedStatus") return "Approved";
+      if (key === "admin.skillsPage.legacyQueue.blockedReasonLabel") return "Blocked reason";
+      if (key === "admin.skillsPage.legacyQueue.failedReasonLabel") return "Failure reason";
+      if (key === "admin.skillsPage.legacyQueue.blockedReasonFallback") return "The compatibility gate blocked this upgrade.";
+      if (key === "admin.skillsPage.legacyQueue.failedReasonFallback") return "The upgrade attempt failed.";
+      if (key === "admin.skillsPage.legacyQueue.appliedReasonFallback") return "The upgrade was applied successfully.";
+      if (key === "admin.skillsPage.legacyQueue.approvedReasonFallback") return "The recommendation is approved and waiting for execution.";
+      if (key === "admin.skillsPage.legacyQueue.noReason") return "No detailed reason was recorded.";
       if (key === "admin.skillsPage.maintenance.applyAll") return `Apply all (${values?.count ?? 0})`;
       if (key === "admin.skillsPage.maintenance.applyEligible") return `Apply eligible (${values?.count ?? 0})`;
       if (key === "admin.skillsPage.maintenance.applyEligibleAcrossView") return `Apply eligible across view (${values?.count ?? 0})`;
@@ -368,6 +388,72 @@ describe("AdminSkills", () => {
       expect(mockLocation).toContain("legacyQueueFilter=critical");
       expect(screen.getByText("Loaded from saved preference")).toBeTruthy();
       expect(screen.getByText("Critical 1")).toBeTruthy();
+    });
+  });
+
+  it("shows clear reasons for blocked and failed legacy upgrades", async () => {
+    mockUseSearch.mockReturnValue("?tab=maintenance&skillId=99");
+    mockLegacyUpgradeQueueUseQuery.mockReturnValue({
+      data: [
+        {
+          id: 401,
+          skillId: 99,
+          status: "blocked",
+          upgradePriorityScore: 88,
+          upgradePriorityTier: "critical",
+          parallelUpgradeEligible: false,
+          legacyUpgradeSignals: { hasRunScript: true, hasVerifyScript: false },
+          latestRun: {
+            id: 501,
+            runType: "apply",
+            status: "failed",
+            summary: "Compatibility gate blocked this upgrade.",
+            errorMessage: "Missing verify.sh required for native bundle contract.",
+            verificationJson: {
+              status: "blocked",
+              issues: [{ message: "Missing verify.sh required for native bundle contract." }],
+            },
+            logsJson: {},
+            startedAt: new Date().toISOString(),
+            endedAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        },
+        {
+          id: 402,
+          skillId: 100,
+          status: "failed",
+          upgradePriorityScore: 70,
+          upgradePriorityTier: "high",
+          parallelUpgradeEligible: false,
+          legacyUpgradeSignals: { hasRunScript: true, hasVerifyScript: true },
+          latestRun: {
+            id: 502,
+            runType: "apply",
+            status: "failed",
+            summary: "Upgrade task failed for skill-100",
+            errorMessage: "Skill Studio returned an error while generating the proposal.",
+            verificationJson: {},
+            logsJson: {},
+            startedAt: new Date().toISOString(),
+            endedAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      ],
+      isLoading: false,
+    });
+
+    const { default: AdminSkills } = await import("@/pages/AdminSkills");
+    render(createElement(AdminSkills));
+
+    await waitFor(() => {
+      expect(screen.getByText("Blocked reason:")).toBeTruthy();
+      expect(screen.getAllByText("Missing verify.sh required for native bundle contract.").length).toBeGreaterThan(0);
+      expect(screen.getByText("Failure reason:")).toBeTruthy();
+      expect(screen.getAllByText("Skill Studio returned an error while generating the proposal.").length).toBeGreaterThan(0);
     });
   });
 

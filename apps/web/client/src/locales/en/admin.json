@@ -685,5 +685,22 @@
   "admin.skillsPage.importZip.fileLabel": "File:",
   "admin.skillsPage.importZip.sizeLabel": "Size:",
   "admin.skillsPage.importZip.importing": "Importing...",
-  "admin.skillsPage.importZip.import": "Import"
+  "admin.skillsPage.importZip.import": "Import",
+  "admin.skillsPage.legacyQueue.stats.blocked": "Blocked",
+  "admin.skillsPage.legacyQueue.stats.failed": "Failed",
+  "admin.skillsPage.legacyQueue.summary.blocked": "{{count}} blocked",
+  "admin.skillsPage.legacyQueue.summary.failed": "{{count}} failed",
+  "admin.skillsPage.legacyQueue.outcomeSummary": "Outcome",
+  "admin.skillsPage.legacyQueue.latestRun": "Latest run",
+  "admin.skillsPage.legacyQueue.blockedStatus": "Blocked",
+  "admin.skillsPage.legacyQueue.failedStatus": "Failed",
+  "admin.skillsPage.legacyQueue.appliedStatus": "Applied",
+  "admin.skillsPage.legacyQueue.approvedStatus": "Approved",
+  "admin.skillsPage.legacyQueue.blockedReasonLabel": "Blocked reason",
+  "admin.skillsPage.legacyQueue.failedReasonLabel": "Failure reason",
+  "admin.skillsPage.legacyQueue.blockedReasonFallback": "The compatibility gate blocked this upgrade.",
+  "admin.skillsPage.legacyQueue.failedReasonFallback": "The upgrade attempt failed.",
+  "admin.skillsPage.legacyQueue.appliedReasonFallback": "The upgrade was applied successfully.",
+  "admin.skillsPage.legacyQueue.approvedReasonFallback": "The recommendation is approved and waiting for execution.",
+  "admin.skillsPage.legacyQueue.noReason": "No detailed reason was recorded."
 }

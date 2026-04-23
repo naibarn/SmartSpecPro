@@ -685,5 +685,22 @@
   "admin.skillsPage.importZip.fileLabel": "ไฟล์:",
   "admin.skillsPage.importZip.sizeLabel": "ขนาด:",
   "admin.skillsPage.importZip.importing": "กำลังนำเข้า...",
-  "admin.skillsPage.importZip.import": "นำเข้า"
+  "admin.skillsPage.importZip.import": "นำเข้า",
+  "admin.skillsPage.legacyQueue.stats.blocked": "Blocked",
+  "admin.skillsPage.legacyQueue.stats.failed": "Failed",
+  "admin.skillsPage.legacyQueue.summary.blocked": "Blocked {{count}}",
+  "admin.skillsPage.legacyQueue.summary.failed": "Failed {{count}}",
+  "admin.skillsPage.legacyQueue.outcomeSummary": "ผลลัพธ์",
+  "admin.skillsPage.legacyQueue.latestRun": "Run ล่าสุด",
+  "admin.skillsPage.legacyQueue.blockedStatus": "Blocked",
+  "admin.skillsPage.legacyQueue.failedStatus": "Failed",
+  "admin.skillsPage.legacyQueue.appliedStatus": "Applied",
+  "admin.skillsPage.legacyQueue.approvedStatus": "Approved",
+  "admin.skillsPage.legacyQueue.blockedReasonLabel": "เหตุผลที่ถูกบล็อก",
+  "admin.skillsPage.legacyQueue.failedReasonLabel": "เหตุผลที่ล้มเหลว",
+  "admin.skillsPage.legacyQueue.blockedReasonFallback": "compatibility gate บล็อกการอัปเกรดนี้",
+  "admin.skillsPage.legacyQueue.failedReasonFallback": "ความพยายามอัปเกรดล้มเหลว",
+  "admin.skillsPage.legacyQueue.appliedReasonFallback": "อัปเกรดสำเร็จแล้ว",
+  "admin.skillsPage.legacyQueue.approvedReasonFallback": "คำแนะนำนี้ได้รับอนุมัติและรอดำเนินการ",
+  "admin.skillsPage.legacyQueue.noReason": "ไม่มีการบันทึกเหตุผลแบบละเอียด"
 }

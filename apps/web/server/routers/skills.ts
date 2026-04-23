@@ -4399,6 +4399,38 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
         };
       });
 
+      const latestRunRows = queue.length > 0
+        ? await dbInstance
+          .select({
+            id: skillImprovementRuns.id,
+            recommendationId: skillImprovementRuns.recommendationId,
+            runType: skillImprovementRuns.runType,
+            status: skillImprovementRuns.status,
+            summary: skillImprovementRuns.summary,
+            errorMessage: skillImprovementRuns.errorMessage,
+            verificationJson: skillImprovementRuns.verificationJson,
+            logsJson: skillImprovementRuns.logsJson,
+            startedAt: skillImprovementRuns.startedAt,
+            endedAt: skillImprovementRuns.endedAt,
+            createdAt: skillImprovementRuns.createdAt,
+            updatedAt: skillImprovementRuns.updatedAt,
+          })
+          .from(skillImprovementRuns)
+          .where(inArray(skillImprovementRuns.recommendationId, queue.map((item) => item.id)))
+          .orderBy(desc(skillImprovementRuns.createdAt))
+        : [];
+
+      const latestRunByRecommendationId = new Map<number, (typeof latestRunRows)[number]>();
+      for (const run of latestRunRows) {
+        if (run.recommendationId == null) {
+          continue;
+        }
+        const existing = latestRunByRecommendationId.get(run.recommendationId);
+        if (!existing || (existing.runType !== "apply" && run.runType === "apply")) {
+          latestRunByRecommendationId.set(run.recommendationId, run);
+        }
+      }
+
       queue.sort((left, right) => {
         if (right.upgradePriorityScore !== left.upgradePriorityScore) {
           return right.upgradePriorityScore - left.upgradePriorityScore;
@@ -4411,7 +4443,10 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
         return String(left.skill?.slug ?? "").localeCompare(String(right.skill?.slug ?? ""));
       });
 
-      return queue;
+      return queue.map((item) => ({
+        ...item,
+        latestRun: latestRunByRecommendationId.get(item.id) ?? null,
+      }));
     }),
 
   getLegacyUpgradeQueueSummary: adminProcedure
