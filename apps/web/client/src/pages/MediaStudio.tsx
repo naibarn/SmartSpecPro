@@ -302,18 +302,266 @@ const promptReviewObject = (value: unknown): Record<string, unknown> | null => {
     : null;
 };
 
-const formatPromptReviewLockedParams = (lockedUserParams: Record<string, unknown> | null): string[] => {
+type PromptReviewLocale = "th" | "en";
+
+const PROMPT_REVIEW_FIELD_LABELS: Record<PromptReviewLocale, Record<string, string>> = {
+  th: {
+    aspect_ratio: "สัดส่วนภาพ",
+    audience: "กลุ่มเป้าหมาย",
+    background_description: "รายละเอียดพื้นหลัง",
+    brand_or_logo: "แบรนด์/โลโก้",
+    deliverable_type: "ประเภทชิ้นงาน",
+    exact_text: "ข้อความบนภาพ",
+    factual_reference_mode: "โหมดข้อมูลอ้างอิง",
+    frame_layout: "เลย์เอาต์เฟรม",
+    image_style: "สไตล์ภาพ",
+    panel_count: "จำนวนช่องภาพ",
+    panel_descriptions: "รายละเอียดแต่ละช่อง",
+    purpose: "เป้าหมายงาน",
+    quality: "คุณภาพ",
+    reference_sources: "แหล่งอ้างอิง",
+    render_size: "ขนาดเรนเดอร์",
+    source_image_path: "รูปอ้างอิง",
+    target_language: "ภาษาพรอมต์",
+    topic: "หัวข้อ",
+    verified_reference_facts: "ข้อมูลอ้างอิงที่ตรวจสอบแล้ว",
+  },
+  en: {
+    aspect_ratio: "Aspect ratio",
+    audience: "Audience",
+    background_description: "Background details",
+    brand_or_logo: "Brand/logo",
+    deliverable_type: "Deliverable",
+    exact_text: "In-image text",
+    factual_reference_mode: "Reference mode",
+    frame_layout: "Frame layout",
+    image_style: "Image style",
+    panel_count: "Panel count",
+    panel_descriptions: "Panel details",
+    purpose: "Purpose",
+    quality: "Quality",
+    reference_sources: "Reference sources",
+    render_size: "Render size",
+    source_image_path: "Reference image",
+    target_language: "Prompt language",
+    topic: "Topic",
+    verified_reference_facts: "Verified reference facts",
+  },
+};
+
+const PROMPT_REVIEW_CHECK_LABELS: Record<PromptReviewLocale, Record<string, string>> = {
+  th: {
+    deliverable_guidance: "ต้องเพิ่มข้อกำกับตามประเภทชิ้นงาน",
+    deliverable_markers: "ขาดรายละเอียดสำคัญของประเภทชิ้นงาน",
+    factual_reference_grounding: "ยังไม่มีข้อมูลอ้างอิงสินค้า/สถานที่ที่ยืนยันแล้ว",
+    quality_gate: "คะแนนคุณภาพพรอมต์ต่ำกว่าเกณฑ์",
+    reference_exact_text_lock: "ต้องคงข้อความที่ผู้ใช้ระบุให้ตรง",
+    reference_fidelity: "ต้องย้ำให้ภาพตรงกับรูปอ้างอิง",
+    reference_label_logo_lock: "ต้องล็อกตำแหน่งฉลาก โลโก้ และตัวอักษรจากภาพอ้างอิง",
+    reference_product_geometry_lock: "ต้องล็อกรูปทรงและสัดส่วนสินค้าจากภาพอ้างอิง",
+    safety_gate: "พรอมต์ยังไม่ผ่านเงื่อนไขความปลอดภัย",
+    text_legibility: "ต้องย้ำให้อ่านตัวอักษรในภาพได้ชัด",
+  },
+  en: {
+    deliverable_guidance: "Add guidance for the selected deliverable",
+    deliverable_markers: "Missing key deliverable details",
+    factual_reference_grounding: "Verified product/place references are still missing",
+    quality_gate: "Prompt quality is below the target threshold",
+    reference_exact_text_lock: "Preserve the exact user-supplied text",
+    reference_fidelity: "Reinforce fidelity to the reference image",
+    reference_label_logo_lock: "Lock label, logo, and text placement from the reference",
+    reference_product_geometry_lock: "Lock product shape and proportions from the reference",
+    safety_gate: "Prompt still needs a safety fix",
+    text_legibility: "Reinforce readable in-image text",
+  },
+};
+
+const PROMPT_REVIEW_MODULE_LABELS: Record<PromptReviewLocale, Record<string, string>> = {
+  th: {
+    cinematographer: "มุมกล้องและแสง",
+    deliverable_designer: "ออกแบบตามชิ้นงาน",
+    intent_triage: "วิเคราะห์โจทย์",
+    layout_multiframe: "เลย์เอาต์หลายเฟรม",
+    localization: "ภาษาและถ้อยคำ",
+    prompt_critic: "ตรวจคุณภาพพรอมต์",
+    reference_fidelity: "ตรวจความตรงภาพอ้างอิง",
+    reference_researcher: "ตรวจข้อมูลอ้างอิง",
+    safety_policy: "ความปลอดภัย",
+    visual_director: "กำกับภาพ",
+  },
+  en: {
+    cinematographer: "Camera and lighting",
+    deliverable_designer: "Deliverable design",
+    intent_triage: "Intent analysis",
+    layout_multiframe: "Multi-frame layout",
+    localization: "Language and wording",
+    prompt_critic: "Prompt quality",
+    reference_fidelity: "Reference fidelity",
+    reference_researcher: "Reference research",
+    safety_policy: "Safety",
+    visual_director: "Visual direction",
+  },
+};
+
+const PROMPT_REVIEW_REFERENCE_STATUS_LABELS: Record<PromptReviewLocale, Record<string, string>> = {
+  th: {
+    needed: "ต้องค้นข้อมูลเพิ่ม",
+    not_required: "ไม่ต้องใช้อ้างอิงจริง",
+    partially_verified: "ตรวจสอบแล้วบางส่วน",
+    verified: "ตรวจสอบแล้ว",
+    visual_reference_only: "มีรูปอ้างอิง แต่ยังขาดแหล่งข้อมูล",
+  },
+  en: {
+    needed: "Reference needed",
+    not_required: "No real-world reference needed",
+    partially_verified: "Partially verified",
+    verified: "Verified",
+    visual_reference_only: "Visual reference only",
+  },
+};
+
+const PROMPT_REVIEW_NEXT_ACTION_LABELS: Record<PromptReviewLocale, Record<string, string>> = {
+  th: {
+    collect_official_or_reputable_sources: "ค้นและแนบแหล่งอ้างอิงทางการหรือแหล่งน่าเชื่อถือ",
+    complete_missing_facts_or_sources: "เติมข้อมูลหรือแหล่งอ้างอิงที่ยังขาด",
+    none: "ไม่ต้องทำเพิ่ม",
+    use_supplied_verified_sources: "ใช้ข้อมูลอ้างอิงที่ให้มาแล้ว",
+  },
+  en: {
+    collect_official_or_reputable_sources: "Find official or reputable reference sources",
+    complete_missing_facts_or_sources: "Complete the missing facts or sources",
+    none: "No extra action needed",
+    use_supplied_verified_sources: "Use the supplied verified sources",
+  },
+};
+
+const PROMPT_REVIEW_VALUE_LABELS: Record<PromptReviewLocale, Record<string, string>> = {
+  th: {
+    "1:1": "1:1 จัตุรัส",
+    "2:3": "2:3 แนวตั้ง",
+    "3:2": "3:2 แนวนอน",
+    "3:4": "3:4 แนวตั้ง",
+    "4:3": "4:3 แนวนอน",
+    "4:5": "4:5 แนวตั้ง",
+    "5:4": "5:4 แนวนอน",
+    "9:16": "9:16 แนวตั้ง",
+    "16:9": "16:9 แนวนอน",
+    "21:9": "21:9 กว้างพิเศษ",
+    banner: "แบนเนอร์",
+    contact_sheet: "contact sheet",
+    diagram: "ไดอะแกรม",
+    infographic: "อินโฟกราฟิก",
+    packaging_mockup: "ม็อกอัปแพ็กเกจ",
+    poster: "โปสเตอร์",
+    product_ad: "โฆษณาสินค้า",
+    product_mockup: "ม็อกอัปสินค้า",
+    social_post: "โพสต์โซเชียล",
+    story_post: "สตอรี่",
+    storyboard: "สตอรี่บอร์ด",
+    thumbnail: "ภาพปก",
+  },
+  en: {
+    "1:1": "1:1 square",
+    "2:3": "2:3 portrait",
+    "3:2": "3:2 landscape",
+    "3:4": "3:4 portrait",
+    "4:3": "4:3 landscape",
+    "4:5": "4:5 portrait",
+    "5:4": "5:4 landscape",
+    "9:16": "9:16 portrait",
+    "16:9": "16:9 landscape",
+    "21:9": "21:9 ultra-wide",
+  },
+};
+
+const PROMPT_REVIEW_QUESTION_LABELS: Record<PromptReviewLocale, Record<string, string>> = {
+  th: {
+    "Is there a reference product image, exact label text, or required viewing angle?": "มีรูปอ้างอิงสินค้า ข้อความฉลาก หรือมุมภาพที่ต้องคงไว้หรือไม่",
+    "Should this story prioritize awareness, promotion, lead capture, or event reminder?": "สตอรี่นี้ควรเน้นรับรู้แบรนด์ โปรโมชัน เก็บลีด หรือเตือนอีเวนต์",
+    "What are the key beats for each panel, and which character/location details must stay locked?": "แต่ละช่องควรเล่าเหตุการณ์อะไร และรายละเอียดตัวละคร/สถานที่ใดต้องคงที่",
+    "What exact data points, labels, or steps must be included?": "ต้องใส่ข้อมูล ป้ายกำกับ หรือขั้นตอนใดให้ตรงเป๊ะ",
+    "What headline, date, offer, or call to action must appear on the poster?": "ควรระบุหัวข้อหลัก วันที่ โปรโมชัน หรือ CTA ที่ต้องอยู่บนโปสเตอร์",
+    "What is the one hook or offer the viewer should understand in the first second?": "hook หรือโปรโมชันหลักที่คนดูควรเข้าใจใน 1 วินาทีแรกคืออะไร",
+    "What is the product name, main benefit, and offer or CTA?": "ชื่อสินค้า ประโยชน์หลัก และโปรโมชันหรือ CTA คืออะไร",
+    "What is the slide title and the single takeaway the audience should remember?": "หัวข้อสไลด์และใจความเดียวที่ผู้ชมต้องจำคืออะไร",
+    "What mood, audience, or usage context should the image prioritize?": "ภาพควรเน้นอารมณ์ กลุ่มเป้าหมาย หรือบริบทการใช้งานแบบไหน",
+    "What package type, exact front label text, material, and reference artwork should be preserved?": "ต้องคงประเภทแพ็กเกจ ข้อความหน้าฉลาก วัสดุ และ artwork อ้างอิงใดบ้าง",
+    "What screen, user role, and core task should this UI show?": "หน้าจอ บทบาทผู้ใช้ และงานหลักของ UI นี้คืออะไร",
+    "What short hook text should appear on the thumbnail?": "ข้อความ hook สั้น ๆ บนภาพปกควรเป็นอะไร",
+    "Which platform or placement will this banner be used for?": "แบนเนอร์นี้จะใช้บนแพลตฟอร์มหรือตำแหน่งใด",
+    "Which text must be exact, and is this a fictional layout or a supplied reference document?": "ข้อความใดต้องตรงเป๊ะ และเป็นเลย์เอาต์สมมติหรือเอกสารอ้างอิงที่ให้มา",
+    "Which variations, angles, or backgrounds should the contact sheet compare?": "ต้องเปรียบเทียบเวอร์ชัน มุมภาพ หรือพื้นหลังใดบ้าง",
+    "Which views, expressions, outfit details, and character traits must stay locked?": "มุมมอง สีหน้า ชุด และเอกลักษณ์ตัวละครใดต้องคงที่",
+  },
+  en: {},
+};
+
+const PROMPT_REVIEW_LOCKED_FIELD_PRIORITY = [
+  "aspect_ratio",
+  "deliverable_type",
+  "exact_text",
+  "source_image_path",
+  "target_language",
+  "image_style",
+  "render_size",
+  "quality",
+  "topic",
+];
+
+const humanizePromptReviewIdentifier = (value: string, locale: PromptReviewLocale): string => {
+  const text = value.replace(/[_-]+/g, " ").trim();
+  if (!text) return "";
+  if (locale === "th") return text;
+  return text.replace(/\b\w/g, (match) => match.toUpperCase());
+};
+
+const formatPromptReviewLookup = (
+  value: string,
+  locale: PromptReviewLocale,
+  dictionary: Record<PromptReviewLocale, Record<string, string>>,
+): string => dictionary[locale]?.[value] || humanizePromptReviewIdentifier(value, locale);
+
+const formatPromptReviewValue = (fieldName: string, value: unknown, locale: PromptReviewLocale): string => {
+  if (Array.isArray(value)) {
+    if (fieldName === "source_image_path") {
+      return locale === "th"
+        ? `${value.length} รูป`
+        : `${value.length} reference image${value.length === 1 ? "" : "s"}`;
+    }
+    return locale === "th"
+      ? `${value.length} รายการ`
+      : `${value.length} item${value.length === 1 ? "" : "s"}`;
+  }
+  if (typeof value === "boolean") {
+    return locale === "th" ? (value ? "เปิด" : "ปิด") : (value ? "On" : "Off");
+  }
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  const localized = PROMPT_REVIEW_VALUE_LABELS[locale]?.[text] || text;
+  return localized.length > 60 ? `${localized.slice(0, 57)}...` : localized;
+};
+
+const formatPromptReviewLockedParams = (
+  lockedUserParams: Record<string, unknown> | null,
+  locale: PromptReviewLocale,
+): string[] => {
   const fields = promptReviewObject(lockedUserParams?.fields);
   const fieldNames = promptReviewStringArray(lockedUserParams?.field_names);
-  const names = fieldNames.length > 0 ? fieldNames : Object.keys(fields || {});
+  const rawNames = fieldNames.length > 0 ? fieldNames : Object.keys(fields || {});
+  const names = rawNames
+    .filter((name) => name !== "topic" || rawNames.length === 1)
+    .sort((left, right) => {
+      const leftIndex = PROMPT_REVIEW_LOCKED_FIELD_PRIORITY.indexOf(left);
+      const rightIndex = PROMPT_REVIEW_LOCKED_FIELD_PRIORITY.indexOf(right);
+      return (leftIndex === -1 ? 99 : leftIndex) - (rightIndex === -1 ? 99 : rightIndex);
+    });
   return names.slice(0, 8).map((name) => {
     const entry = promptReviewObject(fields?.[name]);
     const value = entry?.normalized ?? entry?.requested;
-    if (Array.isArray(value)) {
-      return `${name}=${value.length} item${value.length === 1 ? "" : "s"}`;
-    }
-    return `${name}=${String(value ?? "").slice(0, 60)}`;
-  }).filter((item) => !item.endsWith("="));
+    const formattedValue = formatPromptReviewValue(name, value, locale);
+    const label = formatPromptReviewLookup(name, locale, PROMPT_REVIEW_FIELD_LABELS);
+    return formattedValue ? `${label}: ${formattedValue}` : "";
+  }).filter(Boolean);
 };
 
 const normalizePromptReviewSummary = (value: unknown): PromptReviewSummary | null => {
@@ -1208,23 +1456,59 @@ export default function MediaStudio() {
     : promptReview?.status === "blocked"
       ? "blocked"
       : "needs_input";
+  const promptReviewLocale: PromptReviewLocale = isThaiLocale ? "th" : "en";
   const promptReviewLabels = {
     title: isThaiLocale ? "ผลตรวจ Auto Prompt" : "Auto Prompt Review",
     approved: isThaiLocale ? "ผ่านการตรวจ" : "Approved",
-    needsInput: isThaiLocale ? "ควรเติมข้อมูล" : "Needs input",
+    needsInput: isThaiLocale ? "ควรเติมข้อมูลก่อนใช้จริง" : "Needs input before final use",
     blocked: isThaiLocale ? "ต้องแก้ก่อนใช้" : "Needs revision",
-    quality: isThaiLocale ? "คุณภาพ" : "Quality",
-    reference: isThaiLocale ? "อ้างอิง" : "Reference",
-    missing: isThaiLocale ? "ข้อมูลที่ขาด" : "Missing",
-    checks: isThaiLocale ? "ตรวจไม่ผ่าน" : "Failed checks",
-    locked: isThaiLocale ? "ค่าที่ล็อกจากผู้ใช้" : "Locked user params",
-    preflight: isThaiLocale ? "แผนอ้างอิง" : "Reference preflight",
-    subagents: isThaiLocale ? "โมดูลตรวจ" : "Review modules",
-    questions: isThaiLocale ? "คำถามแนะนำ" : "Suggested questions",
+    quality: isThaiLocale ? "คุณภาพพรอมต์" : "Prompt quality",
+    reference: isThaiLocale ? "ข้อมูลอ้างอิง" : "Reference",
+    missing: isThaiLocale ? "ควรเพิ่ม" : "Add",
+    checks: isThaiLocale ? "ประเด็นที่ต้องแก้" : "Fix",
+    locked: isThaiLocale ? "ระบบยึดค่าที่คุณเลือก" : "Locked from your settings",
+    preflight: isThaiLocale ? "ขั้นตอนถัดไป" : "Next step",
+    search: isThaiLocale ? "คำค้นหาแนะนำ" : "Suggested search",
+    subagents: isThaiLocale ? "ตรวจโดย" : "Reviewed by",
+    questions: isThaiLocale ? "คำถามช่วยเติมรายละเอียด" : "Helpful question",
+    summaryApproved: isThaiLocale ? "พรอมต์ผ่านการตรวจและพร้อมใช้งาน" : "The prompt passed review and is ready to use.",
+    summaryNeedsInput: isThaiLocale ? "สร้างพรอมต์ได้แล้ว แต่ควรเติมข้อมูลด้านล่างเพื่อให้ผลลัพธ์แม่นขึ้น" : "The prompt was created, but adding the details below will make the result more accurate.",
+    summaryBlocked: isThaiLocale ? "ควรแก้ประเด็นด้านล่างก่อนนำไปใช้" : "Please resolve the items below before using this prompt.",
   };
   const promptReviewLockedParams = promptReview
-    ? formatPromptReviewLockedParams(promptReview.lockedUserParams)
+    ? formatPromptReviewLockedParams(promptReview.lockedUserParams, promptReviewLocale)
     : [];
+  const promptReviewMissingInputs = promptReview
+    ? promptReview.missingInputs
+      .slice(0, 6)
+      .map((item) => formatPromptReviewLookup(item, promptReviewLocale, PROMPT_REVIEW_FIELD_LABELS))
+    : [];
+  const promptReviewFailedChecks = promptReview
+    ? promptReview.failedChecks
+      .slice(0, 6)
+      .map((item) => formatPromptReviewLookup(item, promptReviewLocale, PROMPT_REVIEW_CHECK_LABELS))
+    : [];
+  const promptReviewReviewModules = promptReview
+    ? promptReview.selectedSubagents
+      .slice(0, 6)
+      .map((item) => formatPromptReviewLookup(item, promptReviewLocale, PROMPT_REVIEW_MODULE_LABELS))
+    : [];
+  const promptReviewQuestions = promptReview
+    ? promptReview.clarifyingQuestions
+      .slice(0, 2)
+      .map((item) => PROMPT_REVIEW_QUESTION_LABELS[promptReviewLocale]?.[item] || item)
+    : [];
+  const promptReviewReferenceStatus = promptReview?.referenceResearchStatus
+    ? formatPromptReviewLookup(promptReview.referenceResearchStatus, promptReviewLocale, PROMPT_REVIEW_REFERENCE_STATUS_LABELS)
+    : null;
+  const promptReviewNextAction = promptReview?.referenceNextAction
+    ? formatPromptReviewLookup(promptReview.referenceNextAction, promptReviewLocale, PROMPT_REVIEW_NEXT_ACTION_LABELS)
+    : null;
+  const promptReviewSummary = promptReviewTone === "approved"
+    ? promptReviewLabels.summaryApproved
+    : promptReviewTone === "blocked"
+      ? promptReviewLabels.summaryBlocked
+      : promptReviewLabels.summaryNeedsInput;
 
   // Setter functions that update the current tab's state
   const setPrompt = useCallback((value: string | ((prev: string) => string)) => {
@@ -5353,42 +5637,56 @@ export default function MediaStudio() {
                         {promptReviewLabels.quality}: {promptReview.qualityScore}
                       </Badge>
                     )}
-                    {promptReview.referenceResearchStatus && (
+                    {promptReviewReferenceStatus && (
                       <Badge variant="outline" className="bg-white/80">
-                        {promptReviewLabels.reference}: {promptReview.referenceResearchStatus}
+                        {promptReviewLabels.reference}: {promptReviewReferenceStatus}
                       </Badge>
                     )}
                   </div>
-                  {promptReview.missingInputs.length > 0 && (
-                    <p className="leading-6">
-                      <span className="font-medium">{promptReviewLabels.missing}: </span>
-                      {promptReview.missingInputs.slice(0, 6).join(", ")}
-                    </p>
+                  <p className="text-xs leading-5 opacity-80">
+                    {promptReviewSummary}
+                  </p>
+                  {promptReviewMissingInputs.length > 0 && (
+                    <div className="flex flex-col gap-0.5 text-xs leading-5 sm:flex-row sm:gap-2">
+                      <span className="min-w-32 font-medium">{promptReviewLabels.missing}</span>
+                      <span>{promptReviewMissingInputs.join(", ")}</span>
+                    </div>
                   )}
-                  {promptReview.failedChecks.length > 0 && (
-                    <p className="text-xs leading-5 opacity-80">
-                      {promptReviewLabels.checks}: {promptReview.failedChecks.slice(0, 6).join(", ")}
-                    </p>
+                  {promptReviewFailedChecks.length > 0 && (
+                    <div className="flex flex-col gap-0.5 text-xs leading-5 sm:flex-row sm:gap-2">
+                      <span className="min-w-32 font-medium">{promptReviewLabels.checks}</span>
+                      <span>{promptReviewFailedChecks.join(", ")}</span>
+                    </div>
                   )}
                   {promptReviewLockedParams.length > 0 && (
-                    <p className="text-xs leading-5 opacity-80">
-                      {promptReviewLabels.locked}: {promptReviewLockedParams.join(", ")}
-                    </p>
+                    <div className="flex flex-col gap-0.5 text-xs leading-5 sm:flex-row sm:gap-2">
+                      <span className="min-w-32 font-medium">{promptReviewLabels.locked}</span>
+                      <span>{promptReviewLockedParams.join(", ")}</span>
+                    </div>
                   )}
-                  {(promptReview.referenceNextAction || promptReview.referenceSearchQueries.length > 0) && (
-                    <p className="text-xs leading-5 opacity-80">
-                      {promptReviewLabels.preflight}: {[promptReview.referenceNextAction, ...promptReview.referenceSearchQueries.slice(0, 2)].filter(Boolean).join(" / ")}
-                    </p>
+                  {promptReviewNextAction && (
+                    <div className="flex flex-col gap-0.5 text-xs leading-5 sm:flex-row sm:gap-2">
+                      <span className="min-w-32 font-medium">{promptReviewLabels.preflight}</span>
+                      <span>{promptReviewNextAction}</span>
+                    </div>
                   )}
-                  {promptReview.selectedSubagents.length > 0 && (
-                    <p className="text-xs leading-5 opacity-80">
-                      {promptReviewLabels.subagents}: {promptReview.selectedSubagents.slice(0, 6).join(", ")}
-                    </p>
+                  {promptReview.referenceSearchQueries.length > 0 && (
+                    <div className="flex flex-col gap-0.5 text-xs leading-5 sm:flex-row sm:gap-2">
+                      <span className="min-w-32 font-medium">{promptReviewLabels.search}</span>
+                      <span>{promptReview.referenceSearchQueries.slice(0, 2).join(" / ")}</span>
+                    </div>
                   )}
-                  {promptReview.clarifyingQuestions.length > 0 && (
-                    <p className="text-xs leading-5 opacity-80">
-                      {promptReviewLabels.questions}: {promptReview.clarifyingQuestions.slice(0, 2).join(" / ")}
-                    </p>
+                  {promptReviewReviewModules.length > 0 && (
+                    <div className="flex flex-col gap-0.5 text-xs leading-5 sm:flex-row sm:gap-2">
+                      <span className="min-w-32 font-medium">{promptReviewLabels.subagents}</span>
+                      <span>{promptReviewReviewModules.join(", ")}</span>
+                    </div>
+                  )}
+                  {promptReviewQuestions.length > 0 && (
+                    <div className="flex flex-col gap-0.5 text-xs leading-5 sm:flex-row sm:gap-2">
+                      <span className="min-w-32 font-medium">{promptReviewLabels.questions}</span>
+                      <span>{promptReviewQuestions.join(" / ")}</span>
+                    </div>
                   )}
                 </div>
               )}
