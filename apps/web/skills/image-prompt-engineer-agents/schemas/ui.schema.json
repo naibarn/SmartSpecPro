@@ -62,8 +62,8 @@
           "type": "select",
           "label": "Image Ratio",
           "labelTh": "สัดส่วนภาพ",
-          "helpText": "Choose the composition frame. Image Size is intentionally hidden; the renderer can infer it from this ratio.",
-          "helpTextTh": "เลือกกรอบภาพ ไม่ต้องเลือกขนาดภาพแยก เพราะระบบเรนเดอร์คำนวณจากสัดส่วนนี้ได้",
+          "helpText": "Choose the composition frame. If you select a ratio, it overrides deliverable defaults such as poster, story, slide, or social post presets.",
+          "helpTextTh": "เลือกกรอบภาพ หากเลือกสัดส่วนเอง ระบบจะใช้ค่านี้แทนค่าเริ่มต้นของประเภทชิ้นงาน เช่น โปสเตอร์ สตอรี่ สไลด์ หรือโพสต์โซเชียล",
           "default": "auto",
           "options": [
             { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
@@ -1046,8 +1046,8 @@
           "type": "select",
           "label": "Render Size",
           "labelTh": "ขนาดเรนเดอร์",
-          "helpText": "Auto maps Image Ratio to the closest supported size.",
-          "helpTextTh": "อัตโนมัติจะจับคู่สัดส่วนภาพกับขนาดที่รองรับใกล้ที่สุด",
+          "helpText": "Auto maps the selected Image Ratio to the closest supported renderer size. Choose a size only when you must override that mapping.",
+          "helpTextTh": "อัตโนมัติจะจับคู่สัดส่วนภาพที่เลือกกับขนาดเรนเดอร์ที่รองรับใกล้ที่สุด เลือกขนาดเองเฉพาะเมื่อต้องการ override การจับคู่นี้",
           "default": "auto",
           "options": [
             { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },

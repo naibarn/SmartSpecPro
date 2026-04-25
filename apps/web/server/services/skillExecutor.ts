@@ -418,6 +418,7 @@ function preparePythonSandboxPayload(
     context: {
       publicUrl: params.publicUrl ?? "",
       userToken,
+      commonParams: buildPythonSkillCommonParams(params),
     },
   });
 
@@ -680,6 +681,27 @@ export interface SkillCreateAction {
   description: string;
   skillContent: string;
   triggerPatterns: string[];
+}
+
+function buildPythonSkillCommonParams(params: SkillExecutionParams): Record<string, unknown> {
+  const commonParams: Record<string, unknown> = {};
+  const setIfPresent = (key: string, value: unknown) => {
+    if (value === undefined || value === null || value === "") return;
+    commonParams[key] = value;
+  };
+
+  setIfPresent("aspectRatio", params.aspectRatio);
+  setIfPresent("resolution", params.resolution);
+  setIfPresent("quality", params.quality);
+  setIfPresent("style", params.style);
+  setIfPresent("numImages", params.numImages);
+  setIfPresent("duration", params.duration);
+  setIfPresent("voice", params.voice);
+  setIfPresent("model", params.model);
+  setIfPresent("referenceImageUrls", params.referenceImageUrls);
+  setIfPresent("referenceStyleUrl", params.referenceStyleUrl);
+
+  return commonParams;
 }
 
 export interface SkillExecutionResult {
@@ -1413,6 +1435,7 @@ async function executePythonSkill(
     context: {
       publicUrl: params.publicUrl ?? "",
       userToken,
+      commonParams: buildPythonSkillCommonParams(params),
     },
   });
 

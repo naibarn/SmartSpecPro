@@ -578,8 +578,8 @@ def build_prompts(payload: Dict[str, Any]) -> Dict[str, Any]:
             lines.append("  - Integrate naturally with the composition")
     
     # Aspect ratio
-    ar_custom = str(payload.get("aspect_ratio_custom", "")).strip()
-    ar = ar_custom or str(payload.get("aspect_ratio", "9:16")).strip()
+    ar_custom = str(payload.get("aspect_ratio_custom") or payload.get("aspectRatioCustom") or "").strip()
+    ar = ar_custom or str(payload.get("aspect_ratio") or payload.get("aspectRatio") or "9:16").strip()
     lines.append("")
     lines.append(f"Aspect ratio: {ar}")
     

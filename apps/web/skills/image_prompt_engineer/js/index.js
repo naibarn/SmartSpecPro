@@ -273,8 +273,8 @@ function buildPrompts(payload) {
   }
   
   // Aspect ratio
-  const arCustom = (payload.aspect_ratio_custom || "").trim();
-  const ar = arCustom || payload.aspect_ratio || "9:16";
+  const arCustom = (payload.aspect_ratio_custom || payload.aspectRatioCustom || "").trim();
+  const ar = arCustom || payload.aspect_ratio || payload.aspectRatio || "9:16";
   lines.push("");
   lines.push(`Aspect ratio: ${ar}`);
   
