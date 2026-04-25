@@ -27,7 +27,7 @@ strict_provider_pin: false
 ---
 # Intelligence Skill Creator (ISC) — v0.5.0
 
-7-phase multi-agent LLM pipeline that creates complete, production-ready SmartAIHub skills from a natural language description — or iteratively improves existing ones.
+7-phase multi-agent LLM pipeline that creates complete, production-ready SmartAIHub skills from a natural language description — or iteratively improves existing ones. It also scaffolds native OpenAI Agents Python bundles when `target_platform=agents_python`.
 
 ## Category & Execution Mode Rules
 
@@ -57,12 +57,14 @@ If ISC generates `python/skill.py`, that does **not** automatically mean the fin
 - **Phase 5 — Critic:** Second LLM pass reviews and fixes correctness, edge cases, security
 - **Phase 6 — Tests:** Generates `tests/tests.json` with structured assertions for happy path, edge cases, and error cases
 - **Phase 7 — Write:** Writes all artifacts to `apps/web/skills/{skill-name}/`
+- **Native Agents Python bundles:** When `target_platform=agents_python`, ISC writes `SKILL.md`, `skill.lock.json`, `scripts/run.sh`, `scripts/verify.sh`, `references/*.md`, and a compatibility mirror `skill.md`
 
 ### 🔧 Improve Mode (since v0.3.0)
 - Iterative **evaluate → research → patch → test** loop
 - DuckDuckGo web research informs LLM patch generation
 - Heuristic fallback when LLM unavailable
 - Safety constraints: path restriction, no new deps, respond() signature enforcement
+- For native OpenAI Agents Python bundles, use `target_platform_hint=agents_python` so improve mode preserves the bundle contract and updates `SKILL.md`, `skill.lock.json`, `scripts/run.sh`, and `scripts/verify.sh` together.
 
 ## Schema Contract
 
@@ -107,6 +109,8 @@ skills/{skill-name}/
   "mode": "improve",
   "skill_name": "skill_math_tutor",
   "rounds": 3,
+  "improvement_preset": "trace_friendly",
+  "improvement_request": "Make the bundle deterministic and trace-friendly.",
   "llm_model": "gpt-4o"
 }
 ```
@@ -121,6 +125,9 @@ skills/{skill-name}/
 | `javascript_runtime` | create | string | `auto` | `auto` \| `classic` \| `genjs` |
 | `complexity` | create | string | `moderate` | `simple` \| `moderate` \| `complex` |
 | `skill_name` | both | string | — | Slug override (create) or existing skill (improve) |
+| `target_platform` | create | string | `classic` | `classic` \| `agents_python` |
+| `improvement_preset` | improve | string | `custom` | `custom` \| `deterministic` \| `trace_friendly` \| `retry_safe` \| `compatibility_fix` |
+| `improvement_request` | improve | string | — | Optional natural-language guidance for improvement |
 | `rounds` | improve | int | `3` | Improvement iterations (1-10) |
 | `llm_base_url` | both | string | env | OpenAI-compatible API endpoint |
 | `llm_model` | both | string | env | Model name (e.g. `gpt-4o`, `claude-opus-4-6`) |
@@ -154,6 +161,7 @@ skills/{skill-name}/
 - `genjs` — full Node.js ESM / sandbox-command bundle with `skill.manifest.json` + `src/index.mjs`, designed for complex JSON, schema, prompt pipeline, API, artifact, and automation workloads
 - `auto` — let ISC choose `genjs` when the task clearly benefits from a richer JavaScript runtime profile
 - GenJS bundles also support optional `request.orchestration` for downstream skill handoff or agency swarm execution while defaulting to `local`
+- Agents Python bundles are optimized for sandbox mounting, deterministic scripts, and trace-friendly bundle contracts
 
 ## Architecture
 

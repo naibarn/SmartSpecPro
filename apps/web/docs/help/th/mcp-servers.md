@@ -1,3 +1,16 @@
+---
+
+aliases:
+  - "mcp-servers"
+  - "การเชื่อมต่อ MCP Server"
+  - "การเชื่อมต่อ MCP Server help"
+tags:
+  - "help"
+  - "help/th"
+  - "help/knowledge"
+  - "knowledge"
+  - "mcp-servers"
+---
 # การเชื่อมต่อ MCP Server
 
 ## ภาพรวม
@@ -77,3 +90,13 @@ SmartSpecPro รองรับการเชื่อมต่อกับ MCP
 - stdio container ทำงานโดยไม่มีการเข้าถึงเครือข่าย
 - ขนาด response จำกัดที่ 1MB ต่อการเรียกเครื่องมือ
 - การเรียกเครื่องมือทั้งหมดถูกบันทึกใน audit log
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[document-management|จัดการเอกสาร]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[chat|คู่มือ Chat]]
+- [[memory|ระบบ Memory]]
+- [[personas|บุคลิก AI]]
+<!-- knowledge-graph:related:end -->

@@ -297,6 +297,10 @@ export default function Dashboard() {
     undefined,
     { enabled: analyticsEnabled && user?.role === "admin" },
   );
+  const { data: legacyUpgradeApplyRuns } = trpc.skills.getLegacyUpgradeApplyRuns.useQuery(
+    { state: "all", limit: 100 },
+    { enabled: analyticsEnabled && user?.role === "admin" },
+  );
 
   const { data: agencyReviewDashboardRaw } =
     trpc.agency.reviewDashboard.useQuery(undefined, {
@@ -535,6 +539,15 @@ export default function Dashboard() {
   const recentImprovements = agencyReviewDashboard?.recentImprovements ?? [];
   const reviewAgencies = agencyListData?.agencies ?? [];
   const legacyUpgradeCount = legacyUpgradeQueueSummary?.count ?? 0;
+  const legacyUpgradeApplyRunCounts = legacyUpgradeApplyRuns?.counts ?? {
+    total: 0,
+    queued: 0,
+    failed: 0,
+    completed: 0,
+    blocked: 0,
+    canceled: 0,
+  };
+  const latestLegacyUpgradeRunId = legacyUpgradeApplyRuns?.items?.[0]?.id ?? null;
   const selectedReviewAgency =
     selectedReviewAgencyId === "all"
       ? null
@@ -659,6 +672,14 @@ export default function Dashboard() {
       .sort((left, right) => right.credits - left.credits);
     return providers[0] ?? null;
   }, [analyticsSummary?.by_provider]);
+
+  const buildAdminSkillMaintenanceHref = (filter?: "queued" | "failed") => {
+    const params = new URLSearchParams({ tab: "maintenance" });
+    if (filter) {
+      params.set("legacyQueueFilter", filter);
+    }
+    return `/admin/skills?${params.toString()}`;
+  };
 
   const attentionNotices = useMemo<DashboardNotice[]>(() => {
     const notices: DashboardNotice[] = [];
@@ -1942,19 +1963,49 @@ export default function Dashboard() {
                   title="Skill maintenance"
                   description="Open the maintenance queue to review legacy upgrades, safe bundles, and scheduled skill work."
                 trailing={
-                  <Button
-                    size="sm"
-                    onClick={() => navigateTo(adminSkillMaintenancePath)}
-                  >
-                    <span className="flex items-center gap-2">
-                      Open maintenance queue
-                      {legacyUpgradeCount > 0 && (
-                        <Badge variant="secondary" className="h-5 rounded-full px-2 text-[11px]">
-                          {legacyUpgradeCount}
-                        </Badge>
-                      )}
-                    </span>
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => navigateTo(adminSkillMaintenancePath)}
+                    >
+                      <span className="flex items-center gap-2">
+                        Open maintenance queue
+                        {legacyUpgradeCount > 0 && (
+                          <Badge variant="secondary" className="h-5 rounded-full px-2 text-[11px]">
+                            {legacyUpgradeCount}
+                          </Badge>
+                        )}
+                      </span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => latestLegacyUpgradeRunId && navigateTo(`/admin/skills/runs/${latestLegacyUpgradeRunId}`)}
+                      disabled={!latestLegacyUpgradeRunId}
+                    >
+                      {t("dashboard:admin.skillMaintenanceLatestRun")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigateTo(buildAdminSkillMaintenanceHref("queued"))}
+                    >
+                      <Badge variant="secondary" className="mr-2 h-5 rounded-full px-2 text-[11px]">
+                        {legacyUpgradeApplyRunCounts.queued}
+                      </Badge>
+                      {t("dashboard:admin.skillMaintenanceQueuedRuns")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigateTo(buildAdminSkillMaintenanceHref("failed"))}
+                    >
+                      <Badge variant="destructive" className="mr-2 h-5 rounded-full px-2 text-[11px]">
+                        {legacyUpgradeApplyRunCounts.failed}
+                      </Badge>
+                      {t("dashboard:admin.skillMaintenanceFailedRuns")}
+                    </Button>
+                  </div>
                 }
               />
 
@@ -1974,11 +2025,32 @@ export default function Dashboard() {
                     <p className={`mt-2 ${dashboardCardBodyClass}`}>
                       Open the admin maintenance tab and sort by priority, compatibility, and runtime.
                     </p>
-                    {legacyUpgradeCount > 0 && (
-                      <Badge variant="secondary" className="mt-3 h-6 rounded-full px-2 text-[11px]">
-                        {legacyUpgradeCount} legacy upgrades pending
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Badge
+                        variant="secondary"
+                        className="h-6 rounded-full px-2 text-[11px]"
+                      >
+                        {t("dashboard:admin.legacyUpgradesPending", {
+                          count: legacyUpgradeCount,
+                        })}
                       </Badge>
-                    )}
+                      <Badge
+                        variant="outline"
+                        className="h-6 rounded-full px-2 text-[11px]"
+                      >
+                        {t("dashboard:admin.skillMaintenanceQueuedRuns", {
+                          count: legacyUpgradeApplyRunCounts.queued,
+                        })}
+                      </Badge>
+                      <Badge
+                        variant="destructive"
+                        className="h-6 rounded-full px-2 text-[11px]"
+                      >
+                        {t("dashboard:admin.skillMaintenanceFailedRuns", {
+                          count: legacyUpgradeApplyRunCounts.failed,
+                        })}
+                      </Badge>
+                    </div>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">

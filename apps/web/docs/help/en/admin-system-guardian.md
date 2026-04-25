@@ -6,7 +6,24 @@ icon: ShieldCheck
 section: admin
 order: 60
 pages: ["/admin/system-guardian"]
-tags: [guardian, monitor, incident, sensor, health, approval, auto-fix, watchdog]
+tags:
+  - "guardian"
+  - "monitor"
+  - "incident"
+  - "sensor"
+  - "health"
+  - "approval"
+  - "auto-fix"
+  - "watchdog"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin"
+  - "admin-system-guardian"
+aliases:
+  - "admin-system-guardian"
+  - "System Guardian"
+  - "System Guardian help"
 ---
 
 # System Guardian
@@ -108,3 +125,15 @@ Open **Admin → System Settings → Guardian** to configure:
 - **Notification channels** — Choose where incident alerts are sent: in-app, email, Slack, or PagerDuty webhook.
 
 > **Tip:** Use per-tenant auto-fix only on tenants where you trust the Guardian's judgment. For production tenants, keep manual approvals enabled.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

@@ -6,7 +6,24 @@ icon: Globe
 section: admin
 order: 125
 pages: ["/domain-admin", "/domain-admin/theme", "/domain-admin/content", "/domain-admin/users", "/domain-admin/settings", "/domain-admin/blog"]
-tags: [domain admin, tenant, branding, theme, multi-tenant, white label, blog, content]
+tags:
+  - "domain admin"
+  - "tenant"
+  - "branding"
+  - "theme"
+  - "multi-tenant"
+  - "white label"
+  - "blog"
+  - "content"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin"
+  - "domain-admin"
+aliases:
+  - "domain-admin"
+  - "การจัดการโดเมน"
+  - "การจัดการโดเมน help"
 ---
 
 # การจัดการโดเมน
@@ -140,3 +157,15 @@ Theme Editor ให้คุณควบคุมภาพได้อย่า�
 - ใช้ฟีเจอร์ **กำหนดเวลาเผยแพร่** เพื่อรักษาความสม่ำเสมอของการโพสต์โดยไม่ต้องออนไลน์ในเวลาที่เผยแพร่พอดี
 - เพิ่ม Tag ที่บอกรายละเอียดไปยังโพสต์เพื่อให้ผู้ใช้ค้นหาบทความที่เกี่ยวข้องได้ง่าย
 - ให้ประกาศสั้นกระชับ — Banner ยาวมักถูกปิดโดยไม่ได้อ่าน
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

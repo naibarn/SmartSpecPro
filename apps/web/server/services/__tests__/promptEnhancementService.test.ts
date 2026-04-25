@@ -19,6 +19,7 @@ vi.mock("../skillRegistry", () => ({
 import {
   buildSystemPrompt,
   buildUserPrompt,
+  parsePromptResponse,
   resolvePromptEnhancementSkill,
 } from "../promptEnhancementService";
 
@@ -113,5 +114,46 @@ describe("promptEnhancementService", () => {
     });
 
     expect(prompt).toContain("AI video generation");
+  });
+
+  it("extracts prompt text from structured image prompt bundle JSON", () => {
+    const parsed = parsePromptResponse(JSON.stringify({
+      status: "completed",
+      prompts: {
+        short: "Create a sunset portrait.",
+        detailed: "Create a cinematic sunset portrait with warm grading and subtle lens flare.",
+        structured: "Topic: sunset portrait",
+        negative_constraints: "watermark",
+        variants: ["Create a cinematic sunset portrait with warm grading and subtle lens flare."],
+      },
+      quality_review: {
+        pass_count: 1,
+      },
+    }));
+
+    expect(parsed).toEqual({
+      promptEn: "Create a cinematic sunset portrait with warm grading and subtle lens flare.",
+      promptTh: "",
+    });
+  });
+
+  it("extracts prompt text from prompt_variants bundle JSON", () => {
+    const parsed = parsePromptResponse(JSON.stringify({
+      prompt_variants: [
+        {
+          prompt: "A young child walking along the beach with soft warm lighting and gentle ocean waves.",
+          edit_prompt: "Enhance the colors to make the scene more vibrant.",
+        },
+        {
+          prompt: "A playful child running on the sandy beach at sunset, laughing as ocean waves splash nearby.",
+          edit_prompt: "Add a slight vignette and enhance the sunset colors.",
+        },
+      ],
+    }));
+
+    expect(parsed).toEqual({
+      promptEn: "A young child walking along the beach with soft warm lighting and gentle ocean waves. A playful child running on the sandy beach at sunset, laughing as ocean waves splash nearby.",
+      promptTh: "",
+    });
   });
 });

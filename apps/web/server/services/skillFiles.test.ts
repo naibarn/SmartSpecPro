@@ -199,6 +199,58 @@ target_platform: agents_python
     expect(fs.readFileSync(path.join(skillDir, "references", "failure_modes.md"), "utf-8")).toContain("Missing inputs");
   });
 
+  it("writes a native agents_python bundle scaffold with subagent topology files", () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "skill-files-native-subagent-scaffold-test-"));
+    tempDirs.push(tempDir);
+
+    const skillDir = path.join(tempDir, "scaffold-subagent-skill");
+    const written = writeNativeSkillBundleScaffold(skillDir, {
+      slug: "scaffold-subagent-skill",
+      name: "Scaffold Subagent Skill",
+      description: "Scaffolded native bundle with specialists",
+      category: "automation",
+      version: "1.0.0",
+      author: "Codex",
+      bundleProfile: "workflow",
+      skillContent: "# Skill Instructions\n\nUse the orchestrator and specialist.\n",
+      subagents: [
+        {
+          name: "researcher",
+          role: "research",
+          mode: "tool",
+          entrypoint: "agents/specialists/researcher.md",
+          toolBoundary: ["search", "summarize"],
+          handoffPolicy: { mode: "never" },
+          checkpointPolicy: { mode: "per-run" },
+          verificationCommand: "scripts/verify.sh",
+          fallbackBehavior: "return-error",
+        },
+      ],
+      orchestrator: {
+        name: "scaffold-subagent-skill-orchestrator",
+        role: "orchestrator",
+        entrypoint: "agents/orchestrator.md",
+      },
+      routing: [{ from: "orchestrator", to: "researcher", mode: "tool" }],
+      checkpointPolicy: { mode: "parent-run" },
+      verificationPolicy: { command: "scripts/verify.sh" },
+      fallbackPolicy: { behavior: "escalate-to-parent" },
+    });
+
+    expect(written).toContain(path.join(skillDir, "subagents.json"));
+    expect(written).toContain(path.join(skillDir, "agents", "orchestrator.md"));
+    expect(written).toContain(path.join(skillDir, "agents", "specialists", "researcher.md"));
+    expect(written).toContain(path.join(skillDir, "references", "subagents.md"));
+    expect(fs.readFileSync(path.join(skillDir, "skill.lock.json"), "utf-8")).toContain('"bundle_topology": "subagent-aware"');
+    expect(fs.readFileSync(path.join(skillDir, "skill.lock.json"), "utf-8")).toContain('"subagents.json"');
+    const lock = JSON.parse(fs.readFileSync(path.join(skillDir, "skill.lock.json"), "utf-8"));
+    const manifest = JSON.parse(fs.readFileSync(path.join(skillDir, "subagents.json"), "utf-8"));
+    expect(manifest.orchestrator.mode).toBe("orchestrator");
+    expect(manifest.securityPolicy.networkEgress).toBe("none");
+    expect(manifest.subagents[0].name).toBe("researcher");
+    expect(lock.subagent_manifest_sha256).toMatch(/^[a-f0-9]{64}$/);
+  });
+
   it("flattens a single wrapper folder when extracting a ZIP bundle", () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "skill-files-extract-test-"));
     tempDirs.push(tempDir);

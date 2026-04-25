@@ -6,7 +6,25 @@ icon: Settings
 section: features
 order: 65
 pages: ["/settings", "/settings/personas", "/profile"]
-tags: [settings, profile, security, 2fa, preferences, theme, language, api keys, billing, integrations]
+tags:
+  - "settings"
+  - "profile"
+  - "security"
+  - "2fa"
+  - "preferences"
+  - "theme"
+  - "language"
+  - "api keys"
+  - "billing"
+  - "integrations"
+  - "help"
+  - "help/en"
+  - "help/account"
+  - "account"
+aliases:
+  - "settings"
+  - "Settings & Preferences"
+  - "Settings & Preferences help"
 ---
 
 # Settings & Preferences
@@ -94,3 +112,15 @@ See the [AI Personas](./personas.md) guide for full details on creating, editing
 - Changes to language and theme take effect immediately without a page reload.
 - Keep recovery codes in a password manager — there is no way to recover a 2FA-locked account without them.
 - API keys created here share your credit pool — scope them carefully if sharing with third-party services.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[api-keys|API Keys]]
+- [[credits|Credits System]]
+- [[notification-settings|Notification Preferences]]
+- [[profile|Profile & Account]]
+- [[usage-analytics|Usage Analytics & Task Monitor]]
+<!-- knowledge-graph:related:end -->

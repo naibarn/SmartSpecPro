@@ -67,6 +67,7 @@ import {
   Users,
   X,
   ShieldCheck,
+  ArrowUpRight,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -178,6 +179,7 @@ interface MaintenanceRecommendation {
     errorMessage: string | null;
     verificationJson: Record<string, unknown> | null;
     logsJson: Record<string, unknown> | null;
+    lineage?: Record<string, unknown> | null;
     startedAt: string | null;
     endedAt: string | null;
     createdAt: string;
@@ -204,7 +206,12 @@ interface MaintenanceRecommendationGroup {
   currentRuntime: string | null;
 }
 
-interface LegacyUpgradeQueueItem extends MaintenanceRecommendation {
+type MaintenanceGroupStatusBadge = {
+  label: string;
+  variant: "secondary" | "outline" | "destructive";
+};
+
+interface LegacyUpgradeQueueItem extends Omit<MaintenanceRecommendation, "latestRun"> {
   upgradePriorityScore: number;
   upgradePriorityTier: "low" | "medium" | "high" | "urgent" | "critical";
   parallelUpgradeEligible: boolean;
@@ -217,10 +224,67 @@ interface LegacyUpgradeQueueItem extends MaintenanceRecommendation {
     errorMessage: string | null;
     verificationJson: Record<string, unknown> | null;
     logsJson: Record<string, unknown> | null;
-    startedAt: string | null;
-    endedAt: string | null;
-    createdAt: string;
-    updatedAt: string;
+    startedAt: string | Date | null;
+    endedAt: string | Date | null;
+    createdAt: string | Date;
+    updatedAt: string | Date;
+  } | null;
+}
+
+interface LegacyUpgradeRunItem {
+  id: number;
+  recommendationId: number | null;
+  skillId: number | null;
+  queueState: "queued" | "running" | "failed" | "completed" | "blocked" | "canceled";
+  runType: string;
+  status: string;
+  summary: string | null;
+  errorMessage: string | null;
+  verificationJson: Record<string, unknown> | null;
+  logsJson: Record<string, unknown> | null;
+  startedAt: string | Date | null;
+  endedAt: string | Date | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  taskId: string | null;
+  resolvedLlmModelId: string | null;
+  resultMessage: string | null;
+  resultError: string | null;
+  sourceRunId: number | null;
+  retryReason: string | null;
+  recommendation: {
+    id: number;
+    recommendationType: string | null;
+    status: string | null;
+    title: string | null;
+    riskLevel: string | null;
+    compatibilityStatus: string | null;
+    qualityScore: number | null;
+    currentRuntime: string | null;
+    proposedRuntime: string | null;
+    proposedAction: string | null;
+    isAutoApplySafe: boolean | null;
+    recommendationJson: Record<string, unknown> | null;
+  } | null;
+  skill: {
+    id: number;
+    slug: string;
+    name: string | null;
+    executionMode: string | null;
+  } | null;
+  latestRun?: {
+    id: number;
+    runType: string;
+    status: string;
+    summary: string | null;
+    errorMessage: string | null;
+    verificationJson: Record<string, unknown> | null;
+    logsJson: Record<string, unknown> | null;
+    lineage?: Record<string, unknown> | null;
+    startedAt: string | Date | null;
+    endedAt: string | Date | null;
+    createdAt: string | Date;
+    updatedAt: string | Date;
   } | null;
 }
 
@@ -246,6 +310,15 @@ interface PendingMaintenanceApply {
   recommendationTitle: string;
   isAutoApplySafe: boolean;
   hasProposalReady: boolean;
+}
+
+interface RecommendationApplyTarget {
+  id: number;
+  title: string | null;
+  isAutoApplySafe: boolean;
+  skill?: {
+    slug: string;
+  } | null;
 }
 
 // Category icon mapping
@@ -1031,10 +1104,24 @@ export default function AdminSkills() {
     },
     { enabled: !!isAdmin },
   );
+  const [legacyApplyRunFilter, setLegacyApplyRunFilter] = useState<"all" | "queued" | "running" | "failed" | "completed" | "blocked" | "canceled">("all");
+  const {
+    data: legacyApplyRunsResponse,
+    refetch: refetchLegacyApplyRuns,
+    isFetching: isLegacyApplyRunsFetching,
+    isLoading: isLegacyApplyRunsLoading,
+  } = trpc.skills.getLegacyUpgradeApplyRuns.useQuery(
+    {
+      state: legacyApplyRunFilter,
+      limit: 100,
+    },
+    { enabled: !!isAdmin },
+  );
   const applyLegacyUpgradeRecommendationsMutation = trpc.skills.applyLegacyUpgradeRecommendations.useMutation({
     onSuccess: (result) => {
       utils.skills.getLegacyUpgradeQueue.invalidate();
       utils.skills.getLegacyUpgradeQueueSummary.invalidate();
+      utils.skills.getLegacyUpgradeApplyRuns.invalidate();
       utils.skills.getUpgradeRecommendations.invalidate();
       if (selectedRecommendationId) {
         utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
@@ -1049,6 +1136,54 @@ export default function AdminSkills() {
       toast({
         title: "Bulk Apply Failed",
         description: error.message || "Failed to apply selected upgrades.",
+        variant: "destructive",
+      });
+    },
+  });
+  const retryLegacyUpgradeApplyRunsMutation = trpc.skills.retryLegacyUpgradeApplyRuns.useMutation({
+    onSuccess: (result) => {
+      utils.skills.getLegacyUpgradeQueue.invalidate();
+      utils.skills.getLegacyUpgradeQueueSummary.invalidate();
+      utils.skills.getLegacyUpgradeApplyRuns.invalidate();
+      utils.skills.getUpgradeRecommendations.invalidate();
+      if (selectedRecommendationId) {
+        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
+      }
+      setSelectedLegacyUpgradeIds([]);
+      toast({
+        title: "Legacy Apply Runs Retried",
+        description: `${result.appliedCount} run(s) retried, ${result.failedCount} failed.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Retry Failed",
+        description: error.message || "Failed to retry selected apply runs.",
+        variant: "destructive",
+      });
+    },
+  });
+  const normalizeLegacyUpgradeApplyRunsMutation = trpc.skills.normalizeLegacyUpgradeApplyRuns.useMutation({
+    onSuccess: (result) => {
+      utils.skills.getLegacyUpgradeQueue.invalidate();
+      utils.skills.getLegacyUpgradeQueueSummary.invalidate();
+      utils.skills.getLegacyUpgradeApplyRuns.invalidate();
+      utils.skills.getUpgradeRecommendations.invalidate();
+      if (selectedRecommendationId) {
+        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
+      }
+      toast({
+        title: t("admin.skillsPage.legacyRunQueue.normalizeNoChangeTitle"),
+        description: t("admin.skillsPage.legacyRunQueue.normalizeNoChangeDescription", {
+          count: result.normalizedCount,
+          scanned: result.scannedCount,
+        }),
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: t("admin.skillsPage.legacyRunQueue.normalizeNoChangeFailedTitle"),
+        description: error.message || t("admin.skillsPage.legacyRunQueue.normalizeNoChangeFailedDescription"),
         variant: "destructive",
       });
     },
@@ -1077,6 +1212,28 @@ export default function AdminSkills() {
       return item.latestRun?.status === "running" && applyStrategy === "proposal";
     }).length
   ), [maintenanceRecommendations]);
+  const legacyApplyRunItems = legacyApplyRunsResponse?.items ?? [];
+  const legacyApplyRunCounts = legacyApplyRunsResponse?.counts ?? {
+    total: 0,
+    queued: 0,
+    running: 0,
+    failed: 0,
+    completed: 0,
+    blocked: 0,
+    canceled: 0,
+  };
+  const retryableLegacyApplyRunIds = useMemo(
+    () => legacyApplyRunItems
+      .filter((item) => item.queueState === "failed" || item.queueState === "blocked")
+      .map((item) => item.id),
+    [legacyApplyRunItems],
+  );
+  const normalizableLegacyApplyRunIds = useMemo(
+    () => legacyApplyRunItems
+      .filter((item) => item.queueState === "failed" && isLegacyApplyRunNoChangeCandidate(item))
+      .map((item) => item.id),
+    [legacyApplyRunItems],
+  );
   const renderTableLoadingRow = (colSpan: number, label: string) => (
     <TableRow>
       <TableCell colSpan={colSpan} className="py-10 text-center text-muted-foreground">
@@ -1343,6 +1500,181 @@ export default function AdminSkills() {
     return runReason ?? null;
   }
 
+  function getLegacyQueueLatestRunString(item: LegacyUpgradeQueueItem, key: string): string | null {
+    const logs = item.latestRun?.logsJson;
+    if (!logs || typeof logs !== "object") {
+      return null;
+    }
+    const value = (logs as Record<string, unknown>)[key];
+    return typeof value === "string" && value.trim() ? value.trim() : null;
+  }
+
+  function getLegacyQueueLatestRunNumber(item: LegacyUpgradeQueueItem, key: string): number | null {
+    const logs = item.latestRun?.logsJson;
+    if (!logs || typeof logs !== "object") {
+      return null;
+    }
+    const value = (logs as Record<string, unknown>)[key];
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+
+  function getLegacyRunLineageSource(run: { lineage?: unknown; logsJson?: unknown } | null | undefined): Record<string, unknown> | null {
+    if (!run) {
+      return null;
+    }
+    if (run.lineage && typeof run.lineage === "object" && !Array.isArray(run.lineage)) {
+      return run.lineage as Record<string, unknown>;
+    }
+    if (run.logsJson && typeof run.logsJson === "object") {
+      const logs = run.logsJson as Record<string, unknown>;
+      const lineage = logs.lineage;
+      if (lineage && typeof lineage === "object" && !Array.isArray(lineage)) {
+        return lineage as Record<string, unknown>;
+      }
+    }
+    return null;
+  }
+
+  function getLegacyRunLineageString(lineage: Record<string, unknown> | null, key: string): string | null {
+    if (!lineage) {
+      return null;
+    }
+    const direct = lineage[key];
+    if (typeof direct === "string" && direct.trim()) {
+      return direct.trim();
+    }
+    const fallbackKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
+    const fallback = lineage[fallbackKey];
+    return typeof fallback === "string" && fallback.trim() ? fallback.trim() : null;
+  }
+
+  function getLegacyRunLineageNumber(lineage: Record<string, unknown> | null, key: string): number | null {
+    if (!lineage) {
+      return null;
+    }
+    const direct = lineage[key];
+    if (typeof direct === "number" && Number.isFinite(direct)) {
+      return direct;
+    }
+    const fallbackKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
+    const fallback = lineage[fallbackKey];
+    return typeof fallback === "number" && Number.isFinite(fallback) ? fallback : null;
+  }
+
+  function getLegacyRunLineageArray(lineage: Record<string, unknown> | null, key: string): string[] {
+    if (!lineage) {
+      return [];
+    }
+    const direct = lineage[key];
+    const fallbackKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
+    const values = Array.isArray(direct)
+      ? direct
+      : Array.isArray(lineage[fallbackKey])
+        ? lineage[fallbackKey] as unknown[]
+        : [];
+    return values
+      .map((value) => typeof value === "string" ? value.trim() : String(value ?? "").trim())
+      .filter(Boolean);
+  }
+
+  function getLegacyRunRoleLabel(role: string | null): string {
+    if (role === "child") {
+      return t("admin.skillsPage.legacyRunQueue.roles.child");
+    }
+    if (role === "handoff") {
+      return t("admin.skillsPage.legacyRunQueue.roles.handoff");
+    }
+    return t("admin.skillsPage.legacyRunQueue.roles.orchestrator");
+  }
+
+  function getLegacyRunFailureScopeLabel(role: string | null): string {
+    if (role === "child") {
+      return t("admin.skillsPage.legacyRunQueue.failureScopes.child");
+    }
+    if (role === "handoff") {
+      return t("admin.skillsPage.legacyRunQueue.failureScopes.handoff");
+    }
+    return t("admin.skillsPage.legacyRunQueue.failureScopes.orchestrator");
+  }
+
+  function getLegacyApplyRunStatusLabel(status: LegacyUpgradeRunItem["queueState"]): string {
+    if (status === "queued") {
+      return t("admin.skillsPage.legacyRunQueue.status.queued");
+    }
+    if (status === "running") {
+      return t("admin.skillsPage.legacyRunQueue.status.running");
+    }
+    if (status === "failed") {
+      return t("admin.skillsPage.legacyRunQueue.status.failed");
+    }
+    if (status === "completed") {
+      return t("admin.skillsPage.legacyRunQueue.status.completed");
+    }
+    if (status === "blocked") {
+      return t("admin.skillsPage.legacyRunQueue.status.blocked");
+    }
+    return t("admin.skillsPage.legacyRunQueue.status.canceled");
+  }
+
+  function getLegacyApplyRunReason(run: LegacyUpgradeRunItem): string | null {
+    const resultMessage = typeof run.resultMessage === "string" ? run.resultMessage.trim() : null;
+    const resultError = typeof run.resultError === "string" ? run.resultError.trim() : null;
+    const verificationIssues = extractIssueMessages(run.verificationJson);
+    const logIssues = extractIssueMessages(run.logsJson);
+    return [
+      resultError,
+      resultMessage,
+      run.errorMessage?.trim(),
+      run.summary?.trim(),
+      ...verificationIssues,
+      ...logIssues,
+    ].find(Boolean) || null;
+  }
+
+  function getLegacyApplyRunLogString(run: LegacyUpgradeRunItem, key: string): string | null {
+    const logs = run.logsJson;
+    if (!logs || typeof logs !== "object") {
+      return null;
+    }
+    const value = (logs as Record<string, unknown>)[key];
+    return typeof value === "string" && value.trim() ? value.trim() : null;
+  }
+
+  function isLegacyApplyRunNoChangeCandidate(run: LegacyUpgradeRunItem): boolean {
+    const completionMode = getLegacyApplyRunLogString(run, "completionMode");
+    if (completionMode === "no_changes") {
+      return true;
+    }
+
+    const combined = [
+      run.summary,
+      run.resultMessage,
+      getLegacyApplyRunLogString(run, "resultMessage"),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return [
+      "no patches generated",
+      "no changes required",
+      "completed without code changes",
+      "isc improve complete",
+    ].some((signal) => combined.includes(signal));
+  }
+
+  function getLegacyApplyRunTaskId(run: LegacyUpgradeRunItem): string {
+    return run.taskId || t("admin.skillsPage.legacyRunQueue.noTaskId");
+  }
+
+  function getLegacyApplyRunStrategy(run: LegacyUpgradeRunItem): string | null {
+    if (!run.logsJson || typeof run.logsJson !== "object") {
+      return null;
+    }
+    const strategy = (run.logsJson as Record<string, unknown>).applyStrategy;
+    return typeof strategy === "string" ? strategy : null;
+  }
+
   function getMaintenanceWorstRiskLevel(
     current: MaintenanceRecommendation["riskLevel"],
     next: MaintenanceRecommendation["riskLevel"],
@@ -1405,7 +1737,79 @@ export default function AdminSkills() {
     });
   }
 
-  function requestRecommendationApply(recommendation: MaintenanceRecommendation, skillName: string) {
+  function getMaintenanceGroupStatusBadges(group: MaintenanceRecommendationGroup): MaintenanceGroupStatusBadge[] {
+    const recommendationStatusCounts: Record<MaintenanceRecommendation["status"], number> = {
+      pending_review: 0,
+      approved: 0,
+      dismissed: 0,
+      applied: 0,
+      blocked: 0,
+      failed: 0,
+    };
+    const runStatusCounts = {
+      queued: 0,
+      running: 0,
+      failed: 0,
+      completed: 0,
+    };
+
+    for (const item of group.recommendations) {
+      recommendationStatusCounts[item.status] += 1;
+      const runStatus = item.latestRun?.status;
+      if (runStatus === "queued" || runStatus === "running" || runStatus === "failed" || runStatus === "completed") {
+        runStatusCounts[runStatus] += 1;
+      }
+    }
+
+    const badges: MaintenanceGroupStatusBadge[] = [];
+    const addBadge = (
+      key:
+        | "pending_review"
+        | "approved"
+        | "dismissed"
+        | "applied"
+        | "blocked"
+        | "failed"
+        | "queued"
+        | "running"
+        | "completed",
+      count: number,
+      variant: MaintenanceGroupStatusBadge["variant"],
+    ) => {
+      if (count <= 0) {
+        return;
+      }
+      const labelMap: Record<typeof key, string> = {
+        pending_review: t("admin.skillsPage.maintenance.status.pendingReview"),
+        approved: t("admin.skillsPage.maintenance.status.approved"),
+        dismissed: t("admin.skillsPage.maintenance.status.dismissed"),
+        applied: t("admin.skillsPage.maintenance.status.applied"),
+        blocked: t("admin.skillsPage.maintenance.status.blocked"),
+        failed: t("admin.skillsPage.maintenance.status.failed"),
+        queued: t("admin.skillsPage.maintenance.runStatus.queued"),
+        running: t("admin.skillsPage.maintenance.runStatus.running"),
+        completed: t("admin.skillsPage.maintenance.runStatus.completed"),
+      };
+      badges.push({
+        label: `${labelMap[key]}${count > 1 ? ` (${count})` : ""}`,
+        variant,
+      });
+    };
+
+    addBadge("queued", runStatusCounts.queued, "secondary");
+    addBadge("running", runStatusCounts.running, "outline");
+    addBadge("blocked", recommendationStatusCounts.blocked, "destructive");
+    addBadge("failed", Math.max(recommendationStatusCounts.failed, runStatusCounts.failed), "destructive");
+    addBadge("applied", recommendationStatusCounts.applied, "secondary");
+    addBadge("approved", recommendationStatusCounts.approved, "outline");
+    addBadge("pending_review", recommendationStatusCounts.pending_review, "outline");
+    addBadge("completed", runStatusCounts.completed, "secondary");
+    addBadge("dismissed", recommendationStatusCounts.dismissed, "outline");
+
+    return badges;
+  }
+
+  function requestRecommendationApply(recommendation: RecommendationApplyTarget, skillName: string) {
     const proposalReady = Boolean(
       recommendation.skill?.slug && latestProposalBySkillName.has(recommendation.skill.slug),
     );
@@ -1415,13 +1819,13 @@ export default function AdminSkills() {
       return;
     }
 
-    setPendingMaintenanceApply({
-      recommendationId: recommendation.id,
-      skillName,
-      recommendationTitle: recommendation.title,
-      isAutoApplySafe: false,
-      hasProposalReady: proposalReady,
-    });
+      setPendingMaintenanceApply({
+        recommendationId: recommendation.id,
+        skillName,
+        recommendationTitle: recommendation.title || skillName,
+        isAutoApplySafe: false,
+        hasProposalReady: proposalReady,
+      });
   }
 
   function openRecommendationDetail(recommendationId: number, viewMode: "advice" | "reasoning" = "advice") {
@@ -1752,6 +2156,7 @@ export default function AdminSkills() {
       utils.skills.getUpgradeRecommendations.invalidate();
       utils.skills.getLegacyUpgradeQueue.invalidate();
       utils.skills.getLegacyUpgradeQueueSummary.invalidate();
+      utils.skills.getLegacyUpgradeApplyRuns.invalidate();
       if (selectedRecommendationId) {
         utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
       }
@@ -1786,6 +2191,7 @@ export default function AdminSkills() {
   const applyMaintenanceRecommendationsMutation = trpc.skills.applyMaintenanceRecommendations.useMutation({
     onSuccess: (result) => {
       utils.skills.getUpgradeRecommendations.invalidate();
+      utils.skills.getLegacyUpgradeApplyRuns.invalidate();
       if (selectedRecommendationId) {
         utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
       }
@@ -2880,6 +3286,7 @@ export default function AdminSkills() {
                   <TableRow>
                     <TableHead>{t("admin.skillsPage.maintenance.headers.skill")}</TableHead>
                     <TableHead>{t("admin.skillsPage.maintenance.headers.advice")}</TableHead>
+                    <TableHead>{t("admin.skillsPage.maintenance.headers.status")}</TableHead>
                     <TableHead>{t("admin.skillsPage.maintenance.headers.risk")}</TableHead>
                     <TableHead>{t("admin.skillsPage.maintenance.headers.compatibility")}</TableHead>
                     <TableHead>{t("admin.skillsPage.maintenance.headers.quality")}</TableHead>
@@ -2889,10 +3296,10 @@ export default function AdminSkills() {
                 </TableHeader>
                 <TableBody>
                   {isMaintenanceRecommendationsLoading ? (
-                    renderTableLoadingRow(7, "Loading maintenance recommendations...")
+                    renderTableLoadingRow(8, "Loading maintenance recommendations...")
                   ) : (!maintenanceRecommendationGroups.length ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground">
                         {t("admin.skillsPage.maintenance.empty")}
                       </TableCell>
                     </TableRow>
@@ -2900,6 +3307,7 @@ export default function AdminSkills() {
                     maintenanceRecommendationGroups.map((group) => {
                       const isExpanded = maintenanceExpandedSkillIdSet.has(group.skillId);
                       const recommendationCount = group.recommendations.length;
+                      const statusBadges = getMaintenanceGroupStatusBadges(group);
 
                       return (
                         <Fragment key={group.skillId}>
@@ -2928,6 +3336,25 @@ export default function AdminSkills() {
                               </div>
                             </TableCell>
                             <TableCell>
+                              <div className="flex flex-wrap gap-2">
+                                {statusBadges.length > 0 ? (
+                                  statusBadges.map((badge) => (
+                                    <Badge
+                                      key={`${group.skillId}-${badge.label}`}
+                                      variant={badge.variant}
+                                      className="rounded-full"
+                                    >
+                                      {badge.label}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <Badge variant="outline" className="rounded-full">
+                                    {t("admin.skillsPage.maintenance.status.unknown")}
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
                               <Badge
                                 variant="outline"
                                 className={
@@ -2953,23 +3380,23 @@ export default function AdminSkills() {
                                 {group.worstCompatibilityStatus}
                               </Badge>
                             </TableCell>
-                          <TableCell>{group.highestQualityScore ?? "-"}</TableCell>
-                          <TableCell>
-                            <div className="text-sm">{group.currentRuntime || "unknown"}</div>
-                            {group.recommendations.some((item) => {
-                              const applyStrategy = item.latestRun?.logsJson && typeof item.latestRun.logsJson === "object"
-                                ? (item.latestRun.logsJson as Record<string, unknown>).applyStrategy
-                                : null;
-                              return item.latestRun?.status === "running" && applyStrategy === "proposal";
-                            }) && (
-                              <Badge variant="secondary" className="mt-1">
-                                Proposal queued
-                              </Badge>
-                            )}
-                            {group.recommendations.some((item) => item.isGenjsCandidate) && (
-                              <Badge variant="secondary" className="mt-1">{t("admin.skillsPage.maintenance.genjsCandidate")}</Badge>
-                            )}
-                          </TableCell>
+                            <TableCell>{group.highestQualityScore ?? "-"}</TableCell>
+                            <TableCell>
+                              <div className="text-sm">{group.currentRuntime || "unknown"}</div>
+                              {group.recommendations.some((item) => {
+                                const applyStrategy = item.latestRun?.logsJson && typeof item.latestRun.logsJson === "object"
+                                  ? (item.latestRun.logsJson as Record<string, unknown>).applyStrategy
+                                  : null;
+                                return item.latestRun?.status === "running" && applyStrategy === "proposal";
+                              }) && (
+                                <Badge variant="secondary" className="mt-1">
+                                  Proposal queued
+                                </Badge>
+                              )}
+                              {group.recommendations.some((item) => item.isGenjsCandidate) && (
+                                <Badge variant="secondary" className="mt-1">{t("admin.skillsPage.maintenance.genjsCandidate")}</Badge>
+                              )}
+                            </TableCell>
                             <TableCell>
                               <div className="flex flex-wrap items-center gap-2">
                                 <Button
@@ -3009,7 +3436,7 @@ export default function AdminSkills() {
                           </TableRow>
                           {isExpanded && (
                             <TableRow>
-                              <TableCell colSpan={7} className="bg-muted/20">
+                              <TableCell colSpan={8} className="bg-muted/20">
                                 <div className="space-y-3 p-3">
                                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                                     {t("admin.skillsPage.maintenance.recommendations")}
@@ -3094,6 +3521,301 @@ export default function AdminSkills() {
                       );
                     })
                   ))}
+                </TableBody>
+              </Table>
+            </div>
+          </DashboardCard>
+
+          <DashboardCard
+            title={t("admin.skillsPage.legacyRunQueue.title")}
+            description={t("admin.skillsPage.legacyRunQueue.description")}
+            leading={<Clock className="h-5 w-5 text-slate-500" />}
+          >
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  {[
+                    { key: "all", label: t("admin.skillsPage.legacyRunQueue.filters.all"), count: legacyApplyRunCounts.total },
+                    { key: "queued", label: t("admin.skillsPage.legacyRunQueue.filters.queued"), count: legacyApplyRunCounts.queued },
+                    { key: "running", label: t("admin.skillsPage.legacyRunQueue.filters.running"), count: legacyApplyRunCounts.running },
+                    { key: "failed", label: t("admin.skillsPage.legacyRunQueue.filters.failed"), count: legacyApplyRunCounts.failed },
+                    { key: "blocked", label: t("admin.skillsPage.legacyRunQueue.filters.blocked"), count: legacyApplyRunCounts.blocked },
+                    { key: "completed", label: t("admin.skillsPage.legacyRunQueue.filters.completed"), count: legacyApplyRunCounts.completed },
+                    { key: "canceled", label: t("admin.skillsPage.legacyRunQueue.filters.canceled"), count: legacyApplyRunCounts.canceled },
+                  ].map((filter) => (
+                    <Button
+                      key={filter.key}
+                      variant={legacyApplyRunFilter === filter.key ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setLegacyApplyRunFilter(filter.key as typeof legacyApplyRunFilter)}
+                      className="rounded-full"
+                    >
+                      {filter.label}
+                      <Badge variant={legacyApplyRunFilter === filter.key ? "secondary" : "outline"} className="ml-2 rounded-full px-2 text-[11px]">
+                        {filter.count}
+                      </Badge>
+                    </Button>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => normalizeLegacyUpgradeApplyRunsMutation.mutate()}
+                    disabled={normalizableLegacyApplyRunIds.length === 0 || normalizeLegacyUpgradeApplyRunsMutation.isPending}
+                  >
+                    {normalizeLegacyUpgradeApplyRunsMutation.isPending
+                      ? t("admin.skillsPage.legacyRunQueue.normalizeNoChangePending")
+                      : t("admin.skillsPage.legacyRunQueue.normalizeNoChange")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => retryLegacyUpgradeApplyRunsMutation.mutate({ runIds: retryableLegacyApplyRunIds })}
+                    disabled={retryableLegacyApplyRunIds.length === 0 || retryLegacyUpgradeApplyRunsMutation.isPending}
+                  >
+                    {retryLegacyUpgradeApplyRunsMutation.isPending
+                      ? t("admin.skillsPage.legacyRunQueue.retrying")
+                      : t("admin.skillsPage.legacyRunQueue.retryFailed", { count: retryableLegacyApplyRunIds.length })}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => refetchLegacyApplyRuns()}
+                    disabled={isLegacyApplyRunsFetching}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    {isLegacyApplyRunsFetching ? t("admin.skillsPage.legacyRunQueue.refreshing") : t("admin.skillsPage.legacyRunQueue.refresh")}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyRunQueue.summary.total")}</div>
+                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.total}</div>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyRunQueue.summary.queued")}</div>
+                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.queued}</div>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyRunQueue.summary.running")}</div>
+                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.running}</div>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyRunQueue.summary.failed")}</div>
+                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.failed}</div>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyRunQueue.summary.blocked")}</div>
+                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.blocked}</div>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyRunQueue.summary.completed")}</div>
+                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.completed}</div>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyRunQueue.summary.canceled")}</div>
+                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.canceled}</div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border bg-muted/10 px-3 py-2">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="secondary" className="rounded-full">
+                    {t("admin.skillsPage.legacyRunQueue.summary.visible", { count: legacyApplyRunItems.length })}
+                  </Badge>
+                  <Badge variant="secondary" className="rounded-full">
+                    {t("admin.skillsPage.legacyRunQueue.summary.taskIds", { count: legacyApplyRunItems.filter((item) => !!item.taskId).length })}
+                  </Badge>
+                  <Badge variant="secondary" className="rounded-full">
+                    {t("admin.skillsPage.legacyRunQueue.summary.withError", { count: legacyApplyRunItems.filter((item) => !!item.errorMessage).length })}
+                  </Badge>
+                </div>
+              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.skill")}</TableHead>
+                    <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.task")}</TableHead>
+                    <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.status")}</TableHead>
+                    <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.result")}</TableHead>
+                    <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.actions")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLegacyApplyRunsLoading ? (
+                    renderTableLoadingRow(5, t("admin.skillsPage.legacyRunQueue.loading"))
+                  ) : legacyApplyRunItems.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        {legacyApplyRunFilter === "queued" || legacyApplyRunFilter === "running"
+                          ? t("admin.skillsPage.legacyRunQueue.emptyQueued")
+                          : t("admin.skillsPage.legacyRunQueue.empty")}
+                      </TableCell>
+                    </TableRow>
+                ) : (
+                  legacyApplyRunItems.map((item) => {
+                    const strategy = getLegacyApplyRunStrategy(item);
+                    const reason = getLegacyApplyRunReason(item);
+                    const latestRunLineage = getLegacyRunLineageSource(item.latestRun);
+                    const lineageRole = getLegacyRunLineageString(latestRunLineage, "role") || "orchestrator";
+                    const lineageCheckpointVersion = getLegacyRunLineageNumber(latestRunLineage, "checkpointVersion");
+                    const lineageVerificationState = getLegacyRunLineageString(latestRunLineage, "verificationState");
+                    return (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <div className="font-medium">{item.skill?.name || `Skill #${item.skillId}`}</div>
+                              <div className="text-xs text-muted-foreground">{item.skill?.slug || item.skillId}</div>
+                              {item.recommendation?.title && (
+                                <div className="text-xs text-slate-600">{item.recommendation.title}</div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="outline" className="rounded-full font-mono text-[11px]">
+                                  {item.taskId || t("admin.skillsPage.legacyRunQueue.noTaskId")}
+                                </Badge>
+                                {strategy && (
+                                  <Badge variant="secondary" className="rounded-full text-[11px]">
+                                    {t("admin.skillsPage.legacyRunQueue.applyStrategy", { strategy })}
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {t("admin.skillsPage.legacyRunQueue.latestRun")} #{item.latestRun.id} · {item.latestRun.runType}
+                              </div>
+                              {(item.resolvedLlmModelId || item.sourceRunId || item.retryReason) && (
+                                <div className="space-y-1 text-xs text-slate-500">
+                                  {item.resolvedLlmModelId && (
+                                    <div>
+                                      {t("admin.skillsPage.legacyRunQueue.resolvedModel")}: {item.resolvedLlmModelId}
+                                    </div>
+                                  )}
+                                  {item.sourceRunId && (
+                                    <div>
+                                      {t("admin.skillsPage.legacyRunQueue.sourceRun")}: #{item.sourceRunId}
+                                    </div>
+                                  )}
+                                  {item.retryReason && (
+                                    <div>
+                                      {t("admin.skillsPage.legacyRunQueue.retryReason")}: {item.retryReason}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {latestRunLineage && (
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Badge variant="outline" className="rounded-full text-[11px]">
+                                    {t("admin.skillsPage.legacyRunQueue.lineage.role")}: {getLegacyRunRoleLabel(lineageRole)}
+                                  </Badge>
+                                  <Badge variant="outline" className="rounded-full text-[11px]">
+                                    {t("admin.skillsPage.legacyRunQueue.lineage.failureScope")}: {getLegacyRunFailureScopeLabel(lineageRole)}
+                                  </Badge>
+                                  {lineageCheckpointVersion !== null && (
+                                    <Badge variant="outline" className="rounded-full text-[11px]">
+                                      {t("admin.skillsPage.legacyRunQueue.lineage.checkpoint")}: v{lineageCheckpointVersion}
+                                    </Badge>
+                                  )}
+                                  {lineageVerificationState && (
+                                    <Badge variant="outline" className="rounded-full text-[11px]">
+                                      {t("admin.skillsPage.legacyRunQueue.lineage.verification")}: {lineageVerificationState}
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-2">
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  item.queueState === "queued" && "border-blue-500 text-blue-600 bg-blue-50",
+                                  item.queueState === "running" && "border-cyan-500 text-cyan-600 bg-cyan-50",
+                                  item.queueState === "failed" && "border-orange-500 text-orange-600 bg-orange-50",
+                                  item.queueState === "completed" && "border-emerald-500 text-emerald-600 bg-emerald-50",
+                                  item.queueState === "blocked" && "border-red-500 text-red-600 bg-red-50",
+                                  item.queueState === "canceled" && "border-slate-400 text-slate-600 bg-slate-50",
+                                )}
+                              >
+                                {getLegacyApplyRunStatusLabel(item.queueState)}
+                              </Badge>
+                              <div className="text-xs text-muted-foreground">
+                                {item.latestRun.status}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <div className="text-sm font-medium">
+                                {item.resultMessage || item.latestRun.summary || t("admin.skillsPage.legacyRunQueue.noSummary")}
+                              </div>
+                              {(item.resultError || item.latestRun.errorMessage) && (
+                                <div className={cn(
+                                  "text-xs leading-5",
+                                  item.queueState === "failed" && "text-orange-700",
+                                  item.queueState === "blocked" && "text-red-700",
+                                  item.queueState === "queued" && "text-slate-600",
+                                )}>
+                                  <span className="font-semibold">{t("admin.skillsPage.legacyRunQueue.errorMessageLabel")}{":"}</span>{" "}
+                                  {item.resultError || item.latestRun.errorMessage}
+                                </div>
+                              )}
+                              {reason && !(item.resultError || item.latestRun.errorMessage) && (
+                                <div className="text-xs leading-5 text-slate-600">
+                                  {reason}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {(item.queueState === "failed" || item.queueState === "blocked") && (
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => retryLegacyUpgradeApplyRunsMutation.mutate({ runIds: [item.id] })}
+                                  disabled={retryLegacyUpgradeApplyRunsMutation.isPending}
+                                >
+                                  {t("admin.skillsPage.legacyRunQueue.retry")}
+                                </Button>
+                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setLocation(`/admin/skills/runs/${item.id}`)}
+                              >
+                                <ArrowUpRight className="mr-2 h-4 w-4" />
+                                {t("admin.skillsPage.legacyRunQueue.openDetail")}
+                              </Button>
+                              {item.recommendation && (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openRecommendationDetail(item.recommendation!.id, "advice")}
+                                  >
+                                    {t("admin.skillsPage.legacyRunQueue.viewAdvice")}
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openRecommendationDetail(item.recommendation!.id, "reasoning")}
+                                  >
+                                    {t("admin.skillsPage.legacyRunQueue.viewReasoning")}
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -3506,17 +4228,95 @@ export default function AdminSkills() {
                                           {item.status === "applied" && t("admin.skillsPage.legacyQueue.appliedStatus")}
                                           {item.status === "approved" && t("admin.skillsPage.legacyQueue.approvedStatus")}
                                         </div>
-                                        <div className="mt-1 text-sm leading-6">
-                                          {getLegacyUpgradeReason(item) || t("admin.skillsPage.legacyQueue.noReason")}
+                                      <div className="mt-1 text-sm leading-6">
+                                        {getLegacyUpgradeReason(item) || t("admin.skillsPage.legacyQueue.noReason")}
+                                      </div>
+                                      {item.latestRun && (
+                                        <div className="mt-2 text-xs text-slate-500">
+                                          {t("admin.skillsPage.legacyQueue.latestRun")} #{item.latestRun.id} · {item.latestRun.runType} · {item.latestRun.status}
                                         </div>
-                                        {item.latestRun && (
-                                          <div className="mt-2 text-xs text-slate-500">
-                                            {t("admin.skillsPage.legacyQueue.latestRun")} #{item.latestRun.id} · {item.latestRun.runType} · {item.latestRun.status}
+                                      )}
+                                      {(getLegacyQueueLatestRunString(item, "taskId")
+                                        || getLegacyQueueLatestRunString(item, "resolvedLlmModelId")
+                                        || getLegacyQueueLatestRunString(item, "retryReason")
+                                        || getLegacyQueueLatestRunString(item, "resultMessage")
+                                        || getLegacyQueueLatestRunString(item, "resultError")
+                                        || getLegacyQueueLatestRunNumber(item, "sourceRunId") !== null) && (
+                                        <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-white/80 p-3 text-xs text-slate-700 md:grid-cols-2">
+                                          <div className="space-y-1">
+                                            <div className="font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.task")}</div>
+                                            <div className="font-mono break-all">{getLegacyQueueLatestRunString(item, "taskId") || t("admin.skillsPage.legacyRunQueue.noTaskId")}</div>
                                           </div>
-                                        )}
+                                          <div className="space-y-1">
+                                            <div className="font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.resolvedModel")}</div>
+                                            <div className="break-all">{getLegacyQueueLatestRunString(item, "resolvedLlmModelId") || t("admin.skillsPage.legacyRunQueue.noModel")}</div>
+                                          </div>
+                                          <div className="space-y-1">
+                                            <div className="font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.resultMessage")}</div>
+                                            <div className="break-words">{getLegacyQueueLatestRunString(item, "resultMessage") || item.latestRun?.summary || t("admin.skillsPage.legacyRunQueue.noSummary")}</div>
+                                          </div>
+                                          <div className="space-y-1">
+                                            <div className="font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.resultError")}</div>
+                                            <div className={cn("break-words", (getLegacyQueueLatestRunString(item, "resultError") || item.latestRun?.errorMessage) ? "text-orange-700" : "text-slate-500")}>
+                                              {getLegacyQueueLatestRunString(item, "resultError") || item.latestRun?.errorMessage || t("admin.skillsPage.legacyRunQueue.noResultError")}
+                                            </div>
+                                          </div>
+                                          <div className="space-y-1">
+                                            <div className="font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.sourceRun")}</div>
+                                            <div>{getLegacyQueueLatestRunNumber(item, "sourceRunId") !== null
+                                              ? `#${getLegacyQueueLatestRunNumber(item, "sourceRunId")}`
+                                              : t("admin.skillsPage.legacyRunQueue.noSourceRun")}</div>
+                                          </div>
+                                          <div className="space-y-1">
+                                            <div className="font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.retryReason")}</div>
+                                            <div className="break-words">{getLegacyQueueLatestRunString(item, "retryReason") || t("admin.skillsPage.legacyRunQueue.noRetryReason")}</div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                                {getLegacyRunLineageSource(item.latestRun) && (
+                                  <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+                                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                      {t("admin.skillsPage.legacyQueue.lineageTitle")}
+                                    </div>
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                      <div className="space-y-1">
+                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.role")}</div>
+                                        <div className="font-medium">{getLegacyRunRoleLabel(getLegacyRunLineageString(getLegacyRunLineageSource(item.latestRun), "role") || "orchestrator")}</div>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.failureScope")}</div>
+                                        <div className="font-medium">{getLegacyRunFailureScopeLabel(getLegacyRunLineageString(getLegacyRunLineageSource(item.latestRun), "role") || "orchestrator")}</div>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.parentRun")}</div>
+                                        <div className="font-mono text-xs break-all">{getLegacyRunLineageString(getLegacyRunLineageSource(item.latestRun), "parentRunId") || "—"}</div>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.childRuns")}</div>
+                                        <div className="font-mono text-xs break-all">{getLegacyRunLineageArray(getLegacyRunLineageSource(item.latestRun), "childRunIds").join(", ") || "—"}</div>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.checkpoint")}</div>
+                                        <div>{getLegacyRunLineageNumber(getLegacyRunLineageSource(item.latestRun), "checkpointVersion") !== null ? `v${getLegacyRunLineageNumber(getLegacyRunLineageSource(item.latestRun), "checkpointVersion")}` : "—"}</div>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.verification")}</div>
+                                        <div>{getLegacyRunLineageString(getLegacyRunLineageSource(item.latestRun), "verificationState") || "—"}</div>
+                                      </div>
+                                      <div className="space-y-1 md:col-span-2">
+                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.artifactRefs")}</div>
+                                        <div className="font-mono text-xs break-all">{getLegacyRunLineageArray(getLegacyRunLineageSource(item.latestRun), "artifactRefs").join(", ") || "—"}</div>
+                                      </div>
+                                      <div className="space-y-1 md:col-span-2">
+                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.resumeCursor")}</div>
+                                        <div className="font-mono text-xs break-all">{getLegacyRunLineageString(getLegacyRunLineageSource(item.latestRun), "resumeCursor") || "—"}</div>
                                       </div>
                                     </div>
-                                  )}
+                                  </div>
+                                )}
 
                                   <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
                                     <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -3954,10 +4754,10 @@ export default function AdminSkills() {
             </DialogDescription>
           </DialogHeader>
           {isProposalPreviewLoading ? (
-            <div className="flex min-h-[240px] items-center justify-center rounded-lg border bg-muted/20">
+            <div className="flex min-h-[240px] items-center justify-center rounded-lg border bg-muted/20" role="status" aria-live="polite" aria-busy="true">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading proposal preview...
+                {t("admin.skillsPage.proposalPreview.loading")}
               </div>
             </div>
           ) : (
@@ -4061,10 +4861,10 @@ export default function AdminSkills() {
             </DialogDescription>
           </DialogHeader>
           {isRecommendationDetailLoading ? (
-            <div className="flex min-h-[220px] items-center justify-center rounded-lg border bg-muted/20">
+            <div className="flex min-h-[220px] items-center justify-center rounded-lg border bg-muted/20" role="status" aria-live="polite" aria-busy="true">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading maintenance advice...
+                {t("admin.skillsPage.advice.loading")}
               </div>
             </div>
           ) : selectedRecommendationDetail?.recommendation ? (
@@ -4224,12 +5024,12 @@ export default function AdminSkills() {
               {t("admin.skillsPage.createDialog.description")}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 rounded-full border bg-muted/30 p-1 text-xs">
+          <div className="space-y-5">
+            <div className="flex items-center gap-2 rounded-2xl border bg-muted/20 p-2 text-xs shadow-sm">
               <button
                 type="button"
                 className={cn(
-                  "rounded-full px-3 py-1.5 transition-colors",
+                  "flex-1 rounded-xl px-4 py-2 transition-colors",
                   createDialogStep === 1 ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
                 )}
                 onClick={() => setCreateDialogStep(1)}
@@ -4239,60 +5039,60 @@ export default function AdminSkills() {
               <button
                 type="button"
                 className={cn(
-                  "rounded-full px-3 py-1.5 transition-colors",
+                  "flex-1 rounded-xl px-4 py-2 transition-colors",
                   createDialogStep === 2 ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
                 )}
                 onClick={() => setCreateDialogStep(2)}
               >
                 2. Preview & Advanced
               </button>
-              <div className="ml-auto px-2 text-[11px] text-muted-foreground">
-                Step {createDialogStep} of 2
+              <div className="ml-auto px-2 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                {t("admin.skillsPage.createDialog.stepIndicator", { current: createDialogStep, total: 2 })}
               </div>
             </div>
 
             {createDialogStep === 1 && (
-              <div className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <Label htmlFor="slug">{t("admin.skillsPage.fields.slug")}</Label>
-                  <Input
-                    id="slug"
-                    placeholder={t("admin.skillsPage.createDialog.slugPlaceholder")}
-                    value={newSkillData.slug}
-                    ref={createSlugInputRef}
-                  onChange={(e) => {
-                    const slug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-");
-                      setNewSkillData({ ...newSkillData, slug });
-                    }}
-                  />
-                  <p className={cn(
-                    "text-xs mt-1",
-                    createSkillBasicIssues.some((issue) => issue.startsWith("Slug")) ? "text-amber-700" : "text-muted-foreground",
-                  )}>
-                    {createSkillBasicIssues.find((issue) => issue.startsWith("Slug")) || t("admin.skillsPage.createDialog.slugHelp")}
-                  </p>
+              <div className="space-y-5 rounded-2xl border bg-background/80 p-5 shadow-sm">
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="slug">{t("admin.skillsPage.fields.slug")}</Label>
+                    <Input
+                      id="slug"
+                      placeholder={t("admin.skillsPage.createDialog.slugPlaceholder")}
+                      value={newSkillData.slug}
+                      ref={createSlugInputRef}
+                      onChange={(e) => {
+                        const slug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+                        setNewSkillData({ ...newSkillData, slug });
+                      }}
+                    />
+                    <p className={cn(
+                      "text-xs",
+                      createSkillBasicIssues.some((issue) => issue.startsWith("Slug")) ? "text-amber-700" : "text-muted-foreground",
+                    )}>
+                      {createSkillBasicIssues.find((issue) => issue.startsWith("Slug")) || t("admin.skillsPage.createDialog.slugHelp")}
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="name">{t("admin.skillsPage.fields.name")}</Label>
+                    <Input
+                      id="name"
+                      placeholder={t("admin.skillsPage.createDialog.namePlaceholder")}
+                      value={newSkillData.name}
+                      onChange={(e) =>
+                        setNewSkillData({ ...newSkillData, name: e.target.value })
+                      }
+                    />
+                    <p className={cn(
+                      "text-xs",
+                      createSkillBasicIssues.some((issue) => issue.startsWith("Name")) ? "text-amber-700" : "text-muted-foreground",
+                    )}>
+                      {createSkillBasicIssues.find((issue) => issue.startsWith("Name")) || "This becomes the display name shown in the registry."}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="name">{t("admin.skillsPage.fields.name")}</Label>
-                  <Input
-                  id="name"
-                  placeholder={t("admin.skillsPage.createDialog.namePlaceholder")}
-                  value={newSkillData.name}
-                    onChange={(e) =>
-                      setNewSkillData({ ...newSkillData, name: e.target.value })
-                    }
-                  />
-                  <p className={cn(
-                    "text-xs mt-1",
-                    createSkillBasicIssues.some((issue) => issue.startsWith("Name")) ? "text-amber-700" : "text-muted-foreground",
-                  )}>
-                    {createSkillBasicIssues.find((issue) => issue.startsWith("Name")) || "This becomes the display name shown in the registry."}
-                  </p>
-                </div>
-              </div>
 
-                <div>
+                <div className="space-y-1.5">
                   <Label htmlFor="description">{t("admin.skillsPage.fields.description")}</Label>
                   <Input
                     id="description"
@@ -4304,12 +5104,12 @@ export default function AdminSkills() {
                   />
                 </div>
 
-                <div className="rounded-xl border bg-muted/20 p-4 space-y-3">
+                <div className="rounded-2xl border bg-muted/20 p-4 space-y-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <Label>Bundle Type</Label>
+                      <Label>{t("admin.skillsPage.createDialog.bundleTypeLabel")}</Label>
                       <p className="text-xs text-muted-foreground">
-                        Native bundle is the default and scaffolds OpenAI Agents Python files automatically.
+                        {t("admin.skillsPage.createDialog.nativeDefaultHelp")}
                       </p>
                     </div>
                     <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
@@ -4328,21 +5128,21 @@ export default function AdminSkills() {
                       <SelectItem value="legacy">Legacy DB-only skill</SelectItem>
                     </SelectContent>
                   </Select>
-                  <div className="rounded-lg bg-background/80 p-3 text-xs text-muted-foreground">
-                    <p className="font-medium text-foreground">Native bundle creates a scaffold, then lets you refine it in step 2.</p>
-                    <p className="mt-1">Press Enter to continue once slug and name are ready.</p>
+                  <div className="rounded-xl bg-background/80 p-3 text-xs text-muted-foreground">
+                    <p className="font-medium text-foreground">{t("admin.skillsPage.createDialog.nativeScaffoldHelp")}</p>
+                    <p className="mt-1">{t("admin.skillsPage.createDialog.enterContinueHelp")}</p>
                   </div>
                 </div>
               </div>
             )}
 
             {createDialogStep === 2 && (
-              <div className="space-y-4">
-                <div className="rounded-xl border bg-muted/20 p-4 space-y-3">
+              <div className="space-y-5">
+                <div className="rounded-2xl border bg-background/80 p-5 space-y-4 shadow-sm">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <Label>Step 2: Preview & Advanced</Label>
-                      <p className="text-xs text-muted-foreground">
+                      <Label className="text-base font-semibold">{t("admin.skillsPage.createDialog.stepTwoTitle")}</Label>
+                      <p className="text-sm text-muted-foreground">
                         Review the scaffold and tune advanced settings before creating the skill.
                       </p>
                     </div>
@@ -4350,8 +5150,8 @@ export default function AdminSkills() {
                       Ready
                     </Badge>
                   </div>
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <div className="space-y-2 lg:col-span-2">
+                  <div className="grid gap-4 xl:grid-cols-4">
+                    <div className="space-y-2 xl:col-span-2">
                       <Label>{t("admin.skillsPage.fields.category")}</Label>
                       <Select
                         value={newSkillData.category}
@@ -4439,17 +5239,17 @@ export default function AdminSkills() {
                   </div>
 
                   {newSkillData.bundleType === "native" ? (
-                    <div className="space-y-3 rounded-lg bg-background/80 p-3">
-                      <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
-                        <div>
-                          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Native Profile</Label>
+                    <div className="space-y-4 rounded-2xl border bg-muted/10 p-4">
+                      <div className="grid gap-5 lg:grid-cols-[240px_1fr]">
+                        <div className="space-y-2">
+                          <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.createDialog.nativeProfile")}</Label>
                           <Select
                             value={newSkillData.bundleProfile}
                             onValueChange={(value) => setNewSkillData({ ...newSkillData, bundleProfile: value as NativeBundleProfile })}
                           >
-                          <SelectTrigger className="mt-1 w-full min-w-0 overflow-hidden">
-                            <SelectValue />
-                          </SelectTrigger>
+                            <SelectTrigger className="mt-1 w-full min-w-0 overflow-hidden">
+                              <SelectValue />
+                            </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="general">General</SelectItem>
                               <SelectItem value="research">Research</SelectItem>
@@ -4459,13 +5259,13 @@ export default function AdminSkills() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                        <div className="rounded-xl border border-dashed bg-background/70 p-4 text-xs text-muted-foreground">
                           <p className="font-medium text-foreground">
                             {NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].title}
                           </p>
                           <p className="mt-1">{NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].description}</p>
                           <p className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-                            ISC-aligned bundle contract
+                            {t("admin.skillsPage.createDialog.iscAlignedBundleContract")}
                           </p>
                           <ul className="mt-2 grid gap-1 sm:grid-cols-2">
                             {NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].bullets.map((bullet) => (
@@ -4473,16 +5273,16 @@ export default function AdminSkills() {
                             ))}
                           </ul>
                           <div className="mt-3 grid gap-2 lg:grid-cols-2">
-                            <div className="rounded-md bg-background/60 p-2">
-                              <p className="font-medium text-foreground">Performance focus</p>
+                            <div className="rounded-xl bg-background/60 p-3">
+                              <p className="font-medium text-foreground">{t("admin.skillsPage.createDialog.performanceFocus")}</p>
                               <ul className="mt-1 grid gap-1">
                                 {NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].performance.map((bullet) => (
                                   <li key={bullet}>• {bullet}</li>
                                 ))}
                               </ul>
                             </div>
-                            <div className="rounded-md bg-background/60 p-2">
-                              <p className="font-medium text-foreground">Quality focus</p>
+                            <div className="rounded-xl bg-background/60 p-3">
+                              <p className="font-medium text-foreground">{t("admin.skillsPage.createDialog.qualityFocus")}</p>
                               <ul className="mt-1 grid gap-1">
                                 {NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].quality.map((bullet) => (
                                   <li key={bullet}>• {bullet}</li>
@@ -4492,9 +5292,9 @@ export default function AdminSkills() {
                           </div>
                         </div>
                       </div>
-                      <div className="grid gap-3 lg:grid-cols-2">
-                        <div className="rounded-md border bg-muted/10 p-3 text-xs text-muted-foreground space-y-1.5">
-                          <p className="font-medium text-foreground">Required files</p>
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        <div className="rounded-xl border bg-background/80 p-4 text-xs text-muted-foreground space-y-1.5">
+                          <p className="font-medium text-foreground">{t("admin.skillsPage.createDialog.requiredFiles")}</p>
                           <ul className="grid gap-1">
                             <li>• `SKILL.md` + `skill.md`</li>
                             <li>• `skill.lock.json`</li>
@@ -4502,8 +5302,8 @@ export default function AdminSkills() {
                             <li>• `scripts/verify.sh`</li>
                           </ul>
                         </div>
-                        <div className="rounded-md border bg-muted/10 p-3 text-xs text-muted-foreground space-y-1.5">
-                          <p className="font-medium text-foreground">Optional docs</p>
+                        <div className="rounded-xl border bg-background/80 p-4 text-xs text-muted-foreground space-y-1.5">
+                          <p className="font-medium text-foreground">{t("admin.skillsPage.createDialog.optionalDocs")}</p>
                           <ul className="grid gap-1">
                             <li>• `references/input_contract.md`</li>
                             <li>• `references/output_contract.md`</li>
@@ -4517,16 +5317,16 @@ export default function AdminSkills() {
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-lg bg-background/80 p-3 text-xs text-muted-foreground space-y-1.5">
-                      <p className="font-medium text-foreground">Legacy DB-only skill</p>
-                      <p>This keeps the skill in the database without generating a native bundle scaffold.</p>
+                    <div className="rounded-xl border bg-background/80 p-4 text-xs text-muted-foreground space-y-1.5">
+                      <p className="font-medium text-foreground">{t("admin.skillsPage.createDialog.legacyDbOnlySkill")}</p>
+                      <p>{t("admin.skillsPage.createDialog.legacyDbOnlySkillHelp")}</p>
                     </div>
                   )}
                 </div>
 
                 {createSkillValidationIssues.length > 0 && (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 space-y-1.5">
-                    <p className="font-medium">Review before creating</p>
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 space-y-1.5">
+                    <p className="font-medium">{t("admin.skillsPage.createDialog.reviewBeforeCreating")}</p>
                     <ul className="list-disc pl-4 space-y-1">
                       {createSkillValidationIssues.map((issue) => (
                         <li key={issue}>{issue}</li>
@@ -4535,10 +5335,10 @@ export default function AdminSkills() {
                   </div>
                 )}
 
-                <div className="space-y-4 rounded-xl border p-4">
+                <div className="space-y-4 rounded-2xl border bg-background/80 p-5 shadow-sm">
                   <div>
                     <Label>{t("admin.skillsPage.sandbox.runtime.title")}</Label>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       {t("admin.skillsPage.sandbox.runtime.help")}
                     </p>
                   </div>

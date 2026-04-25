@@ -78,6 +78,7 @@ from app.api import (
      internal_library,  # Internal library scope propagation API
     internal_sandbox,  # Internal sandbox dispatch/cancel API
     internal_guardrails,  # Internal guardrails test API
+    internal_openai_agents_runtime,  # Internal OpenAI Agents runtime API
     agencies,  # Agency-Swarm multi-agent endpoints
     agency_creator,  # AI Agency Creator task endpoints
     agency_feedback,  # Agency feedback analysis (internal)
@@ -487,6 +488,7 @@ app.include_router(admin_alerts.router, tags=["Admin Alerts"])
 app.include_router(internal_library.router, tags=["Internal Library"])
 app.include_router(internal_sandbox.router, tags=["Internal Sandbox"])
 app.include_router(internal_guardrails.router, tags=["Internal Guardrails"])
+app.include_router(internal_openai_agents_runtime.router, tags=["Internal OpenAI Agents Runtime"])
 app.include_router(stt.router, tags=["Internal STT/TTS"])
 app.include_router(agencies.router, tags=["Agencies"])
 app.include_router(agency_creator.router, prefix="/api/v1/agency-creator", tags=["Agency Creator"])

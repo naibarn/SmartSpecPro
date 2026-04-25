@@ -6,7 +6,24 @@ icon: BellRing
 section: features
 order: 66
 pages: ["/settings"]
-tags: [notifications, preferences, categories, mute, email, digest, severity, settings]
+tags:
+  - "notifications"
+  - "preferences"
+  - "categories"
+  - "mute"
+  - "email"
+  - "digest"
+  - "severity"
+  - "settings"
+  - "help"
+  - "help/en"
+  - "help/account"
+  - "account"
+  - "notification-settings"
+aliases:
+  - "notification-settings"
+  - "Notification Preferences"
+  - "Notification Preferences help"
 ---
 
 # Notification Preferences
@@ -120,3 +137,15 @@ This protects against runaway automation or misconfigured alert rules generating
 - Escalation policies will still reach you even if you've muted a category — this is by design for critical alerts.
 - Test your webhooks after creation to verify the endpoint receives payloads correctly.
 - If a webhook gets auto-disabled, check the endpoint health before re-enabling.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[settings|Settings & Preferences]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[api-keys|API Keys]]
+- [[credits|Credits System]]
+- [[profile|Profile & Account]]
+- [[usage-analytics|Usage Analytics & Task Monitor]]
+<!-- knowledge-graph:related:end -->

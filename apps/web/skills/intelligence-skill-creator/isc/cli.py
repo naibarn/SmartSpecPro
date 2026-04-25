@@ -15,16 +15,18 @@ from .native_bundle import (
     build_native_skill_files,
     derive_native_skill_plan_from_legacy,
     evaluate_native_skill_bundle,
+    improve_native_skill_bundle,
     is_native_skill_bundle,
     migrate_legacy_skill_bundle,
     normalize_skill_plan,
     write_native_skill_bundle,
 )
+from .runner import resolve_repo_root
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = resolve_repo_root()
 RUNS_DIR = PROJECT_ROOT / "runs"
 RUNS_DIR.mkdir(exist_ok=True)
-DEFAULT_SKILLS_ROOT = PROJECT_ROOT.parent.parent
+DEFAULT_SKILLS_ROOT = PROJECT_ROOT / "apps" / "web" / "skills"
 console = Console()
 
 def cmd_list(_args):
@@ -85,6 +87,7 @@ def cmd_create(args):
     bundle_dir = skills_root / plan["skill_name"]
     written = write_native_skill_bundle(bundle_dir, plan, overwrite=bool(args.overwrite))
     out_path = RUNS_DIR / f"{plan['skill_name']}.create.json"
+    bundle_topology = "subagent-aware" if "subagents.json" in [path.name for path in written] else "single-agent"
     out_path.write_text(
         json.dumps(
             {
@@ -92,6 +95,7 @@ def cmd_create(args):
                 "bundle_dir": str(bundle_dir),
                 "files_written": [str(path) for path in written],
                 "target_platform": NATIVE_TARGET_PLATFORM,
+                "bundle_topology": bundle_topology,
                 "created": True,
             },
             ensure_ascii=False,
@@ -106,22 +110,13 @@ def cmd_create(args):
     )
 
 def cmd_improve(args):
+    improvement_request = str((getattr(args, "improvement_request", None) or "")).strip()
     if getattr(args, "target_platform", None) == NATIVE_TARGET_PLATFORM:
         skills_root = _resolve_skills_root(getattr(args, "skills_root", None))
         skill_dir = _resolve_native_skill_dir(args.skill, getattr(args, "skills_root", None))
         if not skill_dir.exists():
             raise SystemExit(f"Skill directory not found for native improve: {skill_dir}")
-        if not is_native_skill_bundle(skill_dir):
-            plan = derive_native_skill_plan_from_legacy(skill_dir)
-        else:
-            skill_md = skill_dir / "SKILL.md"
-            payload = json.loads((skill_dir / "skill.lock.json").read_text(encoding="utf-8")) if (skill_dir / "skill.lock.json").exists() else {}
-            plan = derive_native_skill_plan_from_legacy(skill_dir)
-            if skill_md.exists():
-                plan["skill_name"] = payload.get("name") or plan["skill_name"]
-                plan["version"] = payload.get("version") or plan["version"]
-        written = write_native_skill_bundle(skill_dir, plan, overwrite=True)
-        rep = evaluate_native_skill_bundle(skill_dir)
+        written, rep, plan = improve_native_skill_bundle(skill_dir, improvement_request=improvement_request, overwrite=True)
         out_path = RUNS_DIR / f"{args.skill}.native-improve.json"
         out_path.write_text(
             json.dumps(
@@ -130,13 +125,18 @@ def cmd_improve(args):
                     "bundle_dir": str(skill_dir),
                     "files_written": [str(path) for path in written],
                     "pass_rate": rep.pass_rate,
+                    "version": plan.get("version"),
+                    "bundle_topology": "subagent-aware" if "subagents.json" in [path.name for path in written] else "single-agent",
+                    "improvement_request": improvement_request,
                 },
                 ensure_ascii=False,
                 indent=2,
             ),
             encoding="utf-8",
         )
-        console.print(Panel.fit(f"Bundle: {skill_dir}\nFinal: Passed {rep.passed}/{rep.total} (pass_rate={rep.pass_rate:.0%})\nSaved: {out_path}"))
+        console.print(Panel.fit(
+            f"Bundle: {skill_dir}\nFinal: Passed {rep.passed}/{rep.total} (pass_rate={rep.pass_rate:.0%})\nVersion: {plan.get('version')}\nSaved: {out_path}"
+        ))
         return
 
     payload = _load_input(args.input_file) if args.input_file else {}
@@ -160,6 +160,8 @@ def cmd_improve(args):
     if args.max_topics is not None: research_cfg["max_topics"]=args.max_topics
     if args.max_results_per_topic is not None: research_cfg["max_results_per_topic"]=args.max_results_per_topic
     if args.max_snippet_chars is not None: research_cfg["max_snippet_chars"]=args.max_snippet_chars
+    if payload.get("target_platform_hint") and "target_platform_hint" not in research_cfg:
+        research_cfg["target_platform_hint"] = payload.get("target_platform_hint")
 
     safety_cfg = payload.get("safety") or {}
 
@@ -171,7 +173,8 @@ def cmd_improve(args):
                           allow_test_expansion=allow_test_expansion,
                           llm_override=llm_override if llm_override else None,
                           research_cfg=research_cfg if research_cfg else None,
-                          safety_cfg=safety_cfg if safety_cfg else None)
+                          safety_cfg=safety_cfg if safety_cfg else None,
+                          improvement_request=improvement_request)
 
     props_dir = RUNS_DIR / "proposals" / skill_name
     for p in res.proposals:
@@ -260,6 +263,7 @@ def build_parser():
     sp.add_argument("--max-topics", type=int)
     sp.add_argument("--max-results-per-topic", type=int)
     sp.add_argument("--max-snippet-chars", type=int)
+    sp.add_argument("--improvement-request")
     sp.add_argument("--target-platform", choices=["agents_python","legacy_platform","dual"])
     sp.add_argument("--skills-root")
     sp.set_defaults(fn=cmd_improve)

@@ -6,7 +6,22 @@ icon: Container
 section: advanced
 order: 73
 pages: ["/docker"]
-tags: [docker, container, sandbox, logs, image, devops]
+tags:
+  - "docker"
+  - "container"
+  - "sandbox"
+  - "logs"
+  - "image"
+  - "devops"
+  - "help"
+  - "help/en"
+  - "help/runtime"
+  - "runtime"
+  - "docker-sandbox"
+aliases:
+  - "docker-sandbox"
+  - "Docker Sandbox"
+  - "Docker Sandbox help"
 ---
 
 # Docker Sandbox
@@ -54,3 +69,15 @@ The dashboard header shows overall system statistics:
 - Use the logs viewer to debug container issues without SSH access.
 - Stop unused containers to free up system resources.
 - Check image sizes regularly — large images slow down deployments.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+<!-- knowledge-graph:related:end -->

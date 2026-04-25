@@ -87,6 +87,44 @@ function buildSummaryDb(count: number) {
   };
 }
 
+function buildApplyRunsDb(rows: any[]) {
+  const applyRunsQuery = {
+    from: vi.fn(() => applyRunsQuery),
+    leftJoin: vi.fn(() => applyRunsQuery),
+    where: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue(rows),
+  };
+
+  return {
+    select: vi.fn().mockReturnValue(applyRunsQuery),
+  };
+}
+
+function buildNormalizeDb(rows: any[]) {
+  const applyRunsQuery = {
+    from: vi.fn(() => applyRunsQuery),
+    where: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue(rows),
+  };
+
+  const updateSetCalls: any[] = [];
+  const updateQuery = {
+    set: vi.fn((payload) => {
+      updateSetCalls.push(payload);
+      return updateQuery;
+    }),
+    where: vi.fn().mockResolvedValue(undefined),
+  };
+
+  return {
+    select: vi.fn().mockReturnValue(applyRunsQuery),
+    update: vi.fn().mockReturnValue(updateQuery),
+    updateSetCalls,
+  };
+}
+
 describe("skills router legacy upgrade queue", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -185,5 +223,172 @@ describe("skills router legacy upgrade queue", () => {
     const summary = await caller.getLegacyUpgradeQueueSummary();
 
     expect(summary.count).toBe(7);
+  });
+
+  it("returns latest queued apply runs with task ids and reasons", async () => {
+    mockGetDb.mockResolvedValue(buildApplyRunsDb([
+      {
+        id: 902,
+        recommendationId: 11,
+        skillId: 1,
+        runType: "apply",
+        status: "running",
+        summary: "Queued for execution",
+        errorMessage: null,
+        verificationJson: {},
+        logsJson: {
+          taskId: "task-queue-123",
+          applyStrategy: "proposal",
+          lineage: {
+            role: "orchestrator",
+            parentRunId: null,
+            childRunIds: ["903"],
+            checkpointVersion: 4,
+            verificationState: "running",
+            artifactRefs: ["out/plan.md"],
+            resumeCursor: "resume-plan",
+          },
+        },
+        startedAt: new Date("2026-04-22T10:00:00.000Z"),
+        endedAt: null,
+        createdAt: new Date("2026-04-22T10:00:00.000Z"),
+        updatedAt: new Date("2026-04-22T10:00:00.000Z"),
+        recommendationType: "native-bundle-upgrade",
+        recommendationStatus: "approved",
+        recommendationTitle: "Upgrade bundle",
+        recommendationRiskLevel: "critical",
+        recommendationCompatibilityStatus: "blocked",
+        recommendationQualityScore: 88,
+        recommendationCurrentRuntime: "markdown-only",
+        recommendationProposedRuntime: "native-bundle",
+        recommendationProposedAction: "upgrade",
+        recommendationIsAutoApplySafe: false,
+        recommendationJson: {},
+        skillSlug: "queued-skill",
+        skillName: "Queued Skill",
+        skillExecutionMode: "markdown-only",
+      },
+      {
+        id: 903,
+        recommendationId: 12,
+        skillId: 2,
+        runType: "apply",
+        status: "failed",
+        summary: "Proposal generation failed",
+        errorMessage: "Unknown proposal generation error",
+        verificationJson: {},
+        logsJson: {},
+        startedAt: new Date("2026-04-22T09:00:00.000Z"),
+        endedAt: new Date("2026-04-22T09:05:00.000Z"),
+        createdAt: new Date("2026-04-22T09:00:00.000Z"),
+        updatedAt: new Date("2026-04-22T09:05:00.000Z"),
+        recommendationType: "native-bundle-upgrade",
+        recommendationStatus: "failed",
+        recommendationTitle: "Upgrade bundle",
+        recommendationRiskLevel: "high",
+        recommendationCompatibilityStatus: "warning",
+        recommendationQualityScore: 70,
+        recommendationCurrentRuntime: "markdown-only",
+        recommendationProposedRuntime: "native-bundle",
+        recommendationProposedAction: "upgrade",
+        recommendationIsAutoApplySafe: false,
+        recommendationJson: {},
+        skillSlug: "failed-skill",
+        skillName: "Failed Skill",
+        skillExecutionMode: "python",
+      },
+    ]));
+
+    const caller = skillsRouter.createCaller(createAdminContext());
+    const result = await caller.getLegacyUpgradeApplyRuns({ state: "all", limit: 100 });
+
+    expect(result.counts).toEqual({
+      total: 2,
+      queued: 0,
+      running: 1,
+      failed: 1,
+      completed: 0,
+      blocked: 0,
+      canceled: 0,
+    });
+        expect(result.items).toHaveLength(2);
+        expect(result.items[0]?.queueState).toBe("running");
+        expect(result.items[0]?.taskId).toBe("task-queue-123");
+        expect(result.items[0]?.latestRun.status).toBe("running");
+        expect(result.items[0]?.latestRun.lineage?.role).toBe("orchestrator");
+        expect(result.items[1]?.queueState).toBe("failed");
+        expect(result.items[1]?.latestRun.errorMessage).toBe("Unknown proposal generation error");
+      });
+
+  it("retries legacy apply runs using the originating recommendation", async () => {
+    mockGetDb.mockResolvedValue({
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([
+          {
+            id: 801,
+            recommendationId: 55,
+            runType: "apply",
+            status: "failed",
+          },
+        ]),
+      }),
+    });
+
+    const caller = skillsRouter.createCaller(createAdminContext());
+    const result = await caller.retryLegacyUpgradeApplyRuns({
+      runIds: [801],
+    });
+
+    expect(result.requestedRunIds).toEqual([801]);
+    expect(result.appliedCount).toBe(1);
+    expect(result.failedCount).toBe(0);
+    expect(mockApplySkillUpgradeRecommendation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recommendationId: 55,
+        sourceRunId: 801,
+        retryReason: "Retry from apply run 801",
+        requestedBy: 42,
+      }),
+    );
+  });
+
+  it("normalizes failed no-change apply runs into completed runs", async () => {
+    const db = buildNormalizeDb([
+      {
+        id: 910,
+        recommendationId: 77,
+        status: "failed",
+        summary: "ISC improve complete — no patches generated",
+        errorMessage: "Unknown proposal generation error",
+        logsJson: {
+          taskId: "task-910",
+          resultMessage: "ISC improve complete — no patches generated",
+          resultError: "Unknown proposal generation error",
+        },
+        createdAt: new Date("2026-04-22T11:00:00.000Z"),
+      },
+    ]);
+    mockGetDb.mockResolvedValue(db);
+
+    const caller = skillsRouter.createCaller(createAdminContext());
+    const result = await caller.normalizeLegacyUpgradeApplyRuns();
+
+    expect(result.scannedCount).toBe(1);
+    expect(result.normalizedCount).toBe(1);
+    expect(result.normalizedRunIds).toEqual([910]);
+    expect(db.update).toHaveBeenCalledTimes(2);
+    expect(db.updateSetCalls).toEqual([
+      expect.objectContaining({
+        status: "approved",
+        reviewedBy: 42,
+        approvedBy: 42,
+      }),
+      expect.objectContaining({
+        status: "completed",
+        errorMessage: null,
+        summary: "ISC improve complete — no patches generated",
+      }),
+    ]);
   });
 });

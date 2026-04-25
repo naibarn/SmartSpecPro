@@ -6,7 +6,23 @@ icon: FolderOpen
 section: features
 order: 67
 pages: ["/document-management", "/media-history"]
-tags: [documents, files, folders, library, media history, upload, organize]
+tags:
+  - "documents"
+  - "files"
+  - "folders"
+  - "library"
+  - "media history"
+  - "upload"
+  - "organize"
+  - "help"
+  - "help/th"
+  - "help/knowledge"
+  - "knowledge"
+  - "document-management"
+aliases:
+  - "document-management"
+  - "จัดการเอกสาร"
+  - "จัดการเอกสาร help"
 ---
 
 # จัดการเอกสาร
@@ -62,3 +78,13 @@ Media History แสดงฟีดตามลำดับเวลาของ
 - สื่อที่สร้างขึ้นนับรวมกับโควตาพื้นที่ ไฟล์ที่อัปโหลดก็นับด้วยเช่นกัน
 - ลบรายการที่ไม่ต้องการอีกต่อไปเพื่อเพิ่มพื้นที่ — การลบถาวรหลังจากผ่านช่วงผ่อนผัน 24 ชั่วโมง
 - ขีดจำกัดพื้นที่ขึ้นอยู่กับแผนปัจจุบัน — ดูรายละเอียดที่ **Settings → Billing**
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[memory|ระบบ Memory]]
+- [[chat|คู่มือ Chat]]
+- [[mcp-servers|การเชื่อมต่อ MCP Server]]
+- [[personas|บุคลิก AI]]
+<!-- knowledge-graph:related:end -->

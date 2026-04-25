@@ -4,11 +4,49 @@ import {
   createMessagesSseTransformState,
   extractStreamingUsageFromSsePayload,
   finalizeMessagesSseTransformToOpenAi,
+  parseProviderError,
   resolveApiUrl,
   transformMessagesSseChunkToOpenAi,
   transformRequestBody,
   validateKieRequestFields,
 } from "./llmRoutes";
+
+describe("parseProviderError", () => {
+  it("surfaces OpenRouter data policy guardrail errors with a clear action", () => {
+    const parsed = parseProviderError(
+      JSON.stringify({
+        error: {
+          message: "No endpoints available matching your guardrail restrictions and data policy. Configure: https://openrouter.ai/settings/privacy",
+          code: 404,
+        },
+      }),
+      "openrouter",
+    );
+
+    expect(parsed.errorType).toBe("data_policy");
+    expect(parsed.suggestedAction).toBe("update_provider_policy");
+    expect(parsed.userMessage).toContain("privacy/data policy");
+  });
+
+  it("keeps useful upstream rate limit details when OpenRouter wraps provider errors", () => {
+    const parsed = parseProviderError(
+      JSON.stringify({
+        error: {
+          message: "Provider returned error",
+          code: 429,
+          metadata: {
+            raw: "deepseek/deepseek-v4-pro is temporarily rate-limited upstream. Please retry shortly.",
+            provider_name: "DeepSeek",
+          },
+        },
+      }),
+      "openrouter",
+    );
+
+    expect(parsed.errorType).toBe("rate_limit");
+    expect(parsed.userMessage).toContain("temporarily rate-limited upstream");
+  });
+});
 
 describe("transformRequestBody", () => {
   it("preserves documented messages-style fields for Kie Claude", () => {

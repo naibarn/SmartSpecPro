@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import path from "path";
 
 import type { BuildContextPackRequest } from "../contextPackBuilder";
 import type { UnifiedExecutionRequest } from "../executors/types";
@@ -7,6 +8,10 @@ import {
   evaluateSkillCapabilityActivationGate,
   type SkillCapabilityActivationGateResult,
 } from "../skillCapabilityManifestService";
+import {
+  isNativeSkillBundle,
+  resolveSkillBundleDir,
+} from "../skillFiles";
 import { getTenantFeatureFlags } from "../tenantFeatureFlagService";
 import {
   AgentRuntimeClient,
@@ -150,6 +155,65 @@ export class SharedSkillRuntimeError extends Error {
 
 const DEFAULT_RECURSION_MAX_DEPTH = 2;
 const DEFAULT_ENVELOPE_LIFETIME_MS = 15 * 60 * 1000;
+const NATIVE_SKILL_SHELL_TOOL = "native-skill-shell";
+
+export interface NativeSkillRuntimePlanContextInput {
+  id?: string | null;
+  slug?: string | null;
+  folderPath?: string | null;
+  nativeBundlePath?: string | null;
+  nativeBundleReady?: boolean | null;
+}
+
+function isNativeRuntimePlanContext(value: unknown): value is Record<string, unknown> {
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    (value as Record<string, unknown>).enabled === true,
+  );
+}
+
+function dedupeStrings(values: string[]): string[] {
+  return Array.from(new Set(values.filter(value => value.trim().length > 0)));
+}
+
+export function buildNativeSkillRuntimePlanContext(
+  skill: NativeSkillRuntimePlanContextInput,
+  options: {
+    requestedSubagent?: string | null;
+    taskHint?: string | null;
+  } = {},
+): Record<string, unknown> | null {
+  const rawBundlePath = skill.nativeBundlePath ?? skill.folderPath;
+  if (!rawBundlePath || skill.nativeBundleReady === false) {
+    return null;
+  }
+
+  const candidate = path.isAbsolute(rawBundlePath)
+    ? rawBundlePath
+    : path.resolve(process.cwd(), rawBundlePath);
+  const candidateDir = /\.(md|json)$/i.test(path.basename(candidate))
+    ? path.dirname(candidate)
+    : candidate;
+  const bundleDir = resolveSkillBundleDir(candidateDir);
+  if (!bundleDir || !isNativeSkillBundle(bundleDir)) {
+    return null;
+  }
+
+  const skillSlug = skill.id ?? skill.slug;
+  if (!skillSlug) {
+    return null;
+  }
+
+  return {
+    enabled: true,
+    skillSlug,
+    bundleDir,
+    requestedSubagent: options.requestedSubagent ?? null,
+    taskHint: options.taskHint ?? null,
+  };
+}
 
 function normalizeUsageLike(value: unknown): RuntimeUsageSummary {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -296,6 +360,12 @@ function buildSchemaPlanContext(
   };
 }
 
+function hasNativeSkillRuntimePlanContext(
+  input: ExecuteSharedSkillRuntimeInput<unknown, unknown>,
+): boolean {
+  return isNativeRuntimePlanContext(input.planContext?.nativeSkillRuntime);
+}
+
 function toRuntimeRequestId(value?: string | null): string {
   return value?.trim() || `skill-runtime-${randomUUID()}`;
 }
@@ -425,10 +495,15 @@ async function buildRuntimeRequestPayload(
 ): Promise<AgentRuntimeRequest> {
   const requestId = toRuntimeRequestId(input.messageId);
   const idempotencyKey = `skill-runtime:${requestId}`;
+  const nativeRuntimeEnabled = hasNativeSkillRuntimePlanContext(input);
+  const allowedTools = dedupeStrings([
+    ...(input.allowedTools ?? []),
+    ...(nativeRuntimeEnabled ? [NATIVE_SKILL_SHELL_TOOL] : []),
+  ]);
   const executionEnvelope = buildDefaultExecutionEnvelope({
     tenantId: input.tenantId,
     requestId,
-    allowedTools: input.allowedTools ?? [],
+    allowedTools,
     allowedAgents: input.allowedAgents ?? [],
     skillSlugs: input.skillSlugs,
     approvalGranted: input.approvalGranted ?? false,
@@ -453,7 +528,7 @@ async function buildRuntimeRequestPayload(
       planContext: buildSchemaPlanContext(input),
       modelConfig: input.modelConfig,
       executionEnvelope,
-      allowedTools: input.allowedTools ?? [],
+      allowedTools,
       allowedAgents: input.allowedAgents ?? [],
       allowedSkills: input.skillSlugs,
       candidateSkillManifests: gate

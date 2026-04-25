@@ -6,7 +6,21 @@ icon: Webhook
 section: advanced
 order: 76
 pages: ["/webhook-triggers"]
-tags: [webhooks, integrations, triggers, api, external, automation, events]
+tags:
+  - "webhooks"
+  - "integrations"
+  - "triggers"
+  - "api"
+  - "external"
+  - "automation"
+  - "events"
+  - "help"
+  - "help/th"
+  - "help/automation"
+aliases:
+  - "webhooks"
+  - "Webhooks และการเชื่อมต่อ"
+  - "Webhooks และการเชื่อมต่อ help"
 ---
 
 # Webhooks และการเชื่อมต่อ
@@ -105,3 +119,15 @@ SmartAI Hub ลงนามทุก webhook request โดยใช้ HMAC-SHA
 - **อัปเดต CRM** — อัปเดต record ผู้ติดต่อเมื่อผู้ใช้ส่งข้อความประเภทเฉพาะ
 - **Pipeline triggers** — เรียกใช้ CI/CD pipeline หรืองานประมวลผลข้อมูลเมื่อ presentation ถูก export
 - **การแจ้งเตือนเครดิต** — ส่งอีเมลหรือ SMS เมื่อยอดเครดิตของผู้ใช้ต่ำ
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[workflows|เวิร์กโฟลว์และระบบอัตโนมัติ]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[automation|ระบบอัตโนมัติ]]
+- [[factory|SaaS Factory]]
+- [[work-os|คู่มือ Work OS]]
+- [[workflow-editor|ตัวสร้างเวิร์กโฟลว์]]
+<!-- knowledge-graph:related:end -->

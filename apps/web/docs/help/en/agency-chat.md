@@ -6,7 +6,31 @@ icon: MessageSquare
 section: advanced
 order: 72
 pages: ["/agencies", "/chat"]
-tags: [agency, chat, test, run, streaming, preview, model, target agent, instructions, cancel, retry, tool calls, guardrails, approval, browser session]
+tags:
+  - "agency"
+  - "chat"
+  - "test"
+  - "run"
+  - "streaming"
+  - "preview"
+  - "model"
+  - "target agent"
+  - "instructions"
+  - "cancel"
+  - "retry"
+  - "tool calls"
+  - "guardrails"
+  - "approval"
+  - "browser session"
+  - "help"
+  - "help/en"
+  - "help/teams"
+  - "teams"
+  - "agency-chat"
+aliases:
+  - "agency-chat"
+  - "Agency Chat — Running & Testing Agencies"
+  - "Agency Chat — Running & Testing Agencies help"
 ---
 
 # Agency Chat
@@ -301,3 +325,15 @@ When you first open an agency (no messages yet), the conversation area shows:
 - **Watch the Activity Panel** — it helps you understand how agents collaborate and identify bottlenecks.
 - **Try model overrides** — a faster model may be fine for drafts, while a more capable model produces better final output.
 - **Cancel gracefully** — use "Cancel After Turn" when possible to get partial results rather than nothing.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[teams|AI Teams]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[agencies|Agencies - Multi-Agent Teams]]
+- [[agency-builder|Agency Builder]]
+- [[groups|Groups]]
+- [[team-monitoring|Team Monitoring & Scoped Memory]]
+<!-- knowledge-graph:related:end -->

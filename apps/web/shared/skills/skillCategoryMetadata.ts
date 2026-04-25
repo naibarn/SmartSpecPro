@@ -20,7 +20,7 @@ const CATEGORY_ALLOWED_EXECUTION_MODES: Partial<Record<string, SkillExecutionMod
   slide_generation: ["sandbox-command", "sandbox-code", "llm-only"],
   product_review: ["llm-only"],
   prompt_enhancement: ["llm-only", "enhance-prompt"],
-  image_prompt_generation: ["llm-only", "enhance-prompt"],
+  image_prompt_generation: ["llm-only", "enhance-prompt", "python"],
   video_prompt_generation: ["llm-only", "enhance-prompt"],
   image_generation: ["media-generate"],
   video_generation: ["media-generate"],

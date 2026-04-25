@@ -6,7 +6,23 @@ icon: Package
 section: admin
 order: 87
 pages: ["/admin/packages"]
-tags: [admin, packages, credits, pricing, subscription, billing, stripe, plans]
+tags:
+  - "admin"
+  - "packages"
+  - "credits"
+  - "pricing"
+  - "subscription"
+  - "billing"
+  - "stripe"
+  - "plans"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-packages"
+aliases:
+  - "admin-packages"
+  - "แพ็กเกจเครดิตและราคา"
+  - "แพ็กเกจเครดิตและราคา help"
 ---
 
 # แพ็กเกจเครดิตและราคา
@@ -59,3 +75,15 @@ tags: [admin, packages, credits, pricing, subscription, billing, stripe, plans]
 - ใช้การเรียกเก็บรายปีพร้อมส่วนลดเพื่อส่งเสริมการสมัครระยะยาว
 - ทำเครื่องหมาย feature ที่แพ็กเกจระดับกลาง — มักมีอัตรา conversion ดีที่สุด
 - ทดสอบ checkout flow หลังสร้างหรือแก้ไขแพ็กเกจ
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

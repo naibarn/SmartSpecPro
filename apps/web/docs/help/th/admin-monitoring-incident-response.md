@@ -6,7 +6,21 @@ icon: ShieldAlert
 section: admin
 order: 86
 pages: ["/admin/monitoring", "/admin/dashboard"]
-tags: [admin, monitoring, incident, alerts, triage, faq]
+tags:
+  - "admin"
+  - "monitoring"
+  - "incident"
+  - "alerts"
+  - "triage"
+  - "faq"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-monitoring-incident-response"
+aliases:
+  - "admin-monitoring-incident-response"
+  - "คู่มือรับมือ Incident จากหน้า Monitoring"
+  - "คู่มือรับมือ Incident จากหน้า Monitoring help"
 ---
 
 # คู่มือรับมือ Incident จากหน้า Monitoring
@@ -187,3 +201,15 @@ tags: [admin, monitoring, incident, alerts, triage, faq]
 ### ถ้า manual retry ผ่านครั้งเดียว ปิด incident ได้ไหม
 
 ยังไม่ควร ต้องรอให้ flow ปกติกลับมานิ่งและ alert หยุดยิงซ้ำก่อน
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

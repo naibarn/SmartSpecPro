@@ -6,7 +6,20 @@ icon: Zap
 section: features
 order: 20
 pages: ["/chat"]
-tags: [skills, slash commands, workflow, automation, detection]
+tags:
+  - "skills"
+  - "slash commands"
+  - "workflow"
+  - "automation"
+  - "detection"
+  - "help"
+  - "help/th"
+  - "help/marketplace"
+  - "marketplace"
+aliases:
+  - "skills"
+  - "Skills และคำสั่ง Slash"
+  - "Skills และคำสั่ง Slash help"
 ---
 
 # Skills และคำสั่ง Slash
@@ -57,3 +70,12 @@ SmartAI Hub สามารถตรวจจับอัตโนมัติ�
 - **Media generation trigger** — ส่งคำขอสร้างรูปภาพ วิดีโอ หรือเสียงโดยอัตโนมัติ
 - **Structured data** — ตาราง JSON ผลลัพธ์เปรียบเทียบ
 - **Prompt** — prompt ที่ปรับปรุงหรือมีโครงสร้างพร้อมสำหรับขั้นตอนถัดไป
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[marketplace|ตลาด]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[skill-browser|เรียกดูสกิล]]
+<!-- knowledge-graph:related:end -->

@@ -6,7 +6,25 @@ icon: Shield
 section: admin
 order: 130
 pages: ["/admin/agencies", "/admin/approvals", "/admin/tenants", "/admin/ops", "/admin/funnel", "/admin/services", "/admin/channel-router", "/admin/system-guardian", "/admin/feedback-hub", "/admin/content-quality", "/admin/sandbox"]
-tags: [admin, agencies, approvals, tenants, multi-tenant, operations, monitoring, guardian, feedback, quality]
+tags:
+  - "admin"
+  - "agencies"
+  - "approvals"
+  - "tenants"
+  - "multi-tenant"
+  - "operations"
+  - "monitoring"
+  - "guardian"
+  - "feedback"
+  - "quality"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-advanced"
+aliases:
+  - "admin-advanced"
+  - "การจัดการขั้นสูง"
+  - "การจัดการขั้นสูง help"
 ---
 
 # การจัดการขั้นสูง
@@ -148,3 +166,15 @@ Sandbox คือสภาพแวดล้อมทดสอบแบบ isola
 - **การทดสอบ agency** — สร้าง sandbox agency run พร้อม logging ครบถ้วนสำหรับ debug
 - **การทดสอบโมเดล** — ส่ง prompt ดิบไปยัง provider ที่กำหนดค่าไว้เพื่อเปรียบเทียบผลลัพธ์
 - การเปลี่ยนแปลงใน Sandbox ไม่ใช้เครดิตผู้ใช้และไม่สามารถมองเห็นได้สำหรับผู้ใช้ทั่วไป
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+- [[admin-billing-phase2-runbook|คู่มือดูแล Billing Phase 2]]
+<!-- knowledge-graph:related:end -->

@@ -6,7 +6,20 @@ icon: Terminal
 section: advanced
 order: 71
 pages: ["/terminal"]
-tags: [terminal, shell, command, desktop, tauri, pty]
+tags:
+  - "terminal"
+  - "shell"
+  - "command"
+  - "desktop"
+  - "tauri"
+  - "pty"
+  - "help"
+  - "help/en"
+  - "help/runtime"
+  - "runtime"
+aliases:
+  - "terminal"
+  - "Terminal help"
 ---
 
 # Terminal
@@ -46,3 +59,15 @@ The Terminal page provides a full-featured terminal emulator with multiple tabs,
 - Use multiple tabs to run your dev server in one tab and tests in another.
 - The terminal respects your system shell configuration (bash, zsh, etc.).
 - Terminal sessions persist while the app is open but are cleared on restart.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+<!-- knowledge-graph:related:end -->

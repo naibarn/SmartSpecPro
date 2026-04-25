@@ -6,7 +6,21 @@ icon: Webhook
 section: advanced
 order: 76
 pages: ["/webhook-triggers"]
-tags: [webhooks, integrations, triggers, api, external, automation, events]
+tags:
+  - "webhooks"
+  - "integrations"
+  - "triggers"
+  - "api"
+  - "external"
+  - "automation"
+  - "events"
+  - "help"
+  - "help/en"
+  - "help/automation"
+aliases:
+  - "webhooks"
+  - "Webhooks & Integrations"
+  - "Webhooks & Integrations help"
 ---
 
 # Webhooks & Integrations
@@ -105,3 +119,15 @@ After 3 failed retries, the delivery is marked as failed in the delivery log. Th
 - **CRM updates** — update a contact record when a user sends a specific message type.
 - **Pipeline triggers** — kick off a CI/CD pipeline or data processing job when a presentation is exported.
 - **Credit alerts** — send an email or SMS when a user's balance is low.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[workflows|Workflows & Automation]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[automation|Process Automation]]
+- [[factory|SaaS Factory]]
+- [[work-os|Work OS Guide]]
+- [[workflow-editor|Workflow Editor]]
+<!-- knowledge-graph:related:end -->

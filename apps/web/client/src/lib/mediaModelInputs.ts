@@ -409,6 +409,9 @@ export function getModelGenerationModeLabel(model: ModelGenerationModeSource): s
   if (["image-to-video", "image2video", "img2vid", "i2v"].includes(generateType)) {
     return "Image to Video";
   }
+  if (["image-to-image", "image2image", "img2img", "i2i"].includes(generateType)) {
+    return "Image to Image";
+  }
   if (["video-to-video", "video2video", "v2v"].includes(generateType) || generateType.includes("motion")) {
     return "Video to Video";
   }
@@ -426,7 +429,7 @@ export function getModelGenerationModeLabel(model: ModelGenerationModeSource): s
     return "Video to Video";
   }
   if (hasImageInput) {
-    return "Image to Video";
+    return "Image to Image";
   }
   return null;
 }

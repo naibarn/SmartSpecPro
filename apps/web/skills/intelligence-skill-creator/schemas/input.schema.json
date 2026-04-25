@@ -77,6 +77,46 @@
       "examples": ["my-date-converter", "skill_math_tutor", "seo-meta-generator"]
     },
 
+    "target_platform": {
+      "type": "string",
+      "enum": ["classic", "agents_python"],
+      "default": "classic",
+      "description": "Create mode platform target. Use classic for SmartAIHub skill bundles, or agents_python for native OpenAI Agents Python bundles.",
+      "enumDescriptions": {
+        "classic": "Generate a standard SmartAIHub skill bundle",
+        "agents_python": "Generate a native OpenAI Agents Python bundle with SKILL.md, skill.lock.json, scripts/run.sh, and scripts/verify.sh"
+      }
+    },
+
+    "target_platform_hint": {
+      "type": "string",
+      "enum": ["classic", "agents_python"],
+      "default": "classic",
+      "description": "Improve mode compatibility hint. Use agents_python when the existing skill is already a native OpenAI Agents Python bundle.",
+      "enumDescriptions": {
+        "classic": "Treat the skill as a standard SmartAIHub bundle during improvement",
+        "agents_python": "Treat the skill as a native OpenAI Agents Python bundle during improvement"
+      }
+    },
+
+    "native_topology": {
+      "type": "string",
+      "enum": ["single_agent", "manager_tools", "handoff"],
+      "default": "single_agent",
+      "description": "Create mode topology for agents_python bundles. single_agent keeps one orchestrator, manager_tools creates bounded specialists via Agent.as_tool, and handoff creates specialist ownership-transfer routes.",
+      "enumDescriptions": {
+        "single_agent": "Generate a normal single-agent native bundle",
+        "manager_tools": "Generate an orchestrator with specialists exposed as bounded tools",
+        "handoff": "Generate an orchestrator with specialists that may receive ownership handoffs"
+      }
+    },
+
+    "native_specialists": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "Optional comma- or newline-separated specialist names for native subagent-aware bundles, e.g. researcher, writer, verifier."
+    },
+
     "rounds": {
       "type": "integer",
       "minimum": 1,
@@ -95,6 +135,32 @@
       "type": "boolean",
       "default": false,
       "description": "Allow ISC to add new test cases during improvement (improve mode only)"
+    },
+
+    "improvement_request": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 4000,
+      "description": "Optional natural-language guidance for improve mode. For native bundles, use this to steer deterministic updates, traceability, retry handling, or compatibility fixes.",
+      "examples": [
+        "Make the bundle deterministic and trace-friendly.",
+        "Preserve the native OpenAI Agents Python contract and update retry behavior.",
+        "Normalize legacy metadata and keep versioned artifacts aligned."
+      ]
+    },
+
+    "improvement_preset": {
+      "type": "string",
+      "enum": ["custom", "deterministic", "trace_friendly", "retry_safe", "compatibility_fix"],
+      "default": "custom",
+      "description": "Quick improvement preset for improve mode. The preset is converted into an improvement_request when the free-text field is empty.",
+      "enumDescriptions": {
+        "custom": "Use the free-text improvement_request field as-is",
+        "deterministic": "Prioritize deterministic, idempotent, repeatable behavior",
+        "trace_friendly": "Prioritize task IDs, lineage, and readable debug metadata",
+        "retry_safe": "Prioritize safe retry and requeue behavior",
+        "compatibility_fix": "Prioritize compatibility fixes and contract preservation"
+      }
     },
 
     "workflow_json": {
@@ -243,8 +309,18 @@
       "description": "A skill that extracts structured product data (name, price, features, pros, cons) from unstructured product description text using NLP techniques",
       "skill_language": "python",
       "complexity": "moderate",
+      "target_platform": "agents_python",
       "skill_name": "product-data-extractor",
       "llm_model": "claude-opus-4-6"
+    },
+    {
+      "mode": "improve",
+      "skill_name": "skill_math_tutor",
+      "rounds": 3,
+      "improvement_preset": "trace_friendly",
+      "target_platform_hint": "agents_python",
+      "improvement_request": "Make the bundle deterministic and trace-friendly.",
+      "llm_model": "gpt-4o"
     },
     {
       "mode": "create",

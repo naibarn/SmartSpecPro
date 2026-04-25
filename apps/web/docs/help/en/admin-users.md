@@ -6,7 +6,22 @@ icon: Users
 section: admin
 order: 105
 pages: ["/admin/users", "/admin/packages"]
-tags: [admin, users, roles, permissions, ban, credits, packages]
+tags:
+  - "admin"
+  - "users"
+  - "roles"
+  - "permissions"
+  - "ban"
+  - "credits"
+  - "packages"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-users"
+aliases:
+  - "admin-users"
+  - "User Management"
+  - "User Management help"
 ---
 
 # User Management
@@ -70,3 +85,15 @@ Select multiple users with the checkboxes to perform bulk operations:
 - **Bulk ban / unban** — suspend or restore a group of accounts.
 
 All bulk actions are recorded individually in the audit log for each affected user.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

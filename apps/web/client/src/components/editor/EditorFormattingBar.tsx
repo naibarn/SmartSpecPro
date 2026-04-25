@@ -42,6 +42,7 @@ import {
 interface EditorFormattingBarProps {
   editor: Editor | null;
   onInsertLink: () => void;
+  onInsertKnowledgeLink?: () => void;
   onInsertMedia?: (type: "image" | "video" | "audio") => void;
   onInsertFile?: () => void;
   compact?: boolean;
@@ -145,6 +146,7 @@ function MenuActionButton({
 export default function EditorFormattingBar({
   editor,
   onInsertLink,
+  onInsertKnowledgeLink,
   onInsertMedia,
   onInsertFile,
   compact,
@@ -262,7 +264,8 @@ export default function EditorFormattingBar({
       title: "Knowledge Link ([[...]])",
       ariaLabel: "Knowledge Link",
       icon: <Link2 className={iconSize} />,
-      onClick: () => editor?.chain().focus().insertContent("[[").run(),
+      onClick: onInsertKnowledgeLink
+        ?? (() => editor?.chain().focus().insertContent("[[").run()),
       disabled: !editor,
       tooltip: "Insert a knowledge vault note link",
       testId: "toolbar-knowledge-link",
@@ -524,6 +527,40 @@ export default function EditorFormattingBar({
     </Tooltip>
   );
 
+  const knowledgeLinkAction = inlineActions.find(
+    action => action.id === "knowledge-link",
+  );
+  const desktopInlineActions = inlineActions.filter(
+    action => action.id !== "knowledge-link",
+  );
+
+  const renderKnowledgeLinkButton = (action: ToolbarAction) => (
+    <Tooltip key={action.id} delayDuration={250}>
+      <TooltipTrigger asChild>
+        <span className="inline-flex">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={action.onClick}
+            disabled={action.disabled}
+            title={action.title}
+            aria-label={action.ariaLabel}
+            data-testid={action.testId}
+            className="h-9 shrink-0 rounded-full px-3 text-xs font-medium"
+          >
+            <Link2 className="mr-1.5 h-4 w-4" />
+            Knowledge link
+            <span className="ml-1 rounded-full bg-sky-50 px-1.5 py-0.5 font-mono text-[10px] text-sky-700">
+              [[ ]]
+            </span>
+          </Button>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{action.tooltip ?? action.title}</TooltipContent>
+    </Tooltip>
+  );
+
   const renderMenuSection = (label: string, actions: ToolbarAction[]) =>
     actions.length > 0 ? (
       <div className="space-y-1">
@@ -552,7 +589,12 @@ export default function EditorFormattingBar({
       <Divider compact={compact} />
       {renderIconButton(paragraphAction)}
       {headingActions.map(renderIconButton)}
-      {inlineActions.map(renderIconButton)}
+      {desktopInlineActions.map(renderIconButton)}
+      {!compact && knowledgeLinkAction
+        ? renderKnowledgeLinkButton(knowledgeLinkAction)
+        : knowledgeLinkAction
+          ? renderIconButton(knowledgeLinkAction)
+          : null}
       <Divider compact={compact} />
       {blockActions.map(renderIconButton)}
       <Divider compact={compact} />

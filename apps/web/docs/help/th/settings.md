@@ -6,7 +6,25 @@ icon: Settings
 section: features
 order: 65
 pages: ["/settings", "/settings/personas", "/profile"]
-tags: [settings, profile, security, 2fa, preferences, theme, language, api keys, billing, integrations]
+tags:
+  - "settings"
+  - "profile"
+  - "security"
+  - "2fa"
+  - "preferences"
+  - "theme"
+  - "language"
+  - "api keys"
+  - "billing"
+  - "integrations"
+  - "help"
+  - "help/th"
+  - "help/account"
+  - "account"
+aliases:
+  - "settings"
+  - "การตั้งค่าและความชอบ"
+  - "การตั้งค่าและความชอบ help"
 ---
 
 # การตั้งค่าและความชอบ
@@ -94,3 +112,15 @@ Two-Factor Authentication (2FA) ช่วยลดความเสี่ยง
 - การเปลี่ยนภาษาและธีมมีผลทันทีโดยไม่ต้องโหลดหน้าใหม่
 - เก็บ Recovery Codes ไว้ใน Password Manager — ไม่มีวิธีกู้คืนบัญชีที่ล็อกด้วย 2FA โดยไม่มีรหัสเหล่านี้
 - API Keys ที่สร้างที่นี่ใช้ Credit Pool เดียวกับคุณ — ควรระวังขอบเขตการใช้งานหากแชร์กับบริการบุคคลที่สาม
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[api-keys|คีย์ API]]
+- [[credits|ระบบเครดิต]]
+- [[notification-settings|การตั้งค่าการแจ้งเตือน]]
+- [[profile|โปรไฟล์และบัญชี]]
+- [[usage-analytics|วิเคราะห์การใช้งานและตรวจสอบงาน]]
+<!-- knowledge-graph:related:end -->

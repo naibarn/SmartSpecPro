@@ -6,7 +6,19 @@ icon: Settings
 section: admin
 order: 100
 pages: ["/admin/settings"]
-tags: [admin, settings, configuration, system]
+tags:
+  - "admin"
+  - "settings"
+  - "configuration"
+  - "system"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-settings"
+aliases:
+  - "admin-settings"
+  - "System Settings"
+  - "System Settings help"
 ---
 
 # System Settings
@@ -83,3 +95,15 @@ Monitor the health of every platform service from one place:
 ## Audit log
 
 All admin setting changes are recorded in the audit log with timestamp, admin user, and before/after values. Access the audit log from **Admin → Audit**.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

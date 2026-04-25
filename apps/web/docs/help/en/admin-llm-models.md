@@ -6,7 +6,24 @@ icon: Brain
 section: admin
 order: 89
 pages: ["/admin/llm-models"]
-tags: [admin, llm, models, mapping, providers, enable, disable, default, catalog]
+tags:
+  - "admin"
+  - "llm"
+  - "models"
+  - "mapping"
+  - "providers"
+  - "enable"
+  - "disable"
+  - "default"
+  - "catalog"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-llm-models"
+aliases:
+  - "admin-llm-models"
+  - "LLM Model Mappings"
+  - "LLM Model Mappings help"
 ---
 
 # LLM Model Mappings
@@ -63,3 +80,15 @@ Each model has configurable pricing:
 - Keep at least one model enabled per capability category.
 - Set cost-effective models as defaults to manage credit consumption.
 - Disable models that are temporarily unavailable from their provider.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

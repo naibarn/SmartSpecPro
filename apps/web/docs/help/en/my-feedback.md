@@ -6,7 +6,20 @@ icon: MessageSquare
 section: features
 order: 90
 pages: ["/my-feedback"]
-tags: [feedback, tickets, bug report, feature request, support]
+tags:
+  - "feedback"
+  - "tickets"
+  - "bug report"
+  - "feature request"
+  - "support"
+  - "help"
+  - "help/en"
+  - "help/feedback"
+  - "my-feedback"
+aliases:
+  - "my-feedback"
+  - "My Feedback"
+  - "My Feedback help"
 ---
 
 # My Feedback
@@ -52,3 +65,11 @@ Click **My Feedback** in the sidebar or navigate directly to `/my-feedback`. To 
 - File attachments are preserved for the lifetime of the ticket — you can access screenshots or documents you uploaded at any time.
 - If an admin requests more information, you will see their reply in the thread. You can submit new feedback to follow up if the ticket has been closed.
 - Use the `?ticketId=X` deep link when you want to share a specific ticket with a team member who also has access to the platform.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[feedback|Feedback & Bug Reports]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+<!-- knowledge-graph:related:end -->

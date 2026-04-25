@@ -14,6 +14,7 @@ import {
   refreshSkillCache,
   syncSingleSkillIfChanged,
 } from "./skillRegistry";
+import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import {
   skills,
 } from "../../drizzle/schema";
@@ -36,10 +37,14 @@ export interface SkillStudioRequest {
   targetSkillId?: number;
   newSkillSlug?: string;
   skillLanguage?: "auto" | "python" | "javascript";
+  targetPlatform?: "classic" | "agents_python";
+  targetPlatformHint?: "classic" | "agents_python";
   complexity?: "simple" | "moderate" | "complex";
   rounds?: number;
   allowTestExpansion?: boolean;
   askUser?: boolean;
+  improvementPreset?: "custom" | "deterministic" | "trace_friendly" | "retry_safe" | "compatibility_fix";
+  improvementRequest?: string;
   desiredVisibility?: DesiredVisibility;
   autoApplyProposal?: boolean;
   specText?: string;
@@ -581,6 +586,10 @@ export async function launchSkillStudioTask(
   }
   const targetSkill = await resolveOwnedTargetSkill(input, ctx.userId, isAdmin);
   const desiredVisibility = normalizeDesiredVisibility(input.desiredVisibility, isAdmin);
+  const resolvedSystemModelId =
+    input.llmGatewayMode === "system"
+      ? (input.llmModelSearch?.trim() || await resolveEnabledLlmModelId())
+      : null;
   const resolvedCreateSlug = input.mode === "create"
     ? await resolveUniqueCreateSlug(input.newSkillSlug, input.brief)
     : undefined;
@@ -594,7 +603,7 @@ export async function launchSkillStudioTask(
   const extraParams: Record<string, unknown> = {
     mode: input.mode,
     llm_gateway_mode: input.llmGatewayMode || "system",
-    llm_model_search: input.llmModelSearch || undefined,
+    llm_model_search: resolvedSystemModelId || undefined,
     llm_base_url: input.llmBaseUrl || undefined,
     llm_model: input.llmModel || undefined,
     llm_temperature: input.llmTemperature ?? 0,
@@ -615,12 +624,20 @@ export async function launchSkillStudioTask(
     extraParams.skill_name = resolvedCreateSlug;
     extraParams.skill_language = input.skillLanguage || "auto";
     extraParams.complexity = input.complexity || "moderate";
+    extraParams.target_platform = input.targetPlatform || "classic";
   } else {
     extraParams.skill_name = targetSkill?.slug;
     extraParams.rounds = input.rounds ?? 3;
     extraParams.allow_test_expansion = input.allowTestExpansion ?? false;
     extraParams.ask_user = input.askUser ?? false;
     extraParams.improvement_request = instructionBrief;
+    extraParams.target_platform_hint = input.targetPlatformHint || "classic";
+    if (input.improvementPreset) {
+      extraParams.improvement_preset = input.improvementPreset;
+    }
+    if (input.improvementRequest?.trim()) {
+      extraParams.improvement_request = `${instructionBrief}\n\n${input.improvementRequest.trim()}`;
+    }
   }
 
   const executionToken = ctx.userToken || createSkillExecutionToken(ctx.userId);

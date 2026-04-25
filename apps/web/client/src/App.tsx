@@ -58,6 +58,7 @@ const AdminLLMModels = lazy(() => import("./pages/AdminLLMModels"));
 const AdminMediaProviders = lazy(() => import("./pages/AdminMediaProviders"));
 const AdminMediaModels = lazy(() => import("./pages/AdminMediaModels"));
 const AdminSkills = lazy(() => import("./pages/AdminSkills"));
+const AdminLegacyUpgradeRunDetail = lazy(() => import("./pages/AdminLegacyUpgradeRunDetail"));
 const AdminSkillRepositories = lazy(() => import("./pages/AdminSkillRepositories"));
 const AdminTenants = lazy(() => import("./pages/AdminTenants"));
 const AdminServices = lazy(() => import("./pages/AdminServices"));
@@ -273,6 +274,9 @@ function Router() {
         </Route>
         <Route path="/admin/media-models">
           <RequireAdmin><AdminMediaModels /></RequireAdmin>
+        </Route>
+        <Route path="/admin/skills/runs/:runId">
+          <RequireAdmin><AdminLegacyUpgradeRunDetail /></RequireAdmin>
         </Route>
         <Route path="/admin/skills">
           <RequireAdmin><AdminSkills /></RequireAdmin>

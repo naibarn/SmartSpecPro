@@ -6,7 +6,28 @@ icon: ClipboardList
 section: features
 order: 11
 pages: ["/chat", "/work/request", "/admin/work-os", "/admin/monitoring"]
-tags: [work os, intake, request, case, task, queue, chat, webhook, api, legacy, import, triage]
+tags:
+  - "work os"
+  - "intake"
+  - "request"
+  - "case"
+  - "task"
+  - "queue"
+  - "chat"
+  - "webhook"
+  - "api"
+  - "legacy"
+  - "import"
+  - "triage"
+  - "help"
+  - "help/th"
+  - "help/automation"
+  - "automation"
+  - "work-os"
+aliases:
+  - "work-os"
+  - "คู่มือ Work OS"
+  - "คู่มือ Work OS help"
 ---
 
 # คู่มือ Work OS
@@ -100,3 +121,15 @@ Work OS สามารถมอบหมายงานให้:
 - `timelineSource` ใช้กรอง timeline ให้เหลือ evidence slice เดียว
 - `work_os` คือ main case stream
 - `role_routine`, `team_run`, และ `workpack_record` คือ evidence slice แบบเฉพาะแหล่งที่มา
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[workflows|เวิร์กโฟลว์และระบบอัตโนมัติ]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[automation|ระบบอัตโนมัติ]]
+- [[factory|SaaS Factory]]
+- [[webhooks|Webhooks และการเชื่อมต่อ]]
+- [[workflow-editor|ตัวสร้างเวิร์กโฟลว์]]
+<!-- knowledge-graph:related:end -->

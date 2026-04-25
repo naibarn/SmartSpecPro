@@ -1,9 +1,11 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -44,6 +46,7 @@ import KnowledgeNoteSpotlight from "@/components/library/KnowledgeNoteSpotlight"
 import DocumentPreviewPanel from "@/components/library/DocumentPreviewPanel";
 import GoogleDriveBrowser from "@/components/library/GoogleDriveBrowser";
 import KnowledgeCanvasPanel from "@/components/library/KnowledgeCanvasPanel";
+import KnowledgeGraphView from "@/components/library/KnowledgeGraphView";
 import KnowledgeInspectorPanel from "@/components/library/KnowledgeInspectorPanel";
 import KnowledgeQuickSwitcherDialog from "@/components/library/KnowledgeQuickSwitcherDialog";
 import KnowledgeVaultOverviewPanel from "@/components/library/KnowledgeVaultOverviewPanel";
@@ -131,6 +134,19 @@ const MIN_EDITOR_PANEL_WIDTH = 420;
 const MIN_KNOWLEDGE_PANEL_WIDTH = 320;
 const COLLAPSED_PANEL_WIDTH = 72;
 const RESIZE_HANDLE_WIDTH = 8;
+const KNOWLEDGE_MINI_PANEL_STORAGE_KEY = "document-management-knowledge-mini-panel";
+const KNOWLEDGE_MINI_PANEL_STORAGE_VERSION = 1;
+const KNOWLEDGE_MINI_PANEL_DEFAULT_WIDTH = 520;
+const KNOWLEDGE_MINI_PANEL_DEFAULT_HEIGHT = 640;
+const KNOWLEDGE_MINI_PANEL_MIN_WIDTH = 280;
+const KNOWLEDGE_MINI_PANEL_MIN_HEIGHT = 180;
+const KNOWLEDGE_MINI_PANEL_MAX_WIDTH = 1320;
+const KNOWLEDGE_MINI_PANEL_MAX_HEIGHT = 1040;
+const KNOWLEDGE_MINI_PANEL_MARGIN = 16;
+const KNOWLEDGE_MINI_PANEL_SNAP_THRESHOLD = 24;
+const KNOWLEDGE_MINI_PANEL_HEADER_HEIGHT = 56;
+const KNOWLEDGE_MINI_PANEL_COLLAPSED_HEIGHT = 56;
+const KNOWLEDGE_MINI_PANEL_DRAG_THRESHOLD = 4;
 const MARKDOWN_SYNC_POLL_INTERVAL_MS = 15_000;
 const QUICK_MEDIA_FILTERS = [
   { value: "all", labelKey: "documentManagement.fileType.all" },
@@ -154,6 +170,184 @@ const KNOWLEDGE_VAULT_NOTE_SURFACES = [
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+function snapKnowledgeMiniPanelPosition(
+  position: KnowledgeMiniPanelPosition,
+  panelWidth: number,
+  panelHeight: number,
+  viewportWidth: number,
+  viewportHeight: number,
+): KnowledgeMiniPanelPosition {
+  const maxX = Math.max(
+    KNOWLEDGE_MINI_PANEL_MARGIN,
+    viewportWidth - panelWidth - KNOWLEDGE_MINI_PANEL_MARGIN,
+  );
+  const maxY = Math.max(
+    KNOWLEDGE_MINI_PANEL_MARGIN,
+    viewportHeight - panelHeight - KNOWLEDGE_MINI_PANEL_MARGIN,
+  );
+  const snapLeft = Math.abs(position.x - KNOWLEDGE_MINI_PANEL_MARGIN) <= KNOWLEDGE_MINI_PANEL_SNAP_THRESHOLD;
+  const snapTop = Math.abs(position.y - KNOWLEDGE_MINI_PANEL_MARGIN) <= KNOWLEDGE_MINI_PANEL_SNAP_THRESHOLD;
+  const snapRight = Math.abs(position.x - maxX) <= KNOWLEDGE_MINI_PANEL_SNAP_THRESHOLD;
+  const snapBottom = Math.abs(position.y - maxY) <= KNOWLEDGE_MINI_PANEL_SNAP_THRESHOLD;
+
+  return {
+    x: clamp(
+      snapLeft ? KNOWLEDGE_MINI_PANEL_MARGIN : snapRight ? maxX : position.x,
+      KNOWLEDGE_MINI_PANEL_MARGIN,
+      maxX,
+    ),
+    y: clamp(
+      snapTop ? KNOWLEDGE_MINI_PANEL_MARGIN : snapBottom ? maxY : position.y,
+      KNOWLEDGE_MINI_PANEL_MARGIN,
+      maxY,
+    ),
+  };
+}
+
+type KnowledgeMiniPanelPosition = {
+  x: number;
+  y: number;
+};
+
+type KnowledgeMiniPanelSize = {
+  width: number;
+  height: number;
+};
+
+type KnowledgeMiniPanelState = {
+  position: KnowledgeMiniPanelPosition;
+  size: KnowledgeMiniPanelSize;
+  collapsed: boolean;
+};
+
+type KnowledgeMiniPanelStorage = {
+  version: number;
+  state: KnowledgeMiniPanelState;
+};
+
+type KnowledgeMiniPanelInteraction =
+  | {
+      kind: "move";
+      pointerId: number;
+      startX: number;
+      startY: number;
+      originX: number;
+      originY: number;
+      moved: boolean;
+    }
+  | {
+      kind: "resize";
+      pointerId: number;
+      startX: number;
+      startY: number;
+      originWidth: number;
+      originHeight: number;
+      moved: boolean;
+    };
+
+function getDefaultKnowledgeMiniPanelState(
+  viewportWidth = 1280,
+  viewportHeight = 800,
+): KnowledgeMiniPanelState {
+  const width = Math.min(KNOWLEDGE_MINI_PANEL_DEFAULT_WIDTH, viewportWidth - KNOWLEDGE_MINI_PANEL_MARGIN * 2);
+  const height = Math.min(KNOWLEDGE_MINI_PANEL_DEFAULT_HEIGHT, viewportHeight - KNOWLEDGE_MINI_PANEL_MARGIN * 2);
+  return {
+    position: {
+      x: clamp(
+        viewportWidth - width - KNOWLEDGE_MINI_PANEL_MARGIN,
+        KNOWLEDGE_MINI_PANEL_MARGIN,
+        Math.max(KNOWLEDGE_MINI_PANEL_MARGIN, viewportWidth - width - KNOWLEDGE_MINI_PANEL_MARGIN),
+      ),
+      y: clamp(
+        92,
+        KNOWLEDGE_MINI_PANEL_MARGIN,
+        Math.max(KNOWLEDGE_MINI_PANEL_MARGIN, viewportHeight - height - KNOWLEDGE_MINI_PANEL_MARGIN),
+      ),
+    },
+    size: {
+      width,
+      height,
+    },
+    collapsed: false,
+  };
+}
+
+function normalizeKnowledgeMiniPanelState(
+  state: KnowledgeMiniPanelState,
+  viewportWidth: number,
+  viewportHeight: number,
+): KnowledgeMiniPanelState {
+  const width = clamp(
+    state.size.width,
+    KNOWLEDGE_MINI_PANEL_MIN_WIDTH,
+    Math.min(KNOWLEDGE_MINI_PANEL_MAX_WIDTH, Math.max(KNOWLEDGE_MINI_PANEL_MIN_WIDTH, viewportWidth - KNOWLEDGE_MINI_PANEL_MARGIN * 2)),
+  );
+  const height = clamp(
+    state.size.height,
+    KNOWLEDGE_MINI_PANEL_MIN_HEIGHT,
+    Math.min(KNOWLEDGE_MINI_PANEL_MAX_HEIGHT, Math.max(KNOWLEDGE_MINI_PANEL_MIN_HEIGHT, viewportHeight - KNOWLEDGE_MINI_PANEL_MARGIN * 2)),
+  );
+  return {
+    position: {
+      x: clamp(
+        state.position.x,
+        KNOWLEDGE_MINI_PANEL_MARGIN,
+        Math.max(KNOWLEDGE_MINI_PANEL_MARGIN, viewportWidth - width - KNOWLEDGE_MINI_PANEL_MARGIN),
+      ),
+      y: clamp(
+        state.position.y,
+        KNOWLEDGE_MINI_PANEL_MARGIN,
+        Math.max(KNOWLEDGE_MINI_PANEL_MARGIN, viewportHeight - height - KNOWLEDGE_MINI_PANEL_MARGIN),
+      ),
+    },
+    size: {
+      width,
+      height,
+    },
+    collapsed: state.collapsed,
+  };
+}
+
+function getInitialKnowledgeMiniPanelState(): KnowledgeMiniPanelState {
+  if (typeof window === "undefined") {
+    return getDefaultKnowledgeMiniPanelState();
+  }
+
+  const defaultState = getDefaultKnowledgeMiniPanelState(window.innerWidth, window.innerHeight);
+
+  try {
+    const raw = window.localStorage.getItem(KNOWLEDGE_MINI_PANEL_STORAGE_KEY);
+    if (!raw) {
+      return defaultState;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<KnowledgeMiniPanelStorage>;
+    if (parsed.version !== KNOWLEDGE_MINI_PANEL_STORAGE_VERSION) {
+      return defaultState;
+    }
+
+    const nextState = parsed.state;
+    if (
+      !nextState ||
+      typeof nextState.position?.x !== "number" ||
+      typeof nextState.position?.y !== "number" ||
+      typeof nextState.size?.width !== "number" ||
+      typeof nextState.size?.height !== "number" ||
+      typeof nextState.collapsed !== "boolean"
+    ) {
+      return defaultState;
+    }
+
+    return normalizeKnowledgeMiniPanelState(
+      nextState,
+      window.innerWidth,
+      window.innerHeight,
+    );
+  } catch {
+    return defaultState;
+  }
 }
 
 export default function DocumentManagement() {
@@ -210,6 +404,9 @@ export default function DocumentManagement() {
   const [isLibraryPanelOpen, setIsLibraryPanelOpen] = useState(true);
   const [isKnowledgePanelOpen, setIsKnowledgePanelOpen] = useState(true);
   const [isEditorPanelCollapsed, setIsEditorPanelCollapsed] = useState(false);
+  const [knowledgeMiniPanelState, setKnowledgeMiniPanelState] = useState<KnowledgeMiniPanelState>(
+    () => getInitialKnowledgeMiniPanelState(),
+  );
   const [isDesktopLayout, setIsDesktopLayout] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.matchMedia(DESKTOP_BREAKPOINT_QUERY).matches;
@@ -360,6 +557,12 @@ export default function DocumentManagement() {
     queryState.scope === "my_onedrive"
       ? "my_library"
       : queryState.scope;
+  const listFolderId =
+    listScope === "my_library" ? (queryState.folderId ?? null) : undefined;
+  const searchFolderId =
+    listScope === "my_library" && debouncedQuery.length === 0
+      ? (queryState.folderId ?? null)
+      : undefined;
   const knowledgeVaultScopeSupported = supportsKnowledgeVaultScope(
     queryState.scope
   );
@@ -454,8 +657,7 @@ export default function DocumentManagement() {
         itemType: queryState.itemType || undefined,
         status: queryState.status as any,
       },
-      folderId:
-        listScope === "my_library" ? (queryState.folderId ?? null) : undefined,
+      folderId: listFolderId,
     }),
     [
       listScope,
@@ -487,8 +689,7 @@ export default function DocumentManagement() {
         itemType: queryState.itemType || undefined,
         status: queryState.status as any,
       },
-      folderId:
-        listScope === "my_library" ? (queryState.folderId ?? null) : undefined,
+      folderId: searchFolderId,
     },
     {
       enabled: shouldListDocuments && debouncedQuery.length > 0,
@@ -571,6 +772,8 @@ export default function DocumentManagement() {
     : "fallback";
   const selectedMarkdownItem =
     selectedItem && isMarkdownLibraryItem(selectedItem) ? selectedItem : null;
+  const autoOpenedKnowledgeNoteIdRef = useRef<number | null>(null);
+  const knowledgeMiniPanelInteractionRef = useRef<KnowledgeMiniPanelInteraction | null>(null);
   const selectedMarkdownDraft = selectedItem
     ? markdownDraftByDocId[selectedItem.id]
     : undefined;
@@ -634,6 +837,178 @@ export default function DocumentManagement() {
     : null;
   const selectedKnowledgeBacklinks =
     selectedKnowledgeInspectorQuery.data?.backlinks ?? [];
+
+  const setKnowledgeMiniPanelCollapsedState = useCallback(
+    (collapsed: boolean) => {
+      if (typeof window === "undefined") {
+        setKnowledgeMiniPanelState(prev => ({
+          ...prev,
+          collapsed,
+        }));
+        return;
+      }
+
+      setKnowledgeMiniPanelState(prev =>
+        normalizeKnowledgeMiniPanelState(
+          {
+            ...prev,
+            collapsed,
+          },
+          window.innerWidth,
+          window.innerHeight,
+        ),
+      );
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const noteId = selectedMarkdownItem?.id ?? null;
+    if (!noteId || !knowledgeVaultScopeSupported || !knowledgeVaultAvailability.graph) {
+      autoOpenedKnowledgeNoteIdRef.current = null;
+      return;
+    }
+
+    if (autoOpenedKnowledgeNoteIdRef.current === noteId) {
+      return;
+    }
+
+    autoOpenedKnowledgeNoteIdRef.current = noteId;
+    setIsKnowledgePanelOpen(true);
+    setKnowledgeMiniPanelCollapsedState(false);
+    if (!isDesktopLayout) {
+      setMobileTab("knowledge");
+    }
+    setQueryState(prev =>
+      prev.knowledgeMode === "graph"
+        ? prev
+        : {
+            ...prev,
+            knowledgeMode: "graph",
+          }
+    );
+  }, [isDesktopLayout, knowledgeVaultAvailability.graph, knowledgeVaultScopeSupported, selectedMarkdownItem?.id, setKnowledgeMiniPanelCollapsedState]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const payload: KnowledgeMiniPanelStorage = {
+        version: KNOWLEDGE_MINI_PANEL_STORAGE_VERSION,
+        state: knowledgeMiniPanelState,
+      };
+      window.localStorage.setItem(
+        KNOWLEDGE_MINI_PANEL_STORAGE_KEY,
+        JSON.stringify(payload),
+      );
+    } catch {
+      // Ignore storage failures in private mode / restricted environments.
+    }
+  }, [knowledgeMiniPanelState]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleResize = () => {
+      setKnowledgeMiniPanelState(prev =>
+        normalizeKnowledgeMiniPanelState(
+          prev,
+          window.innerWidth,
+          window.innerHeight,
+        ),
+      );
+    };
+
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      const current = knowledgeMiniPanelInteractionRef.current;
+      if (!current || current.pointerId !== event.pointerId) {
+        return;
+      }
+
+      const deltaX = event.clientX - current.startX;
+      const deltaY = event.clientY - current.startY;
+
+      if (!current.moved) {
+        if (Math.abs(deltaX) + Math.abs(deltaY) < KNOWLEDGE_MINI_PANEL_DRAG_THRESHOLD) {
+          return;
+        }
+        current.moved = true;
+      }
+
+      event.preventDefault();
+
+      if (current.kind === "move") {
+        setKnowledgeMiniPanelState(prev =>
+          normalizeKnowledgeMiniPanelState(
+            {
+              ...prev,
+              position: {
+                ...snapKnowledgeMiniPanelPosition(
+                  {
+                    x: current.originX + deltaX,
+                    y: current.originY + deltaY,
+                  },
+                  prev.collapsed
+                    ? Math.min(320, prev.size.width)
+                    : prev.size.width,
+                  prev.collapsed
+                    ? KNOWLEDGE_MINI_PANEL_COLLAPSED_HEIGHT
+                    : prev.size.height,
+                  window.innerWidth,
+                  window.innerHeight,
+                ),
+              },
+            },
+            window.innerWidth,
+            window.innerHeight,
+          ),
+        );
+        return;
+      }
+
+      setKnowledgeMiniPanelState(prev =>
+        normalizeKnowledgeMiniPanelState(
+          {
+            ...prev,
+            size: {
+              width: current.originWidth + deltaX,
+              height: current.originHeight + deltaY,
+            },
+          },
+          window.innerWidth,
+          window.innerHeight,
+        ),
+      );
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      const current = knowledgeMiniPanelInteractionRef.current;
+      if (!current || current.pointerId !== event.pointerId) {
+        return;
+      }
+
+      knowledgeMiniPanelInteractionRef.current = null;
+    };
+
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
+    document.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
+      document.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, []);
 
   const saveMarkdownMutation = trpc.library.saveMarkdown.useMutation();
   const uploadFileMutation = trpc.library.uploadFile.useMutation();
@@ -1062,6 +1437,10 @@ export default function DocumentManagement() {
   }
 
   function handleKnowledgeModeChange(mode: KnowledgeVaultMode) {
+    if (mode !== "browse") {
+      setIsKnowledgePanelOpen(true);
+      setKnowledgeMiniPanelCollapsedState(false);
+    }
     if (!isDesktopLayout && mode !== "browse") {
       setMobileTab("knowledge");
     }
@@ -1258,10 +1637,12 @@ export default function DocumentManagement() {
     }
   }
 
-  function renderKnowledgeNoteSpotlight() {
+  function renderKnowledgeNoteSpotlight(compactOverride?: boolean) {
     if (!knowledgeVaultScopeSupported || !selectedItem) {
       return null;
     }
+
+    const compact = compactOverride ?? (isDesktopLayout ? isKnowledgePanelOpen : true);
 
     if (!selectedMarkdownItem) {
       return (
@@ -1328,11 +1709,171 @@ export default function DocumentManagement() {
         graphEnabled={knowledgeVaultAvailability.graph}
         contextPacksEnabled={knowledgeVaultAvailability.contextPacks}
         blockedReasons={selectedNoteBlockedReasons}
-        compact={isDesktopLayout ? isKnowledgePanelOpen : true}
+        compact={compact}
         onChangeMode={handleKnowledgeModeChange}
         onOpenQuickSwitch={() => setIsKnowledgeQuickSwitcherOpen(true)}
         onCopyWikiLink={handleCopyCurrentNoteWikilink}
       />
+    );
+  }
+
+  function renderKnowledgeMiniPanel() {
+    if (!isDesktopLayout || !knowledgeVaultScopeSupported || !selectedMarkdownItem) {
+      return null;
+    }
+
+    const inspector = selectedKnowledgeInspectorQuery.data;
+    const renderMiniPanelBody = () => {
+      if (knowledgeVaultMode !== "graph") {
+        return renderKnowledgeNoteSpotlight(true);
+      }
+
+      if (selectedKnowledgeInspectorQuery.isLoading || !inspector) {
+        return (
+          <div className="flex h-full min-h-[240px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-sm text-slate-500">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Loading graph
+          </div>
+        );
+      }
+
+      if (selectedKnowledgeInspectorQuery.error) {
+        return (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">
+            Knowledge graph is temporarily unavailable for this note.
+          </div>
+        );
+      }
+
+      return (
+        <KnowledgeGraphView
+          compact
+          fillAvailable
+          activeNote={inspector.note}
+          outgoing={inspector.outgoing}
+          backlinks={inspector.backlinks}
+          sharedTags={inspector.sharedTags}
+          semanticRelated={inspector.semanticRelated}
+          onOpenItem={openKnowledgeItem}
+        />
+      );
+    };
+
+    const panelWidth = knowledgeMiniPanelState.size.width;
+    const panelHeight = knowledgeMiniPanelState.collapsed
+      ? KNOWLEDGE_MINI_PANEL_COLLAPSED_HEIGHT
+      : knowledgeMiniPanelState.size.height;
+    const collapsedWidth = Math.min(320, panelWidth);
+    const beginMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      knowledgeMiniPanelInteractionRef.current = {
+        kind: "move",
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        originX: knowledgeMiniPanelState.position.x,
+        originY: knowledgeMiniPanelState.position.y,
+        moved: false,
+      };
+    };
+
+    const beginResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0 || knowledgeMiniPanelState.collapsed) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      knowledgeMiniPanelInteractionRef.current = {
+        kind: "resize",
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        originWidth: knowledgeMiniPanelState.size.width,
+        originHeight: knowledgeMiniPanelState.size.height,
+        moved: false,
+      };
+    };
+
+    const toggleCollapsed = () => {
+      setKnowledgeMiniPanelCollapsedState(
+        !knowledgeMiniPanelState.collapsed,
+      );
+    };
+
+    return (
+      <div
+        className="fixed z-30 pointer-events-auto"
+        style={{
+          left: knowledgeMiniPanelState.position.x,
+          top: knowledgeMiniPanelState.position.y,
+          width: knowledgeMiniPanelState.collapsed ? collapsedWidth : panelWidth,
+          height: panelHeight,
+        }}
+      >
+        <div className="flex h-full flex-col overflow-hidden rounded-3xl border border-sky-100 bg-white/95 shadow-xl backdrop-blur">
+          <div className="flex items-stretch justify-between gap-2 border-b border-sky-100 px-3 py-2.5">
+            <div
+              className="flex min-w-0 flex-1 items-center gap-2 pr-2 cursor-move"
+              onPointerDown={beginMove}
+              style={{ touchAction: "none" }}
+              role="presentation"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-700 shadow-sm">
+                <GitBranch className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-700">
+                  Virtual graph
+                </div>
+                <div className="truncate text-sm font-semibold text-slate-900">
+                  {selectedMarkdownItem.title}
+                </div>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full hover:bg-sky-50"
+                onClick={toggleCollapsed}
+                title={
+                  knowledgeMiniPanelState.collapsed
+                    ? "Expand virtual graph"
+                    : "Collapse virtual graph"
+                }
+              >
+                {knowledgeMiniPanelState.collapsed ? (
+                  <ChevronsRight className="h-4 w-4 text-sky-700" />
+                ) : (
+                  <ChevronsLeft className="h-4 w-4 text-sky-700" />
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {!knowledgeMiniPanelState.collapsed ? (
+            <div className="relative flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
+                {renderMiniPanelBody()}
+              </div>
+              <div
+                className="absolute bottom-0 right-0 h-5 w-5 cursor-nwse-resize rounded-tl-2xl bg-transparent"
+                onPointerDown={beginResize}
+                style={{ touchAction: "none" }}
+                title="Resize virtual graph"
+                aria-hidden="true"
+              >
+                <div className="absolute bottom-1 right-1 h-3 w-3 rounded-br-2xl border-r-2 border-b-2 border-sky-300" />
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
     );
   }
 
@@ -2656,7 +3197,7 @@ export default function DocumentManagement() {
         </div>
         {/* ── MOBILE / TABLET LAYOUT (< 1280px) ── */}
         {!isDesktopLayout && (
-          <div className="h-full">
+          <div className="flex h-full min-h-0 flex-col">
             {mobileTab === "library" && (
               <div className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white shadow-md overflow-hidden">
                 <button
@@ -2973,7 +3514,7 @@ export default function DocumentManagement() {
                         items={documents}
                         selectedId={selectedId}
                         isLoading={activeDocumentLoading}
-                        className="h-full"
+                        className="flex-1 min-h-0"
                         emptyMessage={
                           currentFolderId
                             ? t("documentManagement.emptyFolder")
@@ -3224,12 +3765,12 @@ export default function DocumentManagement() {
         {isDesktopLayout && (
           <div
             ref={desktopLayoutRef}
-            className="flex flex-col gap-4 xl:h-[calc(100vh-140px)] xl:flex-row"
+            className="flex flex-col gap-4 xl:h-[calc(100vh-140px)] xl:min-h-0 xl:flex-row"
           >
             {isLibraryPanelOpen ? (
               <aside
                 ref={previewSectionRef}
-                className="flex flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md transition-all duration-300 xl:min-h-0 xl:shrink-0"
+                className="relative flex min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md transition-all duration-300 xl:shrink-0"
                 style={
                   isDesktopLayout
                     ? { width: `${libraryPanelWidth}px` }
@@ -3545,7 +4086,8 @@ export default function DocumentManagement() {
                       </div>
                     </div>
 
-                    <div className="flex min-h-0 flex-1 flex-col">
+                    <div className="relative flex min-h-0 flex-1 flex-col">
+                      {renderKnowledgeMiniPanel()}
                       {activeDocumentError && (
                         <div className="text-sm text-destructive px-4 py-2 mb-2 rounded bg-destructive/10">
                           Failed to load documents:{" "}
@@ -3556,7 +4098,7 @@ export default function DocumentManagement() {
                         items={documents}
                         selectedId={selectedId}
                         isLoading={activeDocumentLoading}
-                        className="h-full"
+                        className="flex-1 min-h-0"
                         emptyMessage={
                           currentFolderId
                             ? t("documentManagement.emptyFolder")

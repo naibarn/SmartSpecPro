@@ -6,7 +6,21 @@ icon: Container
 section: admin
 order: 230
 pages: ["/admin/sandbox"]
-tags: [แอดมิน, sandbox, รันโค้ด, งาน, สภาพแวดล้อมแยก]
+tags:
+  - "แอดมิน"
+  - "sandbox"
+  - "รันโค้ด"
+  - "งาน"
+  - "สภาพแวดล้อมแยก"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin"
+  - "admin-sandbox"
+aliases:
+  - "admin-sandbox"
+  - "จัดการ Sandbox"
+  - "จัดการ Sandbox help"
 ---
 
 # จัดการ Sandbox
@@ -43,3 +57,15 @@ Sandbox คือสภาพแวดล้อมการรันโค้ด
 - ตรวจสอบ log ของ sandbox ที่ Failed เสมอก่อนรีสตาร์ทงาน เพื่อหาสาเหตุที่แท้จริง
 - งานประเภท media generation มักใช้เวลานานกว่างาน LLM ทั่วไป ให้พิจารณาตาม threshold ที่แตกต่างกัน
 - หากพบ sandbox ค้างจำนวนมากพร้อมกัน ให้ตรวจสอบสถานะ Celery worker ที่หน้า Task Queue Monitor
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

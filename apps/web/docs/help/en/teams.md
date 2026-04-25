@@ -6,7 +6,26 @@ icon: UsersRound
 section: features
 order: 25
 pages: ["/teams", "/teams/:teamId", "/chat"]
-tags: [team, assistant, collaboration, agent, orchestrator, room, discussion, sidebar, workflow board, approval, team room]
+tags:
+  - "team"
+  - "assistant"
+  - "collaboration"
+  - "agent"
+  - "orchestrator"
+  - "room"
+  - "discussion"
+  - "sidebar"
+  - "workflow board"
+  - "approval"
+  - "team room"
+  - "help"
+  - "help/en"
+  - "help/teams"
+  - "teams"
+aliases:
+  - "teams"
+  - "AI Teams"
+  - "AI Teams help"
 ---
 
 # AI Teams
@@ -197,3 +216,15 @@ You can bookmark or share direct links to teams:
 ## Archiving a Team
 
 Click the **Archive** button on the team's top bar. Archived teams are hidden from the default list but can be recovered by an admin.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[agencies|Agencies - Multi-Agent Teams]]
+- [[agency-builder|Agency Builder]]
+- [[agency-chat|Agency Chat — Running & Testing Agencies]]
+- [[groups|Groups]]
+- [[team-monitoring|Team Monitoring & Scoped Memory]]
+<!-- knowledge-graph:related:end -->

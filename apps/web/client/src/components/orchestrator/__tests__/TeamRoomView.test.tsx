@@ -139,6 +139,32 @@ describe("TeamRoomView room context", () => {
         createdAt: "2026-04-19T10:00:00.000Z",
         metadataJson: {
           messageType: "plan_summary",
+          runtimeMetadata: {
+            selectedSkillId: "skill-orchestrator",
+            runtimeEngine: "openai_agents",
+            runtimeMode: "active",
+            runtimeStatus: "running",
+            runtimeTraceId: "trace-plan-1",
+            runtimeSdkVersion: "sdk-1.0",
+            runtimeAdapterVersion: "adapter-1.0",
+            runtimeCheckpointId: "checkpoint-plan-1",
+            runtimeCheckpointStatus: "resumed",
+            runtimeResumeCursor: "cursor-plan-1",
+            runtimeArtifactRefs: ["artifact://plan-1", "artifact://plan-2"],
+            requestedSubagent: "researcher",
+            subagentTopology: {
+              nativeBundleReady: true,
+              nativeBundlePath: "/skills/native-demo",
+              bundleTopology: "subagent-aware",
+              nativeBundleFiles: [
+                "SKILL.md",
+                "skill.lock.json",
+                "subagents.json",
+                "agents/orchestrator.md",
+              ],
+              specialistAgentCount: 2,
+            },
+          },
           reviewStatus: "passed",
           reviewScore: 0.92,
           reviewIteration: 2,
@@ -265,6 +291,24 @@ describe("TeamRoomView room context", () => {
     expect(screen.getByText("Review passed · 0.92")).toBeInTheDocument();
     expect(screen.getByText("Looks good to proceed.")).toBeInTheDocument();
     expect(screen.getByText("Tighten the scene pacing.")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("team-room-message-msg-plan")).getByText(
+        "OpenAI Agents Python · active"
+      )
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("team-room-message-msg-plan")).getByText(
+        "Runtime: running"
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText("Subagent-aware")).toBeInTheDocument();
+    expect(screen.getByText("Native bundle ready")).toBeInTheDocument();
+    expect(screen.getByText("2 specialists")).toBeInTheDocument();
+    expect(screen.getByText("Requested: researcher")).toBeInTheDocument();
+    expect(screen.getByText(/Bundle path: \/skills\/native-demo/i)).toBeInTheDocument();
+    expect(screen.getByText(/Checkpoint: checkpoint-plan-1 · resumed/i)).toBeInTheDocument();
+    expect(screen.getByText(/Resume cursor: cursor-plan-1/i)).toBeInTheDocument();
+    expect(screen.getByText(/Artifact refs: artifact:\/\/plan-1, artifact:\/\/plan-2/i)).toBeInTheDocument();
     expect(screen.getByText("Develop storyboard")).toBeInTheDocument();
     expect(
       within(screen.getByTestId("team-room-message-msg-step")).getByTestId(
@@ -279,6 +323,12 @@ describe("TeamRoomView room context", () => {
     expect(screen.getByText("Review failed · 0.58")).toBeInTheDocument();
     expect(screen.getByText("Need a tighter shot list.")).toBeInTheDocument();
     expect(screen.getByText("Reduce the number of scenes.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /view trail/i }));
+
+    expect(screen.getByText(/Trace id/i)).toBeInTheDocument();
+    expect(screen.getByText(/Native bundle files/i)).toBeInTheDocument();
+    expect(screen.getByText("agents/orchestrator.md")).toBeInTheDocument();
   });
 
   it("alternates persona messages left and right and expands long messages on demand", () => {

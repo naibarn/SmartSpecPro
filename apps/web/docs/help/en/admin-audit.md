@@ -6,7 +6,22 @@ icon: FileText
 section: admin
 order: 115
 pages: ["/admin/audit-logs", "/admin/orchestration-logs"]
-tags: [admin, audit, logs, trace, monitoring, orchestration, debugging]
+tags:
+  - "admin"
+  - "audit"
+  - "logs"
+  - "trace"
+  - "monitoring"
+  - "orchestration"
+  - "debugging"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-audit"
+aliases:
+  - "admin-audit"
+  - "Audit Logs"
+  - "Audit Logs help"
 ---
 
 # Audit Logs
@@ -70,3 +85,15 @@ The **Orchestration Logs** tab shows execution traces for Agency workflows and m
 - Large exports (more than 10,000 rows) are processed asynchronously — a download link is emailed to the requesting admin.
 - Exported files are retained for 24 hours.
 - For compliance and long-term archival, configure log forwarding to an external SIEM in **Admin → System Settings → Integrations**.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-billing-phase2-runbook|Admin Billing Phase 2 Runbook]]
+<!-- knowledge-graph:related:end -->

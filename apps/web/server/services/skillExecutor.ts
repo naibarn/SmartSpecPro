@@ -51,7 +51,7 @@ const SANDBOX_INPUT_PATH = `${SANDBOX_FS_ROOT}/skill-input.json`;
 const SANDBOX_OUTPUT_DIR = `${SANDBOX_FS_ROOT}/skill-output`;
 const SANDBOX_MAX_INLINE_FILE_BYTES = 2 * 1024 * 1024; // 2MB per file
 const SANDBOX_MAX_INLINE_TOTAL_BYTES = 8 * 1024 * 1024; // 8MB total
-const SKILL_SKIP_DIRS = new Set([".git", "__pycache__", "node_modules", ".venv", "venv"]);
+const SKILL_SKIP_DIRS = new Set([".git", "__pycache__", "node_modules", ".venv", "venv", "runs"]);
 const SKILL_SKIP_SUFFIXES = [".pyc", ".pyo"];
 const BUILT_IN_SANDBOX_PROFILES: Record<string, SandboxProfileCapabilities> = {
   "code-default": {
@@ -259,6 +259,112 @@ function sanitizeSandboxOutputFileName(
     throw new Error(`Invalid sandbox output file name: ${raw}`);
   }
   return basename;
+}
+
+function readRecordValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function readStringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readNumberValue(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readStringArrayValue(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item).trim()).filter(Boolean);
+}
+
+function pickFirstString(source: Record<string, unknown> | null, keys: string[]): string | null {
+  if (!source) return null;
+  for (const key of keys) {
+    const value = readStringValue(source[key]);
+    if (value) return value;
+  }
+  return null;
+}
+
+function pickFirstNumber(source: Record<string, unknown> | null, keys: string[]): number | null {
+  if (!source) return null;
+  for (const key of keys) {
+    const value = readNumberValue(source[key]);
+    if (value != null) return value;
+  }
+  return null;
+}
+
+function pickFirstStringArray(source: Record<string, unknown> | null, keys: string[]): string[] {
+  if (!source) return [];
+  for (const key of keys) {
+    const value = readStringArrayValue(source[key]);
+    if (value.length > 0) return value;
+  }
+  return [];
+}
+
+function extractPythonSkillLineage(parsed: Record<string, unknown>): Record<string, unknown> | null {
+  const lineageSource = readRecordValue(parsed.lineage);
+  const source = lineageSource ?? parsed;
+  const lineage: Record<string, unknown> = {};
+
+  const schemaVersion = pickFirstNumber(source, ["schemaVersion", "schema_version"]);
+  if (schemaVersion != null) {
+    lineage.schemaVersion = schemaVersion;
+  }
+
+  const role = pickFirstString(source, ["role"]);
+  if (role) {
+    lineage.role = role;
+  }
+
+  const status = pickFirstString(source, ["status", "phaseStatus", "phase_status"]);
+  if (status) {
+    lineage.status = status;
+  }
+
+  const checkpointVersion = pickFirstNumber(source, ["checkpointVersion", "checkpoint_version"]);
+  if (checkpointVersion != null) {
+    lineage.checkpointVersion = checkpointVersion;
+  }
+
+  const parentRunId = pickFirstString(source, ["parentRunId", "parent_run_id"]);
+  if (parentRunId) {
+    lineage.parentRunId = parentRunId;
+  }
+
+  const childRunIds = pickFirstStringArray(source, ["childRunIds", "child_run_ids"]);
+  if (childRunIds.length > 0) {
+    lineage.childRunIds = childRunIds;
+  }
+
+  const resumeCursor = pickFirstString(source, ["resumeCursor", "resume_cursor", "resume_hint"]);
+  if (resumeCursor) {
+    lineage.resumeCursor = resumeCursor;
+  }
+
+  const verificationState = pickFirstString(source, ["verificationState", "verification_state", "verificationStatus", "verification_status"]);
+  if (verificationState) {
+    lineage.verificationState = verificationState;
+  }
+
+  const artifactRefs = pickFirstStringArray(source, ["artifactRefs", "artifact_refs"]);
+  if (artifactRefs.length > 0) {
+    lineage.artifactRefs = artifactRefs;
+  }
+
+  if (Object.keys(lineage).length === 0) {
+    return null;
+  }
+  if (lineage.schemaVersion == null) {
+    lineage.schemaVersion = 1;
+  }
+  if (lineage.role == null) {
+    lineage.role = "orchestrator";
+  }
+  return lineage;
 }
 
 function resolvePythonSkillPaths(skill: SkillDefinition): PythonSkillPaths | null {
@@ -1464,6 +1570,7 @@ async function executePythonSkill(
         success: false,
         skillId: skill.id,
         type: "text",
+        message: `Python skill timed out after ${TIMEOUT_MS / 1000}s`,
         error: `Python skill timed out after ${TIMEOUT_MS / 1000}s`,
       });
     }, TIMEOUT_MS);
@@ -1479,7 +1586,14 @@ async function executePythonSkill(
         success: false,
         skillId: skill.id,
         type: "text",
+        message: `Python process error: ${err.message}`,
         error: `Python process error: ${err.message}`,
+        metadata: {
+          errorKind: "process_error",
+          errorMessage: err.message,
+          stderr: stderr.trim(),
+          stdout: stdout.trim(),
+        },
       });
     });
 
@@ -1496,18 +1610,42 @@ async function executePythonSkill(
           success: false,
           skillId: skill.id,
           type: "text",
+          message: `Python skill exited with code ${code}: ${errDetail}`,
           error: `Python skill exited with code ${code}: ${errDetail}`,
+          metadata: {
+            errorKind: "non_zero_exit",
+            exitCode: code,
+            stderr: stderr.trim(),
+            stdout: stdout.trim(),
+          },
         });
         return;
       }
 
       try {
         const parsed = JSON.parse(stdout.trim());
+        const parsedMetadata = readRecordValue(parsed.metadata);
+        const lineage = extractPythonSkillLineage(parsed);
+        const combinedMetadata = {
+          ...(parsedMetadata ?? {}),
+          ...(lineage ? { lineage } : {}),
+        };
         if (!parsed.success) {
           // Python returns errors in "output" field (user-facing message), not "error"
           const errorMsg = parsed.error ?? parsed.output ?? "Python skill returned failure";
           console.error(`[SkillExecutor] Python skill failure: ${errorMsg}`);
-          settle({ success: false, skillId: skill.id, type: "text", error: errorMsg });
+          settle({
+            success: false,
+            skillId: skill.id,
+            type: "text",
+            message: errorMsg,
+            error: errorMsg,
+            ...(Object.keys(combinedMetadata).length > 0
+              ? {
+                  metadata: combinedMetadata,
+                }
+              : {}),
+          });
           return;
         }
         settle({
@@ -1516,19 +1654,32 @@ async function executePythonSkill(
           type: "text",
           message: parsed.output ?? stdout.trim(),
           ...(parsed._action ? { _action: parsed._action as SkillCreateAction } : {}),
-          ...((parsed.skill_path || parsed.skill_name || parsed.saved_proposals)
+          ...((parsed.skill_path || parsed.skill_name || parsed.saved_proposals || Object.keys(combinedMetadata).length > 0)
             ? {
                 metadata: {
+                  ...combinedMetadata,
                   ...(parsed.skill_path ? { skillPath: parsed.skill_path } : {}),
                   ...(parsed.skill_name ? { skillName: parsed.skill_name } : {}),
                   ...(parsed.saved_proposals ? { savedProposals: parsed.saved_proposals } : {}),
+                  ...(parsed.bundle_topology ? { bundleTopology: parsed.bundle_topology } : {}),
+                  ...(parsed.subagent_manifest ? { subagentManifest: parsed.subagent_manifest } : {}),
                 },
               }
             : {}),
         });
       } catch {
         // Non-JSON stdout — return raw output
-        settle({ success: true, skillId: skill.id, type: "text", message: stdout.trim() });
+        settle({
+          success: true,
+          skillId: skill.id,
+          type: "text",
+          message: stdout.trim(),
+          metadata: {
+            stdout: stdout.trim(),
+            stderr: stderr.trim(),
+            parseError: "Failed to parse JSON output from Python skill",
+          },
+        });
       }
     });
   });
@@ -1582,7 +1733,7 @@ export async function startPythonSkillTask(
           status: "done",
           skillId: skill.id,
           userId,
-          result: { success: false, skillId: skill.id, type: "text", error: msg },
+      result: { success: false, skillId: skill.id, type: "text", error: msg },
         }),
       );
     });

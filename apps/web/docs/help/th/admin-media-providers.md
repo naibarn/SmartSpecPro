@@ -6,7 +6,24 @@ icon: Layers
 section: admin
 order: 91
 pages: ["/admin/media-providers"]
-tags: [admin, media, providers, api-key, health, quota, cost, stable-diffusion, fal]
+tags:
+  - "admin"
+  - "media"
+  - "providers"
+  - "api-key"
+  - "health"
+  - "quota"
+  - "cost"
+  - "stable-diffusion"
+  - "fal"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-media-providers"
+aliases:
+  - "admin-media-providers"
+  - "ผู้ให้บริการสื่อ"
+  - "ผู้ให้บริการสื่อ help"
 ---
 
 # ผู้ให้บริการสื่อ
@@ -58,3 +75,15 @@ tags: [admin, media, providers, api-key, health, quota, cost, stable-diffusion, 
 - กำหนดค่าอย่างน้อยสองผู้ให้บริการเพื่อความซ้ำซ้อน — หากผู้หนึ่งล่ม อีกผู้จะรับหน้าที่
 - ตั้งวงเงินรายวันแบบอนุรักษ์นิยมก่อน แล้วเพิ่มตามการใช้งานจริง
 - ตรวจสอบอัตรา error รายสัปดาห์เพื่อระบุผู้ให้บริการที่ต้อง rotate API key
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

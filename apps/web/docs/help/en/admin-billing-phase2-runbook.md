@@ -1,3 +1,16 @@
+---
+
+aliases:
+  - "admin-billing-phase2-runbook"
+  - "Admin Billing Phase 2 Runbook"
+  - "Admin Billing Phase 2 Runbook help"
+tags:
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin"
+  - "admin-billing-phase2-runbook"
+---
 # Admin Billing Phase 2 Runbook
 
 ## Scope
@@ -30,3 +43,15 @@ This runbook covers saved cards, auto-renew, retry scheduling, dunning pause/res
 - `requires_new_card`: customer must update the card before the next renewal attempt
 - `manual_fallback_active`: invoice remains open but off-session retries are suppressed
 - `manual_review_required`: investigate provider/reconciliation data before retrying
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { trpc } from "@/lib/trpc";
 import { HelpTopicRenderer } from "@/components/help/HelpTopicRenderer";
+import { HelpVirtualGraph } from "@/components/help/HelpVirtualGraph";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 type LucideIcon = React.ComponentType<{ className?: string; size?: number }>;
@@ -60,7 +61,7 @@ export default function HelpTopic() {
   const Icon = getIcon(topic.icon);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-[1500px] px-3 py-5 sm:px-4 sm:py-8">
       {/* Breadcrumb */}
       <nav className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
         <button
@@ -74,11 +75,11 @@ export default function HelpTopic() {
       </nav>
 
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <Icon className="h-8 w-8 text-sky-500" />
-          <div>
-            <h1 className="text-2xl font-bold">{topic.title}</h1>
+          <Icon className="h-8 w-8 shrink-0 text-sky-500" />
+          <div className="min-w-0">
+            <h1 className="break-words text-2xl font-bold">{topic.title}</h1>
             <p className="text-muted-foreground">{topic.description}</p>
           </div>
         </div>
@@ -86,8 +87,19 @@ export default function HelpTopic() {
       </div>
 
       {/* Content */}
-      <div className="rounded-lg border p-6">
-        <HelpTopicRenderer html={topic.html} />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(540px,680px)] xl:items-start">
+        <div className="order-2 rounded-lg border p-4 sm:p-6 xl:order-1">
+          <HelpTopicRenderer html={topic.html} />
+        </div>
+
+        <div className="order-1 min-w-0 xl:sticky xl:top-6 xl:order-2">
+          <HelpVirtualGraph
+            slug={topic.slug}
+            title={topic.title}
+            graph={topic.graph}
+            locale={locale}
+          />
+        </div>
       </div>
 
       {/* Back */}

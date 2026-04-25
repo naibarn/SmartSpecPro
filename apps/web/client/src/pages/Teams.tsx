@@ -683,6 +683,10 @@ export default function Teams() {
     "team_chat"
   );
   const [runObjective, setRunObjective] = useState("");
+  const [startRunRequestedSubagent, setStartRunRequestedSubagent] =
+    useState("auto");
+  const [startRunRequestedSubagentCustom, setStartRunRequestedSubagentCustom] =
+    useState("");
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [addMemberKind, setAddMemberKind] = useState<
     "assistant" | "human" | "external_connector"
@@ -1058,6 +1062,7 @@ export default function Teams() {
             maxDurationMinutes: 30,
             maxBudgetCredits: 500,
           },
+          requestedSubagent: resolvedRequestedSubagent,
         });
         return;
       }
@@ -1236,6 +1241,9 @@ export default function Teams() {
   }, [activeRunDetail?.status]);
 
   const activeRunRuntimeState = (activeRunDetail as any)?.runtimeState ?? null;
+  const activeRunSelectedSkillId =
+    (activeRunRuntimeState as { selectedSkillId?: string | null } | null)
+      ?.selectedSkillId ?? null;
   const selectedRoomCurrentObjective =
     (activeRunDetail as any)?.objective?.trim() ||
     selectedRoom?.goalPrompt?.trim() ||
@@ -1252,6 +1260,25 @@ export default function Teams() {
       : t("teams.run.mode.teamChat");
   const selectedRoomAutonomyLabel = getRoomAutonomyLabel(
     selectedRoomAutonomyLevel
+  );
+  const { data: activeRuntimeSkillForSubagentPicker } = trpc.skills.getFromDb.useQuery(
+    activeRunSelectedSkillId ? { slug: activeRunSelectedSkillId } : skipToken,
+    {
+      enabled: Boolean(startRunDialog && activeRunSelectedSkillId),
+      staleTime: 30_000,
+    }
+  );
+  const runtimeSubagentNames = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (activeRuntimeSkillForSubagentPicker as
+            | { nativeSubagentNames?: string[] }
+            | undefined
+          )?.nativeSubagentNames ?? []
+        )
+      ),
+    [activeRuntimeSkillForSubagentPicker]
   );
   const showAutoTeamPlanSidebar =
     !isCompactViewport && selectedRoomType === "auto_team";
@@ -1548,8 +1575,17 @@ export default function Teams() {
 
   const openStartRunDialog = () => {
     setStartRunMode(selectedRoomExecutionMode);
+    setStartRunRequestedSubagent("auto");
+    setStartRunRequestedSubagentCustom("");
     setStartRunDialog(true);
   };
+
+  const resolvedRequestedSubagent =
+    startRunRequestedSubagent === "auto"
+      ? null
+      : startRunRequestedSubagent === "custom"
+        ? startRunRequestedSubagentCustom.trim() || null
+        : startRunRequestedSubagent.trim() || null;
 
   const handleChooseExplorationCandidate = (
     candidateId: string,
@@ -4079,6 +4115,71 @@ export default function Teams() {
                 rows={3}
               />
             </div>
+            <div>
+              <Label>Subagent request</Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Optional. For auto-team rooms, this hint is forwarded to the
+                native runtime when the run starts.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant={
+                    startRunRequestedSubagent === "auto" ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => {
+                    setStartRunRequestedSubagent("auto");
+                    setStartRunRequestedSubagentCustom("");
+                  }}
+                >
+                  Auto
+                </Button>
+                {runtimeSubagentNames.map(name => (
+                  <Button
+                    key={name}
+                    type="button"
+                    variant={
+                      startRunRequestedSubagent === name ? "default" : "outline"
+                    }
+                    size="sm"
+                    onClick={() => {
+                      setStartRunRequestedSubagent(name);
+                      setStartRunRequestedSubagentCustom("");
+                    }}
+                  >
+                    {name}
+                  </Button>
+                ))}
+                <Button
+                  type="button"
+                  variant={
+                    startRunRequestedSubagent === "custom"
+                      ? "default"
+                      : "outline"
+                  }
+                  size="sm"
+                  onClick={() => setStartRunRequestedSubagent("custom")}
+                >
+                  Custom exact name
+                </Button>
+              </div>
+              {startRunRequestedSubagent === "custom" && (
+                <Input
+                  className="mt-3"
+                  value={startRunRequestedSubagentCustom}
+                  onChange={e =>
+                    setStartRunRequestedSubagentCustom(e.target.value)
+                  }
+                  placeholder="researcher"
+                />
+              )}
+              {runtimeSubagentNames.length > 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Discovered subagents: {runtimeSubagentNames.join(", ")}
+                </p>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateRoomDialog(null)}>
@@ -4171,6 +4272,72 @@ export default function Teams() {
                 className="mt-1"
               />
             </div>
+            <div>
+              <Label>Subagent request</Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Leave this on Auto unless you want to direct the runtime to a
+                specific specialist. The name must match the bundle manifest
+                exactly.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant={
+                    startRunRequestedSubagent === "auto" ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => {
+                    setStartRunRequestedSubagent("auto");
+                    setStartRunRequestedSubagentCustom("");
+                  }}
+                >
+                  Auto
+                </Button>
+                {runtimeSubagentNames.map(name => (
+                  <Button
+                    key={name}
+                    type="button"
+                    variant={
+                      startRunRequestedSubagent === name ? "default" : "outline"
+                    }
+                    size="sm"
+                    onClick={() => {
+                      setStartRunRequestedSubagent(name);
+                      setStartRunRequestedSubagentCustom("");
+                    }}
+                  >
+                    {name}
+                  </Button>
+                ))}
+                <Button
+                  type="button"
+                  variant={
+                    startRunRequestedSubagent === "custom"
+                      ? "default"
+                      : "outline"
+                  }
+                  size="sm"
+                  onClick={() => setStartRunRequestedSubagent("custom")}
+                >
+                  Custom exact name
+                </Button>
+              </div>
+              {startRunRequestedSubagent === "custom" && (
+                <Input
+                  className="mt-3"
+                  value={startRunRequestedSubagentCustom}
+                  onChange={e =>
+                    setStartRunRequestedSubagentCustom(e.target.value)
+                  }
+                  placeholder="researcher"
+                />
+              )}
+              {runtimeSubagentNames.length > 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Discovered subagents: {runtimeSubagentNames.join(", ")}
+                </p>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setStartRunDialog(false)}>
@@ -4183,6 +4350,7 @@ export default function Teams() {
                   roomId: selectedRoomId,
                   executionMode: startRunMode,
                   objective: runObjective.trim(),
+                  requestedSubagent: resolvedRequestedSubagent,
                   stopPolicy: {
                     maxRounds: 20,
                     maxDurationMinutes: 30,

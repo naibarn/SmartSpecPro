@@ -4,6 +4,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { knowledgeVaultMockFixtures } from "@/test/fixtures/knowledgeVaultFixture";
 import { KnowledgeVaultOverviewPanel } from "./KnowledgeVaultOverviewPanel";
 
 describe("KnowledgeVaultOverviewPanel", () => {
@@ -13,45 +14,7 @@ describe("KnowledgeVaultOverviewPanel", () => {
 
     render(
       <KnowledgeVaultOverviewPanel
-        pending={false}
-        enabled={true}
-        activeMode="browse"
-        blockedReasons={["release_gate_not_ready"]}
-        modes={[
-          {
-            mode: "browse",
-            label: "Browse",
-            description: "Browse notes",
-            enabled: true,
-          },
-          {
-            mode: "related",
-            label: "Related",
-            description: "Inspect relationships",
-            enabled: true,
-          },
-          {
-            mode: "graph",
-            label: "Graph",
-            description: "Inspect graph",
-            enabled: true,
-          },
-          {
-            mode: "memory_packs",
-            label: "Memory Packs",
-            description: "Curate packs",
-            enabled: false,
-          },
-          {
-            mode: "canvas",
-            label: "Canvas Boards",
-            description: "Inspect boards",
-            enabled: true,
-          },
-        ]}
-        quickSwitcherEnabled={true}
-        releaseGateStatus="unknown"
-        selectedMarkdownTitle="Roadmap.md"
+        {...knowledgeVaultMockFixtures.overviewPanel}
         onChangeMode={onChangeMode}
         onOpenQuickSwitch={onOpenQuickSwitch}
       />

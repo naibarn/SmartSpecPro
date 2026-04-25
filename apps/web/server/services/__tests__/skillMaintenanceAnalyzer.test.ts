@@ -148,4 +148,35 @@ describe("skillMaintenanceAnalyzer", () => {
 
     expect(result.recommendations.some((item) => item.recommendationType === "sandbox-profile-fix")).toBe(true);
   });
+
+  it("flags native bundles that are missing subagent topology files", () => {
+    const skillDir = createSkillDir({
+      "SKILL.md": "---\nname: Native Skill\ndescription: Native\nversion: 1.0.0\ntarget_platform: agents_python\n---\n# Native\n",
+      "skill.lock.json": JSON.stringify({
+        name: "Native Skill",
+        version: "1.0.0",
+        target_platform: "agents_python",
+        entrypoints: { run: "scripts/run.sh", verify: "scripts/verify.sh" },
+        outputs: ["SKILL.md", "skill.md"],
+        supported_modes: ["create", "improve", "maintenance"],
+        compatibility_mirror_policy: "mirror-skill-md",
+      }),
+      "scripts/run.sh": "#!/usr/bin/env bash\nset -euo pipefail\n",
+      "scripts/verify.sh": "#!/usr/bin/env bash\nset -euo pipefail\n",
+      "references/input_contract.md": "# Input\n",
+      "references/output_contract.md": "# Output\n",
+      "references/maintenance.md": "# Maintenance\n",
+      "MODEL_COMPATIBILITY.md": "# Model Compatibility\n",
+    });
+
+    const result = analyzeSkillForMaintenance({
+      slug: "native-skill",
+      name: "Native Skill",
+      folderPath: skillDir,
+      executionMode: "sandbox-command",
+    });
+
+    expect(result.recommendations.some((item) => item.recommendationType === "subagent-topology-missing")).toBe(true);
+    expect(result.facts.hasSubagentManifest).toBe(false);
+  });
 });

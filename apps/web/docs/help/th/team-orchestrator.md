@@ -6,7 +6,26 @@ icon: Users
 section: advanced
 order: 75
 pages: ["/chat", "/teams", "/teams/:teamId"]
-tags: [team, orchestrator, agents, collaboration, room, run, multi-agent, discussion, ทีม, ออร์เคสตรา]
+tags:
+  - "team"
+  - "orchestrator"
+  - "agents"
+  - "collaboration"
+  - "room"
+  - "run"
+  - "multi-agent"
+  - "discussion"
+  - "ทีม"
+  - "ออร์เคสตรา"
+  - "help"
+  - "help/th"
+  - "help/teams"
+  - "teams"
+  - "team-orchestrator"
+aliases:
+  - "team-orchestrator"
+  - "AI Team Orchestrator — ระบบทีม AI"
+  - "AI Team Orchestrator — ระบบทีม AI help"
 ---
 
 # AI Team Orchestrator — ระบบทีม AI
@@ -130,3 +149,15 @@ Template ที่มีอยู่ช่วยให้ตั้งค่า�
 4. **ใช้โหมด Milestone** เมื่อสนใจเฉพาะการตัดสินใจสำคัญ ไม่ต้องอ่านทั้งหมด
 5. **ตรวจสอบสรุปของ Lead** ก่อนหยุดรัน — สรุปจะรวมข้อสรุปของทีมทั้งหมด
 6. **Pause เพื่อแทรกแซง** — ถ้า agent ออกนอกเรื่อง ให้ pause ส่งข้อความแก้ไข แล้ว resume
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[teams|ทีม AI]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[agencies|Agencies - ทีม AI หลายตัว]]
+- [[agency-builder|ตัวสร้าง Agency]]
+- [[agency-chat|Agency Chat — รันและทดสอบ Agency]]
+- [[groups|กลุ่ม]]
+<!-- knowledge-graph:related:end -->

@@ -6,7 +6,22 @@ icon: Activity
 section: admin
 order: 250
 pages: ["/admin/system-health"]
-tags: [แอดมิน, สถานะระบบ, มอนิเตอร์, บริการ, สถานะ, อัพไทม์]
+tags:
+  - "แอดมิน"
+  - "สถานะระบบ"
+  - "มอนิเตอร์"
+  - "บริการ"
+  - "สถานะ"
+  - "อัพไทม์"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin"
+  - "admin-system-health"
+aliases:
+  - "admin-system-health"
+  - "สถานะระบบ"
+  - "สถานะระบบ help"
 ---
 
 # สถานะระบบ
@@ -43,3 +58,15 @@ tags: [แอดมิน, สถานะระบบ, มอนิเตอร
 - หาก Redis แสดงสถานะผิดปกติ มักส่งผลให้ Celery Workers หยุดรับงาน ควรตรวจสอบคู่กัน
 - สถานะของ LLM Providers อาจเปลี่ยนแปลงได้เนื่องจากปัจจัยภายนอก ควรตั้งค่า fallback provider ไว้เสมอ
 - บันทึกภาพหน้าจอหรือส่งออกข้อมูลสถานะเมื่อพบปัญหา เพื่อใช้ในการวิเคราะห์ root cause
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

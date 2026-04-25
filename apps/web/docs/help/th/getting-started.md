@@ -6,7 +6,20 @@ icon: Rocket
 section: getting-started
 order: 1
 pages: ["/", "/dashboard"]
-tags: [getting started, overview, introduction, basics]
+tags:
+  - "getting started"
+  - "overview"
+  - "introduction"
+  - "basics"
+  - "help"
+  - "help/th"
+  - "help/core"
+  - "core"
+  - "getting-started"
+aliases:
+  - "getting-started"
+  - "เริ่มต้นใช้งาน"
+  - "เริ่มต้นใช้งาน help"
 ---
 
 # เริ่มต้นใช้งาน SmartAI Hub
@@ -63,3 +76,11 @@ SmartAI Hub คือแพลตฟอร์ม AI สำหรับสร้�
 - ย้ายไปใช้ **Agencies** เมื่องานต้องการผลลัพธ์แบบมีโครงสร้าง เช่น รายงาน สไลด์ หรือสตอรีบอร์ด
 - ใช้ **เครดิต** เพื่อติดตามและจัดการการใช้งาน AI ของคุณ
 - เปลี่ยนภาษา (EN/TH) จาก Settings หรือปุ่มเปลี่ยนภาษาในแผง Help
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[document-management|จัดการเอกสาร]]
+- [[content-quality-dashboard|คุณภาพเนื้อหา]]
+- [[task-queue-monitor|มอนิเตอร์คิวงาน]]
+<!-- knowledge-graph:related:end -->

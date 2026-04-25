@@ -102,6 +102,67 @@
           "helpText": "kebab-case slug. Auto-generated if blank. Also used as the skill slug for improve mode.",
           "helpTextTh": "Slug รูปแบบ kebab-case. หากเว้นว่างจะสร้างอัตโนมัติ ใช้เป็น slug สำหรับโหมด improve ด้วย",
           "required": false
+        },
+        {
+          "id": "target_platform",
+          "type": "select",
+          "label": "Target Platform",
+          "labelTh": "แพลตฟอร์มเป้าหมาย",
+          "helpText": "Choose classic for normal SmartAIHub skill bundles, or agents_python for native OpenAI Agents Python bundles.",
+          "helpTextTh": "เลือก classic สำหรับ skill bundle ทั่วไปของ SmartAIHub หรือ agents_python สำหรับ bundle แบบ native ของ OpenAI Agents Python",
+          "default": "classic",
+          "options": [
+            {
+              "value": "classic",
+              "label": "Classic SmartAIHub Bundle",
+              "labelTh": "Bundle แบบ Classic ของ SmartAIHub"
+            },
+            {
+              "value": "agents_python",
+              "label": "OpenAI Agents Python Bundle",
+              "labelTh": "Bundle แบบ OpenAI Agents Python"
+            }
+          ],
+          "dependsOn": { "field": "mode", "value": "create" }
+        },
+        {
+          "id": "native_topology",
+          "type": "select",
+          "label": "Native Topology",
+          "labelTh": "Topology แบบ Native",
+          "helpText": "For agents_python bundles, choose whether to keep one agent or generate bounded specialists.",
+          "helpTextTh": "สำหรับ agents_python bundle เลือกว่าจะใช้ agent เดียวหรือสร้าง specialist ที่มีขอบเขตชัดเจน",
+          "default": "single_agent",
+          "options": [
+            {
+              "value": "single_agent",
+              "label": "Single Agent",
+              "labelTh": "Agent เดียว"
+            },
+            {
+              "value": "manager_tools",
+              "label": "Manager + Tools",
+              "labelTh": "Manager + Tools"
+            },
+            {
+              "value": "handoff",
+              "label": "Handoff Specialists",
+              "labelTh": "Handoff ให้ Specialist"
+            }
+          ],
+          "dependsOn": { "field": "target_platform", "value": "agents_python" }
+        },
+        {
+          "id": "native_specialists",
+          "type": "textarea",
+          "label": "Specialists",
+          "labelTh": "Specialist",
+          "placeholder": "researcher, writer, verifier",
+          "placeholderTh": "researcher, writer, verifier",
+          "helpText": "Optional comma- or newline-separated specialist names for subagent-aware native bundles.",
+          "helpTextTh": "รายชื่อ specialist คั่นด้วย comma หรือขึ้นบรรทัดใหม่ สำหรับ native bundle ที่มี subagent",
+          "rows": 3,
+          "dependsOn": { "field": "target_platform", "value": "agents_python" }
         }
       ]
     },
@@ -162,6 +223,77 @@
           "helpText": "Allow ISC to add new test cases during the improvement loop",
           "helpTextTh": "อนุญาตให้ ISC เพิ่ม test cases ระหว่างการปรับปรุง",
           "default": false
+        },
+        {
+          "id": "improvement_request",
+          "type": "textarea",
+          "label": "Improvement Request",
+          "labelTh": "คำขอปรับปรุง",
+          "placeholder": "e.g. Make the bundle deterministic and trace-friendly. Preserve the native contract and improve retry handling.",
+          "placeholderTh": "เช่น ทำให้ bundle deterministic และ trace-friendly. รักษา native contract และปรับ retry handling ให้ดีขึ้น",
+          "helpText": "Optional guidance that tells ISC what to prioritize during improvement. Useful for native bundle compatibility, retry behavior, and traceability.",
+          "helpTextTh": "คำอธิบายเสริมเพื่อบอก ISC ว่าควรเน้นอะไรระหว่างปรับปรุง เหมาะกับ native bundle compatibility, retry behavior และ traceability",
+          "rows": 4,
+          "dependsOn": { "field": "mode", "value": "improve" }
+        },
+        {
+          "id": "improvement_preset",
+          "type": "select",
+          "label": "Improvement Preset",
+          "labelTh": "Preset การปรับปรุง",
+          "helpText": "Quick presets that turn into improvement guidance when you do not want to type a full request.",
+          "helpTextTh": "Preset แบบเลือกเร็ว ซึ่งจะแปลงเป็นคำแนะนำการปรับปรุงเมื่อไม่ต้องการพิมพ์รายละเอียดเอง",
+          "default": "custom",
+          "options": [
+            {
+              "value": "custom",
+              "label": "Custom Request",
+              "labelTh": "คำขอแบบกำหนดเอง"
+            },
+            {
+              "value": "deterministic",
+              "label": "Deterministic",
+              "labelTh": "Deterministic"
+            },
+            {
+              "value": "trace_friendly",
+              "label": "Trace Friendly",
+              "labelTh": "Trace Friendly"
+            },
+            {
+              "value": "retry_safe",
+              "label": "Retry Safe",
+              "labelTh": "Retry Safe"
+            },
+            {
+              "value": "compatibility_fix",
+              "label": "Compatibility Fix",
+              "labelTh": "Compatibility Fix"
+            }
+          ],
+          "dependsOn": { "field": "mode", "value": "improve" }
+        },
+        {
+          "id": "target_platform_hint",
+          "type": "select",
+          "label": "Target Platform Hint",
+          "labelTh": "คำใบ้แพลตฟอร์มเป้าหมาย",
+          "helpText": "Optional hint for compatibility-aware improve flows. Leave as Classic unless the skill is already a native Agents Python bundle.",
+          "helpTextTh": "คำใบ้เสริมสำหรับ improve แบบคำนึงถึง compatibility ปล่อยเป็น Classic เว้นแต่ว่า skill นั้นเป็น native Agents Python bundle อยู่แล้ว",
+          "default": "classic",
+          "options": [
+            {
+              "value": "classic",
+              "label": "Classic SmartAIHub Skill",
+              "labelTh": "Skill แบบ Classic ของ SmartAIHub"
+            },
+            {
+              "value": "agents_python",
+              "label": "Native OpenAI Agents Python Bundle",
+              "labelTh": "Bundle แบบ Native OpenAI Agents Python"
+            }
+          ],
+          "dependsOn": { "field": "mode", "value": "improve" }
         }
       ]
     },
@@ -330,6 +462,12 @@
     "javascript_runtime": "javascript_runtime",
     "complexity": "complexity",
     "skill_name": "skill_name",
+    "target_platform": "target_platform",
+    "target_platform_hint": "target_platform_hint",
+    "native_topology": "native_topology",
+    "native_specialists": "native_specialists",
+    "improvement_request": "improvement_request",
+    "improvement_preset": "improvement_preset",
     "workflow_selector": "workflow_json",
     "rounds": "rounds",
     "ask_user": "ask_user",

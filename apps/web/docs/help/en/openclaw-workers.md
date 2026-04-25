@@ -6,7 +6,23 @@ icon: Server
 section: admin
 order: 87
 pages: ["/admin/tenants", "/admin/monitoring", "/teams", "/credits"]
-tags: [openclaw, worker, external runtime, monitoring, teams, credits, feature flag]
+tags:
+  - "openclaw"
+  - "worker"
+  - "external runtime"
+  - "monitoring"
+  - "teams"
+  - "credits"
+  - "feature flag"
+  - "help"
+  - "help/en"
+  - "help/runtime"
+  - "runtime"
+  - "openclaw-workers"
+aliases:
+  - "openclaw-workers"
+  - "Claw Workers"
+  - "Claw Workers help"
 ---
 
 # Claw Workers
@@ -327,3 +343,15 @@ Before telling a user the worker feature is ready, confirm all of these:
 - worker budget caps are set if you want spend protection
 - worker usage appears in **Credits** when expected
 - **Redact Legacy Data** has been run once if the tenant already had older worker records
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+<!-- knowledge-graph:related:end -->

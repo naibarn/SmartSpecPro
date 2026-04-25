@@ -1,3 +1,16 @@
+---
+
+aliases:
+  - "mcp-servers"
+  - "MCP Server Integration"
+  - "MCP Server Integration help"
+tags:
+  - "help"
+  - "help/en"
+  - "help/knowledge"
+  - "knowledge"
+  - "mcp-servers"
+---
 # MCP Server Integration
 
 ## Overview
@@ -77,3 +90,13 @@ The health status of each server is shown on the MCP Servers page:
 - stdio containers run with no network access
 - Response size is limited to 1MB per tool call
 - All tool calls are audit-logged with duration and cost
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[document-management|Document Management]]
+- [[getting-started|Getting Started]]
+- [[chat|Chat Guide]]
+- [[memory|Memory System]]
+- [[personas|AI Personas]]
+<!-- knowledge-graph:related:end -->

@@ -109,6 +109,7 @@ export function useSkillExecution(
   } = options;
   const [result, setResult] = useState<SkillExecutionResult | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const [isAwaitingAsyncResult, setIsAwaitingAsyncResult] = useState(false);
   const tauriRuntimeStatus = useTauriLocalSkillRuntimeStatus();
   const externalLocalTextBackend = useExternalLocalTextBackendAvailability(platform);
 
@@ -139,6 +140,22 @@ export function useSkillExecution(
       });
     },
   });
+
+  const finishRemoteSkillResult = useCallback(
+    async (executionResult: SkillExecutionResult) => {
+      setResult(executionResult);
+      if (typeof conversationId === 'number' && conversationId > 0) {
+        await utils.chat.getMessages.invalidate({ conversationId });
+      }
+      analytics.track('skill_form_submitted', {
+        skill_id: executionResult.skillId,
+        conversation_id: conversationId,
+        success: executionResult.success,
+      });
+      return executionResult;
+    },
+    [conversationId, utils.chat.getMessages],
+  );
 
   const persistLocalSkillResult = useCallback(
     async (input: {
@@ -649,26 +666,46 @@ export function useSkillExecution(
         // Poll until the background task finishes (avoids Cloudflare 100s timeout).
         if (data.isAsync && data.taskId) {
           const taskId = data.taskId;
-          while (true) {
+          setIsAwaitingAsyncResult(true);
+          const maxAttempts = 200; // 10 minutes at 3s, matching the server Python timeout.
+          for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
             await new Promise<void>((r) => setTimeout(r, 3000));
             const task = await utils.chat.getSkillTaskResult.fetch({ taskId });
             if (task.status === "done") {
               if (!task.result) {
-                return { success: false, skillId: params.skillId, type: "text", error: "Task completed with no result" };
+                return finishRemoteSkillResult({
+                  success: false,
+                  skillId: params.skillId,
+                  type: "text",
+                  error: "Task completed with no result",
+                });
               }
-              return task.result as SkillExecutionResult;
+              return finishRemoteSkillResult(task.result as SkillExecutionResult);
             }
             if (task.status === "not_found") {
-              return { success: false, skillId: params.skillId, type: "text", error: "Task not found or expired" };
+              return finishRemoteSkillResult({
+                success: false,
+                skillId: params.skillId,
+                type: "text",
+                error: "Task not found or expired",
+              });
             }
             // status === "running" → keep polling
           }
+          return finishRemoteSkillResult({
+            success: false,
+            skillId: params.skillId,
+            type: "text",
+            error: "Task timed out while waiting for the Python skill result",
+          });
         }
 
         // Sandbox-backed media skills return isAsync:true + jobId.
         if (data.isAsync && data.jobId) {
           const jobId = data.jobId;
-          while (true) {
+          setIsAwaitingAsyncResult(true);
+          const maxAttempts = 200;
+          for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
             await new Promise<void>((r) => setTimeout(r, 3000));
             const job = await utils.sandbox.getJobStatus.fetch({ jobId });
             if (job.status === "completed") {
@@ -681,7 +718,7 @@ export function useSkillExecution(
                   String(artifact?.mimeType || "").toLowerCase().startsWith("image/")
                   || String(artifact?.key || "").toLowerCase().match(/\.(png|jpe?g|webp|gif|svg)$/)
                 ));
-              return {
+              return finishRemoteSkillResult({
                 success: true,
                 skillId: params.skillId,
                 type: imageArtifacts.length > 0 ? "image" : "text",
@@ -692,38 +729,53 @@ export function useSkillExecution(
                   : data.message || "Sandbox job completed successfully.",
                 isAsync: true,
                 jobId,
-              };
+              });
             }
             if (job.status === "failed" || job.status === "timed_out") {
-              return {
+              return finishRemoteSkillResult({
                 success: false,
                 skillId: params.skillId,
                 type: "text",
                 error:
                   (job as any).label
-                  || "Sandbox job failed",
+                || "Sandbox job failed",
                 isAsync: true,
                 jobId,
-              };
+              });
             }
             if (job.status === "canceled" || job.status === "cancelled") {
-              return {
+              return finishRemoteSkillResult({
                 success: false,
                 skillId: params.skillId,
                 type: "text",
                 error: "Sandbox job was cancelled",
                 isAsync: true,
                 jobId,
-              };
+              });
             }
             // queued/running → keep polling
           }
+          return finishRemoteSkillResult({
+            success: false,
+            skillId: params.skillId,
+            type: "text",
+            error: "Sandbox job timed out while waiting for the result",
+            isAsync: true,
+            jobId,
+          });
         }
 
         return data as SkillExecutionResult;
       } catch (err) {
-        // Error is handled by onError callback
+        const error = err instanceof Error ? err : new Error(String(err));
+        setError(error);
+        analytics.track('skill_form_error', {
+          conversation_id: conversationId,
+          error: error.message,
+        });
         return undefined;
+      } finally {
+        setIsAwaitingAsyncResult(false);
       }
     },
     [
@@ -736,6 +788,7 @@ export function useSkillExecution(
       origin,
       platform,
       preferredLocalProfileId,
+      finishRemoteSkillResult,
       tauriRuntimeStatus.installedGemmaProfileIds,
       tauriRuntimeStatus.supportsGemma4Text,
       tauriRuntimeStatus.supportsScriptBundle,
@@ -749,11 +802,12 @@ export function useSkillExecution(
   const reset = useCallback(() => {
     setResult(null);
     setError(null);
+    setIsAwaitingAsyncResult(false);
   }, []);
 
   return {
     execute,
-    isLoading: mutation.isPending,
+    isLoading: mutation.isPending || isAwaitingAsyncResult,
     error,
     result,
     reset,

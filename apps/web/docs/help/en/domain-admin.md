@@ -6,7 +6,24 @@ icon: Globe
 section: admin
 order: 125
 pages: ["/domain-admin", "/domain-admin/theme", "/domain-admin/content", "/domain-admin/users", "/domain-admin/settings", "/domain-admin/blog"]
-tags: [domain admin, tenant, branding, theme, multi-tenant, white label, blog, content]
+tags:
+  - "domain admin"
+  - "tenant"
+  - "branding"
+  - "theme"
+  - "multi-tenant"
+  - "white label"
+  - "blog"
+  - "content"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin"
+  - "domain-admin"
+aliases:
+  - "domain-admin"
+  - "Domain Administration"
+  - "Domain Administration help"
 ---
 
 # Domain Administration
@@ -140,3 +157,15 @@ Publishing posts to your domain's built-in blog:
 - Use the **Schedule publishing** feature to maintain a consistent posting cadence without being online at the exact publish time.
 - Add descriptive tags to posts so users can find related articles easily.
 - Keep announcements brief — long banners are often dismissed without being read.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

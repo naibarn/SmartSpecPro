@@ -6,7 +6,20 @@ icon: ImagePlus
 section: content-creation
 order: 85
 pages: ["/gallery"]
-tags: [gallery, share, discover, showcase, community, media]
+tags:
+  - "gallery"
+  - "share"
+  - "discover"
+  - "showcase"
+  - "community"
+  - "media"
+  - "help"
+  - "help/th"
+  - "help/media"
+aliases:
+  - "gallery"
+  - "แกลเลอรี่"
+  - "แกลเลอรี่ help"
 ---
 
 # แกลเลอรี่
@@ -59,3 +72,13 @@ Gallery คือฟีดรูปภาพ วิดีโอ และเส�
 - เพิ่มแท็กที่อธิบายรายละเอียดเมื่อเผยแพร่เพื่อให้ค้นพบได้ง่ายขึ้น
 - ใช้ **Copy Prompt** บนรายการ Gallery ที่ชื่นชอบเพื่อศึกษาเทคนิค Prompt ที่มีประสิทธิภาพ
 - ฟีด Gallery อัปเดตแบบ Real-time — รายการที่เพิ่งเผยแพร่ปรากฏโดยไม่ต้องโหลดหน้าใหม่
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[media-generation|สร้างรูปภาพ วิดีโอ และเสียง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[presentations|สร้าง Presentation จาก Chat]]
+- [[video-editor|Video Editor]]
+<!-- knowledge-graph:related:end -->

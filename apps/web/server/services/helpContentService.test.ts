@@ -101,6 +101,10 @@ describe("helpContentService", () => {
     expect(topic?.title).toContain("Document Management");
     expect(topic?.html).toContain("Media History");
     expect(topic?.html).toContain("Uploaded files are available immediately in chat attachments");
+    expect(topic?.tags).toContain("help/knowledge");
+    expect(topic?.html).toContain('href="/help/memory"');
+    expect(topic?.graph.outgoing.some((node) => node.slug === "memory")).toBe(true);
+    expect(topic?.graph.sharedTags.length).toBeGreaterThan(0);
   });
 
   it("loads the Document Management guide in Thai and keeps the shared library flow explicit", async () => {

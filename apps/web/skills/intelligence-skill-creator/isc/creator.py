@@ -35,6 +35,12 @@ from isc.artifact_validation import (
     raise_for_validation_errors,
 )
 from isc.exemplars import format_exemplar_context, select_relevant_skill_exemplars
+from isc.native_bundle import (
+    build_native_skill_files,
+    normalize_skill_plan as normalize_native_skill_plan,
+    validate_native_skill_bundle,
+    write_native_skill_bundle,
+)
 
 # ── System prompts ──────────────────────────────────────────────────────────────
 
@@ -874,6 +880,8 @@ class SkillCreator:
         skill_name: str | None = None,
         language: str = "auto",
         complexity: str = "moderate",
+        target_platform: str = "classic",
+        native_authoring: dict | None = None,
     ) -> CreatedSkill:
         """
         Run the 7-phase creation pipeline.
@@ -887,6 +895,15 @@ class SkillCreator:
         Returns:
             CreatedSkill with paths and summary.
         """
+        target_platform = str(target_platform or "classic").strip().lower()
+        if target_platform in {"agents_python", "native", "native_bundle", "native-bundle"}:
+            return self.create_native_bundle(
+                description=description,
+                skill_name=skill_name,
+                complexity=complexity,
+                native_authoring=native_authoring,
+            )
+
         # Phase 1: Plan
         self._active_exemplar_context = self._build_exemplar_context(description)
         _log("Phase 1/7 — Planning skill architecture")
@@ -957,6 +974,132 @@ class SkillCreator:
         return self._phase_write(
             plan, input_schema, output_schema, ui_schema,
             skill_md, skill_code, tests, critic_issues, dependencies
+        )
+
+    def create_native_bundle(
+        self,
+        description: str,
+        skill_name: str | None = None,
+        complexity: str = "moderate",
+        native_authoring: dict | None = None,
+    ) -> CreatedSkill:
+        """
+        Create an OpenAI Agents Python native bundle scaffold.
+
+        This path is optimized for native bundle compatibility rather than
+        classic skill source generation. It produces the bundle contract files
+        required by the native runtime and mirrors `skill.md` for registry
+        compatibility.
+        """
+        self._active_exemplar_context = self._build_exemplar_context(description)
+        _log("Phase 1/4 — Planning native bundle contract")
+        plan = self._phase_plan(description, "python", complexity)
+        plan["target_platform"] = "agents_python"
+        plan["execution_mode"] = "sandbox-command"
+        plan["category"] = "automation"
+        skill_title = str(plan.get("skill_title") or "").strip()
+        skill_name_value = str(plan.get("skill_name") or "").strip()
+        plan["trigger_patterns"] = plan.get("trigger_patterns") or [
+            skill_title.lower(),
+            skill_name_value.replace("-", " "),
+            "openai agents python",
+            "native bundle",
+        ]
+
+        if skill_name:
+            plan["skill_name"] = _slugify(skill_name)
+        elif not plan.get("skill_name"):
+            plan["skill_name"] = _slugify(description[:40]) or "generated-skill"
+
+        native_authoring = native_authoring or {}
+        if isinstance(native_authoring.get("subagents"), list):
+            plan["subagents"] = native_authoring.get("subagents")
+        if isinstance(native_authoring.get("orchestrator"), dict):
+            plan["orchestrator"] = native_authoring.get("orchestrator")
+        if isinstance(native_authoring.get("routing"), list):
+            plan["routing"] = native_authoring.get("routing")
+        for policy_key in ("checkpointPolicy", "verificationPolicy", "fallbackPolicy", "securityPolicy"):
+            if isinstance(native_authoring.get(policy_key), dict):
+                plan[policy_key] = native_authoring.get(policy_key)
+
+        native_plan = normalize_native_skill_plan(
+            {
+                "skill_name": plan["skill_name"],
+                "skill_title": plan.get("skill_title", plan["skill_name"].replace("-", " ").title()),
+                "description": plan.get("description", description),
+                "version": "1.0.0",
+                "category": plan.get("category", "automation"),
+                "execution_mode": plan.get("execution_mode", "sandbox-command"),
+                "inputs": plan.get("inputs", []),
+                "outputs": plan.get("outputs", []),
+                "workflow": plan.get("logic_steps", []),
+                "guardrails": [
+                    "Use the native OpenAI Agents Python bundle contract.",
+                    "Keep run/verify scripts deterministic and shell-safe.",
+                    "Prefer structured outputs and resumable artifacts.",
+                ],
+                "verification": "scripts/verify.sh",
+                "final_response_checklist": [
+                    "Native bundle contract files exist.",
+                    "scripts/verify.sh passes.",
+                    "No secret or environment leakage in bundle files.",
+                ],
+                "trigger_patterns": plan.get("trigger_patterns", []),
+                "subagents": plan.get("subagents", []),
+                "orchestrator": plan.get("orchestrator", {}),
+                "routing": plan.get("routing", []),
+                "checkpointPolicy": plan.get("checkpointPolicy", {}),
+                "verificationPolicy": plan.get("verificationPolicy", {}),
+                "fallbackPolicy": plan.get("fallbackPolicy", {}),
+                "securityPolicy": plan.get("securityPolicy", {}),
+                "subagent_manifest_version": plan.get("subagent_manifest_version", "1"),
+                "model_compatibility": {
+                    "tier": "Tier A - Agents SDK ready",
+                    "hard_minimum": [
+                        "OpenAI Agents SDK sandbox Skills mounting",
+                        "tool calling or handoff-compatible runtime",
+                        "deterministic run / verify scripts",
+                    ],
+                    "recommended": [
+                        "structured outputs",
+                        "explicit context injection",
+                        "trace-friendly logs",
+                    ],
+                    "optional": [
+                        "handoffs",
+                        "multi-agent orchestration",
+                    ],
+                    "caveats": [
+                        "Keep bundle scripts deterministic and side-effect clear.",
+                    ],
+                },
+            }
+        )
+
+        _log(f"  → skill_name='{native_plan['skill_name']}' target_platform=agents_python")
+        _log("Phase 2/4 — Writing native bundle files")
+        skill_dir = self.skills_root / native_plan["skill_name"]
+        written_paths = write_native_skill_bundle(skill_dir, native_plan, overwrite=True)
+        validation_results = validate_native_skill_bundle(skill_dir)
+        errors = [error for result in validation_results if not result.ok for error in result.errors]
+        if errors:
+            raise RuntimeError("Native bundle validation failed: " + "; ".join(errors))
+
+        summary = "\n".join(
+            [
+                "Target platform: agents_python",
+                f"Files written: {len(written_paths)}",
+                "Bundle validated: yes",
+                "OpenAI Agents SDK ready: yes",
+            ]
+        )
+        return CreatedSkill(
+            skill_name=native_plan["skill_name"],
+            skill_path=str(skill_dir),
+            files_written=[str(path.relative_to(skill_dir)) for path in written_paths],
+            language="python",
+            summary=summary,
+            warnings=[],
         )
 
     def convert_from_workflow(

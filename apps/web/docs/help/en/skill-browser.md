@@ -6,7 +6,21 @@ icon: Wand2
 section: features
 order: 35
 pages: ["/skills"]
-tags: [skills, browse, category, toggle, auto-trigger]
+tags:
+  - "skills"
+  - "browse"
+  - "category"
+  - "toggle"
+  - "auto-trigger"
+  - "help"
+  - "help/en"
+  - "help/marketplace"
+  - "marketplace"
+  - "skill-browser"
+aliases:
+  - "skill-browser"
+  - "Skill Browser"
+  - "Skill Browser help"
 ---
 
 # Skill Browser
@@ -44,3 +58,12 @@ Click **Skills** in the main sidebar. The browser opens with a searchable, pagin
 - Auto-trigger works best for skills with very specific trigger phrases. Disable it for broad skills to avoid unexpected activations during general chat.
 - The category filter and search bar work together — you can combine both to narrow results.
 - Credit multiplier shown on each card tells you how much that skill costs relative to a standard LLM call — useful for managing usage.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[marketplace|Marketplace]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[skills|Skills and Slash Commands]]
+<!-- knowledge-graph:related:end -->

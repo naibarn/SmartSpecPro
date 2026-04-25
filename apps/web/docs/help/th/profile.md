@@ -6,7 +6,23 @@ icon: User
 section: features
 order: 49
 pages: ["/profile"]
-tags: [profile, account, security, 2fa, password, theme, language, api-key, avatar]
+tags:
+  - "profile"
+  - "account"
+  - "security"
+  - "2fa"
+  - "password"
+  - "theme"
+  - "language"
+  - "api-key"
+  - "avatar"
+  - "help"
+  - "help/th"
+  - "help/account"
+aliases:
+  - "profile"
+  - "โปรไฟล์และบัญชี"
+  - "โปรไฟล์และบัญชี help"
 ---
 
 # โปรไฟล์และบัญชี
@@ -64,3 +80,15 @@ tags: [profile, account, security, 2fa, password, theme, language, api-key, avat
 ## การลบบัญชี
 
 ด้านล่างแท็บ Account กด **Delete Account** เพื่อลบบัญชีและข้อมูลทั้งหมดอย่างถาวร การดำเนินการนี้ไม่สามารถยกเลิกได้
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[settings|การตั้งค่าและความชอบ]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[api-keys|คีย์ API]]
+- [[credits|ระบบเครดิต]]
+- [[notification-settings|การตั้งค่าการแจ้งเตือน]]
+- [[usage-analytics|วิเคราะห์การใช้งานและตรวจสอบงาน]]
+<!-- knowledge-graph:related:end -->

@@ -4,6 +4,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { knowledgeVaultFixture } from "@/test/fixtures/knowledgeVaultFixture";
+
 const getItemSharesMock = vi.fn(() => ({
   data: { shares: [] },
 }));
@@ -116,22 +118,22 @@ function renderPreview(previewType: "image" | "video") {
 
 function renderMarkdownPreview(shareUrl?: string) {
   return render(
-    <DocumentPreviewPanel
-      item={{
-        id: 1,
-        title: "Notes.md",
-        source_url: "https://example.com/notes.md",
-        status: "ready",
-        item_type: "document",
-        metadata: {},
-      } as any}
-      previewType="markdown"
-      markdownValue="# Notes"
-      documentId={1}
-      shareUrl={shareUrl}
-    />,
-  );
-}
+      <DocumentPreviewPanel
+        item={{
+          id: knowledgeVaultFixture.activeNote.libraryItemId,
+          title: knowledgeVaultFixture.activeNote.title,
+          source_url: "https://example.com/notes.md",
+          status: "ready",
+          item_type: "document",
+          metadata: {},
+        } as any}
+        previewType="markdown"
+        markdownValue={knowledgeVaultFixture.markdownById[101]}
+        documentId={knowledgeVaultFixture.activeNote.libraryItemId}
+        shareUrl={shareUrl}
+      />,
+    );
+  }
 
 describe("DocumentPreviewPanel media previews", () => {
   beforeEach(() => {
@@ -196,30 +198,30 @@ describe("DocumentPreviewPanel media previews", () => {
     render(
       <DocumentPreviewPanel
         item={{
-          id: 1,
-          title: "Notes.md",
+          id: knowledgeVaultFixture.activeNote.libraryItemId,
+          title: knowledgeVaultFixture.activeNote.title,
           source_url: "https://example.com/notes.md",
           status: "ready",
           item_type: "document",
           metadata: {},
         } as any}
         previewType="markdown"
-        markdownValue="# Notes"
-        documentId={1}
-        knowledgeBacklinks={[
-          {
-            libraryItemId: 22,
-            title: "Ops Runbook",
-            logicalPath: "ops/runbook",
-            rawReference: "Ops Runbook",
-          },
-        ]}
+        markdownValue={knowledgeVaultFixture.markdownById[101]}
+        documentId={knowledgeVaultFixture.activeNote.libraryItemId}
+        knowledgeBacklinks={knowledgeVaultFixture.inspector.backlinks}
         onOpenKnowledgeItem={onOpenKnowledgeItem}
       />,
     );
 
     expect(screen.getByText(/backlinks/i)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /ops runbook/i }));
-    expect(onOpenKnowledgeItem).toHaveBeenCalledWith(22, "Ops Runbook");
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /workspace navigation handbook\.md/i,
+      }),
+    );
+    expect(onOpenKnowledgeItem).toHaveBeenCalledWith(
+      knowledgeVaultFixture.inspector.backlinks[0].libraryItemId,
+      knowledgeVaultFixture.inspector.backlinks[0].title,
+    );
   });
 });

@@ -6,7 +6,20 @@ icon: Container
 section: admin
 order: 230
 pages: ["/admin/sandbox"]
-tags: [admin, sandbox, code execution, jobs, isolated]
+tags:
+  - "admin"
+  - "sandbox"
+  - "code execution"
+  - "jobs"
+  - "isolated"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-sandbox"
+aliases:
+  - "admin-sandbox"
+  - "Sandbox Management"
+  - "Sandbox Management help"
 ---
 
 # Sandbox Management
@@ -37,3 +50,15 @@ Log in as an administrator and navigate to **Admin > Sandbox** from the left sid
 - Jobs that exceed the configured timeout are automatically moved to Failed status.
 - If a job appears stuck in Running for an unusually long time, check system health to confirm workers are responsive before terminating.
 - Resource limits (memory, CPU) are set globally in platform settings; contact your infrastructure team to adjust them.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

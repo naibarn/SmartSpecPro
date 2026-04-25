@@ -6,7 +6,23 @@ icon: Bell
 section: admin
 order: 115
 pages: ["/admin/notifications"]
-tags: [admin, notifications, alerts, monitoring, unified, dedup, escalation, dashboard]
+tags:
+  - "admin"
+  - "notifications"
+  - "alerts"
+  - "monitoring"
+  - "unified"
+  - "dedup"
+  - "escalation"
+  - "dashboard"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-notifications"
+aliases:
+  - "admin-notifications"
+  - "ศูนย์การแจ้งเตือน"
+  - "ศูนย์การแจ้งเตือน help"
 ---
 
 # ศูนย์การแจ้งเตือน
@@ -75,3 +91,15 @@ tags: [admin, notifications, alerts, monitoring, unified, dedup, escalation, das
 - ตรวจสอบศูนย์การแจ้งเตือนหลังจาก deploy เพื่อจับคำเตือนสุขภาพระบบแต่เนิ่นๆ
 - การแจ้งเตือนที่เก่ากว่าช่วงเวลาที่กำหนด (ตั้งค่าใน retention job) จะถูกลบอัตโนมัติ
 - เปิดใช้การรวมกลุ่มเพื่อลดสัญญาณรบกวนจากแจ้งเตือนซ้ำ — กำหนดรูปแบบ `groupKey` ในจุดเรียกใช้การแจ้งเตือน
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

@@ -6,7 +6,20 @@ icon: Coins
 section: getting-started
 order: 5
 pages: ["/credits", "/dashboard"]
-tags: [credits, pricing, usage, cost, balance]
+tags:
+  - "credits"
+  - "pricing"
+  - "usage"
+  - "cost"
+  - "balance"
+  - "help"
+  - "help/th"
+  - "help/account"
+  - "account"
+aliases:
+  - "credits"
+  - "ระบบเครดิต"
+  - "ระบบเครดิต help"
 ---
 
 # ระบบเครดิต
@@ -80,3 +93,15 @@ tags: [credits, pricing, usage, cost, balance]
 - ใช้ skills เพื่อจัดโครงสร้าง prompt อย่างมีประสิทธิภาพแทนการพิมพ์คำสั่งยาวซ้ำๆ ด้วยมือ
 - ตรวจสอบ tooltip ของตัวเลือกโมเดลเพื่อเปรียบเทียบค่าใช้จ่ายก่อนเปลี่ยนโมเดล
 - ระบบ Unified Execution ใช้ **idempotency key** ในการติดตามเครดิต — แม้คำขอถูก retry ก็จะไม่ถูกเรียกเก็บซ้ำ
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[settings|การตั้งค่าและความชอบ]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[api-keys|คีย์ API]]
+- [[notification-settings|การตั้งค่าการแจ้งเตือน]]
+- [[profile|โปรไฟล์และบัญชี]]
+- [[usage-analytics|วิเคราะห์การใช้งานและตรวจสอบงาน]]
+<!-- knowledge-graph:related:end -->

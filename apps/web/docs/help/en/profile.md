@@ -6,7 +6,23 @@ icon: User
 section: features
 order: 49
 pages: ["/profile"]
-tags: [profile, account, security, 2fa, password, theme, language, api-key, avatar]
+tags:
+  - "profile"
+  - "account"
+  - "security"
+  - "2fa"
+  - "password"
+  - "theme"
+  - "language"
+  - "api-key"
+  - "avatar"
+  - "help"
+  - "help/en"
+  - "help/account"
+aliases:
+  - "profile"
+  - "Profile & Account"
+  - "Profile & Account help"
 ---
 
 # Profile & Account
@@ -64,3 +80,15 @@ Revoke keys by clicking the trash icon next to them.
 ## Account deletion
 
 At the bottom of the Account tab, click **Delete Account** to permanently remove your account and all associated data. This action cannot be undone.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[settings|Settings & Preferences]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[api-keys|API Keys]]
+- [[credits|Credits System]]
+- [[notification-settings|Notification Preferences]]
+- [[usage-analytics|Usage Analytics & Task Monitor]]
+<!-- knowledge-graph:related:end -->

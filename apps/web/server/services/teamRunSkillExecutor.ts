@@ -18,6 +18,7 @@ import { executeUnified } from "./unifiedOrchestrator";
 import { parseNextSpeakerHint } from "./executors/textSkillExecutor";
 import { normalizeMediaPrompt } from "./mediaPromptNormalization";
 import { executeTeamRuntimeTurn } from "./agentRuntime/teamRuntimeOrchestrator";
+import { buildNativeSkillRuntimePlanContext } from "./agentRuntime/skillRuntimeOrchestrator";
 import { parsePromptResponse } from "./promptEnhancementService";
 import {
   buildTeamExecutionContextPack,
@@ -82,6 +83,41 @@ const AUTO_TEAM_IMAGE_SKILL_IDS = [
   "image_prompt_engineer",
   "smart-landscape-designer",
 ] as const;
+
+function summarizeNativeBundleTopology(skill: SkillDefinition): Record<string, unknown> | null {
+  const skillRecord = skill as {
+    nativeBundleReady?: unknown;
+    nativeBundleFiles?: unknown;
+    nativeBundlePath?: unknown;
+  };
+  const nativeBundleReady = Boolean(skillRecord.nativeBundleReady);
+  const nativeBundleFiles = Array.isArray(skillRecord.nativeBundleFiles)
+    ? (skillRecord.nativeBundleFiles as string[])
+    : [];
+  const nativeBundlePath =
+    typeof skillRecord.nativeBundlePath === "string"
+      ? skillRecord.nativeBundlePath
+      : null;
+  const specialistFiles = nativeBundleFiles.filter(
+    file => file.startsWith("agents/specialists/") && file.endsWith(".md"),
+  );
+  const hasSubagentTopology =
+    nativeBundleFiles.includes("subagents.json") ||
+    nativeBundleFiles.includes("agents/orchestrator.md") ||
+    specialistFiles.length > 0;
+
+  if (!nativeBundleReady && !hasSubagentTopology) {
+    return null;
+  }
+
+  return {
+    nativeBundleReady,
+    nativeBundlePath,
+    bundleTopology: hasSubagentTopology ? "subagent-aware" : "single-agent",
+    nativeBundleFiles,
+    specialistAgentCount: specialistFiles.length,
+  };
+}
 
 function buildTeamSessionState(input: {
   runId: string;
@@ -903,6 +939,32 @@ export async function executeTeamRunSkillTurn(
       dynamicParams: input.dynamicParams ?? null,
       label: `team:${input.teamId}/${input.roomId}`,
     },
+    planContext: {
+      nativeSkillRuntime: (() => {
+        const skillRecord = skill as unknown as Record<string, unknown>;
+        return buildNativeSkillRuntimePlanContext(
+          {
+            id: skill.id,
+            slug: skill.id,
+            folderPath: typeof skill.skillFilePath === "string" ? skill.skillFilePath : null,
+            nativeBundlePath:
+              typeof skillRecord.nativeBundlePath === "string"
+                ? skillRecord.nativeBundlePath
+                : typeof skillRecord.folderPath === "string"
+                  ? skillRecord.folderPath
+                  : null,
+            nativeBundleReady: Boolean(skillRecord.nativeBundleReady),
+          },
+          {
+            requestedSubagent:
+              typeof input.dynamicParams?.requestedSubagent === "string"
+                ? input.dynamicParams.requestedSubagent
+                : null,
+            taskHint: input.objective,
+          },
+        );
+      })(),
+    },
     requestLabel: `team:${skill.id}`,
     roomId: input.roomId,
     runId: input.run.id,
@@ -930,6 +992,18 @@ export async function executeTeamRunSkillTurn(
     runtimeAdapterVersion: runtimeTurn.runtimeResponse?.adapterVersion ?? null,
     runtimeSelectedSkillSlug: runtimeTurn.runtime.selectedSkillSlug ?? null,
     runtimeStatus: runtimeTurn.runtime.status,
+    runtimeCheckpointId: runtimeTurn.runtimeResponse?.checkpoint?.checkpointId ?? null,
+    runtimeCheckpointStatus: runtimeTurn.runtimeResponse?.checkpoint?.status ?? null,
+    runtimeResumeCursor: runtimeTurn.runtimeResponse?.checkpoint?.resumeCursor ?? null,
+    runtimeArtifactRefs:
+      runtimeTurn.runtimeResponse?.artifacts
+        ?.map(artifact => artifact.contentRef ?? artifact.artifactId)
+        .filter((value): value is string => typeof value === "string" && value.length > 0) ?? [],
+    requestedSubagent:
+      typeof input.dynamicParams?.requestedSubagent === "string"
+        ? input.dynamicParams.requestedSubagent
+        : null,
+    subagentTopology: summarizeNativeBundleTopology(skill),
   };
 
   if (!fallback.success) {

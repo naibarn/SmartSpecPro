@@ -6,7 +6,22 @@ icon: Bot
 section: admin
 order: 94
 pages: ["/admin/agencies"]
-tags: [admin, agencies, approval, reject, publish, agent, review]
+tags:
+  - "admin"
+  - "agencies"
+  - "approval"
+  - "reject"
+  - "publish"
+  - "agent"
+  - "review"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-agencies"
+aliases:
+  - "admin-agencies"
+  - "จัดการเอเจนซี่"
+  - "จัดการเอเจนซี่ help"
 ---
 
 # จัดการเอเจนซี่
@@ -50,3 +65,15 @@ tags: [admin, agencies, approval, reject, publish, agent, review]
 - **สัดส่วนรายได้** — เปอร์เซ็นต์ระหว่างแพลตฟอร์มและผู้สร้างเอเจนซี่
 
 ข้อมูลเหล่านี้แสดงระหว่างตรวจสอบและปรับได้ก่อนอนุมัติ
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+- [[admin-billing-phase2-runbook|คู่มือดูแล Billing Phase 2]]
+<!-- knowledge-graph:related:end -->

@@ -3,7 +3,6 @@ import type { KeyboardEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { resolveDocumentPreviewType } from "@/lib/documentManagementUi";
 import { cn } from "@/lib/utils";
@@ -222,7 +221,7 @@ export default function DocumentGridList({
   }
 
   return (
-    <ScrollArea className={cn("h-full min-h-0 rounded-lg", className)}>
+    <div className={cn("flex min-h-0 flex-1 overflow-y-auto rounded-lg", className)}>
       <div className="space-y-3 pr-1.5">
         {items.map(item => {
           const isFolder = item.item_type === "folder";
@@ -390,6 +389,6 @@ export default function DocumentGridList({
           );
         })}
       </div>
-    </ScrollArea>
+    </div>
   );
 }

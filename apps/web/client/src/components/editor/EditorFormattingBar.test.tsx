@@ -108,6 +108,22 @@ describe("EditorFormattingBar", () => {
     expect(editor.__chain.setParagraph).toHaveBeenCalledTimes(1);
   });
 
+  it("uses the knowledge link picker handler when provided", () => {
+    const onInsertKnowledgeLink = vi.fn();
+    render(
+      <EditorFormattingBar
+        editor={createEditorMock()}
+        onInsertLink={vi.fn()}
+        onInsertKnowledgeLink={onInsertKnowledgeLink}
+        collapseOnMobile
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("toolbar-knowledge-link"));
+
+    expect(onInsertKnowledgeLink).toHaveBeenCalledTimes(1);
+  });
+
   it("exposes table editing actions when the cursor is inside a table", () => {
     const editor = createEditorMock({ tableActive: true });
     render(

@@ -6,7 +6,25 @@ icon: UserCircle
 section: features
 order: 66
 pages: ["/settings/personas", "/settings"]
-tags: [personas, personality, custom ai, style, tone, character, nickname, default persona, working hours, memory]
+tags:
+  - "personas"
+  - "personality"
+  - "custom ai"
+  - "style"
+  - "tone"
+  - "character"
+  - "nickname"
+  - "default persona"
+  - "working hours"
+  - "memory"
+  - "help"
+  - "help/th"
+  - "help/knowledge"
+  - "knowledge"
+aliases:
+  - "personas"
+  - "บุคลิก AI"
+  - "บุคลิก AI help"
 ---
 
 # บุคลิก AI (Personas)
@@ -94,3 +112,13 @@ Persona คือบุคลิก AI ที่มีชื่อซึ่ง�
 - ใช้ช่อง Description เพื่อบันทึกว่าสร้าง Persona นี้เมื่อไหร่และทำไม ไม่ใช่แค่บอกว่าทำอะไร
 - หากเปิดใช้ Memory ระบบจะโหลด **long-term memory ตาม persona ที่กำลังใช้งานอยู่** ทำให้ persona แต่ละตัวมีบริบทระยะยาวของตัวเองได้
 - บทสรุปของบทสนทนาและบริบทใน session เดิมยังคงอยู่ตามห้องแชตเดิม แม้คุณจะสลับ persona กลางทาง
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[document-management|จัดการเอกสาร]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[chat|คู่มือ Chat]]
+- [[mcp-servers|การเชื่อมต่อ MCP Server]]
+- [[memory|ระบบ Memory]]
+<!-- knowledge-graph:related:end -->

@@ -508,6 +508,7 @@ type MediaModelOption = {
   name: string;
   description: string | null;
   provider: string;
+  aliases: string[];
   creditCost: number;
   supportsAspectRatios: string[] | null;
   supportsSizes: string[] | null;
@@ -567,10 +568,22 @@ function toMediaModelOption(value: unknown): MediaModelOption | null {
     return null;
   }
 
-  const normalizeStringArray = (raw: unknown): string[] | null =>
-    Array.isArray(raw)
-      ? raw.filter((v): v is string => typeof v === "string")
-      : null;
+  const normalizeStringArray = (raw: unknown): string[] | null => {
+    if (Array.isArray(raw)) {
+      return raw.filter((v): v is string => typeof v === "string");
+    }
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed)
+          ? parsed.filter((v): v is string => typeof v === "string")
+          : null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  };
   const normalizeNumberArray = (raw: unknown): number[] | null =>
     Array.isArray(raw)
       ? raw.filter((v): v is number => typeof v === "number")
@@ -583,11 +596,85 @@ function toMediaModelOption(value: unknown): MediaModelOption | null {
     description:
       typeof candidate.description === "string" ? candidate.description : null,
     provider: candidate.provider,
+    aliases: normalizeStringArray(candidate.aliases) ?? [],
     creditCost: candidate.creditCost,
     supportsAspectRatios: normalizeStringArray(candidate.supportsAspectRatios),
     supportsSizes: normalizeStringArray(candidate.supportsSizes),
     supportsDurations: normalizeNumberArray(candidate.supportsDurations),
   };
+}
+
+function normalizeMediaModelMention(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[_/.-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findMentionedMediaModelId(
+  text: string,
+  models: MediaModelOption[],
+): string | null {
+  const normalizedText = normalizeMediaModelMention(text);
+  if (!normalizedText) return null;
+
+  for (const model of models) {
+    const candidates = [
+      model.id,
+      model.name,
+      ...model.aliases,
+      model.id.replace(/text-to-image$/i, ""),
+      model.name.replace(/text-to-image$/i, ""),
+    ];
+    if (
+      candidates.some((candidate) => {
+        const normalizedCandidate = normalizeMediaModelMention(candidate);
+        return normalizedCandidate.length > 0 && normalizedText.includes(normalizedCandidate);
+      })
+    ) {
+      return model.id;
+    }
+  }
+
+  return null;
+}
+
+const CHAT_IMAGE_ASPECT_RATIO_VALUES = new Set([
+  "1:1",
+  "4:5",
+  "5:4",
+  "2:3",
+  "3:2",
+  "3:4",
+  "4:3",
+  "16:9",
+  "9:16",
+  "21:9",
+  "9:21",
+]);
+
+function normalizeChatImageAspectRatio(value: string | null | undefined): string | null {
+  const normalized = value?.replace(/\s+/g, "") ?? "";
+  return CHAT_IMAGE_ASPECT_RATIO_VALUES.has(normalized) ? normalized : null;
+}
+
+function inferImageAspectRatioFromText(text: string | null | undefined): string | null {
+  if (!text) return null;
+
+  const labeledMatch = text.match(
+    /(?:สัดส่วนภาพ|อัตราส่วนภาพ|image\s*ratio|aspect\s*ratio|ratio)\s*[:：]?\s*(\d{1,2}\s*:\s*\d{1,2})/i,
+  );
+  const labeledRatio = normalizeChatImageAspectRatio(labeledMatch?.[1]);
+  if (labeledRatio) return labeledRatio;
+
+  const compactMatch = text.match(/\b(\d{1,2}\s*:\s*\d{1,2})\b/);
+  const compactRatio = normalizeChatImageAspectRatio(compactMatch?.[1]);
+  if (compactRatio) return compactRatio;
+
+  if (/(?:แนวตั้ง|portrait)/i.test(text)) return "9:16";
+  if (/(?:แนวนอน|landscape)/i.test(text)) return "16:9";
+  return null;
 }
 
 type MessageRole = "user" | "assistant" | "system";
@@ -2460,26 +2547,24 @@ export function ChatView({
   const renderModelDialogContent = () => {
     if (modelsLoading) {
       return (
-        <div className="flex items-center gap-2 px-3 py-6 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading model catalog...
+        <div className="flex items-center justify-center gap-2 px-4 py-12 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          Loading model catalog
         </div>
       );
     }
 
     if (modelsError) {
       return (
-        <div className="space-y-3 px-3 py-6 text-sm">
-          <p className="font-medium text-destructive">
-            Unable to load the model catalog right now.
-          </p>
-          <p className="text-muted-foreground">
+        <div className="mx-3 my-4 rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm">
+          <p className="font-medium text-destructive">Unable to load models</p>
+          <p className="mt-1 text-muted-foreground">
             The chat will keep using the last selected model.
           </p>
           <Button
             variant="outline"
             size="sm"
-            className="gap-2"
+            className="mt-3 gap-2"
             onClick={() => void refetchModels()}
           >
             <RefreshCw className="h-3.5 w-3.5" />
@@ -2492,9 +2577,21 @@ export function ChatView({
     if (!multiProviderModels || multiProviderModels.length === 0) {
       return (
         <>
-          <CommandEmpty>No models found.</CommandEmpty>
+          <CommandEmpty>
+            <div className="py-8 text-center">
+              <Search className="mx-auto mb-2 h-5 w-5 text-muted-foreground/70" />
+              <p className="font-medium text-foreground">No models found</p>
+              <p className="text-xs text-muted-foreground">
+                Try another model or provider name.
+              </p>
+            </div>
+          </CommandEmpty>
           {Object.entries(modelsByProvider).map(([provider, models]) => (
-            <CommandGroup key={provider} heading={provider}>
+            <CommandGroup
+              key={provider}
+              heading={`${provider} · ${models.length}`}
+              className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:font-semibold"
+            >
               {models.map(model => (
                 <CommandItem
                   key={model.id}
@@ -2503,17 +2600,22 @@ export function ChatView({
                     handleModelChange(model.id);
                     setModelDialogOpen(false);
                   }}
-                  className="flex items-center gap-2"
+                  className="min-h-[52px] rounded-lg border border-transparent px-3 py-2.5 data-[selected=true]:border-primary/20 data-[selected=true]:bg-primary/5"
                 >
                   <Check
                     className={cn(
-                      "h-3.5 w-3.5 shrink-0",
+                      "h-4 w-4 shrink-0 text-primary",
                       selectedModel === model.id ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  <span className="flex-1 truncate">
-                    {formatModelDisplayName(model.name, model.provider)}
-                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {formatModelDisplayName(model.name, model.provider)}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {provider}
+                    </p>
+                  </div>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -2548,7 +2650,11 @@ export function ChatView({
       });
     }
 
-    const providerAutoEntries = Object.entries(grouped)
+    const sortedProviderGroups = Object.entries(grouped).sort(([a], [b]) =>
+      a.localeCompare(b)
+    );
+
+    const providerAutoEntries = sortedProviderGroups
       .map(([providerName, items]) => ({
         providerName,
         providerId: items[0]?.provider.providerId ?? null,
@@ -2565,40 +2671,51 @@ export function ChatView({
     return (
       <>
         {chatAutoModelSelectionEnabled ? (
-          <CommandGroup heading="Recommended">
+          <CommandGroup
+            heading="Recommended"
+            className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:font-semibold"
+          >
             <CommandItem
-              value="Auto best overall"
+              value="Auto best overall recommended smart routing"
               onSelect={() => {
                 handleModelChange(AUTO_MODEL);
                 setModelDialogOpen(false);
               }}
-              className="flex items-center gap-2"
+              className="min-h-[58px] rounded-lg border border-primary/15 bg-primary/5 px-3 py-2.5 data-[selected=true]:border-primary/35 data-[selected=true]:bg-primary/10"
             >
               <Check
                 className={cn(
-                  "h-3.5 w-3.5 shrink-0",
+                  "h-4 w-4 shrink-0 text-primary",
                   selectedModel === AUTO_MODEL ? "opacity-100" : "opacity-0"
                 )}
               />
-              <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
-              <span className="flex-1 truncate">Auto (best overall)</span>
-              {conversationModelSelection?.lastResolvedProviderName ? (
-                <Badge
-                  variant="secondary"
-                  className="h-4 max-w-[92px] shrink-0 px-1 text-[10px]"
-                >
-                  <span className="truncate">
-                    {conversationModelSelection.lastResolvedProviderName}
-                  </span>
-                </Badge>
-              ) : null}
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">
+                  Auto, best overall
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  Chooses the strongest available model for this chat.
+                </p>
+              </div>
+              <Badge
+                variant="secondary"
+                className="h-5 max-w-[120px] shrink-0 px-2 text-[10px] font-medium"
+              >
+                <span className="truncate">
+                  {conversationModelSelection?.lastResolvedProviderName ||
+                    "Smart route"}
+                </span>
+              </Badge>
             </CommandItem>
             {providerAutoEntries.map(entry => {
               const autoValue = buildAutoProviderValue(entry.providerId);
               return (
                 <CommandItem
                   key={autoValue}
-                  value={`${entry.providerName} auto model`}
+                  value={`${entry.providerName} auto model recommended`}
                   onSelect={() => {
                     handleModelChange(
                       autoValue,
@@ -2607,19 +2724,26 @@ export function ChatView({
                     );
                     setModelDialogOpen(false);
                   }}
-                  className="flex items-center gap-2"
+                  className="min-h-[54px] rounded-lg border border-transparent px-3 py-2.5 data-[selected=true]:border-primary/20 data-[selected=true]:bg-primary/5"
                 >
                   <Check
                     className={cn(
-                      "h-3.5 w-3.5 shrink-0",
+                      "h-4 w-4 shrink-0 text-primary",
                       selectedModel === autoValue ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
-                  <span className="flex-1 truncate">Auto Model</span>
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">Auto model</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      Use the best enabled model from {entry.providerName}.
+                    </p>
+                  </div>
                   <Badge
                     variant="secondary"
-                    className="h-4 max-w-[92px] shrink-0 px-1 text-[10px]"
+                    className="h-5 max-w-[120px] shrink-0 px-2 text-[10px] font-medium"
                   >
                     <span className="truncate">{entry.providerName}</span>
                   </Badge>
@@ -2629,55 +2753,78 @@ export function ChatView({
           </CommandGroup>
         ) : null}
 
-        {Object.entries(grouped).map(([providerName, items]) => (
-          <CommandGroup key={providerName} heading={providerName}>
-            {items.map(({ model, provider }) => (
-              <CommandItem
-                key={`${model.modelId}-${provider.providerId}`}
-                value={`${model.modelName} ${model.modelId} ${providerName}`}
-                onSelect={() => {
-                  handleModelChange(
-                    model.modelId,
-                    provider.providerId,
-                    provider.providerDisplayName || provider.providerName
-                  );
-                  setModelDialogOpen(false);
-                }}
-                className="flex items-center gap-2"
-              >
-                <Check
-                  className={cn(
-                    "h-3.5 w-3.5 shrink-0",
-                    selectedModel === model.modelId ? "opacity-100" : "opacity-0"
-                  )}
-                />
-                <span className="flex-1 truncate">
-                  {formatModelDisplayName(model.modelName, providerName)}
-                </span>
-                <Badge
-                  variant="secondary"
-                  className="h-4 max-w-[92px] shrink-0 px-1 text-[10px]"
+        {sortedProviderGroups.map(([providerName, items]) => (
+          <CommandGroup
+            key={providerName}
+            heading={`${providerName} · ${items.length}`}
+            className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:font-semibold"
+          >
+            {items.map(({ model, provider }) => {
+              const selectedProviderMatches =
+                selectedProviderId == null ||
+                selectedProviderId === provider.providerId;
+              const isSelected =
+                selectedModel === model.modelId && selectedProviderMatches;
+              const costLabel = formatModelCost(
+                provider.pricingInput,
+                provider.pricingOutput,
+                false
+              );
+
+              return (
+                <CommandItem
+                  key={`${model.modelId}-${provider.providerId}`}
+                  value={`${model.modelName} ${model.modelId} ${providerName} ${costLabel}`}
+                  onSelect={() => {
+                    handleModelChange(
+                      model.modelId,
+                      provider.providerId,
+                      provider.providerDisplayName || provider.providerName
+                    );
+                    setModelDialogOpen(false);
+                  }}
+                  className="min-h-[58px] rounded-lg border border-transparent px-3 py-2.5 data-[selected=true]:border-primary/20 data-[selected=true]:bg-primary/5"
                 >
-                  <span className="truncate">{providerName}</span>
-                </Badge>
-                {provider.isFree ? (
-                  <Badge
-                    variant="secondary"
-                    className="h-4 px-1 text-[10px] shrink-0 bg-green-500/10 text-green-600"
-                  >
-                    FREE
-                  </Badge>
-                ) : (
-                  <span className="text-[10px] text-muted-foreground shrink-0">
-                    {formatModelCost(
-                      provider.pricingInput,
-                      provider.pricingOutput,
-                      false
+                  <Check
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-primary",
+                      isSelected ? "opacity-100" : "opacity-0"
                     )}
-                  </span>
-                )}
-              </CommandItem>
-            ))}
+                  />
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                    <Bot className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {formatModelDisplayName(model.modelName, providerName)}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {model.modelId}
+                    </p>
+                  </div>
+                  <div className="ml-2 flex shrink-0 items-center gap-2">
+                    <Badge
+                      variant="secondary"
+                      className="h-5 max-w-[112px] px-2 text-[10px] font-medium"
+                    >
+                      <span className="truncate">{providerName}</span>
+                    </Badge>
+                    {provider.isFree ? (
+                      <Badge
+                        variant="secondary"
+                        className="h-5 px-2 text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                      >
+                        FREE
+                      </Badge>
+                    ) : (
+                      <span className="min-w-[112px] text-right text-[11px] text-muted-foreground">
+                        {costLabel}
+                      </span>
+                    )}
+                  </div>
+                </CommandItem>
+              );
+            })}
           </CommandGroup>
         ))}
       </>
@@ -4191,11 +4338,21 @@ export function ChatView({
         }
 
         if (extractedPrompt && extractedPrompt.length > 10) {
+          const requestedMediaModel = findMentionedMediaModelId(text, filteredMediaModels);
+          const requestedAspectRatio =
+            normalizeChatImageAspectRatio(extractedParams.aspectRatio)
+            ?? inferImageAspectRatioFromText(`${msgContent}\n${extractedPrompt}`);
+          const executionParams = {
+            ...extractedParams,
+            ...(requestedAspectRatio ? { aspectRatio: requestedAspectRatio } : {}),
+            modelIntentText: text,
+            ...(requestedMediaModel ? { model: requestedMediaModel } : {}),
+          };
           // Execute image-creator directly with extracted prompt and parameters
           setIsStreaming(true);
           const paramsInfo =
-            Object.keys(extractedParams).length > 0
-              ? ` (${Object.entries(extractedParams)
+            Object.keys(executionParams).length > 0
+              ? ` (${Object.entries(executionParams)
                   .map(([k, v]) => `${k}: ${v}`)
                   .join(", ")})`
               : "";
@@ -4207,8 +4364,10 @@ export function ChatView({
             const result = await preferredSkillExecution.execute({
               skillId: "image-creator",
               prompt: extractedPrompt,
-              dynamicParams: extractedParams,
+              dynamicParams: executionParams,
               mutationInput: {
+                ...(requestedAspectRatio ? { aspectRatio: requestedAspectRatio } : {}),
+                ...(requestedMediaModel ? { model: requestedMediaModel } : {}),
                 ...(referenceImageUrl
                   ? { referenceImageUrls: [referenceImageUrl] }
                   : {}),
@@ -5034,6 +5193,14 @@ export function ChatView({
 
         // Show prompt preview for user confirmation instead of auto-executing.
         // The user can edit the prompt, then confirm to trigger media generation.
+        const requestedAspectRatio =
+          normalizeChatImageAspectRatio(mediaParams.aspectRatio)
+          ?? inferImageAspectRatioFromText(`${generatedContent}\n${mediaPrompt}`);
+        const requestedMediaModel =
+          findMentionedMediaModelId(text, filteredMediaModels)
+          ?? (typeof mediaParams.model === "string" ? mediaParams.model : null)
+          ?? selectedMediaModel
+          ?? "";
         setPendingMediaPrompt({
           prompt: mediaPrompt,
           skillId: currentSkillId,
@@ -5041,7 +5208,9 @@ export function ChatView({
           skillCategory: resolvedSkill?.type || "",
           mediaParams: {
             ...mediaParams,
-            ...(selectedMediaModel ? { model: selectedMediaModel } : {}),
+            ...(requestedAspectRatio ? { aspectRatio: requestedAspectRatio } : {}),
+            modelIntentText: text,
+            ...(requestedMediaModel ? { model: requestedMediaModel } : {}),
             ...(referenceImageUrl
               ? { referenceImageUrls: [referenceImageUrl] }
               : {}),
@@ -5121,10 +5290,20 @@ export function ChatView({
         await new Promise(r => setTimeout(r, 800));
 
         // Now trigger the chained skill (e.g., image-creator)
+        const requestedMediaModel = findMentionedMediaModelId(text, filteredMediaModels);
+        const requestedAspectRatio =
+          normalizeChatImageAspectRatio(chainedParams.aspectRatio)
+          ?? inferImageAspectRatioFromText(`${generatedContent}\n${chainedPrompt}`);
+        const executionParams = {
+          ...chainedParams,
+          ...(requestedAspectRatio ? { aspectRatio: requestedAspectRatio } : {}),
+          modelIntentText: text,
+          ...(requestedMediaModel ? { model: requestedMediaModel } : {}),
+        };
         setIsStreaming(true);
         const paramsInfo =
-          Object.keys(chainedParams).length > 0
-            ? ` (${Object.entries(chainedParams)
+          Object.keys(executionParams).length > 0
+            ? ` (${Object.entries(executionParams)
                 .map(([k, v]) => `${k}: ${v}`)
                 .join(", ")})`
             : "";
@@ -5136,8 +5315,10 @@ export function ChatView({
           const result = await preferredSkillExecution.execute({
             skillId: effectiveChainTo,
             prompt: chainedPrompt,
-            dynamicParams: chainedParams,
+            dynamicParams: executionParams,
             mutationInput: {
+              ...(requestedAspectRatio ? { aspectRatio: requestedAspectRatio } : {}),
+              ...(requestedMediaModel ? { model: requestedMediaModel } : {}),
               ...(referenceImageUrl
                 ? { referenceImageUrls: [referenceImageUrl] }
                 : {}),
@@ -5533,9 +5714,30 @@ export function ChatView({
             onOpenChange={setModelDialogOpen}
             title="Select Model"
             description="Search and select an LLM model"
+            className="w-[min(760px,calc(100vw-24px))] max-w-none rounded-xl border shadow-2xl"
           >
-            <CommandInput placeholder="Search models..." />
-            <CommandList className="max-h-[60vh]">
+            <div className="border-b bg-muted/30 px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">Choose a model</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Search by model, provider, or price. Auto keeps routing flexible.
+                  </p>
+                </div>
+                {selectedModelDisplay.providerLabel ? (
+                  <Badge
+                    variant="secondary"
+                    className="h-5 max-w-[140px] shrink-0 px-2 text-[10px] font-medium"
+                  >
+                    <span className="truncate">
+                      {selectedModelDisplay.providerLabel}
+                    </span>
+                  </Badge>
+                ) : null}
+              </div>
+            </div>
+            <CommandInput placeholder="Search models, providers, or pricing..." />
+            <CommandList className="max-h-[min(560px,62vh)] p-2">
               {renderModelDialogContent()}
             </CommandList>
           </CommandDialog>

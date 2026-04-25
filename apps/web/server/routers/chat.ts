@@ -39,7 +39,7 @@ import {
   readStoredChatModelSelectionState,
   writeStoredChatModelSelectionState,
 } from "../services/chatModelSelection";
-import { hasEnoughCredits, calculateCreditsForLLM } from "../services/creditService";
+import { hasEnoughCredits, calculateCreditsForLLM, deductCredits } from "../services/creditService";
 import { TRPCError } from "@trpc/server";
 import { getAvailableSkills, getSkillById, getSkillByIdOrType, getDefaultEnabledSkills, syncSingleSkillIfChanged } from "../services/skillRegistry";
 import { detectSkill, extractSkillParams, getSkillDetectionSummary } from "../services/skillDetector";
@@ -82,6 +82,7 @@ import {
 } from "../services/contextEngineAdapter";
 import { executeChatRuntimeTurn } from "../services/agentRuntime/chatRuntimeOrchestrator";
 import { recordContextEngineMetric } from "../services/monitoringService";
+import { getModelsByTypeAsync, mapToApiModelId } from "../services/modelRegistry";
 
 const localSkillPlatformSchema = z.enum(["web", "tauri"]).default("web");
 const localSkillOriginSchema = z
@@ -99,6 +100,74 @@ const localSkillOriginSchema = z
 const localSkillRequestedRouteSchema = z
   .enum(["cloud", "cloud_fallback", "local"])
   .default("cloud");
+
+function normalizeMediaModelIntentText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[_/.-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function inferMediaModelFromIntentText(
+  text: string | undefined,
+  type: "image" | "video" | "audio",
+): Promise<string | undefined> {
+  const normalizedText = normalizeMediaModelIntentText(text ?? "");
+  if (!normalizedText) return undefined;
+
+  const models = await getModelsByTypeAsync(type).catch(() => []);
+  const candidates = models
+    .flatMap((model) => {
+      const aliases = Array.isArray(model.aliases) ? model.aliases : [];
+      return [model.id, model.name, ...aliases].map((candidate) => ({
+        id: model.id,
+        normalized: normalizeMediaModelIntentText(candidate),
+      }));
+    })
+    .filter((candidate) => candidate.normalized.length > 0)
+    .sort((a, b) => b.normalized.length - a.normalized.length);
+
+  const match = candidates.find((candidate) => normalizedText.includes(candidate.normalized));
+  return match?.id ? mapToApiModelId(match.id) : undefined;
+}
+
+const CHAT_IMAGE_ASPECT_RATIO_VALUES = new Set([
+  "1:1",
+  "4:5",
+  "5:4",
+  "2:3",
+  "3:2",
+  "3:4",
+  "4:3",
+  "16:9",
+  "9:16",
+  "21:9",
+  "9:21",
+]);
+
+function normalizeChatImageAspectRatio(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.replace(/\s+/g, "");
+  return CHAT_IMAGE_ASPECT_RATIO_VALUES.has(normalized) ? normalized : undefined;
+}
+
+function inferImageAspectRatioFromText(text: string | undefined): string | undefined {
+  if (!text) return undefined;
+  const labeledMatch = text.match(
+    /(?:สัดส่วนภาพ|อัตราส่วนภาพ|image\s*ratio|aspect\s*ratio|ratio)\s*[:：]?\s*(\d{1,2}\s*:\s*\d{1,2})/i,
+  );
+  const labeledRatio = normalizeChatImageAspectRatio(labeledMatch?.[1]);
+  if (labeledRatio) return labeledRatio;
+
+  const compactMatch = text.match(/\b(\d{1,2}\s*:\s*\d{1,2})\b/);
+  const compactRatio = normalizeChatImageAspectRatio(compactMatch?.[1]);
+  if (compactRatio) return compactRatio;
+
+  if (/(?:แนวตั้ง|portrait)/i.test(text)) return "9:16";
+  if (/(?:แนวนอน|landscape)/i.test(text)) return "16:9";
+  return undefined;
+}
 
 // ── Security: forbidden patterns in LLM-generated skillContent ───────────────
 const ISC_FORBIDDEN_PATTERNS = [
@@ -495,6 +564,9 @@ function validateDynamicParams(
   // Get expected params from skill config
   const configJson = skill.configJson || {};
   const expectedParams = configJson.inputFields || [];
+  if (!Array.isArray(expectedParams) || expectedParams.length === 0) {
+    return errors;
+  }
 
   // Validate each parameter
   for (const [key, value] of Object.entries(params)) {
@@ -2076,6 +2148,35 @@ export const chatRouter = router({
         ...input.extraParams,
         ...input.dynamicParams,
       };
+      const dynamicModel =
+        typeof mergedExtraParams.model === "string"
+          ? mergedExtraParams.model
+          : typeof mergedExtraParams.modelId === "string"
+            ? mergedExtraParams.modelId
+            : typeof mergedExtraParams.mediaModel === "string"
+              ? mergedExtraParams.mediaModel
+              : undefined;
+      const intentText =
+        typeof mergedExtraParams.modelIntentText === "string"
+          ? mergedExtraParams.modelIntentText
+          : input.prompt;
+      const mediaIntentType =
+        skill.type === "video-generation" || skill.type === "image-video-generation"
+          ? "video"
+          : skill.type === "audio-generation"
+            ? "audio"
+            : "image";
+      const requestedSkillModel =
+        input.model
+        ?? dynamicModel
+        ?? (executionMode === "media-generate"
+          ? await inferMediaModelFromIntentText(intentText, mediaIntentType)
+          : undefined);
+      const inferredAspectRatio =
+        normalizeChatImageAspectRatio(input.aspectRatio)
+        ?? normalizeChatImageAspectRatio(mergedExtraParams.aspectRatio)
+        ?? normalizeChatImageAspectRatio(mergedExtraParams.aspect_ratio)
+        ?? inferImageAspectRatioFromText(`${input.prompt ?? ""}\n${intentText ?? ""}`);
 
       // Validate dynamicParams if provided
       if (Object.keys(mergedExtraParams).length > 0) {
@@ -2653,6 +2754,15 @@ export const chatRouter = router({
           conversationId: input.conversationId,
           skillSlug: input.skillId,
           sourceType: "skill",
+          metadata: {
+            skill: input.skillId,
+            skillName: skill.name,
+            executionMode,
+            runtimeKind: "llm",
+            llmModel: usedModel,
+            providerName: provider.providerName,
+            originSurface: "chat",
+          },
         });
 
         // Record step attempt for planner tracking
@@ -2715,10 +2825,26 @@ export const chatRouter = router({
       // Python skills: run asynchronously to prevent HTTP timeout (Cloudflare 100s limit).
       // We return a taskId immediately; the client polls chat.getSkillTaskResult until done.
       if (isPythonMode) {
+        const skillCreditCost = Math.max(0, Math.ceil(Number(skill.creditMultiplier ?? 1)));
+        if (skillCreditCost > 0) {
+          const hasCredits = await hasEnoughCredits(ctx.user.id, skillCreditCost);
+          if (!hasCredits) {
+            return {
+              success: false,
+              skillId: input.skillId,
+              type: "text" as const,
+              error: `Insufficient credits. Need ${skillCreditCost} credit${skillCreditCost === 1 ? "" : "s"} to run this skill.`,
+              message: undefined as string | undefined,
+              resultUrl: undefined as string | undefined,
+              resultUrls: undefined as string[] | undefined,
+            };
+          }
+        }
+
         const skillParams = {
           prompt: input.prompt || "",
-          model: input.model,
-          aspectRatio: input.aspectRatio ?? (mergedExtraParams.aspectRatio as string | undefined),
+          model: requestedSkillModel,
+          aspectRatio: inferredAspectRatio,
           numImages: input.numImages ?? (mergedExtraParams.numImages !== undefined ? Number(mergedExtraParams.numImages) : undefined),
           duration: input.duration ?? (mergedExtraParams.duration !== undefined ? Number(mergedExtraParams.duration) : undefined),
           voice: input.voice,
@@ -2740,9 +2866,10 @@ export const chatRouter = router({
           userToken,
           async (result) => {
             // Post-process ISC create_skill actions
+            let finalResult = result;
             if (result.success && result._action?.type === "create_skill") {
               const createResult = await handleIscCreateSkill(result._action, userId);
-              return {
+              finalResult = {
                 ...result,
                 message:
                   (result.message ?? "") +
@@ -2751,7 +2878,63 @@ export const chatRouter = router({
                     : `\n\n⚠️ **Could not save skill**: ${createResult.reason}`),
               };
             }
-            return result;
+
+            if (finalResult.success && skillCreditCost > 0) {
+              try {
+                await deductCredits({
+                  userId: ctx.user.id,
+                  amount: skillCreditCost,
+                  description: `Skill execution: ${skill.name}`,
+                  tenantId: ctx.tenantId ?? undefined,
+                  conversationId: input.conversationId ?? undefined,
+                  skillSlug: input.skillId,
+                  sourceType: "skill",
+                  metadata: {
+                    skill: input.skillId,
+                    skillName: skill.name,
+                    executionMode: skill.executionMode,
+                    runtimeKind: "python",
+                    llmModel: "none",
+                    originSurface: "chat",
+                  },
+                });
+                finalResult = {
+                  ...finalResult,
+                  creditsUsed: (finalResult.creditsUsed ?? 0) + skillCreditCost,
+                };
+              } catch (err) {
+                console.error("[executeSkill] Failed to deduct async Python skill credits:", err);
+                finalResult = {
+                  ...finalResult,
+                  success: false,
+                  error: err instanceof Error ? err.message : "Failed to deduct skill credits",
+                  message: err instanceof Error ? err.message : "Failed to deduct skill credits",
+                };
+              }
+            }
+
+            // Async Python skills finish after the HTTP request has closed, so
+            // persist their final output here instead of relying on the client.
+            if (input.conversationId) {
+              try {
+                const content =
+                  finalResult.message ||
+                  finalResult.error ||
+                  (finalResult.success ? "Skill completed successfully." : "Skill execution failed.");
+
+                await createMessage({
+                  conversationId: input.conversationId,
+                  role: "assistant",
+                  content,
+                  skillUsed: input.skillId,
+                  creditsUsed: finalResult.creditsUsed ? String(finalResult.creditsUsed) : undefined,
+                });
+              } catch (err) {
+                console.error("[executeSkill] Failed to save async Python skill message:", err);
+              }
+            }
+
+            return finalResult;
           },
         );
 
@@ -2775,8 +2958,8 @@ export const chatRouter = router({
         skill,
         {
           prompt: input.prompt || '',
-          model: input.model,
-          aspectRatio: input.aspectRatio ?? (mergedExtraParams.aspectRatio as string | undefined),
+          model: requestedSkillModel,
+          aspectRatio: inferredAspectRatio,
           numImages: input.numImages ?? (mergedExtraParams.numImages !== undefined ? Number(mergedExtraParams.numImages) : undefined),
           duration: input.duration ?? (mergedExtraParams.duration !== undefined ? Number(mergedExtraParams.duration) : undefined),
           voice: input.voice,

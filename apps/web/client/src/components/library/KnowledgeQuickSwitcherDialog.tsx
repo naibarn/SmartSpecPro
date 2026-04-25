@@ -230,14 +230,27 @@ export function KnowledgeQuickSwitcherDialog(
   const [activeLibraryItemId, setActiveLibraryItemId] = useState<number | null>(
     null
   );
+  const [hoverPreviewItemId, setHoverPreviewItemId] = useState<number | null>(
+    null
+  );
+  const hoverPreviewTimerRef = useRef<number | null>(null);
   const commandRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!props.open) {
       setQuery("");
       setActiveLibraryItemId(null);
+      setHoverPreviewItemId(null);
     }
   }, [props.open]);
+
+  useEffect(() => {
+    return () => {
+      if (hoverPreviewTimerRef.current != null) {
+        window.clearTimeout(hoverPreviewTimerRef.current);
+      }
+    };
+  }, []);
 
   const quickSwitchQuery = trpc.library.quickSwitchNotes.useQuery(
     {
@@ -255,10 +268,14 @@ export function KnowledgeQuickSwitcherDialog(
     quickSwitchQuery.data?.createSuggestion?.trim() || "";
   const activeResult = useMemo(
     () =>
-      results.find(result => result.libraryItemId === activeLibraryItemId) ??
+      results.find(
+        result =>
+          result.libraryItemId ===
+          (hoverPreviewItemId ?? activeLibraryItemId)
+      ) ??
       results[0] ??
       null,
-    [activeLibraryItemId, results]
+    [activeLibraryItemId, hoverPreviewItemId, results]
   );
   const activePreviewItemId = activeResult?.libraryItemId ?? null;
 
@@ -284,6 +301,7 @@ export function KnowledgeQuickSwitcherDialog(
       refetchOnWindowFocus: false,
       retry: false,
       staleTime: 60_000,
+      placeholderData: previous => previous,
     }
   );
   const markdownQuery = trpc.library.getMarkdownContent.useQuery(
@@ -293,6 +311,7 @@ export function KnowledgeQuickSwitcherDialog(
       refetchOnWindowFocus: false,
       retry: false,
       staleTime: 60_000,
+      placeholderData: previous => previous,
     }
   );
 
@@ -321,6 +340,25 @@ export function KnowledgeQuickSwitcherDialog(
     if (Number.isFinite(nextId) && nextId > 0) {
       setActiveLibraryItemId(nextId);
     }
+  }, []);
+
+  const scheduleHoverPreview = useCallback((nextId: number) => {
+    if (hoverPreviewTimerRef.current != null) {
+      window.clearTimeout(hoverPreviewTimerRef.current);
+    }
+
+    hoverPreviewTimerRef.current = window.setTimeout(() => {
+      setHoverPreviewItemId(current => (current === nextId ? current : nextId));
+      hoverPreviewTimerRef.current = null;
+    }, 120);
+  }, []);
+
+  const cancelHoverPreview = useCallback((itemId: number) => {
+    if (hoverPreviewTimerRef.current != null) {
+      window.clearTimeout(hoverPreviewTimerRef.current);
+      hoverPreviewTimerRef.current = null;
+    }
+    setHoverPreviewItemId(current => (current === itemId ? null : current));
   }, []);
 
   return (
@@ -397,10 +435,10 @@ export function KnowledgeQuickSwitcherDialog(
                             data-knowledge-item-id={result.libraryItemId}
                             data-testid={`knowledge-quick-switcher-item-${result.libraryItemId}`}
                             onMouseEnter={() =>
-                              setActiveLibraryItemId(result.libraryItemId)
+                              scheduleHoverPreview(result.libraryItemId)
                             }
-                            onFocus={() =>
-                              setActiveLibraryItemId(result.libraryItemId)
+                            onMouseLeave={() =>
+                              cancelHoverPreview(result.libraryItemId)
                             }
                             onSelect={() => {
                               selectNote({
@@ -510,8 +548,10 @@ export function KnowledgeQuickSwitcherDialog(
                             "No logical path recorded yet."}
                         </div>
                       </div>
-                      {(inspectorQuery.isLoading || markdownQuery.isLoading) &&
-                      activePreviewItemId ? (
+                      {activePreviewItemId &&
+                      !inspectorQuery.data &&
+                      !markdownQuery.data &&
+                      (inspectorQuery.isLoading || markdownQuery.isLoading) ? (
                         <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-slate-400" />
                       ) : null}
                     </div>

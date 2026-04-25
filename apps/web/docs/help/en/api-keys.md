@@ -6,7 +6,24 @@ icon: Key
 section: advanced
 order: 78
 pages: ["/settings", "/admin/api-keys"]
-tags: [api, keys, token, access, programmatic, integration, developer, openapi]
+tags:
+  - "api"
+  - "keys"
+  - "token"
+  - "access"
+  - "programmatic"
+  - "integration"
+  - "developer"
+  - "openapi"
+  - "help"
+  - "help/en"
+  - "help/account"
+  - "account"
+  - "api-keys"
+aliases:
+  - "api-keys"
+  - "API Keys"
+  - "API Keys help"
 ---
 
 # API Keys
@@ -103,3 +120,15 @@ API calls consume credits at the same rate as equivalent actions in the UI. The 
 - **Monitor usage regularly** — check the key usage stats at **Settings → API** to spot unexpected spikes.
 - **Don't share keys** — each person or service should have its own key so access can be revoked individually.
 - **Prefer short-lived keys** — for one-off scripts, generate a key with a 24-hour expiration rather than using a long-lived key.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[settings|Settings & Preferences]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[credits|Credits System]]
+- [[notification-settings|Notification Preferences]]
+- [[profile|Profile & Account]]
+- [[usage-analytics|Usage Analytics & Task Monitor]]
+<!-- knowledge-graph:related:end -->

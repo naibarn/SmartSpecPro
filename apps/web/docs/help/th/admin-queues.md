@@ -6,7 +6,23 @@ icon: BarChart3
 section: admin
 order: 110
 pages: ["/admin/queues", "/admin/queues/llm", "/admin/queues/media"]
-tags: [admin, queues, jobs, monitoring, llm queue, media queue, retry, failed]
+tags:
+  - "admin"
+  - "queues"
+  - "jobs"
+  - "monitoring"
+  - "llm queue"
+  - "media queue"
+  - "retry"
+  - "failed"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-queues"
+aliases:
+  - "admin-queues"
+  - "ตรวจสอบคิว"
+  - "ตรวจสอบคิว help"
 ---
 
 # ตรวจสอบคิว
@@ -71,3 +87,15 @@ Queue Dashboard คำนวณ:
 - **Worker Count** — Celery Workers ที่ใช้งานอยู่และโหลดปัจจุบัน
 
 ตั้งค่าเกณฑ์การแจ้งเตือนใน **Admin → System Settings → Monitoring** เพื่อรับการแจ้งเตือนเมื่อตัวชี้วัดใดๆ เกินขีดจำกัดที่กำหนด
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

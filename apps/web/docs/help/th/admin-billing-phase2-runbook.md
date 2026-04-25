@@ -1,3 +1,16 @@
+---
+
+aliases:
+  - "admin-billing-phase2-runbook"
+  - "คู่มือดูแล Billing Phase 2"
+  - "คู่มือดูแล Billing Phase 2 help"
+tags:
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin"
+  - "admin-billing-phase2-runbook"
+---
 # คู่มือดูแล Billing Phase 2
 
 ## ขอบเขต
@@ -30,3 +43,15 @@
 - `requires_new_card`: ลูกค้าต้องอัปเดตบัตรก่อนรอบถัดไป
 - `manual_fallback_active`: invoice ยังเปิดอยู่ แต่จะไม่ retry off-session ต่อ
 - `manual_review_required`: ต้องตรวจ provider/reconciliation data ก่อน retry
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

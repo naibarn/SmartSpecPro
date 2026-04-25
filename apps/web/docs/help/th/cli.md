@@ -6,7 +6,21 @@ icon: Terminal
 section: advanced
 order: 72
 pages: ["/kilo"]
-tags: [cli, kilo, file-browser, git, editor, desktop]
+tags:
+  - "cli"
+  - "kilo"
+  - "file-browser"
+  - "git"
+  - "editor"
+  - "desktop"
+  - "help"
+  - "help/th"
+  - "help/runtime"
+  - "runtime"
+aliases:
+  - "cli"
+  - "CLI (Kilo)"
+  - "CLI (Kilo) help"
 ---
 
 # CLI (Kilo)
@@ -48,3 +62,15 @@ Kilo เป็นตัวจัดการไฟล์บนเดสก์ท
 - ตั้ง root path เป็นไดเรกทอรีโปรเจกต์เพื่อเข้าถึงไฟล์ทั้งหมดได้รวดเร็ว
 - ใช้ฟีเจอร์ค้นหาเพื่อหาไฟล์ config หรือโมดูลเฉพาะอย่างรวดเร็ว
 - ตัวแก้ไขรองรับคีย์ลัดทั่วไป (copy, paste, undo, find)
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[browser-session|Browser Session]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+- [[docker-sandbox|Docker Sandbox]]
+<!-- knowledge-graph:related:end -->

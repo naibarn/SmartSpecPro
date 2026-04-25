@@ -6,7 +6,22 @@ icon: Store
 section: features
 order: 70
 pages: ["/marketplace", "/agencies/marketplace", "/agencies/templates"]
-tags: [marketplace, store, install, discover, skills, agencies, templates, community]
+tags:
+  - "marketplace"
+  - "store"
+  - "install"
+  - "discover"
+  - "skills"
+  - "agencies"
+  - "templates"
+  - "community"
+  - "help"
+  - "help/th"
+  - "help/marketplace"
+aliases:
+  - "marketplace"
+  - "ตลาด"
+  - "ตลาด help"
 ---
 
 # ตลาด
@@ -80,3 +95,12 @@ Agency Templates คือจุดเริ่มต้นที่คัดส
 - **ตรวจสอบคะแนนและจำนวนการติดตั้ง** ก่อนติดตั้ง skill หรือ agency จากชุมชน ตัวเลขสูงกว่าบ่งบอกถึงความน่าเชื่อถือ
 - **ดูตัวอย่างการกำหนดค่า** ก่อนติดตั้ง agencies — การเข้าใจโครงสร้าง agent ช่วยให้คุณเขียน prompt ได้ดีขึ้น
 - หาก skill หรือ agency ไม่ทำงานตามที่คาดหลังติดตั้ง ให้ให้คะแนนและตรวจสอบว่ามีเวอร์ชันที่อัปเดตแล้วหรือไม่
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[skill-browser|เรียกดูสกิล]]
+- [[skills|Skills และคำสั่ง Slash]]
+<!-- knowledge-graph:related:end -->

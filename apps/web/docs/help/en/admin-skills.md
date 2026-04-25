@@ -6,7 +6,23 @@ icon: Wand2
 section: admin
 order: 120
 pages: ["/admin/skills", "/admin/skill-repositories"]
-tags: [admin, skills, manage, repository, marketplace, enable, disable, upload]
+tags:
+  - "admin"
+  - "skills"
+  - "manage"
+  - "repository"
+  - "marketplace"
+  - "enable"
+  - "disable"
+  - "upload"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-skills"
+aliases:
+  - "admin-skills"
+  - "Skill Management"
+  - "Skill Management help"
 ---
 
 # Skill Management
@@ -123,3 +139,15 @@ The **Marketplace** tab (when enabled) lists community-contributed skills availa
 - Click **Install** to download and add the skill to your platform — it appears in the skill list as disabled until you activate it.
 - **Updates** — installed marketplace skills show a badge when a newer version is available.
 - Review the skill's system prompt and schemas before enabling it for users.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

@@ -6,7 +6,20 @@ icon: BarChart3
 section: admin
 order: 270
 pages: ["/admin/funnel"]
-tags: [admin, funnel, analytics, conversion, user journey]
+tags:
+  - "admin"
+  - "funnel"
+  - "analytics"
+  - "conversion"
+  - "user journey"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-funnel-dashboard"
+aliases:
+  - "admin-funnel-dashboard"
+  - "Funnel Dashboard"
+  - "Funnel Dashboard help"
 ---
 
 # Funnel Dashboard
@@ -40,3 +53,15 @@ Log in as an administrator and navigate to **Admin > Funnel** from the left side
 - Segmenting by plan type often reveals that free-tier users drop off at different stages than paid users, which can guide upsell messaging.
 - Funnel data is computed from event logs and typically has a processing delay of up to 2 hours. Very recent activity may not yet be reflected.
 - If a funnel stage shows zero users, check that the corresponding event is still being tracked correctly in the analytics pipeline.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

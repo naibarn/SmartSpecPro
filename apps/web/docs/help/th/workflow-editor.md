@@ -6,7 +6,21 @@ icon: GitBranch
 section: features
 order: 50
 pages: ["/workflows/editor", "/workflows/editor/:id"]
-tags: [เวิร์กโฟลว์, ออโตเมชัน, ตัวสร้างโฟลว์, โหนด, วิชวลเอดิเตอร์]
+tags:
+  - "เวิร์กโฟลว์"
+  - "ออโตเมชัน"
+  - "ตัวสร้างโฟลว์"
+  - "โหนด"
+  - "วิชวลเอดิเตอร์"
+  - "help"
+  - "help/th"
+  - "help/automation"
+  - "automation"
+  - "workflow-editor"
+aliases:
+  - "workflow-editor"
+  - "ตัวสร้างเวิร์กโฟลว์"
+  - "ตัวสร้างเวิร์กโฟลว์ help"
 ---
 
 # ตัวสร้างเวิร์กโฟลว์
@@ -47,3 +61,15 @@ tags: [เวิร์กโฟลว์, ออโตเมชัน, ตัว
 - คลิกขวาบนโหนดเพื่อดูตัวเลือกเพิ่มเติม เช่น ทำซ้ำหรือลบโหนด
 - บันทึกเวิร์กโฟลว์บ่อยๆ ระหว่างการสร้างเพื่อป้องกันการสูญเสียงาน
 - ถ้าเป็น flow ที่มี worker เข้ามาเกี่ยวข้อง ให้แยกสถานะเหล่านี้ออกจากกันเสมอ: dispatch accepted, worker execution completed, artifact publish completed, และ indexing completed เพราะ dispatch สำเร็จไม่ได้แปลว่าผลลัพธ์พร้อมค้นหาหรือพร้อมใช้งานแล้ว
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[workflows|เวิร์กโฟลว์และระบบอัตโนมัติ]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[automation|ระบบอัตโนมัติ]]
+- [[factory|SaaS Factory]]
+- [[webhooks|Webhooks และการเชื่อมต่อ]]
+- [[work-os|คู่มือ Work OS]]
+<!-- knowledge-graph:related:end -->

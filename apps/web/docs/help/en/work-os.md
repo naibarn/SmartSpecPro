@@ -6,7 +6,28 @@ icon: ClipboardList
 section: features
 order: 11
 pages: ["/chat", "/work/request", "/admin/work-os", "/admin/monitoring"]
-tags: [work os, intake, request, case, task, queue, chat, webhook, api, legacy, import, triage]
+tags:
+  - "work os"
+  - "intake"
+  - "request"
+  - "case"
+  - "task"
+  - "queue"
+  - "chat"
+  - "webhook"
+  - "api"
+  - "legacy"
+  - "import"
+  - "triage"
+  - "help"
+  - "help/en"
+  - "help/automation"
+  - "automation"
+  - "work-os"
+aliases:
+  - "work-os"
+  - "Work OS Guide"
+  - "Work OS Guide help"
 ---
 
 # Work OS Guide
@@ -100,3 +121,15 @@ That makes the view easier to share, copy, and return to later.
 - `timelineSource` filters the timeline to one evidence slice.
 - `work_os` means the main case stream.
 - `role_routine`, `team_run`, and `workpack_record` mean source-specific evidence slices.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[workflows|Workflows & Automation]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[automation|Process Automation]]
+- [[factory|SaaS Factory]]
+- [[webhooks|Webhooks & Integrations]]
+- [[workflow-editor|Workflow Editor]]
+<!-- knowledge-graph:related:end -->

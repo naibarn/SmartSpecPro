@@ -6,7 +6,22 @@ icon: FileText
 section: admin
 order: 115
 pages: ["/admin/audit-logs", "/admin/orchestration-logs"]
-tags: [admin, audit, logs, trace, monitoring, orchestration, debugging]
+tags:
+  - "admin"
+  - "audit"
+  - "logs"
+  - "trace"
+  - "monitoring"
+  - "orchestration"
+  - "debugging"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-audit"
+aliases:
+  - "admin-audit"
+  - "บันทึกการตรวจสอบ"
+  - "บันทึกการตรวจสอบ help"
 ---
 
 # บันทึกการตรวจสอบ
@@ -70,3 +85,15 @@ Audit Log คือบันทึกที่เชื่อถือได้�
 - Export ขนาดใหญ่ (มากกว่า 10,000 แถว) จะประมวลผลแบบ Asynchronous — ลิงก์ดาวน์โหลดจะส่งทางอีเมลไปยัง Admin ที่ขอ
 - ไฟล์ที่ Export จะเก็บไว้ 24 ชั่วโมง
 - สำหรับการเก็บรักษา Compliance และระยะยาว กำหนดค่า Log Forwarding ไปยัง SIEM ภายนอกใน **Admin → System Settings → Integrations**
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-billing-phase2-runbook|คู่มือดูแล Billing Phase 2]]
+<!-- knowledge-graph:related:end -->

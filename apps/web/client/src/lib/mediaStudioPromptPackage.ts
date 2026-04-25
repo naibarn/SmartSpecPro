@@ -245,6 +245,21 @@ function parseStructuredJsonPromptPackage(text: string): MediaStudioPromptPackag
   const fallbackFromFinalPrompt = trimText(parsed.final_prompt)
     ? parsePlainTextPromptPackage(trimText(parsed.final_prompt))
     : null;
+  const promptBundle = parsed.prompts && typeof parsed.prompts === "object"
+    ? parsed.prompts
+    : null;
+  const promptBundleVariants = Array.isArray(promptBundle?.variants)
+    ? promptBundle.variants.map((variant: unknown) => trimText(variant)).filter(Boolean)
+    : [];
+  const promptBundlePrompt =
+    trimText(promptBundle?.detailed)
+    || trimText(promptBundle?.edit)
+    || trimText(promptBundle?.structured)
+    || trimText(promptBundle?.short);
+  const promptVariantItems = Array.isArray(parsed.prompt_variants) ? parsed.prompt_variants : [];
+  const promptVariantPrompts = promptVariantItems
+    .map((item: any) => trimText(item?.prompt) || trimText(item?.edit_prompt))
+    .filter(Boolean);
 
   const continuityNotes =
     trimText(parsed?.continuity_package?.continuity_notes)
@@ -262,6 +277,8 @@ function parseStructuredJsonPromptPackage(text: string): MediaStudioPromptPackag
 
   const promptText =
     promptSequence.join("\n\n").trim()
+    || promptBundlePrompt
+    || promptVariantPrompts.join("\n\n").trim()
     || trimText(parsed.prompt)
     || trimText(parsed.prompt_text)
     || fallbackFromFinalPrompt?.promptText
@@ -274,7 +291,11 @@ function parseStructuredJsonPromptPackage(text: string): MediaStudioPromptPackag
     referenceNotes,
     promptSequence: promptSequence.length > 0
       ? promptSequence
-      : (fallbackFromFinalPrompt?.promptSequence ?? (promptText ? [promptText] : [])),
+      : promptBundleVariants.length > 0
+        ? promptBundleVariants
+        : promptVariantPrompts.length > 0
+          ? promptVariantPrompts
+          : (fallbackFromFinalPrompt?.promptSequence ?? (promptText ? [promptText] : [])),
     source: "structured_json",
   };
 }

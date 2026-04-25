@@ -6,7 +6,21 @@ icon: ListTodo
 section: admin
 order: 290
 pages: ["/admin/task-queue"]
-tags: [แอดมิน, คิวงาน, Celery, มอนิเตอร์, เวิร์กเกอร์]
+tags:
+  - "แอดมิน"
+  - "คิวงาน"
+  - "Celery"
+  - "มอนิเตอร์"
+  - "เวิร์กเกอร์"
+  - "help"
+  - "help/th"
+  - "help/core"
+  - "core"
+  - "task-queue-monitor"
+aliases:
+  - "task-queue-monitor"
+  - "มอนิเตอร์คิวงาน"
+  - "มอนิเตอร์คิวงาน help"
 ---
 
 # มอนิเตอร์คิวงาน
@@ -45,3 +59,11 @@ Task Queue Monitor แสดงสถานะของคิวงาน Celery
 - งาน Failed ที่มี error ซ้ำๆ แบบเดียวกันมักบ่งบอกถึงปัญหา configuration หรือ API key หมดอายุ
 - ตรวจสอบ throughput ในช่วง peak hours เพื่อวางแผนการ scale worker ให้เหมาะสมกับปริมาณงาน
 - งานที่ค้างในสถานะ Active และ worker ที่รับงานนั้นหยุดทำงานแล้ว จะต้องยกเลิกด้วยตนเองเพราะระบบไม่สามารถ detect ได้อัตโนมัติในทุกกรณี
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[content-quality-dashboard|คุณภาพเนื้อหา]]
+<!-- knowledge-graph:related:end -->

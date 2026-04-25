@@ -57,6 +57,20 @@ function sanitizeConditionalSkillInputs(
   }
 }
 
+function getStringInput(payload: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+}
+
+function hasThaiText(value: string): boolean {
+  return /[\u0E00-\u0E7F]/.test(value);
+}
+
 export function buildCustomSkillPromptInputPayload(
   userInputs: Record<string, unknown>,
   options?: { referenceImageCount?: number },
@@ -100,9 +114,30 @@ export function buildCustomSkillUserPrompt(
     "Treat these values as authoritative. If they already provide enough direction, do not ask the user to provide the topic or restate missing basics.",
     "Treat `delivery_mode` as the authoritative packaging choice. If it is `multi_shot_single_video`, produce exactly one prompt package and ignore any stale multi-video defaults.",
     "Only treat reference images as real when the `reference_images` array is present in USER_INPUTS_JSON. If that array is absent, do not invent `@ImageN` handles or imply that files were uploaded.",
-    "USER_INPUTS_JSON:",
-    serializedPayload,
   ];
+
+  if (payload.response_mode === "text_prompt") {
+    const sourcePrompt = getStringInput(payload, ["topic", "prompt", "request", "userIdea", "idea"]);
+    const targetLanguage = typeof payload.target_language === "string" ? payload.target_language : "auto";
+    const languageInstruction = targetLanguage === "auto"
+      ? hasThaiText(sourcePrompt)
+        ? "The source idea is Thai. Write the final prompt in Thai."
+        : "Write the final prompt in the same language as the source idea."
+      : `Write the final prompt in ${targetLanguage}.`;
+    parts.push(
+      "The requested response mode is `text_prompt`: rewrite and expand the user's source idea into a production-ready image generation prompt.",
+      "Do not return the source idea unchanged. Do not merely translate it. Add concrete visual detail: subject, pose/action, environment, composition, camera/framing, lighting, color, texture, mood, and relevant constraints.",
+      languageInstruction,
+      "Use the selected skill's own instructions, input schema defaults, and auto-field inference rules to decide which technical details and constraints are relevant. Do not hard-code one fixed style, lens, camera setup, or safety wording for every request.",
+      "The output should be materially richer than the source idea and should preserve any explicit user constraints exactly.",
+      "Return plain prompt text only, with no JSON, no Markdown fence, no labels, no review notes, and no explanation.",
+    );
+    if (sourcePrompt) {
+      parts.push(`SOURCE_PROMPT_TO_REWRITE:\n${sourcePrompt}`);
+    }
+  }
+
+  parts.push("USER_INPUTS_JSON:", serializedPayload);
 
   if ((options?.referenceImageCount ?? 0) > 0) {
     parts.push("Attached reference images are supplied separately as vision inputs and correspond to the `reference_images` handles above.");

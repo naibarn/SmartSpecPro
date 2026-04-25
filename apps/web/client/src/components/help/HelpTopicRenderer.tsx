@@ -16,7 +16,7 @@ export function HelpTopicRenderer({ html, className }: HelpTopicRendererProps) {
       "details", "summary",
     ],
     ALLOWED_ATTR: ["href", "target", "rel", "src", "alt"],
-    ALLOWED_URI_REGEXP: /^(https?:|mailto:|#)/i,
+    ALLOWED_URI_REGEXP: /^(https?:|mailto:|#|\/(?!\/))/i,
   });
 
   return (

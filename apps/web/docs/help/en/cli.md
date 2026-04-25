@@ -6,7 +6,21 @@ icon: Terminal
 section: advanced
 order: 72
 pages: ["/kilo"]
-tags: [cli, kilo, file-browser, git, editor, desktop]
+tags:
+  - "cli"
+  - "kilo"
+  - "file-browser"
+  - "git"
+  - "editor"
+  - "desktop"
+  - "help"
+  - "help/en"
+  - "help/runtime"
+  - "runtime"
+aliases:
+  - "cli"
+  - "CLI (Kilo)"
+  - "CLI (Kilo) help"
 ---
 
 # CLI (Kilo)
@@ -48,3 +62,15 @@ Kilo is a desktop-only file explorer with built-in Git integration. Browse proje
 - Set your root path to your project directory for quick access to all project files.
 - Use the search feature to quickly locate configuration files or specific modules.
 - The editor supports common keyboard shortcuts (copy, paste, undo, find).
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[browser-session|Browser Session]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+- [[docker-sandbox|Docker Sandbox]]
+<!-- knowledge-graph:related:end -->

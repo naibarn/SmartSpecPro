@@ -6,7 +6,23 @@ icon: Download
 section: features
 order: 67
 pages: ["/dashboard", "/admin/desktop-host", "/domain-admin/desktop-host"]
-tags: [desktop, desktop releases, installer, download, admin, publish, release notes]
+tags:
+  - "desktop"
+  - "desktop releases"
+  - "installer"
+  - "download"
+  - "admin"
+  - "publish"
+  - "release notes"
+  - "help"
+  - "help/th"
+  - "help/runtime"
+  - "runtime"
+  - "desktop-releases"
+aliases:
+  - "desktop-releases"
+  - "Desktop Releases"
+  - "Desktop Releases help"
 ---
 
 # Desktop Releases
@@ -157,3 +173,15 @@ release แต่ละตัวจะอยู่ได้ 2 สถานะห
 
 - [Desktop Host](./desktop-host.md)
 - [Desktop Host Managed Mode](./desktop-host-managed-mode.md)
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[docker-sandbox|Docker Sandbox]]
+<!-- knowledge-graph:related:end -->

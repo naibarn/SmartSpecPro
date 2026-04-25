@@ -6,7 +6,23 @@ icon: Server
 section: admin
 order: 87
 pages: ["/admin/tenants", "/admin/monitoring", "/teams", "/credits"]
-tags: [openclaw, worker, external runtime, monitoring, teams, credits, feature flag]
+tags:
+  - "openclaw"
+  - "worker"
+  - "external runtime"
+  - "monitoring"
+  - "teams"
+  - "credits"
+  - "feature flag"
+  - "help"
+  - "help/th"
+  - "help/runtime"
+  - "runtime"
+  - "openclaw-workers"
+aliases:
+  - "openclaw-workers"
+  - "Claw Workers"
+  - "Claw Workers help"
 ---
 
 # Claw Workers
@@ -325,3 +341,15 @@ worker ใช้ได้เฉพาะสิ่งที่ delegated job mani
 - ตั้ง budget caps แล้วถ้าต้องการคุมการใช้เครดิต
 - หน้า **Credits** แสดงรายการใช้งานผ่าน worker ตามที่คาดไว้
 - ถ้า tenant นี้เคยมีข้อมูล worker เก่า ให้กด **Redact Legacy Data** อย่างน้อยหนึ่งครั้ง
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+<!-- knowledge-graph:related:end -->

@@ -194,6 +194,111 @@ describe("libraryContextPackService", () => {
     expect(result.totals.resolvedCount).toBe(1);
   });
 
+  it("expands trusted context packs with one-hop graph relations", async () => {
+    mockDb.select
+      .mockReturnValueOnce(
+        makeSelectWithLimit([
+          makePackRow({
+            relationExpansionPolicy: "one_hop_gated",
+            readinessStatus: "trusted",
+            approvedForAgents: true,
+          }),
+        ]),
+      )
+      .mockReturnValueOnce(
+        makeSelectWithWhere([
+          {
+            id: 1,
+            tenantId: "tenant-1",
+            contextPackId: 44,
+            libraryItemId: 101,
+            memberMode: "include",
+            orderIndex: 0,
+          },
+        ]),
+      )
+      .mockReturnValueOnce(
+        makeSelectWithWhere([
+          {
+            id: 77,
+            tenantId: "tenant-1",
+            sourceLibraryItemId: 101,
+            targetLibraryItemId: 202,
+            relationKind: "wikilink",
+            rawReference: "Architecture",
+            displayText: null,
+            targetPath: "ops/architecture",
+            targetHeading: null,
+            resolutionStatus: "resolved",
+            matchedBy: "logical_path",
+            matchedValue: "ops/architecture",
+            candidateLibraryItemIds: [],
+            diagnostics: {},
+            extractedAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ]),
+      );
+
+    libraryServiceMocks.getLibraryItemById.mockImplementation(async (itemId: number) => {
+      if (itemId === 101) {
+        return {
+          id: 101,
+          title: "Runbook",
+          itemType: "md",
+          description: null,
+          metadata: { logical_path: "ops/runbook" },
+          updatedAt: new Date("2026-04-21T00:00:00.000Z"),
+        };
+      }
+      if (itemId === 202) {
+        return {
+          id: 202,
+          title: "Architecture",
+          itemType: "md",
+          description: null,
+          metadata: { logical_path: "ops/architecture" },
+          updatedAt: new Date("2026-04-21T00:00:00.000Z"),
+        };
+      }
+      return null;
+    });
+    libraryServiceMocks.getLibraryMarkdownContent.mockImplementation(async (itemId: number) => ({
+      item_id: itemId,
+      content: itemId === 101
+        ? "# Runbook\n\nProcess"
+        : "# Architecture\n\nSystem map",
+      updated_at: new Date("2026-04-21T00:00:00.000Z").toISOString(),
+    }));
+
+    const result = await resolveLibraryContextPack(
+      {
+        ref: { slug: "ops-pack" },
+        includeCitations: true,
+        failIfPartial: false,
+      },
+      { userId: 5, tenantId: "tenant-1", role: "user" },
+    );
+
+    expect(result.relationExpansionApplied).toBe(true);
+    expect(result.totals.candidateCount).toBe(2);
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        libraryItemId: 101,
+        includedReason: "Explicitly included in context pack",
+      }),
+      expect.objectContaining({
+        libraryItemId: 202,
+        includedReason: expect.stringContaining("One-hop graph expansion"),
+        citations: expect.arrayContaining([
+          expect.objectContaining({ sourceRef: "library_relation:77" }),
+          expect.objectContaining({ sourceRef: "library_item:101" }),
+          expect.objectContaining({ sourceRef: "library_item:202" }),
+        ]),
+      }),
+    ]);
+  });
+
   it("reports snapshot drift while resolving readable current content", async () => {
     mockDb.select
       .mockReturnValueOnce(

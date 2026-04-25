@@ -6,7 +6,25 @@ icon: UserCircle
 section: features
 order: 66
 pages: ["/settings/personas", "/settings"]
-tags: [personas, personality, custom ai, style, tone, character, nickname, default persona, working hours, memory]
+tags:
+  - "personas"
+  - "personality"
+  - "custom ai"
+  - "style"
+  - "tone"
+  - "character"
+  - "nickname"
+  - "default persona"
+  - "working hours"
+  - "memory"
+  - "help"
+  - "help/en"
+  - "help/knowledge"
+  - "knowledge"
+aliases:
+  - "personas"
+  - "AI Personas"
+  - "AI Personas help"
 ---
 
 # AI Personas
@@ -94,3 +112,13 @@ Select a template when creating a new persona, then customize the system prompt 
 - Use the Description field to document when and why you created the persona, not just what it does.
 - When Memory is enabled, the system loads **long-term memory for the active persona**, so each persona can build its own reusable context.
 - Conversation summaries and the current session history still belong to the chat itself, even if you switch personas mid-thread.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[document-management|Document Management]]
+- [[getting-started|Getting Started]]
+- [[chat|Chat Guide]]
+- [[mcp-servers|MCP Server Integration]]
+- [[memory|Memory System]]
+<!-- knowledge-graph:related:end -->

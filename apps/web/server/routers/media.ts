@@ -391,6 +391,7 @@ function toMediaModelResponse(model: {
   name: string;
   description: string;
   provider: string;
+  aliases?: string[];
   creditCost: number;
   supportsAspectRatios?: string[];
   supportsSizes?: string[];
@@ -404,6 +405,7 @@ function toMediaModelResponse(model: {
     name: model.name,
     description: model.description,
     provider: model.provider,
+    aliases: model.aliases ?? [],
     creditCost: model.creditCost,
     supportsAspectRatios: model.supportsAspectRatios,
     supportsSizes: model.supportsSizes,
@@ -1130,12 +1132,13 @@ async function getDefaultModelId(type: MediaType): Promise<string> {
 async function resolveModelMeta(
   modelId: string,
   expectedType: MediaType,
-): Promise<{ provider: string; type: MediaType }> {
+): Promise<{ provider: string; type: MediaType; name: string }> {
   const db = await getDb();
   if (db) {
     try {
       const [dbModel] = await db
         .select({
+          name: mediaModels.name,
           modelType: mediaModels.modelType,
           provider: mediaModels.provider,
           isEnabled: mediaModels.isEnabled,
@@ -1166,7 +1169,7 @@ async function resolveModelMeta(
         });
       }
 
-      return { provider: dbModel.provider, type: dbModel.modelType as MediaType };
+      return { provider: dbModel.provider, type: dbModel.modelType as MediaType, name: dbModel.name || modelId };
     } catch (error) {
       if (error instanceof TRPCError) {
         throw error;
@@ -1189,7 +1192,7 @@ async function resolveModelMeta(
         message: `Model "${modelId}" is not a ${expectedType} model`,
       });
     }
-    return { provider: hardcodedModel.provider, type: hardcodedModel.type };
+    return { provider: hardcodedModel.provider, type: hardcodedModel.type, name: hardcodedModel.name ?? modelId };
   }
 
   mediaModelLookupCounters.unknownModelRejected += 1;
@@ -1296,6 +1299,7 @@ export const mediaRouter = router({
             description: mediaModels.description,
             type: mediaModels.modelType,
             provider: mediaModels.provider,
+            aliases: mediaModels.aliases,
             creditCost: mediaModels.creditCost,
             supportsAspectRatios: mediaModels.aspectRatios,
             supportsSizes: mediaModels.sizes,
@@ -1545,10 +1549,11 @@ export const mediaRouter = router({
         await deductCredits({
           userId: ctx.user.id,
           amount: result.creditsUsed || creditCost,
-          description: `Image generation: ${model}`,
+          description: `Image generation: ${modelMeta.name}`,
           sourceType: "media_image",
           metadata: {
             model,
+            modelDisplayName: modelMeta.name,
             provider: modelMeta.provider,
             prompt: input.prompt.slice(0, 100),
             endpoint: "generateImage",
@@ -2092,10 +2097,11 @@ export const mediaRouter = router({
       await deductCredits({
         userId: ctx.user.id,
         amount: creditCost,
-        description: `Async image generation: ${model} (reserved)`,
+        description: `Async image generation: ${modelMeta.name} (reserved)`,
         sourceType: "media_image",
         metadata: {
           model,
+          modelDisplayName: modelMeta.name,
           provider: modelMeta.provider,
           prompt: input.prompt.slice(0, 100),
           endpoint: "generateImageAsync",
@@ -2147,10 +2153,11 @@ export const mediaRouter = router({
           await refundCredits({
             userId: ctx.user.id,
             amount: creditCost,
-            description: `Refund: Image generation failed (${model})`,
+            description: `Refund: Image generation failed (${modelMeta.name})`,
             sourceType: "media_image",
             metadata: {
               model,
+              modelDisplayName: modelMeta.name,
               prompt: input.prompt.slice(0, 100),
               error: error instanceof Error ? error.message : "Unknown error",
               ...(input.originSurface ? { originSurface: input.originSurface } : {}),

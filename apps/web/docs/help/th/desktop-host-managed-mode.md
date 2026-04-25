@@ -6,7 +6,22 @@ icon: MonitorPlay
 section: features
 order: 68
 pages: ["/desktop/open"]
-tags: [desktop, desktop-host, managed mode, install, launch, handoff]
+tags:
+  - "desktop"
+  - "desktop-host"
+  - "managed mode"
+  - "install"
+  - "launch"
+  - "handoff"
+  - "help"
+  - "help/th"
+  - "help/runtime"
+  - "runtime"
+  - "desktop-host-managed-mode"
+aliases:
+  - "desktop-host-managed-mode"
+  - "Desktop Host Managed Mode"
+  - "Desktop Host Managed Mode help"
 ---
 
 # Desktop Host Managed Mode
@@ -121,3 +136,15 @@ rollout คาดหวังให้ gate เหล่านี้ผ่าน
 
 - [Desktop Host](./desktop-host.md)
 - [Desktop Releases](./desktop-releases.md)
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-releases|Desktop Releases]]
+- [[docker-sandbox|Docker Sandbox]]
+<!-- knowledge-graph:related:end -->

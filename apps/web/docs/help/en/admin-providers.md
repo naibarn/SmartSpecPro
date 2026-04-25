@@ -6,7 +6,20 @@ icon: Server
 section: admin
 order: 90
 pages: ["/admin/providers", "/admin/multi-provider"]
-tags: [admin, providers, models, configuration, api keys]
+tags:
+  - "admin"
+  - "providers"
+  - "models"
+  - "configuration"
+  - "api keys"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-providers"
+aliases:
+  - "admin-providers"
+  - "Provider Management"
+  - "Provider Management help"
 ---
 
 # Provider Management
@@ -76,3 +89,15 @@ The platform provides dedicated pages to manage the full model catalog across al
 - **Model sync** — click **Sync Models** on any provider to fetch the latest model list from the provider's API. New models appear automatically after syncing.
 - **Default models** — set the platform-wide default model per category (chat, image, video, audio). New users start with this model unless their domain admin overrides it.
 - **Model-specific settings** — configure per-model parameters such as temperature defaults, maximum token limits, and pricing overrides for cost tracking.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

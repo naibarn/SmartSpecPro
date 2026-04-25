@@ -6,7 +6,22 @@ icon: Bot
 section: admin
 order: 94
 pages: ["/admin/agencies"]
-tags: [admin, agencies, approval, reject, publish, agent, review]
+tags:
+  - "admin"
+  - "agencies"
+  - "approval"
+  - "reject"
+  - "publish"
+  - "agent"
+  - "review"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-agencies"
+aliases:
+  - "admin-agencies"
+  - "Agency Management"
+  - "Agency Management help"
 ---
 
 # Agency Management
@@ -50,3 +65,15 @@ Each agency can define:
 - **Revenue split** — percentage between the platform and the agency creator.
 
 These are displayed during review and can be adjusted before approval.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+- [[admin-billing-phase2-runbook|Admin Billing Phase 2 Runbook]]
+<!-- knowledge-graph:related:end -->

@@ -9,7 +9,7 @@ services:
   # ============================================
   
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: smartspec-postgres
     environment:
       POSTGRES_USER: smartspec
@@ -362,6 +362,7 @@ services:
 
 networks:
   smartspec-network:
+    name: smartspec-network
     driver: bridge
 
 # ============================================

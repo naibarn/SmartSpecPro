@@ -206,6 +206,76 @@ def _get_safety_cfg(inp: dict) -> dict:
     }
 
 
+def _detect_target_platform(inp: dict) -> str:
+    explicit = str(inp.get("target_platform") or "").strip().lower()
+    if explicit in {"agents_python", "classic"}:
+        return explicit
+
+    prompt = " ".join(
+        str(inp.get(field) or "")
+        for field in ("description", "prompt", "skill_description", "improvement_request", "target_platform_hint")
+    ).lower()
+    if any(signal in prompt for signal in ("agents python", "openai agents", "native bundle", "skill.lock.json", "skill.md")):
+        return "agents_python"
+    return "classic"
+
+
+def _resolve_improvement_request(inp: dict) -> str:
+    preset = str(inp.get("improvement_preset") or "custom").strip().lower()
+    custom_request = str(inp.get("improvement_request") or inp.get("prompt") or "").strip()
+
+    preset_map = {
+        "deterministic": "Make the bundle deterministic, idempotent, and repeatable.",
+        "trace_friendly": "Make the bundle trace-friendly with explicit task IDs, lineage, and readable debug metadata.",
+        "retry_safe": "Make the bundle retry-safe with clear requeue handling and preserved metadata.",
+        "compatibility_fix": "Preserve the existing contract while fixing compatibility and migration issues.",
+    }
+
+    preset_request = preset_map.get(preset, "")
+    if custom_request and preset_request:
+        return f"{preset_request}\n\nAdditional guidance: {custom_request}"
+    return custom_request or preset_request
+
+
+def _slugify_native_name(value: str) -> str:
+    text = re.sub(r"[^a-z0-9_-]+", "-", value.strip().lower())
+    text = re.sub(r"-{2,}", "-", text).strip("-_")
+    return text or "specialist"
+
+
+def _resolve_native_authoring(inp: dict) -> dict:
+    topology = str(inp.get("native_topology") or "single_agent").strip().lower()
+    if topology not in {"single_agent", "manager_tools", "handoff"}:
+        topology = "single_agent"
+    raw_subagents = inp.get("subagents")
+    if isinstance(raw_subagents, list):
+        return {"native_topology": topology, "subagents": raw_subagents}
+
+    raw_specialists = str(inp.get("native_specialists") or "").strip()
+    names = [item.strip() for item in re.split(r"[,\n]+", raw_specialists) if item.strip()]
+    if topology == "single_agent" or not names:
+        return {"native_topology": topology, "subagents": []}
+
+    mode = "handoff" if topology == "handoff" else "tool"
+    specialists = []
+    for name in names[:8]:
+        slug = _slugify_native_name(name)
+        specialists.append(
+            {
+                "name": slug,
+                "role": name,
+                "mode": mode,
+                "entrypoint": f"agents/specialists/{slug}.md",
+                "toolBoundary": ["scripts/run.sh", "scripts/verify.sh"],
+                "handoffPolicy": {"mode": "conditional" if mode == "handoff" else "never"},
+                "checkpointPolicy": {"mode": "per-run"},
+                "verificationCommand": "scripts/verify.sh",
+                "fallbackBehavior": "escalate-to-parent" if mode == "handoff" else "return-error",
+            }
+        )
+    return {"native_topology": topology, "subagents": specialists}
+
+
 # ── Create mode ────────────────────────────────────────────────────────────────
 
 def _create_skill(inp: dict, context: Any = None) -> str:
@@ -232,6 +302,7 @@ def _create_skill(inp: dict, context: Any = None) -> str:
     skill_name: str | None = inp.get("skill_name") or None
     language: str = inp.get("skill_language") or inp.get("language") or "auto"
     complexity: str = inp.get("complexity") or "moderate"
+    target_platform: str = _detect_target_platform(inp)
 
     try:
         client = _get_llm_client(inp, context)
@@ -245,12 +316,14 @@ def _create_skill(inp: dict, context: Any = None) -> str:
             skills_root=SKILLS_ROOT,
             safety_cfg=_get_safety_cfg(inp),
         )
-        _log(f"Starting creation: '{description[:60]}' [{language}, {complexity}]")
+        _log(f"Starting creation: '{description[:60]}' [{language}, {complexity}, target={target_platform}]")
         result = creator.create(
             description=description,
             skill_name=skill_name,
             language=language,
             complexity=complexity,
+            target_platform=target_platform,
+            native_authoring=_resolve_native_authoring(inp) if target_platform == "agents_python" else None,
         )
     except Exception as e:
         _log(f"Creation failed: {e}")
@@ -271,8 +344,8 @@ def _create_skill(inp: dict, context: Any = None) -> str:
         f"📊 **Summary:**\n{result.summary}"
         f"{warnings_text}\n\n"
         f"---\n"
-        f"💡 All 3 schemas (`input`, `output`, `ui`) are in `schemas/`. "
-        f"Edit `skill.md` or `SKILL.md` to adjust triggers and metadata."
+        f"💡 All 3 schemas (`input`, `output`, `ui`) are in `schemas/` for classic skills. "
+        f"Native `agents_python` bundles use `SKILL.md`, `skill.lock.json`, `scripts/run.sh`, and `scripts/verify.sh`."
     )
 
     return json.dumps(
@@ -295,6 +368,8 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
         or _extract_skill_name(inp.get("prompt", ""))
         or ""
     ).strip()
+    target_platform: str = _detect_target_platform(inp)
+    improvement_request: str = _resolve_improvement_request(inp)
 
     if not skill_name:
         try:
@@ -309,7 +384,7 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
 
     try:
         from isc.registry import resolve_skill_dir
-        resolve_skill_dir(skill_name)
+        skill_dir = resolve_skill_dir(skill_name)
     except Exception:
         try:
             from isc.registry import list_skills
@@ -323,6 +398,54 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
                 f"Available: {available}"
             ),
         }, ensure_ascii=False)
+
+    if target_platform == "agents_python":
+        try:
+            from isc.native_bundle import improve_native_skill_bundle
+            written, report, plan = improve_native_skill_bundle(
+                skill_dir,
+                improvement_request=improvement_request,
+                overwrite=True,
+            )
+        except Exception as e:
+            _log(f"Native improve failed: {e}")
+            return json.dumps(
+                {
+                    "success": False,
+                    "output": f"❌ Native Agents Python improvement failed: {e}",
+                    "metadata": {
+                        "skillName": skill_name,
+                        "targetPlatform": target_platform,
+                        "error": str(e),
+                    },
+                },
+                ensure_ascii=False,
+            )
+
+        files_text = "\n".join(f"  ✅ `{str(path.relative_to(skill_dir))}`" for path in written)
+        output = (
+            f"✅ **Native Agents Python improve complete** — skill: `{skill_name}`\n\n"
+            f"📁 **Bundle:** `{skill_dir}`\n\n"
+            f"📄 **Files updated:**\n{files_text}\n\n"
+            f"📊 **Summary:**\n- Pass rate: **{report.pass_rate:.0%}**\n- Version: `{plan.get('version')}`\n- Target platform: `agents_python`\n\n"
+            f"---\n"
+            f"💡 This path keeps `SKILL.md`, `skill.lock.json`, `scripts/run.sh`, and `scripts/verify.sh` aligned with the native bundle contract."
+        )
+        return json.dumps(
+            {
+                "success": True,
+                "output": output,
+                "skill_name": skill_name,
+                "skill_path": str(skill_dir),
+                "metadata": {
+                    "targetPlatform": target_platform,
+                    "version": plan.get("version"),
+                    "filesWritten": [str(path.relative_to(skill_dir)) for path in written],
+                    "passRate": report.pass_rate,
+                },
+            },
+            ensure_ascii=False,
+        )
 
     # Build LLM override (optional for improve mode)
     llm_override: dict | None = None
@@ -353,23 +476,21 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
 
     mode: str = inp.get("mode", "auto")
     rounds: int = int(inp.get("rounds", 3))
-    improvement_request: str = (
-        inp.get("improvement_request")
-        or inp.get("prompt")
-        or ""
-    ).strip()
+    improvement_request: str = _resolve_improvement_request(inp)
     research_cfg = {
         "max_topics": int(inp.get("research_max_topics", 10)),
         "max_results_per_topic": int(inp.get("research_max_results", 3)),
         "max_snippet_chars": int(inp.get("research_max_snippet_chars", 6000)),
     }
 
-    _log(f"Improving '{skill_name}' mode={mode} rounds={rounds}")
+    _log(f"Improving '{skill_name}' mode={mode} rounds={rounds} target={target_platform}")
 
+    repo_root: Path | None = None
     try:
-        from isc.runner import iterate_improve
+        from isc.runner import iterate_improve, resolve_repo_root
+        repo_root = resolve_repo_root(Path(__file__))
         run_result = iterate_improve(
-            project_root=ISC_ROOT,
+            project_root=repo_root,
             skill_name=skill_name,
             mode=mode,
             rounds=rounds,
@@ -382,18 +503,31 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
         )
     except Exception as e:
         _log(f"Improve failed: {e}")
-        return json.dumps({"success": False, "output": f"❌ Improvement failed: {e}"}, ensure_ascii=False)
+        error_payload: dict[str, object] = {
+            "success": False,
+            "output": f"❌ Improvement failed: {e}",
+        }
+        if repo_root is not None:
+            error_payload["metadata"] = {
+                "repoRoot": str(repo_root),
+            }
+        return json.dumps(error_payload, ensure_ascii=False)
 
     # Save proposals
     from isc.proposals import save_patch_proposal
     proposals_dir = ISC_ROOT / "runs" / "proposals" / skill_name
     saved: list[str] = []
     for p in run_result.proposals:
+        if not p.patch_payload.strip():
+            _log("Skipping empty proposal payload")
+            continue
         proposal_path, _meta_path = save_patch_proposal(
             proposals_dir,
             p,
             {
                 "workspace": str(run_result.workspace),
+                "repo_root": str(repo_root),
+                "workspace_root": str(run_result.workspace),
                 "mode": mode,
                 "rounds": rounds,
                 "llm_override": llm_override,
@@ -418,6 +552,13 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
             "output": "\n".join(lines),
             "skill_name": skill_name,
             "saved_proposals": saved,
+            "metadata": {
+                "repoRoot": str(repo_root),
+                "workspaceRoot": str(run_result.workspace),
+                "proposalRoot": str(proposals_dir),
+                "proposalCount": len(saved),
+                "targetPlatform": target_platform,
+            },
         },
         ensure_ascii=False,
     )
@@ -571,12 +712,13 @@ def _help_response() -> str:
             "Set `mode: create` and provide `description`. ISC generates all 3 schemas, code, and tests.\n"
             "```json\n"
             '{"mode": "create", "description": "A skill that converts Thai dates to Buddhist Era format",\n'
-            ' "skill_language": "python", "javascript_runtime": "auto", "complexity": "simple",\n'
+            ' "skill_language": "python", "javascript_runtime": "auto", "target_platform": "agents_python", "complexity": "simple",\n'
             ' "llm_gateway_mode": "system", "llm_model_search": "claude-sonnet-4-6"}\n'
             "```\n\n"
             "**Always generates:** `schemas/input.schema.json`, `schemas/output.schema.json`, "
             "`schemas/ui.schema.json`, `skill.md`, `SKILL.md`, `python/skill.py` or `js/skill.js` or `skill.manifest.json` + `src/index.mjs`, "
             "`tests/tests.json`\n\n"
+            "Use `target_platform: agents_python` when you want a native OpenAI Agents Python bundle.\n\n"
             "### 🔄 Convert a Virtual Workflow to a skill\n"
             "Export a workflow from the Workflow Editor and paste the JSON:\n"
             "```json\n"
@@ -587,6 +729,9 @@ def _help_response() -> str:
             "Set `mode: improve` and `skill_name`:\n"
             "```json\n"
             '{"mode": "improve", "skill_name": "skill_math_tutor", "rounds": 3,\n'
+            ' "improvement_preset": "trace_friendly",\n'
+            ' "improvement_request": "Make the bundle deterministic and trace-friendly.",\n'
+            ' "target_platform_hint": "agents_python",\n'
             ' "llm_gateway_mode": "system", "llm_model_search": "claude-sonnet-4-6"}\n'
             "```\n\n"
             f"Available skills: {available_skills}\n\n"
@@ -604,9 +749,13 @@ def _help_response() -> str:
             "| `skill_language` | create/convert | python \\| javascript \\| auto |\n"
             "| `javascript_runtime` | create/convert | auto \\| classic \\| genjs |\n"
             "| `complexity` | create/convert | simple \\| moderate \\| complex |\n"
+            "| `target_platform` | create | classic \\| agents_python |\n"
             "| `workflow_json` | convert_workflow | Exported workflow JSON string |\n"
             "| `skill_name` | improve (required) | Skill slug to improve |\n"
             "| `rounds` | improve | Improvement iterations (1-10) |\n"
+            "| `improvement_preset` | improve | custom \\| deterministic \\| trace_friendly \\| retry_safe \\| compatibility_fix |\n"
+            "| `improvement_request` | improve | Optional natural-language guidance for the improvement pass |\n"
+            "| `target_platform_hint` | improve | classic \\| agents_python |\n"
             "| `llm_gateway_mode` | all | system \\| custom |\n"
             "| `llm_model_search` | system gateway | Model ID from the system model list |\n"
             "| `llm_base_url` | custom gateway | OpenAI-compatible endpoint URL |\n"

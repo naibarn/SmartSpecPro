@@ -24,6 +24,22 @@ const mockLegacyUpgradeQueueUseQuery = vi.fn(() => ({
   data: [],
   isLoading: false,
 }));
+const mockNormalizeLegacyApplyRunsMutation = vi.fn();
+const mockLegacyApplyRunsUseQuery = vi.fn(() => ({
+  data: {
+    counts: {
+      total: 0,
+      queued: 0,
+      running: 0,
+      failed: 0,
+      completed: 0,
+      blocked: 0,
+      canceled: 0,
+    },
+    items: [],
+  },
+  isLoading: false,
+}));
 const mockMaintenanceRecommendationsUseQuery = vi.fn(() => ({
   data: [],
   isLoading: false,
@@ -33,7 +49,7 @@ const mockRecommendationDetailUseQuery = vi.fn(() => ({
   isLoading: false,
 }));
 const makeQuery = (data: any = []) => ({ data, isLoading: false });
-const makeMutation = () => ({ mutateAsync: vi.fn(), isPending: false });
+const makeMutation = () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false });
 
 vi.mock("wouter", () => ({
   useLocation: () => [mockLocation, mockSetLocation],
@@ -63,6 +79,7 @@ vi.mock("@/lib/trpc", () => ({
         listMaintenanceSchedules: { useQuery: () => makeQuery([]) },
         getLegacyUpgradeQueue: { useQuery: (...args: any[]) => mockLegacyUpgradeQueueUseQuery(...args) },
         getLegacyUpgradeQueueSummary: { useQuery: () => makeQuery({ count: 0 }) },
+        getLegacyUpgradeApplyRuns: { useQuery: (...args: any[]) => mockLegacyApplyRunsUseQuery(...args) },
         scanFolders: { useQuery: () => ({ data: [], refetch: vi.fn() }) },
         create: { useMutation: () => makeMutation() },
         update: { useMutation: () => makeMutation() },
@@ -73,6 +90,8 @@ vi.mock("@/lib/trpc", () => ({
         dismissUpgradeRecommendation: { useMutation: () => makeMutation() },
         applyUpgradeRecommendation: { useMutation: () => makeMutation() },
         applyMaintenanceRecommendations: { useMutation: () => makeMutation() },
+        retryLegacyUpgradeApplyRuns: { useMutation: () => makeMutation() },
+        normalizeLegacyUpgradeApplyRuns: { useMutation: () => ({ mutate: mockNormalizeLegacyApplyRunsMutation, mutateAsync: vi.fn(), isPending: false }) },
         runMaintenanceSweep: { useMutation: () => makeMutation() },
         createMaintenanceSchedule: { useMutation: () => makeMutation() },
         updateMaintenanceSchedule: { useMutation: () => makeMutation() },
@@ -110,6 +129,7 @@ vi.mock("@/lib/trpc", () => ({
         getUpgradeRecommendations: { invalidate: vi.fn() },
         getLegacyUpgradeQueue: { invalidate: vi.fn() },
         getLegacyUpgradeQueueSummary: { invalidate: vi.fn() },
+        getLegacyUpgradeApplyRuns: { invalidate: vi.fn() },
         getUpgradeRecommendationDetail: { invalidate: vi.fn() },
       },
     }),
@@ -201,10 +221,97 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       if (key === "admin.skillsPage.legacyQueue.noReason") return "No detailed reason was recorded.";
       if (key === "admin.skillsPage.legacyQueue.reasoningTitle") return "Legacy Upgrade Reasoning";
       if (key === "admin.skillsPage.legacyQueue.reasoningFocus") return "Reasoning focus";
+      if (key === "admin.skillsPage.legacyQueue.lineageTitle") return "Lineage";
+      if (key === "admin.skillsPage.legacyRunQueue.title") return "Queued Apply Runs";
+      if (key === "admin.skillsPage.legacyRunQueue.description") return "Monitor apply runs, queued tasks, and failure reasons directly from the latest run records.";
+      if (key === "admin.skillsPage.legacyRunQueue.refresh") return "Refresh Run Monitor";
+      if (key === "admin.skillsPage.legacyRunQueue.refreshing") return "Refreshing...";
+      if (key === "admin.skillsPage.legacyRunQueue.empty") return "No apply runs match this filter yet.";
+      if (key === "admin.skillsPage.legacyRunQueue.emptyQueued") return "No queued apply runs are waiting right now.";
+      if (key === "admin.skillsPage.legacyRunQueue.loading") return "Loading apply runs...";
+      if (key === "admin.skillsPage.legacyRunQueue.filters.all") return "All";
+      if (key === "admin.skillsPage.legacyRunQueue.filters.queued") return "Queued";
+      if (key === "admin.skillsPage.legacyRunQueue.filters.failed") return "Failed";
+      if (key === "admin.skillsPage.legacyRunQueue.filters.completed") return "Completed";
+      if (key === "admin.skillsPage.legacyRunQueue.filters.blocked") return "Blocked";
+      if (key === "admin.skillsPage.legacyRunQueue.filters.canceled") return "Canceled";
+      if (key === "admin.skillsPage.legacyRunQueue.summary.total") return "Total";
+      if (key === "admin.skillsPage.legacyRunQueue.summary.queued") return "Queued";
+      if (key === "admin.skillsPage.legacyRunQueue.summary.failed") return "Failed";
+      if (key === "admin.skillsPage.legacyRunQueue.summary.blocked") return "Blocked";
+      if (key === "admin.skillsPage.legacyRunQueue.summary.completed") return "Completed";
+      if (key === "admin.skillsPage.legacyRunQueue.summary.canceled") return "Canceled";
+      if (key === "admin.skillsPage.legacyRunQueue.summary.visible") return `${values?.count ?? 0} visible`;
+      if (key === "admin.skillsPage.legacyRunQueue.summary.taskIds") return `${values?.count ?? 0} with task IDs`;
+      if (key === "admin.skillsPage.legacyRunQueue.summary.withError") return `${values?.count ?? 0} with errors`;
+      if (key === "admin.skillsPage.legacyRunQueue.headers.skill") return "Skill";
+      if (key === "admin.skillsPage.legacyRunQueue.headers.task") return "Task";
+      if (key === "admin.skillsPage.legacyRunQueue.headers.status") return "Status";
+      if (key === "admin.skillsPage.legacyRunQueue.headers.result") return "Result";
+      if (key === "admin.skillsPage.legacyRunQueue.headers.actions") return "Actions";
+      if (key === "admin.skillsPage.legacyRunQueue.latestRun") return "Latest run";
+      if (key === "admin.skillsPage.legacyRunQueue.noTaskId") return "No task ID recorded";
+      if (key === "admin.skillsPage.legacyRunQueue.noSummary") return "No summary recorded";
+      if (key === "admin.skillsPage.legacyRunQueue.errorMessageLabel") return "Error message";
+      if (key === "admin.skillsPage.legacyRunQueue.viewAdvice") return "View Advice";
+      if (key === "admin.skillsPage.legacyRunQueue.viewReasoning") return "View Reasoning";
+      if (key === "admin.skillsPage.legacyRunQueue.openDetail") return "Open Detail";
+      if (key === "admin.skillsPage.legacyRunQueue.applyStrategy") return `Strategy: ${values?.strategy ?? ""}`;
+      if (key === "admin.skillsPage.legacyRunQueue.status.queued") return "Queued";
+      if (key === "admin.skillsPage.legacyRunQueue.status.running") return "Running";
+      if (key === "admin.skillsPage.legacyRunQueue.status.failed") return "Failed";
+      if (key === "admin.skillsPage.legacyRunQueue.status.completed") return "Completed";
+      if (key === "admin.skillsPage.legacyRunQueue.status.blocked") return "Blocked";
+      if (key === "admin.skillsPage.legacyRunQueue.status.canceled") return "Canceled";
+      if (key === "admin.skillsPage.legacyRunQueue.retry") return "Retry";
+      if (key === "admin.skillsPage.legacyRunQueue.retrying") return "Retrying...";
+      if (key === "admin.skillsPage.legacyRunQueue.retryFailed") return `Retry failed (${values?.count ?? 0})`;
+      if (key === "admin.skillsPage.legacyRunQueue.normalizeNoChange") return "Normalize no-change";
+      if (key === "admin.skillsPage.legacyRunQueue.normalizeNoChangePending") return "Normalizing...";
+      if (key === "admin.skillsPage.legacyRunQueue.normalizeNoChangeTitle") return "No-change failures normalized";
+      if (key === "admin.skillsPage.legacyRunQueue.normalizeNoChangeDescription") return `${values?.count ?? 0} run(s) normalized after scanning ${values?.scanned ?? 0} run(s).`;
+      if (key === "admin.skillsPage.legacyRunQueue.normalizeNoChangeFailedTitle") return "Normalization failed";
+      if (key === "admin.skillsPage.legacyRunQueue.normalizeNoChangeFailedDescription") return "Failed to normalize legacy apply runs.";
+      if (key === "admin.skillsPage.legacyRunQueue.resolvedModel") return "Resolved model";
+      if (key === "admin.skillsPage.legacyRunQueue.resultMessage") return "Result message";
+      if (key === "admin.skillsPage.legacyRunQueue.resultError") return "Result error";
+      if (key === "admin.skillsPage.legacyRunQueue.sourceRun") return "Source run";
+      if (key === "admin.skillsPage.legacyRunQueue.retryReason") return "Retry reason";
+      if (key === "admin.skillsPage.legacyRunQueue.noModel") return "No model recorded";
+      if (key === "admin.skillsPage.legacyRunQueue.noResultError") return "No error recorded";
+      if (key === "admin.skillsPage.legacyRunQueue.noSourceRun") return "No source run recorded";
+      if (key === "admin.skillsPage.legacyRunQueue.noRetryReason") return "No retry reason recorded";
+      if (key === "admin.skillsPage.legacyRunQueue.roles.orchestrator") return "Orchestrator";
+      if (key === "admin.skillsPage.legacyRunQueue.roles.child") return "Child subagent";
+      if (key === "admin.skillsPage.legacyRunQueue.roles.handoff") return "Handoff";
+      if (key === "admin.skillsPage.legacyRunQueue.failureScopes.orchestrator") return "Orchestrator failure";
+      if (key === "admin.skillsPage.legacyRunQueue.failureScopes.child") return "Child subagent failure";
+      if (key === "admin.skillsPage.legacyRunQueue.failureScopes.handoff") return "Handoff failure";
+      if (key === "admin.skillsPage.legacyRunQueue.lineage.role") return "Role";
+      if (key === "admin.skillsPage.legacyRunQueue.lineage.failureScope") return "Failure scope";
+      if (key === "admin.skillsPage.legacyRunQueue.lineage.parentRun") return "Parent run";
+      if (key === "admin.skillsPage.legacyRunQueue.lineage.childRuns") return "Child runs";
+      if (key === "admin.skillsPage.legacyRunQueue.lineage.checkpoint") return "Checkpoint";
+      if (key === "admin.skillsPage.legacyRunQueue.lineage.verification") return "Verification";
+      if (key === "admin.skillsPage.legacyRunQueue.lineage.artifactRefs") return "Artifact refs";
+      if (key === "admin.skillsPage.legacyRunQueue.lineage.resumeCursor") return "Resume cursor";
+      if (key === "admin.skillsPage.legacyRunQueue.summary.running") return "Running";
+      if (key === "admin.skillsPage.legacyRunQueue.filters.running") return "Running";
       if (key === "admin.skillsPage.maintenance.applyAll") return `Apply all (${values?.count ?? 0})`;
       if (key === "admin.skillsPage.maintenance.applyEligible") return `Apply eligible (${values?.count ?? 0})`;
       if (key === "admin.skillsPage.maintenance.applyEligibleAcrossView") return `Apply eligible across view (${values?.count ?? 0})`;
       if (key === "admin.skillsPage.maintenance.highestPriority") return "Highest priority";
+      if (key === "admin.skillsPage.maintenance.headers.status") return "Status";
+      if (key === "admin.skillsPage.maintenance.status.pendingReview") return "Pending Review";
+      if (key === "admin.skillsPage.maintenance.status.applied") return "Applied";
+      if (key === "admin.skillsPage.maintenance.status.blocked") return "Blocked";
+      if (key === "admin.skillsPage.maintenance.status.failed") return "Failed";
+      if (key === "admin.skillsPage.maintenance.status.dismissed") return "Dismissed";
+      if (key === "admin.skillsPage.maintenance.status.approved") return "Approved";
+      if (key === "admin.skillsPage.maintenance.status.unknown") return "Unknown";
+      if (key === "admin.skillsPage.maintenance.runStatus.queued") return "Queued";
+      if (key === "admin.skillsPage.maintenance.runStatus.running") return "Running";
+      if (key === "admin.skillsPage.maintenance.runStatus.completed") return "Completed";
       return key;
     },
   }),
@@ -313,6 +420,20 @@ describe("AdminSkills", () => {
       ],
       isLoading: false,
     });
+    mockLegacyApplyRunsUseQuery.mockReturnValue({
+      data: {
+        counts: {
+          total: 0,
+          queued: 0,
+          failed: 0,
+          completed: 0,
+          blocked: 0,
+          canceled: 0,
+        },
+        items: [],
+      },
+      isLoading: false,
+    });
     mockMaintenanceRecommendationsUseQuery.mockReturnValue({
       data: [],
       isLoading: false,
@@ -385,7 +506,7 @@ describe("AdminSkills", () => {
     expect(allFilterButton).toBeTruthy();
     fireEvent.click(allFilterButton!);
 
-    expect(mockSetLocation).toHaveBeenCalledWith("/settings/skills?skillId=99");
+    expect(mockSetLocation).toHaveBeenCalledWith("/settings/skills?skillId=99&legacyQueueFilter=high");
   });
 
   it("restores the legacy queue filter from localStorage when the URL is missing it", async () => {
@@ -400,6 +521,64 @@ describe("AdminSkills", () => {
       expect(screen.getByText("Loaded from saved preference")).toBeTruthy();
       expect(screen.getByText("Critical 1")).toBeTruthy();
     });
+  });
+
+  it("runs the no-change normalization action from the legacy apply run monitor", async () => {
+    mockUseSearch.mockReturnValue("?tab=maintenance&skillId=99");
+    mockLegacyApplyRunsUseQuery.mockReturnValue({
+      data: {
+        counts: {
+          total: 1,
+          queued: 0,
+          running: 0,
+          failed: 1,
+          completed: 0,
+          blocked: 0,
+          canceled: 0,
+        },
+        items: [
+          {
+            id: 901,
+            skillId: 99,
+            queueState: "failed",
+            taskId: "task-901",
+            latestRun: {
+              id: 901,
+              runType: "apply",
+              status: "failed",
+              summary: "ISC improve complete — no patches generated",
+              errorMessage: "Unknown proposal generation error",
+              logsJson: {
+                completionMode: "no_changes",
+                resultMessage: "ISC improve complete — no patches generated",
+                resultError: "Unknown proposal generation error",
+              },
+            },
+            resultMessage: "ISC improve complete — no patches generated",
+            resultError: "Unknown proposal generation error",
+            recommendation: null,
+            skill: {
+              id: 99,
+              slug: "graph-assistant",
+              name: "Graph Assistant",
+              executionMode: "markdown-only",
+            },
+          },
+        ],
+      },
+      isLoading: false,
+    });
+
+    const { default: AdminSkills } = await import("@/pages/AdminSkills");
+    render(createElement(AdminSkills));
+
+    await waitFor(() => {
+      expect(screen.getByText("Normalize no-change")).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Normalize no-change" }));
+
+    expect(mockNormalizeLegacyApplyRunsMutation).toHaveBeenCalledTimes(1);
   });
 
   it("shows clear reasons for blocked and failed legacy upgrades", async () => {
@@ -424,7 +603,17 @@ describe("AdminSkills", () => {
               status: "blocked",
               issues: [{ message: "Missing verify.sh required for native bundle contract." }],
             },
-            logsJson: {},
+            logsJson: {
+              lineage: {
+                role: "orchestrator",
+                parentRunId: null,
+                childRunIds: ["502"],
+                checkpointVersion: 2,
+                verificationState: "blocked",
+                artifactRefs: ["logs/phase_verify.md"],
+                resumeCursor: "resume-verify",
+              },
+            },
             startedAt: new Date().toISOString(),
             endedAt: new Date().toISOString(),
             createdAt: new Date().toISOString(),
@@ -465,7 +654,292 @@ describe("AdminSkills", () => {
       expect(screen.getAllByText("Missing verify.sh required for native bundle contract.").length).toBeGreaterThan(0);
       expect(screen.getByText("Failure reason:")).toBeTruthy();
       expect(screen.getAllByText("Skill Studio returned an error while generating the proposal.").length).toBeGreaterThan(0);
+      expect(screen.getByText("Lineage")).toBeTruthy();
+      expect(screen.getAllByText(/Orchestrator failure/i).length).toBeGreaterThan(0);
     });
+  });
+
+  it("shows queued apply runs with task ids and failure messages", async () => {
+    mockUseSearch.mockReturnValue("?tab=maintenance&skillId=99");
+    mockLegacyApplyRunsUseQuery.mockReturnValue({
+      data: {
+        counts: {
+          total: 2,
+          queued: 0,
+          running: 1,
+          failed: 1,
+          completed: 0,
+          blocked: 0,
+          canceled: 0,
+        },
+        items: [
+          {
+            id: 701,
+            recommendationId: 201,
+            skillId: 99,
+            runType: "apply",
+            status: "running",
+            summary: "Queued for execution",
+            errorMessage: null,
+            verificationJson: {},
+            logsJson: {
+              taskId: "task-queue-123",
+              applyStrategy: "proposal",
+              resolvedLlmModelId: "test-default-llm",
+              lineage: {
+                role: "orchestrator",
+                parentRunId: null,
+                childRunIds: ["702"],
+                checkpointVersion: 4,
+                verificationState: "running",
+                artifactRefs: ["out/plan.md"],
+                resumeCursor: "resume-plan",
+              },
+            },
+            startedAt: new Date().toISOString(),
+            endedAt: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            queueState: "running",
+            taskId: "task-queue-123",
+            resolvedLlmModelId: "test-default-llm",
+            resultMessage: null,
+            resultError: null,
+            sourceRunId: null,
+            retryReason: null,
+            latestRun: {
+              id: 701,
+              runType: "apply",
+              status: "running",
+              summary: "Queued for execution",
+              errorMessage: null,
+              verificationJson: {},
+              logsJson: {
+                taskId: "task-queue-123",
+                applyStrategy: "proposal",
+                resolvedLlmModelId: "test-default-llm",
+                lineage: {
+                  role: "orchestrator",
+                  parentRunId: null,
+                  childRunIds: ["702"],
+                  checkpointVersion: 4,
+                  verificationState: "running",
+                  artifactRefs: ["out/plan.md"],
+                  resumeCursor: "resume-plan",
+                },
+              },
+              startedAt: new Date().toISOString(),
+              endedAt: null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            recommendation: {
+              id: 201,
+              recommendationType: "native-bundle-upgrade",
+              status: "approved",
+              title: "Upgrade bundle",
+              riskLevel: "critical",
+              compatibilityStatus: "blocked",
+              qualityScore: 88,
+              currentRuntime: "markdown-only",
+              proposedRuntime: "native-bundle",
+              proposedAction: "upgrade",
+              isAutoApplySafe: false,
+              recommendationJson: {},
+            },
+            skill: {
+              id: 99,
+              slug: "graph-assistant",
+              name: "Graph Assistant",
+              executionMode: "markdown-only",
+            },
+          },
+          {
+            id: 702,
+            recommendationId: 202,
+            skillId: 100,
+            runType: "apply",
+            status: "failed",
+            summary: "Proposal generation failed",
+            errorMessage: "Unknown proposal generation error",
+            verificationJson: {},
+            logsJson: {
+              resultError: "Unknown proposal generation error",
+              lineage: {
+                role: "child",
+                parentRunId: "701",
+                childRunIds: [],
+                checkpointVersion: 5,
+                verificationState: "failed",
+                artifactRefs: ["logs/phase_verify.md"],
+                resumeCursor: "resume-verify",
+              },
+            },
+            startedAt: new Date().toISOString(),
+            endedAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            queueState: "failed",
+            taskId: null,
+            resolvedLlmModelId: null,
+            resultMessage: null,
+            resultError: "Unknown proposal generation error",
+            sourceRunId: 701,
+            retryReason: "Retry from apply run 701",
+            latestRun: {
+              id: 702,
+              runType: "apply",
+              status: "failed",
+              summary: "Proposal generation failed",
+              errorMessage: "Unknown proposal generation error",
+              verificationJson: {},
+              logsJson: {
+                resultError: "Unknown proposal generation error",
+                lineage: {
+                  role: "child",
+                  parentRunId: "701",
+                  childRunIds: [],
+                  checkpointVersion: 5,
+                  verificationState: "failed",
+                  artifactRefs: ["logs/phase_verify.md"],
+                  resumeCursor: "resume-verify",
+                },
+              },
+              startedAt: new Date().toISOString(),
+              endedAt: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            recommendation: {
+              id: 202,
+              recommendationType: "native-bundle-upgrade",
+              status: "failed",
+              title: "Upgrade bundle",
+              riskLevel: "high",
+              compatibilityStatus: "warning",
+              qualityScore: 70,
+              currentRuntime: "markdown-only",
+              proposedRuntime: "native-bundle",
+              proposedAction: "upgrade",
+              isAutoApplySafe: false,
+              recommendationJson: {},
+            },
+            skill: {
+              id: 100,
+              slug: "failure-skill",
+              name: "Failure Skill",
+              executionMode: "python",
+            },
+          },
+        ],
+      },
+      isLoading: false,
+    });
+
+    const { default: AdminSkills } = await import("@/pages/AdminSkills");
+    render(createElement(AdminSkills));
+
+    await waitFor(() => {
+      expect(screen.getByText("Refresh Run Monitor")).toBeTruthy();
+      expect(screen.getByText("2 visible")).toBeTruthy();
+      expect(screen.getByText("task-queue-123")).toBeTruthy();
+      expect(screen.getByText("Unknown proposal generation error")).toBeTruthy();
+      expect(screen.getAllByText("Running").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Failed").length).toBeGreaterThan(0);
+      expect(screen.getByText(/Resolved model/i)).toBeTruthy();
+      expect(screen.getByText(/test-default-llm/i)).toBeTruthy();
+      expect(screen.getAllByText(/Role: Orchestrator/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Role: Child subagent/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Failure scope: Orchestrator failure/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Failure scope: Child subagent failure/i).length).toBeGreaterThan(0);
+      expect(screen.getByText("Retry")).toBeTruthy();
+    });
+  });
+
+  it("opens a dedicated run detail page from the queued apply runs monitor", async () => {
+    mockUseSearch.mockReturnValue("?tab=maintenance&skillId=99");
+    mockLegacyApplyRunsUseQuery.mockReturnValue({
+      data: {
+        counts: {
+          total: 1,
+          queued: 0,
+          running: 1,
+          failed: 0,
+          completed: 0,
+          blocked: 0,
+          canceled: 0,
+        },
+        items: [
+          {
+            id: 901,
+            recommendationId: 201,
+            skillId: 99,
+            runType: "apply",
+            status: "running",
+            summary: "Queued for execution",
+            errorMessage: null,
+            verificationJson: {},
+            logsJson: { taskId: "task-detail-901", applyStrategy: "proposal" },
+            startedAt: new Date().toISOString(),
+            endedAt: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            queueState: "running",
+            taskId: "task-detail-901",
+            resolvedLlmModelId: null,
+            resultMessage: null,
+            resultError: null,
+            sourceRunId: null,
+            retryReason: null,
+            latestRun: {
+              id: 901,
+              runType: "apply",
+              status: "running",
+              summary: "Queued for execution",
+              errorMessage: null,
+              verificationJson: {},
+              logsJson: { taskId: "task-detail-901", applyStrategy: "proposal" },
+              startedAt: new Date().toISOString(),
+              endedAt: null,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+            recommendation: {
+              id: 201,
+              recommendationType: "native-bundle-upgrade",
+              status: "approved",
+              title: "Upgrade bundle",
+              riskLevel: "critical",
+              compatibilityStatus: "blocked",
+              qualityScore: 88,
+              currentRuntime: "markdown-only",
+              proposedRuntime: "native-bundle",
+              proposedAction: "upgrade",
+              isAutoApplySafe: false,
+              recommendationJson: {},
+            },
+            skill: {
+              id: 99,
+              slug: "graph-assistant",
+              name: "Graph Assistant",
+              executionMode: "markdown-only",
+            },
+          },
+        ],
+      },
+      isLoading: false,
+    });
+
+    const { default: AdminSkills } = await import("@/pages/AdminSkills");
+    render(createElement(AdminSkills));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /open detail/i })).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /open detail/i }));
+
+    expect(mockSetLocation).toHaveBeenCalledWith("/admin/skills/runs/901");
   });
 
   it("opens a dedicated reasoning view for a legacy upgrade", async () => {
@@ -680,6 +1154,8 @@ describe("AdminSkills", () => {
       expect(screen.getByRole("button", { name: /apply eligible \(1\)/i })).toBeTruthy();
       expect(screen.getByRole("button", { name: /apply eligible across view \(1\)/i })).toBeTruthy();
       expect(screen.getByText("Highest priority")).toBeTruthy();
+      expect(screen.getAllByText("Status").length).toBeGreaterThan(1);
+      expect(screen.getByText("Pending Review (3)")).toBeTruthy();
     });
   });
 });

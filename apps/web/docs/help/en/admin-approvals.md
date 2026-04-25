@@ -6,7 +6,21 @@ icon: ClipboardCheck
 section: admin
 order: 220
 pages: ["/admin/approvals"]
-tags: [admin, approvals, workflow, review, approve, reject]
+tags:
+  - "admin"
+  - "approvals"
+  - "workflow"
+  - "review"
+  - "approve"
+  - "reject"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-approvals"
+aliases:
+  - "admin-approvals"
+  - "Approvals"
+  - "Approvals help"
 ---
 
 # Approvals
@@ -53,3 +67,15 @@ Navigate to **Admin** in the sidebar, then select **Approvals**. This page is on
 - Comments on rejections are important — they help other admins understand past decisions and help workflow authors improve their automation.
 - Approvals triggered by System Guardian incidents are also shown in the Guardian dashboard. Resolving from either location updates both views.
 - If a request description is unclear, check the System Guardian incidents or workflow run logs for the originating trace ID to get full context before deciding.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-audit|Audit Logs]]
+- [[admin-billing-phase2-runbook|Admin Billing Phase 2 Runbook]]
+<!-- knowledge-graph:related:end -->

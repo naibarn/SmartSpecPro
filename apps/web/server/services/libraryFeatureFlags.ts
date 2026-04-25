@@ -144,7 +144,6 @@ const knowledgeVaultSurfaceConfig: Record<
 const releaseGateProtectedSurfaces = new Set<KnowledgeVaultSurface>([
   "contextPacksRuntime",
   "contextPacksDelegatedMcp",
-  "graph",
   "canvas",
   "privateVaultRuntimeUnlock",
 ]);

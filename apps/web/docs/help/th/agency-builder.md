@@ -6,7 +6,24 @@ icon: Boxes
 section: advanced
 order: 75
 pages: ["/agencies", "/agencies/templates"]
-tags: [agency, builder, visual editor, nodes, agents, custom, design, template]
+tags:
+  - "agency"
+  - "builder"
+  - "visual editor"
+  - "nodes"
+  - "agents"
+  - "custom"
+  - "design"
+  - "template"
+  - "help"
+  - "help/th"
+  - "help/teams"
+  - "teams"
+  - "agency-builder"
+aliases:
+  - "agency-builder"
+  - "ตัวสร้าง Agency"
+  - "ตัวสร้าง Agency help"
 ---
 
 # ตัวสร้าง Agency
@@ -105,3 +122,15 @@ Agency Builder บันทึกเวอร์ชันโดยอัตโ�
 - **กำหนดคำสั่งที่ชัดเจน** — แต่ละ Agent Node ควรมี System Prompt ที่เน้นบทบาทเฉพาะโดยไม่ซ้อนทับกัน
 - **ใช้ Human Approval สำหรับการตัดสินใจสำคัญ** — แทรก Human Approval Node ก่อนขั้นตอนที่เผยแพร่เนื้อหาหรือทำการเปลี่ยนแปลงที่ย้อนกลับไม่ได้
 - **ทดสอบด้วย Request ง่ายๆ ก่อน** — รัน Agency ด้วย Request สั้นๆ เฉพาะเจาะจงเพื่อตรวจสอบว่า Routing ทำงานก่อนใช้งานจริง
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[teams|ทีม AI]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[agencies|Agencies - ทีม AI หลายตัว]]
+- [[agency-chat|Agency Chat — รันและทดสอบ Agency]]
+- [[groups|กลุ่ม]]
+- [[team-monitoring|การติดตามทีมและ Scoped Memory]]
+<!-- knowledge-graph:related:end -->

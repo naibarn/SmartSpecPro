@@ -6,7 +6,22 @@ icon: Users2
 section: features
 order: 68
 pages: ["/groups", "/groups/discover"]
-tags: [groups, collaboration, team, join, discover, share, community]
+tags:
+  - "groups"
+  - "collaboration"
+  - "team"
+  - "join"
+  - "discover"
+  - "share"
+  - "community"
+  - "help"
+  - "help/th"
+  - "help/teams"
+  - "teams"
+aliases:
+  - "groups"
+  - "กลุ่ม"
+  - "กลุ่ม help"
 ---
 
 # กลุ่ม
@@ -70,3 +85,15 @@ tags: [groups, collaboration, team, join, discover, share, community]
 - **เริ่มต้นแบบ Private** — หากกลุ่มเป็นทีมภายใน ตั้งเป็น Private เพื่อควบคุมสมาชิกภาพ
 - **แต่งตั้ง Admin ตั้งแต่ต้น** — ให้สิทธิ์ Admin กับอีกอย่างน้อยหนึ่งคนเพื่อให้กลุ่มดำเนินต่อได้หากคุณไม่ว่าง
 - **ใช้ Shared Resources** — อัปโหลดเอกสารอ้างอิงหรือลิงก์ในแท็บ Resources ของกลุ่มเพื่อให้สมาชิกทุกคนเข้าถึงได้ง่าย
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[teams|ทีม AI]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[agencies|Agencies - ทีม AI หลายตัว]]
+- [[agency-builder|ตัวสร้าง Agency]]
+- [[agency-chat|Agency Chat — รันและทดสอบ Agency]]
+- [[team-monitoring|การติดตามทีมและ Scoped Memory]]
+<!-- knowledge-graph:related:end -->

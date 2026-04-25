@@ -96,6 +96,7 @@ export interface StartRunInput {
   stopPolicy: StopPolicyInput;
   constraintsJson?: Record<string, unknown>;
   approvalPolicyJson?: Record<string, unknown>;
+  requestedSubagent?: string | null;
 }
 
 export interface TurnCost {
@@ -169,6 +170,23 @@ function buildAutoTeamSharedRuntimeOptions(
     objective,
     requestLabel,
   };
+}
+
+function getRequestedSubagentHint(run: TeamRun): string | null {
+  const sources = [run.constraintsJson, run.approvalPolicyJson];
+  for (const source of sources) {
+    if (!source || typeof source !== "object" || Array.isArray(source)) {
+      continue;
+    }
+    const requestedSubagent = (source as Record<string, unknown>).requestedSubagent;
+    if (typeof requestedSubagent === "string") {
+      const normalized = requestedSubagent.trim();
+      if (normalized.length > 0) {
+        return normalized;
+      }
+    }
+  }
+  return null;
 }
 
 const AUTO_TEAM_PLAN_REVIEW_SYSTEM_PROMPT = `You are the plan review persona for an automation-first team.
@@ -4539,7 +4557,13 @@ export async function startRun(input: StartRunInput): Promise<TeamRun> {
       initiatedByUserId: input.initiatedByUserId,
       executionMode: input.executionMode,
       objective: input.objective,
-      constraintsJson: input.constraintsJson ?? null,
+      constraintsJson:
+        input.requestedSubagent?.trim()
+          ? {
+              ...(input.constraintsJson ?? {}),
+              requestedSubagent: input.requestedSubagent.trim(),
+            }
+          : input.constraintsJson ?? null,
       approvalPolicyJson: input.approvalPolicyJson ?? null,
       stopPolicyJson: input.stopPolicy,
       budgetSnapshotJson: initBudgetSnapshot(),
@@ -5308,6 +5332,10 @@ export async function runNextTurn(
       workingSummary:
         monitoringService.extractRunRuntimeState(latestSnapshotForTurn) ?? null,
     };
+    const requestedSubagent = getRequestedSubagentHint(run);
+    if (requestedSubagent) {
+      turnContextState.requestedSubagent = requestedSubagent;
+    }
     if (run.executionMode === "auto_team") {
       turnContextState.activeNote = autoTeamActiveWorkItem ?? null;
       turnContextState.projectState = autoTeamPlanArtifact ?? null;

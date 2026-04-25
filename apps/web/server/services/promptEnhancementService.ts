@@ -1232,6 +1232,11 @@ export function parsePromptResponse(response: string): { promptEn: string; promp
   let promptEn = "";
   let promptTh = "";
 
+  const jsonPrompt = extractPromptFromStructuredJson(response);
+  if (jsonPrompt) {
+    return { promptEn: cleanPromptText(jsonPrompt, false), promptTh: "" };
+  }
+
   // First, check if this is a multi-prompt format (numbered lists like 1. 2. 3.)
   const isMultiPrompt = isMultiPromptFormat(response);
 
@@ -1292,6 +1297,69 @@ export function parsePromptResponse(response: string): { promptEn: string; promp
   promptTh = cleanPromptText(promptTh, false);
 
   return { promptEn, promptTh };
+}
+
+function extractPromptFromStructuredJson(response: string): string {
+  const normalized = response.trim();
+  if (!normalized) return "";
+
+  const candidates = new Set<string>([normalized]);
+  const fencedMatch = normalized.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if (fencedMatch?.[1]) {
+    candidates.add(fencedMatch[1].trim());
+  }
+
+  const firstBrace = normalized.indexOf("{");
+  const lastBrace = normalized.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    candidates.add(normalized.slice(firstBrace, lastBrace + 1).trim());
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (!parsed || typeof parsed !== "object") continue;
+
+      const prompts = (parsed as Record<string, unknown>).prompts;
+      if (prompts && typeof prompts === "object") {
+        const promptBundle = prompts as Record<string, unknown>;
+        const prompt =
+          typeof promptBundle.detailed === "string" ? promptBundle.detailed :
+          typeof promptBundle.edit === "string" ? promptBundle.edit :
+          typeof promptBundle.structured === "string" ? promptBundle.structured :
+          typeof promptBundle.short === "string" ? promptBundle.short :
+          "";
+        if (prompt.trim()) return prompt.trim();
+      }
+
+      const record = parsed as Record<string, unknown>;
+      const promptVariants = Array.isArray(record.prompt_variants) ? record.prompt_variants : [];
+      const variantPrompts = promptVariants
+        .map((item) => {
+          if (!item || typeof item !== "object") return "";
+          const variant = item as Record<string, unknown>;
+          return typeof variant.prompt === "string" ? variant.prompt :
+            typeof variant.edit_prompt === "string" ? variant.edit_prompt :
+            "";
+        })
+        .map((value) => value.trim())
+        .filter(Boolean);
+      if (variantPrompts.length > 0) {
+        return variantPrompts.join("\n\n");
+      }
+
+      for (const key of ["prompt", "prompt_text", "final_prompt", "short_prompt"]) {
+        const value = record[key];
+        if (typeof value === "string" && value.trim()) {
+          return value.trim();
+        }
+      }
+    } catch {
+      // Try the next candidate.
+    }
+  }
+
+  return "";
 }
 
 /**

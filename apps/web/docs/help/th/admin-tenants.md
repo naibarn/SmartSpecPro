@@ -6,7 +6,22 @@ icon: Building2
 section: admin
 order: 86
 pages: ["/admin/tenants"]
-tags: [admin, tenants, white-label, branding, domain, feature-flags, multi-tenant]
+tags:
+  - "admin"
+  - "tenants"
+  - "white-label"
+  - "branding"
+  - "domain"
+  - "feature-flags"
+  - "multi-tenant"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-tenants"
+aliases:
+  - "admin-tenants"
+  - "จัดการ Tenant"
+  - "จัดการ Tenant help"
 ---
 
 # จัดการ Tenant
@@ -61,3 +76,15 @@ tags: [admin, tenants, white-label, branding, domain, feature-flags, multi-tenan
 ## การลบ tenant
 
 กด **Delete** เพื่อลบ tenant และข้อมูลทั้งหมดอย่างถาวร ต้องยืนยันก่อนและไม่สามารถยกเลิกได้
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

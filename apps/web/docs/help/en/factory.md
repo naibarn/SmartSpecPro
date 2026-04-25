@@ -6,7 +6,22 @@ icon: Factory
 section: advanced
 order: 70
 pages: ["/factory"]
-tags: [factory, project, orchestrator, workflow, session, artifact, approval]
+tags:
+  - "factory"
+  - "project"
+  - "orchestrator"
+  - "workflow"
+  - "session"
+  - "artifact"
+  - "approval"
+  - "help"
+  - "help/en"
+  - "help/automation"
+  - "automation"
+aliases:
+  - "factory"
+  - "SaaS Factory"
+  - "SaaS Factory help"
 ---
 
 # SaaS Factory
@@ -48,3 +63,15 @@ Generated content (text, images, code) from each step is stored as **artifacts**
 - Break complex workflows into smaller steps with quality gates between them.
 - Use descriptive step names so the execution log is easy to follow.
 - Review artifacts promptly — paused workflows hold resources until approved.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[workflows|Workflows & Automation]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[automation|Process Automation]]
+- [[webhooks|Webhooks & Integrations]]
+- [[work-os|Work OS Guide]]
+- [[workflow-editor|Workflow Editor]]
+<!-- knowledge-graph:related:end -->

@@ -62,6 +62,26 @@ interface TeamRoomMessageMetadata {
     routeReason?: string | null;
     route?: string | null;
     llmModelId?: string | null;
+    runtimeEngine?: string | null;
+    runtimeMode?: string | null;
+    runtimeStatus?: string | null;
+    runtimeTraceId?: string | null;
+    runtimeSdkVersion?: string | null;
+    runtimeAdapterVersion?: string | null;
+    runtimeCheckpointId?: string | null;
+    runtimeCheckpointStatus?: string | null;
+    runtimeResumeCursor?: string | null;
+    runtimeArtifactRefs?: string[] | null;
+    requestedSubagent?: string | null;
+    subagentTopology?:
+      | {
+          nativeBundleReady?: boolean | null;
+          nativeBundlePath?: string | null;
+          bundleTopology?: string | null;
+          nativeBundleFiles?: string[] | null;
+          specialistAgentCount?: number | null;
+        }
+      | null;
   } | null;
   runtimeDisclosure?: {
     source?: "cloud" | "hybrid" | null;
@@ -77,6 +97,14 @@ interface TeamRoomMessageMetadata {
     note?: string;
   }>;
 }
+
+type TeamRoomRuntimeSubagentTopology = {
+  nativeBundleReady?: boolean | null;
+  nativeBundlePath?: string | null;
+  bundleTopology?: string | null;
+  nativeBundleFiles?: string[] | null;
+  specialistAgentCount?: number | null;
+} | null;
 
 interface TeamRoomPlanSummaryStep {
   stepKey?: string | null;
@@ -495,6 +523,77 @@ function normalizeMessageMetadata(value: unknown): TeamRoomMessageMetadata {
                 .llmModelId === "string"
                 ? ((metadata.runtimeMetadata as Record<string, unknown>)
                     .llmModelId as string)
+                : null,
+            runtimeEngine:
+              typeof (metadata.runtimeMetadata as Record<string, unknown>)
+                .runtimeEngine === "string"
+                ? ((metadata.runtimeMetadata as Record<string, unknown>)
+                    .runtimeEngine as string)
+                : null,
+            runtimeMode:
+              typeof (metadata.runtimeMetadata as Record<string, unknown>)
+                .runtimeMode === "string"
+                ? ((metadata.runtimeMetadata as Record<string, unknown>)
+                    .runtimeMode as string)
+                : null,
+            runtimeStatus:
+              typeof (metadata.runtimeMetadata as Record<string, unknown>)
+                .runtimeStatus === "string"
+                ? ((metadata.runtimeMetadata as Record<string, unknown>)
+                    .runtimeStatus as string)
+                : null,
+            runtimeTraceId:
+              typeof (metadata.runtimeMetadata as Record<string, unknown>)
+                .runtimeTraceId === "string"
+                ? ((metadata.runtimeMetadata as Record<string, unknown>)
+                    .runtimeTraceId as string)
+                : null,
+            runtimeSdkVersion:
+              typeof (metadata.runtimeMetadata as Record<string, unknown>)
+                .runtimeSdkVersion === "string"
+                ? ((metadata.runtimeMetadata as Record<string, unknown>)
+                    .runtimeSdkVersion as string)
+                : null,
+            runtimeAdapterVersion:
+              typeof (metadata.runtimeMetadata as Record<string, unknown>)
+                .runtimeAdapterVersion === "string"
+                ? ((metadata.runtimeMetadata as Record<string, unknown>)
+                    .runtimeAdapterVersion as string)
+                : null,
+            runtimeCheckpointId:
+              typeof (metadata.runtimeMetadata as Record<string, unknown>)
+                .runtimeCheckpointId === "string"
+                ? ((metadata.runtimeMetadata as Record<string, unknown>)
+                    .runtimeCheckpointId as string)
+                : null,
+            runtimeCheckpointStatus:
+              typeof (metadata.runtimeMetadata as Record<string, unknown>)
+                .runtimeCheckpointStatus === "string"
+                ? ((metadata.runtimeMetadata as Record<string, unknown>)
+                    .runtimeCheckpointStatus as string)
+                : null,
+            runtimeResumeCursor:
+              typeof (metadata.runtimeMetadata as Record<string, unknown>)
+                .runtimeResumeCursor === "string"
+                ? ((metadata.runtimeMetadata as Record<string, unknown>)
+                    .runtimeResumeCursor as string)
+                : null,
+            runtimeArtifactRefs:
+              Array.isArray((metadata.runtimeMetadata as Record<string, unknown>).runtimeArtifactRefs)
+                ? ((metadata.runtimeMetadata as Record<string, unknown>).runtimeArtifactRefs as unknown[])
+                    .filter((value): value is string => typeof value === "string")
+                : null,
+            requestedSubagent:
+              typeof (metadata.runtimeMetadata as Record<string, unknown>)
+                .requestedSubagent === "string"
+                ? ((metadata.runtimeMetadata as Record<string, unknown>)
+                    .requestedSubagent as string)
+                : null,
+            subagentTopology:
+              (metadata.runtimeMetadata as Record<string, unknown>).subagentTopology &&
+              typeof (metadata.runtimeMetadata as Record<string, unknown>).subagentTopology === "object"
+                ? ((metadata.runtimeMetadata as Record<string, unknown>)
+                    .subagentTopology as TeamRoomRuntimeSubagentTopology)
                 : null,
           }
         : null,
@@ -1506,6 +1605,9 @@ export function TeamRoomView({
   const [messageSearchQuery, setMessageSearchQuery] = useState("");
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<
+    string | null
+  >(null);
+  const [expandedRuntimeMessageId, setExpandedRuntimeMessageId] = useState<
     string | null
   >(null);
   const [pageVisible, setPageVisible] = useState(() =>
@@ -2767,7 +2869,179 @@ export function TeamRoomView({
                           >
                             Skill: {metadata.runtimeMetadata.selectedSkillId}
                           </Badge>
+                          {metadata.runtimeMetadata.runtimeEngine && (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px]",
+                                metadata.runtimeMetadata.runtimeEngine === "openai_agents"
+                                  ? "border-violet-200 bg-violet-50 text-violet-700"
+                                  : "border-slate-200 bg-slate-50 text-slate-700"
+                              )}
+                              title={
+                                metadata.runtimeMetadata.runtimeMode
+                                  ? `Runtime mode: ${metadata.runtimeMetadata.runtimeMode}`
+                                  : undefined
+                              }
+                            >
+                              {metadata.runtimeMetadata.runtimeEngine === "openai_agents"
+                                ? "OpenAI Agents Python"
+                                : metadata.runtimeMetadata.runtimeEngine}
+                              {metadata.runtimeMetadata.runtimeMode
+                                ? ` · ${metadata.runtimeMetadata.runtimeMode}`
+                                : ""}
+                            </Badge>
+                          )}
+                          {metadata.runtimeMetadata.runtimeStatus && (
+                            <Badge
+                              variant="outline"
+                              className="border-violet-200 bg-violet-50 text-[10px] text-violet-700"
+                              title={
+                                metadata.runtimeMetadata.runtimeTraceId
+                                  ? `Trace id: ${metadata.runtimeMetadata.runtimeTraceId}`
+                                  : metadata.runtimeMetadata.runtimeSdkVersion ||
+                                      metadata.runtimeMetadata.runtimeAdapterVersion
+                                    ? `SDK/adapter: ${metadata.runtimeMetadata.runtimeSdkVersion ?? "n/a"} / ${metadata.runtimeMetadata.runtimeAdapterVersion ?? "n/a"}`
+                                    : undefined
+                              }
+                            >
+                              Runtime: {metadata.runtimeMetadata.runtimeStatus}
+                            </Badge>
+                          )}
+                          {metadata.runtimeMetadata &&
+                            metadata.runtimeMetadata.runtimeStatus && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setExpandedRuntimeMessageId(current =>
+                                    current === event.eventId ? null : event.eventId
+                                  )
+                                }
+                                className="rounded-full border border-violet-200 bg-white px-2 py-1 text-[10px] font-medium text-violet-800 transition-colors hover:bg-violet-100"
+                                aria-expanded={
+                                  expandedRuntimeMessageId === event.eventId
+                                }
+                                data-testid={`team-room-runtime-trail-toggle-${event.eventId}`}
+                              >
+                                {expandedRuntimeMessageId === event.eventId
+                                  ? "Hide trail"
+                                  : "View trail"}
+                              </button>
+                            )}
                         </>
+                      )}
+                      {metadata.runtimeMetadata &&
+                        expandedRuntimeMessageId === event.eventId && (
+                          <div className="w-full rounded-xl border border-violet-200 bg-white/90 p-3 text-[10px] text-violet-950 shadow-sm">
+                            <div className="grid gap-2 md:grid-cols-2">
+                              <div>
+                                <div className="uppercase tracking-[0.2em] text-violet-600">
+                                  Trace id
+                                </div>
+                                <div className="mt-1 break-all">
+                                  {metadata.runtimeMetadata.runtimeTraceId ?? "n/a"}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="uppercase tracking-[0.2em] text-violet-600">
+                                  SDK / adapter
+                                </div>
+                                <div className="mt-1 break-all">
+                                  {metadata.runtimeMetadata.runtimeSdkVersion ?? "n/a"} /{" "}
+                                  {metadata.runtimeMetadata.runtimeAdapterVersion ?? "n/a"}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="uppercase tracking-[0.2em] text-violet-600">
+                                  Requested subagent
+                                </div>
+                                <div className="mt-1 break-all">
+                                  {metadata.runtimeMetadata.requestedSubagent ?? "n/a"}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="uppercase tracking-[0.2em] text-violet-600">
+                                  Checkpoint
+                                </div>
+                                <div className="mt-1 break-all">
+                                  {metadata.runtimeMetadata.runtimeCheckpointId ?? "n/a"}
+                                  {metadata.runtimeMetadata.runtimeCheckpointStatus
+                                    ? ` · ${metadata.runtimeMetadata.runtimeCheckpointStatus}`
+                                    : ""}
+                                </div>
+                              </div>
+                              <div className="md:col-span-2">
+                                <div className="uppercase tracking-[0.2em] text-violet-600">
+                                  Native bundle files
+                                </div>
+                                <div className="mt-1 flex flex-wrap gap-1.5">
+                                  {(metadata.runtimeMetadata.subagentTopology?.nativeBundleFiles ?? [])
+                                    .length > 0 ? (
+                                    metadata.runtimeMetadata.subagentTopology?.nativeBundleFiles?.map(file => (
+                                      <Badge
+                                        key={file}
+                                        variant="outline"
+                                        className="border-violet-200 bg-violet-50 text-[10px] text-violet-700"
+                                      >
+                                        {file}
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <span className="text-violet-700">
+                                      {metadata.runtimeMetadata.subagentTopology
+                                        ? "n/a"
+                                        : "No subagent topology"}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      {metadata.runtimeMetadata?.subagentTopology && (
+                        <div className="w-full rounded-xl border border-violet-200 bg-violet-50/70 p-3 text-[10px] text-violet-900">
+                          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap gap-1.5">
+                              <Badge variant="outline" className="border-violet-200 bg-white text-[10px] text-violet-700">
+                                {metadata.runtimeMetadata.subagentTopology.bundleTopology === "subagent-aware"
+                                  ? "Subagent-aware"
+                                  : "Single-agent"}
+                              </Badge>
+                              <Badge variant="outline" className="border-violet-200 bg-white text-[10px] text-violet-700">
+                                {metadata.runtimeMetadata.subagentTopology.nativeBundleReady
+                                  ? "Native bundle ready"
+                                  : "Native bundle detected"}
+                              </Badge>
+                              {typeof metadata.runtimeMetadata.subagentTopology.specialistAgentCount === "number" && (
+                                <Badge variant="outline" className="border-violet-200 bg-white text-[10px] text-violet-700">
+                                  {metadata.runtimeMetadata.subagentTopology.specialistAgentCount} specialists
+                                </Badge>
+                              )}
+                              {metadata.runtimeMetadata.requestedSubagent && (
+                                <Badge variant="outline" className="border-violet-200 bg-white text-[10px] text-violet-700">
+                                  Requested: {metadata.runtimeMetadata.requestedSubagent}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="grid gap-1 md:grid-cols-2">
+                            <div>
+                              Bundle path: {metadata.runtimeMetadata.subagentTopology.nativeBundlePath ?? "n/a"}
+                            </div>
+                            <div>
+                              Checkpoint: {metadata.runtimeMetadata.runtimeCheckpointId ?? "n/a"}
+                              {metadata.runtimeMetadata.runtimeCheckpointStatus
+                                ? ` · ${metadata.runtimeMetadata.runtimeCheckpointStatus}`
+                                : ""}
+                            </div>
+                            <div className="md:col-span-2">
+                              Resume cursor: {metadata.runtimeMetadata.runtimeResumeCursor ?? "n/a"}
+                            </div>
+                            <div className="md:col-span-2">
+                              Artifact refs: {(metadata.runtimeMetadata.runtimeArtifactRefs ?? []).join(", ") || "n/a"}
+                            </div>
+                          </div>
+                        </div>
                       )}
                       {messageTypeLabel && (
                         <Badge variant="outline" className="text-[10px]">

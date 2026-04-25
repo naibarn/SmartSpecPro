@@ -6,7 +6,23 @@ icon: FolderOpen
 section: features
 order: 67
 pages: ["/document-management", "/media-history"]
-tags: [documents, files, folders, library, media history, upload, organize]
+tags:
+  - "documents"
+  - "files"
+  - "folders"
+  - "library"
+  - "media history"
+  - "upload"
+  - "organize"
+  - "help"
+  - "help/en"
+  - "help/knowledge"
+  - "knowledge"
+  - "document-management"
+aliases:
+  - "document-management"
+  - "Document Management"
+  - "Document Management help"
 ---
 
 # Document Management
@@ -62,3 +78,13 @@ Media History shows a chronological feed of AI-generated outputs — images, vid
 - Generated media counts toward your storage allowance; uploaded files also count.
 - Delete items you no longer need to free space — deletions are permanent after a 24-hour grace period.
 - Storage limits depend on your current plan — see **Settings → Billing** for details.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[getting-started|Getting Started]]
+- [[memory|Memory System]]
+- [[chat|Chat Guide]]
+- [[mcp-servers|MCP Server Integration]]
+- [[personas|AI Personas]]
+<!-- knowledge-graph:related:end -->

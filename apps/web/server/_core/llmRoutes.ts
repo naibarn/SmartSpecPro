@@ -179,8 +179,8 @@ export { acquireProviderSlot, releaseProviderSlot, getProviderQueueStatus, getLi
 interface ParsedError {
   message: string;
   userMessage: string;
-  errorType: 'rate_limit' | 'overloaded' | 'invalid_model' | 'auth' | 'network' | 'unknown';
-  suggestedAction: 'retry' | 'wait' | 'switch_provider' | 'check_model' | 'contact_support';
+  errorType: 'rate_limit' | 'overloaded' | 'invalid_model' | 'auth' | 'network' | 'data_policy' | 'unknown';
+  suggestedAction: 'retry' | 'wait' | 'switch_provider' | 'check_model' | 'update_provider_policy' | 'contact_support';
   provider?: string;
   retryAfterMs?: number;
 }
@@ -188,14 +188,56 @@ interface ParsedError {
 /**
  * Parse provider error response into user-friendly format
  */
-function parseProviderError(errorText: string, providerName: string): ParsedError {
+export function parseProviderError(errorText: string, providerName: string): ParsedError {
   const lowerError = errorText.toLowerCase();
+  let upstreamMessage: string | null = null;
+
+  try {
+    const parsed = JSON.parse(errorText);
+    const rawMessage =
+      parsed?.error?.metadata?.raw ||
+      parsed?.error?.message ||
+      parsed?.message ||
+      null;
+    upstreamMessage = typeof rawMessage === "string" ? rawMessage : null;
+  } catch {
+    upstreamMessage = null;
+  }
+
+  const lowerUpstreamMessage = upstreamMessage?.toLowerCase() ?? "";
+  const searchableError = `${lowerError}\n${lowerUpstreamMessage}`;
+
+  // OpenRouter privacy/data-policy guardrails
+  if (
+    searchableError.includes("guardrail restrictions") ||
+    searchableError.includes("data policy") ||
+    searchableError.includes("settings/privacy") ||
+    searchableError.includes("cannot be processed without data retention")
+  ) {
+    return {
+      message: upstreamMessage || errorText,
+      userMessage:
+        `${providerName} blocked this model because of the account privacy/data policy. ` +
+        `Update the provider privacy settings or choose another model/provider.`,
+      errorType: 'data_policy',
+      suggestedAction: 'update_provider_policy',
+      provider: providerName,
+    };
+  }
 
   // Rate limit / Too many requests
-  if (lowerError.includes('too_many_requests') || lowerError.includes('rate_limit') || lowerError.includes('rate limit')) {
+  if (
+    searchableError.includes('too_many_requests') ||
+    searchableError.includes('rate_limit') ||
+    searchableError.includes('rate limit') ||
+    searchableError.includes('rate-limited') ||
+    searchableError.includes('429')
+  ) {
     return {
-      message: errorText,
-      userMessage: `${providerName} is currently handling many requests. Please wait a moment and try again.`,
+      message: upstreamMessage || errorText,
+      userMessage: upstreamMessage && upstreamMessage.length <= 240
+        ? upstreamMessage
+        : `${providerName} is currently handling many requests. Please wait a moment and try again.`,
       errorType: 'rate_limit',
       suggestedAction: 'wait',
       provider: providerName,
@@ -204,9 +246,9 @@ function parseProviderError(errorText: string, providerName: string): ParsedErro
   }
 
   // Service overloaded / Deadline exceeded
-  if (lowerError.includes('overload') || lowerError.includes('deadline') || lowerError.includes('service is overloaded')) {
+  if (searchableError.includes('overload') || searchableError.includes('deadline') || searchableError.includes('service is overloaded')) {
     return {
-      message: errorText,
+      message: upstreamMessage || errorText,
       userMessage: `${providerName} is currently overloaded. Try using a different provider like OpenRouter, or wait a few minutes.`,
       errorType: 'overloaded',
       suggestedAction: 'switch_provider',
@@ -216,9 +258,9 @@ function parseProviderError(errorText: string, providerName: string): ParsedErro
   }
 
   // Invalid model
-  if (lowerError.includes('invalid') && lowerError.includes('model') || lowerError.includes('not a valid model')) {
+  if (searchableError.includes('invalid') && searchableError.includes('model') || searchableError.includes('not a valid model')) {
     return {
-      message: errorText,
+      message: upstreamMessage || errorText,
       userMessage: `This model may be temporarily unavailable. Please try a different model.`,
       errorType: 'invalid_model',
       suggestedAction: 'check_model',
@@ -227,9 +269,9 @@ function parseProviderError(errorText: string, providerName: string): ParsedErro
   }
 
   // Authentication errors
-  if (lowerError.includes('unauthorized') || lowerError.includes('invalid api key') || lowerError.includes('authentication')) {
+  if (searchableError.includes('unauthorized') || searchableError.includes('invalid api key') || searchableError.includes('authentication')) {
     return {
-      message: errorText,
+      message: upstreamMessage || errorText,
       userMessage: `Authentication failed for ${providerName}. Please check the API key configuration.`,
       errorType: 'auth',
       suggestedAction: 'contact_support',
@@ -238,9 +280,9 @@ function parseProviderError(errorText: string, providerName: string): ParsedErro
   }
 
   // Network / Connection errors
-  if (lowerError.includes('network') || lowerError.includes('connection') || lowerError.includes('timeout')) {
+  if (searchableError.includes('network') || searchableError.includes('connection') || searchableError.includes('timeout')) {
     return {
-      message: errorText,
+      message: upstreamMessage || errorText,
       userMessage: `Connection to ${providerName} failed. Please check your network and try again.`,
       errorType: 'network',
       suggestedAction: 'retry',
@@ -251,7 +293,7 @@ function parseProviderError(errorText: string, providerName: string): ParsedErro
 
   // Default unknown error
   return {
-    message: errorText,
+    message: upstreamMessage || errorText,
     userMessage: `An error occurred with ${providerName}. Please try again or use a different provider.`,
     errorType: 'unknown',
     suggestedAction: 'retry',

@@ -6,7 +6,24 @@ icon: Layers
 section: admin
 order: 91
 pages: ["/admin/media-providers"]
-tags: [admin, media, providers, api-key, health, quota, cost, stable-diffusion, fal]
+tags:
+  - "admin"
+  - "media"
+  - "providers"
+  - "api-key"
+  - "health"
+  - "quota"
+  - "cost"
+  - "stable-diffusion"
+  - "fal"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-media-providers"
+aliases:
+  - "admin-media-providers"
+  - "Media Providers"
+  - "Media Providers help"
 ---
 
 # Media Providers
@@ -58,3 +75,15 @@ The cost panel shows:
 - Configure at least two providers for redundancy — if one goes down, the other takes over.
 - Set conservative daily limits initially, then increase based on actual usage.
 - Check error rates weekly to identify providers that need API key rotation.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

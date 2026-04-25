@@ -60,6 +60,34 @@ def build_skill_artifact_index(artifacts: Any) -> dict[str, Any]:
     }
 
 
+def build_skill_lineage_record(state: Mapping[str, Any]) -> dict[str, Any]:
+    lineage = state.get("lineage") if isinstance(state.get("lineage"), dict) else {}
+    artifacts = state.get("artifacts") if isinstance(state.get("artifacts"), list) else []
+    artifact_refs = []
+    for item in artifacts:
+        if isinstance(item, dict):
+            ref = item.get("path") or item.get("relativePath") or item.get("relative_path")
+            if ref is not None:
+                artifact_refs.append(_normalize_relative_artifact_path(ref))
+        else:
+            artifact_refs.append(_normalize_relative_artifact_path(item))
+
+    return {
+        "schemaVersion": 1,
+        "skillSlug": state.get("skill_slug"),
+        "role": lineage.get("role") or state.get("role") or "orchestrator",
+        "status": state.get("phase_status"),
+        "checkpointVersion": lineage.get("checkpointVersion") or state.get("checkpoint_version") or 1,
+        "parentRunId": lineage.get("parentRunId") or state.get("parent_run_id"),
+        "childRunIds": list(lineage.get("childRunIds") or state.get("child_run_ids") or []),
+        "resumeCursor": lineage.get("resumeCursor") or state.get("resume_hint"),
+        "verificationState": lineage.get("verificationState") or state.get("verification_state") or state.get("verification_status"),
+        "artifactRefs": list(lineage.get("artifactRefs") or state.get("artifact_refs") or artifact_refs),
+        "checkpointPolicy": lineage.get("checkpointPolicy") or state.get("checkpoint_policy"),
+        "verificationCommand": state.get("verification_command"),
+    }
+
+
 def persist_skill_runtime_state(workspace_dir: Path, state: Mapping[str, Any]) -> dict[str, Path]:
     state_dir = workspace_dir / "state"
     logs_dir = workspace_dir / "logs"
@@ -91,8 +119,13 @@ def persist_skill_runtime_state(workspace_dir: Path, state: Mapping[str, Any]) -
     )
 
     artifact_index_path = out_dir / "artifact_index.json"
+    lineage_path = out_dir / "lineage.json"
     artifact_index_path.write_text(
         json.dumps(build_skill_artifact_index(redacted_state.get("artifacts", [])), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    lineage_path.write_text(
+        json.dumps(build_skill_lineage_record(redacted_state), ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
 
@@ -101,6 +134,7 @@ def persist_skill_runtime_state(workspace_dir: Path, state: Mapping[str, Any]) -
         "last_session_state": last_session_state_path,
         "phase_log": phase_log_path,
         "artifact_index": artifact_index_path,
+        "lineage": lineage_path,
     }
 
 

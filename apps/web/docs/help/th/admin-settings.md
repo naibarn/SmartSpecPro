@@ -6,7 +6,19 @@ icon: Settings
 section: admin
 order: 100
 pages: ["/admin/settings"]
-tags: [admin, settings, configuration, system]
+tags:
+  - "admin"
+  - "settings"
+  - "configuration"
+  - "system"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-settings"
+aliases:
+  - "admin-settings"
+  - "การตั้งค่าระบบ"
+  - "การตั้งค่าระบบ help"
 ---
 
 # การตั้งค่าระบบ
@@ -83,3 +95,15 @@ tags: [admin, settings, configuration, system]
 ## Audit Log
 
 การเปลี่ยนแปลงการตั้งค่า admin ทั้งหมดถูกบันทึกใน audit log พร้อม timestamp ผู้ใช้ admin และค่าก่อน/หลัง เข้าถึง audit log ได้จาก **Admin → Audit**
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

@@ -5,6 +5,12 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  getKnowledgeGraphFixture,
+  getKnowledgeQuickSwitchFixture,
+  knowledgeVaultFixture,
+} from "@/test/fixtures/knowledgeVaultFixture";
+
 const quickSwitchNotesMock = vi.fn();
 const knowledgeInspectorMock = vi.fn();
 const getMarkdownContentMock = vi.fn();
@@ -79,134 +85,26 @@ vi.mock("@/lib/trpc", () => ({
 
 import { KnowledgeQuickSwitcherDialog } from "./KnowledgeQuickSwitcherDialog";
 
-const quickSwitchResults = [
-  {
-    libraryItemId: 101,
-    title: "Ops Runbook",
-    logicalPath: "ops/runbook",
-    aliases: ["Runbook"],
-    matchType: "exact_title" as const,
-    disambiguation: null,
-  },
-  {
-    libraryItemId: 202,
-    title: "Release Gate",
-    logicalPath: "platform/release-gate",
-    aliases: ["Gate"],
-    matchType: "fuzzy" as const,
-    disambiguation: "Platform",
-  },
-];
-
-const inspectorById: Record<number, any> = {
-  101: {
-    note: {
-      libraryItemId: 101,
-      title: "Ops Runbook",
-      logicalPath: "ops/runbook",
-      aliases: ["Runbook"],
-      tags: ["ops"],
-      properties: {},
-    },
-    outgoing: [
-      {
-        libraryItemId: 301,
-        title: "Escalation Matrix",
-        logicalPath: "ops/escalation",
-        rawReference: "Escalation Matrix",
-      },
-    ],
-    backlinks: [
-      {
-        libraryItemId: 302,
-        title: "SRE Handbook",
-        logicalPath: "ops/sre",
-        rawReference: "Ops Runbook",
-      },
-    ],
-    unlinkedMentions: [],
-    sharedTags: [],
-    semanticRelated: [],
-    localGraph: { nodes: [], edges: [{}, {}] },
-  },
-  202: {
-    note: {
-      libraryItemId: 202,
-      title: "Release Gate",
-      logicalPath: "platform/release-gate",
-      aliases: ["Gate"],
-      tags: ["release", "ops"],
-      properties: {},
-    },
-    outgoing: [
-      {
-        libraryItemId: 303,
-        title: "Rollback Plan",
-        logicalPath: "platform/rollback",
-        rawReference: "Rollback Plan",
-      },
-    ],
-    backlinks: [
-      {
-        libraryItemId: 304,
-        title: "Launch Checklist",
-        logicalPath: "platform/launch",
-        rawReference: "Release Gate",
-      },
-    ],
-    unlinkedMentions: [],
-    sharedTags: [],
-    semanticRelated: [
-      {
-        libraryItemId: 305,
-        title: "Deployment Guardrails",
-        logicalPath: "platform/guardrails",
-        score: 0.82,
-      },
-    ],
-    localGraph: { nodes: [], edges: [{}, {}, {}] },
-  },
-};
-
-const markdownById: Record<number, string> = {
-  101: `# Ops Runbook
-
-This note explains escalation paths and how operators should respond to incidents.
-`,
-  202: `# Release Gate
-
-The release gate verifies rollback confidence, migration status, and platform readiness before rollout.
-
-## Checklist
-
-- Verify rollback confidence
-- Confirm migration status
-`,
-};
-
 describe("KnowledgeQuickSwitcherDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
     quickSwitchNotesMock.mockImplementation(() => ({
-      data: {
-        results: quickSwitchResults,
-        createSuggestion: null,
-      },
+      data: getKnowledgeQuickSwitchFixture(),
       isLoading: false,
       error: null,
     }));
 
     knowledgeInspectorMock.mockImplementation(
       ({ itemId }: { itemId: number }) => ({
-        data: inspectorById[itemId] ?? null,
+        data: getKnowledgeGraphFixture(itemId),
         isLoading: false,
         error: null,
       })
     );
 
     getMarkdownContentMock.mockImplementation(({ id }: { id: number }) => ({
-      data: { content: markdownById[id] ?? "" },
+      data: { content: knowledgeVaultFixture.markdownById[id] ?? "" },
       isLoading: false,
       error: null,
     }));
@@ -226,32 +124,29 @@ describe("KnowledgeQuickSwitcherDialog", () => {
     );
 
     const preview = screen.getByTestId("knowledge-quick-switcher-preview");
-    expect(within(preview).getAllByText("Ops Runbook").length).toBeGreaterThan(
-      0
-    );
-
-    fireEvent.mouseEnter(
-      screen.getByTestId("knowledge-quick-switcher-item-202")
-    );
-
-    expect(within(preview).getAllByText("Release Gate").length).toBeGreaterThan(
-      0
-    );
+    expect(
+      within(preview).getAllByText(
+        knowledgeVaultFixture.activeNote.title,
+      ).length,
+    ).toBeGreaterThan(0);
     expect(within(preview).getByText(/^Matched context$/i)).toBeTruthy();
     expect(
-      within(preview).getAllByText(/rollback confidence/i).length
+      within(preview).getAllByText(/zeroclaw openclaw nemoclaw/i).length
     ).toBeGreaterThan(0);
     expect(
-      within(preview).getAllByText(/platform\/release-gate/i).length
+      within(preview).getAllByText(
+        /navigation-first\/desktop-worker/i,
+      ).length
     ).toBeGreaterThan(0);
+    expect(screen.getByText(/create markdown note/i)).toBeTruthy();
 
     fireEvent.click(
       within(preview).getByRole("button", { name: /open note/i })
     );
 
     expect(onSelectNote).toHaveBeenCalledWith({
-      libraryItemId: 202,
-      title: "Release Gate",
+      libraryItemId: knowledgeVaultFixture.activeNote.libraryItemId,
+      title: knowledgeVaultFixture.activeNote.title,
     });
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
@@ -269,22 +164,22 @@ describe("KnowledgeQuickSwitcherDialog", () => {
       />
     );
 
-    fireEvent.mouseEnter(
-      screen.getByTestId("knowledge-quick-switcher-item-202")
-    );
-
     const preview = screen.getByTestId("knowledge-quick-switcher-preview");
     expect(within(preview).getByText(/^Local neighbors$/i)).toBeTruthy();
     expect(within(preview).getByText(/^Hybrid\/vector$/i)).toBeTruthy();
-    expect(within(preview).getByText(/^Rollback Plan$/i)).toBeTruthy();
+    expect(
+      within(preview).getByText(/workspace navigation handbook\.md/i),
+    ).toBeTruthy();
 
     fireEvent.click(
-      within(preview).getByRole("button", { name: /rollback plan/i })
+      within(preview).getByRole("button", {
+        name: /workspace navigation handbook/i,
+      })
     );
 
     expect(onSelectNote).toHaveBeenCalledWith({
-      libraryItemId: 303,
-      title: "Rollback Plan",
+      libraryItemId: 203,
+      title: "Workspace Navigation Handbook.md",
     });
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });

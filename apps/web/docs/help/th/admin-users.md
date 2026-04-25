@@ -6,7 +6,22 @@ icon: Users
 section: admin
 order: 105
 pages: ["/admin/users", "/admin/packages"]
-tags: [admin, users, roles, permissions, ban, credits, packages]
+tags:
+  - "admin"
+  - "users"
+  - "roles"
+  - "permissions"
+  - "ban"
+  - "credits"
+  - "packages"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-users"
+aliases:
+  - "admin-users"
+  - "จัดการผู้ใช้"
+  - "จัดการผู้ใช้ help"
 ---
 
 # จัดการผู้ใช้
@@ -70,3 +85,15 @@ User Management ให้ผู้ดูแลระบบมองเห็น�
 - **แบน/ยกเลิกการแบนแบบกลุ่ม** — ระงับหรือคืนสิทธิ์กลุ่มบัญชี
 
 การดำเนินการแบบกลุ่มทั้งหมดจะบันทึกแยกกันใน Audit Log สำหรับผู้ใช้แต่ละคนที่ได้รับผลกระทบ
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

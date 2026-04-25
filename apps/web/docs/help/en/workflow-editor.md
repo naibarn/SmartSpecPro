@@ -6,7 +6,20 @@ icon: GitBranch
 section: features
 order: 50
 pages: ["/workflows/editor", "/workflows/editor/:id"]
-tags: [workflow, automation, flow builder, nodes, visual editor]
+tags:
+  - "workflow"
+  - "automation"
+  - "flow builder"
+  - "nodes"
+  - "visual editor"
+  - "help"
+  - "help/en"
+  - "help/automation"
+  - "workflow-editor"
+aliases:
+  - "workflow-editor"
+  - "Workflow Editor"
+  - "Workflow Editor help"
 ---
 
 # Workflow Editor
@@ -51,3 +64,15 @@ Open **Workflows** in the sidebar, then click **New Workflow** or click an exist
 - Saving frequently preserves intermediate states. The editor auto-saves a draft, but only a manual save creates a named version visible in the gallery.
 - For worker-backed flows, separate these states mentally:
   dispatch accepted, worker execution completed, artifacts published, and indexing finished. A successful dispatch does not guarantee later publication or search availability.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[workflows|Workflows & Automation]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[automation|Process Automation]]
+- [[factory|SaaS Factory]]
+- [[webhooks|Webhooks & Integrations]]
+- [[work-os|Work OS Guide]]
+<!-- knowledge-graph:related:end -->

@@ -6,7 +6,24 @@ icon: BellRing
 section: features
 order: 66
 pages: ["/settings"]
-tags: [notifications, preferences, categories, mute, email, digest, severity, settings]
+tags:
+  - "notifications"
+  - "preferences"
+  - "categories"
+  - "mute"
+  - "email"
+  - "digest"
+  - "severity"
+  - "settings"
+  - "help"
+  - "help/th"
+  - "help/account"
+  - "account"
+  - "notification-settings"
+aliases:
+  - "notification-settings"
+  - "การตั้งค่าการแจ้งเตือน"
+  - "การตั้งค่าการแจ้งเตือน help"
 ---
 
 # การตั้งค่าการแจ้งเตือน
@@ -120,3 +137,15 @@ SmartAI Hub จัดระเบียบการแจ้งเตือน�
 - นโยบายการยกระดับจะยังเข้าถึงคุณได้แม้คุณจะปิดเสียงหมวดหมู่ — นี่เป็นการออกแบบสำหรับแจ้งเตือนวิกฤต
 - ทดสอบเว็บฮุกหลังจากสร้างเพื่อยืนยันว่า endpoint ได้รับ payload ถูกต้อง
 - หากเว็บฮุกถูกปิดอัตโนมัติ ตรวจสอบสุขภาพ endpoint ก่อนเปิดใหม่
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[settings|การตั้งค่าและความชอบ]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[api-keys|คีย์ API]]
+- [[credits|ระบบเครดิต]]
+- [[profile|โปรไฟล์และบัญชี]]
+- [[usage-analytics|วิเคราะห์การใช้งานและตรวจสอบงาน]]
+<!-- knowledge-graph:related:end -->

@@ -6,7 +6,25 @@ icon: Activity
 section: advanced
 order: 76
 pages: ["/chat", "/teams", "/teams/:teamId"]
-tags: [monitoring, memory, scoped, notification, events, run, agent, status, live]
+tags:
+  - "monitoring"
+  - "memory"
+  - "scoped"
+  - "notification"
+  - "events"
+  - "run"
+  - "agent"
+  - "status"
+  - "live"
+  - "help"
+  - "help/en"
+  - "help/teams"
+  - "teams"
+  - "team-monitoring"
+aliases:
+  - "team-monitoring"
+  - "Team Monitoring & Scoped Memory"
+  - "Team Monitoring & Scoped Memory help"
 ---
 
 # Team Monitoring & Scoped Memory
@@ -157,3 +175,15 @@ This ensures you never miss important events like run completions, decisions, or
 | **Run** | `/api/orchestrator/stream/run/:runId` | All events for a specific run |
 | **Team** | `/api/orchestrator/stream/team/:teamId` | All events across all runs in a team |
 | **User** | `/api/orchestrator/stream/user` | Notifications and alerts for the logged-in user |
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[teams|AI Teams]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[agencies|Agencies - Multi-Agent Teams]]
+- [[agency-builder|Agency Builder]]
+- [[agency-chat|Agency Chat — Running & Testing Agencies]]
+- [[groups|Groups]]
+<!-- knowledge-graph:related:end -->

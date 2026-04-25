@@ -6,7 +6,21 @@ icon: Bot
 section: advanced
 order: 73
 pages: ["/automation"]
-tags: [automation, process, browser, live session, copilot, bot, rpa]
+tags:
+  - "automation"
+  - "process"
+  - "browser"
+  - "live session"
+  - "copilot"
+  - "bot"
+  - "rpa"
+  - "help"
+  - "help/th"
+  - "help/automation"
+aliases:
+  - "automation"
+  - "ระบบอัตโนมัติ"
+  - "ระบบอัตโนมัติ help"
 ---
 
 # ระบบอัตโนมัติ
@@ -94,3 +108,15 @@ Automation Copilot ช่วยคุณในทุกขั้นตอนข�
 - **ตั้ง pause points สำหรับขั้นตอนที่ละเอียดอ่อน** — ขั้นตอนใดก็ตามที่เกี่ยวข้องกับเงิน การส่งฟอร์ม หรือการดำเนินการที่ย้อนกลับไม่ได้ควรมี pause สำหรับตรวจสอบด้วยตนเอง
 - **ทดสอบด้วย run เดียวก่อน** — ก่อนกำหนดเวลาให้ระบบอัตโนมัติทำงานซ้ำ ให้ดู run เต็มใน live view เพื่อตรวจจับพฤติกรรมที่ไม่คาดคิด
 - **ใช้ allowed domains** เพื่อป้องกันระบบอัตโนมัตินำทางไปยังไซต์ที่ไม่ต้องการ
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[workflows|เวิร์กโฟลว์และระบบอัตโนมัติ]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[factory|SaaS Factory]]
+- [[webhooks|Webhooks และการเชื่อมต่อ]]
+- [[work-os|คู่มือ Work OS]]
+- [[workflow-editor|ตัวสร้างเวิร์กโฟลว์]]
+<!-- knowledge-graph:related:end -->

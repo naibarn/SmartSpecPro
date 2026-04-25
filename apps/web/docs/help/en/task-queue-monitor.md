@@ -6,7 +6,22 @@ icon: ListTodo
 section: admin
 order: 290
 pages: ["/admin/task-queue"]
-tags: [admin, task queue, jobs, Celery, monitoring, workers]
+tags:
+  - "admin"
+  - "task queue"
+  - "jobs"
+  - "Celery"
+  - "monitoring"
+  - "workers"
+  - "help"
+  - "help/en"
+  - "help/core"
+  - "core"
+  - "task-queue-monitor"
+aliases:
+  - "task-queue-monitor"
+  - "Task Queue Monitor"
+  - "Task Queue Monitor help"
 ---
 
 # Task Queue Monitor
@@ -41,3 +56,11 @@ Log in as an administrator and navigate to **Admin > Task Queue** from the left 
 - Media generation tasks can take 30-120 seconds under normal conditions. Only treat a task as stuck if it has been Active for more than 5 minutes without completing.
 - The throughput metric (tasks per minute) drops to zero when no tasks are being processed, not necessarily when workers are down. Check the worker count to distinguish an idle system from an outage.
 - Completed tasks are retained for 12 days before automatic cleanup. Use the date filter to narrow searches when looking for a specific historical task.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[content-quality-dashboard|Content Quality]]
+<!-- knowledge-graph:related:end -->

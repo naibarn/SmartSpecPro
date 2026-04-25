@@ -6,7 +6,23 @@ icon: Bot
 section: admin
 order: 88
 pages: ["/admin/tenants", "/admin/monitoring", "/teams"]
-tags: [hermes, workers, external runtime, rollout, teams, mcp, channel companion]
+tags:
+  - "hermes"
+  - "workers"
+  - "external runtime"
+  - "rollout"
+  - "teams"
+  - "mcp"
+  - "channel companion"
+  - "help"
+  - "help/th"
+  - "help/runtime"
+  - "runtime"
+  - "hermes-workers"
+aliases:
+  - "hermes-workers"
+  - "Hermes Workers"
+  - "Hermes Workers help"
 ---
 
 # Hermes Workers
@@ -163,3 +179,15 @@ SmartSpecPro จะ normalize base URL ก่อนบันทึก ดัง�
 
 - [OpenClaw Workers](./openclaw-workers.md)
 - [Desktop Host](./desktop-host.md)
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+<!-- knowledge-graph:related:end -->

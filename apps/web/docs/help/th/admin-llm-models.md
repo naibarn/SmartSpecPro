@@ -6,7 +6,24 @@ icon: Brain
 section: admin
 order: 89
 pages: ["/admin/llm-models"]
-tags: [admin, llm, models, mapping, providers, enable, disable, default, catalog]
+tags:
+  - "admin"
+  - "llm"
+  - "models"
+  - "mapping"
+  - "providers"
+  - "enable"
+  - "disable"
+  - "default"
+  - "catalog"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-llm-models"
+aliases:
+  - "admin-llm-models"
+  - "การจับคู่โมเดล LLM"
+  - "การจับคู่โมเดล LLM help"
 ---
 
 # การจับคู่โมเดล LLM
@@ -63,3 +80,15 @@ tags: [admin, llm, models, mapping, providers, enable, disable, default, catalog
 - เปิดอย่างน้อยหนึ่งโมเดลต่อหมวดหมู่ความสามารถ
 - ตั้งโมเดลที่คุ้มค่าเป็นค่าเริ่มต้นเพื่อจัดการการใช้เครดิต
 - ปิดโมเดลที่ผู้ให้บริการไม่พร้อมใช้งานชั่วคราว
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

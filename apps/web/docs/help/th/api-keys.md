@@ -6,7 +6,24 @@ icon: Key
 section: advanced
 order: 78
 pages: ["/settings", "/admin/api-keys"]
-tags: [api, keys, token, access, programmatic, integration, developer, openapi]
+tags:
+  - "api"
+  - "keys"
+  - "token"
+  - "access"
+  - "programmatic"
+  - "integration"
+  - "developer"
+  - "openapi"
+  - "help"
+  - "help/th"
+  - "help/account"
+  - "account"
+  - "api-keys"
+aliases:
+  - "api-keys"
+  - "คีย์ API"
+  - "คีย์ API help"
 ---
 
 # คีย์ API
@@ -103,3 +120,15 @@ curl https://smartaihub.app/v1/chat \
 - **ตรวจสอบการใช้งานเป็นประจำ** — ดูสถิติการใช้งานคีย์ที่ **Settings → API** เพื่อตรวจจับการเพิ่มขึ้นที่ผิดปกติ
 - **อย่าแชร์คีย์** — แต่ละคนหรือบริการควรมีคีย์ของตัวเองเพื่อให้สามารถเพิกถอนสิทธิ์เข้าถึงได้แยกกัน
 - **ให้ความนิยมคีย์อายุสั้น** — สำหรับสคริปต์ครั้งเดียว สร้างคีย์ที่หมดอายุใน 24 ชั่วโมงแทนการใช้คีย์อายุยาว
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[settings|การตั้งค่าและความชอบ]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[credits|ระบบเครดิต]]
+- [[notification-settings|การตั้งค่าการแจ้งเตือน]]
+- [[profile|โปรไฟล์และบัญชี]]
+- [[usage-analytics|วิเคราะห์การใช้งานและตรวจสอบงาน]]
+<!-- knowledge-graph:related:end -->

@@ -6,7 +6,24 @@ icon: GitFork
 section: admin
 order: 62
 pages: ["/admin/channel-router"]
-tags: [channel, เส้นทาง, telegram, slack, line, whatsapp, discord, routing]
+tags:
+  - "channel"
+  - "เส้นทาง"
+  - "telegram"
+  - "slack"
+  - "line"
+  - "whatsapp"
+  - "discord"
+  - "routing"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin"
+  - "admin-channel-router"
+aliases:
+  - "admin-channel-router"
+  - "ตัวกำหนดเส้นทาง (Channel Router)"
+  - "ตัวกำหนดเส้นทาง (Channel Router) help"
 ---
 
 # ตัวกำหนดเส้นทาง (Channel Router)
@@ -83,3 +100,15 @@ Channel Router ช่วยให้คุณเชื่อมต่อช่�
 ## เปิด/ปิดเส้นทาง
 
 สลับสวิตช์ **Active** ข้างแต่ละเส้นทางเพื่อเปิดหรือปิดชั่วคราวโดยไม่ต้องลบออก
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

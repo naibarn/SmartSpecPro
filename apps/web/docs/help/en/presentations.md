@@ -6,7 +6,20 @@ icon: Presentation
 section: content-creation
 order: 40
 pages: ["/chat", "/presentation"]
-tags: [presentation, slides, deck, powerpoint]
+tags:
+  - "presentation"
+  - "slides"
+  - "deck"
+  - "powerpoint"
+  - "help"
+  - "help/en"
+  - "help/media"
+  - "media"
+  - "presentations"
+aliases:
+  - "presentations"
+  - "Create Presentations"
+  - "Create Presentations help"
 ---
 
 # Create Presentations
@@ -84,3 +97,13 @@ Navigate to **Presentations** in the sidebar to see all your decks:
 ## Using Agencies for presentations
 
 For more complex decks (investor presentations, full pitch decks), use the **Deck Builder** agency template instead of Chat. The agency uses a multi-agent workflow to research, outline, draft, and assemble a professional-grade deck automatically.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[media-generation|Image, Video, and Audio Generation]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[gallery|Gallery]]
+- [[video-editor|Video Editor]]
+<!-- knowledge-graph:related:end -->

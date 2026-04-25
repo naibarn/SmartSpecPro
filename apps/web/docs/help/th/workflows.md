@@ -6,7 +6,21 @@ icon: GitBranch
 section: advanced
 order: 72
 pages: ["/workflows", "/workflows/editor", "/workflows/gallery"]
-tags: [workflows, automation, pipeline, editor, triggers, actions, schedule]
+tags:
+  - "workflows"
+  - "automation"
+  - "pipeline"
+  - "editor"
+  - "triggers"
+  - "actions"
+  - "schedule"
+  - "help"
+  - "help/th"
+  - "help/automation"
+aliases:
+  - "workflows"
+  - "เวิร์กโฟลว์และระบบอัตโนมัติ"
+  - "เวิร์กโฟลว์และระบบอัตโนมัติ help"
 ---
 
 # เวิร์กโฟลว์และระบบอัตโนมัติ
@@ -102,3 +116,15 @@ Workflow Gallery มี Template สำเร็จรูปสำหรับ�
 - **ใช้ Template** — Gallery ครอบคลุมรูปแบบทั่วไปส่วนใหญ่ แก้ไข Template แทนการสร้างจากศูนย์
 - **ตรวจสอบประวัติการรัน** — หาก Workflow ล้มเหลว ประวัติการรันจะแสดงว่า Node ไหนล้มเหลวและเพราะอะไร
 - **ตั้งชื่อให้มีความหมาย** — ตั้งชื่อ Node ให้สื่อความหมายเพื่อให้เข้าใจ Workflow ได้ง่ายเมื่อกลับมาดูทีหลัง
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[automation|ระบบอัตโนมัติ]]
+- [[factory|SaaS Factory]]
+- [[webhooks|Webhooks และการเชื่อมต่อ]]
+- [[work-os|คู่มือ Work OS]]
+- [[workflow-editor|ตัวสร้างเวิร์กโฟลว์]]
+<!-- knowledge-graph:related:end -->

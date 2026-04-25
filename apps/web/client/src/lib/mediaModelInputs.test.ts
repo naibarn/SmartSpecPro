@@ -195,6 +195,17 @@ describe("mediaModelInputs", () => {
     })).toBe("Text to Speech");
   });
 
+  it("labels image-to-image models as image-to-image instead of image-to-video", () => {
+    expect(getModelGenerationModeLabel({
+      id: "gpt-image-2-image-to-image",
+      name: "GPT Image 2 Image-to-Image",
+      configJson: {
+        generateType: "image-to-image",
+        inputFields: [{ key: "input_urls", type: "image_urls", syncWith: "reference_images" }],
+      },
+    })).toBe("Image to Image");
+  });
+
   it("builds default rows for structured array fields", () => {
     const item = buildDefaultModelInputArrayItem([
       { key: "speaker_id", label: "Speaker ID", type: "text", required: true },

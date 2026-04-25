@@ -6,7 +6,21 @@ icon: Image
 section: content-creation
 order: 30
 pages: ["/chat", "/media-studio"]
-tags: [image, video, audio, generation, media, create]
+tags:
+  - "image"
+  - "video"
+  - "audio"
+  - "generation"
+  - "media"
+  - "create"
+  - "help"
+  - "help/th"
+  - "help/media"
+  - "media-generation"
+aliases:
+  - "media-generation"
+  - "สร้างรูปภาพ วิดีโอ และเสียง"
+  - "สร้างรูปภาพ วิดีโอ และเสียง help"
 ---
 
 # สร้างรูปภาพ วิดีโอ และเสียง
@@ -42,3 +56,13 @@ tags: [image, video, audio, generation, media, create]
 ## Provider ที่รองรับ
 
 การสร้างสื่อจะถูกส่งไปยัง provider ที่ดีที่สุดสำหรับประเภทคำขอของคุณ Provider รวมถึงบริการ AI สำหรับรูปภาพ วิดีโอ และเสียงที่ผู้ดูแลระบบกำหนดค่าไว้ โมเดลที่ใช้ได้อาจแตกต่างกันตามแผนบัญชีของคุณ
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[gallery|แกลเลอรี่]]
+- [[presentations|สร้าง Presentation จาก Chat]]
+- [[video-editor|Video Editor]]
+<!-- knowledge-graph:related:end -->

@@ -10,6 +10,10 @@ from .validator import validate_patch
 from .registry import read_manifest_text, read_text, resolve_skill_files
 from .decider import ChoiceQuestion, ask_choice
 
+def _utc_now_iso() -> str:
+    import datetime as _dt
+    return _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
 @dataclass
 class OrchestratorConfig:
     max_topics: int = 10
@@ -65,9 +69,9 @@ class Orchestrator:
             skill_code = files.code_path.read_text(encoding="utf-8")
         else:
             try:
-                skill_code = read_text(skill_name, "skill.py")
+                skill_code = read_manifest_text(skill_name)
             except FileNotFoundError:
-                skill_code = "Code missing."
+                skill_code = "Markdown manifest missing."
                     
         try:
             tests = read_text(skill_name, "tests/tests.json")
@@ -153,7 +157,7 @@ Original payload:
 
         return PatchProposal(
             skill_name=skill_name,
-            created_at_iso=__import__("datetime").datetime.utcnow().replace(microsecond=0).isoformat()+"Z",
+            created_at_iso=_utc_now_iso(),
             rationale=f"orchestrated patch; strategy={strategy}; triage={triage.categories}; topics={topics[:self.cfg.max_topics]}",
             patch_payload=payload
         )

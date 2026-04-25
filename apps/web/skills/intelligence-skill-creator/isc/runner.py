@@ -16,14 +16,37 @@ class RunResult:
     final_report: EvaluationReport
     proposals: List[PatchProposal]
 
+
+def resolve_repo_root(start: Path | None = None) -> Path:
+    """Find the SmartSpec repo root regardless of whether ISC is running from a copied workspace."""
+    probe = (start or Path(__file__)).resolve()
+    if probe.is_file():
+        probe = probe.parent
+
+    for candidate in (probe, *probe.parents):
+        if (candidate / "apps" / "web" / "package.json").exists() and (candidate / ".git").exists():
+            return candidate
+
+    for candidate in (probe, *probe.parents):
+        if (candidate / "apps" / "web" / "package.json").exists():
+            return candidate
+
+    return probe if probe.is_dir() else probe.parent
+
+
 def make_workspace(project_root: Path, skill_name: str) -> Path:
-    ts = _dt.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts = _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%d_%H%M%S")
     ws = project_root / "runs" / "workspaces" / skill_name / ts
     ws.mkdir(parents=True, exist_ok=True)
     src = resolve_skill_dir(skill_name)
     dst = ws / "skills" / skill_name
     dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(src, dst, dirs_exist_ok=True)
+    shutil.copytree(
+        src,
+        dst,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns("runs", "__pycache__", ".git", ".venv", "venv", "node_modules"),
+    )
     return ws
 
 def iterate_improve(project_root: Path, skill_name: str, mode: str="auto", rounds: int=3,

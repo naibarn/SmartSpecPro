@@ -30,10 +30,12 @@ try:
         generate_image_task,
         generate_video_task,
         generate_audio_task,
+        _generate_image_async,
     )
     CELERY_ENABLED = True
 except ImportError:
     CELERY_ENABLED = False
+    _generate_image_async = None
     logger = structlog.get_logger()
     logger.warning("celery_not_available", message="Celery tasks not available, using synchronous processing")
 
@@ -45,6 +47,31 @@ def _is_persistent_callback_pipeline_enabled() -> bool:
     """Feature flag for durable callback pipeline rollout."""
     raw = str(os.getenv("MEDIA_CALLBACK_PERSISTENT_PIPELINE_ENABLED", "true")).strip().lower()
     return raw not in {"0", "false", "no", "off"}
+
+
+def _is_inline_media_fallback_enabled() -> bool:
+    """Allow API-process fallback when Celery workers are unavailable."""
+    raw = str(os.getenv("MEDIA_ASYNC_INLINE_FALLBACK_ENABLED", "true")).strip().lower()
+    return raw not in {"0", "false", "no", "off"}
+
+
+def _has_responsive_celery_worker() -> bool:
+    """Best-effort check that at least one Celery worker can consume media tasks."""
+    if not CELERY_ENABLED:
+        return False
+
+    timeout_raw = os.getenv("MEDIA_CELERY_PING_TIMEOUT_SECONDS", "0.5")
+    try:
+        timeout_seconds = max(0.1, min(float(timeout_raw), 3.0))
+    except ValueError:
+        timeout_seconds = 0.5
+
+    try:
+        replies = generate_image_task.app.control.ping(timeout=timeout_seconds)
+        return bool(replies)
+    except Exception as exc:
+        logger.warning("celery_worker_ping_failed", error=str(exc))
+        return False
 
 
 # ==================== Request/Response Models ====================
@@ -1415,6 +1442,7 @@ async def serve_audio_extract_file(
 @router.post("/async/image", response_model=TaskResponse)
 async def generate_image_async(
     request: ImageGenerationRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1422,7 +1450,7 @@ async def generate_image_async(
     Submit image generation to Celery queue (async processing).
     Returns immediately with task_id for status polling.
     """
-    if not CELERY_ENABLED:
+    if not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Async processing not available. Use /image endpoint instead."
@@ -1438,14 +1466,36 @@ async def generate_image_async(
         request.dict(exclude={'model', 'prompt'})
     )
 
-    # Submit to Celery
-    celery_task = generate_image_task.delay(task.id, current_user.id, request.dict())
+    request_payload = request.dict()
+    should_use_celery = CELERY_ENABLED and _has_responsive_celery_worker()
 
-    # Store Celery task ID for tracking/monitoring
-    task.celery_task_id = celery_task.id
-    await db.commit()
+    if should_use_celery:
+        # Submit to Celery
+        celery_task = generate_image_task.delay(task.id, current_user.id, request_payload)
 
-    logger.info("async_image_task_submitted", task_id=task.id, celery_task_id=celery_task.id, user_id=current_user.id)
+        # Store Celery task ID for tracking/monitoring
+        task.celery_task_id = celery_task.id
+        await db.commit()
+
+        logger.info("async_image_task_submitted", task_id=task.id, celery_task_id=celery_task.id, user_id=current_user.id)
+    elif _is_inline_media_fallback_enabled() and _generate_image_async is not None:
+        await db.commit()
+        background_tasks.add_task(_generate_image_async, task.id, current_user.id, request_payload)
+        logger.warning(
+            "async_image_task_inline_fallback_submitted",
+            task_id=task.id,
+            user_id=current_user.id,
+            reason="celery_worker_unavailable",
+        )
+    else:
+        task.status = TaskStatus.FAILED
+        task.error_message = "Async media worker unavailable and inline fallback is disabled."
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Async media worker unavailable. Start a Celery worker for the media queue."
+        )
+
     return TaskResponse(**task.to_dict())
 
 

@@ -6,7 +6,21 @@ icon: Award
 section: admin
 order: 280
 pages: ["/admin/content-quality"]
-tags: [admin, content quality, metrics, AI output, scoring]
+tags:
+  - "admin"
+  - "content quality"
+  - "metrics"
+  - "AI output"
+  - "scoring"
+  - "help"
+  - "help/en"
+  - "help/core"
+  - "core"
+  - "content-quality-dashboard"
+aliases:
+  - "content-quality-dashboard"
+  - "Content Quality"
+  - "Content Quality help"
 ---
 
 # Content Quality
@@ -40,3 +54,11 @@ Log in as an administrator and navigate to **Admin > Content Quality** from the 
 - Score breakdowns per criterion (coherence, relevance, format) are visible in the item detail panel. Use these to diagnose whether a problem is structural (format) or semantic (coherence/relevance).
 - Quality scoring runs asynchronously after generation and may appear with a short delay for very recent outputs.
 - If a skill consistently produces low-quality scores, review its skill.md prompt for ambiguous instructions or missing output format guidance.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[task-queue-monitor|Task Queue Monitor]]
+<!-- knowledge-graph:related:end -->

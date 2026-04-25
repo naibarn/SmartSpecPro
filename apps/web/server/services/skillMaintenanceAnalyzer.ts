@@ -33,6 +33,10 @@ export interface SkillLegacyUpgradeSignals {
   hasTests: boolean;
   hasFixtures: boolean;
   hasNativeBundleSurface: boolean;
+  hasSubagentManifest: boolean;
+  hasSubagentDocs: boolean;
+  hasSubagentOrchestratorDoc: boolean;
+  hasSubagentSpecialistDocs: boolean;
 }
 
 export interface SkillMaintenanceAnalysisResult {
@@ -57,6 +61,8 @@ export interface SkillMaintenanceAnalysisResult {
     hasSandboxProfile: boolean;
     hasBundleManifest: boolean;
     hasNativeBundle: boolean;
+    hasSubagentManifest: boolean;
+    hasSubagentDocs: boolean;
     entrypoint: string | null;
   };
 }
@@ -99,6 +105,10 @@ function computeLegacyUpgradeSignals(snapshot: SkillContractSnapshotData): Skill
     || hasFile(snapshot, "schemas/ui.schema.json");
   const hasTests = Boolean(snapshot.testsHash);
   const hasFixtures = Boolean(snapshot.fixtureHash);
+  const hasSubagentManifest = hasFile(snapshot, "subagents.json");
+  const hasSubagentDocs = hasFile(snapshot, "references/subagents.md");
+  const hasSubagentOrchestratorDoc = hasFile(snapshot, "agents/orchestrator.md");
+  const hasSubagentSpecialistDocs = snapshot.nativeBundleFiles.some((file) => file.startsWith("agents/specialists/"));
 
   return {
     hasRunScript,
@@ -110,6 +120,10 @@ function computeLegacyUpgradeSignals(snapshot: SkillContractSnapshotData): Skill
     hasTests,
     hasFixtures,
     hasNativeBundleSurface: hasRunScript && hasVerifyScript && hasModelCompatibilityDoc && hasSkillLock,
+    hasSubagentManifest,
+    hasSubagentDocs,
+    hasSubagentOrchestratorDoc,
+    hasSubagentSpecialistDocs,
   };
 }
 
@@ -145,6 +159,10 @@ function computeUpgradePriorityScore(
   if (!signals.hasSkillLock) score += 12;
   if (!signals.hasModelCompatibilityDoc) score += 8;
   if (!signals.hasNativeBundleSurface) score += 6;
+  if (!signals.hasSubagentManifest && snapshot.nativeBundleReady) score += 10;
+  if (signals.hasSubagentManifest && (!signals.hasSubagentDocs || !signals.hasSubagentOrchestratorDoc || !signals.hasSubagentSpecialistDocs)) {
+    score += 6;
+  }
 
   if (analysis.facts.hasTests) score += 8;
   if (analysis.facts.hasFixtures) score += 6;
@@ -391,6 +409,8 @@ export function analyzeSkillForMaintenance(skill: SkillMaintenanceTarget): Skill
       hasSandboxProfile,
       hasBundleManifest,
       hasNativeBundle: snapshot.nativeBundleReady,
+      hasSubagentManifest: legacyUpgradeSignals.hasSubagentManifest,
+      hasSubagentDocs: legacyUpgradeSignals.hasSubagentDocs,
       entrypoint,
     },
   });
@@ -422,6 +442,49 @@ export function analyzeSkillForMaintenance(skill: SkillMaintenanceTarget): Skill
         upgradePriorityTier,
         legacyUpgradeSignals,
         parallelUpgradeEligible,
+      },
+    });
+  }
+  if (snapshot.nativeBundleReady && !legacyUpgradeSignals.hasSubagentManifest) {
+    pushRecommendation(recommendations, {
+      recommendationType: "subagent-topology-missing",
+      title: "Add subagent topology contract files",
+      summary: "This native bundle is ready for delegation, but it does not yet declare a subagent topology. Add subagents.json and supporting docs before enabling specialist routing.",
+      riskLevel: "high",
+      compatibilityStatus: "warning",
+      proposedAction: "add-subagent-topology",
+      proposedRuntime: snapshot.runtimeProfile,
+      isAutoApplySafe: false,
+      isGenjsCandidate: false,
+      affectedFiles: [
+        "subagents.json",
+        "agents/orchestrator.md",
+        "agents/specialists/",
+        "references/subagents.md",
+      ],
+      details: {
+        topologySignals: legacyUpgradeSignals,
+      },
+    });
+  } else if (snapshot.nativeBundleReady && legacyUpgradeSignals.hasSubagentManifest && (!legacyUpgradeSignals.hasSubagentDocs || !legacyUpgradeSignals.hasSubagentOrchestratorDoc || !legacyUpgradeSignals.hasSubagentSpecialistDocs)) {
+    pushRecommendation(recommendations, {
+      recommendationType: "subagent-topology-repair",
+      title: "Repair incomplete subagent topology docs",
+      summary: "The subagent manifest exists, but the supporting topology docs are incomplete. Restore the missing orchestrator or specialist references without widening scope.",
+      riskLevel: "medium",
+      compatibilityStatus: "compatible",
+      proposedAction: "repair-subagent-topology",
+      proposedRuntime: snapshot.runtimeProfile,
+      isAutoApplySafe: true,
+      isGenjsCandidate: false,
+      affectedFiles: [
+        "subagents.json",
+        "agents/orchestrator.md",
+        "agents/specialists/",
+        "references/subagents.md",
+      ],
+      details: {
+        topologySignals: legacyUpgradeSignals,
       },
     });
   }
@@ -487,6 +550,8 @@ export function analyzeSkillForMaintenance(skill: SkillMaintenanceTarget): Skill
       hasSandboxProfile,
       hasBundleManifest,
       hasNativeBundle: snapshot.nativeBundleReady,
+      hasSubagentManifest: legacyUpgradeSignals.hasSubagentManifest,
+      hasSubagentDocs: legacyUpgradeSignals.hasSubagentDocs,
       entrypoint,
     },
   };

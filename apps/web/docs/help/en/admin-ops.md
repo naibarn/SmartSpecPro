@@ -6,7 +6,22 @@ icon: Activity
 section: admin
 order: 85
 pages: ["/admin/ops"]
-tags: [admin, ops, monitoring, health, services, metrics, dashboard]
+tags:
+  - "admin"
+  - "ops"
+  - "monitoring"
+  - "health"
+  - "services"
+  - "metrics"
+  - "dashboard"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-ops"
+aliases:
+  - "admin-ops"
+  - "Ops Dashboard"
+  - "Ops Dashboard help"
 ---
 
 # Ops Dashboard
@@ -53,3 +68,15 @@ View Celery worker details:
 - Check the Ops Dashboard after deployments to verify system stability.
 - Monitor queue depth — if it grows steadily, workers may need scaling.
 - Use error grouping to prioritize which bugs to fix first.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

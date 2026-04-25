@@ -6,7 +6,22 @@ icon: ShieldCheck
 section: admin
 order: 200
 pages: ["/admin/guardian"]
-tags: [admin, guardian, monitoring, incidents, sensors, approvals, AI admin]
+tags:
+  - "admin"
+  - "guardian"
+  - "monitoring"
+  - "incidents"
+  - "sensors"
+  - "approvals"
+  - "AI admin"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-guardian"
+aliases:
+  - "admin-guardian"
+  - "System Guardian"
+  - "System Guardian help"
 ---
 
 # System Guardian
@@ -53,3 +68,15 @@ Navigate to **Admin** in the sidebar, then select **System Guardian**. This page
 - Use Guardian Chat to ask questions like "What triggered the last critical incident?" or "Which sensors have failed in the past 24 hours?" for faster diagnosis.
 - Critical severity incidents appear highlighted at the top of the incidents list regardless of sort order.
 - Approvals in this tab are the same actions surfaced in the dedicated Approvals page — resolving one updates the other.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

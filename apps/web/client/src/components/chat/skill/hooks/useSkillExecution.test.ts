@@ -23,6 +23,8 @@ vi.mock('@/features/local-ai/adapters/externalLocalTextBackend', () => ({
     mockExecuteExternalLocalTextCompletion(...args),
   readConfiguredExternalLocalTextBackend: (...args: any[]) =>
     mockReadConfiguredExternalLocalTextBackend(...args),
+  shouldAllowOnDeviceLocalEngine: vi.fn(() => true),
+  shouldAllowExternalLocalBackend: vi.fn(() => true),
   useExternalLocalTextBackendAvailability: () => ({
     scope: {
       tenantId: 'tenant-1',
@@ -30,6 +32,7 @@ vi.mock('@/features/local-ai/adapters/externalLocalTextBackend', () => ({
       runtimeNamespace: 'web',
     },
     backend: null,
+    localEnginePreference: 'auto',
   }),
 }));
 
@@ -572,6 +575,66 @@ describe('useSkillExecution', () => {
       isAsync: true,
       jobId: 'job-123',
     });
+    vi.useRealTimers();
+  });
+
+  it('keeps loading while polling async Python skills and returns the final result', async () => {
+    vi.useFakeTimers();
+    mockMutateAsync.mockResolvedValue({
+      success: true,
+      skillId: 'python-skill',
+      type: 'text',
+      isAsync: true,
+      taskId: 'task-123',
+      message: 'Started',
+    });
+    mockGetSkillTaskResultFetch.mockResolvedValueOnce({
+      status: 'running',
+      skillId: 'python-skill',
+      result: null,
+    }).mockResolvedValueOnce({
+      status: 'done',
+      skillId: 'python-skill',
+      result: {
+        success: true,
+        skillId: 'python-skill',
+        type: 'text',
+        message: 'Final output',
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useSkillExecution({ conversationId: 123 })
+    );
+
+    let executionResult: any;
+    const executionPromise = result.current.execute({
+      skillId: 'python-skill',
+      dynamicParams: { topic: 'ocean' },
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.isLoading).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(result.current.isLoading).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(3000);
+    await act(async () => {
+      executionResult = await executionPromise;
+    });
+
+    expect(mockGetSkillTaskResultFetch).toHaveBeenCalledWith({ taskId: 'task-123' });
+    expect(executionResult).toEqual({
+      success: true,
+      skillId: 'python-skill',
+      type: 'text',
+      message: 'Final output',
+    });
+    expect(result.current.result).toEqual(executionResult);
+    expect(result.current.isLoading).toBe(false);
     vi.useRealTimers();
   });
 

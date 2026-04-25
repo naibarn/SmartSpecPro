@@ -7,20 +7,27 @@ section: features
 order: 66
 pages: ["/settings"]
 tags:
-  [
-    local ai,
-    local llm,
-    local llm chat,
-    gemma 4,
-    gemma4,
-    on-device ai,
-    settings,
-    local runtime,
-    browser local,
-    tauri local,
-    local voice,
-    local ocr,
-  ]
+  - "local ai"
+  - "local llm"
+  - "local llm chat"
+  - "gemma 4"
+  - "gemma4"
+  - "on-device ai"
+  - "settings"
+  - "local runtime"
+  - "browser local"
+  - "tauri local"
+  - "local voice"
+  - "local ocr"
+  - "help"
+  - "help/th"
+  - "help/runtime"
+  - "runtime"
+  - "local-ai"
+aliases:
+  - "local-ai"
+  - "Local AI"
+  - "Local AI help"
 ---
 
 # Local AI
@@ -636,3 +643,15 @@ Local AI ช่วยในงานอ่านภาพและ OCR ได้
 2. เตรียม profile ที่รองรับ
 3. แนบภาพ ใบเสร็จ หรือ screenshot ใน chat
 4. ให้ SmartSpecPro ใช้ local หรือ hybrid assist ตามสิทธิ์และความพร้อมของ runtime
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+<!-- knowledge-graph:related:end -->

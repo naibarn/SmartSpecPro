@@ -6,7 +6,23 @@ icon: ShieldCheck
 section: admin
 order: 89
 pages: ["/admin/monitoring", "/admin/tenants"]
-tags: [nemoclaw, sandbox, worker pool, admin-gated, monitoring, tenants, security]
+tags:
+  - "nemoclaw"
+  - "sandbox"
+  - "worker pool"
+  - "admin-gated"
+  - "monitoring"
+  - "tenants"
+  - "security"
+  - "help"
+  - "help/en"
+  - "help/runtime"
+  - "runtime"
+  - "nemo-claw-workers"
+aliases:
+  - "nemo-claw-workers"
+  - "NemoClaw Workers"
+  - "NemoClaw Workers help"
 ---
 
 # NemoClaw Workers
@@ -75,3 +91,15 @@ Related guides:
 - [OpenClaw Workers](./openclaw-workers.md)
 - [HiClaw Workers](./hi-claw-workers.md)
 - [Desktop Host](./desktop-host.md)
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+<!-- knowledge-graph:related:end -->

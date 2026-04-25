@@ -1,0 +1,28 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/107-openai-agents-python-subagent-skill-runtime/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/107-openai-agents-python-subagent-skill-runtime/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contract-and-validation",
+    "section-02-isc-create-improve-and-migration",
+    "section-03-python-runtime-and-supervisor",
+    "section-04-web-execution-plumbing-and-lineage-capture",
+    "section-05-maintenance-compatibility-and-automatic-repair",
+    "section-06-admin-ui-and-observability",
+    "section-07-testing-rollout-and-operational-hardening"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-04-23T15:59:32.828630+00:00"
+}

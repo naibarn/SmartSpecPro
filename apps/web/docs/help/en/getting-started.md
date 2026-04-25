@@ -6,7 +6,20 @@ icon: Rocket
 section: getting-started
 order: 1
 pages: ["/", "/dashboard"]
-tags: [getting started, overview, introduction, basics]
+tags:
+  - "getting started"
+  - "overview"
+  - "introduction"
+  - "basics"
+  - "help"
+  - "help/en"
+  - "help/core"
+  - "core"
+  - "getting-started"
+aliases:
+  - "getting-started"
+  - "Getting Started"
+  - "Getting Started help"
 ---
 
 # Getting Started with SmartAI Hub
@@ -63,3 +76,11 @@ After logging in, the Dashboard shows:
 - Move to **Agencies** when your task needs a structured deliverable (report, deck, storyboard).
 - Use **credits** to track and manage your AI usage. Each model request consumes credits based on token usage.
 - Switch language (EN/TH) from Settings or the Help panel language toggle.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[document-management|Document Management]]
+- [[content-quality-dashboard|Content Quality]]
+- [[task-queue-monitor|Task Queue Monitor]]
+<!-- knowledge-graph:related:end -->

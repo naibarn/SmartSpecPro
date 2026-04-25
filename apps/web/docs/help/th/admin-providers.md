@@ -6,7 +6,20 @@ icon: Server
 section: admin
 order: 90
 pages: ["/admin/providers", "/admin/multi-provider"]
-tags: [admin, providers, models, configuration, api keys]
+tags:
+  - "admin"
+  - "providers"
+  - "models"
+  - "configuration"
+  - "api keys"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-providers"
+aliases:
+  - "admin-providers"
+  - "การจัดการ Provider"
+  - "การจัดการ Provider help"
 ---
 
 # การจัดการ Provider
@@ -76,3 +89,15 @@ Media providers จัดการการสร้างรูปภาพ ว
 - **Model sync** — คลิก **Sync Models** บน provider ใดก็ได้เพื่อดึงรายการโมเดลล่าสุดจาก API ของ provider โมเดลใหม่จะปรากฏอัตโนมัติหลัง sync
 - **Default models** — ตั้งโมเดลเริ่มต้นทั่วทั้งแพลตฟอร์มต่อหมวดหมู่ (chat, image, video, audio) ผู้ใช้ใหม่เริ่มด้วยโมเดลนี้เว้นแต่ domain admin จะ override
 - **การตั้งค่าเฉพาะโมเดล** — กำหนดค่าพารามิเตอร์ต่อโมเดล เช่น ค่าเริ่มต้น temperature, ขีดจำกัด token สูงสุด และการ override ราคาสำหรับการติดตามต้นทุน
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

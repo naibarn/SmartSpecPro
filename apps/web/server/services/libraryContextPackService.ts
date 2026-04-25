@@ -1,10 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import crypto from "node:crypto";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 
 import { getDb } from "../db";
 import {
   libraryItems,
+  libraryKnowledgeRelations,
   libraryContextPackMembers,
   libraryContextPacks,
   libraryContextPackReviewEvents,
@@ -694,6 +695,100 @@ async function resolvePackCandidateIds(
     orderedIds,
     excludedIds,
     candidateCount: orderedIds.length,
+  };
+}
+
+async function expandPackCandidatesWithGraphRelations(
+  db: DbClient,
+  input: {
+    row: LibraryContextPack;
+    orderedIds: number[];
+    excludedIds: Set<number>;
+  },
+): Promise<{
+  orderedIds: number[];
+  relationExpansionApplied: boolean;
+  includedReasonsById: Map<number, string>;
+  citationRefsById: Map<number, string[]>;
+}> {
+  const includedReasonsById = new Map<number, string>();
+  const citationRefsById = new Map<number, string[]>();
+
+  if (
+    input.row.relationExpansionPolicy !== "one_hop_gated"
+    || input.orderedIds.length === 0
+  ) {
+    return {
+      orderedIds: input.orderedIds,
+      relationExpansionApplied: false,
+      includedReasonsById,
+      citationRefsById,
+    };
+  }
+
+  const seedIds = new Set(input.orderedIds);
+  const candidateIds = [...seedIds];
+  const relations = await db
+    .select()
+    .from(libraryKnowledgeRelations)
+    .where(
+      and(
+        eq(libraryKnowledgeRelations.tenantId, input.row.tenantId),
+        eq(libraryKnowledgeRelations.resolutionStatus, "resolved"),
+        or(
+          inArray(libraryKnowledgeRelations.sourceLibraryItemId, input.orderedIds),
+          inArray(libraryKnowledgeRelations.targetLibraryItemId, input.orderedIds),
+        ),
+      ),
+    );
+
+  const addRelationCandidate = (
+    candidateId: number | null,
+    reason: string,
+    relationId: number,
+    sourceId: number,
+  ) => {
+    if (
+      !candidateId
+      || seedIds.has(candidateId)
+      || input.excludedIds.has(candidateId)
+      || candidateIds.includes(candidateId)
+    ) {
+      return;
+    }
+
+    candidateIds.push(candidateId);
+    includedReasonsById.set(candidateId, reason);
+    citationRefsById.set(candidateId, [
+      `library_relation:${relationId}`,
+      `library_item:${sourceId}`,
+    ]);
+  };
+
+  for (const relation of relations) {
+    if (seedIds.has(relation.sourceLibraryItemId)) {
+      addRelationCandidate(
+        relation.targetLibraryItemId,
+        `One-hop graph expansion: outgoing ${relation.relationKind} from library item ${relation.sourceLibraryItemId}`,
+        relation.id,
+        relation.sourceLibraryItemId,
+      );
+    }
+    if (relation.targetLibraryItemId && seedIds.has(relation.targetLibraryItemId)) {
+      addRelationCandidate(
+        relation.sourceLibraryItemId,
+        `One-hop graph expansion: backlink ${relation.relationKind} to library item ${relation.targetLibraryItemId}`,
+        relation.id,
+        relation.targetLibraryItemId,
+      );
+    }
+  }
+
+  return {
+    orderedIds: candidateIds,
+    relationExpansionApplied: candidateIds.length > input.orderedIds.length,
+    includedReasonsById,
+    citationRefsById,
   };
 }
 
@@ -1641,11 +1736,23 @@ export async function resolveLibraryContextPack(
 
   const members = await loadPackMembers(db, row.id);
 
-  const { orderedIds, excludedIds, candidateCount } = await resolvePackCandidateIds(
+  const baseCandidates = await resolvePackCandidateIds(
     row,
     members,
     actor,
   );
+  const {
+    orderedIds,
+    relationExpansionApplied,
+    includedReasonsById,
+    citationRefsById,
+  } = await expandPackCandidatesWithGraphRelations(db, {
+    row,
+    orderedIds: baseCandidates.orderedIds,
+    excludedIds: baseCandidates.excludedIds,
+  });
+  const excludedIds = baseCandidates.excludedIds;
+  const candidateCount = orderedIds.length;
 
   const effectiveMaxItems = Math.min(
     Math.max(input.maxItems ?? row.maxNoteCount ?? orderedIds.length, 1),
@@ -1713,6 +1820,8 @@ export async function resolveLibraryContextPack(
       (candidate) => candidate.libraryItemId === libraryItemId,
     );
     const logicalPath = getItemLogicalPath(item);
+    const graphIncludedReason = includedReasonsById.get(libraryItemId);
+    const graphCitationRefs = citationRefsById.get(libraryItemId) ?? [];
 
     if (row.sourceMode === "snapshot" && member?.snapshotMetadata) {
       const snapshot = member.snapshotMetadata as Record<string, unknown>;
@@ -1766,7 +1875,9 @@ export async function resolveLibraryContextPack(
       runtimeTier: effectiveRuntimeTier as LibraryContextPackRuntimeTier,
       freshness: freshnessForDate(item.updatedAt),
       includedReason:
-        memberMode === "pin"
+        graphIncludedReason
+          ? graphIncludedReason
+          : memberMode === "pin"
           ? "Pinned context-pack note"
           : row.sourceMode === "snapshot"
             ? "Frozen snapshot context-pack note"
@@ -1774,10 +1885,13 @@ export async function resolveLibraryContextPack(
             ? "Matched by saved view"
             : "Explicitly included in context pack",
       citations: input.includeCitations
-        ? [{
-            sourceRef: `library_item:${libraryItemId}`,
-            excerpt: content.slice(0, 240),
-          }]
+        ? [
+            ...graphCitationRefs.map((sourceRef) => ({ sourceRef })),
+            {
+              sourceRef: `library_item:${libraryItemId}`,
+              excerpt: content.slice(0, 240),
+            },
+          ]
         : [],
     });
   }
@@ -1814,7 +1928,7 @@ export async function resolveLibraryContextPack(
       readinessStatus: effectiveRow.readinessStatus,
     },
     status,
-    relationExpansionApplied: false,
+    relationExpansionApplied,
     totals: {
       candidateCount,
       resolvedCount: items.length,

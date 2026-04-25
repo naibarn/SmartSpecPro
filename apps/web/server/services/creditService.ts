@@ -169,7 +169,7 @@ async function getOcrTimeSeries(params: {
   period: "day" | "week" | "month";
   tenantId?: string | null;
 }): Promise<OcrTimeSeriesPoint[]> {
-  const periodSql = sql.raw(params.period);
+  const periodSql = sql.raw(`'${params.period}'`);
   const periodExpr = sql`date_trunc(${periodSql}, ${creditTransactions.createdAt})`;
   const startDate = new Date(Date.now() - params.days * 24 * 60 * 60 * 1000);
 

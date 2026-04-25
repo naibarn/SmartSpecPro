@@ -6,7 +6,21 @@ icon: GitBranch
 section: advanced
 order: 72
 pages: ["/workflows", "/workflows/editor", "/workflows/gallery"]
-tags: [workflows, automation, pipeline, editor, triggers, actions, schedule]
+tags:
+  - "workflows"
+  - "automation"
+  - "pipeline"
+  - "editor"
+  - "triggers"
+  - "actions"
+  - "schedule"
+  - "help"
+  - "help/en"
+  - "help/automation"
+aliases:
+  - "workflows"
+  - "Workflows & Automation"
+  - "Workflows & Automation help"
 ---
 
 # Workflows & Automation
@@ -102,3 +116,15 @@ Depending on the workflow, a run can succeed at one milestone and still fail at 
 - **Use templates** — The Gallery covers most common patterns; modify a template rather than building from scratch.
 - **Check run history** — If a workflow fails, the run history shows exactly which node failed and why.
 - **Set meaningful names** — Name your nodes descriptively so the workflow is easy to understand when you return to it later.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[automation|Process Automation]]
+- [[factory|SaaS Factory]]
+- [[webhooks|Webhooks & Integrations]]
+- [[work-os|Work OS Guide]]
+- [[workflow-editor|Workflow Editor]]
+<!-- knowledge-graph:related:end -->

@@ -6,7 +6,23 @@ icon: Bot
 section: admin
 order: 88
 pages: ["/admin/tenants", "/admin/monitoring", "/teams"]
-tags: [hermes, workers, external runtime, rollout, teams, mcp, channel companion]
+tags:
+  - "hermes"
+  - "workers"
+  - "external runtime"
+  - "rollout"
+  - "teams"
+  - "mcp"
+  - "channel companion"
+  - "help"
+  - "help/en"
+  - "help/runtime"
+  - "runtime"
+  - "hermes-workers"
+aliases:
+  - "hermes-workers"
+  - "Hermes Workers"
+  - "Hermes Workers help"
 ---
 
 # Hermes Workers
@@ -162,3 +178,15 @@ Related guides:
 
 - [OpenClaw Workers](./openclaw-workers.md)
 - [Desktop Host](./desktop-host.md)
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+<!-- knowledge-graph:related:end -->

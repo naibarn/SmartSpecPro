@@ -6,7 +6,21 @@ icon: ShieldAlert
 section: admin
 order: 86
 pages: ["/admin/monitoring", "/admin/dashboard"]
-tags: [admin, monitoring, incident, alerts, triage, faq]
+tags:
+  - "admin"
+  - "monitoring"
+  - "incident"
+  - "alerts"
+  - "triage"
+  - "faq"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-monitoring-incident-response"
+aliases:
+  - "admin-monitoring-incident-response"
+  - "Admin Monitoring Incident Response"
+  - "Admin Monitoring Incident Response help"
 ---
 
 # Admin Monitoring Incident Response
@@ -187,3 +201,15 @@ Because the system is designed to warn on early drift, not just final outages.
 ### Should I close the incident if a manual retry worked once
 
 No. Keep it open until the normal path is stable and alerts stop repeating.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

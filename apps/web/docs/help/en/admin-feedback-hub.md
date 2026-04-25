@@ -6,7 +6,23 @@ icon: MessageSquare
 section: admin
 order: 61
 pages: ["/admin/feedback-hub"]
-tags: [feedback, ticket, triage, respond, resolve, bug, feature-request, admin]
+tags:
+  - "feedback"
+  - "ticket"
+  - "triage"
+  - "respond"
+  - "resolve"
+  - "bug"
+  - "feature-request"
+  - "admin"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-feedback-hub"
+aliases:
+  - "admin-feedback-hub"
+  - "Feedback Hub (Admin)"
+  - "Feedback Hub (Admin) help"
 ---
 
 # Feedback Hub (Admin)
@@ -101,3 +117,15 @@ Users can attach up to 5 files per ticket. In the detail panel:
 - **Delete** — Click the trash icon to permanently remove an attachment. This cannot be undone.
 
 Supported file types: `.jpg`, `.jpeg`, `.png`, `.webp`, `.pdf`, `.md`.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

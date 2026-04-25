@@ -6,7 +6,24 @@ icon: BarChart3
 section: features
 order: 69
 pages: ["/usage", "/tasks"]
-tags: [usage, analytics, costs, statistics, tasks, queue, monitor, budget]
+tags:
+  - "usage"
+  - "analytics"
+  - "costs"
+  - "statistics"
+  - "tasks"
+  - "queue"
+  - "monitor"
+  - "budget"
+  - "help"
+  - "help/th"
+  - "help/account"
+  - "account"
+  - "usage-analytics"
+aliases:
+  - "usage-analytics"
+  - "วิเคราะห์การใช้งานและตรวจสอบงาน"
+  - "วิเคราะห์การใช้งานและตรวจสอบงาน help"
 ---
 
 # วิเคราะห์การใช้งานและตรวจสอบงาน
@@ -88,3 +105,15 @@ Task Queue Monitor แสดงงานเบื้องหลังที่�
 - ใช้ **Prompt Enhancement** ก่อนสร้างรูปภาพเพื่อให้ได้ผลลัพธ์ที่ดีขึ้นในครั้งแรกและหลีกเลี่ยงการสร้างใหม่
 - ตรวจสอบการแบ่ง **ตามฟีเจอร์** เป็นประจำ — agency run มักใช้เครดิตมากกว่าการ chat โดยตรง
 - ตั้งการแจ้งเตือนงบประมาณก่อนที่คุณจะต้องการ ไม่ใช่หลังจากใช้จ่ายเกินไปแล้ว
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[settings|การตั้งค่าและความชอบ]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[api-keys|คีย์ API]]
+- [[credits|ระบบเครดิต]]
+- [[notification-settings|การตั้งค่าการแจ้งเตือน]]
+- [[profile|โปรไฟล์และบัญชี]]
+<!-- knowledge-graph:related:end -->

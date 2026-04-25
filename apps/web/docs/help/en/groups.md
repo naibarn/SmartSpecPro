@@ -6,7 +6,21 @@ icon: Users2
 section: features
 order: 68
 pages: ["/groups", "/groups/discover"]
-tags: [groups, collaboration, team, join, discover, share, community]
+tags:
+  - "groups"
+  - "collaboration"
+  - "team"
+  - "join"
+  - "discover"
+  - "share"
+  - "community"
+  - "help"
+  - "help/en"
+  - "help/teams"
+  - "teams"
+aliases:
+  - "groups"
+  - "Groups help"
 ---
 
 # Groups
@@ -70,3 +84,15 @@ The **Discover** page at **Groups → Discover** shows public groups sorted by a
 - **Start with private** — if your group is for an internal team, set it to private so membership stays controlled.
 - **Assign admins early** — give at least one other person admin rights so the group can keep running if you are unavailable.
 - **Use shared resources** — upload reference documents or links to the group's Resources tab so all members have easy access.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[teams|AI Teams]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[agencies|Agencies - Multi-Agent Teams]]
+- [[agency-builder|Agency Builder]]
+- [[agency-chat|Agency Chat — Running & Testing Agencies]]
+- [[team-monitoring|Team Monitoring & Scoped Memory]]
+<!-- knowledge-graph:related:end -->

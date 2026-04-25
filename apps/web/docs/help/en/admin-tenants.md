@@ -6,7 +6,22 @@ icon: Building2
 section: admin
 order: 86
 pages: ["/admin/tenants"]
-tags: [admin, tenants, white-label, branding, domain, feature-flags, multi-tenant]
+tags:
+  - "admin"
+  - "tenants"
+  - "white-label"
+  - "branding"
+  - "domain"
+  - "feature-flags"
+  - "multi-tenant"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-tenants"
+aliases:
+  - "admin-tenants"
+  - "Tenant Management"
+  - "Tenant Management help"
 ---
 
 # Tenant Management
@@ -61,3 +76,15 @@ View the user count per tenant. Click **Manage Users** to navigate to the tenant
 ## Deleting a tenant
 
 Click **Delete** to permanently remove a tenant and all its data. This requires confirmation and cannot be undone.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

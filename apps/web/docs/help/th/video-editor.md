@@ -6,7 +6,21 @@ icon: Film
 section: content-creation
 order: 80
 pages: ["/video-editor"]
-tags: [video, editor, timeline, clips, export]
+tags:
+  - "video"
+  - "editor"
+  - "timeline"
+  - "clips"
+  - "export"
+  - "help"
+  - "help/th"
+  - "help/media"
+  - "media"
+  - "video-editor"
+aliases:
+  - "video-editor"
+  - "Video Editor"
+  - "Video Editor help"
 ---
 
 # Video Editor
@@ -58,3 +72,13 @@ Video Editor ช่วยให้คุณประกอบ ตัด แล�
 - ใช้แผง AI Draft ภายใน editor สำหรับคำแนะนำเกี่ยวกับ transition และลำดับ
 - เก็บ clip แต่ละ clip ให้สั้น (5-15 วินาที) เพื่อให้จัดการ timeline ได้ง่ายขึ้น
 - ดูตัวอย่างงานบ่อย ๆ ด้วย player ในตัวก่อน export
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[media-generation|สร้างรูปภาพ วิดีโอ และเสียง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[gallery|แกลเลอรี่]]
+- [[presentations|สร้าง Presentation จาก Chat]]
+<!-- knowledge-graph:related:end -->

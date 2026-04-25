@@ -6,7 +6,22 @@ icon: MonitorPlay
 section: features
 order: 50
 pages: ["/chat", "/browser-session"]
-tags: [browser, session, web, browsing, research, scraping]
+tags:
+  - "browser"
+  - "session"
+  - "web"
+  - "browsing"
+  - "research"
+  - "scraping"
+  - "help"
+  - "help/th"
+  - "help/runtime"
+  - "runtime"
+  - "browser-session"
+aliases:
+  - "browser-session"
+  - "Browser Session"
+  - "Browser Session help"
 ---
 
 # Browser Session
@@ -84,3 +99,15 @@ AI จะหยุดและรอ input ของคุณเมื่อพ�
 - OTP, MFA หรือการยืนยันอุปกรณ์
 - การชำระเงิน การจอง การซื้อ หรือการดำเนินการที่เปลี่ยนกลับไม่ได้
 - สิ่งที่ละเอียดอ่อนใดๆ ที่คุณต้องการตรวจสอบก่อนส่ง
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+- [[docker-sandbox|Docker Sandbox]]
+<!-- knowledge-graph:related:end -->

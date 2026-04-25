@@ -6,7 +6,22 @@ icon: Award
 section: admin
 order: 63
 pages: ["/admin/content-quality"]
-tags: [คุณภาพ, เนื้อหา, ตัวชี้วัด, คะแนน, ปรับปรุง, วิเคราะห์]
+tags:
+  - "คุณภาพ"
+  - "เนื้อหา"
+  - "ตัวชี้วัด"
+  - "คะแนน"
+  - "ปรับปรุง"
+  - "วิเคราะห์"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin"
+  - "admin-content-quality"
+aliases:
+  - "admin-content-quality"
+  - "แดชบอร์ดคุณภาพเนื้อหา"
+  - "แดชบอร์ดคุณภาพเนื้อหา help"
 ---
 
 # แดชบอร์ดคุณภาพเนื้อหา
@@ -85,3 +100,15 @@ tags: [คุณภาพ, เนื้อหา, ตัวชี้วัด, �
 - **เปรียบเทียบ model** — ใช้ตัวกรอง model เพื่อหา model ที่เหมาะที่สุดกับแต่ละ skill
 - **ติดตาม skill ใหม่** — skill ที่เพิ่งสร้างควรได้รับการติดตามคะแนนอย่างใกล้ชิดในช่วง 2 สัปดาห์แรก
 - **เชื่อมโยงกับ feedback ผู้ใช้** — คะแนนสูงจากระบบแต่ feedback ผู้ใช้ไม่ดี อาจหมายความว่าตัวชี้วัดยังไม่ครอบคลุมมิติที่สำคัญ
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

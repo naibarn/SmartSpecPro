@@ -22,6 +22,7 @@ export interface TeamRuntimeTurnInput {
   skillSlug: string;
   executionPolicy: SkillExecutionPolicyResult;
   contextPackRequest: BuildContextPackRequest;
+  planContext?: Record<string, unknown> | null;
   legacyExecute: () => Promise<SkillLlmResult>;
   requestLabel?: string | null;
   featureFlags?: Partial<OpenAiAgentsRuntimeFlagSnapshot> | null;
@@ -187,6 +188,7 @@ export async function executeTeamRuntimeTurn(
     modelConfig,
     skillSlugs: [input.skillSlug],
     buildContextPackRequest: input.contextPackRequest,
+    planContext: input.planContext ?? null,
     approvalGranted: input.approvalGranted ?? true,
     requestLabel: input.requestLabel ?? `team:${input.skillSlug}`,
     roomId: input.roomId ?? null,

@@ -6,7 +6,23 @@ icon: Sparkles
 section: admin
 order: 92
 pages: ["/admin/media-models"]
-tags: [admin, media, models, image, video, audio, generation, catalog]
+tags:
+  - "admin"
+  - "media"
+  - "models"
+  - "image"
+  - "video"
+  - "audio"
+  - "generation"
+  - "catalog"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-media-models"
+aliases:
+  - "admin-media-models"
+  - "Media AI Models"
+  - "Media AI Models help"
 ---
 
 # Media AI Models
@@ -52,3 +68,15 @@ Click a model row to configure:
 - Disable models that have high error rates until the provider stabilizes.
 - Set higher credit costs for expensive models to manage usage.
 - Keep at least one image and one video model enabled at all times.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

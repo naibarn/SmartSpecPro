@@ -6,7 +6,22 @@ icon: Activity
 section: admin
 order: 85
 pages: ["/admin/ops"]
-tags: [admin, ops, monitoring, health, services, metrics, dashboard]
+tags:
+  - "admin"
+  - "ops"
+  - "monitoring"
+  - "health"
+  - "services"
+  - "metrics"
+  - "dashboard"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-ops"
+aliases:
+  - "admin-ops"
+  - "Ops Dashboard"
+  - "Ops Dashboard help"
 ---
 
 # Ops Dashboard
@@ -53,3 +68,15 @@ Ops Dashboard มอบการตรวจสอบระบบแบบเร
 - ตรวจสอบ Ops Dashboard หลัง deploy เพื่อยืนยันความเสถียรของระบบ
 - ติดตาม queue depth — หากเพิ่มขึ้นเรื่อยๆ อาจต้อง scale worker
 - ใช้การจัดกลุ่ม error เพื่อจัดลำดับความสำคัญว่าจะแก้บัก
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

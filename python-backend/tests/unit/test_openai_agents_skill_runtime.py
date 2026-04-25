@@ -16,7 +16,10 @@ from app.services.openai_agents_skill_runtime import (
     NativeSkillShellExecutor,
     build_native_skill_agent,
     build_native_skill_runtime_descriptor,
+    discover_native_skill_subagents,
+    load_native_skill_topology,
     resolve_native_skill_bundle_path,
+    resolve_native_skill_route,
     run_native_skill_runtime,
 )
 from app.services.openai_agents_skill_supervisor import (
@@ -24,6 +27,10 @@ from app.services.openai_agents_skill_supervisor import (
     SkillPhaseResult,
     advance_phase,
     run_supervised_skill_phases,
+)
+from app.services.openai_agents_subagent_contracts import (
+    canonical_json_hash,
+    validate_native_subagent_topology,
 )
 
 
@@ -60,8 +67,10 @@ def test_persist_skill_runtime_state_writes_expected_files(tmp_path: Path) -> No
     assert files["last_session_state"].exists()
     assert files["phase_log"].exists()
     assert files["artifact_index"].exists()
+    assert files["lineage"].exists()
     assert "secret-123" not in files["last_session_state"].read_text(encoding="utf-8")
     assert "redact-me" not in files["artifact_index"].read_text(encoding="utf-8")
+    assert json.loads(files["lineage"].read_text(encoding="utf-8"))["skillSlug"] == "demo-skill"
     assert load_persisted_skill_runtime_state(workspace_dir)["current_phase"] == "inspect"
 
 
@@ -152,12 +161,199 @@ def test_runtime_descriptor_mentions_sdk_and_mounts(tmp_path: Path) -> None:
     assert descriptor["mounts"]["out"].endswith("/out")
 
 
+def test_native_topology_loader_discovers_subagents(tmp_path: Path) -> None:
+    bundle_dir = tmp_path / "bundle"
+    bundle_dir.mkdir()
+    manifest = {
+        "version": 1,
+        "orchestrator": {
+            "name": "demo-orchestrator",
+            "role": "orchestrator",
+            "mode": "orchestrator",
+            "entrypoint": "agents/orchestrator.md",
+            "checkpointPolicy": {"mode": "parent-run"},
+            "verificationCommand": "scripts/verify.sh",
+            "fallbackBehavior": "escalate-to-parent",
+        },
+        "subagents": [
+            {
+                "name": "researcher",
+                "role": "research",
+                "mode": "tool",
+                "entrypoint": "agents/specialists/researcher.md",
+                "toolBoundary": ["search"],
+                "checkpointPolicy": {"mode": "per-run"},
+                "handoffPolicy": {"mode": "never"},
+                "verificationCommand": "scripts/verify.sh",
+                "fallbackBehavior": "return-error",
+            },
+        ],
+        "routing": [{"from": "orchestrator", "to": "researcher"}],
+        "checkpointPolicy": {"mode": "parent-run"},
+        "verificationPolicy": {"command": "scripts/verify.sh"},
+        "fallbackPolicy": {"behavior": "escalate-to-parent"},
+        "securityPolicy": {
+            "toolAllowlist": ["scripts/run.sh", "scripts/verify.sh", "echo", "cat", "ls", "pwd", "find"],
+            "toolDenylist": ["rm", "curl", "wget", "ssh", "scp", "sudo", "bash", "sh", "python", "python3", "node"],
+            "networkEgress": "none",
+            "filesystemScopes": ["bundle", "workspace", "state", "out", "logs", ".agents"],
+            "secretPolicy": {"redact": True, "persist": "never"},
+            "fanoutLimit": 1,
+            "maxConcurrency": 1,
+            "allowedInvocationModes": ["tool"],
+        },
+    }
+    (bundle_dir / "subagents.json").write_text(
+        json.dumps(manifest),
+        encoding="utf-8",
+    )
+    (bundle_dir / "skill.lock.json").write_text(
+        json.dumps(
+            {
+                "target_platform": "agents_python",
+                "subagent_manifest": "subagents.json",
+                "subagent_manifest_sha256": canonical_json_hash(manifest),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    topology = load_native_skill_topology(bundle_dir)
+
+    assert topology is not None
+    assert topology.orchestrator.name == "demo-orchestrator"
+    assert discover_native_skill_subagents(bundle_dir) == ["researcher"]
+    route = resolve_native_skill_route(
+        NativeSkillRuntimeRequest(
+            skill_slug="demo-skill",
+            bundle_dir=bundle_dir,
+            workspace_dir=tmp_path / "workspace",
+            requested_subagent="researcher",
+        )
+    )
+    assert route["selectedRoute"]["name"] == "researcher"
+    assert resolve_native_skill_route(
+        NativeSkillRuntimeRequest(
+            skill_slug="demo-skill",
+            bundle_dir=bundle_dir,
+            workspace_dir=tmp_path / "workspace",
+        )
+    )["selectedRoute"]["name"] == "demo-orchestrator"
+
+
 def test_runtime_rejects_path_traversal(tmp_path: Path) -> None:
     bundle_dir = tmp_path / "bundle"
     bundle_dir.mkdir()
 
     with pytest.raises(ValueError):
         resolve_native_skill_bundle_path(bundle_dir, "../escape")
+
+
+def test_native_shell_executor_blocks_interpreters(tmp_path: Path) -> None:
+    executor = NativeSkillShellExecutor(tmp_path / "bundle", tmp_path / "workspace")
+    request = SimpleNamespace(
+        data=SimpleNamespace(
+            action=SimpleNamespace(
+                commands=["python3 -c 'print(1)'"],
+                max_output_length=256,
+                timeout_ms=1000,
+            )
+        )
+    )
+
+    result = executor(request)
+
+    assert result.output[0].outcome.exit_code == 126
+    assert "not allowed" in result.output[0].stderr
+
+
+def test_native_shell_executor_enforces_security_policy_allowlist(tmp_path: Path) -> None:
+    topology = validate_native_subagent_topology(
+        {
+            "version": 1,
+            "orchestrator": {
+                "name": "demo-orchestrator",
+                "role": "orchestrator",
+                "mode": "orchestrator",
+                "entrypoint": "agents/orchestrator.md",
+                "checkpointPolicy": {"mode": "parent-run"},
+                "verificationCommand": "scripts/verify.sh",
+                "fallbackBehavior": "escalate-to-parent",
+            },
+            "subagents": [
+                {
+                    "name": "researcher",
+                    "role": "research",
+                    "mode": "tool",
+                    "entrypoint": "agents/specialists/researcher.md",
+                    "toolBoundary": ["scripts/run.sh"],
+                    "checkpointPolicy": {"mode": "per-run"},
+                    "handoffPolicy": {"mode": "never"},
+                    "verificationCommand": "scripts/verify.sh",
+                    "fallbackBehavior": "return-error",
+                },
+            ],
+            "routing": [{"from": "orchestrator", "to": "researcher"}],
+            "checkpointPolicy": {"mode": "parent-run"},
+            "verificationPolicy": {"command": "scripts/verify.sh"},
+            "fallbackPolicy": {"behavior": "escalate-to-parent"},
+            "securityPolicy": {
+                "toolAllowlist": ["scripts/run.sh"],
+                "toolDenylist": ["cat"],
+                "networkEgress": "none",
+                "filesystemScopes": ["bundle", "workspace"],
+                "secretPolicy": {"redact": True, "persist": "never"},
+                "fanoutLimit": 1,
+                "maxConcurrency": 1,
+                "allowedInvocationModes": ["tool"],
+            },
+        },
+        source_path=tmp_path / "subagents.json",
+    )
+    executor = NativeSkillShellExecutor(
+        tmp_path / "bundle",
+        tmp_path / "workspace",
+        security_policy=topology.securityPolicy,
+    )
+    request = SimpleNamespace(
+        data=SimpleNamespace(
+            action=SimpleNamespace(
+                commands=["cat SKILL.md"],
+                max_output_length=256,
+                timeout_ms=1000,
+            )
+        )
+    )
+
+    result = executor(request)
+
+    assert result.output[0].outcome.exit_code == 126
+    assert "not allowed" in result.output[0].stderr
+
+
+def test_native_shell_executor_blocks_unsafe_script_body(tmp_path: Path) -> None:
+    bundle_dir = tmp_path / "bundle"
+    workspace_dir = tmp_path / "workspace"
+    (bundle_dir / "scripts").mkdir(parents=True)
+    workspace_dir.mkdir()
+    script = bundle_dir / "scripts" / "run.sh"
+    script.write_text("#!/usr/bin/env bash\nset -euo pipefail\ncat /etc/passwd\n", encoding="utf-8")
+    script.chmod(0o755)
+    executor = NativeSkillShellExecutor(bundle_dir, workspace_dir)
+    request = SimpleNamespace(
+        data=SimpleNamespace(
+            action=SimpleNamespace(
+                commands=["scripts/run.sh"],
+                max_output_length=256,
+                timeout_ms=1000,
+            )
+        )
+    )
+
+    result = executor(request)
+
+    assert result.output[0].outcome.exit_code == 126
+    assert "outside the native skill sandbox" in result.output[0].stderr
 
 
 def test_run_native_skill_runtime_uses_supervisor(tmp_path: Path) -> None:

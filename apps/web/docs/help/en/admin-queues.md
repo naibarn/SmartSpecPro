@@ -6,7 +6,23 @@ icon: BarChart3
 section: admin
 order: 110
 pages: ["/admin/queues", "/admin/queues/llm", "/admin/queues/media"]
-tags: [admin, queues, jobs, monitoring, llm queue, media queue, retry, failed]
+tags:
+  - "admin"
+  - "queues"
+  - "jobs"
+  - "monitoring"
+  - "llm queue"
+  - "media queue"
+  - "retry"
+  - "failed"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-queues"
+aliases:
+  - "admin-queues"
+  - "Queue Monitoring"
+  - "Queue Monitoring help"
 ---
 
 # Queue Monitoring
@@ -71,3 +87,15 @@ The queue dashboard calculates:
 - **Worker count** — active Celery workers and their current load.
 
 Set alert thresholds in **Admin → System Settings → Monitoring** to receive notifications when any metric crosses a configured limit.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

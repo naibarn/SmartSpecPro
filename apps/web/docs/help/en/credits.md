@@ -6,7 +6,20 @@ icon: Coins
 section: getting-started
 order: 5
 pages: ["/credits", "/dashboard"]
-tags: [credits, pricing, usage, cost, balance]
+tags:
+  - "credits"
+  - "pricing"
+  - "usage"
+  - "cost"
+  - "balance"
+  - "help"
+  - "help/en"
+  - "help/account"
+  - "account"
+aliases:
+  - "credits"
+  - "Credits System"
+  - "Credits System help"
 ---
 
 # Credits System
@@ -80,3 +93,15 @@ Skill executions (including media generation) are rate-limited to **15 execution
 - Use skills to structure prompts efficiently rather than re-typing long instructions manually.
 - Check the model picker tooltip to compare costs before switching models.
 - The unified execution system deduplicates credit tracking with **idempotency keys** — even if a request is retried, you will not be charged twice for the same execution.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[settings|Settings & Preferences]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[api-keys|API Keys]]
+- [[notification-settings|Notification Preferences]]
+- [[profile|Profile & Account]]
+- [[usage-analytics|Usage Analytics & Task Monitor]]
+<!-- knowledge-graph:related:end -->

@@ -6,7 +6,25 @@ icon: UsersRound
 section: features
 order: 25
 pages: ["/teams", "/teams/:teamId", "/chat"]
-tags: [ทีม, ผู้ช่วย, ร่วมมือ, เอเจนท์, orchestrator, ห้อง, สนทนา, workflow board, approval, team room]
+tags:
+  - "ทีม"
+  - "ผู้ช่วย"
+  - "ร่วมมือ"
+  - "เอเจนท์"
+  - "orchestrator"
+  - "ห้อง"
+  - "สนทนา"
+  - "workflow board"
+  - "approval"
+  - "team room"
+  - "help"
+  - "help/th"
+  - "help/teams"
+  - "teams"
+aliases:
+  - "teams"
+  - "ทีม AI"
+  - "ทีม AI help"
 ---
 
 # ทีม AI
@@ -193,3 +211,15 @@ tags: [ทีม, ผู้ช่วย, ร่วมมือ, เอเจน�
 ## เก็บถาวรทีม
 
 กดปุ่ม **Archive** ในแถบด้านบนของทีม ทีมที่เก็บถาวรจะถูกซ่อนจากรายการปกติ แต่ admin สามารถกู้คืนได้
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[agencies|Agencies - ทีม AI หลายตัว]]
+- [[agency-builder|ตัวสร้าง Agency]]
+- [[agency-chat|Agency Chat — รันและทดสอบ Agency]]
+- [[groups|กลุ่ม]]
+- [[team-monitoring|การติดตามทีมและ Scoped Memory]]
+<!-- knowledge-graph:related:end -->

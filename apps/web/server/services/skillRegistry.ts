@@ -33,6 +33,8 @@ import {
   resolveSkillManifestPath,
   resolveSkillLockPath,
   isNativeSkillBundle,
+  listNativeBundleContractFiles,
+  listNativeSubagentNames,
 } from "./skillFiles";
 import { clearSchemaCache } from "./skillSchemaLoader";
 import { clearSkillCatalogCache } from "./skillCatalog";
@@ -178,17 +180,10 @@ function dbSkillToDefinition(dbSkill: {
     nativeBundleLockPath: dbSkill.folderPath ? resolveSkillLockPath(dbSkill.folderPath) ?? undefined : undefined,
     nativeBundlePath: dbSkill.folderPath || undefined,
     nativeBundleFiles: dbSkill.folderPath && isNativeSkillBundle(dbSkill.folderPath)
-      ? [
-          "SKILL.md",
-          "skill.md",
-          "scripts/run.sh",
-          "scripts/verify.sh",
-          "references/input_contract.md",
-          "references/output_contract.md",
-          "references/maintenance.md",
-          "MODEL_COMPATIBILITY.md",
-          "skill.lock.json",
-        ].filter((relativePath) => fs.existsSync(path.join(dbSkill.folderPath as string, relativePath)))
+      ? listNativeBundleContractFiles(dbSkill.folderPath)
+      : undefined,
+    nativeSubagentNames: dbSkill.folderPath && isNativeSkillBundle(dbSkill.folderPath)
+      ? listNativeSubagentNames(dbSkill.folderPath)
       : undefined,
     executionMode: (dbSkill.executionMode as any) || "llm-only",
     chainTo: dbSkill.chainTo || undefined,
@@ -198,7 +193,7 @@ function dbSkillToDefinition(dbSkill: {
     maxRuntimeSeconds: dbSkill.maxRuntimeSeconds ?? undefined,
     maxInputMb: dbSkill.maxInputMb ?? undefined,
     executionPolicy: dbSkill.executionPolicyJson ?? undefined,
-  };
+  } as SkillDefinition;
 }
 
 /** Known capability keys for model_requirements frontmatter (Feature 041) */
@@ -579,6 +574,7 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
       contentHash: fileHash,
       version: metadata.version || undefined,
       executionMode: metadata.executionMode ?? metadata.execution_mode ?? undefined,
+      configJson: metadata.config,
       // Include category to allow category changes via skill.md
       ...(metadata.category ? { category: mapCategoryToEnum(metadata.category) as any } : {}),
       ...(metadata.defaultModel ?? metadata.default_model ? { defaultModel: metadata.defaultModel ?? metadata.default_model } : {}),
@@ -586,6 +582,11 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
       ...(routingConfig.preferredProviderId !== undefined ? { preferredProviderId: routingConfig.preferredProviderId } : {}),
       ...(routingConfig.strictProviderPin !== undefined ? { strictProviderPin: routingConfig.strictProviderPin } : {}),
       ...(getMetadataChainTarget(metadata) !== undefined ? { chainTo: getMetadataChainTarget(metadata) } : {}),
+      ...(metadata.sandbox_profile !== undefined ? { sandboxProfileSlug: metadata.sandbox_profile } : {}),
+      ...(metadata.requires_network !== undefined ? { requiresNetwork: metadata.requires_network } : {}),
+      ...(metadata.requires_browser !== undefined ? { requiresBrowser: metadata.requires_browser } : {}),
+      ...(metadata.max_runtime_seconds !== undefined ? { maxRuntimeSeconds: metadata.max_runtime_seconds } : {}),
+      ...(metadata.max_input_mb !== undefined ? { maxInputMb: metadata.max_input_mb } : {}),
       ...(metadata.triggerPatterns ?? metadata.trigger_patterns ? { triggerPatterns: metadata.triggerPatterns ?? metadata.trigger_patterns } : {}),
       ...(metadata.priority !== undefined ? { priority: metadata.priority } : {}),
       ...(metadata.isAutoTrigger ?? metadata.auto_trigger !== undefined ? { isAutoTrigger: metadata.isAutoTrigger ?? metadata.auto_trigger } : {}),
@@ -623,6 +624,13 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
         llmModelId: routingConfig.llmModelId ?? null,
         preferredProviderId: routingConfig.preferredProviderId ?? null,
         strictProviderPin: routingConfig.strictProviderPin ?? false,
+        chainTo: getMetadataChainTarget(metadata) ?? null,
+        sandboxProfileSlug: metadata.sandbox_profile ?? null,
+        requiresNetwork: metadata.requires_network ?? null,
+        requiresBrowser: metadata.requires_browser ?? null,
+        maxRuntimeSeconds: metadata.max_runtime_seconds ?? null,
+        maxInputMb: metadata.max_input_mb ?? null,
+        executionPolicyJson,
         importSource: "folder" as const,
       };
       await db.insert(skillsTable).values(skillData);

@@ -566,7 +566,7 @@ export function SkillStudioDialog({
                   </SelectTrigger>
                   <SelectContent>
                     {isModelsLoading ? (
-                      <SelectItem value="__loading__" disabled>
+                      <SelectItem value="__loading__" disabled aria-disabled="true">
                         Loading models...
                       </SelectItem>
                     ) : (
@@ -614,7 +614,7 @@ export function SkillStudioDialog({
           </div>
 
           {taskState && (
-            <div className="rounded-xl border bg-slate-50/80 p-4 space-y-3">
+            <div className="rounded-xl border bg-slate-50/80 p-4 space-y-3" role="status" aria-live="polite">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {taskState.status === "running" ? (

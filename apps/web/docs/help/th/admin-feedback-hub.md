@@ -6,7 +6,23 @@ icon: MessageSquare
 section: admin
 order: 61
 pages: ["/admin/feedback-hub"]
-tags: [feedback, ข้อเสนอ, ticket, คัดกรอง, ตอบกลับ, แก้ไข, bug, admin]
+tags:
+  - "feedback"
+  - "ข้อเสนอ"
+  - "ticket"
+  - "คัดกรอง"
+  - "ตอบกลับ"
+  - "แก้ไข"
+  - "bug"
+  - "admin"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-feedback-hub"
+aliases:
+  - "admin-feedback-hub"
+  - "ศูนย์รวมข้อเสนอ (Feedback Hub)"
+  - "ศูนย์รวมข้อเสนอ (Feedback Hub) help"
 ---
 
 # ศูนย์รวมข้อเสนอ (Feedback Hub)
@@ -96,3 +112,15 @@ Feedback Hub คือหน้าจัดการ feedback สำหรับ
 - **ตรวจสอบ AI Analysis** ก่อนเสมอ — ช่วยประหยัดเวลาในการจัดประเภท
 - **ใช้ internal note** เพื่อบันทึกแนวทางแก้ไขสำหรับทีม โดยไม่ให้ผู้ใช้เห็น
 - **ตั้งสถานะ duplicate** แล้วลิงก์ไปยัง ticket ต้นฉบับ เพื่อติดตามได้ง่าย
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

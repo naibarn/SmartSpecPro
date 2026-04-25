@@ -6,7 +6,26 @@ icon: MessageSquare
 section: features
 order: 10
 pages: ["/chat"]
-tags: [chat, conversation, model, message, teams, persona, nickname, approval, workflow board, team room, artifact]
+tags:
+  - "chat"
+  - "conversation"
+  - "model"
+  - "message"
+  - "teams"
+  - "persona"
+  - "nickname"
+  - "approval"
+  - "workflow board"
+  - "team room"
+  - "artifact"
+  - "help"
+  - "help/en"
+  - "help/knowledge"
+  - "knowledge"
+aliases:
+  - "chat"
+  - "Chat Guide"
+  - "Chat Guide help"
 ---
 
 # Chat Guide
@@ -104,3 +123,13 @@ Chat is the fastest place to ask for answers, drafts, brainstorming, prompt buil
 | Compare two approaches | Use AI Teams |
 | Research report or slide deck | Click **Run Agency** in the header or type `/run-agency` — runs inline without leaving Chat |
 | Check a persona's work status or draft | Ask in Chat, then use the action card to open Team Room / Workflow Board |
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[document-management|Document Management]]
+- [[getting-started|Getting Started]]
+- [[mcp-servers|MCP Server Integration]]
+- [[memory|Memory System]]
+- [[personas|AI Personas]]
+<!-- knowledge-graph:related:end -->

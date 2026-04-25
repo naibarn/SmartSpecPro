@@ -25,6 +25,10 @@ vi.mock("../skillRegistry", () => ({
   refreshSkillCache: refreshSkillCacheMock,
 }));
 
+vi.mock("../enabledLlmModels", () => ({
+  resolveEnabledLlmModelId: vi.fn().mockResolvedValue("test-default-llm"),
+}));
+
 vi.mock("../skillFiles", () => ({
   hasRelativeSkillManifest: vi.fn().mockReturnValue(false),
   resolveSkillDirCandidates: vi.fn().mockReturnValue([]),
@@ -433,6 +437,122 @@ describe("skillUpgradeApplier", () => {
       message: "Proposal ready",
       metadata: {
         savedProposals: ["runs/proposals/deck-builder/round-2.diff"],
+      },
+    });
+
+    expect(compareSkillContractSnapshotsMock).not.toHaveBeenCalled();
+  });
+
+  it("treats proposal-first runs with no saved diffs as completed no-change successes", async () => {
+    const recommendation = {
+      id: 104,
+      skillId: 10,
+      scheduleId: null,
+      recommendationType: "migrate-to-genjs",
+      title: "Upgrade to GenJS bundle",
+      summary: "Migrate this skill to GenJS.",
+      rationale: "Better modularity",
+      currentRuntime: "javascript-classic",
+      proposedRuntime: "genjs",
+      proposedAction: "migrate-to-genjs",
+      recommendationJson: {
+        affectedFiles: ["skill.manifest.json", "src/index.mjs"],
+        details: { candidateScore: 11 },
+      },
+      contractDeltaJson: {
+        inputRequiredFields: ["topic"],
+        outputRequiredFields: ["files"],
+      },
+      status: "pending_review",
+      isAutoApplySafe: false,
+    };
+
+    const skill = {
+      id: 10,
+      tenantId: "tenant-1",
+      slug: "no-diff-skill",
+      name: "No Diff Skill",
+      description: "Runtime migration",
+      folderPath: "/skills/no-diff-skill",
+      executionMode: "sandbox-command",
+      configJson: {},
+      sandboxProfileSlug: "browser-default",
+      requiresNetwork: true,
+      requiresBrowser: false,
+      visibility: "private",
+    };
+
+    const run = { id: 504, skillId: 10, recommendationId: 104, status: "running" };
+    const approvedRecommendation = { ...recommendation, status: "approved" };
+    const queuedRun = { ...run, status: "running" };
+    const completedRecommendation = { ...recommendation, status: "approved" };
+    const completedRun = { ...run, status: "completed" };
+
+    const db = createMockDb({
+      selectResults: [
+        [recommendation],
+        [skill],
+        [],
+      ],
+      insertReturningResults: [
+        [run],
+      ],
+      updateReturningResults: [
+        [approvedRecommendation],
+        [queuedRun],
+        [completedRecommendation],
+        [completedRun],
+      ],
+    });
+
+    buildSkillContractSnapshotMock.mockReturnValue({
+      executionMode: "sandbox-command",
+      runtimeProfile: "javascript-classic",
+      manifestPath: "/skills/no-diff-skill/SKILL.md",
+      lockPath: null,
+      nativeBundleReady: false,
+      nativeBundleFiles: [],
+      manifestHash: "baseline-manifest",
+      inputSchemaHash: "baseline-input",
+      outputSchemaHash: "baseline-output",
+      fixtureHash: "baseline-fixture",
+      testsHash: "baseline-tests",
+      contractHash: "baseline-contract",
+      schemaSummary: {
+        input: { present: true, requiredFields: ["topic"], propertyTypes: { topic: "string" }, propertyCount: 1 },
+        output: { present: true, requiredFields: ["files"], propertyTypes: { files: "array" }, propertyCount: 1 },
+        uiPresent: true,
+      },
+      fileInventory: ["SKILL.md"],
+    });
+
+    let completionHook: ((result: any) => Promise<void>) | null = null;
+    launchSkillStudioTaskMock.mockImplementation(async (_ctx, _input, hooks) => {
+      completionHook = hooks?.onCompleted ?? null;
+      return {
+        taskId: "studio-task-3",
+        mode: "improve",
+        summary: "queued",
+      };
+    });
+
+    const result = await applySkillUpgradeRecommendation({
+      db,
+      recommendationId: 104,
+      requestedBy: 11,
+      userRole: "admin",
+      userToken: "user-token",
+      publicUrl: "https://tenant.example.com",
+    });
+
+    expect(result.applyStrategy).toBe("proposal");
+    expect(result.mode).toBe("queued");
+
+    await completionHook?.({
+      success: true,
+      message: "✅ ISC improve complete — skill: `no-diff-skill`\n- No patches generated (all tests passing or heuristic mode)",
+      metadata: {
+        savedProposals: [],
       },
     });
 

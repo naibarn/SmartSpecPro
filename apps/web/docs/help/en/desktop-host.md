@@ -6,7 +6,23 @@ icon: MonitorPlay
 section: features
 order: 66
 pages: ["/settings", "/admin/desktop-host", "/domain-admin/desktop-host", "/desktop/open"]
-tags: [desktop, desktop-host, managed mode, local roots, package sync, device governance, pi, agency swarm]
+tags:
+  - "desktop"
+  - "desktop-host"
+  - "managed mode"
+  - "local roots"
+  - "package sync"
+  - "device governance"
+  - "pi"
+  - "agency swarm"
+  - "help"
+  - "help/en"
+  - "help/runtime"
+  - "runtime"
+aliases:
+  - "desktop-host"
+  - "Desktop Host"
+  - "Desktop Host help"
 ---
 
 # Desktop Host
@@ -244,3 +260,15 @@ See [Desktop Releases](./desktop-releases.md) for the full installer workflow.
 - Retry the launch link from the handoff page.
 - Confirm the desktop app is installed.
 - Use the release portal or install help if you need a fresh installer.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+- [[docker-sandbox|Docker Sandbox]]
+<!-- knowledge-graph:related:end -->

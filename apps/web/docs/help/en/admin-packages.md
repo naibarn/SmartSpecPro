@@ -6,7 +6,23 @@ icon: Package
 section: admin
 order: 87
 pages: ["/admin/packages"]
-tags: [admin, packages, credits, pricing, subscription, billing, stripe, plans]
+tags:
+  - "admin"
+  - "packages"
+  - "credits"
+  - "pricing"
+  - "subscription"
+  - "billing"
+  - "stripe"
+  - "plans"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-packages"
+aliases:
+  - "admin-packages"
+  - "Credit Packages & Pricing"
+  - "Credit Packages & Pricing help"
 ---
 
 # Credit Packages & Pricing
@@ -59,3 +75,15 @@ The system uses this ID to create checkout sessions and manage subscriptions.
 - Use yearly billing with a discount to encourage longer commitments.
 - Feature the mid-tier package — it typically converts best.
 - Test checkout flow after creating or modifying packages.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

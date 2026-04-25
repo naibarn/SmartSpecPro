@@ -6,7 +6,24 @@ icon: ShieldCheck
 section: admin
 order: 60
 pages: ["/admin/system-guardian"]
-tags: [guardian, ผู้พิทักษ์, ระบบ, เซนเซอร์, เหตุการณ์, อนุมัติ, สุขภาพ, แจ้งเตือน]
+tags:
+  - "guardian"
+  - "ผู้พิทักษ์"
+  - "ระบบ"
+  - "เซนเซอร์"
+  - "เหตุการณ์"
+  - "อนุมัติ"
+  - "สุขภาพ"
+  - "แจ้งเตือน"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin"
+  - "admin-system-guardian"
+aliases:
+  - "admin-system-guardian"
+  - "ผู้พิทักษ์ระบบ (System Guardian)"
+  - "ผู้พิทักษ์ระบบ (System Guardian) help"
 ---
 
 # ผู้พิทักษ์ระบบ (System Guardian)
@@ -105,3 +122,15 @@ Guardian ใช้เซนเซอร์ 11 ตัวตรวจสอบร�
 ## แบนเนอร์สุขภาพ
 
 เมื่อมีเหตุการณ์ระดับ **critical** เกิดขึ้น ระบบจะแสดงแบนเนอร์สีแดงที่ด้านบนของทุกหน้าในระบบ แจ้งให้ผู้ใช้และแอดมินทราบ แบนเนอร์จะหายไปเองเมื่อเหตุการณ์ได้รับการแก้ไข
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

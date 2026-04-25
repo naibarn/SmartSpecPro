@@ -7,20 +7,27 @@ section: features
 order: 66
 pages: ["/settings"]
 tags:
-  [
-    local ai,
-    local llm,
-    local llm chat,
-    gemma 4,
-    gemma4,
-    on-device ai,
-    settings,
-    local runtime,
-    browser local,
-    tauri local,
-    local voice,
-    local ocr,
-  ]
+  - "local ai"
+  - "local llm"
+  - "local llm chat"
+  - "gemma 4"
+  - "gemma4"
+  - "on-device ai"
+  - "settings"
+  - "local runtime"
+  - "browser local"
+  - "tauri local"
+  - "local voice"
+  - "local ocr"
+  - "help"
+  - "help/en"
+  - "help/runtime"
+  - "runtime"
+  - "local-ai"
+aliases:
+  - "local-ai"
+  - "Local AI"
+  - "Local AI help"
 ---
 
 # Local AI
@@ -636,3 +643,15 @@ in **Settings > Local AI**
 2. Prepare a supported profile.
 3. Attach an image, receipt, or screenshot in chat.
 4. Let SmartSpecPro use local or hybrid assist where eligible.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+<!-- knowledge-graph:related:end -->

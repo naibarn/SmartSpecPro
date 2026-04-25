@@ -93,6 +93,7 @@ type KnowledgeGraphViewProps = {
   }>;
   onOpenItem: (itemId: number, title: string) => void;
   compact?: boolean;
+  fillAvailable?: boolean;
 };
 
 const DEFAULT_FILTERS: RelationFilterState = {
@@ -783,7 +784,13 @@ export function KnowledgeGraphView(props: KnowledgeGraphViewProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div
+      className={
+        props.fillAvailable
+          ? "flex h-full min-h-0 flex-col gap-3"
+          : "space-y-3"
+      }
+    >
       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
         {(
           [
@@ -852,7 +859,9 @@ export function KnowledgeGraphView(props: KnowledgeGraphViewProps) {
 
       <div
         className={
-          props.compact
+          props.fillAvailable
+            ? "relative min-h-[420px] flex-1 rounded-2xl border border-slate-200 bg-white"
+            : props.compact
             ? "relative h-[320px] rounded-2xl border border-slate-200 bg-white"
             : "relative h-[520px] rounded-3xl border border-slate-200 bg-white"
         }

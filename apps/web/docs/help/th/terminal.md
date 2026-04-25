@@ -6,7 +6,21 @@ icon: Terminal
 section: advanced
 order: 71
 pages: ["/terminal"]
-tags: [terminal, shell, command, desktop, tauri, pty]
+tags:
+  - "terminal"
+  - "shell"
+  - "command"
+  - "desktop"
+  - "tauri"
+  - "pty"
+  - "help"
+  - "help/th"
+  - "help/runtime"
+  - "runtime"
+aliases:
+  - "terminal"
+  - "เทอร์มินัล"
+  - "เทอร์มินัล help"
 ---
 
 # เทอร์มินัล
@@ -46,3 +60,15 @@ tags: [terminal, shell, command, desktop, tauri, pty]
 - ใช้หลายแท็บเพื่อรัน dev server ในแท็บหนึ่งและ test ในอีกแท็บ
 - เทอร์มินัลใช้การตั้งค่า shell ของระบบ (bash, zsh ฯลฯ)
 - เซสชันเทอร์มินัลคงอยู่ขณะแอปเปิด แต่จะถูกล้างเมื่อรีสตาร์ท
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+<!-- knowledge-graph:related:end -->

@@ -94,6 +94,23 @@ describe("buildCustomSkillUserPrompt", () => {
     expect(prompt).toContain("do not invent `@ImageN` handles");
   });
 
+  it("tells text prompt skills to rewrite the source idea instead of returning it unchanged", () => {
+    const prompt = buildCustomSkillUserPrompt({
+      topic: "ภาพผู้หญิงสูงวัยวัย 18 ปี เดินเล่นริมทะเล",
+      response_mode: "text_prompt",
+      text_prompt_field: "detailed",
+    });
+
+    expect(prompt).toContain("rewrite and expand the user's source idea");
+    expect(prompt).toContain("Do not return the source idea unchanged");
+    expect(prompt).toContain("SOURCE_PROMPT_TO_REWRITE");
+    expect(prompt).toContain("ภาพผู้หญิงสูงวัยวัย 18 ปี เดินเล่นริมทะเล");
+    expect(prompt).toContain("Return plain prompt text only");
+    expect(prompt).toContain("Write the final prompt in Thai");
+    expect(prompt).toContain("input schema defaults");
+    expect(prompt).toContain("Do not hard-code one fixed style");
+  });
+
   it("falls back to a compact instruction when no user inputs are present", () => {
     expect(buildCustomSkillUserPrompt({})).toBe(
       "Please execute the skill and return only the final output requested by the system prompt.",

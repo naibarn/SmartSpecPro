@@ -56,6 +56,7 @@ export const teamRunRouter = router({
       executionMode: z.enum(["team_chat", "auto_team", "review"]),
       objective: z.string().min(1).max(5000),
       stopPolicy: stopPolicySchema,
+      requestedSubagent: z.string().min(1).max(200).optional().nullable(),
     }))
     .mutation(async ({ input, ctx }) => {
       const tenantId = requireTenantId(ctx);
@@ -75,6 +76,7 @@ export const teamRunRouter = router({
         ...input,
         executionMode: resolvedExecutionMode,
         stopPolicy: normalizedStopPolicy,
+        requestedSubagent: input.requestedSubagent ?? null,
         tenantId,
         initiatedByUserId: ctx.user!.id,
       });

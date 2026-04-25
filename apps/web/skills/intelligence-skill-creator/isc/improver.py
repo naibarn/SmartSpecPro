@@ -11,6 +11,9 @@ from .proposals import apply_patch_payload
 from .validator import validate_patch
 from .orchestrator import Orchestrator, OrchestratorConfig
 
+def _utc_now_iso() -> str:
+    return _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
 class BaseImprover(Protocol):
     def propose_patch(self, skill_name: str, report: EvaluationReport) -> PatchProposal:
         ...
@@ -20,15 +23,19 @@ class HeuristicImprover:
     def propose_patch(self, skill_name: str, report: EvaluationReport) -> PatchProposal:
         files = resolve_skill_files(skill_name)
         if files.code_path is None:
-            original = read_text(skill_name, "skill.py")
-            rel_path = "skill.py"
+            return PatchProposal(
+                skill_name,
+                _utc_now_iso(),
+                "Legacy skill has no code entrypoint yet; no heuristic patch proposed.",
+                "",
+            )
         else:
             original = files.code_path.read_text(encoding="utf-8")
             rel_path = files.code_path.relative_to(files.bundle_dir).as_posix()
 
         failed = [r for r in report.results if not r.passed]
         if not failed:
-            return PatchProposal(skill_name, _dt.datetime.utcnow().replace(microsecond=0).isoformat()+"Z",
+            return PatchProposal(skill_name, _utc_now_iso(),
                                  "All tests passed; no patch proposed.", "")
         patched = original
         if "ISC AUTO PATCH" not in patched:
@@ -39,7 +46,7 @@ class HeuristicImprover:
 
         import json
         payload = json.dumps({rel_path: patched})
-        return PatchProposal(skill_name, _dt.datetime.utcnow().replace(microsecond=0).isoformat()+"Z",
+        return PatchProposal(skill_name, _utc_now_iso(),
                              f"Heuristic patch. Failed tests: {[r.test_id for r in failed]}", payload)
 
 @dataclass

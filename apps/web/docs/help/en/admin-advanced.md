@@ -6,7 +6,25 @@ icon: Shield
 section: admin
 order: 130
 pages: ["/admin/agencies", "/admin/approvals", "/admin/tenants", "/admin/ops", "/admin/funnel", "/admin/services", "/admin/channel-router", "/admin/system-guardian", "/admin/feedback-hub", "/admin/content-quality", "/admin/sandbox"]
-tags: [admin, agencies, approvals, tenants, multi-tenant, operations, monitoring, guardian, feedback, quality]
+tags:
+  - "admin"
+  - "agencies"
+  - "approvals"
+  - "tenants"
+  - "multi-tenant"
+  - "operations"
+  - "monitoring"
+  - "guardian"
+  - "feedback"
+  - "quality"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-advanced"
+aliases:
+  - "admin-advanced"
+  - "Advanced Administration"
+  - "Advanced Administration help"
 ---
 
 # Advanced Administration
@@ -148,3 +166,15 @@ The Sandbox is an isolated test environment where admins can test skills and age
 - **Agency testing** — create a sandbox agency run with full logging for debugging.
 - **Model testing** — send raw prompts to any configured provider to compare outputs.
 - Changes in the Sandbox do not consume user credits and are not visible to regular users.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+- [[admin-billing-phase2-runbook|Admin Billing Phase 2 Runbook]]
+<!-- knowledge-graph:related:end -->

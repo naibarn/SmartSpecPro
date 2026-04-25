@@ -6,7 +6,23 @@ icon: Layers3
 section: admin
 order: 90
 pages: ["/admin/monitoring", "/admin/tenants"]
-tags: [hiclaw, cluster, workers, admin-gated, monitoring, tenants, collaboration]
+tags:
+  - "hiclaw"
+  - "cluster"
+  - "workers"
+  - "admin-gated"
+  - "monitoring"
+  - "tenants"
+  - "collaboration"
+  - "help"
+  - "help/en"
+  - "help/runtime"
+  - "runtime"
+  - "hi-claw-workers"
+aliases:
+  - "hi-claw-workers"
+  - "HiClaw Workers"
+  - "HiClaw Workers help"
 ---
 
 # HiClaw Workers
@@ -76,3 +92,15 @@ Related guides:
 - [OpenClaw Workers](./openclaw-workers.md)
 - [NemoClaw Workers](./nemo-claw-workers.md)
 - [Desktop Host](./desktop-host.md)
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+<!-- knowledge-graph:related:end -->

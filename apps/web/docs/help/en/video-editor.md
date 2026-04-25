@@ -6,7 +6,21 @@ icon: Film
 section: content-creation
 order: 80
 pages: ["/video-editor"]
-tags: [video, editor, timeline, clips, export]
+tags:
+  - "video"
+  - "editor"
+  - "timeline"
+  - "clips"
+  - "export"
+  - "help"
+  - "help/en"
+  - "help/media"
+  - "media"
+  - "video-editor"
+aliases:
+  - "video-editor"
+  - "Video Editor"
+  - "Video Editor help"
 ---
 
 # Video Editor
@@ -58,3 +72,13 @@ The Video Editor lets you assemble, trim, and export video content. It is design
 - Use the AI Draft panel inside the editor for suggestions on transitions and sequencing.
 - Keep individual clips short (5–15 seconds) for easier timeline management.
 - Preview your edit frequently using the built-in player before exporting.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[media-generation|Image, Video, and Audio Generation]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[gallery|Gallery]]
+- [[presentations|Create Presentations]]
+<!-- knowledge-graph:related:end -->

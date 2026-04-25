@@ -6,7 +6,26 @@ icon: MessageSquare
 section: features
 order: 10
 pages: ["/chat"]
-tags: [chat, conversation, model, message, teams, persona, nickname, approval, workflow board, team room, artifact]
+tags:
+  - "chat"
+  - "conversation"
+  - "model"
+  - "message"
+  - "teams"
+  - "persona"
+  - "nickname"
+  - "approval"
+  - "workflow board"
+  - "team room"
+  - "artifact"
+  - "help"
+  - "help/th"
+  - "help/knowledge"
+  - "knowledge"
+aliases:
+  - "chat"
+  - "คู่มือ Chat"
+  - "คู่มือ Chat help"
 ---
 
 # คู่มือ Chat
@@ -104,3 +123,13 @@ Chat เป็นช่องทางที่เร็วที่สุดใ
 | เปรียบเทียบสองแนวทาง | ใช้ทีม AI |
 | รายงานวิจัยหรือสไลด์ | ใช้ Agencies |
 | ตรวจสถานะงานหรือ draft ของ persona | ถามใน Chat แล้วใช้ action card เพื่อเปิด Team Room / Workflow Board |
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[document-management|จัดการเอกสาร]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[mcp-servers|การเชื่อมต่อ MCP Server]]
+- [[memory|ระบบ Memory]]
+- [[personas|บุคลิก AI]]
+<!-- knowledge-graph:related:end -->

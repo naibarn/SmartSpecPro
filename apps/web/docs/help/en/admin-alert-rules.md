@@ -6,7 +6,23 @@ icon: BellRing
 section: admin
 order: 116
 pages: ["/admin/alert-rules"]
-tags: [admin, alerts, rules, escalation, policies, monitoring, thresholds, notifications]
+tags:
+  - "admin"
+  - "alerts"
+  - "rules"
+  - "escalation"
+  - "policies"
+  - "monitoring"
+  - "thresholds"
+  - "notifications"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-alert-rules"
+aliases:
+  - "admin-alert-rules"
+  - "Alert Rules & Escalation"
+  - "Alert Rules & Escalation help"
 ---
 
 # Alert Rules & Escalation
@@ -76,3 +92,15 @@ Escalation policies ensure critical alerts don't go unnoticed. When a notificati
 - Use escalation policies for critical business alerts — set trigger windows to give the primary team time to respond before escalating.
 - The escalation job checks feature flags per-tenant — disable `notificationEscalationEnabled` to pause all escalation without deleting policies.
 - Combine alert rules with notification preferences so users only receive alerts for categories they care about.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+- [[admin-billing-phase2-runbook|Admin Billing Phase 2 Runbook]]
+<!-- knowledge-graph:related:end -->

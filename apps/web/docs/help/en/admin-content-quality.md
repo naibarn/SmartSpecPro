@@ -6,7 +6,22 @@ icon: Award
 section: admin
 order: 63
 pages: ["/admin/content-quality"]
-tags: [quality, content, metrics, score, improvement, analysis]
+tags:
+  - "quality"
+  - "content"
+  - "metrics"
+  - "score"
+  - "improvement"
+  - "analysis"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin"
+  - "admin-content-quality"
+aliases:
+  - "admin-content-quality"
+  - "Content Quality Dashboard"
+  - "Content Quality Dashboard help"
 ---
 
 # Content Quality Dashboard
@@ -79,3 +94,15 @@ When a skill consistently scores low on a specific dimension:
 ### Export Data
 
 Click **Export CSV** to download the filtered result set. Exported fields include: timestamp, skill, model, user ID (anonymized), composite score, and individual dimension scores.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

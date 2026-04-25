@@ -1524,6 +1524,43 @@ function computeTokenOverlapScore(queryTokens: string[], content: string): numbe
   return hits / queryTokens.length;
 }
 
+function normalizeSearchPhrase(value: unknown): string {
+  return typeof value === "string"
+    ? value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+    : "";
+}
+
+function computeLibraryExactFieldBoost(
+  query: string,
+  item: Pick<LibraryItemRow, "title" | "sourceUrl">,
+  metadata: Record<string, unknown>,
+): number {
+  const normalizedQuery = normalizeSearchPhrase(query);
+  if (!normalizedQuery) {
+    return 0;
+  }
+
+  const fields = [
+    item.title,
+    item.sourceUrl ?? "",
+    metadata.file_name,
+    metadata.logical_path,
+    metadata.logicalPath,
+    ...(Array.isArray(metadata.aliases) ? metadata.aliases : []),
+    ...(Array.isArray(metadata.tags) ? metadata.tags : []),
+  ].map(normalizeSearchPhrase).filter(Boolean);
+
+  if (fields.some((field) => field === normalizedQuery)) {
+    return 1.25;
+  }
+
+  if (fields.some((field) => field.includes(normalizedQuery))) {
+    return 0.75;
+  }
+
+  return 0;
+}
+
 const ALLOWED_LIBRARY_RECENT_DAYS = new Set<LibraryRecentDaysFilter>([1, 3, 7, 15, 30]);
 const DAY_MS = 86_400_000;
 
@@ -5006,7 +5043,8 @@ export async function searchLibraryItems(
   const scope = input.scope ?? "all";
 
   const applyFolderFilter =
-    (scope === "my_library" || scope === "all")
+    query.length === 0
+    && (scope === "my_library" || scope === "all")
     && "folderId" in input;
   const folderCondition = applyFolderFilter
     ? (input.folderId == null ? isNull(libraryItems.parentId) : eq(libraryItems.parentId, input.folderId))
@@ -5173,7 +5211,10 @@ export async function searchLibraryItems(
         JSON.stringify(metadata),
       ].join(" ");
 
-      const keywordScore = query ? computeTokenOverlapScore(queryTokens, itemText) : 0;
+      const keywordScore = query
+        ? computeTokenOverlapScore(queryTokens, itemText)
+          + computeLibraryExactFieldBoost(query, item, metadata)
+        : 0;
       const fallbackVectorScore = query
         ? chunks
             .filter((chunk) => Boolean(chunk.vectorRefId))

@@ -6,7 +6,21 @@ icon: Bot
 section: advanced
 order: 73
 pages: ["/automation"]
-tags: [automation, process, browser, live session, copilot, bot, rpa]
+tags:
+  - "automation"
+  - "process"
+  - "browser"
+  - "live session"
+  - "copilot"
+  - "bot"
+  - "rpa"
+  - "help"
+  - "help/en"
+  - "help/automation"
+aliases:
+  - "automation"
+  - "Process Automation"
+  - "Process Automation help"
 ---
 
 # Process Automation
@@ -94,3 +108,15 @@ These policies are configured by your domain admin from **Admin → Settings**.
 - **Set pause points for sensitive steps** — any step involving money, form submission, or irreversible actions should have a manual review pause.
 - **Test with a single run first** — before scheduling an automation to run repeatedly, watch a full run in the live view to catch unexpected behavior.
 - **Use allowed domains** to prevent the automation from navigating to unintended sites.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[workflows|Workflows & Automation]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[factory|SaaS Factory]]
+- [[webhooks|Webhooks & Integrations]]
+- [[work-os|Work OS Guide]]
+- [[workflow-editor|Workflow Editor]]
+<!-- knowledge-graph:related:end -->

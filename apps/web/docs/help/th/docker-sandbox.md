@@ -6,7 +6,22 @@ icon: Container
 section: advanced
 order: 73
 pages: ["/docker"]
-tags: [docker, container, sandbox, logs, image, devops]
+tags:
+  - "docker"
+  - "container"
+  - "sandbox"
+  - "logs"
+  - "image"
+  - "devops"
+  - "help"
+  - "help/th"
+  - "help/runtime"
+  - "runtime"
+  - "docker-sandbox"
+aliases:
+  - "docker-sandbox"
+  - "Docker Sandbox"
+  - "Docker Sandbox help"
 ---
 
 # Docker Sandbox
@@ -54,3 +69,15 @@ Docker Sandbox เป็นแดชบอร์ดจัดการคอน�
 - ใช้ตัวดูล็อกเพื่อ debug ปัญหาคอนเทนเนอร์โดยไม่ต้อง SSH
 - หยุดคอนเทนเนอร์ที่ไม่ใช้เพื่อคืนทรัพยากรระบบ
 - ตรวจสอบขนาด image เป็นประจำ — image ขนาดใหญ่ทำให้ deploy ช้าลง
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+<!-- knowledge-graph:related:end -->

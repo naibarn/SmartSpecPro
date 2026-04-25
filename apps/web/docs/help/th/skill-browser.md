@@ -6,7 +6,21 @@ icon: Wand2
 section: features
 order: 35
 pages: ["/skills"]
-tags: [สกิล, เรียกดู, หมวดหมู่, เปิดปิด, ออโต้ทริกเกอร์]
+tags:
+  - "สกิล"
+  - "เรียกดู"
+  - "หมวดหมู่"
+  - "เปิดปิด"
+  - "ออโต้ทริกเกอร์"
+  - "help"
+  - "help/th"
+  - "help/marketplace"
+  - "marketplace"
+  - "skill-browser"
+aliases:
+  - "skill-browser"
+  - "เรียกดูสกิล"
+  - "เรียกดูสกิล help"
 ---
 
 # เรียกดูสกิล
@@ -43,3 +57,12 @@ tags: [สกิล, เรียกดู, หมวดหมู่, เปิ�
 - สกิลที่ปิดใช้งานจะไม่แสดงในเมนู slash-command ใน Chat แต่ยังสามารถเปิดใช้งานคืนได้ทุกเมื่อ
 - ใช้ตัวกรองหมวดหมู่ร่วมกับช่องค้นหาเพื่อค้นหาสกิลที่ต้องการได้อย่างแม่นยำ
 - สกิลที่แชร์กับกลุ่มจะมองเห็นได้โดยสมาชิกทุกคนในกลุ่มนั้น
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[marketplace|ตลาด]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[skills|Skills และคำสั่ง Slash]]
+<!-- knowledge-graph:related:end -->

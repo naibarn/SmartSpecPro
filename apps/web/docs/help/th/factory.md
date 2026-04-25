@@ -6,7 +6,22 @@ icon: Factory
 section: advanced
 order: 70
 pages: ["/factory"]
-tags: [factory, project, orchestrator, workflow, session, artifact, approval]
+tags:
+  - "factory"
+  - "project"
+  - "orchestrator"
+  - "workflow"
+  - "session"
+  - "artifact"
+  - "approval"
+  - "help"
+  - "help/th"
+  - "help/automation"
+  - "automation"
+aliases:
+  - "factory"
+  - "SaaS Factory"
+  - "SaaS Factory help"
 ---
 
 # SaaS Factory
@@ -48,3 +63,15 @@ SaaS Factory เป็นแดชบอร์ดจัดการโปรเ�
 - แบ่งเวิร์กโฟลว์ที่ซับซ้อนเป็นขั้นตอนย่อยพร้อม quality gate คั่นระหว่าง
 - ใช้ชื่อขั้นตอนที่สื่อความหมายเพื่อให้ log การทำงานอ่านง่าย
 - ตรวจสอบ artifact ทันที — เวิร์กโฟลว์ที่หยุดรอจะใช้ทรัพยากรจนกว่าจะอนุมัติ
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[workflows|เวิร์กโฟลว์และระบบอัตโนมัติ]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[automation|ระบบอัตโนมัติ]]
+- [[webhooks|Webhooks และการเชื่อมต่อ]]
+- [[work-os|คู่มือ Work OS]]
+- [[workflow-editor|ตัวสร้างเวิร์กโฟลว์]]
+<!-- knowledge-graph:related:end -->

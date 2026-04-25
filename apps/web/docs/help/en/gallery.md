@@ -6,7 +6,19 @@ icon: ImagePlus
 section: content-creation
 order: 85
 pages: ["/gallery"]
-tags: [gallery, share, discover, showcase, community, media]
+tags:
+  - "gallery"
+  - "share"
+  - "discover"
+  - "showcase"
+  - "community"
+  - "media"
+  - "help"
+  - "help/en"
+  - "help/media"
+aliases:
+  - "gallery"
+  - "Gallery help"
 ---
 
 # Gallery
@@ -59,3 +71,13 @@ You can also publish directly from a chat generation result using the share icon
 - Include descriptive tags when publishing to improve discoverability.
 - Use **Copy Prompt** on gallery items you admire to study effective prompt techniques.
 - The Gallery feed refreshes in real time — newly published items appear without a page reload.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[media-generation|Image, Video, and Audio Generation]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[presentations|Create Presentations]]
+- [[video-editor|Video Editor]]
+<!-- knowledge-graph:related:end -->

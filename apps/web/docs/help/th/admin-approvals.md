@@ -6,7 +6,22 @@ icon: ClipboardCheck
 section: admin
 order: 220
 pages: ["/admin/approvals"]
-tags: [แอดมิน, การอนุมัติ, เวิร์กโฟลว์, รีวิว, อนุมัติ, ปฏิเสธ]
+tags:
+  - "แอดมิน"
+  - "การอนุมัติ"
+  - "เวิร์กโฟลว์"
+  - "รีวิว"
+  - "อนุมัติ"
+  - "ปฏิเสธ"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin"
+  - "admin-approvals"
+aliases:
+  - "admin-approvals"
+  - "การอนุมัติ"
+  - "การอนุมัติ help"
 ---
 
 # การอนุมัติ
@@ -44,3 +59,15 @@ tags: [แอดมิน, การอนุมัติ, เวิร์กโ
 - เพิ่มหมายเหตุเมื่อปฏิเสธคำขอเสมอ เพื่อให้ผู้ร้องขอเข้าใจเหตุผลและปรับปรุงคำขอครั้งถัดไปได้
 - ใช้ตัวกรองประเภทเพื่อดูคำขออนุมัติจากเวิร์กโฟลว์เฉพาะเมื่อมีคำขอจำนวนมาก
 - หากไม่แน่ใจเกี่ยวกับคำขอ สามารถใช้ Guardian Chat เพื่อขอข้อมูลเพิ่มเติมก่อนตัดสินใจ
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+- [[admin-billing-phase2-runbook|คู่มือดูแล Billing Phase 2]]
+<!-- knowledge-graph:related:end -->

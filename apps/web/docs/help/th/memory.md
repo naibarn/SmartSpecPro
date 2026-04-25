@@ -6,7 +6,23 @@ icon: Brain
 section: features
 order: 60
 pages: ["/chat", "/settings"]
-tags: [memory, preferences, context, project, remember, persona, long memory, summary]
+tags:
+  - "memory"
+  - "preferences"
+  - "context"
+  - "project"
+  - "remember"
+  - "persona"
+  - "long memory"
+  - "summary"
+  - "help"
+  - "help/th"
+  - "help/knowledge"
+  - "knowledge"
+aliases:
+  - "memory"
+  - "ระบบ Memory"
+  - "ระบบ Memory help"
 ---
 
 # ระบบ Memory
@@ -87,3 +103,13 @@ Memory ช่วยให้ AI จดจำความชอบ บริบ�
 - **ใช้ persona ให้ตรงบทบาท** — ถ้าต้องการให้ผู้ช่วยแต่ละตัวมี long memory ของตัวเอง ให้สลับไป persona นั้นก่อนคุยหรือบันทึก memory
 - **ตรวจสอบเป็นระยะ** — Memory เก่าอาจล้าสมัย ตรวจสอบและทำความสะอาดใน Settings เป็นครั้งคราว
 - **บันทึกด้วยตนเอง** — คลิก **Save to Memory** บนข้อความใดๆ ที่มีสิ่งสำคัญที่ต้องการเก็บไว้
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[document-management|จัดการเอกสาร]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[chat|คู่มือ Chat]]
+- [[mcp-servers|การเชื่อมต่อ MCP Server]]
+- [[personas|บุคลิก AI]]
+<!-- knowledge-graph:related:end -->

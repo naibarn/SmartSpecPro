@@ -6,7 +6,24 @@ icon: Boxes
 section: advanced
 order: 75
 pages: ["/agencies", "/agencies/templates"]
-tags: [agency, builder, visual editor, nodes, agents, custom, design, template]
+tags:
+  - "agency"
+  - "builder"
+  - "visual editor"
+  - "nodes"
+  - "agents"
+  - "custom"
+  - "design"
+  - "template"
+  - "help"
+  - "help/en"
+  - "help/teams"
+  - "teams"
+  - "agency-builder"
+aliases:
+  - "agency-builder"
+  - "Agency Builder"
+  - "Agency Builder help"
 ---
 
 # Agency Builder
@@ -105,3 +122,15 @@ Agency Builder automatically saves a version each time you click **Save**. To ma
 - **Set clear instructions** — each Agent node should have a focused system prompt that defines its specific role without overlap.
 - **Use Human Approval for critical decisions** — insert a Human Approval node before any step that publishes content or makes irreversible changes.
 - **Test with a simple request first** — run the agency with a short, specific request to verify the routing works before using it for complex tasks.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[teams|AI Teams]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[agencies|Agencies - Multi-Agent Teams]]
+- [[agency-chat|Agency Chat — Running & Testing Agencies]]
+- [[groups|Groups]]
+- [[team-monitoring|Team Monitoring & Scoped Memory]]
+<!-- knowledge-graph:related:end -->

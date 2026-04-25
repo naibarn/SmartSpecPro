@@ -6,7 +6,23 @@ icon: UserCircle
 section: admin
 order: 95
 pages: ["/admin/personas"]
-tags: [admin, personas, ai-assistant, tone, personality, system-prompt, customization, nickname]
+tags:
+  - "admin"
+  - "personas"
+  - "ai-assistant"
+  - "tone"
+  - "personality"
+  - "system-prompt"
+  - "customization"
+  - "nickname"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-personas"
+aliases:
+  - "admin-personas"
+  - "จัดการ Persona แอดมิน"
+  - "จัดการ Persona แอดมิน help"
 ---
 
 # จัดการ Persona แอดมิน
@@ -66,3 +82,15 @@ Admin Personas จัดการ persona **ระดับแพลตฟอร
 - สร้าง persona เฉพาะทางสำหรับกรณีใช้งานต่างๆ (เขียน, โค้ด, วิเคราะห์)
 - รักษา system prompt ให้กระชับ — คำสั่ง 2-3 ประโยคที่ชัดเจนทำงานดีกว่ากฎหลายหน้า
 - ตรวจสอบสถิติการใช้งานเพื่อระบุ persona ที่นิยมและไม่ได้ใช้
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

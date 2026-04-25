@@ -6,7 +6,21 @@ icon: Activity
 section: admin
 order: 250
 pages: ["/admin/system-health"]
-tags: [admin, system health, monitoring, services, status, uptime]
+tags:
+  - "admin"
+  - "system health"
+  - "monitoring"
+  - "services"
+  - "status"
+  - "uptime"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-system-health"
+aliases:
+  - "admin-system-health"
+  - "System Health"
+  - "System Health help"
 ---
 
 # System Health
@@ -39,3 +53,15 @@ Log in as an administrator and navigate to **Admin > System Health** from the le
 - Celery worker status reflects the number of active workers. A count of zero means no tasks can be processed; restart the worker service immediately.
 - Redis latency above 50 ms consistently indicates memory pressure or network issues between the app server and Redis host.
 - Keep this page open during deployments to catch regressions before users report them.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

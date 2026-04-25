@@ -6,7 +6,20 @@ icon: Presentation
 section: content-creation
 order: 40
 pages: ["/chat", "/presentation"]
-tags: [presentation, slides, deck, powerpoint]
+tags:
+  - "presentation"
+  - "slides"
+  - "deck"
+  - "powerpoint"
+  - "help"
+  - "help/th"
+  - "help/media"
+  - "media"
+  - "presentations"
+aliases:
+  - "presentations"
+  - "สร้าง Presentation จาก Chat"
+  - "สร้าง Presentation จาก Chat help"
 ---
 
 # สร้าง Presentation จาก Chat
@@ -85,3 +98,13 @@ tags: [presentation, slides, deck, powerpoint]
 ## ใช้ Agencies สำหรับ Presentation
 
 สำหรับ deck ที่ซับซ้อนกว่า เช่น investor presentation หรือ pitch deck เต็มรูปแบบ ให้ใช้เทมเพลต agency **Deck Builder** แทน Chat agency ใช้ workflow แบบ multi-agent ในการวิจัย ร่างโครงสร้าง เขียนเนื้อหา และประกอบ deck ระดับมืออาชีพโดยอัตโนมัติ
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[media-generation|สร้างรูปภาพ วิดีโอ และเสียง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[gallery|แกลเลอรี่]]
+- [[video-editor|Video Editor]]
+<!-- knowledge-graph:related:end -->

@@ -6,7 +6,24 @@ icon: BarChart3
 section: features
 order: 69
 pages: ["/usage", "/tasks"]
-tags: [usage, analytics, costs, statistics, tasks, queue, monitor, budget]
+tags:
+  - "usage"
+  - "analytics"
+  - "costs"
+  - "statistics"
+  - "tasks"
+  - "queue"
+  - "monitor"
+  - "budget"
+  - "help"
+  - "help/en"
+  - "help/account"
+  - "account"
+  - "usage-analytics"
+aliases:
+  - "usage-analytics"
+  - "Usage Analytics & Task Monitor"
+  - "Usage Analytics & Task Monitor help"
 ---
 
 # Usage Analytics & Task Monitor
@@ -88,3 +105,15 @@ The Task Queue Monitor shows background tasks that are running or have recently 
 - Use **Prompt Enhancement** before generating images to get better results on the first attempt and avoid re-generations.
 - Monitor the **By feature** breakdown regularly — agency runs tend to consume more credits than direct chat.
 - Set budget alerts before you need them, not after you've already overspent.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[settings|Settings & Preferences]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[api-keys|API Keys]]
+- [[credits|Credits System]]
+- [[notification-settings|Notification Preferences]]
+- [[profile|Profile & Account]]
+<!-- knowledge-graph:related:end -->

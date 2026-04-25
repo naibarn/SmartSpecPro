@@ -421,13 +421,29 @@ function matchesStaticModelLookupKey(model: ModelDefinition, lookupKey: string):
  * Convert database model to ModelDefinition
  */
 function dbModelToDefinition(dbModel: any): ModelDefinition {
+  const aliases =
+    Array.isArray(dbModel.aliases)
+      ? dbModel.aliases.filter((alias: unknown): alias is string => typeof alias === "string")
+      : typeof dbModel.aliases === "string"
+        ? (() => {
+            try {
+              const parsed = JSON.parse(dbModel.aliases);
+              return Array.isArray(parsed)
+                ? parsed.filter((alias: unknown): alias is string => typeof alias === "string")
+                : [];
+            } catch {
+              return [];
+            }
+          })()
+        : [];
+
   return {
     id: dbModel.modelId,
     type: dbModel.modelType as MediaType,
     name: dbModel.name,
     provider: dbModel.provider,
     description: dbModel.description || "",
-    aliases: dbModel.aliases || [],
+    aliases,
     creditCost: dbModel.creditCost,
     aspectRatios: dbModel.aspectRatios || undefined,
     sizes: dbModel.sizes || undefined,

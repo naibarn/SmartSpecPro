@@ -8,6 +8,7 @@ import {
   resolveSkillManifestPath,
   resolveSkillLockPath,
   isNativeSkillBundle,
+  listNativeBundleContractFiles,
 } from "./skillFiles";
 
 export interface SkillMaintenanceTarget {
@@ -45,6 +46,7 @@ export interface SkillContractSnapshotData {
   testsHash: string | null;
   fixtureHash: string | null;
   manifestHash: string | null;
+  subagentManifestHash: string | null;
   contractHash: string;
   schemaSummary: {
     input: SkillSchemaSummary;
@@ -215,6 +217,20 @@ function detectRuntimeProfile(bundleDir: string | null): string {
   return "unknown";
 }
 
+function readSubagentManifestHash(bundleDir: string | null): string | null {
+  if (!bundleDir) {
+    return null;
+  }
+
+  const manifestPath = path.join(bundleDir, "subagents.json");
+  if (!fs.existsSync(manifestPath)) {
+    return null;
+  }
+
+  const manifest = safeReadJson(manifestPath);
+  return manifest ? sha256(JSON.stringify(manifest)) : null;
+}
+
 export function buildSkillContractSnapshot(skill: SkillMaintenanceTarget): SkillContractSnapshotData {
   const skillDir = resolveExistingSkillDir(skill.folderPath);
   const bundleDir = skillDir ? (resolveSkillBundleDir(skillDir) ?? skillDir) : null;
@@ -233,19 +249,7 @@ export function buildSkillContractSnapshot(skill: SkillMaintenanceTarget): Skill
   const outputSummary = summarizeSchema(outputSchema);
   const runtimeProfile = detectRuntimeProfile(bundleDir);
   const nativeBundleReady = Boolean(bundleDir && isNativeSkillBundle(bundleDir));
-  const nativeBundleFiles = bundleDir
-    ? [
-        "SKILL.md",
-        "skill.md",
-        "scripts/run.sh",
-        "scripts/verify.sh",
-        "references/input_contract.md",
-        "references/output_contract.md",
-        "references/maintenance.md",
-        "MODEL_COMPATIBILITY.md",
-        "skill.lock.json",
-      ].filter((relativePath) => fs.existsSync(path.join(bundleDir, relativePath)))
-    : [];
+  const nativeBundleFiles = bundleDir ? listNativeBundleContractFiles(bundleDir) : [];
   const fileInventory = bundleDir ? (() => {
     const files: string[] = [];
     collectFilesRecursively(bundleDir, bundleDir, files);
@@ -255,6 +259,7 @@ export function buildSkillContractSnapshot(skill: SkillMaintenanceTarget): Skill
   const inputSchemaHash = inputSchema ? sha256(JSON.stringify(inputSchema)) : null;
   const outputSchemaHash = outputSchema ? sha256(JSON.stringify(outputSchema)) : null;
   const manifestHash = manifestPath ? sha256(safeReadText(manifestPath) ?? "") : null;
+  const subagentManifestHash = readSubagentManifestHash(bundleDir);
   const testsHash = hashRelativeFiles(bundleDir, (relativePath) => relativePath.startsWith("tests/"));
   const fixtureHash = hashRelativeFiles(bundleDir, (relativePath) =>
     relativePath.startsWith("tests/fixtures/")
@@ -285,6 +290,7 @@ export function buildSkillContractSnapshot(skill: SkillMaintenanceTarget): Skill
       outputSummary,
       uiPresent,
       manifestHash,
+      subagentManifestHash,
       lockPath,
     })),
     schemaSummary: {
@@ -293,6 +299,7 @@ export function buildSkillContractSnapshot(skill: SkillMaintenanceTarget): Skill
       uiPresent,
     },
     fileInventory,
+    subagentManifestHash,
   };
 }
 
@@ -333,6 +340,40 @@ function comparePropertyTypes(
   }
 }
 
+function compareNativeBundleFiles(
+  issues: CompatibilityIssue[],
+  baseline: SkillContractSnapshotData,
+  candidate: SkillContractSnapshotData,
+): void {
+  const candidateFiles = new Set(candidate.nativeBundleFiles);
+  for (const relativePath of baseline.nativeBundleFiles) {
+    if (!candidateFiles.has(relativePath)) {
+      issues.push({
+        severity: "blocked",
+        kind: "native-bundle-file-removed",
+        path: relativePath,
+        message: `Native bundle contract file '${relativePath}' was removed.`,
+      });
+    }
+  }
+
+  if (baseline.subagentManifestHash && !candidate.subagentManifestHash) {
+    issues.push({
+      severity: "blocked",
+      kind: "subagent-manifest-invalid-or-missing",
+      path: "subagents.json",
+      message: "The subagent manifest is missing or invalid in the candidate snapshot.",
+    });
+  } else if (baseline.subagentManifestHash && candidate.subagentManifestHash && baseline.subagentManifestHash !== candidate.subagentManifestHash) {
+    issues.push({
+      severity: "warning",
+      kind: "subagent-manifest-changed",
+      path: "subagents.json",
+      message: "The subagent manifest changed between snapshots.",
+    });
+  }
+}
+
 export function compareSkillContractSnapshots(
   baseline: SkillContractSnapshotData,
   candidate: SkillContractSnapshotData,
@@ -343,6 +384,7 @@ export function compareSkillContractSnapshots(
   compareRequiredFields(issues, "output", baseline.schemaSummary.output, candidate.schemaSummary.output);
   comparePropertyTypes(issues, "input", baseline.schemaSummary.input, candidate.schemaSummary.input);
   comparePropertyTypes(issues, "output", baseline.schemaSummary.output, candidate.schemaSummary.output);
+  compareNativeBundleFiles(issues, baseline, candidate);
 
   if (baseline.executionMode && candidate.executionMode && baseline.executionMode !== candidate.executionMode) {
     issues.push({

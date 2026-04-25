@@ -6,7 +6,23 @@ icon: BellRing
 section: admin
 order: 116
 pages: ["/admin/alert-rules"]
-tags: [admin, alerts, rules, escalation, policies, monitoring, thresholds, notifications]
+tags:
+  - "admin"
+  - "alerts"
+  - "rules"
+  - "escalation"
+  - "policies"
+  - "monitoring"
+  - "thresholds"
+  - "notifications"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-alert-rules"
+aliases:
+  - "admin-alert-rules"
+  - "กฎแจ้งเตือนและการยกระดับ"
+  - "กฎแจ้งเตือนและการยกระดับ help"
 ---
 
 # กฎแจ้งเตือนและการยกระดับ
@@ -76,3 +92,15 @@ tags: [admin, alerts, rules, escalation, policies, monitoring, thresholds, notif
 - ใช้นโยบายการยกระดับสำหรับแจ้งเตือนธุรกิจวิกฤต — ตั้งหน้าต่างเวลาเพื่อให้ทีมหลักมีเวลาตอบสนองก่อนยกระดับ
 - Escalation Job ตรวจสอบ Feature Flag ต่อ Tenant — ปิด `notificationEscalationEnabled` เพื่อหยุดการยกระดับทั้งหมดโดยไม่ต้องลบนโยบาย
 - รวมกฎแจ้งเตือนกับการตั้งค่าการแจ้งเตือนเพื่อให้ผู้ใช้ได้รับแจ้งเตือนเฉพาะหมวดหมู่ที่สนใจ
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+- [[admin-billing-phase2-runbook|คู่มือดูแล Billing Phase 2]]
+<!-- knowledge-graph:related:end -->

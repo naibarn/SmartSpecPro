@@ -27,6 +27,22 @@ export interface HelpTopic {
   html: string;
   /** First 200 chars of plain text, used for search excerpts */
   excerpt: string;
+  graph: HelpTopicGraph;
+}
+
+export interface HelpTopicGraphNode {
+  slug: string;
+  title: string;
+  description: string;
+  kind: "active" | "outgoing" | "backlink" | "shared_tag";
+  tags: string[];
+  sharedTags: string[];
+}
+
+export interface HelpTopicGraph {
+  outgoing: HelpTopicGraphNode[];
+  backlinks: HelpTopicGraphNode[];
+  sharedTags: HelpTopicGraphNode[];
 }
 
 export interface HelpSection {
@@ -60,6 +76,12 @@ interface Frontmatter {
 
 interface ManifestFile {
   sections?: HelpSection[];
+}
+
+interface ParsedHelpDoc {
+  slug: string;
+  frontmatter: Frontmatter;
+  body: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -176,7 +198,50 @@ function getLocaleDir(locale: string): string {
 // ---------------------------------------------------------------------------
 
 function markdownToHtml(md: string): string {
-  return marked.parse(md, { async: false }) as string;
+  return marked.parse(renderHelpWikiLinks(md), { async: false }) as string;
+}
+
+function renderHelpWikiLinks(markdown: string): string {
+  return markdown.replace(/\[\[([^[\]]+)\]\]/g, (_match, rawTarget: string) => {
+    const [rawReference, rawLabel] = String(rawTarget).split("|", 2);
+    const reference = rawReference.trim();
+    if (!reference) {
+      return _match;
+    }
+
+    const label = (rawLabel ?? reference).trim() || reference;
+    const [slug, heading] = reference.split("#", 2);
+    const href = `/help/${encodeURIComponent(slug.trim())}${heading ? `#${encodeURIComponent(heading.trim())}` : ""}`;
+    return `[${label}](${href})`;
+  });
+}
+
+function extractHelpWikiReferences(markdown: string): string[] {
+  const references = new Set<string>();
+  for (const match of markdown.matchAll(/\[\[([^[\]]+)\]\]/g)) {
+    const raw = match[1]?.trim();
+    if (!raw) continue;
+    const [referencePart] = raw.split("|", 1);
+    const [slugPart] = referencePart.trim().split("#", 1);
+    const slug = slugPart.trim().replace(/\.(md|markdown)$/i, "");
+    if (/^[a-z0-9-]+$/.test(slug)) {
+      references.add(slug);
+    }
+  }
+  return Array.from(references);
+}
+
+function normalizeHelpGraphTag(tag: string): string {
+  return tag.trim().toLowerCase();
+}
+
+function isGraphGroupingTag(tag: string, activeSlug: string): boolean {
+  const normalized = normalizeHelpGraphTag(tag);
+  return Boolean(normalized)
+    && normalized !== "help"
+    && normalized !== activeSlug
+    && !normalized.startsWith("help/")
+    && !["en", "th"].includes(normalized);
 }
 
 function stripHtml(html: string): string {
@@ -239,7 +304,7 @@ function loadManifest(): ManifestFile {
 // Locale topic loading
 // ---------------------------------------------------------------------------
 
-function loadTopicsFromLocale(locale: string): HelpTopic[] {
+function loadParsedHelpDocs(locale: string): ParsedHelpDoc[] {
   const localeDir = getLocaleDir(locale);
   if (!fs.existsSync(localeDir)) {
     return [];
@@ -252,7 +317,7 @@ function loadTopicsFromLocale(locale: string): HelpTopic[] {
     return [];
   }
 
-  const topics: HelpTopic[] = [];
+  const docs: ParsedHelpDoc[] = [];
 
   for (const file of files) {
     const slug = file.replace(/\.md$/, "");
@@ -265,23 +330,99 @@ function loadTopicsFromLocale(locale: string): HelpTopic[] {
     }
 
     const { frontmatter, body } = parseMarkdownFile(content);
-    const html = markdownToHtml(body);
-    const excerpt = makeExcerpt(html);
-
-    topics.push({
+    docs.push({
       slug,
-      title: frontmatter.title ?? slug,
-      description: frontmatter.description ?? "",
-      icon: frontmatter.icon ?? "file",
-      section: frontmatter.section ?? "general",
-      order: frontmatter.order ?? 99,
-      pages: frontmatter.pages ?? [],
-      tags: frontmatter.tags ?? [],
-      html,
-      excerpt,
+      frontmatter,
+      body,
     });
   }
 
+  return docs;
+}
+
+function buildHelpTopicGraph(
+  doc: ParsedHelpDoc,
+  docs: ParsedHelpDoc[],
+): HelpTopicGraph {
+  const bySlug = new Map(docs.map((item) => [item.slug, item]));
+  const activeTags = new Set(
+    (doc.frontmatter.tags ?? [])
+      .map(normalizeHelpGraphTag)
+      .filter((tag) => isGraphGroupingTag(tag, doc.slug)),
+  );
+
+  const toNode = (
+    target: ParsedHelpDoc,
+    kind: HelpTopicGraphNode["kind"],
+    sharedTags: string[] = [],
+  ): HelpTopicGraphNode => ({
+    slug: target.slug,
+    title: target.frontmatter.title ?? target.slug,
+    description: target.frontmatter.description ?? "",
+    kind,
+    tags: target.frontmatter.tags ?? [],
+    sharedTags,
+  });
+
+  const outgoing = extractHelpWikiReferences(doc.body)
+    .map((slug) => bySlug.get(slug))
+    .filter((target): target is ParsedHelpDoc => target !== undefined && target.slug !== doc.slug)
+    .map((target) => toNode(target, "outgoing"))
+    .slice(0, 8);
+
+  const backlinks = docs
+    .filter((target) => target.slug !== doc.slug)
+    .filter((target) => extractHelpWikiReferences(target.body).includes(doc.slug))
+    .map((target) => toNode(target, "backlink"))
+    .slice(0, 8);
+
+  const linkedSlugs = new Set([
+    doc.slug,
+    ...outgoing.map((node) => node.slug),
+    ...backlinks.map((node) => node.slug),
+  ]);
+
+  const sharedTags = docs
+    .filter((target) => !linkedSlugs.has(target.slug))
+    .map((target) => {
+      const targetSharedTags = (target.frontmatter.tags ?? [])
+        .map(normalizeHelpGraphTag)
+        .filter((tag) => activeTags.has(tag));
+      return {
+        target,
+        sharedTags: Array.from(new Set(targetSharedTags)),
+      };
+    })
+    .filter(({ sharedTags }) => sharedTags.length > 0)
+    .sort((a, b) => b.sharedTags.length - a.sharedTags.length || a.target.slug.localeCompare(b.target.slug))
+    .map(({ target, sharedTags }) => toNode(target, "shared_tag", sharedTags))
+    .slice(0, 8);
+
+  return { outgoing, backlinks, sharedTags };
+}
+
+function buildHelpTopicFromParsed(doc: ParsedHelpDoc, docs: ParsedHelpDoc[]): HelpTopic {
+  const html = markdownToHtml(doc.body);
+  const excerpt = makeExcerpt(html);
+
+  return {
+    slug: doc.slug,
+    title: doc.frontmatter.title ?? doc.slug,
+    description: doc.frontmatter.description ?? "",
+    icon: doc.frontmatter.icon ?? "file",
+    section: doc.frontmatter.section ?? "general",
+    order: doc.frontmatter.order ?? 99,
+    pages: doc.frontmatter.pages ?? [],
+    tags: doc.frontmatter.tags ?? [],
+    html,
+    excerpt,
+    graph: buildHelpTopicGraph(doc, docs),
+  };
+}
+
+function loadTopicsFromLocale(locale: string): HelpTopic[] {
+  const docs = loadParsedHelpDocs(locale);
+  const topics = docs.map((doc) => buildHelpTopicFromParsed(doc, docs));
   topics.sort((a, b) => a.order - b.order);
   return topics;
 }
@@ -345,21 +486,11 @@ export async function getHelpTopic(
   }
 
   const { frontmatter, body } = parseMarkdownFile(content);
-  const html = markdownToHtml(body);
-  const excerpt = makeExcerpt(html);
-
-  const topic: HelpTopic = {
-    slug,
-    title: frontmatter.title ?? slug,
-    description: frontmatter.description ?? "",
-    icon: frontmatter.icon ?? "file",
-    section: frontmatter.section ?? "general",
-    order: frontmatter.order ?? 99,
-    pages: frontmatter.pages ?? [],
-    tags: frontmatter.tags ?? [],
-    html,
-    excerpt,
-  };
+  const docs = [
+    ...loadParsedHelpDocs(locale).filter((doc) => doc.slug !== slug),
+    { slug, frontmatter, body },
+  ];
+  const topic = buildHelpTopicFromParsed({ slug, frontmatter, body }, docs);
 
   cacheSet(topicCache, cacheKey, topic);
   return topic;

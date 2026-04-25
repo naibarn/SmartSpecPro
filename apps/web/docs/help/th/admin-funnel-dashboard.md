@@ -6,7 +6,21 @@ icon: BarChart3
 section: admin
 order: 270
 pages: ["/admin/funnel"]
-tags: [แอดมิน, ฟันเนล, วิเคราะห์, คอนเวอร์ชัน, เส้นทางผู้ใช้]
+tags:
+  - "แอดมิน"
+  - "ฟันเนล"
+  - "วิเคราะห์"
+  - "คอนเวอร์ชัน"
+  - "เส้นทางผู้ใช้"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin"
+  - "admin-funnel-dashboard"
+aliases:
+  - "admin-funnel-dashboard"
+  - "Funnel Dashboard"
+  - "Funnel Dashboard help"
 ---
 
 # Funnel Dashboard
@@ -43,3 +57,15 @@ Funnel Dashboard ช่วยให้แอดมินเข้าใจพฤ
 - เปรียบเทียบฟันเนลก่อนและหลังการอัพเดตฟีเจอร์สำคัญ เพื่อวัดผลกระทบของการเปลี่ยนแปลง
 - ข้อมูลฟันเนลควรอ่านร่วมกับ Content Quality Dashboard เพื่อให้เข้าใจความสัมพันธ์ระหว่างคุณภาพเนื้อหาและ Engagement
 - ตั้งค่า alert เมื่ออัตราการแปลงในขั้นตอนสำคัญลดลงเกินเกณฑ์ที่กำหนด
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

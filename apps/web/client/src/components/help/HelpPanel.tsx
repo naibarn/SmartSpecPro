@@ -17,6 +17,7 @@ import { LocaleToggle } from "@/components/LocaleToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { HelpTopicRenderer } from "./HelpTopicRenderer";
+import { HelpVirtualGraph } from "./HelpVirtualGraph";
 import { useHelpSearch } from "./useHelpSearch";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
@@ -146,7 +147,17 @@ export function HelpPanel({ initialPage, initialTopic }: HelpPanelProps) {
         {/* Show search results OR topic content */}
         {searchResults || (
           <div className="flex-1 overflow-y-auto px-4 py-4">
-            <HelpTopicRenderer html={topicData.html} />
+            <HelpVirtualGraph
+              slug={topicData.slug}
+              title={topicData.title}
+              graph={topicData.graph}
+              locale={locale}
+              compact
+            />
+
+            <div className="mt-4">
+              <HelpTopicRenderer html={topicData.html} />
+            </div>
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <a

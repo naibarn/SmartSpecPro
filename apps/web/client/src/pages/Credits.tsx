@@ -174,6 +174,62 @@ export default function Credits() {
       originLabel,
     };
   };
+  const getFirstMetaValue = (
+    metadata: Record<string, unknown> | null | undefined,
+    keys: string[],
+  ) => {
+    if (!metadata) return null;
+    for (const key of keys) {
+      const value = metadata[key];
+      if (value !== undefined && value !== null && String(value).trim() !== "") {
+        return value;
+      }
+    }
+    return null;
+  };
+  const formatModelLabel = (value: unknown) => {
+    const raw = String(value);
+    const normalized = raw.trim().toLowerCase();
+    if (["none", "no_llm", "not_applicable", "n/a"].includes(normalized)) {
+      return t("credits.meta.noLlm");
+    }
+    return raw.split("/").pop() || raw;
+  };
+  const formatRuntimeLabel = (value: unknown) => {
+    const runtime = String(value).trim();
+    if (runtime.toLowerCase() === "python") return "Python";
+    if (runtime.toLowerCase() === "llm") return "LLM";
+    return runtime;
+  };
+  const getCreditMetadataSummaryRows = (transaction: {
+    sourceType?: unknown;
+    metadata?: Record<string, unknown> | null;
+  }) => {
+    const metadata = transaction.metadata;
+    const provider = getFirstMetaValue(metadata, ["provider", "providerName", "modelProvider"]);
+    const model = getFirstMetaValue(metadata, ["modelDisplayName", "llmModel", "model", "modelId", "modelUsed", "apiModelId"]);
+    const runtime = getFirstMetaValue(metadata, ["runtimeKind", "executionMode"]);
+    const shouldShowPythonNoLlm =
+      transaction.sourceType === "skill" &&
+      !model &&
+      String(metadata?.executionMode ?? metadata?.runtimeKind ?? "").toLowerCase() === "python";
+
+    return [
+      provider
+        ? { label: t("credits.meta.provider"), value: String(provider), emphasis: true }
+        : null,
+      model || shouldShowPythonNoLlm
+        ? {
+            label: t("credits.meta.model"),
+            value: shouldShowPythonNoLlm ? t("credits.meta.noLlm") : formatModelLabel(model),
+            emphasis: false,
+          }
+        : null,
+      runtime
+        ? { label: t("credits.meta.runtime"), value: formatRuntimeLabel(runtime), emphasis: false }
+        : null,
+    ].filter(Boolean) as { label: string; value: string; emphasis: boolean }[];
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -694,6 +750,7 @@ export default function Credits() {
                   {history.map((transaction: any) => {
                     const { sourceInfo: srcInfo, originLabel } = getSourcePresentation(transaction);
                     const SrcIcon = srcInfo?.icon ?? Zap;
+                    const metadataSummaryRows = getCreditMetadataSummaryRows(transaction);
                     const dateStr = transaction.createdAt
                       ? new Date(transaction.createdAt).toISOString().slice(0, 10)
                       : undefined;
@@ -738,6 +795,16 @@ export default function Credits() {
                         <div className="text-sm font-medium text-gray-900 truncate mb-1">
                           {transaction.description}
                         </div>
+                        {metadataSummaryRows.length > 0 && (
+                          <div className="text-xs text-gray-500 space-y-0.5 mb-1">
+                            {metadataSummaryRows.map((row) => (
+                              <div key={`${transaction.id}-${row.label}`} className="flex items-center gap-1">
+                                <span className="font-medium">{row.label}:</span>
+                                <span className={row.emphasis ? "text-gray-700 font-semibold" : "text-gray-700"}>{row.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {/* Row 3: date + balance + audit */}
                         <div className="flex items-center justify-between text-xs text-gray-500">
                           <span>{formatDateTime(transaction.createdAt)}</span>
@@ -778,6 +845,7 @@ export default function Credits() {
                       {history.map((transaction: any) => {
                         const { sourceInfo: srcInfo, originLabel } = getSourcePresentation(transaction);
                         const SrcIcon = srcInfo?.icon ?? Zap;
+                        const metadataSummaryRows = getCreditMetadataSummaryRows(transaction);
                         const dateStr = transaction.createdAt
                           ? new Date(transaction.createdAt).toISOString().slice(0, 10)
                           : undefined;
@@ -824,13 +892,12 @@ export default function Credits() {
                             <td className="px-4 py-3">
                               {transaction.metadata && (
                                 <div className="text-xs text-gray-500 space-y-0.5">
-                                  {transaction.metadata.provider && <div className="flex items-center gap-1"><span className="font-medium">{t('credits.meta.provider')}:</span><span className="text-gray-700 font-semibold">{String(transaction.metadata.provider)}</span></div>}
-                                  {(transaction.metadata.model || transaction.metadata.modelId) && (
-                                    <div className="flex items-center gap-1">
-                                      <span className="font-medium">{t('credits.meta.model')}:</span>
-                                      <span className="text-gray-700">{String(transaction.metadata.model || transaction.metadata.modelId).split('/').pop()}</span>
+                                  {metadataSummaryRows.map((row) => (
+                                    <div key={`${transaction.id}-${row.label}`} className="flex items-center gap-1">
+                                      <span className="font-medium">{row.label}:</span>
+                                      <span className={row.emphasis ? "text-gray-700 font-semibold" : "text-gray-700"}>{row.value}</span>
                                     </div>
-                                  )}
+                                  ))}
                                   {transaction.metadata.operation && <div className="flex items-center gap-1"><span className="font-medium">{t('credits.meta.operation')}:</span><span className="text-gray-700">{String(transaction.metadata.operation)}</span></div>}
                                   {(transaction.metadata.phase || transaction.metadata.stage) && (
                                     <div className="flex items-center gap-1">

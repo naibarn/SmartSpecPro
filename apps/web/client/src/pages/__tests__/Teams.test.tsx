@@ -471,6 +471,11 @@ vi.mock("@/lib/trpc", () => ({
         }),
       },
     },
+    skills: {
+      getFromDb: {
+        useQuery: () => ({ data: null }),
+      },
+    },
     groups: {
       searchTenantUsers: {
         useQuery: () => ({ data: [], isLoading: false }),
@@ -1104,5 +1109,54 @@ describe("Teams preset creation flow", () => {
     expect(
       screen.queryByRole("button", { name: /start run/i })
     ).not.toBeInTheDocument();
+  });
+
+  it("forwards a custom subagent request when auto-team room creation auto-starts a run", async () => {
+    const user = userEvent.setup();
+    routeParamsRef.current = { teamId: "team-1" };
+    teamListDataRef.current = [
+      {
+        id: "team-1",
+        name: "Creative Content 1",
+        description: null,
+        category: "creative",
+        status: "active",
+        memberCount: 6,
+      },
+    ];
+    teamGetDataRef.current = {
+      id: "team-1",
+      name: "Creative Content 1",
+      members: [],
+    };
+    teamRoomsRef.current = [];
+
+    render(<Teams />);
+    dispatchResize();
+
+    await user.click(
+      (await screen.findAllByRole("button", { name: /new room/i }))[0]
+    );
+    await user.click(screen.getByRole("button", { name: /auto team/i }));
+    await user.click(screen.getByRole("button", { name: /custom exact name/i }));
+    await user.type(screen.getByPlaceholderText("researcher"), "researcher");
+    await user.type(
+      screen.getByPlaceholderText(
+        /Describe what this team room should achieve\./i
+      ),
+      "Plan the next launch with specialist support."
+    );
+    await user.click(screen.getByRole("button", { name: /create room/i }));
+
+    await waitFor(() => {
+      expect(teamRunStartMutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          roomId: "room-1",
+          executionMode: "auto_team",
+          objective: "Plan the next launch with specialist support.",
+          requestedSubagent: "researcher",
+        })
+      );
+    });
   });
 });

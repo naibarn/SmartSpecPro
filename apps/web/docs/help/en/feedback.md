@@ -6,7 +6,22 @@ icon: MessageSquarePlus
 section: features
 order: 48
 pages: ["/chat", "/my-feedback", "/admin/feedback-hub"]
-tags: [feedback, bug, report, attachment, upload, file, screenshot, feature-request]
+tags:
+  - "feedback"
+  - "bug"
+  - "report"
+  - "attachment"
+  - "upload"
+  - "file"
+  - "screenshot"
+  - "feature-request"
+  - "help"
+  - "help/en"
+  - "help/feedback"
+aliases:
+  - "feedback"
+  - "Feedback & Bug Reports"
+  - "Feedback & Bug Reports help"
 ---
 
 # Feedback & Bug Reports
@@ -85,3 +100,11 @@ Click the notification in the bell dropdown to navigate directly to the relevant
 - **Be specific** — "the chat doesn't work" is harder to act on than "clicking Send in chat returns a 500 error when the model is set to GPT-4".
 - **One issue per ticket** — if you have multiple bugs, submit separate tickets so each can be tracked independently.
 - **Check existing tickets** — before submitting, browse your My Feedback page to see if you already reported the same issue.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[my-feedback|My Feedback]]
+<!-- knowledge-graph:related:end -->

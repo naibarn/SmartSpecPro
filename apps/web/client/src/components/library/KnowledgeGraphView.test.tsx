@@ -4,6 +4,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { getKnowledgeGraphFixture } from "@/test/fixtures/knowledgeVaultFixture";
+
 vi.mock("@xyflow/react", () => ({
   ReactFlow: ({
     nodes,
@@ -67,53 +69,52 @@ import { KnowledgeGraphView } from "./KnowledgeGraphView";
 describe("KnowledgeGraphView", () => {
   it("shows an edge preview on hover and opens a note on second click", () => {
     const onOpenItem = vi.fn();
+    const graphFixture = getKnowledgeGraphFixture();
 
     render(
       <KnowledgeGraphView
-        activeNote={{
-          libraryItemId: 1,
-          title: "Active Note",
-          logicalPath: "workspace/active",
-        }}
-        outgoing={[
-          {
-            libraryItemId: 2,
-            title: "Target Note",
-            logicalPath: "workspace/target",
-            rawReference: "Target Note",
-            status: "resolved",
-          },
-        ]}
-        backlinks={[
-          {
-            libraryItemId: 3,
-            title: "Backlink Note",
-            logicalPath: "workspace/backlink",
-            rawReference: "Active Note",
-            status: "resolved",
-          },
-        ]}
-        sharedTags={[]}
-        semanticRelated={[]}
+        activeNote={graphFixture.note}
+        outgoing={graphFixture.outgoing}
+        backlinks={graphFixture.backlinks}
+        sharedTags={graphFixture.sharedTags}
+        semanticRelated={graphFixture.semanticRelated}
         onOpenItem={onOpenItem}
       />
     );
 
-    fireEvent.mouseEnter(screen.getByRole("button", { name: /links to/i }));
+    fireEvent.mouseEnter(
+      screen.getAllByRole("button", { name: /links to/i })[0],
+    );
 
     expect(screen.getByText(/^Edge preview$/i)).toBeTruthy();
-    expect(screen.getByText(/Active Note\s*->\s*Target Note/i)).toBeTruthy();
+    expect(
+      screen.getByText(
+        /Desktop Worker With ZeroClaw-OpenClaw-NemoClaw\.md\s*->\s*Graph Setup Checklist\.md/i,
+      ),
+    ).toBeTruthy();
     expect(
       screen.getByText(/explicit markdown or wikilink path/i)
     ).toBeTruthy();
 
-    fireEvent.mouseLeave(screen.getByRole("button", { name: /links to/i }));
+    fireEvent.mouseLeave(
+      screen.getAllByRole("button", { name: /links to/i })[0],
+    );
     expect(screen.queryByText(/^Edge preview$/i)).toBeNull();
 
-    fireEvent.click(screen.getByTestId("graph-node-2"));
-    expect(screen.getAllByText("Target Note").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByTestId("graph-node-201"));
+    expect(
+      screen.getAllByText("Graph Setup Checklist.md").length,
+    ).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByTestId("graph-node-2"));
-    expect(onOpenItem).toHaveBeenCalledWith(2, "Target Note");
+    fireEvent.click(screen.getByTestId("graph-node-201"));
+    expect(onOpenItem).toHaveBeenCalledWith(
+      graphFixture.outgoing[0].libraryItemId,
+      graphFixture.outgoing[0].title,
+    );
+
+    expect(screen.getByRole("button", { name: /shared tags/i })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /hybrid\/vector/i }),
+    ).toBeTruthy();
   });
 });

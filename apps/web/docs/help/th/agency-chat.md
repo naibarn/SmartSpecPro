@@ -6,7 +6,31 @@ icon: MessageSquare
 section: advanced
 order: 72
 pages: ["/agencies", "/chat"]
-tags: [agency, chat, test, run, streaming, preview, model, target agent, instructions, cancel, retry, tool calls, guardrails, approval, browser session]
+tags:
+  - "agency"
+  - "chat"
+  - "test"
+  - "run"
+  - "streaming"
+  - "preview"
+  - "model"
+  - "target agent"
+  - "instructions"
+  - "cancel"
+  - "retry"
+  - "tool calls"
+  - "guardrails"
+  - "approval"
+  - "browser session"
+  - "help"
+  - "help/th"
+  - "help/teams"
+  - "teams"
+  - "agency-chat"
+aliases:
+  - "agency-chat"
+  - "Agency Chat — รันและทดสอบ Agency"
+  - "Agency Chat — รันและทดสอบ Agency help"
 ---
 
 # Agency Chat
@@ -298,3 +322,15 @@ agency จาก community บางตัวมี **creator fee** เป็น
 - **ดู Activity Panel** — ช่วยเข้าใจว่า agent ทำงานร่วมกันอย่างไร และจุดไหนเป็นคอขวด
 - **ลองเปลี่ยนโมเดล** — โมเดลเร็วอาจเหมาะกับแบบร่าง ส่วนโมเดลที่ดีกว่าให้ผลลัพธ์สุดท้ายที่ดีกว่า
 - **ยกเลิกอย่างนุ่มนวล** — ใช้ "Cancel After Turn" เมื่อเป็นไปได้ เพื่อรับผลลัพธ์บางส่วนแทนที่จะไม่ได้อะไรเลย
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[teams|ทีม AI]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[agencies|Agencies - ทีม AI หลายตัว]]
+- [[agency-builder|ตัวสร้าง Agency]]
+- [[groups|กลุ่ม]]
+- [[team-monitoring|การติดตามทีมและ Scoped Memory]]
+<!-- knowledge-graph:related:end -->

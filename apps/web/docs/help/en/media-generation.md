@@ -6,7 +6,21 @@ icon: Image
 section: content-creation
 order: 30
 pages: ["/chat", "/media-studio"]
-tags: [image, video, audio, generation, media, create]
+tags:
+  - "image"
+  - "video"
+  - "audio"
+  - "generation"
+  - "media"
+  - "create"
+  - "help"
+  - "help/en"
+  - "help/media"
+  - "media-generation"
+aliases:
+  - "media-generation"
+  - "Image, Video, and Audio Generation"
+  - "Image, Video, and Audio Generation help"
 ---
 
 # Image, Video, and Audio Generation
@@ -42,3 +56,13 @@ Generated media is saved to **Media Studio** where you can:
 ## Supported providers
 
 Media generation routes to the best available provider for your request type. Providers include image, video, and audio AI services configured by your administrator. Available models may vary based on your account plan.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[gallery|Gallery]]
+- [[presentations|Create Presentations]]
+- [[video-editor|Video Editor]]
+<!-- knowledge-graph:related:end -->

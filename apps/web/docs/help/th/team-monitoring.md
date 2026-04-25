@@ -6,7 +6,27 @@ icon: Activity
 section: advanced
 order: 76
 pages: ["/chat", "/team"]
-tags: [monitoring, memory, scoped, notification, events, run, agent, status, live, ติดตาม, หน่วยความจำ]
+tags:
+  - "monitoring"
+  - "memory"
+  - "scoped"
+  - "notification"
+  - "events"
+  - "run"
+  - "agent"
+  - "status"
+  - "live"
+  - "ติดตาม"
+  - "หน่วยความจำ"
+  - "help"
+  - "help/th"
+  - "help/teams"
+  - "teams"
+  - "team-monitoring"
+aliases:
+  - "team-monitoring"
+  - "การติดตามทีมและ Scoped Memory"
+  - "การติดตามทีมและ Scoped Memory help"
 ---
 
 # การติดตามทีมและ Scoped Memory
@@ -138,3 +158,15 @@ Run Monitor แสดงสถานะแบบเรียลไทม์ข�
 - **Last-Event-ID** ป้องกันไม่ให้พลาด event ระหว่างขาดการเชื่อมต่อสั้นๆ
 - Heartbeat รักษาการเชื่อมต่อ (ทุก 15 วินาที)
 - ระยะเวลาเชื่อมต่อสูงสุด 30 นาที (เชื่อมต่อใหม่อัตโนมัติหลังจากนั้น)
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[teams|ทีม AI]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[agencies|Agencies - ทีม AI หลายตัว]]
+- [[agency-builder|ตัวสร้าง Agency]]
+- [[agency-chat|Agency Chat — รันและทดสอบ Agency]]
+- [[groups|กลุ่ม]]
+<!-- knowledge-graph:related:end -->

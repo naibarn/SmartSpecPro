@@ -6,7 +6,22 @@ icon: MessageSquarePlus
 section: features
 order: 48
 pages: ["/chat", "/my-feedback", "/admin/feedback-hub"]
-tags: [feedback, bug, report, attachment, upload, file, screenshot, feature-request]
+tags:
+  - "feedback"
+  - "bug"
+  - "report"
+  - "attachment"
+  - "upload"
+  - "file"
+  - "screenshot"
+  - "feature-request"
+  - "help"
+  - "help/th"
+  - "help/feedback"
+aliases:
+  - "feedback"
+  - "Feedback และรายงานบัก"
+  - "Feedback และรายงานบัก help"
 ---
 
 # Feedback และรายงานบัก
@@ -85,3 +100,11 @@ Ticket ของคุณถูกบันทึกแล้ว — การ r
 - **ระบุให้ชัดเจน** — "แชทใช้ไม่ได้" ยากที่จะจัดการ เทียบกับ "กด Send ในแชทได้ error 500 เมื่อเลือกโมเดล GPT-4"
 - **หนึ่งปัญหาต่อหนึ่ง ticket** — หากมีหลายบัก ให้ส่งแยก ticket เพื่อติดตามแต่ละปัญหาได้อิสระ
 - **ตรวจสอบ ticket ที่มีอยู่** — ก่อนส่ง ให้ดูหน้า My Feedback ว่าเคยรายงานปัญหาเดียวกันแล้วหรือไม่
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[my-feedback|ข้อเสนอแนะของฉัน]]
+<!-- knowledge-graph:related:end -->

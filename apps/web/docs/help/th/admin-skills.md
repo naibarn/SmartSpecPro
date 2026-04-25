@@ -6,7 +6,23 @@ icon: Wand2
 section: admin
 order: 120
 pages: ["/admin/skills", "/admin/skill-repositories"]
-tags: [admin, skills, manage, repository, marketplace, enable, disable, upload]
+tags:
+  - "admin"
+  - "skills"
+  - "manage"
+  - "repository"
+  - "marketplace"
+  - "enable"
+  - "disable"
+  - "upload"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin-skills"
+aliases:
+  - "admin-skills"
+  - "จัดการ Skills"
+  - "จัดการ Skills help"
 ---
 
 # จัดการ Skills
@@ -123,3 +139,15 @@ Skills ทำงานผ่าน **ระบบ Unified Execution** ที่�
 - คลิก **Install** เพื่อดาวน์โหลดและเพิ่ม Skill ในแพลตฟอร์ม — จะปรากฏในรายการ Skill เป็นสถานะปิดใช้งานจนกว่าจะเปิดใช้งาน
 - **Updates** — Skill จาก Marketplace ที่ติดตั้งแล้วจะแสดง Badge เมื่อมีเวอร์ชันใหม่
 - ตรวจสอบ System Prompt และ Schema ของ Skill ก่อนเปิดใช้งานให้กับผู้ใช้
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

@@ -6,7 +6,22 @@ icon: MonitorPlay
 section: features
 order: 50
 pages: ["/chat", "/browser-session"]
-tags: [browser, session, web, browsing, research, scraping]
+tags:
+  - "browser"
+  - "session"
+  - "web"
+  - "browsing"
+  - "research"
+  - "scraping"
+  - "help"
+  - "help/en"
+  - "help/runtime"
+  - "runtime"
+  - "browser-session"
+aliases:
+  - "browser-session"
+  - "Browser Session"
+  - "Browser Session help"
 ---
 
 # Browser Session
@@ -88,3 +103,15 @@ The AI will stop and wait for your input when it encounters:
 - OTP, MFA, or device verification.
 - Payments, bookings, purchases, or any irreversible action.
 - Anything sensitive that you want to review before submission.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+- [[docker-sandbox|Docker Sandbox]]
+<!-- knowledge-graph:related:end -->

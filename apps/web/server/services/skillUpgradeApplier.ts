@@ -14,6 +14,7 @@ import {
   compareSkillContractSnapshots,
   type SkillCompatibilityReport,
 } from "./skillCompatibilityGate";
+import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { launchSkillStudioTask } from "./skillStudioService";
 import {
   hasRelativeSkillManifest,
@@ -33,6 +34,8 @@ interface ApplySkillUpgradeParams {
   userRole?: string | null;
   userToken?: string | null;
   publicUrl?: string | null;
+  sourceRunId?: number | null;
+  retryReason?: string | null;
 }
 
 export interface ApplySkillUpgradeResult {
@@ -113,6 +116,9 @@ function isBreakingMaintenanceChange(recommendation: SkillImprovementRecommendat
   const currentRuntime = typeof recommendation.currentRuntime === "string" ? recommendation.currentRuntime.trim() : "";
   const runtimeChanged = Boolean(proposedRuntime && currentRuntime && proposedRuntime !== currentRuntime);
   const recommendationType = (recommendation.recommendationType || "").toLowerCase();
+  const topologySignals = details["topologySignals"] && typeof details["topologySignals"] === "object"
+    ? details["topologySignals"] as Record<string, unknown>
+    : null;
   const explicitBreaking = Boolean(
     recommendationJson["breakingChange"]
     || recommendationJson["requiresApproval"]
@@ -125,8 +131,15 @@ function isBreakingMaintenanceChange(recommendation: SkillImprovementRecommendat
     recommendationType.includes("breaking")
     || recommendationType.includes("migrate")
     || recommendationType.includes("runtime")
+    || recommendationType.includes("topology-widen")
+    || recommendationType.includes("scope-widen")
   );
-  return runtimeChanged || explicitBreaking || typeSignalsBreaking;
+  const topologyWidening = Boolean(
+    topologySignals?.["widenScope"]
+    || topologySignals?.["pathBoundaryChanged"]
+    || topologySignals?.["executionContractChanged"]
+  );
+  return runtimeChanged || explicitBreaking || typeSignalsBreaking || topologyWidening;
 }
 
 function buildUpgradeBrief(skill: Skill, recommendation: SkillImprovementRecommendation): string {
@@ -160,6 +173,7 @@ function buildUpgradeBrief(skill: Skill, recommendation: SkillImprovementRecomme
     "- Prefer modular, reviewable changes over one large rewrite.",
     "- If this is a GenJS migration, create or update skill.manifest.json, package.json, src/index.mjs, pipeline modules, and fixture coverage while preserving the public contract.",
     "- If tools/dependencies are needed, declare them explicitly in package.json and keep the bundle runnable in the existing Node.js sandbox flow.",
+    "- If this recommendation touches subagent topology, preserve the existing orchestrator boundary, keep specialist paths under agents/specialists/, and do not widen routing beyond the current manifest.",
     "- Update docs only where they help future maintenance or runtime clarity.",
     "",
     "Recommendation-specific details:",
@@ -309,7 +323,11 @@ async function finalizeStudioApply(params: {
         status: "failed",
         summary: resultMessage || "Generator-backed upgrade failed",
         errorMessage: errorMessage || resultMessage || "Unknown generator-backed apply error",
-        logsJson: metadata ?? {},
+        logsJson: {
+          ...(metadata ?? {}),
+          resultMessage,
+          resultError: errorMessage || resultMessage || "Unknown generator-backed apply error",
+        },
         endedAt: new Date(),
         updatedAt: new Date(),
       })
@@ -340,7 +358,11 @@ async function finalizeStudioApply(params: {
         status: "failed",
         summary: "Upgrade completed but skill record could not be reloaded",
         errorMessage: `Skill ${skillId} was not found after upgrade`,
-        logsJson: metadata ?? {},
+        logsJson: {
+          ...(metadata ?? {}),
+          resultMessage,
+          resultError: `Skill ${skillId} was not found after upgrade`,
+        },
         endedAt: new Date(),
         updatedAt: new Date(),
       })
@@ -412,6 +434,7 @@ async function finalizeStudioApply(params: {
       logsJson: {
         ...(metadata ?? {}),
         resultMessage,
+        resultError: errorMessage || null,
       },
       endedAt: new Date(),
       updatedAt: new Date(),
@@ -457,7 +480,11 @@ async function finalizeStudioProposal(params: {
         status: "failed",
         summary: resultMessage || "Proposal generation failed",
         errorMessage: errorMessage || resultMessage || "Unknown proposal generation error",
-        logsJson: metadata ?? {},
+        logsJson: {
+          ...(metadata ?? {}),
+          resultMessage,
+          resultError: errorMessage || resultMessage || "Unknown proposal generation error",
+        },
         endedAt: new Date(),
         updatedAt: new Date(),
       })
@@ -470,9 +497,11 @@ async function finalizeStudioProposal(params: {
     await db
       .update(skillImprovementRecommendations)
       .set({
-        status: "failed",
+        status: "approved",
         reviewedAt: new Date(),
         reviewedBy: requestedBy,
+        approvedAt: new Date(),
+        approvedBy: requestedBy,
         updatedAt: new Date(),
       })
       .where(eq(skillImprovementRecommendations.id, recommendationId));
@@ -480,10 +509,22 @@ async function finalizeStudioProposal(params: {
     await db
       .update(skillImprovementRuns)
       .set({
-        status: "failed",
-        summary: "Upgrade completed without a saved proposal",
-        errorMessage: "The proposal-first upgrade did not produce a diff for admin review.",
-        logsJson: metadata ?? {},
+        status: "completed",
+        summary: "Proposal generation completed without code changes",
+        errorMessage: null,
+        logsJson: {
+          ...(metadata ?? {}),
+          savedProposals: [],
+          latestProposal: null,
+          resultMessage,
+          resultError: null,
+          completionMode: "no_changes",
+        },
+        diffSummaryJson: {
+          savedProposals: [],
+          latestProposal: null,
+          completionMode: "no_changes",
+        },
         endedAt: new Date(),
         updatedAt: new Date(),
       })
@@ -513,6 +554,7 @@ async function finalizeStudioProposal(params: {
         savedProposals: proposalInfo.savedProposals,
         latestProposal: proposalInfo.latestProposal,
         resultMessage,
+        resultError: null,
       },
       diffSummaryJson: {
         latestProposal: proposalInfo.latestProposal,
@@ -697,6 +739,8 @@ export async function applySkillUpgradeRecommendation(
     userRole = "admin",
     userToken = null,
     publicUrl = null,
+    sourceRunId = null,
+    retryReason = null,
   } = params;
 
   const { recommendation, skill } = await fetchSkillRecommendation(db, recommendationId);
@@ -749,6 +793,7 @@ export async function applySkillUpgradeRecommendation(
   const brief = buildUpgradeBrief(skill, recommendation);
   const isBreakingChange = isBreakingMaintenanceChange(recommendation);
   const useProposalFirst = isBreakingChange || !recommendation.isAutoApplySafe;
+  const resolvedLlmModelId = await resolveEnabledLlmModelId();
 
   const [approvedRecommendation] = await db
     .update(skillImprovementRecommendations)
@@ -764,6 +809,11 @@ export async function applySkillUpgradeRecommendation(
     .returning();
 
   try {
+    const onCompleteMetadataBase = {
+      resolvedLlmModelId,
+      sourceRunId,
+      retryReason,
+    };
     const launch = await launchSkillStudioTask(
       {
         userId: requestedBy ?? 0,
@@ -780,9 +830,15 @@ export async function applySkillUpgradeRecommendation(
         rounds: recommendation.recommendationType === "migrate-to-genjs" ? 4 : 3,
         desiredVisibility: normalizeVisibility(skill.visibility),
         autoApplyProposal: !useProposalFirst,
+        llmModelSearch: resolvedLlmModelId || undefined,
       },
       {
         onCompleted: async (result) => {
+          const completionMessage = result.message ?? result.error ?? null;
+          const completionMetadata = {
+            ...(result.metadata && typeof result.metadata === "object" ? result.metadata as Record<string, unknown> : {}),
+            ...onCompleteMetadataBase,
+          };
           if (useProposalFirst) {
             await finalizeStudioProposal({
               db,
@@ -790,9 +846,9 @@ export async function applySkillUpgradeRecommendation(
               runId: run.id,
               requestedBy,
               success: Boolean(result.success),
-              resultMessage: result.message,
-              metadata: (result.metadata as Record<string, unknown> | null) ?? null,
-              errorMessage: result.success ? null : result.message,
+              resultMessage: completionMessage,
+              metadata: completionMetadata,
+              errorMessage: result.success ? null : completionMessage,
             });
             return;
           }
@@ -805,9 +861,9 @@ export async function applySkillUpgradeRecommendation(
             baselineSnapshot,
             requestedBy,
             success: Boolean(result.success),
-            resultMessage: result.message,
-            metadata: (result.metadata as Record<string, unknown> | null) ?? null,
-            errorMessage: result.success ? null : result.message,
+            resultMessage: completionMessage,
+            metadata: completionMetadata,
+            errorMessage: result.success ? null : completionMessage,
           });
         },
       },
@@ -824,6 +880,9 @@ export async function applySkillUpgradeRecommendation(
           tenantId,
           applyStrategy: useProposalFirst ? "proposal" : "auto-apply",
           maintenanceClassification: isBreakingChange ? "breaking" : "non-breaking",
+          resolvedLlmModelId,
+          sourceRunId,
+          retryReason,
         },
         updatedAt: new Date(),
       })
@@ -858,6 +917,14 @@ export async function applySkillUpgradeRecommendation(
         status: "failed",
         summary: `Failed to queue ${recommendation.recommendationType} for ${skill.slug}`,
         errorMessage: message,
+        logsJson: {
+          sourceRunId,
+          retryReason,
+          resolvedLlmModelId,
+          resultMessage: message,
+          errorMessage: message,
+          resultError: message,
+        },
         endedAt: new Date(),
         updatedAt: new Date(),
       })

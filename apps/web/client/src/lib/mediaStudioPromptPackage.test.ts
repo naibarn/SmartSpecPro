@@ -83,6 +83,71 @@ describe("parseMediaStudioPromptPackage", () => {
     });
   });
 
+  it("extracts the detailed prompt from image prompt engineer bundle JSON", () => {
+    const input = JSON.stringify({
+      status: "completed",
+      prompts: {
+        short: "Create a sunset portrait.",
+        detailed: "Create a high-quality cinematic portrait at sunset with warm light and clean composition.",
+        structured: "Topic: sunset portrait\nLighting: golden hour",
+        negative_constraints: "watermark, blurry details",
+        variants: [
+          "Create a high-quality cinematic portrait at sunset with warm light and clean composition.",
+          "Create a premium cinematic sunset portrait with refined warm color grading.",
+        ],
+      },
+      quality_review: {
+        pass_count: 1,
+      },
+      safety_review: {
+        level: "standard",
+      },
+    });
+
+    expect(parseMediaStudioPromptPackage(input)).toEqual({
+      promptText: "Create a high-quality cinematic portrait at sunset with warm light and clean composition.",
+      continuityNotes: "",
+      referenceNotes: "",
+      promptSequence: [
+        "Create a high-quality cinematic portrait at sunset with warm light and clean composition.",
+        "Create a premium cinematic sunset portrait with refined warm color grading.",
+      ],
+      source: "structured_json",
+    });
+  });
+
+  it("extracts prompts from prompt_variants bundle JSON", () => {
+    const input = JSON.stringify({
+      prompt_variants: [
+        {
+          prompt: "A young child walking along the beach with soft warm lighting and gentle ocean waves.",
+          edit_prompt: "Enhance the colors to make the scene more vibrant.",
+        },
+        {
+          prompt: "A playful child running on the sandy beach at sunset, laughing as ocean waves splash nearby.",
+          edit_prompt: "Add a slight vignette and enhance the sunset colors.",
+        },
+      ],
+      quality_review: {
+        pass_count: 1,
+      },
+    });
+
+    expect(parseMediaStudioPromptPackage(input)).toEqual({
+      promptText: [
+        "A young child walking along the beach with soft warm lighting and gentle ocean waves.",
+        "A playful child running on the sandy beach at sunset, laughing as ocean waves splash nearby.",
+      ].join("\n\n"),
+      continuityNotes: "",
+      referenceNotes: "",
+      promptSequence: [
+        "A young child walking along the beach with soft warm lighting and gentle ocean waves.",
+        "A playful child running on the sandy beach at sunset, laughing as ocean waves splash nearby.",
+      ],
+      source: "structured_json",
+    });
+  });
+
   it("drops absence-only reference note boilerplate from structured outputs", () => {
     const input = JSON.stringify({
       continuity_package: {

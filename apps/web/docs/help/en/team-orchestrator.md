@@ -6,7 +6,26 @@ icon: Users
 section: advanced
 order: 75
 pages: ["/chat", "/teams", "/teams/:teamId"]
-tags: [team, orchestrator, agents, collaboration, room, run, multi-agent, discussion, auto-stop, inter-agent]
+tags:
+  - "team"
+  - "orchestrator"
+  - "agents"
+  - "collaboration"
+  - "room"
+  - "run"
+  - "multi-agent"
+  - "discussion"
+  - "auto-stop"
+  - "inter-agent"
+  - "help"
+  - "help/en"
+  - "help/teams"
+  - "teams"
+  - "team-orchestrator"
+aliases:
+  - "team-orchestrator"
+  - "AI Team Orchestrator"
+  - "AI Team Orchestrator help"
 ---
 
 # AI Team Orchestrator
@@ -170,3 +189,15 @@ The orchestrator supports multiple turn-order strategies for how agents take tur
 5. **Review the lead's summary** before stopping a run — it captures the team's conclusions.
 6. **Pause to intervene** — if agents go off-track, pause, send a correction message, then resume.
 7. **Auto-stop protects you** — even if you forget to stop a run, the policy checker will enforce limits every 30 seconds.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[teams|AI Teams]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[agencies|Agencies - Multi-Agent Teams]]
+- [[agency-builder|Agency Builder]]
+- [[agency-chat|Agency Chat — Running & Testing Agencies]]
+- [[groups|Groups]]
+<!-- knowledge-graph:related:end -->

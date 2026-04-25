@@ -6,7 +6,23 @@ icon: Bell
 section: admin
 order: 115
 pages: ["/admin/notifications"]
-tags: [admin, notifications, alerts, monitoring, unified, dedup, escalation, dashboard]
+tags:
+  - "admin"
+  - "notifications"
+  - "alerts"
+  - "monitoring"
+  - "unified"
+  - "dedup"
+  - "escalation"
+  - "dashboard"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-notifications"
+aliases:
+  - "admin-notifications"
+  - "Notification Center"
+  - "Notification Center help"
 ---
 
 # Notification Center
@@ -75,3 +91,15 @@ The notification health status is available via the monitoring API (`monitoring.
 - Check the notification center after deploying changes to catch early health warnings.
 - Notifications older than the retention period (configured in retention job) are automatically cleaned up.
 - Enable deduplication to reduce noise from repeated alerts — configure `groupKey` patterns in notification call sites.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

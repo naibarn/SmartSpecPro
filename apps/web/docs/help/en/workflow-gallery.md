@@ -6,7 +6,20 @@ icon: LayoutGrid
 section: features
 order: 51
 pages: ["/workflows"]
-tags: [workflow, gallery, templates, automation, browse]
+tags:
+  - "workflow"
+  - "gallery"
+  - "templates"
+  - "automation"
+  - "browse"
+  - "help"
+  - "help/en"
+  - "help/automation"
+  - "workflow-gallery"
+aliases:
+  - "workflow-gallery"
+  - "Workflow Gallery"
+  - "Workflow Gallery help"
 ---
 
 # Workflow Gallery
@@ -46,3 +59,15 @@ Click **Workflows** in the main sidebar. The gallery opens and loads your saved 
 - Workflows you save appear at the top of the gallery so your most-used automations are always easy to find.
 - The category filter applies to both your saved workflows and templates at the same time.
 - Running directly from the gallery skips the editor — useful for workflows you have already configured and just want to re-execute.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[workflows|Workflows & Automation]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[automation|Process Automation]]
+- [[factory|SaaS Factory]]
+- [[webhooks|Webhooks & Integrations]]
+- [[work-os|Work OS Guide]]
+<!-- knowledge-graph:related:end -->

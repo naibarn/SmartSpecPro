@@ -6,7 +6,23 @@ icon: Users
 section: advanced
 order: 70
 pages: ["/chat", "/agency"]
-tags: [agency, agents, multi-agent, team, collaboration, research, storyboard]
+tags:
+  - "agency"
+  - "agents"
+  - "multi-agent"
+  - "team"
+  - "collaboration"
+  - "research"
+  - "storyboard"
+  - "help"
+  - "help/en"
+  - "help/teams"
+  - "teams"
+  - "agencies"
+aliases:
+  - "agencies"
+  - "Agencies - Multi-Agent Teams"
+  - "Agencies - Multi-Agent Teams help"
 ---
 
 # Agencies — Multi-Agent Teams
@@ -150,3 +166,15 @@ Templates preserve the agent definitions, node configurations, model requirement
 - **Mention capabilities**: If you need web search, vision, or code execution, say so explicitly.
 - **Describe the output**: "The final agent should produce a structured markdown report with sections" helps the AI design the right workflow.
 - **Attach specs**: For complex requirements, attach a document with detailed specifications.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[teams|AI Teams]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[agency-builder|Agency Builder]]
+- [[agency-chat|Agency Chat — Running & Testing Agencies]]
+- [[groups|Groups]]
+- [[team-monitoring|Team Monitoring & Scoped Memory]]
+<!-- knowledge-graph:related:end -->

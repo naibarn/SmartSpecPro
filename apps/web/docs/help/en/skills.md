@@ -6,7 +6,20 @@ icon: Zap
 section: features
 order: 20
 pages: ["/chat"]
-tags: [skills, slash commands, workflow, automation, detection]
+tags:
+  - "skills"
+  - "slash commands"
+  - "workflow"
+  - "automation"
+  - "detection"
+  - "help"
+  - "help/en"
+  - "help/marketplace"
+  - "marketplace"
+aliases:
+  - "skills"
+  - "Skills and Slash Commands"
+  - "Skills and Slash Commands help"
 ---
 
 # Skills and Slash Commands
@@ -57,3 +70,12 @@ Each skill defines its own output structure. Common output types include:
 - **Media generation trigger** — Automatically submits an image, video, or audio generation request.
 - **Structured data** — Tables, JSON, comparison outputs.
 - **Prompt** — An enhanced or structured prompt ready for the next step.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[marketplace|Marketplace]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[skill-browser|Skill Browser]]
+<!-- knowledge-graph:related:end -->

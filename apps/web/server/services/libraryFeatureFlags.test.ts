@@ -17,6 +17,7 @@ const TRACKED_ENV_KEYS = [
   "KNOWLEDGE_VAULT_CONTEXT_PACKS_RUNTIME_ENABLED",
   "KNOWLEDGE_VAULT_CONTEXT_PACKS_DELEGATED_MCP_ENABLED",
   "KNOWLEDGE_VAULT_CONTEXT_PACKS_SNAPSHOT_ENABLED",
+  "KNOWLEDGE_VAULT_GRAPH_ENABLED",
   "KNOWLEDGE_VAULT_DEV_UNLOCK_PROTECTED_SURFACES",
   "KNOWLEDGE_VAULT_PRIVATE_VAULT_RUNTIME_UNLOCK_ENABLED",
   "KNOWLEDGE_VAULT_RELEASE_GATE_STATUS",
@@ -156,7 +157,7 @@ describe("Knowledge Vault access policy", () => {
     ).toBe(true);
   });
 
-  it("blocks graph and runtime surfaces from broad rollout until the release gate is ready", () => {
+  it("keeps the visual graph available while release-gating runtime surfaces", () => {
     process.env.LIBRARY_ENABLED = "true";
     process.env.KNOWLEDGE_VAULT_ENABLED = "true";
     delete process.env.KNOWLEDGE_VAULT_ENABLED_TENANTS;
@@ -166,10 +167,24 @@ describe("Knowledge Vault access policy", () => {
 
     expect(policy.surfaces.quickSwitcher).toBe(true);
     expect(policy.surfaces.savedViews).toBe(true);
-    expect(policy.surfaces.graph).toBe(false);
+    expect(policy.surfaces.graph).toBe(true);
     expect(policy.surfaces.contextPacksRuntime).toBe(false);
-    expect(getKnowledgeVaultSurfaceDecision("graph", "tenant-A").reasons).toContain(
+    expect(getKnowledgeVaultSurfaceDecision("contextPacksRuntime", "tenant-A").reasons).toContain(
       "release_gate_not_ready",
+    );
+  });
+
+  it("can disable the visual graph with its dedicated feature flag", () => {
+    process.env.LIBRARY_ENABLED = "true";
+    process.env.KNOWLEDGE_VAULT_ENABLED = "true";
+    process.env.KNOWLEDGE_VAULT_GRAPH_ENABLED = "false";
+    process.env.KNOWLEDGE_VAULT_RELEASE_GATE_STATUS = "pass";
+
+    const policy = getKnowledgeVaultAccessPolicy("tenant-A");
+
+    expect(policy.surfaces.graph).toBe(false);
+    expect(getKnowledgeVaultSurfaceDecision("graph", "tenant-A").reasons).toContain(
+      "surface_env_disabled",
     );
   });
 
@@ -182,7 +197,7 @@ describe("Knowledge Vault access policy", () => {
     const policy = getKnowledgeVaultAccessPolicy("tenant-canary");
 
     expect(policy.releaseGateBypassed).toBe(true);
-    expect(policy.surfaces.graph).toBe(true);
+    expect(policy.surfaces.canvas).toBe(true);
     expect(policy.surfaces.contextPacksRuntime).toBe(true);
   });
 
@@ -198,7 +213,6 @@ describe("Knowledge Vault access policy", () => {
     const policy = getKnowledgeVaultAccessPolicy("tenant-A");
 
     expect(policy.releaseGateStatus).toBe("pass");
-    expect(policy.surfaces.graph).toBe(true);
     expect(policy.surfaces.canvas).toBe(true);
     expect(policy.surfaces.contextPacksRuntime).toBe(true);
   });

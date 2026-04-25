@@ -6,7 +6,22 @@ icon: MonitorPlay
 section: features
 order: 68
 pages: ["/desktop/open"]
-tags: [desktop, desktop-host, managed mode, install, launch, handoff]
+tags:
+  - "desktop"
+  - "desktop-host"
+  - "managed mode"
+  - "install"
+  - "launch"
+  - "handoff"
+  - "help"
+  - "help/en"
+  - "help/runtime"
+  - "runtime"
+  - "desktop-host-managed-mode"
+aliases:
+  - "desktop-host-managed-mode"
+  - "Desktop Host Managed Mode"
+  - "Desktop Host Managed Mode help"
 ---
 
 # Desktop Host Managed Mode
@@ -121,3 +136,15 @@ Use only the published installer and keep managed mode enabled. Do not rely on o
 
 - [Desktop Host](./desktop-host.md)
 - [Desktop Releases](./desktop-releases.md)
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-releases|Desktop Releases]]
+- [[docker-sandbox|Docker Sandbox]]
+<!-- knowledge-graph:related:end -->

@@ -258,6 +258,10 @@ const translationMap: Record<string, string> = {
   "dashboard:nextBestActions.manageDesktopReleases": "Manage desktop releases",
   "dashboard:admin.systemMonitoring": "System Monitoring",
   "dashboard:admin.tools": "Admin Tools",
+  "dashboard:admin.skillMaintenanceQueuedRuns": "{{count}} queued runs",
+  "dashboard:admin.skillMaintenanceLatestRun": "Open latest run detail",
+  "dashboard:admin.skillMaintenanceFailedRuns": "{{count}} failed runs",
+  "dashboard:admin.legacyUpgradesPending": "{{count}} legacy upgrades pending",
   "dashboard:admin.desktopGovernance": "Desktop Governance",
   "dashboard:admin.desktopGovernanceEyebrow": "Managed Desktop",
   "dashboard:admin.desktopGovernanceDescription": "Review enrolled desktop devices, last contact, root posture, and managed access controls from the web.",
@@ -319,6 +323,14 @@ const translationMap: Record<string, string> = {
 };
 
 function translate(key: string, params?: Record<string, string | number>) {
+  const interpolate = (value: string) =>
+    value.replace(/{{\s*(\w+)\s*}}/g, (_match, paramKey: string) => {
+      const paramValue = params?.[paramKey];
+      return paramValue === undefined || paramValue === null
+        ? ""
+        : String(paramValue);
+    });
+
   if (key === "dashboard:welcome") {
     return `Welcome, ${params?.name ?? "User"}`;
   }
@@ -379,7 +391,8 @@ function translate(key: string, params?: Record<string, string | number>) {
     return `Inspecting ${params?.amount ?? ""}`;
   }
 
-  return translationMap[key] ?? key;
+  const translated = translationMap[key] ?? key;
+  return params ? interpolate(translated) : translated;
 }
 
 vi.mock("wouter", () => ({
@@ -622,6 +635,22 @@ vi.mock("@/lib/trpc", () => ({
       getLegacyUpgradeQueueSummary: {
         useQuery: vi.fn(() => ({
           data: { count: 7 },
+          isLoading: false,
+        })),
+      },
+      getLegacyUpgradeApplyRuns: {
+        useQuery: vi.fn(() => ({
+          data: {
+            counts: {
+              total: 9,
+              queued: 0,
+              failed: 9,
+              completed: 0,
+              blocked: 0,
+              canceled: 0,
+            },
+            items: [{ id: 901 }],
+          },
           isLoading: false,
         })),
       },
@@ -976,8 +1005,13 @@ describe("Dashboard", () => {
     render(<Dashboard />);
 
     expect(screen.getByRole("button", { name: /work os console/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /queued runs/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /failed runs/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /work os console/i }));
     expect(setLocationMock).toHaveBeenCalledWith("/admin/work-os");
+
+    fireEvent.click(screen.getByRole("button", { name: /failed runs/i }));
+    expect(setLocationMock).toHaveBeenCalledWith("/admin/skills?tab=maintenance&legacyQueueFilter=failed");
   });
 
   it("shows the personal finance report surface and shortcut", () => {
@@ -1085,6 +1119,18 @@ describe("Dashboard", () => {
 
     fireEvent.click(maintenanceButton);
     expect(setLocationMock).toHaveBeenCalledWith("/admin/skills?tab=maintenance");
+  });
+
+  it("links admins directly to the latest maintenance run detail from the dashboard", () => {
+    authState.role = "admin";
+
+    render(<Dashboard />);
+
+    const latestRunButton = screen.getByRole("button", { name: /open latest run detail/i });
+    expect(latestRunButton).toBeInTheDocument();
+
+    fireEvent.click(latestRunButton);
+    expect(setLocationMock).toHaveBeenCalledWith("/admin/skills/runs/901");
   });
 
   it("shows a legacy upgrade count badge and maintenance shortcut for admins", () => {

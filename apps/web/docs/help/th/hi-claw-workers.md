@@ -6,7 +6,23 @@ icon: Layers3
 section: admin
 order: 90
 pages: ["/admin/monitoring", "/admin/tenants"]
-tags: [hiclaw, cluster, workers, admin-gated, monitoring, tenants, collaboration]
+tags:
+  - "hiclaw"
+  - "cluster"
+  - "workers"
+  - "admin-gated"
+  - "monitoring"
+  - "tenants"
+  - "collaboration"
+  - "help"
+  - "help/th"
+  - "help/runtime"
+  - "runtime"
+  - "hi-claw-workers"
+aliases:
+  - "hi-claw-workers"
+  - "HiClaw Workers"
+  - "HiClaw Workers help"
 ---
 
 # HiClaw Workers
@@ -76,3 +92,15 @@ guardrail ปัจจุบันคือ:
 - [OpenClaw Workers](./openclaw-workers.md)
 - [NemoClaw Workers](./nemo-claw-workers.md)
 - [Desktop Host](./desktop-host.md)
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+<!-- knowledge-graph:related:end -->

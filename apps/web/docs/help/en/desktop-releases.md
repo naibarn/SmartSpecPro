@@ -6,7 +6,23 @@ icon: Download
 section: features
 order: 67
 pages: ["/dashboard", "/admin/desktop-host", "/domain-admin/desktop-host"]
-tags: [desktop, desktop releases, installer, download, admin, publish, release notes]
+tags:
+  - "desktop"
+  - "desktop releases"
+  - "installer"
+  - "download"
+  - "admin"
+  - "publish"
+  - "release notes"
+  - "help"
+  - "help/en"
+  - "help/runtime"
+  - "runtime"
+  - "desktop-releases"
+aliases:
+  - "desktop-releases"
+  - "Desktop Releases"
+  - "Desktop Releases help"
 ---
 
 # Desktop Releases
@@ -157,3 +173,15 @@ If you may need the asset again later, unpublish it instead of deleting it.
 
 - [Desktop Host](./desktop-host.md)
 - [Desktop Host Managed Mode](./desktop-host-managed-mode.md)
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[desktop-host|Desktop Host]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[docker-sandbox|Docker Sandbox]]
+<!-- knowledge-graph:related:end -->

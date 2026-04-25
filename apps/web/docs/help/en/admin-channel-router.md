@@ -6,7 +6,24 @@ icon: GitFork
 section: admin
 order: 62
 pages: ["/admin/channel-router"]
-tags: [channel, router, telegram, slack, line, whatsapp, discord, routing]
+tags:
+  - "channel"
+  - "router"
+  - "telegram"
+  - "slack"
+  - "line"
+  - "whatsapp"
+  - "discord"
+  - "routing"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin"
+  - "admin-channel-router"
+aliases:
+  - "admin-channel-router"
+  - "Channel Router"
+  - "Channel Router help"
 ---
 
 # Channel Router
@@ -95,3 +112,15 @@ The **Activity Log** tab on each route shows the last 100 messages processed, wi
 - Response status and latency.
 
 Use this log to debug unexpected routing or identify high-volume users.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

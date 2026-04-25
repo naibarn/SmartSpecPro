@@ -6,7 +6,23 @@ icon: Brain
 section: features
 order: 60
 pages: ["/chat", "/settings"]
-tags: [memory, preferences, context, project, remember, persona, long memory, summary]
+tags:
+  - "memory"
+  - "preferences"
+  - "context"
+  - "project"
+  - "remember"
+  - "persona"
+  - "long memory"
+  - "summary"
+  - "help"
+  - "help/en"
+  - "help/knowledge"
+  - "knowledge"
+aliases:
+  - "memory"
+  - "Memory System"
+  - "Memory System help"
 ---
 
 # Memory System
@@ -87,3 +103,13 @@ To create a project:
 - **Use the right persona before saving** — If you want each assistant persona to keep its own long-term context, switch to that persona first.
 - **Review periodically** — Old memories can become outdated. Review and clean them up in Settings.
 - **Save manually** — Click **Save to Memory** on any message that contains something important to preserve.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[document-management|Document Management]]
+- [[getting-started|Getting Started]]
+- [[chat|Chat Guide]]
+- [[mcp-servers|MCP Server Integration]]
+- [[personas|AI Personas]]
+<!-- knowledge-graph:related:end -->

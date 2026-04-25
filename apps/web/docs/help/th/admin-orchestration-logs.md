@@ -6,7 +6,22 @@ icon: ScrollText
 section: admin
 order: 260
 pages: ["/admin/orchestration-logs"]
-tags: [แอดมิน, ประสานงาน, บันทึก, การทำงาน, มอนิเตอร์, ดีบัก]
+tags:
+  - "แอดมิน"
+  - "ประสานงาน"
+  - "บันทึก"
+  - "การทำงาน"
+  - "มอนิเตอร์"
+  - "ดีบัก"
+  - "help"
+  - "help/th"
+  - "help/admin"
+  - "admin"
+  - "admin-orchestration-logs"
+aliases:
+  - "admin-orchestration-logs"
+  - "บันทึกการประสานงาน"
+  - "บันทึกการประสานงาน help"
 ---
 
 # บันทึกการประสานงาน
@@ -44,3 +59,15 @@ tags: [แอดมิน, ประสานงาน, บันทึก, ก�
 - รอบการทำงานที่ใช้เวลานานผิดปกติมักบ่งบอกถึง LLM provider ที่ตอบสนองช้า หรือ loop ที่ไม่สิ้นสุด
 - หากเอเจนต์ตอบสนองซ้ำๆ หรือวนซ้ำโดยไม่สิ้นสุด ให้ตรวจสอบ system prompt ของเอเจนต์นั้น
 - เก็บบันทึกของรอบการทำงานที่ผลดีเป็นตัวอย่าง (baseline) สำหรับเปรียบเทียบเมื่อเกิดปัญหา
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[admin-advanced|การจัดการขั้นสูง]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[admin-agencies|จัดการเอเจนซี่]]
+- [[admin-alert-rules|กฎแจ้งเตือนและการยกระดับ]]
+- [[admin-approvals|การอนุมัติ]]
+- [[admin-audit|บันทึกการตรวจสอบ]]
+<!-- knowledge-graph:related:end -->

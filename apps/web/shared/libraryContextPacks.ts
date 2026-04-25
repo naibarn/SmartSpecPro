@@ -344,7 +344,7 @@ export const libraryContextPackResolvePackSchema = z.object({
 export const libraryContextPackResolveResultSchema = z.object({
   pack: libraryContextPackResolvePackSchema,
   status: libraryContextPackResolutionStatusSchema,
-  relationExpansionApplied: z.literal(false),
+  relationExpansionApplied: z.boolean().default(false),
   totals: libraryContextPackResolveTotalsSchema,
   items: z.array(libraryContextPackResolveItemSchema),
   diagnostics: z.array(libraryContextPackDiagnosticSchema).default([]),

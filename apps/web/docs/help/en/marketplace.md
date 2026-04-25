@@ -6,7 +6,21 @@ icon: Store
 section: features
 order: 70
 pages: ["/marketplace", "/agencies/marketplace", "/agencies/templates"]
-tags: [marketplace, store, install, discover, skills, agencies, templates, community]
+tags:
+  - "marketplace"
+  - "store"
+  - "install"
+  - "discover"
+  - "skills"
+  - "agencies"
+  - "templates"
+  - "community"
+  - "help"
+  - "help/en"
+  - "help/marketplace"
+aliases:
+  - "marketplace"
+  - "Marketplace help"
 ---
 
 # Marketplace
@@ -80,3 +94,12 @@ Agency Templates are curated starting points for the most common agency use case
 - **Check ratings and install counts** before installing a community skill or agency. Higher numbers indicate reliability.
 - **Preview configurations** before installing agencies — understanding the agent structure helps you write better prompts.
 - If a skill or agency does not perform as expected after installation, leave a rating and check if an updated version is available.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[skill-browser|Skill Browser]]
+- [[skills|Skills and Slash Commands]]
+<!-- knowledge-graph:related:end -->

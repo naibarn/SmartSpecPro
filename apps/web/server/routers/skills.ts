@@ -102,6 +102,7 @@ import { loadEnabledLlmModelRows } from "../services/enabledLlmModels";
 import { resolveMediaTypeFromSkillCategory, sanitizeMediaModelSelection } from "../services/mediaModelSelection";
 import { buildCustomSkillUserPrompt } from "../services/skillExecutionPromptBuilder";
 import {
+  buildNativeSkillRuntimePlanContext,
   buildRuntimeModelConfig,
   executeSharedSkillTextRuntime,
 } from "../services/agentRuntime/skillRuntimeOrchestrator";
@@ -129,7 +130,114 @@ const LEGACY_UPGRADE_RECOMMENDATION_TYPES = [
   "native-bundle-upgrade",
   "migrate-to-native-bundle",
 ] as const;
+const LEGACY_UPGRADE_APPLY_RUN_STATES = [
+  "queued",
+  "running",
+  "failed",
+  "completed",
+  "blocked",
+  "canceled",
+] as const;
 const legacyUpgradeSeedLocks = new Map<string, Promise<void>>();
+
+function deriveLegacyUpgradeRunState(status: string): "queued" | "running" | "failed" | "completed" | "blocked" | "canceled" {
+  if (status === "queued" || status === "running") {
+    return status;
+  }
+  if (status === "failed") {
+    return "failed";
+  }
+  if (status === "completed") {
+    return "completed";
+  }
+  if (status === "blocked") {
+    return "blocked";
+  }
+  return "canceled";
+}
+
+function extractLegacyRunTaskId(logsJson: unknown): string | null {
+  if (!logsJson || typeof logsJson !== "object") {
+    return null;
+  }
+  const taskId = (logsJson as Record<string, unknown>).taskId;
+  return typeof taskId === "string" && taskId.trim() ? taskId.trim() : null;
+}
+
+function extractLegacyRunStringField(logsJson: unknown, key: string): string | null {
+  if (!logsJson || typeof logsJson !== "object") {
+    return null;
+  }
+  const value = (logsJson as Record<string, unknown>)[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function extractLegacyRunNumberField(logsJson: unknown, key: string): number | null {
+  if (!logsJson || typeof logsJson !== "object") {
+    return null;
+  }
+  const value = (logsJson as Record<string, unknown>)[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function extractLegacyRunLineage(logsJson: unknown): Record<string, unknown> | null {
+  if (!logsJson || typeof logsJson !== "object") {
+    return null;
+  }
+  const lineage = (logsJson as Record<string, unknown>).lineage;
+  if (!lineage || typeof lineage !== "object" || Array.isArray(lineage)) {
+    return null;
+  }
+  return lineage as Record<string, unknown>;
+}
+
+function isLegacyUpgradeNoChangeRunCandidate(run: {
+  status: string;
+  summary: string | null;
+  errorMessage: string | null;
+  logsJson: unknown;
+}): boolean {
+  if (run.status !== "failed") {
+    return false;
+  }
+
+  const completionMode = extractLegacyRunStringField(run.logsJson, "completionMode");
+  if (completionMode === "no_changes") {
+    return true;
+  }
+
+  const summary = (run.summary || "").toLowerCase();
+  const resultMessage = extractLegacyRunStringField(run.logsJson, "resultMessage")?.toLowerCase() || "";
+  const errorMessage = (run.errorMessage || extractLegacyRunStringField(run.logsJson, "resultError") || "").toLowerCase();
+  const combined = `${summary} ${resultMessage}`.trim();
+
+  const noChangeSignals = [
+    "no patches generated",
+    "no changes required",
+    "completed without code changes",
+    "isc improve complete",
+  ];
+
+  if (!noChangeSignals.some((signal) => combined.includes(signal))) {
+    return false;
+  }
+
+  return combined.includes("no patches generated")
+    || combined.includes("no changes required")
+    || combined.includes("completed without code changes")
+    || (combined.includes("isc improve complete") && !errorMessage.includes("proposal generation failed"));
+}
+
+function buildLegacyNoChangeCompletionLogs(logsJson: unknown): Record<string, unknown> {
+  const current = logsJson && typeof logsJson === "object" ? logsJson as Record<string, unknown> : {};
+  return {
+    ...current,
+    savedProposals: Array.isArray(current.savedProposals) ? current.savedProposals : [],
+    latestProposal: null,
+    resultError: null,
+    completionMode: "no_changes",
+  };
+}
 
 async function maybeSeedLegacyUpgradeQueue(params: {
   dbInstance: any;
@@ -194,6 +302,78 @@ const SKILL_EXECUTION_MODE_VALUES = [
   "sandbox-media",
 ] as const;
 const skillExecutionModeSchema = z.enum(SKILL_EXECUTION_MODE_VALUES);
+const nativeBundleRelativePathSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(240)
+  .regex(/^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9_.\-/]+$/);
+const nativeCheckpointPolicySchema = z.object({
+  mode: z.enum(["parent-run", "per-run", "per-step", "manual"]),
+  resumeCursor: z.string().trim().min(1).max(240).nullable().optional(),
+}).passthrough();
+const nativeSecurityPolicySchema = z.object({
+  toolAllowlist: z.array(z.string().trim().min(1).max(120)).min(1),
+  toolDenylist: z.array(z.string().trim().min(1).max(120)).default([]),
+  networkEgress: z.enum(["none", "allowlisted", "restricted", "inherit"]),
+  filesystemScopes: z.array(z.string().trim().min(1).max(120)).min(1),
+  secretPolicy: z.object({
+    redact: z.literal(true),
+    persist: z.enum(["never", "redacted", "runtime-only"]),
+  }).passthrough(),
+  fanoutLimit: z.number().int().min(1).max(16),
+  maxConcurrency: z.number().int().min(1).max(16),
+  allowedInvocationModes: z.array(z.enum(["tool", "handoff"])).min(1),
+}).passthrough().refine(
+  value => value.maxConcurrency <= value.fanoutLimit,
+  {
+    message: "securityPolicy.maxConcurrency must not exceed fanoutLimit",
+    path: ["maxConcurrency"],
+  },
+);
+const nativeSubagentInputSchema = z.object({
+  name: z.string().trim().min(1).max(100).optional(),
+  slug: z.string().trim().min(1).max(100).optional(),
+  id: z.string().trim().min(1).max(100).optional(),
+  role: z.string().trim().min(1).max(160).optional(),
+  mode: z.enum(["tool", "handoff"]).optional(),
+  runtime_mode: z.enum(["tool", "handoff"]).optional(),
+  runtimeMode: z.enum(["tool", "handoff"]).optional(),
+  entrypoint: nativeBundleRelativePathSchema.optional(),
+  path: nativeBundleRelativePathSchema.optional(),
+  toolBoundary: z.array(z.string().trim().min(1).max(160)).optional(),
+  tool_boundary: z.array(z.string().trim().min(1).max(160)).optional(),
+  handoffPolicy: z.object({
+    mode: z.enum(["always", "never", "conditional"]),
+    approvalsRequired: z.boolean().optional(),
+  }).passthrough().optional(),
+  handoff_policy: z.object({
+    mode: z.enum(["always", "never", "conditional"]),
+    approvalsRequired: z.boolean().optional(),
+  }).passthrough().optional(),
+  checkpointPolicy: nativeCheckpointPolicySchema.optional(),
+  checkpoint_policy: nativeCheckpointPolicySchema.optional(),
+  verificationCommand: nativeBundleRelativePathSchema.optional(),
+  verification_command: nativeBundleRelativePathSchema.optional(),
+  fallbackBehavior: z.enum(["escalate-to-parent", "return-error", "retry-tool", "retry-handoff"]).optional(),
+  fallback_behavior: z.enum(["escalate-to-parent", "return-error", "retry-tool", "retry-handoff"]).optional(),
+}).passthrough();
+const nativeOrchestratorInputSchema = nativeSubagentInputSchema.extend({
+  mode: z.enum(["orchestrator"]).optional(),
+  runtime_mode: z.enum(["tool", "handoff", "orchestrator"]).optional(),
+  runtimeMode: z.enum(["tool", "handoff", "orchestrator"]).optional(),
+});
+const nativeRoutingInputSchema = z.object({
+  from: z.string().trim().min(1).max(100).optional(),
+  source: z.string().trim().min(1).max(100).optional(),
+  to: z.string().trim().min(1).max(100).optional(),
+  target: z.string().trim().min(1).max(100).optional(),
+  subagent: z.string().trim().min(1).max(100).optional(),
+  mode: z.enum(["tool", "handoff"]).optional(),
+  runtime_mode: z.enum(["tool", "handoff"]).optional(),
+  purpose: z.string().trim().max(500).optional(),
+  reason: z.string().trim().max(500).optional(),
+}).passthrough();
 const localSkillPlatformSchema = z.enum(["web", "tauri"]).default("web");
 const localSkillOriginSchema = z
   .enum([
@@ -1152,7 +1332,10 @@ function loadSkillInputDefaults(skillSlug: string, folderPath?: string | null): 
     if (!fs.existsSync(schemaPath)) continue;
     try {
       const schema = JSON.parse(fs.readFileSync(schemaPath, "utf-8"));
-      return extractDefaultsFromSchema(schema);
+      const defaults = extractDefaultsFromSchema(schema);
+      if (Object.keys(defaults).length > 0) {
+        return defaults;
+      }
     } catch (error) {
       console.warn(`[Skills] Failed to parse schema defaults at ${schemaPath}:`, error);
     }
@@ -1875,7 +2058,10 @@ export const skillsRouter = router({
               sourceType: "skill",
               metadata: {
                 model: visionModel,
+                llmModel: visionModel,
                 skill: resolvedSkillId,
+                skillName,
+                runtimeKind: "llm",
                 inputTokens: result.usage.promptTokens,
                 outputTokens: result.usage.completionTokens,
                 hasReferenceImages: (input.referenceImages?.length || 0) > 0,
@@ -2167,8 +2353,26 @@ export const skillsRouter = router({
         systemPrompt = `${systemPrompt}\n\n${promptLengthPlan.directive}`;
       }
 
-      const referenceImageCount = Array.isArray(input.referenceImages) ? input.referenceImages.length : 0;
-      let userPrompt = buildCustomSkillUserPrompt(mergedUserInputs, { referenceImageCount });
+        const referenceImageCount = Array.isArray(input.referenceImages) ? input.referenceImages.length : 0;
+        let userPrompt = buildCustomSkillUserPrompt(mergedUserInputs, { referenceImageCount });
+        const nativeSkillRuntime = buildNativeSkillRuntimePlanContext(
+          {
+            id: skill.slug,
+            slug: skill.slug,
+            folderPath: skill.folderPath ?? null,
+            nativeBundlePath: (skill as Record<string, unknown>).nativeBundlePath as string | null | undefined,
+            nativeBundleReady: (skill as Record<string, unknown>).nativeBundleReady as boolean | null | undefined,
+          },
+          {
+            requestedSubagent:
+              typeof mergedUserInputs.requestedSubagent === "string"
+                ? mergedUserInputs.requestedSubagent
+                : typeof mergedUserInputs.requested_subagent === "string"
+                  ? mergedUserInputs.requested_subagent
+                  : null,
+            taskHint: `Execute custom skill '${input.skillId}' for Media Studio.`,
+          },
+        );
 
       try {
         const requestedModel = typeof input.model === "string" && !input.model.startsWith("__auto")
@@ -2236,6 +2440,7 @@ export const skillsRouter = router({
             responseMode: mergedUserInputs.response_mode ?? null,
             requiresWebSearch,
             maxPromptLength: promptLengthPlan?.maxPromptLength ?? null,
+            nativeSkillRuntime,
           },
           modelConfig: buildRuntimeModelConfig({
             modelId: visionModel,
@@ -2271,7 +2476,11 @@ export const skillsRouter = router({
               sourceType: "skill",
               metadata: {
                 model: visionModel,
+                llmModel: visionModel,
                 skill: input.skillId,
+                skillName: skill.name,
+                executionMode: skill.executionMode,
+                runtimeKind: "llm",
                 inputTokens: result.usage.promptTokens,
                 outputTokens: result.usage.completionTokens,
                 ...(input.originSurface ? { originSurface: input.originSurface } : {}),
@@ -2700,6 +2909,9 @@ export const skillsRouter = router({
         nativeBundleFiles: getSkillById(skill.slug)?.nativeBundleFiles ?? [],
         nativeBundlePath: getSkillById(skill.slug)?.nativeBundlePath ?? null,
         nativeBundleLockPath: getSkillById(skill.slug)?.nativeBundleLockPath ?? null,
+        nativeSubagentNames:
+          (getSkillById(skill.slug) as Record<string, unknown> | undefined)?.nativeSubagentNames ??
+          [],
       }));
     }),
 
@@ -2739,6 +2951,9 @@ export const skillsRouter = router({
         nativeBundleFiles: getSkillById(skill.slug)?.nativeBundleFiles ?? [],
         nativeBundlePath: getSkillById(skill.slug)?.nativeBundlePath ?? null,
         nativeBundleLockPath: getSkillById(skill.slug)?.nativeBundleLockPath ?? null,
+        nativeSubagentNames:
+          (getSkillById(skill.slug) as Record<string, unknown> | undefined)?.nativeSubagentNames ??
+          [],
       };
     }),
 
@@ -3106,6 +3321,20 @@ export const skillsRouter = router({
         maxInputMb: z.number().int().min(1).max(2048).nullable().optional(),
         bundleType: z.enum(["native", "legacy"]).default("native"),
         bundleProfile: z.enum(["general", "research", "workflow", "media", "custom"]).default("general"),
+        subagents: z.array(nativeSubagentInputSchema).optional(),
+        orchestrator: nativeOrchestratorInputSchema.optional(),
+        routing: z.array(nativeRoutingInputSchema).optional(),
+        checkpointPolicy: nativeCheckpointPolicySchema.optional(),
+        verificationPolicy: z.object({
+          command: nativeBundleRelativePathSchema,
+          onFailure: z.string().trim().max(120).nullable().optional(),
+        }).passthrough().optional(),
+        fallbackPolicy: z.object({
+          behavior: z.enum(["escalate-to-parent", "return-error", "retry-tool", "retry-handoff"]),
+          retryLimit: z.number().int().min(0).max(8).optional(),
+        }).passthrough().optional(),
+        securityPolicy: nativeSecurityPolicySchema.optional(),
+        subagentManifestVersion: z.string().trim().min(1).max(16).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -3181,6 +3410,14 @@ export const skillsRouter = router({
             bundleProfile: input.bundleProfile,
             skillContent: input.skillContent ?? null,
             systemPrompt: input.systemPrompt ?? null,
+            subagents: input.subagents ?? null,
+            orchestrator: input.orchestrator ?? null,
+            routing: input.routing ?? null,
+            checkpointPolicy: input.checkpointPolicy ?? null,
+            verificationPolicy: input.verificationPolicy ?? null,
+            fallbackPolicy: input.fallbackPolicy ?? null,
+            securityPolicy: input.securityPolicy ?? null,
+            subagentManifestVersion: input.subagentManifestVersion ?? null,
           });
         }
 
@@ -4361,6 +4598,7 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
                 testsHash: baselineSnapshotRow.testsHash,
                 fixtureHash: baselineSnapshotRow.fixtureHash,
                 manifestHash: baselineSnapshotRow.manifestHash,
+                subagentManifestHash: null,
                 contractHash: baselineSnapshotRow.contractHash ?? "",
                 schemaSummary: baselineSnapshotRow.schemaSummaryJson as any,
                 fileInventory: [],
@@ -4783,6 +5021,295 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
       };
     }),
 
+  getLegacyUpgradeApplyRuns: adminProcedure
+    .input(z.object({
+      state: z.enum(["all", "queued", "running", "failed", "completed", "blocked", "canceled"]).optional(),
+      limit: z.number().int().min(1).max(200).optional(),
+    }).optional())
+    .query(async ({ input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const rows = await dbInstance
+        .select({
+          id: skillImprovementRuns.id,
+          recommendationId: skillImprovementRuns.recommendationId,
+          skillId: skillImprovementRuns.skillId,
+          runType: skillImprovementRuns.runType,
+          status: skillImprovementRuns.status,
+          summary: skillImprovementRuns.summary,
+          errorMessage: skillImprovementRuns.errorMessage,
+          verificationJson: skillImprovementRuns.verificationJson,
+          logsJson: skillImprovementRuns.logsJson,
+          startedAt: skillImprovementRuns.startedAt,
+          endedAt: skillImprovementRuns.endedAt,
+          createdAt: skillImprovementRuns.createdAt,
+          updatedAt: skillImprovementRuns.updatedAt,
+          recommendationType: skillImprovementRecommendations.recommendationType,
+          recommendationStatus: skillImprovementRecommendations.status,
+          recommendationTitle: skillImprovementRecommendations.title,
+          recommendationRiskLevel: skillImprovementRecommendations.riskLevel,
+          recommendationCompatibilityStatus: skillImprovementRecommendations.compatibilityStatus,
+          recommendationQualityScore: skillImprovementRecommendations.qualityScore,
+          recommendationCurrentRuntime: skillImprovementRecommendations.currentRuntime,
+          recommendationProposedRuntime: skillImprovementRecommendations.proposedRuntime,
+          recommendationProposedAction: skillImprovementRecommendations.proposedAction,
+          recommendationIsAutoApplySafe: skillImprovementRecommendations.isAutoApplySafe,
+          recommendationJson: skillImprovementRecommendations.recommendationJson,
+          skillSlug: skills.slug,
+          skillName: skills.name,
+          skillExecutionMode: skills.executionMode,
+        })
+        .from(skillImprovementRuns)
+        .leftJoin(skillImprovementRecommendations, eq(skillImprovementRuns.recommendationId, skillImprovementRecommendations.id))
+        .leftJoin(skills, eq(skillImprovementRuns.skillId, skills.id))
+        .where(eq(skillImprovementRuns.runType, "apply"))
+        .orderBy(desc(skillImprovementRuns.createdAt))
+        .limit(input?.limit ?? 100);
+
+      const latestApplyRunByRecommendationId = new Map<number, (typeof rows)[number]>();
+      for (const row of rows) {
+        if (row.recommendationId == null) {
+          continue;
+        }
+        if (!latestApplyRunByRecommendationId.has(row.recommendationId)) {
+          latestApplyRunByRecommendationId.set(row.recommendationId, row);
+        }
+      }
+
+      const items = Array.from(latestApplyRunByRecommendationId.values()).map((row) => {
+        const queueState = deriveLegacyUpgradeRunState(row.status);
+        const resultMessage = extractLegacyRunStringField(row.logsJson, "resultMessage");
+        const resultError = extractLegacyRunStringField(row.logsJson, "resultError") ?? row.errorMessage ?? null;
+        return {
+          ...row,
+          queueState,
+          taskId: extractLegacyRunTaskId(row.logsJson),
+          resolvedLlmModelId: extractLegacyRunStringField(row.logsJson, "resolvedLlmModelId"),
+          resultMessage,
+          resultError,
+          sourceRunId: extractLegacyRunNumberField(row.logsJson, "sourceRunId"),
+          retryReason: extractLegacyRunStringField(row.logsJson, "retryReason"),
+          latestRun: {
+            id: row.id,
+            runType: row.runType,
+            status: row.status,
+            summary: row.summary,
+            errorMessage: row.errorMessage,
+            verificationJson: row.verificationJson,
+            logsJson: row.logsJson,
+            lineage: extractLegacyRunLineage(row.logsJson),
+            startedAt: row.startedAt,
+            endedAt: row.endedAt,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          },
+          recommendation: row.recommendationId
+            ? {
+              id: row.recommendationId,
+              recommendationType: row.recommendationType,
+              status: row.recommendationStatus,
+              title: row.recommendationTitle,
+              riskLevel: row.recommendationRiskLevel,
+              compatibilityStatus: row.recommendationCompatibilityStatus,
+              qualityScore: row.recommendationQualityScore,
+              currentRuntime: row.recommendationCurrentRuntime,
+              proposedRuntime: row.recommendationProposedRuntime,
+              proposedAction: row.recommendationProposedAction,
+              isAutoApplySafe: row.recommendationIsAutoApplySafe,
+              recommendationJson: row.recommendationJson,
+            }
+            : null,
+          skill: row.skillId && row.skillSlug
+            ? {
+              id: row.skillId,
+              slug: row.skillSlug,
+              name: row.skillName,
+              executionMode: row.skillExecutionMode,
+            }
+            : null,
+        };
+      });
+
+      const filteredItems = input?.state && input.state !== "all"
+        ? items.filter((item) => item.queueState === input.state)
+        : items;
+
+      const counts = items.reduce((acc, item) => {
+        acc.total += 1;
+        acc[item.queueState] += 1;
+        return acc;
+      }, {
+        total: 0,
+        queued: 0,
+        running: 0,
+        failed: 0,
+        completed: 0,
+        blocked: 0,
+        canceled: 0,
+      });
+
+      return {
+        counts,
+        items: filteredItems.slice(0, input?.limit ?? 100),
+      };
+    }),
+
+  getLegacyUpgradeApplyRunDetail: adminProcedure
+    .input(z.object({
+      runId: z.number().int().positive(),
+    }))
+    .query(async ({ input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const [row] = await dbInstance
+        .select({
+          id: skillImprovementRuns.id,
+          recommendationId: skillImprovementRuns.recommendationId,
+          skillId: skillImprovementRuns.skillId,
+          runType: skillImprovementRuns.runType,
+          status: skillImprovementRuns.status,
+          summary: skillImprovementRuns.summary,
+          errorMessage: skillImprovementRuns.errorMessage,
+          verificationJson: skillImprovementRuns.verificationJson,
+          logsJson: skillImprovementRuns.logsJson,
+          diffSummaryJson: skillImprovementRuns.diffSummaryJson,
+          scopeJson: skillImprovementRuns.scopeJson,
+          startedAt: skillImprovementRuns.startedAt,
+          endedAt: skillImprovementRuns.endedAt,
+          createdAt: skillImprovementRuns.createdAt,
+          updatedAt: skillImprovementRuns.updatedAt,
+          recommendationType: skillImprovementRecommendations.recommendationType,
+          recommendationStatus: skillImprovementRecommendations.status,
+          recommendationTitle: skillImprovementRecommendations.title,
+          recommendationSummary: skillImprovementRecommendations.summary,
+          recommendationRationale: skillImprovementRecommendations.rationale,
+          recommendationRiskLevel: skillImprovementRecommendations.riskLevel,
+          recommendationCompatibilityStatus: skillImprovementRecommendations.compatibilityStatus,
+          recommendationQualityScore: skillImprovementRecommendations.qualityScore,
+          recommendationCurrentRuntime: skillImprovementRecommendations.currentRuntime,
+          recommendationProposedRuntime: skillImprovementRecommendations.proposedRuntime,
+          recommendationProposedAction: skillImprovementRecommendations.proposedAction,
+          recommendationIsAutoApplySafe: skillImprovementRecommendations.isAutoApplySafe,
+          recommendationJson: skillImprovementRecommendations.recommendationJson,
+          skillSlug: skills.slug,
+          skillName: skills.name,
+          skillDescription: skills.description,
+          skillExecutionMode: skills.executionMode,
+          skillFolderPath: skills.folderPath,
+        })
+        .from(skillImprovementRuns)
+        .leftJoin(skillImprovementRecommendations, eq(skillImprovementRuns.recommendationId, skillImprovementRecommendations.id))
+        .leftJoin(skills, eq(skillImprovementRuns.skillId, skills.id))
+        .where(eq(skillImprovementRuns.id, input.runId))
+        .limit(1);
+
+      if (!row) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Apply run ${input.runId} not found` });
+      }
+
+      const snapshots = await dbInstance
+        .select()
+        .from(skillContractSnapshots)
+        .where(eq(skillContractSnapshots.runId, row.id))
+        .orderBy(desc(skillContractSnapshots.capturedAt))
+        .limit(20);
+
+      const relatedRunsRaw = row.recommendationId
+        ? await dbInstance
+          .select()
+          .from(skillImprovementRuns)
+          .where(eq(skillImprovementRuns.recommendationId, row.recommendationId))
+          .orderBy(desc(skillImprovementRuns.createdAt))
+          .limit(10)
+        : [];
+
+      type LegacyUpgradeRunDetailRow = {
+        id: number;
+        recommendationId: number | null;
+        skillId: number | null;
+        runType: "analysis" | "apply" | "sweep" | "verify";
+        status: "blocked" | "failed" | "queued" | "running" | "completed" | "canceled";
+        summary: string | null;
+        errorMessage: string | null;
+        verificationJson: unknown;
+        logsJson: unknown;
+        diffSummaryJson: unknown;
+        scopeJson: unknown;
+        startedAt: Date | null;
+        endedAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
+      };
+
+      const mapRun = (run: LegacyUpgradeRunDetailRow) => ({
+        id: run.id,
+        recommendationId: run.recommendationId,
+        skillId: run.skillId,
+        runType: run.runType,
+        status: run.status,
+        summary: run.summary,
+        errorMessage: run.errorMessage,
+        verificationJson: run.verificationJson,
+        logsJson: run.logsJson,
+        diffSummaryJson: run.diffSummaryJson,
+        scopeJson: run.scopeJson,
+        startedAt: run.startedAt,
+        endedAt: run.endedAt,
+        createdAt: run.createdAt,
+        updatedAt: run.updatedAt,
+        queueState: deriveLegacyUpgradeRunState(run.status),
+        taskId: extractLegacyRunTaskId(run.logsJson),
+        resolvedLlmModelId: extractLegacyRunStringField(run.logsJson, "resolvedLlmModelId"),
+        repoRoot: extractLegacyRunStringField(run.logsJson, "repoRoot"),
+        workspaceRoot: extractLegacyRunStringField(run.logsJson, "workspaceRoot"),
+        resultMessage: extractLegacyRunStringField(run.logsJson, "resultMessage"),
+        resultError: extractLegacyRunStringField(run.logsJson, "resultError") ?? run.errorMessage ?? null,
+        sourceRunId: extractLegacyRunNumberField(run.logsJson, "sourceRunId"),
+        retryReason: extractLegacyRunStringField(run.logsJson, "retryReason"),
+        lineage: extractLegacyRunLineage(run.logsJson),
+      });
+
+      const recommendation = row.recommendationId ? {
+        id: row.recommendationId,
+        recommendationType: row.recommendationType,
+        status: row.recommendationStatus,
+        title: row.recommendationTitle,
+        summary: row.recommendationSummary,
+        rationale: row.recommendationRationale,
+        riskLevel: row.recommendationRiskLevel,
+        compatibilityStatus: row.recommendationCompatibilityStatus,
+        qualityScore: row.recommendationQualityScore,
+        currentRuntime: row.recommendationCurrentRuntime,
+        proposedRuntime: row.recommendationProposedRuntime,
+        proposedAction: row.recommendationProposedAction,
+        isAutoApplySafe: row.recommendationIsAutoApplySafe,
+        recommendationJson: row.recommendationJson,
+      } : null;
+
+      const skill = row.skillId && row.skillSlug ? {
+        id: row.skillId,
+        slug: row.skillSlug,
+        name: row.skillName,
+        description: row.skillDescription,
+        executionMode: row.skillExecutionMode,
+        folderPath: row.skillFolderPath,
+      } : null;
+
+      return {
+        run: mapRun(row),
+        recommendation,
+        skill,
+        snapshots,
+        relatedRuns: relatedRunsRaw.map(mapRun),
+      };
+    }),
+
   getUpgradeRecommendationDetail: adminProcedure
     .input(z.object({
       recommendationId: z.number().int().positive(),
@@ -4995,6 +5522,159 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
       };
     }),
 
+  retryLegacyUpgradeApplyRuns: adminProcedure
+    .input(z.object({
+      runIds: z.array(z.number().int().positive()).min(1).max(50),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const uniqueRunIds = Array.from(new Set(input.runIds));
+      const runs = await dbInstance
+        .select({
+          id: skillImprovementRuns.id,
+          recommendationId: skillImprovementRuns.recommendationId,
+          runType: skillImprovementRuns.runType,
+          status: skillImprovementRuns.status,
+        })
+        .from(skillImprovementRuns)
+        .where(inArray(skillImprovementRuns.id, uniqueRunIds));
+
+      const runsById = new Map(runs.map((run) => [run.id, run]));
+      const results = await Promise.all(uniqueRunIds.map(async (runId) => {
+        const run = runsById.get(runId);
+        if (!run) {
+          return {
+            runId,
+            success: false,
+            error: `Run ${runId} not found`,
+          };
+        }
+        if (run.runType !== "apply") {
+          return {
+            runId,
+            success: false,
+            error: `Run ${runId} is not an apply run`,
+          };
+        }
+        if (!run.recommendationId) {
+          return {
+            runId,
+            success: false,
+            error: `Run ${runId} is missing a recommendation link`,
+          };
+        }
+
+        try {
+          const result = await applySkillUpgradeRecommendation({
+            db: dbInstance,
+            recommendationId: run.recommendationId,
+            requestedBy: ctx.user?.id ?? null,
+            tenantId: ctx.tenantId ?? null,
+            userRole: ctx.user?.role ?? "admin",
+            userToken: ctx.userToken ?? null,
+            publicUrl: ctx.publicUrl ?? null,
+            sourceRunId: run.id,
+            retryReason: `Retry from apply run ${run.id}`,
+          });
+
+          return {
+            runId,
+            recommendationId: run.recommendationId,
+            success: true,
+            mode: result.mode,
+            applyStrategy: result.applyStrategy,
+            taskId: result.taskId ?? null,
+            retryOfRunId: run.id,
+          };
+        } catch (error) {
+          return {
+            runId,
+            recommendationId: run.recommendationId,
+            success: false,
+            error: error instanceof Error ? error.message : "Failed to retry apply run",
+          };
+        }
+      }));
+
+      return {
+        requestedRunIds: uniqueRunIds,
+        appliedCount: results.filter((item) => item.success).length,
+        failedCount: results.filter((item) => !item.success).length,
+        results,
+      };
+    }),
+
+  normalizeLegacyUpgradeApplyRuns: adminProcedure
+    .mutation(async ({ ctx }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const rows = await dbInstance
+        .select({
+          id: skillImprovementRuns.id,
+          recommendationId: skillImprovementRuns.recommendationId,
+          status: skillImprovementRuns.status,
+          summary: skillImprovementRuns.summary,
+          errorMessage: skillImprovementRuns.errorMessage,
+          logsJson: skillImprovementRuns.logsJson,
+          createdAt: skillImprovementRuns.createdAt,
+        })
+        .from(skillImprovementRuns)
+        .where(eq(skillImprovementRuns.runType, "apply"))
+        .orderBy(desc(skillImprovementRuns.createdAt))
+        .limit(200);
+
+      const candidates = rows.filter((row) => isLegacyUpgradeNoChangeRunCandidate(row));
+      const normalizedRunIds: number[] = [];
+
+      for (const row of candidates) {
+        if (row.recommendationId) {
+          await dbInstance
+            .update(skillImprovementRecommendations)
+            .set({
+              status: "approved",
+              reviewedAt: new Date(),
+              reviewedBy: ctx.user?.id ?? null,
+              approvedAt: new Date(),
+              approvedBy: ctx.user?.id ?? null,
+              updatedAt: new Date(),
+            })
+            .where(eq(skillImprovementRecommendations.id, row.recommendationId));
+        }
+
+        await dbInstance
+          .update(skillImprovementRuns)
+          .set({
+            status: "completed",
+            summary: row.summary || "Proposal generation completed without code changes",
+            errorMessage: null,
+            logsJson: buildLegacyNoChangeCompletionLogs(row.logsJson),
+            diffSummaryJson: {
+              savedProposals: [],
+              latestProposal: null,
+              completionMode: "no_changes",
+            },
+            endedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(skillImprovementRuns.id, row.id));
+
+        normalizedRunIds.push(row.id);
+      }
+
+      return {
+        scannedCount: rows.length,
+        normalizedCount: normalizedRunIds.length,
+        normalizedRunIds,
+      };
+    }),
+
   runMaintenanceSweep: adminProcedure
     .input(z.object({
       limit: z.number().int().min(1).max(200).optional(),
@@ -5170,10 +5850,14 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
       targetSkillId: z.number().int().positive().optional(),
       newSkillSlug: z.string().min(2).max(100).regex(/^[a-z0-9_-]+$/).optional(),
       skillLanguage: z.enum(["auto", "python", "javascript"]).optional(),
+      targetPlatform: z.enum(["classic", "agents_python"]).optional(),
+      targetPlatformHint: z.enum(["classic", "agents_python"]).optional(),
       complexity: z.enum(["simple", "moderate", "complex"]).optional(),
       rounds: z.number().int().min(1).max(10).optional(),
       allowTestExpansion: z.boolean().optional(),
       askUser: z.boolean().optional(),
+      improvementPreset: z.enum(["custom", "deterministic", "trace_friendly", "retry_safe", "compatibility_fix"]).optional(),
+      improvementRequest: z.string().max(4000).optional(),
       desiredVisibility: z.enum(["private", "pending_approval", "public"]).optional(),
       autoApplyProposal: z.boolean().optional(),
       specText: z.string().max(20000).optional(),

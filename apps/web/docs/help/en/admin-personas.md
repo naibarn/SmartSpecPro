@@ -6,7 +6,23 @@ icon: UserCircle
 section: admin
 order: 95
 pages: ["/admin/personas"]
-tags: [admin, personas, ai-assistant, tone, personality, system-prompt, customization, nickname]
+tags:
+  - "admin"
+  - "personas"
+  - "ai-assistant"
+  - "tone"
+  - "personality"
+  - "system-prompt"
+  - "customization"
+  - "nickname"
+  - "help"
+  - "help/en"
+  - "help/admin"
+  - "admin-personas"
+aliases:
+  - "admin-personas"
+  - "Admin Personas"
+  - "Admin Personas help"
 ---
 
 # Admin Personas
@@ -66,3 +82,15 @@ Each persona card shows:
 - Create specialized personas for different use cases (writing, coding, analysis).
 - Keep system prompts focused — a clear 2-3 sentence instruction works better than a page of rules.
 - Review usage statistics to identify popular and unused personas.
+
+<!-- knowledge-graph:related:start -->
+## Related Help
+
+- [[admin-advanced|Advanced Administration]]
+- [[getting-started|Getting Started]]
+- [[document-management|Document Management]]
+- [[admin-agencies|Agency Management]]
+- [[admin-alert-rules|Alert Rules & Escalation]]
+- [[admin-approvals|Approvals]]
+- [[admin-audit|Audit Logs]]
+<!-- knowledge-graph:related:end -->

@@ -6,7 +6,23 @@ icon: MonitorPlay
 section: features
 order: 66
 pages: ["/settings", "/admin/desktop-host", "/domain-admin/desktop-host", "/desktop/open"]
-tags: [desktop, desktop-host, managed mode, local roots, package sync, device governance, pi, agency swarm]
+tags:
+  - "desktop"
+  - "desktop-host"
+  - "managed mode"
+  - "local roots"
+  - "package sync"
+  - "device governance"
+  - "pi"
+  - "agency swarm"
+  - "help"
+  - "help/th"
+  - "help/runtime"
+  - "runtime"
+aliases:
+  - "desktop-host"
+  - "Desktop Host"
+  - "Desktop Host help"
 ---
 
 # Desktop Host
@@ -244,3 +260,15 @@ network posture อาจเป็น:
 - ลองเปิด launch link ใหม่จากหน้า handoff
 - ตรวจว่าแอปเดสก์ท็อปถูกติดตั้งแล้ว
 - ใช้ release portal หรือคู่มือติดตั้งถ้าต้องการตัวติดตั้งใหม่
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[browser-session|Browser Session]]
+- [[cli|CLI (Kilo)]]
+- [[desktop-host-managed-mode|Desktop Host Managed Mode]]
+- [[desktop-releases|Desktop Releases]]
+- [[docker-sandbox|Docker Sandbox]]
+<!-- knowledge-graph:related:end -->

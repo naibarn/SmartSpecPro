@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import fs from "fs";
+import { EventEmitter } from "events";
 
 // Mock the sandbox module before importing skillExecutor
 vi.mock("../sandbox", () => ({
@@ -7,6 +8,10 @@ vi.mock("../sandbox", () => ({
   shouldUseSandboxForFeature: vi.fn(() => false),
   getDispatchMode: vi.fn(() => "optional"),
   dispatchToSandbox: vi.fn(),
+}));
+vi.mock("child_process", () => ({
+  spawn: vi.fn(),
+  spawnSync: vi.fn(() => ({ status: 0, stdout: "", stderr: "" })),
 }));
 vi.mock("../db", () => ({ getDb: vi.fn(async () => null) }));
 
@@ -29,6 +34,7 @@ import type { SkillExecutionParams } from "../skillExecutor";
 import type { SkillDefinition } from "@smartspec/skills";
 import { mediaGenerationService } from "../mediaGenerationService";
 import { getDefaultModel, getModelById } from "../modelRegistry";
+import { spawn } from "child_process";
 import {
   isSandboxEnabled,
   shouldUseSandboxForFeature,
@@ -559,6 +565,75 @@ describe("skillExecutor sandbox dispatch", () => {
       expect(dispatchToSandbox).not.toHaveBeenCalled();
     } finally {
       mockedFs.restore();
+    }
+  });
+
+  it("keeps lineage metadata from python skill output", async () => {
+    const pythonSkillPath = "/virtual/python-skill/python/skill.py";
+    const existsSpy = vi.spyOn(fs, "existsSync").mockImplementation((targetPath) => {
+      const normalized = String(targetPath).replace(/\\/g, "/");
+      return normalized === pythonSkillPath;
+    });
+
+    const child = new EventEmitter() as EventEmitter & {
+      stdin: { write: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> };
+      stdout: EventEmitter;
+      stderr: EventEmitter;
+      kill: ReturnType<typeof vi.fn>;
+    };
+    child.stdin = { write: vi.fn(), end: vi.fn() };
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.kill = vi.fn();
+
+    vi.mocked(spawn).mockReturnValue(child as any);
+
+    try {
+      const skill = makeSkill({
+        id: "python-lineage-skill",
+        executionMode: "python",
+        skillFilePath: "/virtual/python-skill/SKILL.md",
+      });
+
+      const resultPromise = executeSkill(skill, defaultParams, 1, "token", "tenant-001");
+
+      child.stdout.emit(
+        "data",
+        Buffer.from(
+          JSON.stringify({
+            success: true,
+            output: "done",
+            lineage: {
+              role: "handoff",
+              checkpointVersion: 3,
+              parentRunId: "run-parent",
+              childRunIds: ["run-child-1"],
+              verificationState: "passed",
+              artifactRefs: ["out/result.json"],
+              resumeCursor: "cursor-7",
+            },
+          }),
+        ),
+      );
+      child.stderr.emit("data", Buffer.from(""));
+      child.emit("close", 0);
+
+      const result = await resultPromise;
+
+      expect(result.success).toBe(true);
+      expect(result.metadata).toMatchObject({
+        lineage: {
+          role: "handoff",
+          checkpointVersion: 3,
+          parentRunId: "run-parent",
+          childRunIds: ["run-child-1"],
+          verificationState: "passed",
+          artifactRefs: ["out/result.json"],
+          resumeCursor: "cursor-7",
+        },
+      });
+    } finally {
+      existsSpy.mockRestore();
     }
   });
 });

@@ -6,7 +6,21 @@ icon: Award
 section: admin
 order: 280
 pages: ["/admin/content-quality"]
-tags: [แอดมิน, คุณภาพเนื้อหา, เมตริก, AI, คะแนน]
+tags:
+  - "แอดมิน"
+  - "คุณภาพเนื้อหา"
+  - "เมตริก"
+  - "AI"
+  - "คะแนน"
+  - "help"
+  - "help/th"
+  - "help/core"
+  - "core"
+  - "content-quality-dashboard"
+aliases:
+  - "content-quality-dashboard"
+  - "คุณภาพเนื้อหา"
+  - "คุณภาพเนื้อหา help"
 ---
 
 # คุณภาพเนื้อหา
@@ -44,3 +58,11 @@ Content Quality Dashboard ช่วยให้แอดมินติดตา
 - เนื้อหาที่ได้คะแนนต่ำสม่ำเสมอจาก model เดียวกันอาจบ่งบอกว่าควรเปลี่ยน default model สำหรับ skill นั้น
 - ดูข้อมูลควบคู่กับ Funnel Dashboard เพื่อเข้าใจว่าคุณภาพเนื้อหาส่งผลต่อพฤติกรรมผู้ใช้อย่างไร
 - ใช้ตัวอย่างเนื้อหาที่ได้คะแนนสูงในการปรับปรุง prompt ของ skill ที่ยังมีคะแนนต่ำ
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[task-queue-monitor|มอนิเตอร์คิวงาน]]
+<!-- knowledge-graph:related:end -->

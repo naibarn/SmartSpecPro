@@ -6,7 +6,23 @@ icon: Users
 section: advanced
 order: 70
 pages: ["/chat", "/agency"]
-tags: [agency, agents, multi-agent, team, collaboration, research, storyboard]
+tags:
+  - "agency"
+  - "agents"
+  - "multi-agent"
+  - "team"
+  - "collaboration"
+  - "research"
+  - "storyboard"
+  - "help"
+  - "help/th"
+  - "help/teams"
+  - "teams"
+  - "agencies"
+aliases:
+  - "agencies"
+  - "Agencies - ทีม AI หลายตัว"
+  - "Agencies - ทีม AI หลายตัว help"
 ---
 
 # Agencies — ทีม AI หลายตัว
@@ -150,3 +166,15 @@ AI Creator ทำงานผ่านขั้นตอนหลายเฟส
 - **ระบุความสามารถ**: ถ้าต้องการ web search, vision หรือ code execution ให้ระบุอย่างชัดเจน
 - **อธิบายผลลัพธ์**: "agent สุดท้ายควรสร้างรายงาน markdown แบบมีโครงสร้างพร้อมส่วนต่างๆ" ช่วยให้ AI ออกแบบ workflow ที่เหมาะสม
 - **แนบ spec**: สำหรับความต้องการที่ซับซ้อน แนบเอกสารพร้อมรายละเอียด
+
+<!-- knowledge-graph:related:start -->
+## หัวข้อที่เกี่ยวข้อง
+
+- [[teams|ทีม AI]]
+- [[getting-started|เริ่มต้นใช้งาน]]
+- [[document-management|จัดการเอกสาร]]
+- [[agency-builder|ตัวสร้าง Agency]]
+- [[agency-chat|Agency Chat — รันและทดสอบ Agency]]
+- [[groups|กลุ่ม]]
+- [[team-monitoring|การติดตามทีมและ Scoped Memory]]
+<!-- knowledge-graph:related:end -->
