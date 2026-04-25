@@ -1,13 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "schemas/output.schema.json",
-  "title": "GPT Image Prompt Engineer Output v5 Subagents",
+  "title": "GPT Image Prompt Engineer Output v5.5 Review Modules",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "status",
     "requested",
     "normalized",
+    "locked_user_params",
     "decision_trace",
     "confidence_score",
     "prompts",
@@ -38,6 +39,28 @@
     },
     "normalized": {
       "type": "object"
+    },
+    "locked_user_params": {
+      "type": "object",
+      "required": [
+        "policy",
+        "fields",
+        "field_names"
+      ],
+      "properties": {
+        "policy": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object"
+        },
+        "field_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     },
     "decision_trace": {
       "type": "array",
@@ -364,6 +387,7 @@
         "missing_inputs",
         "assumptions",
         "clarifying_questions",
+        "reference_preflight",
         "block_reason"
       ],
       "properties": {
@@ -421,6 +445,46 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        },
+        "reference_preflight": {
+          "type": "object",
+          "required": [
+            "required",
+            "status",
+            "next_action",
+            "search_queries",
+            "source_priority",
+            "conflict_policy"
+          ],
+          "properties": {
+            "required": {
+              "type": "boolean"
+            },
+            "status": {
+              "type": "string"
+            },
+            "next_action": {
+              "type": "string"
+            },
+            "search_queries": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "source_priority": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "conflict_policy": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
         },
         "block_reason": {

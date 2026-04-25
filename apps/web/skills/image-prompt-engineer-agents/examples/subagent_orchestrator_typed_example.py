@@ -1,7 +1,7 @@
-"""Subagent-ready orchestration example for OpenAI Agents SDK.
+"""Review-module orchestration example for OpenAI Agents SDK.
 
 This example keeps the skill itself model-free. The application chooses its own
-agent/runtime configuration outside the skill.
+agent/runtime configuration outside the skill when it wants live agents-as-tools.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ class PromptSkillInput(BaseModel):
 
 @function_tool
 def build_prompt_bundle(payload: PromptSkillInput) -> dict[str, Any]:
-    """Build a model-free GPT Image prompt bundle with optional subagent-ready reports."""
+    """Build a model-free GPT Image prompt bundle with optional review-module reports."""
     return run_skill(payload.model_dump())
 
 

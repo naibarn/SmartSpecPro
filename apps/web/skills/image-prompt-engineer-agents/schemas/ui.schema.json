@@ -1156,32 +1156,32 @@
           "type": "select",
           "label": "Review Mode",
           "labelTh": "โหมดตรวจพรอมต์",
-          "helpText": "Auto runs specialist-style review when the prompt is complex. Off uses the deterministic core only.",
-          "helpTextTh": "อัตโนมัติจะตรวจแบบ specialist เมื่อพรอมต์ซับซ้อน ปิดจะใช้แกน deterministic อย่างเดียว",
+          "helpText": "Auto runs deterministic review modules when the prompt is complex. Off uses the core prompt builder only.",
+          "helpTextTh": "อัตโนมัติจะเปิดโมดูลตรวจแบบ deterministic เมื่อพรอมต์ซับซ้อน ปิดจะใช้แกนสร้างพรอมต์อย่างเดียว",
           "default": "auto",
           "options": [
             { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
             { "value": "off", "label": "Off", "labelTh": "ปิด" },
             { "value": "single_pass", "label": "Single critic pass", "labelTh": "ตรวจรอบเดียว" },
-            { "value": "subagents", "label": "Specialist reports", "labelTh": "รายงาน specialist" }
+            { "value": "subagents", "label": "Review module reports", "labelTh": "รายงานโมดูลตรวจ" }
           ]
         },
         {
           "id": "enable_subagents",
           "type": "boolean",
-          "label": "Enable Specialist Reports",
-          "labelTh": "เปิดรายงาน specialist",
-          "helpText": "When enabled, complex prompts can include deliverable, fidelity, safety, and critic reports in JSON mode.",
-          "helpTextTh": "เมื่อเปิด งานซับซ้อนจะมีรายงาน deliverable, fidelity, safety และ critic ในโหมด JSON",
+          "label": "Enable Review Modules",
+          "labelTh": "เปิดโมดูลตรวจ",
+          "helpText": "When enabled, complex prompts can include deliverable, fidelity, safety, and critic reports in JSON mode without requiring an LLM.",
+          "helpTextTh": "เมื่อเปิด งานซับซ้อนจะมีรายงาน deliverable, fidelity, safety และ critic ในโหมด JSON โดยไม่จำเป็นต้องเรียก LLM",
           "default": true
         },
         {
           "id": "subagent_budget",
           "type": "select",
-          "label": "Specialist Depth",
-          "labelTh": "ระดับความละเอียดของ specialist",
-          "helpText": "Higher depth adds more specialist reports but keeps the final text prompt clean.",
-          "helpTextTh": "ระดับสูงจะเพิ่มรายงาน specialist มากขึ้น แต่พรอมต์ข้อความสุดท้ายยังสะอาดเหมือนเดิม",
+          "label": "Review Depth",
+          "labelTh": "ระดับความละเอียดการตรวจ",
+          "helpText": "Higher depth adds more review-module reports but keeps the final text prompt clean.",
+          "helpTextTh": "ระดับสูงจะเพิ่มรายงานโมดูลตรวจมากขึ้น แต่พรอมต์ข้อความสุดท้ายยังสะอาดเหมือนเดิม",
           "default": "balanced",
           "options": [
             { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },

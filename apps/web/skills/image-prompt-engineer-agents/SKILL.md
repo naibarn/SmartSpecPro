@@ -1,8 +1,8 @@
 ---
 name: gpt-image-prompt-engineer
-description: Build model-free multilingual GPT Image prompt bundles for generation and editing, with deliverable-specific auto choices, reference-image fidelity rules, final safety/quality review, and optional subagent-ready reports.
+description: Build model-free multilingual GPT Image prompt bundles for generation and editing, with user-locked parameters, deliverable-specific auto choices, reference-image fidelity rules, final safety/quality review, and optional review-module reports compatible with subagent orchestration.
 category: image_prompt_generation
-version: 5.4.0
+version: 5.5.0
 icon: sparkles
 tags:
   - shared-skill
@@ -29,6 +29,11 @@ config:
     enabled: true
     orchestration_mode_default: auto
     pattern: deterministic-core-with-subagent-ready-reports
+    note: "Backward-compatible metadata name. The native runtime emits deterministic review-module reports and does not call an LLM."
+  review_modules:
+    enabled: true
+    llm_required: false
+    pattern: deterministic-review-modules
   media_studio:
     prompt_bundle_review: true
     accepts_reference_images: true
@@ -47,7 +52,7 @@ The skill is **model-free**. It must not set or return an image model. The exter
 - Create or improve prompts for posters, banners, thumbnails, social posts, story posts, slides, infographics, diagrams, UI mockups, product ads, product mockups, packaging mockups, document replicas, character sheets, storyboards, and contact sheets.
 - Convert incomplete creative briefs into sensible auto-selected prompt parameters with a decision trace.
 - Prepare image-edit prompts that preserve supplied reference images, identity, product geometry, packaging labels, and unchanged regions.
-- Return either a plain prompt for Media Studio fields or a JSON bundle with reviews, decisions, render parameters, and subagent-style reports.
+- Return either a plain prompt for Media Studio fields or a JSON bundle with reviews, locked user parameters, decisions, render parameters, reference preflight, and review-module reports.
 
 ## When Not To Use
 
@@ -58,19 +63,20 @@ The skill is **model-free**. It must not set or return an image model. The exter
 ## Core Workflow
 
 1. Validate input with `schemas/input.schema.json`.
-2. Resolve `auto` fields with `decision_trace`: language, style, deliverable, multi-frame mode, aspect ratio, render size, quality, camera, lighting, layout, and safety settings.
-3. Run safety review before prompt construction.
-4. Build prompts with deliverable-specific rules, reference-image fidelity notes, and product/place factual grounding.
-5. Build model-free render parameters.
-6. Evaluate prompt quality.
-7. Run deterministic subagent-ready orchestration when requested or when the task is complex.
-8. Rebuild prompt after orchestration patches.
-9. Run `final_review` before returning output. The final review can repair unsafe wording, reinforce reference fidelity/storyboard continuity, require product/place reference research, list missing inputs, and provide clarifying questions.
+2. Record all explicit user-supplied values in `locked_user_params`. These values are authoritative; `auto` decisions may only fill missing details and must not override them.
+3. Resolve `auto` fields with `decision_trace`: language, style, deliverable, multi-frame mode, aspect ratio, render size, quality, camera, lighting, layout, and safety settings.
+4. Run safety review before prompt construction.
+5. Build prompts with deliverable-specific rules, reference-image fidelity notes, and product/place factual grounding.
+6. Build model-free render parameters.
+7. Evaluate prompt quality.
+8. Run deterministic review-module orchestration when requested or when the task is complex.
+9. Rebuild prompt after orchestration patches.
+10. Run `final_review` before returning output. The final review can repair unsafe wording, reinforce reference fidelity/storyboard continuity, require product/place reference research, list missing inputs, and provide clarifying questions.
 
 ## Response Modes
 
 - `text_prompt` (default): return only the selected prompt text. Use this for Media Studio prompt fields.
-- `json_bundle`: return the full structured bundle with prompts, decision trace, prompt quality, safety review, final review, conflict resolution, subagent reports, and render parameters.
+- `json_bundle`: return the full structured bundle with prompts, locked user parameters, decision trace, prompt quality, safety review, final review, conflict resolution, review-module reports, reference preflight, and render parameters.
 
 When `response_mode=text_prompt`, obey `text_prompt_field`:
 
@@ -113,7 +119,7 @@ Reference rules:
 - If no verified facts/sources are supplied, `reference_research.status` becomes `needed` or `visual_reference_only`, and `final_review.missing_inputs` includes `verified_reference_facts` and/or `reference_sources`.
 - For fictional or fully user-defined products/places, set `factual_reference_mode: "off"` so the skill does not require external grounding.
 
-The deterministic Python core does not browse by itself. Host runtimes or real subagents should perform the search, then pass `verified_reference_facts` and `reference_sources` into the skill. The skill returns suggested `search_queries` and `source_priority` to guide that search.
+The deterministic Python core does not browse by itself. Host runtimes, a reference-search service, or real agents-as-tools should perform the search, then pass `verified_reference_facts` and `reference_sources` into the skill. The skill returns suggested `search_queries`, `source_priority`, and `final_review.reference_preflight.next_action` to guide that search.
 
 ## Missing Inputs
 
@@ -125,9 +131,9 @@ If the user omits important details, the skill should still produce a usable pro
 - verified product/place facts and reference sources when a real product/place is detected
 - per-panel beats and locked character/location details for storyboards
 
-## Subagent-Ready Reports
+## Review-Module Reports
 
-The deterministic orchestration layer can emit reports shaped like real Agents SDK tools:
+The deterministic orchestration layer emits review-module reports shaped like real Agents SDK tools:
 
 - `intent_triage`
 - `visual_director`
@@ -140,10 +146,10 @@ The deterministic orchestration layer can emit reports shaped like real Agents S
 - `safety_policy`
 - `prompt_critic`
 
-These reports are deterministic by default. The application layer may replace them with real agents-as-tools, but Media Studio should call the Python entrypoint as the source of truth.
+These reports are deterministic by default and do not call an LLM. The application layer may replace them with real agents-as-tools in the future, but Media Studio should call the Python entrypoint as the source of truth.
 
 ## Output
 
 For `response_mode=text_prompt`, output only the selected final-reviewed prompt text.
 
-For `response_mode=json_bundle`, output prompt variants, quality review, safety review, final review, conflict resolution, subagent reports, and model-free render parameters. The external API caller adds the image model when rendering.
+For `response_mode=json_bundle`, output prompt variants, `locked_user_params`, quality review, safety review, final review, `final_review.reference_preflight`, conflict resolution, review-module reports, and model-free render parameters. The external API caller adds the image model when rendering.

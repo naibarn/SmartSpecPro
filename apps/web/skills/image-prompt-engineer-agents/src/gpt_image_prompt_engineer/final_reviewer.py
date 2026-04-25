@@ -131,6 +131,32 @@ def _missing_inputs(normalized: dict, reference_research: dict) -> tuple[list[st
     return missing, assumptions, questions
 
 
+def _reference_preflight(reference_research: dict) -> dict:
+    required = bool(reference_research.get("required"))
+    status = str(reference_research.get("status") or "not_required")
+    if not required:
+        next_action = "none"
+    elif status == "verified":
+        next_action = "use_supplied_verified_sources"
+    elif status == "partially_verified":
+        next_action = "complete_missing_facts_or_sources"
+    else:
+        next_action = "collect_official_or_reputable_sources"
+    return {
+        "required": required,
+        "status": status,
+        "next_action": next_action,
+        "search_queries": list(reference_research.get("search_queries") or []),
+        "source_priority": list(reference_research.get("source_priority") or []),
+        "conflict_policy": reference_research.get("conflict_policy"),
+    }
+
+
+def _contains_prompt_terms(prompt: str, terms: list[str]) -> bool:
+    lower = prompt.lower()
+    return any(term.lower() in lower for term in terms)
+
+
 def review_and_repair(normalized: dict, prompts: dict, safety: dict, prompt_quality: dict) -> tuple[dict, dict, dict, list[str]]:
     lang = normalized.get("target_language", "en")
     deliverable = str(normalized.get("deliverable_type", "general_image"))
@@ -140,6 +166,7 @@ def review_and_repair(normalized: dict, prompts: dict, safety: dict, prompt_qual
     patched = deepcopy(prompts)
     detailed = patched.get("detailed", "")
     reference_research = build_reference_research(normalized)
+    refs = reference_paths(normalized)
 
     _check(checks, "safety_gate", safety.get("status") != "blocked", "Safety review is not blocked.")
     _check(checks, "quality_gate", int(prompt_quality.get("score", 0)) >= 80, "Prompt quality score is at least 80.")
@@ -147,6 +174,28 @@ def review_and_repair(normalized: dict, prompts: dict, safety: dict, prompt_qual
     _check(checks, "text_legibility", deliverable not in TEXT_SENSITIVE_DELIVERABLES or "read" in detailed.lower() or "อ่าน" in detailed, "Text-sensitive deliverables include legibility instructions.")
     _check(checks, "reference_fidelity", deliverable not in REFERENCE_FIDELITY_DELIVERABLES or "reference" in detailed.lower() or "อ้างอิง" in detailed, "Reference-sensitive deliverables include fidelity instructions.")
     _check(checks, "factual_reference_grounding", not reference_research.get("required") or reference_research.get("status") == "verified", "Real product/place references include verified facts and clear sources.")
+
+    if deliverable in {"product_mockup", "packaging_mockup"} and refs:
+        _check(
+            checks,
+            "reference_product_geometry_lock",
+            _contains_prompt_terms(detailed, ["shape", "proportions", "geometry", "undistorted", "รูปทรง", "สัดส่วน", "ไม่บิด"]),
+            "Product/package reference images lock shape, geometry, and proportions.",
+        )
+        _check(
+            checks,
+            "reference_label_logo_lock",
+            _contains_prompt_terms(detailed, ["logo", "label", "key text", "packaging artwork", "โลโก้", "ฉลาก", "ตัวอักษร", "ลายแพ็กเกจ"]),
+            "Product/package reference images lock label, logo, artwork, and key text placement.",
+        )
+        if normalized.get("exact_text"):
+            exact_text = str(normalized.get("exact_text") or "").strip()
+            _check(
+                checks,
+                "reference_exact_text_lock",
+                exact_text in detailed or _contains_prompt_terms(detailed, ["exact in-image text", "render exact", "ตามนี้", "สะกดถูกต้อง"]),
+                "Exact supplied text is preserved and reinforced for readable rendering.",
+            )
 
     markers = DELIVERABLE_MARKERS.get(deliverable, [])
     if markers:
@@ -165,7 +214,7 @@ def review_and_repair(normalized: dict, prompts: dict, safety: dict, prompt_qual
         repairs.append("Replaced unsafe topic wording with a safe alternative before return.")
         warnings.append("Unsafe or high-risk topic wording was converted to a safe alternative in the final prompt.")
 
-    if deliverable in REFERENCE_FIDELITY_DELIVERABLES and reference_paths(normalized):
+    if deliverable in REFERENCE_FIDELITY_DELIVERABLES and refs:
         note = (
             "Final review: preserve the supplied reference image geometry, proportions, colors, logo placement, labels, and readable text exactly unless the user explicitly asked to edit them."
             if lang != "th"
@@ -173,6 +222,15 @@ def review_and_repair(normalized: dict, prompts: dict, safety: dict, prompt_qual
         )
         patched = _append_to_prompt(patched, note, lang)
         repairs.append("Reinforced reference-image fidelity.")
+
+    if deliverable in {"product_mockup", "packaging_mockup"} and refs:
+        note = (
+            "Final review: keep the product silhouette, package aspect, label grid, logo scale, and text baseline locked to the reference image; do not stretch, redraw, replace, or invent package details."
+            if lang != "th"
+            else "ตรวจรอบสุดท้าย: ล็อกรูปทรงสินค้า อัตราส่วนแพ็กเกจ กริดฉลาก ขนาดโลโก้ และแนว baseline ตัวอักษรตามภาพอ้างอิง ห้ามยืด วาดใหม่ แทนที่ หรือแต่งรายละเอียดแพ็กเกจเอง"
+        )
+        patched = _append_to_prompt(patched, note, lang)
+        repairs.append("Reinforced strict product/package reference lock.")
 
     if deliverable == "storyboard":
         note = (
@@ -214,6 +272,7 @@ def review_and_repair(normalized: dict, prompts: dict, safety: dict, prompt_qual
         "missing_inputs": sorted(set(missing)),
         "assumptions": assumptions,
         "clarifying_questions": questions,
+        "reference_preflight": _reference_preflight(reference_research),
         "block_reason": "; ".join(safety.get("notes", [])) if safety.get("status") == "blocked" else None,
     }
     return patched, final_review, reference_research, warnings

@@ -286,11 +286,34 @@ interface PromptReviewSummary {
   selectedSubagents: string[];
   qualityScore: number | null;
   failedChecks: string[];
+  lockedUserParams: Record<string, unknown> | null;
+  referenceSearchQueries: string[];
+  referenceNextAction: string | null;
 }
 
 const promptReviewStringArray = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
   return value.map((item) => String(item).trim()).filter(Boolean);
+};
+
+const promptReviewObject = (value: unknown): Record<string, unknown> | null => {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+};
+
+const formatPromptReviewLockedParams = (lockedUserParams: Record<string, unknown> | null): string[] => {
+  const fields = promptReviewObject(lockedUserParams?.fields);
+  const fieldNames = promptReviewStringArray(lockedUserParams?.field_names);
+  const names = fieldNames.length > 0 ? fieldNames : Object.keys(fields || {});
+  return names.slice(0, 8).map((name) => {
+    const entry = promptReviewObject(fields?.[name]);
+    const value = entry?.normalized ?? entry?.requested;
+    if (Array.isArray(value)) {
+      return `${name}=${value.length} item${value.length === 1 ? "" : "s"}`;
+    }
+    return `${name}=${String(value ?? "").slice(0, 60)}`;
+  }).filter((item) => !item.endsWith("="));
 };
 
 const normalizePromptReviewSummary = (value: unknown): PromptReviewSummary | null => {
@@ -310,6 +333,9 @@ const normalizePromptReviewSummary = (value: unknown): PromptReviewSummary | nul
       ? null
       : Number.isFinite(qualityScore) ? qualityScore : null,
     failedChecks: promptReviewStringArray(review.failedChecks),
+    lockedUserParams: promptReviewObject(review.lockedUserParams),
+    referenceSearchQueries: promptReviewStringArray(review.referenceSearchQueries),
+    referenceNextAction: typeof review.referenceNextAction === "string" ? review.referenceNextAction : null,
   };
 };
 
@@ -1191,9 +1217,14 @@ export default function MediaStudio() {
     reference: isThaiLocale ? "อ้างอิง" : "Reference",
     missing: isThaiLocale ? "ข้อมูลที่ขาด" : "Missing",
     checks: isThaiLocale ? "ตรวจไม่ผ่าน" : "Failed checks",
-    subagents: isThaiLocale ? "ตัวตรวจ" : "Reviewers",
+    locked: isThaiLocale ? "ค่าที่ล็อกจากผู้ใช้" : "Locked user params",
+    preflight: isThaiLocale ? "แผนอ้างอิง" : "Reference preflight",
+    subagents: isThaiLocale ? "โมดูลตรวจ" : "Review modules",
     questions: isThaiLocale ? "คำถามแนะนำ" : "Suggested questions",
   };
+  const promptReviewLockedParams = promptReview
+    ? formatPromptReviewLockedParams(promptReview.lockedUserParams)
+    : [];
 
   // Setter functions that update the current tab's state
   const setPrompt = useCallback((value: string | ((prev: string) => string)) => {
@@ -2581,7 +2612,7 @@ export default function MediaStudio() {
     return false;
   }, [useAdvancedMode, skillSchema]);
 
-  // Auto Prompt - enhance prompt using selected skill with LLM
+  // Auto Prompt - enhance prompt using the selected skill. Native Python prompt skills may be model-free.
   // Works with: text only, images only, or text + images
   // Passes all selected options: style, VFX, realistic skin, face lock, etc.
   // When using advanced mode with dynamic form, uses form values instead
@@ -2613,14 +2644,13 @@ export default function MediaStudio() {
     try {
       // Determine if we should use custom skill execution or the specialized enhancePrompt endpoint
       // Skills with executionMode: "enhance-prompt" use the specialized enhancePrompt endpoint
-      // All other skills use executeCustomSkill which sends skill.md content as system prompt
+      // All other skills use executeCustomSkill. Native Python skills execute directly; LLM-only skills use skill.md as context.
       const useEnhancePromptEndpoint = currentSkill?.executionMode === "enhance-prompt";
 
       const isCustomSkill = selectedSkillId && !useEnhancePromptEndpoint;
 
       if (isCustomSkill) {
-        // Use executeCustomSkill for custom skills like viral-talking-objects
-        // This sends the skill's content as system prompt to the LLM
+        // Use executeCustomSkill for custom prompt skills like viral-talking-objects
         // Works in both Basic Mode (userIdea only) and Advanced Mode (with form values)
         const hasUsableSkillValue = (value: unknown): boolean => {
           if (value === undefined || value === null) return false;
@@ -5338,6 +5368,16 @@ export default function MediaStudio() {
                   {promptReview.failedChecks.length > 0 && (
                     <p className="text-xs leading-5 opacity-80">
                       {promptReviewLabels.checks}: {promptReview.failedChecks.slice(0, 6).join(", ")}
+                    </p>
+                  )}
+                  {promptReviewLockedParams.length > 0 && (
+                    <p className="text-xs leading-5 opacity-80">
+                      {promptReviewLabels.locked}: {promptReviewLockedParams.join(", ")}
+                    </p>
+                  )}
+                  {(promptReview.referenceNextAction || promptReview.referenceSearchQueries.length > 0) && (
+                    <p className="text-xs leading-5 opacity-80">
+                      {promptReviewLabels.preflight}: {[promptReview.referenceNextAction, ...promptReview.referenceSearchQueries.slice(0, 2)].filter(Boolean).join(" / ")}
                     </p>
                   )}
                   {promptReview.selectedSubagents.length > 0 && (

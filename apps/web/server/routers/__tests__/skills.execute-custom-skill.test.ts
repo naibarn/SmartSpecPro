@@ -165,10 +165,27 @@ describe("skills.executeCustomSkill Python prompt-bundle routing", () => {
         requires_revision: true,
         missing_inputs: ["reference_sources"],
         clarifying_questions: ["Which package angle should be locked?"],
+        reference_preflight: {
+          required: true,
+          status: "visual_reference_only",
+          next_action: "collect_official_or_reputable_sources",
+          search_queries: ["Lay seaweed chips official product page visual details"],
+        },
         checks: [
           { name: "quality_gate", passed: true },
           { name: "factual_reference_grounding", passed: false },
         ],
+      },
+      locked_user_params: {
+        field_names: ["aspect_ratio", "topic"],
+        fields: {
+          aspect_ratio: { requested: "16:9", normalized: "16:9", source: "user" },
+          topic: {
+            requested: "Lay seaweed chips product mockup",
+            normalized: "Lay seaweed chips product mockup",
+            source: "user",
+          },
+        },
       },
       reference_research: {
         status: "visual_reference_only",
@@ -202,6 +219,11 @@ describe("skills.executeCustomSkill Python prompt-bundle routing", () => {
       selectedSubagents: ["reference_fidelity", "reference_researcher"],
       qualityScore: 97,
       failedChecks: ["factual_reference_grounding"],
+      referenceNextAction: "collect_official_or_reputable_sources",
+      referenceSearchQueries: ["Lay seaweed chips official product page visual details"],
+    });
+    expect(result.promptReview.lockedUserParams).toMatchObject({
+      field_names: ["aspect_ratio", "topic"],
     });
     expect(result.runtime).toMatchObject({
       mode: "python",

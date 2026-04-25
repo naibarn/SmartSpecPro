@@ -1,8 +1,8 @@
 ---
 name: gpt-image-prompt-engineer
-description: Build model-free multilingual GPT Image prompt bundles for generation and editing, with deliverable-specific auto choices, reference-image fidelity rules, final safety/quality review, and optional subagent-ready reports.
+description: Build model-free multilingual GPT Image prompt bundles for generation and editing, with user-locked parameters, deliverable-specific auto choices, reference-image fidelity rules, final safety/quality review, and optional review-module reports compatible with subagent orchestration.
 category: image_prompt_generation
-version: 5.4.0
+version: 5.5.0
 execution_mode: python
 sandbox_profile: code-default
 requires_network: true
@@ -29,7 +29,9 @@ Key guarantees:
 
 - The skill is model-free; callers add the image model externally.
 - `response_mode=text_prompt` returns only final-reviewed prompt text.
-- `response_mode=json_bundle` returns prompts, auto decision trace, safety review, final review, subagent-ready reports, conflict resolution, and render parameters.
+- `response_mode=json_bundle` returns prompts, `locked_user_params`, auto decision trace, safety review, final review, review-module reports, conflict resolution, reference preflight, and render parameters.
 - Deliverable-specific profiles cover posters, social/story posts, presentation slides, product and packaging mockups, storyboards, and other supported image formats.
+- Explicit user-supplied values are recorded as locked parameters and must not be overridden by `auto` decisions.
 - `final_review` repairs unsafe/high-risk wording before output, reinforces reference fidelity and storyboard continuity, and reports missing inputs plus clarifying questions.
 - Real product/place workflows require factual reference grounding through `verified_reference_facts` and `reference_sources`; those references may supplement but never replace user-provided details.
+- The native runtime is deterministic and model-free; review-module reports do not call an LLM unless a host application deliberately replaces them with external agents-as-tools.

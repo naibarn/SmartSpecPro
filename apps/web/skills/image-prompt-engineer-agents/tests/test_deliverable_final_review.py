@@ -51,14 +51,21 @@ class DeliverableFinalReviewTest(unittest.TestCase):
         result = run_skill({
             "topic": "product mockup of a matte black smart bottle on a clean studio set",
             "target_language": "en",
+            "aspect_ratio": "16:9",
             "source_image_path": ["bottle-front.png", "label-detail.png"],
         })
 
         self.assertEqual(result["normalized"]["deliverable_type"], "product_mockup")
+        self.assertEqual(result["normalized"]["aspect_ratio"], "16:9")
+        self.assertEqual(result["locked_user_params"]["fields"]["aspect_ratio"]["normalized"], "16:9")
         self.assertEqual(result["render_request"]["image_api"]["input_images"], ["bottle-front.png", "label-detail.png"])
         self.assertIn("supplied reference image(s)", result["prompts"]["detailed"])
         self.assertIn("preserve the supplied reference image geometry", result["prompts"]["detailed"])
+        self.assertIn("do not stretch, redraw, replace, or invent package details", result["prompts"]["detailed"])
         self.assertIn("reference_fidelity", result["orchestration"]["selected_subagents"])
+        check_names = {check["name"] for check in result["final_review"]["checks"]}
+        self.assertIn("reference_product_geometry_lock", check_names)
+        self.assertIn("reference_label_logo_lock", check_names)
 
     def test_packaging_mockup_reports_missing_source_and_exact_text(self):
         result = run_skill({
@@ -73,6 +80,25 @@ class DeliverableFinalReviewTest(unittest.TestCase):
         self.assertIn("source_image_path", result["final_review"]["missing_inputs"])
         self.assertIn("exact_text", result["final_review"]["missing_inputs"])
         self.assertTrue(result["final_review"]["clarifying_questions"])
+        self.assertEqual(result["final_review"]["reference_preflight"]["next_action"], "collect_official_or_reputable_sources")
+        self.assertTrue(result["final_review"]["reference_preflight"]["search_queries"])
+
+    def test_locked_user_params_and_reference_preflight_are_reported(self):
+        result = run_skill({
+            "topic": "poster for real cafe landmark product launch",
+            "target_language": "en",
+            "deliverable_type": "poster",
+            "aspect_ratio": "9:16",
+            "exact_text": "LAUNCH NIGHT",
+        })
+
+        locked = result["locked_user_params"]["fields"]
+        self.assertEqual(locked["deliverable_type"]["normalized"], "poster")
+        self.assertEqual(locked["aspect_ratio"]["normalized"], "9:16")
+        self.assertEqual(locked["exact_text"]["requested"], "LAUNCH NIGHT")
+        self.assertEqual(result["normalized"]["aspect_ratio"], "9:16")
+        self.assertEqual(result["reference_research"]["status"], "needed")
+        self.assertTrue(result["final_review"]["reference_preflight"]["required"])
 
     def test_storyboard_final_review_reinforces_continuity(self):
         result = run_skill({

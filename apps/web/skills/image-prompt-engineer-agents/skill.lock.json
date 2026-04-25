@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "skill": "gpt-image-prompt-engineer",
-  "version": "5.4.0",
+  "version": "5.5.0",
   "runtime": {
     "execution_mode": "python",
     "entrypoint": "python/skill.py",
@@ -23,6 +23,13 @@
   "subagents": {
     "enabled": true,
     "manifest": "subagents.json",
-    "pattern": "deterministic-core-with-subagent-ready-reports"
+    "pattern": "deterministic-core-with-subagent-ready-reports",
+    "note": "Backward-compatible metadata name. The native runtime emits deterministic review-module reports and does not call an LLM."
+  },
+  "review_modules": {
+    "enabled": true,
+    "manifest": "subagents.json",
+    "llm_required": false,
+    "pattern": "deterministic-review-modules"
   }
 }

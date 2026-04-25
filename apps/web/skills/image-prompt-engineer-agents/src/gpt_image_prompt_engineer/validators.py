@@ -84,7 +84,7 @@ def validate_output(data: dict[str, Any]) -> dict[str, Any]:
             _fail(f"Missing required output field: {key}")
     if data.get("status") not in {"ok", "completed", "error"}:
         _fail("status must be ok, completed, or error")
-    for key in ["requested", "normalized", "prompts", "prompt_quality", "safety_review", "render_request", "metadata", "orchestration", "merge_report", "final_quality_delta", "final_review", "reference_research"]:
+    for key in ["requested", "normalized", "locked_user_params", "prompts", "prompt_quality", "safety_review", "render_request", "metadata", "orchestration", "merge_report", "final_quality_delta", "final_review", "reference_research"]:
         if not isinstance(data.get(key), dict):
             _fail(f"{key} must be an object")
     if not isinstance(data.get("decision_trace"), list):

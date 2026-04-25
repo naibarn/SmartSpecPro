@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "schemas/input.schema.json",
-  "title": "GPT Image Prompt Engineer Input v5 Subagents",
+  "title": "GPT Image Prompt Engineer Input v5.5 Review Modules",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -758,17 +758,17 @@
         "subagents"
       ],
       "default": "auto",
-      "description": "Controls whether the skill uses only the deterministic core or also produces subagent-style specialist reports."
+      "description": "Controls whether the skill uses only the deterministic core or also produces deterministic review-module reports. The subagents enum value is kept for backward compatibility."
     },
     "enable_subagents": {
       "type": "boolean",
-      "title": "Enable Subagents",
+      "title": "Enable Review Modules",
       "default": true,
-      "description": "When true, orchestration_mode=auto may select specialist subagent reports for complex work."
+      "description": "When true, orchestration_mode=auto may select specialist review-module reports for complex work. This native runtime remains model-free."
     },
     "subagent_budget": {
       "type": "string",
-      "title": "Subagent Budget",
+      "title": "Review Module Budget",
       "enum": [
         "auto",
         "low",
@@ -776,7 +776,7 @@
         "high"
       ],
       "default": "balanced",
-      "description": "Controls how many specialist reports are selected when subagents are enabled."
+      "description": "Controls how many specialist review-module reports are selected."
     },
     "reasoning_depth": {
       "type": "string",
@@ -808,7 +808,7 @@
         "strict"
       ],
       "default": "standard",
-      "description": "Safety review strictness for subagent-ready pipelines."
+      "description": "Safety review strictness for deterministic review-module pipelines."
     }
   },
   "allOf": [

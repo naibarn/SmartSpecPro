@@ -1,6 +1,13 @@
-# GPT Image Prompt Engineer Skill v5.4 — Subagent-ready, Model-free
+# GPT Image Prompt Engineer Skill v5.5 — Review Modules, Model-free
 
 This package builds multilingual GPT Image prompt bundles. It is intentionally **model-free**: it never sets, infers, validates, or returns an image model name. Your external API caller supplies the renderer, for example `gpt-image-2`.
+
+## v5.5 additions
+
+- `locked_user_params` records explicit user values so `auto` decisions cannot silently override them.
+- `final_review.reference_preflight` reports whether real product/place research is required, what action is next, and which search queries/sources should be used by the host.
+- Product and packaging reference-image reviews now lock silhouette, package aspect, label grid, logo scale, and exact text placement more strictly.
+- Media Studio review summaries expose locked parameters and reference preflight while keeping the native runtime model-free.
 
 ## v5.4 additions
 
@@ -8,7 +15,7 @@ This package builds multilingual GPT Image prompt bundles. It is intentionally *
 - Search query and source-priority planning for host/subagent web research
 - `verified_reference_facts` and `reference_sources` inputs
 - User-provided details are authoritative and must not be replaced by search results
-- Subagent-ready `reference_researcher` report
+- Review-module `reference_researcher` report
 
 ## v5.3 additions
 
@@ -16,12 +23,12 @@ This package builds multilingual GPT Image prompt bundles. It is intentionally *
 - Final safety/quality gate via `final_review`
 - High-risk prompt text repair before `text_prompt` output
 - Reference-image fidelity notes and render-request `input_images`
-- Subagent-ready `deliverable_designer` and `reference_fidelity` reports
+- Review-module `deliverable_designer` and `reference_fidelity` reports
 - UI schema alignment for `document_replica` and `packaging_mockup`
 
 ## v5 additions
 
-- Optional subagent-ready orchestration layer
+- Optional deterministic review-module orchestration layer
 - `orchestration_mode`: `auto`, `off`, `single_pass`, `subagents`
 - `enable_subagents`
 - `subagent_budget`: `auto`, `low`, `balanced`, `high`
@@ -35,9 +42,9 @@ This package builds multilingual GPT Image prompt bundles. It is intentionally *
 - `final_quality_delta`
 - `final_review`
 
-## Specialist subagent roles
+## Specialist Review-Module Roles
 
-The deterministic orchestration layer mirrors the shape of reports that real Agents SDK subagents/tools can return:
+The deterministic orchestration layer mirrors the shape of reports that real Agents SDK agents-as-tools can return:
 
 1. `intent_triage`
 2. `visual_director`
@@ -50,7 +57,7 @@ The deterministic orchestration layer mirrors the shape of reports that real Age
 9. `safety_policy`
 10. `prompt_critic`
 
-The core skill remains deterministic and standard-library friendly. Real subagents can be placed around this skill at the application layer using Agents SDK agents-as-tools.
+The core skill remains deterministic and standard-library friendly. Real agents-as-tools can be placed around this skill at the application layer when a host needs live research or external review.
 
 ## Usage
 

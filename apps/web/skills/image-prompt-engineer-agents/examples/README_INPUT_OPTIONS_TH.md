@@ -18,7 +18,7 @@
 
 - ใช้ `auto` เมื่ออยากให้ skill เลือกเองตามหัวข้อภาพ
 - กำหนดเองเมื่อมี requirement ชัดเจน เช่น ต้องการ `medium_close_up`, `85mm`, `shallow`, `natural_soft`
-- งานซับซ้อน เช่น cinematic, storyboard, infographic, product ads แนะนำเปิด `enable_subagents: true` และใช้ `orchestration_mode: auto` หรือ `subagents`
+- งานซับซ้อน เช่น cinematic, storyboard, infographic, product ads แนะนำเปิด `enable_subagents: true` และใช้ `orchestration_mode: auto` หรือ `subagents` เพื่อสร้างรายงานโมดูลตรวจแบบ deterministic โดยไม่จำเป็นต้องเรียก LLM
 
 ## กฎสำคัญ
 
@@ -153,16 +153,16 @@
 | `seed` | `integer / null` | default `None` | - | ตัวเลือกเสริมสำหรับควบคุม prompt |
 | `guidance_scale` | `number / null` | min `0`, max `50`, default `None` | - | ตัวเลือกเสริมสำหรับควบคุม prompt |
 
-## 14) Subagent / Orchestration
+## 14) Review Modules / Orchestration
 
 | field | type | default / range | ตัวเลือก | ใช้เมื่อไหร่ |
 |---|---|---|---|---|
-| `orchestration_mode` | `string` | default `auto` | `auto`, `off`, `single_pass`, `subagents` | ควบคุมว่าจะใช้ subagent layer หรือไม่ |
-| `enable_subagents` | `boolean` | default `True` | - | เปิด/ปิด subagent-ready orchestration |
-| `subagent_budget` | `string` | default `balanced` | `auto`, `low`, `balanced`, `high` | Controls how many specialist reports are selected when subagents are enabled. |
+| `orchestration_mode` | `string` | default `auto` | `auto`, `off`, `single_pass`, `subagents` | ควบคุมว่าจะใช้โมดูลตรวจหรือใช้แกนสร้างพรอมต์อย่างเดียว ค่า `subagents` คงไว้เพื่อ backward compatibility |
+| `enable_subagents` | `boolean` | default `True` | - | เปิด/ปิดรายงานโมดูลตรวจแบบ deterministic |
+| `subagent_budget` | `string` | default `balanced` | `auto`, `low`, `balanced`, `high` | ควบคุมจำนวนรายงานโมดูลตรวจที่เลือกใช้ |
 | `reasoning_depth` | `string` | default `standard` | `auto`, `fast`, `standard`, `deep` | Controls how detailed the orchestration analysis should be. |
 | `quality_review_passes` | `integer` | min `0`, max `3`, default `1` | - | Number of prompt critic passes to simulate in the deterministic orchestration layer. |
-| `safety_review_level` | `string` | default `standard` | `auto`, `basic`, `standard`, `strict` | Safety review strictness for subagent-ready pipelines. |
+| `safety_review_level` | `string` | default `standard` | `auto`, `basic`, `standard`, `strict` | ระดับความเข้มของ safety review ใน pipeline โมดูลตรวจ |
 
 ## ตัวอย่าง Preset JSON ที่ใช้บ่อย
 
@@ -314,7 +314,7 @@
 5. ถ้างานโฆษณา/สินค้า ให้กำหนด `product_ad`, `studio_softbox`, `three_quarter`
 6. ถ้างาน cinematic ให้เปิด `cinematic_mode: on` และเลือกกล้อง/แสง/สี
 7. ถ้างานหลายช่อง ให้กำหนด `multi_frame_mode`, `frame_layout`, `panel_count`, `panel_descriptions`
-8. เปิด `enable_subagents: true` เมื่อโจทย์ซับซ้อนหรือต้องการ prompt ฉลาดขึ้น
+8. เปิด `enable_subagents: true` เมื่อโจทย์ซับซ้อนหรือต้องการรายงานโมดูลตรวจละเอียดขึ้น
 
 ## Output ที่ควรนำไปใช้ต่อ
 

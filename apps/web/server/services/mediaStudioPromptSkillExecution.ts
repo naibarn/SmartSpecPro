@@ -37,6 +37,9 @@ export type StructuredPromptReviewSummary = {
   selectedSubagents: string[];
   qualityScore: number | null;
   failedChecks: string[];
+  lockedUserParams: Record<string, unknown> | null;
+  referenceSearchQueries: string[];
+  referenceNextAction: string | null;
 };
 
 export type StructuredPromptExtraction = {
@@ -356,9 +359,15 @@ function summarizeStructuredPromptReview(bundle: JsonObject): StructuredPromptRe
   const finalReview = bundle.final_review && typeof bundle.final_review === "object"
     ? bundle.final_review as JsonObject
     : {};
+  const referencePreflight = finalReview.reference_preflight && typeof finalReview.reference_preflight === "object"
+    ? finalReview.reference_preflight as JsonObject
+    : {};
   const referenceResearch = bundle.reference_research && typeof bundle.reference_research === "object"
     ? bundle.reference_research as JsonObject
     : {};
+  const lockedUserParams = bundle.locked_user_params && typeof bundle.locked_user_params === "object" && !Array.isArray(bundle.locked_user_params)
+    ? bundle.locked_user_params as Record<string, unknown>
+    : null;
   const orchestration = bundle.orchestration && typeof bundle.orchestration === "object"
     ? bundle.orchestration as JsonObject
     : {};
@@ -382,6 +391,9 @@ function summarizeStructuredPromptReview(bundle: JsonObject): StructuredPromptRe
     selectedSubagents: asStringArray(orchestration.selected_subagents),
     qualityScore: typeof promptQuality.score === "number" ? promptQuality.score : null,
     failedChecks,
+    lockedUserParams,
+    referenceSearchQueries: asStringArray(referencePreflight.search_queries),
+    referenceNextAction: typeof referencePreflight.next_action === "string" ? referencePreflight.next_action : null,
   };
 }
 
