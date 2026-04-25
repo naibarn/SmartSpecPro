@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "skill": "gpt-image-prompt-engineer",
+  "version": "5.4.0",
+  "runtime": {
+    "execution_mode": "python",
+    "entrypoint": "python/skill.py",
+    "input": "json_stdin",
+    "output": "json_stdout"
+  },
+  "defaults": {
+    "response_mode": "text_prompt",
+    "text_prompt_field": "detailed",
+    "orchestration_mode": "auto",
+    "enable_subagents": true,
+    "subagent_budget": "balanced",
+    "reasoning_depth": "standard",
+    "quality_review_passes": 1,
+    "safety_review_level": "standard",
+    "final_review": true,
+    "factual_reference_mode": "auto"
+  },
+  "subagents": {
+    "enabled": true,
+    "manifest": "subagents.json",
+    "pattern": "deterministic-core-with-subagent-ready-reports"
+  }
+}

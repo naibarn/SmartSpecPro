@@ -1,0 +1,17 @@
+{
+  "keywords": [
+    "product",
+    "สินค้า",
+    "ads",
+    "โฆษณา",
+    "packaging"
+  ],
+  "default_camera": "mirrorless",
+  "default_lens": "50mm",
+  "default_lighting": "studio_softbox",
+  "negative": [
+    "warped logo",
+    "unreadable text",
+    "messy reflections"
+  ]
+}

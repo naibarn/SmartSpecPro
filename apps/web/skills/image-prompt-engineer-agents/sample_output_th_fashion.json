@@ -1,0 +1,613 @@
+{
+  "status": "completed",
+  "requested": {
+    "topic": "หญิงสาวสวย ชุดทันสมัยหรู แฟชั่นเกาหลี อายุ 18 ปี ผมยาว ใบหน้าคม ดวงตากลมโต แบบ cinematic editorial fashion",
+    "subject_age": 18,
+    "target_language": "auto",
+    "image_style": "auto",
+    "orchestration_mode": "auto",
+    "enable_subagents": true,
+    "subagent_budget": "balanced",
+    "reasoning_depth": "standard",
+    "quality_review_passes": 1,
+    "safety_review_level": "standard"
+  },
+  "normalized": {
+    "topic": "หญิงสาวสวย ชุดทันสมัยหรู แฟชั่นเกาหลี อายุ 18 ปี ผมยาว ใบหน้าคม ดวงตากลมโต แบบ cinematic editorial fashion",
+    "subject_age": 18,
+    "target_language": "th",
+    "image_style": "cinematic",
+    "orchestration_mode": "auto",
+    "enable_subagents": true,
+    "subagent_budget": "balanced",
+    "reasoning_depth": "standard",
+    "quality_review_passes": 1,
+    "safety_review_level": "standard",
+    "render_api": "image_api",
+    "render_action": "generate",
+    "mode": "generate",
+    "deliverable_type": "general_image",
+    "aspect_ratio": "16:9",
+    "render_size": "1536x1024",
+    "quality": "high",
+    "output_format": "png",
+    "api_background": "opaque",
+    "scene_background_mode": "contextual",
+    "multi_frame_mode": "single",
+    "frame_layout": "1x1",
+    "panel_subject_strategy": "same_subject",
+    "continuity_mode": "none",
+    "camera_angle": "eye_level",
+    "shot_framing": "wide_shot",
+    "camera_system": "cinema_camera",
+    "lens_focal_length": "35mm",
+    "aperture_style": "f2_8",
+    "depth_of_field": "shallow",
+    "background_blur": "medium",
+    "camera_movement": "static",
+    "film_stock": "cinema_film",
+    "shutter_speed_style": "natural_motion",
+    "iso_style": "natural_grain",
+    "sensor_format": "super35",
+    "anamorphic_flare": "subtle",
+    "motion_blur": "subtle",
+    "composition_rule": "rule_of_thirds",
+    "lighting_preset": "moody_cinematic",
+    "light_source": "mixed",
+    "light_direction": "side",
+    "color_grade": "teal_orange",
+    "cinematic_mode": "on",
+    "moderation": "auto",
+    "n": 1,
+    "return_variants": 2,
+    "panel_count": 1,
+    "output_compression": null,
+    "modifiers": [
+      "clear subject separation",
+      "intentional visual hierarchy",
+      "coherent background supporting the subject",
+      "film-still composition",
+      "motivated lighting",
+      "controlled depth and shadow transitions",
+      "natural localized wording with preserved visual technique terms",
+      "resolved constraints",
+      "concise renderer-friendly detail"
+    ],
+    "avoid": [
+      "sexualized styling",
+      "revealing outfit emphasis",
+      "adult-coded pose for a young subject"
+    ],
+    "panel_descriptions": [],
+    "include_edit_prompt": true
+  },
+  "decision_trace": [
+    {
+      "field": "target_language",
+      "input": "auto",
+      "selected": "th",
+      "reason": "detected Thai characters",
+      "confidence": 0.9
+    },
+    {
+      "field": "render_api",
+      "input": "auto",
+      "selected": "image_api",
+      "reason": "single generation uses Image API; edits default to Responses tool for multi-turn workflow",
+      "confidence": 0.78
+    },
+    {
+      "field": "render_action",
+      "input": "auto",
+      "selected": "generate",
+      "reason": "mirrors requested mode",
+      "confidence": 0.88
+    },
+    {
+      "field": "image_style",
+      "input": "auto",
+      "selected": "cinematic",
+      "reason": "cinematic / film keywords",
+      "confidence": 0.92
+    },
+    {
+      "field": "multi_frame_mode",
+      "input": "auto",
+      "selected": "single",
+      "reason": "no multi-frame signal",
+      "confidence": 0.78
+    },
+    {
+      "field": "deliverable_type",
+      "input": "auto",
+      "selected": "general_image",
+      "reason": "cinematic still default",
+      "confidence": 0.76
+    },
+    {
+      "field": "aspect_ratio",
+      "input": "auto",
+      "selected": "16:9",
+      "reason": "landscape/cinematic framing",
+      "confidence": 0.82
+    },
+    {
+      "field": "render_size",
+      "input": "auto",
+      "selected": "1536x1024",
+      "reason": "mapped requested aspect ratio 16:9 to closest supported API size",
+      "confidence": 0.86
+    },
+    {
+      "field": "quality",
+      "input": "auto",
+      "selected": "high",
+      "reason": "high-detail or text-sensitive style",
+      "confidence": 0.82
+    },
+    {
+      "field": "output_format",
+      "input": "auto",
+      "selected": "png",
+      "reason": "PNG is safest default for text, transparency, and lossless review",
+      "confidence": 0.76
+    },
+    {
+      "field": "api_background",
+      "input": "auto",
+      "selected": "opaque",
+      "reason": "opaque is safest for full-scene imagery",
+      "confidence": 0.76
+    },
+    {
+      "field": "cinematic_mode",
+      "input": "auto",
+      "selected": "on",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "camera_angle",
+      "input": "auto",
+      "selected": "eye_level",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "shot_framing",
+      "input": "auto",
+      "selected": "wide_shot",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "camera_system",
+      "input": "auto",
+      "selected": "cinema_camera",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "sensor_format",
+      "input": "auto",
+      "selected": "super35",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "lens_focal_length",
+      "input": "auto",
+      "selected": "35mm",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "aperture_style",
+      "input": "auto",
+      "selected": "f2_8",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "depth_of_field",
+      "input": "auto",
+      "selected": "shallow",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "background_blur",
+      "input": "auto",
+      "selected": "medium",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "camera_movement",
+      "input": "auto",
+      "selected": "static",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "film_stock",
+      "input": "auto",
+      "selected": "cinema_film",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "shutter_speed_style",
+      "input": "auto",
+      "selected": "natural_motion",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "iso_style",
+      "input": "auto",
+      "selected": "natural_grain",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "anamorphic_flare",
+      "input": "auto",
+      "selected": "subtle",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "motion_blur",
+      "input": "auto",
+      "selected": "subtle",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "composition_rule",
+      "input": "auto",
+      "selected": "rule_of_thirds",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "lighting_preset",
+      "input": "auto",
+      "selected": "moody_cinematic",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "light_source",
+      "input": "auto",
+      "selected": "mixed",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "light_direction",
+      "input": "auto",
+      "selected": "side",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "color_grade",
+      "input": "auto",
+      "selected": "teal_orange",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "scene_background_mode",
+      "input": "auto",
+      "selected": "contextual",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "frame_layout",
+      "input": "auto",
+      "selected": "1x1",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "panel_subject_strategy",
+      "input": "auto",
+      "selected": "same_subject",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    },
+    {
+      "field": "continuity_mode",
+      "input": "auto",
+      "selected": "none",
+      "reason": "auto-selected from style=cinematic, cinematic_mode=on, deliverable=general_image",
+      "confidence": 0.74
+    }
+  ],
+  "confidence_score": 0.766,
+  "orchestration": {
+    "mode": "subagents",
+    "strategy": "agents_as_tools_ready",
+    "subagents_enabled": true,
+    "selected_subagents": [
+      "intent_triage",
+      "visual_director",
+      "prompt_critic",
+      "cinematographer",
+      "localization",
+      "safety_policy"
+    ],
+    "reason": "specialized style; safety flags; complex topic keywords"
+  },
+  "subagent_reports": [
+    {
+      "name": "intent_triage",
+      "role": "Classifies prompt intent and complexity.",
+      "status": "completed",
+      "confidence": 0.88,
+      "summary": "Intent resolved as style=cinematic, deliverable=general_image, mode=generate.",
+      "recommendations": [
+        "Keep the skill output structured and model-free.",
+        "Route only complex prompts to specialist subagents."
+      ],
+      "patch": {
+        "metadata_tags": [
+          "cinematic",
+          "general_image",
+          "generate"
+        ]
+      }
+    },
+    {
+      "name": "visual_director",
+      "role": "Improves composition, subject hierarchy, background, and mood.",
+      "status": "completed",
+      "confidence": 0.84,
+      "summary": "Visual composition should emphasize subject hierarchy, clean negative space, and coherent background choices.",
+      "recommendations": [
+        "Add subject separation and visual hierarchy.",
+        "Keep background supportive rather than distracting."
+      ],
+      "patch": {
+        "append_modifiers": [
+          "clear subject separation",
+          "intentional visual hierarchy",
+          "coherent background supporting the subject"
+        ]
+      }
+    },
+    {
+      "name": "cinematographer",
+      "role": "Improves camera, lens, depth of field, movement, lighting, and film language.",
+      "status": "completed",
+      "confidence": 0.86,
+      "summary": "Camera and lighting language should remain cinematic but not over-constrain the renderer.",
+      "recommendations": [
+        "Use film-still composition.",
+        "Keep lens/depth/lighting consistent.",
+        "Avoid conflicting blur for text-heavy layouts."
+      ],
+      "patch": {
+        "append_modifiers": [
+          "film-still composition",
+          "motivated lighting",
+          "controlled depth and shadow transitions"
+        ]
+      }
+    },
+    {
+      "name": "localization",
+      "role": "Keeps multilingual prompts natural while preserving technical image language.",
+      "status": "completed",
+      "confidence": 0.8,
+      "summary": "Prompt language is th; preserve core technical camera terms only when useful.",
+      "recommendations": [
+        "Use natural localized prose.",
+        "Keep essential visual terms understandable to the renderer."
+      ],
+      "patch": {
+        "append_modifiers": [
+          "natural localized wording with preserved visual technique terms"
+        ]
+      }
+    },
+    {
+      "name": "safety_policy",
+      "role": "Reviews age, public figure, brand, character, and regulated-claim risks.",
+      "status": "completed",
+      "confidence": 0.9,
+      "summary": "Safety flags: age_sensitive.",
+      "recommendations": [
+        "Keep the final prompt non-deceptive, respectful, and rights-aware.",
+        "For an 18-year-old or younger-looking subject, keep styling non-sexualized and age-appropriate."
+      ],
+      "patch": {
+        "append_avoid": [
+          "sexualized styling",
+          "revealing outfit emphasis",
+          "adult-coded pose for a young subject"
+        ]
+      }
+    },
+    {
+      "name": "prompt_critic",
+      "role": "Scores and optimizes clarity, contradictions, and prompt usefulness.",
+      "status": "completed",
+      "confidence": 0.83,
+      "summary": "Initial prompt quality score is 100. Optimize clarity, avoid contradictions, and keep prompt concise enough for rendering.",
+      "recommendations": [
+        "Resolve contradictory constraints.",
+        "Ensure camera, light, background, and deliverable all agree.",
+        "Keep final output JSON-valid."
+      ],
+      "patch": {
+        "append_modifiers": [
+          "resolved constraints",
+          "concise renderer-friendly detail"
+        ]
+      }
+    }
+  ],
+  "merge_report": {
+    "status": "completed",
+    "applied_recommendations": [
+      "visual_director: modifier 'clear subject separation'",
+      "visual_director: modifier 'intentional visual hierarchy'",
+      "visual_director: modifier 'coherent background supporting the subject'",
+      "cinematographer: modifier 'film-still composition'",
+      "cinematographer: modifier 'motivated lighting'",
+      "cinematographer: modifier 'controlled depth and shadow transitions'",
+      "localization: modifier 'natural localized wording with preserved visual technique terms'",
+      "safety_policy: avoid 'sexualized styling'",
+      "safety_policy: avoid 'revealing outfit emphasis'",
+      "safety_policy: avoid 'adult-coded pose for a young subject'",
+      "prompt_critic: modifier 'resolved constraints'",
+      "prompt_critic: modifier 'concise renderer-friendly detail'"
+    ],
+    "discarded_recommendations": [],
+    "notes": [
+      "intent_triage tag: cinematic",
+      "intent_triage tag: general_image",
+      "intent_triage tag: generate"
+    ]
+  },
+  "conflict_resolution": [],
+  "final_quality_delta": {
+    "before_score": 100,
+    "after_score": 100,
+    "delta": 0,
+    "notes": [
+      "Quality did not decrease after orchestration."
+    ]
+  },
+  "prompts": {
+    "short": "สร้างภาพ หญิงสาวสวย ชุดทันสมัยหรู แฟชั่นเกาหลี อายุ 18 ปี ผมยาว ใบหน้าคม ดวงตากลมโต แบบ cinematic editorial fashion โดยใช้ สไตล์: ภาพยนตร์; ประเภทงาน: general image; มุมกล้อง: ระดับสายตา; ระยะภาพ: ระยะกว้าง; ระบบกล้อง: กล้องถ่ายภาพยนตร์; เลนส์: 35mm; รูรับแสงเชิงสไตล์: f2 8; ความชัดลึก: ชัดตื้น; ระดับละลายหลัง: ชัดลึกปานกลาง; ลักษณะแสง: แสงภาพยนตร์โทนดราม่า; แหล่งกำเนิดแสง: แสงผสม; ทิศทางแสง: แสงด้านข้าง; โทนสี: โทน teal-orange; องค์ประกอบภาพ: กฎสามส่วน; โหมดภาพยนตร์: เปิด",
+    "detailed": "สร้างภาพคุณภาพสูงในหัวข้อ: หญิงสาวสวย ชุดทันสมัยหรู แฟชั่นเกาหลี อายุ 18 ปี ผมยาว ใบหน้าคม ดวงตากลมโต แบบ cinematic editorial fashion. กำหนดภาพให้ชัดเจนตามรายละเอียดนี้: สไตล์: ภาพยนตร์; ประเภทงาน: general image; มุมกล้อง: ระดับสายตา; ระยะภาพ: ระยะกว้าง; ระบบกล้อง: กล้องถ่ายภาพยนตร์; เลนส์: 35mm; รูรับแสงเชิงสไตล์: f2 8; ความชัดลึก: ชัดตื้น; ระดับละลายหลัง: ชัดลึกปานกลาง; ลักษณะแสง: แสงภาพยนตร์โทนดราม่า; แหล่งกำเนิดแสง: แสงผสม; ทิศทางแสง: แสงด้านข้าง; โทนสี: โทน teal-orange; องค์ประกอบภาพ: กฎสามส่วน; โหมดภาพยนตร์: เปิด.  Background direction: contextual; choose a coherent background that supports the subject.  เพิ่มรายละเอียดเสริม: clear subject separation, intentional visual hierarchy, coherent background supporting the subject, film-still composition, motivated lighting, controlled depth and shadow transitions, natural localized wording with preserved visual technique terms, resolved constraints, concise renderer-friendly detail.  รักษาความสมจริง องค์ประกอบสะอาด อ่านง่าย และสอดคล้องกับเป้าหมายงาน general image. หลีกเลี่ยง: distorted anatomy, deformed hands, extra fingers, warped face, blurry details, low detail, unwanted text, watermark, cluttered background, misaligned layout, sexualized styling, revealing outfit emphasis, adult-coded pose for a young subject, sexualized pose or revealing styling for an 18-year-old subject.",
+    "structured": "หัวข้อ: หญิงสาวสวย ชุดทันสมัยหรู แฟชั่นเกาหลี อายุ 18 ปี ผมยาว ใบหน้าคม ดวงตากลมโต แบบ cinematic editorial fashion\nสไตล์: ภาพยนตร์\nประเภทงาน: general image\nมุมกล้อง: ระดับสายตา\nระยะภาพ: ระยะกว้าง\nระบบกล้อง: กล้องถ่ายภาพยนตร์\nเลนส์: 35mm\nรูรับแสงเชิงสไตล์: f2 8\nความชัดลึก: ชัดตื้น\nระดับละลายหลัง: ชัดลึกปานกลาง\nลักษณะแสง: แสงภาพยนตร์โทนดราม่า\nแหล่งกำเนิดแสง: แสงผสม\nทิศทางแสง: แสงด้านข้าง\nโทนสี: โทน teal-orange\nองค์ประกอบภาพ: กฎสามส่วน\nโหมดภาพยนตร์: เปิด\nฉากหลัง: contextual\nข้อห้าม: distorted anatomy, deformed hands, extra fingers, warped face, blurry details, low detail, unwanted text, watermark, cluttered background, misaligned layout, sexualized styling, revealing outfit emphasis, adult-coded pose for a young subject, sexualized pose or revealing styling for an 18-year-old subject",
+    "negative_constraints": "distorted anatomy, deformed hands, extra fingers, warped face, blurry details, low detail, unwanted text, watermark, cluttered background, misaligned layout, sexualized styling, revealing outfit emphasis, adult-coded pose for a young subject, sexualized pose or revealing styling for an 18-year-old subject",
+    "edit": null,
+    "variants": [
+      "สร้างภาพคุณภาพสูงในหัวข้อ: หญิงสาวสวย ชุดทันสมัยหรู แฟชั่นเกาหลี อายุ 18 ปี ผมยาว ใบหน้าคม ดวงตากลมโต แบบ cinematic editorial fashion. กำหนดภาพให้ชัดเจนตามรายละเอียดนี้: สไตล์: ภาพยนตร์; ประเภทงาน: general image; มุมกล้อง: ระดับสายตา; ระยะภาพ: ระยะกว้าง; ระบบกล้อง: กล้องถ่ายภาพยนตร์; เลนส์: 35mm; รูรับแสงเชิงสไตล์: f2 8; ความชัดลึก: ชัดตื้น; ระดับละลายหลัง: ชัดลึกปานกลาง; ลักษณะแสง: แสงภาพยนตร์โทนดราม่า; แหล่งกำเนิดแสง: แสงผสม; ทิศทางแสง: แสงด้านข้าง; โทนสี: โทน teal-orange; องค์ประกอบภาพ: กฎสามส่วน; โหมดภาพยนตร์: เปิด.  Background direction: contextual; choose a coherent background that supports the subject.  เพิ่มรายละเอียดเสริม: clear subject separation, intentional visual hierarchy, coherent background supporting the subject, film-still composition, motivated lighting, controlled depth and shadow transitions, natural localized wording with preserved visual technique terms, resolved constraints, concise renderer-friendly detail.  รักษาความสมจริง องค์ประกอบสะอาด อ่านง่าย และสอดคล้องกับเป้าหมายงาน general image. หลีกเลี่ยง: distorted anatomy, deformed hands, extra fingers, warped face, blurry details, low detail, unwanted text, watermark, cluttered background, misaligned layout, sexualized styling, revealing outfit emphasis, adult-coded pose for a young subject, sexualized pose or revealing styling for an 18-year-old subject.",
+      "สร้างภาพคุณภาพสูงในหัวข้อ: หญิงสาวสวย ชุดทันสมัยหรู แฟชั่นเกาหลี อายุ 18 ปี ผมยาว ใบหน้าคม ดวงตากลมโต แบบ cinematic editorial fashion. กำหนดภาพให้ชัดเจนตามรายละเอียดนี้: สไตล์: ภาพยนตร์; ประเภทงาน: general image; มุมกล้อง: ระดับสายตา; ระยะภาพ: ระยะกว้าง; ระบบกล้อง: กล้องถ่ายภาพยนตร์; เลนส์: 35mm; รูรับแสงเชิงสไตล์: f2 8; ความชัดลึก: ชัดตื้น; ระดับละลายหลัง: ชัดลึกปานกลาง; ลักษณะแสง: แสงภาพยนตร์โทนดราม่า; แหล่งกำเนิดแสง: แสงผสม; ทิศทางแสง: แสงด้านข้าง; โทนสี: โทน teal-orange; องค์ประกอบภาพ: กฎสามส่วน; โหมดภาพยนตร์: เปิด.  Background direction: contextual; choose a coherent background that supports the subject.  เพิ่มรายละเอียดเสริม: clear subject separation, intentional visual hierarchy, coherent background supporting the subject, film-still composition, motivated lighting, controlled depth and shadow transitions, natural localized wording with preserved visual technique terms, resolved constraints, concise renderer-friendly detail.  รักษาความสมจริง องค์ประกอบสะอาด อ่านง่าย และสอดคล้องกับเป้าหมายงาน general image. หลีกเลี่ยง: distorted anatomy, deformed hands, extra fingers, warped face, blurry details, low detail, unwanted text, watermark, cluttered background, misaligned layout, sexualized styling, revealing outfit emphasis, adult-coded pose for a young subject, sexualized pose or revealing styling for an 18-year-old subject. เพิ่มอารมณ์ภาพให้หรูและมีชั้นเชิงมากขึ้น."
+    ]
+  },
+  "prompt_quality": {
+    "score": 100,
+    "checks": [
+      {
+        "name": "subject",
+        "passed": true,
+        "note": "Topic is present."
+      },
+      {
+        "name": "style",
+        "passed": true,
+        "note": "Style has been resolved."
+      },
+      {
+        "name": "camera",
+        "passed": true,
+        "note": "Camera language is resolved."
+      },
+      {
+        "name": "lighting",
+        "passed": true,
+        "note": "Lighting is resolved."
+      },
+      {
+        "name": "render_request",
+        "passed": true,
+        "note": "Render request is available."
+      },
+      {
+        "name": "negative_constraints",
+        "passed": true,
+        "note": "Avoid constraints are present."
+      },
+      {
+        "name": "length",
+        "passed": true,
+        "note": "Detailed prompt has usable length."
+      },
+      {
+        "name": "safety",
+        "passed": true,
+        "note": "No high-risk safety condition."
+      }
+    ],
+    "suggestions": []
+  },
+  "safety_review": {
+    "status": "review",
+    "risk_level": "medium",
+    "flags": [
+      "age_sensitive"
+    ],
+    "notes": [
+      "Subject age is 18 or lower; prompt should keep styling fully non-sexualized, age-appropriate, and respectful."
+    ]
+  },
+  "render_request": {
+    "api": "image_api",
+    "image_api": {
+      "prompt": "สร้างภาพคุณภาพสูงในหัวข้อ: หญิงสาวสวย ชุดทันสมัยหรู แฟชั่นเกาหลี อายุ 18 ปี ผมยาว ใบหน้าคม ดวงตากลมโต แบบ cinematic editorial fashion. กำหนดภาพให้ชัดเจนตามรายละเอียดนี้: สไตล์: ภาพยนตร์; ประเภทงาน: general image; มุมกล้อง: ระดับสายตา; ระยะภาพ: ระยะกว้าง; ระบบกล้อง: กล้องถ่ายภาพยนตร์; เลนส์: 35mm; รูรับแสงเชิงสไตล์: f2 8; ความชัดลึก: ชัดตื้น; ระดับละลายหลัง: ชัดลึกปานกลาง; ลักษณะแสง: แสงภาพยนตร์โทนดราม่า; แหล่งกำเนิดแสง: แสงผสม; ทิศทางแสง: แสงด้านข้าง; โทนสี: โทน teal-orange; องค์ประกอบภาพ: กฎสามส่วน; โหมดภาพยนตร์: เปิด.  Background direction: contextual; choose a coherent background that supports the subject.  เพิ่มรายละเอียดเสริม: clear subject separation, intentional visual hierarchy, coherent background supporting the subject, film-still composition, motivated lighting, controlled depth and shadow transitions, natural localized wording with preserved visual technique terms, resolved constraints, concise renderer-friendly detail.  รักษาความสมจริง องค์ประกอบสะอาด อ่านง่าย และสอดคล้องกับเป้าหมายงาน general image. หลีกเลี่ยง: distorted anatomy, deformed hands, extra fingers, warped face, blurry details, low detail, unwanted text, watermark, cluttered background, misaligned layout, sexualized styling, revealing outfit emphasis, adult-coded pose for a young subject, sexualized pose or revealing styling for an 18-year-old subject.",
+      "size": "1536x1024",
+      "quality": "high",
+      "output_format": "png",
+      "background": "opaque",
+      "moderation": "auto",
+      "n": 1
+    },
+    "responses_tool": {
+      "input": "สร้างภาพคุณภาพสูงในหัวข้อ: หญิงสาวสวย ชุดทันสมัยหรู แฟชั่นเกาหลี อายุ 18 ปี ผมยาว ใบหน้าคม ดวงตากลมโต แบบ cinematic editorial fashion. กำหนดภาพให้ชัดเจนตามรายละเอียดนี้: สไตล์: ภาพยนตร์; ประเภทงาน: general image; มุมกล้อง: ระดับสายตา; ระยะภาพ: ระยะกว้าง; ระบบกล้อง: กล้องถ่ายภาพยนตร์; เลนส์: 35mm; รูรับแสงเชิงสไตล์: f2 8; ความชัดลึก: ชัดตื้น; ระดับละลายหลัง: ชัดลึกปานกลาง; ลักษณะแสง: แสงภาพยนตร์โทนดราม่า; แหล่งกำเนิดแสง: แสงผสม; ทิศทางแสง: แสงด้านข้าง; โทนสี: โทน teal-orange; องค์ประกอบภาพ: กฎสามส่วน; โหมดภาพยนตร์: เปิด.  Background direction: contextual; choose a coherent background that supports the subject.  เพิ่มรายละเอียดเสริม: clear subject separation, intentional visual hierarchy, coherent background supporting the subject, film-still composition, motivated lighting, controlled depth and shadow transitions, natural localized wording with preserved visual technique terms, resolved constraints, concise renderer-friendly detail.  รักษาความสมจริง องค์ประกอบสะอาด อ่านง่าย และสอดคล้องกับเป้าหมายงาน general image. หลีกเลี่ยง: distorted anatomy, deformed hands, extra fingers, warped face, blurry details, low detail, unwanted text, watermark, cluttered background, misaligned layout, sexualized styling, revealing outfit emphasis, adult-coded pose for a young subject, sexualized pose or revealing styling for an 18-year-old subject.",
+      "tools": [
+        {
+          "type": "image_generation",
+          "size": "1536x1024",
+          "quality": "high",
+          "format": "png",
+          "background": "opaque",
+          "action": "generate"
+        }
+      ],
+      "tool_choice": {
+        "type": "image_generation"
+      }
+    },
+    "external_renderer_required": true,
+    "external_renderer_note": "The API caller supplies the rendering engine outside this skill; current deployment uses gpt-image-2."
+  },
+  "metadata": {
+    "skill_version": "5.0.0-subagents-model-free",
+    "api_notes": {
+      "renderer_external": true,
+      "external_renderer_note": "The API caller supplies the rendering engine outside this skill; current deployment uses gpt-image-2.",
+      "size_quality_background_auto": true,
+      "supported_sizes": [
+        "1024x1024",
+        "1536x1024",
+        "1024x1536",
+        "auto"
+      ],
+      "compression_for": [
+        "jpeg",
+        "webp"
+      ],
+      "transparent_requires": [
+        "png",
+        "webp"
+      ],
+      "subagent_pattern": "Use agents-as-tools for specialist review; reserve handoffs for conversation ownership transfer."
+    },
+    "unsupported_or_metadata_only": {
+      "seed": null,
+      "guidance_scale": null,
+      "negative_prompt_parameter": false
+    }
+  },
+  "warnings": []
+}

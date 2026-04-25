@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gpt-image-prompt-engineer"
+version = "0.5.4"
+description = "Multilingual GPT Image prompt engineering skill with deliverable profiles, factual reference grounding, final review, safety, quality scoring, and render requests"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.optional-dependencies]
+agents = ["openai-agents", "pydantic>=2.7.0"]
+test = []

@@ -1,0 +1,17 @@
+{
+  "keywords": [
+    "fashion",
+    "แฟชั่น",
+    "lookbook",
+    "editorial",
+    "เกาหลี"
+  ],
+  "default_camera": "medium_format",
+  "default_lens": "50mm",
+  "default_lighting": "studio_softbox",
+  "negative": [
+    "oversexualized styling",
+    "deformed hands",
+    "fabric artifacts"
+  ]
+}

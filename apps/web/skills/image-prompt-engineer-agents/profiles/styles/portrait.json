@@ -1,0 +1,17 @@
+{
+  "keywords": [
+    "portrait",
+    "face",
+    "ผู้หญิง",
+    "ชาย",
+    "คน"
+  ],
+  "default_camera": "medium_format",
+  "default_lens": "85mm",
+  "default_lighting": "natural_soft",
+  "negative": [
+    "asymmetrical eyes",
+    "plastic skin",
+    "warped face"
+  ]
+}

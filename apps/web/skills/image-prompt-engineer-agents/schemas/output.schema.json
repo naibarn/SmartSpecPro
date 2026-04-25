@@ -1,0 +1,548 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/output.schema.json",
+  "title": "GPT Image Prompt Engineer Output v5 Subagents",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "requested",
+    "normalized",
+    "decision_trace",
+    "confidence_score",
+    "prompts",
+    "prompt_quality",
+    "safety_review",
+    "render_request",
+    "metadata",
+    "warnings",
+    "orchestration",
+    "subagent_reports",
+    "merge_report",
+    "conflict_resolution",
+    "final_review",
+    "reference_research",
+    "final_quality_delta"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "ok",
+        "error"
+      ]
+    },
+    "requested": {
+      "type": "object"
+    },
+    "normalized": {
+      "type": "object"
+    },
+    "decision_trace": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "field",
+          "input",
+          "selected",
+          "reason",
+          "confidence"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "input": {},
+          "selected": {},
+          "reason": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "confidence_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "prompts": {
+      "type": "object",
+      "required": [
+        "short",
+        "detailed",
+        "structured",
+        "negative_constraints",
+        "variants"
+      ],
+      "properties": {
+        "short": {
+          "type": "string"
+        },
+        "detailed": {
+          "type": "string"
+        },
+        "structured": {
+          "type": "string"
+        },
+        "negative_constraints": {
+          "type": "string"
+        },
+        "edit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "maxItems": 3
+        }
+      }
+    },
+    "prompt_quality": {
+      "type": "object",
+      "required": [
+        "score",
+        "checks",
+        "suggestions"
+      ],
+      "properties": {
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "passed",
+              "note"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "note": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "suggestions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "safety_review": {
+      "type": "object",
+      "required": [
+        "status",
+        "risk_level",
+        "flags",
+        "notes"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "review",
+            "blocked"
+          ]
+        },
+        "risk_level": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "render_request": {
+      "type": "object",
+      "required": [
+        "api",
+        "image_api",
+        "responses_tool"
+      ],
+      "properties": {
+        "api": {
+          "type": "string",
+          "enum": [
+            "image_api",
+            "responses_tool"
+          ]
+        },
+        "image_api": {
+          "type": "object"
+        },
+        "responses_tool": {
+          "type": "object"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "orchestration": {
+      "type": "object",
+      "required": [
+        "mode",
+        "strategy",
+        "subagents_enabled",
+        "selected_subagents",
+        "reason"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "strategy": {
+          "type": "string"
+        },
+        "subagents_enabled": {
+          "type": "boolean"
+        },
+        "selected_subagents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "subagent_reports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "role",
+          "status",
+          "confidence",
+          "summary",
+          "recommendations",
+          "patch"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "patch": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "merge_report": {
+      "type": "object",
+      "required": [
+        "status",
+        "applied_recommendations",
+        "discarded_recommendations",
+        "notes"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "applied_recommendations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "discarded_recommendations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "conflict_resolution": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "field",
+          "issue",
+          "decision",
+          "reason"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "issue": {
+            "type": "string"
+          },
+          "decision": {},
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "final_review": {
+      "type": "object",
+      "required": [
+        "status",
+        "approved",
+        "requires_revision",
+        "pre_review_quality_score",
+        "post_review_quality_score",
+        "checks",
+        "applied_repairs",
+        "missing_inputs",
+        "assumptions",
+        "clarifying_questions",
+        "block_reason"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "passed",
+            "repaired",
+            "needs_input",
+            "requires_revision",
+            "blocked"
+          ]
+        },
+        "approved": {
+          "type": "boolean"
+        },
+        "requires_revision": {
+          "type": "boolean"
+        },
+        "pre_review_quality_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "post_review_quality_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "applied_repairs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "missing_inputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "clarifying_questions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "block_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "reference_research": {
+      "type": "object",
+      "required": [
+        "required",
+        "status",
+        "mode",
+        "product_reference_needed",
+        "place_reference_needed",
+        "reasons",
+        "search_queries",
+        "source_priority",
+        "user_supplied_facts",
+        "verified_reference_facts",
+        "reference_sources",
+        "visual_reference_images",
+        "conflict_policy"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "needed",
+            "visual_reference_only",
+            "partially_verified",
+            "verified"
+          ]
+        },
+        "mode": {
+          "type": "string"
+        },
+        "product_reference_needed": {
+          "type": "boolean"
+        },
+        "place_reference_needed": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "search_queries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source_priority": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "user_supplied_facts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "verified_reference_facts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reference_sources": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "visual_reference_images": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conflict_policy": {
+          "type": "string"
+        }
+      }
+    },
+    "final_quality_delta": {
+      "type": "object",
+      "required": [
+        "before_score",
+        "after_score",
+        "delta",
+        "notes"
+      ],
+      "properties": {
+        "before_score": {
+          "type": "integer"
+        },
+        "after_score": {
+          "type": "integer"
+        },
+        "delta": {
+          "type": "integer"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

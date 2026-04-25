@@ -1,0 +1,833 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/input.schema.json",
+  "title": "GPT Image Prompt Engineer Input v5 Subagents",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "topic"
+  ],
+  "properties": {
+    "topic": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 1200,
+      "description": "Main image topic or creative brief."
+    },
+    "target_language": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "th",
+        "en",
+        "zh-CN",
+        "zh-TW",
+        "ja",
+        "ko",
+        "es",
+        "fr",
+        "de",
+        "pt-BR",
+        "it",
+        "id",
+        "vi",
+        "ru",
+        "ar",
+        "hi"
+      ],
+      "default": "auto"
+    },
+    "render_api": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "image_api",
+        "responses_tool"
+      ],
+      "default": "auto"
+    },
+    "response_mode": {
+      "type": "string",
+      "enum": [
+        "text_prompt",
+        "json_bundle"
+      ],
+      "default": "text_prompt",
+      "description": "Choose text_prompt for Media Studio prompt fields, or json_bundle for the full structured prompt/review/render payload."
+    },
+    "text_prompt_field": {
+      "type": "string",
+      "enum": [
+        "detailed",
+        "short",
+        "structured",
+        "edit",
+        "variants"
+      ],
+      "default": "detailed",
+      "description": "When response_mode=text_prompt, choose which generated prompt text to return."
+    },
+    "render_action": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "generate",
+        "edit"
+      ],
+      "default": "auto"
+    },
+    "image_style": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "realistic",
+        "portrait",
+        "landscape",
+        "cartoon",
+        "anime_manga",
+        "infographic",
+        "slides_diagram",
+        "product_ad",
+        "product_mockup",
+        "ui_mockup",
+        "social_post",
+        "document_replica",
+        "concept_art",
+        "3d_render",
+        "flat_design",
+        "minimal",
+        "vintage",
+        "editorial",
+        "isometric",
+        "line_art",
+        "watercolor",
+        "pixel_art",
+        "fashion_lookbook",
+        "cinematic",
+        "architecture",
+        "food_photography"
+      ],
+      "default": "auto"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "generate",
+        "edit"
+      ],
+      "default": "generate"
+    },
+    "deliverable_type": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "general_image",
+        "poster",
+        "banner",
+        "thumbnail",
+        "social_post",
+        "story_post",
+        "presentation_slide",
+        "infographic",
+        "diagram",
+        "ui_mockup",
+        "product_ad",
+        "product_mockup",
+        "document_replica",
+        "character_sheet",
+        "packaging_mockup",
+        "storyboard",
+        "contact_sheet"
+      ],
+      "default": "auto"
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "1:1",
+        "4:5",
+        "5:4",
+        "2:3",
+        "3:2",
+        "3:4",
+        "4:3",
+        "16:9",
+        "9:16",
+        "21:9",
+        "9:21"
+      ],
+      "default": "auto"
+    },
+    "render_size": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "1024x1024",
+        "1536x1024",
+        "1024x1536"
+      ],
+      "default": "auto"
+    },
+    "quality": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "auto"
+    },
+    "output_format": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "png",
+        "jpeg",
+        "webp"
+      ],
+      "default": "auto"
+    },
+    "output_compression": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 100,
+      "default": null
+    },
+    "api_background": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "opaque",
+        "transparent"
+      ],
+      "default": "auto"
+    },
+    "moderation": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "low"
+      ],
+      "default": "auto"
+    },
+    "n": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4,
+      "default": 1
+    },
+    "return_variants": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3,
+      "default": 2
+    },
+    "include_edit_prompt": {
+      "type": "boolean",
+      "default": true
+    },
+    "audience": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 300
+    },
+    "purpose": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 400
+    },
+    "exact_text": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 500
+    },
+    "modifiers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 180
+      },
+      "maxItems": 50,
+      "default": []
+    },
+    "avoid": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 180
+      },
+      "maxItems": 50,
+      "default": []
+    },
+    "scene_background_mode": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "normal",
+        "plain_studio",
+        "green_screen",
+        "contextual",
+        "multi_background"
+      ],
+      "default": "auto"
+    },
+    "background_description": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 500
+    },
+    "multi_frame_mode": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "single",
+        "grid",
+        "storyboard",
+        "multi_angle",
+        "multi_background",
+        "contact_sheet",
+        "before_after",
+        "diptych",
+        "triptych",
+        "quad_panel"
+      ],
+      "default": "auto"
+    },
+    "frame_layout": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "1x1",
+        "2x1",
+        "1x2",
+        "2x2",
+        "2x3",
+        "3x2",
+        "2x4",
+        "4x2",
+        "3x3",
+        "4x4"
+      ],
+      "default": "auto"
+    },
+    "panel_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16,
+      "default": 1
+    },
+    "panel_descriptions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 400
+      },
+      "maxItems": 16,
+      "default": []
+    },
+    "panel_subject_strategy": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "same_subject",
+        "same_product",
+        "different_subjects",
+        "different_products",
+        "sequence"
+      ],
+      "default": "auto"
+    },
+    "continuity_mode": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "strict",
+        "loose",
+        "none"
+      ],
+      "default": "auto"
+    },
+    "camera_angle": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "eye_level",
+        "high_angle",
+        "low_angle",
+        "bird_eye",
+        "worm_eye",
+        "dutch_angle",
+        "over_the_shoulder",
+        "front_facing",
+        "profile",
+        "three_quarter",
+        "top_down"
+      ],
+      "default": "auto"
+    },
+    "shot_framing": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "extreme_close_up",
+        "close_up",
+        "medium_close_up",
+        "medium_shot",
+        "medium_full_shot",
+        "cowboy_shot",
+        "full_body",
+        "wide_shot",
+        "extreme_wide_shot"
+      ],
+      "default": "auto"
+    },
+    "camera_system": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "smartphone",
+        "mirrorless",
+        "dslr",
+        "medium_format",
+        "large_format",
+        "cinema_camera",
+        "anamorphic_cinema"
+      ],
+      "default": "auto"
+    },
+    "lens_focal_length": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "18mm",
+        "24mm",
+        "35mm",
+        "50mm",
+        "85mm",
+        "135mm",
+        "200mm"
+      ],
+      "default": "auto"
+    },
+    "aperture_style": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "f1_2",
+        "f1_4",
+        "f1_8",
+        "f2_8",
+        "f4",
+        "f5_6",
+        "f8",
+        "f11",
+        "deep_focus"
+      ],
+      "default": "auto"
+    },
+    "depth_of_field": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "shallow",
+        "medium",
+        "deep"
+      ],
+      "default": "auto"
+    },
+    "background_blur": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "none",
+        "subtle",
+        "medium",
+        "strong"
+      ],
+      "default": "auto"
+    },
+    "camera_movement": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "static",
+        "handheld",
+        "dolly_in",
+        "dolly_out",
+        "truck_left",
+        "truck_right",
+        "crane",
+        "drone",
+        "tracking"
+      ],
+      "default": "auto"
+    },
+    "film_stock": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "clean_digital",
+        "cinema_film",
+        "kodak_like",
+        "fuji_like",
+        "black_and_white",
+        "vintage_film"
+      ],
+      "default": "auto"
+    },
+    "shutter_speed_style": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "crisp",
+        "natural_motion",
+        "motion_blur",
+        "long_exposure"
+      ],
+      "default": "auto"
+    },
+    "iso_style": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "clean_low_iso",
+        "natural_grain",
+        "high_iso_grain"
+      ],
+      "default": "auto"
+    },
+    "sensor_format": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "full_frame",
+        "medium_format",
+        "super35",
+        "large_format",
+        "smartphone"
+      ],
+      "default": "auto"
+    },
+    "anamorphic_flare": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "off",
+        "subtle",
+        "strong"
+      ],
+      "default": "auto"
+    },
+    "motion_blur": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "none",
+        "subtle",
+        "medium",
+        "strong"
+      ],
+      "default": "auto"
+    },
+    "composition_rule": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "centered",
+        "rule_of_thirds",
+        "symmetry",
+        "leading_lines",
+        "negative_space",
+        "golden_ratio",
+        "dynamic_diagonal"
+      ],
+      "default": "auto"
+    },
+    "lighting_preset": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "natural_soft",
+        "studio_softbox",
+        "hard_light",
+        "rim_light",
+        "golden_hour",
+        "blue_hour",
+        "neon",
+        "high_key",
+        "low_key",
+        "moody_cinematic",
+        "dramatic",
+        "backlit"
+      ],
+      "default": "auto"
+    },
+    "light_source": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "sun",
+        "window",
+        "softbox",
+        "spotlight",
+        "practical_lamps",
+        "neon_sign",
+        "led_panel",
+        "candle",
+        "mixed"
+      ],
+      "default": "auto"
+    },
+    "light_direction": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "front",
+        "side",
+        "back",
+        "top",
+        "under",
+        "three_point"
+      ],
+      "default": "auto"
+    },
+    "color_grade": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "natural",
+        "warm",
+        "cool",
+        "teal_orange",
+        "pastel",
+        "muted",
+        "high_contrast_bw",
+        "filmic"
+      ],
+      "default": "auto"
+    },
+    "cinematic_mode": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "off",
+        "on"
+      ],
+      "default": "auto"
+    },
+    "subject_age": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 130,
+      "default": null
+    },
+    "depicts_real_person": {
+      "type": "boolean",
+      "default": false
+    },
+    "depicts_public_figure": {
+      "type": "boolean",
+      "default": false
+    },
+    "brand_or_logo": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 160
+    },
+    "copyrighted_character": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null,
+      "maxLength": 160
+    },
+    "medical_or_legal_claim": {
+      "type": "boolean",
+      "default": false
+    },
+    "factual_reference_mode": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "off",
+        "required",
+        "provided"
+      ],
+      "default": "auto",
+      "description": "Controls product/place factual grounding. auto requires clear reference research when a real product, brand, venue, landmark, or place is detected. off should be used only for fictional or fully user-defined subjects. provided means verified_reference_facts/reference_sources were supplied by the host."
+    },
+    "verified_reference_facts": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 500
+      },
+      "maxItems": 20,
+      "default": [],
+      "description": "Verified facts from reference research. These facts may supplement but must not replace user-provided details."
+    },
+    "reference_sources": {
+      "type": "array",
+      "items": {
+        "type": [
+          "object",
+          "string"
+        ],
+        "additionalProperties": true
+      },
+      "maxItems": 10,
+      "default": [],
+      "description": "Clear reference sources used for product/place grounding, preferably official pages or recent reputable visual references."
+    },
+    "source_image_path": {
+      "type": [
+        "string",
+        "array",
+        "null"
+      ],
+      "description": "One source image path or up to 5 reference image paths supplied by the host runtime. Product, packaging, character, and edit workflows should preserve these references.",
+      "items": {
+        "type": "string",
+        "maxLength": 1024
+      },
+      "maxItems": 5,
+      "default": null,
+      "maxLength": 1024
+    },
+    "mask_image_path": {
+      "type": [
+        "string",
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string",
+        "maxLength": 1024
+      },
+      "maxItems": 1,
+      "default": null,
+      "maxLength": 1024
+    },
+    "seed": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "default": null
+    },
+    "guidance_scale": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 50,
+      "default": null
+    },
+    "orchestration_mode": {
+      "type": "string",
+      "title": "Orchestration Mode",
+      "enum": [
+        "auto",
+        "off",
+        "single_pass",
+        "subagents"
+      ],
+      "default": "auto",
+      "description": "Controls whether the skill uses only the deterministic core or also produces subagent-style specialist reports."
+    },
+    "enable_subagents": {
+      "type": "boolean",
+      "title": "Enable Subagents",
+      "default": true,
+      "description": "When true, orchestration_mode=auto may select specialist subagent reports for complex work."
+    },
+    "subagent_budget": {
+      "type": "string",
+      "title": "Subagent Budget",
+      "enum": [
+        "auto",
+        "low",
+        "balanced",
+        "high"
+      ],
+      "default": "balanced",
+      "description": "Controls how many specialist reports are selected when subagents are enabled."
+    },
+    "reasoning_depth": {
+      "type": "string",
+      "title": "Reasoning Depth",
+      "enum": [
+        "auto",
+        "fast",
+        "standard",
+        "deep"
+      ],
+      "default": "standard",
+      "description": "Controls how detailed the orchestration analysis should be."
+    },
+    "quality_review_passes": {
+      "type": "integer",
+      "title": "Quality Review Passes",
+      "minimum": 0,
+      "maximum": 3,
+      "default": 1,
+      "description": "Number of prompt critic passes to simulate in the deterministic orchestration layer."
+    },
+    "safety_review_level": {
+      "type": "string",
+      "title": "Safety Review Level",
+      "enum": [
+        "auto",
+        "basic",
+        "standard",
+        "strict"
+      ],
+      "default": "standard",
+      "description": "Safety review strictness for subagent-ready pipelines."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "edit"
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "source_image_path"
+        ]
+      }
+    }
+  ]
+}

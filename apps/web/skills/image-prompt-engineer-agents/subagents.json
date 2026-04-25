@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0",
+  "orchestration_mode_default": "auto",
+  "enable_subagents_default": true,
+  "budget_default": "balanced",
+  "roles": {
+    "pattern": "agents_as_tools_ready",
+    "handoffs": false
+  },
+  "subagents": [
+    {
+      "name": "intent_triage",
+      "role": "Classifies prompt intent, media mode, complexity, and routing needs.",
+      "when": "Always available; selected for complex or forced subagent orchestration."
+    },
+    {
+      "name": "visual_director",
+      "role": "Reviews subject hierarchy, composition, background support, and visual clarity.",
+      "when": "Selected for complex prompts and subagents mode."
+    },
+    {
+      "name": "cinematographer",
+      "role": "Reviews camera, lens, depth of field, motion, lighting, and film language.",
+      "when": "Selected for cinematic prompts or high subagent budget."
+    },
+    {
+      "name": "layout_multiframe",
+      "role": "Reviews storyboard, grid, before/after, contact sheet, and multi-frame layouts.",
+      "when": "Selected for non-single multi-frame workflows."
+    },
+    {
+      "name": "deliverable_designer",
+      "role": "Reviews deliverable-specific hierarchy, hook, premium layout, safe margins, and platform fit.",
+      "when": "Selected for premium, text-sensitive, or platform-specific deliverables such as posters, social/story posts, slides, mockups, and packaging."
+    },
+    {
+      "name": "reference_fidelity",
+      "role": "Reviews source-image fidelity for identity, product shape, logos, labels, packaging artwork, and unchanged regions.",
+      "when": "Selected when reference images are supplied or when the deliverable needs product, packaging, document, or brand preservation."
+    },
+    {
+      "name": "reference_researcher",
+      "role": "Plans official or reputable product/place reference research, suggested queries, and source priorities without replacing user-provided details.",
+      "when": "Selected when a real product, brand, venue, landmark, or place needs factual grounding."
+    },
+    {
+      "name": "localization",
+      "role": "Keeps non-English prompts natural while preserving image-generation terminology.",
+      "when": "Selected when target language is not English, or high subagent budget."
+    },
+    {
+      "name": "safety_policy",
+      "role": "Reviews age, public figure, brand, character, and regulated-claim risks.",
+      "when": "Selected for safety flags, strict/auto safety review, or high subagent budget."
+    },
+    {
+      "name": "prompt_critic",
+      "role": "Scores prompt clarity, contradictions, completeness, and generation usefulness.",
+      "when": "Selected when quality review passes are enabled."
+    }
+  ]
+}

@@ -1,0 +1,1280 @@
+{
+  "$schema": "https://smartaihub.app/skill-ui-schema/v1",
+  "version": "5.4",
+  "skillId": "image-prompt-engineer-agents",
+  "title": "GPT Image Prompt Engineer",
+  "titleTh": "ตัวช่วยเขียนพรอมต์สร้างภาพ",
+  "description": "Create render-ready image prompts with clear creative controls.",
+  "descriptionTh": "สร้างพรอมต์ภาพพร้อมใช้ พร้อมตัวเลือกที่เข้าใจง่าย",
+  "sections": [
+    {
+      "id": "basic",
+      "title": "Basic Input",
+      "titleTh": "ข้อมูลหลัก",
+      "description": "Only the topic is required. Leave the rest on Auto when unsure.",
+      "descriptionTh": "จำเป็นต้องกรอกหัวข้อภาพเท่านั้น ค่าอื่นปล่อยอัตโนมัติได้",
+      "icon": "sparkles",
+      "collapsed": false,
+      "collapsible": false,
+      "fields": [
+        {
+          "id": "topic",
+          "type": "textarea",
+          "label": "Topic",
+          "labelTh": "หัวข้อภาพ",
+          "placeholder": "Describe the image you want, e.g. a cinematic Thai fashion portrait on a beach at sunset",
+          "placeholderTh": "อธิบายภาพที่ต้องการ เช่น ภาพแฟชั่นผู้หญิงไทยเดินริมทะเลช่วงพระอาทิตย์ตก โฟกัสใบหน้าและลำตัว",
+          "helpText": "Main subject and visual goal.",
+          "helpTextTh": "หัวข้อหลักและเป้าหมายภาพ",
+          "rows": 4,
+          "required": true
+        },
+        {
+          "id": "target_language",
+          "type": "select",
+          "label": "Output Language",
+          "labelTh": "ภาษาผลลัพธ์",
+          "helpText": "Choose the language for the generated prompt. Auto follows the topic language.",
+          "helpTextTh": "เลือกภาษาของพรอมต์ที่สร้าง หากเลือกอัตโนมัติ ระบบจะดูจากภาษาของหัวข้อ",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "th", "label": "Thai", "labelTh": "ไทย" },
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" },
+            { "value": "ja", "label": "Japanese", "labelTh": "ญี่ปุ่น" },
+            { "value": "ko", "label": "Korean", "labelTh": "เกาหลี" },
+            { "value": "zh-CN", "label": "Chinese (Simplified)", "labelTh": "จีนตัวย่อ" },
+            { "value": "zh-TW", "label": "Chinese (Traditional)", "labelTh": "จีนตัวเต็ม" },
+            { "value": "es", "label": "Spanish", "labelTh": "สเปน" },
+            { "value": "fr", "label": "French", "labelTh": "ฝรั่งเศส" },
+            { "value": "de", "label": "German", "labelTh": "เยอรมัน" },
+            { "value": "pt-BR", "label": "Portuguese (Brazil)", "labelTh": "โปรตุเกสบราซิล" },
+            { "value": "it", "label": "Italian", "labelTh": "อิตาลี" },
+            { "value": "id", "label": "Indonesian", "labelTh": "อินโดนีเซีย" },
+            { "value": "vi", "label": "Vietnamese", "labelTh": "เวียดนาม" },
+            { "value": "ru", "label": "Russian", "labelTh": "รัสเซีย" },
+            { "value": "ar", "label": "Arabic", "labelTh": "อาหรับ" },
+            { "value": "hi", "label": "Hindi", "labelTh": "ฮินดี" }
+          ]
+        },
+        {
+          "id": "aspect_ratio",
+          "type": "select",
+          "label": "Image Ratio",
+          "labelTh": "สัดส่วนภาพ",
+          "helpText": "Choose the composition frame. Image Size is intentionally hidden; the renderer can infer it from this ratio.",
+          "helpTextTh": "เลือกกรอบภาพ ไม่ต้องเลือกขนาดภาพแยก เพราะระบบเรนเดอร์คำนวณจากสัดส่วนนี้ได้",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "1:1", "label": "1:1 Square", "labelTh": "1:1 จัตุรัส" },
+            { "value": "4:5", "label": "4:5 Portrait / Instagram", "labelTh": "4:5 แนวตั้ง / Instagram" },
+            { "value": "5:4", "label": "5:4 Landscape crop", "labelTh": "5:4 แนวนอน" },
+            { "value": "9:16", "label": "9:16 Vertical / Story", "labelTh": "9:16 แนวตั้ง / Story" },
+            { "value": "16:9", "label": "16:9 Landscape", "labelTh": "16:9 แนวนอน" },
+            { "value": "3:2", "label": "3:2 Photo Landscape", "labelTh": "3:2 ภาพถ่ายแนวนอน" },
+            { "value": "2:3", "label": "2:3 Photo Portrait", "labelTh": "2:3 ภาพถ่ายแนวตั้ง" },
+            { "value": "3:4", "label": "3:4 Portrait", "labelTh": "3:4 แนวตั้ง" },
+            { "value": "4:3", "label": "4:3 Classic landscape", "labelTh": "4:3 แนวนอนคลาสสิก" },
+            { "value": "21:9", "label": "21:9 Cinematic Wide", "labelTh": "21:9 กว้างแบบภาพยนตร์" },
+            { "value": "9:21", "label": "9:21 Tall vertical", "labelTh": "9:21 แนวตั้งสูง" }
+          ]
+        },
+        {
+          "id": "n",
+          "type": "number",
+          "label": "Number of Prompts / Images",
+          "labelTh": "จำนวนพรอมต์ / ภาพที่ต้องการ",
+          "helpText": "How many prompt variants or image requests to prepare.",
+          "helpTextTh": "จำนวนพรอมต์หรือจำนวนภาพที่ต้องการให้เตรียม",
+          "default": 1,
+          "min": 1,
+          "max": 4,
+          "step": 1
+        },
+        {
+          "id": "exact_text",
+          "type": "textarea",
+          "label": "Text to Show in Image",
+          "labelTh": "ข้อความที่ต้องการให้แสดงในภาพ",
+          "placeholder": "Optional: headline, sign text, label, logo copy, product name",
+          "placeholderTh": "ไม่บังคับ เช่น ข้อความพาดหัว ตัวหนังสือบนป้าย ฉลาก ชื่อสินค้า",
+          "helpText": "Fill this only when the generated image must contain readable text.",
+          "helpTextTh": "กรอกเฉพาะเมื่อต้องการให้ภาพมีข้อความอ่านได้",
+          "rows": 2
+        },
+        {
+          "id": "audience",
+          "type": "textarea",
+          "label": "Audience",
+          "labelTh": "กลุ่มเป้าหมาย",
+          "placeholder": "Optional: new customers, executives, tourists, Gen Z skincare buyers",
+          "placeholderTh": "ไม่บังคับ เช่น ลูกค้าใหม่ ผู้บริหาร นักท่องเที่ยว กลุ่ม Gen Z ที่สนใจสกินแคร์",
+          "helpText": "Who should the image appeal to? This helps the skill choose tone, hook, and layout.",
+          "helpTextTh": "ภาพนี้ควรดึงดูดใคร ระบบจะใช้เพื่อเลือกโทน hook และเลย์เอาต์ให้เหมาะ",
+          "rows": 2
+        },
+        {
+          "id": "purpose",
+          "type": "textarea",
+          "label": "Goal / Use Case",
+          "labelTh": "เป้าหมาย / การใช้งาน",
+          "placeholder": "Optional: launch campaign, sale announcement, premium brand awareness, investor pitch slide",
+          "placeholderTh": "ไม่บังคับ เช่น แคมเปญเปิดตัว ประกาศโปรโมชัน สร้างภาพลักษณ์พรีเมี่ยม สไลด์ pitch นักลงทุน",
+          "helpText": "What should the image accomplish? Use this for ads, posters, slides, and social content.",
+          "helpTextTh": "ภาพนี้ต้องการบรรลุอะไร เหมาะสำหรับงานโฆษณา โปสเตอร์ สไลด์ และคอนเทนต์โซเชียล",
+          "rows": 2
+        }
+      ]
+    },
+    {
+      "id": "creative",
+      "title": "Style & Deliverable",
+      "titleTh": "สไตล์และรูปแบบงาน",
+      "description": "Choose what kind of image prompt you want.",
+      "descriptionTh": "เลือกแนวภาพและประเภทงานที่ต้องการ",
+      "icon": "palette",
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "image_style",
+          "type": "select",
+          "label": "Image Style",
+          "labelTh": "สไตล์ภาพ",
+          "helpText": "Overall visual style. Auto picks from the topic and deliverable type.",
+          "helpTextTh": "แนวภาพโดยรวม หากเลือกอัตโนมัติ ระบบจะเลือกจากหัวข้อและประเภทชิ้นงาน",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "realistic", "label": "Realistic photo", "labelTh": "ภาพถ่ายสมจริง" },
+            { "value": "portrait", "label": "Portrait", "labelTh": "ภาพบุคคล" },
+            { "value": "landscape", "label": "Landscape", "labelTh": "ทิวทัศน์" },
+            { "value": "cinematic", "label": "Cinematic", "labelTh": "ซีเนมาติก" },
+            { "value": "fashion_lookbook", "label": "Fashion lookbook", "labelTh": "แฟชั่นลุคบุ๊ก" },
+            { "value": "product_ad", "label": "Product ad", "labelTh": "โฆษณาสินค้า" },
+            { "value": "product_mockup", "label": "Product mockup", "labelTh": "ม็อกอัปสินค้า" },
+            { "value": "ui_mockup", "label": "UI mockup", "labelTh": "ม็อกอัป UI" },
+            { "value": "slides_diagram", "label": "Slides / diagram", "labelTh": "สไลด์ / ไดอะแกรม" },
+            { "value": "document_replica", "label": "Document replica", "labelTh": "จำลองเอกสาร" },
+            { "value": "social_post", "label": "Social post", "labelTh": "โพสต์โซเชียล" },
+            { "value": "anime_manga", "label": "Anime / manga", "labelTh": "อนิเมะ / มังงะ" },
+            { "value": "cartoon", "label": "Cartoon", "labelTh": "การ์ตูน" },
+            { "value": "concept_art", "label": "Concept art", "labelTh": "คอนเซ็ปต์อาร์ต" },
+            { "value": "3d_render", "label": "3D render", "labelTh": "เรนเดอร์ 3D" },
+            { "value": "flat_design", "label": "Flat design", "labelTh": "แฟลตดีไซน์" },
+            { "value": "minimal", "label": "Minimal", "labelTh": "มินิมอล" },
+            { "value": "vintage", "label": "Vintage", "labelTh": "วินเทจ" },
+            { "value": "editorial", "label": "Editorial", "labelTh": "สไตล์นิตยสาร" },
+            { "value": "isometric", "label": "Isometric", "labelTh": "ไอโซเมตริก" },
+            { "value": "line_art", "label": "Line art", "labelTh": "ลายเส้น" },
+            { "value": "watercolor", "label": "Watercolor", "labelTh": "สีน้ำ" },
+            { "value": "pixel_art", "label": "Pixel art", "labelTh": "พิกเซลอาร์ต" },
+            { "value": "architecture", "label": "Architecture", "labelTh": "สถาปัตยกรรม" },
+            { "value": "food_photography", "label": "Food photography", "labelTh": "ภาพถ่ายอาหาร" },
+            { "value": "infographic", "label": "Infographic", "labelTh": "อินโฟกราฟิก" }
+          ]
+        },
+        {
+          "id": "deliverable_type",
+          "type": "select",
+          "label": "Deliverable Type",
+          "labelTh": "ประเภทชิ้นงาน",
+          "helpText": "The final format. This controls layout rules such as poster hierarchy, story safe zones, slide readability, and mockup fidelity.",
+          "helpTextTh": "รูปแบบชิ้นงานปลายทาง ใช้กำหนดกฎเลย์เอาต์ เช่น โปสเตอร์ สตอรี่ สไลด์ และม็อกอัปสินค้า",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "general_image", "label": "General image", "labelTh": "ภาพทั่วไป" },
+            { "value": "poster", "label": "Poster", "labelTh": "โปสเตอร์" },
+            { "value": "banner", "label": "Banner", "labelTh": "แบนเนอร์" },
+            { "value": "thumbnail", "label": "Thumbnail", "labelTh": "ภาพปก / Thumbnail" },
+            { "value": "social_post", "label": "Social post", "labelTh": "โพสต์โซเชียล" },
+            { "value": "story_post", "label": "Story post", "labelTh": "สตอรี่แนวตั้ง" },
+            { "value": "presentation_slide", "label": "Presentation slide", "labelTh": "สไลด์นำเสนอ" },
+            { "value": "infographic", "label": "Infographic", "labelTh": "อินโฟกราฟิก" },
+            { "value": "diagram", "label": "Diagram", "labelTh": "ไดอะแกรม" },
+            { "value": "ui_mockup", "label": "UI mockup", "labelTh": "ม็อกอัป UI" },
+            { "value": "product_ad", "label": "Product ad", "labelTh": "โฆษณาสินค้า" },
+            { "value": "product_mockup", "label": "Product mockup", "labelTh": "ม็อกอัปสินค้า" },
+            { "value": "document_replica", "label": "Document replica", "labelTh": "จำลองเอกสาร" },
+            { "value": "packaging_mockup", "label": "Packaging mockup", "labelTh": "ม็อกอัปแพ็กเกจ" },
+            { "value": "character_sheet", "label": "Character sheet", "labelTh": "ชีตตัวละคร" },
+            { "value": "storyboard", "label": "Storyboard", "labelTh": "สตอรี่บอร์ด" },
+            { "value": "contact_sheet", "label": "Contact sheet", "labelTh": "ภาพรวมหลายช็อต" }
+          ]
+        },
+        {
+          "id": "quality",
+          "type": "select",
+          "label": "Detail Level",
+          "labelTh": "ระดับรายละเอียด",
+          "helpText": "Auto uses high detail for premium, text-heavy, product, packaging, and slide outputs.",
+          "helpTextTh": "อัตโนมัติจะใช้รายละเอียดสูงกับงานพรีเมี่ยม งานมีตัวอักษร สินค้า แพ็กเกจ และสไลด์",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "low", "label": "Simple", "labelTh": "เรียบง่าย" },
+            { "value": "medium", "label": "Balanced", "labelTh": "สมดุล" },
+            { "value": "high", "label": "Detailed", "labelTh": "ละเอียด" }
+          ]
+        },
+        {
+          "id": "modifiers",
+          "type": "multiselect",
+          "label": "Add Style Keywords",
+          "labelTh": "คำเสริมสไตล์",
+          "helpText": "Pick any useful enhancements. The skill receives these as an array.",
+          "helpTextTh": "เลือกคำเสริมได้หลายค่า ระบบจะส่งเป็น array ให้ skill",
+          "options": [
+            { "value": "photorealistic", "label": "Photorealistic", "labelTh": "สมจริงเหมือนภาพถ่าย" },
+            { "value": "cinematic lighting", "label": "Cinematic lighting", "labelTh": "แสงแบบภาพยนตร์" },
+            { "value": "sharp focus", "label": "Sharp focus", "labelTh": "โฟกัสคมชัด" },
+            { "value": "high detail", "label": "High detail", "labelTh": "รายละเอียดสูง" },
+            { "value": "natural skin texture", "label": "Natural skin texture", "labelTh": "ผิวธรรมชาติ" },
+            { "value": "clean composition", "label": "Clean composition", "labelTh": "องค์ประกอบสะอาด" },
+            { "value": "commercial quality", "label": "Commercial quality", "labelTh": "คุณภาพงานโฆษณา" },
+            { "value": "editorial style", "label": "Editorial style", "labelTh": "สไตล์นิตยสาร" },
+            { "value": "soft background blur", "label": "Soft background blur", "labelTh": "หลังเบลอนุ่ม" },
+            { "value": "vibrant colors", "label": "Vibrant colors", "labelTh": "สีสด" }
+          ]
+        },
+        {
+          "id": "avoid",
+          "type": "multiselect",
+          "label": "Avoid",
+          "labelTh": "สิ่งที่ไม่ต้องการ",
+          "helpText": "Common negative constraints. The skill receives these as an array.",
+          "helpTextTh": "ข้อห้ามที่พบบ่อย ระบบจะส่งเป็น array ให้ skill",
+          "options": [
+            { "value": "distorted anatomy", "label": "Distorted anatomy", "labelTh": "สัดส่วนผิดเพี้ยน" },
+            { "value": "deformed hands", "label": "Deformed hands", "labelTh": "มือผิดรูป" },
+            { "value": "extra fingers", "label": "Extra fingers", "labelTh": "นิ้วเกิน" },
+            { "value": "warped face", "label": "Warped face", "labelTh": "ใบหน้าบิดเบี้ยว" },
+            { "value": "blurry details", "label": "Blurry details", "labelTh": "รายละเอียดเบลอ" },
+            { "value": "low detail", "label": "Low detail", "labelTh": "รายละเอียดต่ำ" },
+            { "value": "unwanted text", "label": "Unwanted text", "labelTh": "ตัวอักษรที่ไม่ต้องการ" },
+            { "value": "watermark", "label": "Watermark", "labelTh": "ลายน้ำ" },
+            { "value": "cluttered background", "label": "Cluttered background", "labelTh": "พื้นหลังรก" },
+            { "value": "misaligned layout", "label": "Misaligned layout", "labelTh": "เลย์เอาต์ไม่ตรง" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "background_frames",
+      "title": "Background & Frames",
+      "titleTh": "พื้นหลังและหลายเฟรม",
+      "icon": "layers",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "scene_background_mode",
+          "type": "select",
+          "label": "Background Mode",
+          "labelTh": "รูปแบบพื้นหลัง",
+          "helpText": "How the background should be chosen. Auto adapts to style and deliverable.",
+          "helpTextTh": "วิธีเลือกฉากหลัง หากเลือกอัตโนมัติ ระบบจะปรับตามสไตล์และประเภทงาน",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "normal", "label": "Normal scene", "labelTh": "ฉากปกติ" },
+            { "value": "plain_studio", "label": "Plain studio", "labelTh": "สตูดิโอเรียบ" },
+            { "value": "green_screen", "label": "Green screen", "labelTh": "กรีนสกรีน" },
+            { "value": "contextual", "label": "Match subject/context", "labelTh": "เข้ากับตัวแบบ/บริบท" },
+            { "value": "multi_background", "label": "Multiple backgrounds", "labelTh": "หลายพื้นหลัง" }
+          ]
+        },
+        {
+          "id": "background_description",
+          "type": "textarea",
+          "label": "Background Details",
+          "labelTh": "รายละเอียดพื้นหลัง",
+          "placeholder": "Optional, e.g. sunset beach, luxury studio, clean white product set",
+          "placeholderTh": "ไม่บังคับ เช่น ชายหาดตอนเย็น สตูดิโอหรู ฉากสินค้าพื้นขาว",
+          "helpText": "Describe the setting, location, studio, surface, or atmosphere. For real places, add references in Product / Place References.",
+          "helpTextTh": "อธิบายฉาก สถานที่ สตูดิโอ พื้นวาง หรือบรรยากาศ หากเป็นสถานที่จริงให้เพิ่มแหล่งอ้างอิงในส่วนข้อมูลสินค้า/สถานที่",
+          "rows": 2
+        },
+        {
+          "id": "multi_frame_mode",
+          "type": "select",
+          "label": "Multi-frame Mode",
+          "labelTh": "โหมดหลายภาพ / หลายเฟรม",
+          "helpText": "Use for storyboards, before/after images, multi-angle product views, or contact sheets.",
+          "helpTextTh": "ใช้สำหรับสตอรี่บอร์ด ก่อน/หลัง หลายมุมสินค้า หรือ contact sheet",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "single", "label": "Single image", "labelTh": "ภาพเดียว" },
+            { "value": "grid", "label": "Grid", "labelTh": "ตารางภาพ" },
+            { "value": "storyboard", "label": "Storyboard", "labelTh": "สตอรี่บอร์ด" },
+            { "value": "multi_angle", "label": "Multiple angles", "labelTh": "หลายมุมกล้อง" },
+            { "value": "multi_background", "label": "Multiple backgrounds", "labelTh": "หลายพื้นหลัง" },
+            { "value": "contact_sheet", "label": "Contact sheet", "labelTh": "รวมหลายช็อต" },
+            { "value": "before_after", "label": "Before / after", "labelTh": "ก่อน / หลัง" },
+            { "value": "diptych", "label": "Diptych (2 panels)", "labelTh": "สองช่อง" },
+            { "value": "triptych", "label": "Triptych (3 panels)", "labelTh": "สามช่อง" },
+            { "value": "quad_panel", "label": "Quad panel (4 panels)", "labelTh": "สี่ช่อง" }
+          ]
+        },
+        {
+          "id": "frame_layout",
+          "type": "select",
+          "label": "Frame Layout",
+          "labelTh": "เลย์เอาต์เฟรม",
+          "helpText": "Panel grid. Storyboards usually work well with 2x2 or 2x3 layouts.",
+          "helpTextTh": "รูปแบบตารางช่อง สตอรี่บอร์ดมักเหมาะกับ 2x2 หรือ 2x3",
+          "default": "auto",
+          "dependsOn": {
+            "field": "multi_frame_mode",
+            "values": ["grid", "storyboard", "multi_angle", "multi_background", "contact_sheet", "before_after", "diptych", "triptych", "quad_panel"]
+          },
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "1x1", "label": "1 x 1", "labelTh": "1 x 1" },
+            { "value": "2x1", "label": "2 x 1 horizontal", "labelTh": "2 x 1 แนวนอน" },
+            { "value": "1x2", "label": "1 x 2 vertical", "labelTh": "1 x 2 แนวตั้ง" },
+            { "value": "2x2", "label": "2 x 2 grid", "labelTh": "2 x 2 ตาราง" },
+            { "value": "2x3", "label": "2 x 3 grid", "labelTh": "2 x 3 ตาราง" },
+            { "value": "3x2", "label": "3 x 2 grid", "labelTh": "3 x 2 ตาราง" },
+            { "value": "2x4", "label": "2 x 4 grid", "labelTh": "2 x 4 ตาราง" },
+            { "value": "4x2", "label": "4 x 2 grid", "labelTh": "4 x 2 ตาราง" },
+            { "value": "3x3", "label": "3 x 3 grid", "labelTh": "3 x 3 ตาราง" },
+            { "value": "4x4", "label": "4 x 4 grid", "labelTh": "4 x 4 ตาราง" }
+          ]
+        },
+        {
+          "id": "panel_count",
+          "type": "number",
+          "label": "Panel Count",
+          "labelTh": "จำนวนช่อง",
+          "helpText": "Number of panels to describe. If left at 1 with multi-frame mode, the skill may infer a count from layout.",
+          "helpTextTh": "จำนวนช่องภาพ หากยังเป็น 1 ในโหมดหลายเฟรม ระบบอาจคำนวณจากเลย์เอาต์ให้",
+          "default": 1,
+          "min": 1,
+          "max": 16,
+          "step": 1,
+          "dependsOn": {
+            "field": "multi_frame_mode",
+            "values": ["grid", "storyboard", "multi_angle", "multi_background", "contact_sheet", "before_after", "diptych", "triptych", "quad_panel"]
+          }
+        },
+        {
+          "id": "panel_subject_strategy",
+          "type": "select",
+          "label": "Subject Continuity",
+          "labelTh": "ความต่อเนื่องของตัวแบบ",
+          "helpText": "Choose whether panels keep the same person/product or show a sequence.",
+          "helpTextTh": "เลือกว่าทุกช่องใช้คน/สินค้าเดียวกัน หรือเป็นลำดับเหตุการณ์",
+          "default": "auto",
+          "dependsOn": {
+            "field": "multi_frame_mode",
+            "values": ["grid", "storyboard", "multi_angle", "multi_background", "contact_sheet", "before_after", "diptych", "triptych", "quad_panel"]
+          },
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "same_subject", "label": "Same subject", "labelTh": "ตัวแบบเดียวกัน" },
+            { "value": "same_product", "label": "Same product", "labelTh": "สินค้าเดียวกัน" },
+            { "value": "different_subjects", "label": "Different subjects", "labelTh": "คนละตัวแบบ" },
+            { "value": "different_products", "label": "Different products", "labelTh": "คนละสินค้า" },
+            { "value": "sequence", "label": "Sequential action", "labelTh": "ลำดับเหตุการณ์" }
+          ]
+        },
+        {
+          "id": "continuity_mode",
+          "type": "select",
+          "label": "Continuity Strictness",
+          "labelTh": "ระดับความต่อเนื่อง",
+          "helpText": "Strict locks identity, wardrobe, product shape, place, lighting, and style across panels.",
+          "helpTextTh": "เข้มงวดจะล็อกตัวตน เสื้อผ้า รูปทรงสินค้า สถานที่ แสง และสไตล์ให้ต่อเนื่องทุกช่อง",
+          "default": "auto",
+          "dependsOn": {
+            "field": "multi_frame_mode",
+            "values": ["grid", "storyboard", "multi_angle", "multi_background", "contact_sheet", "before_after", "diptych", "triptych", "quad_panel"]
+          },
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "strict", "label": "Strict", "labelTh": "เข้มงวด" },
+            { "value": "loose", "label": "Loose", "labelTh": "ยืดหยุ่น" },
+            { "value": "none", "label": "No continuity", "labelTh": "ไม่ต้องต่อเนื่อง" }
+          ]
+        },
+        {
+          "id": "panel_descriptions",
+          "type": "textarea",
+          "label": "Panel Descriptions",
+          "labelTh": "รายละเอียดแต่ละช่อง",
+          "placeholder": "Optional: one panel beat per line, e.g. Panel 1: product reveal; Panel 2: close-up label",
+          "placeholderTh": "ไม่บังคับ ใส่หนึ่งช่องต่อหนึ่งบรรทัด เช่น ช่อง 1 เปิดตัวสินค้า; ช่อง 2 ซูมฉลาก",
+          "helpText": "Use one line per panel for storyboard beats, product angles, or before/after steps.",
+          "helpTextTh": "ใส่หนึ่งบรรทัดต่อหนึ่งช่อง สำหรับลำดับเรื่อง มุมสินค้า หรือขั้นตอนก่อน/หลัง",
+          "rows": 4,
+          "dependsOn": {
+            "field": "multi_frame_mode",
+            "values": ["grid", "storyboard", "multi_angle", "multi_background", "contact_sheet", "before_after", "diptych", "triptych", "quad_panel"]
+          }
+        }
+      ]
+    },
+    {
+      "id": "camera_composition",
+      "title": "Camera & Composition",
+      "titleTh": "กล้องและองค์ประกอบภาพ",
+      "icon": "camera",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "camera_angle",
+          "type": "select",
+          "label": "Camera Angle",
+          "labelTh": "มุมกล้อง",
+          "helpText": "Camera viewpoint. Auto selects a practical angle for the subject and deliverable.",
+          "helpTextTh": "มุมมองกล้อง หากเลือกอัตโนมัติ ระบบจะเลือกมุมที่เหมาะกับตัวแบบและงาน",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "eye_level", "label": "Eye level", "labelTh": "ระดับสายตา" },
+            { "value": "high_angle", "label": "High angle", "labelTh": "มุมสูง" },
+            { "value": "low_angle", "label": "Low angle", "labelTh": "มุมต่ำ" },
+            { "value": "bird_eye", "label": "Bird's-eye view", "labelTh": "มองจากด้านบน" },
+            { "value": "worm_eye", "label": "Worm's-eye view", "labelTh": "มองจากด้านล่าง" },
+            { "value": "dutch_angle", "label": "Dutch angle", "labelTh": "มุมเอียง" },
+            { "value": "over_the_shoulder", "label": "Over the shoulder", "labelTh": "ข้ามไหล่" },
+            { "value": "front_facing", "label": "Front-facing", "labelTh": "หันหน้าตรง" },
+            { "value": "profile", "label": "Profile", "labelTh": "ด้านข้าง" },
+            { "value": "three_quarter", "label": "Three-quarter view", "labelTh": "สามส่วนสี่" },
+            { "value": "top_down", "label": "Top-down", "labelTh": "มุมบนตรง" }
+          ]
+        },
+        {
+          "id": "shot_framing",
+          "type": "select",
+          "label": "Shot Framing",
+          "labelTh": "ระยะภาพ",
+          "helpText": "How much of the subject appears in frame.",
+          "helpTextTh": "กำหนดว่าตัวแบบปรากฏในภาพมากน้อยแค่ไหน",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "extreme_close_up", "label": "Extreme close-up", "labelTh": "ใกล้มาก" },
+            { "value": "close_up", "label": "Close-up", "labelTh": "ใกล้" },
+            { "value": "medium_close_up", "label": "Medium close-up", "labelTh": "ครึ่งใกล้" },
+            { "value": "medium_shot", "label": "Medium shot", "labelTh": "ครึ่งตัว" },
+            { "value": "medium_full_shot", "label": "Medium full shot", "labelTh": "เกือบเต็มตัว" },
+            { "value": "cowboy_shot", "label": "Cowboy shot", "labelTh": "ครึ่งตัวล่าง" },
+            { "value": "full_body", "label": "Full body", "labelTh": "เต็มตัว" },
+            { "value": "wide_shot", "label": "Wide shot", "labelTh": "มุมกว้าง" },
+            { "value": "extreme_wide_shot", "label": "Extreme wide shot", "labelTh": "กว้างมาก" }
+          ]
+        },
+        {
+          "id": "composition_rule",
+          "type": "select",
+          "label": "Composition Rule",
+          "labelTh": "หลักจัดองค์ประกอบ",
+          "helpText": "Primary layout principle for visual hierarchy and spacing.",
+          "helpTextTh": "หลักจัดภาพหลักเพื่อกำหนดลำดับสายตาและพื้นที่ว่าง",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "centered", "label": "Centered", "labelTh": "กึ่งกลาง" },
+            { "value": "rule_of_thirds", "label": "Rule of thirds", "labelTh": "กฎสามส่วน" },
+            { "value": "symmetry", "label": "Symmetry", "labelTh": "สมมาตร" },
+            { "value": "leading_lines", "label": "Leading lines", "labelTh": "เส้นนำสายตา" },
+            { "value": "negative_space", "label": "Negative space", "labelTh": "พื้นที่ว่าง" },
+            { "value": "golden_ratio", "label": "Golden ratio", "labelTh": "สัดส่วนทองคำ" },
+            { "value": "dynamic_diagonal", "label": "Dynamic diagonal", "labelTh": "เส้นทแยงไดนามิก" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "camera_lens_depth",
+      "title": "Camera / Lens / Depth",
+      "titleTh": "กล้อง / เลนส์ / ความชัดลึก",
+      "icon": "camera",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "camera_system",
+          "type": "select",
+          "label": "Camera System",
+          "labelTh": "ระบบกล้อง",
+          "helpText": "Camera language used in the prompt. Auto usually chooses mirrorless, medium format, or cinema camera based on style.",
+          "helpTextTh": "ภาษากล้องที่ใช้ในพรอมต์ อัตโนมัติมักเลือกมิเรอร์เลส มีเดียมฟอร์แมต หรือกล้องภาพยนตร์ตามสไตล์",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "smartphone", "label": "Smartphone", "labelTh": "สมาร์ตโฟน" },
+            { "value": "mirrorless", "label": "Mirrorless", "labelTh": "มิเรอร์เลส" },
+            { "value": "dslr", "label": "DSLR", "labelTh": "DSLR" },
+            { "value": "medium_format", "label": "Medium format", "labelTh": "มีเดียมฟอร์แมต" },
+            { "value": "large_format", "label": "Large format", "labelTh": "ลาร์จฟอร์แมต" },
+            { "value": "cinema_camera", "label": "Cinema camera", "labelTh": "กล้องภาพยนตร์" },
+            { "value": "anamorphic_cinema", "label": "Anamorphic cinema", "labelTh": "อนามอร์ฟิกภาพยนตร์" }
+          ]
+        },
+        {
+          "id": "sensor_format",
+          "type": "select",
+          "label": "Sensor Format",
+          "labelTh": "ขนาดเซนเซอร์",
+          "helpText": "Sensor look for depth, perspective, and image polish.",
+          "helpTextTh": "ลักษณะเซนเซอร์ที่ส่งผลต่อมิติภาพ มุมมอง และความเนี้ยบ",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "smartphone", "label": "Smartphone", "labelTh": "สมาร์ตโฟน" },
+            { "value": "super35", "label": "Super 35", "labelTh": "Super 35" },
+            { "value": "full_frame", "label": "Full frame", "labelTh": "ฟูลเฟรม" },
+            { "value": "medium_format", "label": "Medium format", "labelTh": "มีเดียมฟอร์แมต" },
+            { "value": "large_format", "label": "Large format", "labelTh": "ลาร์จฟอร์แมต" }
+          ]
+        },
+        {
+          "id": "lens_focal_length",
+          "type": "select",
+          "label": "Lens Focal Length",
+          "labelTh": "ระยะเลนส์",
+          "helpText": "Lens perspective. Wider lenses show more context; longer lenses compress and flatter portraits/products.",
+          "helpTextTh": "มุมมองเลนส์ เลนส์กว้างเห็นบริบทมากขึ้น เลนส์ยาวบีบฉากและช่วยให้พอร์ตเทรต/สินค้าดูเด่น",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "18mm", "label": "18mm ultra wide", "labelTh": "18mm กว้างมาก" },
+            { "value": "24mm", "label": "24mm wide", "labelTh": "24mm กว้าง" },
+            { "value": "35mm", "label": "35mm documentary", "labelTh": "35mm แนวสารคดี" },
+            { "value": "50mm", "label": "50mm natural", "labelTh": "50mm ธรรมชาติ" },
+            { "value": "85mm", "label": "85mm portrait", "labelTh": "85mm พอร์ตเทรต" },
+            { "value": "135mm", "label": "135mm compressed", "labelTh": "135mm ฉากหลังบีบ" },
+            { "value": "200mm", "label": "200mm telephoto", "labelTh": "200mm เทเลโฟโต" }
+          ]
+        },
+        {
+          "id": "aperture_style",
+          "type": "select",
+          "label": "Aperture",
+          "labelTh": "รูรับแสง",
+          "helpText": "Depth style. Use deep focus for text-heavy, slide, UI, product, and packaging work.",
+          "helpTextTh": "สไตล์ความชัดลึก งานมีตัวอักษร สไลด์ UI สินค้า และแพ็กเกจควรใช้ชัดลึก",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "f1_2", "label": "f/1.2 very shallow", "labelTh": "f/1.2 เบลอมาก" },
+            { "value": "f1_4", "label": "f/1.4 shallow", "labelTh": "f/1.4 เบลอมาก" },
+            { "value": "f1_8", "label": "f/1.8 shallow", "labelTh": "f/1.8 หลังละลาย" },
+            { "value": "f2_8", "label": "f/2.8 soft separation", "labelTh": "f/2.8 แยกฉากนุ่ม" },
+            { "value": "f4", "label": "f/4 balanced", "labelTh": "f/4 สมดุล" },
+            { "value": "f5_6", "label": "f/5.6 clearer scene", "labelTh": "f/5.6 ชัดขึ้น" },
+            { "value": "f8", "label": "f/8 clear scene", "labelTh": "f/8 ชัดทั้งฉาก" },
+            { "value": "f11", "label": "f/11 deep scene", "labelTh": "f/11 ชัดลึก" },
+            { "value": "deep_focus", "label": "Deep focus", "labelTh": "ชัดลึก" }
+          ]
+        },
+        {
+          "id": "depth_of_field",
+          "type": "select",
+          "label": "Depth of Field",
+          "labelTh": "ความชัดลึก",
+          "helpText": "How much of the scene remains sharp.",
+          "helpTextTh": "กำหนดว่าส่วนต่าง ๆ ในภาพคมชัดมากน้อยแค่ไหน",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "shallow", "label": "Shallow", "labelTh": "ชัดตื้น" },
+            { "value": "medium", "label": "Medium", "labelTh": "ปานกลาง" },
+            { "value": "deep", "label": "Deep", "labelTh": "ชัดลึก" }
+          ]
+        },
+        {
+          "id": "background_blur",
+          "type": "select",
+          "label": "Background Blur",
+          "labelTh": "ระดับฉากหลังเบลอ",
+          "helpText": "Use none/subtle for readable text, product labels, packaging, UI, and diagrams.",
+          "helpTextTh": "ใช้ไม่มี/เล็กน้อยสำหรับงานที่ต้องอ่านตัวอักษร ฉลากสินค้า แพ็กเกจ UI และไดอะแกรม",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "none", "label": "None", "labelTh": "ไม่เบลอ" },
+            { "value": "subtle", "label": "Subtle", "labelTh": "เล็กน้อย" },
+            { "value": "medium", "label": "Medium", "labelTh": "ปานกลาง" },
+            { "value": "strong", "label": "Strong", "labelTh": "มาก" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cinematic",
+      "title": "Cinematic / Film Technique",
+      "titleTh": "Cinematic / เทคนิคภาพยนตร์",
+      "icon": "film",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "cinematic_mode",
+          "type": "select",
+          "label": "Cinematic Mode",
+          "labelTh": "โหมดภาพยนตร์",
+          "helpText": "Turns on cinematic camera, lighting, color, and motion choices.",
+          "helpTextTh": "เปิดแนวคิดกล้อง แสง สี และการเคลื่อนไหวแบบภาพยนตร์",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "off", "label": "Off", "labelTh": "ปิด" },
+            { "value": "on", "label": "On", "labelTh": "เปิด" }
+          ]
+        },
+        {
+          "id": "camera_movement",
+          "type": "select",
+          "label": "Camera Movement",
+          "labelTh": "การเคลื่อนกล้อง",
+          "helpText": "Motion language for cinematic prompts. For still product/layout work, static is usually best.",
+          "helpTextTh": "ภาษาการเคลื่อนกล้องสำหรับพรอมต์ cinematic งานสินค้า/เลย์เอาต์นิ่งมักเหมาะกับกล้องนิ่ง",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "static", "label": "Static", "labelTh": "กล้องนิ่ง" },
+            { "value": "handheld", "label": "Handheld", "labelTh": "ถือกล้อง" },
+            { "value": "dolly_in", "label": "Dolly in", "labelTh": "ดอลลี่เข้า" },
+            { "value": "dolly_out", "label": "Dolly out", "labelTh": "ดอลลี่ออก" },
+            { "value": "truck_left", "label": "Truck left", "labelTh": "เลื่อนซ้าย" },
+            { "value": "truck_right", "label": "Truck right", "labelTh": "เลื่อนขวา" },
+            { "value": "crane", "label": "Crane", "labelTh": "เครน" },
+            { "value": "tracking", "label": "Tracking", "labelTh": "ตามตัวแบบ" },
+            { "value": "drone", "label": "Drone", "labelTh": "โดรน" }
+          ]
+        },
+        {
+          "id": "film_stock",
+          "type": "select",
+          "label": "Film Look",
+          "labelTh": "ลุคฟิล์ม",
+          "helpText": "Film or digital color/texture language.",
+          "helpTextTh": "ลักษณะสีและพื้นผิวแบบฟิล์มหรือดิจิทัล",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "clean_digital", "label": "Clean digital", "labelTh": "ดิจิทัลสะอาด" },
+            { "value": "cinema_film", "label": "Cinema film", "labelTh": "ฟิล์มภาพยนตร์" },
+            { "value": "kodak_like", "label": "Kodak-like", "labelTh": "โทน Kodak" },
+            { "value": "fuji_like", "label": "Fuji-like", "labelTh": "โทน Fuji" },
+            { "value": "black_and_white", "label": "Black and white", "labelTh": "ขาวดำ" },
+            { "value": "vintage_film", "label": "Vintage film", "labelTh": "ฟิล์มวินเทจ" }
+          ]
+        },
+        {
+          "id": "shutter_speed_style",
+          "type": "select",
+          "label": "Motion Feel",
+          "labelTh": "ความรู้สึกการเคลื่อนไหว",
+          "helpText": "Controls whether movement feels frozen, natural, blurred, or long-exposure.",
+          "helpTextTh": "กำหนดว่าการเคลื่อนไหวดูหยุดนิ่ง ธรรมชาติ เบลอ หรือเปิดชัตเตอร์นาน",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "crisp", "label": "Crisp / frozen", "labelTh": "คม / หยุดการเคลื่อนไหว" },
+            { "value": "natural_motion", "label": "Natural motion", "labelTh": "เคลื่อนไหวธรรมชาติ" },
+            { "value": "motion_blur", "label": "Motion blur", "labelTh": "เบลอจากการเคลื่อนไหว" },
+            { "value": "long_exposure", "label": "Long exposure", "labelTh": "ลากแสง / เปิดชัตเตอร์นาน" }
+          ]
+        },
+        {
+          "id": "anamorphic_flare",
+          "type": "select",
+          "label": "Anamorphic Flare",
+          "labelTh": "แสงแฟลร์อนามอร์ฟิก",
+          "helpText": "Horizontal flare effect for cinematic lighting. Use sparingly for clean commercial work.",
+          "helpTextTh": "แสงแฟลร์แนวนอนแบบภาพยนตร์ ควรใช้พอดีในงานโฆษณาที่ต้องสะอาด",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "off", "label": "Off", "labelTh": "ปิด" },
+            { "value": "subtle", "label": "Subtle", "labelTh": "เล็กน้อย" },
+            { "value": "strong", "label": "Strong", "labelTh": "ชัดเจน" }
+          ]
+        },
+        {
+          "id": "motion_blur",
+          "type": "select",
+          "label": "Motion Blur",
+          "labelTh": "ระดับ motion blur",
+          "helpText": "Amount of blur caused by movement. Avoid strong blur for text and product detail.",
+          "helpTextTh": "ระดับเบลอจากการเคลื่อนไหว หลีกเลี่ยงเบลอมากในงานตัวอักษรและรายละเอียดสินค้า",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "none", "label": "None", "labelTh": "ไม่มี" },
+            { "value": "subtle", "label": "Subtle", "labelTh": "เล็กน้อย" },
+            { "value": "medium", "label": "Medium", "labelTh": "ปานกลาง" },
+            { "value": "strong", "label": "Strong", "labelTh": "มาก" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lighting_color",
+      "title": "Light / Color / Color Grade",
+      "titleTh": "แสง / สี / Color grade",
+      "icon": "zap",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "lighting_preset",
+          "type": "select",
+          "label": "Lighting",
+          "labelTh": "แสง",
+          "helpText": "Main lighting style. Auto uses studio light for products and high-key light for slides/UI.",
+          "helpTextTh": "สไตล์แสงหลัก อัตโนมัติจะใช้ไฟสตูดิโอกับสินค้า และ high-key กับสไลด์/UI",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "natural_soft", "label": "Soft natural light", "labelTh": "แสงธรรมชาตินุ่ม" },
+            { "value": "studio_softbox", "label": "Studio softbox", "labelTh": "ไฟสตูดิโอนุ่ม" },
+            { "value": "hard_light", "label": "Hard light", "labelTh": "แสงแข็ง" },
+            { "value": "rim_light", "label": "Rim light", "labelTh": "แสงขอบ" },
+            { "value": "golden_hour", "label": "Golden hour", "labelTh": "แสงเย็น / ชั่วโมงทอง" },
+            { "value": "blue_hour", "label": "Blue hour", "labelTh": "บลูอาวร์" },
+            { "value": "neon", "label": "Neon", "labelTh": "นีออน" },
+            { "value": "high_key", "label": "High key", "labelTh": "สว่าง high key" },
+            { "value": "low_key", "label": "Low key", "labelTh": "มืด low key" },
+            { "value": "moody_cinematic", "label": "Moody cinematic", "labelTh": "อารมณ์ภาพยนตร์" },
+            { "value": "dramatic", "label": "Dramatic", "labelTh": "ดรามาติก" },
+            { "value": "backlit", "label": "Backlit", "labelTh": "ย้อนแสง" }
+          ]
+        },
+        {
+          "id": "light_source",
+          "type": "select",
+          "label": "Light Source",
+          "labelTh": "แหล่งกำเนิดแสง",
+          "helpText": "Physical light source to make the scene more believable.",
+          "helpTextTh": "แหล่งแสงในฉากเพื่อให้ภาพดูสมจริงและมีเหตุผล",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "sun", "label": "Sun", "labelTh": "ดวงอาทิตย์" },
+            { "value": "window", "label": "Window", "labelTh": "แสงหน้าต่าง" },
+            { "value": "softbox", "label": "Softbox", "labelTh": "ซอฟต์บ็อกซ์" },
+            { "value": "spotlight", "label": "Spotlight", "labelTh": "สปอตไลต์" },
+            { "value": "practical_lamps", "label": "Practical lamps", "labelTh": "โคมไฟในฉาก" },
+            { "value": "neon_sign", "label": "Neon sign", "labelTh": "ป้ายนีออน" },
+            { "value": "led_panel", "label": "LED panel", "labelTh": "แผง LED" },
+            { "value": "candle", "label": "Candle", "labelTh": "เทียน" },
+            { "value": "mixed", "label": "Mixed sources", "labelTh": "แสงผสม" }
+          ]
+        },
+        {
+          "id": "light_direction",
+          "type": "select",
+          "label": "Light Direction",
+          "labelTh": "ทิศทางแสง",
+          "helpText": "Direction of the key light. Three-point is useful for product and studio work.",
+          "helpTextTh": "ทิศทางแสงหลัก ไฟสามจุดเหมาะกับงานสินค้าและสตูดิโอ",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "front", "label": "Front", "labelTh": "ด้านหน้า" },
+            { "value": "side", "label": "Side", "labelTh": "ด้านข้าง" },
+            { "value": "back", "label": "Back", "labelTh": "ด้านหลัง" },
+            { "value": "top", "label": "Top", "labelTh": "ด้านบน" },
+            { "value": "under", "label": "Under", "labelTh": "ด้านล่าง" },
+            { "value": "three_point", "label": "Three-point lighting", "labelTh": "ไฟสามจุด" }
+          ]
+        },
+        {
+          "id": "color_grade",
+          "type": "select",
+          "label": "Color Grade",
+          "labelTh": "โทนสี / Color grade",
+          "helpText": "Overall color treatment. Use natural for accurate product/place references.",
+          "helpTextTh": "โทนสีโดยรวม ใช้ธรรมชาติเมื่ออยากรักษาความถูกต้องของสินค้า/สถานที่",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "natural", "label": "Natural", "labelTh": "ธรรมชาติ" },
+            { "value": "warm", "label": "Warm", "labelTh": "อบอุ่น" },
+            { "value": "cool", "label": "Cool", "labelTh": "เย็น" },
+            { "value": "teal_orange", "label": "Teal and orange", "labelTh": "ฟ้าเขียวและส้ม" },
+            { "value": "pastel", "label": "Pastel", "labelTh": "พาสเทล" },
+            { "value": "muted", "label": "Muted", "labelTh": "สีหม่น" },
+            { "value": "high_contrast_bw", "label": "High contrast B&W", "labelTh": "ขาวดำคอนทราสต์สูง" },
+            { "value": "filmic", "label": "Filmic", "labelTh": "ฟิล์ม" }
+          ]
+        },
+        {
+          "id": "iso_style",
+          "type": "select",
+          "label": "Grain / ISO Look",
+          "labelTh": "เกรน / ISO",
+          "helpText": "Texture/noise style. Clean low ISO is safest for text and product detail.",
+          "helpTextTh": "พื้นผิวหรือ noise ของภาพ ISO ต่ำสะอาดเหมาะกับงานตัวอักษรและรายละเอียดสินค้า",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "clean_low_iso", "label": "Clean low ISO", "labelTh": "สะอาด ISO ต่ำ" },
+            { "value": "natural_grain", "label": "Natural grain", "labelTh": "เกรนธรรมชาติ" },
+            { "value": "high_iso_grain", "label": "High ISO grain", "labelTh": "เกรน ISO สูง" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "reference_images",
+      "title": "Source / Mask Images",
+      "titleTh": "ภาพต้นฉบับ / ภาพมาสก์",
+      "description": "Use image upload when editing, inpainting, or giving the prompt a visual reference.",
+      "descriptionTh": "ใช้เมื่อต้องการแก้ไขภาพ ทำ inpaint หรืออ้างอิงภาพ",
+      "icon": "image",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "mode",
+          "type": "select",
+          "label": "Prompt Mode",
+          "labelTh": "โหมดพรอมต์",
+          "helpText": "Choose Edit when an uploaded image should be preserved or modified.",
+          "helpTextTh": "เลือกแก้ไขภาพเมื่อมีภาพอัปโหลดที่ต้องรักษาหรือปรับบางส่วน",
+          "default": "generate",
+          "options": [
+            { "value": "generate", "label": "Create new image", "labelTh": "สร้างภาพใหม่" },
+            { "value": "edit", "label": "Edit uploaded image", "labelTh": "แก้ไขภาพที่อัปโหลด" }
+          ]
+        },
+        {
+          "id": "source_image_path",
+          "type": "imageUpload",
+          "label": "Source / Reference Images",
+          "labelTh": "ภาพต้นฉบับ / ภาพอ้างอิง",
+          "helpText": "Upload images to edit or preserve as visual references. Product, packaging, character, and place references should be as clear as possible.",
+          "helpTextTh": "อัปโหลดภาพสำหรับแก้ไขหรือใช้เป็นภาพอ้างอิง งานสินค้า แพ็กเกจ ตัวละคร และสถานที่ควรใช้ภาพที่ชัดที่สุด",
+          "accept": "image/*",
+          "maxImages": 5
+        },
+        {
+          "id": "mask_image_path",
+          "type": "imageUpload",
+          "label": "Mask Image",
+          "labelTh": "ภาพมาสก์",
+          "helpText": "Optional. Upload a mask when only part of the source image should be edited.",
+          "helpTextTh": "ไม่บังคับ ใช้เมื่ออยากแก้เฉพาะบางส่วนของภาพต้นฉบับ",
+          "accept": "image/*",
+          "maxImages": 1
+        },
+        {
+          "id": "include_edit_prompt",
+          "type": "boolean",
+          "label": "Include Edit Prompt",
+          "labelTh": "สร้างพรอมต์สำหรับแก้ไขภาพด้วย",
+          "helpText": "Adds an edit-ready prompt when source images are used.",
+          "helpTextTh": "เพิ่มพรอมต์สำหรับแก้ไขภาพเมื่อมีภาพต้นฉบับ",
+          "default": true
+        }
+      ]
+    },
+    {
+      "id": "safety_policy",
+      "title": "Safety / Policy Metadata",
+      "titleTh": "Safety / Policy metadata",
+      "description": "Optional flags that help the skill write safer prompts for sensitive subjects.",
+      "descriptionTh": "ตัวเลือกเสริมเพื่อช่วยให้ skill เขียนพรอมต์ปลอดภัยขึ้นในกรณีอ่อนไหว",
+      "icon": "settings",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "subject_age",
+          "type": "number",
+          "label": "Subject Age",
+          "labelTh": "อายุของตัวแบบ",
+          "helpText": "Optional. Use only when age matters for safety review.",
+          "helpTextTh": "ไม่บังคับ ใช้เฉพาะเมื่ออายุมีผลต่อความปลอดภัยของพรอมต์",
+          "min": 0,
+          "max": 130
+        },
+        {
+          "id": "depicts_real_person",
+          "type": "boolean",
+          "label": "Depicts a real person",
+          "labelTh": "เป็นบุคคลจริง",
+          "helpText": "Turn on if the prompt references a real private person or uses a supplied face reference.",
+          "helpTextTh": "เปิดเมื่อพรอมต์อ้างถึงบุคคลจริงหรือใช้ใบหน้าจากภาพอ้างอิง",
+          "default": false
+        },
+        {
+          "id": "depicts_public_figure",
+          "type": "boolean",
+          "label": "Depicts a public figure",
+          "labelTh": "เป็นบุคคลสาธารณะ",
+          "helpText": "Turn on for politicians, celebrities, executives, influencers, or other public figures.",
+          "helpTextTh": "เปิดสำหรับนักการเมือง คนดัง ผู้บริหาร อินฟลูเอนเซอร์ หรือบุคคลสาธารณะอื่น",
+          "default": false
+        },
+        {
+          "id": "brand_or_logo",
+          "type": "text",
+          "label": "Brand or Logo",
+          "labelTh": "แบรนด์หรือโลโก้",
+          "placeholder": "Optional brand/logo reference",
+          "placeholderTh": "ไม่บังคับ เช่น ชื่อแบรนด์หรือโลโก้",
+          "helpText": "Brand or logo to preserve. Real brands may require reference research and rights-aware usage.",
+          "helpTextTh": "แบรนด์หรือโลโก้ที่ต้องรักษา แบรนด์จริงอาจต้องมีข้อมูลอ้างอิงและใช้อย่างคำนึงถึงสิทธิ์"
+        },
+        {
+          "id": "copyrighted_character",
+          "type": "text",
+          "label": "Copyrighted Character",
+          "labelTh": "ตัวละครมีลิขสิทธิ์",
+          "placeholder": "Optional character reference",
+          "placeholderTh": "ไม่บังคับ เช่น ชื่อตัวละคร",
+          "helpText": "Use for known protected characters. The skill may recommend an original alternative.",
+          "helpTextTh": "ใช้เมื่อต้องอ้างถึงตัวละครที่มีลิขสิทธิ์ ระบบอาจแนะนำทางเลือกเป็นตัวละครต้นฉบับ"
+        },
+        {
+          "id": "medical_or_legal_claim",
+          "type": "boolean",
+          "label": "Medical or legal claim",
+          "labelTh": "มีการกล่าวอ้างทางการแพทย์หรือกฎหมาย",
+          "helpText": "Turn on when the image contains health, treatment, legal, compliance, or guaranteed-outcome claims.",
+          "helpTextTh": "เปิดเมื่อภาพมีข้อความหรือแนวคิดเกี่ยวกับสุขภาพ การรักษา กฎหมาย การรับรอง หรือผลลัพธ์ที่รับประกัน",
+          "default": false
+        },
+        {
+          "id": "safety_review_level",
+          "type": "select",
+          "label": "Safety Review Level",
+          "labelTh": "ระดับการตรวจความปลอดภัย",
+          "helpText": "Strict adds more caution for sensitive people, brands, claims, and risky topics.",
+          "helpTextTh": "เข้มงวดจะเพิ่มความระมัดระวังกับบุคคล แบรนด์ คำกล่าวอ้าง และหัวข้ออ่อนไหว",
+          "default": "standard",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "basic", "label": "Basic", "labelTh": "พื้นฐาน" },
+            { "value": "standard", "label": "Standard", "labelTh": "มาตรฐาน" },
+            { "value": "strict", "label": "Strict", "labelTh": "เข้มงวด" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "reference_research",
+      "title": "Product / Place References",
+      "titleTh": "ข้อมูลอ้างอิงสินค้า / สถานที่",
+      "description": "Use this when the prompt references a real product, brand, venue, landmark, or place.",
+      "descriptionTh": "ใช้เมื่อพรอมต์อ้างถึงสินค้า แบรนด์ สถานที่ แลนด์มาร์ก หรือสถานที่จริง",
+      "icon": "search",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "factual_reference_mode",
+          "type": "select",
+          "label": "Reference Research",
+          "labelTh": "การค้นข้อมูลอ้างอิง",
+          "default": "auto",
+          "helpText": "Auto requires verified references for real products/places. User-provided details stay authoritative.",
+          "helpTextTh": "Auto จะต้องมีข้อมูลอ้างอิงเมื่อเป็นสินค้า/สถานที่จริง และยังยึดข้อมูลที่ผู้ใช้ระบุเป็นหลัก",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "required", "label": "Required", "labelTh": "บังคับต้องมี" },
+            { "value": "provided", "label": "Provided", "labelTh": "มีข้อมูลอ้างอิงแล้ว" },
+            { "value": "off", "label": "Off / fictional", "labelTh": "ปิด / เป็นงานสมมติ" }
+          ]
+        },
+        {
+          "id": "verified_reference_facts",
+          "type": "textarea",
+          "label": "Verified Reference Facts",
+          "labelTh": "ข้อเท็จจริงที่ตรวจสอบแล้ว",
+          "placeholder": "One fact per line, e.g. official product color, package shape, landmark facade, venue interior detail",
+          "placeholderTh": "ใส่หนึ่งข้อเท็จจริงต่อหนึ่งบรรทัด เช่น สีสินค้าจริง รูปทรงแพ็กเกจ รายละเอียดหน้าอาคารหรือภายในสถานที่",
+          "helpText": "These facts supplement the user brief; they must not replace user-provided details.",
+          "helpTextTh": "ข้อมูลนี้ใช้เสริม brief ของผู้ใช้เท่านั้น ห้ามนำไปแทนที่ข้อมูลที่ผู้ใช้ระบุ",
+          "rows": 3
+        },
+        {
+          "id": "reference_sources",
+          "type": "textarea",
+          "label": "Reference Sources",
+          "labelTh": "แหล่งอ้างอิง",
+          "placeholder": "One URL/source per line, preferably official product/place pages or reputable recent visual references",
+          "placeholderTh": "ใส่ URL/แหล่งอ้างอิงหนึ่งรายการต่อบรรทัด โดยควรเป็นเว็บทางการหรือแหล่งภาพล่าสุดที่น่าเชื่อถือ",
+          "helpText": "One source per line. Prefer official product/place pages, official listings, press kits, maps, menus, brochures, or reputable recent image references.",
+          "helpTextTh": "ใส่หนึ่งแหล่งต่อหนึ่งบรรทัด ควรเป็นเว็บทางการ รายการสินค้า/สถานที่ press kit แผนที่ เมนู โบรชัวร์ หรือแหล่งภาพล่าสุดที่น่าเชื่อถือ",
+          "rows": 3
+        }
+      ]
+    },
+    {
+      "id": "advanced_rendering",
+      "title": "Advanced Rendering",
+      "titleTh": "การเรนเดอร์ขั้นสูง",
+      "description": "Optional technical settings. Auto is safest for most workflows.",
+      "descriptionTh": "ตัวเลือกเทคนิคเพิ่มเติม โดยทั่วไปปล่อยอัตโนมัติจะปลอดภัยที่สุด",
+      "icon": "sliders",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "render_api",
+          "type": "select",
+          "label": "Render API Shape",
+          "labelTh": "รูปแบบ API สำหรับเรนเดอร์",
+          "helpText": "Choose how the host should package render parameters. This does not choose the image model.",
+          "helpTextTh": "เลือกรูปแบบที่ host ใช้จัดพารามิเตอร์เรนเดอร์ โดยไม่ได้เลือกโมเดลภาพ",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "image_api", "label": "Image API", "labelTh": "Image API" },
+            { "value": "responses_tool", "label": "Responses image tool", "labelTh": "Responses image tool" }
+          ]
+        },
+        {
+          "id": "render_action",
+          "type": "select",
+          "label": "Render Action",
+          "labelTh": "การทำงานของเรนเดอร์",
+          "helpText": "Auto follows Prompt Mode. Use Edit only when source images are supplied.",
+          "helpTextTh": "อัตโนมัติจะอิงจากโหมดพรอมต์ เลือกแก้ไขเมื่อมีภาพต้นฉบับเท่านั้น",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "generate", "label": "Generate", "labelTh": "สร้างใหม่" },
+            { "value": "edit", "label": "Edit", "labelTh": "แก้ไขภาพ" }
+          ]
+        },
+        {
+          "id": "render_size",
+          "type": "select",
+          "label": "Render Size",
+          "labelTh": "ขนาดเรนเดอร์",
+          "helpText": "Auto maps Image Ratio to the closest supported size.",
+          "helpTextTh": "อัตโนมัติจะจับคู่สัดส่วนภาพกับขนาดที่รองรับใกล้ที่สุด",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "1024x1024", "label": "1024 x 1024 square", "labelTh": "1024 x 1024 จัตุรัส" },
+            { "value": "1536x1024", "label": "1536 x 1024 landscape", "labelTh": "1536 x 1024 แนวนอน" },
+            { "value": "1024x1536", "label": "1024 x 1536 portrait", "labelTh": "1024 x 1536 แนวตั้ง" }
+          ]
+        },
+        {
+          "id": "output_format",
+          "type": "select",
+          "label": "Output Format",
+          "labelTh": "รูปแบบไฟล์ผลลัพธ์",
+          "helpText": "PNG is safest for text, transparency, and product/packaging details.",
+          "helpTextTh": "PNG ปลอดภัยที่สุดสำหรับตัวอักษร พื้นหลังโปร่งใส และรายละเอียดสินค้า/แพ็กเกจ",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "png", "label": "PNG", "labelTh": "PNG" },
+            { "value": "jpeg", "label": "JPEG", "labelTh": "JPEG" },
+            { "value": "webp", "label": "WebP", "labelTh": "WebP" }
+          ]
+        },
+        {
+          "id": "api_background",
+          "type": "select",
+          "label": "Background Output",
+          "labelTh": "พื้นหลังผลลัพธ์",
+          "helpText": "Use transparent only for cutouts, stickers, assets, or compositing workflows.",
+          "helpTextTh": "ใช้โปร่งใสเฉพาะงาน cutout, sticker, asset หรือ compositing",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "opaque", "label": "Opaque", "labelTh": "ทึบ" },
+            { "value": "transparent", "label": "Transparent", "labelTh": "โปร่งใส" }
+          ]
+        },
+        {
+          "id": "moderation",
+          "type": "select",
+          "label": "Moderation",
+          "labelTh": "ระดับ moderation",
+          "helpText": "Auto is recommended. Low is available only when the host supports it.",
+          "helpTextTh": "แนะนำใช้อัตโนมัติ ค่า low ใช้เฉพาะเมื่อ host รองรับ",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "low", "label": "Low", "labelTh": "ต่ำ" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "advanced_output",
+      "title": "Advanced Output",
+      "titleTh": "ผลลัพธ์ขั้นสูง",
+      "description": "Keep defaults unless you need a specific output format.",
+      "descriptionTh": "ปล่อยค่าเริ่มต้นได้ เว้นแต่ต้องการรูปแบบผลลัพธ์เฉพาะ",
+      "icon": "settings",
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "response_mode",
+          "type": "select",
+          "label": "Output Type",
+          "labelTh": "รูปแบบผลลัพธ์",
+          "helpText": "Prompt text is best for normal use. Full JSON includes reviews, warnings, reference research, and render parameters.",
+          "helpTextTh": "พรอมต์ข้อความเหมาะกับการใช้งานทั่วไป ส่วน JSON เต็มมีผลตรวจ คำเตือน reference research และพารามิเตอร์เรนเดอร์",
+          "default": "text_prompt",
+          "options": [
+            { "value": "text_prompt", "label": "Prompt text", "labelTh": "พรอมต์ข้อความ" },
+            { "value": "json_bundle", "label": "Full technical JSON", "labelTh": "JSON เทคนิคแบบเต็ม" }
+          ]
+        },
+        {
+          "id": "text_prompt_field",
+          "type": "select",
+          "label": "Prompt Detail",
+          "labelTh": "ระดับพรอมต์ที่ส่งออก",
+          "helpText": "Choose which final-reviewed prompt text should be returned.",
+          "helpTextTh": "เลือกระดับพรอมต์ที่ผ่านการตรวจรอบสุดท้ายแล้วเพื่อส่งออก",
+          "default": "detailed",
+          "dependsOn": { "field": "response_mode", "value": "text_prompt" },
+          "options": [
+            { "value": "detailed", "label": "Detailed prompt", "labelTh": "พรอมต์ละเอียด" },
+            { "value": "short", "label": "Short prompt", "labelTh": "พรอมต์สั้น" },
+            { "value": "structured", "label": "Structured prompt", "labelTh": "พรอมต์มีโครงสร้าง" },
+            { "value": "edit", "label": "Edit prompt", "labelTh": "พรอมต์แก้ไขภาพ" },
+            { "value": "variants", "label": "Prompt variants", "labelTh": "พรอมต์หลายเวอร์ชัน" }
+          ]
+        },
+        {
+          "id": "return_variants",
+          "type": "number",
+          "label": "Prompt Variants",
+          "labelTh": "จำนวนเวอร์ชันพรอมต์",
+          "helpText": "Number of prompt variants to prepare when variants are requested.",
+          "helpTextTh": "จำนวนเวอร์ชันพรอมต์ที่จะเตรียมเมื่อเลือกส่งออกแบบหลายเวอร์ชัน",
+          "default": 2,
+          "min": 1,
+          "max": 3,
+          "step": 1
+        },
+        {
+          "id": "orchestration_mode",
+          "type": "select",
+          "label": "Review Mode",
+          "labelTh": "โหมดตรวจพรอมต์",
+          "helpText": "Auto runs specialist-style review when the prompt is complex. Off uses the deterministic core only.",
+          "helpTextTh": "อัตโนมัติจะตรวจแบบ specialist เมื่อพรอมต์ซับซ้อน ปิดจะใช้แกน deterministic อย่างเดียว",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "off", "label": "Off", "labelTh": "ปิด" },
+            { "value": "single_pass", "label": "Single critic pass", "labelTh": "ตรวจรอบเดียว" },
+            { "value": "subagents", "label": "Specialist reports", "labelTh": "รายงาน specialist" }
+          ]
+        },
+        {
+          "id": "enable_subagents",
+          "type": "boolean",
+          "label": "Enable Specialist Reports",
+          "labelTh": "เปิดรายงาน specialist",
+          "helpText": "When enabled, complex prompts can include deliverable, fidelity, safety, and critic reports in JSON mode.",
+          "helpTextTh": "เมื่อเปิด งานซับซ้อนจะมีรายงาน deliverable, fidelity, safety และ critic ในโหมด JSON",
+          "default": true
+        },
+        {
+          "id": "subagent_budget",
+          "type": "select",
+          "label": "Specialist Depth",
+          "labelTh": "ระดับความละเอียดของ specialist",
+          "helpText": "Higher depth adds more specialist reports but keeps the final text prompt clean.",
+          "helpTextTh": "ระดับสูงจะเพิ่มรายงาน specialist มากขึ้น แต่พรอมต์ข้อความสุดท้ายยังสะอาดเหมือนเดิม",
+          "default": "balanced",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "low", "label": "Low", "labelTh": "ต่ำ" },
+            { "value": "balanced", "label": "Balanced", "labelTh": "สมดุล" },
+            { "value": "high", "label": "High", "labelTh": "สูง" }
+          ]
+        },
+        {
+          "id": "reasoning_depth",
+          "type": "select",
+          "label": "Reasoning Depth",
+          "labelTh": "ระดับการคิดวิเคราะห์",
+          "helpText": "Controls how detailed the orchestration analysis should be.",
+          "helpTextTh": "กำหนดความละเอียดของการวิเคราะห์ในชั้น orchestration",
+          "default": "standard",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "fast", "label": "Fast", "labelTh": "เร็ว" },
+            { "value": "standard", "label": "Standard", "labelTh": "มาตรฐาน" },
+            { "value": "deep", "label": "Deep", "labelTh": "ลึก" }
+          ]
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "topic": "topic",
+    "target_language": "target_language",
+    "aspect_ratio": "aspect_ratio",
+    "n": "n",
+    "exact_text": "exact_text",
+    "audience": "audience",
+    "purpose": "purpose",
+    "image_style": "image_style",
+    "deliverable_type": "deliverable_type",
+    "quality": "quality",
+    "modifiers": "modifiers",
+    "avoid": "avoid",
+    "scene_background_mode": "scene_background_mode",
+    "background_description": "background_description",
+    "multi_frame_mode": "multi_frame_mode",
+    "frame_layout": "frame_layout",
+    "panel_count": "panel_count",
+    "panel_subject_strategy": "panel_subject_strategy",
+    "continuity_mode": "continuity_mode",
+    "panel_descriptions": "panel_descriptions",
+    "camera_angle": "camera_angle",
+    "shot_framing": "shot_framing",
+    "composition_rule": "composition_rule",
+    "camera_system": "camera_system",
+    "sensor_format": "sensor_format",
+    "lens_focal_length": "lens_focal_length",
+    "aperture_style": "aperture_style",
+    "depth_of_field": "depth_of_field",
+    "background_blur": "background_blur",
+    "cinematic_mode": "cinematic_mode",
+    "camera_movement": "camera_movement",
+    "film_stock": "film_stock",
+    "shutter_speed_style": "shutter_speed_style",
+    "anamorphic_flare": "anamorphic_flare",
+    "motion_blur": "motion_blur",
+    "lighting_preset": "lighting_preset",
+    "light_source": "light_source",
+    "light_direction": "light_direction",
+    "color_grade": "color_grade",
+    "iso_style": "iso_style",
+    "mode": "mode",
+    "source_image_path": "source_image_path",
+    "mask_image_path": "mask_image_path",
+    "include_edit_prompt": "include_edit_prompt",
+    "subject_age": "subject_age",
+    "depicts_real_person": "depicts_real_person",
+    "depicts_public_figure": "depicts_public_figure",
+    "brand_or_logo": "brand_or_logo",
+    "copyrighted_character": "copyrighted_character",
+    "medical_or_legal_claim": "medical_or_legal_claim",
+    "safety_review_level": "safety_review_level",
+    "factual_reference_mode": "factual_reference_mode",
+    "verified_reference_facts": "verified_reference_facts",
+    "reference_sources": "reference_sources",
+    "response_mode": "response_mode",
+    "text_prompt_field": "text_prompt_field",
+    "return_variants": "return_variants",
+    "render_api": "render_api",
+    "render_action": "render_action",
+    "render_size": "render_size",
+    "output_format": "output_format",
+    "api_background": "api_background",
+    "moderation": "moderation",
+    "orchestration_mode": "orchestration_mode",
+    "enable_subagents": "enable_subagents",
+    "subagent_budget": "subagent_budget",
+    "reasoning_depth": "reasoning_depth"
+  }
+}

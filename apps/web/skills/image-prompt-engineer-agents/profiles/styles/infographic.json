@@ -1,0 +1,16 @@
+{
+  "keywords": [
+    "infographic",
+    "อินโฟกราฟิก",
+    "diagram",
+    "แผนภาพ"
+  ],
+  "default_camera": "mirrorless",
+  "default_lens": "50mm",
+  "default_lighting": "high_key",
+  "negative": [
+    "tiny unreadable text",
+    "cluttered layout",
+    "misaligned icons"
+  ]
+}

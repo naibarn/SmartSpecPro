@@ -1,0 +1,3 @@
+# No runtime dependency is required for the core skill.
+# Optional examples use openai-agents and pydantic:
+# pip install openai-agents pydantic

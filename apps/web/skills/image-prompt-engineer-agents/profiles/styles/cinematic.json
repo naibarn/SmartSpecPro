@@ -1,0 +1,17 @@
+{
+  "keywords": [
+    "cinematic",
+    "film",
+    "movie",
+    "ภาพยนตร์",
+    "หนัง"
+  ],
+  "default_camera": "cinema_camera",
+  "default_lens": "35mm",
+  "default_lighting": "moody_cinematic",
+  "negative": [
+    "flat lighting",
+    "cheap CGI",
+    "inconsistent film grain"
+  ]
+}
