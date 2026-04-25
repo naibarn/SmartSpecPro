@@ -15,6 +15,10 @@ config:
     kind: python
     entrypoint: python/skill.py
     package_entrypoint: scripts/run_prompt_flow.py
+  media_studio:
+    prompt_bundle_review: true
+    accepts_reference_images: true
+    supports_factual_grounding: true
 ---
 
 # GPT Image Prompt Engineer

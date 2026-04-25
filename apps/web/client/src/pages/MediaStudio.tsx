@@ -159,6 +159,7 @@ import {
 } from "@/lib/mediaStudioAutoPromptSelection";
 import { buildMediaStudioAutoPromptIdea } from "@/lib/mediaStudioAutoPromptIdea";
 import { composePromptWithNotes, parseMediaStudioPromptPackage } from "@/lib/mediaStudioPromptPackage";
+import { applyMediaStudioAspectRatioPromptParams } from "@/lib/mediaStudioPromptParams";
 import { parseMultiVideoPrompts, splitMultiVideoPromptOutput } from "@/lib/mediaStudioPromptParsing";
 import { buildStoryboardVideoProject } from "@/lib/storyboardVideoProject";
 import {
@@ -275,10 +276,48 @@ interface SearchableFieldOption {
   previewUrl?: string;
 }
 
+interface PromptReviewSummary {
+  status: string | null;
+  approved: boolean | null;
+  requiresRevision: boolean | null;
+  missingInputs: string[];
+  clarifyingQuestions: string[];
+  referenceResearchStatus: string | null;
+  selectedSubagents: string[];
+  qualityScore: number | null;
+  failedChecks: string[];
+}
+
+const promptReviewStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item).trim()).filter(Boolean);
+};
+
+const normalizePromptReviewSummary = (value: unknown): PromptReviewSummary | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const review = value as Record<string, unknown>;
+  const rawQualityScore = review.qualityScore;
+  const qualityScore = Number(rawQualityScore);
+  return {
+    status: typeof review.status === "string" ? review.status : null,
+    approved: typeof review.approved === "boolean" ? review.approved : null,
+    requiresRevision: typeof review.requiresRevision === "boolean" ? review.requiresRevision : null,
+    missingInputs: promptReviewStringArray(review.missingInputs),
+    clarifyingQuestions: promptReviewStringArray(review.clarifyingQuestions),
+    referenceResearchStatus: typeof review.referenceResearchStatus === "string" ? review.referenceResearchStatus : null,
+    selectedSubagents: promptReviewStringArray(review.selectedSubagents),
+    qualityScore: rawQualityScore === null || rawQualityScore === undefined
+      ? null
+      : Number.isFinite(qualityScore) ? qualityScore : null,
+    failedChecks: promptReviewStringArray(review.failedChecks),
+  };
+};
+
 // Per-tab state structure - each tab has independent controls
 interface TabState {
   prompt: string;
   enhancedPrompt: string;
+  promptReview: PromptReviewSummary | null;
   referenceNotes: string;
   continuityNotes: string;
   autoReferenceNotes: string;
@@ -308,6 +347,7 @@ interface TabState {
 const createDefaultTabState = (mediaType: MediaType): TabState => ({
   prompt: "",
   enhancedPrompt: "",
+  promptReview: null,
   referenceNotes: "",
   continuityNotes: "",
   autoReferenceNotes: "",
@@ -1091,6 +1131,7 @@ export default function MediaStudio() {
   const currentTabState = tabStates[activeTab];
   const prompt = currentTabState.prompt;
   const enhancedPrompt = currentTabState.enhancedPrompt;
+  const promptReview = currentTabState.promptReview;
   const referenceNotes = currentTabState.referenceNotes;
   const continuityNotes = currentTabState.continuityNotes;
   const autoReferenceNotes = currentTabState.autoReferenceNotes;
@@ -1135,6 +1176,24 @@ export default function MediaStudio() {
   const hasDetectedContinuityNotes = Boolean(autoContinuityNotes || parsedCurrentPromptPackage.continuityNotes);
   const isReferenceNotesCustom = Boolean(referenceNotes.trim()) && referenceNotes.trim() !== (autoReferenceNotes || parsedCurrentPromptPackage.referenceNotes).trim();
   const isContinuityNotesCustom = Boolean(continuityNotes.trim()) && continuityNotes.trim() !== (autoContinuityNotes || parsedCurrentPromptPackage.continuityNotes).trim();
+  const isThaiLocale = locale.startsWith("th");
+  const promptReviewTone = promptReview?.approved === true
+    ? "approved"
+    : promptReview?.status === "blocked"
+      ? "blocked"
+      : "needs_input";
+  const promptReviewLabels = {
+    title: isThaiLocale ? "ผลตรวจ Auto Prompt" : "Auto Prompt Review",
+    approved: isThaiLocale ? "ผ่านการตรวจ" : "Approved",
+    needsInput: isThaiLocale ? "ควรเติมข้อมูล" : "Needs input",
+    blocked: isThaiLocale ? "ต้องแก้ก่อนใช้" : "Needs revision",
+    quality: isThaiLocale ? "คุณภาพ" : "Quality",
+    reference: isThaiLocale ? "อ้างอิง" : "Reference",
+    missing: isThaiLocale ? "ข้อมูลที่ขาด" : "Missing",
+    checks: isThaiLocale ? "ตรวจไม่ผ่าน" : "Failed checks",
+    subagents: isThaiLocale ? "ตัวตรวจ" : "Reviewers",
+    questions: isThaiLocale ? "คำถามแนะนำ" : "Suggested questions",
+  };
 
   // Setter functions that update the current tab's state
   const setPrompt = useCallback((value: string | ((prev: string) => string)) => {
@@ -1157,6 +1216,7 @@ export default function MediaStudio() {
     }));
   }, [activeTab]);
 
+  const setPromptReview = useCallback((value: PromptReviewSummary | null) => updateTabState('promptReview', value), [updateTabState]);
   const setReferenceNotes = useCallback((value: string) => updateTabState('referenceNotes', value), [updateTabState]);
   const setContinuityNotes = useCallback((value: string) => updateTabState('continuityNotes', value), [updateTabState]);
   const setAutoReferenceNotes = useCallback((value: string) => updateTabState('autoReferenceNotes', value), [updateTabState]);
@@ -1366,6 +1426,7 @@ export default function MediaStudio() {
       } else {
         setPrompt((prev) => prev ? `${prev} ${text}` : text);
       }
+      setPromptReview(null);
     },
     onError: (err) => toast.error(err),
   });
@@ -2600,6 +2661,7 @@ export default function MediaStudio() {
             });
           });
         }
+        applyMediaStudioAspectRatioPromptParams(mappedValues, aspectRatio);
 
         // Flexible prompt field handling - accepts multiple similar field names
         // Always combines Basic Mode prompt with Advanced Mode field value
@@ -2697,6 +2759,9 @@ export default function MediaStudio() {
         });
 
         if (result.success && result.content) {
+          const nextPromptReview = normalizePromptReviewSummary(
+            (result as { promptReview?: unknown }).promptReview,
+          );
           // Check if outputType="both" - try to parse and split prompts for Image/Video tabs
           // Note: outputType may be undefined if user didn't change from default (especially in Basic Mode)
           const outputType = dynamicFormValues?.outputType as string | undefined;
@@ -2711,6 +2776,7 @@ export default function MediaStudio() {
               // Store split prompts for each tab
               setImageTabPrompt(parsed.imagePrompt);
               setVideoTabPrompt(parsed.videoPrompt);
+              setPromptReview(nextPromptReview);
 
               // Set the appropriate prompt based on current tab
               if (activeTab === "image") {
@@ -2727,6 +2793,7 @@ export default function MediaStudio() {
             } else {
               // Parsing failed (no image/video sections found), use full content
               applyPromptPackageToCurrentTab(result.content, "enhancedPrompt");
+              setPromptReview(nextPromptReview);
               setImageTabPrompt(null);
               setVideoTabPrompt(null);
               toast.success(t('mediaStudio.skillExecutedSuccessfully', { skillName: result.skillName }), {
@@ -2736,6 +2803,7 @@ export default function MediaStudio() {
           } else {
             // Use the skill's generated content as the prompt (normal mode)
             applyPromptPackageToCurrentTab(result.content, "enhancedPrompt");
+            setPromptReview(nextPromptReview);
             setImageTabPrompt(null);
             setVideoTabPrompt(null);
             toast.success(t('mediaStudio.skillExecutedSuccessfully', { skillName: result.skillName }), {
@@ -2763,6 +2831,7 @@ export default function MediaStudio() {
               mappedValues[mappedKey] = value;
             }
           });
+          applyMediaStudioAspectRatioPromptParams(mappedValues, aspectRatio);
 
           requestData = {
             skillId: selectedSkillId,
@@ -2821,6 +2890,7 @@ export default function MediaStudio() {
         if (result.success && result.promptEn) {
           // Use the enhanced English prompt
           setEnhancedPrompt(result.promptEn);
+          setPromptReview(null);
           clearPromptSupportNotes();
         } else {
           const description =
@@ -2863,12 +2933,13 @@ export default function MediaStudio() {
       } else {
         setPrompt(UPSCALE_DEFAULT_PROMPT);
       }
+      setPromptReview(null);
       clearPromptSupportNotes();
       toast.success(t('mediaStudio.promptAutoFilledForUpscale'), {
         description: t('mediaStudio.promptAutoFilledForUpscaleDesc'),
       });
     }
-  }, [clearPromptSupportNotes, setDynamicFormValues, setPrompt, t, useAdvancedMode]);
+  }, [clearPromptSupportNotes, setDynamicFormValues, setPrompt, setPromptReview, t, useAdvancedMode]);
 
   // Get current skill info
   const currentSkill = skillsList?.find(s => s.id === selectedSkillId);
@@ -3386,6 +3457,7 @@ export default function MediaStudio() {
     if (lightboxImage?.prompt) {
       applyPromptPackageToCurrentTab(lightboxImage.prompt, "prompt");
       setEnhancedPrompt("");
+      setPromptReview(null);
       setImageTabPrompt(null);
       setVideoTabPrompt(null);
       setLightboxOpen(false);
@@ -5178,6 +5250,7 @@ export default function MediaStudio() {
                             onClick={() => {
                               setPrompt("");
                               setEnhancedPrompt("");
+                              setPromptReview(null);
                               clearPromptSupportNotes();
                               setImageTabPrompt(null);
                               setVideoTabPrompt(null);
@@ -5205,6 +5278,7 @@ export default function MediaStudio() {
                   } else {
                     setPrompt(e.target.value);
                   }
+                  setPromptReview(null);
                 }}
                 placeholder={
                   isGeminiFlashTtsAudioModel
@@ -5216,6 +5290,67 @@ export default function MediaStudio() {
 
               {isGeminiFlashTtsAudioModel && (
                 <GeminiTtsPromptGuidance className="mt-3" />
+              )}
+
+              {promptReview && (
+                <div
+                  className={cn(
+                    "mt-3 space-y-2 rounded-lg border p-3 text-sm shadow-sm",
+                    promptReviewTone === "approved" && "border-emerald-200 bg-emerald-50/80 text-emerald-950",
+                    promptReviewTone === "needs_input" && "border-amber-200 bg-amber-50/80 text-amber-950",
+                    promptReviewTone === "blocked" && "border-red-200 bg-red-50/80 text-red-950",
+                  )}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    {promptReviewTone === "approved" ? (
+                      <CheckCircle className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <AlertCircle className={cn(
+                        "h-4 w-4",
+                        promptReviewTone === "blocked" ? "text-red-600" : "text-amber-600",
+                      )} />
+                    )}
+                    <span className="font-semibold">{promptReviewLabels.title}</span>
+                    <Badge variant="outline" className="bg-white/80">
+                      {promptReviewTone === "approved"
+                        ? promptReviewLabels.approved
+                        : promptReviewTone === "blocked"
+                          ? promptReviewLabels.blocked
+                          : promptReviewLabels.needsInput}
+                    </Badge>
+                    {typeof promptReview.qualityScore === "number" && (
+                      <Badge variant="outline" className="bg-white/80">
+                        {promptReviewLabels.quality}: {promptReview.qualityScore}
+                      </Badge>
+                    )}
+                    {promptReview.referenceResearchStatus && (
+                      <Badge variant="outline" className="bg-white/80">
+                        {promptReviewLabels.reference}: {promptReview.referenceResearchStatus}
+                      </Badge>
+                    )}
+                  </div>
+                  {promptReview.missingInputs.length > 0 && (
+                    <p className="leading-6">
+                      <span className="font-medium">{promptReviewLabels.missing}: </span>
+                      {promptReview.missingInputs.slice(0, 6).join(", ")}
+                    </p>
+                  )}
+                  {promptReview.failedChecks.length > 0 && (
+                    <p className="text-xs leading-5 opacity-80">
+                      {promptReviewLabels.checks}: {promptReview.failedChecks.slice(0, 6).join(", ")}
+                    </p>
+                  )}
+                  {promptReview.selectedSubagents.length > 0 && (
+                    <p className="text-xs leading-5 opacity-80">
+                      {promptReviewLabels.subagents}: {promptReview.selectedSubagents.slice(0, 6).join(", ")}
+                    </p>
+                  )}
+                  {promptReview.clarifyingQuestions.length > 0 && (
+                    <p className="text-xs leading-5 opacity-80">
+                      {promptReviewLabels.questions}: {promptReview.clarifyingQuestions.slice(0, 2).join(" / ")}
+                    </p>
+                  )}
+                </div>
               )}
 
               {hasPromptSupportNotes && (
@@ -5484,9 +5619,10 @@ export default function MediaStudio() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      setEnhancedPrompt("");
-                      clearPromptSupportNotes();
+	                    onClick={() => {
+	                      setEnhancedPrompt("");
+	                      setPromptReview(null);
+	                      clearPromptSupportNotes();
                       setImageTabPrompt(null);
                       setVideoTabPrompt(null);
                     }}
@@ -6328,9 +6464,10 @@ export default function MediaStudio() {
                                     setSelectedStyle(style.name);
                                     setShowStyleDialog(false);
                                     // Auto-fill prompt for Upscale style
-                                    if (style.name === "Upscale") {
-                                      setPrompt(UPSCALE_DEFAULT_PROMPT);
-                                      clearPromptSupportNotes();
+	                                    if (style.name === "Upscale") {
+	                                      setPrompt(UPSCALE_DEFAULT_PROMPT);
+	                                      setPromptReview(null);
+	                                      clearPromptSupportNotes();
                                       toast.success(t('mediaStudio.upscaleAutoFilled'), {
                                         description: t('mediaStudio.upscaleAutoFilledDesc'),
                                       });

@@ -29,6 +29,10 @@ config:
     enabled: true
     orchestration_mode_default: auto
     pattern: deterministic-core-with-subagent-ready-reports
+  media_studio:
+    prompt_bundle_review: true
+    accepts_reference_images: true
+    supports_factual_grounding: true
 strict_provider_pin: false
 ---
 

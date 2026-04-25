@@ -53,6 +53,7 @@ import fs from "fs";
 import path from "path";
 import yaml from "js-yaml";
 import AdmZip from "adm-zip";
+import { spawn } from "child_process";
 import {
   getUserVisibleSkills as _getUserVisibleSkills,
   getAllSkillsForUser,
@@ -104,6 +105,10 @@ import {
   buildRuntimeModelConfig,
   executeSharedSkillTextRuntime,
 } from "../services/agentRuntime/skillRuntimeOrchestrator";
+import {
+  extractStructuredPromptBundleTextOutput,
+  prepareMediaStudioPythonPromptSkillExecution,
+} from "../services/mediaStudioPromptSkillExecution";
 import { resolveEffectiveLocalSkillExecutionPolicy } from "../services/localAiSkillPolicy";
 import { getRequesterLocalAiSurfaceContext } from "../services/localAiUserContext";
 import { getConversationById } from "../services/chatService";
@@ -1156,6 +1161,107 @@ function loadSkillInputDefaults(skillSlug: string, folderPath?: string | null): 
   return {};
 }
 
+function resolveCustomPythonSkillScript(folderPath: string | null | undefined, skillSlug: string): string | null {
+  const candidates: string[] = [];
+
+  if (folderPath) {
+    candidates.push(
+      path.resolve(process.cwd(), folderPath),
+      path.resolve(process.cwd(), "..", folderPath),
+      path.resolve(process.cwd(), "..", "..", folderPath),
+      path.resolve(process.cwd(), "apps", "web", folderPath),
+    );
+  }
+
+  candidates.push(
+    path.resolve(SKILLS_DIR, skillSlug),
+    path.resolve(process.cwd(), "..", "skills", skillSlug),
+    path.resolve(process.cwd(), "skills", skillSlug),
+  );
+
+  for (const skillDir of Array.from(new Set(candidates))) {
+    const scriptPath = path.join(skillDir, "python", "skill.py");
+    if (fs.existsSync(scriptPath)) {
+      return scriptPath;
+    }
+  }
+
+  return null;
+}
+
+async function executeCustomPythonSkillText(params: {
+  skillSlug: string;
+  folderPath: string | null;
+  prompt: string;
+  userInputs: Record<string, any>;
+  context?: Record<string, unknown>;
+  publicUrl?: string | null;
+  userToken?: string | null;
+}): Promise<string> {
+  const scriptPath = resolveCustomPythonSkillScript(params.folderPath, params.skillSlug);
+  if (!scriptPath) {
+    throw new Error(`Python skill script not found for '${params.skillSlug}'`);
+  }
+
+  const projectRoot = path.resolve(process.cwd(), "..", "..");
+  const venvPython = path.join(projectRoot, "python-backend", ".venv", "bin", "python");
+  const pythonBin = fs.existsSync(venvPython) ? venvPython : "python3";
+  const inputPayload = JSON.stringify({
+    skill_name: params.skillSlug,
+    prompt: params.prompt,
+    params: params.userInputs,
+    context: {
+      ...(params.context ?? {}),
+      publicUrl: params.publicUrl ?? "",
+      userToken: params.userToken ?? "",
+    },
+  });
+
+  return await new Promise<string>((resolve, reject) => {
+    const child = spawn(pythonBin, [scriptPath], { stdio: ["pipe", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const settle = (value: string | Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (value instanceof Error) {
+        reject(value);
+      } else {
+        resolve(value);
+      }
+    };
+    const timer = setTimeout(() => {
+      child.kill("SIGTERM");
+      settle(new Error("Python skill timed out after 120 seconds"));
+    }, 120_000);
+
+    child.stdout.on("data", (chunk: Buffer) => { stdout += chunk.toString(); });
+    child.stderr.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
+    child.on("error", (error) => settle(error));
+    child.on("close", (code) => {
+      if (code !== 0) {
+        settle(new Error(stderr.trim() || `Python skill exited with code ${code}`));
+        return;
+      }
+      try {
+        const parsed = JSON.parse(stdout.trim());
+        if (!parsed?.success) {
+          settle(new Error(String(parsed?.error || parsed?.output || "Python skill returned failure")));
+          return;
+        }
+        settle(String(parsed.output ?? ""));
+      } catch (error) {
+        settle(new Error(`Failed to parse Python skill output: ${error instanceof Error ? error.message : String(error)}`));
+      }
+    });
+
+    child.stdin.write(inputPayload);
+    child.stdin.end();
+  });
+}
+
 // ==================== Router ====================
 
 export const skillsRouter = router({
@@ -1928,6 +2034,7 @@ export const skillsRouter = router({
           folderPath: skills.folderPath,
           category: skills.category,
           defaultModel: skills.defaultModel,
+          executionMode: skills.executionMode,
           executionPolicyJson: skills.executionPolicyJson,
         })
         .from(skills)
@@ -1964,7 +2071,7 @@ export const skillsRouter = router({
         }
       }
 
-      if (!systemPrompt) {
+      if (!systemPrompt && skill.executionMode !== "python") {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: `Skill '${input.skillId}' has no content to execute`,
@@ -1984,7 +2091,77 @@ export const skillsRouter = router({
         ? buildPromptLengthPlan(requestedMaxPromptLength, resolvePromptLanguageHintFromInputs(mergedUserInputs))
         : null;
 
+      if (skill.executionMode === "python") {
+        const preparedPromptSkillExecution = prepareMediaStudioPythonPromptSkillExecution({
+          skillSlug: skill.slug,
+          folderPath: skill.folderPath,
+          userInputs: mergedUserInputs,
+          referenceImages: input.referenceImages || [],
+          originSurface: input.originSurface ?? null,
+        });
+        const rawPythonContent = await executeCustomPythonSkillText({
+          skillSlug: skill.slug,
+          folderPath: skill.folderPath,
+          prompt: String(preparedPromptSkillExecution.userInputs.topic || preparedPromptSkillExecution.userInputs.prompt || preparedPromptSkillExecution.userInputs.request || ""),
+          userInputs: preparedPromptSkillExecution.userInputs,
+          context: preparedPromptSkillExecution.context,
+          publicUrl: ctx.publicUrl ?? null,
+          userToken: ctx.userToken ?? null,
+        });
+        const structuredPromptExtraction = preparedPromptSkillExecution.extractStructuredPrompt
+          ? extractStructuredPromptBundleTextOutput(rawPythonContent, preparedPromptSkillExecution.textPromptField)
+          : null;
+        let processedContent = structuredPromptExtraction?.promptText || rawPythonContent;
+        let wasTruncated = false;
+        if (promptLengthPlan) {
+          const truncated = truncateToPromptLength(processedContent, promptLengthPlan.maxPromptLength);
+          processedContent = truncated.text;
+          wasTruncated = truncated.wasTruncated;
+        }
+
+        await deductCredits({
+          userId,
+          amount: 1,
+          description: `Skill execution: ${skill.name}`,
+          skillSlug: input.skillId,
+          sourceType: "skill",
+          metadata: {
+            skill: input.skillId,
+            skillName: skill.name,
+            executionMode: skill.executionMode,
+            runtimeKind: "python",
+            llmModel: "none",
+            ...(input.originSurface ? { originSurface: input.originSurface } : {}),
+          },
+        });
+
+        return {
+          success: true,
+          content: processedContent,
+          skillId: input.skillId,
+          skillName: skill.name,
+          creditsUsed: 1,
+          usage: {
+            promptTokens: 0,
+            completionTokens: 0,
+          },
+          wasTruncated,
+          ...(structuredPromptExtraction?.reviewSummary ? { promptReview: structuredPromptExtraction.reviewSummary } : {}),
+          runtime: {
+            mode: "python",
+            source: "native_skill",
+            ...(preparedPromptSkillExecution.extractStructuredPrompt ? { structuredReview: true } : {}),
+          },
+        };
+      }
+
       // Substitute template variables with actual values
+      if (!systemPrompt) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Skill '${input.skillId}' has no content to execute`,
+        });
+      }
       systemPrompt = substituteTemplateVariables(systemPrompt, mergedUserInputs);
       if (promptLengthPlan) {
         systemPrompt = `${systemPrompt}\n\n${promptLengthPlan.directive}`;
@@ -2029,7 +2206,11 @@ export const skillsRouter = router({
           if (runtimeProvider) {
             const { detectProviderFamily, buildWebSearchParams } = await import("../services/webSearchToolInjector");
             const family = detectProviderFamily(runtimeProvider.providerName);
-            webSearchOptions = buildWebSearchParams(family);
+            const searchParams = buildWebSearchParams(family);
+            webSearchOptions = {
+              extraBodyParams: searchParams.bodyParams,
+              systemPromptSuffix: searchParams.systemPromptSuffix,
+            };
           }
         }
 
