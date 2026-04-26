@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "META-001",
+      "user_message": "ช่วยวางแผนแล้วทำต่อให้จบ",
+      "expected_owner": "orchestra",
+      "expected_route": "quick-plan-chain",
+      "expected_agents": [],
+      "expected_gates": ["Verification Before Completion"],
+      "why": "Explicit planning plus execution delegation should activate orchestra and require verification before completion."
+    },
+    {
+      "id": "VISUAL-001",
+      "user_message": "ปรับ dashboard ให้ premium modern responsive และ accessible",
+      "expected_owner": "visual-ui-enhancement",
+      "expected_route": "visual-ui-flow",
+      "expected_agents": [
+        "visual-ui-requirement-analyzer",
+        "visual-ui-direction",
+        "ui-builder",
+        "visual-ux-reviewer",
+        "accessibility-reviewer",
+        "responsive-reviewer"
+      ],
+      "expected_gates": [
+        "Visual Polish Gate",
+        "Accessibility Gate",
+        "Responsive Gate",
+        "Component State Gate"
+      ],
+      "why": "Premium/responsive/accessibility UI work should route through the visual UI workflow and UI quality gates."
+    },
+    {
+      "id": "SECURITY-001",
+      "user_message": "แก้ auth middleware และ role permission ให้ปลอดภัย",
+      "expected_owner": "orchestra",
+      "expected_route": "security-gate",
+      "expected_agents": ["security", "security-trpc", "security-frontend", "security-review"],
+      "expected_gates": ["Pre-Merge Security Gate", "Verification Before Completion"],
+      "why": "Auth and permission work is high risk and must route through security gates."
+    },
+    {
+      "id": "TRIVIAL-001",
+      "user_message": "แก้ typo ใน label นี้หน่อย",
+      "expected_owner": "direct-edit",
+      "expected_route": "direct-edit",
+      "expected_agents": [],
+      "expected_gates": ["Verification Before Completion"],
+      "why": "Obvious tiny edits should not trigger heavyweight orchestration."
+    },
+    {
+      "id": "TDD-001",
+      "user_message": "ปรับ routing decision ของ orchestra ให้รองรับ UI flow ใหม่",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [],
+      "expected_gates": ["Skill Behavior Tests", "Verification Before Completion"],
+      "why": "Routing behavior changes should be test-backed and verified through skill behavior scenarios."
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Sub-Agent Dispatch
 
-Tells the conductor exactly how to dispatch each of the 22 agent roles — which
+Tells the conductor exactly how to dispatch each of the 29 agent roles — which
 `subagent_type` to use per platform, how to inject wave context and contracts into Task
 Packets, and when the pre-merge security gate triggers automatically.
 
@@ -15,7 +15,7 @@ For wave grouping and contract format, see:
 
 ## 1. Agent Type Mapping Table
 
-For each of the 22 agent roles, the `subagent_type` for Claude Code mode and the fallback
+For each of the 29 agent roles, the `subagent_type` for Claude Code mode and the fallback
 behavior for Standard/open-code are shown below. Agent identity files live in
 `../../sub-agents/agents/NAME.md`.
 
@@ -43,10 +43,19 @@ behavior for Standard/open-code are shown below. Agent identity files live in
 | security-trpc | `backend-api-security:backend-security-coder` | `general-purpose` + injected template | Inline |
 | security-fastapi | `backend-api-security:backend-security-coder` | `general-purpose` + injected template | Inline |
 | security-frontend | `backend-api-security:backend-security-coder` | `general-purpose` + injected template | Inline |
+| visual-ui-requirement-analyzer | `Plan` | `general-purpose` + injected template | Inline |
+| visual-ui-direction | `Plan` | `general-purpose` + injected template | Inline |
+| ui-builder | `general-purpose` | `general-purpose` + injected template | Inline |
+| visual-ux-reviewer | `Explore` | `general-purpose` + injected template | Inline |
+| accessibility-reviewer | `Explore` | `general-purpose` + injected template | Inline |
+| responsive-reviewer | `Explore` | `general-purpose` + injected template | Inline |
+| visual-final-refactor | `general-purpose` | `general-purpose` + injected template | Inline |
 
-**18 general agents** (section-07): product-ux, research, architect, frontend, backend,
+**25 general agents** (section-07): product-ux, research, architect, frontend, backend,
 python, database, test-qa, e2e-playwright, reviewer, security, debugger, error-detective,
-infrastructure, performance, ci-release, dependency-supply-chain, docs-release
+infrastructure, performance, ci-release, dependency-supply-chain, docs-release,
+visual-ui-requirement-analyzer, visual-ui-direction, ui-builder, visual-ux-reviewer,
+accessibility-reviewer, responsive-reviewer, visual-final-refactor
 
 **4 security specialists** (section-08): security-review, security-trpc, security-fastapi,
 security-frontend
@@ -180,7 +189,14 @@ When dispatching agents that do not need to block the conductor's main workflow,
 | security-trpc | Yes | Read-only audit; results collected before security-review |
 | security-fastapi | Yes | Read-only audit |
 | security-frontend | Yes | Read-only audit |
+| visual-ui-requirement-analyzer | Yes | Read-only UI requirement analysis |
+| visual-ui-direction | Yes | Read-only visual direction |
+| visual-ux-reviewer | Yes | Read-only UX review |
+| accessibility-reviewer | Yes | Read-only accessibility review |
+| responsive-reviewer | Yes | Read-only responsive review |
 | frontend (writing) | No | Next wave depends on files written |
+| ui-builder (writing) | No | Next wave depends on files written |
+| visual-final-refactor (writing) | No | Final patch depends on collected review findings |
 | backend (writing) | No | Next wave depends on files written |
 | python (writing) | No | Next wave depends on files written |
 | database | No | Sequential-only; migration must complete before next step |

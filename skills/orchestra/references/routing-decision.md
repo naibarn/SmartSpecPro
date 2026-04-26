@@ -11,6 +11,7 @@ This reference defines when orchestra should stay in its normal wave model and w
 | `medium` and implementation-ready | `multi-agent-waves` | Wave-based implementation |
 | `small` or `medium` but under-specified / plan-beneficial | `quick-plan-chain` | Auto-run `deep-plan-quick`, then `deep-implement` |
 | user-facing behavior unclear | `product-ux-preflight` | Dispatch `product-ux`, then route to architecture/planning |
+| visual polish / responsive / accessibility UI work | `visual-ui-flow` | Dispatch visual UI requirement/direction agents, then builder/review/refactor waves |
 | `large` | `deep-plan-chain` | Auto-run full `deep-plan`, then `deep-implement` |
 | `project` | `full-pipeline` | Auto-run `deep-project`, then per-split `deep-plan`, then `deep-implement` |
 
@@ -58,6 +59,22 @@ Execution:
 2. If the agent returns product blockers, ask the smallest possible product question.
 3. If it returns a complete Product UX Brief, inject it into `architect`, `deep-plan-quick`, or `deep-plan` CONTEXT.
 4. Continue through the normal route selected by scope.
+
+## Route: `visual-ui-flow`
+
+Use this route when:
+- the user asks for premium, modern, polished, professional, responsive, accessible, or dark-mode-friendly UI
+- Tailwind CSS, shadcn/ui, component states, visual hierarchy, or production UI QA are in scope
+- a frontend change needs visual/UX/a11y/responsive review beyond normal implementation
+
+Execution:
+1. Read `../visual-ui-enhancement/SKILL.md` and relevant references lazily.
+2. Dispatch or inline `visual-ui-requirement-analyzer` to produce a UI Enhancement Brief.
+3. Dispatch or inline `visual-ui-direction` to choose one coherent direction.
+4. Dispatch `ui-builder` or `frontend` for implementation, depending on whether the task is primarily visual polish or broader frontend behavior.
+5. Run read-only review wave: `visual-ux-reviewer`, `accessibility-reviewer`, and `responsive-reviewer`.
+6. Dispatch `visual-final-refactor` only when review findings require code changes.
+7. Run visual UI quality gates from `quality-gates.md`.
 
 ## Route: `deep-plan-chain`
 

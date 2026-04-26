@@ -1,12 +1,12 @@
 # Sub-Agents Skill Pack
 
-This registry documents all 22 agents available in the SmartSpecPro sub-agents skill pack. Orchestra (the SKILL.md conductor) dispatches these agents across Claude Code, Standard, and open-code workflows to parallelize development work across domains. For Claude Code, agents may also have native `.claude/agents/` definitions (see Section 09) that enable direct invocation via Claude Code's agents feature.
+This registry documents all 29 agents available in the SmartSpecPro sub-agents skill pack. Orchestra (the SKILL.md conductor) dispatches these agents across Claude Code, Standard, and open-code workflows to parallelize development work across domains. For Claude Code, agents may also have native `.claude/agents/` definitions (see Section 09) that enable direct invocation via Claude Code's agents feature.
 
 ---
 
 ## Agent Registry
 
-All 22 agents in this pack. Every row in this table has a corresponding `.md` file in `agents/`.
+All 29 agents in this pack. Every row in this table has a corresponding `.md` file in `agents/`.
 
 | Agent File | Role | CMD | subagent_type (Claude Code) | Output Format | When to Use |
 |---|---|---|---|---|---|
@@ -32,6 +32,13 @@ All 22 agents in this pack. Every row in this table has a corresponding `.md` fi
 | `security-trpc.md` | tRPC security auditor (read-only) | CMD-6 | `backend-api-security:backend-security-coder` | Security findings table | Pre-merge gate — changed tRPC routers |
 | `security-fastapi.md` | FastAPI security auditor (read-only) | CMD-6 | `backend-api-security:backend-security-coder` | Security findings table | Pre-merge gate — changed FastAPI endpoints/Celery tasks |
 | `security-frontend.md` | Frontend security auditor (read-only) | CMD-6 | `backend-api-security:backend-security-coder` | Security findings table | Pre-merge gate — changed React components/pages |
+| `visual-ui-requirement-analyzer.md` | Visual UI requirement analyzer (read-only) | CMD-12 | `Plan` | UI Enhancement Brief | Before visual redesign, responsive, accessibility, or premium UI work |
+| `visual-ui-direction.md` | Visual direction strategist (read-only) | CMD-12 | `Plan` | Visual Direction Brief | Choose visual hierarchy, token, typography, surface, and motion strategy |
+| `ui-builder.md` | Tailwind/shadcn UI builder | CMD-12 | `general-purpose` | Result Report + changed UI files | Implement visual UI polish, component states, responsive styling, and dark-mode-friendly UI |
+| `visual-ux-reviewer.md` | Visual UX reviewer (read-only) | CMD-12 | `Explore` | UX Review Report | Review hierarchy, primary action clarity, copy, states, and recovery paths |
+| `accessibility-reviewer.md` | Accessibility reviewer (read-only) | CMD-12 | `Explore` | Accessibility Review Report | Review keyboard, focus, labels, contrast, ARIA, and reduced motion |
+| `responsive-reviewer.md` | Responsive reviewer (read-only) | CMD-12 | `Explore` | Responsive Review Report | Review mobile/tablet/desktop behavior, overflow, tables, forms, navigation, and touch targets |
+| `visual-final-refactor.md` | Final visual refactor implementer | CMD-12 | `general-purpose` | Result Report + final UI patch | Consolidate visual/UX/a11y/responsive findings into a safe final UI patch |
 
 ---
 
@@ -99,6 +106,13 @@ The pre-merge security check uses a 5-step flow:
 | `security-trpc` | `backend-api-security:backend-security-coder` | `general-purpose` + `security-trpc.md` template | Conductor adopts role |
 | `security-fastapi` | `backend-api-security:backend-security-coder` | `general-purpose` + `security-fastapi.md` template | Conductor adopts role |
 | `security-frontend` | `backend-api-security:backend-security-coder` | `general-purpose` + `security-frontend.md` template | Conductor adopts role |
+| `visual-ui-requirement-analyzer` | `Plan` | `general-purpose` + `visual-ui-requirement-analyzer.md` template | Conductor adopts role |
+| `visual-ui-direction` | `Plan` | `general-purpose` + `visual-ui-direction.md` template | Conductor adopts role |
+| `ui-builder` | `general-purpose` | `general-purpose` + `ui-builder.md` template | Conductor adopts role |
+| `visual-ux-reviewer` | `Explore` | `general-purpose` + `visual-ux-reviewer.md` template | Conductor adopts role |
+| `accessibility-reviewer` | `Explore` | `general-purpose` + `accessibility-reviewer.md` template | Conductor adopts role |
+| `responsive-reviewer` | `Explore` | `general-purpose` + `responsive-reviewer.md` template | Conductor adopts role |
+| `visual-final-refactor` | `general-purpose` | `general-purpose` + `visual-final-refactor.md` template | Conductor adopts role |
 
 ---
 
@@ -126,7 +140,7 @@ The pre-merge security check uses a 5-step flow:
 
 ## Native .claude/agents/ Definitions
 
-The 22 agents in this registry each have a corresponding native definition in `.claude/agents/` that enables Claude Code's auto-dispatch mechanism. These files use YAML frontmatter to configure model, tools, permissions, and isolation.
+The 29 agents in this registry each have a corresponding native definition in `.claude/agents/` that enables Claude Code's auto-dispatch mechanism. These files use YAML frontmatter to configure model, tools, permissions, and isolation.
 
 | Agent File | Native Definition |
 |---|---|
@@ -152,6 +166,13 @@ The 22 agents in this registry each have a corresponding native definition in `.
 | `security-trpc.md` | `.claude/agents/ssp-security-trpc.md` |
 | `security-fastapi.md` | `.claude/agents/ssp-security-fastapi.md` |
 | `security-frontend.md` | `.claude/agents/ssp-security-frontend.md` |
+| `visual-ui-requirement-analyzer.md` | `.claude/agents/ssp-visual-ui-requirement-analyzer.md` |
+| `visual-ui-direction.md` | `.claude/agents/ssp-visual-ui-direction.md` |
+| `ui-builder.md` | `.claude/agents/ssp-ui-builder.md` |
+| `visual-ux-reviewer.md` | `.claude/agents/ssp-visual-ux-reviewer.md` |
+| `accessibility-reviewer.md` | `.claude/agents/ssp-accessibility-reviewer.md` |
+| `responsive-reviewer.md` | `.claude/agents/ssp-responsive-reviewer.md` |
+| `visual-final-refactor.md` | `.claude/agents/ssp-visual-final-refactor.md` |
 
 ---
 

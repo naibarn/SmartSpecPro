@@ -47,6 +47,12 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | `references/platform-compat.md` | Only for `medium` scope and above — Step 4 |
 | `references/result-integration.md` | Only for `medium` scope and above — Step 5 |
 | `references/quality-gates.md` | Always — Step 6 |
+| `references/meta-activation.md` | Always — before Step 1 skill/route classification |
+| `references/worktree-discipline.md` | When scope is `large`/`project`, risk is `high`/`critical`, or unrelated dirty files overlap planned edits |
+| `references/tdd-discipline.md` | When changing routing, gates, security behavior, orchestration behavior, or bug fixes with reproducible failures |
+| `references/verification-before-completion.md` | Always before final summary and after every implementation wave |
+| `references/branch-finishing.md` | When the user asks to commit, push, open PR, keep, discard, or finish a branch |
+| `references/skill-behavior-tests.md` | When adding/changing skills, sub-agents, routing triggers, or quality gates |
 | `references/security-review-protocol.md` | Only when `security_gate_required = true` — Step 5/6 |
 | `references/compaction-safety.md` | Only when context state is `yellow` or `red` — Step 8 |
 | `references/session-resume.md` | Only on resume path — Step 0 |
@@ -193,6 +199,7 @@ If both commands return empty output, skip this check silently and proceed.
 
 ## Step 1: Task Analysis
 
+Read `references/meta-activation.md`.
 Read `references/task-analysis.md`.
 
 Apply classification in this order:
@@ -361,6 +368,7 @@ If ANY trigger applies: set `security_gate_required = true`. Gate runs in Step 6
 ## Step 6: Quality Gates
 
 Read `references/quality-gates.md`.
+Read `references/verification-before-completion.md` before reporting any wave or final completion status.
 
 **Gate inventory:**
 
@@ -376,6 +384,7 @@ Read `references/quality-gates.md`.
 | Security review (general) | Dispatch `security.md` agent | Risk = HIGH | Blocking for CRITICAL findings |
 | Full test suite | All relevant repo test suites | Risk = CRITICAL | Always blocking |
 | Pre-merge security gate | 3-specialist parallel audit (see below) | `security_gate_required = true` | CRITICAL findings block |
+| Visual UI gates | Visual polish, accessibility, responsive, component states, dark/light, screenshot/E2E | UI visual polish, responsive, accessibility, route-level UI changes | Blocking for MEDIUM+ user workflows when primary action, accessibility, or responsive usability fails |
 
 **Blocking policy:**
 - LOW/MEDIUM risk tasks: gate failures are warnings (log and continue)
@@ -565,6 +574,10 @@ After the report:
 - Ask the user what to do next only if `decision-mode` is `ask_every_choice` or if a remaining item requires destructive/irreversible acceptance.
 
 ### Final Summary (after review)
+
+Before printing the final summary, apply `references/verification-before-completion.md`.
+If the user asked to commit, push, open a PR, keep, discard, or otherwise finish the
+branch, also apply `references/branch-finishing.md`.
 
 Print the final summary:
 - Files created and modified (with absolute paths)

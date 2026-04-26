@@ -1,128 +1,93 @@
-# Orchestra Contracts — Monitoring System
+# Orchestra Contracts — Skill System vNext
 
-## Interface: DB Schema → Backend tRPC Router
-**Owner:** ssp-database (Wave 1) produces; ssp-backend (Wave 2) consumes
+## Contract 1: Superpowers Patterns → Orchestra References
 
-### Tables
-```typescript
-// monitoringChecks
-{
-  id: serial PK,
-  checkType: text,           // "health_check" | "crash_monitor" | "celery_health" | "memory_check"
-  status: text,              // "ok" | "warning" | "critical" | "error"
-  details: json,             // { services: {...}, memory: {...}, ... }
-  alertSent: boolean,
-  alertChannel: text | null, // "slack" | "discord" | "webhook" | null
-  source: text,              // "cron_script" | "celery_task" | "guardian"
-  createdAt: timestamp
-}
+Pattern references must be stored under:
 
-// monitoringAlerts
-{
-  id: serial PK,
-  severity: text,            // "info" | "warning" | "error" | "critical"
-  title: text,
-  message: text,
-  channel: text,             // "slack" | "discord" | "webhook" | "log"
-  acknowledged: boolean,
-  acknowledgedBy: integer | null,  // users.id FK
-  acknowledgedAt: timestamp | null,
-  metadata: json,            // { checkId, service, threshold, ... }
-  createdAt: timestamp
-}
-
-// systemMetricsHistory
-{
-  id: serial PK,
-  memoryUsedMb: integer,
-  memoryTotalMb: integer,
-  memoryPercent: real,
-  cpuPercent: real | null,
-  diskUsedGb: real | null,
-  diskTotalGb: real | null,
-  serviceStatuses: json,     // { web: "active"|"failed", backend: "active"|"failed", ... }
-  processRestartCounts: json, // { web: N, backend: N }
-  createdAt: timestamp
-}
+```text
+skills/orchestra/references/
 ```
 
-## Interface: tRPC Router → Frontend
-**Owner:** ssp-backend (Wave 2) produces; ssp-frontend (Wave 3) consumes
+Required files:
 
-### Procedures (all under `monitoring.*`, all adminProcedure)
-```typescript
-// monitoring.getChecks — paginated list
-input: { page: number, limit: number, status?: string, checkType?: string, since?: string }
-output: { checks: MonitoringCheck[], total: number, page: number }
+- `meta-activation.md`
+- `worktree-discipline.md`
+- `verification-before-completion.md`
+- `tdd-discipline.md`
+- `branch-finishing.md`
+- `skill-behavior-tests.md`
 
-// monitoring.getAlerts — paginated + filter
-input: { page: number, limit: number, severity?: string, acknowledged?: boolean }
-output: { alerts: MonitoringAlert[], total: number }
+`skills/orchestra/SKILL.md` must mention when each reference is read. The references must preserve SmartSpecPro's current goals:
 
-// monitoring.acknowledgeAlert — mark as read
-input: { alertId: number }
-output: { success: boolean }
+- Works for Codex and Claude from one skill pack.
+- Does not require `.venv`.
+- Does not require external LLM API wiring.
+- Keeps direct small tasks lightweight.
 
-// monitoring.getMetricsHistory — for charts
-input: { hours: number }  // 1, 6, 24, 48
-output: { metrics: MetricPoint[], latestMemoryPercent: number, latestCpuPercent: number }
+## Contract 2: Visual UI Skill → Repo Skill Folder
 
-// monitoring.getCurrentStatus — live status
-input: (none)
-output: { services: ServiceStatus[], alerts: { critical: number, warning: number }, lastCheck: string | null }
+The active visual UI skill lives at:
+
+```text
+skills/visual-ui-enhancement/
 ```
 
-### Types
-```typescript
-type ServiceStatus = { name: string; status: "ok" | "warning" | "critical" | "unknown"; restarts: number; memoryMb?: number }
-type MetricPoint = { ts: string; memoryPercent: number; cpuPercent: number | null; diskPercent: number | null }
+It must include:
+
+- `SKILL.md`
+- `README.md`
+- `VERSION`
+- `LICENSE`
+- `references/`
+- `templates/`
+- `examples/`
+- `codex/`
+- `claude-code/`
+
+The active package must not require:
+
+- `.venv`
+- `OPENAI_API_KEY`
+- external OpenAI Agents Python runtime
+
+Optional external integration material may be omitted from the active repo skill or documented as excluded.
+
+## Contract 3: UI/UX Agents → Registry and Native Definitions
+
+Required SmartSpecPro agent files:
+
+- `skills/sub-agents/agents/visual-ui-requirement-analyzer.md`
+- `skills/sub-agents/agents/visual-ui-direction.md`
+- `skills/sub-agents/agents/ui-builder.md`
+- `skills/sub-agents/agents/visual-ux-reviewer.md`
+- `skills/sub-agents/agents/accessibility-reviewer.md`
+- `skills/sub-agents/agents/responsive-reviewer.md`
+- `skills/sub-agents/agents/visual-final-refactor.md`
+
+Required native Claude definitions:
+
+- `.claude/agents/ssp-visual-ui-requirement-analyzer.md`
+- `.claude/agents/ssp-visual-ui-direction.md`
+- `.claude/agents/ssp-ui-builder.md`
+- `.claude/agents/ssp-visual-ux-reviewer.md`
+- `.claude/agents/ssp-accessibility-reviewer.md`
+- `.claude/agents/ssp-responsive-reviewer.md`
+- `.claude/agents/ssp-visual-final-refactor.md`
+
+All new agents must appear in:
+
+- `skills/sub-agents/README.md`
+- `skills/orchestra/references/sub-agent-dispatch.md`
+
+## Contract 4: Verification
+
+The completed work must pass:
+
+```bash
+bash skills/audit-skills.sh
+bash skills/publish-to-installed-skills.sh
+bash skills/verify-installed-skills-sync.sh
 ```
 
-## Interface: Python Celery → Internal Express Route (POST /api/internal/metrics/push)
-**Owner:** ssp-infrastructure + ssp-backend define endpoint; ssp-python consumes
+If a long test suite is unavailable or blocked by existing unrelated dirty app work, record the blocker explicitly.
 
-### Auth: `X-Internal-Token: {SMARTSPEC_WEB_GATEWAY_TOKEN}` (same pattern as internalSocialActions.ts)
-
-### Payload
-```json
-{
-  "checkType": "celery_health_monitor",
-  "status": "ok" | "warning" | "critical",
-  "source": "celery_task",
-  "details": {
-    "memoryUsedMb": 1200,
-    "memoryTotalMb": 8192,
-    "memoryPercent": 14.6,
-    "cpuPercent": 23.1,
-    "diskUsedGb": 45.2,
-    "diskTotalGb": 100.0,
-    "services": { "web": "active", "backend": "active" },
-    "processRestartCounts": { "web": 0, "backend": 0 }
-  },
-  "alert": null | {
-    "severity": "warning" | "critical",
-    "title": "...",
-    "message": "...",
-    "channel": "log"
-  }
-}
-```
-
-## File Ownership
-| File | Owner Wave | Agent |
-|------|-----------|-------|
-| apps/web/drizzle/schema.ts | Wave 1 | ssp-database |
-| apps/web/drizzle/0120_*.sql | Wave 1 | ssp-database |
-| scripts/health-check.sh | Wave 1 | ssp-infrastructure |
-| scripts/system-crash-monitor.sh | Wave 1 | ssp-infrastructure |
-| scripts/alert-monitor.sh | Wave 1 | ssp-infrastructure |
-| apps/web/.env (VIRTUAL_ADMIN_ENABLED only) | Wave 1 | ssp-infrastructure |
-| apps/web/server/routes/internalMetrics.ts | Wave 2 | ssp-backend |
-| apps/web/server/routers/monitoring.ts | Wave 2 | ssp-backend |
-| apps/web/server/services/monitoringService.ts | Wave 2 | ssp-backend |
-| apps/web/server/routers.ts | Wave 2 | ssp-backend |
-| apps/web/server/_core/index.ts | Wave 2 | ssp-backend |
-| python-backend/app/tasks/system_health_task.py | Wave 2 | ssp-python |
-| python-backend/app/core/celery_app.py | Wave 2 | ssp-python |
-| apps/web/client/src/pages/AdminMonitoring.tsx | Wave 3 | ssp-frontend |
-| apps/web/client/src/App.tsx | Wave 3 | ssp-frontend |

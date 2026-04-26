@@ -12,3 +12,10 @@ find skills \
 find skills \
   \( -name '*.pyc' -o -name '*.pyo' \) \
   -type f -print -delete
+
+while IFS= read -r lockfile; do
+  if ! git ls-files --error-unmatch "$lockfile" >/dev/null 2>&1; then
+    printf '%s\n' "$lockfile"
+    rm -f "$lockfile"
+  fi
+done < <(find skills -name 'uv.lock' -type f)

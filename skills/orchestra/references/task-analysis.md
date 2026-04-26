@@ -87,6 +87,7 @@ Read `intent-regression-suite.md` whenever a message feels borderline, when you 
 - “ช่วยวางแผนแล้วทำต่อ” / “ช่วยจัดการงานนี้ให้จบ” / “แตกงานให้หน่อย”
 - “implement this end-to-end” / “plan and execute” / “coordinate this work”
 - “what all needs to change” / “drive this to completion”
+- “ปรับ UI ให้ premium/modern/responsive/accessible” / “ทำ UX ให้ดีขึ้น” when the request implies code changes or review across UI files
 
 ### Message Patterns That Usually Do NOT Mean Orchestra
 - narrow factual Q&A
@@ -123,6 +124,9 @@ Apply **first-match-wins** in priority order. Stop at the first matching rule.
 **Quick-plan override:** If scope lands in `small` or `medium` but the request is still under-specified, has no `spec.md`, or would benefit from a written plan before coding, choose `quick-plan-chain` instead of going straight to implementation.
 
 **Product-UX preflight:** If scope lands in `medium`, `large`, or `project` and user-facing behavior, role behavior, UX states, or acceptance criteria are unclear, dispatch `ssp-product-ux` before architecture or deep planning. Its Product UX Brief becomes CONTEXT for `architect`, `deep-plan-quick`, or `deep-plan`.
+
+**Visual UI preflight:** If the request asks for premium/modern UI, visual polish, responsive behavior, accessibility, dark mode, Tailwind/shadcn cleanup, or production-ready frontend refinement, route through the visual UI workflow:
+`visual-ui-requirement-analyzer` → `visual-ui-direction` → `ui-builder`/`frontend` → `visual-ux-reviewer` + `accessibility-reviewer` + `responsive-reviewer` → `visual-final-refactor` as needed.
 
 **SmartSpecPro-specific scope examples:**
 
@@ -164,6 +168,7 @@ Apply **in parallel** with scope (not as a gating step). Record both independent
 - "bypass", "drop", "truncate", "credential", "key", "secret", "payment", "billing" → CRITICAL
 - "dependency", "lockfile", "package", "npm", "pnpm", "pip", "uv", "Docker image", "GitHub Actions", "CI", "deploy" → MEDIUM minimum
 - "load test", "performance", "latency", "timeout", "N+1", "slow query", "cache" → MEDIUM minimum
+- "premium UI", "modern UI", "responsive", "accessibility", "a11y", "dark mode", "Tailwind", "shadcn", "visual polish", "UX" → LOW minimum; MEDIUM when multiple UI files or user workflows are affected
 
 ---
 

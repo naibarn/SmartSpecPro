@@ -53,6 +53,7 @@ Match the domain to the `subagent_type` you will pass to the `Task` tool:
 | CMD-9 Performance | `general-purpose` | Performance-sensitive source/config after baseline |
 | CMD-10 CI Release | `general-purpose` | `.github/workflows/`, workflow scripts, release docs |
 | CMD-11 Supply Chain | `general-purpose` | Manifests, lockfiles, Dockerfiles, workflow versions |
+| CMD-12 Visual UI | `Plan`, `Explore`, or `general-purpose` | UI requirement briefs, visual direction, Tailwind/shadcn UI patches, UX/a11y/responsive review |
 
 ---
 
@@ -137,6 +138,7 @@ OUTPUT:
 | E2E browser | Use discovered Playwright command, or dispatch `e2e-playwright.md` |
 | Workflow validation | `cd /home/dev/projects/SmartSpecPro && bash .github/workflows/tests/workflow-validation.test.sh` |
 | Skill pack validation | `cd /home/dev/projects/SmartSpecPro && bash skills/audit-skills.sh` |
+| Visual UI validation | `cd /home/dev/projects/SmartSpecPro/apps/web && pnpm check` plus visual polish/accessibility/responsive checklist |
 | Dependency audit | Use ecosystem-specific audit/tree command if installed; otherwise dispatch `dependency-supply-chain.md` |
 | Read-only audit | `skipped (read-only — no files modified)` |
 

@@ -1,6 +1,6 @@
 # Quality Gates
 
-Defines all 10 gate types that the orchestra conductor runs after each wave of agent work. Read by SKILL.md Step 6. Risk level terminology follows `task-analysis.md`. Commands below are SmartSpecPro defaults. If the active plan or repository docs define explicit `typecheck`, `lint`, or `test` commands, those discovered commands override the defaults.
+Defines all 16 gate types that the orchestra conductor runs after each wave of agent work. Read by SKILL.md Step 6. Risk level terminology follows `task-analysis.md`. Commands below are SmartSpecPro defaults. If the active plan or repository docs define explicit `typecheck`, `lint`, or `test` commands, those discovered commands override the defaults.
 
 ---
 
@@ -18,6 +18,12 @@ Defines all 10 gate types that the orchestra conductor runs after each wave of a
 | 8 | Security Review (General) | Dispatch `security.md` agent (spot check only — not the full pre-merge gate) | Task risk level is HIGH | CRITICAL findings: blocking; HIGH findings: warning unless task is CRITICAL | 3 |
 | 9 | Full Test Suite | `cd apps/web && pnpm test` AND `cd python-backend && pytest` | CRITICAL risk tasks | Always blocking | 3 |
 | 10 | Pre-Merge Security Gate | Dispatch security-trpc + security-fastapi + security-frontend specialists in parallel, then route findings to security-review aggregator (see `security-review-protocol.md`) | Trigger conditions defined in `security-review-protocol.md` | Always blocking until verdict returned | 3 per specialist (managed by security-review-protocol.md) |
+| 11 | Visual Polish Gate | Apply `visual-ui-enhancement/references/visual-polish-checklist.md`; dispatch `visual-ux-reviewer` when needed | UI visual polish, premium/modern UI, or major page/component layout changed | Warning for LOW/MEDIUM; blocking for HIGH/CRITICAL user-facing launch surfaces | 2 |
+| 12 | Accessibility Gate | Apply `visual-ui-enhancement/references/accessibility-qa.md`; dispatch `accessibility-reviewer` | Interactive UI, forms, navigation, icon-only buttons, focus or keyboard behavior changed | Blocking for user-facing interactive changes; warning for read-only visual copy | 2 |
+| 13 | Responsive Gate | Apply `visual-ui-enhancement/references/responsive-qa.md`; dispatch `responsive-reviewer` | Layout, grids, tables, forms, navigation, or dashboard surfaces changed | Blocking when mobile/tablet route is primary; otherwise warning | 2 |
+| 14 | Component State Gate | Apply `visual-ui-enhancement/references/component-states.md` | New/modified UI with async data, forms, or actions | Warning for LOW; blocking for MEDIUM+ user workflows | 2 |
+| 15 | Dark/Light Mode Gate | Inspect semantic tokens and dark-mode classes | UI surface uses color/surfaces or theme-aware components | Warning; blocking when contrast/readability fails on primary workflow | 2 |
+| 16 | UI Screenshot/E2E Gate | Dispatch `e2e-playwright.md` or run discovered Playwright screenshot command | Browser-visible workflow, responsive behavior, or route-level UI changed | HIGH/CRITICAL blocking; MEDIUM warning unless explicitly requested | 2 |
 
 ---
 
@@ -123,6 +129,42 @@ See `security-review-protocol.md` for complete protocol. Summary:
 This gate is always blocking — no workflow-level bypass. Only the security-review aggregator
 can unblock it by returning a PASS or CONDITIONAL verdict.
 
+### Gate 11: Visual Polish Gate
+
+Use `skills/visual-ui-enhancement/references/visual-polish-checklist.md` to check hierarchy,
+composition, typography, color/surfaces, and premium restraint. For substantial UI changes,
+dispatch `visual-ux-reviewer.md` and include its verdict in the wave result.
+
+### Gate 12: Accessibility Gate
+
+Use `skills/visual-ui-enhancement/references/accessibility-qa.md` and dispatch
+`accessibility-reviewer.md` for interactive UI changes. Check semantic controls, labels,
+keyboard access, focus visibility, icon-only accessible names, contrast risk, and reduced
+motion.
+
+### Gate 13: Responsive Gate
+
+Use `skills/visual-ui-enhancement/references/responsive-qa.md` and dispatch
+`responsive-reviewer.md` when layouts, dashboards, tables, navigation, or forms change.
+Check mobile, tablet, laptop, and desktop behavior plus overflow and touch targets.
+
+### Gate 14: Component State Gate
+
+Use `skills/visual-ui-enhancement/references/component-states.md`. Any async, form, or
+action-oriented UI should cover loading, empty, error, disabled, success, hover, active,
+selected, and focus states as applicable.
+
+### Gate 15: Dark/Light Mode Gate
+
+Prefer semantic tokens over raw colors. Verify foreground/background pairing, muted text,
+borders, focus rings, destructive states, and status colors remain readable in both themes.
+
+### Gate 16: UI Screenshot/E2E Gate
+
+Use `e2e-playwright.md` or a discovered Playwright command for route-level UI changes,
+responsive work, or when visual correctness cannot be inferred from code. Include viewport
+coverage in the result.
+
 ---
 
 ## Gate Failure Protocol
@@ -163,6 +205,10 @@ bash .github/workflows/tests/workflow-validation.test.sh
 
 # Skill pack validation
 bash skills/audit-skills.sh
+
+# Installed skill publication and sync
+bash skills/publish-to-installed-skills.sh
+bash skills/verify-installed-skills-sync.sh
 
 # Full test suite (both SmartSpecPro defaults)
 cd apps/web && pnpm test && cd ../../python-backend && pytest

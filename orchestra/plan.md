@@ -1,36 +1,51 @@
 # Orchestra Plan
 
 ## Task
-สร้างระบบ Server Monitoring ครบวงจร: แก้ scripts ที่ broken, เพิ่ม DB schema เก็บ metrics/alerts,
-tRPC router, Python Celery health task, และ Admin UI หน้า /admin/monitoring
+Upgrade the SmartSpecPro skill system by borrowing selected superpowers methodology patterns and integrating the visual UI enhancement skill as a first-class repo skill.
 
-## Classification
-- scope: medium
-- risk: high
-- affected_domains: [infrastructure, database, backend-trpc, frontend, python-celery]
-- estimated_file_count: 18
-- chosen_route: multi-agent waves
-- task_summary: Full monitoring stack — fix scripts, DB schema, backend API, Python collector, Admin UI
-- security_gate_required: true (new tRPC router + new internal FastAPI endpoint)
+## Task Classification
+- Scope: large
+- Risk: medium
+- Affected domains: skills/orchestra, skills/sub-agents, .claude/agents, skill validation, installed skill sync
+- Estimated file count: 25+
+- Chosen route: multi-agent-waves with conductor-owned implementation
+- Bug route: false
+- Classification notes: This is a cross-skill-system enhancement touching routing, quality gates, agent registry, native Claude agent definitions, and validation scripts. Risk is medium because it changes development workflow behavior but not application runtime, auth, DB, or external APIs.
 
-## Context: Current Issues Found
-1. health-check.sh cron (every 5min) — checks service UP/DOWN only, no alert, no HTTP error rate
-2. system-crash-monitor.sh cron (every 1min) — BROKEN, reads missing .tmp file
-3. VIRTUAL_ADMIN_ENABLED not set — Guardian disabled
-4. All alert webhooks empty (SLACK_WEBHOOK_URL, DISCORD_WEBHOOK_URL, ALERT_WEBHOOK_URL)
-5. Critical production bug: service restarts loop until RAM exhausted — no proactive detection
+## Intent Activation
+- Explicit invocation: user invoked `$orchestra` and asked to plan and implement fully.
+- Matched signals: planning + execution delegation, end-to-end ownership, skill-system-wide changes.
+- Orchestra ownership is justified because the work spans multiple skill packs, agent routing, quality gates, and validation.
+
+## Scope Boundaries
+- Include: repo-local `skills/`, `.claude/agents/`, `orchestra/` state files, installed skill publication under the existing sync scripts.
+- Exclude: unrelated dirty `apps/web/` changes and existing `specs/quick/001-auto-team-capability-routing/` work.
+- Exclude: external LLM API wiring, `.venv`-dependent runtime integration, and app runtime feature changes.
 
 ## Wave Plan
 
-### Wave 1 (parallel): DB Schema + Infrastructure Scripts
-- [DB] ssp-database: Add monitoringChecks, monitoringAlerts, systemMetricsHistory tables to drizzle/schema.ts, run db:push
-- [INFRA] ssp-infrastructure: Fix system-crash-monitor.sh, upgrade health-check.sh (add memory/error-rate), enable VIRTUAL_ADMIN_ENABLED, create alert-monitor systemd service
+### Wave 1: Superpowers Pattern Foundation
+- Add orchestra references for meta activation, worktree discipline, verification before completion, TDD discipline, branch finishing, and skill behavior tests.
+- Wire those references into `skills/orchestra/SKILL.md` and relevant routing/quality docs.
 
-### Wave 2 (parallel): Backend Services + Python Celery Task
-- [BACKEND] ssp-backend: Create monitoring.ts tRPC router + monitoringService.ts (depends on Wave 1 DB schema)
-- [PYTHON] ssp-python: Create system_health_task.py Celery beat task + register in celery_app.py (depends on Wave 1)
+### Wave 2: Visual UI Skill Integration
+- Extract `skills/visual-ui-enhancement-multiplatform.zip` into a repo-local `skills/visual-ui-enhancement/` folder.
+- Remove or neutralize `.venv` / external `OPENAI_API_KEY` runtime dependency from the active skill package.
+- Preserve portable Codex/Claude/manual references.
 
-### Wave 3: Frontend Admin UI
-- [FRONTEND] ssp-frontend: Create AdminMonitoring.tsx page + wire route in App.tsx (depends on Wave 2 tRPC)
+### Wave 3: UI/UX Agent Coverage
+- Add SmartSpecPro sub-agent definitions for visual UI requirement analysis, visual direction, UI building, UX review, accessibility review, responsive review, and final visual refactor.
+- Add matching `.claude/agents/ssp-*` native definitions.
+- Update sub-agent registry and dispatch mapping.
 
-## Contracts (see contracts.md)
+### Wave 4: Gates and Behavior Validation
+- Add UI/UX quality gates to orchestra quality gates.
+- Add skill behavior scenarios for meta activation and visual UI routing.
+- Update audit validation to catch missing superpowers-pattern references, UI gates, visual skill dependency leaks, and behavior scenarios.
+
+### Wave 5: Verification and Publication
+- Run skill audit.
+- Publish to installed skills.
+- Verify installed sync.
+- Report final status and residual risks.
+

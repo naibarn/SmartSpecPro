@@ -84,9 +84,81 @@ if sub_agents_dir.exists() and sub_agents_readme.exists():
         "Performance Gate",
         "CI/Release Gate",
         "Dependency/Supply-Chain Gate",
+        "Visual Polish Gate",
+        "Accessibility Gate",
+        "Responsive Gate",
+        "Component State Gate",
     ]:
         if required_gate not in quality_gates_text:
             errors.append(f"skills/orchestra/references/quality-gates.md: missing gate {required_gate}")
+
+required_orchestra_refs = [
+    "meta-activation.md",
+    "worktree-discipline.md",
+    "verification-before-completion.md",
+    "tdd-discipline.md",
+    "branch-finishing.md",
+    "skill-behavior-tests.md",
+    "skill-behavior-scenarios.json",
+]
+for ref in required_orchestra_refs:
+    ref_path = root / "orchestra" / "references" / ref
+    if not ref_path.exists():
+        errors.append(f"{ref_path}: missing orchestra reference")
+
+visual_skill_dir = root / "visual-ui-enhancement"
+if visual_skill_dir.exists():
+    for required in [
+        "SKILL.md",
+        "README.md",
+        "VERSION",
+        "LICENSE",
+        "references/visual-polish-checklist.md",
+        "references/accessibility-qa.md",
+        "references/responsive-qa.md",
+        "references/component-states.md",
+    ]:
+        if not (visual_skill_dir / required).exists():
+            errors.append(f"{visual_skill_dir / required}: missing visual UI skill file")
+    if (visual_skill_dir / "integrations" / "openai-agents-python").exists():
+        errors.append("skills/visual-ui-enhancement: active package must not include openai-agents-python integration")
+    forbidden_runtime_patterns = [
+        "python -m venv",
+        "source .venv",
+        "pip install -r requirements.txt",
+        "export OPENAI_API_KEY",
+    ]
+    for text_file in visual_skill_dir.rglob("*.md"):
+        text = text_file.read_text(encoding="utf-8")
+        for pattern in forbidden_runtime_patterns:
+            if pattern in text:
+                errors.append(f"{text_file}: forbidden runtime setup pattern: {pattern}")
+
+scenario_path = root / "orchestra" / "references" / "skill-behavior-scenarios.json"
+if scenario_path.exists():
+    try:
+        scenario_data = json.loads(scenario_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        errors.append(f"{scenario_path}: invalid JSON: {exc}")
+        scenario_data = {}
+    scenarios = scenario_data.get("scenarios", []) if isinstance(scenario_data, dict) else []
+    if len(scenarios) < 5:
+        errors.append(f"{scenario_path}: expected at least 5 behavior scenarios")
+    known_agents = {path.stem for path in sub_agents_dir.glob("*.md")} if sub_agents_dir.exists() else set()
+    known_gates = (root / "orchestra" / "references" / "quality-gates.md").read_text(encoding="utf-8") if (root / "orchestra" / "references" / "quality-gates.md").exists() else ""
+    for scenario in scenarios:
+        for field in ["id", "user_message", "expected_owner", "expected_route", "why"]:
+            if not scenario.get(field):
+                errors.append(f"{scenario_path}: scenario missing {field}: {scenario}")
+        for agent in scenario.get("expected_agents", []):
+            if agent not in known_agents:
+                errors.append(f"{scenario_path}: scenario {scenario.get('id')} references unknown agent {agent}")
+        for gate in scenario.get("expected_gates", []):
+            if gate not in known_gates and gate not in {
+                "Verification Before Completion",
+                "Skill Behavior Tests",
+            }:
+                errors.append(f"{scenario_path}: scenario {scenario.get('id')} references unknown gate {gate}")
 
 if errors:
     print("skill audit failed")
