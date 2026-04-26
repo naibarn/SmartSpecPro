@@ -1,6 +1,6 @@
 # Project Skills
 
-This folder is the repo-backed source for the SmartSpecPro portable skill pack.
+This folder is the repo-backed source for the portable skill pack.
 The same pack is intended to run in Codex and Claude-compatible hosts.
 
 Why this exists:
@@ -12,7 +12,10 @@ Why this exists:
   host model through the skill instructions
 
 Mirrored installed skills:
-- see [`mirrored-skills.txt`](/home/dev/projects/SmartSpecPro/skills/mirrored-skills.txt)
+- see `mirrored-skills.txt`
+
+Main usage guide:
+- `ORCHESTRA-USAGE-GUIDE.md` — Thai guide for calling `orchestra` across UI/UX, backend, security, debugging, testing, release, and skill-system work.
 
 Notes:
 - `.system` skills are intentionally not mirrored here because they are managed
