@@ -24,12 +24,12 @@ Use these rules when orchestra decides to leave the normal wave model:
 
 - `deep-plan-chain`
   - Use when scope is `large`, when a `spec.md` already exists, or when the task needs the full structured planning pipeline.
-  - Planner: `../../deep-plan/SKILL.md`
+  - Planner: `../../deep-plan/skills/deep-plan/SKILL.md`
 
 - `full-pipeline`
   - Use when scope is `project` and the request must first be decomposed into multiple feature/spec units.
-  - Decomposer: `../../deep-project/SKILL.md`
-  - Follow-on planner per split: `../../deep-plan/SKILL.md`
+  - Decomposer: `../../deep-project/skills/deep-project/SKILL.md`
+  - Follow-on planner per split: `../../deep-plan/skills/deep-plan/SKILL.md`
 
 ## Automatic Large-Scope Planning
 
@@ -37,7 +37,7 @@ When scope is `large`:
 
 1. Create or refresh `specs/feature/NNN-name/spec.md`.
 2. Write a backlog entry with the expected planning artifacts.
-3. Read `../../deep-plan/SKILL.md` and execute that workflow immediately.
+3. Read `../../deep-plan/skills/deep-plan/SKILL.md` and execute that workflow immediately.
 4. Verify these artifacts exist:
    - `claude-plan.md`
    - `claude-plan-tdd.md`
@@ -58,7 +58,7 @@ When a written plan is useful but the request is still small/medium or under-spe
    - `implementation-plan.md`
    - `sections/index.md`
    - at least one `sections/section-*.md`
-5. If the quick planner determines the task is actually `large`, promote the work into the full `deep-plan-chain` by synthesizing `spec.md` and switching to `../../deep-plan/SKILL.md`.
+5. If the quick planner determines the task is actually `large`, promote the work into the full `deep-plan-chain` by synthesizing `spec.md` and switching to `../../deep-plan/skills/deep-plan/SKILL.md`.
 6. Continue directly into `deep-implement` using the generated `sections/` directory.
 
 ## Automatic Project Decomposition
@@ -67,7 +67,7 @@ When scope is `project`:
 
 1. Create or refresh `specs/project/NNN-name/requirements.md`.
 2. Write a backlog entry with the expected decomposition artifacts.
-3. Read `../../deep-project/SKILL.md` and execute it immediately.
+3. Read `../../deep-project/skills/deep-project/SKILL.md` and execute it immediately.
 4. For each generated split spec, invoke the full `deep-plan-chain` automatically.
 5. For each completed plan, invoke `deep-implement` automatically.
 6. Aggregate progress, decisions, and blockers centrally in `orchestra/`.
@@ -113,7 +113,7 @@ If orchestration is interrupted and `/orchestra resume` is invoked:
 
 After planning artifacts exist and are verified:
 
-1. Read `../../deep-implement/SKILL.md`.
+1. Read `../../deep-implement/skills/deep-implement/SKILL.md`.
 2. Run it against the generated `sections/` directory.
 3. Track commits, tests, blocked tasks, and hardening decisions in the same `orchestra/` session.
 4. If `deep-implement` generates a hardening follow-up plan, keep that inside the same orchestra backlog rather than handing control back to the user.

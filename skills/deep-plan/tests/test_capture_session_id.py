@@ -193,6 +193,18 @@ class TestCaptureSessionIdHook:
         captured = capsys.readouterr()
         assert "DEEP_SESSION_ID=my-session" in captured.out
 
+    def test_rejects_env_file_outside_host_dirs(self, hook_module, capsys):
+        """Unsafe env-file paths should not be written."""
+        payload = {"session_id": "my-session"}
+
+        with patch.dict("os.environ", {"CLAUDE_ENV_FILE": "/etc/codex-env"}, clear=True):
+            with patch("sys.stdin", StringIO(json.dumps(payload))):
+                result = hook_module.main()
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "DEEP_SESSION_ID=my-session" in captured.out
+
     def test_skips_duplicate_session_id(self, tmp_path, hook_module):
         """If session_id already in file, don't write again (multiple plugins)."""
         env_file = tmp_path / "env"

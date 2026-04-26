@@ -118,12 +118,15 @@ def main() -> int:
         return 0
 
     # 6. Write to destination
-    sections_path = Path(sections_dir)
+    sections_path = Path(sections_dir).resolve(strict=False)
     if not sections_path.exists():
         debug_log(f"sections_dir does not exist: {sections_dir}")
         return 0
 
-    output_path = sections_path / filename
+    output_path = (sections_path / filename).resolve(strict=False)
+    if output_path.parent != sections_path:
+        debug_log(f"Derived output path escapes sections_dir: {output_path}")
+        return 0
     try:
         output_path.write_text(content)
         debug_log(f"Wrote {len(content)} bytes to {output_path}")

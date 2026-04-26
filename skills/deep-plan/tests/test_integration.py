@@ -35,11 +35,13 @@ class TestFullWorkflow:
         assert "warnings" in output
         assert "gemini_auth" in output
         assert "openai_auth" in output
+        assert output["external_llm"] == "disabled"
+        assert output["runtime_mode"] == "portable"
         assert "plugin_root" in output
 
     @pytest.mark.integration
-    def test_review_exits_1_without_auth(self, plugin_root, tmp_path):
-        """Should exit 1 when no LLM auth configured."""
+    def test_review_reports_self_review_mode_without_auth(self, plugin_root, tmp_path):
+        """Should not require external LLM auth."""
         import sys
         sys.path.insert(0, str(plugin_root / "scripts"))
         from lib.config import create_session_config
@@ -64,7 +66,7 @@ class TestFullWorkflow:
         env["HOME"] = str(tmp_path)  # No ADC here
 
         result = subprocess.run(
-            ["uv", "run",
+            ["python3",
              str(plugin_root / "scripts" / "llm_clients" / "review.py"),
              "--planning-dir", str(planning_dir)],
             env=env,
@@ -73,9 +75,10 @@ class TestFullWorkflow:
             timeout=15,
         )
 
-        assert result.returncode == 1
+        assert result.returncode == 0
         output = json.loads(result.stdout)
-        assert "error" in output
+        assert output["external_llm"] == "disabled"
+        assert output["review_mode"] == "self_review"
 
 
 class TestPluginStructure:
@@ -110,8 +113,9 @@ class TestPluginStructure:
         data = json.loads(config_json.read_text())
         assert "context" in data, "config.json missing 'context'"
         assert "external_review" in data, "config.json missing 'external_review'"
-        assert "models" in data, "config.json missing 'models'"
-        assert "llm_client" in data, "config.json missing 'llm_client'"
+        assert data["external_review"]["enabled"] is False
+        assert "runtime" in data, "config.json missing 'runtime'"
+        assert data["runtime"]["requires_uv_at_runtime"] is False
 
     def test_skill_exists(self, plugin_root):
         """Should have deep-plan skill at skills/deep-plan/SKILL.md."""

@@ -283,8 +283,10 @@ END_MANIFEST -->
         # Config should also include global config settings (copied from plugin's config.json)
         assert "context" in config
         assert "check_enabled" in config["context"]
-        assert "models" in config
         assert "external_review" in config
+        assert config["external_review"]["enabled"] is False
+        assert "runtime" in config
+        assert config["runtime"]["requires_uv_at_runtime"] is False
 
     # --- Task writing tests ---
 

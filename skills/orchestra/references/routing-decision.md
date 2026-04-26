@@ -57,7 +57,7 @@ Execution:
 2. Auto-review the spec for completeness, clarity, scope boundary, and technical risk.
 3. Apply planner-owned technical improvements automatically.
 4. Ask the user only if product intent is still ambiguous.
-5. Read `../../deep-plan/SKILL.md` and execute it.
+5. Read `../../deep-plan/skills/deep-plan/SKILL.md` and execute it.
 6. Verify `claude-plan.md`, `claude-plan-tdd.md`, and `sections/index.md` exist.
 7. Continue directly into `deep-implement`.
 
@@ -68,7 +68,7 @@ Use this route when scope is `project` and decomposition is required first.
 Execution:
 1. Create or refresh `specs/project/NNN-name/requirements.md`.
 2. Auto-review the requirements document for decomposability, shared contracts, dependency order, and missing scope.
-3. Read `../../deep-project/SKILL.md` and execute it.
+3. Read `../../deep-project/skills/deep-project/SKILL.md` and execute it.
 4. For each generated split spec, run the full `deep-plan-chain` automatically.
 5. For each completed split plan, run `deep-implement` automatically.
 6. Aggregate progress in the same `orchestra/` session.

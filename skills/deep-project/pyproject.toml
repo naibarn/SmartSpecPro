@@ -1,7 +1,7 @@
 [project]
 name = "deep-project"
 version = "0.2.1"
-description = "Claude Code plugin for splitting vague requirements into plannable units"
+description = "Portable project decomposition skill for Codex and Claude-compatible hosts"
 requires-python = ">=3.11"
 dependencies = []
 

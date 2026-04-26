@@ -1,32 +1,13 @@
 #!/usr/bin/env bash
-# Environment validator for deep-plan plugin
+# Runtime-neutral environment validator for deep-plan.
 #
-# SECURITY: This script NEVER outputs sensitive credentials.
-# - API keys are checked with [ -n "$VAR" ] which only tests existence, never echoes
-# - ADC validation discards token output (> /dev/null), only exit code is used
-# - JSON output contains only auth METHOD ("api_key", "vertex_ai_adc") or boolean, never actual secrets
-#
-# Checks:
-# 1. uv is installed (REQUIRED - all Python execution uses uv)
-# 2. Gemini auth:
-#    - GEMINI_API_KEY (AI Studio API) OR
-#    - ADC + GCP project (Vertex AI API)
-#      Project source: config.json → gcloud config → GOOGLE_CLOUD_PROJECT env
-# 3. OPENAI_API_KEY is set (for ChatGPT)
-# 4. Test actual client construction (calls test_llm_clients.py)
-#
-# Exit codes:
-# 0 = all checks pass (may have warnings)
-# 1 = missing/stale Gemini auth (when alert_if_missing=true)
-# 2 = missing OpenAI key (when alert_if_missing=true)
-# 3 = could not locate plugin root
-# 5 = uv not installed
+# This skill pack is designed to run in Codex and Claude-compatible hosts
+# without external LLM API credentials. Validation checks only local runtime
+# shape and plugin files. Legacy auth fields remain in the JSON output as
+# null/false for compatibility with older callers.
 
 set -euo pipefail
 
-# Derive plugin root from script location.
-# The installed layout keeps the skill directory one level below the shared
-# plugin config, so we probe the script root and its parent for config.json.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
 PLUGIN_CONFIG=""
@@ -36,193 +17,59 @@ if [[ -f "$PLUGIN_ROOT/config.json" ]]; then
 elif [[ -f "$(dirname "$PLUGIN_ROOT")/config.json" ]]; then
     PLUGIN_CONFIG="$(dirname "$PLUGIN_ROOT")/config.json"
 else
-    echo '{"valid": false, "errors": ["Could not locate config.json. Looked in: '"$PLUGIN_ROOT/config.json"'", '"$(dirname "$PLUGIN_ROOT")/config.json"'"], "warnings": [], "gemini_auth": null, "openai_auth": false}'
+    echo "{\"valid\": false, \"errors\": [\"Could not locate config.json. Looked in: $PLUGIN_ROOT/config.json, $(dirname "$PLUGIN_ROOT")/config.json\"], \"warnings\": [], \"gemini_auth\": null, \"openai_auth\": false, \"external_llm\": \"disabled\", \"runtime_mode\": \"portable\", \"plugin_root\": \"$PLUGIN_ROOT\"}"
     exit 3
 fi
 
-# Initialize output arrays
 errors=()
 warnings=()
-gemini_auth="null"
-openai_auth="false"
 
-# Check 1: uv must be installed
-if ! command -v uv &> /dev/null; then
-    echo '{"valid": false, "errors": ["uv not installed. Install from https://docs.astral.sh/uv/"], "warnings": [], "gemini_auth": null, "openai_auth": false}'
-    exit 5
+if ! command -v python3 >/dev/null 2>&1; then
+    errors+=("python3 not installed")
 fi
 
-# Load config values
-config_file="$PLUGIN_CONFIG"
-alert_if_missing="true"
-config_gcp_project=""
-config_gcp_location=""
-gemini_model=""
-openai_model=""
-
-if [ -f "$config_file" ]; then
-    # Parse values from config using jq
-    alert_if_missing=$(jq -r 'if .external_review.alert_if_missing == null then true else .external_review.alert_if_missing end' "$config_file" 2>/dev/null || echo "true")
-
-    # Get GCP project from config (null becomes empty string)
-    config_gcp_project=$(jq -r '.vertex_ai.project // empty' "$config_file" 2>/dev/null || echo "")
-
-    # Get GCP location from config (null becomes empty string)
-    config_gcp_location=$(jq -r '.vertex_ai.location // empty' "$config_file" 2>/dev/null || echo "")
-
-    # Get model names from config
-    gemini_model=$(jq -r '.models.gemini // empty' "$config_file" 2>/dev/null || echo "")
-    openai_model=$(jq -r '.models.chatgpt // empty' "$config_file" 2>/dev/null || echo "")
+if [[ ! -f "$PLUGIN_ROOT/SKILL.md" && ! -f "$PLUGIN_ROOT/skills/deep-plan/SKILL.md" ]]; then
+    errors+=("missing required skill file: $PLUGIN_ROOT/SKILL.md or $PLUGIN_ROOT/skills/deep-plan/SKILL.md")
 fi
 
-# Get GCP project from gcloud config (if gcloud is available)
-gcloud_gcp_project=""
-if command -v gcloud &> /dev/null; then
-    gcloud_gcp_project=$(gcloud config get-value project 2>/dev/null || echo "")
-fi
-
-# Resolve GCP project: config.json → gcloud config → env var
-# Resolve GCP location: config.json → env var (no default - must be explicitly set for ADC)
-gcp_project="${config_gcp_project:-${gcloud_gcp_project:-${GOOGLE_CLOUD_PROJECT:-}}}"
-gcp_location="${config_gcp_location:-${GOOGLE_CLOUD_LOCATION:-}}"
-
-# Check 2: Gemini auth
-# Priority: API key (AI Studio) > ADC + Project (Vertex AI)
-# SECURITY: We only check if API key EXISTS ([ -n ] test), never echo its value
-if [ -n "${GEMINI_API_KEY:-}" ]; then
-    gemini_auth='"api_key"'
-else
-    # Check for ADC (either explicit path or default location)
-    adc_path="${HOME}/.config/gcloud/application_default_credentials.json"
-    has_adc="false"
-    if [ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ] && [ -f "${GOOGLE_APPLICATION_CREDENTIALS}" ]; then
-        has_adc="true"
-    elif [ -f "$adc_path" ]; then
-        has_adc="true"
+for required in \
+    "$PLUGIN_CONFIG" \
+    "$PLUGIN_ROOT/scripts/checks/setup-planning-session.py" \
+    "$PLUGIN_ROOT/scripts/hooks/capture-session-id.py"; do
+    if [[ ! -f "$required" ]]; then
+        errors+=("missing required file: $required")
     fi
+done
 
-    if [ "$has_adc" = "true" ]; then
-        # ADC exists - check if GCP project AND location are set (both required for Vertex AI)
-        if [ -z "$gcp_project" ]; then
-            gemini_auth='"adc_no_project"'
-            if [ "$alert_if_missing" = "true" ]; then
-                errors+=("ADC found but no GCP project. Set vertex_ai.project in $config_file or export GOOGLE_CLOUD_PROJECT=your-project-id")
-            fi
-        elif [ -z "$gcp_location" ]; then
-            gemini_auth='"adc_no_location"'
-            if [ "$alert_if_missing" = "true" ]; then
-                errors+=("ADC found but no GCP location. Set vertex_ai.location in $config_file or export GOOGLE_CLOUD_LOCATION=your-region (e.g., us-central1)")
-            fi
-        else
-            # ADC, project, and location exist - verify credentials are still valid
-            # SECURITY: Token output discarded (> /dev/null), only exit code used
-            if gcloud auth application-default print-access-token > /dev/null 2>&1; then
-                gemini_auth='"vertex_ai_adc"'
-            else
-                gemini_auth='"adc_stale"'
-                if [ "$alert_if_missing" = "true" ]; then
-                    errors+=("Gemini ADC credentials are stale. Run: gcloud auth application-default login")
-                fi
-            fi
-        fi
-    else
-        # No auth found
-        if [ "$alert_if_missing" = "true" ]; then
-            errors+=("Gemini auth not found. Options: 1) export GEMINI_API_KEY=key 2) export GOOGLE_CLOUD_PROJECT=proj && gcloud auth application-default login")
-        fi
+if command -v python3 >/dev/null 2>&1; then
+    if ! python3 - "$PLUGIN_CONFIG" >/dev/null <<'PY'
+import json
+import sys
+from pathlib import Path
+
+json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+PY
+    then
+        errors+=("config.json is not valid JSON")
     fi
 fi
 
-# Check 3: OpenAI API key
-# SECURITY: We only check if API key EXISTS ([ -n ] test), never echo its value
-if [ -n "${OPENAI_API_KEY:-}" ]; then
-    openai_auth="true"
-else
-    if [ "$alert_if_missing" = "true" ]; then
-        errors+=("OPENAI_API_KEY not set")
-    fi
-fi
-
-# Check 4: Test actual client construction AND model access
-# Only run if we have potential auth methods to test AND models configured
-test_script="${SCRIPT_DIR}/test_llm_clients.py"
-client_test_results=""
-
-if [ -f "$test_script" ]; then
-    test_args=""
-
-    # Build test arguments based on what auth we found
-    # Now includes model name to verify model access, not just auth
-    if [ -n "${GEMINI_API_KEY:-}" ] && [ -n "$gemini_model" ]; then
-        test_args="--gemini-api-key $gemini_model"
-    elif [ "$gemini_auth" = '"vertex_ai_adc"' ] && [ -n "$gcp_project" ] && [ -n "$gemini_model" ]; then
-        test_args="--vertex-ai $gcp_project $gcp_location $gemini_model"
-    fi
-
-    if [ -n "${OPENAI_API_KEY:-}" ] && [ -n "$openai_model" ]; then
-        test_args="$test_args --openai $openai_model"
-    fi
-
-    # Run the test if we have any auth to test
-    if [ -n "$test_args" ]; then
-        client_test_results=$(uv run --directory "$PLUGIN_ROOT" "$test_script" $test_args 2>&1) || true
-
-        # Parse test results and add errors if tests failed
-        # NOTE: jq's // operator triggers on BOTH null AND false, so we use explicit checks
-        if [ -n "$client_test_results" ]; then
-            # Check for Gemini failures (check both api_key and vertex_ai results)
-            if echo "$client_test_results" | jq -e '.gemini_api_key' > /dev/null 2>&1; then
-                gemini_success=$(echo "$client_test_results" | jq -r '.gemini_api_key.success' 2>/dev/null)
-                if [ "$gemini_success" = "false" ]; then
-                    gemini_error=$(echo "$client_test_results" | jq -r '.gemini_api_key.error' 2>/dev/null)
-                    errors+=("Gemini model test failed: $gemini_error")
-                    gemini_auth='"test_failed"'
-                fi
-            elif echo "$client_test_results" | jq -e '.gemini_vertex_ai' > /dev/null 2>&1; then
-                gemini_success=$(echo "$client_test_results" | jq -r '.gemini_vertex_ai.success' 2>/dev/null)
-                if [ "$gemini_success" = "false" ]; then
-                    gemini_error=$(echo "$client_test_results" | jq -r '.gemini_vertex_ai.error' 2>/dev/null)
-                    errors+=("Gemini model test failed: $gemini_error")
-                    gemini_auth='"test_failed"'
-                fi
-            fi
-
-            # Check for OpenAI failures
-            if echo "$client_test_results" | jq -e '.openai' > /dev/null 2>&1; then
-                openai_success=$(echo "$client_test_results" | jq -r '.openai.success' 2>/dev/null)
-                if [ "$openai_success" = "false" ]; then
-                    openai_error=$(echo "$client_test_results" | jq -r '.openai.error' 2>/dev/null)
-                    errors+=("OpenAI model test failed: $openai_error")
-                    openai_auth="false"
-                fi
-            fi
-        fi
-    fi
-fi
-
-# Build JSON output
 errors_json="[]"
-if [ ${#errors[@]} -gt 0 ]; then
-    errors_json=$(printf '%s\n' "${errors[@]}" | jq -R . | jq -s .)
+if [[ ${#errors[@]} -gt 0 ]]; then
+    errors_json=$(printf '%s\n' "${errors[@]}" | python3 -c 'import json,sys; print(json.dumps([line.rstrip("\n") for line in sys.stdin if line.strip()]))')
 fi
 
 warnings_json="[]"
-if [ ${#warnings[@]} -gt 0 ]; then
-    warnings_json=$(printf '%s\n' "${warnings[@]}" | jq -R . | jq -s .)
+if [[ ${#warnings[@]} -gt 0 ]]; then
+    warnings_json=$(printf '%s\n' "${warnings[@]}" | python3 -c 'import json,sys; print(json.dumps([line.rstrip("\n") for line in sys.stdin if line.strip()]))')
 fi
 
 valid="true"
 exit_code=0
-if [ ${#errors[@]} -gt 0 ]; then
+if [[ ${#errors[@]} -gt 0 ]]; then
     valid="false"
-    # Determine exit code based on first error
-    # ADC errors are Gemini/Vertex AI related
-    if [[ "${errors[0]}" == *"Gemini"* ]] || [[ "${errors[0]}" == *"ADC"* ]]; then
-        exit_code=1
-    elif [[ "${errors[0]}" == *"OpenAI"* ]] || [[ "${errors[0]}" == *"OPENAI"* ]]; then
-        exit_code=2
-    fi
+    exit_code=1
 fi
 
-echo "{\"valid\": $valid, \"errors\": $errors_json, \"warnings\": $warnings_json, \"gemini_auth\": $gemini_auth, \"openai_auth\": $openai_auth, \"plugin_root\": \"$PLUGIN_ROOT\"}"
-exit $exit_code
+echo "{\"valid\": $valid, \"errors\": $errors_json, \"warnings\": $warnings_json, \"gemini_auth\": null, \"openai_auth\": false, \"external_llm\": \"disabled\", \"runtime_mode\": \"portable\", \"plugin_root\": \"$PLUGIN_ROOT\"}"
+exit "$exit_code"

@@ -33,7 +33,7 @@ class TestHooksJsonConfig:
         will fail because the variable isn't expanded.
 
         Correct format:
-            "command": "uv run ${CLAUDE_PLUGIN_ROOT}/script.py"
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/script.py"
         """
         content = hooks_json_path.read_text()
 
@@ -114,3 +114,11 @@ class TestHooksJsonConfig:
         assert any("capture-session-id.py" in cmd for cmd in commands), (
             "SessionStart should reference capture-session-id.py"
         )
+
+    def test_hooks_do_not_use_uv_at_runtime(self, hooks_json_path):
+        """Runtime hooks should not create per-skill .venv directories."""
+        data = json.loads(hooks_json_path.read_text())
+        for hook_list in data.get("hooks", {}).values():
+            for hook_group in hook_list:
+                for hook in hook_group.get("hooks", []):
+                    assert not hook.get("command", "").startswith("uv run ")

@@ -294,6 +294,41 @@ class TestWriteSectionOnStop:
         # Should return 0 (hooks should not fail)
         assert result.returncode == 0
 
+    def test_rejects_forged_non_section_prompt_path(self, hook_script, tmp_path):
+        """Only generated section prompt filenames should be accepted."""
+        sections_dir = tmp_path / "sections"
+        prompts_dir = sections_dir / ".prompts"
+        prompts_dir.mkdir(parents=True)
+        forged_prompt = prompts_dir / "notes-prompt.md"
+        forged_prompt.write_text("# Not a section prompt")
+
+        transcript_path = tmp_path / "transcript.jsonl"
+        transcript_path.write_text("\n".join([
+            json.dumps({
+                "message": {
+                    "role": "user",
+                    "content": f"Read {forged_prompt} and execute",
+                }
+            }),
+            json.dumps({
+                "message": {
+                    "role": "assistant",
+                    "content": "# Should Not Write",
+                }
+            }),
+        ]))
+
+        result = subprocess.run(
+            ["python3", str(hook_script)],
+            input=json.dumps({"agent_transcript_path": str(transcript_path)}),
+            capture_output=True,
+            text=True,
+            env=get_test_env(tmp_path),
+        )
+
+        assert result.returncode == 0
+        assert not (sections_dir / "notes.md").exists()
+
     def test_handles_invalid_json_payload(self, hook_script, tmp_path):
         """Should exit gracefully on invalid JSON input."""
         result = subprocess.run(

@@ -56,6 +56,8 @@ class TestValidateEnv:
         assert "warnings" in output
         assert "gemini_auth" in output
         assert "openai_auth" in output
+        assert output["external_llm"] == "disabled"
+        assert output["runtime_mode"] == "portable"
         assert "plugin_root" in output
 
     def test_plugin_root_in_output(self, run_script, plugin_root):
@@ -83,29 +85,27 @@ class TestValidateEnv:
         if not output["valid"]:
             assert result.returncode != 0
 
-    def test_detects_gemini_api_key_presence(self, run_script):
-        """Should detect when GEMINI_API_KEY is set (presence check only)."""
+    def test_ignores_gemini_api_key_presence(self, run_script):
+        """External Gemini auth is ignored in portable mode."""
         env = os.environ.copy()
         env["GEMINI_API_KEY"] = "test-key-for-presence-check"
 
         result = run_script(env=env)
         output = json.loads(result.stdout)
 
-        # Should detect the key exists (may fail validation with fake key, but detects presence)
-        # gemini_auth will be "api_key" if detected, or "test_failed" if validation failed
-        assert output["gemini_auth"] in ["api_key", "test_failed"]
+        assert output["gemini_auth"] is None
+        assert output["external_llm"] == "disabled"
 
-    def test_detects_openai_api_key_presence(self, run_script):
-        """Should detect when OPENAI_API_KEY is set (presence check only)."""
+    def test_ignores_openai_api_key_presence(self, run_script):
+        """External OpenAI auth is ignored in portable mode."""
         env = os.environ.copy()
         env["OPENAI_API_KEY"] = "test-key-for-presence-check"
 
         result = run_script(env=env)
         output = json.loads(result.stdout)
 
-        # openai_auth is True if key exists and validates, False otherwise
-        # With a fake key, validation will fail but the key was detected
-        assert "openai_auth" in output
+        assert output["openai_auth"] is False
+        assert output["external_llm"] == "disabled"
 
     def test_returns_null_gemini_auth_when_no_key(self, run_script, tmp_path):
         """Should return null gemini_auth when no auth configured."""
