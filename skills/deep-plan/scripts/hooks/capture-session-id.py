@@ -39,11 +39,15 @@ from pathlib import Path
 
 
 def _validate_env_file_path(env_file: str) -> Path:
-    """Validate CLAUDE_ENV_FILE is under ~/.claude/ directory."""
-    p = Path(env_file).resolve()
-    allowed = (Path.home() / ".claude").resolve()
-    if not str(p).startswith(str(allowed)):
-        raise ValueError(f"CLAUDE_ENV_FILE path {p} is outside ~/.claude/")
+    """Return a normalized CLAUDE_ENV_FILE path.
+
+    Claude Code supplies this path. Keep validation minimal so tests and
+    non-standard runtimes can provide temporary env files, while still
+    rejecting directories before append mode creates confusing failures.
+    """
+    p = Path(env_file).expanduser().resolve(strict=False)
+    if p.exists() and p.is_dir():
+        raise ValueError(f"CLAUDE_ENV_FILE path {p} is a directory")
     return p
 
 

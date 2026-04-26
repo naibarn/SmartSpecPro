@@ -267,12 +267,11 @@ def detect_commit_style(git_root: Path) -> str:
         return "unknown"
 
 
-def validate_path_safety(path: Path, allowed_root: Path) -> None:
+def validate_path_safety(path: Path, allowed_root: Path) -> bool:
     """
     Ensure path is under allowed_root after normalization.
 
     Rejects absolute paths outside root and '..' traversal.
-    Raises ValueError if path is unsafe.
 
     Args:
         path: Path to validate
@@ -282,14 +281,12 @@ def validate_path_safety(path: Path, allowed_root: Path) -> None:
         resolved_path = Path(path).resolve()
         resolved_root = Path(allowed_root).resolve()
 
-        if not str(resolved_path).startswith(str(resolved_root)):
-            raise ValueError(
-                f"Path safety violation: {resolved_path} is outside {resolved_root}"
-            )
-    except ValueError:
-        raise
-    except Exception as e:
-        raise ValueError(f"Path safety check failed for {path}: {e}") from e
+        return (
+            resolved_path == resolved_root
+            or resolved_root in resolved_path.parents
+        )
+    except Exception:
+        return False
 
 
 def check_pre_commit_hooks(git_root: Path) -> dict:
@@ -738,12 +735,13 @@ def main():
 
     git_root = Path(git_info["root"])
 
-    # Validate user-supplied paths are within the git repository
-    try:
-        validate_path_safety(sections_dir, git_root)
-        validate_path_safety(target_dir, git_root)
-    except ValueError as e:
-        print(json.dumps({"success": False, "error": str(e)}))
+    # Validate the target path is within the git repository. The sections
+    # directory may be a planning artifact outside the target repo.
+    if not validate_path_safety(target_dir, git_root):
+        print(json.dumps({
+            "success": False,
+            "error": f"Path safety violation: {target_dir.resolve()} is outside {git_root.resolve()}"
+        }))
         return
 
     # Check current branch
@@ -822,9 +820,11 @@ def main():
     # Write tasks to disk
     write_result = None
     task_write_error = None
-    workflow_backend = "file_based"
+    workflow_backend = "compatible"
+    tracking_backend = "compatible"
     if session_id:
         workflow_backend = "task_list"
+        tracking_backend = "claude_tasks"
         write_result = write_tasks(
             session_id,
             tasks_to_write,
@@ -832,8 +832,6 @@ def main():
         )
         if not write_result.success:
             task_write_error = write_result.error
-    else:
-        task_write_error = "No session ID available (neither --session-id nor env vars set). Continuing in file-based mode."
 
     # Output result
     result = {
@@ -856,6 +854,7 @@ def main():
         "resume_from": state["resume_from"],
         "resume_section_state": state.get("resume_section_state"),
         "workflow_backend": workflow_backend,
+        "tracking_backend": tracking_backend,
         "tasks_written": write_result.tasks_written if write_result else 0,
         "task_write_error": task_write_error,
         # Session ID diagnostics

@@ -251,7 +251,8 @@ class TestGenerateExpectedTasks:
         assert task_by_id["generate-plan"]["status"] == TaskStatus.IN_PROGRESS
 
         # Steps > 11 should be pending
-        assert task_by_id["external-review"]["status"] == TaskStatus.PENDING
+        assert task_by_id["context-check-pre-review"]["status"] == TaskStatus.PENDING
+        assert task_by_id["self-review"]["status"] == TaskStatus.PENDING
         assert task_by_id["output-summary"]["status"] == TaskStatus.PENDING
 
     def test_includes_context_tasks(self):

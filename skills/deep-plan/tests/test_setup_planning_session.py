@@ -316,7 +316,7 @@ END_MANIFEST -->
         assert "task_write_warning" not in output
 
     def test_fails_when_no_session_id(self, run_script, tmp_path):
-        """Should fail when no session ID available."""
+        """Should continue in file-based mode when no session ID is available."""
         spec_file = tmp_path / "spec.md"
         spec_file.write_text("# Spec")
 
@@ -326,15 +326,13 @@ END_MANIFEST -->
             "CLAUDE_CODE_TASK_LIST_ID": "",  # Empty to unset
         })
 
-        assert result.returncode == 1
+        assert result.returncode == 0
         output = json.loads(result.stdout)
 
-        # Should fail with no_task_list mode
-        assert output["success"] is False
-        assert output["mode"] == "no_task_list"
-        assert "error" in output
-        assert "error_details" in output
-        assert "troubleshooting" in output["error_details"]
+        assert output["success"] is True
+        assert output["workflow_backend"] == "file_based"
+        assert output["task_list_id"] is None
+        assert output["tasks_written"] == 0
 
     # --- Files found tests ---
 
