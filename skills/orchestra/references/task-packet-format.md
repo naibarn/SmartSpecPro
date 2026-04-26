@@ -40,12 +40,19 @@ Match the domain to the `subagent_type` you will pass to the `Task` tool:
 
 | DOMAIN | subagent_type | Edits files in |
 |--------|---------------|----------------|
+| CMD-0 Product UX | `Plan` | Read-only product/UX brief |
 | CMD-1 Frontend | `general-purpose` | `apps/web/client/src/`, `packages/ui/` |
 | CMD-2 Backend | `backend-api-security:backend-architect` | `apps/web/server/`, `packages/shared/` |
 | CMD-3 Python | `python-development:fastapi-pro` | `python-backend/app/` |
 | CMD-4 Database | `general-purpose` (write) or `Explore` (analysis) | `apps/web/drizzle/`, `packages/db/` |
 | CMD-5 Infra | `Explore` (analysis) or `general-purpose` (write) | `docker/`, `nginx/`, `docker-compose*.yml` |
 | CMD-6 Security | `backend-api-security:backend-security-coder` | Audit only or targeted fixes |
+| CMD-7 Debug | `error-debugging:debugger` or `error-debugging:error-detective` | Targeted fix or read-only investigation |
+| CMD-8 QA | `general-purpose` or `Explore` | Tests/review reports |
+| CMD-8E E2E | `general-purpose` | Playwright/browser tests and minimal selectors |
+| CMD-9 Performance | `general-purpose` | Performance-sensitive source/config after baseline |
+| CMD-10 CI Release | `general-purpose` | `.github/workflows/`, workflow scripts, release docs |
+| CMD-11 Supply Chain | `general-purpose` | Manifests, lockfiles, Dockerfiles, workflow versions |
 
 ---
 
@@ -127,6 +134,10 @@ OUTPUT:
 | Python type check | `cd /home/dev/projects/SmartSpecPro/python-backend && mypy app/` |
 | Python lint | `cd /home/dev/projects/SmartSpecPro/python-backend && ruff check app/` |
 | Python tests | `cd /home/dev/projects/SmartSpecPro/python-backend && pytest` |
+| E2E browser | Use discovered Playwright command, or dispatch `e2e-playwright.md` |
+| Workflow validation | `cd /home/dev/projects/SmartSpecPro && bash .github/workflows/tests/workflow-validation.test.sh` |
+| Skill pack validation | `cd /home/dev/projects/SmartSpecPro && bash skills/audit-skills.sh` |
+| Dependency audit | Use ecosystem-specific audit/tree command if installed; otherwise dispatch `dependency-supply-chain.md` |
 | Read-only audit | `skipped (read-only — no files modified)` |
 
 ---

@@ -351,7 +351,7 @@ Check whether ANY of these conditions apply to the completed wave's file changes
 | RBAC or role-check logic modified |
 | CORS or CSP configuration changed |
 | File upload or deserialization code added |
-| Security-related dependency version changed (`package.json` or `requirements.txt`) |
+| Security-related dependency version changed (`package.json`, `pnpm-lock.yaml`, `pyproject.toml`, `uv.lock`, Docker image, or GitHub Actions version) |
 | Infrastructure configuration changed (nginx, docker-compose, systemd service files) |
 
 If ANY trigger applies: set `security_gate_required = true`. Gate runs in Step 6.
@@ -369,6 +369,10 @@ Read `references/quality-gates.md`.
 | TypeScript check | `repo typecheck command` (SmartSpecPro default: `cd apps/web && pnpm check`) | Any type-checked source changed | Yes for HIGH/CRITICAL |
 | Python lint | `repo Python lint command` (SmartSpecPro default: `cd python-backend && ruff check app/`) | Any `.py` changed | Yes for HIGH/CRITICAL |
 | Unit tests | `repo unit/integration test command(s)` (SmartSpecPro defaults: `cd apps/web && pnpm test`, `cd python-backend && pytest`) | Risk ≥ medium | Yes for HIGH/CRITICAL |
+| E2E browser tests | Dispatch `e2e-playwright.md` or run discovered Playwright command | User workflow, routing, auth flow, or browser regression changed | Yes for HIGH/CRITICAL |
+| Performance gate | Dispatch `performance.md`; run load/benchmark command when available | Performance-sensitive endpoint, query, cache, bundle, or load-test change | Blocking for CRITICAL; warning for HIGH unless latency budget is explicit |
+| CI/release gate | Dispatch `ci-release.md`; run workflow validation scripts | GitHub Actions, deployment, release, or rollback files changed | Yes for HIGH/CRITICAL |
+| Dependency/supply-chain gate | Dispatch `dependency-supply-chain.md`; run available audit/tree commands | Dependency manifests, lockfiles, Docker images, or Actions versions changed | Yes for HIGH/CRITICAL |
 | Security review (general) | Dispatch `security.md` agent | Risk = HIGH | Blocking for CRITICAL findings |
 | Full test suite | All relevant repo test suites | Risk = CRITICAL | Always blocking |
 | Pre-merge security gate | 3-specialist parallel audit (see below) | `security_gate_required = true` | CRITICAL findings block |
