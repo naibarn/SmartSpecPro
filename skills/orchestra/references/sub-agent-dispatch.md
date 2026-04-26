@@ -1,6 +1,6 @@
 # Sub-Agent Dispatch
 
-Tells the conductor exactly how to dispatch each of the 17 agent roles — which
+Tells the conductor exactly how to dispatch each of the 22 agent roles — which
 `subagent_type` to use per platform, how to inject wave context and contracts into Task
 Packets, and when the pre-merge security gate triggers automatically.
 
@@ -15,12 +15,13 @@ For wave grouping and contract format, see:
 
 ## 1. Agent Type Mapping Table
 
-For each of the 17 agent roles, the `subagent_type` for Claude Code mode and the fallback
+For each of the 22 agent roles, the `subagent_type` for Claude Code mode and the fallback
 behavior for Standard/open-code are shown below. Agent identity files live in
 `../../sub-agents/agents/NAME.md`.
 
 | Agent Role | Claude Code `subagent_type` | Standard Fallback | Open-Code Mode |
 |-----------|---------------------------|----------------|----------------|
+| product-ux | `Plan` | `general-purpose` + injected template | Inline |
 | research | `Explore` | `general-purpose` + injected template | Inline (conductor adopts role) |
 | architect | `Plan` | `general-purpose` + injected template | Inline |
 | frontend | `general-purpose` | `general-purpose` + injected template | Inline |
@@ -28,19 +29,24 @@ behavior for Standard/open-code are shown below. Agent identity files live in
 | python | `python-development:fastapi-pro` | `general-purpose` + injected template | Inline |
 | database | `general-purpose` | `general-purpose` + injected template | Inline (sequential only) |
 | test-qa | `general-purpose` | `general-purpose` + injected template | Inline |
+| e2e-playwright | `general-purpose` | `general-purpose` + injected template | Inline |
 | reviewer | `Explore` | `general-purpose` + injected template | Inline |
 | security | `backend-api-security:backend-security-coder` | `general-purpose` + injected template | Inline |
 | debugger | `error-debugging:debugger` | `general-purpose` + injected template | Inline (sequential) |
 | error-detective | `error-debugging:error-detective` | `general-purpose` + injected template | Inline |
 | infrastructure | `Explore` (analysis) or `general-purpose` (write) | `general-purpose` + injected template | Inline |
+| performance | `general-purpose` | `general-purpose` + injected template | Inline |
+| ci-release | `general-purpose` | `general-purpose` + injected template | Inline (sequential only) |
+| dependency-supply-chain | `general-purpose` | `general-purpose` + injected template | Inline |
 | docs-release | `general-purpose` | `general-purpose` + injected template | Inline |
 | security-review | `Explore` | `general-purpose` + injected template | Inline |
 | security-trpc | `backend-api-security:backend-security-coder` | `general-purpose` + injected template | Inline |
 | security-fastapi | `backend-api-security:backend-security-coder` | `general-purpose` + injected template | Inline |
 | security-frontend | `backend-api-security:backend-security-coder` | `general-purpose` + injected template | Inline |
 
-**13 general agents** (section-07): research, architect, frontend, backend, python, database,
-test-qa, reviewer, security, debugger, error-detective, infrastructure, docs-release
+**18 general agents** (section-07): product-ux, research, architect, frontend, backend,
+python, database, test-qa, e2e-playwright, reviewer, security, debugger, error-detective,
+infrastructure, performance, ci-release, dependency-supply-chain, docs-release
 
 **4 security specialists** (section-08): security-review, security-trpc, security-fastapi,
 security-frontend
@@ -166,9 +172,11 @@ When dispatching agents that do not need to block the conductor's main workflow,
 
 | Agent Type | Background Safe? | Reason |
 |-----------|-----------------|--------|
+| product-ux | Yes | Read-only product analysis; result injected into planning/architecture context |
 | research | Yes | Read-only analysis; result injected into next wave context |
 | reviewer | Yes | Read-only review; result collected after wave |
 | error-detective | Yes | Log analysis; result collected asynchronously |
+| dependency-supply-chain | Yes | Usually read-heavy audit; block before changes if broad lockfile updates are needed |
 | security-trpc | Yes | Read-only audit; results collected before security-review |
 | security-fastapi | Yes | Read-only audit |
 | security-frontend | Yes | Read-only audit |
@@ -176,5 +184,8 @@ When dispatching agents that do not need to block the conductor's main workflow,
 | backend (writing) | No | Next wave depends on files written |
 | python (writing) | No | Next wave depends on files written |
 | database | No | Sequential-only; migration must complete before next step |
+| e2e-playwright | No | Browser tests usually depend on app state and generated artifacts |
+| performance | No | Baseline/verification must be serialized around the code under test |
+| ci-release | No | Workflow/release gate changes are serialized with git and deploy state |
 | debugger | No | Investigation must conclude before fix can proceed |
 | security-review | No | Verdict must be received before reporting completion |

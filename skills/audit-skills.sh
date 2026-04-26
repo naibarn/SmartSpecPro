@@ -44,6 +44,26 @@ for path in root.rglob("*"):
         errors.append(f"{path}: runtime artifact present; run skills/clean-runtime-artifacts.sh")
         break
 
+sub_agents_dir = root / "sub-agents" / "agents"
+sub_agents_readme = root / "sub-agents" / "README.md"
+claude_agents_dir = Path(".claude") / "agents"
+
+if sub_agents_dir.exists() and sub_agents_readme.exists():
+    readme_text = sub_agents_readme.read_text(encoding="utf-8")
+    agent_files = sorted(path.name for path in sub_agents_dir.glob("*.md"))
+    for agent_file in agent_files:
+        agent_name = agent_file.removesuffix(".md")
+        if f"`{agent_file}`" not in readme_text:
+            errors.append(f"skills/sub-agents/README.md: missing registry row for {agent_file}")
+        native_path = claude_agents_dir / f"ssp-{agent_name}.md"
+        if not native_path.exists():
+            errors.append(f"{native_path}: missing native Claude agent definition for {agent_file}")
+
+    registry_agents = set(re.findall(r"\| `([^`]+\.md)` \|", readme_text))
+    missing_files = sorted(registry_agents - set(agent_files))
+    for missing in missing_files:
+        errors.append(f"skills/sub-agents/README.md: registry row has no agent file: {missing}")
+
 if errors:
     print("skill audit failed")
     for error in errors:

@@ -36,6 +36,22 @@ Is this a Python-only error (traceback in python-backend/)?
         - CONTEXT: full Python traceback
         - FILES: the offending python-backend/app/ file(s)
 
+Is this a CI, GitHub Actions, deployment, or release failure?
+  YES → Dispatch ssp-ci-release.
+        Context: failing workflow/job name, log excerpt, changed workflow files.
+
+Is this an E2E/browser workflow or Playwright failure?
+  YES → Dispatch ssp-e2e-playwright.
+        Context: route, user role, viewport, test output, screenshot/trace path if available.
+
+Is this a performance/load/latency regression?
+  YES → Dispatch ssp-performance.
+        Context: baseline metric, endpoint/component/query, load-test or log output.
+
+Is this a dependency, lockfile, package audit, or supply-chain issue?
+  YES → Dispatch ssp-dependency-supply-chain.
+        Context: manifest/lockfile paths, scanner output, requested dependency change.
+
 Is the affected file/component known?
   YES → Dispatch ssp-debugger with that file as context.
         Example: "500 error from skills.create" → files: apps/web/server/routers/skills.ts
@@ -106,6 +122,8 @@ Apply **first-match-wins** in priority order. Stop at the first matching rule.
 
 **Quick-plan override:** If scope lands in `small` or `medium` but the request is still under-specified, has no `spec.md`, or would benefit from a written plan before coding, choose `quick-plan-chain` instead of going straight to implementation.
 
+**Product-UX preflight:** If scope lands in `medium`, `large`, or `project` and user-facing behavior, role behavior, UX states, or acceptance criteria are unclear, dispatch `ssp-product-ux` before architecture or deep planning. Its Product UX Brief becomes CONTEXT for `architect`, `deep-plan-quick`, or `deep-plan`.
+
 **SmartSpecPro-specific scope examples:**
 
 - **trivial:** Fix a typo in `apps/web/client/src/pages/Login.tsx`. One file, display only, no logic change.
@@ -144,6 +162,8 @@ Apply **in parallel** with scope (not as a gating step). Record both independent
 **Risk escalation rule:** If the request description mentions any of the following words, treat as HIGH or CRITICAL regardless of scope:
 - "auth", "authentication", "token", "JWT", "session", "permission", "role", "admin" → HIGH minimum
 - "bypass", "drop", "truncate", "credential", "key", "secret", "payment", "billing" → CRITICAL
+- "dependency", "lockfile", "package", "npm", "pnpm", "pip", "uv", "Docker image", "GitHub Actions", "CI", "deploy" → MEDIUM minimum
+- "load test", "performance", "latency", "timeout", "N+1", "slow query", "cache" → MEDIUM minimum
 
 ---
 

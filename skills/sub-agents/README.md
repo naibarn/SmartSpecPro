@@ -1,15 +1,16 @@
 # Sub-Agents Skill Pack
 
-This registry documents all 17 agents available in the SmartSpecPro sub-agents skill pack. Orchestra (the SKILL.md conductor) dispatches these agents across Claude Code, Standard, and open-code workflows to parallelize development work across domains. For Claude Code, agents may also have native `.claude/agents/` definitions (see Section 09) that enable direct invocation via Claude Code's agents feature.
+This registry documents all 22 agents available in the SmartSpecPro sub-agents skill pack. Orchestra (the SKILL.md conductor) dispatches these agents across Claude Code, Standard, and open-code workflows to parallelize development work across domains. For Claude Code, agents may also have native `.claude/agents/` definitions (see Section 09) that enable direct invocation via Claude Code's agents feature.
 
 ---
 
 ## Agent Registry
 
-All 17 agents in this pack. Every row in this table has a corresponding `.md` file in `agents/`.
+All 22 agents in this pack. Every row in this table has a corresponding `.md` file in `agents/`.
 
 | Agent File | Role | CMD | subagent_type (Claude Code) | Output Format | When to Use |
 |---|---|---|---|---|---|
+| `product-ux.md` | Product/UX discovery specialist | CMD-0 | `Plan` | Product UX Brief + acceptance criteria | Before planning/architecture when user journey, UX states, or product decisions need clarity |
 | `research.md` | Research analyst | CMD-1 | `Explore` | Research Brief | Before implementation — explore existing code/APIs |
 | `architect.md` | Architecture designer | CMD design | `Plan` | Architecture document with module diagram | After research, before implementation begins |
 | `frontend.md` | React/UI implementer | CMD-1 | `general-purpose` | Result Report + changed `.tsx`/`.ts` files | Adding/modifying React components, pages, hooks |
@@ -17,11 +18,15 @@ All 17 agents in this pack. Every row in this table has a corresponding `.md` fi
 | `python.md` | FastAPI/Celery implementer | CMD-3 | `python-development:fastapi-pro` | Result Report + changed `.py` files | Adding/modifying FastAPI endpoints, Celery tasks |
 | `database.md` | Schema/migration specialist | CMD-4 | `general-purpose` | Result Report with backup audit trail | Schema changes, migrations, data seeding |
 | `test-qa.md` | Test writer and QA reporter | CMD-8 | `general-purpose` | Result Report + test plan + pass/fail report | Writing tests, checking coverage |
+| `e2e-playwright.md` | Browser workflow tester | CMD-8E | `general-purpose` | E2E plan + Playwright results | Browser workflow, responsive viewport, auth flow, screenshot/trace, or flaky E2E work |
 | `reviewer.md` | Code reviewer (read-only) | CMD-8 | `Explore` | Review Report with APPROVE/APPROVE_WITH_FIXES/REQUEST_CHANGES verdict | Post-implementation wave review |
 | `security.md` | General security auditor/fixer | CMD-6 | `backend-api-security:backend-security-coder` | Result Report + risk register | Security audit + remediation for HIGH/CRITICAL risk tasks |
 | `debugger.md` | Bug investigator and fixer | CMD-7 | `error-debugging:debugger` | Result Report with root cause + attempt log | Multi-file bugs with unclear root cause |
 | `error-detective.md` | Audit log investigator (read-only) | CMD-7 | `error-debugging:error-detective` | Result Report with event timeline | LLM/media failures, cost discrepancies, trace investigation |
 | `infrastructure.md` | Infra/ops specialist | CMD-5 | `Explore` / `general-purpose` | Result Report + validate-all-configs result | Nginx, Docker, systemd, deployment changes |
+| `performance.md` | Performance specialist | CMD-9 | `general-purpose` | Baseline + bottleneck + verification report | Slow endpoints, N+1 queries, cache strategy, bundle/load-test regressions |
+| `ci-release.md` | CI/release specialist | CMD-10 | `general-purpose` | Workflow patch + release readiness report | GitHub Actions, failing checks, deploy gates, release readiness, rollback |
+| `dependency-supply-chain.md` | Dependency/supply-chain specialist | CMD-11 | `general-purpose` | Dependency findings + lockfile/scanner report | Dependency audit, lockfile drift, vulnerable packages, licenses, package integrity |
 | `docs-release.md` | Docs and changelog writer | release | `general-purpose` | Result Report + changelog + migration guide | End of feature cycle — release documentation |
 | `security-review.md` | Pre-merge verdict aggregator | CMD-6 | `Explore` | PASS/CONDITIONAL PASS/FAIL verdict + `risk_register.md` | After all 3 security specialists complete (dispatched by orchestra) |
 | `security-trpc.md` | tRPC security auditor (read-only) | CMD-6 | `backend-api-security:backend-security-coder` | Security findings table | Pre-merge gate — changed tRPC routers |
@@ -40,7 +45,7 @@ Every dispatch includes these fields:
 
 ```
 TASK: [Specific action — what to do, not what to "look at"]
-DOMAIN: [Which commander area: CMD-1 through CMD-8]
+DOMAIN: [Which commander area: CMD-0 through CMD-11]
 FILES: [Exact file paths to read/modify]
 CONTEXT: [Prior findings, user-reported errors, relevant state]
 CONSTRAINTS: [What NOT to touch, max scope, coding conventions]
@@ -73,17 +78,22 @@ The pre-merge security check uses a 5-step flow:
 | Agent | claude-code (`subagent_type`) | standard (template injected) | open-code (sequential) |
 |---|---|---|---|
 | `research` | `Explore` | `general-purpose` + `research.md` template | Conductor adopts role |
+| `product-ux` | `Plan` | `general-purpose` + `product-ux.md` template | Conductor adopts role |
 | `architect` | `Plan` | `general-purpose` + `architect.md` template | Conductor adopts role |
 | `frontend` | `general-purpose` | `general-purpose` + `frontend.md` template | Conductor adopts role |
 | `backend` | `backend-api-security:backend-architect` | `general-purpose` + `backend.md` template | Conductor adopts role |
 | `python` | `python-development:fastapi-pro` | `general-purpose` + `python.md` template | Conductor adopts role |
 | `database` | `general-purpose` | `general-purpose` + `database.md` template | Conductor adopts role (sequential only) |
 | `test-qa` | `general-purpose` | `general-purpose` + `test-qa.md` template | Conductor adopts role |
+| `e2e-playwright` | `general-purpose` | `general-purpose` + `e2e-playwright.md` template | Conductor adopts role |
 | `reviewer` | `Explore` | `general-purpose` + `reviewer.md` template | Conductor adopts role |
 | `security` | `backend-api-security:backend-security-coder` | `general-purpose` + `security.md` template | Conductor adopts role |
 | `debugger` | `error-debugging:debugger` | `general-purpose` + `debugger.md` template | Conductor adopts role (sequential only) |
 | `error-detective` | `error-debugging:error-detective` | `general-purpose` + `error-detective.md` template | Conductor adopts role |
 | `infrastructure` | `Explore` / `general-purpose` | `general-purpose` + `infrastructure.md` template | Conductor adopts role (sequential only) |
+| `performance` | `general-purpose` | `general-purpose` + `performance.md` template | Conductor adopts role |
+| `ci-release` | `general-purpose` | `general-purpose` + `ci-release.md` template | Conductor adopts role (sequential only) |
+| `dependency-supply-chain` | `general-purpose` | `general-purpose` + `dependency-supply-chain.md` template | Conductor adopts role |
 | `docs-release` | `general-purpose` | `general-purpose` + `docs-release.md` template | Conductor adopts role |
 | `security-review` | `Explore` | `general-purpose` + `security-review.md` template | Conductor adopts role |
 | `security-trpc` | `backend-api-security:backend-security-coder` | `general-purpose` + `security-trpc.md` template | Conductor adopts role |
@@ -116,10 +126,11 @@ The pre-merge security check uses a 5-step flow:
 
 ## Native .claude/agents/ Definitions
 
-The 17 agents in this registry each have a corresponding native definition in `.claude/agents/` that enables Claude Code's auto-dispatch mechanism. These files use YAML frontmatter to configure model, tools, permissions, and isolation.
+The 22 agents in this registry each have a corresponding native definition in `.claude/agents/` that enables Claude Code's auto-dispatch mechanism. These files use YAML frontmatter to configure model, tools, permissions, and isolation.
 
 | Agent File | Native Definition |
 |---|---|
+| `product-ux.md` | `.claude/agents/ssp-product-ux.md` |
 | `research.md` | `.claude/agents/ssp-research.md` |
 | `architect.md` | `.claude/agents/ssp-architect.md` |
 | `frontend.md` | `.claude/agents/ssp-frontend.md` |
@@ -127,11 +138,15 @@ The 17 agents in this registry each have a corresponding native definition in `.
 | `python.md` | `.claude/agents/ssp-python.md` |
 | `database.md` | `.claude/agents/ssp-database.md` |
 | `test-qa.md` | `.claude/agents/ssp-test-qa.md` |
+| `e2e-playwright.md` | `.claude/agents/ssp-e2e-playwright.md` |
 | `reviewer.md` | `.claude/agents/ssp-reviewer.md` |
 | `security.md` | `.claude/agents/ssp-security.md` |
 | `debugger.md` | `.claude/agents/ssp-debugger.md` |
 | `error-detective.md` | `.claude/agents/ssp-error-detective.md` |
 | `infrastructure.md` | `.claude/agents/ssp-infrastructure.md` |
+| `performance.md` | `.claude/agents/ssp-performance.md` |
+| `ci-release.md` | `.claude/agents/ssp-ci-release.md` |
+| `dependency-supply-chain.md` | `.claude/agents/ssp-dependency-supply-chain.md` |
 | `docs-release.md` | `.claude/agents/ssp-docs-release.md` |
 | `security-review.md` | `.claude/agents/ssp-security-review.md` |
 | `security-trpc.md` | `.claude/agents/ssp-security-trpc.md` |

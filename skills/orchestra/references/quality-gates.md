@@ -1,6 +1,6 @@
 # Quality Gates
 
-Defines all 6 gate types that the orchestra conductor runs after each wave of agent work. Read by SKILL.md Step 6. Risk level terminology follows `task-analysis.md`. Commands below are SmartSpecPro defaults. If the active plan or repository docs define explicit `typecheck`, `lint`, or `test` commands, those discovered commands override the defaults.
+Defines all 10 gate types that the orchestra conductor runs after each wave of agent work. Read by SKILL.md Step 6. Risk level terminology follows `task-analysis.md`. Commands below are SmartSpecPro defaults. If the active plan or repository docs define explicit `typecheck`, `lint`, or `test` commands, those discovered commands override the defaults.
 
 ---
 
@@ -11,9 +11,13 @@ Defines all 6 gate types that the orchestra conductor runs after each wave of ag
 | 1 | TypeScript Check | `cd apps/web && pnpm check` | Any `.ts` or `.tsx` files changed | HIGH/CRITICAL: blocking; LOW/MEDIUM: warning | 3 |
 | 2 | Python Lint | `cd python-backend && ruff check app/` | Any `.py` files changed | HIGH/CRITICAL: blocking; LOW/MEDIUM: warning | 3 |
 | 3 | Unit Tests | `cd apps/web && pnpm test` and/or `cd python-backend && pytest` | Medium risk or higher; or when test files exist for changed code | HIGH/CRITICAL: blocking; MEDIUM: warning | 3 |
-| 4 | Security Review (General) | Dispatch `security.md` agent (spot check only — not the full pre-merge gate) | Task risk level is HIGH | CRITICAL findings: blocking; HIGH findings: warning unless task is CRITICAL | 3 |
-| 5 | Full Test Suite | `cd apps/web && pnpm test` AND `cd python-backend && pytest` | CRITICAL risk tasks | Always blocking | 3 |
-| 6 | Pre-Merge Security Gate | Dispatch security-trpc + security-fastapi + security-frontend specialists in parallel, then route findings to security-review aggregator (see `security-review-protocol.md`) | Trigger conditions defined in `security-review-protocol.md` | Always blocking until verdict returned | 3 per specialist (managed by security-review-protocol.md) |
+| 4 | E2E Browser Tests | Dispatch `e2e-playwright.md` or run discovered Playwright command | User workflow, routing, auth flow, or browser regression changed | HIGH/CRITICAL: blocking; MEDIUM: warning | 2 |
+| 5 | Performance Gate | Dispatch `performance.md`; run load/benchmark command when available | Performance-sensitive endpoint, query, cache, or load-test change | CRITICAL: blocking; HIGH: warning unless latency budget is explicit | 2 |
+| 6 | CI/Release Gate | Dispatch `ci-release.md`; run workflow validation scripts | `.github/workflows/*`, deployment, release, or rollback files changed | HIGH/CRITICAL: blocking; MEDIUM: warning | 3 |
+| 7 | Dependency/Supply-Chain Gate | Dispatch `dependency-supply-chain.md`; run available audit/tree commands | Dependency manifests, lockfiles, Docker images, or Actions versions changed | HIGH/CRITICAL: blocking; MEDIUM: warning | 3 |
+| 8 | Security Review (General) | Dispatch `security.md` agent (spot check only — not the full pre-merge gate) | Task risk level is HIGH | CRITICAL findings: blocking; HIGH findings: warning unless task is CRITICAL | 3 |
+| 9 | Full Test Suite | `cd apps/web && pnpm test` AND `cd python-backend && pytest` | CRITICAL risk tasks | Always blocking | 3 |
+| 10 | Pre-Merge Security Gate | Dispatch security-trpc + security-fastapi + security-frontend specialists in parallel, then route findings to security-review aggregator (see `security-review-protocol.md`) | Trigger conditions defined in `security-review-protocol.md` | Always blocking until verdict returned | 3 per specialist (managed by security-review-protocol.md) |
 
 ---
 
@@ -66,14 +70,38 @@ cd python-backend && pytest
 Run the relevant suite for the languages touched in the wave. Run both if the wave touched
 both TypeScript and Python files.
 
-### Gate 4: Security Review (General)
+### Gate 4: E2E Browser Tests
+
+Dispatch `e2e-playwright.md` for browser workflow changes. If the repository exposes a
+known Playwright command, run the narrow workflow first. This gate checks user-visible
+flows, responsive states, and browser-only regressions that unit tests miss.
+
+### Gate 5: Performance Gate
+
+Dispatch `performance.md` when latency, load, query, cache, or bundle risk is in scope.
+The gate must include a baseline, bottleneck evidence, and verification or a documented
+blocker.
+
+### Gate 6: CI/Release Gate
+
+Dispatch `ci-release.md` for workflow, deployment, release, or rollback changes. Run
+`.github/workflows/tests/workflow-validation.test.sh` or other discovered workflow
+validation scripts when available.
+
+### Gate 7: Dependency/Supply-Chain Gate
+
+Dispatch `dependency-supply-chain.md` when dependency manifests, lockfiles, Docker images,
+or GitHub Actions versions changed. Use installed scanners where available; otherwise
+perform manifest/lockfile drift checks and usage searches.
+
+### Gate 8: Security Review (General)
 
 Dispatch `security.md` agent (from `../../sub-agents/agents/security.md`) as a
 spot check. This is not the full pre-merge gate — it is a targeted review of high-risk
 changes mid-workflow. The agent reads changed files and returns findings. Does not dispatch
 specialist sub-agents.
 
-### Gate 5: Full Test Suite
+### Gate 9: Full Test Suite
 
 ```bash
 cd apps/web && pnpm test && cd ../../python-backend && pytest
@@ -82,7 +110,7 @@ cd apps/web && pnpm test && cd ../../python-backend && pytest
 Run both test suites end-to-end. Required for CRITICAL risk tasks. Blocking regardless of
 outcome — if either suite fails, the conductor must fix and retry before proceeding.
 
-### Gate 6: Pre-Merge Security Gate
+### Gate 10: Pre-Merge Security Gate
 
 See `security-review-protocol.md` for complete protocol. Summary:
 1. Orchestra dispatches security-trpc, security-fastapi, and/or security-frontend agents
@@ -129,6 +157,12 @@ cd apps/web && pnpm test
 
 # Python unit tests
 cd python-backend && pytest
+
+# Workflow validation
+bash .github/workflows/tests/workflow-validation.test.sh
+
+# Skill pack validation
+bash skills/audit-skills.sh
 
 # Full test suite (both SmartSpecPro defaults)
 cd apps/web && pnpm test && cd ../../python-backend && pytest

@@ -10,6 +10,7 @@ This reference defines when orchestra should stay in its normal wave model and w
 | `small` and implementation-ready | `single-agent` | Direct implementation |
 | `medium` and implementation-ready | `multi-agent-waves` | Wave-based implementation |
 | `small` or `medium` but under-specified / plan-beneficial | `quick-plan-chain` | Auto-run `deep-plan-quick`, then `deep-implement` |
+| user-facing behavior unclear | `product-ux-preflight` | Dispatch `product-ux`, then route to architecture/planning |
 | `large` | `deep-plan-chain` | Auto-run full `deep-plan`, then `deep-implement` |
 | `project` | `full-pipeline` | Auto-run `deep-project`, then per-split `deep-plan`, then `deep-implement` |
 
@@ -44,6 +45,19 @@ Execution:
 3. Verify `implementation-plan.md`, `sections/index.md`, and `sections/section-*.md` exist.
 4. If quick planning reveals hidden complexity, promote to `deep-plan-chain`.
 5. Otherwise continue directly into `deep-implement`.
+
+## Route: `product-ux-preflight`
+
+Use this route when:
+- the request affects user-facing workflows
+- acceptance criteria, UX states, roles, tenant behavior, or copy are unclear
+- implementation would otherwise require guessing product behavior
+
+Execution:
+1. Dispatch `product-ux` with relevant existing pages/specs and the user request.
+2. If the agent returns product blockers, ask the smallest possible product question.
+3. If it returns a complete Product UX Brief, inject it into `architect`, `deep-plan-quick`, or `deep-plan` CONTEXT.
+4. Continue through the normal route selected by scope.
 
 ## Route: `deep-plan-chain`
 
