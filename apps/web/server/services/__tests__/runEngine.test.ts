@@ -3022,6 +3022,116 @@ describe("RunEngine", () => {
     });
   });
 
+  describe("evaluateRuntimeBudgetGate", () => {
+    const policy = {
+      budgetReservation: {
+        tokens: 2000,
+        costCredits: 10,
+        toolCalls: 1,
+        mediaJobs: 0,
+        workflowRuns: 0,
+        agencyRuns: 0,
+      },
+    } as any;
+
+    it("treats token caps as hard unless soft token mode is enabled", () => {
+      const snapshot = {
+        ...runEngine.initBudgetSnapshot(),
+        totalCreditsUsed: 40,
+        perAgent: {
+          "agent-1": {
+            inputTokens: 47_500,
+            outputTokens: 900,
+            creditsUsed: 40,
+            turnCount: 2,
+          },
+        },
+      };
+
+      expect(
+        runEngine.evaluateRuntimeBudgetGate({
+          budget: {
+            maxTokens: 48_000,
+            maxBudgetCredits: 720,
+            maxToolCalls: 24,
+            maxMediaJobs: 10,
+            maxWorkflowRuns: 1,
+            maxAgencyRuns: 1,
+          },
+          budgetSnapshot: snapshot,
+          policy,
+        }),
+      ).toEqual(
+        expect.objectContaining({
+          blocked: true,
+          reasonCode: "budget_cap_exceeded",
+          exceededResource: "tokens",
+        }),
+      );
+
+      expect(
+        runEngine.evaluateRuntimeBudgetGate({
+          budget: {
+            maxTokens: 48_000,
+            maxBudgetCredits: 720,
+            maxToolCalls: 24,
+            maxMediaJobs: 10,
+            maxWorkflowRuns: 1,
+            maxAgencyRuns: 1,
+          },
+          budgetSnapshot: snapshot,
+          policy,
+          softTokenBudget: true,
+        }),
+      ).toEqual(
+        expect.objectContaining({
+          blocked: false,
+          reasonCode: null,
+          exceededResource: null,
+        }),
+      );
+    });
+
+    it("keeps hard side-effect caps enforced in soft token mode", () => {
+      const snapshot = {
+        ...runEngine.initBudgetSnapshot(),
+        totalCreditsUsed: 40,
+        mediaJobsUsed: 10,
+      };
+
+      expect(
+        runEngine.evaluateRuntimeBudgetGate({
+          budget: {
+            maxTokens: 48_000,
+            maxBudgetCredits: 720,
+            maxToolCalls: 24,
+            maxMediaJobs: 10,
+            maxWorkflowRuns: 1,
+            maxAgencyRuns: 1,
+          },
+          budgetSnapshot: snapshot,
+          policy: {
+            budgetReservation: {
+              tokens: 0,
+              costCredits: 1,
+              toolCalls: 0,
+              mediaJobs: 1,
+              workflowRuns: 0,
+              agencyRuns: 0,
+            },
+          } as any,
+          softTokenBudget: true,
+        }),
+      ).toEqual(
+        expect.objectContaining({
+          blocked: true,
+          reasonCode: "budget_cap_exceeded",
+          exceededResource: "media_jobs",
+        }),
+      );
+    });
+  });
+
   describe("accumulateBudget", () => {
     it("adds turn cost to existing agent entry", () => {
       const snap = runEngine.initBudgetSnapshot();

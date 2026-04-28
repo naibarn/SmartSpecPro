@@ -84,10 +84,26 @@ function deriveBudget(
           includeFinalReview: true,
         }) + Math.max(0, mediaStepCount - videoStepCount) * estimateAutoTeamMediaPipelineCredits({ mediaType: "image" })
       : mediaStepCount * estimateAutoTeamMediaPipelineCredits({ mediaType: "image" });
+  const sourceTextSize = [
+    brief?.title,
+    brief?.objective,
+    brief?.summary,
+    ...policy.stepBlueprints.map(step => `${step.stepKey} ${step.title} ${step.evidenceType}`),
+  ]
+    .filter(Boolean)
+    .join("\n").length;
+  const contextTokenReserve = Math.ceil(sourceTextSize / 2);
+  const stepTokenReserve = stepCount * (hasSideEffects ? 16_000 : 8_000);
+  const mediaTokenReserve = estimatedMediaJobs * (videoStepCount > 0 ? 6_000 : 3_000);
 
   return {
     maxRounds: Math.max(12, stepCount * 3),
-    maxTokens: Math.max(24_000, stepCount * (hasSideEffects ? 8_000 : 5_000)),
+    maxTokens: Math.max(
+      32_000,
+      stepTokenReserve,
+      mediaTokenReserve,
+      contextTokenReserve + stepCount * 6_000,
+    ),
     maxToolCalls: stepCount * 4,
     maxMediaJobs: estimatedMediaJobs,
     maxWorkflowRuns: workflowStepCount,

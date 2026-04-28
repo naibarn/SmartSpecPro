@@ -795,14 +795,6 @@ async function resolveCurrentRuntimeDispatchPolicy(input: {
     .where(eq(users.id, input.run.initiatedByUserId))
     .limit(1);
   const flags = await getWorkOrchestratorFeatureFlags();
-  const constraints =
-    input.run.constraintsJson && typeof input.run.constraintsJson === "object"
-      ? (input.run.constraintsJson as Record<string, unknown>)
-      : {};
-  const isWorkRequestAutoTeamRun =
-    input.run.executionMode === "auto_team" &&
-    constraints.source === "work_os" &&
-    typeof constraints.workRequestId === "string";
   const hasExplicitHumanApprovalRequirement =
     approvedStep.metadata &&
     typeof approvedStep.metadata === "object" &&
@@ -812,7 +804,7 @@ async function resolveCurrentRuntimeDispatchPolicy(input: {
         approvedStep.metadata.approvalRequiredByUser === true
       : false;
   const effectiveFlags =
-    isWorkRequestAutoTeamRun && !hasExplicitHumanApprovalRequirement
+    isWorkOsAutoTeamRun(input.run) && !hasExplicitHumanApprovalRequirement
       ? { ...flags, privilegedSurfaceAutoExecution: true }
       : flags;
   const actorContext = deriveWorkIntakeActorContext({
@@ -864,6 +856,20 @@ function getBudgetGateBlockFromResult(
   return { reasonCode, budgetGate: record };
 }
 
+function isWorkOsAutoTeamRun(
+  run: Pick<TeamRun, "executionMode" | "constraintsJson">,
+): boolean {
+  const constraints =
+    run.constraintsJson && typeof run.constraintsJson === "object"
+      ? (run.constraintsJson as Record<string, unknown>)
+      : {};
+  return (
+    run.executionMode === "auto_team" &&
+    constraints.source === "work_os" &&
+    typeof constraints.workRequestId === "string"
+  );
+}
+
 function getCapabilityGapResolutionFromMetadata(
   metadata: Record<string, unknown> | null | undefined,
 ): Record<string, unknown> | null {
@@ -906,21 +912,36 @@ function summarizeBudgetUsage(snapshot: BudgetSnapshot): {
   };
 }
 
-function evaluateRuntimeBudgetGate(input: {
+type RuntimeBudgetResource =
+  | "credits"
+  | "tokens"
+  | "tool_calls"
+  | "media_jobs"
+  | "workflow_runs"
+  | "agency_runs";
+
+export function evaluateRuntimeBudgetGate(input: {
   budget: ExecutionBudgetEnvelope | null;
   budgetSnapshot: BudgetSnapshot;
   policy: RuntimeDispatchPolicy | null;
+  softTokenBudget?: boolean;
 }): {
   blocked: boolean;
   reasonCode: string | null;
+  exceededResource: RuntimeBudgetResource | null;
   usage: ReturnType<typeof summarizeBudgetUsage>;
 } {
   const usage = summarizeBudgetUsage(input.budgetSnapshot);
   if (!input.budget) {
-    return { blocked: false, reasonCode: null, usage };
+    return { blocked: false, reasonCode: null, exceededResource: null, usage };
   }
   if (!input.policy) {
-    return { blocked: true, reasonCode: "missing_runtime_dispatch_policy", usage };
+    return {
+      blocked: true,
+      reasonCode: "missing_runtime_dispatch_policy",
+      exceededResource: null,
+      usage,
+    };
   }
 
   const reservation = input.policy.budgetReservation;
@@ -929,40 +950,72 @@ function evaluateRuntimeBudgetGate(input: {
     usage.totalCreditsUsed + reservation.costCredits >
       input.budget.maxBudgetCredits
   ) {
-    return { blocked: true, reasonCode: "budget_cap_exceeded", usage };
+    return {
+      blocked: true,
+      reasonCode: "budget_cap_exceeded",
+      exceededResource: "credits",
+      usage,
+    };
   }
   if (
     input.budget.maxTokens != null &&
     usage.totalTokensUsed + reservation.tokens > input.budget.maxTokens
   ) {
-    return { blocked: true, reasonCode: "budget_cap_exceeded", usage };
+    if (!input.softTokenBudget) {
+      return {
+        blocked: true,
+        reasonCode: "budget_cap_exceeded",
+        exceededResource: "tokens",
+        usage,
+      };
+    }
   }
   if (
     input.budget.maxToolCalls != null &&
     usage.toolCallsUsed + reservation.toolCalls > input.budget.maxToolCalls
   ) {
-    return { blocked: true, reasonCode: "budget_cap_exceeded", usage };
+    return {
+      blocked: true,
+      reasonCode: "budget_cap_exceeded",
+      exceededResource: "tool_calls",
+      usage,
+    };
   }
   if (
     input.budget.maxMediaJobs != null &&
     usage.mediaJobsUsed + reservation.mediaJobs > input.budget.maxMediaJobs
   ) {
-    return { blocked: true, reasonCode: "budget_cap_exceeded", usage };
+    return {
+      blocked: true,
+      reasonCode: "budget_cap_exceeded",
+      exceededResource: "media_jobs",
+      usage,
+    };
   }
   if (
     input.budget.maxWorkflowRuns != null &&
     usage.workflowRunsUsed + reservation.workflowRuns > input.budget.maxWorkflowRuns
   ) {
-    return { blocked: true, reasonCode: "budget_cap_exceeded", usage };
+    return {
+      blocked: true,
+      reasonCode: "budget_cap_exceeded",
+      exceededResource: "workflow_runs",
+      usage,
+    };
   }
   if (
     input.budget.maxAgencyRuns != null &&
     usage.agencyRunsUsed + reservation.agencyRuns > input.budget.maxAgencyRuns
   ) {
-    return { blocked: true, reasonCode: "budget_cap_exceeded", usage };
+    return {
+      blocked: true,
+      reasonCode: "budget_cap_exceeded",
+      exceededResource: "agency_runs",
+      usage,
+    };
   }
 
-  return { blocked: false, reasonCode: null, usage };
+  return { blocked: false, reasonCode: null, exceededResource: null, usage };
 }
 
 function buildRuntimeBudgetBlockedResult(input: {
@@ -5026,6 +5079,165 @@ async function replanAfterRejectedExploration(params: {
   });
 }
 
+async function resumeTokenOnlyBudgetBlockedAutoTeamRun(input: {
+  db: Awaited<ReturnType<typeof getDb>>;
+  run: TeamRun;
+  tenantId: string;
+  runtimeState: Record<string, unknown>;
+}): Promise<TeamRun | null> {
+  if (!isWorkOsAutoTeamRun(input.run)) {
+    return null;
+  }
+
+  const approvedPlanSnapshot = getApprovedPlanForRun({
+    constraintsJson:
+      input.run.constraintsJson && typeof input.run.constraintsJson === "object"
+        ? (input.run.constraintsJson as Record<string, unknown>)
+        : null,
+    approvalPolicyJson:
+      input.run.approvalPolicyJson && typeof input.run.approvalPolicyJson === "object"
+        ? (input.run.approvalPolicyJson as Record<string, unknown>)
+        : null,
+  });
+  if (!approvedPlanSnapshot) {
+    return null;
+  }
+
+  const latestSnapshot = await monitoringService.getLatestRunSnapshot(input.run.id);
+  let planArtifact = selectAutoTeamPlanArtifact({
+    latestArtifact: monitoringService.extractRunPlanArtifact(latestSnapshot),
+    approvedPlanSnapshot,
+    runId: input.run.id,
+    roomId: input.run.roomId,
+    teamId: input.run.teamId,
+  });
+  const currentRuntimePolicy = await resolveCurrentRuntimeDispatchPolicy({
+    db: input.db,
+    run: input.run,
+    tenantId: input.tenantId,
+    snapshot: approvedPlanSnapshot,
+    planArtifact,
+  });
+  if (currentRuntimePolicy) {
+    planArtifact = applyRuntimeDispatchPolicyToPlanArtifact({
+      artifact: planArtifact,
+      stepKey: currentRuntimePolicy.stepKey,
+      policy: currentRuntimePolicy.policy,
+    });
+  }
+
+  const activeStep = selectActivePlanStep(planArtifact);
+  const runtimePolicy = getStepRuntimeDispatchPolicy(activeStep);
+  if (!activeStep || !runtimePolicy) {
+    return null;
+  }
+
+  const budgetSnapshot =
+    (input.run.budgetSnapshotJson as BudgetSnapshot | null) ?? initBudgetSnapshot();
+  const strictGate = evaluateRuntimeBudgetGate({
+    budget: approvedPlanSnapshot.budget,
+    budgetSnapshot,
+    policy: runtimePolicy,
+  });
+  if (!strictGate.blocked || strictGate.exceededResource !== "tokens") {
+    return null;
+  }
+  const softGate = evaluateRuntimeBudgetGate({
+    budget: approvedPlanSnapshot.budget,
+    budgetSnapshot,
+    policy: runtimePolicy,
+    softTokenBudget: true,
+  });
+  if (softGate.blocked) {
+    return null;
+  }
+
+  const now = new Date().toISOString();
+  const resumedPlanArtifact = planArtifact
+    ? {
+        ...planArtifact,
+        status: "executing" as const,
+        lastUpdatedAt: now,
+        steps: planArtifact.steps.map(step =>
+          step.stepKey === activeStep.stepKey
+            ? {
+                ...step,
+                status: "in_progress" as const,
+                notes:
+                  step.notes === "budget_cap_exceeded" ||
+                  step.notes === "runtime_dispatch_blocked:budget_cap_exceeded"
+                    ? null
+                    : step.notes,
+              }
+            : step,
+        ),
+      }
+    : null;
+
+  await monitoringService.recordEvent({
+    tenantId: input.tenantId,
+    teamId: input.run.teamId,
+    roomId: input.run.roomId,
+    runId: input.run.id,
+    assistantId: "system",
+    eventType: "runtime_budget_soft_recovered",
+    eventCategory: "status_change",
+    summary:
+      "Resumed Work OS auto-team run after a token-only budget guard pause; hard credit, media, tool, agency, and workflow caps remain enforced.",
+    detailJson: {
+      stepKey: activeStep.stepKey,
+      usage: softGate.usage,
+      reservation: runtimePolicy.budgetReservation,
+      recovery: "soft_token_budget_resumed",
+    },
+  });
+
+  await monitoringService.captureSnapshot(input.run.id, input.tenantId, {
+    artifactCountJson: resumedPlanArtifact
+      ? { planArtifact: resumedPlanArtifact }
+      : undefined,
+    runtimeState: {
+      currentPhase: "running",
+      waitingReason: null,
+      policyGateReason: null,
+      autoReplanRequested: false,
+      budgetGate: {
+        recovered: true,
+        exceededResource: "tokens",
+        usage: softGate.usage,
+      },
+      planArtifact: resumedPlanArtifact,
+    } as Partial<monitoringService.RunRuntimeState>,
+  });
+
+  const [updated] = await input.db
+    .update(teamRuns)
+    .set({
+      status: "running",
+      stopReason: null,
+      runtimeTerminalReason: null,
+      runtimeApprovalState: null,
+      runtimeStateJson: {
+        ...input.runtimeState,
+        autoReplanRequested: false,
+        budgetGate: {
+          recovered: true,
+          exceededResource: "tokens",
+          usage: softGate.usage,
+        },
+        recovery: "soft_token_budget_resumed",
+      },
+    })
+    .where(eq(teamRuns.id, input.run.id))
+    .returning();
+
+  if (updated) {
+    startAutoStopChecker(updated.id);
+    queueAutoAdvance(updated.id, input.tenantId, 1, AUTO_TEAM_CONTINUATION_DELAY_MS);
+  }
+  return updated ?? null;
+}
+
 export async function recoverBudgetBlockedAutoTeamRun(
   runId: string,
   tenantId: string,
@@ -5049,6 +5261,16 @@ export async function recoverBudgetBlockedAutoTeamRun(
       : {};
   if (runtimeState.autoReplanRequested !== true) {
     return null;
+  }
+
+  const tokenOnlyRecovery = await resumeTokenOnlyBudgetBlockedAutoTeamRun({
+    db,
+    run,
+    tenantId,
+    runtimeState,
+  });
+  if (tokenOnlyRecovery) {
+    return tokenOnlyRecovery;
   }
 
   const teamMembers = await listAutoTeamPlannerMembers(db, run.teamId, tenantId);
@@ -7672,6 +7894,7 @@ export async function runNextTurn(
       budgetSnapshot:
         (run.budgetSnapshotJson as BudgetSnapshot) ?? initBudgetSnapshot(),
       policy: plannedRuntimePolicy,
+      softTokenBudget: isWorkOsAutoTeamRun(run),
     });
     const turnResponse =
       budgetGate.blocked && plannedActiveStep
