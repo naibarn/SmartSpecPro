@@ -2383,38 +2383,38 @@ export const workOsRouter = router({
             },
           };
         }
-        const selectedSourceIds = preview.preflightRevision.inputs.selectedSourceIds;
-        const currentDraft = await buildCurrentDraftForStoredBundle({
+        let launchBundle = bundle;
+        let launchPolicyJson = policyJson;
+        let selectedSourceIds =
+          launchBundle.preflightRevision.inputs.selectedSourceIds;
+        let currentDraft = await buildCurrentDraftForStoredBundle({
           caseId: created.case.id,
-          bundle,
+          bundle: launchBundle,
           projection,
           ctx,
         });
         const revisionComparison = comparePreflightRevision(
-          bundle.preflightRevision,
+          launchBundle.preflightRevision,
           currentDraft.draftBundle.preflightRevision,
         );
         if (revisionComparison.stale) {
-          await preflightBundleStoreService.putPreflightBundle({
+          const refreshedBundle = await preflightBundleStoreService.putPreflightBundle({
             tenantId,
             caseId: created.case.id,
-            bundle: transitionPreflightBundle({
-              bundle,
-              toState: "stale",
-              event: "request.edited",
-              actorUserId: ctx.user?.id ?? null,
-              reasonCode: revisionComparison.reasonCode ?? "PREVIEW_STALE",
-            }),
+            bundle: currentDraft.draftBundle,
             makeCurrent: true,
+            supersedeCurrent: true,
           });
-          return {
-            ...created,
-            automation: {
-              state: "launch_failed" as const,
-              preflightBundleId: preview.preflightBundleId,
-              errorCode: "PREVIEW_STALE",
-            },
-          };
+          launchBundle = refreshedBundle;
+          launchPolicyJson = currentDraft.policyJson;
+          selectedSourceIds =
+            launchBundle.preflightRevision.inputs.selectedSourceIds;
+          currentDraft = await buildCurrentDraftForStoredBundle({
+            caseId: created.case.id,
+            bundle: launchBundle,
+            projection,
+            ctx,
+          });
         }
         const approvedSnapshots = captureApprovalSnapshots({
           sourceRefs: currentDraft.draftBundle.brief.sourceRefs,
@@ -2432,12 +2432,12 @@ export const workOsRouter = router({
             tenantId,
             caseId: created.case.id,
             bundle: buildLaunchBlockedBundle({
-              bundle,
+              bundle: launchBundle,
               ctx,
               idempotencyKey: `${flowKey}:launch`,
               inputFingerprint: buildPreflightInputFingerprint({
-                preflightBundleId: bundle.id,
-                approvedRevisionHash: bundle.preflightRevision.fingerprint,
+                preflightBundleId: launchBundle.id,
+                approvedRevisionHash: launchBundle.preflightRevision.fingerprint,
                 mode: mode ?? null,
               }),
               actorUserId: ctx.user?.id ?? null,
@@ -2450,7 +2450,7 @@ export const workOsRouter = router({
             ...created,
             automation: {
               state: "launch_blocked" as const,
-              preflightBundleId: preview.preflightBundleId,
+              preflightBundleId: launchBundle.id,
               errorCode: "APPROVAL_SOURCE_DRIFT",
               launchReadiness: {
                 ready: false,
@@ -2464,9 +2464,9 @@ export const workOsRouter = router({
           await preflightBundleStoreService.transitionPreflightBundleAtomically({
           tenantId,
           caseId: created.case.id,
-          preflightBundleId: bundle.id,
-          expectedCurrentBundleId: bundle.id,
-          expectedState: bundle.state,
+          preflightBundleId: launchBundle.id,
+          expectedCurrentBundleId: launchBundle.id,
+          expectedState: launchBundle.state,
           makeCurrent: true,
           transform: currentBundle => {
             const approvedBundle = appendIdempotencyRecord({
@@ -2495,14 +2495,14 @@ export const workOsRouter = router({
               operation: "approve_preflight_bundle",
               idempotencyKey: `${flowKey}:approve`,
               inputFingerprint: buildPreflightInputFingerprint({
-                preflightBundleId: bundle.id,
-                approvedRevisionHash: bundle.preflightRevision.fingerprint,
+                preflightBundleId: launchBundle.id,
+                approvedRevisionHash: launchBundle.preflightRevision.fingerprint,
                 selectedSourceIds,
                 approvalDecision: "approve",
                 approvalComment: null,
               }),
               result: {
-                preflightBundleId: bundle.id,
+                preflightBundleId: launchBundle.id,
                 state: "approved",
               },
             });
@@ -2603,7 +2603,7 @@ export const workOsRouter = router({
           createdByUserId: ctx.user?.id ?? null,
           reuseExistingCaseRun: true,
           policyJson: {
-            ...policyJson,
+            ...launchPolicyJson,
             workOrchestrator: {
               preflightBundle: launchingBundle,
             },
