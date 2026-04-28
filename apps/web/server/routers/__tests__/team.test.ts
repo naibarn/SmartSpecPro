@@ -180,6 +180,56 @@ describe("teamRouter", () => {
     expect(result.some((blueprint: any) => blueprint.id === "creative-content-studio")).toBe(true);
   });
 
+  it("does not restrict assignable team lists for tenant admins", async () => {
+    mockListTeams.mockResolvedValue([
+      { id: "team-1", name: "Team 1", status: "active" },
+      { id: "team-2", name: "Team 2", status: "active" },
+    ]);
+
+    const result = await teamRouter.list({
+      input: {
+        status: "active",
+        assignableOnly: true,
+      },
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 42, currentTenantId: 1, role: "domain_admin" },
+      },
+    } as any);
+
+    expect(mockListTeams).toHaveBeenCalledWith(
+      "tenant-1",
+      undefined,
+      "active",
+      undefined,
+    );
+    expect(result).toHaveLength(2);
+  });
+
+  it("restricts assignable team lists for regular users", async () => {
+    mockListTeams.mockResolvedValue([
+      { id: "team-owned", name: "Owned Team", status: "active" },
+    ]);
+
+    await teamRouter.list({
+      input: {
+        status: "active",
+        assignableOnly: true,
+      },
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 42, currentTenantId: 1, role: "member" },
+      },
+    } as any);
+
+    expect(mockListTeams).toHaveBeenCalledWith(
+      "tenant-1",
+      undefined,
+      "active",
+      42,
+    );
+  });
+
   it("listBindableWorkers delegates with tenant and optional team scope", async () => {
     mockListBindableWorkers.mockResolvedValue([
       {

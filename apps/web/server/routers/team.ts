@@ -176,11 +176,13 @@ export const teamRouter = router({
     }).optional())
     .query(async ({ input, ctx }) => {
       const tenantId = requireTenantId(ctx);
+      const isAdmin =
+        ctx.user?.role === "admin" || ctx.user?.role === "domain_admin";
       return teamService.listTeams(
         tenantId,
         input?.ownerOnly ? ctx.user!.id : undefined,
         input?.status,
-        input?.assignableOnly ? ctx.user!.id : undefined,
+        input?.assignableOnly && !isAdmin ? ctx.user!.id : undefined,
       );
     }),
 

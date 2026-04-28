@@ -682,7 +682,7 @@ async function createTeamRecords(
     memoryPolicyJson: input.memoryPolicyJson ?? null,
     artifactPolicyJson: input.artifactPolicyJson ?? null,
     modelBudgetPolicy: input.modelBudgetPolicy ?? null,
-    status: "draft",
+    status: "active",
   });
 
   for (let i = 0; i < resolvedMembers.length; i++) {

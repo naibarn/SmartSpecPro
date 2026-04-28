@@ -33,6 +33,7 @@ describe("teamService integration", () => {
       const [agencyRow] = await db.select().from(agencies).where(eq(agencies.id, result.agencyId)).limit(1);
 
       expect(teamRow?.name).toBe(name);
+      expect(teamRow?.status).toBe("active");
       expect(agencyRow?.name).toBe(name);
     } finally {
       if (result) {

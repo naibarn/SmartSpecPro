@@ -8592,7 +8592,7 @@ export const assistantTeams = pgTable("assistant_teams", {
   modelBudgetPolicy: jsonb("modelBudgetPolicy"),
   memoryPolicyJson: jsonb("memoryPolicyJson"),
   artifactPolicyJson: jsonb("artifactPolicyJson"),
-  status: assistantTeamStatusEnum("status").default("draft"),
+  status: assistantTeamStatusEnum("status").default("active"),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [

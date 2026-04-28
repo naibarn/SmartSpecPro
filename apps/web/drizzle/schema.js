@@ -13779,7 +13779,7 @@ exports.assistantTeams = (0, pg_core_1.pgTable)(
     modelBudgetPolicy: (0, pg_core_1.jsonb)("modelBudgetPolicy"),
     memoryPolicyJson: (0, pg_core_1.jsonb)("memoryPolicyJson"),
     artifactPolicyJson: (0, pg_core_1.jsonb)("artifactPolicyJson"),
-    status: (0, exports.assistantTeamStatusEnum)("status").default("draft"),
+    status: (0, exports.assistantTeamStatusEnum)("status").default("active"),
     createdAt: (0, pg_core_1.timestamp)("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),
