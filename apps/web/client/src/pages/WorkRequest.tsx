@@ -744,6 +744,9 @@ export default function WorkRequestPage() {
           const kickoffTeamId = automation?.teamId ?? null;
           const kickoffRoomId = automation?.roomId ?? null;
           if (kickoffTeamId && kickoffRoomId) {
+            await utils.teamRoom.listByTeam.invalidate({
+              teamId: kickoffTeamId,
+            });
             setLocation(
               buildTeamRoomPath(kickoffTeamId, kickoffRoomId, "workflow"),
               { replace: true },
@@ -828,6 +831,9 @@ export default function WorkRequestPage() {
         const kickoffTeamId = result?.teamId ?? null;
         const kickoffRoomId = result?.roomId ?? null;
         if (kickoffTeamId && kickoffRoomId) {
+          await utils.teamRoom.listByTeam.invalidate({
+            teamId: kickoffTeamId,
+          });
           setLocation(
             buildTeamRoomPath(kickoffTeamId, kickoffRoomId, "workflow"),
             {

@@ -643,7 +643,7 @@ export default function Teams() {
     "chat" | "workflow" | "run"
   >("chat");
   const selectedTeamIdForView = routeParams?.teamId ?? selectedTeamId;
-  const selectedRoomIdForView = selectedRoomId ?? requestedRoomIdFromUrl;
+  const selectedRoomIdForView = requestedRoomIdFromUrl ?? selectedRoomId;
   const [roomListMode, setRoomListMode] = useState(false);
   const [createRoomDialog, setCreateRoomDialog] =
     useState<CreateRoomState | null>(null);
@@ -760,6 +760,17 @@ export default function Teams() {
       setRoomListMode(false);
     }
   }, [routeParams?.teamId, selectedTeamId]);
+
+  useEffect(() => {
+    if (!requestedRoomIdFromUrl) return;
+    setRoomListMode(false);
+    setSelectedRoomId(current =>
+      current === requestedRoomIdFromUrl ? current : requestedRoomIdFromUrl
+    );
+    setActiveRunId(null);
+    setRunStatus("idle");
+    setFocusMessageRequest(null);
+  }, [requestedRoomIdFromUrl]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -1389,8 +1400,8 @@ export default function Teams() {
       if (activeRunId) {
         utils.teamRun.get.invalidate({ runId: activeRunId });
       }
-      if (selectedRoomId) {
-        utils.teamWorkItem.listByRoom.invalidate({ roomId: selectedRoomId });
+      if (selectedRoomIdForView) {
+        utils.teamWorkItem.listByRoom.invalidate({ roomId: selectedRoomIdForView });
       }
       toast.success(t("teams.toast.runStopped"));
     },
@@ -1414,8 +1425,8 @@ export default function Teams() {
       if (activeRunId) {
         utils.teamRun.get.invalidate({ runId: activeRunId });
       }
-      if (selectedRoomId) {
-        utils.teamWorkItem.listByRoom.invalidate({ roomId: selectedRoomId });
+      if (selectedRoomIdForView) {
+        utils.teamWorkItem.listByRoom.invalidate({ roomId: selectedRoomIdForView });
       }
       toast.success(t("teams.toast.runResumed"));
     },
@@ -1471,9 +1482,9 @@ export default function Teams() {
       if (activeRunId) {
         utils.teamRun.get.invalidate({ runId: activeRunId });
       }
-      if (selectedRoomId) {
-        utils.teamWorkItem.listByRoom.invalidate({ roomId: selectedRoomId });
-        utils.teamRoom.getMessages.invalidate({ roomId: selectedRoomId });
+      if (selectedRoomIdForView) {
+        utils.teamWorkItem.listByRoom.invalidate({ roomId: selectedRoomIdForView });
+        utils.teamRoom.getMessages.invalidate({ roomId: selectedRoomIdForView });
       }
       const completedTurns = results.length;
       toast.success(
@@ -4346,9 +4357,9 @@ export default function Teams() {
             </Button>
             <Button
               onClick={() => {
-                if (!selectedRoomId || !runObjective.trim()) return;
+                if (!selectedRoomIdForView || !runObjective.trim()) return;
                 startRunMutation.mutate({
-                  roomId: selectedRoomId,
+                  roomId: selectedRoomIdForView,
                   executionMode: startRunMode,
                   objective: runObjective.trim(),
                   requestedSubagent: resolvedRequestedSubagent,

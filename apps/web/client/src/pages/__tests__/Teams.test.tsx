@@ -212,7 +212,9 @@ vi.mock("@/hooks/useTenantFeatureFlag", () => ({
 }));
 
 vi.mock("@/components/orchestrator/TeamRoomView", () => ({
-  TeamRoomView: () => <div data-testid="team-room-view" />,
+  TeamRoomView: (props: any) => (
+    <div data-testid="team-room-view" data-room-id={props.roomId} />
+  ),
 }));
 
 vi.mock("@/components/orchestrator/RunMonitorPanel", () => ({
@@ -749,6 +751,54 @@ describe("Teams preset creation flow", () => {
     await waitFor(() => {
       expect(screen.getByTestId("team-room-card-room-1")).toBeVisible();
       expect(screen.getByTestId("team-room-card-room-2")).toBeVisible();
+    });
+  });
+
+  it("uses the roomId from the URL when navigating within the same team", async () => {
+    routeParamsRef.current = { teamId: "team-1" };
+    locationRef.current = "/teams/team-1?roomId=room-old";
+    teamListDataRef.current = [
+      {
+        id: "team-1",
+        name: "Creative Content 1",
+        description: null,
+        category: "creative",
+        status: "active",
+        memberCount: 6,
+      },
+    ];
+    teamGetDataRef.current = {
+      id: "team-1",
+      name: "Creative Content 1",
+      members: [],
+    };
+    teamRoomsRef.current = [
+      {
+        id: "room-old",
+        roomType: "team",
+        status: "active",
+        createdAt: new Date("2026-04-16T01:00:00.000Z"),
+        goalPrompt: "Old room objective",
+      },
+    ];
+
+    const { rerender } = render(<Teams />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("team-room-view")).toHaveAttribute(
+        "data-room-id",
+        "room-old"
+      );
+    });
+
+    locationRef.current = "/teams/team-1?roomId=room-new";
+    rerender(<Teams />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("team-room-view")).toHaveAttribute(
+        "data-room-id",
+        "room-new"
+      );
     });
   });
 
