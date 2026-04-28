@@ -688,6 +688,12 @@ export default function WorkRequestPage() {
     useState<PreflightReviewRecord | null>(null);
   const [autoStartCaseId, setAutoStartCaseId] = useState<string | null>(null);
   const [autoStartError, setAutoStartError] = useState<string | null>(null);
+  const [launchTarget, setLaunchTarget] = useState<{
+    teamId: string;
+    roomId: string;
+    teamRunId?: string | null;
+    workItemId?: string | null;
+  } | null>(null);
   const detailsFileInputRef = useRef<HTMLInputElement>(null);
   const preflightReviewRef = useRef<HTMLDivElement | null>(null);
   const autoStartRequestedRef = useRef(false);
@@ -744,7 +750,13 @@ export default function WorkRequestPage() {
           const kickoffTeamId = automation?.teamId ?? null;
           const kickoffRoomId = automation?.roomId ?? null;
           if (kickoffTeamId && kickoffRoomId) {
-            await utils.teamRoom.listByTeam.invalidate({
+            setLaunchTarget({
+              teamId: kickoffTeamId,
+              roomId: kickoffRoomId,
+              teamRunId: automation?.teamRunId ?? null,
+              workItemId: automation?.workItemId ?? null,
+            });
+            await (utils as any).teamRoom?.listByTeam?.invalidate?.({
               teamId: kickoffTeamId,
             });
             setLocation(
@@ -831,7 +843,13 @@ export default function WorkRequestPage() {
         const kickoffTeamId = result?.teamId ?? null;
         const kickoffRoomId = result?.roomId ?? null;
         if (kickoffTeamId && kickoffRoomId) {
-          await utils.teamRoom.listByTeam.invalidate({
+          setLaunchTarget({
+            teamId: kickoffTeamId,
+            roomId: kickoffRoomId,
+            teamRunId: result?.teamRunId ?? null,
+            workItemId: result?.workItemId ?? null,
+          });
+          await (utils as any).teamRoom?.listByTeam?.invalidate?.({
             teamId: kickoffTeamId,
           });
           setLocation(
@@ -855,6 +873,13 @@ export default function WorkRequestPage() {
     () => ownedTeams.filter(team => !team.status || team.status === "active"),
     [ownedTeams]
   );
+  const teamNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const team of [...ownedTeams, ...(allTeamsQuery.data ?? [])]) {
+      map.set(team.id, team.name);
+    }
+    return map;
+  }, [allTeamsQuery.data, ownedTeams]);
 
   const sourceOptions = useMemo(
     () => [
@@ -1965,6 +1990,21 @@ export default function WorkRequestPage() {
                     <span className="font-medium">Case:</span>{" "}
                     {createdCaseId ?? "n/a"}
                   </p>
+                  {launchTarget ? (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3 text-emerald-900">
+                      <p className="font-medium">
+                        Automation room created in{" "}
+                        {teamNameById.get(launchTarget.teamId) ??
+                          launchTarget.teamId}
+                      </p>
+                      <p className="mt-1 text-xs">
+                        Room: {launchTarget.roomId}
+                        {launchTarget.teamRunId
+                          ? ` · Run: ${launchTarget.teamRunId}`
+                          : ""}
+                      </p>
+                    </div>
+                  ) : null}
                   {createdRequest ? (
                     <Badge
                       variant="outline"
@@ -1997,6 +2037,19 @@ export default function WorkRequestPage() {
                       onClick={scrollToPreflightReview}
                     >
                       Open diagnostics
+                    </Button>
+                  ) : null}
+                  {launchTarget ? (
+                    <Button asChild>
+                      <Link
+                        href={buildTeamRoomPath(
+                          launchTarget.teamId,
+                          launchTarget.roomId,
+                          "workflow"
+                        )}
+                      >
+                        Open launched room
+                      </Link>
                     </Button>
                   ) : null}
                   <Button
@@ -2784,7 +2837,10 @@ export default function WorkRequestPage() {
                               </p>
                               <p className="mt-2 text-sm font-semibold text-slate-900">
                                 {preflightPreview.teamResolution?.teamId
-                                  ? `Team ${preflightPreview.teamResolution.teamId}`
+                                  ? (teamNameById.get(
+                                      preflightPreview.teamResolution.teamId
+                                    ) ??
+                                    `Team ${preflightPreview.teamResolution.teamId}`)
                                   : "No team resolved"}
                               </p>
                               <p className="mt-2 text-sm text-slate-600">

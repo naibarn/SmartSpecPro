@@ -289,10 +289,58 @@ function getDefaultPanelForRoomType(
   return roomType === "auto_team" ? "workflow" : "chat";
 }
 
+function buildTeamPath(
+  teamId: string,
+  roomId?: string | null,
+  panel?: "chat" | "workflow" | "run" | null
+): string {
+  const params = new URLSearchParams();
+  if (roomId) params.set("roomId", roomId);
+  if (panel) params.set("panel", panel);
+  const query = params.toString();
+  return query ? `/teams/${teamId}?${query}` : `/teams/${teamId}`;
+}
+
 function isLegacyRoomType(
   roomType: CreateRoomState["roomType"] | string | null | undefined
 ): boolean {
   return roomType === "direct" || roomType === "job_review";
+}
+
+function getTeamStatusRank(status: string | null | undefined): number {
+  if (!status || status === "active") return 0;
+  if (status === "draft") return 1;
+  if (status === "archived") return 3;
+  return 2;
+}
+
+function getTeamStatusLabel(
+  status: string | null | undefined,
+  locale: string
+): string {
+  switch (status) {
+    case "active":
+      return locale === "th" ? "พร้อมใช้งาน" : "Active";
+    case "draft":
+      return locale === "th" ? "ฉบับร่าง" : "Draft";
+    case "archived":
+      return locale === "th" ? "เก็บถาวร" : "Archived";
+    default:
+      return status ?? (locale === "th" ? "ไม่ทราบสถานะ" : "Unknown");
+  }
+}
+
+function getTeamStatusBadgeClass(status: string | null | undefined): string {
+  switch (status) {
+    case "active":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    case "draft":
+      return "border-amber-200 bg-amber-50 text-amber-700";
+    case "archived":
+      return "border-slate-200 bg-slate-100 text-slate-600";
+    default:
+      return "border-slate-200 bg-white text-slate-700";
+  }
 }
 
 function toRoomTimestamp(value: string | Date | null | undefined): number {
@@ -1157,6 +1205,8 @@ export default function Teams() {
     });
 
   const selectedTeam = teams.find((t: any) => t.id === selectedTeamIdForView);
+  const selectedTeamIsNotActive =
+    Boolean(selectedTeam?.status) && selectedTeam?.status !== "active";
   const selectedRoom =
     orderedTeamRooms?.find((room: any) => room.id === selectedRoomIdForView) ??
     null;
@@ -2370,13 +2420,51 @@ export default function Teams() {
     );
   };
 
-  const filteredTeams = teams.filter((team: any) => {
+  const orderedTeams = useMemo(
+    () =>
+      [...teams].sort((left: any, right: any) => {
+        const statusRank =
+          getTeamStatusRank(left.status) - getTeamStatusRank(right.status);
+        if (statusRank !== 0) return statusRank;
+
+        const activeRunDelta =
+          (right.activeRunCount ?? 0) - (left.activeRunCount ?? 0);
+        if (activeRunDelta !== 0) return activeRunDelta;
+
+        const openWorkDelta =
+          (right.openWorkItemCount ?? 0) - (left.openWorkItemCount ?? 0);
+        if (openWorkDelta !== 0) return openWorkDelta;
+
+        return toRoomTimestamp(right.createdAt) - toRoomTimestamp(left.createdAt);
+      }),
+    [teams]
+  );
+
+  const openTeamFromSidebar = (team: any) => {
+    const latestRoomId = team.latestRoomId ?? null;
+    const latestRoomType = team.latestRoomType ?? null;
+    const panel = latestRoomId
+      ? getDefaultPanelForRoomType(latestRoomType)
+      : null;
+    setSelectedTeamId(team.id);
+    setSelectedRoomId(latestRoomId);
+    setSelectedRoomTypeHint(latestRoomType);
+    setRoomListMode(false);
+    setActiveRunId(null);
+    setRunStatus("idle");
+    setFocusMessageRequest(null);
+    setLocation(buildTeamPath(team.id, latestRoomId, panel));
+    if (isCompactViewport) setSidebarOpen(false);
+  };
+
+  const filteredTeams = orderedTeams.filter((team: any) => {
     if (!search) return true;
     const term = search.toLowerCase();
     return (
       team.name?.toLowerCase().includes(term) ||
       team.description?.toLowerCase().includes(term) ||
       team.category?.toLowerCase().includes(term) ||
+      team.status?.toLowerCase().includes(term) ||
       getTeamCategoryLabel(team.category).toLowerCase().includes(term)
     );
   });
@@ -3020,11 +3108,7 @@ export default function Teams() {
               {filteredTeams.map((team: any) => (
                 <button
                   key={team.id}
-                  onClick={() => {
-                    setSelectedTeamId(team.id);
-                    setSelectedRoomId(null);
-                    if (isCompactViewport) setSidebarOpen(false);
-                  }}
+                  onClick={() => openTeamFromSidebar(team)}
                   className={cn(
                     "flex items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left text-sm transition-colors hover:border-slate-200 hover:bg-slate-50",
                     team.id === selectedTeamIdForView &&
@@ -3050,6 +3134,17 @@ export default function Teams() {
                       >
                         {team.name}
                       </div>
+                      {team.status ? (
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "shrink-0 text-[10px]",
+                            getTeamStatusBadgeClass(team.status)
+                          )}
+                        >
+                          {getTeamStatusLabel(team.status, locale)}
+                        </Badge>
+                      ) : null}
                       {team.category && (
                         <Badge
                           variant="outline"
@@ -3180,6 +3275,14 @@ export default function Teams() {
         </div>
 
         {/* Content */}
+        {selectedTeamIsNotActive ? (
+          <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+            {locale === "th"
+              ? `ทีมนี้ยังเป็น${getTeamStatusLabel(selectedTeam?.status, locale)} งาน Work Request ใหม่จะถูกส่งเข้าเฉพาะทีมที่พร้อมใช้งาน ให้เปิดทีมที่มีป้าย "พร้อมใช้งาน" เพื่อดูห้องงานล่าสุด`
+              : `This team is ${getTeamStatusLabel(selectedTeam?.status, locale)}. New Work Requests are routed to active teams only; open the team marked "Active" to see the latest room.`}
+          </div>
+        ) : null}
+
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {requestedRoomMissing ? (
             <div className="pointer-events-none absolute left-1/2 top-16 z-20 -translate-x-1/2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs text-amber-800 shadow-sm">

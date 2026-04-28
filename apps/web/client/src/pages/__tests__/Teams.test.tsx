@@ -802,6 +802,57 @@ describe("Teams preset creation flow", () => {
     });
   });
 
+  it("prioritizes active teams and opens their latest room from the sidebar", async () => {
+    const user = userEvent.setup();
+    routeParamsRef.current = null;
+    locationRef.current = "/teams";
+    teamListDataRef.current = [
+      {
+        id: "team-draft",
+        name: "Creative Content 1",
+        description: null,
+        category: "creative",
+        status: "draft",
+        memberCount: 6,
+        roomCount: 1,
+        latestRoomId: "room-draft",
+        latestRoomType: "auto_team",
+        createdAt: new Date("2026-04-28T13:30:00.000Z"),
+      },
+      {
+        id: "team-active",
+        name: "ทีมคอนเทนต์",
+        description: null,
+        category: "creative",
+        status: "active",
+        memberCount: 6,
+        roomCount: 1,
+        latestRoomId: "room-active",
+        latestRoomType: "auto_team",
+        createdAt: new Date("2026-03-20T06:35:00.000Z"),
+      },
+    ];
+    teamGetDataRef.current = undefined;
+    teamRoomsRef.current = [];
+
+    render(<Teams />);
+
+    const activeTeamLabel = await screen.findByText("ทีมคอนเทนต์");
+    const draftTeamLabel = screen.getByText("Creative Content 1");
+    expect(
+      Boolean(
+        activeTeamLabel.compareDocumentPosition(draftTeamLabel) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      )
+    ).toBe(true);
+
+    await user.click(activeTeamLabel.closest("button")!);
+
+    expect(setLocationMock).toHaveBeenCalledWith(
+      "/teams/team-active?roomId=room-active&panel=workflow"
+    );
+  });
+
   it("shows created time and marks the newest room as latest", async () => {
     const user = userEvent.setup();
     routeParamsRef.current = { teamId: "team-1" };
