@@ -128,6 +128,8 @@ interface TeamRoomStepResultMetadata {
   phase?: "execution" | "review" | "repair" | "handoff" | "finalize" | string | null;
   stepKey?: string | null;
   stepTitle?: string | null;
+  stepIndex?: number | null;
+  stepCount?: number | null;
   stepObjective?: string | null;
   stepDeliverable?: string | null;
   ownerPersona?: string | null;
@@ -420,6 +422,8 @@ function normalizeMessageMetadata(value: unknown): TeamRoomMessageMetadata {
         phase: stepResultPhase,
         stepKey: readStringField(details, "stepKey"),
         stepTitle: readStringField(details, "stepTitle"),
+        stepIndex: readNumberField(details, "stepIndex"),
+        stepCount: readNumberField(details, "stepCount"),
         stepObjective: readStringField(details, "stepObjective"),
         stepDeliverable: readStringField(details, "stepDeliverable"),
         ownerPersona: readStringField(details, "stepOwnerPersona"),
@@ -1000,6 +1004,12 @@ function StepResultCard({
       : null;
   const resultSummary =
     metadata.resultSummary?.trim() || content.trim() || "";
+  const planStepLabel =
+    typeof metadata.stepIndex === "number" && Number.isFinite(metadata.stepIndex)
+      ? roomLanguage === "th"
+        ? `แผนขั้นที่ ${metadata.stepIndex}${typeof metadata.stepCount === "number" ? `/${metadata.stepCount}` : ""}`
+        : `Plan step ${metadata.stepIndex}${typeof metadata.stepCount === "number" ? `/${metadata.stepCount}` : ""}`
+      : null;
   const loopSummary = getRoomLoopSummary({
     roomLanguage,
     count: typeof metadata.attempt === "number" ? metadata.attempt : 1,
@@ -1014,6 +1024,11 @@ function StepResultCard({
     <div className="mt-3 rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 via-white to-slate-50 px-4 py-3 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
+          {planStepLabel && (
+            <div className="mb-1 text-[11px] font-semibold text-sky-700">
+              {planStepLabel}
+            </div>
+          )}
           <div className="text-sm font-semibold text-slate-900">
             {metadata.stepTitle ?? metadata.stepKey ?? "Step result"}
           </div>

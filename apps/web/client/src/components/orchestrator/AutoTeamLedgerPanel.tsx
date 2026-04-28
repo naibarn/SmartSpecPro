@@ -35,6 +35,7 @@ interface AutoTeamLedgerPanelProps {
     currentPhase?: string | null;
     waitingReason?: string | null;
   } | null;
+  roomLanguage?: "en" | "th";
   teamMembers: Array<{
     id: string;
     displayName?: string | null;
@@ -545,12 +546,14 @@ export function AutoTeamLedgerPanel({
   ledgerError,
   roomMessages,
   runtimeState,
+  roomLanguage = "en",
   teamMembers,
   runStatus,
   runStatusReason,
   onFocusThread,
   className,
 }: AutoTeamLedgerPanelProps) {
+  const isThai = roomLanguage === "th";
   const currentStep = getCurrentStep(ledger);
   const auditedPlanSteps = Array.isArray(ledger?.steps) ? ledger.steps : [];
   const roomPlanArtifact = extractRoomPlanArtifact(roomMessages);
@@ -625,6 +628,10 @@ export function AutoTeamLedgerPanel({
             attempt.id === currentStep.latestAttemptId ||
             attempt.stepKey === currentStep.stepKey,
         ) ?? null
+      : null;
+  const currentStepValidation =
+    currentStep?.validationState && typeof currentStep.validationState === "object"
+      ? (currentStep.validationState as Record<string, any>)
       : null;
   const jumpToExecutionStep = (stepKey: string | null | undefined) => {
     if (!stepKey) return;
@@ -1093,7 +1100,7 @@ export function AutoTeamLedgerPanel({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge className="border-sky-200 bg-sky-50 text-sky-700">
-                    Current step
+                    {isThai ? "ขั้นตอนปัจจุบัน" : "Current step"}
                   </Badge>
                   <Badge
                     variant="outline"
@@ -1110,11 +1117,44 @@ export function AutoTeamLedgerPanel({
                 <h2 className="mt-2 text-sm font-semibold text-slate-900">
                   {currentStep?.title ??
                     ledger.summary?.currentStepTitle ??
-                    "Current step not captured yet"}
+                    (isThai ? "ยังไม่พบขั้นตอนปัจจุบัน" : "Current step not captured yet")}
                 </h2>
                 <p className="mt-1 text-sm leading-6 text-slate-700">
-                  {currentStep?.objective ?? ledger.summary?.nextAction ?? "No step summary captured yet"}
+                  {currentStep?.objective ??
+                    ledger.summary?.nextAction ??
+                    (isThai ? "ยังไม่มีสรุปขั้นตอน" : "No step summary captured yet")}
                 </p>
+                {currentStepValidation && (
+                  <div
+                    className={cn(
+                      "mt-3 rounded-xl border px-3 py-2 text-xs",
+                      currentStepValidation.status === "failed"
+                        ? "border-rose-200 bg-rose-50 text-rose-800"
+                        : currentStepValidation.status === "passed"
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                          : "border-amber-200 bg-amber-50 text-amber-800",
+                    )}
+                  >
+                    <div className="font-semibold">
+                      {isThai ? "การตรวจ" : "Validation"}: {currentStepValidation.status ?? "pending"}
+                      {typeof currentStepValidation.attempt === "number" &&
+                        currentStepValidation.attempt > 0 &&
+                        ` · ${isThai ? "รอบ" : "attempt"} ${currentStepValidation.attempt}${
+                          typeof currentStepValidation.maxAttempts === "number" &&
+                          currentStepValidation.maxAttempts > 0
+                            ? `/${currentStepValidation.maxAttempts}`
+                            : ""
+                        }`}
+                    </div>
+                    {(currentStepValidation.summary ||
+                      currentStepValidation.issues?.length > 0) && (
+                      <div className="mt-1">
+                        {currentStepValidation.summary ??
+                          currentStepValidation.issues.join(", ")}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex flex-col items-end gap-2">
                 <Button
@@ -1124,21 +1164,25 @@ export function AutoTeamLedgerPanel({
                   className="h-8 px-3 text-xs"
                   onClick={() => jumpToExecutionStep(currentStep?.stepKey)}
                   disabled={!currentStep?.stepKey}
-                  title="Scroll to the current execution step"
+                  title={isThai ? "เลื่อนไปยังงานของขั้นตอนนี้" : "Scroll to the current execution step"}
                   data-testid="auto-team-current-step-jump-button"
                 >
-                  Jump to step
+                  {isThai ? "ไปที่ขั้นตอน" : "Jump to step"}
                 </Button>
                 <div className="grid min-w-[220px] gap-2 text-xs text-slate-600">
                   <div className="rounded-xl border bg-slate-50/80 px-3 py-2">
-                    <div className="font-semibold text-slate-500">Owner</div>
+                    <div className="font-semibold text-slate-500">
+                      {isThai ? "ผู้รับผิดชอบ" : "Owner"}
+                    </div>
                     <div className="mt-1 text-slate-900">
                       {currentStep?.ownerPersona ??
                         getMemberLabel(currentStep?.ownerMemberId, teamMembers)}
                     </div>
                   </div>
                   <div className="rounded-xl border bg-slate-50/80 px-3 py-2">
-                    <div className="font-semibold text-slate-500">Reviewer</div>
+                    <div className="font-semibold text-slate-500">
+                      {isThai ? "ผู้ตรวจ" : "Reviewer"}
+                    </div>
                     <div className="mt-1 text-slate-900">
                       {currentStep?.reviewerPersona ??
                         getMemberLabel(currentStep?.reviewerMemberId, teamMembers)}

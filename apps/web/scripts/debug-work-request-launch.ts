@@ -70,12 +70,51 @@ async function main(): Promise<void> {
     readArg("--tenant") ?? process.env.DEBUG_TENANT_ID ?? "tenant-ZCSKEM9s";
   const requestedRequestId = readArg("--request");
   const requestedCaseId = readArg("--case");
+  const requestedRoomId = readArg("--room");
+  const requestedRunId = readArg("--run");
 
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
 
   try {
-    const requestRows = requestedRequestId
+    const requestRows = requestedRunId || requestedRoomId
+      ? await query<Row>(
+          client,
+          `
+            select
+              wr.id as request_id,
+              r."tenantId" as tenant_id,
+              wr.title,
+              wr.objective,
+              wr."currentState" as current_state,
+              wr."defaultQueueId" as default_queue_id,
+              wr."createdAt" as request_created_at,
+              wc.id as case_id,
+              wc."automationRunId" as automation_run_id,
+              wc."automationDisposition" as automation_disposition,
+              wc."automationSummary" as automation_summary,
+              wc."ownerType" as case_owner_type,
+              wc."ownerId" as case_owner_id,
+              tr.id as team_run_id,
+              tr."roomId" as room_id
+            from team_runs tr
+            join team_rooms r on r.id = tr."roomId"
+            left join work_cases wc on wc."tenantId" = r."tenantId"
+              and (
+                wc.id = tr."constraintsJson"->>'workCaseId'
+                or wc."automationRunId" = tr."constraintsJson"->>'workOsAutomationRunId'
+              )
+            left join work_requests wr on wr."tenantId" = r."tenantId"
+              and wr.id = coalesce(tr."constraintsJson"->>'workRequestId', wc."requestId")
+            where r."tenantId" = $1
+              and ($2::text is null or tr.id = $2)
+              and ($3::text is null or tr."roomId" = $3)
+            order by tr."startedAt" desc nulls last
+            limit 1
+          `,
+          [tenantId, requestedRunId, requestedRoomId]
+        )
+      : requestedRequestId
       ? await query<Row>(
           client,
           `
@@ -152,7 +191,7 @@ async function main(): Promise<void> {
           );
 
     const request = requestRows[0] ?? null;
-    if (!request) {
+    if (!request && !requestedRunId && !requestedRoomId) {
       throw new Error(`No work request found for tenant ${tenantId}`);
     }
 
@@ -187,8 +226,10 @@ async function main(): Promise<void> {
           tr."roomId" as room_id,
           tr."startedAt" as started_at,
           tr."endedAt" as ended_at,
+          tr."stopReason" as stop_reason,
           tr."runtimeCurrentStepKey" as runtime_current_step_key,
           tr."runtimeTerminalReason" as runtime_terminal_reason,
+          tr."runtimeStateJson" as runtime_state_json,
           tr."constraintsJson" as constraints_json,
           r.status as room_status,
           r."roomType" as room_type,
@@ -203,13 +244,23 @@ async function main(): Promise<void> {
             tr."constraintsJson"->>'workRequestId' = $2
             or tr."constraintsJson"->>'workCaseId' = $3
             or tr."constraintsJson"->>'workOsAutomationRunId' = $4
+            or tr.id = $5
+            or tr."roomId" = $6
           )
         order by tr."startedAt" desc nulls last
       `,
-      [tenantId, requestId, caseId, automationRunId]
+      [
+        tenantId,
+        requestId ?? "",
+        caseId ?? "",
+        automationRunId ?? "",
+        requestedRunId ?? "",
+        requestedRoomId ?? "",
+      ]
     );
 
-    const targetRoomId = getString(teamRuns[0], "room_id");
+    const targetRoomId = requestedRoomId ?? getString(teamRuns[0], "room_id");
+    const targetRunId = requestedRunId ?? getString(teamRuns[0], "team_run_id");
     const targetTeamId =
       getString(teamRuns[0], "team_id") ??
       getString(request, "case_owner_id") ??
@@ -270,21 +321,90 @@ async function main(): Promise<void> {
           `
             select id, "senderType" as sender_type, "turnType" as turn_type,
                    visibility, left(content, 600) as content_preview,
+                   "metadataJson" as metadata_json,
                    "createdAt" as created_at
             from team_room_messages
             where "roomId" = $1
             order by "createdAt" desc
-            limit 10
+            limit 30
           `,
           [targetRoomId]
         )
       : [];
+
+    const traceEvents =
+      targetRoomId || targetRunId
+        ? await query<Row>(
+            client,
+            `
+              select sequence, "eventName" as event_name,
+                     "sourceComponent" as source_component,
+                     severity, summary,
+                     "redactedMetadataJson" as metadata_json,
+                     "createdAt" as created_at
+              from auto_team_trace_events
+              where "tenantId" = $1
+                and (
+                  ($2::text is not null and "roomId" = $2)
+                  or ($3::text is not null and "runId" = $3)
+                )
+              order by sequence desc
+              limit 80
+            `,
+            [tenantId, targetRoomId, targetRunId]
+          )
+        : [];
+
+    const stepMessages = messages
+      .map((message) => {
+        const metadata = message.metadata_json;
+        const details =
+          metadata &&
+          typeof metadata === "object" &&
+          !Array.isArray(metadata) &&
+          (metadata as Record<string, unknown>).details &&
+          typeof (metadata as Record<string, unknown>).details === "object"
+            ? ((metadata as Record<string, unknown>).details as Record<string, unknown>)
+            : null;
+        if (!details) return null;
+        return {
+          message_id: message.id,
+          created_at: message.created_at,
+          message_type: details.messageType ?? (metadata as Record<string, unknown>).messageType,
+          step_key: details.stepKey,
+          step_title: details.stepTitle,
+          step_index: details.stepIndex,
+          step_count: details.stepCount,
+          review_status: details.stepReviewStatus,
+          next_action: details.stepNextAction,
+          validation_issues: details.validationIssues,
+          preview: message.content_preview,
+        };
+      })
+      .filter(Boolean);
 
     const warnings: string[] = [];
     if (!caseId) warnings.push("Request has no linked work case.");
     if (!automationRunId) warnings.push("Case has no automationRunId.");
     if (!teamRuns.length) {
       warnings.push("No team_run was found for request/case/automationRunId.");
+    }
+    const latestRunState =
+      teamRuns[0]?.runtime_state_json &&
+      typeof teamRuns[0].runtime_state_json === "object" &&
+      !Array.isArray(teamRuns[0].runtime_state_json)
+        ? (teamRuns[0].runtime_state_json as Record<string, unknown>)
+        : null;
+    const stepValidation =
+      latestRunState?.stepValidation &&
+      typeof latestRunState.stepValidation === "object" &&
+      !Array.isArray(latestRunState.stepValidation)
+        ? (latestRunState.stepValidation as Record<string, unknown>)
+        : null;
+    if (teamRuns[0]?.team_run_status === "paused" && stepValidation) {
+      warnings.push(
+        `Run is paused at step ${String(stepValidation.stepKey ?? teamRuns[0].runtime_current_step_key ?? "unknown")} because validation failed: ${JSON.stringify(stepValidation.issues ?? [])}.`
+      );
     }
     if (defaultQueueId && targetTeamId && defaultQueueId !== targetTeamId) {
       warnings.push(
@@ -316,6 +436,8 @@ async function main(): Promise<void> {
       participants,
       workItems,
       messages,
+      stepMessages,
+      traceEvents,
       warnings,
       expectedTeamUrl:
         targetTeamId && targetRoomId
@@ -352,6 +474,8 @@ async function main(): Promise<void> {
         tableSection("Rooms For Target Team", roomsForTargetTeam),
         tableSection("Participants", participants),
         tableSection("Work Items", workItems),
+        tableSection("Step Messages", stepMessages as Row[]),
+        tableSection("Trace Events", traceEvents),
         tableSection("Latest Messages", messages),
       ].join("\n")
     );

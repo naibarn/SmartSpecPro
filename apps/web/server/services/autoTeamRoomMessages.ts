@@ -14,6 +14,8 @@ export type AutoTeamStepReviewStatus =
 export interface AutoTeamStepResultStepContext {
   stepKey: string;
   stepTitle: string;
+  stepIndex?: number | null;
+  stepCount?: number | null;
   stepObjective?: string | null;
   stepDeliverable?: string | null;
   ownerPersona?: string | null;
@@ -159,7 +161,12 @@ export function buildAutoTeamStepResultContent(
   };
 
   const lines = [
-    `${labels.step}: ${input.step.stepTitle} [${input.step.stepKey}]`,
+    `${labels.step}: ${
+      typeof input.step.stepIndex === "number" &&
+      Number.isFinite(input.step.stepIndex)
+        ? `${input.step.stepIndex}${typeof input.step.stepCount === "number" ? `/${input.step.stepCount}` : ""} · `
+        : ""
+    }${input.step.stepTitle} [${input.step.stepKey}]`,
     `${labels.phase}: ${buildPhaseLabel(input.phase, input.roomLanguage)}`,
   ];
 
@@ -210,6 +217,14 @@ export function buildAutoTeamStepResultMetadata(
     stepResultPhase: input.phase,
     stepKey: input.step.stepKey,
     stepTitle: input.step.stepTitle,
+    stepIndex:
+      typeof input.step.stepIndex === "number" && Number.isFinite(input.step.stepIndex)
+        ? input.step.stepIndex
+        : null,
+    stepCount:
+      typeof input.step.stepCount === "number" && Number.isFinite(input.step.stepCount)
+        ? input.step.stepCount
+        : null,
     stepObjective: input.step.stepObjective ?? null,
     stepDeliverable: input.step.stepDeliverable ?? null,
     stepOwnerPersona: input.step.ownerPersona ?? null,

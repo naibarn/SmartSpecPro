@@ -398,6 +398,70 @@ describe("autoTeamLedgerService", () => {
     ).toBe(true);
   });
 
+  it("surfaces paused step validation as the current plan blocker", () => {
+    const base = makeSnapshot();
+    const planArtifact =
+      (base.execution.canonicalSnapshot.latestMonitoringSnapshot.artifactCountJson as any)
+        .planArtifact;
+    const readModel = buildAutoTeamLedgerReadModel({
+      snapshot: makeSnapshot({
+        run: {
+          ...base.run,
+          status: "paused",
+          stopReason: null,
+          runtimeCurrentStepKey: "storyboard",
+          runtimeStateJson: {
+            stepValidation: {
+              stepKey: "storyboard",
+              issues: ["video_step_missing_job_or_clip_reference"],
+              summary:
+                "Step result failed automatic artifact validation: video_step_missing_job_or_clip_reference",
+              attempt: 2,
+              maxAttempts: 2,
+              retryable: false,
+            },
+          },
+        },
+        execution: {
+          ...base.execution,
+          canonicalSnapshot: {
+            ...base.execution.canonicalSnapshot,
+            currentStage: null,
+            latestMonitoringSnapshot: {
+              artifactCountJson: {
+                planArtifact: {
+                  ...planArtifact,
+                  status: "blocked",
+                  steps: planArtifact.steps.map((step: any) => ({
+                    ...step,
+                    status:
+                      step.stepKey === "storyboard" ? "blocked" : step.status,
+                  })),
+                },
+              },
+            },
+          },
+        },
+      }),
+      messages: [] as any,
+      workItemEvents: [] as any,
+      accessLevel: "detailed",
+    });
+
+    expect(readModel.summary.stopReason).toBe("auto_team_step_validation_failed");
+    expect(readModel.summary.currentStepKey).toBe("storyboard");
+    expect(readModel.summary.nextAction).toContain(
+      "failed automatic validation",
+    );
+    expect(readModel.steps[0]?.validationState).toEqual(
+      expect.objectContaining({
+        status: "failed",
+        attempt: 2,
+        issues: ["video_step_missing_job_or_clip_reference"],
+      }),
+    );
+  });
+
   it("exposes detailed audit metadata for authorized viewers and classifies idle timeout with missing gates as stalled no-gate progress", () => {
     const readModel = buildAutoTeamLedgerReadModel({
       snapshot: makeSnapshot({

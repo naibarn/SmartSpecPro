@@ -43,6 +43,7 @@ interface RoomWorkflowPanelProps {
   runId?: string;
   roomType?: string | null;
   roomGoal?: string | null;
+  roomLanguage?: "en" | "th";
   runtimeState?: {
     currentPhase: string;
     waitingReason: string | null;
@@ -863,6 +864,7 @@ export function RoomWorkflowPanel({
   runId,
   roomType,
   roomGoal,
+  roomLanguage = "en",
   runtimeState,
   teamMembers,
   runStatus = "idle",
@@ -1218,6 +1220,7 @@ export function RoomWorkflowPanel({
         ledgerError={autoTeamLedgerError?.message ?? null}
         roomMessages={roomMessages ?? []}
         runtimeState={runtimeState}
+        roomLanguage={roomLanguage}
         teamMembers={teamMembers}
         runStatus={runStatus}
         runStatusReason={runStatusReason}

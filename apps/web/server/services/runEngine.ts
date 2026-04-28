@@ -1362,6 +1362,59 @@ function getAutoTeamStepValidationAttempt(
   return step.validationState?.attempt ?? 0;
 }
 
+function buildAutoTeamStepValidationDescriptor(
+  step: monitoringService.RunPlanStep,
+): string {
+  return [
+    step.stepKey,
+    step.title,
+    step.objective,
+    step.deliverable,
+    step.verificationMethod,
+    step.surface,
+    step.selectedCapabilityId,
+    ...(step.evidenceRequirements ?? []),
+    ...(step.qualityCriteria ?? []),
+    ...(step.reviewChecklist ?? []),
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ")
+    .toLowerCase();
+}
+
+function isStoryboardScriptPlanStep(step: monitoringService.RunPlanStep): boolean {
+  const descriptor = buildAutoTeamStepValidationDescriptor(step);
+  const keyAndTitle = `${step.stepKey} ${step.title}`.toLowerCase();
+  const explicitStoryboardScript =
+    /storyboard[-_\s]*(and[-_\s]*)?script|script[-_\s]*(and[-_\s]*)?storyboard/.test(
+      keyAndTitle,
+    ) ||
+    (/(storyboard|สตอรี่บอร์ด|สตอรี่บอร์ด)/i.test(keyAndTitle) &&
+      /(script|สคริปต์|บทพูด|บทบรรยาย)/i.test(keyAndTitle));
+  if (explicitStoryboardScript) return true;
+
+  const mentionsStoryboard = /(storyboard|สตอรี่บอร์ด)/i.test(descriptor);
+  const mentionsScript =
+    /(script|voiceover|narration|scene-by-scene|สคริปต์|บทพูด|บทบรรยาย|ฉาก)/i.test(
+      descriptor,
+    );
+  const isGenerationOrComposition =
+    /(keyframe|image|asset|media studio|generate|compose|render|clip|final video|สร้างภาพ|สร้างคีย์เฟรม|สร้างคลิป|ตัดต่อ|เรนเดอร์|รวมวิดีโอ)/i.test(
+      descriptor,
+    );
+  return mentionsStoryboard && mentionsScript && !isGenerationOrComposition;
+}
+
+function isMediaArtifactPlanStep(step: monitoringService.RunPlanStep): boolean {
+  if (isStoryboardScriptPlanStep(step)) return false;
+  return step.surface === "media_studio";
+}
+
+function isVideoArtifactPlanStep(step: monitoringService.RunPlanStep): boolean {
+  if (isStoryboardScriptPlanStep(step)) return false;
+  return step.surface === "video_editor";
+}
+
 const autoTeamStepSemanticValidationSchema = z.object({
   pass: z.boolean(),
   score: z.number().min(0).max(1),
@@ -1369,7 +1422,7 @@ const autoTeamStepSemanticValidationSchema = z.object({
   summary: z.string().min(1),
 });
 
-async function validateAutoTeamStepResult(input: {
+export async function validateAutoTeamStepResult(input: {
   tenantId: string;
   userId: number;
   runObjective: string;
@@ -1390,7 +1443,6 @@ async function validateAutoTeamStepResult(input: {
   const normalizedContent = input.content.trim();
   const attempt = getAutoTeamStepValidationAttempt(input.step) + 1;
   const metadata = input.metadata ?? {};
-  const surface = input.step.surface;
   const awaitingAsyncAssets =
     metadata.mediaPipelineAwaitingAssets === true ||
     metadata.runtimeDispatchOutcome === "awaiting_async_assets";
@@ -1450,7 +1502,7 @@ async function validateAutoTeamStepResult(input: {
     readStringArray(metadata.artifactRefs).length > 0 ||
     readStringArray(metadata.artifactRefsJson).length > 0 ||
     Boolean(readStringField(metadata, ["finalVideoUrl", "final_video_url"]));
-  if (surface === "media_studio") {
+  if (isMediaArtifactPlanStep(input.step)) {
     const hasMediaEvidence =
       hasMediaJobMetadataEvidence ||
       hasArtifactMetadataEvidence ||
@@ -1459,7 +1511,7 @@ async function validateAutoTeamStepResult(input: {
       issues.push("media_step_missing_artifact_reference");
     }
   }
-  if (surface === "video_editor") {
+  if (isVideoArtifactPlanStep(input.step)) {
     const hasVideoEvidence =
       hasMediaJobMetadataEvidence || hasArtifactMetadataEvidence;
     if (!hasVideoEvidence) {
@@ -7759,6 +7811,19 @@ export async function runNextTurn(
     }
 
     let autoTeamStepResultPosted = false;
+    let autoTeamPausedByGate = false;
+    let autoTeamPauseNextSpeakerReason: string | null = null;
+    const currentAutoTeamStepIndex =
+      currentAutoTeamStep && autoTeamPlanArtifact
+        ? autoTeamPlanArtifact.steps.findIndex(
+            step => step.stepKey === currentAutoTeamStep.stepKey,
+          )
+        : -1;
+    const currentAutoTeamStepCount = autoTeamPlanArtifact?.steps.length ?? null;
+    const autoTeamStepNextAction =
+      room.language === "th"
+        ? "ระบบกำลังตรวจผลลัพธ์ของขั้นตอนนี้อัตโนมัติ ถ้าผ่านจะไปขั้นถัดไปเอง"
+        : "Work OS is validating this step automatically and will move to the next plan step if it passes.";
     if (run.executionMode === "auto_team" && currentAutoTeamStep) {
       try {
         const stepResultContent = buildAutoTeamStepResultContent({
@@ -7767,6 +7832,9 @@ export async function runNextTurn(
           step: {
             stepKey: currentAutoTeamStep.stepKey,
             stepTitle: currentAutoTeamStep.title,
+            stepIndex:
+              currentAutoTeamStepIndex >= 0 ? currentAutoTeamStepIndex + 1 : null,
+            stepCount: currentAutoTeamStepCount,
             stepObjective: currentAutoTeamStep.objective,
             stepDeliverable: currentAutoTeamStep.deliverable,
             ownerPersona: currentAutoTeamStep.ownerPersona,
@@ -7790,10 +7858,7 @@ export async function runNextTurn(
           },
           resultSummary: content,
           reviewStatus: "pending",
-          nextAction:
-            room.language === "th"
-              ? "รอผู้ตรวจตรวจผลลัพธ์ของขั้นตอนนี้"
-              : "Await reviewer inspection for this step.",
+          nextAction: autoTeamStepNextAction,
         });
 
         await roomService.postWorkUpdate({
@@ -7814,6 +7879,9 @@ export async function runNextTurn(
             step: {
               stepKey: currentAutoTeamStep.stepKey,
               stepTitle: currentAutoTeamStep.title,
+              stepIndex:
+                currentAutoTeamStepIndex >= 0 ? currentAutoTeamStepIndex + 1 : null,
+              stepCount: currentAutoTeamStepCount,
               stepObjective: currentAutoTeamStep.objective,
               stepDeliverable: currentAutoTeamStep.deliverable,
               ownerPersona: currentAutoTeamStep.ownerPersona,
@@ -7837,10 +7905,7 @@ export async function runNextTurn(
             },
             resultSummary: content,
             reviewStatus: "pending",
-            nextAction:
-              room.language === "th"
-                ? "รอผู้ตรวจตรวจผลลัพธ์ของขั้นตอนนี้"
-                : "Await reviewer inspection for this step.",
+            nextAction: autoTeamStepNextAction,
           }),
         });
         autoTeamStepResultPosted = true;
@@ -7916,6 +7981,14 @@ export async function runNextTurn(
               ? "Retrying the same plan step after automatic artifact validation failed."
               : "Automatic artifact validation failed after the maximum retry attempts.",
             verificationState: "failed",
+            stepValidation: {
+              stepKey: currentAutoTeamStep.stepKey,
+              issues: stepValidation.issues,
+              summary: stepValidation.summary,
+              attempt: stepValidation.attempt,
+              maxAttempts: stepValidation.maxAttempts,
+              retryable: stepValidation.retryable,
+            },
             selectedSkillId:
               (turnResponse.metadata?.selectedSkillId as string | null | undefined) ??
               route.selectedSkillId ??
@@ -7945,6 +8018,11 @@ export async function runNextTurn(
                 !Array.isArray(run.runtimeStateJson)
                   ? (run.runtimeStateJson as Record<string, unknown>)
                   : {}),
+                currentPhase: "blocked",
+                waitingReason: stepValidation.summary,
+                verificationState: "failed",
+                runtimeCurrentStepKey: currentAutoTeamStep.stepKey,
+                planArtifact: autoTeamPlanArtifact,
                 stepValidation: {
                   stepKey: currentAutoTeamStep.stepKey,
                   issues: stepValidation.issues,
@@ -7970,7 +8048,54 @@ export async function runNextTurn(
               },
             })
             .where(eq(teamRuns.id, runId));
-              clearQueuedAutoAdvance(runId);
+          autoTeamPausedByGate = true;
+          autoTeamPauseNextSpeakerReason = "auto_team_step_validation_failed";
+          clearQueuedAutoAdvance(runId);
+          await roomService
+            .postWorkUpdate({
+              roomId: run.roomId,
+              tenantId,
+              senderAssistantId: assistantId,
+              runId,
+              workItemId: autoTeamActiveWorkItem?.id ?? undefined,
+              replyToMessageId: message.id,
+              threadRootMessageId:
+                autoTeamActiveWorkItem?.threadRootMessageId ?? message.id,
+              messageType: "work_update",
+              content:
+                room.language === "th"
+                  ? `หยุดที่แผนขั้นที่ ${
+                      currentAutoTeamStepIndex >= 0
+                        ? `${currentAutoTeamStepIndex + 1}${currentAutoTeamStepCount ? `/${currentAutoTeamStepCount}` : ""}`
+                        : currentAutoTeamStep.stepKey
+                    } (${currentAutoTeamStep.title}) เพราะผลลัพธ์ไม่ผ่านการตรวจอัตโนมัติ: ${stepValidation.issues.join(", ")}`
+                  : `Paused at plan step ${
+                      currentAutoTeamStepIndex >= 0
+                        ? `${currentAutoTeamStepIndex + 1}${currentAutoTeamStepCount ? `/${currentAutoTeamStepCount}` : ""}`
+                        : currentAutoTeamStep.stepKey
+                    } (${currentAutoTeamStep.title}) because automatic validation failed: ${stepValidation.issues.join(", ")}`,
+              metadataJson: {
+                stepKey: currentAutoTeamStep.stepKey,
+                stepTitle: currentAutoTeamStep.title,
+                stepIndex:
+                  currentAutoTeamStepIndex >= 0 ? currentAutoTeamStepIndex + 1 : null,
+                stepCount: currentAutoTeamStepCount,
+                validationIssues: stepValidation.issues,
+                validationSummary: stepValidation.summary,
+                validationAttempt: stepValidation.attempt,
+                validationMaxAttempts: stepValidation.maxAttempts,
+                runStopReason: "auto_team_step_validation_failed",
+              },
+              sensitivity: "medium",
+            })
+            .catch(error => {
+              console.warn("[runEngine] failed to post auto-team validation block message", {
+                runId,
+                roomId: run.roomId,
+                stepKey: currentAutoTeamStep.stepKey,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            });
         } else if (run.executionMode === "auto_team") {
           queueAutoAdvance(
             runId,
@@ -8056,6 +8181,8 @@ export async function runNextTurn(
                 runtimeTerminalReason: finalCompletionBlockedReason,
               })
               .where(eq(teamRuns.id, runId));
+            autoTeamPausedByGate = true;
+            autoTeamPauseNextSpeakerReason = "auto_team_media_pipeline_failed";
             clearQueuedAutoAdvance(runId);
             await emitAutoTeamPlanningTraceEvent({
               tenantId,
@@ -8081,6 +8208,8 @@ export async function runNextTurn(
                 stopReason: "awaiting_async_media_pipeline",
               })
               .where(eq(teamRuns.id, runId));
+            autoTeamPausedByGate = true;
+            autoTeamPauseNextSpeakerReason = "awaiting_async_media_pipeline";
             clearQueuedAutoAdvance(runId);
             await emitAutoTeamPlanningTraceEvent({
               tenantId,
@@ -8129,6 +8258,8 @@ export async function runNextTurn(
                   runtimeTerminalReason: finalCompletionBlockedReason,
                 })
                 .where(eq(teamRuns.id, runId));
+              autoTeamPausedByGate = true;
+              autoTeamPauseNextSpeakerReason = "auto_team_final_evidence_unresolved";
               clearQueuedAutoAdvance(runId);
               await emitAutoTeamPlanningTraceEvent({
                 tenantId,
@@ -8280,17 +8411,18 @@ export async function runNextTurn(
         (currentBudgetSnapshot.runtimePolicyMissingCount ?? 0) + 1;
     }
 
-    await db
-      .update(teamRuns)
-      .set({
-        activeAssistantId: nextSpeaker.nextAssistantId,
-        budgetSnapshotJson: updatedBudget,
-        stopReason: null,
-        runtimeApprovalState: null,
-        runtimeTerminalReason: null,
-        runtimeCurrentStepKey: plannedActiveStep?.stepKey ?? run.runtimeCurrentStepKey,
-      })
-      .where(eq(teamRuns.id, runId));
+    const runTurnUpdate: Partial<typeof teamRuns.$inferInsert> = {
+      activeAssistantId: nextSpeaker.nextAssistantId,
+      budgetSnapshotJson: updatedBudget,
+      runtimeCurrentStepKey: plannedActiveStep?.stepKey ?? run.runtimeCurrentStepKey,
+    };
+    if (!autoTeamPausedByGate) {
+      runTurnUpdate.stopReason = null;
+      runTurnUpdate.runtimeApprovalState = null;
+      runTurnUpdate.runtimeTerminalReason = null;
+    }
+
+    await db.update(teamRuns).set(runTurnUpdate).where(eq(teamRuns.id, runId));
 
     await monitoringService.recordEvent({
       tenantId,
@@ -8312,23 +8444,25 @@ export async function runNextTurn(
       costSnapshot: turnResponse.costCredits,
     });
 
-    monitoringService
-      .captureSnapshot(runId, tenantId, {
-        runtimeState: {
-          selectedSkillId:
-            (turnResponse.metadata?.selectedSkillId as
-              | string
-              | null
-              | undefined) ??
-            route.selectedSkillId ??
-            null,
-          routeReason:
-            (turnResponse.metadata?.routeReason as string | null | undefined) ??
-            route.reason ??
-            null,
-        },
-      })
-      .catch(() => {});
+    if (!autoTeamPausedByGate) {
+      monitoringService
+        .captureSnapshot(runId, tenantId, {
+          runtimeState: {
+            selectedSkillId:
+              (turnResponse.metadata?.selectedSkillId as
+                | string
+                | null
+                | undefined) ??
+              route.selectedSkillId ??
+              null,
+            routeReason:
+              (turnResponse.metadata?.routeReason as string | null | undefined) ??
+              route.reason ??
+              null,
+          },
+        })
+        .catch(() => {});
+    }
 
     try {
       const { publishEvent, createEvent } =
@@ -8360,7 +8494,7 @@ export async function runNextTurn(
       teamId: run.teamId,
       assistantId,
       nextAssistantId: nextSpeaker.nextAssistantId,
-      nextSpeakerReason: nextSpeaker.reason,
+      nextSpeakerReason: autoTeamPauseNextSpeakerReason ?? nextSpeaker.reason,
       content,
       tokenUsage: {
         inputTokens: turnResponse.inputTokens,

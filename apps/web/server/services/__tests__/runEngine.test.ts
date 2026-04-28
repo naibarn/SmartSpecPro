@@ -1198,6 +1198,78 @@ describe("RunEngine", () => {
       expect(finished.planArtifact.status).toBe("completed");
     });
 
+    it("does not require video clip evidence for a storyboard/script document step", async () => {
+      const validation = await runEngine.validateAutoTeamStepResult({
+        tenantId: "tenant-1",
+        userId: 1,
+        runObjective: "สร้างวิดีโอประเพณีปีใหม่ความยาวเกินหนึ่งนาที",
+        step: {
+          stepKey: "storyboard-script",
+          title: "เขียนสตอรี่บอร์ดและสคริปต์",
+          objective:
+            "สร้างสตอรี่บอร์ดและสคริปต์รายฉากสำหรับวิดีโอเปรียบเทียบประเพณีปีใหม่",
+          deliverable: "สตอรี่บอร์ดพร้อมบทบรรยายและข้อความหน้าจอรายฉาก",
+          ownerPersona: "Video Producer",
+          ownerMemberId: "assistant-video",
+          reviewerPersona: "Creative Copywriter",
+          reviewerMemberId: "assistant-copy",
+          verificationMethod: "automatic semantic review",
+          retryRule: "แก้ไขจนเนื้อหาครบ",
+          evidenceRequirements: ["storyboard script", "scene outline"],
+          qualityCriteria: ["มีฉากครบ", "มีบทบรรยาย"],
+          reviewChecklist: ["สอดคล้องกับเป้าหมาย", "พร้อมส่งต่อให้สร้างภาพ"],
+          status: "in_progress",
+          evidenceRefs: [],
+          notes: null,
+          surface: "video_editor",
+        },
+        content:
+          "ฉากที่ 1 เปิดด้วยภาพครอบครัวเตรียมงานปีใหม่และเสียงบรรยายเกริ่นนำ " +
+          "ฉากที่ 2 เปรียบเทียบการนับถอยหลังกับสงกรานต์ ฉากที่ 3 สรุปความหมายทางวัฒนธรรม พร้อมข้อความบนจอและ timing โดยรวมเกินหนึ่งนาที",
+        metadata: {},
+      });
+
+      expect(validation.passed).toBe(true);
+      expect(validation.issues).not.toContain(
+        "video_step_missing_job_or_clip_reference",
+      );
+    });
+
+    it("still requires video evidence for an actual video composition step", async () => {
+      const validation = await runEngine.validateAutoTeamStepResult({
+        tenantId: "tenant-1",
+        userId: 1,
+        runObjective: "Create a final video",
+        step: {
+          stepKey: "compose-final-video",
+          title: "Generate and compose the final video",
+          objective: "Produce video clips and edit them into the final render.",
+          deliverable: "Final video file",
+          ownerPersona: "Video Producer",
+          ownerMemberId: "assistant-video",
+          reviewerPersona: "Director",
+          reviewerMemberId: "assistant-director",
+          verificationMethod: "artifact validation",
+          retryRule: "Retry missing clips.",
+          evidenceRequirements: ["video job", "final video url"],
+          qualityCriteria: ["Runtime is long enough"],
+          reviewChecklist: ["Final render exists"],
+          status: "in_progress",
+          evidenceRefs: [],
+          notes: null,
+          surface: "video_editor",
+        },
+        content:
+          "The final edit plan is ready and the team should render the completed video next.",
+        metadata: {},
+      });
+
+      expect(validation.passed).toBe(false);
+      expect(validation.issues).toContain(
+        "video_step_missing_job_or_clip_reference",
+      );
+    });
+
     it("continues the auto-team loop only when a running auto_team made progress", () => {
       expect(
         runEngine.shouldContinueAutoTeamLoop({

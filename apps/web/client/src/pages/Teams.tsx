@@ -2910,6 +2910,7 @@ export default function Teams() {
             runId={activeRunId ?? undefined}
             roomType={selectedRoom?.roomType ?? selectedRoomType}
             roomGoal={selectedRoom?.goalPrompt}
+            roomLanguage={selectedRoomLanguage}
             runtimeState={activeRunRuntimeState}
             runStatus={runStatus as any}
             runStatusReason={activeRunStatusReason}

@@ -124,6 +124,15 @@ export interface AutoTeamLedgerStep {
   qualityCriteria: string[];
   reviewChecklist: string[];
   notes: string | null;
+  validationState: {
+    status: "pending" | "passed" | "failed";
+    attempt: number;
+    maxAttempts: number;
+    issues: string[];
+    summary: string | null;
+    semanticScore: number | null;
+    checkedAt: string | null;
+  } | null;
   stepLinks: AutoTeamLedgerStepLink[];
   attemptIds: string[];
   latestAttemptId: string | null;
@@ -246,6 +255,47 @@ function asStringArray(value: unknown): string[] {
     : [];
 }
 
+function asNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function normalizeRuntimeStepValidation(value: unknown): AutoTeamLedgerStep["validationState"] {
+  const record = asRecord(value);
+  if (!record) return null;
+  const issues = asStringArray(record.issues);
+  const status =
+    record.status === "passed" || record.status === "failed"
+      ? record.status
+      : issues.length > 0
+        ? "failed"
+        : "pending";
+  return {
+    status,
+    attempt: asNumber(record.attempt) ?? 0,
+    maxAttempts: asNumber(record.maxAttempts) ?? 0,
+    issues,
+    summary: asString(record.summary),
+    semanticScore: asNumber(record.semanticScore),
+    checkedAt: asString(record.checkedAt),
+  };
+}
+
+function extractRunStepValidation(runRuntimeStateJson: unknown): {
+  stepKey: string | null;
+  validationState: AutoTeamLedgerStep["validationState"];
+} {
+  const runtimeState = asRecord(runRuntimeStateJson);
+  const validation = normalizeRuntimeStepValidation(runtimeState?.stepValidation);
+  const validationRecord = asRecord(runtimeState?.stepValidation);
+  return {
+    stepKey:
+      asString(validationRecord?.stepKey) ??
+      asString(runtimeState?.runtimeCurrentStepKey) ??
+      null,
+    validationState: validation,
+  };
+}
+
 function previewContent(content: string): string {
   return content.trim().replace(/\s+/g, " ").slice(0, 180);
 }
@@ -272,6 +322,7 @@ function normalizeChatPlanStep(
     qualityCriteria: asStringArray(step?.qualityCriteria),
     reviewChecklist: asStringArray(step?.reviewChecklist),
     notes: asString(step?.notes),
+    validationState: normalizeRuntimeStepValidation(step?.validationState),
     stepLinks: [],
     attemptIds: [],
     latestAttemptId: null,
@@ -952,9 +1003,15 @@ function buildCurrentStepSummary(input: {
   runStatus: string | null;
   stopReason: string | null;
   terminalReason: string | null;
+  validationReason?: string | null;
   missingGateKeys: string[];
 }): string | null {
   if (input.runStatus === "paused") {
+    if (input.stopReason === "auto_team_step_validation_failed") {
+      return input.validationReason
+        ? `Current plan step failed automatic validation: ${input.validationReason}`
+        : "The current plan step failed automatic validation and needs a repair pass.";
+    }
     if (input.stopReason === "awaiting_human_choice") {
       return "Human plan choice is required before automation can continue.";
     }
@@ -1038,6 +1095,14 @@ export function buildAutoTeamLedgerReadModel(input: {
   const mediaJobs = canonicalSnapshot?.mediaJobs ?? [];
   const finalResult = canonicalSnapshot?.finalResult ?? null;
   const runStatus = input.snapshot.run?.status ?? null;
+  const runStepValidation = extractRunStepValidation(
+    input.snapshot.run?.runtimeStateJson,
+  );
+  const derivedRunStopReason =
+    input.snapshot.run?.stopReason ??
+    (runStatus === "paused" && runStepValidation.validationState?.status === "failed"
+      ? "auto_team_step_validation_failed"
+      : null);
   const roomType = input.snapshot.room?.roomType ?? null;
 
   const stepMetaByKey = new Map(
@@ -1179,10 +1244,16 @@ export function buildAutoTeamLedgerReadModel(input: {
   const fallbackStepKeys = Array.from(
     new Set(attempts.map((attempt) => attempt.stepKey)),
   ).filter((stepKey) => !stepMetaByKey.has(stepKey));
+  const validationTerminalReason =
+    runStepValidation.validationState?.summary ??
+    (runStepValidation.validationState?.issues.length
+      ? runStepValidation.validationState.issues.join(", ")
+      : null);
   const stepTerminalReason =
     finalResult?.failureReason ??
     finalResult?.blockedReason ??
-    input.snapshot.run?.stopReason ??
+    validationTerminalReason ??
+    derivedRunStopReason ??
     null;
 
   const buildStepLinksForStep = (inputStep: {
@@ -1235,6 +1306,11 @@ export function buildAutoTeamLedgerReadModel(input: {
         qualityCriteria: step.qualityCriteria,
         reviewChecklist: step.reviewChecklist,
         notes: step.notes,
+        validationState:
+          normalizeRuntimeStepValidation(step.validationState) ??
+          (runStepValidation.stepKey === step.stepKey
+            ? runStepValidation.validationState
+            : null),
         stepLinks: buildStepLinksForStep({
           stepKey: step.stepKey,
           title: step.title,
@@ -1266,6 +1342,10 @@ export function buildAutoTeamLedgerReadModel(input: {
         qualityCriteria: [],
         reviewChecklist: [],
         notes: null,
+        validationState:
+          runStepValidation.stepKey === stepKey
+            ? runStepValidation.validationState
+            : null,
         stepLinks: buildStepLinksForStep({
           stepKey,
           title: humanizeIdentifier(stepKey),
@@ -1369,7 +1449,8 @@ export function buildAutoTeamLedgerReadModel(input: {
   const terminalReason = normalizeStopReason(
     finalResult?.failureReason ??
       finalResult?.blockedReason ??
-      input.snapshot.run?.stopReason ??
+      validationTerminalReason ??
+      derivedRunStopReason ??
       null,
     missingGateKeys,
     Boolean(input.snapshot.loopGuard?.triggered),
@@ -1388,22 +1469,29 @@ export function buildAutoTeamLedgerReadModel(input: {
               ? "failed"
               : "running";
 
-  const currentStepKey = canonicalSnapshot?.currentStage?.planStepKey ?? attempts.at(-1)?.stepKey ?? null;
+  const runCurrentStepKey =
+    asString(input.snapshot.run?.runtimeCurrentStepKey) ?? runStepValidation.stepKey;
+  const currentStepKey =
+    canonicalSnapshot?.currentStage?.planStepKey ??
+    runCurrentStepKey ??
+    attempts.at(-1)?.stepKey ??
+    null;
   const currentStepTitle =
     (currentStepKey ? steps.find((step) => step.stepKey === currentStepKey)?.title : null) ??
     (canonicalSnapshot?.currentStage ? humanizeIdentifier(canonicalSnapshot.currentStage.planStepKey) : null);
 
   const summary = {
     runStatus,
-    stopReason: input.snapshot.run?.stopReason ?? null,
+    stopReason: derivedRunStopReason,
     terminalState,
     terminalReason,
     nextAction: buildCurrentStepSummary({
       stepKey: currentStepKey,
       stepTitle: currentStepTitle,
       runStatus,
-      stopReason: input.snapshot.run?.stopReason ?? null,
-      terminalReason,
+      stopReason: derivedRunStopReason,
+      terminalReason: validationTerminalReason ?? terminalReason,
+      validationReason: validationTerminalReason,
       missingGateKeys,
     }),
     currentStepKey,
