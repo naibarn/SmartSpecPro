@@ -1784,6 +1784,286 @@ describe("RunEngine", () => {
       );
     });
 
+    it("repairs and re-reviews a semantic plan review failure before pausing automation", async () => {
+      mockCallLLMStructured
+        .mockResolvedValueOnce({
+          data: {
+            pass: false,
+            score: 0.58,
+            issues: [
+              "ปรับนิยามปีอ้างอิงและสเปคผลลัพธ์สุดท้ายให้ชัดก่อนเริ่ม in_progress",
+            ],
+            recommendation:
+              "ระบุปีอ้างอิง ความยาววิดีโอ และเกณฑ์ตรวจผลลัพธ์สุดท้ายให้ชัด",
+          },
+          tokensUsed: 40,
+          creditsUsed: 1,
+        })
+        .mockResolvedValueOnce({
+          data: {
+            planSummary:
+              "แผนที่แก้ไขแล้วระบุปีอ้างอิง 2570 ความยาววิดีโออย่างน้อย 60 วินาที และหลักฐานตรวจไฟล์สุดท้ายครบถ้วน",
+            assumptions: ["ใช้ภาษาไทยในแผนและเกณฑ์ตรวจ"],
+            steps: [
+              {
+                stepKey: "plan-decompose",
+                title: "ยืนยันเป้าหมายและปีอ้างอิง",
+                objective:
+                  "ยืนยันว่าปีอ้างอิงคือปีใหม่ไทย 2570 และผลลัพธ์สุดท้ายต้องเป็นวิดีโออย่างน้อย 60 วินาที",
+                deliverable: "แผนผลิตวิดีโอที่ระบุสเปคผลลัพธ์สุดท้ายชัดเจน",
+                ownerMemberId: "assistant-lead",
+                reviewerMemberId: "assistant-qa",
+                verificationMethod: "ตรวจแผนและสเปคผลลัพธ์",
+                retryRule: "แก้แผนซ้ำจนปีอ้างอิงและผลลัพธ์สุดท้ายตรวจได้",
+                evidenceRequirements: ["plan artifact"],
+                qualityCriteria: ["ปีอ้างอิงและความยาววิดีโอระบุชัด"],
+                reviewChecklist: ["มีเกณฑ์ตรวจ final video"],
+              },
+              {
+                stepKey: "research-context",
+                title: "ค้นคว้าบริบท",
+                objective: "รวบรวมบริบทปีใหม่ไทย 2570 และสงกรานต์",
+                deliverable: "สรุปข้อมูลอ้างอิงสำหรับวิดีโอ",
+                ownerMemberId: "assistant-researcher",
+                reviewerMemberId: "assistant-lead",
+                verificationMethod: "ตรวจแหล่งอ้างอิง",
+                retryRule: "แก้ข้อมูลที่ไม่มีหลักฐาน",
+                evidenceRequirements: ["research notes"],
+                qualityCriteria: ["ข้อมูลตรวจสอบย้อนกลับได้"],
+                reviewChecklist: ["แหล่งอ้างอิงครบ"],
+              },
+              {
+                stepKey: "produce-video",
+                title: "ผลิตวิดีโอ",
+                objective:
+                  "สร้างสตอรี่บอร์ด คีย์เฟรม คลิป และประกอบวิดีโอด้วย Veo 3.1",
+                deliverable: "วิดีโอสุดท้ายอย่างน้อย 60 วินาที",
+                ownerMemberId: "assistant-producer",
+                reviewerMemberId: "assistant-qa",
+                verificationMethod: "ตรวจ media jobs และไฟล์วิดีโอ",
+                retryRule: "รอ job สำเร็จครบก่อนประกอบใหม่",
+                evidenceRequirements: ["media job refs", "final video URL"],
+                qualityCriteria: ["ไฟล์สุดท้ายเล่นได้และยาวอย่างน้อย 60 วินาที"],
+                reviewChecklist: ["มี final video URL", "มีผลตรวจระยะเวลา"],
+              },
+              {
+                stepKey: "final-review",
+                title: "ตรวจคุณภาพสุดท้าย",
+                objective: "ตรวจวิดีโอสุดท้ายว่าเป็นไปตามเป้าหมาย",
+                deliverable: "ผลตรวจสุดท้ายพร้อมหลักฐานส่งมอบ",
+                ownerMemberId: "assistant-qa",
+                reviewerMemberId: "assistant-lead",
+                verificationMethod: "final checklist",
+                retryRule: "ส่งกลับขั้นตอนที่ไม่ผ่านพร้อมเหตุผล",
+                evidenceRequirements: ["final review note"],
+                qualityCriteria: ["ผ่านเป้าหมาย เนื้อหา ความยาว และหลักฐาน"],
+                reviewChecklist: ["ผลลัพธ์ตรง brief", "หลักฐานครบ"],
+              },
+            ],
+          },
+          tokensUsed: 120,
+          creditsUsed: 2,
+        })
+        .mockResolvedValueOnce({
+          data: {
+            pass: true,
+            score: 0.88,
+            issues: [],
+            recommendation: "พร้อมเริ่มทำงานอัตโนมัติ",
+          },
+          tokensUsed: 40,
+          creditsUsed: 1,
+        });
+
+      const baseArtifact = {
+        version: 1,
+        runId: "run-repair",
+        roomId: "room-repair",
+        teamId: "team-repair",
+        caseId: "case-repair",
+        requestId: "request-repair",
+        objective:
+          "สร้างวิดีโอประเพณีปีใหม่ไทยเปรียบเทียบกับปีใหม่ไทย 2570 ด้วย veo 3.1",
+        source: "work_os",
+        status: "ready",
+        generatedAt: "2026-04-29T00:00:00.000Z",
+        lastUpdatedAt: "2026-04-29T00:00:00.000Z",
+        steps: [],
+        evidenceRefs: ["source:request-repair"],
+        planEvidenceRefs: ["source:request-repair"],
+        reviewerMatrix: [
+          {
+            riskClass: "low",
+            reviewerPersona: "technical reviewer",
+            escalationRule: "stay in automation unless repeated repair fails",
+          },
+          {
+            riskClass: "medium",
+            reviewerPersona: "qa validator",
+            escalationRule: "require stronger validation before advancing",
+          },
+          {
+            riskClass: "high",
+            reviewerPersona: "safety policy",
+            escalationRule: "block or escalate if policy remains unresolved",
+          },
+          {
+            riskClass: "critical",
+            reviewerPersona: "human approval",
+            escalationRule: "do not continue without explicit approval",
+          },
+        ],
+        exploration: makePlanExploration(),
+        review: {
+          status: "pending",
+          iteration: 0,
+          reviewedAt: null,
+          reviewerPersona: "Content Director",
+          issues: [],
+          score: null,
+          recommendation: null,
+        },
+      } as any;
+      const initialPlan = {
+        ...baseArtifact,
+        steps: [
+          {
+            stepKey: "plan-decompose",
+            title: "วางแผนงาน",
+            objective: "วางแผนการผลิตวิดีโอ",
+            deliverable: "แผนงาน",
+            ownerPersona: "Content Director",
+            ownerMemberId: "assistant-lead",
+            reviewerPersona: "Quality Reviewer",
+            reviewerMemberId: "assistant-qa",
+            verificationMethod: "plan review",
+            retryRule: "แก้จนผ่าน",
+            evidenceRequirements: ["plan artifact"],
+            qualityCriteria: ["ตรวจได้"],
+            reviewChecklist: ["มีเจ้าของและผู้ตรวจ"],
+            status: "planned",
+            evidenceRefs: ["source:request-repair"],
+            notes: null,
+          },
+          {
+            stepKey: "research-context",
+            title: "ค้นคว้า",
+            objective: "ค้นคว้าข้อมูล",
+            deliverable: "research notes",
+            ownerPersona: "Trend Researcher",
+            ownerMemberId: "assistant-researcher",
+            reviewerPersona: "Content Director",
+            reviewerMemberId: "assistant-lead",
+            verificationMethod: "source review",
+            retryRule: "แก้ข้อมูลที่ไม่ผ่าน",
+            evidenceRequirements: ["research notes"],
+            qualityCriteria: ["มีแหล่งอ้างอิง"],
+            reviewChecklist: ["แหล่งอ้างอิงครบ"],
+            status: "planned",
+            evidenceRefs: ["source:request-repair"],
+            notes: null,
+          },
+          {
+            stepKey: "produce-video",
+            title: "ผลิตวิดีโอ",
+            objective: "ผลิตวิดีโอ",
+            deliverable: "video",
+            ownerPersona: "Video Producer",
+            ownerMemberId: "assistant-producer",
+            reviewerPersona: "Quality Reviewer",
+            reviewerMemberId: "assistant-qa",
+            verificationMethod: "media review",
+            retryRule: "แก้จนผ่าน",
+            evidenceRequirements: ["video"],
+            qualityCriteria: ["มีวิดีโอ"],
+            reviewChecklist: ["ตรวจไฟล์"],
+            status: "planned",
+            evidenceRefs: ["source:request-repair"],
+            notes: null,
+          },
+          {
+            stepKey: "final-review",
+            title: "ตรวจสุดท้าย",
+            objective: "ตรวจผลลัพธ์สุดท้าย",
+            deliverable: "final review",
+            ownerPersona: "Quality Reviewer",
+            ownerMemberId: "assistant-qa",
+            reviewerPersona: "Content Director",
+            reviewerMemberId: "assistant-lead",
+            verificationMethod: "final checklist",
+            retryRule: "ส่งกลับหากไม่ผ่าน",
+            evidenceRequirements: ["final review"],
+            qualityCriteria: ["ผ่านเป้าหมาย"],
+            reviewChecklist: ["หลักฐานครบ"],
+            status: "planned",
+            evidenceRefs: ["source:request-repair"],
+            notes: null,
+          },
+        ],
+      } as any;
+      const members = [
+        {
+          id: "assistant-lead",
+          displayName: "Content Director",
+          memberKind: "assistant",
+          memberRole: "orchestrator",
+          isLead: true,
+        },
+        {
+          id: "assistant-researcher",
+          displayName: "Trend Researcher",
+          memberKind: "assistant",
+          memberRole: "researcher",
+          isLead: false,
+        },
+        {
+          id: "assistant-producer",
+          displayName: "Video Producer",
+          memberKind: "assistant",
+          memberRole: "specialist",
+          isLead: false,
+        },
+        {
+          id: "assistant-qa",
+          displayName: "Quality Reviewer",
+          memberKind: "assistant",
+          memberRole: "reviewer",
+          isLead: false,
+        },
+      ] as any;
+
+      const reviewed = await runEngine.reviewAutoTeamPlanArtifactWithAutoRepair({
+        baseArtifact,
+        planArtifact: initialPlan,
+        planner: {
+          tenantId: "tenant-1",
+          userId: 1,
+          members,
+          roomTitle: "ทีมคอนเทนต์",
+          roomGoal: baseArtifact.objective,
+          roomLanguage: "th",
+        },
+        reviewer: {
+          tenantId: "tenant-1",
+          userId: 1,
+          coordinatorPersona: "Content Director",
+          reviewerPersona: "Quality Reviewer",
+          specialtyPersona: "Video Producer",
+          publisherPersona: "Content Director",
+          roomLanguage: "th",
+        },
+        maxRepairAttempts: 2,
+      });
+
+      expect(reviewed.review.status).toBe("passed");
+      expect(reviewed.review.iteration).toBe(2);
+      expect(reviewed.steps[0]?.objective).toContain("2570");
+      expect(mockCallLLMStructured).toHaveBeenCalledTimes(3);
+      const repairPlannerCall = mockCallLLMStructured.mock.calls[1]?.[0] as any;
+      expect(repairPlannerCall.userMessage).toContain("planReviewFeedback");
+      expect(repairPlannerCall.userMessage).toContain("ปีอ้างอิง");
+    });
+
     it("uses an LLM-assisted persona review when the plan is ready for semantic evaluation", async () => {
       mockCallLLMStructured.mockResolvedValueOnce({
         data: {
