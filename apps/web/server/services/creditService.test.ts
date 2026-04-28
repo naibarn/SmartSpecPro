@@ -84,28 +84,51 @@ describe("isModelFree", () => {
 });
 
 describe("deductCreditsForModel", () => {
-  it("free model skips credit deduction, logs 0-credit transaction", async () => {
-    // First call: isModelFree check
-    // Second call: getCreditBalance for balanceAfter
-    let callCount = 0;
-    mockSelect.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        // isModelFree
-        return {
-          from: vi.fn().mockReturnValue({
-            innerJoin: vi.fn().mockReturnValue({
-              where: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue([{ isFree: true }]),
-              }),
-            }),
+  it("charges at least 1 credit even for zero-priced model mappings", async () => {
+    mockSelect.mockImplementation(() => ({
+      from: vi.fn().mockReturnValue({
+        innerJoin: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ pricingInput: "0", pricingOutput: "0", isFree: true }]),
+          }),
+        }),
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([{ pricingInput: "0", pricingOutput: "0", isFree: true }]),
+        }),
+      }),
+    }));
+
+    mockTransaction.mockImplementation(async (fn: Function) => {
+      const tx = {
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([{ isFree: true }]),
+              returning: vi.fn().mockResolvedValue([{ newBalance: 99 }]),
             }),
           }),
-        };
-      }
-      // getCreditBalance
+        }),
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+          }),
+        }),
+      };
+      await fn(tx);
+    });
+
+    const result = await deductCreditsForModel({
+      userId: 1,
+      model: "kimi-k2.5",
+      inputTokens: 1000,
+      outputTokens: 500,
+    });
+
+    expect(result.creditsUsed).toBe(1);
+    expect(result.wasFree).toBe(false);
+  });
+
+  it("static server-to-server calls do not deduct user credits", async () => {
+    mockSelect.mockImplementation(() => {
       return {
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -115,11 +138,8 @@ describe("deductCreditsForModel", () => {
       };
     });
 
-    const valuesMock = vi.fn().mockResolvedValue(undefined);
-    mockInsert.mockReturnValue({ values: valuesMock });
-
     const result = await deductCreditsForModel({
-      userId: 1,
+      userId: 0,
       model: "kimi-k2.5",
       inputTokens: 1000,
       outputTokens: 500,
@@ -127,12 +147,6 @@ describe("deductCreditsForModel", () => {
 
     expect(result.creditsUsed).toBe(0);
     expect(result.wasFree).toBe(true);
-    expect(valuesMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        amount: 0,
-        metadata: expect.objectContaining({ freeModel: true }),
-      })
-    );
   });
 
   it("charges credits when provider reports real cost even if model is marked free", async () => {
@@ -280,11 +294,11 @@ describe("calculateCreditsForLLMDynamic", () => {
     expect(credits).toBe(1);
   });
 
-  it("returns 0 for free models (isFree=true)", async () => {
+  it("charges the 1-credit minimum for free models (isFree=true)", async () => {
     mockModelProviderMapQuery([{ pricingInput: "0", pricingOutput: "0", isFree: true }]);
 
     const credits = await calculateCreditsForLLMDynamic(10000, 5000, "kimi-k2.5");
-    expect(credits).toBe(0);
+    expect(credits).toBe(1);
   });
 
   it("uses DB pricing for provider-qualified model IDs", async () => {

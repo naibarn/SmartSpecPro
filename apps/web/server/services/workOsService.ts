@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import {
   teamRuns,
   teamRooms,
@@ -39,6 +39,10 @@ import {
 } from "./workStatusBridge";
 import * as monitoringService from "./monitoringService";
 import {
+  parseManagedMediaUrl,
+  signManagedMediaAccessUrl,
+} from "./managedMediaAccessService";
+import {
   extractEnterpriseArtifacts,
   type GovernedContextSnapshot,
   type ReadinessMetricRecord,
@@ -75,6 +79,56 @@ export interface CreateWorkRequestInput {
   linkedConversationIds?: string[];
   linkedWorkpackRunIds?: string[];
   linkedRoleRoutineRunIds?: string[];
+  idempotencyKey?: string | null;
+}
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableSerialize).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, nestedValue]) => `${JSON.stringify(key)}:${stableSerialize(nestedValue)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+
+function normalizeWorkRequestIdempotencyKey(key: string | null | undefined): string | null {
+  const normalized = key?.trim();
+  return normalized ? normalized.slice(0, 180) : null;
+}
+
+function buildWorkRequestIdempotencyFingerprint(
+  input: CreateWorkRequestInput
+): string {
+  return crypto
+    .createHash("sha256")
+    .update(
+      stableSerialize({
+        tenantId: input.tenantId,
+        projectId: input.projectId ?? null,
+        sourceType: input.sourceType,
+        sourceRef: input.sourceRef ?? null,
+        requesterType: input.requesterType ?? "human",
+        requesterId: input.requesterId ?? null,
+        workType: input.workType ?? null,
+        businessDomain: input.businessDomain ?? null,
+        urgency: input.urgency ?? "normal",
+        riskLevel: input.riskLevel ?? "medium",
+        classificationConfidence: input.classificationConfidence ?? null,
+        defaultOwnerType: input.defaultOwnerType ?? null,
+        defaultOwnerId: input.defaultOwnerId ?? null,
+        defaultQueueId: input.defaultQueueId ?? null,
+        title: input.title,
+        objective: input.objective ?? null,
+        linkedConversationIds: input.linkedConversationIds ?? [],
+        linkedWorkpackRunIds: input.linkedWorkpackRunIds ?? [],
+        linkedRoleRoutineRunIds: input.linkedRoleRoutineRunIds ?? [],
+      }),
+    )
+    .digest("hex");
 }
 
 export interface UpdateWorkRequestInput {
@@ -251,10 +305,56 @@ export interface MyRequestExecutionTrail {
   teamRunMode: string | null;
   workItemId: string | null;
   workItemStatus: string | null;
+  mediaPipelineStatus: string | null;
+  mediaPipelineFinalVideoUrl: string | null;
+  mediaPipelineLastCheckedAt: string | null;
+  mediaPipelineErrorMessage: string | null;
+  mediaPipelinePendingImageTasks: number;
+  mediaPipelinePendingVideoTasks: number;
 }
 
 export interface MyWorkRequestRecord extends WorkRequest {
   executionTrail: MyRequestExecutionTrail | null;
+}
+
+function readAutoTeamMediaPipeline(
+  runtimeStateJson: unknown,
+): Record<string, unknown> | null {
+  if (
+    !runtimeStateJson ||
+    typeof runtimeStateJson !== "object" ||
+    Array.isArray(runtimeStateJson)
+  ) {
+    return null;
+  }
+  const pipeline = (runtimeStateJson as Record<string, unknown>).autoTeamMediaPipeline;
+  return pipeline && typeof pipeline === "object" && !Array.isArray(pipeline)
+    ? (pipeline as Record<string, unknown>)
+    : null;
+}
+
+function readSafeManagedMediaUrl(
+  pipeline: Record<string, unknown> | null,
+  input: { tenantId: string; userId?: number | null; runId?: string | null },
+): string | null {
+  const value = typeof pipeline?.finalVideoUrl === "string" ? pipeline.finalVideoUrl : "";
+  const ref = parseManagedMediaUrl(value);
+  if (!ref) return null;
+  if (input.userId == null) return null;
+  return signManagedMediaAccessUrl({ ref, ...input });
+}
+
+function countPendingPipelineTasks(
+  pipeline: Record<string, unknown> | null,
+  key: "imageTasks" | "clipTasks",
+): number {
+  const tasks = Array.isArray(pipeline?.[key]) ? (pipeline[key] as unknown[]) : [];
+  return tasks.filter(task => {
+    if (!task || typeof task !== "object" || Array.isArray(task)) return false;
+    const record = task as Record<string, unknown>;
+    const status = typeof record.status === "string" ? record.status : "";
+    return !record.completedAt && !record.resultUrl && status !== "failed" && status !== "cancelled" && status !== "canceled";
+  }).length;
 }
 
 function now(): Date {
@@ -458,6 +558,52 @@ async function loadRequestRecord(
     .limit(1);
 
   return record ?? null;
+}
+
+async function loadWorkRequestByIdempotency(input: {
+  tenantId: string;
+  idempotencyKey: string;
+}): Promise<{ request: WorkRequest; case: WorkCase } | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [row] = await db
+    .select({
+      request: workRequests,
+      workCase: workCases,
+    })
+    .from(workRequests)
+    .innerJoin(workCases, eq(workCases.requestId, workRequests.id))
+    .where(
+      and(
+        eq(workRequests.tenantId, input.tenantId),
+        eq(workRequests.idempotencyKey, input.idempotencyKey),
+      ),
+    )
+    .limit(1);
+
+  return row ? { request: row.request, case: row.workCase } : null;
+}
+
+function assertMatchingWorkRequestIdempotency(
+  existing: { request: WorkRequest },
+  expectedFingerprint: string,
+): void {
+  if (
+    existing.request.idempotencyFingerprint &&
+    existing.request.idempotencyFingerprint !== expectedFingerprint
+  ) {
+    throw new Error("WORK_REQUEST_IDEMPOTENCY_CONFLICT");
+  }
+}
+
+function isWorkRequestIdempotencyUniqueViolation(error: unknown): boolean {
+  const candidate = error as { code?: string; constraint?: string; message?: string };
+  return (
+    candidate?.code === "23505" &&
+    (candidate.constraint === "work_requests_tenant_idempotency_unique" ||
+      String(candidate.message ?? "").includes("work_requests_tenant_idempotency_unique"))
+  );
 }
 
 async function syncRequestAndCaseState(
@@ -807,7 +953,22 @@ export async function createWorkRequest(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  return withWorkOsTransaction(db, async tx => {
+  const idempotencyKey = normalizeWorkRequestIdempotencyKey(input.idempotencyKey);
+  const idempotencyFingerprint = idempotencyKey
+    ? buildWorkRequestIdempotencyFingerprint(input)
+    : null;
+  if (idempotencyKey && idempotencyFingerprint) {
+    const existing = await loadWorkRequestByIdempotency({
+      tenantId: input.tenantId,
+      idempotencyKey,
+    });
+    if (existing) {
+      assertMatchingWorkRequestIdempotency(existing, idempotencyFingerprint);
+      return existing;
+    }
+  }
+
+  const insertRequestAndCase = () => withWorkOsTransaction(db, async tx => {
     const initialAssignment = resolveAssignmentOwner({
       defaultQueueId: input.defaultQueueId ?? null,
       defaultOwnerType: input.defaultOwnerType ?? null,
@@ -841,6 +1002,8 @@ export async function createWorkRequest(
         linkedConversationIdsJson: input.linkedConversationIds ?? [],
         linkedWorkpackRunIdsJson: input.linkedWorkpackRunIds ?? [],
         linkedRoleRoutineRunIdsJson: input.linkedRoleRoutineRunIds ?? [],
+        idempotencyKey,
+        idempotencyFingerprint,
       } satisfies InsertWorkRequest)
       .returning();
 
@@ -914,6 +1077,23 @@ export async function createWorkRequest(
 
     return { request, case: workCase };
   });
+
+  try {
+    return await insertRequestAndCase();
+  } catch (error) {
+    if (!idempotencyKey || !idempotencyFingerprint || !isWorkRequestIdempotencyUniqueViolation(error)) {
+      throw error;
+    }
+    const existing = await loadWorkRequestByIdempotency({
+      tenantId: input.tenantId,
+      idempotencyKey,
+    });
+    if (!existing) {
+      throw error;
+    }
+    assertMatchingWorkRequestIdempotency(existing, idempotencyFingerprint);
+    return existing;
+  }
 }
 
 export async function getWorkRequest(input: {
@@ -1113,6 +1293,7 @@ export async function updateWorkRequest(
 export async function listMyWorkRequests(input: {
   tenantId: string;
   requesterId: string;
+  viewerUserId?: number | null;
   limit?: number;
 }): Promise<Array<MyWorkRequestRecord>> {
   const db = await getDb();
@@ -1150,19 +1331,13 @@ export async function listMyWorkRequests(input: {
         } satisfies MyWorkRequestRecord;
       }
 
-      const workItem = currentCase.primaryTaskId
+      let workItem = currentCase.primaryTaskId
         ? await workItemService
             .getWorkItem(currentCase.primaryTaskId, input.tenantId)
             .catch(() => null)
         : null;
-      if (!workItem) {
-        return {
-          ...request,
-          executionTrail: null,
-        } satisfies MyWorkRequestRecord;
-      }
 
-      const teamRun = workItem.runId
+      let teamRun = workItem?.runId
         ? await db
             .select({ run: teamRuns })
             .from(teamRuns)
@@ -1177,16 +1352,79 @@ export async function listMyWorkRequests(input: {
             .then(rows => rows[0]?.run ?? null)
         : null;
 
+      if (currentCase.automationRunId) {
+        const latestTeamRun = await db
+          .select({ run: teamRuns })
+          .from(teamRuns)
+          .innerJoin(teamRooms, eq(teamRooms.id, teamRuns.roomId))
+          .where(
+            and(
+              eq(teamRooms.tenantId, input.tenantId),
+              sql`${teamRuns.constraintsJson}->>'workOsAutomationRunId' = ${currentCase.automationRunId}`
+            )
+          )
+          .orderBy(desc(teamRuns.startedAt))
+          .limit(1)
+          .then(rows => rows[0]?.run ?? null)
+          .catch(() => null);
+        if (latestTeamRun) {
+          teamRun = latestTeamRun;
+          const [latestWorkItem] = await db
+            .select()
+            .from(teamWorkItems)
+            .where(
+              and(
+                eq(teamWorkItems.tenantId, input.tenantId),
+                eq(teamWorkItems.runId, latestTeamRun.id)
+              )
+            )
+            .orderBy(desc(teamWorkItems.createdAt))
+            .limit(1)
+            .catch(() => []);
+          if (latestWorkItem) {
+            workItem = latestWorkItem;
+          }
+        }
+      }
+
+      if (!workItem && !teamRun) {
+        return {
+          ...request,
+          executionTrail: null,
+        } satisfies MyWorkRequestRecord;
+      }
+
+      const mediaPipeline = readAutoTeamMediaPipeline(teamRun?.runtimeStateJson);
+
       return {
         ...request,
         executionTrail: {
-          teamId: teamRun?.teamId ?? workItem.teamId ?? null,
-          roomId: teamRun?.roomId ?? workItem.roomId ?? null,
-          teamRunId: teamRun?.id ?? workItem.runId ?? null,
+          teamId: teamRun?.teamId ?? workItem?.teamId ?? null,
+          roomId: teamRun?.roomId ?? workItem?.roomId ?? null,
+          teamRunId: teamRun?.id ?? workItem?.runId ?? null,
           teamRunStatus: teamRun?.status ?? null,
           teamRunMode: teamRun?.executionMode ?? null,
-          workItemId: workItem.id,
-          workItemStatus: workItem.status,
+          workItemId: workItem?.id ?? null,
+          workItemStatus: workItem?.status ?? null,
+          mediaPipelineStatus:
+            typeof mediaPipeline?.status === "string"
+              ? String(mediaPipeline.status)
+              : null,
+          mediaPipelineFinalVideoUrl: readSafeManagedMediaUrl(mediaPipeline, {
+            tenantId: input.tenantId,
+            userId: input.viewerUserId ?? null,
+            runId: teamRun?.id ?? null,
+          }),
+          mediaPipelineLastCheckedAt:
+            typeof mediaPipeline?.lastCheckedAt === "string"
+              ? mediaPipeline.lastCheckedAt
+              : null,
+          mediaPipelineErrorMessage:
+            typeof mediaPipeline?.errorMessage === "string"
+              ? mediaPipeline.errorMessage
+              : null,
+          mediaPipelinePendingImageTasks: countPendingPipelineTasks(mediaPipeline, "imageTasks"),
+          mediaPipelinePendingVideoTasks: countPendingPipelineTasks(mediaPipeline, "clipTasks"),
         },
       } satisfies MyWorkRequestRecord;
     })

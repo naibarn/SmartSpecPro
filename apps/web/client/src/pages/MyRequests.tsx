@@ -8,6 +8,7 @@ import { DashboardCard, DashboardStatCard } from "@/components/dashboard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   ClipboardList,
@@ -16,11 +17,14 @@ import {
   Loader2,
   MessageSquare,
   Copy,
+  RefreshCw,
   ShieldCheck,
   BookOpen,
+  Play,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type WorkRequestRecord = {
   id: string;
@@ -44,6 +48,12 @@ type WorkRequestRecord = {
     teamRunMode: string | null;
     workItemId: string | null;
     workItemStatus: string | null;
+    mediaPipelineStatus?: string | null;
+    mediaPipelineFinalVideoUrl?: string | null;
+    mediaPipelineLastCheckedAt?: string | null;
+    mediaPipelineErrorMessage?: string | null;
+    mediaPipelinePendingImageTasks?: number;
+    mediaPipelinePendingVideoTasks?: number;
   } | null;
   createdAt: string | Date;
   updatedAt?: string | Date;
@@ -199,12 +209,83 @@ function executionModeLabel(value: string | null | undefined): string {
   }
 }
 
+function mediaPipelineStatusLabel(value: string | null | undefined): string {
+  switch (value) {
+    case "collecting_assets":
+      return "Collecting media assets";
+    case "waiting_for_video_tasks":
+      return "Generating video clips";
+    case "rendering_final_video":
+      return "Composing final video";
+    case "probing_final_video":
+      return "Verifying final video";
+    case "completed":
+      return "Final video ready";
+    case "failed":
+      return "Media pipeline failed";
+    default:
+      return value ? value.replaceAll("_", " ") : "n/a";
+  }
+}
+
+const pageShellClass =
+  "min-h-screen bg-white text-slate-950";
+
+const topBarClass =
+  "sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl";
+
+const softPanelClass =
+  "rounded-2xl border border-slate-200 bg-white shadow-sm";
+
+function RequestsLoadingState() {
+  return (
+    <div
+      className="space-y-4"
+      aria-label="Loading requests"
+      aria-live="polite"
+    >
+      {[0, 1, 2].map(index => (
+        <div key={index} className={cn(softPanelClass, "p-4 sm:p-5")}>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1 space-y-3">
+              <Skeleton className="h-5 w-2/3 max-w-sm" />
+              <Skeleton className="h-4 w-full max-w-md" />
+              <div className="flex gap-2">
+                <Skeleton className="h-6 w-24 rounded-full" />
+                <Skeleton className="h-6 w-28 rounded-full" />
+              </div>
+            </div>
+            <Skeleton className="h-9 w-full rounded-md sm:w-28" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function MyRequestsPage() {
   const { user } = useAuth();
   const { t } = useScopedTranslation("workos");
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const resultParams = useMemo(() => {
+    const query = location.includes("?") ? location.slice(location.indexOf("?") + 1) : "";
+    return new URLSearchParams(query);
+  }, [location]);
+  const highlightedRequestId = resultParams.get("requestId");
+  const highlightedRunId = resultParams.get("runId");
+  const openedFromResultNotification = resultParams.get("result") === "1";
 
   const requestsQuery = trpc.workOs.listMyRequests.useQuery({ limit: 25 });
+  const trpcUtils = trpc.useUtils();
+  const resumeRunMutation = trpc.teamRun.resume.useMutation({
+    onSuccess: async () => {
+      toast.success("Automation continued");
+      await trpcUtils.workOs.listMyRequests.invalidate();
+    },
+    onError: error => {
+      toast.error(error.message || "Could not continue automation");
+    },
+  });
 
   useEffect(() => {
     if (!user) {
@@ -212,7 +293,15 @@ export default function MyRequestsPage() {
     }
   }, [setLocation, user]);
 
-  const requests = requestsQuery.data ?? [];
+  const requests = useMemo(() => {
+    const data = requestsQuery.data ?? [];
+    if (!highlightedRequestId) return data;
+    return [...data].sort((a, b) => {
+      if (a.id === highlightedRequestId) return -1;
+      if (b.id === highlightedRequestId) return 1;
+      return 0;
+    });
+  }, [highlightedRequestId, requestsQuery.data]);
   const summary = useMemo(() => {
     const total = requests.length;
     const active = requests.filter(
@@ -233,24 +322,30 @@ export default function MyRequestsPage() {
   const isAdminLike = user?.role === "admin" || user?.role === "domain_admin";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-sky-50/40">
-      <div className="border-b border-slate-200 bg-white/85 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-none flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex items-center gap-3">
+    <div className={pageShellClass}>
+      <header className={topBarClass}>
+        <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex min-w-0 flex-col gap-3">
             <Button
               variant="ghost"
               size="sm"
+              className="w-fit"
               onClick={() => setLocation("/dashboard")}
             >
               <ArrowLeft className="mr-1 h-4 w-4" />
               Dashboard
             </Button>
-            <div>
-              <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-                <ClipboardList className="h-6 w-6 text-sky-600" />
-                {t("list.title", "My Requests")}
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase text-slate-500">
+                Work OS
+              </p>
+              <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50">
+                  <ClipboardList className="h-5 w-5 text-sky-700" />
+                </span>
+                <span className="truncate">{t("list.title", "My Requests")}</span>
               </h1>
-              <p className="text-sm text-slate-600">
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
                 {t(
                   "list.subtitle",
                   "Track the work you started and see what happens next."
@@ -258,21 +353,27 @@ export default function MyRequestsPage() {
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:justify-end">
             <LocaleToggle className="shrink-0" />
             <Button
               variant="outline"
+              className="justify-center"
               onClick={() => setLocation("/help/work-os")}
             >
               <BookOpen className="mr-1 h-4 w-4" />
               {t("helper.guide", "Open guide")}
             </Button>
-            <Button variant="outline" onClick={() => setLocation("/chat")}>
+            <Button
+              variant="outline"
+              className="justify-center"
+              onClick={() => setLocation("/chat")}
+            >
               <MessageSquare className="mr-1 h-4 w-4" />
               {t("list.openChat", "Open Chat")}
             </Button>
             <Button
               variant="outline"
+              className="justify-center"
               onClick={() => setLocation("/work/request")}
             >
               <ArrowRight className="mr-1 h-4 w-4" />
@@ -288,6 +389,7 @@ export default function MyRequestsPage() {
                 </Button>
                 <Button
                   variant="outline"
+                  className="justify-center"
                   onClick={() =>
                     copyWorkOsLink(
                       buildWorkOsConsolePath(null),
@@ -302,9 +404,9 @@ export default function MyRequestsPage() {
             ) : null}
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="mx-auto w-full max-w-none px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-screen-2xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <DashboardStatCard
             icon={ClipboardList}
@@ -328,7 +430,7 @@ export default function MyRequestsPage() {
           />
         </div>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
+        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
           <DashboardCard
             title={t("list.sectionTitle", "Tracked requests")}
             description={t(
@@ -354,16 +456,57 @@ export default function MyRequestsPage() {
               </div>
             }
           >
+            {openedFromResultNotification ? (
+              <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                {t(
+                  "list.resultNotificationOpened",
+                  "The completed request is highlighted below. Open the final result or the team room from its execution trail."
+                )}
+              </div>
+            ) : null}
             {requestsQuery.isLoading ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
-                {t("recent.loading", "Loading requests...")}
+              <RequestsLoadingState />
+            ) : requestsQuery.error ? (
+              <div
+                className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-6 text-rose-950 sm:px-5"
+                role="alert"
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex gap-3">
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+                    <div>
+                      <p className="font-semibold">
+                        {t("list.errorTitle", "Could not load requests")}
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-rose-800">
+                        {requestsQuery.error.message ||
+                          t(
+                            "list.errorBody",
+                            "Refresh the list or try again in a moment."
+                          )}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-rose-200 bg-white text-rose-700 hover:bg-rose-100"
+                    onClick={() => void requestsQuery.refetch()}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    {t("list.retry", "Retry")}
+                  </Button>
+                </div>
               </div>
             ) : requests.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center">
-                <p className="text-base font-medium text-slate-900">
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-4 py-10 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white">
+                  <ClipboardList className="h-6 w-6 text-slate-500" />
+                </div>
+                <p className="mt-4 text-base font-semibold text-slate-950">
                   {t("list.emptyTitle", "No requests yet")}
                 </p>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-slate-600">
                   {t(
                     "list.emptyBody",
                     "Start a new request and it will appear here."
@@ -393,25 +536,72 @@ export default function MyRequestsPage() {
                         : request.defaultOwnerType === "human"
                           ? t("form.ownershipSelf", "Assign to me")
                           : t("form.ownershipUnassigned", "Leave unassigned");
+                  const executionTrail = request.executionTrail ?? null;
+                  const canOpenExecutionRoom = Boolean(
+                    executionTrail?.teamId && executionTrail?.roomId
+                  );
+                  const highlighted =
+                    request.id === highlightedRequestId ||
+                    (highlightedRunId &&
+                      request.executionTrail?.teamRunId === highlightedRunId);
+                  const executionNeedsAttention =
+                    executionTrail?.teamRunStatus === "paused" ||
+                    executionTrail?.workItemStatus === "blocked";
+                  const canResumeExecution = Boolean(
+                    executionTrail?.teamRunId &&
+                      executionTrail?.teamRunStatus === "paused"
+                  );
 
                   return (
-                    <DashboardCard
-                      key={request.id}
-                      title={request.title}
-                      description={`${stateLabel(t, request.currentState)} · ${t("list.source", "Source")}: ${formatSourceLabel(request.sourceType)}`}
-                      trailing={
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setLocation("/work/request")}
-                          >
-                            {t("list.startWork", "Start Work")}
-                          </Button>
-                        </div>
-                      }
-                      bodyClassName="space-y-4"
+	                    <article
+	                      key={request.id}
+	                      className={cn(
+                        "rounded-2xl border bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:p-5",
+                        highlighted
+                          ? "border-emerald-300 ring-2 ring-emerald-100"
+                          : "border-slate-200"
+                      )}
                     >
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0">
+                          <h3 className="text-base font-semibold text-slate-950">
+                            {request.title}
+                          </h3>
+                          <p className="mt-1 text-sm leading-6 text-slate-600">
+                            {stateLabel(t, request.currentState)} ·{" "}
+                            {t("list.source", "Source")}:{" "}
+                            {formatSourceLabel(request.sourceType)}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2 lg:justify-end">
+                          {canOpenExecutionRoom ? (
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                setLocation(
+                                  buildTeamRoomPath(
+                                    executionTrail?.teamId ?? null,
+                                    executionTrail?.roomId ?? null,
+                                    "workflow"
+                                  )
+                                )
+                              }
+                            >
+                              Open room
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setLocation("/work/request")}
+                            >
+                              {t("list.startWork", "Start Work")}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 space-y-4">
                       <div className="flex flex-wrap gap-2">
                         <Badge
                           variant="outline"
@@ -490,26 +680,39 @@ export default function MyRequestsPage() {
                         </div>
                       </div>
 
-                      {request.executionTrail ? (
-                        <div className="rounded-2xl border border-sky-200 bg-sky-50/60 p-4">
+                      {executionTrail ? (
+                        <div
+                          className={cn(
+                            "rounded-2xl border p-4",
+                            executionNeedsAttention
+                              ? "border-amber-200 bg-amber-50/70"
+                              : "border-sky-200 bg-sky-50/60"
+                          )}
+                        >
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                               <p className="text-sm font-semibold text-slate-900">
                                 Execution trail
                               </p>
                               <p className="text-xs text-slate-500">
-                                This request has been handed off and is still
-                                tracked from My Requests.
+                                {executionNeedsAttention
+                                  ? "The team room exists. Open it to see the current blocker and the next automatic retry or required action."
+                                  : "The request is running in the team room. Open the room to see live progress and generated artifacts."}
                               </p>
                             </div>
-                            {request.executionTrail.teamRunStatus ? (
+                            {executionTrail.teamRunStatus ? (
                               <Badge
                                 variant="outline"
-                                className="border-sky-200 bg-white text-sky-700"
+                                className={cn(
+                                  "bg-white",
+                                  executionNeedsAttention
+                                    ? "border-amber-200 text-amber-700"
+                                    : "border-sky-200 text-sky-700"
+                                )}
                               >
                                 Run:{" "}
                                 {executionStatusLabel(
-                                  request.executionTrail.teamRunStatus
+                                  executionTrail.teamRunStatus
                                 )}
                               </Badge>
                             ) : null}
@@ -521,7 +724,7 @@ export default function MyRequestsPage() {
                                 Team
                               </p>
                               <p className="mt-1 break-all text-sm font-medium text-slate-900">
-                                {request.executionTrail.teamId ?? "n/a"}
+                                {executionTrail.teamId ?? "n/a"}
                               </p>
                             </div>
                             <div className="rounded-2xl border border-sky-200 bg-white/90 p-3">
@@ -529,7 +732,7 @@ export default function MyRequestsPage() {
                                 Room
                               </p>
                               <p className="mt-1 break-all text-sm font-medium text-slate-900">
-                                {request.executionTrail.roomId ?? "n/a"}
+                                {executionTrail.roomId ?? "n/a"}
                               </p>
                             </div>
                             <div className="rounded-2xl border border-sky-200 bg-white/90 p-3">
@@ -537,7 +740,7 @@ export default function MyRequestsPage() {
                                 Run
                               </p>
                               <p className="mt-1 break-all text-sm font-medium text-slate-900">
-                                {request.executionTrail.teamRunId ?? "n/a"}
+                                {executionTrail.teamRunId ?? "n/a"}
                               </p>
                             </div>
                             <div className="rounded-2xl border border-sky-200 bg-white/90 p-3">
@@ -546,7 +749,7 @@ export default function MyRequestsPage() {
                               </p>
                               <p className="mt-1 break-all text-sm font-medium text-slate-900">
                                 {executionModeLabel(
-                                  request.executionTrail.teamRunMode
+                                  executionTrail.teamRunMode
                                 )}
                               </p>
                             </div>
@@ -555,22 +758,89 @@ export default function MyRequestsPage() {
                                 Work item
                               </p>
                               <p className="mt-1 break-all text-sm font-medium text-slate-900">
-                                {request.executionTrail.workItemStatus ?? "n/a"}
+                                {executionTrail.workItemStatus ?? "n/a"}
                               </p>
                             </div>
                           </div>
 
+                          {executionTrail.mediaPipelineStatus ? (
+                            <div className="mt-3 rounded-2xl border border-indigo-200 bg-white/90 p-3">
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                                    Media pipeline
+                                  </p>
+                                  <p className="mt-1 text-sm font-medium text-slate-900">
+                                    {mediaPipelineStatusLabel(
+                                      executionTrail.mediaPipelineStatus
+                                    )}
+                                  </p>
+                                  {executionTrail.mediaPipelineLastCheckedAt ? (
+                                    <p className="mt-1 text-xs text-slate-500">
+                                      Last checked {formatDate(executionTrail.mediaPipelineLastCheckedAt)}
+                                    </p>
+                                  ) : null}
+                                  {(executionTrail.mediaPipelinePendingImageTasks ?? 0) +
+                                    (executionTrail.mediaPipelinePendingVideoTasks ?? 0) >
+                                  0 ? (
+                                    <p className="mt-1 text-xs text-slate-500">
+                                      Pending assets: {executionTrail.mediaPipelinePendingImageTasks ?? 0} image,{" "}
+                                      {executionTrail.mediaPipelinePendingVideoTasks ?? 0} video
+                                    </p>
+                                  ) : null}
+                                  {executionTrail.mediaPipelineErrorMessage ? (
+                                    <p className="mt-1 text-xs text-rose-700">
+                                      {executionTrail.mediaPipelineErrorMessage}
+                                    </p>
+                                  ) : null}
+                                </div>
+                                {executionTrail.mediaPipelineFinalVideoUrl ? (
+                                  <Button asChild variant="outline" size="sm">
+                                    <a
+                                      href={
+                                        executionTrail.mediaPipelineFinalVideoUrl
+                                      }
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      Open final video
+                                    </a>
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          ) : null}
+
                           <div className="mt-4 flex flex-wrap gap-2">
-                            {request.executionTrail.teamId &&
-                            request.executionTrail.roomId ? (
+                            {canResumeExecution ? (
                               <Button
-                                variant="outline"
+                                size="sm"
+                                disabled={resumeRunMutation.isPending}
+                                onClick={() =>
+                                  resumeRunMutation.mutate({
+                                    runId: executionTrail?.teamRunId ?? "",
+                                  })
+                                }
+                              >
+                                {resumeRunMutation.isPending ? (
+                                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Play className="mr-1 h-4 w-4" />
+                                )}
+                                Continue automation
+                              </Button>
+                            ) : null}
+                            {canOpenExecutionRoom ? (
+                              <Button
+                                variant={
+                                  canResumeExecution ? "outline" : "default"
+                                }
                                 size="sm"
                                 onClick={() =>
                                   setLocation(
                                     buildTeamRoomPath(
-                                      request.executionTrail?.teamId ?? null,
-                                      request.executionTrail?.roomId ?? null,
+                                      executionTrail?.teamId ?? null,
+                                      executionTrail?.roomId ?? null,
                                       "workflow"
                                     )
                                   )
@@ -614,21 +884,20 @@ export default function MyRequestsPage() {
                         </div>
                       ) : null}
 
-                      {request.linkedCaseId ? (
+                      {request.linkedCaseId && !executionTrail ? (
                         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                               <p className="text-sm font-semibold text-slate-900">
-                                Start the work
+                                Send to the automation team
                               </p>
                               <p className="text-xs text-slate-500">
-                                Review the preflight bundle, then approve launch
-                                to move this request into execution.
+                                Start the team room and let automation work through the plan.
                               </p>
                             </div>
                             <Button asChild size="sm">
                               <Link href={buildWorkRequestPath(request.id)}>
-                                Review and approve automation
+                                Start automation
                               </Link>
                             </Button>
                           </div>
@@ -808,7 +1077,8 @@ export default function MyRequestsPage() {
                           </div>
                         </div>
                       ) : null}
-                    </DashboardCard>
+                      </div>
+                    </article>
                   );
                 })}
               </div>
@@ -867,7 +1137,7 @@ export default function MyRequestsPage() {
             </div>
           </DashboardCard>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

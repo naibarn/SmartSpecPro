@@ -322,6 +322,107 @@ async function dispatchJob(specJson: string, userId: string, jobId: string, requ
   }
 }
 
+export interface InternalMediaJobStatus {
+  jobId: string;
+  status: string;
+  progress?: number;
+  message?: string;
+  result?: unknown;
+  resultUrl?: string;
+  error?: unknown;
+  errorMessage?: string;
+}
+
+export async function submitInternalMediaJob(input: {
+  spec: MediaJobSpec;
+  userId: string | number;
+  requestId?: string;
+  skipConcurrencyLimit?: boolean;
+}): Promise<{ jobId: string }> {
+  const spec = input.spec;
+  const baseValidation = validateJobSpec(spec);
+  if (!baseValidation.valid) {
+    throw new Error(`Invalid job spec: ${baseValidation.errors.join("; ")}`);
+  }
+  const webValidation = validateWebJobSpec(spec, "web_backend");
+  if (!webValidation.valid) {
+    throw new Error(`Invalid web job spec: ${webValidation.errors.join("; ")}`);
+  }
+  assertTextClipRolloutEnabledForSpec(spec, undefined);
+
+  const jobId = spec.jobId;
+  const userId = String(input.userId);
+
+  if (!input.skipConcurrencyLimit && !(await checkConcurrencyLimit(userId))) {
+    throw new Error("Maximum 3 concurrent media jobs allowed. Wait for a job to complete.");
+  }
+
+  await setJobKey(jobId, "spec", spec);
+  const submittedAt = Date.now();
+  await setJobKey(jobId, "meta", {
+    userId,
+    submittedAt,
+    nextPollAt: submittedAt + 120_000,
+    source: "auto_team_media_pipeline",
+  });
+  await setJobKey(jobId, "status", {
+    status: "queued",
+    progress: 0,
+    jobId,
+  });
+  await addActiveJob(userId, jobId);
+  await addRecentJob(userId, jobId);
+
+  try {
+    await dispatchJob(JSON.stringify(spec), userId, jobId, input.requestId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to dispatch media job";
+    await setJobKey(jobId, "status", {
+      status: "error",
+      progress: 0,
+      jobId,
+      message,
+    });
+    await removeActiveJob(userId, jobId);
+    throw error;
+  }
+
+  return { jobId };
+}
+
+export async function getInternalMediaJobStatus(
+  jobId: string,
+): Promise<InternalMediaJobStatus | null> {
+  const status = await getJobKey(jobId, "status");
+  if (!status) return null;
+
+  const result = status.status === "done" ? await getJobKey(jobId, "result") : null;
+  const error = status.status === "error" ? await getJobKey(jobId, "error") : null;
+  const resultUrl =
+    typeof result?.artifacts?.[0]?.uri === "string"
+      ? result.artifacts[0].uri
+      : typeof status.resultUrl === "string"
+        ? status.resultUrl
+        : undefined;
+  const errorMessage =
+    typeof error?.message === "string"
+      ? error.message
+      : typeof status.message === "string"
+        ? status.message
+        : undefined;
+
+  return {
+    jobId,
+    status: String(status.status),
+    progress: typeof status.progress === "number" ? status.progress : undefined,
+    message: typeof status.message === "string" ? status.message : undefined,
+    result,
+    resultUrl,
+    error,
+    errorMessage,
+  };
+}
+
 // ========================================
 // tRPC Router
 // ========================================

@@ -100,6 +100,7 @@ interface ProviderTemplate {
   description: string;
   baseUrl: string;
   defaultModel: string;
+  configDefaults?: Record<string, any>;
 }
 
 export default function AdminLLMProviders() {
@@ -318,6 +319,18 @@ export default function AdminLLMProviders() {
     setIsCreateDialogOpen(true);
   };
 
+  const isRoutingGateway = (provider: Pick<Provider, "providerName" | "configJson"> | ProviderTemplate) => {
+    const config = "configJson" in provider ? provider.configJson : provider.configDefaults;
+    return config?.thirdPartyRelay === true || ["openrouter", "krouter"].includes(provider.providerName);
+  };
+
+  const getGatewayDisclosure = (provider: Pick<Provider, "providerName" | "configJson"> | ProviderTemplate) => {
+    const config = "configJson" in provider ? provider.configJson : provider.configDefaults;
+    return typeof config?.dataPolicyDisclosure === "string"
+      ? config.dataPolicyDisclosure
+      : "Requests are routed through a third-party model gateway before reaching upstream model providers.";
+  };
+
   const handleEdit = (provider: Provider) => {
     setEditingProvider(provider);
     setFormData({
@@ -394,6 +407,8 @@ export default function AdminLLMProviders() {
         return <Server className="h-5 w-5 text-gray-500" />;
       case "openrouter":
         return <Layers className="h-5 w-5 text-purple-500" />;
+      case "krouter":
+        return <Layers className="h-5 w-5 text-emerald-500" />;
       case "deepseek":
         return <Cpu className="h-5 w-5 text-cyan-500" />;
       case "minimax":
@@ -649,7 +664,18 @@ export default function AdminLLMProviders() {
                         {provider.routedModelCount} Routed Models
                       </Badge>
                     )}
+                    {isRoutingGateway(provider) && (
+                      <Badge variant="outline" className="text-amber-700 border-amber-600">
+                        <Layers className="mr-1 h-3 w-3" />
+                        Routing Gateway
+                      </Badge>
+                    )}
                   </div>
+                  {isRoutingGateway(provider) && (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                      {getGatewayDisclosure(provider)}
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                     <span><strong>Provider:</strong> {provider.providerName}</span>
                     {provider.baseUrl && <span><strong>Base URL:</strong> {provider.baseUrl}</span>}
@@ -695,7 +721,14 @@ export default function AdminLLMProviders() {
                   title={template.displayName}
                   description={template.description}
                   leading={<div className="rounded-lg bg-muted p-2">{getProviderIcon(template.providerName)}</div>}
-                />
+                >
+                  {isRoutingGateway(template) && (
+                    <Badge variant="outline" className="mt-3 text-amber-700 border-amber-600">
+                      <Layers className="mr-1 h-3 w-3" />
+                      Routing Gateway
+                    </Badge>
+                  )}
+                </DashboardCard>
               </button>
             ))}
           </div>

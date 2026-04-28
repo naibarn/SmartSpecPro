@@ -1340,9 +1340,21 @@ function PlanReviewCard({
                   <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-500">
                     {(step.stepKey || step.ownerPersona || step.reviewerPersona) && (
                       <>
-                        {step.stepKey && <span>Key: {step.stepKey}</span>}
-                        {step.ownerPersona && <span>Owner: {step.ownerPersona}</span>}
-                        {step.reviewerPersona && <span>Reviewer: {step.reviewerPersona}</span>}
+                        {step.stepKey && (
+                          <span>
+                            {roomLanguage === "th" ? "คีย์" : "Key"}: {step.stepKey}
+                          </span>
+                        )}
+                        {step.ownerPersona && (
+                          <span>
+                            {roomLanguage === "th" ? "ผู้รับผิดชอบ" : "Owner"}: {step.ownerPersona}
+                          </span>
+                        )}
+                        {step.reviewerPersona && (
+                          <span>
+                            {roomLanguage === "th" ? "ผู้ตรวจ" : "Reviewer"}: {step.reviewerPersona}
+                          </span>
+                        )}
                       </>
                     )}
                   </div>

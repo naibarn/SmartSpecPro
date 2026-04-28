@@ -1,5 +1,17 @@
 # Orchestra Decisions Log
 
+## 2026-04-26 — Work Requests UI Polish Route
+Risk: LOW
+Mode: auto_by_default
+
+- Classified the task as medium scope and low risk because it is route-level frontend UI polish with no intended API, schema, auth, or backend behavior change.
+- Used the visual UI workflow inline: requirement analysis, Enterprise Calm / Technical Precision direction, implementation, and visual/responsive/accessibility review.
+- Chose `npm` for verification because the repository root declares `packageManager: npm@10.8.2`; `pnpm` was not available in the shell PATH.
+- Used a temporary Playwright install under `/tmp/smartspec-pw` for screenshot verification to avoid modifying project dependencies.
+- Suppressed the one-time welcome language modal during screenshot QA via localStorage so the Work Requests pages themselves could be evaluated.
+
+---
+
 ## 2026-04-26 — Start Skill System vNext
 Risk: MEDIUM
 Mode: auto_by_default

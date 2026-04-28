@@ -90,6 +90,7 @@ const PROVIDER_QUEUE_CONFIGS: Record<string, ProviderQueueConfig> = {
   'opencode-zen': { minDelayMs: 1500, maxConcurrent: 2, freeModelMultiplier: 2 },
   'opencode': { minDelayMs: 1500, maxConcurrent: 2, freeModelMultiplier: 2 },
   'openrouter': { minDelayMs: 50, maxConcurrent: 10, freeModelMultiplier: 1.5 },
+  'krouter': { minDelayMs: 50, maxConcurrent: 10, freeModelMultiplier: 1.5 },
   'default': { minDelayMs: 200, maxConcurrent: 5, freeModelMultiplier: 1.5 },
 };
 

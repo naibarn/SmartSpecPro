@@ -8,10 +8,12 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 const mockNavigate = vi.fn();
 const mockClipboardWriteText = vi.fn().mockResolvedValue(undefined);
 const invalidateMyRequests = vi.fn();
+const mockResumeRun = vi.fn();
 let mockLanguage: "en" | "th" = "en";
+let mockLocation = "/work/requests";
 
 vi.mock("wouter", () => ({
-  useLocation: () => ["/work/requests", mockNavigate],
+  useLocation: () => [mockLocation, mockNavigate],
   Link: ({
     href,
     onClick,
@@ -90,10 +92,13 @@ vi.mock("@/lib/trpc", () => ({
                 teamId: "team-1",
                 roomId: "room-1",
                 teamRunId: "team-run-1",
-                teamRunStatus: "running",
+                teamRunStatus: "paused",
                 teamRunMode: "auto_team",
                 workItemId: "task-1",
-                workItemStatus: "in_progress",
+                workItemStatus: "blocked",
+                mediaPipelineStatus: "probing_final_video",
+                mediaPipelineFinalVideoUrl:
+                  "/api/storage/files/auto-team-media/tenant-1/run-1/final.mp4",
               },
               createdAt: "2026-04-11T10:00:00.000Z",
             },
@@ -114,6 +119,17 @@ vi.mock("@/lib/trpc", () => ({
         }),
       },
     },
+    teamRun: {
+      resume: {
+        useMutation: (options?: { onSuccess?: () => void }) => ({
+          mutate: (input: { runId: string }) => {
+            mockResumeRun(input);
+            options?.onSuccess?.();
+          },
+          isPending: false,
+        }),
+      },
+    },
   },
 }));
 
@@ -123,7 +139,10 @@ describe("MyRequestsPage", () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     mockClipboardWriteText.mockClear();
+    mockResumeRun.mockClear();
+    invalidateMyRequests.mockClear();
     mockLanguage = "en";
+    mockLocation = "/work/requests";
     Object.defineProperty(window.navigator, "clipboard", {
       value: {
         writeText: mockClipboardWriteText,
@@ -181,10 +200,47 @@ describe("MyRequestsPage", () => {
     expect(screen.getByText("room-1")).toBeInTheDocument();
     expect(screen.getByText("team-run-1")).toBeInTheDocument();
     expect(screen.getByText("Auto team")).toBeInTheDocument();
+    expect(screen.getByText("blocked")).toBeInTheDocument();
+    expect(screen.getByText("Verifying final video")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /open final video/i })
+    ).toHaveAttribute(
+      "href",
+      "/api/storage/files/auto-team-media/tenant-1/run-1/final.mp4",
+    );
+    expect(
+      screen.getByText(/see the current blocker/i)
+    ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /open room/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /continue automation/i })
+    );
+    expect(mockResumeRun).toHaveBeenCalledWith({ runId: "team-run-1" });
+    expect(invalidateMyRequests).toHaveBeenCalled();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /open room/i })[0]);
     expect(mockNavigate).toHaveBeenCalledWith(
       "/teams/team-1?roomId=room-1&panel=workflow"
+    );
+  });
+
+  it("highlights the completed request opened from a completion notification", () => {
+    mockLocation = "/work/requests?requestId=req-1&runId=team-run-1&result=1";
+
+    render(<MyRequestsPage />);
+
+    expect(
+      screen.getByText(/completed request is highlighted below/i)
+    ).toBeInTheDocument();
+    const requestCard = screen
+      .getByRole("heading", { name: "Review refund request" })
+      .closest("article");
+    expect(requestCard).toHaveClass("border-emerald-300");
+    expect(
+      screen.getByRole("link", { name: /open final video/i })
+    ).toHaveAttribute(
+      "href",
+      "/api/storage/files/auto-team-media/tenant-1/run-1/final.mp4",
     );
   });
 
@@ -193,11 +249,11 @@ describe("MyRequestsPage", () => {
 
     fireEvent.click(
       screen.getAllByRole("link", {
-        name: /review and approve automation/i,
+        name: /start automation/i,
       })[0]
     );
 
-    expect(mockNavigate).toHaveBeenCalledWith("/work/request?requestId=req-1");
+    expect(mockNavigate).toHaveBeenCalledWith("/work/request?requestId=req-2");
   });
 
   it("opens the linked work case in Work OS with a bookmarkable source filter", () => {
@@ -288,10 +344,10 @@ describe("MyRequestsPage", () => {
 
     fireEvent.click(
       screen.getAllByRole("link", {
-        name: /review and approve automation/i,
+        name: /start automation/i,
       })[0]
     );
 
-    expect(mockNavigate).toHaveBeenCalledWith("/work/request?requestId=req-1");
+    expect(mockNavigate).toHaveBeenCalledWith("/work/request?requestId=req-2");
   });
 });

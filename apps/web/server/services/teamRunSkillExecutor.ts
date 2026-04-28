@@ -15,6 +15,14 @@ import { agencyBridge } from "./agencyBridge";
 import { buildAgencyTaskMetadata } from "./agencyEscalation";
 import { getTeam } from "./teamService";
 import { executeUnified } from "./unifiedOrchestrator";
+import {
+  getAutoTeamStoryboardAssetState,
+  getAutoTeamStoryboardImageUrls,
+  registerAutoTeamMediaArtifact,
+  resolveAutoTeamClipPlan,
+} from "./autoTeamMediaCompletionService";
+import { estimateAutoTeamMediaPipelineCredits } from "./autoTeamBudgetService";
+import { getApprovedPlanForRun } from "./teamExecutionPlanService";
 import { parseNextSpeakerHint } from "./executors/textSkillExecutor";
 import { normalizeMediaPrompt } from "./mediaPromptNormalization";
 import { executeTeamRuntimeTurn } from "./agentRuntime/teamRuntimeOrchestrator";
@@ -27,7 +35,15 @@ import {
 } from "./contextEngineAdapter";
 import { recordContextEngineMetric } from "./monitoringService";
 import type { UnifiedExecutionRequest } from "./executors/types";
-import type { TeamRun } from "../../drizzle/schema";
+import { getDb } from "../db";
+import {
+  agencies,
+  agencyPermissions,
+  groupMembers,
+  userGroups,
+  type TeamRun,
+} from "../../drizzle/schema";
+import { and, eq, isNull, or } from "drizzle-orm";
 import type { SkillDefinition } from "@smartspec/skills";
 import type { RuntimeDispatchPolicy } from "../../shared/workOrchestrator";
 
@@ -53,6 +69,9 @@ export interface TeamRunSkillExecutionInput {
     route: "chat" | "skill" | "agency" | "hybrid";
     reason: string;
     selectedSkillId?: string;
+    selectedAgencyId?: string;
+    selectedCapabilityId?: string;
+    capabilityGapResolution?: Record<string, unknown>;
   };
 }
 
@@ -83,6 +102,141 @@ const AUTO_TEAM_IMAGE_SKILL_IDS = [
   "image_prompt_engineer",
   "smart-landscape-designer",
 ] as const;
+
+export function evaluateAutoTeamMediaChainBudgetPreflight(input: {
+  maxBudgetCredits?: number | null;
+  totalCreditsUsed?: number | null;
+  promptCredits?: number | null;
+  mediaType: "image" | "video";
+  clipCount?: number | null;
+}): {
+  allowed: boolean;
+  creditsNeeded: number;
+  projectedCredits: number;
+  maxBudgetCredits: number | null;
+  blockedReason: string | null;
+} {
+  const creditsNeeded = estimateAutoTeamMediaPipelineCredits({
+    mediaType: input.mediaType,
+    clipCount: input.clipCount,
+    includeComposition: input.mediaType === "video",
+    includeProbe: input.mediaType === "video",
+    includeFinalReview: input.mediaType === "video",
+  });
+  const totalCreditsUsed =
+    typeof input.totalCreditsUsed === "number" && Number.isFinite(input.totalCreditsUsed)
+      ? Math.max(0, input.totalCreditsUsed)
+      : 0;
+  const promptCredits =
+    typeof input.promptCredits === "number" && Number.isFinite(input.promptCredits)
+      ? Math.max(0, input.promptCredits)
+      : 0;
+  const maxBudgetCredits =
+    typeof input.maxBudgetCredits === "number" && Number.isFinite(input.maxBudgetCredits)
+      ? Math.max(0, input.maxBudgetCredits)
+      : null;
+  const projectedCredits = totalCreditsUsed + promptCredits + creditsNeeded;
+  if (maxBudgetCredits != null && projectedCredits > maxBudgetCredits) {
+    return {
+      allowed: false,
+      creditsNeeded,
+      projectedCredits,
+      maxBudgetCredits,
+      blockedReason: "budget_cap_exceeded",
+    };
+  }
+  return {
+    allowed: true,
+    creditsNeeded,
+    projectedCredits,
+    maxBudgetCredits,
+    blockedReason: null,
+  };
+}
+
+function getRecord(value: unknown): Record<string, unknown> | null {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value))
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function getRunTotalCreditsUsed(run: TeamRun): number {
+  const snapshot = getRecord(run.budgetSnapshotJson);
+  const value = snapshot?.totalCreditsUsed;
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, value) : 0;
+}
+
+function getApprovedRunBudgetMaxCredits(run: TeamRun): number | null {
+  const snapshot = getApprovedPlanForRun({
+    constraintsJson: getRecord(run.constraintsJson),
+    approvalPolicyJson: getRecord(run.approvalPolicyJson),
+  });
+  const value = snapshot?.budget.maxBudgetCredits;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+const RESERVED_CAPABILITY_IDS = new Set([
+  "skill",
+  "agency",
+  "browser",
+  "document_management",
+  "media_studio",
+  "video_editor",
+  "manual",
+  "work_os",
+  "workflow",
+  "skill_studio",
+]);
+const SKILL_CREATOR_FALLBACK_SKILL_IDS = [
+  "intelligence-skill-creator",
+  "skill-creator",
+] as const;
+
+type ParsedCapabilityId = {
+  kind:
+    | "skill"
+    | "agency"
+    | "workflow"
+    | "media_model"
+    | "context_pack"
+    | "skill_studio"
+    | "surface";
+  id: string;
+  originalId: string;
+};
+
+function parseSelectedCapabilityId(
+  capabilityId?: string | null
+): ParsedCapabilityId | null {
+  const originalId = capabilityId?.trim();
+  if (!originalId) return null;
+
+  const separatorIndex = originalId.indexOf(":");
+  if (separatorIndex > 0) {
+    const prefix = originalId.slice(0, separatorIndex);
+    const id = originalId.slice(separatorIndex + 1).trim();
+    if (!id) return null;
+    if (
+      prefix === "skill" ||
+      prefix === "agency" ||
+      prefix === "workflow" ||
+      prefix === "media_model" ||
+      prefix === "context_pack" ||
+      prefix === "skill_studio"
+    ) {
+      return { kind: prefix, id, originalId };
+    }
+    if (RESERVED_CAPABILITY_IDS.has(prefix)) {
+      return { kind: "surface", id: prefix, originalId };
+    }
+  }
+
+  if (RESERVED_CAPABILITY_IDS.has(originalId)) {
+    return { kind: "surface", id: originalId, originalId };
+  }
+
+  return { kind: "skill", id: originalId, originalId };
+}
 
 function summarizeNativeBundleTopology(skill: SkillDefinition): Record<string, unknown> | null {
   const skillRecord = skill as {
@@ -166,9 +320,16 @@ async function executeAgencySwarmTurn(
   routeReason: string
 ): Promise<TeamRunSkillExecutionResult> {
   const team = await getTeam(input.teamId, input.tenantId);
-  if (!team?.agencyId) {
+  const agencyId = input.route.selectedAgencyId ?? team?.agencyId ?? null;
+  if (!agencyId) {
     throw new Error(`Team ${input.teamId} has no agency mapping`);
   }
+  await assertAgencyCapabilityAuthorized({
+    agencyId,
+    tenantId: input.tenantId,
+    userId: input.userId,
+    teamAgencyId: team?.agencyId ?? null,
+  });
 
   const plannerResult = await runPlanner({
     sourceType: "team_room",
@@ -191,7 +352,7 @@ async function executeAgencySwarmTurn(
     : undefined;
 
   const agencyResult = await agencyBridge.executeRun({
-    agencyId: team.agencyId,
+    agencyId,
     conversationId: `${input.run.id}:${input.roomId}`,
     message: input.objective,
     userToken: "",
@@ -227,8 +388,11 @@ async function executeAgencySwarmTurn(
       route: "agency",
       routeReason,
       selectedSkillId: TEAM_AGENCY_SWARM_ID,
-      agencyId: team.agencyId,
+      agencyId,
+      selectedCapabilityId: input.route.selectedCapabilityId ?? null,
+      capabilityGapResolution: input.route.capabilityGapResolution ?? null,
       agencyRunId: agencyResult.runId,
+      agencyStatus: agencyResult.status ?? null,
       hybridSummary: agencyResult.hybridSummary,
       structuredResult: agencyResult.structuredResult,
       previewArtifacts: agencyResult.previewArtifacts,
@@ -237,6 +401,97 @@ async function executeAgencySwarmTurn(
     },
     skillId: TEAM_AGENCY_SWARM_ID,
   };
+}
+
+async function assertAgencyCapabilityAuthorized(input: {
+  agencyId: string;
+  tenantId: string;
+  userId: number;
+  teamAgencyId: string | null;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Cannot authorize selected agency: database unavailable");
+  }
+
+  const [agency] = await db
+    .select({
+      id: agencies.id,
+      tenantId: agencies.tenantId,
+      status: agencies.status,
+      isPublished: agencies.isPublished,
+      visibility: agencies.visibility,
+      createdBy: agencies.createdBy,
+    })
+    .from(agencies)
+    .where(
+      and(
+        eq(agencies.id, input.agencyId),
+        eq(agencies.tenantId, input.tenantId),
+      ),
+    )
+    .limit(1);
+
+  if (!agency) {
+    throw new Error(
+      `Selected agency ${input.agencyId} is not available for this tenant`,
+    );
+  }
+  const agencyStatus = String(agency.status ?? "").toLowerCase();
+  const agencyVisibility = String(agency.visibility ?? "").toLowerCase();
+  const isTeamMappedAgency = agency.id === input.teamAgencyId;
+  const isRunnableStatus =
+    ((agencyStatus === "published" || agencyStatus === "approved") &&
+      agency.isPublished === true) ||
+    (isTeamMappedAgency &&
+      (agencyStatus === "active" ||
+        agencyStatus === "published" ||
+        agencyStatus === "approved"));
+  if (!isRunnableStatus) {
+    throw new Error(
+      `Selected agency ${input.agencyId} is not published for automation`,
+    );
+  }
+  const runnableVisibilities = new Set(["private", "shared", "public"]);
+  if (!runnableVisibilities.has(agencyVisibility)) {
+    throw new Error(
+      `Selected agency ${input.agencyId} visibility '${agencyVisibility || "unknown"}' is not runnable for automation`,
+    );
+  }
+  if (
+    agencyVisibility === "private" &&
+    agency.createdBy !== input.userId &&
+    agency.id !== input.teamAgencyId
+  ) {
+    throw new Error(
+      `Selected agency ${input.agencyId} is private and not available to this requester`,
+    );
+  }
+  if (agencyVisibility === "shared" && agency.id !== input.teamAgencyId) {
+    const [sharedPermission] = await db
+      .select({ id: agencyPermissions.id })
+      .from(agencyPermissions)
+      .innerJoin(
+        groupMembers,
+        eq(groupMembers.groupId, agencyPermissions.groupId),
+      )
+      .innerJoin(userGroups, eq(userGroups.id, agencyPermissions.groupId))
+      .where(
+        and(
+          eq(agencyPermissions.agencyId, input.agencyId),
+          eq(userGroups.tenantId, input.tenantId),
+          isNull(userGroups.deletedAt),
+          eq(groupMembers.userId, input.userId),
+          eq(groupMembers.status, "active"),
+        ),
+      )
+      .limit(1);
+    if (!sharedPermission) {
+      throw new Error(
+        `Selected agency ${input.agencyId} is shared but not available to this requester`,
+      );
+    }
+  }
 }
 
 function matchesAnyPattern(text: string, patterns: RegExp[]): boolean {
@@ -280,6 +535,8 @@ function extractAutoTeamPlanStepContext(
   surface: string | null;
   selectedCapabilityId: string | null;
   runtimeDispatchPolicy: RuntimeDispatchPolicy | null;
+  validationAttempt: number;
+  validationStatus: string | null;
 } | null {
   if (!contextState || typeof contextState !== "object") return null;
   const projectState = (contextState as Record<string, unknown>).projectState;
@@ -335,7 +592,59 @@ function extractAutoTeamPlanStepContext(
         ? stepRecord.selectedCapabilityId
         : null,
     runtimeDispatchPolicy,
+    validationAttempt:
+      stepRecord.validationState &&
+      typeof stepRecord.validationState === "object" &&
+      typeof (stepRecord.validationState as Record<string, unknown>).attempt === "number"
+        ? Math.max(0, Number((stepRecord.validationState as Record<string, unknown>).attempt))
+        : 0,
+    validationStatus:
+      stepRecord.validationState &&
+      typeof stepRecord.validationState === "object" &&
+      typeof (stepRecord.validationState as Record<string, unknown>).status === "string"
+        ? String((stepRecord.validationState as Record<string, unknown>).status)
+        : null,
   };
+}
+
+function getExplicitPlanStepSkillId(step: {
+  selectedCapabilityId: string | null;
+}): string | null {
+  const parsed = parseSelectedCapabilityId(step.selectedCapabilityId);
+  return parsed?.kind === "skill" ? parsed.id : null;
+}
+
+function getExplicitPlanStepAgencyId(step: {
+  selectedCapabilityId: string | null;
+}): string | null {
+  const parsed = parseSelectedCapabilityId(step.selectedCapabilityId);
+  return parsed?.kind === "agency" ? parsed.id : null;
+}
+
+function getExplicitPlanStepMediaModelId(step: {
+  selectedCapabilityId: string | null;
+}): string | null {
+  const parsed = parseSelectedCapabilityId(step.selectedCapabilityId);
+  return parsed?.kind === "media_model" ? parsed.id : null;
+}
+
+function shouldRoutePlanStepToAgency(step: {
+  surface: string | null;
+  selectedCapabilityId: string | null;
+}): boolean {
+  return step.surface === "agency" || getExplicitPlanStepAgencyId(step) !== null;
+}
+
+function isRecoverableAgencyRuntimeError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("Agency service temporarily unavailable") ||
+    message.includes("Agency run failed") ||
+    message.includes("503") ||
+    message.includes("ECONNREFUSED") ||
+    message.includes("fetch failed") ||
+    message.toLowerCase().includes("timeout")
+  );
 }
 
 function selectAutoTeamPlanStepSkill(step: {
@@ -347,8 +656,30 @@ function selectAutoTeamPlanStepSkill(step: {
   selectedCapabilityId: string | null;
   runtimeDispatchPolicy: RuntimeDispatchPolicy | null;
 }): string | null {
-  if (step.selectedCapabilityId) {
-    return step.selectedCapabilityId;
+  const explicitSkillId = getExplicitPlanStepSkillId(step);
+  if (explicitSkillId) return explicitSkillId;
+
+  const parsedCapability = parseSelectedCapabilityId(step.selectedCapabilityId);
+  if (
+    step.surface === "video_editor" ||
+    (parsedCapability?.kind === "surface" && parsedCapability.id === "video_editor")
+  ) {
+    return "video-storyboard-to-prompts";
+  }
+  if (
+    step.surface === "document_management" ||
+    (parsedCapability?.kind === "surface" && parsedCapability.id === "document_management")
+  ) {
+    return isStoryboardObjective(
+      [step.stepKey, step.title, step.objective, step.deliverable]
+        .filter((value): value is string => Boolean(value))
+        .join(" "),
+    )
+      ? "storyboard-writer"
+      : "general-article-writer";
+  }
+  if (step.surface === "media_studio" || parsedCapability?.kind === "media_model") {
+    return "image_prompt_engineer";
   }
 
   const routingText = normalizeStepRoutingText(
@@ -411,6 +742,412 @@ function buildRuntimeDispatchBlockedResult(input: {
   };
 }
 
+function buildCapabilityGapSkillCreationObjective(input: {
+  runObjective: string;
+  activePlanStep: NonNullable<ReturnType<typeof extractAutoTeamPlanStepContext>>;
+  missingSkillId?: string | null;
+}): string {
+  const parsedCapability = parseSelectedCapabilityId(
+    input.activePlanStep.selectedCapabilityId
+  );
+  return [
+    "Create a private or pending-review skill proposal for an Auto Team plan step.",
+    "Do not publish the skill, widen visibility, execute external side effects, or auto-apply it without a separate governed approval.",
+    "Return the proposed skill name, scope, input contract, output contract, safety limits, test fixture, and how the Auto Team should route to it next time.",
+    "",
+    `Original run objective: ${input.runObjective}`,
+    `Plan step key: ${input.activePlanStep.stepKey}`,
+    `Plan step title: ${input.activePlanStep.title}`,
+    input.activePlanStep.objective
+      ? `Step objective: ${input.activePlanStep.objective}`
+      : null,
+    input.activePlanStep.deliverable
+      ? `Expected deliverable: ${input.activePlanStep.deliverable}`
+      : null,
+    input.activePlanStep.surface
+      ? `Requested surface: ${input.activePlanStep.surface}`
+      : null,
+    input.activePlanStep.selectedCapabilityId
+      ? `Selected capability: ${input.activePlanStep.selectedCapabilityId}`
+      : null,
+    input.missingSkillId ? `Missing skill id: ${input.missingSkillId}` : null,
+    parsedCapability ? `Parsed capability kind: ${parsedCapability.kind}` : null,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join("\n");
+}
+
+async function resolveSkillCreationFallbackSkillId(): Promise<string | null> {
+  for (const skillId of SKILL_CREATOR_FALLBACK_SKILL_IDS) {
+    const skill = await getSkillByIdAsync(skillId);
+    if (skill) return skillId;
+  }
+  return null;
+}
+
+function shouldCreateSkillForCapabilityGap(input: {
+  activePlanStep: NonNullable<ReturnType<typeof extractAutoTeamPlanStepContext>>;
+  missingSkillId?: string | null;
+  routeAlreadyResolved: boolean;
+  allowGenericSkillGap?: boolean;
+}): boolean {
+  if (input.routeAlreadyResolved) return false;
+  const parsedCapability = parseSelectedCapabilityId(
+    input.activePlanStep.selectedCapabilityId
+  );
+  if (parsedCapability?.kind === "skill_studio") return true;
+  if (parsedCapability?.kind === "workflow") return true;
+  if (parsedCapability?.kind === "context_pack") return true;
+  if (
+    parsedCapability?.kind === "surface" &&
+    parsedCapability.id === "workflow"
+  ) {
+    return true;
+  }
+  if (parsedCapability?.kind === "skill" && input.missingSkillId) return true;
+  if (
+    input.allowGenericSkillGap &&
+    input.activePlanStep.surface === "skill" &&
+    (!input.activePlanStep.selectedCapabilityId ||
+      (input.activePlanStep.validationStatus === "failed" &&
+        input.activePlanStep.validationAttempt >= 2))
+  ) {
+    return true;
+  }
+  return false;
+}
+
+async function buildCapabilityGapRoute(
+  input: TeamRunSkillExecutionInput,
+  activePlanStep: NonNullable<ReturnType<typeof extractAutoTeamPlanStepContext>>,
+  missingSkillId?: string | null
+): Promise<TeamRunSkillExecutionInput | null> {
+  const selectedSkillId = await resolveSkillCreationFallbackSkillId();
+  if (!selectedSkillId) return null;
+
+  const parsedCapability = parseSelectedCapabilityId(
+    activePlanStep.selectedCapabilityId
+  );
+  const capabilityGapResolution = {
+    action: "create_private_skill_draft",
+    selectedSkillId,
+    missingSkillId: missingSkillId ?? null,
+    selectedCapabilityId: activePlanStep.selectedCapabilityId,
+    parsedCapabilityKind: parsedCapability?.kind ?? null,
+    stepKey: activePlanStep.stepKey,
+    safetyMode: "private_or_pending_review_only",
+    publishAllowed: false,
+    autoApplyAllowed: false,
+    lifecycleState: "draft_requested",
+    nextAction: "review_test_publish_then_retry_step",
+    rerouteAfterApproval: true,
+    retryPolicy: {
+      trigger: "skill_published_or_approved",
+      originalStepKey: activePlanStep.stepKey,
+      originalCapabilityId: activePlanStep.selectedCapabilityId,
+      maxAutomaticRetries: 1,
+    },
+  };
+  const skillStudioPolicy = {
+    action: "create_private_or_pending_review",
+    visibility: "private",
+    state: "draft_or_pending_review",
+    publishAllowed: false,
+    autoApplyAllowed: false,
+    widenVisibilityAllowed: false,
+    externalSideEffectsAllowed: false,
+    approvalRequiredForPublish: true,
+  };
+
+  return {
+    ...input,
+    objective: buildCapabilityGapSkillCreationObjective({
+      runObjective: input.objective,
+      activePlanStep,
+      missingSkillId,
+    }),
+    dynamicParams: {
+      ...(input.dynamicParams ?? {}),
+      capabilityGapResolution,
+      skillStudioPolicy,
+    },
+    route: {
+      ...input.route,
+      route: "skill",
+      reason: `auto_team_capability_gap:${activePlanStep.stepKey}:${selectedSkillId}`,
+      selectedSkillId,
+      selectedCapabilityId: activePlanStep.selectedCapabilityId ?? undefined,
+      capabilityGapResolution: {
+        ...capabilityGapResolution,
+        skillStudioPolicy,
+      },
+    },
+  };
+}
+
+function throwMissingSkillCreatorForCapabilityGap(
+  activePlanStep: NonNullable<ReturnType<typeof extractAutoTeamPlanStepContext>>,
+): never {
+  throw new Error(
+    `No approved skill creator is available for capability gap resolution on step ${activePlanStep.stepKey}`,
+  );
+}
+
+function detectSkillStudioPolicyViolations(
+  result: Pick<TeamRunSkillExecutionResult, "content" | "metadata">,
+): string[] {
+  const inspectedText = [
+    result.content,
+    JSON.stringify(result.metadata ?? {}),
+  ].join("\n");
+  const violations: string[] = [];
+  const booleanPolicyPatterns = [
+    {
+      code: "publish_requested",
+      pattern: /["']?(publishAllowed|publish|publishNow)["']?\s*[:=]\s*true/i,
+    },
+    {
+      code: "auto_apply_requested",
+      pattern: /["']?(autoApplyAllowed|autoApply|applyNow|installNow)["']?\s*[:=]\s*true/i,
+    },
+    {
+      code: "visibility_widen_requested",
+      pattern:
+        /["']?(widenVisibilityAllowed|visibility)["']?\s*[:=]\s*["']?(public|shared|tenant)["']?/i,
+    },
+    {
+      code: "external_side_effect_requested",
+      pattern:
+        /["']?(externalSideEffectsAllowed|externalSideEffect|externalWrite)["']?\s*[:=]\s*true/i,
+    },
+    {
+      code: "published_state_requested",
+      pattern: /["']?(state|status)["']?\s*[:=]\s*["']?(published|approved|active)["']?/i,
+    },
+    {
+      code: "natural_language_publish_requested",
+      pattern:
+        /\b(publish this|publish now|make (it|this|the skill) public|set visibility to public|share with tenant|auto[- ]?apply|apply it automatically|install it now|execute external)\b/i,
+    },
+  ];
+  for (const candidate of booleanPolicyPatterns) {
+    if (candidate.pattern.test(inspectedText)) {
+      violations.push(candidate.code);
+    }
+  }
+  for (const violation of detectStructuredSkillStudioPolicyViolations(result)) {
+    violations.push(violation);
+  }
+  return Array.from(new Set(violations));
+}
+
+function detectStructuredSkillStudioPolicyViolations(
+  result: Pick<TeamRunSkillExecutionResult, "content" | "metadata">,
+): string[] {
+  const violations: string[] = [];
+  const candidates: unknown[] = [result.metadata];
+  const trimmed = result.content.trim();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      candidates.push(JSON.parse(trimmed));
+    } catch {
+      // Keep the regex guard for non-JSON content.
+    }
+  }
+
+  const visit = (value: unknown, keyPath: string[] = []) => {
+    if (!value || typeof value !== "object") return;
+    if (Array.isArray(value)) {
+      value.forEach(item => visit(item, keyPath));
+      return;
+    }
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      const normalizedKey = key.toLowerCase().replace(/[_\-\s]/g, "");
+      const normalizedValue =
+        typeof child === "string"
+          ? child.trim().toLowerCase().replace(/[_\-\s]/g, "")
+          : child;
+      const truthy =
+        normalizedValue === true ||
+        normalizedValue === "true" ||
+        normalizedValue === "yes" ||
+        normalizedValue === "allowed" ||
+        normalizedValue === "approved" ||
+        normalizedValue === "publish" ||
+        normalizedValue === "published" ||
+        normalizedValue === "public" ||
+        normalizedValue === "shared" ||
+        normalizedValue === "tenant";
+
+      if (
+        ["publishallowed", "publish", "publishnow", "autopublish"].includes(
+          normalizedKey,
+        ) &&
+        truthy
+      ) {
+        violations.push("publish_requested");
+      }
+      if (
+        ["autoapplyallowed", "autoapply", "applynow", "installnow"].includes(
+          normalizedKey,
+        ) &&
+        truthy
+      ) {
+        violations.push("auto_apply_requested");
+      }
+      if (
+        ["widenvisibilityallowed", "externalvisibility"].includes(
+          normalizedKey,
+        ) &&
+        truthy
+      ) {
+        violations.push("visibility_widen_requested");
+      }
+      if (
+        normalizedKey === "visibility" &&
+        ["public", "shared", "tenant"].includes(String(normalizedValue))
+      ) {
+        violations.push("visibility_widen_requested");
+      }
+      if (
+        ["externalsideeffectsallowed", "externalsideeffect", "externalwrite"].includes(
+          normalizedKey,
+        ) &&
+        truthy
+      ) {
+        violations.push("external_side_effect_requested");
+      }
+      if (
+        ["state", "status"].includes(normalizedKey) &&
+        ["published", "approved", "active"].includes(String(normalizedValue))
+      ) {
+        violations.push("published_state_requested");
+      }
+      visit(child, [...keyPath, key]);
+    }
+  };
+
+  candidates.forEach(candidate => visit(candidate));
+  return violations;
+}
+
+function enforceCapabilityGapSkillStudioPolicy(
+  result: TeamRunSkillExecutionResult,
+  capabilityGapResolution?: Record<string, unknown>,
+): TeamRunSkillExecutionResult {
+  if (!capabilityGapResolution) return result;
+  const skillStudioPolicy =
+    capabilityGapResolution.skillStudioPolicy &&
+    typeof capabilityGapResolution.skillStudioPolicy === "object"
+      ? (capabilityGapResolution.skillStudioPolicy as Record<string, unknown>)
+      : null;
+  if (!skillStudioPolicy) return result;
+
+  const violations = detectSkillStudioPolicyViolations(result);
+  const enforcedMetadata = {
+    ...result.metadata,
+    capabilityGapPolicyEnforced: true,
+    capabilityGapPolicy: {
+      publishAllowed: false,
+      autoApplyAllowed: false,
+      widenVisibilityAllowed: false,
+      externalSideEffectsAllowed: false,
+      visibility: "private",
+      state: "draft_or_pending_review",
+      lifecycleState: "draft_requested",
+      nextAction: "review_test_publish_then_retry_step",
+      rerouteAfterApproval: true,
+      retryPolicy: {
+        trigger: "skill_published_or_approved",
+        maxAutomaticRetries: 1,
+      },
+    },
+    capabilityGapNextAction: "review_test_publish_then_retry_step",
+    capabilityGapDraftEvidence: {
+      required: true,
+      expectedRefs: ["skill_draft", "input_contract", "output_contract", "safety_limits", "test_fixture"],
+      persistence: "skill_creator_output_must_be_saved_as_private_or_pending_review_draft",
+      retryAfterApproval: true,
+    },
+  };
+  if (violations.length === 0) {
+    return {
+      ...result,
+      metadata: enforcedMetadata,
+    };
+  }
+
+  return {
+    ...result,
+    content:
+      "Skill draft output was blocked by the Skill Studio safety policy. The proposed capability must remain a private or pending-review draft and cannot publish, auto-apply, widen visibility, or perform external side effects.",
+    metadata: {
+      ...enforcedMetadata,
+      capabilityGapPolicyViolation: {
+        blocked: true,
+        violations,
+      },
+      runtimeDispatchOutcome: "blocked_by_skill_studio_policy",
+      nextSpeakerHint: null,
+    },
+    nextSpeakerHint: undefined,
+  };
+}
+
+function assertCapabilityGapSkillStudioPreExecutionPolicy(input: {
+  skill: SkillDefinition;
+  capabilityGapResolution?: Record<string, unknown>;
+}): Record<string, unknown> | null {
+  const resolution = input.capabilityGapResolution;
+  if (!resolution) return null;
+
+  if (!SKILL_CREATOR_FALLBACK_SKILL_IDS.includes(input.skill.id as any)) {
+    throw new Error(
+      `Capability gap route must execute a skill creator draft skill, not ${input.skill.id}`,
+    );
+  }
+
+  const skillStudioPolicy =
+    resolution.skillStudioPolicy &&
+    typeof resolution.skillStudioPolicy === "object"
+      ? (resolution.skillStudioPolicy as Record<string, unknown>)
+      : null;
+  if (!skillStudioPolicy) {
+    throw new Error("Capability gap route is missing the Skill Studio safety policy");
+  }
+
+  const policyViolations = detectStructuredSkillStudioPolicyViolations({
+    content: "",
+    metadata: { skillStudioPolicy },
+  });
+  const visibility = String(skillStudioPolicy.visibility ?? "").toLowerCase();
+  const action = String(skillStudioPolicy.action ?? "").toLowerCase();
+  if (
+    policyViolations.length > 0 ||
+    visibility !== "private" ||
+    action !== "create_private_or_pending_review" ||
+    skillStudioPolicy.publishAllowed !== false ||
+    skillStudioPolicy.autoApplyAllowed !== false ||
+    skillStudioPolicy.widenVisibilityAllowed !== false ||
+    skillStudioPolicy.externalSideEffectsAllowed !== false
+  ) {
+    throw new Error(
+      "Capability gap skill creation must remain draft-only, private, approval-gated, and side-effect free before execution",
+    );
+  }
+
+  return {
+    checked: true,
+    draftOnly: true,
+    visibility: "private",
+    publishAllowed: false,
+    autoApplyAllowed: false,
+    widenVisibilityAllowed: false,
+    externalSideEffectsAllowed: false,
+    approvalRequiredForPublish: true,
+  };
+}
+
 function isPromptSkillChainCandidate(skill: SkillDefinition): boolean {
   const category = String((skill as { category?: string }).category ?? "")
     .toLowerCase()
@@ -456,6 +1193,7 @@ function parseMediaPromptChainOutput(content: string): {
         "numImages",
         "quality",
         "duration",
+        "clipCount",
         "model",
         "fps",
         "resolution",
@@ -593,67 +1331,263 @@ async function maybeChainPromptSkillToMedia(
   }
 
   const { prompt, extraParams } = parseMediaPromptChainOutput(promptContent);
-  const mediaResult = await executeUnified({
-    channel: "team_room",
-    userId: input.userId,
-    tenantId: input.tenantId,
-    userMessage: prompt,
-    teamContext: {
-      assistantId: input.assistantId,
-      roomId: input.roomId,
-      teamId: input.teamId,
-      runId: input.run.id,
-      objective: input.objective,
-      initiatedByUserId: input.userId,
-      currentMessage: input.objective,
-    },
-    routeHint: {
-      selectedSkillId: chainTarget.id,
-      route: "skill",
-      reason: `auto_team_media_chain:${skill.id}->${chainTarget.id}`,
-    },
-    creditMode: "deduct",
-    dynamicParams: {
-      ...(input.dynamicParams ?? {}),
-      contextState: {
-        ...(typeof input.dynamicParams?.contextState === "object" &&
-        input.dynamicParams?.contextState
-          ? (input.dynamicParams.contextState as Record<string, unknown>)
-          : {}),
-        sessionState: buildTeamSessionState({
+  const mediaParams = { ...extraParams };
+  if (chainTarget.id === "image-creator") {
+    mediaParams.numImages =
+      typeof mediaParams.numImages === "number" && mediaParams.numImages > 0
+        ? mediaParams.numImages
+        : 6;
+  }
+  if (chainTarget.id === "video-creator") {
+    mediaParams.duration =
+      typeof mediaParams.duration === "number" && mediaParams.duration > 0
+        ? mediaParams.duration
+        : 10;
+  }
+  const clipPlan =
+    chainTarget.id === "video-creator"
+      ? resolveAutoTeamClipPlan({
+          objective: input.objective,
+          durationSeconds:
+            typeof mediaParams.duration === "number"
+              ? mediaParams.duration
+              : undefined,
+          requestedClipCount:
+            typeof mediaParams.clipCount === "number"
+              ? mediaParams.clipCount
+              : undefined,
+        })
+      : null;
+  const mediaRunCount = clipPlan?.clipCount ?? 1;
+  const activePlanStep = extractAutoTeamPlanStepContext(
+    input.dynamicParams?.contextState,
+  );
+  const explicitMediaModelId = activePlanStep
+    ? getExplicitPlanStepMediaModelId(activePlanStep)
+    : null;
+  const mediaBudgetGate = evaluateAutoTeamMediaChainBudgetPreflight({
+    maxBudgetCredits: getApprovedRunBudgetMaxCredits(input.run),
+    totalCreditsUsed: getRunTotalCreditsUsed(input.run),
+    promptCredits: promptResult.costCredits,
+    mediaType: chainTarget.id === "video-creator" ? "video" : "image",
+    clipCount: mediaRunCount,
+  });
+  if (!mediaBudgetGate.allowed) {
+    const runtimeDispatchPolicy = activePlanStep?.runtimeDispatchPolicy
+      ? {
+          ...activePlanStep.runtimeDispatchPolicy,
+          authorityDecision: "blocked" as const,
+          budgetReservation: {
+            ...activePlanStep.runtimeDispatchPolicy.budgetReservation,
+            mediaJobs: mediaRunCount,
+            costCredits: mediaBudgetGate.creditsNeeded,
+          },
+          deadLetterPolicy: {
+            ...activePlanStep.runtimeDispatchPolicy.deadLetterPolicy,
+            reasonCode: "budget_cap_exceeded",
+            recoveryHint:
+              "Increase the approved budget envelope or reduce the requested media duration/clip count before retrying automation.",
+          },
+        }
+      : null;
+    return {
+      content: `Step "${activePlanStep?.title ?? skill.id}" is blocked before media fan-out because the approved budget envelope would be exceeded.`,
+      inputTokens: promptResult.inputTokens,
+      outputTokens: promptResult.outputTokens,
+      costCredits: promptResult.costCredits,
+      metadata: {
+        ...promptResult.metadata,
+        route: "manual",
+        routeReason: "auto_team_media_budget_preflight:budget_cap_exceeded",
+        selectedSkillId: chainTarget.id,
+        promptSkillId: skill.id,
+        runtimeDispatchPolicy,
+        runtimeDispatchOutcome: "blocked",
+        budgetGate: mediaBudgetGate,
+        autoReplanRequested: true,
+        mediaChain: {
+          promptSkillId: skill.id,
+          mediaSkillId: chainTarget.id,
+          mediaSkillName: chainTarget.name,
+          mediaType: chainTarget.id === "video-creator" ? "video" : "image",
+          clipCount: mediaRunCount,
+        },
+      },
+      skillId: chainTarget.id,
+      nextSpeakerHint: promptResult.nextSpeakerHint,
+    };
+  }
+  const storyboardState =
+    chainTarget.id === "video-creator"
+      ? await getAutoTeamStoryboardAssetState(input.run.id).catch(() => null)
+      : null;
+  if (
+    chainTarget.id === "video-creator" &&
+    storyboardState &&
+    (storyboardState.pendingImageTaskCount > 0 || storyboardState.failedImageTaskCount > 0)
+  ) {
+    if (storyboardState.failedImageTaskCount > 0) {
+      throw new Error(
+        `Storyboard image generation has ${storyboardState.failedImageTaskCount} failed task(s); repair storyboard assets before generating video clips.`,
+      );
+    }
+    return {
+      content:
+        `Storyboard image generation is still running (${storyboardState.pendingImageTaskCount} task(s) pending). ` +
+        "Video clip generation will resume automatically after the storyboard assets are ready.",
+      inputTokens: promptResult.inputTokens,
+      outputTokens: promptResult.outputTokens,
+      costCredits: promptResult.costCredits,
+      metadata: {
+        ...promptResult.metadata,
+        route: "skill",
+        routeReason: `auto_team_media_chain:${skill.id}->${chainTarget.id}:awaiting_storyboard_assets`,
+        selectedSkillId: chainTarget.id,
+        promptSkillId: skill.id,
+        mediaPipelineAwaitingAssets: true,
+        runtimeDispatchOutcome: "awaiting_async_assets",
+        retryAfterMs: 30_000,
+        storyboardAssetState: storyboardState,
+      },
+      skillId: chainTarget.id,
+      nextSpeakerHint: promptResult.nextSpeakerHint,
+    };
+  }
+  const storyboardImageUrls =
+    chainTarget.id === "video-creator"
+      ? (storyboardState?.urls ?? await getAutoTeamStoryboardImageUrls(input.run.id).catch(() => []))
+      : [];
+
+  const mediaResults: Awaited<ReturnType<typeof executeUnified>>[] = [];
+  for (let index = 0; index < mediaRunCount; index += 1) {
+    const clipPrompt =
+      mediaRunCount > 1
+        ? `${prompt}\n\nClip ${index + 1} of ${mediaRunCount}: generate a distinct storyboard segment that connects with the previous and next clip.`
+        : prompt;
+    const referenceImageUrl =
+      storyboardImageUrls.length > 0
+        ? storyboardImageUrls[index % storyboardImageUrls.length]
+        : null;
+    const dynamicMediaParams = {
+      ...mediaParams,
+      ...(explicitMediaModelId && !mediaParams.model
+        ? { model: explicitMediaModelId }
+        : {}),
+      ...(clipPlan ? { duration: clipPlan.durationSeconds } : {}),
+      ...(referenceImageUrl && !mediaParams.referenceImageUrls
+        ? { referenceImageUrls: [referenceImageUrl] }
+        : {}),
+    };
+
+    const mediaResult = await executeUnified({
+      channel: "team_room",
+      userId: input.userId,
+      tenantId: input.tenantId,
+      userMessage: clipPrompt,
+      teamContext: {
+        assistantId: input.assistantId,
+        roomId: input.roomId,
+        teamId: input.teamId,
+        runId: input.run.id,
+        objective: input.objective,
+        initiatedByUserId: input.userId,
+        currentMessage: input.objective,
+      },
+      routeHint: {
+        selectedSkillId: chainTarget.id,
+        route: "skill",
+        reason: `auto_team_media_chain:${skill.id}->${chainTarget.id}`,
+      },
+      creditMode: "deduct",
+      dynamicParams: {
+        ...(input.dynamicParams ?? {}),
+        contextState: {
+          ...(typeof input.dynamicParams?.contextState === "object" &&
+          input.dynamicParams?.contextState
+            ? (input.dynamicParams.contextState as Record<string, unknown>)
+            : {}),
+          sessionState: buildTeamSessionState({
+            runId: input.run.id,
+            teamId: input.teamId,
+            roomId: input.roomId,
+            assistantId: input.assistantId,
+            objective: input.objective,
+          }),
+        },
+        prompt: clipPrompt,
+        ...dynamicMediaParams,
+        __autoTeamPromptSkillId: skill.id,
+        __autoTeamPromptChainFrom: skill.id,
+        __autoTeamClipIndex: index + 1,
+        __autoTeamClipCount: mediaRunCount,
+      },
+    });
+
+    if (mediaResult.result.type !== "media_job") {
+      throw new Error(
+        `Media chain for '${skill.id}' -> '${chainTarget.id}' did not produce a media job`
+      );
+    }
+
+    mediaResults.push(mediaResult);
+    const mediaJob = mediaResult.result;
+    if (mediaJob.mediaType === "image" || mediaJob.mediaType === "video") {
+      try {
+        await registerAutoTeamMediaArtifact({
           runId: input.run.id,
-          teamId: input.teamId,
           roomId: input.roomId,
+          teamId: input.teamId,
+          tenantId: input.tenantId,
+          userId: input.userId,
           assistantId: input.assistantId,
           objective: input.objective,
-        }),
-      },
-      prompt,
-      ...extraParams,
-      __autoTeamPromptSkillId: skill.id,
-      __autoTeamPromptChainFrom: skill.id,
-    },
-  });
+          mediaType: mediaJob.mediaType,
+          mediaPayload: mediaJob.jobPayload,
+          promptText: clipPrompt,
+          promptSkillId: skill.id,
+          mediaSkillId: mediaResult.skillId,
+          modelId: mediaResult.modelUsed ?? null,
+          plannedDurationSeconds: clipPlan?.durationSeconds,
+          clipIndex: index + 1,
+          clipCount: mediaRunCount,
+        });
+      } catch (error) {
+        throw new Error(
+          `Auto-team media artifact registration failed for ${mediaJob.mediaType} clip ${index + 1}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
+  }
 
-  if (mediaResult.result.type !== "media_job") {
+  const firstMediaResult = mediaResults[0];
+  if (!firstMediaResult || firstMediaResult.result.type !== "media_job") {
     throw new Error(
       `Media chain for '${skill.id}' -> '${chainTarget.id}' did not produce a media job`
     );
   }
-
-  const combinedCost = promptResult.costCredits + mediaResult.costCredits;
+  const firstMediaJob = firstMediaResult.result;
+  const combinedCost =
+    promptResult.costCredits +
+    mediaResults.reduce((sum, result) => sum + result.costCredits, 0);
   const combinedInputTokens =
-    promptResult.inputTokens + mediaResult.tokens.input;
+    promptResult.inputTokens +
+    mediaResults.reduce((sum, result) => sum + result.tokens.input, 0);
   const combinedOutputTokens =
-    promptResult.outputTokens + mediaResult.tokens.output;
-  const summary = summarizeMediaExecutionResult({
-    promptSkillId: skill.id,
-    mediaSkillId: mediaResult.skillId,
-    mediaSkillName: chainTarget.name,
-    mediaType: mediaResult.result.mediaType,
-    mediaResult,
-    promptText: prompt,
-  });
+    promptResult.outputTokens +
+    mediaResults.reduce((sum, result) => sum + result.tokens.output, 0);
+  const summary =
+    mediaResults.length === 1
+      ? summarizeMediaExecutionResult({
+          promptSkillId: skill.id,
+          mediaSkillId: firstMediaResult.skillId,
+          mediaSkillName: chainTarget.name,
+          mediaType: firstMediaJob.mediaType,
+          mediaResult: firstMediaResult,
+          promptText: prompt,
+        })
+      : `${chainTarget.name} queued ${mediaResults.length} video clips for the final composition. Prompt skill: ${skill.id}. The room will wait for all clips, compose the final video, and then run the completion check.`;
 
   return {
     content: summary,
@@ -664,24 +1598,26 @@ async function maybeChainPromptSkillToMedia(
       ...promptResult.metadata,
       mediaChain: {
         promptSkillId: skill.id,
-        mediaSkillId: mediaResult.skillId,
+        mediaSkillId: firstMediaResult.skillId,
         mediaSkillName: chainTarget.name,
-        mediaType: mediaResult.result.mediaType,
-        mediaRoute: mediaResult.route,
-        mediaMetadata: mediaResult.metadata,
+        mediaType: firstMediaJob.mediaType,
+        mediaRoute: firstMediaResult.route,
+        mediaMetadata: firstMediaResult.metadata,
         promptText: prompt,
+        clipCount: mediaResults.length,
       },
-      selectedSkillId: mediaResult.skillId,
+      selectedSkillId: firstMediaResult.skillId,
       promptSkillId: skill.id,
       nextSpeakerHint:
-        mediaResult.nextSpeakerHint ?? promptResult.nextSpeakerHint ?? null,
-      mediaJob: mediaResult.result,
-      llmModelId: mediaResult.modelUsed ?? promptResult.modelId ?? null,
+        firstMediaResult.nextSpeakerHint ?? promptResult.nextSpeakerHint ?? null,
+      mediaJob: firstMediaResult.result,
+      mediaJobs: mediaResults.map(result => result.result),
+      llmModelId: firstMediaResult.modelUsed ?? promptResult.modelId ?? null,
       attempts: promptResult.attempts ?? [],
     },
-    skillId: mediaResult.skillId,
+    skillId: firstMediaResult.skillId,
     nextSpeakerHint:
-      mediaResult.nextSpeakerHint ?? promptResult.nextSpeakerHint,
+      firstMediaResult.nextSpeakerHint ?? promptResult.nextSpeakerHint,
   };
 }
 
@@ -705,9 +1641,39 @@ export async function executeTeamRunSkillTurn(
 
   const routeInput = await resolveTeamOrchestratorRoute(input);
   if (routeInput.route.route === "agency") {
-    return executeAgencySwarmTurn(input, routeInput.route.reason);
+    try {
+      return await executeAgencySwarmTurn(routeInput, routeInput.route.reason);
+    } catch (error) {
+      if (!isRecoverableAgencyRuntimeError(error)) {
+        throw error;
+      }
+      const fallbackSkillId =
+        (activePlanStep ? selectAutoTeamPlanStepSkill(activePlanStep) : null) ??
+        GENERAL_FALLBACK_SKILL_ID;
+      console.warn("[teamRunSkillExecutor] Agency route unavailable; falling back to skill execution", {
+        runId: input.run.id,
+        roomId: input.roomId,
+        teamId: input.teamId,
+        selectedAgencyId: routeInput.route.selectedAgencyId ?? null,
+        fallbackSkillId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      routeInput.route = {
+        ...routeInput.route,
+        route: "skill",
+        reason: `agency_unavailable_fallback:${routeInput.route.reason}`,
+        selectedSkillId: fallbackSkillId,
+        selectedAgencyId: undefined,
+      };
+    }
   }
+  const executionInput = routeInput;
   const skill = await resolveTeamRunSkill(routeInput.route.selectedSkillId);
+  const capabilityGapPreflight =
+    assertCapabilityGapSkillStudioPreExecutionPolicy({
+      skill,
+      capabilityGapResolution: routeInput.route.capabilityGapResolution,
+    });
   const conversationModel =
     input.assistantContext.profile.preferredModelId ??
     input.assistantContext.agentModel ??
@@ -729,19 +1695,19 @@ export async function executeTeamRunSkillTurn(
     teamId: input.teamId,
     roomId: input.roomId,
     assistantId: input.assistantId,
-    objective: input.objective,
+    objective: executionInput.objective,
   });
   const teamPromptContext: UnifiedExecutionRequest = {
     channel: "team_room",
     userId: input.userId,
     tenantId: input.tenantId,
-    userMessage: input.objective,
+    userMessage: executionInput.objective,
     dynamicParams: {
-      ...(input.dynamicParams ?? {}),
+      ...(executionInput.dynamicParams ?? {}),
       contextState: {
-        ...(typeof input.dynamicParams?.contextState === "object" &&
-        input.dynamicParams?.contextState
-          ? (input.dynamicParams.contextState as Record<string, unknown>)
+        ...(typeof executionInput.dynamicParams?.contextState === "object" &&
+        executionInput.dynamicParams?.contextState
+          ? (executionInput.dynamicParams.contextState as Record<string, unknown>)
           : {}),
         sessionState,
       },
@@ -751,9 +1717,9 @@ export async function executeTeamRunSkillTurn(
       roomId: input.roomId,
       teamId: input.teamId,
       runId: input.run.id,
-      objective: input.objective,
+      objective: executionInput.objective,
       initiatedByUserId: input.userId,
-      currentMessage: input.objective,
+      currentMessage: executionInput.objective,
     },
   };
   let contextPack: ContextPack | null = null;
@@ -762,7 +1728,7 @@ export async function executeTeamRunSkillTurn(
   let handledByUnified = false;
   try {
     const flags = await getTenantFeatureFlags(input.tenantId);
-    if (flags.unifiedSkillExecution) {
+    if (flags.unifiedSkillExecution && !capabilityGapPreflight) {
       const request: UnifiedExecutionRequest = {
         ...teamPromptContext,
         routeHint: {
@@ -798,6 +1764,8 @@ export async function executeTeamRunSkillTurn(
           route: result.route.capability,
           routeReason: result.route.reason,
           selectedSkillId: result.skillId,
+          selectedCapabilityId: routeInput.route.selectedCapabilityId ?? null,
+          capabilityGapResolution: routeInput.route.capabilityGapResolution ?? null,
           nextSpeakerHint: result.nextSpeakerHint ?? null,
           attempts: result.telemetry.attempts,
           llmModelId: result.modelUsed,
@@ -807,7 +1775,7 @@ export async function executeTeamRunSkillTurn(
       };
 
       const finalResult = await maybeChainPromptSkillToMedia(
-        input,
+        executionInput,
         skill,
         primaryResult.content,
         {
@@ -861,7 +1829,7 @@ export async function executeTeamRunSkillTurn(
     skillSystemPrompt: skill.systemPrompt
       ? skill.systemPrompt.substring(0, TEAM_SYSTEM_PROMPT_MAX_CHARS)
       : null,
-    dynamicParams: input.dynamicParams ?? null,
+    dynamicParams: executionInput.dynamicParams ?? null,
     label: `team:${input.teamId}/${input.roomId}`,
   });
 
@@ -875,8 +1843,8 @@ export async function executeTeamRunSkillTurn(
     roomId: input.roomId,
     runId: input.run.id,
     projectId:
-      typeof input.dynamicParams?.projectId === "string"
-        ? input.dynamicParams.projectId
+      typeof executionInput.dynamicParams?.projectId === "string"
+        ? executionInput.dynamicParams.projectId
         : null,
     skillId: skill.id,
     latencyMs: Date.now() - contextAssemblyStartMs,
@@ -890,7 +1858,7 @@ export async function executeTeamRunSkillTurn(
   const requiresWebSearch =
     skill.executionPolicy?.requires_web_search === true ||
     skill.executionPolicy?.requirements?.supportsWebSearch === true ||
-    input.route.reason?.includes("web_search") ||
+    executionInput.route.reason?.includes("web_search") ||
     false;
 
   let extraBodyParams: Record<string, unknown> | undefined;
@@ -926,7 +1894,7 @@ export async function executeTeamRunSkillTurn(
   const runtimeTurn = await executeTeamRuntimeTurn({
     tenantId: input.tenantId,
     userId: input.userId,
-    objective: input.objective,
+    objective: executionInput.objective,
     skillSlug: skill.id,
     executionPolicy,
     contextPackRequest: {
@@ -936,7 +1904,7 @@ export async function executeTeamRunSkillTurn(
       skillSystemPrompt: skill.systemPrompt
         ? skill.systemPrompt.substring(0, TEAM_SYSTEM_PROMPT_MAX_CHARS)
         : null,
-      dynamicParams: input.dynamicParams ?? null,
+      dynamicParams: executionInput.dynamicParams ?? null,
       label: `team:${input.teamId}/${input.roomId}`,
     },
     planContext: {
@@ -957,10 +1925,10 @@ export async function executeTeamRunSkillTurn(
           },
           {
             requestedSubagent:
-              typeof input.dynamicParams?.requestedSubagent === "string"
-                ? input.dynamicParams.requestedSubagent
+              typeof executionInput.dynamicParams?.requestedSubagent === "string"
+                ? executionInput.dynamicParams.requestedSubagent
                 : null,
-            taskHint: input.objective,
+            taskHint: executionInput.objective,
           },
         );
       })(),
@@ -968,6 +1936,10 @@ export async function executeTeamRunSkillTurn(
     requestLabel: `team:${skill.id}`,
     roomId: input.roomId,
     runId: input.run.id,
+    approvalGranted: capabilityGapPreflight ? false : true,
+    allowedTools: capabilityGapPreflight ? [] : undefined,
+    allowedAgents: capabilityGapPreflight ? [] : undefined,
+    sideEffectKind: capabilityGapPreflight ? null : undefined,
     legacyExecute: () =>
       executeSkillLlmWithFallback({
         messages,
@@ -1000,8 +1972,8 @@ export async function executeTeamRunSkillTurn(
         ?.map(artifact => artifact.contentRef ?? artifact.artifactId)
         .filter((value): value is string => typeof value === "string" && value.length > 0) ?? [],
     requestedSubagent:
-      typeof input.dynamicParams?.requestedSubagent === "string"
-        ? input.dynamicParams.requestedSubagent
+      typeof executionInput.dynamicParams?.requestedSubagent === "string"
+        ? executionInput.dynamicParams.requestedSubagent
         : null,
     subagentTopology: summarizeNativeBundleTopology(skill),
   };
@@ -1028,6 +2000,9 @@ export async function executeTeamRunSkillTurn(
       route: "skill",
       routeReason: routeInput.route.reason,
       selectedSkillId: skill.id,
+      selectedCapabilityId: routeInput.route.selectedCapabilityId ?? null,
+      capabilityGapResolution: routeInput.route.capabilityGapResolution ?? null,
+      capabilityGapPreflight,
       nextSpeakerHint: nextSpeakerHint ?? null,
       contextEngine: contextPack
         ? {
@@ -1055,7 +2030,7 @@ export async function executeTeamRunSkillTurn(
   };
 
   const finalResult = await maybeChainPromptSkillToMedia(
-    input,
+    executionInput,
     skill,
     cleaned,
     {
@@ -1069,26 +2044,30 @@ export async function executeTeamRunSkillTurn(
       attempts: fallback.attempts,
     }
   );
+  const policyCheckedResult = enforceCapabilityGapSkillStudioPolicy(
+    finalResult,
+    routeInput.route.capabilityGapResolution,
+  );
 
   if (plannerResult) {
     const finalModelId =
-      typeof finalResult.metadata.llmModelId === "string" &&
-      finalResult.metadata.llmModelId.trim()
-        ? finalResult.metadata.llmModelId.trim()
+      typeof policyCheckedResult.metadata.llmModelId === "string" &&
+      policyCheckedResult.metadata.llmModelId.trim()
+        ? policyCheckedResult.metadata.llmModelId.trim()
         : (fallback.modelId ?? executionPolicy.modelId ?? "unknown");
     recordStepAttempt({
       taskRunId: plannerResult.taskRunId,
       plan: plannerResult.plan,
       model: finalModelId,
       provider: fallback.provider?.providerName,
-      inputTokens: finalResult.inputTokens,
-      outputTokens: finalResult.outputTokens,
+      inputTokens: policyCheckedResult.inputTokens,
+      outputTokens: policyCheckedResult.outputTokens,
       snapshot: plannerResult.snapshot,
-      creditsUsed: finalResult.costCredits,
+      creditsUsed: policyCheckedResult.costCredits,
     }).catch(() => {});
   }
 
-  return finalResult;
+  return policyCheckedResult;
 }
 
 async function resolveTeamOrchestratorRoute(
@@ -1112,7 +2091,8 @@ async function resolveTeamOrchestratorRoute(
   const stepSpecificSkillId = activePlanStep
     ? selectAutoTeamPlanStepSkill(activePlanStep)
     : null;
-  if (activePlanStep?.surface === "agency") {
+  if (activePlanStep && shouldRoutePlanStepToAgency(activePlanStep)) {
+    const selectedAgencyId = getExplicitPlanStepAgencyId(activePlanStep) ?? undefined;
     return {
       ...input,
       route: {
@@ -1120,9 +2100,29 @@ async function resolveTeamOrchestratorRoute(
         route: "agency",
         reason: `auto_team_plan_surface:${activePlanStep.stepKey}`,
         selectedSkillId: TEAM_AGENCY_SWARM_ID,
+        selectedAgencyId,
+        selectedCapabilityId: activePlanStep.selectedCapabilityId ?? undefined,
       },
     };
   }
+  if (
+    activePlanStep &&
+    shouldCreateSkillForCapabilityGap({
+      activePlanStep,
+      missingSkillId: null,
+      routeAlreadyResolved: false,
+      allowGenericSkillGap: false,
+    })
+  ) {
+    const capabilityGapRoute = await buildCapabilityGapRoute(
+      input,
+      activePlanStep,
+      null,
+    );
+    if (capabilityGapRoute) return capabilityGapRoute;
+    throwMissingSkillCreatorForCapabilityGap(activePlanStep);
+  }
+  let missingExplicitSkillId: string | null = null;
   if (stepSpecificSkillId) {
     const skill = await getSkillByIdAsync(stepSpecificSkillId);
     if (skill) {
@@ -1133,9 +2133,30 @@ async function resolveTeamOrchestratorRoute(
           route: "skill",
           reason: `auto_team_plan_step:${activePlanStep?.stepKey ?? stepSpecificSkillId}`,
           selectedSkillId: stepSpecificSkillId,
+          selectedCapabilityId: activePlanStep?.selectedCapabilityId ?? undefined,
         },
       };
     }
+    if (activePlanStep && getExplicitPlanStepSkillId(activePlanStep) === stepSpecificSkillId) {
+      missingExplicitSkillId = stepSpecificSkillId;
+    }
+  }
+  if (
+    activePlanStep &&
+    shouldCreateSkillForCapabilityGap({
+      activePlanStep,
+      missingSkillId: missingExplicitSkillId,
+      routeAlreadyResolved: false,
+      allowGenericSkillGap: false,
+    })
+  ) {
+    const capabilityGapRoute = await buildCapabilityGapRoute(
+      input,
+      activePlanStep,
+      missingExplicitSkillId
+    );
+    if (capabilityGapRoute) return capabilityGapRoute;
+    throwMissingSkillCreatorForCapabilityGap(activePlanStep);
   }
 
   const normalizedPrompt = userPrompt.toLowerCase();
@@ -1273,6 +2294,24 @@ async function resolveTeamOrchestratorRoute(
     }
   } catch {
     // Keep the original route if both classification and fallback routing fail.
+  }
+
+  if (
+    activePlanStep &&
+    shouldCreateSkillForCapabilityGap({
+      activePlanStep,
+      missingSkillId: missingExplicitSkillId,
+      routeAlreadyResolved: false,
+      allowGenericSkillGap: true,
+    })
+  ) {
+    const capabilityGapRoute = await buildCapabilityGapRoute(
+      input,
+      activePlanStep,
+      missingExplicitSkillId
+    );
+    if (capabilityGapRoute) return capabilityGapRoute;
+    throwMissingSkillCreatorForCapabilityGap(activePlanStep);
   }
 
   return input;

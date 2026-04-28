@@ -683,6 +683,10 @@ async function loadSkillsFromDatabase(): Promise<SkillDefinition[]> {
     console.log(`[SkillRegistry] Loaded ${dbSkills.length} skills from database (+${internalSkills.length} internal)`);
     return registry;
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/Database not configured|Database not available/i.test(message)) {
+      return getInternalSkillDefinitions();
+    }
     console.error("[SkillRegistry] Error loading skills from database:", error);
     return getInternalSkillDefinitions();
   }

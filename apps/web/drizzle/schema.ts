@@ -9322,6 +9322,12 @@ export interface StopPolicy {
 
 export interface BudgetSnapshot {
   totalCreditsUsed: number;
+  toolCallsUsed?: number;
+  mediaJobsUsed?: number;
+  workflowRunsUsed?: number;
+  agencyRunsUsed?: number;
+  appliedReservationKeys?: string[];
+  runtimePolicyMissingCount?: number;
   perAgent: Record<string, {
     creditsUsed: number;
     inputTokens: number;
@@ -9538,11 +9544,16 @@ export const workRequests = pgTable("work_requests", {
   linkedWorkpackRunIdsJson: jsonb("linkedWorkpackRunIdsJson").$type<string[]>(),
   linkedRoleRoutineRunIdsJson: jsonb("linkedRoleRoutineRunIdsJson").$type<string[]>(),
   linkedCaseId: varchar("linkedCaseId", { length: 36 }),
+  idempotencyKey: varchar("idempotencyKey", { length: 180 }),
+  idempotencyFingerprint: varchar("idempotencyFingerprint", { length: 64 }),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("work_requests_tenant_state_idx").on(t.tenantId, t.currentState, t.createdAt),
   index("work_requests_tenant_source_idx").on(t.tenantId, t.sourceType, t.createdAt),
+  uniqueIndex("work_requests_tenant_idempotency_unique")
+    .on(t.tenantId, t.idempotencyKey)
+    .where(sql`"idempotencyKey" IS NOT NULL`),
 ]);
 
 export type WorkRequest = typeof workRequests.$inferSelect;
@@ -9783,6 +9794,9 @@ export const workAutomationRuns = pgTable("work_automation_runs", {
   index("work_automation_runs_tenant_idx").on(t.tenantId),
   index("work_automation_runs_status_idx").on(t.status),
   index("work_automation_runs_mode_idx").on(t.currentMode, t.updatedAt),
+  uniqueIndex("work_automation_runs_case_active_unique")
+    .on(t.tenantId, t.caseId)
+    .where(sql`"status" IN ('pending', 'running', 'waiting_for_input', 'waiting_for_approval', 'paused')`),
 ]);
 
 export type WorkAutomationRun = typeof workAutomationRuns.$inferSelect;

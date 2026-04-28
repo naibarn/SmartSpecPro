@@ -44,6 +44,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../../services/workOsService", () => mocks);
 
+const teamServiceMocks = vi.hoisted(() => ({
+  getTeam: vi.fn(),
+}));
+vi.mock("../../services/teamService", () => teamServiceMocks);
+
 const roomMocks = vi.hoisted(() => ({
   listRoomsByTeam: vi.fn(),
   createRoom: vi.fn(),
@@ -72,6 +77,8 @@ const runEngineMocks = vi.hoisted(() => ({
   startRun: vi.fn(),
   getRun: vi.fn(),
   advanceRun: vi.fn(),
+  failRun: vi.fn(async () => null),
+  findLatestRunForWorkAutomationRun: vi.fn(),
 }));
 vi.mock("../../services/runEngine", () => runEngineMocks);
 
@@ -470,6 +477,7 @@ function makePreflightBundle(overrides: Record<string, unknown> = {}) {
 describe("workOsRouter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    teamServiceMocks.getTeam.mockResolvedValue(null);
     preflightStoreState.currentBundleId = null;
     preflightStoreState.bundles.clear();
     preflightBundleStoreMocks.getCurrentPreflightBundle.mockImplementation(
@@ -579,6 +587,10 @@ describe("workOsRouter", () => {
     }));
     runEngineMocks.getRun.mockResolvedValue(null);
     runEngineMocks.advanceRun.mockResolvedValue([]);
+    runEngineMocks.findLatestRunForWorkAutomationRun.mockResolvedValue(null);
+    automationMocks.recordAutomationRunStepProgress.mockResolvedValue({
+      id: "progress-1",
+    });
     runEngineMocks.startRun.mockImplementation(async (input: any) => ({
       id: "team-run-1",
       roomId: input.roomId,
@@ -680,6 +692,7 @@ describe("workOsRouter", () => {
       input: {
         sourceType: "chat",
         title: "Process invoice",
+        idempotencyKey: "manual-create-1",
       },
       ctx: {
         tenantId: "tenant-1",
@@ -692,6 +705,7 @@ describe("workOsRouter", () => {
         tenantId: "tenant-1",
         sourceType: "chat",
         title: "Process invoice",
+        idempotencyKey: "manual-create-1",
       })
     );
     expect(result).toEqual({
@@ -741,6 +755,69 @@ describe("workOsRouter", () => {
     );
   });
 
+  it("allows active human team members to assign work to their automation team", async () => {
+    teamServiceMocks.getTeam.mockResolvedValue({
+      id: "team-member",
+      tenantId: "tenant-1",
+      ownerUserId: 7,
+      status: "active",
+      members: [
+        {
+          id: "member-42",
+          memberKind: "human",
+          humanUserId: 42,
+          isActive: true,
+        },
+      ],
+    });
+    mocks.createWorkRequest.mockResolvedValue({
+      request: { id: "req-member-1" },
+      case: { id: "case-member-1" },
+    });
+
+    await workOsRouter.createRequest({
+      input: {
+        sourceType: "manual",
+        title: "Team member intake",
+        defaultQueueId: "team-member",
+      },
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 42, currentTenantId: 1, role: "member" },
+      },
+    } as any);
+
+    expect(mocks.createWorkRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        defaultQueueId: "team-member",
+      }),
+    );
+  });
+
+  it("rejects unrelated automation teams during work request creation", async () => {
+    teamServiceMocks.getTeam.mockResolvedValue({
+      id: "team-unrelated",
+      tenantId: "tenant-1",
+      ownerUserId: 7,
+      status: "active",
+      members: [],
+    });
+
+    await expect(
+      workOsRouter.createRequest({
+        input: {
+          sourceType: "manual",
+          title: "Blocked team intake",
+          defaultQueueId: "team-unrelated",
+        },
+        ctx: {
+          tenantId: "tenant-1",
+          user: { id: 42, currentTenantId: 1, role: "member" },
+        },
+      } as any),
+    ).rejects.toThrow("AUTOMATION_TEAM_NOT_AVAILABLE");
+  });
+
   it("lists the current user's work requests", async () => {
     mocks.listMyWorkRequests.mockResolvedValue([
       { id: "req-1", title: "Review refund request", currentState: "new" },
@@ -757,6 +834,7 @@ describe("workOsRouter", () => {
     expect(mocks.listMyWorkRequests).toHaveBeenCalledWith({
       tenantId: "tenant-1",
       requesterId: "42",
+      viewerUserId: 42,
       limit: 5,
     });
     expect(result).toEqual([
@@ -1785,6 +1863,13 @@ describe("workOsRouter", () => {
         ready: true,
       }),
     );
+    expect(policyMocks.resolveAutomationLaunchPolicy.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({
+        mode: null,
+        templateKey: null,
+        templateVersion: null,
+      }),
+    );
   });
 
   it("invalidates a current preflight bundle", async () => {
@@ -2685,6 +2770,229 @@ describe("workOsRouter", () => {
     );
   });
 
+  it("returns the existing Team room instead of launching a duplicate run", async () => {
+    const bundle = makePreflightBundle({
+      state: "approved",
+      approvedAt: "2026-04-21T01:00:00.000Z",
+      approvedByUserId: 42,
+    });
+    mocks.getWorkCaseProjection.mockResolvedValue({
+      request: {
+        id: "req-10",
+        requesterId: "42",
+        title: "Launch campaign",
+        objective: "Create launch assets",
+        defaultQueueId: "team-10",
+        linkedConversationIdsJson: [],
+        linkedWorkpackRunIdsJson: [],
+        linkedRoleRoutineRunIdsJson: [],
+      },
+      case: {
+        id: "case-10",
+        title: "Launch campaign",
+        summary: "Create launch assets",
+        ownerType: null,
+        ownerId: null,
+        automationRunId: "run-existing",
+      },
+    });
+    runEngineMocks.findLatestRunForWorkAutomationRun.mockResolvedValue({
+      teamId: "team-10",
+      roomId: "room-existing",
+      teamRunId: "team-run-existing",
+      status: "paused",
+    });
+    preflightStoreState.bundles.set(bundle.id, bundle);
+    preflightStoreState.currentBundleId = bundle.id;
+    preflightBundleStoreMocks.getPreflightBundle.mockResolvedValue(bundle);
+    preflightBundleStoreMocks.getCurrentPreflightBundle.mockResolvedValue(bundle);
+
+    const result = await workOsRouter.launchApprovedAutomation({
+      input: {
+        caseId: "case-10",
+        preflightBundleId: "bundle-1",
+        approvedRevisionHash: basePreflightRevision.fingerprint,
+        idempotencyKey: "launch-existing-1",
+      },
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 42, currentTenantId: 1, role: "member" },
+      },
+    } as any);
+
+    expect(automationMocks.createAutomationRun).not.toHaveBeenCalled();
+    expect(roomMocks.createRoom).not.toHaveBeenCalled();
+    expect(result).toEqual(
+      expect.objectContaining({
+        automationRunId: "run-existing",
+        teamId: "team-10",
+        roomId: "room-existing",
+        teamRunId: "team-run-existing",
+        state: "launched",
+      }),
+    );
+  });
+
+  it("blocks existing automation launches when the linked Team room cannot be found", async () => {
+    const bundle = makePreflightBundle({
+      state: "approved",
+      approvedAt: "2026-04-21T01:00:00.000Z",
+      approvedByUserId: 42,
+    });
+    mocks.getWorkCaseProjection.mockResolvedValue({
+      request: {
+        id: "req-10",
+        requesterId: "42",
+        title: "Launch campaign",
+        objective: "Create launch assets",
+        defaultQueueId: "team-10",
+        linkedConversationIdsJson: [],
+        linkedWorkpackRunIdsJson: [],
+        linkedRoleRoutineRunIdsJson: [],
+      },
+      case: {
+        id: "case-10",
+        title: "Launch campaign",
+        summary: "Create launch assets",
+        ownerType: null,
+        ownerId: null,
+        automationRunId: "run-existing",
+      },
+    });
+    runEngineMocks.findLatestRunForWorkAutomationRun.mockResolvedValue(null);
+    preflightStoreState.bundles.set(bundle.id, bundle);
+    preflightStoreState.currentBundleId = bundle.id;
+    preflightBundleStoreMocks.getPreflightBundle.mockResolvedValue(bundle);
+    preflightBundleStoreMocks.getCurrentPreflightBundle.mockResolvedValue(bundle);
+
+    await expect(
+      workOsRouter.launchApprovedAutomation({
+        input: {
+          caseId: "case-10",
+          preflightBundleId: "bundle-1",
+          approvedRevisionHash: basePreflightRevision.fingerprint,
+          idempotencyKey: "launch-existing-missing-room-1",
+        },
+        ctx: {
+          tenantId: "tenant-1",
+          user: { id: 42, currentTenantId: 1, role: "member" },
+        },
+      } as any),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "AUTOMATION_ROOM_NOT_FOUND",
+    });
+
+    expect(automationMocks.createAutomationRun).not.toHaveBeenCalled();
+    expect(roomMocks.createRoom).not.toHaveBeenCalled();
+  });
+
+  it("blocks launch when auto-advance fails after kickoff", async () => {
+    const bundle = makePreflightBundle({
+      state: "approved",
+      approvedAt: "2026-04-21T01:00:00.000Z",
+      approvedByUserId: 42,
+    });
+    mocks.getWorkCaseProjection.mockResolvedValue({
+      request: {
+        id: "req-10",
+        requesterId: "42",
+        title: "Launch campaign",
+        objective: "Create launch assets",
+        defaultQueueId: "team-10",
+        linkedConversationIdsJson: [],
+        linkedWorkpackRunIdsJson: [],
+        linkedRoleRoutineRunIdsJson: [],
+      },
+      case: {
+        id: "case-10",
+        title: "Launch campaign",
+        summary: "Create launch assets",
+        ownerType: null,
+        ownerId: null,
+      },
+    });
+    policyMocks.resolveAutomationLaunchPolicy.mockReturnValue({
+      templateKey: "content-production",
+      templateFamily: "content-production",
+      templateVersion: "content-production.v1",
+      templateSource: "case_intake",
+      templateTitle: "Content Production Fabric",
+      modeResolution: {
+        requestedMode: "fully_auto",
+        effectiveMode: "fully_auto",
+        recommendedMode: "fully_auto",
+        downgraded: false,
+        reasonCode: "explicit",
+        reason: "Requested fully_auto",
+        confidence: 0.9,
+      },
+      stepBlueprints: [
+        {
+          stepKey: "research",
+          title: "Research",
+          surface: "skill",
+          allowedSurfaces: ["skill", "agency", "manual", "work_os"],
+          riskTier: "low",
+          requiresApproval: false,
+          checkpointKey: null,
+          evidenceType: "research",
+          sideEffectClass: "read_only",
+        },
+      ],
+      approvalGateStepKeys: [],
+      surfaceAllowlist: ["skill", "agency"],
+      policyJson: {},
+    });
+    policyMocks.buildAutomationPolicySnapshot.mockReturnValue({
+      templateKey: "content-production",
+    });
+    automationMocks.createAutomationRun.mockResolvedValue({
+      id: "run-advance-blocked",
+      caseId: "case-10",
+      requestId: "req-10",
+      taskId: null,
+      templateKey: "content-production",
+      templateVersion: "content-production.v1",
+      templateFamily: "content-production",
+      templateSource: "case_intake",
+      title: "Launch campaign",
+      objective: "Create launch assets",
+      currentMode: "fully_auto",
+      status: "pending",
+    });
+    runEngineMocks.advanceRun.mockRejectedValue(new Error("budget cap exceeded"));
+    preflightStoreState.bundles.set(bundle.id, bundle);
+    preflightStoreState.currentBundleId = bundle.id;
+    preflightBundleStoreMocks.getPreflightBundle.mockResolvedValue(bundle);
+    preflightBundleStoreMocks.getCurrentPreflightBundle.mockResolvedValue(bundle);
+
+    await expect(
+      workOsRouter.launchApprovedAutomation({
+        input: {
+          caseId: "case-10",
+          preflightBundleId: "bundle-1",
+          approvedRevisionHash: basePreflightRevision.fingerprint,
+          idempotencyKey: "launch-advance-blocked-1",
+        },
+        ctx: {
+          tenantId: "tenant-1",
+          user: { id: 42, currentTenantId: 1, role: "member" },
+        },
+      } as any)
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "TEAM_AUTO_ADVANCE_FAILED",
+    });
+
+    expect(automationMocks.recordAutomationRunStepProgress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stepKey: "team_kickoff",
+        status: "failed",
+      }),
+    );
+  });
+
   it("marks the automation run failed and records a stable kickoff error when Team kickoff cannot start", async () => {
     const bundle = makePreflightBundle({
       state: "approved",
@@ -2792,7 +3100,10 @@ describe("workOsRouter", () => {
         status: "failed",
         runStatus: "failed",
         finalDisposition: "failed",
-        finalDispositionReason: "team_kickoff_failed",
+        finalDispositionReason: "room_create_failed",
+        detailJson: expect.objectContaining({
+          reasonCode: "room_create_failed",
+        }),
         createdByUserId: 42,
       }),
     );

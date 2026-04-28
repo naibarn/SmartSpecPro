@@ -164,6 +164,107 @@ describe("workOsService", () => {
     ]);
   });
 
+  it("replays an existing request when an idempotency key was already used", async () => {
+    const transaction = vi.fn();
+    mockGetDb.mockResolvedValue({
+      select() {
+        return {
+          from() {
+            return {
+              innerJoin() {
+                return {
+                  where() {
+                    return {
+                      async limit() {
+                        return [
+                          {
+                            request: {
+                              id: "req-existing",
+                              tenantId: "tenant-1",
+                              idempotencyKey: "idem-1",
+                              idempotencyFingerprint: null,
+                            },
+                            workCase: {
+                              id: "case-existing",
+                              tenantId: "tenant-1",
+                              requestId: "req-existing",
+                            },
+                          },
+                        ];
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+      transaction,
+    });
+
+    const result = await createWorkRequest({
+      tenantId: "tenant-1",
+      sourceType: "chat",
+      title: "Process invoice",
+      requesterType: "human",
+      idempotencyKey: "idem-1",
+    });
+
+    expect(result.request.id).toBe("req-existing");
+    expect(result.case.id).toBe("case-existing");
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects an idempotency key reused for a different work request", async () => {
+    mockGetDb.mockResolvedValue({
+      select() {
+        return {
+          from() {
+            return {
+              innerJoin() {
+                return {
+                  where() {
+                    return {
+                      async limit() {
+                        return [
+                          {
+                            request: {
+                              id: "req-existing",
+                              tenantId: "tenant-1",
+                              idempotencyKey: "idem-1",
+                              idempotencyFingerprint: "different-payload",
+                            },
+                            workCase: {
+                              id: "case-existing",
+                              tenantId: "tenant-1",
+                              requestId: "req-existing",
+                            },
+                          },
+                        ];
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+      transaction: vi.fn(),
+    });
+
+    await expect(
+      createWorkRequest({
+        tenantId: "tenant-1",
+        sourceType: "chat",
+        title: "Process invoice",
+        requesterType: "human",
+        idempotencyKey: "idem-1",
+      }),
+    ).rejects.toThrow("WORK_REQUEST_IDEMPOTENCY_CONFLICT");
+  });
+
   it("lists my requests with the latest execution trail for handed off work", async () => {
     mockGetWorkItem.mockResolvedValue({
       id: "task-1",

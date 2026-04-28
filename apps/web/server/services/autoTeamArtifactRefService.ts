@@ -7,6 +7,7 @@ import {
 import { and, eq } from "drizzle-orm";
 import { autoTeamArtifactRefs, type AutoTeamArtifactRefRow, type InsertAutoTeamArtifactRefRow } from "../../drizzle/schema";
 import { getDb } from "../db";
+import { validateAutoTeamMediaOutputSafety } from "./autoTeamSafetyService";
 
 export interface BuildAutoTeamArtifactRefInput {
   tenantId: string;
@@ -72,6 +73,16 @@ export async function buildCanonicalArtifactRef(
     )
     .limit(1);
   if (conflict[0]) return conflict[0];
+  if (input.externalRef) {
+    const safety = validateAutoTeamMediaOutputSafety({
+      routeClass: String(input.artifactType).includes("media") ? "media.video" : "unknown.blocked",
+      providerResponse: input.externalRef,
+      metadata: input.retentionPolicyJson ?? null,
+    });
+    if (!safety.safe) {
+      throw new Error(safety.reason ?? "unsafe_external_artifact_ref");
+    }
+  }
 
   const record: InsertAutoTeamArtifactRefRow = {
     tenantId: input.tenantId,

@@ -28,6 +28,7 @@ import {
 } from "../services/automationStartTraceLogger";
 import { getAutoTeamDebugSnapshot } from "../services/autoTeamDebugSnapshotService";
 import * as roomService from "../services/roomService";
+import * as teamService from "../services/teamService";
 import * as workItemService from "../services/workItemService";
 import * as workOsService from "../services/workOsService";
 import {
@@ -48,7 +49,7 @@ import {
 } from "../services/workIntakeSourceResolver";
 import { compileWorkBrief } from "../services/workIntakeBriefService";
 import {
-  buildCapabilityCatalog,
+  buildCapabilityCatalogWithRuntimeCapabilities,
 } from "../services/orchestratorCapabilityCatalogService";
 import {
   captureApprovalSnapshots,
@@ -584,12 +585,41 @@ function mapCatalogBlockToLaunchErrorCode(reasonCode: string): string {
 type AutomationKickoffFailureReason =
   | "missing_team"
   | "room_create_failed"
-  | "team_run_start_failed";
+  | "team_run_start_failed"
+  | "team_auto_advance_failed";
 
 function mapKickoffFailureToLaunchErrorCode(
   reasonCode: AutomationKickoffFailureReason,
 ): string {
-  return reasonCode === "missing_team" ? "MISSING_TEAM" : "TEAM_KICKOFF_FAILED";
+  if (reasonCode === "missing_team") {
+    return "MISSING_TEAM";
+  }
+  if (reasonCode === "team_auto_advance_failed") {
+    return "TEAM_AUTO_ADVANCE_FAILED";
+  }
+  return "TEAM_KICKOFF_FAILED";
+}
+
+function canAssignAutomationTeam(input: {
+  team: Awaited<ReturnType<typeof teamService.getTeam>>;
+  userId: number;
+  isAdmin: boolean;
+}): boolean {
+  if (!input.team || input.team.status !== "active") return false;
+  if (input.isAdmin || input.team.ownerUserId === input.userId) return true;
+  return input.team.members.some(member =>
+    member.memberKind === "human" &&
+    member.isActive !== false &&
+    member.humanUserId === input.userId,
+  );
+}
+
+function inferRoomLanguageFromRequest(input: {
+  title?: string | null;
+  objective?: string | null;
+}): "en" | "th" {
+  const text = [input.title, input.objective].filter(Boolean).join("\n");
+  return /[\u0E00-\u0E7F]/.test(text) ? "th" : "en";
 }
 
 function buildLaunchBlockedBundle(input: {
@@ -653,6 +683,163 @@ function buildLaunchBlockedBundle(input: {
       errorCode: input.errorCode,
     },
   });
+}
+
+const STALE_AUTOMATION_KICKOFF_GRACE_MS = Math.max(
+  30_000,
+  Number(process.env.WORK_OS_STALE_AUTOMATION_KICKOFF_GRACE_MS ?? 2 * 60_000),
+);
+
+function mapLaunchFailureForRequester(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (/AUTOMATION_TEAM_NOT_AVAILABLE|MISSING_TEAM|UNAUTHORIZED_TEAM/.test(message)) {
+    return "AUTOMATION_TEAM_NOT_AVAILABLE";
+  }
+  if (/APPROVAL_SOURCE_DRIFT|PREVIEW_STALE/.test(message)) {
+    return "PREVIEW_STALE";
+  }
+  if (/AUTOMATION_ROOM_NOT_FOUND/.test(message)) {
+    return "AUTOMATION_ROOM_NOT_FOUND";
+  }
+  if (/budget/i.test(message)) {
+    return "AUTOMATION_BUDGET_BLOCKED";
+  }
+  return "AUTOMATION_LAUNCH_FAILED";
+}
+
+function readTimestampMs(value: unknown): number | null {
+  if (value instanceof Date) {
+    const ms = value.getTime();
+    return Number.isFinite(ms) ? ms : null;
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const ms = new Date(value).getTime();
+    return Number.isFinite(ms) ? ms : null;
+  }
+  return null;
+}
+
+function latestKickoffTimestampMs(
+  projection: Awaited<ReturnType<typeof automationFabricService.getAutomationRunProjection>>,
+): number | null {
+  const candidates: number[] = [];
+  for (const step of projection.steps ?? []) {
+    if (step.stepKey !== "team_kickoff") continue;
+    for (const key of ["updatedAt", "completedAt", "startedAt", "createdAt"] as const) {
+      const ms = readTimestampMs(step[key]);
+      if (ms != null) candidates.push(ms);
+    }
+  }
+  for (const event of projection.events ?? []) {
+    const eventType = typeof event.eventType === "string" ? event.eventType : "";
+    if (!/team[_-]?kickoff|launch|room/i.test(eventType)) continue;
+    const ms = readTimestampMs(event.createdAt);
+    if (ms != null) candidates.push(ms);
+  }
+  return candidates.length > 0 ? Math.max(...candidates) : null;
+}
+
+async function resolveExistingAutomationKickoff(input: {
+  tenantId: string;
+  caseId: string;
+  automationRunId: string;
+  isAdmin: boolean;
+  bundle?: PreflightApprovalBundle | null;
+  actorUserId?: number | null;
+}): Promise<
+  | {
+      action: "launched";
+      automationRunId: string;
+      teamId: string;
+      roomId: string;
+      teamRunId: string;
+      launchDiagnostics: Record<string, unknown>;
+    }
+  | { action: "retry"; reasonCode: string }
+  | { action: "blocked"; errorCode: string }
+> {
+  const existingKickoff = await runEngine
+    .findLatestRunForWorkAutomationRun(input.automationRunId, input.tenantId)
+    .catch(() => null);
+  if (existingKickoff?.teamId && existingKickoff.roomId && existingKickoff.teamRunId) {
+    if (existingKickoff.status === "failed" || existingKickoff.status === "stopped") {
+      return { action: "retry", reasonCode: `terminal_team_run_${existingKickoff.status}` };
+    }
+    return {
+      action: "launched",
+      automationRunId: input.automationRunId,
+      teamId: existingKickoff.teamId,
+      roomId: existingKickoff.roomId,
+      teamRunId: existingKickoff.teamRunId,
+      launchDiagnostics: input.isAdmin
+        ? input.bundle?.adminDiagnostics ?? {}
+        : input.bundle?.requesterSafeDiagnostics ?? {},
+    };
+  }
+  let projection: Awaited<ReturnType<typeof automationFabricService.getAutomationRunProjection>> | null = null;
+  try {
+    projection = await automationFabricService.getAutomationRunProjection(
+      input.automationRunId,
+      input.tenantId,
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/not found/i.test(message)) {
+      return { action: "blocked", errorCode: "AUTOMATION_ROOM_NOT_FOUND" };
+    }
+    logAutomationStartError("automation_projection_lookup_failed", error, {
+      tenantId: input.tenantId,
+      caseId: input.caseId,
+      automationRunId: input.automationRunId,
+    });
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "AUTOMATION_RUN_LOOKUP_FAILED",
+    });
+  }
+  if (!projection) {
+    return { action: "blocked", errorCode: "AUTOMATION_ROOM_NOT_FOUND" };
+  }
+  const run = projection.run;
+  const terminal = ["completed", "failed", "cancelled"].includes(run.status);
+  if (terminal) {
+    return { action: "retry", reasonCode: `terminal_${run.status}` };
+  }
+  const createdAtMs = latestKickoffTimestampMs(projection) ?? readTimestampMs(run.createdAt);
+  const stale =
+    createdAtMs != null &&
+    Date.now() - createdAtMs > STALE_AUTOMATION_KICKOFF_GRACE_MS;
+  if (stale) {
+    await automationFabricService
+      .recordAutomationRunStepProgress({
+        tenantId: input.tenantId,
+        caseId: input.caseId,
+        runId: input.automationRunId,
+        stepKey: "team_kickoff",
+        stepIndex: 0,
+        title: "Team kickoff",
+        status: "failed",
+        surface: "work_os",
+        summary:
+          "Team kickoff did not create a linked room within the recovery window.",
+        detailJson: {
+          reasonCode: "automation_room_not_found_after_grace_period",
+        },
+        runStatus: "failed",
+        finalDisposition: "failed",
+        finalDispositionReason: "automation_room_not_found_after_grace_period",
+        createdByUserId: input.actorUserId ?? null,
+      })
+      .catch(error => {
+        logAutomationStartError("stale_automation_pointer.mark_failed", error, {
+          tenantId: input.tenantId,
+          caseId: input.caseId,
+          automationRunId: input.automationRunId,
+        });
+      });
+    return { action: "retry", reasonCode: "stale_kickoff_without_room" };
+  }
+  return { action: "blocked", errorCode: "AUTOMATION_ROOM_NOT_FOUND" };
 }
 
 function formatPreflightBundleResponse(input: {
@@ -720,12 +907,20 @@ function readBundlePolicyInput(
       ? (bundle.metadata.policyJson as Record<string, unknown>)
       : null;
 
+  const templateSource =
+    metadataPolicy && typeof metadataPolicy.templateSource === "string"
+      ? metadataPolicy.templateSource
+      : null;
+  const wasManualTemplateOverride = templateSource === "manual_override";
   const templateKey =
     metadataPolicy && typeof metadataPolicy.templateKey === "string"
+      && wasManualTemplateOverride
       ? metadataPolicy.templateKey
       : undefined;
   const templateVersion =
-    metadataPolicy && typeof metadataPolicy.templateVersion === "string"
+    metadataPolicy &&
+    typeof metadataPolicy.templateVersion === "string" &&
+    wasManualTemplateOverride
       ? metadataPolicy.templateVersion
       : undefined;
   const requestedMode =
@@ -736,11 +931,29 @@ function readBundlePolicyInput(
       "string"
       ? (metadataPolicy.modeResolution as Record<string, unknown>).requestedMode
       : null;
+  const modeReasonCode =
+    metadataPolicy &&
+    typeof metadataPolicy.modeResolution === "object" &&
+    metadataPolicy.modeResolution &&
+    typeof (metadataPolicy.modeResolution as Record<string, unknown>).reasonCode ===
+      "string"
+      ? (metadataPolicy.modeResolution as Record<string, unknown>).reasonCode
+      : null;
+  const preserveRequestedMode =
+    metadataPolicy &&
+    typeof metadataPolicy.preserveRequestedMode === "boolean"
+      ? metadataPolicy.preserveRequestedMode
+      : false;
+  const wasExplicitMode =
+    preserveRequestedMode || modeReasonCode === "explicit";
 
   return {
     templateKey,
     templateVersion,
-    mode: isAutomationMode(requestedMode) ? requestedMode : undefined,
+    mode:
+      wasExplicitMode && isAutomationMode(requestedMode)
+        ? requestedMode
+        : undefined,
   };
 }
 
@@ -1275,7 +1488,7 @@ async function buildPreflightBundleDraft(input: {
     requestDefaultOwnerId: input.projection.request?.defaultOwnerId ?? null,
   });
 
-  const capabilityCatalog = buildCapabilityCatalog({
+  const capabilityCatalog = await buildCapabilityCatalogWithRuntimeCapabilities({
     actorContext,
     flags,
     selectedSurfaces: policy.surfaceAllowlist,
@@ -1711,6 +1924,26 @@ async function startAutomationKickoffWorkItem(params: {
       roomId: room.id,
       teamRunId: currentTeamRun.id,
     });
+  } catch (error) {
+    logAutomationStartError("kickoff.team_run_start_failed", error, {
+      tenantId: params.tenantId,
+      userId: params.userId,
+      runId: params.run.id,
+      caseId: params.run.caseId,
+      teamId: kickoffTeamId,
+      roomId: room.id,
+    });
+    return {
+      ok: false,
+      reasonCode: "team_run_start_failed",
+      teamId: kickoffTeamId,
+      roomId: room.id,
+      teamRunId: null,
+      workItemId: null,
+    };
+  }
+
+  try {
     await runEngine.advanceRun(currentTeamRun.id, params.tenantId, 1);
     const advancedRun = await runEngine.getRun(
       currentTeamRun.id,
@@ -1730,20 +1963,44 @@ async function startAutomationKickoffWorkItem(params: {
       teamRunStatus: currentTeamRun.status,
     });
   } catch (error) {
-    logAutomationStartError("kickoff.team_run_start_failed", error, {
+    logAutomationStartError("kickoff.team_auto_advance_failed", error, {
       tenantId: params.tenantId,
       userId: params.userId,
       runId: params.run.id,
       caseId: params.run.caseId,
       teamId: kickoffTeamId,
       roomId: room.id,
+      teamRunId: currentTeamRun.id,
     });
+    const latestRun = await runEngine
+      .getRun(currentTeamRun.id, params.tenantId)
+      .catch(() => null);
+    if (latestRun) {
+      currentTeamRun = latestRun;
+    }
+    await runEngine
+      .failRun(
+        currentTeamRun.id,
+        "team_auto_advance_failed",
+        params.tenantId,
+      )
+      .catch(failError => {
+        logAutomationStartError("kickoff.team_run_mark_failed_failed", failError, {
+          tenantId: params.tenantId,
+          userId: params.userId,
+          runId: params.run.id,
+          caseId: params.run.caseId,
+          teamId: kickoffTeamId,
+          roomId: room.id,
+          teamRunId: currentTeamRun.id,
+        });
+      });
     return {
       ok: false,
-      reasonCode: "team_run_start_failed",
+      reasonCode: "team_auto_advance_failed",
       teamId: kickoffTeamId,
       roomId: room.id,
-      teamRunId: null,
+      teamRunId: currentTeamRun.id,
       workItemId: null,
     };
   }
@@ -1919,6 +2176,7 @@ export const workOsRouter = router({
         linkedConversationIds: z.array(z.string().min(1)).optional(),
         linkedWorkpackRunIds: z.array(z.string().min(1)).optional(),
         linkedRoleRoutineRunIds: z.array(z.string().min(1)).optional(),
+        idempotencyKey: z.string().min(1).max(180).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1937,11 +2195,587 @@ export const workOsRouter = router({
         });
       }
       const requesterId = inputRequesterId ?? currentUserId;
+      if (requestInput.defaultQueueId) {
+        const selectedTeam = await teamService.getTeam(
+          requestInput.defaultQueueId,
+          tenantId,
+        );
+        if (!canAssignAutomationTeam({
+          team: selectedTeam,
+          userId: ctx.user!.id,
+          isAdmin,
+        })) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "AUTOMATION_TEAM_NOT_AVAILABLE",
+          });
+        }
+      }
       return workOsService.createWorkRequest({
         tenantId,
         ...requestInput,
         requesterId,
       });
+    }),
+
+  createAndLaunchRequest: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.number().int().optional(),
+        sourceType: z.string().min(1),
+        sourceRef: z.string().max(255).optional(),
+        requesterType: assignmentTypeSchema.optional(),
+        requesterId: z.string().max(36).optional(),
+        workType: z.string().max(100).optional(),
+        businessDomain: z.string().max(100).optional(),
+        urgency: z.string().max(30).optional(),
+        riskLevel: z.string().max(30).optional(),
+        classificationConfidence: z.number().min(0).max(1).optional(),
+        defaultOwnerType: assignmentTypeSchema.optional(),
+        defaultOwnerId: z.string().max(36).optional(),
+        defaultQueueId: z.string().max(36).optional(),
+        title: z.string().min(1).max(500),
+        objective: z.string().max(10000).optional(),
+        linkedConversationIds: z.array(z.string().min(1)).optional(),
+        linkedWorkpackRunIds: z.array(z.string().min(1)).optional(),
+        linkedRoleRoutineRunIds: z.array(z.string().min(1)).optional(),
+        mode: automationModeSchema.optional(),
+        roomLanguage: z.enum(["en", "th"]).optional(),
+        idempotencyKey: z.string().min(1).max(180).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = requireTenantId(ctx);
+      const {
+        requesterId: inputRequesterId,
+        mode,
+        roomLanguage: requestedRoomLanguage,
+        idempotencyKey,
+        ...requestInput
+      } = input;
+      const currentUserId = String(ctx.user!.id);
+      const isAdmin = isPreflightAdminRole(ctx.user?.role ?? null);
+      if (
+        inputRequesterId &&
+        inputRequesterId !== currentUserId &&
+        !isAdmin
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "REQUESTER_ID_OVERRIDE_FORBIDDEN",
+        });
+      }
+      const requesterId = inputRequesterId ?? currentUserId;
+      if (requestInput.defaultQueueId) {
+        const selectedTeam = await teamService.getTeam(
+          requestInput.defaultQueueId,
+          tenantId,
+        );
+        if (!canAssignAutomationTeam({
+          team: selectedTeam,
+          userId: ctx.user!.id,
+          isAdmin,
+        })) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "AUTOMATION_TEAM_NOT_AVAILABLE",
+          });
+        }
+      }
+
+      const flowKey =
+        idempotencyKey ??
+        `create-launch:${crypto.randomUUID()}`;
+      const created = await workOsService.createWorkRequest({
+        tenantId,
+        ...requestInput,
+        requesterId,
+        idempotencyKey: flowKey,
+      });
+
+      try {
+        const projection = await workOsService.getWorkCaseProjection(
+          created.case.id,
+          tenantId,
+        );
+        if (projection.case.automationRunId) {
+          const currentBundle =
+            await preflightBundleStoreService.getCurrentPreflightBundle({
+              tenantId,
+              caseId: created.case.id,
+            });
+          const existing = await resolveExistingAutomationKickoff({
+            tenantId,
+            caseId: created.case.id,
+            automationRunId: projection.case.automationRunId,
+            isAdmin,
+            bundle: currentBundle,
+            actorUserId: ctx.user?.id ?? null,
+          });
+          if (existing.action === "launched") {
+            return {
+              ...created,
+              automation: {
+                state: "launched" as const,
+                automationRunId: existing.automationRunId,
+                teamId: existing.teamId,
+                roomId: existing.roomId,
+                teamRunId: existing.teamRunId,
+                workItemId: null,
+                preflightBundleId: currentBundle?.id ?? null,
+                launchDiagnostics: existing.launchDiagnostics,
+              },
+            };
+          }
+          if (existing.action === "blocked") return {
+            ...created,
+            automation: {
+              state: "launch_failed" as const,
+              errorCode: existing.errorCode,
+              automationRunId: projection.case.automationRunId,
+            },
+          };
+        }
+        const { access, bundle, policyJson } = await materializePreflightBundle({
+          caseId: created.case.id,
+          title: requestInput.title,
+          objective: requestInput.objective,
+          mode,
+          linkedConversationIds: requestInput.linkedConversationIds,
+          linkedWorkpackRunIds: requestInput.linkedWorkpackRunIds,
+          linkedRoleRoutineRunIds: requestInput.linkedRoleRoutineRunIds,
+          explicitTeamId: requestInput.defaultQueueId,
+          ctx,
+          projection,
+          forceRegenerate: true,
+        });
+        const preview = formatPreflightBundleResponse({ access, bundle });
+        const selectedCatalogBlocks = bundle.capabilityCatalog
+          .filter(entry => Boolean(entry.metadata?.selectedByPolicy))
+          .map(entry => entry.blockedReason)
+          .filter((value): value is string => Boolean(value));
+        if (
+          bundle.teamResolution?.status !== "resolved" ||
+          !bundle.teamResolution.teamId ||
+          selectedCatalogBlocks.length > 0
+        ) {
+          const errorCode =
+            selectedCatalogBlocks.length > 0
+              ? mapCatalogBlockToLaunchErrorCode(selectedCatalogBlocks[0])
+              : mapTeamResolutionToLaunchErrorCode(bundle.teamResolution);
+          return {
+            ...created,
+            automation: {
+              state: "launch_blocked" as const,
+              preflightBundleId: preview.preflightBundleId,
+              errorCode,
+              launchReadiness: {
+                ready: false,
+                primaryReasonCode:
+                  selectedCatalogBlocks[0] ??
+                  bundle.teamResolution?.code ??
+                  "missing_team",
+                blockedReasonCodes:
+                  selectedCatalogBlocks.length > 0
+                    ? selectedCatalogBlocks
+                    : [bundle.teamResolution?.code ?? "missing_team"],
+              },
+            },
+          };
+        }
+        const selectedSourceIds = preview.preflightRevision.inputs.selectedSourceIds;
+        const currentDraft = await buildCurrentDraftForStoredBundle({
+          caseId: created.case.id,
+          bundle,
+          projection,
+          ctx,
+        });
+        const revisionComparison = comparePreflightRevision(
+          bundle.preflightRevision,
+          currentDraft.draftBundle.preflightRevision,
+        );
+        if (revisionComparison.stale) {
+          await preflightBundleStoreService.putPreflightBundle({
+            tenantId,
+            caseId: created.case.id,
+            bundle: transitionPreflightBundle({
+              bundle,
+              toState: "stale",
+              event: "request.edited",
+              actorUserId: ctx.user?.id ?? null,
+              reasonCode: revisionComparison.reasonCode ?? "PREVIEW_STALE",
+            }),
+            makeCurrent: true,
+          });
+          return {
+            ...created,
+            automation: {
+              state: "launch_failed" as const,
+              preflightBundleId: preview.preflightBundleId,
+              errorCode: "PREVIEW_STALE",
+            },
+          };
+        }
+        const approvedSnapshots = captureApprovalSnapshots({
+          sourceRefs: currentDraft.draftBundle.brief.sourceRefs,
+          selectedSourceIds,
+          privateVaultUnlocked: currentDraft.actorContext.privateVaultUnlocked,
+          integrityMarkers: currentDraft.sourceResolution.integrityMarkers,
+        });
+        const sourceDrift = compareApprovalSnapshots(
+          approvedSnapshots,
+          currentDraft.draftBundle.brief.sourceRefs,
+          currentDraft.sourceResolution.integrityMarkers,
+        );
+        if (sourceDrift.hasDrift) {
+          await preflightBundleStoreService.putPreflightBundle({
+            tenantId,
+            caseId: created.case.id,
+            bundle: buildLaunchBlockedBundle({
+              bundle,
+              ctx,
+              idempotencyKey: `${flowKey}:launch`,
+              inputFingerprint: buildPreflightInputFingerprint({
+                preflightBundleId: bundle.id,
+                approvedRevisionHash: bundle.preflightRevision.fingerprint,
+                mode: mode ?? null,
+              }),
+              actorUserId: ctx.user?.id ?? null,
+              reasonCode: "approval_source_drift",
+              errorCode: "APPROVAL_SOURCE_DRIFT",
+            }),
+            makeCurrent: true,
+          });
+          return {
+            ...created,
+            automation: {
+              state: "launch_blocked" as const,
+              preflightBundleId: preview.preflightBundleId,
+              errorCode: "APPROVAL_SOURCE_DRIFT",
+              launchReadiness: {
+                ready: false,
+                primaryReasonCode: "approval_source_drift",
+                blockedReasonCodes: ["approval_source_drift"],
+              },
+            },
+          };
+        }
+        const launchingTransition =
+          await preflightBundleStoreService.transitionPreflightBundleAtomically({
+          tenantId,
+          caseId: created.case.id,
+          preflightBundleId: bundle.id,
+          expectedCurrentBundleId: bundle.id,
+          expectedState: bundle.state,
+          makeCurrent: true,
+          transform: currentBundle => {
+            const approvedBundle = appendIdempotencyRecord({
+              bundle: transitionPreflightBundle({
+                bundle: {
+                  ...currentBundle,
+                  capabilityCatalog: currentDraft.draftBundle.capabilityCatalog,
+                  capabilityPlan: currentDraft.draftBundle.capabilityPlan,
+                  executionPlan: currentDraft.draftBundle.executionPlan,
+                  teamResolution: currentDraft.draftBundle.teamResolution,
+                  budget: currentDraft.draftBundle.budget,
+                  approvalSnapshots: approvedSnapshots,
+                  requesterSafeDiagnostics:
+                    currentDraft.draftBundle.requesterSafeDiagnostics,
+                  adminDiagnostics: currentDraft.draftBundle.adminDiagnostics,
+                  metadata: {
+                    ...currentBundle.metadata,
+                    ...currentDraft.draftBundle.metadata,
+                  },
+                },
+                toState: "approved",
+                event: "preflight.approved",
+                actorUserId: ctx.user?.id ?? null,
+                reasonCode: "preflight_approved",
+              }),
+              operation: "approve_preflight_bundle",
+              idempotencyKey: `${flowKey}:approve`,
+              inputFingerprint: buildPreflightInputFingerprint({
+                preflightBundleId: bundle.id,
+                approvedRevisionHash: bundle.preflightRevision.fingerprint,
+                selectedSourceIds,
+                approvalDecision: "approve",
+                approvalComment: null,
+              }),
+              result: {
+                preflightBundleId: bundle.id,
+                state: "approved",
+              },
+            });
+            return appendBundleTelemetryEvent({
+              bundle: transitionPreflightBundle({
+                bundle: approvedBundle,
+                toState: "launching",
+                event: "launch.requested",
+                actorUserId: ctx.user?.id ?? null,
+                reasonCode: "launch_requested",
+              }),
+              ctx,
+              eventName: "launch.requested",
+              severity: "info",
+              primaryReasonCode: "launch_requested",
+              idempotencyKey: `${flowKey}:launch`,
+              payload: {
+                requestedMode: mode ?? null,
+              },
+            });
+          },
+        });
+        if (!launchingTransition.applied || !launchingTransition.bundle) {
+          return {
+            ...created,
+            automation: {
+              state: "launch_failed" as const,
+              errorCode: "PREVIEW_STALE",
+            },
+          };
+        }
+        const launchingBundle = launchingTransition.bundle;
+
+        const latestProjectionBeforeRun =
+          await workOsService.getWorkCaseProjection(created.case.id, tenantId);
+        if (latestProjectionBeforeRun.case.automationRunId) {
+          const existing = await resolveExistingAutomationKickoff({
+            tenantId,
+            caseId: created.case.id,
+            automationRunId: latestProjectionBeforeRun.case.automationRunId,
+            isAdmin,
+            bundle: launchingBundle,
+            actorUserId: ctx.user?.id ?? null,
+          });
+          if (existing.action === "launched") {
+            return {
+              ...created,
+              automation: {
+                state: "launched" as const,
+                automationRunId: existing.automationRunId,
+                teamId: existing.teamId,
+                roomId: existing.roomId,
+                teamRunId: existing.teamRunId,
+                workItemId: null,
+                preflightBundleId: launchingBundle.id,
+                launchDiagnostics: existing.launchDiagnostics,
+              },
+            };
+          }
+          if (existing.action === "blocked") {
+            return {
+              ...created,
+              automation: {
+                state: "launch_failed" as const,
+                automationRunId: latestProjectionBeforeRun.case.automationRunId,
+                teamId: null,
+                roomId: null,
+                teamRunId: null,
+                workItemId: null,
+                preflightBundleId: launchingBundle.id,
+                errorCode: existing.errorCode,
+                launchDiagnostics: isAdmin
+                  ? launchingBundle.adminDiagnostics ?? {}
+                  : launchingBundle.requesterSafeDiagnostics ?? {},
+              },
+            };
+          }
+        }
+
+        const roomLanguage = requestedRoomLanguage
+          ? roomService.normalizeRoomLanguage(requestedRoomLanguage)
+          : roomService.normalizeRoomLanguage(
+              inferRoomLanguageFromRequest({
+                title: requestInput.title,
+                objective: requestInput.objective,
+              }),
+            );
+        const run = await automationFabricService.createAutomationRun({
+          tenantId,
+          caseId: created.case.id,
+          requestId: created.request.id,
+          title: launchingBundle.brief.title,
+          objective:
+            launchingBundle.brief.objective ?? launchingBundle.brief.summary,
+          mode,
+          preserveRequestedMode: true,
+          roomLanguage,
+          createdByUserId: ctx.user?.id ?? null,
+          reuseExistingCaseRun: true,
+          policyJson: {
+            ...policyJson,
+            workOrchestrator: {
+              preflightBundle: launchingBundle,
+            },
+          },
+        });
+        const kickoff = await startAutomationKickoffWorkItem({
+          tenantId,
+          userId: ctx.user!.id,
+          run,
+          projection,
+          roomLanguage,
+          teamResolution: launchingBundle.teamResolution ?? undefined,
+          approvedBundle: launchingBundle,
+          stopPolicy: buildStopPolicyFromBudget(
+            launchingBundle.budget ?? {
+              maxRounds: 20,
+              maxDurationMinutes: 30,
+              maxBudgetCredits: 500,
+              maxRetries: 1,
+              perSurfaceMaxAttempts: {},
+              retryDisposition: "single_attempt",
+              sideEffectRetryPolicy: "verify_then_retry",
+              onExceeded: "fail_run",
+            },
+          ),
+        });
+        if (!kickoff.ok) {
+          const errorCode = mapKickoffFailureToLaunchErrorCode(kickoff.reasonCode);
+          await automationFabricService.recordAutomationRunStepProgress({
+            tenantId,
+            caseId: created.case.id,
+            runId: run.id,
+            stepKey: "team_kickoff",
+            stepIndex: 0,
+            title: "Team kickoff",
+            status: "failed",
+            surface: "work_os",
+            summary: "Team kickoff failed before the requested automation could start.",
+            detailJson: {
+              reasonCode: kickoff.reasonCode,
+              errorCode,
+              teamId: kickoff.teamId,
+              roomId: kickoff.roomId,
+              teamRunId: kickoff.teamRunId,
+            },
+            runStatus: "failed",
+            finalDisposition: "failed",
+            finalDispositionReason: kickoff.reasonCode,
+            createdByUserId: ctx.user?.id ?? null,
+          }).catch(error => {
+            logAutomationStartError("create_and_launch.mark_run_failed", error, {
+              tenantId,
+              caseId: created.case.id,
+              runId: run.id,
+              reasonCode: kickoff.reasonCode,
+            });
+          });
+          await preflightBundleStoreService.putPreflightBundle({
+            tenantId,
+            caseId: created.case.id,
+            bundle: buildLaunchBlockedBundle({
+              bundle: launchingBundle,
+              ctx,
+              idempotencyKey: `${flowKey}:launch`,
+              inputFingerprint: buildPreflightInputFingerprint({
+                preflightBundleId: launchingBundle.id,
+                approvedRevisionHash: launchingBundle.preflightRevision.fingerprint,
+                mode: mode ?? null,
+              }),
+              actorUserId: ctx.user?.id ?? null,
+              reasonCode: kickoff.reasonCode,
+              errorCode,
+              automationRunId: run.id,
+            }),
+            makeCurrent: true,
+          });
+          return {
+            ...created,
+            automation: {
+              state: "launch_failed" as const,
+              errorCode,
+              automationRunId: run.id,
+            },
+          };
+        }
+        const launchedBundle = appendIdempotencyRecord({
+          bundle: appendBundleTelemetryEvent({
+            bundle: transitionPreflightBundle({
+              bundle: {
+                ...launchingBundle,
+                metadata: {
+                  ...launchingBundle.metadata,
+                  automationRunId: run.id,
+                  teamId: kickoff.teamId,
+                  roomId: kickoff.roomId,
+                  teamRunId: kickoff.teamRunId,
+                  workItemId: kickoff.workItemId,
+                },
+              },
+              toState: "launched",
+              event: "launch.created",
+              actorUserId: ctx.user?.id ?? null,
+              reasonCode: "launch_created",
+            }),
+            ctx,
+            eventName: "launch.created",
+            severity: "info",
+            primaryReasonCode: "launch_created",
+            idempotencyKey: `${flowKey}:launch`,
+            automationRunId: run.id,
+            teamId: kickoff.teamId,
+            roomId: kickoff.roomId,
+            teamRunId: kickoff.teamRunId,
+            workItemId: kickoff.workItemId,
+            payload: {
+              requestedMode: mode ?? null,
+              teamId: kickoff.teamId,
+            },
+          }),
+          operation: "launch_approved_automation",
+          idempotencyKey: `${flowKey}:launch`,
+          inputFingerprint: buildPreflightInputFingerprint({
+            preflightBundleId: launchingBundle.id,
+            approvedRevisionHash: launchingBundle.preflightRevision.fingerprint,
+            mode: mode ?? null,
+          }),
+          result: {
+            automationRunId: run.id,
+            teamId: kickoff.teamId,
+            roomId: kickoff.roomId,
+            teamRunId: kickoff.teamRunId,
+            workItemId: kickoff.workItemId,
+            state: "launched",
+          },
+        });
+        await preflightBundleStoreService.putPreflightBundle({
+          tenantId,
+          caseId: created.case.id,
+          bundle: launchedBundle,
+          makeCurrent: true,
+        });
+        return {
+          ...created,
+          automation: {
+            state: "launched" as const,
+            automationRunId: run.id,
+            teamId: kickoff.teamId,
+            roomId: kickoff.roomId,
+            teamRunId: kickoff.teamRunId,
+            workItemId: kickoff.workItemId,
+            preflightBundleId: launchedBundle.id,
+            launchDiagnostics: isAdmin
+              ? launchedBundle.adminDiagnostics ?? {}
+              : launchedBundle.requesterSafeDiagnostics ?? {},
+          },
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logAutomationStartError("create_and_launch.failed", error, {
+          tenantId,
+          userId: ctx.user?.id ?? null,
+          caseId: created.case.id,
+          requestId: created.request.id,
+        });
+        return {
+          ...created,
+          automation: {
+            state: "launch_failed" as const,
+            errorCode: mapLaunchFailureForRequester(message),
+          },
+        };
+      }
     }),
 
   getRequest: protectedProcedure
@@ -1974,6 +2808,20 @@ export const workOsRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const tenantId = requireTenantId(ctx);
+      const isAdmin = isPreflightAdminRole(ctx.user?.role ?? null);
+      if (input.defaultQueueId) {
+        const selectedTeam = await teamService.getTeam(input.defaultQueueId, tenantId);
+        if (!canAssignAutomationTeam({
+          team: selectedTeam,
+          userId: ctx.user!.id,
+          isAdmin,
+        })) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "AUTOMATION_TEAM_NOT_AVAILABLE",
+          });
+        }
+      }
       return workOsService.updateWorkRequest({
         tenantId,
         requestId: input.requestId,
@@ -2001,6 +2849,7 @@ export const workOsRouter = router({
       return workOsService.listMyWorkRequests({
         tenantId,
         requesterId: String(ctx.user!.id),
+        viewerUserId: ctx.user!.id,
         limit: input?.limit ?? 10,
       });
     }),
@@ -2285,6 +3134,7 @@ export const workOsRouter = router({
         objective: resolvedObjective.objective ?? input.objective ?? null,
         createdByUserId: ctx.user?.id ?? null,
         createdByAssistantId: null,
+        reuseExistingCaseRun: true,
       });
 
       logAutomationStartTrace("createAutomationRun.created", {
@@ -2839,6 +3689,34 @@ export const workOsRouter = router({
         ctx,
       });
       const isAdmin = isPreflightAdminRole(ctx.user?.role ?? null);
+      if (projection.case.automationRunId) {
+        const existing = await resolveExistingAutomationKickoff({
+          tenantId,
+          caseId: input.caseId,
+          automationRunId: projection.case.automationRunId,
+          isAdmin,
+          bundle,
+          actorUserId: ctx.user?.id ?? null,
+        });
+        if (existing.action === "blocked") {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: existing.errorCode,
+          });
+        }
+        if (existing.action === "launched") {
+          return {
+            automationRunId: existing.automationRunId,
+            teamId: existing.teamId,
+            roomId: existing.roomId,
+            teamRunId: existing.teamRunId,
+            workItemId: null,
+            preflightBundleId: bundle.id,
+            state: "launched",
+            launchDiagnostics: existing.launchDiagnostics,
+          };
+        }
+      }
 
       const idempotencyFingerprint = buildPreflightInputFingerprint({
         preflightBundleId: input.preflightBundleId,
@@ -3079,7 +3957,12 @@ export const workOsRouter = router({
 
       const launchingBundle = launchingTransition.bundle;
 
-      const roomLanguage = roomService.normalizeRoomLanguage(undefined);
+      const roomLanguage = roomService.normalizeRoomLanguage(
+        inferRoomLanguageFromRequest({
+          title: launchingBundle.brief.title,
+          objective: launchingBundle.brief.objective ?? launchingBundle.brief.summary,
+        }),
+      );
       const persistedPolicyJson = {
         ...currentDraft.policyJson,
         workOrchestrator: {
@@ -3099,6 +3982,7 @@ export const workOsRouter = router({
           preserveRequestedMode: true,
           roomLanguage,
           createdByUserId: ctx.user?.id ?? null,
+          reuseExistingCaseRun: true,
           policyJson: persistedPolicyJson,
         });
       } catch (error) {
@@ -3170,11 +4054,11 @@ export const workOsRouter = router({
           summary: "Team kickoff failed before the approved automation could start.",
           detailJson: {
             preflightBundleId: launchingBundle.id,
-            reasonCode: "team_kickoff_failed",
+            reasonCode: kickoff.reasonCode,
           },
           runStatus: "failed",
           finalDisposition: "failed",
-          finalDispositionReason: "team_kickoff_failed",
+          finalDispositionReason: kickoff.reasonCode,
           createdByUserId: ctx.user?.id ?? null,
         }).catch(error => {
           logAutomationStartError("kickoff.automation_run_mark_failed", error, {
@@ -3200,6 +4084,8 @@ export const workOsRouter = router({
               reasonCode:
                 kickoff.reasonCode === "missing_team"
                   ? "missing_team"
+                  : kickoff.reasonCode === "team_auto_advance_failed"
+                    ? "team_auto_advance_failed"
                   : "team_kickoff_failed",
               errorCode: kickoffErrorCode,
               automationRunId: run.id,

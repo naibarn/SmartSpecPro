@@ -172,6 +172,7 @@ export const teamRouter = router({
     .input(z.object({
       status: z.enum(["active", "archived", "draft"]).optional(),
       ownerOnly: z.boolean().optional(),
+      assignableOnly: z.boolean().optional(),
     }).optional())
     .query(async ({ input, ctx }) => {
       const tenantId = requireTenantId(ctx);
@@ -179,6 +180,7 @@ export const teamRouter = router({
         tenantId,
         input?.ownerOnly ? ctx.user!.id : undefined,
         input?.status,
+        input?.assignableOnly ? ctx.user!.id : undefined,
       );
     }),
 

@@ -5,6 +5,7 @@
 import {
   seedZenProvider,
   seedKieAiProvider,
+  seedKRouterProvider,
   seedNvidiaNimProvider,
   seedAssistantTeamTemplates,
 } from "../drizzle/seed";
@@ -13,6 +14,7 @@ async function main() {
   console.log("[Seed] Starting multi-provider seed...");
   await seedZenProvider();
   await seedKieAiProvider();
+  await seedKRouterProvider();
   await seedNvidiaNimProvider();
   await seedAssistantTeamTemplates();
   console.log("[Seed] Done!");

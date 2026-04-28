@@ -102,7 +102,7 @@ beforeEach(() => {
 });
 
 describe("UserLlmKeysPanel", () => {
-  it("renders list of all 5 LLM providers", () => {
+  it("renders list of all 6 LLM providers", () => {
     render(<UserLlmKeysPanel />);
 
     expect(screen.getByText("OpenAI")).toBeDefined();
@@ -110,6 +110,7 @@ describe("UserLlmKeysPanel", () => {
     expect(screen.getByText("DeepSeek")).toBeDefined();
     expect(screen.getByText("Google AI")).toBeDefined();
     expect(screen.getByText("OpenRouter")).toBeDefined();
+    expect(screen.getByText("KRouter")).toBeDefined();
   });
 
   it("displays keyHint for configured providers (e.g., '...abcd')", () => {
@@ -122,9 +123,9 @@ describe("UserLlmKeysPanel", () => {
   it("shows 'Not configured' for providers without keys", () => {
     render(<UserLlmKeysPanel />);
 
-    // DeepSeek, Google AI, OpenRouter are not in the mock data
+    // DeepSeek, Google AI, OpenRouter, and KRouter are not in the mock data
     const badges = screen.getAllByText("Not configured");
-    expect(badges.length).toBe(3);
+    expect(badges.length).toBe(4);
   });
 
   it("shows disabled state when admin turns off personal LLM API keys", () => {

@@ -266,6 +266,50 @@ function buildIdempotencyDigest(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 
+function runtimeReservationDivisor(budget: ExecutionBudgetEnvelope): number {
+  const rounds = Math.ceil(budget.maxRounds ?? 8);
+  return Math.max(4, Math.min(8, Number.isFinite(rounds) ? rounds : 8));
+}
+
+function runtimeReservationMultiplier(input: {
+  surface: WorkOrchestratorSurface;
+  sideEffectClass: RuntimeDispatchPolicy["sideEffectClass"];
+}): number {
+  if (input.surface === "media_studio" || input.surface === "video_editor") {
+    return 2;
+  }
+  if (input.surface === "agency" || input.surface === "workflow") {
+    return 1.5;
+  }
+  switch (input.sideEffectClass) {
+    case "irreversible":
+    case "external_side_effect":
+      return 1.5;
+    case "bounded_write":
+      return 1.25;
+    case "read_only":
+    default:
+      return 1;
+  }
+}
+
+function reserveRuntimeBudgetUnit(input: {
+  max: number | null | undefined;
+  divisor: number;
+  multiplier: number;
+  cap?: number;
+}): number {
+  const max = Math.floor(input.max ?? 0);
+  if (max <= 0) {
+    return 0;
+  }
+  const cap = Math.max(1, Math.floor(input.cap ?? max));
+  return Math.max(
+    1,
+    Math.min(max, cap, Math.ceil((max / input.divisor) * input.multiplier)),
+  );
+}
+
 export function buildRuntimeDispatchPolicy(input: {
   step: TeamExecutionPlan["steps"][number];
   budget: ExecutionBudgetEnvelope;
@@ -320,6 +364,11 @@ export function buildRuntimeDispatchPolicy(input: {
       : contractCompatibilityState === "compatible"
         ? WORK_ORCHESTRATOR_REASON_CODES.budgetExceeded
         : WORK_ORCHESTRATOR_REASON_CODES.contractNotMigrated);
+  const reservationDivisor = runtimeReservationDivisor(input.budget);
+  const reservationMultiplier = runtimeReservationMultiplier({
+    surface: input.step.surface,
+    sideEffectClass,
+  });
 
   return {
     stepId: input.step.id,
@@ -333,28 +382,37 @@ export function buildRuntimeDispatchPolicy(input: {
     ),
     inputHash: input.inputFingerprint,
     budgetReservation: {
-      tokens: Math.max(
-        0,
-        Math.floor((input.budget.maxTokens ?? 0) / Math.max(1, maxAttemptsFromBudget)),
-      ),
-      toolCalls: Math.max(
-        0,
-        Math.floor(
-          (input.budget.maxToolCalls ?? 0) / Math.max(1, maxAttemptsFromBudget),
-        ),
-      ),
+      tokens: reserveRuntimeBudgetUnit({
+        max: input.budget.maxTokens,
+        divisor: reservationDivisor,
+        multiplier: reservationMultiplier,
+        cap:
+          input.step.surface === "media_studio" ||
+          input.step.surface === "video_editor"
+            ? 4_000
+            : input.step.surface === "document_management"
+              ? 2_000
+              : 3_000,
+      }),
+      toolCalls: reserveRuntimeBudgetUnit({
+        max: input.budget.maxToolCalls,
+        divisor: reservationDivisor,
+        multiplier: reservationMultiplier,
+        cap: input.step.surface === "document_management" ? 4 : 6,
+      }),
       mediaJobs:
-        input.step.surface === "media_studio" || input.step.surface === "video_editor"
-          ? 1
+        input.step.surface === "video_editor"
+          ? 8
+          : input.step.surface === "media_studio"
+            ? 1
           : 0,
       workflowRuns: input.step.surface === "workflow" ? 1 : 0,
       agencyRuns: input.step.surface === "agency" ? 1 : 0,
-      costCredits: Math.max(
-        0,
-        Math.floor(
-          (input.budget.maxBudgetCredits ?? 0) / Math.max(1, maxAttemptsFromBudget),
-        ),
-      ),
+      costCredits: reserveRuntimeBudgetUnit({
+        max: input.budget.maxBudgetCredits,
+        divisor: reservationDivisor,
+        multiplier: reservationMultiplier,
+      }),
     },
     maxAttempts: Math.max(1, maxAttemptsFromBudget),
     timeoutSeconds: Math.max(

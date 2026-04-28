@@ -1,3 +1,25 @@
+# Orchestra Contracts — Current Work Requests UI Polish
+
+## Contract 1: Behavior/API Preservation
+
+- Do not change tRPC procedure names, inputs, or response assumptions.
+- Do not change navigation targets for existing buttons and links.
+- Do not change auth, role, tenant, backend, DB, or Work OS orchestration behavior.
+
+## Contract 2: UI State Coverage
+
+- `/work/requests` must cover loading, empty, error, and populated states.
+- `/work/request` must cover team readiness loading/error/empty, recent requests loading/error/empty, preflight error, and locked/disabled form states.
+- White mode must remain readable with no horizontal overflow on mobile, tablet, and desktop.
+
+## Contract 3: Verification
+
+- Run TypeScript check for touched TSX files via the repo web check command.
+- Run targeted page tests for `MyRequests` and `WorkRequest`.
+- Run browser screenshot/responsive gate for `/work/requests` and `/work/request` at mobile/tablet/desktop widths.
+
+---
+
 # Orchestra Contracts — Skill System vNext
 
 ## Contract 1: Superpowers Patterns → Orchestra References
@@ -90,4 +112,3 @@ bash skills/verify-installed-skills-sync.sh
 ```
 
 If a long test suite is unavailable or blocked by existing unrelated dirty app work, record the blocker explicitly.
-

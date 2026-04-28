@@ -8,7 +8,7 @@ export type MediaType = 'image' | 'video' | 'audio';
 
 export type MediaTaskStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
-export type LLMProviderName = 'openrouter' | 'openai' | 'anthropic' | 'deepseek' | 'google' | 'kie-ai';
+export type LLMProviderName = 'openrouter' | 'openai' | 'anthropic' | 'deepseek' | 'google' | 'kie-ai' | 'krouter';
 
 export interface LLMModel {
   id: string;

@@ -204,7 +204,7 @@ async function fetchProviderNativeModels(
   }
 
   // OpenAI-compatible providers (OpenAI, Groq, DeepSeek, Together, Fireworks, etc.)
-  if (['openai', 'groq', 'deepseek', 'together', 'fireworks', 'moonshot', 'qwen', 'zhipu', 'minimax', 'nvidia_nim'].includes(providerLower)) {
+  if (['openai', 'groq', 'deepseek', 'together', 'fireworks', 'moonshot', 'qwen', 'zhipu', 'minimax', 'nvidia_nim', 'krouter'].includes(providerLower)) {
     return fetchOpenAICompatibleModels(baseUrl, apiKey, providerLower);
   }
 

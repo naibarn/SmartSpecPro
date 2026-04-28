@@ -35,7 +35,7 @@ describe("workAutomationPolicyService", () => {
     expect(policy.modeResolution.requestedMode).toBe("fully_auto");
     expect(policy.modeResolution.effectiveMode).toBe("fully_auto");
     expect(policy.modeResolution.downgraded).toBe(false);
-    expect(policy.approvalGateStepKeys).toContain("review");
+    expect(policy.approvalGateStepKeys).toEqual([]);
     expect(policy.stepBlueprints.map(step => step.stepKey)).toEqual([
       "research",
       "brief",
@@ -43,8 +43,6 @@ describe("workAutomationPolicyService", () => {
       "storyboard",
       "media",
       "video",
-      "review",
-      "export",
     ]);
   });
 

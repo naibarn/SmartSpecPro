@@ -12,6 +12,7 @@ import re
 
 root = Path("skills")
 errors: list[str] = []
+warnings: list[str] = []
 
 for skill_file in sorted(root.rglob("SKILL.md")):
     text = skill_file.read_text(encoding="utf-8")
@@ -39,6 +40,31 @@ for json_file in sorted(root.rglob("*.json")):
     except Exception as exc:
         errors.append(f"{json_file}: invalid JSON: {exc}")
 
+for text_file in sorted(root.rglob("*")):
+    if text_file.is_dir() or any(part in {".venv", ".pytest_cache", "__pycache__"} for part in text_file.parts):
+        continue
+    if text_file.suffix.lower() not in {
+        ".md",
+        ".txt",
+        ".json",
+        ".yaml",
+        ".yml",
+        ".sh",
+        ".py",
+        ".toml",
+    }:
+        continue
+    text = text_file.read_text(encoding="utf-8", errors="ignore").lower()
+    forbidden_terms = [
+        "smart" + "spec" + "pro",
+        "smart" + "ai" + "hub",
+        "smart" + "spec",
+        "/home/dev/projects/" + "smart" + "spec" + "pro",
+    ]
+    for forbidden in forbidden_terms:
+        if forbidden in text:
+            errors.append(f"{text_file}: forbidden project-specific reference: {forbidden}")
+
 for path in root.rglob("*"):
     if any(part in {".venv", ".pytest_cache", "__pycache__"} for part in path.parts):
         errors.append(f"{path}: runtime artifact present; run skills/clean-runtime-artifacts.sh")
@@ -61,8 +87,10 @@ if sub_agents_dir.exists() and sub_agents_readme.exists():
         if agent_name not in dispatch_text:
             errors.append(f"skills/orchestra/references/sub-agent-dispatch.md: missing mapping for {agent_name}")
         native_path = claude_agents_dir / f"ssp-{agent_name}.md"
-        if not native_path.exists():
-            errors.append(f"{native_path}: missing native Claude agent definition for {agent_file}")
+        if claude_agents_dir.exists() and not native_path.exists():
+            warnings.append(
+                f"{native_path}: missing optional native Claude compatibility definition for {agent_file}"
+            )
 
     registry_agents = set(re.findall(r"\| `([^`]+\.md)` \|", readme_text))
     missing_files = sorted(registry_agents - set(agent_files))
@@ -165,6 +193,9 @@ if errors:
     for error in errors:
         print(f"- {error}")
     raise SystemExit(1)
+
+for warning in warnings:
+    print(f"warning: {warning}")
 
 print("skill structure audit passed")
 PY

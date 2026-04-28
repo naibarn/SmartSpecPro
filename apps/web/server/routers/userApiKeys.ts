@@ -16,6 +16,7 @@ const providerEnum = z.enum([
   "deepseek",
   "google",
   "openrouter",
+  "krouter",
 ]);
 
 const rateLimitedProtected = protectedProcedure.use(

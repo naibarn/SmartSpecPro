@@ -5,6 +5,7 @@ import {
   buildProviderCatalogLookupKey,
   classifyNvidiaHostedModel,
   normalizeNvidiaHostedCatalogModel,
+  resolveCatalogBackedPricing,
   resolveCatalogEligibility,
 } from "./llmProviderCatalog";
 
@@ -276,6 +277,24 @@ describe("buildNvidiaHostedCapabilityOverlay", () => {
 
   it("returns an empty overlay for unreviewed rows", () => {
     expect(buildNvidiaHostedCapabilityOverlay("partner/unknown-model")).toEqual({});
+  });
+});
+
+describe("resolveCatalogBackedPricing", () => {
+  it("uses paid default pricing for zero-priced mappings unless the row is explicitly free", () => {
+    expect(resolveCatalogBackedPricing({
+      providerName: "krouter",
+      availableModels: [{ id: "gpt-5.5" }],
+      providerModelId: "gpt-5.5",
+      pricingInput: "0",
+      pricingOutput: "0",
+      isFree: false,
+    })).toEqual({
+      pricingInput: 1,
+      pricingOutput: 4,
+      isFree: false,
+      source: "default",
+    });
   });
 });
 

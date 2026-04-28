@@ -1,5 +1,29 @@
 # Orchestra Plan
 
+## Current Task — Work Requests UI Polish
+ปรับปรุง UI เดิมของหน้า `/work/requests` และ `/work/request` ให้ premium, modern, responsive และ accessible โดยคง behavior/API เดิมไว้
+
+## Classification
+- scope: medium
+- risk: low
+- affected_domains: frontend React pages, visual UI states, accessibility/responsive QA
+- estimated_file_count: 4
+- chosen_route: visual-ui-flow
+- task_summary: Polish Work OS request list and request intake pages without changing existing API behavior.
+- bug_route: false
+
+## Intent Activation
+- Explicit invocation: user invoked `$orchestra`.
+- Matched signals: premium/modern/responsive/accessible UI work, route-level user-facing workflow, requested verification across states and viewports.
+- Additional skill family: `visual-ui-enhancement`.
+
+## Wave Plan
+- Wave 1: Inspect existing `/work/requests` and `/work/request` UI, state handling, tests, and local design primitives.
+- Wave 2: Apply scoped frontend polish for white-mode layout, hierarchy, loading/empty/error/disabled states, and responsive behavior.
+- Wave 3: Run typecheck, targeted tests, browser screenshot/responsive gate for mobile/tablet/desktop.
+
+---
+
 ## Task
 Upgrade the SmartSpecPro skill system by borrowing selected superpowers methodology patterns and integrating the visual UI enhancement skill as a first-class repo skill.
 
@@ -48,4 +72,3 @@ Upgrade the SmartSpecPro skill system by borrowing selected superpowers methodol
 - Publish to installed skills.
 - Verify installed sync.
 - Report final status and residual risks.
-

@@ -1,0 +1,15 @@
+{
+  "context": {
+    "check_enabled": true,
+    "_comment": "check_enabled: set false to skip context prompts before critical operations"
+  },
+  "external_review": {
+    "enabled": false,
+    "_comment": "External LLM review is disabled. Codex/Claude perform self-review using the active host model."
+  },
+  "runtime": {
+    "mode": "portable",
+    "requires_uv_at_runtime": false,
+    "external_llm": "disabled"
+  }
+}

@@ -1241,6 +1241,7 @@ export async function listTeams(
   tenantId: string,
   ownerUserId?: number,
   status?: string,
+  accessibleForUserId?: number,
 ): Promise<TeamSummary[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1248,6 +1249,28 @@ export async function listTeams(
   const conditions = [eq(assistantTeams.tenantId, tenantId)];
   if (ownerUserId !== undefined) {
     conditions.push(eq(assistantTeams.ownerUserId, ownerUserId));
+  }
+  if (accessibleForUserId !== undefined) {
+    const memberRows = await db
+      .select({ teamId: assistantProfiles.teamId })
+      .from(assistantProfiles)
+      .where(
+        and(
+          eq(assistantProfiles.tenantId, tenantId),
+          eq(assistantProfiles.memberKind, "human"),
+          eq(assistantProfiles.humanUserId, accessibleForUserId),
+          eq(assistantProfiles.isActive, true),
+        ),
+      );
+    const memberTeamIds = Array.from(new Set(memberRows.map(row => row.teamId)));
+    conditions.push(
+      memberTeamIds.length > 0
+        ? or(
+            eq(assistantTeams.ownerUserId, accessibleForUserId),
+            inArray(assistantTeams.id, memberTeamIds),
+          )!
+        : eq(assistantTeams.ownerUserId, accessibleForUserId),
+    );
   }
   if (status) {
     conditions.push(sql`${assistantTeams.status} = ${status}`);

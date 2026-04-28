@@ -31,6 +31,7 @@ const LLM_PROVIDERS = [
   { id: "deepseek" as const, label: "DeepSeek" },
   { id: "google" as const, label: "Google AI" },
   { id: "openrouter" as const, label: "OpenRouter" },
+  { id: "krouter" as const, label: "KRouter" },
 ] as const;
 
 type ProviderId = (typeof LLM_PROVIDERS)[number]["id"];

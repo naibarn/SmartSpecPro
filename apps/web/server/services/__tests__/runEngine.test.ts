@@ -518,6 +518,600 @@ describe("RunEngine", () => {
       expect(prepared.status).toBe("executing");
     });
 
+    it("auto-completes final approval for safe fully-auto completed plans", () => {
+      const shouldAutoComplete =
+        runEngine.shouldAutoCompleteFinalApprovalForRun(
+          { executionMode: "auto_team" } as any,
+          {
+            version: 1,
+            runId: "run-plan",
+            roomId: "room-plan",
+            teamId: "team-plan",
+            caseId: null,
+            requestId: null,
+            objective: "Create a video",
+            source: "team_run",
+            status: "completed",
+            generatedAt: "2026-04-15T12:00:00.000Z",
+            lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+            steps: [
+              {
+                stepKey: "media",
+                title: "Media",
+                objective: "Generate media",
+                deliverable: "media",
+                ownerPersona: "Media",
+                ownerMemberId: null,
+                reviewerPersona: "QA",
+                reviewerMemberId: null,
+                verificationMethod: "review",
+                retryRule: "retry",
+                evidenceRequirements: [],
+                qualityCriteria: [],
+                reviewChecklist: [],
+                status: "completed",
+                evidenceRefs: ["media:video-final"],
+                notes: null,
+                surface: "video_editor",
+                runtimeDispatchPolicy: {
+                  authorityDecision: "allowed",
+                  sideEffectClass: "external_side_effect",
+                },
+                validationState: {
+                  status: "passed",
+                },
+              },
+            ],
+            evidenceRefs: [],
+            planEvidenceRefs: [],
+            reviewerMatrix: [],
+            exploration: makePlanExploration(),
+            review: {
+              status: "passed",
+              iteration: 1,
+              reviewedAt: "2026-04-15T12:05:00.000Z",
+              reviewerPersona: "QA",
+              issues: [],
+              score: 0.91,
+              recommendation: "Ready",
+            },
+          } as any,
+        );
+
+      expect(shouldAutoComplete).toBe(true);
+
+      expect(
+        runEngine.shouldAutoCompleteFinalApprovalForRun(
+          { executionMode: "auto_team" } as any,
+          {
+            version: 1,
+            runId: "run-plan",
+            roomId: "room-plan",
+            teamId: "team-plan",
+            caseId: null,
+            requestId: null,
+            objective: "Create a video",
+            source: "team_run",
+            status: "completed",
+            generatedAt: "2026-04-15T12:00:00.000Z",
+            lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+            steps: [
+              {
+                stepKey: "media",
+                title: "Media",
+                objective: "Generate media",
+                deliverable: "media",
+                ownerPersona: "Media",
+                ownerMemberId: null,
+                reviewerPersona: "QA",
+                reviewerMemberId: null,
+                verificationMethod: "review",
+                retryRule: "retry",
+                evidenceRequirements: [],
+                qualityCriteria: [],
+                reviewChecklist: [],
+                status: "completed",
+                evidenceRefs: ["media:video-final"],
+                notes: null,
+                surface: "video_editor",
+                runtimeDispatchPolicy: {
+                  authorityDecision: "allowed",
+                  sideEffectClass: "external_side_effect",
+                },
+                validationState: {
+                  status: "passed",
+                },
+              },
+            ],
+            evidenceRefs: [],
+            planEvidenceRefs: [],
+            reviewerMatrix: [],
+            exploration: makePlanExploration(),
+            review: {
+              status: "passed",
+              iteration: 1,
+              reviewedAt: "2026-04-15T12:05:00.000Z",
+              reviewerPersona: "QA",
+              issues: [],
+              score: 0.91,
+              recommendation: "Ready",
+            },
+          } as any,
+          {
+            requireResolvedEvidence: true,
+            resolvedEvidenceRefs: ["media:video-final"],
+          },
+        ),
+      ).toBe(true);
+
+      expect(
+        runEngine.shouldAutoCompleteFinalApprovalForRun(
+          { executionMode: "auto_team" } as any,
+          {
+            version: 1,
+            runId: "run-plan",
+            roomId: "room-plan",
+            teamId: "team-plan",
+            caseId: null,
+            requestId: null,
+            objective: "Create a video",
+            source: "team_run",
+            status: "completed",
+            generatedAt: "2026-04-15T12:00:00.000Z",
+            lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+            steps: [
+              {
+                stepKey: "media",
+                title: "Media",
+                objective: "Generate media",
+                deliverable: "media",
+                ownerPersona: "Media",
+                ownerMemberId: null,
+                reviewerPersona: "QA",
+                reviewerMemberId: null,
+                verificationMethod: "review",
+                retryRule: "retry",
+                evidenceRequirements: [],
+                qualityCriteria: [],
+                reviewChecklist: [],
+                status: "completed",
+                evidenceRefs: ["media:video-final"],
+                notes: null,
+                surface: "video_editor",
+                runtimeDispatchPolicy: {
+                  authorityDecision: "allowed",
+                  sideEffectClass: "external_side_effect",
+                },
+                validationState: {
+                  status: "passed",
+                },
+              },
+            ],
+            evidenceRefs: [],
+            planEvidenceRefs: [],
+            reviewerMatrix: [],
+            exploration: makePlanExploration(),
+            review: {
+              status: "passed",
+              iteration: 1,
+              reviewedAt: "2026-04-15T12:05:00.000Z",
+              reviewerPersona: "QA",
+              issues: [],
+              score: 0.91,
+              recommendation: "Ready",
+            },
+          } as any,
+          {
+            requireResolvedEvidence: true,
+            resolvedEvidenceRefs: [],
+          },
+        ),
+      ).toBe(false);
+
+    });
+
+    it("ignores planning source evidence for final approval but still requires runtime evidence", () => {
+      const plan = {
+        version: 1,
+        runId: "run-plan",
+        roomId: "room-plan",
+        teamId: "team-plan",
+        caseId: null,
+        requestId: null,
+        objective: "Create a video",
+        source: "team_run",
+        status: "completed",
+        generatedAt: "2026-04-15T12:00:00.000Z",
+        lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+        steps: [
+          {
+            stepKey: "media",
+            title: "Media",
+            objective: "Generate media",
+            deliverable: "media",
+            ownerPersona: "Media",
+            ownerMemberId: null,
+            reviewerPersona: "QA",
+            reviewerMemberId: null,
+            verificationMethod: "review",
+            retryRule: "retry",
+            evidenceRequirements: [],
+            qualityCriteria: [],
+            reviewChecklist: [],
+            status: "completed",
+            evidenceRefs: ["source:intake-note", "media:video-final"],
+            notes: null,
+            surface: "video_editor",
+            runtimeDispatchPolicy: {
+              authorityDecision: "allowed",
+              sideEffectClass: "external_side_effect",
+            },
+            validationState: { status: "passed" },
+          },
+        ],
+        evidenceRefs: ["source:intake-note"],
+        planEvidenceRefs: ["source:intake-note"],
+        reviewerMatrix: [],
+        exploration: makePlanExploration(),
+        review: {
+          status: "passed",
+          iteration: 1,
+          reviewedAt: "2026-04-15T12:05:00.000Z",
+          reviewerPersona: "QA",
+          issues: [],
+          score: 0.91,
+          recommendation: "Ready",
+        },
+      } as any;
+
+      expect(
+        runEngine.shouldAutoCompleteFinalApprovalForRun(
+          { executionMode: "auto_team" } as any,
+          plan,
+          {
+            requireResolvedEvidence: true,
+            resolvedEvidenceRefs: ["media:video-final"],
+          },
+        ),
+      ).toBe(true);
+
+      expect(
+        runEngine.shouldAutoCompleteFinalApprovalForRun(
+          { executionMode: "auto_team" } as any,
+          {
+            ...plan,
+            steps: [
+              {
+                ...plan.steps[0],
+                evidenceRefs: ["source:intake-note"],
+              },
+            ],
+          },
+        ),
+      ).toBe(false);
+    });
+
+    it("keeps final approval when validation is missing or evidence is absent", () => {
+      const basePlan = {
+        version: 1,
+        runId: "run-plan",
+        roomId: "room-plan",
+        teamId: "team-plan",
+        caseId: null,
+        requestId: null,
+        objective: "Create a video",
+        source: "team_run",
+        status: "completed",
+        generatedAt: "2026-04-15T12:00:00.000Z",
+        lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+        steps: [
+          {
+            stepKey: "media",
+            title: "Media",
+            objective: "Generate media",
+            deliverable: "media",
+            ownerPersona: "Media",
+            ownerMemberId: null,
+            reviewerPersona: "QA",
+            reviewerMemberId: null,
+            verificationMethod: "review",
+            retryRule: "retry",
+            evidenceRequirements: [],
+            qualityCriteria: [],
+            reviewChecklist: [],
+            status: "completed",
+            evidenceRefs: ["media:video-final"],
+            notes: null,
+            surface: "video_editor",
+            runtimeDispatchPolicy: {
+              authorityDecision: "allowed",
+              sideEffectClass: "external_side_effect",
+            },
+            validationState: {
+              status: "pending",
+            },
+          },
+        ],
+        evidenceRefs: [],
+        planEvidenceRefs: [],
+        reviewerMatrix: [],
+        exploration: makePlanExploration(),
+        review: {
+          status: "passed",
+          iteration: 1,
+          reviewedAt: "2026-04-15T12:05:00.000Z",
+          reviewerPersona: "QA",
+          issues: [],
+          score: 0.91,
+          recommendation: "Ready",
+        },
+      } as any;
+
+      expect(
+        runEngine.shouldAutoCompleteFinalApprovalForRun(
+          { executionMode: "auto_team" } as any,
+          basePlan,
+        ),
+      ).toBe(false);
+
+      expect(
+        runEngine.shouldAutoCompleteFinalApprovalForRun(
+          { executionMode: "auto_team" } as any,
+          {
+            ...basePlan,
+            steps: [
+              {
+                ...basePlan.steps[0],
+                evidenceRefs: [],
+                validationState: { status: "passed" },
+              },
+            ],
+          },
+        ),
+      ).toBe(false);
+
+      expect(
+        runEngine.shouldAutoCompleteFinalApprovalForRun(
+          { executionMode: "auto_team" } as any,
+          {
+            ...basePlan,
+            steps: [
+              {
+                ...basePlan.steps[0],
+                evidenceRefs: ["run:run-plan"],
+                validationState: { status: "passed" },
+              },
+            ],
+          },
+        ),
+      ).toBe(false);
+
+      expect(
+        runEngine.shouldAutoCompleteFinalApprovalForRun(
+          { executionMode: "auto_team" } as any,
+          {
+            ...basePlan,
+            steps: [
+              {
+                ...basePlan.steps[0],
+                evidenceRefs: ["message:msg-1", "work-item:item-1"],
+                validationState: { status: "passed" },
+              },
+            ],
+          },
+        ),
+      ).toBe(false);
+    });
+
+    it("requires final approval evidence rows to be successful and safe", () => {
+      expect(
+        runEngine.isFinalApprovalArtifactEvidenceSatisfied({
+          safetyStatus: "safe",
+          externalRef: "https://example.com/final.mp4",
+          artifactType: "final_result",
+          artifactRole: "result",
+          source: "auto_team_media_pipeline",
+        }),
+      ).toBe(true);
+      expect(
+        runEngine.isFinalApprovalArtifactEvidenceSatisfied({
+          safetyStatus: "blocked",
+          externalRef: "https://example.com/final.mp4",
+          artifactType: "final_result",
+          artifactRole: "result",
+          source: "auto_team_media_pipeline",
+        }),
+      ).toBe(false);
+      expect(
+        runEngine.isFinalApprovalArtifactEvidenceSatisfied({
+          safetyStatus: "safe",
+          externalRef: "https://example.com/draft.mp4",
+          artifactType: "storyboard",
+          artifactRole: "result",
+          source: "auto_team_media_pipeline",
+        }),
+      ).toBe(false);
+      expect(
+        runEngine.isFinalApprovalMediaJobEvidenceSatisfied({
+          mediaType: "video",
+          providerStatus: "queued",
+          completedAt: null,
+          resultArtifactRefsJson: ["artifact-1"],
+          resultRefsResolved: true,
+        }),
+      ).toBe(false);
+      expect(
+        runEngine.isFinalApprovalMediaJobEvidenceSatisfied({
+          mediaType: "video",
+          providerStatus: "succeeded",
+          completedAt: "2026-04-15T12:05:00.000Z",
+          resultArtifactRefsJson: ["artifact-1"],
+          resultRefsResolved: false,
+        }),
+      ).toBe(false);
+      expect(
+        runEngine.isFinalApprovalMediaJobEvidenceSatisfied({
+          mediaType: "video",
+          providerStatus: "succeeded",
+          completedAt: "2026-04-15T12:05:00.000Z",
+          resultArtifactRefsJson: ["artifact-1"],
+          resultRefsResolved: true,
+        }),
+      ).toBe(true);
+      expect(
+        runEngine.isFinalApprovalReviewEvidenceSatisfied({ passed: false }),
+      ).toBe(false);
+      expect(
+        runEngine.isFinalApprovalReviewEvidenceSatisfied({ passed: true }),
+      ).toBe(true);
+      expect(
+        runEngine.isFinalApprovalFinalResultEvidenceSatisfied({
+          status: "failed",
+          finalArtifactRefsJson: ["artifact-1"],
+        }),
+      ).toBe(false);
+      expect(
+        runEngine.isFinalApprovalFinalResultEvidenceSatisfied({
+          status: "completed",
+          finalArtifactRefsJson: ["artifact-1"],
+        }),
+      ).toBe(true);
+      expect(
+        runEngine.isFinalApprovalAgencyArtifactEvidenceSatisfied({
+          state: "preview_generated",
+          commitStatus: "not_committed",
+          committedAt: null,
+        }),
+      ).toBe(false);
+      expect(
+        runEngine.isFinalApprovalAgencyArtifactEvidenceSatisfied({
+          state: "committed",
+          commitStatus: "committed",
+          committedAt: "2026-04-15T12:05:00.000Z",
+        }),
+      ).toBe(true);
+    });
+
+    it("keeps final approval for risky or manual plan surfaces", () => {
+      const shouldAutoComplete =
+        runEngine.shouldAutoCompleteFinalApprovalForRun(
+          { executionMode: "auto_team" } as any,
+          {
+            version: 1,
+            runId: "run-plan",
+            roomId: "room-plan",
+            teamId: "team-plan",
+            caseId: null,
+            requestId: null,
+            objective: "Publish with browser",
+            source: "team_run",
+            status: "completed",
+            generatedAt: "2026-04-15T12:00:00.000Z",
+            lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+            steps: [
+              {
+                stepKey: "browser",
+                title: "Browser publish",
+                objective: "Publish externally",
+                deliverable: "published page",
+                ownerPersona: "Publisher",
+                ownerMemberId: null,
+                reviewerPersona: "QA",
+                reviewerMemberId: null,
+                verificationMethod: "review",
+                retryRule: "retry",
+                evidenceRequirements: [],
+                qualityCriteria: [],
+                reviewChecklist: [],
+                status: "completed",
+                evidenceRefs: [],
+                notes: null,
+                surface: "browser",
+              },
+            ],
+            evidenceRefs: [],
+            planEvidenceRefs: [],
+            reviewerMatrix: [],
+            exploration: makePlanExploration(),
+            review: {
+              status: "passed",
+              iteration: 1,
+              reviewedAt: "2026-04-15T12:05:00.000Z",
+              reviewerPersona: "QA",
+              issues: [],
+              score: 0.91,
+              recommendation: "Ready",
+            },
+          } as any,
+        );
+
+      expect(shouldAutoComplete).toBe(false);
+    });
+
+    it("does not auto-complete agency steps with only trace or review evidence", () => {
+      const plan = {
+        version: 1,
+        runId: "run-plan",
+        roomId: "room-plan",
+        teamId: "team-plan",
+        caseId: null,
+        requestId: null,
+        objective: "Run agency analysis",
+        source: "team_run",
+        status: "completed",
+        generatedAt: "2026-04-15T12:00:00.000Z",
+        lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+        steps: [
+          {
+            stepKey: "agency-step",
+            title: "Agency step",
+            objective: "Run agency",
+            deliverable: "Agency output",
+            ownerPersona: "Agency",
+            ownerMemberId: null,
+            reviewerPersona: "QA",
+            reviewerMemberId: null,
+            verificationMethod: "review",
+            retryRule: "retry",
+            evidenceRequirements: [],
+            qualityCriteria: [],
+            reviewChecklist: [],
+            status: "completed",
+            evidenceRefs: ["stage:stage-1", "review:review-1"],
+            notes: null,
+            surface: "agency",
+            runtimeDispatchPolicy: {
+              authorityDecision: "allowed",
+              sideEffectClass: "external_side_effect",
+            },
+            validationState: {
+              status: "passed",
+            },
+          },
+        ],
+        evidenceRefs: [],
+        planEvidenceRefs: [],
+        reviewerMatrix: [],
+        exploration: makePlanExploration(),
+        review: {
+          status: "passed",
+          iteration: 1,
+          reviewedAt: "2026-04-15T12:05:00.000Z",
+          reviewerPersona: "QA",
+          issues: [],
+          score: 0.91,
+          recommendation: "Ready",
+        },
+      } as any;
+
+      expect(
+        runEngine.shouldAutoCompleteFinalApprovalForRun(
+          { executionMode: "auto_team" } as any,
+          plan,
+        ),
+      ).toBe(false);
+    });
+
     it("advances the auto-team plan to the next step and completes the run at the end", () => {
       const progression = runEngine.advanceAutoTeamPlanArtifactProgress(
         {
@@ -1101,6 +1695,12 @@ describe("RunEngine", () => {
       expect(plannerCall.userMessage).toContain(
         "\"objective\": \"<concrete step objective>\""
       );
+      expect(plannerCall.userMessage).toContain(
+        "Write all user-visible plan fields in Thai"
+      );
+      expect(plannerCall.systemPrompt).toContain(
+        "All user-visible planSummary"
+      );
       expect(plannerCall.runtimeOptions).toEqual(
         expect.objectContaining({
           skillSlugs: ["brainstorm"],
@@ -1562,7 +2162,7 @@ describe("RunEngine", () => {
       })).toBe(true);
     });
 
-    it("repairs incomplete plan artifacts before marking them ready", () => {
+    it("blocks incomplete plan artifacts instead of silently repairing them", () => {
       const reviewed = runEngine.reviewAutoTeamPlanArtifact({
         version: 1,
         runId: "run-1",
@@ -1657,12 +2257,12 @@ describe("RunEngine", () => {
         publisherPersona: "publisher",
       });
 
-      expect(reviewed.review.status).toBe("passed");
+      expect(reviewed.review.status).toBe("failed");
+      expect(reviewed.status).toBe("blocked");
       expect(reviewed.review.iteration).toBeGreaterThan(0);
-      expect(reviewed.steps[0]?.ownerPersona).toBe("Lead");
-      expect(reviewed.steps[1]?.ownerPersona).toBe("specialist");
-      expect(reviewed.steps[0]?.reviewerPersona).toBe("qa_validator");
-      expect(reviewed.reviewerMatrix).toHaveLength(4);
+      expect(reviewed.review.issues).toContain("missing_owner:plan-decompose");
+      expect(reviewed.review.issues).toContain("missing_quality_criteria:execute-primary");
+      expect(reviewed.review.recommendation).toContain("strict validation");
     });
 
     it("requires persona separation on non-trivial plan steps when the team has role diversity", () => {
@@ -1683,6 +2283,7 @@ describe("RunEngine", () => {
             stepKey: "plan-decompose",
             title: "Plan and decompose the objective",
             objective: "Launch objective",
+            deliverable: "Execution plan",
             ownerPersona: "Lead",
             ownerMemberId: null,
             reviewerPersona: "Lead",
@@ -1787,13 +2388,16 @@ describe("RunEngine", () => {
             stepKey: "plan-decompose",
             title: "Plan and decompose the objective",
             objective: "Launch objective",
+            deliverable: "Execution plan",
             ownerPersona: "Lead",
-            ownerMemberId: null,
+            ownerMemberId: "assistant-lead",
             reviewerPersona: "QA",
-            reviewerMemberId: null,
+            reviewerMemberId: "assistant-qa",
             verificationMethod: "review",
             retryRule: "Refine until complete.",
             evidenceRequirements: ["plan artifact"],
+            qualityCriteria: ["Plan is complete"],
+            reviewChecklist: ["Plan evidence is present"],
             status: "planned",
             evidenceRefs: ["run:run-3"],
             notes: null,
@@ -1802,13 +2406,16 @@ describe("RunEngine", () => {
             stepKey: "execute-primary",
             title: "Execute the primary work slice",
             objective: "Launch objective",
+            deliverable: "Primary work output",
             ownerPersona: "Specialist",
-            ownerMemberId: null,
+            ownerMemberId: "assistant-specialist",
             reviewerPersona: "QA",
-            reviewerMemberId: null,
+            reviewerMemberId: "assistant-qa",
             verificationMethod: "test_and_review",
             retryRule: "Repair and rerun until ready.",
             evidenceRequirements: ["work output"],
+            qualityCriteria: ["Primary work output is usable"],
+            reviewChecklist: ["Output evidence is present"],
             status: "planned",
             evidenceRefs: ["run:run-3"],
             notes: null,
@@ -1817,13 +2424,16 @@ describe("RunEngine", () => {
             stepKey: "review-repair",
             title: "Review and repair",
             objective: "Launch objective",
+            deliverable: "Review note",
             ownerPersona: "QA",
-            ownerMemberId: null,
+            ownerMemberId: "assistant-qa",
             reviewerPersona: "Safety",
-            reviewerMemberId: null,
+            reviewerMemberId: "assistant-safety",
             verificationMethod: "test_and_review",
             retryRule: "Loop until approved.",
             evidenceRequirements: ["review note"],
+            qualityCriteria: ["Review issues are resolved"],
+            reviewChecklist: ["Repair notes are present"],
             status: "planned",
             evidenceRefs: ["run:run-3"],
             notes: null,
@@ -1832,13 +2442,16 @@ describe("RunEngine", () => {
             stepKey: "finalize-mirror",
             title: "Finalize and mirror back to Work OS",
             objective: "Launch objective",
+            deliverable: "Final mirrored result",
             ownerPersona: "Publisher",
-            ownerMemberId: null,
+            ownerMemberId: "assistant-publisher",
             reviewerPersona: "Lead",
-            reviewerMemberId: null,
+            reviewerMemberId: "assistant-lead",
             verificationMethod: "review",
             retryRule: "Mirror until systems agree.",
             evidenceRequirements: ["work os event"],
+            qualityCriteria: ["Mirror state is consistent"],
+            reviewChecklist: ["Terminal evidence is present"],
             status: "planned",
             evidenceRefs: ["run:run-3"],
             notes: null,
@@ -1898,13 +2511,16 @@ describe("RunEngine", () => {
             stepKey: "plan-decompose",
             title: "Plan and decompose the objective",
             objective: "Launch objective",
+            deliverable: "Execution plan",
             ownerPersona: "Lead",
-            ownerMemberId: null,
+            ownerMemberId: "assistant-lead",
             reviewerPersona: "QA",
-            reviewerMemberId: null,
+            reviewerMemberId: "assistant-qa",
             verificationMethod: "review",
             retryRule: "Refine until complete.",
             evidenceRequirements: ["plan artifact"],
+            qualityCriteria: ["Plan is complete"],
+            reviewChecklist: ["Plan evidence is present"],
             status: "planned",
             evidenceRefs: ["run:run-4"],
             notes: null,
@@ -1913,13 +2529,16 @@ describe("RunEngine", () => {
             stepKey: "execute-primary",
             title: "Execute the primary work slice",
             objective: "Launch objective",
+            deliverable: "Primary work output",
             ownerPersona: "Specialist",
-            ownerMemberId: null,
+            ownerMemberId: "assistant-specialist",
             reviewerPersona: "QA",
-            reviewerMemberId: null,
+            reviewerMemberId: "assistant-qa",
             verificationMethod: "test_and_review",
             retryRule: "Repair and rerun until ready.",
             evidenceRequirements: ["work output"],
+            qualityCriteria: ["Primary work output is usable"],
+            reviewChecklist: ["Output evidence is present"],
             status: "planned",
             evidenceRefs: ["run:run-4"],
             notes: null,
@@ -1928,13 +2547,16 @@ describe("RunEngine", () => {
             stepKey: "review-repair",
             title: "Review and repair",
             objective: "Launch objective",
+            deliverable: "Review note",
             ownerPersona: "QA",
-            ownerMemberId: null,
+            ownerMemberId: "assistant-qa",
             reviewerPersona: "Safety",
-            reviewerMemberId: null,
+            reviewerMemberId: "assistant-safety",
             verificationMethod: "test_and_review",
             retryRule: "Loop until approved.",
             evidenceRequirements: ["review note"],
+            qualityCriteria: ["Review issues are resolved"],
+            reviewChecklist: ["Repair notes are present"],
             status: "planned",
             evidenceRefs: ["run:run-4"],
             notes: null,
@@ -1943,13 +2565,16 @@ describe("RunEngine", () => {
             stepKey: "finalize-mirror",
             title: "Finalize and mirror back to Work OS",
             objective: "Launch objective",
+            deliverable: "Final mirrored result",
             ownerPersona: "Publisher",
-            ownerMemberId: null,
+            ownerMemberId: "assistant-publisher",
             reviewerPersona: "Lead",
-            reviewerMemberId: null,
+            reviewerMemberId: "assistant-lead",
             verificationMethod: "review",
             retryRule: "Mirror until systems agree.",
             evidenceRequirements: ["work os event"],
+            qualityCriteria: ["Mirror state is consistent"],
+            reviewChecklist: ["Terminal evidence is present"],
             status: "planned",
             evidenceRefs: ["run:run-4"],
             notes: null,
@@ -1984,8 +2609,10 @@ describe("RunEngine", () => {
 
       expect(reviewed.review.status).toBe("failed");
       expect(reviewed.status).toBe("blocked");
-      expect(reviewed.review.issues).toContain("llm_reviewer_unavailable");
-      expect(reviewed.review.recommendation).toContain("LLM reviewer unavailable");
+      expect(reviewed.review.issues[0]).toContain(
+        "llm_reviewer_unavailable:LLM unavailable"
+      );
+      expect(reviewed.review.recommendation).toContain("no fallback review");
     });
 
     it("keeps looping when assistant-owned work remains actionable", () => {
@@ -2344,6 +2971,37 @@ describe("RunEngine", () => {
       expect(updated2.totalCreditsUsed).toBe(4.5);
       expect(updated2.perAgent["agent-1"].inputTokens).toBe(300);
       expect(updated2.perAgent["agent-1"].turnCount).toBe(2);
+    });
+
+    it("applies runtime reservations only once per reservation key", () => {
+      const snap = runEngine.initBudgetSnapshot();
+      const reservation = {
+        toolCalls: 2,
+        mediaJobs: 1,
+        workflowRuns: 1,
+        agencyRuns: 1,
+      };
+      const first = runEngine.accumulateBudget(
+        snap,
+        "agent-1",
+        { inputTokens: 10, outputTokens: 5, costCredits: 1 },
+        reservation,
+        "run-1:step-1:attempt-1",
+      );
+      const second = runEngine.accumulateBudget(
+        first,
+        "agent-1",
+        { inputTokens: 8, outputTokens: 4, costCredits: 1 },
+        reservation,
+        "run-1:step-1:attempt-1",
+      );
+
+      expect(second.totalCreditsUsed).toBe(2);
+      expect(second.toolCallsUsed).toBe(2);
+      expect(second.mediaJobsUsed).toBe(1);
+      expect(second.workflowRunsUsed).toBe(1);
+      expect(second.agencyRunsUsed).toBe(1);
+      expect(second.appliedReservationKeys).toEqual(["run-1:step-1:attempt-1"]);
     });
   });
 });

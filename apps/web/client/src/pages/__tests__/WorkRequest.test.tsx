@@ -7,6 +7,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const mockNavigate = vi.fn();
 const createRequestMutateAsync = vi.fn();
+const createAndLaunchRequestMutateAsync = vi.fn();
 const regeneratePreflightPreviewMutateAsync = vi.fn();
 const approvePreflightBundleMutateAsync = vi.fn();
 const launchApprovedAutomationMutateAsync = vi.fn();
@@ -337,6 +338,29 @@ vi.mock("@/lib/trpc", () => ({
     workOs: {
       getRequest: {
         useQuery: () => {
+          if (currentLocationRef.current.includes("requestId=req-locked")) {
+            return {
+              data: {
+                request: {
+                  id: "req-locked",
+                  title: "Locked request",
+                  objective: "Automation already started.",
+                  sourceType: "manual",
+                  sourceRef: null,
+                  businessDomain: "support",
+                  urgency: "normal",
+                  riskLevel: "medium",
+                  defaultOwnerType: "human",
+                  defaultOwnerId: "42",
+                  defaultQueueId: null,
+                  linkedConversationIdsJson: [],
+                },
+                case: { id: "case-locked" },
+                editable: false,
+              },
+              isLoading: false,
+            };
+          }
           if (currentLocationRef.current.includes("requestId=req-1")) {
             return {
               data: {
@@ -356,6 +380,7 @@ vi.mock("@/lib/trpc", () => ({
                   linkedConversationIdsJson: ["conv-123"],
                 },
                 case: { id: "case-1" },
+                editable: true,
               },
               isLoading: false,
             };
@@ -448,6 +473,18 @@ vi.mock("@/lib/trpc", () => ({
         }) => ({
           mutateAsync: async (...args: unknown[]) => {
             const result = await createRequestMutateAsync(...args);
+            await options?.onSuccess?.(result);
+            return result;
+          },
+          isPending: false,
+        }),
+      },
+      createAndLaunchRequest: {
+        useMutation: (options?: {
+          onSuccess?: (result: any) => void | Promise<void>;
+        }) => ({
+          mutateAsync: async (...args: unknown[]) => {
+            const result = await createAndLaunchRequestMutateAsync(...args);
             await options?.onSuccess?.(result);
             return result;
           },
@@ -549,6 +586,37 @@ describe("WorkRequestPage", () => {
       },
       case: { id: "case-2" },
     });
+    createAndLaunchRequestMutateAsync.mockImplementation(async (input: any) => {
+      const created = await createRequestMutateAsync(input);
+      const preview =
+        preflightPreviewStateByCaseId[created.case.id] ??
+        makePreflightPreview({
+          caseId: created.case.id,
+          requestId: created.request.id,
+        });
+      preflightPreviewStateByCaseId[created.case.id] = preview;
+      const approved = await approvePreflightBundleMutateAsync({
+        caseId: created.case.id,
+        preflightBundleId: preview.preflightBundleId,
+        approvedRevisionHash: preview.preflightRevision.fingerprint,
+        selectedSourceIds: preview.preflightRevision.inputs.selectedSourceIds,
+        approvalDecision: "approve",
+        idempotencyKey: "test-create-launch:approve",
+      });
+      const launched = await launchApprovedAutomationMutateAsync({
+        caseId: created.case.id,
+        preflightBundleId: approved.preflightBundleId,
+        approvedRevisionHash: approved.preflightRevision.fingerprint,
+        idempotencyKey: "test-create-launch:launch",
+      });
+      return {
+        ...created,
+        automation: {
+          state: "launched",
+          ...launched,
+        },
+      };
+    });
     regeneratePreflightPreviewMutateAsync.mockImplementation(async (input: any) => {
       const currentPreview = preflightPreviewStateByCaseId[input.caseId];
       const regenerated = makePreflightPreview({
@@ -627,7 +695,7 @@ describe("WorkRequestPage", () => {
     });
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Create Work Request" })
+      screen.getByRole("button", { name: /start automation/i })
     );
 
     await waitFor(() => {
@@ -637,8 +705,8 @@ describe("WorkRequestPage", () => {
           objective: "Customer needs a refund checked.",
           sourceType: "manual",
           requesterId: "42",
-          defaultOwnerType: "human",
-          defaultOwnerId: "42",
+          defaultOwnerType: "queue",
+          defaultQueueId: "team-1",
         })
       );
     });
@@ -648,14 +716,23 @@ describe("WorkRequestPage", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId("preflight-review-card")).toBeInTheDocument();
+      expect(approvePreflightBundleMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: "case-2",
+          preflightBundleId: "bundle-2",
+        })
+      );
+      expect(launchApprovedAutomationMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: "case-2",
+          preflightBundleId: "bundle-2",
+        })
+      );
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/teams/team-1?roomId=room-1&panel=workflow",
+        { replace: true }
+      );
     });
-
-    expect(screen.getByText("Automation review")).toBeInTheDocument();
-    expect(screen.getByText("Review the refund request and draft the next response.")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /review automation plan/i })
-    ).toBeInTheDocument();
   });
 
   it("routes a request to one of the user's teams", async () => {
@@ -665,13 +742,15 @@ describe("WorkRequestPage", () => {
       target: { value: "Prepare weekly report" },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Assign to my team" }));
-    fireEvent.change(screen.getByLabelText("Team"), {
+    fireEvent.change(screen.getByLabelText("Details"), {
+      target: { value: "Prepare the weekly report for review." },
+    });
+    fireEvent.change(screen.getByLabelText("Automation team"), {
       target: { value: "team-1" },
     });
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Create Work Request" })
+      screen.getByRole("button", { name: /start automation/i })
     );
 
     await waitFor(() => {
@@ -685,6 +764,34 @@ describe("WorkRequestPage", () => {
     });
   });
 
+  it("does not silently route to a team when the user chooses assign to me", async () => {
+    currentLocationRef.current = "/work/request?requestId=req-1";
+    render(<WorkRequestPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Assign to me" }));
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "Personal draft" },
+    });
+    fireEvent.change(screen.getByLabelText("Details"), {
+      target: { value: "Draft this just for me." },
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /update work request/i })
+    );
+
+    await waitFor(() => {
+      expect(createRequestMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestId: "req-1",
+          defaultOwnerType: "human",
+          defaultOwnerId: "42",
+          defaultQueueId: null,
+        })
+      );
+    });
+  });
+
   it("prefills linked conversation context from the launch URL and submits it", async () => {
     currentLocationRef.current =
       "/work/request?sourceType=chat&sourceRef=conv-77&linkedConversationIds=conv-77";
@@ -693,14 +800,15 @@ describe("WorkRequestPage", () => {
 
     expect(screen.getByTestId("linked-sources-panel")).toBeInTheDocument();
     expect(screen.getByText("Conversation conv-77")).toBeInTheDocument();
-    expect(screen.getByLabelText("Source reference")).toHaveValue("conv-77");
-
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Follow up from chat" },
     });
+    fireEvent.change(screen.getByLabelText("Details"), {
+      target: { value: "Follow up on the linked conversation." },
+    });
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Create Work Request" })
+      screen.getByRole("button", { name: /start automation/i })
     );
 
     await waitFor(() => {
@@ -714,17 +822,19 @@ describe("WorkRequestPage", () => {
     });
   });
 
-  it("shows draft owned teams in the team selector", async () => {
+  it("shows a simple team picker while keeping advanced routing hidden", async () => {
     render(<WorkRequestPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Assign to my team" }));
-
+    expect(screen.getByLabelText("Automation team")).toHaveValue("");
     expect(
-      screen.getByRole("option", { name: /operations team/i })
+      screen.getByRole("option", { name: /auto select \(operations team\)/i })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: /creative content 1 \(draft\)/i })
-    ).toBeInTheDocument();
+      screen.queryByRole("option", { name: /creative content 1 \(draft\)/i })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Assign to my team" })
+    ).not.toBeInTheDocument();
   });
 
   it("loads a spec file into the details field", async () => {
@@ -782,6 +892,7 @@ describe("WorkRequestPage", () => {
   });
 
   it("opens the team detail page from a readiness card", () => {
+    currentLocationRef.current = "/work/request?requestId=req-1";
     render(<WorkRequestPage />);
 
     fireEvent.click(
@@ -792,6 +903,7 @@ describe("WorkRequestPage", () => {
   });
 
   it("shows the latest room type badge on a readiness card", () => {
+    currentLocationRef.current = "/work/request?requestId=req-1";
     render(<WorkRequestPage />);
 
     const roomTypeLabel = screen.getAllByText("Team room")[0];
@@ -805,6 +917,7 @@ describe("WorkRequestPage", () => {
   });
 
   it("shows a tooltip for the latest room type badge", async () => {
+    currentLocationRef.current = "/work/request?requestId=req-1";
     render(<WorkRequestPage />);
 
     expect(screen.getAllByText("Team room")[0]).toHaveAttribute(
@@ -814,6 +927,7 @@ describe("WorkRequestPage", () => {
   });
 
   it("opens the latest team room from a readiness card", () => {
+    currentLocationRef.current = "/work/request?requestId=req-1";
     render(<WorkRequestPage />);
 
     fireEvent.click(screen.getAllByRole("button", { name: "Open room" })[0]);
@@ -822,6 +936,7 @@ describe("WorkRequestPage", () => {
   });
 
   it("opens the latest team queue from a readiness card", () => {
+    currentLocationRef.current = "/work/request?requestId=req-1";
     render(<WorkRequestPage />);
 
     fireEvent.click(screen.getAllByRole("button", { name: "Open queue" })[0]);
@@ -837,18 +952,21 @@ describe("WorkRequestPage", () => {
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Review refund request" },
     });
+    fireEvent.change(screen.getByLabelText("Details"), {
+      target: { value: "Review the refund request." },
+    });
     fireEvent.click(
-      screen.getByRole("button", { name: "Create Work Request" })
+      screen.getByRole("button", { name: /start automation/i })
     );
 
     await waitFor(() => {
       expect(
         screen.getAllByRole("link", { name: /open in work os console/i }).length
-      ).toBeGreaterThan(1);
+      ).toBeGreaterThan(0);
     });
 
     fireEvent.click(
-      screen.getAllByRole("link", { name: /open in work os console/i })[1]
+      screen.getAllByRole("link", { name: /open in work os console/i })[0]
     );
 
     expect(mockNavigate).toHaveBeenCalledWith(
@@ -863,11 +981,10 @@ describe("WorkRequestPage", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/help/work-os");
   });
 
-  it("opens the Work OS guide from the helper card", () => {
+  it("does not show the Work OS guide helper card in the simple start flow", () => {
     render(<WorkRequestPage />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: /open guide/i })[1]);
-    expect(mockNavigate).toHaveBeenCalledWith("/help/work-os");
+    expect(screen.getAllByRole("button", { name: /open guide/i })).toHaveLength(1);
   });
 
   it("copies a bookmarkable Work OS link after creation", async () => {
@@ -876,8 +993,11 @@ describe("WorkRequestPage", () => {
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Review refund request" },
     });
+    fireEvent.change(screen.getByLabelText("Details"), {
+      target: { value: "Review the refund request." },
+    });
     fireEvent.click(
-      screen.getByRole("button", { name: "Create Work Request" })
+      screen.getByRole("button", { name: /start automation/i })
     );
 
     await waitFor(() => {
@@ -887,7 +1007,7 @@ describe("WorkRequestPage", () => {
     });
 
     fireEvent.click(
-      screen.getAllByRole("button", { name: /copy permalink/i })[1]
+      screen.getAllByRole("button", { name: /copy permalink/i })[0]
     );
 
     expect(mockClipboardWriteText).toHaveBeenCalledWith(
@@ -901,8 +1021,11 @@ describe("WorkRequestPage", () => {
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Review refund request" },
     });
+    fireEvent.change(screen.getByLabelText("Details"), {
+      target: { value: "Review the refund request." },
+    });
     fireEvent.click(
-      screen.getByRole("button", { name: "Create Work Request" })
+      screen.getByRole("button", { name: /start automation/i })
     );
 
     await waitFor(() => {
@@ -920,23 +1043,18 @@ describe("WorkRequestPage", () => {
     );
   });
 
-  it("approves and launches automation from the review card", async () => {
+  it("approves and launches automation from the start button", async () => {
     render(<WorkRequestPage />);
 
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Review refund request" },
     });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Create Work Request" })
-    );
-
-    await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: /approve preview/i })
-      ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Details"), {
+      target: { value: "Review the refund request." },
     });
-
-    fireEvent.click(screen.getByRole("button", { name: /approve preview/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /start automation/i })
+    );
 
     await waitFor(() => {
       expect(approvePreflightBundleMutateAsync).toHaveBeenCalledWith(
@@ -948,12 +1066,6 @@ describe("WorkRequestPage", () => {
         })
       );
     });
-
-    const launchButton = screen.getByRole("button", {
-      name: /launch approved automation/i,
-    });
-    expect(launchButton).toBeEnabled();
-    fireEvent.click(launchButton);
 
     await waitFor(() => {
       expect(launchApprovedAutomationMutateAsync).toHaveBeenCalledWith(
@@ -992,41 +1104,70 @@ describe("WorkRequestPage", () => {
     expect(screen.getByText("Conversation conv-123 · derived · recent")).toBeInTheDocument();
   });
 
-  it("regenerates the automation preview when the review is stale", async () => {
+  it("locks the submit action when an existing request has active automation", async () => {
+    currentLocationRef.current = "/work/request?requestId=req-locked";
     render(<WorkRequestPage />);
 
-    preflightPreviewStateByCaseId["case-2"] = makePreflightPreview({
-      state: "stale",
-      launchReadiness: {
-        ready: false,
-        primaryReasonCode: "preflight_approval_required",
-        blockedReasonCodes: ["preflight_approval_required"],
-      },
-      diagnostics: {
-        visibleReasonCodes: ["preflight_approval_required"],
-      },
-    });
+    expect(screen.getAllByText("Request locked").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/automation has already started for this request/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Request locked" })
+    ).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Request locked" }));
+
+    expect(createRequestMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("starts new requests through the server-side create and launch mutation", async () => {
+    render(<WorkRequestPage />);
 
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Review refund request" },
     });
+    fireEvent.change(screen.getByLabelText("Details"), {
+      target: { value: "Review the refund request." },
+    });
     fireEvent.click(
-      screen.getByRole("button", { name: "Create Work Request" })
+      screen.getByRole("button", { name: /start automation/i })
     );
 
     await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: /refresh preview/i })
-      ).toBeInTheDocument();
+      expect(createAndLaunchRequestMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Review refund request",
+          objective: "Review the refund request.",
+          mode: "fully_auto",
+          roomLanguage: "en",
+        })
+      );
     });
+    expect(regeneratePreflightPreviewMutateAsync).not.toHaveBeenCalled();
+  });
 
-    fireEvent.click(screen.getByRole("button", { name: /refresh preview/i }));
+  it("starts new Thai requests with a Thai auto-team room language", async () => {
+    mockLanguage = "th";
+    render(<WorkRequestPage />);
+
+    fireEvent.change(screen.getByLabelText("Title"), {
+      target: { value: "สร้างวิดีโอประเพณีปีใหม่" },
+    });
+    fireEvent.change(screen.getByLabelText("Details"), {
+      target: { value: "สร้างวิดีโอภาษาไทยเกี่ยวกับสงกรานต์" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /start automation/i })
+    );
 
     await waitFor(() => {
-      expect(regeneratePreflightPreviewMutateAsync).toHaveBeenCalledWith(
+      expect(createAndLaunchRequestMutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
-          caseId: "case-2",
-          previousPreflightBundleId: "bundle-2",
+          title: "สร้างวิดีโอประเพณีปีใหม่",
+          objective: "สร้างวิดีโอภาษาไทยเกี่ยวกับสงกรานต์",
+          mode: "fully_auto",
+          roomLanguage: "th",
         })
       );
     });

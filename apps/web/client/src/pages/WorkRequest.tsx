@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import {
   Activity,
+  AlertCircle,
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
@@ -45,6 +46,7 @@ import {
   Loader2,
   Cpu,
   Link2,
+  RefreshCw,
   ShieldCheck,
   Users,
 } from "lucide-react";
@@ -53,6 +55,7 @@ import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { parseLinkedSourceIds } from "@/lib/workRequestLinks";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import type {
   ApprovalSourceSnapshot,
   CapabilityCatalogEntry,
@@ -105,6 +108,73 @@ type PreflightReviewRecord = {
   approvalSnapshots: ApprovalSourceSnapshot[];
   diagnostics: Record<string, unknown>;
 };
+
+const workRequestPageShellClass = "min-h-screen bg-white text-slate-950";
+const workRequestTopBarClass =
+  "sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl";
+const workRequestPanelClass =
+  "rounded-2xl border border-slate-200 bg-white shadow-sm";
+const workRequestFieldClass =
+  "transition focus-visible:ring-2 focus-visible:ring-sky-500/40 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500";
+
+function InlineErrorState({
+  title,
+  message,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  message: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-950" role="alert">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex gap-3">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+          <div>
+            <p className="text-sm font-semibold">{title}</p>
+            <p className="mt-1 text-sm leading-6 text-rose-800">{message}</p>
+          </div>
+        </div>
+        {actionLabel && onAction ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="border-rose-200 bg-white text-rose-700 hover:bg-rose-100"
+            onClick={onAction}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            {actionLabel}
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function RecentRequestsLoadingState() {
+  return (
+    <div className="space-y-3" aria-label="Loading recent requests" aria-live="polite">
+      {[0, 1, 2].map(index => (
+        <div key={index} className={cn(workRequestPanelClass, "p-4")}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-3">
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+            <Skeleton className="h-6 w-20 rounded-full" />
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function formatDate(value: string | Date | null | undefined): string {
   if (!value) return "n/a";
@@ -189,7 +259,19 @@ function surfaceLabel(surface: WorkOrchestratorSurface): string {
   }
 }
 
-function buildClientIdempotencyKey(prefix: string): string {
+function buildClientIdempotencyKey(
+  prefix: string,
+  stableParts: Array<string | number | null | undefined> = []
+): string {
+  const stableSegment = stableParts
+    .map(part => String(part ?? "").trim())
+    .filter(Boolean)
+    .map(part => part.replace(/[^a-zA-Z0-9._:-]/g, "_"))
+    .join(":")
+    .slice(0, 150);
+  if (stableSegment) {
+    return `${prefix}:${stableSegment}`;
+  }
   const randomId =
     typeof window !== "undefined" &&
     typeof window.crypto?.randomUUID === "function"
@@ -223,7 +305,14 @@ function mapPreflightErrorMessage(error: unknown, fallback: string): string {
   if (rawMessage.includes("APPROVAL_SOURCE_DRIFT")) {
     return "A linked source changed after preview generation. Refresh the preview before approving.";
   }
-  if (rawMessage.includes("MISSING_TEAM") || rawMessage.includes("UNAUTHORIZED_TEAM")) {
+  if (rawMessage.includes("AUTOMATION_ROOM_NOT_FOUND")) {
+    return "Work OS found an existing automation record, but the team room is missing. Start again or ask an admin to recover the automation run.";
+  }
+  if (
+    rawMessage.includes("MISSING_TEAM") ||
+    rawMessage.includes("UNAUTHORIZED_TEAM") ||
+    rawMessage.includes("AUTOMATION_TEAM_NOT_AVAILABLE")
+  ) {
     return "Work OS could not resolve an eligible team for this launch.";
   }
   if (
@@ -233,6 +322,33 @@ function mapPreflightErrorMessage(error: unknown, fallback: string): string {
     return "One of the planned execution surfaces is not currently launchable.";
   }
   return fallback;
+}
+
+function mapWorkRequestSubmitErrorMessage(
+  error: unknown,
+  fallback: string
+): string {
+  const rawMessage =
+    typeof error === "object" &&
+    error &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+      ? (error as { message: string }).message.trim()
+      : "";
+
+  return rawMessage || fallback;
+}
+
+function deriveRequestTitle(details: string): string {
+  const firstMeaningfulLine =
+    details
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .find(Boolean) ?? "";
+  const withoutMarkdownHeading = firstMeaningfulLine.replace(/^#+\s*/, "");
+  const compact = withoutMarkdownHeading || "Personal automation request";
+
+  return compact.length > 90 ? `${compact.slice(0, 87).trim()}...` : compact;
 }
 
 function readinessBadgeClass(readiness: TeamReadiness): string {
@@ -491,7 +607,7 @@ async function processWorkRequestDetailsFile(
 
 export default function WorkRequestPage() {
   const { user } = useAuth();
-  const { t } = useScopedTranslation("workos");
+  const { t, locale } = useScopedTranslation("workos");
   const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const browserSearch =
@@ -559,7 +675,7 @@ export default function WorkRequestPage() {
   const [businessDomain, setBusinessDomain] = useState("");
   const [urgency, setUrgency] = useState("normal");
   const [riskLevel, setRiskLevel] = useState("medium");
-  const [ownershipMode, setOwnershipMode] = useState<OwnershipMode>("self");
+  const [ownershipMode, setOwnershipMode] = useState<OwnershipMode>("team");
   const [ownerReference, setOwnerReference] = useState("");
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [createdRequestId, setCreatedRequestId] = useState<string | null>(null);
@@ -570,11 +686,16 @@ export default function WorkRequestPage() {
   const [detailsDragActive, setDetailsDragActive] = useState(false);
   const [preflightPreviewState, setPreflightPreviewState] =
     useState<PreflightReviewRecord | null>(null);
+  const [autoStartCaseId, setAutoStartCaseId] = useState<string | null>(null);
+  const [autoStartError, setAutoStartError] = useState<string | null>(null);
   const detailsFileInputRef = useRef<HTMLInputElement>(null);
   const preflightReviewRef = useRef<HTMLDivElement | null>(null);
+  const autoStartRequestedRef = useRef(false);
+  const autoStartOperationRef = useRef<string | null>(null);
 
   const ownedTeamsQuery = trpc.team.list.useQuery({
-    ownerOnly: true,
+    status: "active",
+    assignableOnly: true,
   });
   const allTeamsQuery = trpc.team.list.useQuery({ status: "active" });
   const recentRequestsQuery = trpc.workOs.listMyRequests.useQuery({ limit: 8 });
@@ -591,6 +712,11 @@ export default function WorkRequestPage() {
       setCreatedRequestId(result.request.id);
       setCreatedCaseId(result.case.id);
       setPreflightPreviewState(null);
+      if (autoStartRequestedRef.current) {
+        setAutoStartCaseId(result.case.id);
+        await utils.workOs.listMyRequests.invalidate();
+        return;
+      }
       setTitle("");
       setDetails("");
       setSourceType(launchSourceDefaults.sourceType);
@@ -598,13 +724,50 @@ export default function WorkRequestPage() {
       setBusinessDomain("");
       setUrgency("normal");
       setRiskLevel("medium");
-      setOwnershipMode("self");
+      setOwnershipMode("team");
       setOwnerReference("");
       setSelectedTeamId("");
       toast.success(t("success.title", "Work request created"));
       await utils.workOs.listMyRequests.invalidate();
     },
   });
+  const createAndLaunchRequestMutation =
+    trpc.workOs.createAndLaunchRequest.useMutation({
+      onSuccess: async (result: any) => {
+        setCreatedRequestId(result.request.id);
+        setCreatedCaseId(result.case.id);
+        setPreflightPreviewState(null);
+        autoStartRequestedRef.current = false;
+        setAutoStartCaseId(null);
+        const automation = result.automation ?? null;
+        if (automation?.state === "launched") {
+          const kickoffTeamId = automation?.teamId ?? null;
+          const kickoffRoomId = automation?.roomId ?? null;
+          if (kickoffTeamId && kickoffRoomId) {
+            setLocation(
+              buildTeamRoomPath(kickoffTeamId, kickoffRoomId, "workflow"),
+              { replace: true },
+            );
+          } else {
+            setLocation(buildWorkOsConsolePath(result.case.id), {
+              replace: true,
+            });
+          }
+          toast.success("Automation launched");
+        } else {
+          setAutoStartError(
+            automation?.errorCode
+              ? mapPreflightErrorMessage(
+                  { message: automation.errorCode },
+                  "Work request was created, but automation could not launch."
+                )
+              : "Work request was created, but automation could not launch."
+          );
+          toast.error("Work request was created, but automation could not launch.");
+        }
+        await utils.workOs.listMyRequests.invalidate();
+      },
+    });
   const updateRequestMutation = trpc.workOs.updateRequest.useMutation({
     onSuccess: async result => {
       setCreatedRequestId(result.request.id);
@@ -682,6 +845,10 @@ export default function WorkRequestPage() {
     });
 
   const ownedTeams = ownedTeamsQuery.data ?? [];
+  const activeOwnedTeams = useMemo(
+    () => ownedTeams.filter(team => !team.status || team.status === "active"),
+    [ownedTeams]
+  );
 
   const sourceOptions = useMemo(
     () => [
@@ -720,6 +887,8 @@ export default function WorkRequestPage() {
   const isEditingExistingRequest = Boolean(
     requestIdFromUrl && requestDetail?.request
   );
+  const isExistingRequestLocked =
+    isEditingExistingRequest && requestDetail?.editable === false;
 
   useEffect(() => {
     if (!user) {
@@ -734,10 +903,10 @@ export default function WorkRequestPage() {
     if (selectedTeamId.trim()) {
       return;
     }
-    if (ownedTeams.length === 1) {
-      setSelectedTeamId(ownedTeams[0].id);
+    if (activeOwnedTeams.length === 1) {
+      setSelectedTeamId(activeOwnedTeams[0].id);
     }
-  }, [ownedTeams, ownershipMode, selectedTeamId]);
+  }, [activeOwnedTeams, ownershipMode, selectedTeamId]);
 
   useEffect(() => {
     if (!requestDetail?.request) return;
@@ -780,7 +949,7 @@ export default function WorkRequestPage() {
     setBusinessDomain("");
     setUrgency("normal");
     setRiskLevel("medium");
-    setOwnershipMode("self");
+    setOwnershipMode("team");
     setOwnerReference("");
     setSelectedTeamId("");
     setDetailsSourceFileName(null);
@@ -835,6 +1004,16 @@ export default function WorkRequestPage() {
   const preflightPreview =
     preflightPreviewState ??
     ((preflightPreviewQuery.data as PreflightReviewRecord | undefined) ?? null);
+  const isAutoStarting =
+    createRequestMutation.isPending ||
+    createAndLaunchRequestMutation.isPending ||
+    approvePreflightBundleMutation.isPending ||
+    launchApprovedAutomationMutation.isPending ||
+    Boolean(autoStartCaseId);
+  const showAutomationDiagnostics = Boolean(
+    activeCaseId && (autoStartError || (requestIdFromUrl && isPrivileged))
+  );
+  const showTeamReadinessPanel = Boolean(requestIdFromUrl && isPrivileged);
   const preflightVisibleReasonCodes = useMemo(
     () =>
       Array.from(
@@ -846,6 +1025,151 @@ export default function WorkRequestPage() {
     [preflightPreview]
   );
 
+  useEffect(() => {
+    if (autoStartCaseId && preflightPreviewQuery.error) {
+      setAutoStartError(
+        mapPreflightErrorMessage(
+          preflightPreviewQuery.error,
+          "Work OS could not prepare the automation start. Open diagnostics or try again."
+        )
+      );
+      setAutoStartCaseId(null);
+      autoStartRequestedRef.current = false;
+      return;
+    }
+
+    if (!autoStartCaseId || !activeCaseId || activeCaseId !== autoStartCaseId) {
+      return;
+    }
+    if (!preflightPreview || preflightPreviewQuery.isLoading) {
+      return;
+    }
+    if (
+      approvePreflightBundleMutation.isPending ||
+      launchApprovedAutomationMutation.isPending
+    ) {
+      return;
+    }
+
+    const operationKey = `${preflightPreview.preflightBundleId}:${preflightPreview.state}`;
+    if (autoStartOperationRef.current === operationKey) {
+      return;
+    }
+    autoStartOperationRef.current = operationKey;
+
+    let cancelled = false;
+    const runAutoStart = async () => {
+      try {
+        if (preflightPreview.state === "previewed") {
+          const approved = await approvePreflightBundleMutation.mutateAsync({
+            caseId: activeCaseId,
+            preflightBundleId: preflightPreview.preflightBundleId,
+            approvedRevisionHash: preflightPreview.preflightRevision.fingerprint,
+            selectedSourceIds:
+              preflightPreview.preflightRevision.inputs.selectedSourceIds,
+            approvalDecision: "approve",
+            idempotencyKey: buildClientIdempotencyKey(
+              "preflight-auto-approve",
+              [
+                activeCaseId,
+                preflightPreview.preflightBundleId,
+                preflightPreview.preflightRevision.fingerprint,
+              ],
+            ),
+          });
+          if (cancelled) return;
+
+          if (!approved.launchReadiness.ready) {
+            setAutoStartError(
+              "Automation is not ready to start yet. Open the diagnostics below to see what is blocking launch."
+            );
+            setAutoStartCaseId(null);
+            return;
+          }
+
+          await launchApprovedAutomationMutation.mutateAsync({
+            caseId: activeCaseId,
+            preflightBundleId: approved.preflightBundleId,
+            approvedRevisionHash: approved.preflightRevision.fingerprint,
+            idempotencyKey: buildClientIdempotencyKey(
+              "preflight-auto-launch",
+              [
+                activeCaseId,
+                approved.preflightBundleId,
+                approved.preflightRevision.fingerprint,
+              ],
+            ),
+          });
+          if (!cancelled) {
+            setAutoStartCaseId(null);
+          }
+          return;
+        }
+
+        if (
+          preflightPreview.state === "approved" &&
+          preflightPreview.launchReadiness.ready
+        ) {
+          await launchApprovedAutomationMutation.mutateAsync({
+            caseId: activeCaseId,
+            preflightBundleId: preflightPreview.preflightBundleId,
+            approvedRevisionHash: preflightPreview.preflightRevision.fingerprint,
+            idempotencyKey: buildClientIdempotencyKey(
+              "preflight-auto-launch",
+              [
+                activeCaseId,
+                preflightPreview.preflightBundleId,
+                preflightPreview.preflightRevision.fingerprint,
+              ],
+            ),
+          });
+          if (!cancelled) {
+            setAutoStartCaseId(null);
+          }
+          return;
+        }
+
+        if (
+          preflightPreview.state === "launch_blocked" ||
+          preflightPreview.state === "stale" ||
+          !preflightPreview.launchReadiness.ready
+        ) {
+          setAutoStartError(
+            "Automation is not ready to start yet. Open the diagnostics below to see what is blocking launch."
+          );
+          setAutoStartCaseId(null);
+        }
+      } catch (error) {
+        if (cancelled) return;
+        setAutoStartError(
+          mapPreflightErrorMessage(
+            error,
+            "Could not start automation. Open the diagnostics below to retry or inspect the blocker."
+          )
+        );
+        setAutoStartCaseId(null);
+      } finally {
+        if (!cancelled) {
+          autoStartRequestedRef.current = false;
+        }
+      }
+    };
+
+    void runAutoStart();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeCaseId,
+    autoStartCaseId,
+    preflightPreview,
+    preflightPreviewQuery.error,
+    preflightPreviewQuery.isLoading,
+    approvePreflightBundleMutation,
+    launchApprovedAutomationMutation,
+  ]);
+
   const createdRequest = useMemo(
     () =>
       recentRequestsQuery.data?.find(
@@ -853,6 +1177,72 @@ export default function WorkRequestPage() {
       ) ?? null,
     [recentRequestsQuery.data, createdRequestId]
   );
+  const requesterSafeAutomationStatus = useMemo(() => {
+    if (!activeCaseId || showAutomationDiagnostics) return null;
+    const caseRecord =
+      (requestDetail?.case as Record<string, unknown> | null | undefined) ?? null;
+    const safeRequestRecord =
+      (createdRequest as Record<string, unknown> | null | undefined) ??
+      ((requestDetail?.request as Record<string, unknown> | null | undefined) ?? null);
+    const state =
+      typeof safeRequestRecord?.currentState === "string"
+        ? safeRequestRecord.currentState
+        : typeof caseRecord?.currentState === "string"
+          ? caseRecord.currentState
+          : null;
+    const automationDisposition =
+      typeof caseRecord?.automationDisposition === "string"
+        ? caseRecord.automationDisposition
+        : null;
+    const automationSummary =
+      typeof caseRecord?.automationSummary === "string" &&
+      caseRecord.automationSummary.trim().length > 0
+        ? caseRecord.automationSummary.trim()
+        : null;
+    const normalizedAutomationState = [
+      state,
+      automationDisposition,
+      automationSummary,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    const hasAutomation =
+      typeof caseRecord?.automationRunId === "string" &&
+      caseRecord.automationRunId.length > 0;
+    if (
+      /failed|blocked|missing|unresolved|cannot continue/.test(
+        normalizedAutomationState,
+      )
+    ) {
+      return (
+        automationSummary ||
+        "Automation needs attention before it can continue. Open the Work OS console for the safe checkpoint details."
+      );
+    }
+    if (/completed|done|finished/.test(normalizedAutomationState)) {
+      return automationSummary || "Automation is completed.";
+    }
+    if (/waiting|paused|approval|checkpoint/.test(normalizedAutomationState)) {
+      return (
+        automationSummary ||
+        "Automation is waiting on a safe checkpoint before it can continue."
+      );
+    }
+    if (hasAutomation) {
+      return (
+        automationSummary ||
+        "Automation has been sent to the team. You can follow progress from this page or open the Work OS console."
+      );
+    }
+    return "Work OS is tracking this request and will show progress here when automation starts.";
+  }, [
+    activeCaseId,
+    createdRequest,
+    requestDetail?.case,
+    requestDetail?.request,
+    showAutomationDiagnostics,
+  ]);
   const ownedTeamIds = useMemo(
     () => new Set(ownedTeams.map(team => team.id)),
     [ownedTeams]
@@ -974,41 +1364,53 @@ export default function WorkRequestPage() {
     event.preventDefault();
     if (!user) return;
 
-    const trimmedTitle = title.trim();
-    if (!trimmedTitle) {
-      toast.error("Please add a title.");
+    const trimmedDetails = details.trim();
+    const trimmedTitle = title.trim() || deriveRequestTitle(trimmedDetails);
+    if (!trimmedTitle || !trimmedDetails) {
+      toast.error("Tell Work OS what you want done before starting.");
       return;
     }
 
-    const trimmedDetails = details.trim();
     const trimmedSourceRef = sourceRef.trim();
     const trimmedBusinessDomain = businessDomain.trim();
     const trimmedOwnerReference = ownerReference.trim();
-    const trimmedTeamId = selectedTeamId.trim();
+    const selectedAutomationTeamId =
+      ownershipMode === "team"
+        ? selectedTeamId.trim() || (activeOwnedTeams[0]?.id ?? "")
+        : "";
+    const trimmedTeamId = selectedAutomationTeamId.trim();
+    const effectiveOwnershipMode = ownershipMode;
 
     const defaultOwnerType =
-      ownershipMode === "self"
+      effectiveOwnershipMode === "self"
         ? "human"
-        : ownershipMode === "team"
+        : effectiveOwnershipMode === "team"
           ? "queue"
-          : ownershipMode === "role"
+          : effectiveOwnershipMode === "role"
             ? "role"
             : undefined;
 
     const defaultOwnerId =
-      ownershipMode === "self"
+      effectiveOwnershipMode === "self"
         ? String(user.id)
-        : ownershipMode === "role"
+        : effectiveOwnershipMode === "role"
           ? trimmedOwnerReference || undefined
           : undefined;
 
-    if (ownershipMode === "team" && !trimmedTeamId) {
-      toast.error("Please choose one of your teams.");
+    if (effectiveOwnershipMode === "team" && !trimmedTeamId) {
+      toast.error("Please choose an active automation team.");
       return;
     }
 
     try {
       if (isEditingExistingRequest && requestDetail?.request) {
+        if (isExistingRequestLocked) {
+          toast.error(
+            "This work request already has an active automation run and can no longer be edited here."
+          );
+          return;
+        }
+
         await updateRequestMutation.mutateAsync({
           requestId: requestDetail.request.id,
           title: trimmedTitle,
@@ -1021,10 +1423,13 @@ export default function WorkRequestPage() {
           defaultOwnerType,
           defaultOwnerId,
           defaultQueueId:
-            ownershipMode === "team" ? trimmedTeamId || null : null,
+            effectiveOwnershipMode === "team" ? trimmedTeamId || null : null,
         });
       } else {
-        await createRequestMutation.mutateAsync({
+        autoStartRequestedRef.current = false;
+        autoStartOperationRef.current = null;
+        setAutoStartError(null);
+        await createAndLaunchRequestMutation.mutateAsync({
           sourceType,
           sourceRef: trimmedSourceRef || undefined,
           title: trimmedTitle,
@@ -1037,7 +1442,7 @@ export default function WorkRequestPage() {
           defaultOwnerType,
           defaultOwnerId,
           defaultQueueId:
-            ownershipMode === "team" ? trimmedTeamId || undefined : undefined,
+            effectiveOwnershipMode === "team" ? trimmedTeamId || undefined : undefined,
           linkedConversationIds:
             linkedConversationIds.length > 0 ? linkedConversationIds : undefined,
           linkedWorkpackRunIds:
@@ -1046,11 +1451,24 @@ export default function WorkRequestPage() {
             linkedRoleRoutineRunIds.length > 0
               ? linkedRoleRoutineRunIds
               : undefined,
+          mode: "fully_auto",
+          roomLanguage: locale === "th" ? "th" : "en",
+          idempotencyKey: buildClientIdempotencyKey("create-launch", [
+            String(user.id),
+            sourceType,
+            trimmedSourceRef,
+            trimmedTitle,
+            trimmedDetails,
+            effectiveOwnershipMode === "team" ? trimmedTeamId : "",
+          ]),
         });
       }
     } catch (error) {
-      console.error("Failed to create work request", error);
-      toast.error("Failed to create work request.");
+      const fallback = isEditingExistingRequest
+        ? "Failed to update work request."
+        : "Failed to create work request.";
+      console.error(fallback, error);
+      toast.error(mapWorkRequestSubmitErrorMessage(error, fallback));
     }
   };
 
@@ -1071,7 +1489,11 @@ export default function WorkRequestPage() {
       await regeneratePreflightPreviewMutation.mutateAsync({
         caseId: activeCaseId,
         previousPreflightBundleId: preflightPreview.preflightBundleId,
-        idempotencyKey: buildClientIdempotencyKey("preflight-regenerate"),
+        idempotencyKey: buildClientIdempotencyKey("preflight-regenerate", [
+          activeCaseId,
+          preflightPreview.preflightBundleId,
+          preflightPreview.preflightRevision.fingerprint,
+        ]),
       });
     } catch (error) {
       toast.error(
@@ -1097,7 +1519,11 @@ export default function WorkRequestPage() {
         selectedSourceIds:
           preflightPreview.preflightRevision.inputs.selectedSourceIds,
         approvalDecision: "approve",
-        idempotencyKey: buildClientIdempotencyKey("preflight-approve"),
+        idempotencyKey: buildClientIdempotencyKey("preflight-approve", [
+          activeCaseId,
+          preflightPreview.preflightBundleId,
+          preflightPreview.preflightRevision.fingerprint,
+        ]),
       });
     } catch (error) {
       toast.error(
@@ -1117,7 +1543,11 @@ export default function WorkRequestPage() {
         caseId: activeCaseId,
         preflightBundleId: preflightPreview.preflightBundleId,
         approvedRevisionHash: preflightPreview.preflightRevision.fingerprint,
-        idempotencyKey: buildClientIdempotencyKey("preflight-launch"),
+        idempotencyKey: buildClientIdempotencyKey("preflight-launch", [
+          activeCaseId,
+          preflightPreview.preflightBundleId,
+          preflightPreview.preflightRevision.fingerprint,
+        ]),
       });
     } catch (error) {
       toast.error(
@@ -1130,25 +1560,33 @@ export default function WorkRequestPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.12),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(16,185,129,0.12),_transparent_28%),linear-gradient(180deg,_#f8fbff_0%,_#f8fafc_50%,_#eef2ff_100%)]">
+    <div className={workRequestPageShellClass}>
       <div className="flex min-h-screen w-full flex-col">
-        <header className="sticky top-0 z-30 border-b border-white/70 bg-white/80 backdrop-blur-xl">
-          <div className="mx-auto flex w-full max-w-none flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex flex-wrap items-center gap-3">
+        <header className={workRequestTopBarClass}>
+          <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex min-w-0 flex-col gap-3">
               <Button
                 variant="ghost"
                 size="sm"
+                className="w-fit"
                 onClick={() => setLocation("/chat")}
               >
                 <ArrowLeft className="mr-1 h-4 w-4" />
                 Chat
               </Button>
-              <div>
-                <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
-                  <ClipboardList className="h-7 w-7 text-sky-600" />
-                  {t("page.title", "Start Work Request")}
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase text-slate-500">
+                  Work OS intake
+                </p>
+                <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50">
+                    <ClipboardList className="h-5 w-5 text-sky-700" />
+                  </span>
+                  <span className="truncate">
+                    {t("page.title", "Start Work Request")}
+                  </span>
                 </h1>
-                <p className="max-w-3xl text-sm text-slate-600">
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
                   {t(
                     "page.subtitle",
                     "Create a tracked work request that Work OS can route, monitor, and follow through to completion."
@@ -1157,13 +1595,18 @@ export default function WorkRequestPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap sm:justify-end">
               <LocaleToggle className="shrink-0" />
-              <Button variant="ghost" onClick={() => setLocation("/dashboard")}>
+              <Button
+                variant="ghost"
+                className="justify-center"
+                onClick={() => setLocation("/dashboard")}
+              >
                 Dashboard
               </Button>
               <Button
                 variant="outline"
+                className="justify-center"
                 onClick={() => setLocation("/help/work-os")}
               >
                 {t("helper.guide", "Open guide")}
@@ -1172,6 +1615,7 @@ export default function WorkRequestPage() {
               {requestIdFromUrl ? (
                 <Button
                   variant="outline"
+                  className="justify-center"
                   onClick={() => setLocation(buildWorkRequestPath())}
                 >
                   New request
@@ -1187,6 +1631,7 @@ export default function WorkRequestPage() {
                   </Button>
                   <Button
                     variant="outline"
+                    className="justify-center"
                     disabled={!activeCaseId}
                     onClick={() =>
                       copyWorkOsLink(
@@ -1205,7 +1650,8 @@ export default function WorkRequestPage() {
         </header>
 
         <main className="flex-1 px-4 py-5 sm:px-6 lg:px-8">
-          <div className="mx-auto flex w-full max-w-none flex-col gap-6">
+          <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6">
+            {showTeamReadinessPanel ? (
             <DashboardCard
               className="overflow-hidden border-sky-200/60 bg-white/90 shadow-[0_20px_70px_rgba(14,165,233,0.08)]"
               bodyClassName="p-5 md:p-6"
@@ -1253,8 +1699,34 @@ export default function WorkRequestPage() {
               <div className="mt-5 max-h-[42vh] overflow-auto pr-1">
                 <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
                   {allTeamsQuery.isLoading ? (
-                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-500 xl:col-span-3">
-                      Loading team readiness...
+                    <div
+                      className="grid gap-3 xl:col-span-3 lg:grid-cols-2 2xl:grid-cols-3"
+                      aria-label="Loading team readiness"
+                      aria-live="polite"
+                    >
+                      {[0, 1, 2].map(index => (
+                        <div key={index} className={cn(workRequestPanelClass, "p-4")}>
+                          <Skeleton className="h-5 w-2/3" />
+                          <Skeleton className="mt-3 h-4 w-1/2" />
+                          <div className="mt-4 grid grid-cols-3 gap-2">
+                            <Skeleton className="h-12 rounded-xl" />
+                            <Skeleton className="h-12 rounded-xl" />
+                            <Skeleton className="h-12 rounded-xl" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : allTeamsQuery.error ? (
+                    <div className="xl:col-span-3">
+                      <InlineErrorState
+                        title="Could not load team readiness"
+                        message={
+                          allTeamsQuery.error.message ||
+                          "Refresh team readiness before routing work to a team."
+                        }
+                        actionLabel="Retry"
+                        onAction={() => void allTeamsQuery.refetch()}
+                      />
                     </div>
                   ) : teamReadinessCards.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-500 xl:col-span-3">
@@ -1442,16 +1914,43 @@ export default function WorkRequestPage() {
                 </div>
               </div>
             </DashboardCard>
+            ) : null}
 
             {createdRequestId ? (
               <DashboardCard
-                title={t("success.title", "Work request created")}
-                description={t(
-                  "success.body",
-                  "Your request is now tracked and ready for routing or follow-up."
-                )}
+                title={
+                  isAutoStarting
+                    ? "Starting automation"
+                    : t("success.title", "Work request created")
+                }
+                description={
+                  isAutoStarting
+                    ? "Work OS is sending this request to the automation team."
+                    : autoStartError
+                      ? autoStartError
+                      : t(
+                          "success.body",
+                          "Your request is now tracked and ready for routing or follow-up."
+                        )
+                }
               >
                 <div className="space-y-2 text-sm">
+                  {isAutoStarting ? (
+                    <div className="flex items-center gap-2 rounded-2xl border border-sky-200 bg-sky-50/80 p-3 text-sky-900">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Creating the request, approving the plan, and launching it now.
+                    </div>
+                  ) : null}
+                  {autoStartError ? (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-3 text-amber-900">
+                      {autoStartError}
+                    </div>
+                  ) : null}
+                  {requesterSafeAutomationStatus ? (
+                    <div className="rounded-2xl border border-sky-200 bg-sky-50/80 p-3 text-sky-900">
+                      {requesterSafeAutomationStatus}
+                    </div>
+                  ) : null}
                   <p>
                     <span className="font-medium">Request:</span>{" "}
                     {createdRequestId}
@@ -1484,13 +1983,16 @@ export default function WorkRequestPage() {
                   ) : null}
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    disabled={!activeCaseId}
-                    onClick={scrollToPreflightReview}
-                  >
-                    Review automation plan
-                  </Button>
+                  {showAutomationDiagnostics ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!activeCaseId}
+                      onClick={scrollToPreflightReview}
+                    >
+                      Open diagnostics
+                    </Button>
+                  ) : null}
                   <Button
                     variant="outline"
                     onClick={() => setLocation("/chat")}
@@ -1522,30 +2024,62 @@ export default function WorkRequestPage() {
               </DashboardCard>
             ) : null}
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(420px,0.8fr)] 2xl:grid-cols-[minmax(0,1.25fr)_minmax(460px,0.75fr)]">
+            <div
+              className={cn(
+                "grid gap-6",
+                showAutomationDiagnostics
+                  ? "xl:grid-cols-[minmax(0,1.2fr)_minmax(420px,0.8fr)] 2xl:grid-cols-[minmax(0,1.25fr)_minmax(460px,0.75fr)]"
+                  : "mx-auto w-full max-w-3xl"
+              )}
+            >
               <DashboardCard
-                title={t("page.title", "Start Work Request")}
-                description={t(
-                  "page.subtitle",
-                  "Create a tracked work request that Work OS can route, monitor, and follow through to completion."
-                )}
+                title="Tell Work OS what you want"
+                description="Write the request, review it here, then press Start. Work OS will send it to the automation team."
               >
                 {requestIdFromUrl ? (
-                  <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50/80 p-4">
+                  <div
+                    className={cn(
+                      "mb-5 rounded-2xl border p-4",
+                      isExistingRequestLocked
+                        ? "border-rose-200 bg-rose-50/80"
+                        : "border-amber-200 bg-amber-50/80"
+                    )}
+                  >
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge
                         variant="outline"
-                        className="border-amber-200 bg-amber-100 text-amber-800"
+                        className={cn(
+                          isExistingRequestLocked
+                            ? "border-rose-200 bg-rose-100 text-rose-800"
+                            : "border-amber-200 bg-amber-100 text-amber-800"
+                        )}
                       >
-                        Editing existing request
+                        {isExistingRequestLocked
+                          ? "Request locked"
+                          : "Editing existing request"}
                       </Badge>
-                      <p className="text-sm text-amber-900">
-                        You are updating an existing request before automation
-                        starts. Use New request to create a fresh one.
+                      <p
+                        className={cn(
+                          "text-sm",
+                          isExistingRequestLocked
+                            ? "text-rose-900"
+                            : "text-amber-900"
+                        )}
+                      >
+                        {isExistingRequestLocked
+                          ? "Automation has already started for this request, so the intake details can no longer be edited here. Use New request to create a fresh one."
+                          : "You are updating an existing request before automation starts. Use New request to create a fresh one."}
                       </p>
                     </div>
                     {isRequestDetailLoading ? (
-                      <p className="mt-2 text-xs text-amber-800">
+                      <p
+                        className={cn(
+                          "mt-2 text-xs",
+                          isExistingRequestLocked
+                            ? "text-rose-800"
+                            : "text-amber-800"
+                        )}
+                      >
                         Loading existing request details...
                       </p>
                     ) : null}
@@ -1554,17 +2088,22 @@ export default function WorkRequestPage() {
                 <form className="space-y-5" onSubmit={handleSubmit}>
                   <div className="space-y-2">
                     <Label htmlFor="work-title">
-                      {t("form.title", "Title")}
+                      {t("form.title", "Title")}{" "}
+                      <span className="font-normal text-slate-500">
+                        (optional)
+                      </span>
                     </Label>
                     <Input
                       id="work-title"
+                      aria-label={t("form.title", "Title")}
+                      className={workRequestFieldClass}
                       value={title}
                       onChange={event => setTitle(event.target.value)}
                       placeholder={t(
                         "form.titlePlaceholder",
                         "Example: Review refund request for Order #1842"
                       )}
-                      required
+                      disabled={isAutoStarting || isExistingRequestLocked}
                     />
                   </div>
 
@@ -1583,7 +2122,7 @@ export default function WorkRequestPage() {
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <Label htmlFor="work-details">
-                        {t("form.details", "Details")}
+                        What do you want done?
                       </Label>
                       <div className="flex flex-wrap items-center gap-2">
                         {detailsSourceFileName ? (
@@ -1598,6 +2137,7 @@ export default function WorkRequestPage() {
                           type="button"
                           variant="outline"
                           size="sm"
+                          disabled={isAutoStarting || isExistingRequestLocked}
                           onClick={() => detailsFileInputRef.current?.click()}
                         >
                           Upload spec.md
@@ -1607,6 +2147,7 @@ export default function WorkRequestPage() {
                             type="button"
                             variant="ghost"
                             size="sm"
+                            disabled={isAutoStarting || isExistingRequestLocked}
                             onClick={clearDetailsFile}
                           >
                             Clear file
@@ -1622,6 +2163,7 @@ export default function WorkRequestPage() {
                             "Upload spec file"
                           )}
                           onChange={handleDetailsFileUpload}
+                          disabled={isAutoStarting || isExistingRequestLocked}
                         />
                       </div>
                     </div>
@@ -1632,28 +2174,113 @@ export default function WorkRequestPage() {
                     </p>
                     <Textarea
                       id="work-details"
+                      aria-label={t("form.details", "Details")}
+                      className={cn(workRequestFieldClass, "min-h-[180px]")}
                       value={details}
                       onChange={event => setDetails(event.target.value)}
                       placeholder={t(
                         "form.detailsPlaceholder",
-                        "Add context, desired outcome, blockers, or attach a spec.md so the team can act faster."
+                        "Example: Create a 24-30 second Songkran video for 2026 using VEO 3.1. Include the tone, target audience, output format, and anything you do not want."
                       )}
                       rows={7}
+                      required
+                      disabled={isAutoStarting || isExistingRequestLocked}
                     />
                     <p className="text-xs text-slate-500">
-                      {t(
-                        "form.detailsHint",
-                        "Upload a spec.md, notes, or task brief to prefill this field automatically and avoid retyping."
-                      )}
+                      Read this once before you start. If it says what you want,
+                      Work OS can begin.
                     </p>
                   </div>
 
+                  {!showAutomationDiagnostics ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="automation-team-select">
+                        Automation team
+                      </Label>
+                      <select
+                        id="automation-team-select"
+                        className={cn(
+                          "h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500",
+                          workRequestFieldClass
+                        )}
+                        value={selectedTeamId}
+                        onChange={event => setSelectedTeamId(event.target.value)}
+                        disabled={
+                          ownedTeamsQuery.isLoading ||
+                          isAutoStarting ||
+                          isExistingRequestLocked
+                        }
+                      >
+                        <option value="">
+                          {ownedTeamsQuery.isLoading
+                            ? "Loading teams..."
+                            : activeOwnedTeams.length > 0
+                              ? `Auto select (${activeOwnedTeams[0].name})`
+                              : "No automation teams available"}
+                        </option>
+                        {activeOwnedTeams.map(team => (
+                          <option key={team.id} value={team.id}>
+                            {team.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-slate-500">
+                        Leave this on Auto for Work OS to choose the first
+                        available team, or choose the team that should receive
+                        this work.
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {!showAutomationDiagnostics && hasLinkedSources ? (
+                    <div
+                      className="rounded-2xl border border-sky-100 bg-sky-50/70 p-3"
+                      data-testid="linked-sources-panel"
+                    >
+                      <div className="flex flex-wrap gap-2">
+                        {linkedConversationIds.map(sourceId => (
+                          <Badge
+                            key={`conversation-${sourceId}`}
+                            variant="outline"
+                            className="border-sky-200 bg-white text-sky-700"
+                          >
+                            Conversation {sourceId}
+                          </Badge>
+                        ))}
+                        {linkedWorkpackRunIds.map(sourceId => (
+                          <Badge
+                            key={`workpack-${sourceId}`}
+                            variant="outline"
+                            className="border-sky-200 bg-white text-sky-700"
+                          >
+                            Workpack {sourceId}
+                          </Badge>
+                        ))}
+                        {linkedRoleRoutineRunIds.map(sourceId => (
+                          <Badge
+                            key={`role-routine-${sourceId}`}
+                            variant="outline"
+                            className="border-sky-200 bg-white text-sky-700"
+                          >
+                            Routine {sourceId}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {showAutomationDiagnostics ? (
+                    <>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label>
                         {t("form.sourceType", "How did this work come in?")}
                       </Label>
-                      <Select value={sourceType} onValueChange={setSourceType}>
+                      <Select
+                        value={sourceType}
+                        onValueChange={setSourceType}
+                        disabled={isAutoStarting || isExistingRequestLocked}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -1673,12 +2300,14 @@ export default function WorkRequestPage() {
                       </Label>
                       <Input
                         id="work-source-ref"
+                        className={workRequestFieldClass}
                         value={sourceRef}
                         onChange={event => setSourceRef(event.target.value)}
                         placeholder={t(
                           "form.sourceRefPlaceholder",
                           "Example: chat thread ID, webhook event ID, ticket number"
                         )}
+                        disabled={isAutoStarting || isExistingRequestLocked}
                       />
                     </div>
 
@@ -1770,6 +2399,7 @@ export default function WorkRequestPage() {
                       </Label>
                       <Input
                         id="work-domain"
+                        className={workRequestFieldClass}
                         value={businessDomain}
                         onChange={event =>
                           setBusinessDomain(event.target.value)
@@ -1778,13 +2408,18 @@ export default function WorkRequestPage() {
                           "form.businessDomainPlaceholder",
                           "Example: support, finance, operations"
                         )}
+                        disabled={isAutoStarting || isExistingRequestLocked}
                       />
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label>{t("form.urgency", "Urgency")}</Label>
-                        <Select value={urgency} onValueChange={setUrgency}>
+                        <Select
+                          value={urgency}
+                          onValueChange={setUrgency}
+                          disabled={isAutoStarting || isExistingRequestLocked}
+                        >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -1802,7 +2437,11 @@ export default function WorkRequestPage() {
                       </div>
                       <div className="space-y-2">
                         <Label>{t("form.riskLevel", "Risk level")}</Label>
-                        <Select value={riskLevel} onValueChange={setRiskLevel}>
+                        <Select
+                          value={riskLevel}
+                          onValueChange={setRiskLevel}
+                          disabled={isAutoStarting || isExistingRequestLocked}
+                        >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
@@ -1839,6 +2478,7 @@ export default function WorkRequestPage() {
                         }
                         className="justify-start"
                         onClick={() => setOwnershipMode("self")}
+                        disabled={isAutoStarting || isExistingRequestLocked}
                       >
                         {t("form.ownershipSelf", "Assign to me")}
                       </Button>
@@ -1849,6 +2489,7 @@ export default function WorkRequestPage() {
                         }
                         className="justify-start"
                         onClick={() => setOwnershipMode("team")}
+                        disabled={isAutoStarting || isExistingRequestLocked}
                       >
                         {t("form.ownershipTeam", "Assign to my team")}
                       </Button>
@@ -1859,6 +2500,7 @@ export default function WorkRequestPage() {
                         }
                         className="justify-start"
                         onClick={() => setOwnershipMode("unassigned")}
+                        disabled={isAutoStarting || isExistingRequestLocked}
                       >
                         {t("form.ownershipUnassigned", "Leave unassigned")}
                       </Button>
@@ -1869,6 +2511,7 @@ export default function WorkRequestPage() {
                         onValueChange={value =>
                           setOwnershipMode(value as OwnershipMode)
                         }
+                        disabled={isAutoStarting || isExistingRequestLocked}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Ownership mode" />
@@ -1889,11 +2532,15 @@ export default function WorkRequestPage() {
                           <Label htmlFor="team-owner-select">Team</Label>
                           <select
                             id="team-owner-select"
-                            className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                            className={cn(
+                              "h-9 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none focus:border-sky-500",
+                              workRequestFieldClass
+                            )}
                             value={selectedTeamId}
                             onChange={event =>
                               setSelectedTeamId(event.target.value)
                             }
+                            disabled={isAutoStarting || isExistingRequestLocked}
                           >
                             <option value="" disabled>
                               {ownedTeamsQuery.isLoading
@@ -1911,7 +2558,8 @@ export default function WorkRequestPage() {
                           </select>
                         </div>
                       ) : (
-                        <Input
+                      <Input
+                          className={workRequestFieldClass}
                           value={ownerReference}
                           onChange={event =>
                             setOwnerReference(event.target.value)
@@ -1956,28 +2604,33 @@ export default function WorkRequestPage() {
                       </div>
                     ) : null}
                   </div>
+                    </>
+                  ) : null}
 
                   <div className="flex flex-wrap items-center gap-3">
                     <Button
                       type="submit"
                       disabled={
-                        createRequestMutation.isPending ||
-                        updateRequestMutation.isPending ||
-                        !title.trim()
+                        isAutoStarting ||
+                        isExistingRequestLocked ||
+                        !details.trim()
                       }
                     >
-                      {createRequestMutation.isPending ||
-                      updateRequestMutation.isPending ? (
+                      {isAutoStarting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           {isEditingExistingRequest
                             ? "Saving..."
-                            : t("form.creating", "Creating...")}
+                            : "Starting..."}
                         </>
                       ) : isEditingExistingRequest ? (
-                        "Update Work Request"
+                        isExistingRequestLocked ? (
+                          "Request locked"
+                        ) : (
+                          "Update Work Request"
+                        )
                       ) : (
-                        t("form.submit", "Create Work Request")
+                        "Start automation"
                       )}
                     </Button>
                     <Button
@@ -1991,6 +2644,7 @@ export default function WorkRequestPage() {
                 </form>
               </DashboardCard>
 
+              {showAutomationDiagnostics ? (
               <div className="space-y-6">
                 {activeCaseId ? (
                   <div ref={preflightReviewRef} data-testid="preflight-review-card">
@@ -2270,17 +2924,27 @@ export default function WorkRequestPage() {
                 >
                   <div className="space-y-3">
                     {recentRequestsQuery.isLoading ? (
-                      <div className="flex items-center gap-2 text-sm text-slate-500">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Loading requests...
-                      </div>
+                      <RecentRequestsLoadingState />
+                    ) : recentRequestsQuery.error ? (
+                      <InlineErrorState
+                        title="Could not load recent requests"
+                        message={
+                          recentRequestsQuery.error.message ||
+                          "Refresh the list or keep drafting this request."
+                        }
+                        actionLabel="Retry"
+                        onAction={() => void recentRequestsQuery.refetch()}
+                      />
                     ) : (recentRequestsQuery.data ?? []).length === 0 ? (
-                      <p className="text-sm text-slate-500">
-                        {t(
-                          "recent.empty",
-                          "You have not created any work requests yet."
-                        )}
-                      </p>
+                      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-5 text-center">
+                        <ClipboardList className="mx-auto h-6 w-6 text-slate-500" />
+                        <p className="mt-2 text-sm font-medium text-slate-900">
+                          {t(
+                            "recent.empty",
+                            "You have not created any work requests yet."
+                          )}
+                        </p>
+                      </div>
                     ) : (
                       (recentRequestsQuery.data ?? []).map(request => (
                         <div
@@ -2371,6 +3035,7 @@ export default function WorkRequestPage() {
                   </div>
                 </DashboardCard>
               </div>
+              ) : null}
             </div>
           </div>
         </main>

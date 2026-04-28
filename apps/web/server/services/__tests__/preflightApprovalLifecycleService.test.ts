@@ -88,6 +88,33 @@ describe("preflightApprovalLifecycleService", () => {
     );
   });
 
+  it("allows stale previews to be superseded by a regenerated preview", () => {
+    const staleBundle = transitionPreflightBundle({
+      bundle: buildBundle(),
+      toState: "stale",
+      event: "request.edited",
+      actorUserId: 42,
+      reasonCode: "revision_mismatch",
+      occurredAt: "2026-04-21T01:00:00.000Z",
+    });
+
+    const supersededBundle = transitionPreflightBundle({
+      bundle: staleBundle,
+      toState: "superseded",
+      event: "preview.superseded",
+      reasonCode: "preview_regenerated",
+      occurredAt: "2026-04-21T01:01:00.000Z",
+    });
+
+    expect(supersededBundle.state).toBe("superseded");
+    expect(supersededBundle.stateTransitions.at(-1)).toEqual(
+      expect.objectContaining({
+        fromState: "stale",
+        toState: "superseded",
+      }),
+    );
+  });
+
   it("supports idempotency matching and conflict detection", () => {
     const bundleWithRecord = appendIdempotencyRecord({
       bundle: buildBundle(),

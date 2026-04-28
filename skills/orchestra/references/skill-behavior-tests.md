@@ -44,6 +44,6 @@ Level 3 live validation:
 
 - representative scenarios are executed by the agent runtime and reviewed
 
-SmartSpecPro currently requires Level 1 in `skills/audit-skills.sh`. Level 2 can
+The skill pack currently requires Level 1 in `skills/audit-skills.sh`. Level 2 can
 be added when routing logic becomes executable outside the prompt.
 

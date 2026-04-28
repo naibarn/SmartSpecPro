@@ -86,6 +86,7 @@ export interface CreateAutomationRunInput {
   policyJson?: Record<string, unknown> | null;
   createdByUserId?: number | null;
   createdByAssistantId?: string | null;
+  reuseExistingCaseRun?: boolean;
 }
 
 export interface RecordAutomationRunStepProgressInput {
@@ -234,6 +235,45 @@ async function loadRunRecord(
   return record ?? null;
 }
 
+async function loadLatestActiveRunForCase(
+  caseId: string,
+  tenantId: string
+): Promise<WorkAutomationRun | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [record] = await db
+    .select()
+    .from(workAutomationRuns)
+    .where(
+      and(
+        eq(workAutomationRuns.caseId, caseId),
+        eq(workAutomationRuns.tenantId, tenantId),
+        or(
+          eq(workAutomationRuns.status, "pending"),
+          eq(workAutomationRuns.status, "running"),
+          eq(workAutomationRuns.status, "waiting_for_input"),
+          eq(workAutomationRuns.status, "waiting_for_approval"),
+          eq(workAutomationRuns.status, "paused"),
+        ),
+      ),
+    )
+    .orderBy(desc(workAutomationRuns.createdAt))
+    .limit(1);
+
+  return record ?? null;
+}
+
+function isActiveAutomationRunUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const record = error as Record<string, unknown>;
+  return (
+    record.code === "23505" &&
+    typeof record.constraint === "string" &&
+    record.constraint === "work_automation_runs_case_active_unique"
+  );
+}
+
 async function loadStepRecord(
   stepId: string,
   tenantId: string
@@ -326,6 +366,7 @@ async function syncCaseAutomationState(input: {
   checkpointId?: string | null;
   disposition?: string | null;
   summary?: string | null;
+  currentState?: (typeof workCases.$inferSelect)["currentState"] | null;
 }): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -334,6 +375,10 @@ async function syncCaseAutomationState(input: {
     automationUpdatedAt: now(),
     updatedAt: now(),
   };
+  const existingCase =
+    input.policyJson !== undefined && input.policyJson !== null
+      ? await loadCaseRecord(input.caseId, input.tenantId)
+      : null;
   if (input.runId !== undefined) payload.automationRunId = input.runId;
   if (input.mode !== undefined && input.mode !== null)
     payload.automationMode = input.mode;
@@ -343,16 +388,36 @@ async function syncCaseAutomationState(input: {
     payload.automationTemplateFamily = input.templateFamily;
   if (input.templateSource !== undefined && input.templateSource !== null)
     payload.automationTemplateSource = input.templateSource;
-  if (input.policyJson !== undefined && input.policyJson !== null)
-    payload.automationPolicyJson = input.policyJson;
+  if (input.policyJson !== undefined && input.policyJson !== null) {
+    const incomingWorkOrchestrator = input.policyJson.workOrchestrator;
+    const incomingHasStoredState =
+      incomingWorkOrchestrator &&
+      typeof incomingWorkOrchestrator === "object" &&
+      Array.isArray(
+        (incomingWorkOrchestrator as Record<string, unknown>).preflightBundles
+      );
+    const existingWorkOrchestrator =
+      existingCase?.automationPolicyJson?.workOrchestrator;
+    payload.automationPolicyJson =
+      existingWorkOrchestrator &&
+      typeof existingWorkOrchestrator === "object" &&
+      !incomingHasStoredState
+        ? {
+            ...input.policyJson,
+            workOrchestrator: existingWorkOrchestrator,
+          }
+        : input.policyJson;
+  }
   if (input.stepId !== undefined) payload.automationStepId = input.stepId;
   if (input.checkpointId !== undefined)
     payload.automationCheckpointId = input.checkpointId;
   if (input.disposition !== undefined)
     payload.automationDisposition = input.disposition;
   if (input.summary !== undefined) payload.automationSummary = input.summary;
+  if (input.currentState !== undefined && input.currentState !== null)
+    payload.currentState = input.currentState;
 
-  await db
+  const [updatedCase] = await db
     .update(workCases)
     .set(payload as any)
     .where(
@@ -362,6 +427,24 @@ async function syncCaseAutomationState(input: {
       )
     )
     .returning();
+
+  if (input.currentState !== undefined && input.currentState !== null) {
+    const requestId = updatedCase?.requestId ?? null;
+    if (requestId) {
+      await db
+        .update(workRequests)
+        .set({
+          currentState: input.currentState,
+          updatedAt: now(),
+        })
+        .where(
+          and(
+            eq(workRequests.id, requestId),
+            eq(workRequests.tenantId, input.tenantId)
+          )
+        );
+    }
+  }
 }
 
 function deriveRunStatusFromStep(
@@ -388,6 +471,30 @@ function deriveRunStatusFromStep(
     case "running":
     default:
       return "running";
+  }
+}
+
+function mapAutomationRunStatusToWorkState(
+  status: WorkAutomationRunStatus
+): (typeof workCases.$inferSelect)["currentState"] {
+  switch (status) {
+    case "completed":
+      return "completed";
+    case "failed":
+      return "failed";
+    case "cancelled":
+      return "cancelled";
+    case "waiting_for_approval":
+      return "waiting_for_approval";
+    case "waiting_for_input":
+      return "waiting_for_input";
+    case "paused":
+      return "blocked";
+    case "running":
+      return "in_progress";
+    case "pending":
+    default:
+      return "planned";
   }
 }
 
@@ -669,6 +776,30 @@ export async function createAutomationRun(
   if (!currentCase) {
     throw new Error(`Work case ${input.caseId} not found`);
   }
+  if (input.reuseExistingCaseRun && currentCase.automationRunId) {
+    const existing = await loadRunRecord(
+      currentCase.automationRunId,
+      input.tenantId,
+    );
+    if (
+      existing &&
+      !["completed", "failed", "cancelled"].includes(existing.status)
+    ) {
+      await syncCaseAutomationState({
+        tenantId: input.tenantId,
+        caseId: currentCase.id,
+        runId: existing.id,
+        mode: existing.currentMode,
+        templateKey: existing.templateKey,
+        templateFamily: existing.templateFamily,
+        templateSource: existing.templateSource,
+        policyJson: existing.policyJson,
+        summary: existing.objective ?? existing.title,
+        currentState: mapAutomationRunStatusToWorkState(existing.status),
+      });
+      return existing;
+    }
+  }
   const requestId = input.requestId ?? currentCase.requestId;
   const request = requestId
     ? await loadRequestRecord(requestId, input.tenantId)
@@ -688,31 +819,57 @@ export async function createAutomationRun(
   const effectiveObjective =
     input.objective ?? currentCase.summary ?? request?.objective ?? null;
 
-  const [run] = await db
-    .insert(workAutomationRuns)
-    .values({
-      id: crypto.randomUUID(),
+  let run: WorkAutomationRun;
+  try {
+    const [inserted] = await db
+      .insert(workAutomationRuns)
+      .values({
+        id: crypto.randomUUID(),
+        tenantId: input.tenantId,
+        requestId: input.requestId ?? currentCase.requestId,
+        caseId: currentCase.id,
+        taskId: input.taskId ?? currentCase.primaryTaskId ?? null,
+        templateKey: resolvedPolicy.templateKey,
+        templateVersion: resolvedPolicy.templateVersion,
+        templateFamily: resolvedPolicy.templateFamily,
+        templateSource: resolvedPolicy.templateSource,
+        title: effectiveTitle,
+        objective: effectiveObjective,
+        currentMode: resolvedPolicy.modeResolution.effectiveMode,
+        status: input.status ?? "pending",
+        createdByUserId: input.createdByUserId ?? null,
+        createdByAssistantId: input.createdByAssistantId ?? null,
+        startedAt: input.status && input.status !== "pending" ? now() : null,
+        policyJson: policySnapshot,
+        resolvedAt: now(),
+        createdAt: now(),
+        updatedAt: now(),
+      } satisfies InsertWorkAutomationRun)
+      .returning();
+    run = inserted;
+  } catch (error) {
+    if (!input.reuseExistingCaseRun || !isActiveAutomationRunUniqueViolation(error)) {
+      throw error;
+    }
+    const existing = await loadLatestActiveRunForCase(
+      currentCase.id,
+      input.tenantId,
+    );
+    if (!existing) throw error;
+    await syncCaseAutomationState({
       tenantId: input.tenantId,
-      requestId: input.requestId ?? currentCase.requestId,
       caseId: currentCase.id,
-      taskId: input.taskId ?? currentCase.primaryTaskId ?? null,
-      templateKey: resolvedPolicy.templateKey,
-      templateVersion: resolvedPolicy.templateVersion,
-      templateFamily: resolvedPolicy.templateFamily,
-      templateSource: resolvedPolicy.templateSource,
-      title: effectiveTitle,
-      objective: effectiveObjective,
-      currentMode: resolvedPolicy.modeResolution.effectiveMode,
-      status: input.status ?? "pending",
-      createdByUserId: input.createdByUserId ?? null,
-      createdByAssistantId: input.createdByAssistantId ?? null,
-      startedAt: input.status && input.status !== "pending" ? now() : null,
-      policyJson: policySnapshot,
-      resolvedAt: now(),
-      createdAt: now(),
-      updatedAt: now(),
-    } satisfies InsertWorkAutomationRun)
-    .returning();
+      runId: existing.id,
+      mode: existing.currentMode,
+      templateKey: existing.templateKey,
+      templateFamily: existing.templateFamily,
+      templateSource: existing.templateSource,
+      policyJson: existing.policyJson,
+      summary: existing.objective ?? existing.title,
+      currentState: mapAutomationRunStatusToWorkState(existing.status),
+    });
+    return existing;
+  }
 
   await syncCaseAutomationState({
     tenantId: input.tenantId,
@@ -724,6 +881,7 @@ export async function createAutomationRun(
     templateSource: run.templateSource,
     policyJson: policySnapshot,
     summary: run.objective ?? run.title,
+    currentState: mapAutomationRunStatusToWorkState(run.status),
   });
 
   await insertRunEvent({
@@ -870,6 +1028,7 @@ export async function recordAutomationRunStepProgress(
     disposition: updatedRun.finalDisposition ?? null,
     summary:
       input.summary ?? step.summary ?? updatedRun.objective ?? updatedRun.title,
+    currentState: mapAutomationRunStatusToWorkState(updatedRun.status),
   });
 
   await insertRunEvent({

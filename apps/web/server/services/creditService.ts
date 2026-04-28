@@ -937,38 +937,13 @@ export async function deductCreditsForModel(params: {
 
   const normalizedCostUsd = Number(params.costUsd ?? 0);
   const hasProviderReportedCost = Number.isFinite(normalizedCostUsd) && normalizedCostUsd > 0;
-  // Provider-reported cost is the source of truth when available.
-  const free = hasProviderReportedCost ? false : await isModelFree(params.model);
 
-  if (free) {
-    // Log a 0-credit transaction for audit trail
-    await db.insert(creditTransactions).values({
-      userId: params.userId,
-      amount: 0,
-      type: "usage",
-      description: params.description ?? `Free model usage: ${params.model}`,
-      metadata: {
-        freeModel: true,
-        model: params.model,
-        modelId: params.model,
-        provider: params.provider,
-        inputTokens: params.inputTokens,
-        outputTokens: params.outputTokens,
-        ...(params.metadata ?? {}),
-      },
-      balanceAfter: (await getCreditBalance(params.userId))?.credits ?? 0,
-      traceId: getTraceId() ?? null,
-      conversationId: params.conversationId ?? null,
-      skillSlug: params.skillSlug ?? null,
-      sourceType: params.sourceType ?? null,
-    });
-    return { creditsUsed: 0, wasFree: true };
-  }
-
-  // Paid model: use dynamic pricing if available
+  // Every user-visible LLM request has a minimum 1-credit charge. Free/zero-price
+  // provider mappings still help ranking and admin labeling, but they do not bypass
+  // per-call platform usage accounting.
   const credits = hasProviderReportedCost
     ? calculateCreditsFromCost(normalizedCostUsd)
-    : await calculateCreditsForLLMDynamic(params.inputTokens, params.outputTokens, params.model);
+    : Math.max(1, await calculateCreditsForLLMDynamic(params.inputTokens, params.outputTokens, params.model));
 
   const result = await deductCredits({
     userId: params.userId,
@@ -997,7 +972,7 @@ export async function deductCreditsForModel(params: {
 export async function calculateCreditsForLLMDynamic(inputTokens: number, outputTokens: number, model: string): Promise<number> {
   const dbPricing = await getModelPricingFromDb(model);
   if (dbPricing) {
-    if (dbPricing.input === 0 && dbPricing.output === 0) return 0;
+    if (dbPricing.input === 0 && dbPricing.output === 0) return 1;
     const costUsd = (inputTokens / 1_000_000) * dbPricing.input + (outputTokens / 1_000_000) * dbPricing.output;
     return Math.max(1, Math.ceil(costUsd * 1000));
   }

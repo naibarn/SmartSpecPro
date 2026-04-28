@@ -16,12 +16,13 @@ vi.mock("./db", () => ({
   getDb: mockGetDb,
 }));
 
-import { seedZenProvider, seedKieAiProvider } from "../drizzle/seed";
+import { seedZenProvider, seedKieAiProvider, seedKRouterProvider } from "../drizzle/seed";
 
 beforeEach(() => {
   vi.clearAllMocks();
   delete process.env.OPENCODE_ZEN_API_KEY;
   delete process.env.KIE_AI_API_KEY;
+  delete process.env.KROUTER_API_KEY;
   process.env.LLM_ENCRYPTION_KEY = "test-encryption-key-for-seeds";
 });
 
@@ -281,5 +282,74 @@ describe("seedKieAiProvider", () => {
         ],
       ]),
     );
+  });
+});
+
+describe("seedKRouterProvider", () => {
+  it("inserts KRouter provider with documented endpoint and default model", async () => {
+    const { valuesMock } = setupKieMocks(11);
+    await seedKRouterProvider();
+
+    expect(valuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerName: "krouter",
+        displayName: "KRouter",
+        baseUrl: "https://api.krouter.net/v1",
+        defaultModel: "gpt-5.5",
+        providerType: "secondary",
+        configJson: expect.objectContaining({
+          trustTier: "routing-gateway",
+          thirdPartyRelay: true,
+          dataPolicyUrl: "https://krouter.net/",
+        }),
+      }),
+    );
+  });
+
+  it("creates KRouter mappings for documented GPT and Codex model paths", async () => {
+    const { valuesMock } = setupKieMocks(11);
+    await seedKRouterProvider();
+
+    const mappingCalls = valuesMock.mock.calls.filter(
+      (call: any[]) => call[0]?.providerId === 11 && call[0]?.providerModelId,
+    );
+
+    expect(mappingCalls).toHaveLength(2);
+    expect(mappingCalls).toEqual(
+      expect.arrayContaining([
+        [
+          expect.objectContaining({
+            modelId: "gpt-5.5",
+            providerModelId: "gpt-5.5",
+            apiStyle: "chat-completions",
+            supportsResponses: true,
+            isFree: false,
+          }),
+        ],
+        [
+          expect.objectContaining({
+            modelId: "gpt-5.3-codex",
+            providerModelId: "cx/gpt-5.3-codex",
+            apiStyle: "chat-completions",
+            supportsCodeExecution: true,
+            isFree: false,
+          }),
+        ],
+      ]),
+    );
+  });
+
+  it("encrypts KRouter API keys before storing them in llm_providers", async () => {
+    process.env.KROUTER_API_KEY = "krouter-secret-key";
+    const { valuesMock } = setupKieMocks(11);
+    await seedKRouterProvider();
+
+    const providerInsert = valuesMock.mock.calls.find(
+      (call: any[]) => call[0]?.providerName === "krouter",
+    )?.[0];
+    expect(providerInsert.apiKeyEncrypted).not.toBe("krouter-secret-key");
+    expect(String(providerInsert.apiKeyEncrypted).split(":")).toHaveLength(3);
+    expect(providerInsert.hasApiKey).toBe(true);
+    expect(providerInsert.isEnabled).toBe(true);
   });
 });

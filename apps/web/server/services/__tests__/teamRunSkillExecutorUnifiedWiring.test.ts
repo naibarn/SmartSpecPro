@@ -14,6 +14,38 @@ vi.mock("../unifiedOrchestrator", () => ({
   executeUnified: (...args: unknown[]) => mockExecuteUnified(...args),
 }));
 
+const mockRegisterAutoTeamMediaArtifact = vi.fn();
+const mockGetAutoTeamStoryboardImageUrls = vi.fn(async () => []);
+const mockGetAutoTeamStoryboardAssetState = vi.fn(async () => ({
+  urls: [],
+  pendingImageTaskCount: 0,
+  failedImageTaskCount: 0,
+  hasPipeline: false,
+}));
+vi.mock("../autoTeamMediaCompletionService", () => ({
+  getAutoTeamStoryboardAssetState: (...args: unknown[]) =>
+    mockGetAutoTeamStoryboardAssetState(...args),
+  getAutoTeamStoryboardImageUrls: (...args: unknown[]) =>
+    mockGetAutoTeamStoryboardImageUrls(...args),
+  registerAutoTeamMediaArtifact: (...args: unknown[]) =>
+    Promise.resolve(mockRegisterAutoTeamMediaArtifact(...args)),
+  resolveAutoTeamClipPlan: (input: {
+    objective: string;
+    durationSeconds?: number;
+    requestedClipCount?: number;
+  }) => {
+    const durationSeconds = input.durationSeconds ?? 10;
+    const targetDurationSeconds = /24-30/.test(input.objective)
+      ? 30
+      : /60/.test(input.objective)
+        ? 60
+        : 60;
+    const clipCount =
+      input.requestedClipCount ?? Math.ceil(targetDurationSeconds / durationSeconds);
+    return { targetDurationSeconds, durationSeconds, clipCount };
+  },
+}));
+
 const mockGetTenantFeatureFlags = vi.fn();
 vi.mock("../tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: (...args: unknown[]) =>
@@ -79,6 +111,30 @@ vi.mock("../agencyBridge", () => ({
 const mockGetTeam = vi.fn();
 vi.mock("../teamService", () => ({
   getTeam: (...args: unknown[]) => mockGetTeam(...args),
+}));
+
+const mockAgencyAuthorizationRows = vi.fn();
+const mockAgencySharedPermissionRows = vi.fn();
+const mockDbSelect = vi.fn(() => {
+  const joinedChain: any = {
+    innerJoin: vi.fn(() => joinedChain),
+    where: vi.fn(() => ({
+      limit: (...args: unknown[]) => mockAgencySharedPermissionRows(...args),
+    })),
+  };
+  return {
+    from: vi.fn(() => ({
+      innerJoin: vi.fn(() => joinedChain),
+      where: vi.fn(() => ({
+        limit: (...args: unknown[]) => mockAgencyAuthorizationRows(...args),
+      })),
+    })),
+  };
+});
+vi.mock("../../db", () => ({
+  getDb: vi.fn(async () => ({
+    select: mockDbSelect,
+  })),
 }));
 
 vi.mock("../skillRegistry", () => ({
@@ -215,6 +271,17 @@ describe("Team Room → Unified Orchestrator Wiring", () => {
     mockGetTeam.mockResolvedValue({
       agencyId: "agency-creative-1",
     });
+    mockAgencyAuthorizationRows.mockResolvedValue([
+      {
+        id: "agency-specialized-1",
+        tenantId: "tenant-1",
+        status: "published",
+        isPublished: true,
+        visibility: "public",
+        createdBy: 42,
+      },
+    ]);
+    mockAgencySharedPermissionRows.mockResolvedValue([]);
     mockAgencyBridgeExecuteRun.mockResolvedValue({
       runId: "agency-run-1",
       status: "completed",
@@ -360,7 +427,7 @@ describe("Team Room → Unified Orchestrator Wiring", () => {
       outputTokens: 100,
       attempts: [],
     });
-    mockExecuteUnified.mockResolvedValueOnce({
+    mockExecuteUnified.mockResolvedValue({
       route: {
         capability: "media.video",
         executorId: "video-generation-executor",
@@ -409,14 +476,15 @@ describe("Team Room → Unified Orchestrator Wiring", () => {
     expect(mockExecuteSkillLlmWithFallback.mock.calls[0][0].skillSlug).toBe(
       "video-prompt-engineer"
     );
-    expect(mockExecuteUnified).toHaveBeenCalledTimes(1);
+    expect(mockExecuteUnified).toHaveBeenCalledTimes(3);
     expect(result.skillId).toBe("video-creator");
-    expect(result.content).toContain("Video Creator finished video generation");
+    expect(result.content).toContain("Video Creator queued 3 video clips");
     expect(result.metadata).toMatchObject({
       routeReason: "auto_team_video:video-prompt-engineer",
       promptSkillId: "video-prompt-engineer",
       selectedSkillId: "video-creator",
     });
+    expect(mockRegisterAutoTeamMediaArtifact).toHaveBeenCalledTimes(3);
   });
 
   it("auto-team plan steps route research work to the article writer instead of the video chain", async () => {
@@ -504,6 +572,1072 @@ describe("Team Room → Unified Orchestrator Wiring", () => {
       route: "agency",
       routeReason: "auto_team_plan_surface:agency-evaluation",
       selectedSkillId: "agency-swarm",
+    });
+  });
+
+  it("auto-team media_studio plan steps chain into image generation", async () => {
+    mockExecuteSkillLlmWithFallback.mockResolvedValueOnce({
+      success: true,
+      content: "Prompt: six coherent storyboard keyframes for Songkran versus January new year",
+      modelId: "gpt-4o-mini",
+      inputTokens: 40,
+      outputTokens: 80,
+      attempts: [],
+    });
+    mockExecuteUnified.mockResolvedValue({
+      route: {
+        capability: "media.image",
+        executorId: "image-generation-executor",
+        reason: "auto_team_media_chain:image_prompt_engineer->image-creator",
+      },
+      result: {
+        type: "media_job" as const,
+        mediaType: "image" as const,
+        jobPayload: { taskId: "storyboard-image-task" },
+      },
+      tokens: { input: 5, output: 0 },
+      costCredits: 4,
+      creditsDeducted: 4,
+      modelUsed: "gpt-4o-image",
+      skillId: "image-creator",
+      nextSpeakerHint: "done",
+      metadata: { traceId: "media-step" },
+      telemetry: {
+        routerVersion: "1.0.0",
+        policyVersion: "1.0.0",
+        executorId: "image-generation-executor",
+        attempts: [],
+        totalDurationMs: 180,
+      },
+    });
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_orchestrator",
+          selectedSkillId: "skill-orchestrator",
+        },
+        objective: "Create storyboard images then videos for a 60 second result",
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "media",
+                  title: "Media Asset Generation",
+                  objective: "Generate storyboard keyframes in Media Studio",
+                  deliverable: "storyboard images",
+                  surface: "media_studio",
+                  selectedCapabilityId: "media_studio",
+                  status: "planned",
+                },
+              ],
+            },
+          },
+        } as any,
+      }),
+    );
+
+    expect(mockExecuteSkillLlmWithFallback.mock.calls[0][0].skillSlug).toBe(
+      "image_prompt_engineer",
+    );
+    expect(mockExecuteUnified).toHaveBeenCalledTimes(1);
+    expect(mockExecuteUnified.mock.calls[0][0].dynamicParams).toMatchObject({
+      numImages: 6,
+    });
+    expect(result.skillId).toBe("image-creator");
+    expect(result.content).toContain("Image Creator finished image generation");
+  });
+
+  it("auto-team video_editor plan steps chain into video generation", async () => {
+    mockExecuteSkillLlmWithFallback.mockResolvedValueOnce({
+      success: true,
+      content: "Prompt: 10 second cinematic clip from the approved storyboard frame",
+      modelId: "gpt-4o-mini",
+      inputTokens: 40,
+      outputTokens: 80,
+      attempts: [],
+    });
+    mockExecuteUnified.mockResolvedValue({
+      route: {
+        capability: "media.video",
+        executorId: "video-generation-executor",
+        reason: "auto_team_media_chain:video-storyboard-to-prompts->video-creator",
+      },
+      result: {
+        type: "media_job" as const,
+        mediaType: "video" as const,
+        jobPayload: { taskId: "storyboard-video-task" },
+      },
+      tokens: { input: 5, output: 0 },
+      costCredits: 8,
+      creditsDeducted: 8,
+      modelUsed: "veo-3-1",
+      skillId: "video-creator",
+      nextSpeakerHint: "done",
+      metadata: { traceId: "video-step" },
+      telemetry: {
+        routerVersion: "1.0.0",
+        policyVersion: "1.0.0",
+        executorId: "video-generation-executor",
+        attempts: [],
+        totalDurationMs: 180,
+      },
+    });
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_orchestrator",
+          selectedSkillId: "skill-orchestrator",
+        },
+        objective: "Create storyboard images then videos for a 60 second result",
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "video",
+                  title: "Video Composition",
+                  objective: "Generate storyboard video clips and compose them",
+                  deliverable: "video clips",
+                  surface: "video_editor",
+                  selectedCapabilityId: "video_editor",
+                  status: "planned",
+                },
+              ],
+            },
+          },
+        } as any,
+      }),
+    );
+
+    expect(mockExecuteSkillLlmWithFallback.mock.calls[0][0].skillSlug).toBe(
+      "video-storyboard-to-prompts",
+    );
+    expect(mockExecuteUnified).toHaveBeenCalledTimes(6);
+    expect(mockExecuteUnified.mock.calls[0][0].dynamicParams).toMatchObject({
+      duration: 10,
+      __autoTeamClipIndex: 1,
+      __autoTeamClipCount: 6,
+    });
+    expect(result.skillId).toBe("video-creator");
+    expect(result.content).toContain("Video Creator queued 6 video clips");
+    expect(mockRegisterAutoTeamMediaArtifact).toHaveBeenCalledTimes(6);
+  });
+
+  it("auto-team video_editor capability ids with an action suffix still chain into video generation", async () => {
+    mockExecuteSkillLlmWithFallback.mockResolvedValueOnce({
+      success: true,
+      content: "Prompt: 10 second cinematic clip from the approved storyboard frame",
+      modelId: "gpt-4o-mini",
+      inputTokens: 40,
+      outputTokens: 80,
+      attempts: [],
+    });
+    mockExecuteUnified.mockResolvedValue({
+      route: {
+        capability: "media.video",
+        executorId: "video-generation-executor",
+        reason: "auto_team_media_chain:video-storyboard-to-prompts->video-creator",
+      },
+      result: {
+        type: "media_job" as const,
+        mediaType: "video" as const,
+        jobPayload: { taskId: "storyboard-video-task" },
+      },
+      tokens: { input: 5, output: 0 },
+      costCredits: 8,
+      creditsDeducted: 8,
+      modelUsed: "veo-3-1",
+      skillId: "video-creator",
+      nextSpeakerHint: "done",
+      metadata: { traceId: "video-step" },
+      telemetry: {
+        routerVersion: "1.0.0",
+        policyVersion: "1.0.0",
+        executorId: "video-generation-executor",
+        attempts: [],
+        totalDurationMs: 180,
+      },
+    });
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_orchestrator",
+          selectedSkillId: "skill-orchestrator",
+        },
+        objective: "Create storyboard images then videos for a 60 second result",
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "final-composition",
+                  title: "Final video composition",
+                  objective: "Generate storyboard video clips and compose them",
+                  deliverable: "final video",
+                  surface: "video_editor",
+                  selectedCapabilityId: "video_editor:compose",
+                  status: "planned",
+                },
+              ],
+            },
+          },
+        } as any,
+      }),
+    );
+
+    expect(mockExecuteSkillLlmWithFallback.mock.calls[0][0].skillSlug).toBe(
+      "video-storyboard-to-prompts",
+    );
+    expect(result.skillId).toBe("video-creator");
+    expect(mockRegisterAutoTeamMediaArtifact).toHaveBeenCalledTimes(6);
+  });
+
+  it("blocks media execution when artifact registration fails", async () => {
+    mockExecuteSkillLlmWithFallback.mockResolvedValueOnce({
+      success: true,
+      content: "Prompt: 10 second storyboard clip",
+      modelId: "gpt-4o-mini",
+      inputTokens: 40,
+      outputTokens: 80,
+      attempts: [],
+    });
+    mockExecuteUnified.mockResolvedValue({
+      route: {
+        capability: "media.video",
+        executorId: "video-generation-executor",
+        reason: "auto_team_media_chain:video-storyboard-to-prompts->video-creator",
+      },
+      result: {
+        type: "media_job" as const,
+        mediaType: "video" as const,
+        jobPayload: { taskId: "storyboard-video-task" },
+      },
+      tokens: { input: 5, output: 0 },
+      costCredits: 8,
+      creditsDeducted: 8,
+      modelUsed: "veo-3-1",
+      skillId: "video-creator",
+      nextSpeakerHint: "done",
+      metadata: { traceId: "video-step" },
+      telemetry: {
+        routerVersion: "1.0.0",
+        policyVersion: "1.0.0",
+        executorId: "video-generation-executor",
+        attempts: [],
+        totalDurationMs: 180,
+      },
+    });
+    mockRegisterAutoTeamMediaArtifact.mockRejectedValueOnce(
+      new Error("database unavailable"),
+    );
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    await expect(
+      executeTeamRunSkillTurn(
+        makeInput({
+          route: {
+            route: "skill",
+            reason: "auto_team_orchestrator",
+            selectedSkillId: "skill-orchestrator",
+          },
+          objective: "Create storyboard images then videos for a 60 second result",
+          dynamicParams: {
+            contextState: {
+              projectState: {
+                steps: [
+                  {
+                    stepKey: "video",
+                    title: "Video Composition",
+                    objective: "Generate storyboard video clips and compose them",
+                    deliverable: "video clips",
+                    surface: "video_editor",
+                    selectedCapabilityId: "video_editor",
+                    status: "planned",
+                  },
+                ],
+              },
+            },
+          } as any,
+        }),
+      ),
+    ).rejects.toThrow(/Auto-team media artifact registration failed/);
+  });
+
+  it("preflights the full multi-clip media budget before queueing video jobs", async () => {
+    const { evaluateAutoTeamMediaChainBudgetPreflight } = await import(
+      "../teamRunSkillExecutor"
+    );
+
+    expect(
+      evaluateAutoTeamMediaChainBudgetPreflight({
+        maxBudgetCredits: 120,
+        totalCreditsUsed: 20,
+        promptCredits: 5,
+        mediaType: "video",
+        clipCount: 3,
+      }),
+    ).toMatchObject({
+      allowed: false,
+      blockedReason: "budget_cap_exceeded",
+    });
+
+    expect(
+      evaluateAutoTeamMediaChainBudgetPreflight({
+        maxBudgetCredits: 500,
+        totalCreditsUsed: 20,
+        promptCredits: 5,
+        mediaType: "video",
+        clipCount: 3,
+      }),
+    ).toMatchObject({
+      allowed: true,
+      blockedReason: null,
+    });
+  });
+
+  it("waits for storyboard image tasks before queueing video clips", async () => {
+    mockGetAutoTeamStoryboardAssetState.mockResolvedValueOnce({
+      urls: [],
+      pendingImageTaskCount: 2,
+      failedImageTaskCount: 0,
+      hasPipeline: true,
+    });
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_orchestrator",
+          selectedSkillId: "skill-orchestrator",
+        },
+        objective: "Create storyboard images then videos for a 60 second result",
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "video",
+                  title: "Video Composition",
+                  objective: "Generate storyboard video clips and compose them",
+                  deliverable: "video clips",
+                  surface: "video_editor",
+                  selectedCapabilityId: "video_editor",
+                  status: "planned",
+                },
+              ],
+            },
+          },
+        } as any,
+      }),
+    );
+
+    expect(result.metadata).toMatchObject({
+      mediaPipelineAwaitingAssets: true,
+      runtimeDispatchOutcome: "awaiting_async_assets",
+    });
+    expect(mockExecuteUnified).not.toHaveBeenCalled();
+    expect(mockRegisterAutoTeamMediaArtifact).not.toHaveBeenCalled();
+  });
+
+  it("auto-team plan steps honor an explicit skill capability before surface defaults", async () => {
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_orchestrator",
+          selectedSkillId: "skill-orchestrator",
+        },
+        objective: "Create a specialized video composition package",
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "custom-video-step",
+                  title: "Custom video composition",
+                  objective: "Use the selected specialist skill for composition",
+                  deliverable: "video composition spec",
+                  surface: "video_editor",
+                  selectedCapabilityId: "skill:custom-video-specialist",
+                  status: "planned",
+                },
+              ],
+            },
+          },
+        } as any,
+      }),
+    );
+
+    expect(mockRouteRoomIntent).not.toHaveBeenCalled();
+    expect(mockClassifyIntent).not.toHaveBeenCalled();
+    expect(mockExecuteSkillLlmWithFallback.mock.calls[0][0].skillSlug).toBe(
+      "custom-video-specialist",
+    );
+    expect(mockExecuteUnified).not.toHaveBeenCalled();
+    expect(result.skillId).toBe("custom-video-specialist");
+    expect(result.metadata).toMatchObject({
+      route: "skill",
+      routeReason: "auto_team_plan_step:custom-video-step",
+      selectedCapabilityId: "skill:custom-video-specialist",
+    });
+  });
+
+  it("auto-team agency capability ids route to the selected agency runtime", async () => {
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_orchestrator",
+          selectedSkillId: "skill-orchestrator",
+        },
+        objective: "Coordinate a multi-agent evaluation",
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "selected-agency-step",
+                  title: "Selected agency coordination",
+                  objective: "Use the selected approved agency",
+                  deliverable: "agency result",
+                  surface: "agency",
+                  selectedCapabilityId: "agency:agency-specialized-1",
+                  status: "planned",
+                },
+              ],
+            },
+          },
+        } as any,
+      }),
+    );
+
+    expect(mockAgencyBridgeExecuteRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agencyId: "agency-specialized-1",
+      }),
+    );
+    expect(result.metadata).toMatchObject({
+      route: "agency",
+      routeReason: "auto_team_plan_surface:selected-agency-step",
+      selectedCapabilityId: "agency:agency-specialized-1",
+      agencyId: "agency-specialized-1",
+    });
+  });
+
+  it("authorizes the team's default agency before execution", async () => {
+    mockAgencyAuthorizationRows.mockResolvedValueOnce([]);
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    await expect(
+      executeTeamRunSkillTurn(
+        makeInput({
+          route: {
+            route: "agency",
+            reason: "team_default_agency",
+          },
+          objective: "Coordinate through the team's default agency",
+        }),
+      ),
+    ).rejects.toThrow("not available for this tenant");
+    expect(mockAgencyBridgeExecuteRun).not.toHaveBeenCalled();
+  });
+
+  it("blocks selected agency capability ids that are not authorized for the tenant", async () => {
+    mockAgencyAuthorizationRows.mockResolvedValueOnce([]);
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    await expect(
+      executeTeamRunSkillTurn(
+        makeInput({
+          route: {
+            route: "skill",
+            reason: "auto_team_orchestrator",
+            selectedSkillId: "skill-orchestrator",
+          },
+          objective: "Coordinate a multi-agent evaluation",
+          dynamicParams: {
+            contextState: {
+              projectState: {
+                steps: [
+                  {
+                    stepKey: "selected-agency-step",
+                    title: "Selected agency coordination",
+                    objective: "Use the selected approved agency",
+                    deliverable: "agency result",
+                    surface: "agency",
+                    selectedCapabilityId: "agency:agency-denied-1",
+                    status: "planned",
+                  },
+                ],
+              },
+            },
+          } as any,
+        }),
+      ),
+    ).rejects.toThrow("not available for this tenant");
+    expect(mockAgencyBridgeExecuteRun).not.toHaveBeenCalled();
+  });
+
+  it("blocks agency capability ids that are not published for automation", async () => {
+    mockAgencyAuthorizationRows.mockResolvedValueOnce([
+      {
+        id: "agency-draft-1",
+        tenantId: "tenant-1",
+        status: "draft",
+        isPublished: false,
+        visibility: "public",
+        createdBy: 42,
+      },
+    ]);
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    await expect(
+      executeTeamRunSkillTurn(
+        makeInput({
+          route: {
+            route: "skill",
+            reason: "auto_team_orchestrator",
+            selectedSkillId: "skill-orchestrator",
+          },
+          objective: "Coordinate a multi-agent evaluation",
+          dynamicParams: {
+            contextState: {
+              projectState: {
+                steps: [
+                  {
+                    stepKey: "draft-agency-step",
+                    title: "Draft agency coordination",
+                    objective: "Use the selected agency",
+                    deliverable: "agency result",
+                    surface: "agency",
+                    selectedCapabilityId: "agency:agency-draft-1",
+                    status: "planned",
+                  },
+                ],
+              },
+            },
+          } as any,
+        }),
+      ),
+    ).rejects.toThrow("not published for automation");
+    expect(mockAgencyBridgeExecuteRun).not.toHaveBeenCalled();
+  });
+
+  it("allows the team's own active backing agency without marketplace publishing", async () => {
+    mockGetTeam.mockResolvedValueOnce({
+      agencyId: "agency-team-active-1",
+    });
+    mockAgencyAuthorizationRows.mockResolvedValueOnce([
+      {
+        id: "agency-team-active-1",
+        tenantId: "tenant-1",
+        status: "active",
+        isPublished: false,
+        visibility: "private",
+        createdBy: 42,
+      },
+    ]);
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_orchestrator",
+          selectedSkillId: "skill-orchestrator",
+        },
+        objective: "Coordinate a multi-agent video workflow",
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "team-agency-step",
+                  title: "Team agency coordination",
+                  objective: "Use the team's backing agency",
+                  deliverable: "agency result",
+                  surface: "agency",
+                  selectedCapabilityId: "agency:agency-team-active-1",
+                  status: "planned",
+                },
+              ],
+            },
+          },
+        } as any,
+      }),
+    );
+
+    expect(result.metadata.route).toBe("agency");
+    expect(mockAgencyBridgeExecuteRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agencyId: "agency-team-active-1",
+      }),
+    );
+  });
+
+  it("falls back to skill execution when the agency runtime is temporarily unavailable", async () => {
+    mockGetTeam.mockResolvedValueOnce({
+      agencyId: "agency-team-active-1",
+    });
+    mockAgencyAuthorizationRows.mockResolvedValueOnce([
+      {
+        id: "agency-team-active-1",
+        tenantId: "tenant-1",
+        status: "active",
+        isPublished: false,
+        visibility: "private",
+        createdBy: 42,
+      },
+    ]);
+    mockAgencyBridgeExecuteRun.mockRejectedValueOnce(
+      new Error("Agency service temporarily unavailable"),
+    );
+    mockExecuteSkillLlmWithFallback.mockResolvedValueOnce({
+      success: true,
+      content: "fallback skill completed the work",
+      modelId: "gpt-4o-mini",
+      inputTokens: 10,
+      outputTokens: 20,
+      attempts: [],
+    });
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_orchestrator",
+          selectedSkillId: "skill-orchestrator",
+        },
+        objective: "Coordinate a multi-agent video workflow",
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "team-agency-step",
+                  title: "Team agency coordination",
+                  objective: "Use the team's backing agency",
+                  deliverable: "agency result",
+                  surface: "agency",
+                  selectedCapabilityId: "agency:agency-team-active-1",
+                  status: "planned",
+                },
+              ],
+            },
+          },
+        } as any,
+      }),
+    );
+
+    expect(result.content).toBe("fallback skill completed the work");
+    expect(result.metadata.route).toBe("skill");
+    expect(result.metadata.routeReason).toContain("agency_unavailable_fallback");
+  });
+
+  it("blocks agency capability ids that are pending publish approval", async () => {
+    mockAgencyAuthorizationRows.mockResolvedValueOnce([
+      {
+        id: "agency-pending-1",
+        tenantId: "tenant-1",
+        status: "published",
+        isPublished: true,
+        visibility: "pending_approval",
+        createdBy: 42,
+      },
+    ]);
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    await expect(
+      executeTeamRunSkillTurn(
+        makeInput({
+          route: {
+            route: "skill",
+            reason: "auto_team_orchestrator",
+            selectedSkillId: "skill-orchestrator",
+          },
+          objective: "Coordinate a multi-agent evaluation",
+          dynamicParams: {
+            contextState: {
+              projectState: {
+                steps: [
+                  {
+                    stepKey: "pending-agency-step",
+                    title: "Pending agency coordination",
+                    objective: "Use the selected agency",
+                    deliverable: "agency result",
+                    surface: "agency",
+                    selectedCapabilityId: "agency:agency-pending-1",
+                    status: "planned",
+                  },
+                ],
+              },
+            },
+          } as any,
+        }),
+      ),
+    ).rejects.toThrow("not runnable for automation");
+    expect(mockAgencyBridgeExecuteRun).not.toHaveBeenCalled();
+  });
+
+  it("blocks shared agency capability ids when the requester is not in an allowed group", async () => {
+    mockAgencyAuthorizationRows.mockResolvedValueOnce([
+      {
+        id: "agency-shared-1",
+        tenantId: "tenant-1",
+        status: "published",
+        isPublished: true,
+        visibility: "shared",
+        createdBy: 99,
+      },
+    ]);
+    mockAgencySharedPermissionRows.mockResolvedValueOnce([]);
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    await expect(
+      executeTeamRunSkillTurn(
+        makeInput({
+          route: {
+            route: "skill",
+            reason: "auto_team_orchestrator",
+            selectedSkillId: "skill-orchestrator",
+          },
+          objective: "Coordinate a shared agency evaluation",
+          dynamicParams: {
+            contextState: {
+              projectState: {
+                steps: [
+                  {
+                    stepKey: "shared-agency-step",
+                    title: "Shared agency coordination",
+                    objective: "Use shared agency",
+                    deliverable: "agency result",
+                    surface: "agency",
+                    selectedCapabilityId: "agency:agency-shared-1",
+                    status: "planned",
+                  },
+                ],
+              },
+            },
+          } as any,
+        }),
+      ),
+    ).rejects.toThrow("shared but not available");
+    expect(mockAgencyBridgeExecuteRun).not.toHaveBeenCalled();
+  });
+
+  it("allows shared agency capability ids for active permission group members", async () => {
+    mockAgencyAuthorizationRows.mockResolvedValueOnce([
+      {
+        id: "agency-shared-1",
+        tenantId: "tenant-1",
+        status: "published",
+        isPublished: true,
+        visibility: "shared",
+        createdBy: 99,
+      },
+    ]);
+    mockAgencySharedPermissionRows.mockResolvedValueOnce([{ id: 1 }]);
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_orchestrator",
+          selectedSkillId: "skill-orchestrator",
+        },
+        objective: "Coordinate a shared agency evaluation",
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "shared-agency-step",
+                  title: "Shared agency coordination",
+                  objective: "Use shared agency",
+                  deliverable: "agency result",
+                  surface: "agency",
+                  selectedCapabilityId: "agency:agency-shared-1",
+                  status: "planned",
+                },
+              ],
+            },
+          },
+        } as any,
+      }),
+    );
+
+    expect(mockAgencyBridgeExecuteRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agencyId: "agency-shared-1",
+      }),
+    );
+    expect(result.metadata).toMatchObject({
+      route: "agency",
+      agencyId: "agency-shared-1",
+    });
+  });
+
+  it("auto-team skill_studio gaps create a private skill draft instead of falling back to generic execution", async () => {
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_orchestrator",
+          selectedSkillId: "skill-orchestrator",
+        },
+        objective: "Prepare a custom compliance checker for future runs",
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "skill-gap",
+                  title: "Create missing checker",
+                  objective: "Create a reusable checker skill for this domain",
+                  deliverable: "private skill proposal",
+                  surface: "skill_studio",
+                  selectedCapabilityId:
+                    "skill_studio:create_private_or_pending_review",
+                  status: "planned",
+                },
+              ],
+            },
+          },
+        } as any,
+      }),
+    );
+
+    expect(mockRouteRoomIntent).not.toHaveBeenCalled();
+    expect(mockClassifyIntent).not.toHaveBeenCalled();
+    expect(mockExecuteSkillLlmWithFallback.mock.calls[0][0].skillSlug).toBe(
+      "intelligence-skill-creator",
+    );
+    expect(result.skillId).toBe("intelligence-skill-creator");
+    expect(result.metadata).toMatchObject({
+      route: "skill",
+      routeReason: "auto_team_capability_gap:skill-gap:intelligence-skill-creator",
+      selectedCapabilityId: "skill_studio:create_private_or_pending_review",
+      capabilityGapResolution: {
+        action: "create_private_skill_draft",
+        safetyMode: "private_or_pending_review_only",
+        publishAllowed: false,
+        autoApplyAllowed: false,
+        skillStudioPolicy: {
+          publishAllowed: false,
+          autoApplyAllowed: false,
+          widenVisibilityAllowed: false,
+          externalSideEffectsAllowed: false,
+        },
+      },
+      capabilityGapPreflight: {
+        checked: true,
+        draftOnly: true,
+        publishAllowed: false,
+        autoApplyAllowed: false,
+        externalSideEffectsAllowed: false,
+      },
+    });
+  });
+
+  it("blocks capability gaps when no approved skill creator is available", async () => {
+    mockGetSkillByIdAsync
+      .mockImplementationOnce(async () => null)
+      .mockImplementationOnce(async () => null);
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    await expect(
+      executeTeamRunSkillTurn(
+        makeInput({
+          route: {
+            route: "skill",
+            reason: "auto_team_orchestrator",
+            selectedSkillId: "skill-orchestrator",
+          },
+          objective: "Prepare a custom compliance checker for future runs",
+          dynamicParams: {
+            contextState: {
+              projectState: {
+                steps: [
+                  {
+                    stepKey: "skill-gap",
+                    title: "Create missing checker",
+                    objective: "Create a reusable checker skill for this domain",
+                    deliverable: "private skill proposal",
+                    surface: "skill_studio",
+                    selectedCapabilityId:
+                      "skill_studio:create_private_or_pending_review",
+                    status: "planned",
+                  },
+                ],
+              },
+            },
+          } as any,
+        }),
+      ),
+    ).rejects.toThrow(/No approved skill creator is available/);
+
+    expect(mockRouteRoomIntent).not.toHaveBeenCalled();
+    expect(mockClassifyIntent).not.toHaveBeenCalled();
+    expect(mockExecuteSkillLlmWithFallback).not.toHaveBeenCalled();
+  });
+
+  it("blocks unsafe skill creator outputs that try to publish or auto-apply", async () => {
+    mockExecuteSkillLlmWithFallback.mockResolvedValueOnce({
+      success: true,
+      content:
+        '{"name":"unsafe checker","visibility":"public","publishAllowed":true,"autoApplyAllowed":true}',
+      modelId: "gpt-4o-mini",
+      inputTokens: 50,
+      outputTokens: 100,
+      attempts: [],
+    });
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_orchestrator",
+          selectedSkillId: "skill-orchestrator",
+        },
+        objective: "Prepare a custom compliance checker for future runs",
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "skill-gap",
+                  title: "Create missing checker",
+                  objective: "Create a reusable checker skill for this domain",
+                  deliverable: "private skill proposal",
+                  surface: "skill_studio",
+                  selectedCapabilityId:
+                    "skill_studio:create_private_or_pending_review",
+                  status: "planned",
+                },
+              ],
+            },
+          },
+        } as any,
+      }),
+    );
+
+    expect(result.content).toContain("blocked by the Skill Studio safety policy");
+    expect(result.metadata).toMatchObject({
+      capabilityGapPolicyEnforced: true,
+      capabilityGapPolicyViolation: {
+        blocked: true,
+      },
+      runtimeDispatchOutcome: "blocked_by_skill_studio_policy",
+    });
+  });
+
+  it("blocks natural-language skill creator outputs that ask to publish immediately", async () => {
+    mockExecuteSkillLlmWithFallback.mockResolvedValueOnce({
+      success: true,
+      content:
+        "The skill draft is ready. Publish this now and install it now so future runs use it automatically.",
+      modelId: "gpt-4o-mini",
+      inputTokens: 50,
+      outputTokens: 100,
+      attempts: [],
+    });
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_orchestrator",
+          selectedSkillId: "skill-orchestrator",
+        },
+        objective: "Prepare a custom compliance checker for future runs",
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "skill-gap",
+                  title: "Create missing checker",
+                  objective: "Create a reusable checker skill for this domain",
+                  deliverable: "private skill proposal",
+                  surface: "skill_studio",
+                  selectedCapabilityId:
+                    "skill_studio:create_private_or_pending_review",
+                  status: "planned",
+                },
+              ],
+            },
+          },
+        } as any,
+      }),
+    );
+
+    expect(result.content).toContain("blocked by the Skill Studio safety policy");
+    expect(result.metadata).toMatchObject({
+      capabilityGapPolicyViolation: {
+        blocked: true,
+      },
+    });
+  });
+
+  it("auto-team unsupported workflow capabilities route to a private skill draft gap instead of heuristic execution", async () => {
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_orchestrator",
+          selectedSkillId: "skill-orchestrator",
+        },
+        objective: "Run a specialized workflow that does not have an adapter yet",
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "workflow-gap",
+                  title: "Workflow execution",
+                  objective: "Execute workflow template workflow-1",
+                  deliverable: "workflow result",
+                  surface: "workflow",
+                  selectedCapabilityId: "workflow:workflow-1",
+                  status: "planned",
+                },
+              ],
+            },
+          },
+        } as any,
+      }),
+    );
+
+    expect(mockRouteRoomIntent).not.toHaveBeenCalled();
+    expect(mockClassifyIntent).not.toHaveBeenCalled();
+    expect(result.skillId).toBe("intelligence-skill-creator");
+    expect(result.metadata).toMatchObject({
+      route: "skill",
+      routeReason: "auto_team_capability_gap:workflow-gap:intelligence-skill-creator",
+      selectedCapabilityId: "workflow:workflow-1",
+      capabilityGapResolution: {
+        action: "create_private_skill_draft",
+        parsedCapabilityKind: "workflow",
+      },
     });
   });
 
@@ -609,6 +1743,7 @@ describe("Team Room → Unified Orchestrator Wiring", () => {
       selectedSkillId: "agency-swarm",
       agencyId: "agency-creative-1",
       agencyRunId: "agency-run-1",
+      agencyStatus: "completed",
     });
   });
 });

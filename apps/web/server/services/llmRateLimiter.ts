@@ -76,6 +76,14 @@ export const PROVIDER_LIMITS: Record<string, ProviderLimitConfig> = {
     freeModelMultiplier: 1.5,
     timeout: 30000,
   },
+  'krouter': {
+    maxConcurrent: 10,
+    minTime: 50,
+    reservoir: 100,
+    reservoirRefreshInterval: 60000,
+    freeModelMultiplier: 1.5,
+    timeout: 30000,
+  },
   'anthropic': {
     maxConcurrent: 5,
     minTime: 100,

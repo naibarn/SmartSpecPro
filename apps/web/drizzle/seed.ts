@@ -9,8 +9,10 @@ import { eq } from "drizzle-orm";
 import { encrypt } from "../server/services/crypto";
 import {
   buildKieLlmAvailableModels,
+  buildKRouterLlmAvailableModels,
   canonicalModelIdForCatalogModel,
   KIE_PROVIDER_NAME,
+  KROUTER_PROVIDER_NAME,
 } from "../server/services/llmProviderCatalog";
 
 interface ModelMapping {
@@ -148,6 +150,143 @@ export async function seedKieAiProvider(): Promise<void> {
   }
 
   console.log(`[Seed] Kie AI: ${kieAvailableModels.length} models`);
+}
+
+export async function seedKRouterProvider(): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Seed] Database not available");
+    return;
+  }
+
+  const apiKey = process.env.KROUTER_API_KEY || "";
+  const hasKey = !!apiKey;
+  const encryptedApiKey = encryptSeedApiKey(apiKey);
+  const krouterAvailableModels = buildKRouterLlmAvailableModels();
+
+  await db
+    .insert(llmProviders)
+    .values({
+      providerName: KROUTER_PROVIDER_NAME,
+      displayName: "KRouter",
+      description: "Third-party AI relay with a unified OpenAI-compatible endpoint for routed GPT and Codex models",
+      baseUrl: "https://api.krouter.net/v1",
+      apiKeyEncrypted: encryptedApiKey,
+      hasApiKey: hasKey,
+      isEnabled: hasKey,
+      sortOrder: 16,
+      providerType: "secondary",
+      healthStatus: "healthy",
+      failureCount: 0,
+      successCount: 0,
+      configJson: {
+        trustTier: "routing-gateway",
+        thirdPartyRelay: true,
+        dataPolicyUrl: "https://krouter.net/",
+        dataPolicyDisclosure: "Requests are routed through a third-party model gateway before reaching upstream model providers.",
+        allow_fallbacks: true,
+        route: "fallback",
+      },
+      availableModels: krouterAvailableModels,
+      defaultModel: "gpt-5.5",
+    })
+    .onConflictDoNothing({ target: llmProviders.providerName });
+
+  await db
+    .update(llmProviders)
+    .set({
+      displayName: "KRouter",
+      description: "Third-party AI relay with a unified OpenAI-compatible endpoint for routed GPT and Codex models",
+      baseUrl: "https://api.krouter.net/v1",
+      apiKeyEncrypted: encryptedApiKey,
+      hasApiKey: hasKey,
+      isEnabled: hasKey,
+      configJson: {
+        trustTier: "routing-gateway",
+        thirdPartyRelay: true,
+        dataPolicyUrl: "https://krouter.net/",
+        dataPolicyDisclosure: "Requests are routed through a third-party model gateway before reaching upstream model providers.",
+        allow_fallbacks: true,
+        route: "fallback",
+      },
+      availableModels: krouterAvailableModels,
+      defaultModel: "gpt-5.5",
+    })
+    .where(eq(llmProviders.providerName, KROUTER_PROVIDER_NAME));
+
+  const [krouterProvider] = await db
+    .select({ id: llmProviders.id })
+    .from(llmProviders)
+    .where(eq(llmProviders.providerName, KROUTER_PROVIDER_NAME))
+    .limit(1);
+
+  if (!krouterProvider) {
+    console.warn("[Seed] Failed to find KRouter provider after insert");
+    return;
+  }
+
+  for (const [index, model] of krouterAvailableModels.entries()) {
+    const pricingInput = model.pricing?.input ?? 0;
+    const pricingOutput = model.pricing?.output ?? 0;
+
+    await db
+      .insert(modelProviderMap)
+      .values({
+        modelId: canonicalModelIdForCatalogModel(KROUTER_PROVIDER_NAME, model.id),
+        providerId: krouterProvider.id,
+        modelName: model.name,
+        providerModelId: model.id,
+        pricingInput: String(pricingInput),
+        pricingOutput: String(pricingOutput),
+        isFree: false,
+        contextLength: model.contextLength ?? null,
+        isEnabled: true,
+        priority: index,
+        apiStyle: model.apiStyle ?? "responses",
+        supportsVision: !!model.supportsVision,
+        supportsThinking: !!model.supportsThinking,
+        supportsWebSearch: !!model.supportsWebSearch,
+        supportsFunctionTools: !!model.supportsFunctionTools,
+        supportsStructuredOutputs: !!model.supportsStructuredOutputs,
+        supportsJsonMode: !!model.supportsJsonMode,
+        supportsStrictToolSchema: !!model.supportsStrictToolSchema,
+        supportsCodeExecution: !!model.supportsCodeExecution,
+        supportsComputerUse: !!model.supportsComputerUse,
+        supportsBackground: !!model.supportsBackground,
+        supportsResponses: !!model.supportsResponses,
+      })
+      .onConflictDoUpdate({
+        target: [modelProviderMap.modelId, modelProviderMap.providerId],
+        set: {
+          modelName: model.name,
+          providerModelId: model.id,
+          pricingInput: String(pricingInput),
+          pricingOutput: String(pricingOutput),
+          isFree: false,
+          contextLength: model.contextLength ?? null,
+          isEnabled: true,
+          priority: index,
+          apiStyle: model.apiStyle ?? "responses",
+          supportsVision: !!model.supportsVision,
+          supportsThinking: !!model.supportsThinking,
+          supportsWebSearch: !!model.supportsWebSearch,
+          supportsFunctionTools: !!model.supportsFunctionTools,
+          supportsStructuredOutputs: !!model.supportsStructuredOutputs,
+          supportsJsonMode: !!model.supportsJsonMode,
+          supportsStrictToolSchema: !!model.supportsStrictToolSchema,
+          supportsCodeExecution: !!model.supportsCodeExecution,
+          supportsComputerUse: !!model.supportsComputerUse,
+          supportsBackground: !!model.supportsBackground,
+          supportsResponses: !!model.supportsResponses,
+        },
+      });
+  }
+
+  if (!hasKey) {
+    console.warn("[Seed] KROUTER_API_KEY not set — provider seeded but disabled");
+  }
+
+  console.log(`[Seed] KRouter: ${krouterAvailableModels.length} models`);
 }
 
 export async function seedZenProvider(): Promise<void> {

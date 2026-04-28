@@ -31,7 +31,7 @@ Worktrees are optional for:
    naming convention and perform edits there.
 5. Never run destructive git commands to make a worktree clean.
 
-## SmartSpecPro Default
+## Repository Default
 
 For repo-local skill-system updates, staying in the current worktree is allowed
 when edits are confined to `skills/`, `.claude/agents/`, and `orchestra/`.

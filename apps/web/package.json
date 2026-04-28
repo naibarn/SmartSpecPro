@@ -38,6 +38,7 @@
     "backfill:credit-sources": "tsx scripts/backfill-credit-transaction-sources.ts",
     "backfill:library-knowledge": "node --import tsx scripts/backfill-library-knowledge.ts",
     "verify:library-knowledge": "node --import tsx scripts/verify-library-knowledge-migrations.ts",
+    "verify:auto-team-work-request": "tsx scripts/verify-auto-team-work-request-readiness.ts",
     "repair:library-knowledge": "node --import tsx scripts/verify-library-knowledge-migrations.ts --repair-schema --repair-ledger",
     "repair:library-knowledge-schema": "node --import tsx scripts/verify-library-knowledge-migrations.ts --repair-schema",
     "repair:library-knowledge-ledger": "node --import tsx scripts/verify-library-knowledge-migrations.ts --repair-ledger",

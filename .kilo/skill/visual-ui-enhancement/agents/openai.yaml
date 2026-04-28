@@ -1,0 +1,15 @@
+interface:
+  display_name: "Visual UI Enhancement"
+  short_description: "Premium Tailwind CSS + shadcn/ui review, redesign, and refactor workflow."
+  brand_color: "#111827"
+  default_prompt: |
+    $visual-ui-enhancement
+
+    Review and improve the selected UI using Tailwind CSS + shadcn/ui.
+    Make it premium, modern, responsive, accessible, dark-mode friendly, and production-ready.
+
+policy:
+  allow_implicit_invocation: true
+
+dependencies:
+  tools: []

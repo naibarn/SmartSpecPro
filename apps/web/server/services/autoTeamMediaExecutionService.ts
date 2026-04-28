@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../db";
 import { mediaGenerationService, type MediaTask } from "./mediaGenerationService";
 import { buildAutoTeamBudgetKey, assessAutoTeamBudget, type AutoTeamBudgetDecision } from "./autoTeamBudgetService";
@@ -36,6 +36,18 @@ export interface AutoTeamMediaExecutionResult {
   budgetDecision: AutoTeamBudgetDecision;
   task: MediaTask | null;
   safetyStatus: "safe" | "needs_review" | "blocked" | "redacted" | "unknown";
+}
+
+export class AutoTeamMediaSubmitError extends Error {
+  readonly reasonCode: string;
+  readonly retryable: boolean;
+
+  constructor(message: string, reasonCode = "provider_submit_failed", retryable = true) {
+    super(message);
+    this.name = "AutoTeamMediaSubmitError";
+    this.reasonCode = reasonCode;
+    this.retryable = retryable;
+  }
 }
 
 function now(): Date {
@@ -147,19 +159,50 @@ export async function submitMediaJob(
     return existing;
   }
 
-  const task = input.mediaType === "image"
-    ? await mediaGenerationService.generateImageAsync(buildMediaTaskRequest(input, providerDecision) as any, input.userToken)
-    : await mediaGenerationService.generateVideoAsync(buildMediaTaskRequest(input, providerDecision) as any, input.userToken);
+  let reserved: AutoTeamMediaJobRefRow | null = null;
+  if (existing && ["failed", "cancelled", "expired"].includes(existing.providerStatus)) {
+    const [reclaimed] = await db
+      .update(autoTeamMediaJobRefs)
+      .set({
+        providerTaskId: null,
+        providerStatus: "queued",
+        resultArtifactRefsJson: [],
+        lastPolledAt: now(),
+        completedAt: null,
+        failedAt: null,
+        errorCode: null,
+        errorMessage: null,
+        metadataJson: {
+          routeClass: input.routeDecision.routeClass,
+          reservationOnly: true,
+          reclaimedTerminalJob: true,
+          previousProviderStatus: existing.providerStatus,
+          budgetDecision,
+          providerDecision,
+        },
+        updatedAt: now(),
+      })
+      .where(
+        and(
+          eq(autoTeamMediaJobRefs.id, existing.id),
+          inArray(autoTeamMediaJobRefs.providerStatus, ["failed", "cancelled", "expired"]),
+        ),
+      )
+      .returning();
+    reserved = reclaimed ?? null;
+    if (!reserved) {
+      const claimed = await lookupExistingJob(input.tenantId, idempotencyKey);
+      if (claimed) return claimed;
+      throw new AutoTeamMediaSubmitError(
+        "media_job_reclaim_conflict",
+        "media_job_reclaim_conflict",
+        true,
+      );
+    }
+  }
 
-  const status = task.status;
-  const providerStatus = status === "completed" ? "succeeded" : status === "failed" ? "failed" : status === "pending" || status === "processing" ? "queued" : "unknown";
-  const safety = validateAutoTeamMediaOutputSafety({
-    routeClass: input.routeDecision.routeClass,
-    providerResponse: task.resultUrl ?? null,
-    metadata: task.resultData ?? null,
-  });
-
-  const [inserted] = await db.insert(autoTeamMediaJobRefs).values({
+  if (!reserved) {
+    const [insertedReservation] = await db.insert(autoTeamMediaJobRefs).values({
     tenantId: input.tenantId,
     teamId: input.teamId ?? null,
     roomId: input.roomId ?? null,
@@ -169,10 +212,10 @@ export async function submitMediaJob(
     mediaType: input.mediaType,
     provider: providerDecision.selectedProvider ?? "unknown",
     model: providerDecision.selectedModel ?? "unknown",
-    providerTaskId: task.taskId ?? task.id ?? null,
-    providerStatus,
+    providerTaskId: null,
+    providerStatus: "queued",
     submittedPromptArtifactRef: null,
-    resultArtifactRefsJson: task.resultUrl ? [task.resultUrl] : [],
+    resultArtifactRefsJson: [],
     providerRequestHash: buildAutoTeamProviderRequestHash({
       tenantId: input.tenantId,
       runId: input.runId,
@@ -185,22 +228,90 @@ export async function submitMediaJob(
     }),
     idempotencyKey,
     lastPolledAt: now(),
-    completedAt: providerStatus === "succeeded" ? now() : null,
-    failedAt: providerStatus === "failed" ? now() : null,
-    errorCode: safety.safe ? null : "unsafe_output_detected",
-    errorMessage: safety.safe ? null : safety.reason,
+    completedAt: null,
+    failedAt: null,
+    errorCode: null,
+    errorMessage: null,
     metadataJson: {
       routeClass: input.routeDecision.routeClass,
-      safetyStatus: safety.status,
+      reservationOnly: true,
       budgetDecision,
       providerDecision,
     },
     createdAt: now(),
     updatedAt: now(),
-  }).returning();
+    }).onConflictDoNothing().returning();
+    reserved = insertedReservation ?? null;
+  }
+  if (!reserved) {
+    const claimed = await lookupExistingJob(input.tenantId, idempotencyKey);
+    if (claimed) return claimed;
+    throw new Error("media_job_reservation_failed");
+  }
 
-  let artifactRefs: AutoTeamArtifactRefRow[] = [];
-  if (task.resultUrl) {
+  let task: MediaTask;
+  try {
+    task = input.mediaType === "image"
+      ? await mediaGenerationService.generateImageAsync(buildMediaTaskRequest(input, providerDecision) as any, input.userToken)
+      : await mediaGenerationService.generateVideoAsync(buildMediaTaskRequest(input, providerDecision) as any, input.userToken);
+  } catch (error) {
+    const [failedReservation] = await db
+      .update(autoTeamMediaJobRefs)
+      .set({
+        providerStatus: "failed",
+        failedAt: now(),
+        errorCode: "provider_submit_failed",
+        errorMessage: sanitizeProviderError(error),
+        updatedAt: now(),
+      })
+      .where(eq(autoTeamMediaJobRefs.id, reserved.id))
+      .returning();
+    throw new AutoTeamMediaSubmitError(
+      (failedReservation ?? reserved).errorMessage ?? "provider_submit_failed",
+      "provider_submit_failed",
+      true,
+    );
+  }
+
+  const status = task.status;
+  const providerStatus = status === "completed" ? "succeeded" : status === "failed" ? "failed" : status === "pending" || status === "processing" ? "queued" : "unknown";
+  const safety = validateAutoTeamMediaOutputSafety({
+    routeClass: input.routeDecision.routeClass,
+    providerResponse: task.resultUrl ?? null,
+    metadata: task.resultData ?? null,
+  });
+  const safeResultUrl = safety.safe && task.resultUrl ? task.resultUrl : null;
+  const effectiveProviderStatus =
+    providerStatus === "succeeded" && !safety.safe ? "failed" : providerStatus;
+
+  const [inserted] = await db
+    .update(autoTeamMediaJobRefs)
+    .set({
+      providerTaskId: task.taskId ?? task.id ?? null,
+      providerStatus: effectiveProviderStatus,
+      lastPolledAt: now(),
+      completedAt: effectiveProviderStatus === "succeeded" ? now() : null,
+      failedAt: effectiveProviderStatus === "failed" ? now() : null,
+      errorCode: safety.safe ? null : "unsafe_output_detected",
+      errorMessage: !safety.safe
+        ? sanitizeProviderError(safety.reason)
+        : task.errorMessage
+          ? sanitizeProviderError(task.errorMessage)
+          : null,
+      metadataJson: {
+        routeClass: input.routeDecision.routeClass,
+        safetyStatus: safety.status,
+        budgetDecision,
+        providerDecision,
+      },
+      updatedAt: now(),
+    })
+    .where(eq(autoTeamMediaJobRefs.id, reserved.id))
+    .returning();
+  if (!inserted) return reserved;
+
+  let updatedJob = inserted;
+  if (safeResultUrl) {
     const artifact = await buildCanonicalArtifactRef({
       tenantId: input.tenantId,
       teamId: input.teamId ?? null,
@@ -210,24 +321,25 @@ export async function submitMediaJob(
       workItemId: input.workItemId ?? null,
       artifactType: input.mediaType === "video" ? "media_result" : "media_result",
       artifactRole: "result",
-      externalRef: task.resultUrl,
+      externalRef: safeResultUrl,
       contentHash: null,
       visibility: "tenant",
       retentionPolicyJson: { routeClass: input.routeDecision.routeClass, mediaType: input.mediaType },
       safetyStatus: safety.status,
       source: "auto_team_media_execution",
     });
-    artifactRefs = [artifact];
-    await db
+    const [withArtifact] = await db
       .update(autoTeamMediaJobRefs)
       .set({
         resultArtifactRefsJson: [artifact.id],
         updatedAt: now(),
       })
-      .where(eq(autoTeamMediaJobRefs.id, inserted.id));
+      .where(eq(autoTeamMediaJobRefs.id, inserted.id))
+      .returning();
+    updatedJob = withArtifact ?? inserted;
   }
 
-  return inserted;
+  return updatedJob;
 }
 
 export async function pollMediaJob(
@@ -240,6 +352,11 @@ export async function pollMediaJob(
     return (await db.select().from(autoTeamMediaJobRefs).where(eq(autoTeamMediaJobRefs.id, jobRef.id)).limit(1))[0];
   }
 
+  const [currentJob] = await db
+    .select()
+    .from(autoTeamMediaJobRefs)
+    .where(eq(autoTeamMediaJobRefs.id, jobRef.id))
+    .limit(1);
   const task = await mediaGenerationService.getTask(jobRef.providerTaskId, jobRef.userToken, {
     source: "auto_team_media_execution",
   });
@@ -249,21 +366,74 @@ export async function pollMediaJob(
     task.status === "cancelled" ? "cancelled" :
     task.status === "processing" ? "running" :
     "queued";
+  const safety = validateAutoTeamMediaOutputSafety({
+    routeClass: currentJob?.mediaType === "image" ? "media.image" : "media.video",
+    providerResponse: task.resultUrl ?? null,
+    metadata: task.resultData ?? null,
+  });
+  const safeResultUrl = safety.safe && task.resultUrl ? task.resultUrl : null;
+  const effectiveNextStatus =
+    nextStatus === "succeeded" && !safety.safe ? "failed" : nextStatus;
+  const nextMetadataJson = {
+    ...(currentJob?.metadataJson ?? {}),
+    safetyStatus: safety.status,
+    safetyReason: safety.reason,
+  };
+
+  let canonicalArtifactId: string | null = null;
+  if (effectiveNextStatus === "succeeded" && safeResultUrl && currentJob) {
+    const artifact = await buildCanonicalArtifactRef({
+      tenantId: currentJob.tenantId,
+      teamId: currentJob.teamId ?? null,
+      roomId: currentJob.roomId ?? null,
+      runId: currentJob.runId,
+      stageId: currentJob.stageId ?? null,
+      workItemId: currentJob.workItemId ?? null,
+      artifactType: "media_result",
+      artifactRole: "result",
+      externalRef: safeResultUrl,
+      contentHash: null,
+      visibility: "tenant",
+      retentionPolicyJson: {
+        mediaType: currentJob.mediaType,
+        provider: currentJob.provider,
+        providerTaskId: currentJob.providerTaskId,
+        source: "auto_team_media_poll",
+      },
+      safetyStatus: safety.status,
+      source: "auto_team_media_execution",
+    });
+    canonicalArtifactId = artifact.id;
+  }
 
   const [updated] = await db
     .update(autoTeamMediaJobRefs)
     .set({
-      providerStatus: nextStatus,
-      resultArtifactRefsJson: task.resultUrl ? [task.resultUrl] : [],
+      providerStatus: effectiveNextStatus,
+      resultArtifactRefsJson: canonicalArtifactId ? [canonicalArtifactId] : [],
       lastPolledAt: now(),
-      completedAt: nextStatus === "succeeded" ? now() : null,
-      failedAt: nextStatus === "failed" ? now() : null,
-      errorMessage: task.errorMessage ?? null,
+      completedAt: effectiveNextStatus === "succeeded" ? now() : null,
+      failedAt: effectiveNextStatus === "failed" ? now() : null,
+      errorCode: !safety.safe ? "unsafe_output_detected" : null,
+      errorMessage: !safety.safe
+        ? sanitizeProviderError(safety.reason)
+        : task.errorMessage
+          ? sanitizeProviderError(task.errorMessage)
+          : null,
+      metadataJson: {
+        ...nextMetadataJson,
+        ...(canonicalArtifactId
+          ? { resultRefsCanonicalizedAt: now().toISOString() }
+          : {}),
+      },
       updatedAt: now(),
     })
     .where(eq(autoTeamMediaJobRefs.id, jobRef.id))
     .returning();
 
+  if (!updated) {
+    throw new Error("media_job_update_failed");
+  }
   return updated;
 }
 

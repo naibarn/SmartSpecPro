@@ -604,7 +604,8 @@ function renderWorkerPolicyHint(
 
 export default function Teams() {
   const { isLoading: authLoading, isAuthenticated } = useAuth();
-  const { t } = useScopedTranslation("agency");
+  const { t, locale } = useScopedTranslation("agency");
+  const defaultRoomLanguage = locale === "th" ? "th" : "en";
   const hermesFlags = useTenantFeatureFlags();
   const [location, setLocation] = useLocation();
   const [, routeParams] = useRoute("/teams/:teamId");
@@ -3145,7 +3146,7 @@ export default function Teams() {
                         teamId: selectedTeam.id,
                         goalPrompt: "",
                         roomType: "team",
-                        language: "en",
+                        language: defaultRoomLanguage,
                       })
                     }
                   >
@@ -3869,7 +3870,7 @@ export default function Teams() {
                           teamId: selectedTeamIdForView!,
                           goalPrompt: "",
                           roomType: "team",
-                          language: "en",
+                          language: defaultRoomLanguage,
                         })
                       }
                     >
@@ -3976,7 +3977,7 @@ export default function Teams() {
                             teamId: selectedTeamIdForView!,
                             goalPrompt: "",
                             roomType: "team",
-                            language: "en",
+                            language: defaultRoomLanguage,
                           })
                         }
                       >

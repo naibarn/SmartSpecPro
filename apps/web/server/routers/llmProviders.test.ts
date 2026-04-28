@@ -72,6 +72,43 @@ describe("PROVIDER_TEMPLATES", () => {
     expect(kie?.availableModels?.find((model) => model.id === "gpt-5-4")?.pricing).toEqual({ input: 0.7, output: 5.6 });
   });
 
+  it("includes KRouter with the documented routed model catalog", () => {
+    const krouter = PROVIDER_TEMPLATES.find((template) => template.providerName === "krouter");
+
+    expect(krouter).toBeDefined();
+    expect(krouter?.displayName).toBe("KRouter");
+    expect(krouter?.baseUrl).toBe("https://api.krouter.net/v1");
+    expect(krouter?.defaultModel).toBe("gpt-5.5");
+    expect((krouter as any)?.configDefaults).toMatchObject({
+      trustTier: "routing-gateway",
+      thirdPartyRelay: true,
+      dataPolicyUrl: "https://krouter.net/",
+    });
+    expect(krouter?.availableModels).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "gpt-5.5",
+        apiStyle: "chat-completions",
+        autoSelectionEligible: true,
+        supportsResponses: true,
+      }),
+      expect.objectContaining({
+        id: "cx/gpt-5.3-codex",
+        apiStyle: "chat-completions",
+        supportsCodeExecution: true,
+      }),
+    ]));
+  });
+
+  it("marks OpenRouter with the same routing gateway disclosure metadata", () => {
+    const openrouter = PROVIDER_TEMPLATES.find((template) => template.providerName === "openrouter");
+
+    expect((openrouter as any)?.configDefaults).toMatchObject({
+      trustTier: "routing-gateway",
+      thirdPartyRelay: true,
+      dataPolicyUrl: "https://openrouter.ai/privacy",
+    });
+  });
+
   it("includes NVIDIA NIM (Hosted) with the expected lightweight defaults", () => {
     const nvidia = PROVIDER_TEMPLATES.find((template) => template.providerName === "nvidia_nim");
 

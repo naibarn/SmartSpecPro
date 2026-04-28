@@ -193,7 +193,9 @@ export type CatalogEligibilitySnapshot = {
 };
 
 export const KIE_PROVIDER_NAME = "kie_ai";
+export const KROUTER_PROVIDER_NAME = "krouter";
 export const SAFE_PROVIDER_MODEL_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
+const DEFAULT_UNKNOWN_PAID_MODEL_PRICING = { input: 1, output: 4 };
 
 const NVIDIA_AUTO_ELIGIBLE_CHAT_MODEL_IDS = new Set([
   "nvidia/llama-3.3-nemotron-super-49b-v1.5",
@@ -671,7 +673,7 @@ export function resolveCatalogBackedPricing(input: {
   pricingInput: number;
   pricingOutput: number;
   isFree: boolean;
-  source: "mapping" | "catalog";
+  source: "mapping" | "catalog" | "default";
 } {
   const currentInput = Number(input.pricingInput ?? 0);
   const currentOutput = Number(input.pricingOutput ?? 0);
@@ -700,11 +702,20 @@ export function resolveCatalogBackedPricing(input: {
     };
   }
 
+  if (input.isFree) {
+    return {
+      pricingInput: 0,
+      pricingOutput: 0,
+      isFree: true,
+      source: "mapping",
+    };
+  }
+
   return {
-    pricingInput: currentInput,
-    pricingOutput: currentOutput,
-    isFree: Boolean(input.isFree),
-    source: "mapping",
+    pricingInput: DEFAULT_UNKNOWN_PAID_MODEL_PRICING.input,
+    pricingOutput: DEFAULT_UNKNOWN_PAID_MODEL_PRICING.output,
+    isFree: false,
+    source: "default",
   };
 }
 
@@ -903,12 +914,84 @@ export function buildKieLlmAvailableModels(): AvailableLlmProviderModel[] {
   ];
 }
 
+export function buildKRouterLlmAvailableModels(): AvailableLlmProviderModel[] {
+  const sharedChatConfig = {
+    requestBodyFormat: "openai-chat-completions" as const,
+    authStrategy: "provider-default" as const,
+    supportsStreaming: true,
+    passthroughFields: ["tools", "tool_choice", "reasoning", "stream", "response_format"],
+  };
+
+  return [
+    {
+      id: "gpt-5.5",
+      name: "GPT 5.5",
+      apiStyle: "chat-completions",
+      ownedBy: "openai",
+      surface: "chat",
+      executionMode: "public",
+      autoSelectionEligible: true,
+      supportsResponses: true,
+      supportsVision: true,
+      supportsThinking: true,
+      supportsFunctionTools: true,
+      supportsStructuredOutputs: true,
+      supportsJsonMode: true,
+      supportsStrictToolSchema: true,
+      config: {
+        ...sharedChatConfig,
+        apiEndpoint: "/chat/completions",
+        inputFields: [
+          makeField("messages", "Messages", "json", { documented: true, required: true }),
+          makeField("tools", "Tools", "tools", { documented: true }),
+          makeField("tool_choice", "Tool Choice", "select", { documented: true }),
+          makeField("reasoning", "Reasoning", "json", { documented: true }),
+          makeField("response_format", "Response Format", "json", { documented: true }),
+          makeField("stream", "Stream", "boolean", { documented: true }),
+        ],
+      },
+    },
+    {
+      id: "cx/gpt-5.3-codex",
+      name: "GPT 5.3 Codex",
+      apiStyle: "chat-completions",
+      ownedBy: "openai",
+      surface: "chat",
+      executionMode: "public",
+      autoSelectionEligible: false,
+      supportsResponses: true,
+      supportsVision: true,
+      supportsThinking: true,
+      supportsFunctionTools: true,
+      supportsStructuredOutputs: true,
+      supportsJsonMode: true,
+      supportsStrictToolSchema: true,
+      supportsCodeExecution: true,
+      config: {
+        ...sharedChatConfig,
+        apiEndpoint: "/chat/completions",
+        inputFields: [
+          makeField("messages", "Messages", "json", { documented: true, required: true }),
+          makeField("tools", "Tools", "tools", { documented: true }),
+          makeField("tool_choice", "Tool Choice", "select", { documented: true }),
+          makeField("reasoning", "Reasoning", "json", { documented: true }),
+          makeField("response_format", "Response Format", "json", { documented: true }),
+          makeField("stream", "Stream", "boolean", { documented: true }),
+        ],
+      },
+    },
+  ];
+}
+
 export function canonicalModelIdForCatalogModel(
   providerName: string,
   providerModelId: string,
 ): string {
   if (providerName === KIE_PROVIDER_NAME && providerModelId === "gpt-5-4") {
     return "gpt-5.4";
+  }
+  if (providerName === KROUTER_PROVIDER_NAME && providerModelId === "cx/gpt-5.3-codex") {
+    return "gpt-5.3-codex";
   }
   return providerModelId;
 }

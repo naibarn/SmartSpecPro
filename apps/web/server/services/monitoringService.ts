@@ -222,6 +222,15 @@ export interface RunPlanStep {
   surface?: WorkOrchestratorSurface | null;
   selectedCapabilityId?: string | null;
   runtimeDispatchPolicy?: RuntimeDispatchPolicy | null;
+  validationState?: {
+    status: "pending" | "passed" | "failed";
+    attempt: number;
+    maxAttempts: number;
+    issues: string[];
+    summary: string | null;
+    semanticScore?: number | null;
+    checkedAt: string | null;
+  } | null;
 }
 
 export interface RunPlanArtifact {
@@ -327,6 +336,41 @@ function normalizeRunPlanStep(
       step?.runtimeDispatchPolicy &&
       typeof step.runtimeDispatchPolicy === "object"
         ? (step.runtimeDispatchPolicy as RuntimeDispatchPolicy)
+        : null,
+    validationState:
+      step?.validationState && typeof step.validationState === "object"
+        ? {
+            status:
+              step.validationState.status === "passed" ||
+              step.validationState.status === "failed"
+                ? step.validationState.status
+                : "pending",
+            attempt:
+              typeof step.validationState.attempt === "number"
+                ? step.validationState.attempt
+                : 0,
+            maxAttempts:
+              typeof step.validationState.maxAttempts === "number"
+                ? step.validationState.maxAttempts
+                : 0,
+            issues: Array.isArray(step.validationState.issues)
+              ? step.validationState.issues.filter(
+                  (item): item is string => typeof item === "string",
+                )
+              : [],
+            summary:
+              typeof step.validationState.summary === "string"
+                ? step.validationState.summary
+                : null,
+            semanticScore:
+              typeof step.validationState.semanticScore === "number"
+                ? step.validationState.semanticScore
+                : null,
+            checkedAt:
+              typeof step.validationState.checkedAt === "string"
+                ? step.validationState.checkedAt
+                : null,
+          }
         : null,
   };
 }

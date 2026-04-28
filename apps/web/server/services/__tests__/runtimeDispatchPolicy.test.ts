@@ -180,4 +180,153 @@ describe("runtimeDispatchPolicy", () => {
       WORK_ORCHESTRATOR_REASON_CODES.approvalRequired,
     );
   });
+
+  it("allows video composition when privileged auto execution is explicitly enabled", () => {
+    const step: TeamExecutionPlanStep = {
+      id: "step-video-auto",
+      stepKey: "video-edit",
+      title: "Edit final video",
+      objective: "Edit final video",
+      surface: "video_editor",
+      action: null,
+      capabilityId: "video_editor",
+      governance: {
+        surface: "video_editor",
+        action: null,
+        plannerVisible: true,
+        autoExecutableByDefault: true,
+        approvalRequired: false,
+        minimumGate: "provider_allowlist_quota",
+        requiredFeatureFlags: [],
+        requiredPermissions: ["orchestrator.surface.video_editor"],
+      },
+      contractCompatibility: {
+        state: "compatible",
+        reasonCode: null,
+        migrationRequired: false,
+      },
+      expectedArtifacts: [],
+      optional: false,
+      metadata: {
+        sideEffectClass: "external_side_effect",
+      },
+    };
+
+    const policy = buildRuntimeDispatchPolicy({
+      step,
+      budget: { ...budget, maxMediaJobs: 12 },
+      inputFingerprint: "hash-video-auto",
+      actorContext,
+      flags: {
+        privilegedSurfaceAutoExecution: true,
+      },
+    });
+
+    expect(policy.authorityDecision).toBe("allowed");
+    expect(policy.budgetReservation.mediaJobs).toBe(8);
+  });
+
+  it("allows approved bounded document work when privileged auto execution is enabled", () => {
+    const step: TeamExecutionPlanStep = {
+      id: "step-4",
+      stepKey: "draft",
+      title: "Draft production notes",
+      objective: "Draft production notes",
+      surface: "document_management",
+      action: null,
+      capabilityId: "document_management",
+      governance: {
+        surface: "document_management",
+        action: null,
+        plannerVisible: true,
+        autoExecutableByDefault: true,
+        approvalRequired: false,
+        minimumGate: "bounded_write_scope",
+        requiredFeatureFlags: [],
+        requiredPermissions: ["orchestrator.surface.document_management"],
+      },
+      contractCompatibility: {
+        state: "compatible",
+        reasonCode: null,
+        migrationRequired: false,
+      },
+      expectedArtifacts: [],
+      optional: false,
+      metadata: {
+        sideEffectClass: "bounded_write",
+      },
+    };
+
+    const policy = buildRuntimeDispatchPolicy({
+      step,
+      budget,
+      inputFingerprint: "hash-4",
+      actorContext: {
+        ...actorContext,
+        allowedSurfacePermissions: [
+          ...actorContext.allowedSurfacePermissions,
+          "orchestrator.surface.document_management",
+        ],
+      },
+      flags: {
+        privilegedSurfaceAutoExecution: true,
+      },
+    });
+
+    expect(policy.authorityDecision).toBe("allowed");
+    expect(policy.deadLetterPolicy.reasonCode).toBe(
+      WORK_ORCHESTRATOR_REASON_CODES.budgetExceeded,
+    );
+  });
+
+  it("reserves a per-step budget slice instead of the full envelope", () => {
+    const step: TeamExecutionPlanStep = {
+      id: "step-5",
+      stepKey: "draft",
+      title: "Draft production notes",
+      objective: "Draft production notes",
+      surface: "document_management",
+      action: null,
+      capabilityId: "document_management",
+      governance: {
+        surface: "document_management",
+        action: null,
+        plannerVisible: true,
+        autoExecutableByDefault: true,
+        approvalRequired: false,
+        minimumGate: "bounded_write_scope",
+        requiredFeatureFlags: [],
+        requiredPermissions: [],
+      },
+      contractCompatibility: {
+        state: "compatible",
+        reasonCode: null,
+        migrationRequired: false,
+      },
+      expectedArtifacts: [],
+      optional: false,
+      metadata: {
+        sideEffectClass: "bounded_write",
+      },
+    };
+
+    const policy = buildRuntimeDispatchPolicy({
+      step,
+      budget: {
+        ...budget,
+        maxRounds: 24,
+        maxTokens: 32000,
+        maxToolCalls: 32,
+        maxBudgetCredits: 480,
+      },
+      inputFingerprint: "hash-4",
+    });
+
+    expect(policy.budgetReservation.tokens).toBeLessThan(32000);
+    expect(policy.budgetReservation.tokens).toBeLessThanOrEqual(2000);
+    expect(policy.budgetReservation.toolCalls).toBeLessThan(32);
+    expect(policy.budgetReservation.toolCalls).toBeLessThanOrEqual(4);
+    expect(policy.budgetReservation.costCredits).toBeLessThan(480);
+    expect(policy.budgetReservation.costCredits).toBeLessThanOrEqual(75);
+  });
 });

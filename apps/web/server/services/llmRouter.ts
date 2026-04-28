@@ -7,7 +7,7 @@ import { logRequest, calculateCost, type CostMethod } from "./costTracker";
 import { auditLogger } from "./auditLogger";
 import { decrypt } from "./crypto";
 import { getTraceId } from "./traceContext";
-import { calculateCreditsFromCost } from "./creditService";
+import { calculateCreditsFromCost, calculateCreditsForLLMDynamic } from "./creditService";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import { resolveCatalogBackedPricing } from "./llmProviderCatalog";
@@ -930,10 +930,11 @@ export async function executeWithFallback(params: {
           inputTokens,
           outputTokens,
         });
-        const creditsCharged =
-          params.userId > 0 && Number.isFinite(costUsd) && costUsd > 0
+        const creditsCharged = params.userId > 0
+          ? Number.isFinite(costUsd) && costUsd > 0
             ? calculateCreditsFromCost(costUsd)
-            : 0;
+            : Math.max(1, await calculateCreditsForLLMDynamic(inputTokens, outputTokens, params.model))
+          : 0;
 
         logRequest({
           userId: params.userId,

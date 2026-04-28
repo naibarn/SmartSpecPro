@@ -139,7 +139,7 @@ export async function createFinalResult(
     runId: input.runId,
     routeDecisionId: input.routeDecision.id ?? null,
     status: input.status ?? "completed",
-    finalArtifactRefsJson: (input.artifactRefs ?? []).map((artifact) => artifact.source ?? artifact.storageRef ?? artifact.externalRef ?? artifact.artifactType),
+    finalArtifactRefsJson: (input.artifactRefs ?? []).map((artifact) => artifact.id ?? artifact.storageRef ?? artifact.externalRef ?? artifact.contentHash ?? artifact.artifactType),
     mediaJobRefIdsJson: (input.mediaJobRefs ?? []).flatMap((job) => job.id ? [job.id] : []),
     reviewRecordRefIdsJson: (input.reviewRecords ?? []).map((review) => review.id),
     humanApprovalStatus: input.humanApprovalStatus ?? "not_required",

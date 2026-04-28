@@ -116,6 +116,15 @@ import {
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { startHistoryCollection } from "../services/llmQueue";
 import { recoverActiveRunsOnStartup } from "../services/runEngine";
+import {
+  recoverAutoTeamMediaPipelinesOnStartup,
+  startAutoTeamMediaPipelineSweeper,
+} from "../services/autoTeamMediaCompletionService";
+import {
+  isProtectedAutoTeamMediaKey,
+  normalizeManagedMediaKey,
+  streamManagedMediaAccessToken,
+} from "../services/managedMediaAccessService";
 import { createTasksRouter } from "../routes/tasks";
 import { presentationImportCallbackHandler } from "../routes/presentationImportCallback";
 import { PostgresAdapter } from "../services/postgresAdapter";
@@ -393,6 +402,9 @@ app.use("/api", csrfCheck);
 
 // Always mount local static handler — harmless when S3/R2 is active (no local files to serve)
 const uploadsDir = getUploadsDir();
+app.use("/uploads/auto-team-media", (_req, res) => {
+  res.status(404).json({ error: "File not found" });
+});
 app.use('/uploads', express.static(uploadsDir, {
   maxAge: '1d',
   etag: true,
@@ -409,9 +421,13 @@ app.use('/uploads', express.static(uploadsDir, {
 // Supports HTTP Range requests for video seeking.
 app.get("/api/storage/files/*", async (req, res) => {
   try {
-    const key = decodeURIComponent((req.params as any)[0] || "");
-    if (!key || key.includes("..")) {
+    const key = normalizeManagedMediaKey((req.params as any)[0] || "");
+    if (!key) {
       res.status(400).json({ error: "Invalid storage key" });
+      return;
+    }
+    if (isProtectedAutoTeamMediaKey(key)) {
+      res.status(404).json({ error: "File not found" });
       return;
     }
 
@@ -455,6 +471,17 @@ app.get("/api/storage/files/*", async (req, res) => {
     debugError("StorageProxy", "Failed to stream file", error);
     if (!res.headersSent) {
       res.status(500).json({ error: "Failed to stream file" });
+    }
+  }
+});
+
+app.get("/api/work-os/final-media", async (req, res) => {
+  try {
+    await streamManagedMediaAccessToken(req, res);
+  } catch (error: any) {
+    debugError("WorkOsFinalMedia", "Failed to stream final media", error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to stream final media" });
     }
   }
 });
@@ -1487,6 +1514,13 @@ async function main() {
     console.error("[Startup] Failed to recover active team runs:", error);
   }
 
+  try {
+    await recoverAutoTeamMediaPipelinesOnStartup();
+    startAutoTeamMediaPipelineSweeper();
+  } catch (error) {
+    console.error("[Startup] Failed to recover auto-team media pipelines:", error);
+  }
+
   // Initialize trash auto-purge job (daily at 2 AM)
   try {
     await initializeTrashPurgeJob();
@@ -1670,6 +1704,9 @@ process.on("SIGTERM", async () => {
   }).catch(() => {});
   import("../services/autoTeamRecoveryService").then(({ stopAutoTeamRecoverySweep }) => {
     stopAutoTeamRecoverySweep();
+  }).catch(() => {});
+  import("../services/autoTeamMediaCompletionService").then(({ stopAutoTeamMediaPipelineSweeper }) => {
+    stopAutoTeamMediaPipelineSweeper();
   }).catch(() => {});
 
   // 1. Stop accepting new connections

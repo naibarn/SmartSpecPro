@@ -1,0 +1,98 @@
+{
+  "language": "th",
+  "langName": "ไทย",
+  "labels": {
+    "existingSolutionsFound": "🔍 พบโซลูชั่นที่มีอยู่แล้ว",
+    "libraries": "📦 ไลบรารี่/แพคเกจ",
+    "openSourceTools": "🔧 เครื่องมือโอเพนซอร์ส",
+    "saasOptions": "☁️ ตัวเลือก SaaS",
+    "buildVsBuyComparison": "📊 เปรียบเทียบสร้างเอง vs ซื้อ/ใช้",
+    "costAnalysis": "💰 การวิเคราะห์ต้นทุน",
+    "recommendation": "💡 คำแนะนำ",
+    "ifYouStillWantToBuild": "🔧 ถ้ากำลังจะสร้างเอง",
+    "integrationPlan": "🚀 แผนการรวม: ",
+    "yourProjectContext": "📋 บริบทโปรเจกต์ของคุณ",
+    "detected": "✅ ตรวจพบแล้ว",
+    "projectStructure": "📁 โครงสร้างโปรเจกต์",
+    "step1InstallDependencies": "ขั้นตอนที่ 1: ติดตั้ง Dependencies",
+    "step2Configuration": "ขั้นตอนที่ 2: การตั้งค่า",
+    "step3CreateNewFiles": "ขั้นตอนที่ 3: สร้างไฟล์ใหม่",
+    "step4UpdateExistingFiles": "ขั้นตอนที่ 4: อัปเดตไฟล์ที่มีอยู่",
+    "notes": "⚠️ หมายเหตุ",
+    "resources": "📚 แหล่งอ้างอิง",
+    "breakEven": "💡 จุดคุ้มทุน",
+    "hiddenCosts": "⚠️ ต้นทุนที่ซ่อนอยู่",
+    "recommended": "✅ แนะนำ",
+    "fastest": "⚡ เร็วที่สุด",
+    "fullControl": "🎯 ควบคุมเต็มที่"
+  },
+  "responses": {
+    "captureIntent": {
+      "what": "คุณต้องการใจความสำคัญอะไร",
+      "why": "ใช้สำหรับอะไร / แก้ปัญหาอะไร",
+      "constraints": "ข้อจำกัด: ภาษา, แพลตฟอร์ม, งบประมาณ, ลิขสิทธิ์"
+    },
+    "searchStrategy": {
+      "instruction": "ฉันจะค้นหาโซลูชั่นที่มีอยู่แล้ว:",
+      "strategy1": "'{functionality} library {language}'",
+      "strategy2": "'{functionality} open source'",
+      "strategy3": "'{functionality} SaaS tool'",
+      "strategy4": "'best {functionality} solution 2024'",
+      "strategy5": "'{functionality} npm/pip/cargo package'"
+    },
+    "categorize": {
+      "libraries": "📦 ไลบรารี่/แพคเกจ: npm, pip, cargo ฯลฯ (ฟรี, รวมเข้าในโค้ด)",
+      "openSource": "🔧 เครื่องมือโอเพนซอร์ส: แอปพลิเคชันเต็มรูปแบบ (ฟรี, โฮสต์เอง)",
+      "saas": "☁️ SaaS/Commercial: บริการจ่ายอากาศ (มีค่าใช้งาน, ไม่ต้องดูแล)",
+      "frameworks": "🏗️ Frameworks: โครงร่างสำหรับรูปแบบทั่วไป"
+    },
+    "vibeCodeCost": "ต้นทุนการเขียนโค้ด (Vibe Coding):",
+    "shortRecommendation": "เขียนหลาย ๆ โค้ดจะเสียเวลา token มากมาย และสร้างภาระการดูแลรักษา",
+    "whenToUseExisting": "ใช้โซลูชั่นที่มีอยู่แล้วเมื่อ:",
+    "matureLibrary": "- มีไลบรารี่ที่เป็นที่ยอมรับแล้ว (>1K GitHub stars)",
+    "saasAffordable": "- SaaS แก้ปัญหาได้ในราคา <$20/เดือน",
+    "commonProblem": "- ปัญหาทั่วไปที่มีโซลูชั่นที่ทดสอบแล้ว",
+    "securitity": "- เกี่ยวกับความปลอดภัย (auth, crypto, payments)",
+    "whenToBuildCustom": "สร้างเองเมื่อ:",
+    "specificLogic": "- มีตรรกะทางธุรกิจที่เฉพาะเจาะจง",
+    "simpleGlueCode": "- โค้ด glue ง่าย ๆ (<50 บรรทัด)",
+    "learningExercise": "- แบบฝึกหัดการเรียนรู้ (ระบุไว้แล้ว)",
+    "noGoodSolution": "- ไม่มีโซลูชั่นที่ดี",
+    "unusualIntegration": "- ข้อกำหนด integration ที่ไม่ปกติ"
+  },
+  "antiPatterns": {
+    "auth": "🔐 ระบบ Authentication → ใช้ Auth0, Clerk, Supabase Auth",
+    "stateManagement": "📊 State Management → พิจารณา Zustand, Redux Toolkit, Jotai",
+    "formValidation": "✅ Form Validation → ลองดู Zod, Yup, React Hook Form",
+    "apiClient": "🌐 API Clients → ดู Axios, ky, ofetch",
+    "dateHandling": "📅 Date Handling → ใช้ date-fns, dayjs, Luxon",
+    "cliTools": "⌨️ CLI Tools → ลอง Commander, yargs, oclif",
+    "pdfGeneration": "📄 PDF Generation → ใช้ pdf-lib, jsPDF, Puppeteer",
+    "emailSending": "📧 Email Sending → ลองดู Resend, SendGrid, Nodemailer",
+    "cronJobs": "⏰ Cron Jobs → ใช้ node-cron, Bull, Agenda",
+    "orm": "🗄️ Database ORMs → ลอง Prisma, Drizzle, TypeORM"
+  },
+  "commonTokenBurns": {
+    "simple": "สคริปต์ง่าย ๆ (<100 บรรทัด)",
+    "utility": "โมดูลยูทิลิตี้ (100-500 บรรทัด)",
+    "feature": "คอมโพเนนต์ฟีเจอร์ (500-2K บรรทัด)",
+    "fullApp": "แอปพลิเคชันเต็มรูปแบบ"
+  },
+  "costCalculation": {
+    "setupCost": "ต้นทุนตั้งค่า",
+    "monthly": "รายเดือน",
+    "year1": "ปีที่ 1",
+    "year3": "ปีที่ 3",
+    "notes": "หมายเหตุ",
+    "freeFromage": "แฟรี่เทียร์",
+    "selfHostRequired": "ต้องโฮสต์เอง",
+    "maintenanceBurden": "ภาระการดูแลรักษา"
+  },
+  "projectDetection": {
+    "packageManager": "🔧 Package Manager",
+    "framework": "🏗️ Framework",
+    "language": "📝 ภาษา",
+    "projectStructure": "📁 โครงสร้างโปรเจกต์",
+    "codeStyle": "🎨 สไตล์โค้ด"
+  }
+}

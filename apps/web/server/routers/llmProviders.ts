@@ -17,6 +17,7 @@ import { encrypt, decrypt } from "../services/crypto";
 import {
   availableLlmProviderModelSchema,
   buildKieLlmAvailableModels,
+  buildKRouterLlmAvailableModels,
   type AvailableLlmProviderModel,
 } from "../services/llmProviderCatalog";
 
@@ -41,6 +42,12 @@ interface EnabledMappedModelRow {
 function findProviderTemplate(providerName: string) {
   return PROVIDER_TEMPLATES.find((template) => template.providerName === providerName);
 }
+
+const ROUTING_GATEWAY_CONFIG = {
+  trustTier: "routing-gateway",
+  thirdPartyRelay: true,
+  dataPolicyDisclosure: "Requests are routed through a third-party model gateway before reaching upstream model providers.",
+} as const;
 
 function mergeProviderAvailableModels(
   currentModels: AvailableLlmProviderModel[] | null | undefined,
@@ -235,9 +242,25 @@ export const PROVIDER_TEMPLATES = [
     baseUrl: "https://openrouter.ai/api/v1",
     defaultModel: "anthropic/claude-3.5-sonnet",
     configDefaults: {
+      ...ROUTING_GATEWAY_CONFIG,
+      dataPolicyUrl: "https://openrouter.ai/privacy",
       allow_fallbacks: true,
       route: "fallback",
       sort: ["throughput", "latency", "price"],
+    },
+  },
+  {
+    providerName: "krouter",
+    displayName: "KRouter",
+    description: "Third-party AI relay with a unified OpenAI-compatible endpoint for routed GPT and Codex models",
+    baseUrl: "https://api.krouter.net/v1",
+    defaultModel: "gpt-5.5",
+    availableModels: buildKRouterLlmAvailableModels(),
+    configDefaults: {
+      ...ROUTING_GATEWAY_CONFIG,
+      dataPolicyUrl: "https://krouter.net/",
+      allow_fallbacks: true,
+      route: "fallback",
     },
   },
   {
@@ -505,6 +528,12 @@ export const llmProvidersRouter = router({
         .from(llmProviders);
       
       const [created] = await db.insert(llmProviders).values({
+        ...(() => {
+          const template = findProviderTemplate(input.providerName);
+          return {
+            configJson: input.configJson || (template as any)?.configDefaults || null,
+          };
+        })(),
         providerName: input.providerName,
         displayName: input.displayName,
         description: input.description || null,
@@ -513,7 +542,6 @@ export const llmProvidersRouter = router({
         hasApiKey: !!input.apiKey,
         defaultModel: input.defaultModel || null,
         availableModels: input.availableModels || null,
-        configJson: input.configJson || null,
         isEnabled: input.isEnabled,
         sortOrder: (maxOrder?.max || 0) + 1,
       }).returning({ id: llmProviders.id });
@@ -662,6 +690,7 @@ export const llmProvidersRouter = router({
           case "openai":
           case "groq":
           case "openrouter":
+          case "krouter":
           case "deepseek":
           case "ollama":
             testUrl = `${provider.baseUrl}/models`;
