@@ -95,6 +95,24 @@ function deriveBudget(
   const contextTokenReserve = Math.ceil(sourceTextSize / 2);
   const stepTokenReserve = stepCount * (hasSideEffects ? 16_000 : 8_000);
   const mediaTokenReserve = estimatedMediaJobs * (videoStepCount > 0 ? 6_000 : 3_000);
+  const runtimeToolCallReserve = policy.stepBlueprints.reduce((sum, step) => {
+    switch (String(step.surface)) {
+      case "agency":
+      case "media_studio":
+      case "video_editor":
+      case "workflow":
+        return sum + 6;
+      case "document_management":
+        return sum + 4;
+      case "skill":
+      case "browser":
+        return sum + 4;
+      case "work_os":
+      case "manual":
+      default:
+        return sum + 2;
+    }
+  }, 0);
 
   return {
     maxRounds: Math.max(12, stepCount * 3),
@@ -104,7 +122,7 @@ function deriveBudget(
       mediaTokenReserve,
       contextTokenReserve + stepCount * 6_000,
     ),
-    maxToolCalls: stepCount * 4,
+    maxToolCalls: Math.max(stepCount * 4, runtimeToolCallReserve + 2),
     maxMediaJobs: estimatedMediaJobs,
     maxWorkflowRuns: workflowStepCount,
     maxAgencyRuns: agencyStepCount,
@@ -303,12 +321,23 @@ function inferDynamicStepDrafts(input: {
 function approvalRequiredForDraft(
   draft: PlannedStepDraft,
   capability: CapabilityCatalogEntry | null,
+  policy: WorkAutomationLaunchPolicy,
 ): boolean {
   if (draft.surface === "manual" || draft.surface === "browser" || draft.surface === "workflow" || draft.surface === "skill_studio") {
     return true;
   }
   if (draft.sideEffectClass === "irreversible") {
     return true;
+  }
+  const isFullyAuto =
+    policy.modeResolution.effectiveMode === "fully_auto" ||
+    policy.modeResolution.requestedMode === "fully_auto";
+  if (
+    isFullyAuto &&
+    draft.surface === "document_management" &&
+    draft.sideEffectClass === "bounded_write"
+  ) {
+    return false;
   }
   if (capability?.governance.approvalRequired && draft.sideEffectClass !== "read_only") {
     return draft.surface !== "media_studio" && draft.surface !== "video_editor";
@@ -336,7 +365,7 @@ export function createPreflightPlan(
         draft.sideEffectClass === "irreversible"
           ? "medium"
           : "low",
-      requiresApproval: approvalRequiredForDraft(draft, null),
+      requiresApproval: approvalRequiredForDraft(draft, null, input.policy),
       checkpointKey: null,
       evidenceType: draft.expectedArtifact as never,
       sideEffectClass:
@@ -355,7 +384,7 @@ export function createPreflightPlan(
       surface: draft.surface,
       terms: draft.terms,
     });
-    const approvalRequired = approvalRequiredForDraft(draft, selectedCapability);
+    const approvalRequired = approvalRequiredForDraft(draft, selectedCapability, input.policy);
     return { ...draft, selectedCapability, approvalRequired };
   });
 
