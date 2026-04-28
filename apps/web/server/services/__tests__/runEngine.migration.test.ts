@@ -106,6 +106,35 @@ describe("migration — stop old runs", () => {
   });
 });
 
+describe("startup recovery — protect Work OS auto-team runs", () => {
+  it("should recover Work OS auto-team runs stopped by the legacy migration safety net", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../runEngine.ts"),
+      "utf-8",
+    );
+
+    expect(source).toContain("recoveredAutoTeamRuns");
+    expect(source).toContain('eq(teamRuns.stopReason, "system_migration_051")');
+    expect(source).toContain('eq(teamRuns.executionMode, "auto_team")');
+    expect(source).toContain("teamRuns.constraintsJson}->>'source' = 'work_os'");
+    expect(source).toContain('status: "running"');
+    expect(source).toContain("runtimeTerminalReason: null");
+  });
+
+  it("legacy startup cleanup should not stop modern auto-team or Work OS runs", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../runEngine.ts"),
+      "utf-8",
+    );
+
+    expect(source).toContain("Modern Work OS auto-team runs are recovered above");
+    expect(source).toContain("teamRuns.executionMode} <> 'auto_team'");
+    expect(source).toContain(
+      "COALESCE(${teamRuns.constraintsJson}->>'source', '') <> 'work_os'",
+    );
+  });
+});
+
 describe("migration — journal entry", () => {
   it("should have journal entry for the migration", () => {
     const journalPath = path.resolve(

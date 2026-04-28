@@ -9407,8 +9407,36 @@ export async function recoverActiveRunsOnStartup(): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  // Repair Work OS auto-team runs that were incorrectly stopped by the broad
+  // legacy migration safety net in older builds. These runs are resumable by
+  // the Node runtime and should be picked up by the active-run recovery below.
+  const recoveredAutoTeamRuns = await db
+    .update(teamRuns)
+    .set({
+      status: "running",
+      stopReason: null,
+      runtimeTerminalReason: null,
+      endedAt: null,
+    })
+    .where(
+      and(
+        eq(teamRuns.status, "stopped"),
+        eq(teamRuns.stopReason, "system_migration_051"),
+        eq(teamRuns.executionMode, "auto_team"),
+        sql`${teamRuns.constraintsJson}->>'source' = 'work_os'`
+      )
+    )
+    .returning({ id: teamRuns.id });
+
+  if (recoveredAutoTeamRuns.length > 0) {
+    console.log(
+      `[RunRecovery] Recovered ${recoveredAutoTeamRuns.length} Work OS auto-team runs stopped by legacy migration safety net`
+    );
+  }
+
   // Safety net: stop legacy runs from the pre-migration Python-bridge pipeline.
   // This catches any runs missed by the 0105 SQL migration (e.g. manual deploy without migration).
+  // Modern Work OS auto-team runs are recovered above and must never be stopped here.
   const legacyRuns = await db
     .update(teamRuns)
     .set({
@@ -9420,6 +9448,8 @@ export async function recoverActiveRunsOnStartup(): Promise<void> {
       and(
         inArray(teamRuns.status, ["running", "paused", "queued"]),
         sql`${teamRuns.stopReason} IS NULL`,
+        sql`${teamRuns.executionMode} <> 'auto_team'`,
+        sql`COALESCE(${teamRuns.constraintsJson}->>'source', '') <> 'work_os'`,
         sql`${teamRuns.startedAt} < NOW() - INTERVAL '5 minutes'`
       )
     )
