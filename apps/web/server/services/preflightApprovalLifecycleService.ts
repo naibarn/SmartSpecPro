@@ -37,7 +37,7 @@ const ALLOWED_TRANSITIONS: Record<
   previewed: ["approved", "stale", "superseded", "cancelled"],
   approved: ["launching", "launch_blocked", "stale", "superseded", "cancelled"],
   stale: ["previewed", "superseded", "cancelled"],
-  launch_blocked: ["previewed", "approved", "cancelled"],
+  launch_blocked: ["previewed", "approved", "superseded", "cancelled"],
   launching: ["launched", "launch_blocked"],
   launched: [],
   cancelled: [],

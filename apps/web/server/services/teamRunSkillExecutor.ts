@@ -448,6 +448,11 @@ async function assertAgencyCapabilityAuthorized(input: {
         agencyStatus === "published" ||
         agencyStatus === "approved"));
   if (!isRunnableStatus) {
+    if (isTeamMappedAgency) {
+      throw new Error(
+        `Team agency ${input.agencyId} is not runnable for automation and should fall back to skill execution`,
+      );
+    }
     throw new Error(
       `Selected agency ${input.agencyId} is not published for automation`,
     );
@@ -643,7 +648,9 @@ function isRecoverableAgencyRuntimeError(error: unknown): boolean {
     message.includes("503") ||
     message.includes("ECONNREFUSED") ||
     message.includes("fetch failed") ||
-    message.toLowerCase().includes("timeout")
+    message.toLowerCase().includes("timeout") ||
+    message.includes("Team agency") ||
+    message.includes("should fall back to skill execution")
   );
 }
 

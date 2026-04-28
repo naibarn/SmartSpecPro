@@ -115,6 +115,41 @@ describe("preflightApprovalLifecycleService", () => {
     );
   });
 
+  it("allows launch-blocked previews to be superseded by a regenerated preview", () => {
+    const approvedBundle = transitionPreflightBundle({
+      bundle: buildBundle(),
+      toState: "approved",
+      event: "preflight.approved",
+      actorUserId: 42,
+      reasonCode: "preflight_approved",
+      occurredAt: "2026-04-21T01:00:00.000Z",
+    });
+    const blockedBundle = transitionPreflightBundle({
+      bundle: approvedBundle,
+      toState: "launch_blocked",
+      event: "launch.blocked",
+      actorUserId: 42,
+      reasonCode: "team_auto_advance_failed",
+      occurredAt: "2026-04-21T01:01:00.000Z",
+    });
+
+    const supersededBundle = transitionPreflightBundle({
+      bundle: blockedBundle,
+      toState: "superseded",
+      event: "preview.superseded",
+      reasonCode: "preview_regenerated",
+      occurredAt: "2026-04-21T01:02:00.000Z",
+    });
+
+    expect(supersededBundle.state).toBe("superseded");
+    expect(supersededBundle.stateTransitions.at(-1)).toEqual(
+      expect.objectContaining({
+        fromState: "launch_blocked",
+        toState: "superseded",
+      }),
+    );
+  });
+
   it("supports idempotency matching and conflict detection", () => {
     const bundleWithRecord = appendIdempotencyRecord({
       bundle: buildBundle(),

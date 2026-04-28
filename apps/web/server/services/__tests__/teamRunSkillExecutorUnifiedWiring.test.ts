@@ -1188,6 +1188,63 @@ describe("Team Room → Unified Orchestrator Wiring", () => {
     );
   });
 
+  it("falls back to skill execution when the team's backing agency is archived", async () => {
+    mockGetTeam.mockResolvedValueOnce({
+      agencyId: "agency-team-archived-1",
+    });
+    mockAgencyAuthorizationRows.mockResolvedValueOnce([
+      {
+        id: "agency-team-archived-1",
+        tenantId: "tenant-1",
+        status: "archived",
+        isPublished: false,
+        visibility: "private",
+        createdBy: 42,
+      },
+    ]);
+    mockExecuteSkillLlmWithFallback.mockResolvedValueOnce({
+      success: true,
+      content: "fallback skill completed the archived agency step",
+      modelId: "gpt-4o-mini",
+      inputTokens: 10,
+      outputTokens: 20,
+      attempts: [],
+    });
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_orchestrator",
+          selectedSkillId: "skill-orchestrator",
+        },
+        objective: "Coordinate a multi-agent video workflow",
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "team-agency-step",
+                  title: "Team agency coordination",
+                  objective: "Use the team's backing agency",
+                  deliverable: "agency result",
+                  surface: "agency",
+                  selectedCapabilityId: "agency:agency-team-archived-1",
+                  status: "planned",
+                },
+              ],
+            },
+          },
+        } as any,
+      }),
+    );
+
+    expect(result.metadata.route).toBe("skill");
+    expect(result.metadata.routeReason).toContain("agency_unavailable_fallback");
+    expect(mockAgencyBridgeExecuteRun).not.toHaveBeenCalled();
+  });
+
   it("falls back to skill execution when the agency runtime is temporarily unavailable", async () => {
     mockGetTeam.mockResolvedValueOnce({
       agencyId: "agency-team-active-1",
