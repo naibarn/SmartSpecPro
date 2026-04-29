@@ -3410,6 +3410,108 @@ describe("RunEngine", () => {
         }),
       );
     });
+
+    it("does not block a step when the same runtime reservation was already applied", () => {
+      const reservationKey =
+        "run-1:storyboard-and-prompts:0:allowed:external_side_effect";
+      const snapshot = {
+        ...runEngine.initBudgetSnapshot(),
+        totalCreditsUsed: 47,
+        mediaJobsUsed: 8,
+        toolCallsUsed: 16,
+        agencyRunsUsed: 1,
+        appliedReservationKeys: [reservationKey],
+      };
+      const mediaPolicy = {
+        authorityDecision: "allowed",
+        sideEffectClass: "external_side_effect",
+        budgetReservation: {
+          tokens: 4000,
+          costCredits: 180,
+          toolCalls: 6,
+          mediaJobs: 8,
+          workflowRuns: 0,
+          agencyRuns: 0,
+        },
+      } as any;
+
+      expect(
+        runEngine.evaluateRuntimeBudgetGate({
+          budget: {
+            maxTokens: 96_000,
+            maxBudgetCredits: 720,
+            maxToolCalls: 32,
+            maxMediaJobs: 11,
+            maxWorkflowRuns: 0,
+            maxAgencyRuns: 1,
+          },
+          budgetSnapshot: snapshot,
+          policy: mediaPolicy,
+        }),
+      ).toEqual(
+        expect.objectContaining({
+          blocked: true,
+          reasonCode: "budget_cap_exceeded",
+          exceededResource: "media_jobs",
+        }),
+      );
+
+      expect(
+        runEngine.evaluateRuntimeBudgetGate({
+          budget: {
+            maxTokens: 96_000,
+            maxBudgetCredits: 720,
+            maxToolCalls: 32,
+            maxMediaJobs: 11,
+            maxWorkflowRuns: 0,
+            maxAgencyRuns: 1,
+          },
+          budgetSnapshot: snapshot,
+          policy: mediaPolicy,
+          reservationKey,
+        }),
+      ).toEqual(
+        expect.objectContaining({
+          blocked: false,
+          reasonCode: null,
+          exceededResource: null,
+        }),
+      );
+    });
+
+    it("resolves an already-applied reservation for a blocked runtime step", () => {
+      const reservationKey =
+        "run-1:storyboard-and-prompts:0:allowed:external_side_effect";
+      const snapshot = {
+        ...runEngine.initBudgetSnapshot(),
+        appliedReservationKeys: [
+          "run-1:research-context:0:allowed:read_only",
+          reservationKey,
+        ],
+      };
+
+      expect(
+        runEngine.resolveAlreadyAppliedRuntimeReservationKey({
+          runId: "run-1",
+          stepKey: "storyboard-and-prompts",
+          attempt: 0,
+          authorityDecision: "blocked",
+          sideEffectClass: "external_side_effect",
+          budgetSnapshot: snapshot,
+        }),
+      ).toBe(reservationKey);
+
+      expect(
+        runEngine.resolveAlreadyAppliedRuntimeReservationKey({
+          runId: "run-1",
+          stepKey: "compose-final-video",
+          attempt: 0,
+          authorityDecision: "blocked",
+          sideEffectClass: "external_side_effect",
+          budgetSnapshot: snapshot,
+        }),
+      ).toBeNull();
+    });
   });
 
   describe("accumulateBudget", () => {

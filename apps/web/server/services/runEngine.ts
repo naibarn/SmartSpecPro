@@ -932,6 +932,7 @@ export function evaluateRuntimeBudgetGate(input: {
   budget: ExecutionBudgetEnvelope | null;
   budgetSnapshot: BudgetSnapshot;
   policy: RuntimeDispatchPolicy | null;
+  reservationKey?: string | null;
   softTokenBudget?: boolean;
 }): {
   blocked: boolean;
@@ -952,7 +953,24 @@ export function evaluateRuntimeBudgetGate(input: {
     };
   }
 
-  const reservation = input.policy.budgetReservation;
+  const appliedReservationKeys = Array.isArray(input.budgetSnapshot.appliedReservationKeys)
+    ? input.budgetSnapshot.appliedReservationKeys.filter(
+        (value): value is string => typeof value === "string",
+      )
+    : [];
+  const reservationAlreadyApplied =
+    Boolean(input.reservationKey) &&
+    appliedReservationKeys.includes(input.reservationKey!);
+  const reservation = reservationAlreadyApplied
+    ? {
+        tokens: 0,
+        costCredits: 0,
+        toolCalls: 0,
+        mediaJobs: 0,
+        workflowRuns: 0,
+        agencyRuns: 0,
+      }
+    : input.policy.budgetReservation;
   if (
     input.budget.maxBudgetCredits != null &&
     usage.totalCreditsUsed + reservation.costCredits >
@@ -1062,6 +1080,91 @@ function buildRuntimeBudgetBlockedResult(input: {
     },
     skillId: input.step.selectedCapabilityId ?? "work-os-runtime-budget-gate",
   };
+}
+
+function buildRuntimeBudgetReservationKey(input: {
+  runId: string;
+  step: Pick<monitoringService.RunPlanStep, "stepKey" | "validationState">;
+  policy: Pick<RuntimeDispatchPolicy, "authorityDecision" | "sideEffectClass">;
+}): string {
+  return [
+    input.runId,
+    input.step.stepKey,
+    input.step.validationState?.attempt ?? 0,
+    input.policy.authorityDecision,
+    input.policy.sideEffectClass,
+  ].join(":");
+}
+
+function parseRuntimeBudgetReservationKey(key: string): {
+  runId: string;
+  stepKey: string;
+  attempt: number;
+  authorityDecision: string;
+  sideEffectClass: string;
+} | null {
+  const parts = key.split(":");
+  if (parts.length !== 5) return null;
+  const [runId, stepKey, attemptRaw, authorityDecision, sideEffectClass] = parts;
+  if (!runId || !stepKey || !authorityDecision || !sideEffectClass) return null;
+  const attempt = Number(attemptRaw);
+  if (!Number.isInteger(attempt) || attempt < 0) return null;
+  return { runId, stepKey, attempt, authorityDecision, sideEffectClass };
+}
+
+export function resolveAlreadyAppliedRuntimeReservationKey(input: {
+  runId: string;
+  stepKey: string | null | undefined;
+  budgetSnapshot: BudgetSnapshot;
+  attempt?: number | null;
+  authorityDecision?: string | null;
+  sideEffectClass?: string | null;
+}): string | null {
+  if (!input.stepKey) return null;
+  const appliedReservationKeys = Array.isArray(input.budgetSnapshot.appliedReservationKeys)
+    ? input.budgetSnapshot.appliedReservationKeys.filter(
+        (value): value is string => typeof value === "string",
+      )
+    : [];
+  const parsedCandidates = appliedReservationKeys
+    .map(key => ({ key, parsed: parseRuntimeBudgetReservationKey(key) }))
+    .filter((entry): entry is {
+      key: string;
+      parsed: NonNullable<ReturnType<typeof parseRuntimeBudgetReservationKey>>;
+    } => Boolean(entry.parsed))
+    .filter(entry => entry.parsed.runId === input.runId)
+    .filter(entry => entry.parsed.stepKey === input.stepKey);
+
+  const attemptCandidates =
+    input.attempt == null
+      ? parsedCandidates
+      : parsedCandidates.filter(entry => entry.parsed.attempt === input.attempt);
+  const sideEffectCandidates = input.sideEffectClass
+    ? attemptCandidates.filter(
+        entry => entry.parsed.sideEffectClass === input.sideEffectClass,
+      )
+    : attemptCandidates;
+  if (sideEffectCandidates.length === 0) {
+    return null;
+  }
+
+  const authorityRank = (authorityDecision: string): number => {
+    if (authorityDecision === "allowed") return 0;
+    if (
+      input.authorityDecision &&
+      authorityDecision === input.authorityDecision
+    ) {
+      return 1;
+    }
+    return 2;
+  };
+  return [...sideEffectCandidates].sort((left, right) => {
+    const authorityDelta =
+      authorityRank(left.parsed.authorityDecision) -
+      authorityRank(right.parsed.authorityDecision);
+    if (authorityDelta !== 0) return authorityDelta;
+    return right.parsed.attempt - left.parsed.attempt;
+  })[0]?.key ?? null;
 }
 
 function buildMissingRuntimePolicyBlockedResult(input: {
@@ -5360,10 +5463,16 @@ async function resumeTokenOnlyBudgetBlockedAutoTeamRun(input: {
 
   const budgetSnapshot =
     (input.run.budgetSnapshotJson as BudgetSnapshot | null) ?? initBudgetSnapshot();
+  const reservationKey = buildRuntimeBudgetReservationKey({
+    runId: input.run.id,
+    step: activeStep,
+    policy: runtimePolicy,
+  });
   const strictGate = evaluateRuntimeBudgetGate({
     budget: approvedPlanSnapshot.budget,
     budgetSnapshot,
     policy: runtimePolicy,
+    reservationKey,
   });
   if (!strictGate.blocked || strictGate.exceededResource !== "tokens") {
     return null;
@@ -5464,6 +5573,190 @@ async function resumeTokenOnlyBudgetBlockedAutoTeamRun(input: {
   return updated ?? null;
 }
 
+async function resumeAlreadyReservedBudgetBlockedAutoTeamRun(input: {
+  db: Awaited<ReturnType<typeof getDb>>;
+  run: TeamRun;
+  tenantId: string;
+  runtimeState: Record<string, unknown>;
+}): Promise<TeamRun | null> {
+  if (!isWorkOsAutoTeamRun(input.run)) {
+    return null;
+  }
+
+  const approvedPlanSnapshot = getApprovedPlanForRun({
+    constraintsJson:
+      input.run.constraintsJson && typeof input.run.constraintsJson === "object"
+        ? (input.run.constraintsJson as Record<string, unknown>)
+        : null,
+    approvalPolicyJson:
+      input.run.approvalPolicyJson && typeof input.run.approvalPolicyJson === "object"
+        ? (input.run.approvalPolicyJson as Record<string, unknown>)
+        : null,
+  });
+  if (!approvedPlanSnapshot) {
+    return null;
+  }
+
+  const latestSnapshot = await monitoringService.getLatestRunSnapshot(input.run.id);
+  const latestPlanArtifact = monitoringService.extractRunPlanArtifact(latestSnapshot);
+  const blockedRuntimePolicy = extractRuntimeDispatchPolicy(
+    input.runtimeState.runtimeDispatchPolicy ?? null,
+  );
+  const blockedStepKey =
+    input.run.runtimeCurrentStepKey ??
+    blockedRuntimePolicy?.stepId ??
+    latestPlanArtifact?.steps?.find(
+      step => step.status !== "completed" && step.status !== "failed",
+    )?.stepKey ??
+    null;
+  const approvedPlanArtifact = buildApprovedRunPlanArtifact({
+    snapshot: approvedPlanSnapshot,
+    runId: input.run.id,
+    roomId: input.run.roomId,
+    teamId: input.run.teamId,
+  });
+  const planArtifact =
+    (blockedStepKey &&
+    latestPlanArtifact?.steps?.some(step => step.stepKey === blockedStepKey)
+      ? latestPlanArtifact
+      : null) ??
+    (blockedStepKey &&
+    approvedPlanArtifact.steps.some(step => step.stepKey === blockedStepKey)
+      ? approvedPlanArtifact
+      : null) ??
+    latestPlanArtifact ??
+    approvedPlanArtifact;
+  if (!planArtifact) {
+    return null;
+  }
+  const activeStep = selectActivePlanStep(planArtifact);
+  const exactBlockedPlanStep = blockedStepKey
+    ? planArtifact.steps.find(step => step.stepKey === blockedStepKey) ?? null
+    : null;
+  const currentPlanStep = exactBlockedPlanStep ?? activeStep;
+  const runtimePolicy = exactBlockedPlanStep
+    ? getStepRuntimeDispatchPolicy(exactBlockedPlanStep) ?? blockedRuntimePolicy
+    : blockedRuntimePolicy ?? getStepRuntimeDispatchPolicy(activeStep);
+  if (!currentPlanStep || !runtimePolicy || !blockedStepKey) {
+    return null;
+  }
+
+  const budgetSnapshot =
+    (input.run.budgetSnapshotJson as BudgetSnapshot | null) ?? initBudgetSnapshot();
+  const reservationKey = resolveAlreadyAppliedRuntimeReservationKey({
+    runId: input.run.id,
+    stepKey: blockedStepKey,
+    attempt: exactBlockedPlanStep?.validationState?.attempt ?? null,
+    authorityDecision: runtimePolicy.authorityDecision,
+    sideEffectClass: runtimePolicy.sideEffectClass,
+    budgetSnapshot,
+  });
+  if (!reservationKey) {
+    return null;
+  }
+
+  const rawGate = evaluateRuntimeBudgetGate({
+    budget: approvedPlanSnapshot.budget,
+    budgetSnapshot,
+    policy: runtimePolicy,
+  });
+  const recoveredGate = evaluateRuntimeBudgetGate({
+    budget: approvedPlanSnapshot.budget,
+    budgetSnapshot,
+    policy: runtimePolicy,
+    reservationKey,
+    softTokenBudget: true,
+  });
+  if (!rawGate.blocked || recoveredGate.blocked) {
+    return null;
+  }
+
+  const now = new Date().toISOString();
+  const resumedPlanArtifact = {
+    ...planArtifact,
+    status: "executing" as const,
+    lastUpdatedAt: now,
+    steps: planArtifact.steps.map(step =>
+      step.stepKey === blockedStepKey
+        ? {
+            ...step,
+            status: "in_progress" as const,
+            notes:
+              step.notes === "budget_cap_exceeded" ||
+              step.notes === "runtime_dispatch_blocked:budget_cap_exceeded"
+                ? null
+                : step.notes,
+          }
+        : step,
+    ),
+  };
+
+  await monitoringService.recordEvent({
+    tenantId: input.tenantId,
+    teamId: input.run.teamId,
+    roomId: input.run.roomId,
+    runId: input.run.id,
+    assistantId: "system",
+    eventType: "runtime_budget_duplicate_reservation_recovered",
+    eventCategory: "status_change",
+    summary:
+      "Resumed Work OS auto-team run after budget guard detected an already-applied reservation for the current step.",
+    detailJson: {
+      stepKey: blockedStepKey,
+      reservationKey,
+      usage: recoveredGate.usage,
+      reservation: runtimePolicy.budgetReservation,
+      blockedResource: rawGate.exceededResource,
+      recovery: "already_reserved_step_resumed",
+    },
+  });
+
+  await monitoringService.captureSnapshot(input.run.id, input.tenantId, {
+    artifactCountJson: { planArtifact: resumedPlanArtifact },
+    runtimeState: {
+      currentPhase: "running",
+      waitingReason: null,
+      policyGateReason: null,
+      autoReplanRequested: false,
+      budgetGate: {
+        recovered: true,
+        blockedResource: rawGate.exceededResource,
+        reservationKey,
+        usage: recoveredGate.usage,
+      },
+      planArtifact: resumedPlanArtifact,
+    } as Partial<monitoringService.RunRuntimeState>,
+  });
+
+  const [updated] = await input.db
+    .update(teamRuns)
+    .set({
+      status: "running",
+      stopReason: null,
+      runtimeTerminalReason: null,
+      runtimeApprovalState: null,
+      runtimeStateJson: {
+        ...input.runtimeState,
+        autoReplanRequested: false,
+        budgetGate: {
+          recovered: true,
+          blockedResource: rawGate.exceededResource,
+          reservationKey,
+          usage: recoveredGate.usage,
+        },
+        recovery: "already_reserved_step_resumed",
+      },
+    })
+    .where(eq(teamRuns.id, input.run.id))
+    .returning();
+
+  if (updated) {
+    startAutoStopChecker(updated.id);
+    queueAutoAdvance(updated.id, input.tenantId, 1, AUTO_TEAM_CONTINUATION_DELAY_MS);
+  }
+  return updated ?? null;
+}
+
 export async function recoverBudgetBlockedAutoTeamRun(
   runId: string,
   tenantId: string,
@@ -5472,10 +5765,17 @@ export async function recoverBudgetBlockedAutoTeamRun(
   if (!db) throw new Error("Database not available");
   const run = await loadRunWithTenantCheck(db, runId, tenantId);
   if (!run) throw new Error(`Run ${runId} not found`);
+  const isRuntimeBudgetDispatchBlock =
+    run.stopReason === "runtime_dispatch_blocked:budget_cap_exceeded";
+  const isBudgetCapStopped =
+    isRuntimeBudgetDispatchBlock ||
+    (run.runtimeTerminalReason === "budget_cap_exceeded" &&
+      typeof run.stopReason === "string" &&
+      run.stopReason.includes("budget"));
   if (
     run.executionMode !== "auto_team" ||
     run.status !== "paused" ||
-    run.stopReason !== "runtime_dispatch_blocked:budget_cap_exceeded"
+    !isBudgetCapStopped
   ) {
     return null;
   }
@@ -5486,6 +5786,19 @@ export async function recoverBudgetBlockedAutoTeamRun(
       ? (run.runtimeStateJson as Record<string, unknown>)
       : {};
   if (runtimeState.autoReplanRequested !== true) {
+    return null;
+  }
+
+  const alreadyReservedRecovery = await resumeAlreadyReservedBudgetBlockedAutoTeamRun({
+    db,
+    run,
+    tenantId,
+    runtimeState,
+  });
+  if (alreadyReservedRecovery) {
+    return alreadyReservedRecovery;
+  }
+  if (!isRuntimeBudgetDispatchBlock) {
     return null;
   }
 
@@ -8127,11 +8440,20 @@ export async function runNextTurn(
 
     const plannedActiveStep = selectActivePlanStep(autoTeamPlanArtifact);
     const plannedRuntimePolicy = getStepRuntimeDispatchPolicy(plannedActiveStep);
+    const plannedReservationKey =
+      plannedActiveStep && plannedRuntimePolicy?.budgetReservation
+        ? buildRuntimeBudgetReservationKey({
+            runId,
+            step: plannedActiveStep,
+            policy: plannedRuntimePolicy,
+          })
+        : null;
     const budgetGate = evaluateRuntimeBudgetGate({
       budget: approvedExecutionBudget,
       budgetSnapshot:
         (run.budgetSnapshotJson as BudgetSnapshot) ?? initBudgetSnapshot(),
       policy: plannedRuntimePolicy,
+      reservationKey: plannedReservationKey,
       softTokenBudget: isWorkOsAutoTeamRun(run),
     });
     const turnResponse =
@@ -8842,16 +9164,6 @@ export async function runNextTurn(
 
     const currentBudgetSnapshot =
       (run.budgetSnapshotJson as BudgetSnapshot) ?? initBudgetSnapshot();
-    const reservationKey =
-      plannedActiveStep && plannedRuntimePolicy?.budgetReservation
-        ? [
-            runId,
-            plannedActiveStep.stepKey,
-            plannedActiveStep.validationState?.attempt ?? 0,
-            plannedRuntimePolicy.authorityDecision,
-            plannedRuntimePolicy.sideEffectClass,
-          ].join(":")
-        : null;
     const updatedBudget = accumulateBudget(
       currentBudgetSnapshot,
       assistantId,
@@ -8861,7 +9173,7 @@ export async function runNextTurn(
         costCredits: turnResponse.costCredits,
       },
       plannedRuntimePolicy?.budgetReservation ?? null,
-      reservationKey,
+      plannedReservationKey,
     );
     if (
       run.executionMode === "auto_team" &&

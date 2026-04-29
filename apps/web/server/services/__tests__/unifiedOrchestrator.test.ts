@@ -449,7 +449,30 @@ describe("unifiedOrchestrator", () => {
       });
 
       it("runPlanner called and recordStepAttempt called with correct args", async () => {
-        const plannerResult = { resolvedModelId: "claude-3-5-sonnet", enabled: true };
+        const plannerResult = {
+          taskRunId: 42,
+          plan: {
+            version: "1.0",
+            strategy: "standard",
+            sourceType: "chat",
+            taskClass: "content",
+            modelFamily: "general",
+            needsTools: false,
+            escalation: "none",
+          },
+          resolvedModel: "claude-3-5-sonnet",
+          snapshot: {
+            modelId: "claude-3-5-sonnet",
+            providerModelId: "claude-3-5-sonnet",
+            providerName: "anthropic",
+            pricingInput: 0,
+            pricingOutput: 0,
+            isFree: false,
+            attemptIndex: 0,
+            resolvedAt: "2026-04-29T00:00:00.000Z",
+          },
+          plannerLatencyMs: 12,
+        };
         mockRunPlanner.mockResolvedValue(plannerResult as any);
 
         await executeUnified(buildRequest());
@@ -457,11 +480,14 @@ describe("unifiedOrchestrator", () => {
         expect(mockRunPlanner).toHaveBeenCalled();
         expect(mockRecordStepAttempt).toHaveBeenCalledWith(
           expect.objectContaining({
-            plannerResult,
-            executorResult: expect.objectContaining({
-              success: true,
-              modelUsed: "gpt-4o-mini",
-            }),
+            taskRunId: 42,
+            plan: plannerResult.plan,
+            model: "gpt-4o-mini",
+            inputTokens: 150,
+            outputTokens: 300,
+            durationMs: 500,
+            snapshot: plannerResult.snapshot,
+            creditsUsed: 5,
           }),
         );
       });

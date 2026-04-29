@@ -410,7 +410,7 @@ export async function executeUnified(
 
     // If planner resolved a model override, apply it
     const dynamicModelOverride =
-      (plannerResult as any)?.resolvedModelId ?? undefined;
+      plannerResult?.resolvedModel ?? undefined;
 
     // ─── Step 8: Inject Web Search ──────────────────────────
     const webSearchResult = await injectWebSearchIfNeeded({
@@ -533,15 +533,20 @@ export async function executeUnified(
     if (plannerResult) {
       try {
         await recordStepAttempt({
-          plannerResult,
-          executorResult: {
-            success: executorResult.success,
-            modelUsed: executorResult.modelUsed,
-            inputTokens: executorResult.inputTokens,
-            outputTokens: executorResult.outputTokens,
-            durationMs: executorResult.totalDurationMs,
-          },
-        } as any);
+          taskRunId: plannerResult.taskRunId,
+          plan: plannerResult.plan,
+          model:
+            executorResult.modelUsed ??
+            plannerResult.resolvedModel ??
+            policyResult.modelId ??
+            "unknown",
+          provider: undefined,
+          inputTokens: executorResult.inputTokens,
+          outputTokens: executorResult.outputTokens,
+          durationMs: executorResult.totalDurationMs,
+          snapshot: plannerResult.snapshot,
+          creditsUsed: costCredits,
+        });
       } catch {
         // non-critical
       }
