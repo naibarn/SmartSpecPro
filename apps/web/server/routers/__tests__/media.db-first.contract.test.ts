@@ -789,10 +789,50 @@ describe("media router DB-first model contract", () => {
     const result = await fn({ input: { type: "video" } });
 
     expect(result.defaults.video).toBe("veo-3-1");
-    expect(result.models.map((model: { id: string }) => model.id)).toEqual([
-      "seedance-1-0-pro-fast-251015",
-      "veo-3-1",
-    ]);
+    expect(result.models.map((model: { id: string }) => model.id)).toEqual(["veo-3-1"]);
+  });
+
+  it("getModels hides models whose enabled provider is missing configuration", async () => {
+    const db = {
+      select: vi
+        .fn()
+        .mockImplementationOnce(() => ({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              orderBy: vi.fn().mockResolvedValue([
+                {
+                  id: "veo-3-1",
+                  name: "Veo 3.1",
+                  description: "video",
+                  type: "video",
+                  provider: "knplabai",
+                  creditCost: 50,
+                  supportsAspectRatios: ["16:9"],
+                  supportsSizes: null,
+                  supportsDurations: [5],
+                  configJson: null,
+                },
+              ]),
+            }),
+          }),
+        }))
+        .mockImplementationOnce(() => ({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([
+                { providerName: "knplabai", hasApiKey: false, apiKeyEncrypted: null },
+              ]),
+            }),
+          }),
+        })),
+    };
+    mockGetDb.mockResolvedValue(db as any);
+
+    const fn = mediaRouter.getModels as Function;
+    const result = await fn({ input: { type: "video" } });
+
+    expect(result.models).toEqual([]);
+    expect(result.defaults.video).toBeNull();
   });
 
   it("getModel resolves DB-only model details", async () => {

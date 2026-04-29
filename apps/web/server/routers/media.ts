@@ -49,6 +49,10 @@ import {
   mapToApiModelId,
 } from "../services/modelRegistry";
 import {
+  inferMediaModelHintFromText,
+  resolveEnabledMediaModelSelection,
+} from "../services/enabledMediaModelSelection";
+import {
   GEMINI_3_1_FLASH_TTS_MODEL_ID,
   validateGemini31FlashTtsAudioRequest,
   validateGemini31FlashTtsExtraParams,
@@ -743,6 +747,7 @@ async function resolveProviderConnection(providerName: string): Promise<{ baseUr
       apiKeyEncrypted: mediaProviders.apiKeyEncrypted,
     })
     .from(mediaProviders)
+    .where(eq(mediaProviders.isEnabled, true))
     .limit(200);
 
   const provider = providers.find((candidate) => (
@@ -957,32 +962,42 @@ async function getModelName(modelId: string): Promise<string> {
   return MEDIA_MODELS[modelId]?.name ?? modelId;
 }
 
-async function getConfiguredMediaProviderNames(): Promise<Set<string>> {
+async function getConfiguredMediaProviderNames(): Promise<{
+  providerRowsAvailable: boolean;
+  names: Set<string>;
+}> {
   try {
     const db = await getDb();
     if (!db) {
-      return new Set();
+      return { providerRowsAvailable: false, names: new Set() };
     }
 
     const rows = await db
       .select({
         providerName: mediaProviders.providerName,
+        hasApiKey: mediaProviders.hasApiKey,
         apiKeyEncrypted: mediaProviders.apiKeyEncrypted,
       })
       .from(mediaProviders)
       .where(eq(mediaProviders.isEnabled, true))
       .limit(50);
 
-    return new Set(
-      rows
-        .filter((row) => typeof row.apiKeyEncrypted === "string" && row.apiKeyEncrypted.trim().length > 0)
-        .map((row) => normalizeMediaProviderName(row.providerName)),
-    );
+    return {
+      providerRowsAvailable: rows.length > 0,
+      names: new Set(
+        rows
+          .filter((row) =>
+            row.hasApiKey ||
+            (typeof row.apiKeyEncrypted === "string" && row.apiKeyEncrypted.trim().length > 0),
+          )
+          .map((row) => normalizeMediaProviderName(row.providerName)),
+      ),
+    };
   } catch (error) {
     console.warn("[MediaModelLookup] Media provider config lookup failed, falling back to sorted defaults", {
       error: error instanceof Error ? error.message : String(error),
     });
-    return new Set();
+    return { providerRowsAvailable: false, names: new Set() };
   }
 }
 
@@ -994,12 +1009,24 @@ function pickConfiguredDefaultModelId<T extends { modelId: string; provider: str
     return null;
   }
   if (configuredProviders.size === 0) {
-    return rows[0]?.modelId ?? null;
+    return null;
   }
   return (
     rows.find((row) => configuredProviders.has(normalizeMediaProviderName(row.provider)))?.modelId
     ?? rows[0]?.modelId
     ?? null
+  );
+}
+
+function filterModelsByConfiguredProviders<T extends { provider: string | null }>(
+  rows: T[],
+  configuredProviderInfo: { providerRowsAvailable: boolean; names: ReadonlySet<string> },
+): T[] {
+  if (!configuredProviderInfo.providerRowsAvailable) {
+    return rows;
+  }
+  return rows.filter((row) =>
+    configuredProviderInfo.names.has(normalizeMediaProviderName(row.provider)),
   );
 }
 
@@ -1098,35 +1125,30 @@ function assertModelAwareVideoRequest(params: {
   }
 }
 
-async function getDefaultModelId(type: MediaType): Promise<string> {
-  try {
-    const db = await getDb();
-    if (db) {
-      const dbModels = await db
-        .select({ modelId: mediaModels.modelId, provider: mediaModels.provider })
-        .from(mediaModels)
-        .where(and(eq(mediaModels.modelType, type), eq(mediaModels.isEnabled, true)))
-        .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority), asc(mediaModels.id))
-        .limit(50);
-      const configuredProviders = await getConfiguredMediaProviderNames();
-      const modelId = pickConfiguredDefaultModelId(
-        dbModels.map((row) => ({ modelId: row.modelId, provider: row.provider ?? null })),
-        configuredProviders,
-      );
-      if (modelId) {
-        mediaModelLookupCounters.defaultFromDb += 1;
-        return modelId;
-      }
-    }
-  } catch (error) {
+async function getDefaultModelId(type: MediaType, promptText?: string | null): Promise<string> {
+  const selection = await resolveEnabledMediaModelSelection({
+    mediaType: type,
+    requestedModel: inferMediaModelHintFromText(type, promptText),
+    requireConfiguredProvider: true,
+    allowSubstitution: true,
+  });
+  if (selection.ok) {
+    mediaModelLookupCounters.defaultFromDb += 1;
+    return selection.modelId;
+  }
+  if (selection.reasonCode === "media_registry_unavailable") {
     console.warn("[MediaModelLookup] Default model DB lookup failed, using static default", {
       type,
-      error: error instanceof Error ? error.message : String(error),
+      error: selection.message,
     });
+    mediaModelLookupCounters.defaultFallbackStatic += 1;
+    return DEFAULT_MODELS[type];
   }
 
-  mediaModelLookupCounters.defaultFallbackStatic += 1;
-  return DEFAULT_MODELS[type];
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: selection.message,
+  });
 }
 
 async function resolveModelMeta(
@@ -1310,29 +1332,35 @@ export const mediaRouter = router({
           .where(and(...conditions))
           .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority), asc(mediaModels.id));
 
-        const configuredProviders = await getConfiguredMediaProviderNames();
+        const configuredProviderInfo = await getConfiguredMediaProviderNames();
+        const selectableRows = filterModelsByConfiguredProviders(rows, configuredProviderInfo);
         const defaultImage = pickConfiguredDefaultModelId(
-          rows
+          selectableRows
             .filter((model) => model.type === "image")
             .map((model) => ({ modelId: model.id, provider: model.provider ?? null })),
-          configuredProviders,
-        ) ?? DEFAULT_MODELS.image;
+          configuredProviderInfo.names,
+        );
         const defaultVideo = pickConfiguredDefaultModelId(
-          rows
+          selectableRows
             .filter((model) => model.type === "video")
             .map((model) => ({ modelId: model.id, provider: model.provider ?? null })),
-          configuredProviders,
-        ) ?? DEFAULT_MODELS.video;
+          configuredProviderInfo.names,
+        );
         const defaultAudio = pickConfiguredDefaultModelId(
-          rows
+          selectableRows
             .filter((model) => model.type === "audio")
             .map((model) => ({ modelId: model.id, provider: model.provider ?? null })),
-          configuredProviders,
-        ) ?? DEFAULT_MODELS.audio;
+          configuredProviderInfo.names,
+        );
 
+        const allowStaticDefaultFallback = !configuredProviderInfo.providerRowsAvailable;
         return {
-          models: rows,
-          defaults: { image: defaultImage, video: defaultVideo, audio: defaultAudio },
+          models: selectableRows,
+          defaults: {
+            image: defaultImage ?? (allowStaticDefaultFallback ? DEFAULT_MODELS.image : null),
+            video: defaultVideo ?? (allowStaticDefaultFallback ? DEFAULT_MODELS.video : null),
+            audio: defaultAudio ?? (allowStaticDefaultFallback ? DEFAULT_MODELS.audio : null),
+          },
         };
       }
       await refreshModelCache().catch(() => {});
@@ -1456,7 +1484,7 @@ export const mediaRouter = router({
         });
       }
 
-      const model = input.model || await getDefaultModelId("image");
+      const model = input.model || await getDefaultModelId("image", input.prompt);
       const modelMeta = await resolveModelMeta(model, "image");
 
       // Calculate credit cost from DB pricingTiers
@@ -1612,7 +1640,7 @@ export const mediaRouter = router({
         });
       }
 
-      const model = input.model || await getDefaultModelId("video");
+      const model = input.model || await getDefaultModelId("video", input.prompt);
       const modelMeta = await resolveModelMeta(model, "video");
 
       // Calculate credit cost from DB pricingTiers
@@ -1727,7 +1755,7 @@ export const mediaRouter = router({
         });
       }
 
-      const model = input.model || await getDefaultModelId("audio");
+      const model = input.model || await getDefaultModelId("audio", input.text);
       const modelMeta = await resolveModelMeta(model, "audio");
       const normalizedModelId = mapToApiModelId(model);
       if (normalizedModelId === GEMINI_3_1_FLASH_TTS_MODEL_ID) {
@@ -1881,7 +1909,7 @@ export const mediaRouter = router({
         });
       }
 
-      const model = input.model || await getDefaultModelId("audio");
+      const model = input.model || await getDefaultModelId("audio", input.text);
       const modelMeta = await resolveModelMeta(model, "audio");
       const normalizedModelId = mapToApiModelId(model);
       if (normalizedModelId === GEMINI_3_1_FLASH_TTS_MODEL_ID) {
@@ -2067,7 +2095,7 @@ export const mediaRouter = router({
         });
       }
 
-      const model = input.model || await getDefaultModelId("image");
+      const model = input.model || await getDefaultModelId("image", input.prompt);
       const modelMeta = await resolveModelMeta(model, "image");
 
       // Calculate credit cost from DB pricingTiers
@@ -2215,7 +2243,7 @@ export const mediaRouter = router({
         });
       }
 
-      const model = input.model || await getDefaultModelId("video");
+      const model = input.model || await getDefaultModelId("video", input.prompt);
       const modelMeta = await resolveModelMeta(model, "video");
 
       // Calculate credit cost from DB pricingTiers

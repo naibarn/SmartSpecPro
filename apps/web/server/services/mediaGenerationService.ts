@@ -32,6 +32,10 @@ import {
   assertGemini31FlashTtsExtraParams,
   normalizeGemini31FlashTtsExtraParams,
 } from "./falGeminiTts";
+import {
+  inferMediaModelHintFromText,
+  resolveEnabledMediaModelSelection,
+} from "./enabledMediaModelSelection";
 
 // ==================== Types ====================
 
@@ -132,6 +136,49 @@ function resolveProvider(modelId: string, apiConfig?: Record<string, string>): s
   mediaModelResolutionCounters.unknownModelRequests += 1;
   console.warn("[MediaModelResolution] Unknown model provider fallback", { modelId });
   return "kie.ai";
+}
+
+async function resolveEffectiveMediaRequestModel(input: {
+  mediaType: MediaType;
+  requestedModel?: string | null;
+  promptText?: string | null;
+  requestedApiConfig?: Record<string, string>;
+  fallbackModel: string;
+}): Promise<{ modelId: string; provider: string; apiConfig?: Record<string, string> }> {
+  const requestedProvider = resolveProviderFromApiConfig(input.requestedApiConfig);
+  const requestedModel =
+    input.requestedModel ?? inferMediaModelHintFromText(input.mediaType, input.promptText);
+  const selection = await resolveEnabledMediaModelSelection({
+    mediaType: input.mediaType,
+    requestedModel,
+    requestedProvider,
+    requireConfiguredProvider: true,
+    allowSubstitution: true,
+  });
+
+  if (selection.ok) {
+    return {
+      modelId: selection.modelId,
+      provider: selection.provider,
+      apiConfig: {
+        ...(input.requestedApiConfig ?? {}),
+        provider: selection.provider,
+        providerName: selection.providerName,
+        model: selection.modelId,
+      },
+    };
+  }
+
+  if (selection.reasonCode !== "media_registry_unavailable") {
+    throw new Error(`${selection.reasonCode}: ${selection.message}`);
+  }
+
+  const modelId = requestedModel || input.fallbackModel;
+  return {
+    modelId,
+    provider: resolveProvider(modelId, input.requestedApiConfig),
+    apiConfig: input.requestedApiConfig,
+  };
 }
 
 // Model registry with metadata
@@ -1141,8 +1188,14 @@ export class MediaGenerationService {
     request: ImageGenerationRequest,
     userToken: string
   ): Promise<MediaGenerationResponse> {
-    const modelId = request.model || DEFAULT_MODELS.image;
-    const provider = resolveProvider(modelId, request.apiConfig);
+    const { modelId, provider, apiConfig: effectiveApiConfig } =
+      await resolveEffectiveMediaRequestModel({
+        mediaType: "image",
+        requestedModel: request.model,
+        promptText: request.prompt,
+        requestedApiConfig: request.apiConfig,
+        fallbackModel: DEFAULT_MODELS.image,
+      });
     const normalizedPrompt = normalizeMediaPrompt(request.prompt) || request.prompt.trim();
 
     const payload: Record<string, unknown> = {
@@ -1186,7 +1239,7 @@ export class MediaGenerationService {
 
     const apiConfig = buildApiConfigWithReferenceImageConfig(
       modelId,
-      (request as any).apiConfig,
+      effectiveApiConfig,
       request.referenceImageUrls,
     );
     if (apiConfig) {
@@ -1266,8 +1319,14 @@ export class MediaGenerationService {
     request: VideoGenerationRequest,
     userToken: string
   ): Promise<MediaGenerationResponse> {
-    const modelId = request.model || DEFAULT_MODELS.video;
-    const provider = resolveProvider(modelId, request.apiConfig);
+    const { modelId, provider, apiConfig: effectiveApiConfig } =
+      await resolveEffectiveMediaRequestModel({
+        mediaType: "video",
+        requestedModel: request.model,
+        promptText: request.prompt,
+        requestedApiConfig: request.apiConfig,
+        fallbackModel: DEFAULT_MODELS.video,
+      });
     const normalizedPrompt = normalizeMediaPrompt(request.prompt) || request.prompt.trim();
 
     const payload: Record<string, unknown> = {
@@ -1305,7 +1364,7 @@ export class MediaGenerationService {
 
     const apiConfig = buildApiConfigWithReferenceImageConfig(
       modelId,
-      (request as any).apiConfig,
+      effectiveApiConfig,
       request.referenceImageUrls,
     );
     if (apiConfig) {
@@ -1388,11 +1447,17 @@ export class MediaGenerationService {
     request: AudioGenerationRequest,
     userToken: string
   ): Promise<MediaGenerationResponse> {
-    const modelId = request.model || DEFAULT_MODELS.audio;
+    const { modelId, provider, apiConfig: effectiveApiConfig } =
+      await resolveEffectiveMediaRequestModel({
+        mediaType: "audio",
+        requestedModel: request.model,
+        promptText: request.text,
+        requestedApiConfig: request.apiConfig,
+        fallbackModel: DEFAULT_MODELS.audio,
+      });
     assertValidAudioModelRequest(modelId, request);
     const normalizedExtraParams = normalizeValidAudioModelExtraParams(modelId, request.extraParams);
     assertValidAudioModelExtraParams(modelId, normalizedExtraParams);
-    const provider = resolveProvider(modelId, request.apiConfig);
     const payload: Record<string, unknown> = {
       text: request.text,
       model: modelId,
@@ -1401,8 +1466,8 @@ export class MediaGenerationService {
     };
 
     // Add apiConfig for model-specific endpoints and payload formats
-    if (request.apiConfig) {
-      payload.api_config = request.apiConfig;
+    if (effectiveApiConfig) {
+      payload.api_config = effectiveApiConfig;
     }
 
     // Add extraParams for model-specific fields
@@ -1475,8 +1540,14 @@ export class MediaGenerationService {
     request: ImageGenerationRequest,
     userToken: string
   ): Promise<MediaTask> {
-    const modelId = request.model || DEFAULT_MODELS.image;
-    const provider = resolveProvider(modelId, request.apiConfig);
+    const { modelId, provider, apiConfig: effectiveApiConfig } =
+      await resolveEffectiveMediaRequestModel({
+        mediaType: "image",
+        requestedModel: request.model,
+        promptText: request.prompt,
+        requestedApiConfig: request.apiConfig,
+        fallbackModel: DEFAULT_MODELS.image,
+      });
     const normalizedPrompt = normalizeMediaPrompt(request.prompt) || request.prompt.trim();
 
     const payload: Record<string, unknown> = {
@@ -1510,7 +1581,7 @@ export class MediaGenerationService {
 
     const apiConfig = buildApiConfigWithReferenceImageConfig(
       modelId,
-      request.apiConfig,
+      effectiveApiConfig,
       request.referenceImageUrls,
     );
     if (apiConfig) {
@@ -1595,8 +1666,14 @@ export class MediaGenerationService {
     request: VideoGenerationRequest,
     userToken: string
   ): Promise<MediaTask> {
-    const modelId = request.model || DEFAULT_MODELS.video;
-    const provider = resolveProvider(modelId, request.apiConfig);
+    const { modelId, provider, apiConfig: effectiveApiConfig } =
+      await resolveEffectiveMediaRequestModel({
+        mediaType: "video",
+        requestedModel: request.model,
+        promptText: request.prompt,
+        requestedApiConfig: request.apiConfig,
+        fallbackModel: DEFAULT_MODELS.video,
+      });
     const normalizedPrompt = normalizeMediaPrompt(request.prompt) || request.prompt.trim();
 
     const payload: Record<string, unknown> = {
@@ -1632,8 +1709,8 @@ export class MediaGenerationService {
     }
 
     // Add apiConfig for model-specific endpoints and payload formats (e.g., Veo 3)
-    if (request.apiConfig) {
-      payload.api_config = request.apiConfig;
+    if (effectiveApiConfig) {
+      payload.api_config = effectiveApiConfig;
     }
 
     // Add extraParams for additional model-specific parameters
@@ -1713,11 +1790,17 @@ export class MediaGenerationService {
     request: AudioGenerationRequest,
     userToken: string
   ): Promise<MediaTask> {
-    const modelId = request.model || DEFAULT_MODELS.audio;
+    const { modelId, provider, apiConfig: effectiveApiConfig } =
+      await resolveEffectiveMediaRequestModel({
+        mediaType: "audio",
+        requestedModel: request.model,
+        promptText: request.text,
+        requestedApiConfig: request.apiConfig,
+        fallbackModel: DEFAULT_MODELS.audio,
+      });
     assertValidAudioModelRequest(modelId, request);
     const normalizedExtraParams = normalizeValidAudioModelExtraParams(modelId, request.extraParams);
     assertValidAudioModelExtraParams(modelId, normalizedExtraParams);
-    const provider = resolveProvider(modelId, request.apiConfig);
     const payload: Record<string, unknown> = {
       text: request.text,
       model: modelId,
@@ -1726,8 +1809,8 @@ export class MediaGenerationService {
     };
 
     // Add apiConfig for model-specific endpoints and payload formats
-    if (request.apiConfig) {
-      payload.api_config = request.apiConfig;
+    if (effectiveApiConfig) {
+      payload.api_config = effectiveApiConfig;
     }
 
     // Add extraParams for model-specific fields
