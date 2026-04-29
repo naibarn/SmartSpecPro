@@ -850,6 +850,200 @@ describe("autoTeamMediaCompletionService", () => {
     }
   });
 
+  it("fails fast with plan-step metadata when the video provider is not configured", async () => {
+    const plan = makeCompletedPlan();
+    plan.status = "executing";
+    plan.steps = [
+      {
+        ...plan.steps[0],
+        stepKey: "generate-visual-assets",
+        title: "Generate storyboard keyframes",
+        objective: "Prepare storyboard images.",
+        deliverable: "Storyboard keyframes",
+        surface: "media_studio",
+        selectedCapabilityId: "media_studio:image",
+        status: "completed",
+      },
+      {
+        ...plan.steps[0],
+        stepKey: "compose-final-video",
+        title: "Create and compose final video",
+        objective: "Generate the final video with Veo 3.1.",
+        deliverable: "Final composed video",
+        surface: "video_editor",
+        selectedCapabilityId: "video_editor:compose",
+        status: "in_progress",
+      },
+    ];
+    mocks.mockGetLatestRunSnapshot.mockResolvedValue({
+      artifactCountJson: { planArtifact: plan },
+    });
+
+    const currentRun = {
+      ...makeRun(),
+      runtimeStateJson: {
+        autoTeamMediaPipeline: makePipeline({
+          status: "collecting_assets",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          expectedClipCount: 1,
+          storyboardImages: [
+            {
+              url: "https://cdn.example.com/storyboard-1.png",
+              prompt: "Scene 1: opening comparison",
+              sourceSkillId: "media_studio:image",
+              createdAt: "2026-04-26T00:00:00.000Z",
+            },
+          ],
+          imageTasks: [],
+          clipTasks: [],
+        }),
+      },
+    };
+    const updateSets: Array<Record<string, any>> = [];
+    mocks.mockDbSelect.mockImplementation(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(async () => [currentRun]),
+        })),
+      })),
+    }));
+    mocks.mockDbUpdate.mockImplementation(() => ({
+      set: vi.fn((values: Record<string, any>) => {
+        updateSets.push(values);
+        const pipeline = extractPipelineUpdate(values);
+        if (pipeline) {
+          currentRun.runtimeStateJson.autoTeamMediaPipeline = pipeline;
+        }
+        return { where: vi.fn(async () => []) };
+      }),
+    }));
+    mocks.mockGenerateVideoAsync.mockResolvedValue({
+      id: "video-task-1",
+      status: "failed",
+      model: "veo-3-1",
+      errorMessage:
+        "503: KNPLabs not configured. Please add API key in Admin > Media Providers.",
+      resultData: {},
+    });
+
+    await advanceAutoTeamMediaPipeline("run-1");
+
+    expect(mocks.mockGenerateVideoAsync).toHaveBeenCalledTimes(1);
+    const latestPipeline = updateSets
+      .map(values => extractPipelineUpdate(values))
+      .filter(Boolean)
+      .at(-1);
+    expect(latestPipeline.status).toBe("failed");
+    expect(latestPipeline.errorMessage).toContain("KNPLabs not configured");
+    expect(updateSets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stopReason: "media_provider_not_configured",
+          runtimeTerminalReason: "media_provider_not_configured",
+        }),
+      ]),
+    );
+    expect(mocks.mockPostWorkUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining("selected media provider is not configured"),
+        metadataJson: expect.objectContaining({
+          source: "auto_team_media_pipeline",
+          pipelineStatus: "failed",
+          pipelineFailureReason: "media_provider_not_configured",
+          stepKey: "compose-final-video",
+          stepTitle: "Create and compose final video",
+          stepObjective: "Generate the final video with Veo 3.1.",
+          stepDeliverable: "Final composed video",
+          stepReviewStatus: "failed",
+        }),
+      }),
+    );
+  });
+
+  it("does not queue a repair attempt for non-retryable provider failures", async () => {
+    const plan = makeCompletedPlan();
+    plan.status = "executing";
+    plan.steps[0] = {
+      ...plan.steps[0],
+      stepKey: "compose-final-video",
+      title: "Create and compose final video",
+      objective: "Generate the final video with Veo 3.1.",
+      deliverable: "Final composed video",
+      surface: "video_editor",
+      selectedCapabilityId: "video_editor:compose",
+      status: "in_progress",
+    };
+    mocks.mockGetLatestRunSnapshot.mockResolvedValue({
+      artifactCountJson: { planArtifact: plan },
+    });
+    const currentRun = {
+      ...makeRun(),
+      runtimeStateJson: {
+        autoTeamMediaPipeline: makePipeline({
+          status: "waiting_for_video_tasks",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          expectedClipCount: 1,
+          storyboardImages: [
+            {
+              url: "https://cdn.example.com/storyboard-1.png",
+              prompt: "Scene 1: opening comparison",
+              sourceSkillId: "media_studio:image",
+              createdAt: "2026-04-26T00:00:00.000Z",
+            },
+          ],
+          imageTasks: [],
+          clipTasks: [
+            {
+              taskId: "video-task-1",
+              prompt: "Create the video clip.",
+              model: "veo-3-1",
+              status: "failed",
+              resultUrl: null,
+              errorMessage:
+                "503: KNPLabs not configured. Please add API key in Admin > Media Providers.",
+              plannedDurationSeconds: 10,
+              clipIndex: 1,
+              clipCount: 1,
+              createdAt: "2026-04-26T00:00:00.000Z",
+            },
+          ],
+        }),
+      },
+    };
+    const updateSets: Array<Record<string, any>> = [];
+    mocks.mockDbSelect.mockImplementation(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(async () => [currentRun]),
+        })),
+      })),
+    }));
+    mocks.mockDbUpdate.mockImplementation(() => ({
+      set: vi.fn((values: Record<string, any>) => {
+        updateSets.push(values);
+        return { where: vi.fn(async () => []) };
+      }),
+    }));
+
+    await advanceAutoTeamMediaPipeline("run-1");
+
+    expect(mocks.mockGenerateVideoAsync).not.toHaveBeenCalled();
+    expect(updateSets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          stopReason: "media_provider_not_configured",
+        }),
+      ]),
+    );
+    const postedContent = mocks.mockPostWorkUpdate.mock.calls
+      .map(call => String(call[0]?.content ?? ""))
+      .join("\n");
+    expect(postedContent).not.toContain("queued repair attempt");
+    expect(postedContent).toContain("provider is not configured");
+  });
+
   it("finalizes completed media through canonical evidence before stopping the run", async () => {
     const finalReview = {
       status: "passed" as const,

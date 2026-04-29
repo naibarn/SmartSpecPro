@@ -25,6 +25,13 @@ import {
 import type { MediaJobSpec } from "../../shared/types/mediaJob";
 import { buildCanonicalArtifactRef } from "./autoTeamArtifactRefService";
 import {
+  buildAutoTeamStepResultContent,
+  buildAutoTeamStepResultMetadata,
+  type AutoTeamStepResultPhase,
+  type AutoTeamStepReviewStatus,
+  type AutoTeamStepResultStepContext,
+} from "./autoTeamRoomMessages";
+import {
   redactSensitiveText,
   validateAutoTeamMediaOutputSafety,
 } from "./autoTeamSafetyService";
@@ -174,6 +181,15 @@ type QueueMissingVideoTaskResult =
   | { status: "capacity_wait"; message: string }
   | { status: "failed"; message: string };
 
+type PipelineRoomLanguage = "en" | "th";
+type LocalizedPipelineContent = string | { en: string; th: string };
+
+interface ClassifiedPipelineFailure {
+  reasonCode: string;
+  retryable: boolean;
+  message: string;
+}
+
 const scheduledPolls = new Map<string, NodeJS.Timeout>();
 const activePipelineAdvances = new Set<string>();
 
@@ -289,6 +305,49 @@ function isMediaJobCapacityError(error: unknown): boolean {
   );
 }
 
+function classifyPipelineFailure(message: unknown): ClassifiedPipelineFailure {
+  const raw = message instanceof Error ? message.message : String(message ?? "");
+  const sanitized = redactSensitiveText(raw).slice(0, 500);
+  if (
+    /(?:not configured|api key not configured|no api key|base url not configured|connection not configured|provider has no api key|KNPLabs not configured)/i.test(
+      sanitized,
+    )
+  ) {
+    return {
+      reasonCode: "media_provider_not_configured",
+      retryable: false,
+      message: sanitized,
+    };
+  }
+  if (/\b(?:401|403|unauthorized|forbidden|invalid api key|authentication failed)\b/i.test(sanitized)) {
+    return {
+      reasonCode: "media_provider_auth_failed",
+      retryable: false,
+      message: sanitized,
+    };
+  }
+  if (
+    /filtered out|prohibited use|policy|safety|unsafe|blocked by provider/i.test(
+      sanitized,
+    )
+  ) {
+    return {
+      reasonCode: "media_provider_safety_blocked",
+      retryable: false,
+      message: sanitized,
+    };
+  }
+  return {
+    reasonCode: "auto_team_media_pipeline_failed",
+    retryable: true,
+    message: sanitized || "Media pipeline failed.",
+  };
+}
+
+function shouldAttemptMediaRepair(message: unknown): boolean {
+  return classifyPipelineFailure(message).retryable;
+}
+
 function parseTargetDurationSeconds(objective: string): number {
   const normalized = objective.toLowerCase();
   const minuteMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(?:นาที|minute|minutes|min)\b/);
@@ -377,6 +436,260 @@ async function assertRunTenantScope(input: {
   }
 }
 
+function localizePipelineContent(
+  content: LocalizedPipelineContent,
+  roomLanguage: PipelineRoomLanguage,
+): string {
+  return typeof content === "string" ? content : content[roomLanguage];
+}
+
+function toPipelineRoomLanguage(value: unknown): PipelineRoomLanguage {
+  return value === "th" ? "th" : "en";
+}
+
+async function resolvePipelineRoomLanguage(
+  pipeline: AutoTeamMediaPipelineState,
+): Promise<PipelineRoomLanguage> {
+  try {
+    const db = await getDb();
+    if (!db) return "en";
+    const [room] = await db
+      .select({ language: teamRooms.language })
+      .from(teamRooms)
+      .where(eq(teamRooms.id, pipeline.roomId))
+      .limit(1);
+    return toPipelineRoomLanguage(room?.language);
+  } catch {
+    return "en";
+  }
+}
+
+function extractPlanArtifactFromRunState(
+  run: Pick<TeamRun, "runtimeStateJson"> | null | undefined,
+): monitoringService.RunPlanArtifact | null {
+  const state = run ? extractRuntimeState(run) : {};
+  const candidate = state.planArtifact;
+  if (!isRecord(candidate)) return null;
+  return monitoringService.extractRunPlanArtifact({
+    artifactCountJson: { planArtifact: candidate },
+  } as never);
+}
+
+async function resolvePipelinePlanArtifact(
+  pipeline: AutoTeamMediaPipelineState,
+): Promise<monitoringService.RunPlanArtifact | null> {
+  const latestSnapshot = await monitoringService
+    .getLatestRunSnapshot(pipeline.runId)
+    .catch(() => null);
+  const snapshotPlan = monitoringService.extractRunPlanArtifact(latestSnapshot);
+  if (snapshotPlan) return snapshotPlan;
+  const run = await readRun(pipeline.runId).catch(() => null);
+  return extractPlanArtifactFromRunState(run);
+}
+
+function getExplicitStepKey(metadata?: Record<string, unknown>): string | null {
+  const value = metadata?.stepKey ?? metadata?.pipelineStepKey;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function scoreStoryboardMediaPlanStep(
+  step: monitoringService.RunPlanArtifact["steps"][number],
+): number {
+  const surface = step.surface ?? null;
+  const selectedCapabilityId = step.selectedCapabilityId ?? "";
+  const text = [step.stepKey, step.title, step.objective, step.deliverable]
+    .join(" ");
+  let score = 0;
+  if (surface === "media_studio") score += 2;
+  if (/^media_studio:(image|keyframe|storyboard|prompt)\b/i.test(selectedCapabilityId)) {
+    score += 5;
+  }
+  if (/\b(storyboard|keyframe|image generation|generate images|visual assets|prompt package)\b|สตอรี่บอร์ด|ภาพประกอบ|คีย์เฟรม|พรอมต์|พรอมป์|ภาพ/i.test(text)) {
+    score += 4;
+  }
+  if (/\b(final video|video composition|compose final|render final)\b|วิดีโอสุดท้าย|วีดีโอสุดท้าย|ตัดต่อวิดีโอ|ตัดต่อวีดีโอ/i.test(text)) {
+    score -= 3;
+  }
+  return score;
+}
+
+function selectPipelinePlanStep(input: {
+  planArtifact: monitoringService.RunPlanArtifact | null;
+  pipeline: AutoTeamMediaPipelineState;
+  content: string;
+  metadata?: Record<string, unknown>;
+}): { step: monitoringService.RunPlanStep; index: number; count: number } | null {
+  const plan = input.planArtifact;
+  if (!plan?.steps?.length) return null;
+  const explicitStepKey = getExplicitStepKey(input.metadata);
+  if (explicitStepKey) {
+    const explicitIndex = plan.steps.findIndex(step => step.stepKey === explicitStepKey);
+    if (explicitIndex >= 0) {
+      return { step: plan.steps[explicitIndex], index: explicitIndex, count: plan.steps.length };
+    }
+  }
+
+  const content = input.content.toLowerCase();
+  const isVideoPipelineEvent =
+    input.pipeline.status === "waiting_for_video_tasks" ||
+    input.pipeline.status === "rendering_final_video" ||
+    input.pipeline.status === "probing_final_video" ||
+    input.pipeline.status === "finalizing_evidence" ||
+    input.pipeline.status === "completed" ||
+    /video clip|final video|composition|render|probe|วิดีโอ|วีดีโอ|ตัดต่อ/i.test(content);
+  const isStoryboardPipelineEvent =
+    input.pipeline.status === "collecting_assets" &&
+    !isVideoPipelineEvent;
+
+  const scored = plan.steps
+    .map((step, index) => ({
+      step,
+      index,
+      score: isStoryboardPipelineEvent
+        ? scoreStoryboardMediaPlanStep(step)
+        : scoreFinalMediaPlanStep(step),
+    }))
+    .filter(candidate => candidate.score >= 4)
+    .sort((a, b) => b.score - a.score || b.index - a.index);
+  if (scored[0]) {
+    return { step: scored[0].step, index: scored[0].index, count: plan.steps.length };
+  }
+
+  const activeIndex = plan.steps.findIndex(
+    step => step.status !== "completed" && step.status !== "failed",
+  );
+  if (activeIndex >= 0) {
+    return { step: plan.steps[activeIndex], index: activeIndex, count: plan.steps.length };
+  }
+  return { step: plan.steps[plan.steps.length - 1], index: plan.steps.length - 1, count: plan.steps.length };
+}
+
+function fallbackPipelineStepContext(
+  pipeline: AutoTeamMediaPipelineState,
+  roomLanguage: PipelineRoomLanguage,
+): AutoTeamStepResultStepContext {
+  return {
+    stepKey: "auto-team-media-pipeline",
+    stepTitle:
+      roomLanguage === "th"
+        ? "ขั้นตอนสร้างสื่ออัตโนมัติ"
+        : "Automatic media pipeline",
+    stepIndex: null,
+    stepCount: null,
+    stepObjective: pipeline.objective,
+    stepDeliverable:
+      roomLanguage === "th"
+        ? "ไฟล์สื่อสุดท้ายและหลักฐานผลลัพธ์ที่ตรวจสอบได้"
+        : "Final media file and verifiable delivery evidence",
+    ownerPersona:
+      roomLanguage === "th" ? "ทีมอัตโนมัติด้านสื่อ" : "Auto Team media pipeline",
+    ownerMemberId: null,
+    reviewerPersona:
+      roomLanguage === "th" ? "ระบบตรวจคุณภาพอัตโนมัติ" : "Automatic quality gate",
+    reviewerMemberId: null,
+    verificationMethod:
+      roomLanguage === "th"
+        ? "ตรวจสถานะ media task, ตรวจ probe ไฟล์สุดท้าย และตรวจหลักฐานก่อนปิดงาน"
+        : "Poll media tasks, probe the final file, and validate evidence before completion",
+    retryRule:
+      roomLanguage === "th"
+        ? "retry เฉพาะข้อผิดพลาดชั่วคราว และหยุดทันทีเมื่อ provider/config ไม่พร้อม"
+        : "Retry transient failures only; stop immediately for provider/configuration failures",
+    evidenceRequirements: ["media task status", "final media artifact"],
+    qualityCriteria: [
+      roomLanguage === "th"
+        ? "สร้างสื่อได้ครบตามเป้าหมายและมีหลักฐานตรวจสอบย้อนหลัง"
+        : "Media satisfies the objective with auditable evidence",
+    ],
+    reviewChecklist: [],
+    attempt: null,
+  };
+}
+
+async function resolvePipelineStepContext(input: {
+  pipeline: AutoTeamMediaPipelineState;
+  roomLanguage: PipelineRoomLanguage;
+  content: string;
+  metadata?: Record<string, unknown>;
+}): Promise<AutoTeamStepResultStepContext> {
+  const planArtifact = await resolvePipelinePlanArtifact(input.pipeline);
+  const selected = selectPipelinePlanStep({
+    planArtifact,
+    pipeline: input.pipeline,
+    content: input.content,
+    metadata: input.metadata,
+  });
+  if (!selected) {
+    return fallbackPipelineStepContext(input.pipeline, input.roomLanguage);
+  }
+  return {
+    stepKey: selected.step.stepKey,
+    stepTitle: selected.step.title,
+    stepIndex: selected.index + 1,
+    stepCount: selected.count,
+    stepObjective: selected.step.objective,
+    stepDeliverable: selected.step.deliverable,
+    ownerPersona: selected.step.ownerPersona,
+    ownerMemberId: selected.step.ownerMemberId,
+    reviewerPersona: selected.step.reviewerPersona,
+    reviewerMemberId: selected.step.reviewerMemberId,
+    verificationMethod: selected.step.verificationMethod,
+    retryRule: selected.step.retryRule,
+    evidenceRequirements: selected.step.evidenceRequirements,
+    qualityCriteria: selected.step.qualityCriteria,
+    reviewChecklist: selected.step.reviewChecklist,
+    attempt:
+      typeof input.metadata?.attempt === "number" &&
+      Number.isFinite(input.metadata.attempt)
+        ? input.metadata.attempt
+        : null,
+    selectedSkillId:
+      typeof input.metadata?.selectedSkillId === "string"
+        ? input.metadata.selectedSkillId
+        : null,
+    selectedProvider:
+      typeof input.metadata?.selectedProvider === "string"
+        ? input.metadata.selectedProvider
+        : null,
+    selectedModelId:
+      typeof input.metadata?.selectedModelId === "string"
+        ? input.metadata.selectedModelId
+        : input.pipeline.clipTasks.find(task => task.model)?.model ?? null,
+  };
+}
+
+function normalizePipelineReviewStatus(
+  value: unknown,
+  pipeline: AutoTeamMediaPipelineState,
+): AutoTeamStepReviewStatus {
+  if (value === "passed" || value === "failed" || value === "pending" || value === "not_required") {
+    return value;
+  }
+  if (pipeline.status === "completed") return "passed";
+  if (pipeline.status === "failed") return "failed";
+  return "pending";
+}
+
+function normalizePipelinePhase(
+  value: unknown,
+  pipeline: AutoTeamMediaPipelineState,
+): AutoTeamStepResultPhase {
+  if (
+    value === "execution" ||
+    value === "review" ||
+    value === "repair" ||
+    value === "handoff" ||
+    value === "finalize"
+  ) {
+    return value;
+  }
+  if (pipeline.status === "finalizing_evidence" || pipeline.status === "completed") {
+    return "finalize";
+  }
+  if (pipeline.status === "probing_final_video") return "review";
+  return "execution";
+}
+
 async function writePipeline(
   run: TeamRun,
   pipeline: AutoTeamMediaPipelineState,
@@ -399,9 +712,11 @@ async function failPipeline(
   run: TeamRun,
   pipeline: AutoTeamMediaPipelineState,
   message: string,
+  metadata?: Record<string, unknown>,
 ): Promise<void> {
   const db = await getDb();
-  const safeMessage = redactSensitiveText(message);
+  const failure = classifyPipelineFailure(message);
+  const safeMessage = failure.message;
   pipeline.status = "failed";
   pipeline.errorMessage = safeMessage;
   await writePipeline(run, pipeline);
@@ -410,12 +725,38 @@ async function failPipeline(
       .update(teamRuns)
       .set({
         status: "paused",
-        stopReason: "auto_team_media_pipeline_failed",
-        runtimeTerminalReason: safeMessage,
+        stopReason: failure.reasonCode,
+        runtimeTerminalReason: failure.reasonCode.slice(0, 120),
       })
       .where(eq(teamRuns.id, run.id));
   }
-  await postPipelineMessage(pipeline, safeMessage);
+  const providerFailureContent: LocalizedPipelineContent =
+    failure.reasonCode === "media_provider_not_configured"
+      ? {
+          en: `The media step stopped because the selected media provider is not configured. ${safeMessage} Configure the provider/API key in Admin > Media Providers, then start or continue the work again. Auto Team will not retry this request until the provider is ready.`,
+          th: `ขั้นตอนสร้างสื่อหยุด เพราะยังไม่ได้ตั้งค่าผู้ให้บริการสื่อ/API key ที่ต้องใช้ (${safeMessage}) กรุณาตั้งค่าที่ Admin > Media Providers แล้วเริ่มงานใหม่หรือสั่งเดินต่ออีกครั้ง ระบบจะไม่ retry ซ้ำจนกว่า provider จะพร้อม`,
+        }
+      : failure.reasonCode === "media_provider_auth_failed"
+        ? {
+            en: `The media step stopped because the selected media provider rejected authentication. ${safeMessage} Check the API key in Admin > Media Providers, then start or continue the work again.`,
+            th: `ขั้นตอนสร้างสื่อหยุด เพราะผู้ให้บริการสื่อไม่ยอมรับการยืนยันตัวตน (${safeMessage}) กรุณาตรวจ API key ที่ Admin > Media Providers แล้วเริ่มงานใหม่หรือสั่งเดินต่ออีกครั้ง`,
+          }
+        : failure.reasonCode === "media_provider_safety_blocked"
+          ? {
+              en: `The media step stopped because the provider safety filter blocked the generated media. ${safeMessage} Auto Team should revise the prompt/storyboard before trying again.`,
+              th: `ขั้นตอนสร้างสื่อหยุด เพราะ provider บล็อกผลลัพธ์ด้วยตัวกรองความปลอดภัย (${safeMessage}) Auto Team ต้องปรับพรอมต์หรือสตอรี่บอร์ดก่อนลองอีกครั้ง`,
+            }
+          : safeMessage;
+  await postPipelineMessage(pipeline, providerFailureContent, undefined, {
+    pipelineFailureReason: failure.reasonCode,
+    retryable: failure.retryable,
+    reviewStatus: "failed",
+    nextAction:
+      failure.retryable
+        ? null
+        : "Resolve the provider/configuration issue before retrying.",
+    ...(metadata ?? {}),
+  });
 }
 
 async function waitForMediaCapacity(
@@ -437,7 +778,10 @@ async function waitForMediaCapacity(
   await writePipeline(run, pipeline);
   await postPipelineMessage(
     pipeline,
-    `${message} Retry ${pipeline.capacityWaitPolls}/${MAX_MEDIA_CAPACITY_WAIT_POLLS}.`,
+    {
+      en: `${message} Retry ${pipeline.capacityWaitPolls}/${MAX_MEDIA_CAPACITY_WAIT_POLLS}.`,
+      th: `${message} รอบที่ ${pipeline.capacityWaitPolls}/${MAX_MEDIA_CAPACITY_WAIT_POLLS}`,
+    },
   );
   schedulePipelinePoll(run.id, pollDelayMs);
 }
@@ -476,11 +820,79 @@ function buildInitialPipeline(input: RegisterAutoTeamMediaArtifactInput): AutoTe
 
 async function postPipelineMessage(
   pipeline: AutoTeamMediaPipelineState,
-  content: string,
+  content: LocalizedPipelineContent,
   artifactRefs?: Array<{ kind?: string; label?: string; url?: string; status?: string }>,
   metadata?: Record<string, unknown>,
 ): Promise<void> {
   try {
+    const roomLanguage = await resolvePipelineRoomLanguage(pipeline);
+    const localizedContent = localizePipelineContent(content, roomLanguage);
+    const step = await resolvePipelineStepContext({
+      pipeline,
+      roomLanguage,
+      content: localizedContent,
+      metadata,
+    });
+    const phase = normalizePipelinePhase(metadata?.stepResultPhase, pipeline);
+    const reviewStatus = normalizePipelineReviewStatus(metadata?.reviewStatus, pipeline);
+    const nextAction =
+      typeof metadata?.nextAction === "string" && metadata.nextAction.trim()
+        ? metadata.nextAction.trim()
+        : pipeline.status === "failed"
+          ? roomLanguage === "th"
+            ? "แก้สาเหตุที่ระบุแล้วเริ่มงานใหม่หรือสั่งเดินต่ออีกครั้ง"
+            : "Resolve the listed blocker, then start or continue the work again."
+          : roomLanguage === "th"
+            ? "ระบบจะตรวจสถานะสื่อและเดินต่ออัตโนมัติเมื่อขั้นตอนนี้พร้อม"
+            : "Work OS will poll the media pipeline and continue automatically when this step is ready.";
+    const stepResultContent = buildAutoTeamStepResultContent({
+      roomLanguage,
+      phase,
+      step,
+      resultSummary: localizedContent,
+      reviewStatus,
+      reviewScore:
+        typeof metadata?.reviewScore === "number" &&
+        Number.isFinite(metadata.reviewScore)
+          ? metadata.reviewScore
+          : null,
+      reviewIteration:
+        typeof metadata?.reviewIteration === "number" &&
+        Number.isFinite(metadata.reviewIteration)
+          ? metadata.reviewIteration
+          : null,
+      reviewNote:
+        typeof metadata?.reviewNote === "string" ? metadata.reviewNote : null,
+      repairInstructions:
+        typeof metadata?.repairInstructions === "string"
+          ? metadata.repairInstructions
+          : null,
+      nextAction,
+    });
+    const stepResultMetadata = buildAutoTeamStepResultMetadata({
+      roomLanguage,
+      phase,
+      step,
+      resultSummary: localizedContent,
+      reviewStatus,
+      reviewScore:
+        typeof metadata?.reviewScore === "number" &&
+        Number.isFinite(metadata.reviewScore)
+          ? metadata.reviewScore
+          : null,
+      reviewIteration:
+        typeof metadata?.reviewIteration === "number" &&
+        Number.isFinite(metadata.reviewIteration)
+          ? metadata.reviewIteration
+          : null,
+      reviewNote:
+        typeof metadata?.reviewNote === "string" ? metadata.reviewNote : null,
+      repairInstructions:
+        typeof metadata?.repairInstructions === "string"
+          ? metadata.repairInstructions
+          : null,
+      nextAction,
+    });
     await postWorkUpdate({
       roomId: pipeline.roomId,
       tenantId: pipeline.tenantId,
@@ -488,11 +900,12 @@ async function postPipelineMessage(
       runId: pipeline.runId,
       messageType: "step_result",
       visibility: "milestone",
-      content,
+      content: stepResultContent,
       artifactRefs,
       metadataJson: {
         source: "auto_team_media_pipeline",
         pipelineStatus: pipeline.status,
+        ...stepResultMetadata,
         ...(metadata ?? {}),
       },
     });
@@ -1459,15 +1872,22 @@ async function pauseRunForFinalEvidenceGate(input: {
       .set({
         status: "paused",
         stopReason: "auto_team_media_final_evidence_unresolved",
-        runtimeTerminalReason: safeReason,
+        runtimeTerminalReason: "auto_team_media_final_evidence_unresolved",
       })
       .where(eq(teamRuns.id, input.run.id));
   }
   await postPipelineMessage(
     input.pipeline,
-    `Final media is rendered, but completion is waiting for verifiable evidence: ${safeReason}`,
+    {
+      en: `Final media is rendered, but completion is waiting for verifiable evidence: ${safeReason}`,
+      th: `วิดีโอสุดท้ายถูกสร้างแล้ว แต่ระบบยังรอหลักฐานที่ตรวจสอบได้ก่อนปิดงาน: ${safeReason}`,
+    },
     undefined,
-    { finalEvidenceGate: "blocked" },
+    {
+      finalEvidenceGate: "blocked",
+      stepResultPhase: "finalize",
+      reviewStatus: "failed",
+    },
   );
 }
 
@@ -1641,10 +2061,16 @@ async function finalizeCompletedMediaPipeline(
 
   await postPipelineMessage(
     pipeline,
-    `${safeReview.summary}\nFinal video evidence has been saved and verified for this run.`,
+    {
+      en: `${safeReview.summary}\nFinal video evidence has been saved and verified for this run.`,
+      th: `${safeReview.summary}\nบันทึกและตรวจสอบหลักฐานวิดีโอสุดท้ายสำหรับงานนี้เรียบร้อยแล้ว`,
+    },
     [{ kind: "video", label: "Final composed video", status: "ready" }],
     {
       finalEvidenceGate: "passed",
+      stepResultPhase: "finalize",
+      reviewStatus: "passed",
+      reviewScore: safeReview.semanticScore ?? null,
       canonicalArtifactId: finalArtifact.id,
       reviewRecordId: reviewRecord.id,
       finalResultId: finalResult.id,
@@ -1698,9 +2124,12 @@ async function refreshVideoTasks(
         task.completedAt = new Date().toISOString();
       }
     } catch (error) {
-      task.errorMessage = error instanceof Error
-        ? redactSensitiveText(error.message)
-        : "Failed to poll media task";
+      const failure = classifyPipelineFailure(error);
+      task.errorMessage = failure.message || "Failed to poll media task";
+      if (!failure.retryable) {
+        task.status = "failed";
+        task.resultUrl = null;
+      }
     }
   }
   pipeline.lastCheckedAt = new Date().toISOString();
@@ -1775,9 +2204,12 @@ async function refreshImageTasks(
         task.completedAt = new Date().toISOString();
       }
     } catch (error) {
-      task.errorMessage = error instanceof Error
-        ? redactSensitiveText(error.message)
-        : "Failed to poll image media task";
+      const failure = classifyPipelineFailure(error);
+      task.errorMessage = failure.message || "Failed to poll image media task";
+      if (!failure.retryable) {
+        task.status = "failed";
+        task.resultUrls = [];
+      }
     }
   }
   pipeline.lastCheckedAt = new Date().toISOString();
@@ -1789,7 +2221,11 @@ async function repairFailedImageTask(
   task: ImageTaskRef,
 ): Promise<boolean> {
   const repairAttempts = task.repairAttempts ?? 0;
-  if (repairAttempts >= MAX_MEDIA_TASK_REPAIR_ATTEMPTS || !task.prompt?.trim()) {
+  if (
+    repairAttempts >= MAX_MEDIA_TASK_REPAIR_ATTEMPTS ||
+    !task.prompt?.trim() ||
+    !shouldAttemptMediaRepair(task.errorMessage)
+  ) {
     return false;
   }
   const token = createInternalTokenFromAuth(
@@ -1806,8 +2242,16 @@ async function repairFailedImageTask(
   );
   const nextTaskId = extractTaskId(repaired);
   if (!nextTaskId) return false;
+  const status = normalizeMediaTaskStatus(repaired.status, Boolean(extractTaskResultUrl(repaired)));
+  if (status === "failed" || status === "cancelled") {
+    task.errorMessage =
+      repaired.errorMessage
+        ? redactSensitiveText(repaired.errorMessage)
+        : `Image generation task ${nextTaskId} ${status}.`;
+    return false;
+  }
   task.taskId = nextTaskId;
-  task.status = normalizeMediaTaskStatus(repaired.status, Boolean(extractTaskResultUrl(repaired)));
+  task.status = status;
   task.resultUrls = [];
   task.errorMessage = null;
   task.completedAt = null;
@@ -1820,7 +2264,11 @@ async function repairFailedVideoTask(
   task: ClipTaskRef,
 ): Promise<boolean> {
   const repairAttempts = task.repairAttempts ?? 0;
-  if (repairAttempts >= MAX_MEDIA_TASK_REPAIR_ATTEMPTS || !task.prompt?.trim()) {
+  if (
+    repairAttempts >= MAX_MEDIA_TASK_REPAIR_ATTEMPTS ||
+    !task.prompt?.trim() ||
+    !shouldAttemptMediaRepair(task.errorMessage)
+  ) {
     return false;
   }
   const token = createInternalTokenFromAuth(
@@ -1844,8 +2292,16 @@ async function repairFailedVideoTask(
   );
   const nextTaskId = extractTaskId(repaired);
   if (!nextTaskId) return false;
+  const status = normalizeMediaTaskStatus(repaired.status, Boolean(extractTaskResultUrl(repaired)));
+  if (status === "failed" || status === "cancelled") {
+    task.errorMessage =
+      repaired.errorMessage
+        ? redactSensitiveText(repaired.errorMessage)
+        : `Video generation task ${nextTaskId} ${status}.`;
+    return false;
+  }
   task.taskId = nextTaskId;
-  task.status = normalizeMediaTaskStatus(repaired.status, Boolean(extractTaskResultUrl(repaired)));
+  task.status = status;
   task.resultUrl = null;
   task.errorMessage = null;
   task.completedAt = null;
@@ -1940,6 +2396,22 @@ async function queueMissingVideoTasksFromStoryboards(
   }
   const submittedRecord = isRecord(submitted) ? submitted : {};
   const resultUrl = extractTaskResultUrl(submittedRecord);
+  const submittedStatus = normalizeMediaTaskStatus(
+    submittedRecord.status,
+    Boolean(resultUrl),
+  );
+  if (submittedStatus === "failed" || submittedStatus === "cancelled") {
+    const errorMessage =
+      typeof submittedRecord.errorMessage === "string" && submittedRecord.errorMessage.trim()
+        ? submittedRecord.errorMessage.trim()
+        : typeof submittedRecord.error_message === "string" && submittedRecord.error_message.trim()
+          ? submittedRecord.error_message.trim()
+          : `Video generation task ${taskId} ${submittedStatus}.`;
+    return {
+      status: "failed",
+      message: errorMessage,
+    };
+  }
   const resultUrlSafety = validatePipelineMediaUrl({
     routeClass: "media.video",
     url: resultUrl,
@@ -1955,10 +2427,7 @@ async function queueMissingVideoTasksFromStoryboards(
     taskId,
     prompt,
     model: typeof submittedRecord.model === "string" ? submittedRecord.model : null,
-    status: normalizeMediaTaskStatus(
-      submittedRecord.status,
-      Boolean(resultUrlSafety.url),
-    ),
+    status: submittedStatus,
     resultUrl: resultUrlSafety.url,
     errorMessage: null,
     plannedDurationSeconds: clipPlan.durationSeconds,
@@ -2021,10 +2490,15 @@ async function requestFinalReviewRepair(input: {
   await writePipeline(input.run, input.pipeline);
   await postPipelineMessage(
     input.pipeline,
-    `Final media review requested an automatic repair pass (${input.pipeline.finalReviewRepairAttempts}/${MAX_FINAL_REVIEW_REPAIR_ATTEMPTS}). Auto Team will generate an additional clip, re-compose, and review again.`,
+    {
+      en: `Final media review requested an automatic repair pass (${input.pipeline.finalReviewRepairAttempts}/${MAX_FINAL_REVIEW_REPAIR_ATTEMPTS}). Auto Team will generate an additional clip, re-compose, and review again.`,
+      th: `ผลตรวจวิดีโอสุดท้ายขอรอบแก้ไขอัตโนมัติ (${input.pipeline.finalReviewRepairAttempts}/${MAX_FINAL_REVIEW_REPAIR_ATTEMPTS}) ระบบจะสร้างคลิปเพิ่ม ประกอบวิดีโอใหม่ และตรวจอีกครั้ง`,
+    },
     undefined,
     {
       finalReviewRepair: true,
+      stepResultPhase: "repair",
+      reviewStatus: "failed",
       previousReviewSummary: redactSensitiveText(input.review.summary),
       semanticIssues: input.review.semanticIssues?.map(issue => redactSensitiveText(issue)) ?? [],
     },
@@ -2091,13 +2565,23 @@ async function advanceAutoTeamMediaPipelineInternal(runId: string): Promise<void
     await refreshImageTasks(pipeline);
     const failedImageTask = pipeline.imageTasks.find(task => task.status === "failed" || task.status === "cancelled" || task.status === "canceled");
     if (failedImageTask) {
-      const repaired = await repairFailedImageTask(pipeline, failedImageTask).catch(() => false);
+      let repaired = false;
+      try {
+        repaired = await repairFailedImageTask(pipeline, failedImageTask);
+      } catch (error) {
+        failedImageTask.errorMessage = classifyPipelineFailure(error).message;
+      }
       if (repaired) {
         pipeline.status = "collecting_assets";
         await writePipeline(run, pipeline);
         await postPipelineMessage(
           pipeline,
-          `Storyboard image task failed, so Auto Team queued repair attempt ${(failedImageTask.repairAttempts ?? 0)} before continuing.`,
+          {
+            en: `Storyboard image task failed, so Auto Team queued repair attempt ${(failedImageTask.repairAttempts ?? 0)} before continuing.`,
+            th: `งานสร้างภาพสตอรี่บอร์ดล้มเหลว ระบบจึงคิวรอบแก้ไขอัตโนมัติครั้งที่ ${(failedImageTask.repairAttempts ?? 0)} ก่อนเดินต่อ`,
+          },
+          undefined,
+          { stepResultPhase: "repair", reviewStatus: "pending" },
         );
         schedulePipelinePoll(runId, VIDEO_POLL_INTERVAL_MS);
         return;
@@ -2106,6 +2590,10 @@ async function advanceAutoTeamMediaPipelineInternal(runId: string): Promise<void
         run,
         pipeline,
         failedImageTask.errorMessage || `Image generation task ${failedImageTask.taskId} failed.`,
+        {
+          selectedSkillId: failedImageTask.sourceSkillId ?? null,
+          selectedModelId: failedImageTask.model ?? null,
+        },
       );
       return;
     }
@@ -2116,7 +2604,12 @@ async function advanceAutoTeamMediaPipelineInternal(runId: string): Promise<void
         await writePipeline(run, pipeline);
         await postPipelineMessage(
           pipeline,
-          `Queued video clip ${queueResult.clipIndex}/${pipeline.expectedClipCount} from storyboard images. Waiting for all clips before final composition.`,
+          {
+            en: `Queued video clip ${queueResult.clipIndex}/${pipeline.expectedClipCount} from storyboard images. Waiting for all clips before final composition.`,
+            th: `คิวงานสร้างคลิปวิดีโอ ${queueResult.clipIndex}/${pipeline.expectedClipCount} จากภาพสตอรี่บอร์ดแล้ว ระบบจะรอให้คลิปครบก่อนประกอบวิดีโอสุดท้าย`,
+          },
+          undefined,
+          { reviewStatus: "pending" },
         );
         schedulePipelinePoll(runId, VIDEO_POLL_INTERVAL_MS);
         return;
@@ -2130,19 +2623,34 @@ async function advanceAutoTeamMediaPipelineInternal(runId: string): Promise<void
           run,
           pipeline,
           queueResult.message,
+          { selectedModelId: pipeline.clipTasks.find(task => task.model)?.model ?? null },
         );
         return;
       }
     }
     const failedTask = pipeline.clipTasks.find(task => task.status === "failed" || task.status === "cancelled" || task.status === "canceled");
     if (failedTask) {
-      const repaired = await repairFailedVideoTask(pipeline, failedTask).catch(() => false);
+      let repaired = false;
+      try {
+        repaired = await repairFailedVideoTask(pipeline, failedTask);
+      } catch (error) {
+        failedTask.errorMessage = classifyPipelineFailure(error).message;
+      }
       if (repaired) {
         pipeline.status = "waiting_for_video_tasks";
         await writePipeline(run, pipeline);
         await postPipelineMessage(
           pipeline,
-          `Video clip task ${failedTask.clipIndex ?? ""} failed, so Auto Team queued repair attempt ${(failedTask.repairAttempts ?? 0)} before composition.`,
+          {
+            en: `Video clip task ${failedTask.clipIndex ?? ""} failed, so Auto Team queued repair attempt ${(failedTask.repairAttempts ?? 0)} before composition.`,
+            th: `งานสร้างคลิปวิดีโอ ${failedTask.clipIndex ?? ""} ล้มเหลว ระบบจึงคิวรอบแก้ไขอัตโนมัติครั้งที่ ${(failedTask.repairAttempts ?? 0)} ก่อนประกอบวิดีโอ`,
+          },
+          undefined,
+          {
+            stepResultPhase: "repair",
+            reviewStatus: "pending",
+            selectedModelId: failedTask.model ?? null,
+          },
         );
         schedulePipelinePoll(runId, VIDEO_POLL_INTERVAL_MS);
         return;
@@ -2151,6 +2659,7 @@ async function advanceAutoTeamMediaPipelineInternal(runId: string): Promise<void
         run,
         pipeline,
         failedTask.errorMessage || `Video generation task ${failedTask.taskId} failed.`,
+        { selectedModelId: failedTask.model ?? null },
       );
       return;
     }
@@ -2196,7 +2705,12 @@ async function advanceAutoTeamMediaPipelineInternal(runId: string): Promise<void
     await writePipeline(run, pipeline);
     await postPipelineMessage(
       pipeline,
-      `All ${completedTasks.length} video clips finished. Starting final video composition now.`,
+      {
+        en: `All ${completedTasks.length} video clips finished. Starting final video composition now.`,
+        th: `คลิปวิดีโอครบ ${completedTasks.length} คลิปแล้ว ระบบกำลังเริ่มประกอบวิดีโอสุดท้าย`,
+      },
+      undefined,
+      { reviewStatus: "pending" },
     );
     schedulePipelinePoll(runId, CONCAT_POLL_INTERVAL_MS);
     return;
@@ -2268,8 +2782,12 @@ async function advanceAutoTeamMediaPipelineInternal(runId: string): Promise<void
     await writePipeline(run, pipeline);
     await postPipelineMessage(
       pipeline,
-      "Final video render finished. Verifying the rendered file duration and media metadata now.",
+      {
+        en: "Final video render finished. Verifying the rendered file duration and media metadata now.",
+        th: "ประกอบวิดีโอสุดท้ายเสร็จแล้ว ระบบกำลังตรวจความยาวไฟล์และ metadata ของวิดีโอ",
+      },
       [{ kind: "video", label: "Final composed video", status: "verifying" }],
+      { stepResultPhase: "review", reviewStatus: "pending" },
     );
     schedulePipelinePoll(runId, CONCAT_POLL_INTERVAL_MS);
     return;
@@ -2324,7 +2842,7 @@ async function advanceAutoTeamMediaPipelineInternal(runId: string): Promise<void
           .set({
             status: "paused",
             stopReason: "auto_team_media_final_review_failed",
-            runtimeTerminalReason: safeReviewSummary,
+            runtimeTerminalReason: "auto_team_media_final_review_failed",
           })
           .where(eq(teamRuns.id, run.id));
       }
@@ -2332,11 +2850,23 @@ async function advanceAutoTeamMediaPipelineInternal(runId: string): Promise<void
     await postPipelineMessage(
       pipeline,
       review.status === "failed"
-        ? redactSensitiveText(review.summary)
-        : "Final media review passed. Saving canonical evidence before completing the run.",
+        ? {
+            en: redactSensitiveText(review.summary),
+            th: `ผลตรวจวิดีโอสุดท้ายไม่ผ่าน: ${redactSensitiveText(review.summary)}`,
+          }
+        : {
+            en: "Final media review passed. Saving canonical evidence before completing the run.",
+            th: "ผลตรวจวิดีโอสุดท้ายผ่านแล้ว ระบบกำลังบันทึกหลักฐานก่อนปิดงาน",
+          },
       review.status === "failed"
         ? undefined
         : [{ kind: "video", label: "Final composed video", status: "verifying" }],
+      {
+        stepResultPhase: "review",
+        reviewStatus: review.status,
+        reviewScore: review.semanticScore ?? null,
+        reviewNote: redactSensitiveText(review.summary),
+      },
     );
     if (review.status === "passed") {
       try {
