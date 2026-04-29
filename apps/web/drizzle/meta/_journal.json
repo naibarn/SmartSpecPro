@@ -1079,6 +1079,13 @@
       "when": 1777390000000,
       "tag": "0167_work_requests_compat_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 154,
+      "version": "7",
+      "when": 1777391000000,
+      "tag": "0168_activate_ready_assistant_teams",
+      "breakpoints": true
     }
   ]
 }
