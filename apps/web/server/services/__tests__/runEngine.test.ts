@@ -1270,6 +1270,90 @@ describe("RunEngine", () => {
       );
     });
 
+    it("accepts visual prompt packages for media-studio prompt/keyframe planning steps", async () => {
+      const validation = await runEngine.validateAutoTeamStepResult({
+        tenantId: "tenant-1",
+        userId: 1,
+        runObjective:
+          "สร้างวิดีโอเปรียบเทียบประเพณีปีใหม่กับปีใหม่ไทย ความยาวไม่น้อยกว่า 1 นาที",
+        step: {
+          stepKey: "generate-visual-assets",
+          title: "สร้างพรอมป์ต์/คีย์เฟรมภาพสำหรับสตอรี่บอร์ด",
+          objective:
+            "เตรียมคีย์เฟรมหรือพรอมป์ต์ภาพที่สอดคล้องกับสตอรี่บอร์ด เพื่อใช้เป็นฐานกำกับสไตล์ภาพและความสม่ำเสมอของฉาก",
+          deliverable:
+            "ชุดพรอมป์ต์หรือคีย์เฟรมภาพสำหรับแต่ละฉากหลักของสตอรี่บอร์ด",
+          ownerPersona: "Graphic Designer",
+          ownerMemberId: "assistant-graphic",
+          reviewerPersona: "Video Producer",
+          reviewerMemberId: "assistant-video",
+          verificationMethod:
+            "ตรวจความสอดคล้องของภาพกับสคริปต์และความพร้อมใช้ในการสร้างวิดีโอ",
+          retryRule: "ปรับพรอมป์ต์จนสอดคล้องกับฉาก",
+          evidenceRequirements: [
+            "ชุดพรอมป์ต์ภาพ",
+            "ตัวอย่างคีย์เฟรมหรือภาพอ้างอิง",
+          ],
+          qualityCriteria: [
+            "ภาพ/พรอมป์ต์แต่ละชุดสอดคล้องกับเนื้อหาฉาก",
+            "พร้อมส่งต่อให้ขั้นตอนสร้างวิดีโอ",
+          ],
+          reviewChecklist: ["แต่ละฉากมีแนวภาพชัดเจน"],
+          status: "in_progress",
+          evidenceRefs: [],
+          notes: null,
+          surface: "media_studio",
+        },
+        content:
+          "พรอมป์ต์ภาพหลักเพื่อใช้สร้างคีย์เฟรมสำหรับสตอรี่บอร์ดวิดีโอ: " +
+          "Scene 1: Split-screen New Year's Eve countdown in a modern city with fireworks, cool blue and silver lighting, contrasted with Thai Songkran morning in warm golden sunlight. " +
+          "Scene 2: Close-up clock striking midnight and calendar page turning, paired with Thai lunar calendar and family preparing temple offerings. " +
+          "Scene 3: Side-by-side Rod Nam Dam Hua ceremony and friends smiling at a New Year street party with warm lighting. " +
+          "Scene 4: Vibrant montage of water splashes, Thai silk patterns, city fireworks, festive streets, dynamic joyful mood.",
+        metadata: {},
+      });
+
+      expect(validation.passed).toBe(true);
+      expect(validation.issues).not.toContain(
+        "media_step_missing_artifact_reference",
+      );
+    });
+
+    it("still requires media evidence for rendered media-studio asset steps", async () => {
+      const validation = await runEngine.validateAutoTeamStepResult({
+        tenantId: "tenant-1",
+        userId: 1,
+        runObjective: "Create rendered keyframe images",
+        step: {
+          stepKey: "render-keyframes",
+          title: "Render final image assets",
+          objective: "Generate rendered image files for each storyboard scene.",
+          deliverable: "Rendered image file URLs for every scene",
+          ownerPersona: "Graphic Designer",
+          ownerMemberId: "assistant-graphic",
+          reviewerPersona: "Video Producer",
+          reviewerMemberId: "assistant-video",
+          verificationMethod: "artifact validation",
+          retryRule: "Retry missing image files.",
+          evidenceRequirements: ["image file URLs", "media job ids"],
+          qualityCriteria: ["Images exist"],
+          reviewChecklist: ["Every scene has a rendered image"],
+          status: "in_progress",
+          evidenceRefs: [],
+          notes: null,
+          surface: "media_studio",
+        },
+        content:
+          "Scene 1 prompt: cinematic city countdown. Scene 2 prompt: temple family scene.",
+        metadata: {},
+      });
+
+      expect(validation.passed).toBe(false);
+      expect(validation.issues).toContain(
+        "media_step_missing_artifact_reference",
+      );
+    });
+
     it("continues the auto-team loop only when a running auto_team made progress", () => {
       expect(
         runEngine.shouldContinueAutoTeamLoop({
@@ -3511,6 +3595,26 @@ describe("RunEngine", () => {
           budgetSnapshot: snapshot,
         }),
       ).toBeNull();
+    });
+
+    it("matches already-applied reservations when runtime step keys include an input hash prefix", () => {
+      const reservationKey =
+        "run-1:compose-final-video:0:allowed:external_side_effect";
+      const snapshot = {
+        ...runEngine.initBudgetSnapshot(),
+        appliedReservationKeys: [reservationKey],
+      };
+
+      expect(
+        runEngine.resolveAlreadyAppliedRuntimeReservationKey({
+          runId: "run-1",
+          stepKey: "input-hash-123:compose-final-video",
+          attempt: 0,
+          authorityDecision: "blocked",
+          sideEffectClass: "external_side_effect",
+          budgetSnapshot: snapshot,
+        }),
+      ).toBe(reservationKey);
     });
   });
 

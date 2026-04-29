@@ -99,15 +99,22 @@ export async function sweepPendingAutoTeamRuns(): Promise<number> {
       continue;
     }
 
-    if (
+    const runtimeState =
+      currentRun.runtimeState && typeof currentRun.runtimeState === "object"
+        ? (currentRun.runtimeState as unknown as Record<string, unknown>)
+        : {};
+    const runtimeTerminalReason =
+      typeof (currentRun as unknown as Record<string, unknown>).runtimeTerminalReason === "string"
+        ? ((currentRun as unknown as Record<string, unknown>).runtimeTerminalReason as string)
+        : "";
+    const stopReason = currentRun.stopReason ?? "";
+    const isBudgetRecoveryCandidate =
       currentRun.status === "paused" &&
-      currentRun.stopReason === "runtime_dispatch_blocked:budget_cap_exceeded" &&
-      Boolean(
-        currentRun.runtimeState &&
-          typeof currentRun.runtimeState === "object" &&
-          (currentRun.runtimeState as unknown as Record<string, unknown>).autoReplanRequested === true,
-      )
-    ) {
+      (stopReason === "runtime_dispatch_blocked:budget_cap_exceeded" ||
+        runtimeTerminalReason === "budget_cap_exceeded" ||
+        (stopReason.includes("budget") && stopReason.includes("exceed"))) &&
+      runtimeState.autoReplanRequested === true;
+    if (isBudgetRecoveryCandidate) {
       try {
         const recovered = await runEngine.recoverBudgetBlockedAutoTeamRun(
           run.id,
@@ -130,11 +137,34 @@ export async function sweepPendingAutoTeamRuns(): Promise<number> {
     if (
       currentRun.status === "paused" &&
       currentRun.stopReason === "auto_team_step_validation_failed" &&
+      String(
+        (currentRun as unknown as Record<string, unknown>).runtimeTerminalReason ?? "",
+      ).includes("media_step_missing_artifact_reference")
+    ) {
+      try {
+        const recovered = await runEngine.recoverPromptPackageValidationAutoTeamRun(
+          run.id,
+          run.tenantId,
+        );
+        if (recovered) resumed += 1;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!message.includes("already advancing")) {
+          console.warn("[auto-team-recovery] failed to recover prompt-package validation run", {
+            runId: run.id,
+            tenantId: run.tenantId,
+            error: message,
+          });
+        }
+      }
+      continue;
+    }
+
+    if (
+      currentRun.status === "paused" &&
+      currentRun.stopReason === "auto_team_step_validation_failed" &&
       Boolean(
-        currentRun.runtimeState &&
-          typeof currentRun.runtimeState === "object" &&
-          (currentRun.runtimeState as unknown as Record<string, unknown>)
-            .capabilityGapResumeRequested === true,
+        runtimeState.capabilityGapResumeRequested === true,
       )
     ) {
       try {

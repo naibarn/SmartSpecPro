@@ -1121,6 +1121,12 @@ export function resolveAlreadyAppliedRuntimeReservationKey(input: {
   sideEffectClass?: string | null;
 }): string | null {
   if (!input.stepKey) return null;
+  const normalizedStepKeyCandidates = Array.from(
+    new Set([
+      input.stepKey,
+      input.stepKey.includes(":") ? input.stepKey.split(":").at(-1) : null,
+    ].filter((value): value is string => typeof value === "string" && value.length > 0)),
+  );
   const appliedReservationKeys = Array.isArray(input.budgetSnapshot.appliedReservationKeys)
     ? input.budgetSnapshot.appliedReservationKeys.filter(
         (value): value is string => typeof value === "string",
@@ -1133,7 +1139,9 @@ export function resolveAlreadyAppliedRuntimeReservationKey(input: {
       parsed: NonNullable<ReturnType<typeof parseRuntimeBudgetReservationKey>>;
     } => Boolean(entry.parsed))
     .filter(entry => entry.parsed.runId === input.runId)
-    .filter(entry => entry.parsed.stepKey === input.stepKey);
+    .filter(entry =>
+      normalizedStepKeyCandidates.some(stepKey => entry.parsed.stepKey === stepKey),
+    );
 
   const attemptCandidates =
     input.attempt == null
@@ -1212,13 +1220,22 @@ async function pauseRunForRuntimeDispatchGate(input: {
     ? `runtime_approval_required:${reasonCode}`
     : `runtime_dispatch_blocked:${reasonCode}`;
   const budgetRecoveryRequested = reasonCode === "budget_cap_exceeded";
+  const planStepKey =
+    input.planArtifact?.steps.find(step => {
+      const policy = getStepRuntimeDispatchPolicy(step);
+      return policy?.stepId === input.policy.stepId;
+    })?.stepKey ??
+    (input.policy.stepId.includes(":")
+      ? input.policy.stepId.split(":").at(-1)
+      : input.policy.stepId) ??
+    input.policy.stepId;
 
   await db
     .update(teamRuns)
     .set({
       status: "paused",
       stopReason,
-      runtimeCurrentStepKey: input.policy.stepId,
+      runtimeCurrentStepKey: planStepKey,
       runtimeApprovalState: approvalRequired ? "pending" : "blocked",
       runtimeTerminalReason: approvalRequired ? null : reasonCode,
       runtimeStateJson: {
@@ -1283,7 +1300,7 @@ async function pauseRunForRuntimeDispatchGate(input: {
             ...input.planArtifact,
             status: "blocked",
             steps: input.planArtifact.steps.map(step =>
-              step.stepKey === input.policy.stepId
+              step.stepKey === planStepKey
                 ? {
                     ...step,
                     status: approvalRequired
@@ -1574,6 +1591,48 @@ function isMediaArtifactPlanStep(step: monitoringService.RunPlanStep): boolean {
   return step.surface === "media_studio";
 }
 
+function isVisualPromptPackagePlanStep(step: monitoringService.RunPlanStep): boolean {
+  const descriptor = [
+    step.stepKey,
+    step.title,
+    step.objective,
+    step.deliverable,
+    step.verificationMethod,
+    step.evidenceRequirements?.join(" "),
+    step.qualityCriteria?.join(" "),
+    step.reviewChecklist?.join(" "),
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const asksForPromptPackage =
+    /(prompt|prompts|image prompt|visual prompt|keyframe|style frame|reference frame|พรอมป์|พรอมต์|คีย์เฟรม|แนวภาพ|ภาพอ้างอิง|ชุดพรอมป์)/i.test(
+      descriptor,
+    );
+  const requiresRenderedMediaArtifact =
+    /(final image|rendered image|generated image|image file|media job|artifact url|final video|video file|clip url|ไฟล์ภาพ|ภาพที่สร้างแล้ว|ลิงก์ภาพ|งาน media|เรนเดอร์ภาพ|วิดีโอสุดท้าย|ไฟล์วิดีโอ|คลิปวิดีโอ)/i.test(
+      descriptor,
+    );
+  return asksForPromptPackage && !requiresRenderedMediaArtifact;
+}
+
+function hasVisualPromptPackageEvidence(content: string): boolean {
+  const normalizedContent = content.trim();
+  if (normalizedContent.length < 160) return false;
+  const sceneMatches = normalizedContent.match(
+    /\bscene\s*\d+\b|ฉากที่\s*\d+|ช็อตที่\s*\d+/gi,
+  );
+  const sceneCount = sceneMatches?.length ?? 0;
+  const mentionsVisualPrompt =
+    /(prompt|พรอมป์|พรอมต์|visual|ภาพ|คีย์เฟรม|keyframe|composition|โทน|lighting|แสง|สี|มุมกล้อง|ฉาก)/i.test(
+      normalizedContent,
+    );
+  const hasProductionReadyDetail =
+    /(split-screen|close-up|montage|portrait|cinematic|style|mood|tone|composition|แสง|โทน|องค์ประกอบ|บรรยากาศ|ตัดต่อ|มอนทาจ|ภาพเปิด|ภาพปิด)/i.test(
+      normalizedContent,
+    );
+  return sceneCount >= 2 && mentionsVisualPrompt && hasProductionReadyDetail;
+}
+
 function isVideoArtifactPlanStep(step: monitoringService.RunPlanStep): boolean {
   if (isStoryboardScriptPlanStep(step)) return false;
   return step.surface === "video_editor";
@@ -1667,10 +1726,14 @@ export async function validateAutoTeamStepResult(input: {
     readStringArray(metadata.artifactRefsJson).length > 0 ||
     Boolean(readStringField(metadata, ["finalVideoUrl", "final_video_url"]));
   if (isMediaArtifactPlanStep(input.step)) {
+    const hasPromptPackageEvidence =
+      isVisualPromptPackagePlanStep(input.step) &&
+      hasVisualPromptPackageEvidence(normalizedContent);
     const hasMediaEvidence =
       hasMediaJobMetadataEvidence ||
       hasArtifactMetadataEvidence ||
-      /https?:\/\/\S+/i.test(normalizedContent);
+      /https?:\/\/\S+/i.test(normalizedContent) ||
+      hasPromptPackageEvidence;
     if (!hasMediaEvidence) {
       issues.push("media_step_missing_artifact_reference");
     }
@@ -5735,9 +5798,11 @@ async function resumeAlreadyReservedBudgetBlockedAutoTeamRun(input: {
       stopReason: null,
       runtimeTerminalReason: null,
       runtimeApprovalState: null,
+      runtimeCurrentStepKey: currentPlanStep.stepKey,
       runtimeStateJson: {
         ...input.runtimeState,
         autoReplanRequested: false,
+        runtimeCurrentStepKey: currentPlanStep.stepKey,
         budgetGate: {
           recovered: true,
           blockedResource: rawGate.exceededResource,
@@ -5754,6 +5819,299 @@ async function resumeAlreadyReservedBudgetBlockedAutoTeamRun(input: {
     startAutoStopChecker(updated.id);
     queueAutoAdvance(updated.id, input.tenantId, 1, AUTO_TEAM_CONTINUATION_DELAY_MS);
   }
+  return updated ?? null;
+}
+
+function extractRunStatePlanArtifact(
+  value: unknown,
+): monitoringService.RunPlanArtifact | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const state = value as Record<string, unknown>;
+  return monitoringService.extractRunRuntimeState({
+    artifactCountJson: { runtimeState: state },
+  })?.planArtifact ?? null;
+}
+
+function getValidationRecoveryCandidateMetadata(
+  metadataJson: unknown,
+): Record<string, unknown> {
+  if (!metadataJson || typeof metadataJson !== "object" || Array.isArray(metadataJson)) {
+    return {};
+  }
+  const metadata = metadataJson as Record<string, unknown>;
+  const details =
+    metadata.details && typeof metadata.details === "object" && !Array.isArray(metadata.details)
+      ? (metadata.details as Record<string, unknown>)
+      : {};
+  const runtimeMetadata =
+    details.runtimeMetadata &&
+    typeof details.runtimeMetadata === "object" &&
+    !Array.isArray(details.runtimeMetadata)
+      ? (details.runtimeMetadata as Record<string, unknown>)
+      : metadata.runtimeMetadata &&
+          typeof metadata.runtimeMetadata === "object" &&
+          !Array.isArray(metadata.runtimeMetadata)
+        ? (metadata.runtimeMetadata as Record<string, unknown>)
+        : {};
+  return {
+    ...runtimeMetadata,
+    artifactRefs: readStringArray(metadata.artifactRefsJson),
+  };
+}
+
+export async function recoverPromptPackageValidationAutoTeamRun(
+  runId: string,
+  tenantId: string,
+): Promise<TeamRun | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const run = await loadRunWithTenantCheck(db, runId, tenantId);
+  if (!run) throw new Error(`Run ${runId} not found`);
+  if (
+    run.executionMode !== "auto_team" ||
+    run.status !== "paused" ||
+    run.stopReason !== "auto_team_step_validation_failed" ||
+    !String(run.runtimeTerminalReason ?? "").includes(
+      "media_step_missing_artifact_reference",
+    )
+  ) {
+    return null;
+  }
+
+  const runtimeState =
+    run.runtimeStateJson &&
+    typeof run.runtimeStateJson === "object" &&
+    !Array.isArray(run.runtimeStateJson)
+      ? (run.runtimeStateJson as Record<string, unknown>)
+      : {};
+  const stepValidation =
+    runtimeState.stepValidation &&
+    typeof runtimeState.stepValidation === "object" &&
+    !Array.isArray(runtimeState.stepValidation)
+      ? (runtimeState.stepValidation as Record<string, unknown>)
+      : {};
+  const stepKey =
+    typeof stepValidation.stepKey === "string"
+      ? stepValidation.stepKey
+      : run.runtimeCurrentStepKey;
+  if (!stepKey) return null;
+
+  const approvedPlanSnapshot = getApprovedPlanForRun({
+    constraintsJson:
+      run.constraintsJson && typeof run.constraintsJson === "object"
+        ? (run.constraintsJson as Record<string, unknown>)
+        : null,
+    approvalPolicyJson:
+      run.approvalPolicyJson && typeof run.approvalPolicyJson === "object"
+        ? (run.approvalPolicyJson as Record<string, unknown>)
+        : null,
+  });
+  const latestSnapshot = await monitoringService.getLatestRunSnapshot(run.id);
+  const planArtifact =
+    extractRunStatePlanArtifact(runtimeState) ??
+    monitoringService.extractRunPlanArtifact(latestSnapshot) ??
+    selectAutoTeamPlanArtifact({
+      latestArtifact: null,
+      approvedPlanSnapshot,
+      runId: run.id,
+      roomId: run.roomId,
+      teamId: run.teamId,
+    });
+  const activeStep =
+    planArtifact?.steps.find(step => step.stepKey === stepKey) ?? null;
+  if (
+    !planArtifact ||
+    !activeStep ||
+    !isMediaArtifactPlanStep(activeStep) ||
+    !isVisualPromptPackagePlanStep(activeStep)
+  ) {
+    return null;
+  }
+
+  const candidateMessages = await db
+    .select({
+      id: teamRoomMessages.id,
+      content: teamRoomMessages.content,
+      metadataJson: teamRoomMessages.metadataJson,
+      artifactRefsJson: teamRoomMessages.artifactRefsJson,
+    })
+    .from(teamRoomMessages)
+    .where(
+      and(
+        eq(teamRoomMessages.roomId, run.roomId),
+        eq(teamRoomMessages.runId, run.id),
+        or(
+          sql`${teamRoomMessages.metadataJson}->'details'->>'stepKey' = ${stepKey}`,
+          sql`${teamRoomMessages.content} ILIKE ${`%${stepKey}%`}`,
+          sql`${teamRoomMessages.content} ILIKE ${"%Scene 1%"}`
+        ),
+      ),
+    )
+    .orderBy(desc(teamRoomMessages.createdAt))
+    .limit(20);
+  const candidate = candidateMessages.find(message => {
+    const content = message.content.trim();
+    if (/media_step_missing_artifact_reference|หยุดที่แผนขั้น|paused at plan step/i.test(content)) {
+      return false;
+    }
+    return hasVisualPromptPackageEvidence(content);
+  });
+  if (!candidate) {
+    return null;
+  }
+
+  const metadata = getValidationRecoveryCandidateMetadata({
+    ...(candidate.metadataJson &&
+    typeof candidate.metadataJson === "object" &&
+    !Array.isArray(candidate.metadataJson)
+      ? (candidate.metadataJson as Record<string, unknown>)
+      : {}),
+    artifactRefsJson: candidate.artifactRefsJson,
+  });
+  const validation = await validateAutoTeamStepResult({
+    tenantId,
+    userId: run.initiatedByUserId,
+    runObjective: run.objective ?? "Auto Team run",
+    step: activeStep,
+    content: candidate.content,
+    metadata,
+  });
+  if (!validation.passed) {
+    return null;
+  }
+
+  const workItemId =
+    candidate.metadataJson &&
+    typeof candidate.metadataJson === "object" &&
+    !Array.isArray(candidate.metadataJson) &&
+    typeof (candidate.metadataJson as Record<string, unknown>).workItemId === "string"
+      ? ((candidate.metadataJson as Record<string, unknown>).workItemId as string)
+      : null;
+  const evidenceRefs = buildAutoTeamStepEvidenceRefs({
+    runId: run.id,
+    messageId: candidate.id,
+    workItemId,
+    metadata,
+  });
+  let recoveredPlanArtifact = applyAutoTeamStepValidationPass(
+    planArtifact,
+    stepKey,
+    validation,
+    evidenceRefs,
+  );
+  const progression = advanceAutoTeamPlanArtifactProgress(
+    recoveredPlanArtifact,
+    stepKey,
+  );
+  recoveredPlanArtifact = progression.planArtifact;
+
+  await monitoringService.recordEvent({
+    tenantId,
+    teamId: run.teamId,
+    roomId: run.roomId,
+    runId: run.id,
+    assistantId: "system",
+    eventType: "auto_team_prompt_package_validation_recovered",
+    eventCategory: "status_change",
+    summary:
+      "Recovered a prompt/keyframe planning step that had been blocked by media artifact reference validation.",
+    detailJson: {
+      stepKey,
+      messageId: candidate.id,
+      nextStepKey: progression.nextStepKey,
+      validationSummary: validation.summary,
+      evidenceRefs,
+    },
+  });
+  await monitoringService.captureSnapshot(run.id, tenantId, {
+    artifactCountJson: { planArtifact: recoveredPlanArtifact },
+    runtimeState: {
+      currentPhase: progression.isComplete ? "completed" : "running",
+      waitingReason: null,
+      verificationState: "passed",
+      stepValidation: {
+        stepKey,
+        issues: [],
+        summary: validation.summary,
+        attempt: validation.attempt,
+        maxAttempts: validation.maxAttempts,
+        retryable: false,
+        recovered: true,
+      },
+      planArtifact: recoveredPlanArtifact,
+    } as Partial<monitoringService.RunRuntimeState>,
+  });
+
+  const [updated] = await db
+    .update(teamRuns)
+    .set({
+      status: progression.isComplete ? "paused" : "running",
+      stopReason: progression.isComplete
+        ? "auto_team_final_evidence_unresolved"
+        : null,
+      runtimeTerminalReason: progression.isComplete
+        ? "Recovered prompt package validation; final evidence still needs normal completion checks."
+        : null,
+      runtimeApprovalState: null,
+      runtimeCurrentStepKey: progression.nextStepKey ?? stepKey,
+      runtimeStateJson: {
+        ...runtimeState,
+        currentPhase: progression.isComplete ? "completed" : "running",
+        waitingReason: null,
+        verificationState: "passed",
+        runtimeCurrentStepKey: progression.nextStepKey ?? stepKey,
+        stepValidation: {
+          stepKey,
+          issues: [],
+          summary: validation.summary,
+          attempt: validation.attempt,
+          maxAttempts: validation.maxAttempts,
+          retryable: false,
+          recovered: true,
+        },
+        promptPackageValidationRecovered: true,
+        planArtifact: recoveredPlanArtifact,
+      },
+    })
+    .where(eq(teamRuns.id, run.id))
+    .returning();
+
+  if (updated && !progression.isComplete) {
+    const assistantId = await resolveCurrentAssistantId(db, updated).catch(
+      () => updated.activeAssistantId ?? null,
+    );
+    if (assistantId) {
+      await roomService
+        .postWorkUpdate({
+          roomId: run.roomId,
+          tenantId,
+          senderAssistantId: assistantId,
+          runId: run.id,
+          replyToMessageId: candidate.id,
+          threadRootMessageId: candidate.id,
+          messageType: "work_update",
+          content:
+            "ระบบตรวจพบว่าขั้นตอนนี้ส่งมอบเป็นชุดพรอมป์ต์/คีย์เฟรมตามแผนแล้ว จึงยืนยันผลลัพธ์และเดินหน้าสู่ขั้นตอนถัดไปอัตโนมัติ",
+          metadataJson: {
+            stepKey,
+            recoveredFrom: "media_step_missing_artifact_reference",
+            nextStepKey: progression.nextStepKey,
+          },
+          sensitivity: "medium",
+        })
+        .catch(error => {
+          console.warn("[runEngine] failed to post prompt package recovery message", {
+            runId: run.id,
+            roomId: run.roomId,
+            stepKey,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+    }
+    startAutoStopChecker(updated.id);
+    queueAutoAdvance(updated.id, tenantId, 1, AUTO_TEAM_CONTINUATION_DELAY_MS);
+  }
+
   return updated ?? null;
 }
 

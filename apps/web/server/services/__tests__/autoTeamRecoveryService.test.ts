@@ -7,6 +7,7 @@ const mockIsAutoTeamPlanReady = vi.hoisted(() => vi.fn());
 const mockGetRun = vi.hoisted(() => vi.fn());
 const mockRecoverBudgetBlockedAutoTeamRun = vi.hoisted(() => vi.fn());
 const mockRecoverCapabilityGapAutoTeamRun = vi.hoisted(() => vi.fn());
+const mockRecoverPromptPackageValidationAutoTeamRun = vi.hoisted(() => vi.fn());
 const mockAdvanceAutoTeamMediaPipeline = vi.hoisted(() => vi.fn());
 const dbUpdateSetCalls: Array<Record<string, unknown>> = [];
 
@@ -21,6 +22,8 @@ vi.mock("../runEngine", () => ({
   isAutoTeamPlanReady: mockIsAutoTeamPlanReady,
   recoverBudgetBlockedAutoTeamRun: mockRecoverBudgetBlockedAutoTeamRun,
   recoverCapabilityGapAutoTeamRun: mockRecoverCapabilityGapAutoTeamRun,
+  recoverPromptPackageValidationAutoTeamRun:
+    mockRecoverPromptPackageValidationAutoTeamRun,
 }));
 
 vi.mock("../autoTeamMediaCompletionService", () => ({
@@ -61,6 +64,7 @@ describe("autoTeamRecoveryService", () => {
     mockGetRun.mockReset();
     mockRecoverBudgetBlockedAutoTeamRun.mockReset();
     mockRecoverCapabilityGapAutoTeamRun.mockReset();
+    mockRecoverPromptPackageValidationAutoTeamRun.mockReset();
     mockAdvanceAutoTeamMediaPipeline.mockReset();
     mockGetDb.mockReset();
     dbUpdateSetCalls.length = 0;
@@ -144,6 +148,35 @@ describe("autoTeamRecoveryService", () => {
       "run-1",
       "tenant-1",
     );
+    expect(mockAdvanceRun).not.toHaveBeenCalled();
+  });
+
+  it("recovers prompt package validation false positives", async () => {
+    mockRecoveryCandidateRows([{ id: "run-1", tenantId: "tenant-1" }]);
+    mockHasQueuedAutoAdvance.mockReturnValue(false);
+    mockGetRun.mockResolvedValue({
+      id: "run-1",
+      tenantId: "tenant-1",
+      status: "paused",
+      stopReason: "auto_team_step_validation_failed",
+      runtimeTerminalReason: "media_step_missing_artifact_reference",
+      runtimeState: {
+        stepValidation: {
+          stepKey: "generate-visual-assets",
+          issues: ["media_step_missing_artifact_reference"],
+        },
+      },
+    });
+    mockRecoverPromptPackageValidationAutoTeamRun.mockResolvedValue({ id: "run-1" });
+
+    const resumed = await sweepPendingAutoTeamRuns();
+
+    expect(resumed).toBe(1);
+    expect(mockRecoverPromptPackageValidationAutoTeamRun).toHaveBeenCalledWith(
+      "run-1",
+      "tenant-1",
+    );
+    expect(mockRecoverCapabilityGapAutoTeamRun).not.toHaveBeenCalled();
     expect(mockAdvanceRun).not.toHaveBeenCalled();
   });
 
