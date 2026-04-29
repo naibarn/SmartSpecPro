@@ -615,6 +615,7 @@ export async function executeUnified(
         traceId,
         success: executorResult.success,
         error: executorResult.error,
+        ...(executorResult.metadata ?? {}),
       },
       telemetry,
     };

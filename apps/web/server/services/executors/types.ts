@@ -165,6 +165,7 @@ export interface ExecutorResult {
   totalDurationMs: number;
   error?: string;
   nextSpeakerHint?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface CapabilityExecutor {

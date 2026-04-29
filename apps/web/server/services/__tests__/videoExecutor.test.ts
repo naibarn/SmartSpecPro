@@ -6,16 +6,27 @@ vi.mock("../mediaGenerationService", () => ({
     generateVideoAsync: vi.fn(),
   },
   DEFAULT_MODELS: { video: "veo-3-1" },
+  normalizeMediaPrompt: (prompt: string) => prompt.trim(),
 }));
 
 vi.mock("../executors/executorRegistry", () => ({
   registerExecutor: vi.fn(),
 }));
 
+vi.mock("../skillModelFallback", () => ({
+  executeSkillLlmWithFallback: vi.fn(),
+}));
+
+vi.mock("../promptEnhancementService", () => ({
+  parsePromptResponse: (response: string) => ({ promptEn: response.trim(), promptTh: "" }),
+}));
+
 import { VideoGenerationExecutor } from "../executors/videoExecutor";
 import { mediaGenerationService } from "../mediaGenerationService";
+import { executeSkillLlmWithFallback } from "../skillModelFallback";
 
 const mockGenerateVideo = vi.mocked(mediaGenerationService.generateVideoAsync);
+const mockExecuteSkillLlmWithFallback = vi.mocked(executeSkillLlmWithFallback);
 
 function makeInput(overrides: Partial<ExecutorInput> = {}): ExecutorInput {
   return {
@@ -46,6 +57,15 @@ const stubTask = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGenerateVideo.mockResolvedValue(stubTask as any);
+  mockExecuteSkillLlmWithFallback.mockResolvedValue({
+    success: true,
+    content: "provider ready video prompt",
+    modelId: "gpt-5.4-mini",
+    inputTokens: 10,
+    outputTokens: 20,
+    attempts: [],
+    totalDurationMs: 20,
+  });
 });
 
 describe("VideoGenerationExecutor", () => {
@@ -166,6 +186,35 @@ describe("VideoGenerationExecutor", () => {
       expect(mockGenerateVideo).toHaveBeenCalledWith(
         expect.objectContaining({
           auditContext: expect.objectContaining({ traceId: "trace-abc" }),
+        }),
+        expect.any(String),
+      );
+    });
+
+    it("runs the video prompt skill before dispatching raw auto-team context", async () => {
+      const input = makeInput({
+        channel: "team_room",
+        dynamicParams: {
+          prompt: [
+            "[OBJECTIVE]",
+            "Auto-team execution context:",
+            "Run objective: สร้างวิดีโอสงกรานต์ด้วย veo 3.1 ความยาวไม่น้อยกว่า 1 นาที",
+            "Plan step focus: storyboard-and-prompt",
+          ].join("\n"),
+        },
+      });
+
+      await executor.execute(input);
+
+      expect(mockExecuteSkillLlmWithFallback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skillSlug: "video-prompt-engineer",
+          userId: 1,
+        }),
+      );
+      expect(mockGenerateVideo).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: "provider ready video prompt",
         }),
         expect.any(String),
       );
