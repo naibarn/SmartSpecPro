@@ -129,6 +129,27 @@ describe("autoTeamRecoveryService", () => {
     expect(mockAdvanceRun).not.toHaveBeenCalled();
   });
 
+  it("does not re-enter budget recovery after automatic attempts are exhausted", async () => {
+    mockRecoveryCandidateRows([{ id: "run-1", tenantId: "tenant-1" }]);
+    mockHasQueuedAutoAdvance.mockReturnValue(false);
+    mockGetRun.mockResolvedValue({
+      id: "run-1",
+      tenantId: "tenant-1",
+      status: "paused",
+      stopReason: "runtime_dispatch_blocked:budget_cap_exceeded",
+      runtimeState: {
+        autoReplanRequested: false,
+        budgetRecoveryExhausted: true,
+      },
+    });
+
+    const resumed = await sweepPendingAutoTeamRuns();
+
+    expect(resumed).toBe(0);
+    expect(mockRecoverBudgetBlockedAutoTeamRun).not.toHaveBeenCalled();
+    expect(mockAdvanceRun).not.toHaveBeenCalled();
+  });
+
   it("recovers paused auto-team runs when a previously missing skill becomes available", async () => {
     mockRecoveryCandidateRows([{ id: "run-1", tenantId: "tenant-1" }]);
     mockHasQueuedAutoAdvance.mockReturnValue(false);

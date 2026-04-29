@@ -137,6 +137,18 @@ describe("VideoGenerationExecutor", () => {
       expect(result.mediaJob).toBeUndefined();
     });
 
+    it("classifies missing provider configuration as a non-generic media error", async () => {
+      mockGenerateVideo.mockRejectedValue(
+        new Error("503: KNPLabs not configured. Please add API key in Admin > Media Providers."),
+      );
+
+      const result = await executor.execute(makeInput());
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("media_provider_not_configured");
+      expect(result.mediaJob).toBeUndefined();
+    });
+
     it("passes publicUrl from dynamicParams", async () => {
       const input = makeInput({ dynamicParams: { publicUrl: "https://smartaihub.app" } });
       await executor.execute(input);

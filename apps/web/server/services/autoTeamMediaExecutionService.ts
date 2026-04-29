@@ -72,6 +72,43 @@ export function sanitizeProviderError(error: unknown): string {
   return redactSensitiveText(raw).slice(0, 500);
 }
 
+export function classifyAutoTeamMediaSubmitError(error: unknown): {
+  reasonCode: string;
+  retryable: boolean;
+  message: string;
+} {
+  const message = sanitizeProviderError(error);
+  if (
+    /(?:not configured|api key not configured|no api key|base url not configured|connection not configured|provider has no api key|KNPLabs not configured)/i.test(
+      message,
+    )
+  ) {
+    return {
+      reasonCode: "media_provider_not_configured",
+      retryable: false,
+      message,
+    };
+  }
+  if (/\b(?:401|403|unauthorized|forbidden|invalid api key|authentication failed)\b/i.test(message)) {
+    return {
+      reasonCode: "media_provider_auth_failed",
+      retryable: false,
+      message,
+    };
+  }
+  return {
+    reasonCode: "provider_submit_failed",
+    retryable: true,
+    message,
+  };
+}
+
+function getRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
 export function resolveProviderDecision(
   input: AutoTeamMediaExecutionInput,
 ): AutoTeamProviderDecision {
@@ -157,6 +194,20 @@ export async function submitMediaJob(
   }
   if (existing && existing.providerStatus === "succeeded") {
     return existing;
+  }
+  if (existing && existing.providerStatus === "failed") {
+    const metadata = getRecord(existing.metadataJson);
+    if (
+      existing.errorCode === "media_provider_not_configured" ||
+      existing.errorCode === "media_provider_auth_failed" ||
+      metadata.retryable === false
+    ) {
+      throw new AutoTeamMediaSubmitError(
+        existing.errorMessage ?? existing.errorCode ?? "provider_submit_failed",
+        existing.errorCode ?? "provider_submit_failed",
+        false,
+      );
+    }
   }
 
   let reserved: AutoTeamMediaJobRefRow | null = null;
@@ -255,21 +306,30 @@ export async function submitMediaJob(
       ? await mediaGenerationService.generateImageAsync(buildMediaTaskRequest(input, providerDecision) as any, input.userToken)
       : await mediaGenerationService.generateVideoAsync(buildMediaTaskRequest(input, providerDecision) as any, input.userToken);
   } catch (error) {
+    const classifiedError = classifyAutoTeamMediaSubmitError(error);
     const [failedReservation] = await db
       .update(autoTeamMediaJobRefs)
       .set({
         providerStatus: "failed",
         failedAt: now(),
-        errorCode: "provider_submit_failed",
-        errorMessage: sanitizeProviderError(error),
+        errorCode: classifiedError.reasonCode,
+        errorMessage: classifiedError.message,
+        metadataJson: {
+          routeClass: input.routeDecision.routeClass,
+          reservationOnly: true,
+          budgetDecision,
+          providerDecision,
+          retryable: classifiedError.retryable,
+          reasonCode: classifiedError.reasonCode,
+        },
         updatedAt: now(),
       })
       .where(eq(autoTeamMediaJobRefs.id, reserved.id))
       .returning();
     throw new AutoTeamMediaSubmitError(
       (failedReservation ?? reserved).errorMessage ?? "provider_submit_failed",
-      "provider_submit_failed",
-      true,
+      classifiedError.reasonCode,
+      classifiedError.retryable,
     );
   }
 

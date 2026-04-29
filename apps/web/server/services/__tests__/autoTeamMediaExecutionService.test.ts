@@ -178,4 +178,38 @@ describe("autoTeamMediaExecutionService", () => {
     expect(result.resultArtifactRefsJson).toEqual([]);
     expect(JSON.stringify(updateSetCalls)).not.toContain("token=secret");
   });
+
+  describe("classifyAutoTeamMediaSubmitError", () => {
+    it("marks missing provider configuration as non-retryable", async () => {
+      const { classifyAutoTeamMediaSubmitError } = await import(
+        "../autoTeamMediaExecutionService"
+      );
+
+      const result = classifyAutoTeamMediaSubmitError(
+        new Error("503: KNPLabs not configured. Please add API key in Admin > Media Providers."),
+      );
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          reasonCode: "media_provider_not_configured",
+          retryable: false,
+        }),
+      );
+    });
+
+    it("keeps transient provider submit failures retryable", async () => {
+      const { classifyAutoTeamMediaSubmitError } = await import(
+        "../autoTeamMediaExecutionService"
+      );
+
+      const result = classifyAutoTeamMediaSubmitError(new Error("Provider timeout"));
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          reasonCode: "provider_submit_failed",
+          retryable: true,
+        }),
+      );
+    });
+  });
 });

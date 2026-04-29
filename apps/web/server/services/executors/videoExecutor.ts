@@ -13,6 +13,21 @@ import {
   type VideoGenerationRequest,
 } from "../mediaGenerationService";
 
+function classifyVideoGenerationError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (
+    /(?:not configured|api key not configured|no api key|base url not configured|connection not configured|provider has no api key|KNPLabs not configured)/i.test(
+      message,
+    )
+  ) {
+    return "media_provider_not_configured";
+  }
+  if (/\b(?:401|403|unauthorized|forbidden|invalid api key|authentication failed)\b/i.test(message)) {
+    return "media_provider_auth_failed";
+  }
+  return "media_generation_failed";
+}
+
 export class VideoGenerationExecutor implements CapabilityExecutor {
   readonly id = "video-generation";
   readonly capabilities: readonly CapabilityFamily[] = ["media.video"];
@@ -73,7 +88,7 @@ export class VideoGenerationExecutor implements CapabilityExecutor {
       console.error("[videoExecutor] dispatch failed:", err);
       return {
         success: false,
-        error: "media_generation_failed",
+        error: classifyVideoGenerationError(err),
         inputTokens: 0,
         outputTokens: 0,
         attempts: [],

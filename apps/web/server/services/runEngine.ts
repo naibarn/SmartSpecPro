@@ -928,6 +928,57 @@ type RuntimeBudgetResource =
   | "workflow_runs"
   | "agency_runs";
 
+const AUTO_TEAM_BUDGET_RECOVERY_MAX_ATTEMPTS = 1;
+
+function asRuntimeStateRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function getBudgetRecoveryAttempts(
+  runtimeState: Record<string, unknown>,
+): number {
+  const value = runtimeState.budgetRecoveryAttempts;
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.floor(value))
+    : 0;
+}
+
+function buildBudgetRecoveryState(input: {
+  runtimeState: Record<string, unknown>;
+  autoReplanRequested: boolean;
+  exhausted?: boolean;
+  recovery?: string;
+}): Record<string, unknown> {
+  const attempts = getBudgetRecoveryAttempts(input.runtimeState);
+  return {
+    budgetRecoveryAttempts: attempts,
+    budgetRecoveryMaxAttempts: AUTO_TEAM_BUDGET_RECOVERY_MAX_ATTEMPTS,
+    autoReplanRequested: input.autoReplanRequested,
+    ...(input.recovery ? { recovery: input.recovery } : {}),
+    ...(input.exhausted
+      ? {
+          budgetRecoveryExhausted: true,
+          budgetRecoveryExhaustedReason:
+            "automatic_budget_recovery_attempts_exhausted",
+        }
+      : { budgetRecoveryExhausted: false }),
+  };
+}
+
+function incrementBudgetRecoveryAttempt(
+  runtimeState: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    ...runtimeState,
+    budgetRecoveryAttempts:
+      getBudgetRecoveryAttempts(runtimeState) + 1,
+    budgetRecoveryMaxAttempts: AUTO_TEAM_BUDGET_RECOVERY_MAX_ATTEMPTS,
+    budgetRecoveryExhausted: false,
+  };
+}
+
 export function evaluateRuntimeBudgetGate(input: {
   budget: ExecutionBudgetEnvelope | null;
   budgetSnapshot: BudgetSnapshot;
@@ -1048,6 +1099,7 @@ function buildRuntimeBudgetBlockedResult(input: {
   step: monitoringService.RunPlanStep;
   policy: RuntimeDispatchPolicy;
   reasonCode: string;
+  budgetGate: ReturnType<typeof evaluateRuntimeBudgetGate>;
 }): TeamRunSkillExecutionResult {
   return {
     content: `Step "${input.step.title}" is blocked before dispatch because the approved budget envelope would be exceeded. Auto Team should revise the plan to reduce scope, clip count, media duration, or route to a cheaper capability before retrying.`,
@@ -1073,6 +1125,9 @@ function buildRuntimeBudgetBlockedResult(input: {
       budgetGate: {
         blocked: true,
         reasonCode: input.reasonCode,
+        exceededResource: input.budgetGate.exceededResource,
+        usage: input.budgetGate.usage,
+        reservation: input.policy.budgetReservation,
         recovery: "revise_plan_reduce_scope_before_retry",
       },
       autoReplanRequested: input.reasonCode === "budget_cap_exceeded",
@@ -1220,6 +1275,11 @@ async function pauseRunForRuntimeDispatchGate(input: {
     ? `runtime_approval_required:${reasonCode}`
     : `runtime_dispatch_blocked:${reasonCode}`;
   const budgetRecoveryRequested = reasonCode === "budget_cap_exceeded";
+  const previousRuntimeState = asRuntimeStateRecord(input.run.runtimeStateJson);
+  const budgetRecoveryAttempts = getBudgetRecoveryAttempts(previousRuntimeState);
+  const canRequestBudgetRecovery =
+    budgetRecoveryRequested &&
+    budgetRecoveryAttempts < AUTO_TEAM_BUDGET_RECOVERY_MAX_ATTEMPTS;
   const planStepKey =
     input.planArtifact?.steps.find(step => {
       const policy = getStepRuntimeDispatchPolicy(step);
@@ -1239,13 +1299,20 @@ async function pauseRunForRuntimeDispatchGate(input: {
       runtimeApprovalState: approvalRequired ? "pending" : "blocked",
       runtimeTerminalReason: approvalRequired ? null : reasonCode,
       runtimeStateJson: {
+        ...previousRuntimeState,
         runtimeDispatchPolicy: input.policy,
         messageId: input.messageId,
         reasonCode,
         ...(budgetRecoveryRequested
           ? {
-              autoReplanRequested: true,
-              recovery: "revise_plan_reduce_scope_before_retry",
+              ...buildBudgetRecoveryState({
+                runtimeState: previousRuntimeState,
+                autoReplanRequested: canRequestBudgetRecovery,
+                exhausted: !canRequestBudgetRecovery,
+                recovery: canRequestBudgetRecovery
+                  ? "revise_plan_reduce_scope_before_retry"
+                  : "automatic_budget_recovery_attempts_exhausted",
+              }),
             }
           : {}),
       },
@@ -1289,7 +1356,9 @@ async function pauseRunForRuntimeDispatchGate(input: {
       reasonCode,
       runtimeDispatchPolicy: input.policy,
       messageId: input.messageId,
-      autoReplanRequested: budgetRecoveryRequested,
+      autoReplanRequested: canRequestBudgetRecovery,
+      budgetRecoveryAttempts,
+      budgetRecoveryMaxAttempts: AUTO_TEAM_BUDGET_RECOVERY_MAX_ATTEMPTS,
     },
   });
 
@@ -1319,7 +1388,9 @@ async function pauseRunForRuntimeDispatchGate(input: {
         : "blocked",
       waitingReason: stopReason,
       policyGateReason: reasonCode,
-      autoReplanRequested: budgetRecoveryRequested,
+      autoReplanRequested: canRequestBudgetRecovery,
+      budgetRecoveryAttempts,
+      budgetRecoveryMaxAttempts: AUTO_TEAM_BUDGET_RECOVERY_MAX_ATTEMPTS,
       selectedSkillId: input.policy.selectedCapabilityId ?? null,
       routeReason: `runtime_dispatch_policy:${input.policy.authorityDecision}`,
       planArtifact: input.planArtifact,
@@ -1343,6 +1414,12 @@ async function pauseRunForRuntimeBudgetGate(input: {
   const db = input.db;
   if (!db) throw new Error("Database not available");
   const stopReason = `runtime_dispatch_blocked:${input.reasonCode}`;
+  const previousRuntimeState = asRuntimeStateRecord(input.run.runtimeStateJson);
+  const budgetRecoveryRequested = input.reasonCode === "budget_cap_exceeded";
+  const budgetRecoveryAttempts = getBudgetRecoveryAttempts(previousRuntimeState);
+  const canRequestBudgetRecovery =
+    budgetRecoveryRequested &&
+    budgetRecoveryAttempts < AUTO_TEAM_BUDGET_RECOVERY_MAX_ATTEMPTS;
 
   await db
     .update(teamRuns)
@@ -1353,14 +1430,23 @@ async function pauseRunForRuntimeBudgetGate(input: {
       runtimeApprovalState: "blocked",
       runtimeTerminalReason: input.reasonCode,
       runtimeStateJson: {
+        ...previousRuntimeState,
         budgetGate: input.budgetGate,
         messageId: input.messageId,
         reasonCode: input.reasonCode,
-        autoReplanRequested: input.reasonCode === "budget_cap_exceeded",
-        recovery:
-          input.reasonCode === "budget_cap_exceeded"
-            ? "revise_plan_reduce_scope_before_retry"
-            : "manual_budget_gate_review_required",
+        ...(budgetRecoveryRequested
+          ? buildBudgetRecoveryState({
+              runtimeState: previousRuntimeState,
+              autoReplanRequested: canRequestBudgetRecovery,
+              exhausted: !canRequestBudgetRecovery,
+              recovery: canRequestBudgetRecovery
+                ? "revise_plan_reduce_scope_before_retry"
+                : "automatic_budget_recovery_attempts_exhausted",
+            })
+          : {
+              autoReplanRequested: false,
+              recovery: "manual_budget_gate_review_required",
+            }),
       },
     })
     .where(eq(teamRuns.id, input.run.id));
@@ -1400,7 +1486,9 @@ async function pauseRunForRuntimeBudgetGate(input: {
       reasonCode: input.reasonCode,
       budgetGate: input.budgetGate,
       messageId: input.messageId,
-      autoReplanRequested: input.reasonCode === "budget_cap_exceeded",
+      autoReplanRequested: canRequestBudgetRecovery,
+      budgetRecoveryAttempts,
+      budgetRecoveryMaxAttempts: AUTO_TEAM_BUDGET_RECOVERY_MAX_ATTEMPTS,
       fallbackGate: true,
     },
   });
@@ -1427,7 +1515,9 @@ async function pauseRunForRuntimeBudgetGate(input: {
       currentPhase: "blocked",
       waitingReason: stopReason,
       policyGateReason: input.reasonCode,
-      autoReplanRequested: input.reasonCode === "budget_cap_exceeded",
+      autoReplanRequested: canRequestBudgetRecovery,
+      budgetRecoveryAttempts,
+      budgetRecoveryMaxAttempts: AUTO_TEAM_BUDGET_RECOVERY_MAX_ATTEMPTS,
       selectedSkillId: input.step.selectedCapabilityId ?? null,
       routeReason: "runtime_budget_gate",
       planArtifact: input.planArtifact,
@@ -5170,6 +5260,21 @@ async function pauseAutoTeamRunForPlanningFailure(params: {
   issues?: string[];
 }): Promise<TeamRun> {
   const stopReason = buildPlanningStopReason(params.reasonCode, params.detail);
+  const previousRuntimeState = asRuntimeStateRecord(params.run.runtimeStateJson);
+  const planningFailureFromBudgetRecovery =
+    params.reasonCode.includes("budget") ||
+    previousRuntimeState.autoReplanRequested === true ||
+    typeof previousRuntimeState.budgetGate === "object";
+  const recoveryState = planningFailureFromBudgetRecovery
+    ? buildBudgetRecoveryState({
+        runtimeState: previousRuntimeState,
+        autoReplanRequested: false,
+        exhausted: true,
+        recovery: "automatic_budget_recovery_failed",
+      })
+    : {
+        autoReplanRequested: false,
+      };
   logAutomationStartTrace("planning.failed", {
     tenantId: params.tenantId,
     runId: params.run.id,
@@ -5185,6 +5290,21 @@ async function pauseAutoTeamRunForPlanningFailure(params: {
     .set({
       status: "paused",
       stopReason,
+      runtimeApprovalState: "blocked",
+      runtimeTerminalReason: params.reasonCode,
+      runtimeStateJson: {
+        ...previousRuntimeState,
+        ...recoveryState,
+        currentPhase: "blocked",
+        waitingReason: stopReason,
+        policyGateReason: params.reasonCode,
+        planningFailure: {
+          reasonCode: params.reasonCode,
+          detail: params.detail,
+          issues: params.issues ?? [],
+          planStepCount: params.planArtifact?.steps.length ?? 0,
+        },
+      },
     })
     .where(eq(teamRuns.id, params.run.id))
     .returning();
@@ -6146,12 +6266,30 @@ export async function recoverBudgetBlockedAutoTeamRun(
   if (runtimeState.autoReplanRequested !== true) {
     return null;
   }
+  const budgetRecoveryAttempts = getBudgetRecoveryAttempts(runtimeState);
+  if (budgetRecoveryAttempts >= AUTO_TEAM_BUDGET_RECOVERY_MAX_ATTEMPTS) {
+    await pauseAutoTeamRunForPlanningFailure({
+      db,
+      run,
+      tenantId,
+      reasonCode: "budget_recovery_attempts_exhausted",
+      detail:
+        "Automatic budget recovery already tried once and the run is still blocked by the approved budget envelope.",
+      issues: ["automatic_budget_recovery_attempts_exhausted"],
+    });
+    return null;
+  }
+  const runtimeStateForAttempt = incrementBudgetRecoveryAttempt(runtimeState);
+  const runForAttempt = {
+    ...run,
+    runtimeStateJson: runtimeStateForAttempt,
+  } as TeamRun;
 
   const alreadyReservedRecovery = await resumeAlreadyReservedBudgetBlockedAutoTeamRun({
     db,
-    run,
+    run: runForAttempt,
     tenantId,
-    runtimeState,
+    runtimeState: runtimeStateForAttempt,
   });
   if (alreadyReservedRecovery) {
     return alreadyReservedRecovery;
@@ -6162,9 +6300,9 @@ export async function recoverBudgetBlockedAutoTeamRun(
 
   const tokenOnlyRecovery = await resumeTokenOnlyBudgetBlockedAutoTeamRun({
     db,
-    run,
+    run: runForAttempt,
     tenantId,
-    runtimeState,
+    runtimeState: runtimeStateForAttempt,
   });
   if (tokenOnlyRecovery) {
     return tokenOnlyRecovery;
@@ -6252,7 +6390,7 @@ export async function recoverBudgetBlockedAutoTeamRun(
     const diagnostics = extractStructuredOutputDiagnostics(error);
     await pauseAutoTeamRunForPlanningFailure({
       db,
-      run,
+      run: runForAttempt,
       tenantId,
       reasonCode: "budget_replanning_generation_failed",
       detail: diagnostics.detail,
@@ -6264,7 +6402,7 @@ export async function recoverBudgetBlockedAutoTeamRun(
   if (planArtifact.review.status === "failed") {
     await pauseAutoTeamRunForPlanningFailure({
       db,
-      run,
+      run: runForAttempt,
       tenantId,
       reasonCode: "budget_replanning_review_failed",
       detail: summarizePlanReviewFailure(planArtifact),
@@ -6306,7 +6444,7 @@ export async function recoverBudgetBlockedAutoTeamRun(
   if (!budgetValidation.ok) {
     await pauseAutoTeamRunForPlanningFailure({
       db,
-      run,
+      run: runForAttempt,
       tenantId,
       reasonCode: budgetValidation.reason,
       detail:
@@ -6361,7 +6499,7 @@ export async function recoverBudgetBlockedAutoTeamRun(
       runtimeApprovalState: null,
       runtimeCurrentStepKey: null,
       runtimeStateJson: {
-        ...runtimeState,
+        ...runtimeStateForAttempt,
         autoReplanRequested: false,
         recovery: "budget_replan_completed",
       },
@@ -8836,6 +8974,7 @@ export async function runNextTurn(
               step: plannedActiveStep,
               policy: plannedRuntimePolicy,
               reasonCode: budgetGate.reasonCode ?? "budget_cap_exceeded",
+              budgetGate,
             })
           : buildMissingRuntimePolicyBlockedResult({
               step: plannedActiveStep,
@@ -8897,37 +9036,6 @@ export async function runNextTurn(
     });
 
     const currentAutoTeamStep = selectActivePlanStep(autoTeamPlanArtifact);
-    const runtimeDispatchGate = getRuntimeDispatchGateFromResult(turnResponse);
-    if (run.executionMode === "auto_team" && runtimeDispatchGate) {
-      await pauseRunForRuntimeDispatchGate({
-        db,
-        run,
-        tenantId,
-        assistantId,
-        activeWorkItem: autoTeamActiveWorkItem,
-        policy: runtimeDispatchGate,
-        content,
-        messageId: message.id,
-        planArtifact: autoTeamPlanArtifact,
-      });
-
-      return {
-        runId,
-        roomId: run.roomId,
-        teamId: run.teamId,
-        assistantId,
-        nextAssistantId: assistantId,
-        nextSpeakerReason: "runtime_dispatch_policy_blocked",
-        content,
-        tokenUsage: {
-          inputTokens: turnResponse.inputTokens,
-          outputTokens: turnResponse.outputTokens,
-        },
-        costCredits: turnResponse.costCredits,
-        nextSpeakerHint: turnResponse.nextSpeakerHint,
-        messageId: message.id,
-      };
-    }
     const runtimeBudgetGate = getBudgetGateBlockFromResult(turnResponse);
     if (
       run.executionMode === "auto_team" &&
@@ -8955,6 +9063,37 @@ export async function runNextTurn(
         assistantId,
         nextAssistantId: assistantId,
         nextSpeakerReason: "runtime_budget_gate_blocked",
+        content,
+        tokenUsage: {
+          inputTokens: turnResponse.inputTokens,
+          outputTokens: turnResponse.outputTokens,
+        },
+        costCredits: turnResponse.costCredits,
+        nextSpeakerHint: turnResponse.nextSpeakerHint,
+        messageId: message.id,
+      };
+    }
+    const runtimeDispatchGate = getRuntimeDispatchGateFromResult(turnResponse);
+    if (run.executionMode === "auto_team" && runtimeDispatchGate) {
+      await pauseRunForRuntimeDispatchGate({
+        db,
+        run,
+        tenantId,
+        assistantId,
+        activeWorkItem: autoTeamActiveWorkItem,
+        policy: runtimeDispatchGate,
+        content,
+        messageId: message.id,
+        planArtifact: autoTeamPlanArtifact,
+      });
+
+      return {
+        runId,
+        roomId: run.roomId,
+        teamId: run.teamId,
+        assistantId,
+        nextAssistantId: assistantId,
+        nextSpeakerReason: "runtime_dispatch_policy_blocked",
         content,
         tokenUsage: {
           inputTokens: turnResponse.inputTokens,
