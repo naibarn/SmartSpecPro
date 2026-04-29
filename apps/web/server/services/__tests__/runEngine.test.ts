@@ -3376,6 +3376,21 @@ describe("RunEngine", () => {
       expect(result.reason).toBe("repeated_turn_detected");
       expect(result.repeatedCount).toBe(3);
     });
+
+    it("does not stop auto-team runs on placeholder empty-response turns", () => {
+      const result = runEngine.detectRepeatedTurnPattern([
+        { summary: "[No response generated]" },
+        { summary: "[No response generated]" },
+        { summary: "[No response generated]" },
+      ]);
+
+      expect(result).toEqual({
+        shouldStop: false,
+        reason: null,
+        repeatedSignal: null,
+        repeatedCount: 0,
+      });
+    });
   });
 
   describe("initBudgetSnapshot", () => {

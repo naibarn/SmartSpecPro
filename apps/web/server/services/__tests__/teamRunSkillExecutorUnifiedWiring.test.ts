@@ -63,6 +63,8 @@ const mockGetSkillByIdAsync = vi.fn(async (skillId: string) => ({
   name:
     skillId === "video-creator"
       ? "Video Creator"
+      : skillId === "veo-video-creator"
+        ? "VEO Video Creator"
       : skillId === "image-creator"
         ? "Image Creator"
         : skillId || "General Article Writer",
@@ -648,7 +650,7 @@ describe("Team Room → Unified Orchestrator Wiring", () => {
       numImages: 6,
     });
     expect(result.skillId).toBe("image-creator");
-    expect(result.content).toContain("Image Creator finished image generation");
+    expect(result.content).toContain("Image Creator queued image generation");
   });
 
   it("auto-team video_editor plan steps chain into video generation", async () => {
@@ -800,6 +802,154 @@ describe("Team Room → Unified Orchestrator Wiring", () => {
     );
     expect(result.skillId).toBe("video-creator");
     expect(mockRegisterAutoTeamMediaArtifact).toHaveBeenCalledTimes(6);
+  });
+
+  it("registers direct unified video media jobs instead of returning empty content", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      unifiedSkillExecution: true,
+    });
+    mockExecuteUnified.mockResolvedValueOnce({
+      route: {
+        capability: "media.video",
+        executorId: "video-generation-executor",
+        reason: "team_run_skill",
+      },
+      result: {
+        type: "media_job" as const,
+        mediaType: "video" as const,
+        jobPayload: {
+          taskId: "direct-veo-video-task",
+          status: "queued",
+          model: "veo-3-1",
+        },
+      },
+      tokens: { input: 12, output: 0 },
+      costCredits: 8,
+      creditsDeducted: 0,
+      modelUsed: "veo-3-1",
+      skillId: "veo-video-creator",
+      nextSpeakerHint: "done",
+      metadata: { traceId: "direct-video-step" },
+      telemetry: {
+        routerVersion: "1.0.0",
+        policyVersion: "1.0.0",
+        executorId: "video-generation-executor",
+        attempts: [],
+        totalDurationMs: 180,
+      },
+    });
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_plan_step:compose-final-video",
+          selectedSkillId: "veo-video-creator",
+          selectedCapabilityId: "skill:veo-video-creator",
+        },
+        objective: "Create a 60 second final video with veo 3.1",
+        dynamicParams: {
+          contextState: {
+            projectState: {
+              steps: [
+                {
+                  stepKey: "compose-final-video",
+                  title: "สร้างและประกอบวิดีโอสุดท้าย",
+                  objective: "ใช้ veo 3.1 เพื่อสร้างวิดีโอจาก storyboard ความยาวอย่างน้อย 1 นาที",
+                  deliverable: "ไฟล์วิดีโอฉบับสุดท้าย",
+                  surface: "video_editor",
+                  selectedCapabilityId: "skill:veo-video-creator",
+                  status: "in_progress",
+                },
+              ],
+            },
+          },
+        } as any,
+      }),
+    );
+
+    expect(mockExecuteUnified).toHaveBeenCalledTimes(1);
+    expect(result.skillId).toBe("veo-video-creator");
+    expect(result.content).toContain("queued video generation");
+    expect(result.content).toContain("direct-veo-video-task");
+    expect(result.metadata).toMatchObject({
+      selectedSkillId: "veo-video-creator",
+      mediaPipelineAwaitingAssets: true,
+      runtimeDispatchOutcome: "awaiting_async_assets",
+      mediaJob: {
+        type: "media_job",
+        mediaType: "video",
+      },
+    });
+    expect(mockRegisterAutoTeamMediaArtifact).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: "run-1",
+        roomId: "room-1",
+        mediaType: "video",
+        promptSkillId: "veo-video-creator",
+        mediaSkillId: "veo-video-creator",
+        modelId: "veo-3-1",
+        clipIndex: 1,
+        clipCount: 6,
+      }),
+    );
+  });
+
+  it("returns explicit failure content when direct media execution fails before a job is created", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      unifiedSkillExecution: true,
+    });
+    mockExecuteUnified.mockResolvedValueOnce({
+      route: {
+        capability: "media.video",
+        executorId: "video-generation-executor",
+        reason: "team_run_skill",
+      },
+      result: { type: "text" as const, content: "" },
+      tokens: { input: 0, output: 0 },
+      costCredits: 0,
+      creditsDeducted: 0,
+      modelUsed: null,
+      skillId: "veo-video-creator",
+      nextSpeakerHint: "done",
+      metadata: {
+        traceId: "direct-video-step-failed",
+        success: false,
+        error: "media_generation_failed",
+      },
+      telemetry: {
+        routerVersion: "1.0.0",
+        policyVersion: "1.0.0",
+        executorId: "video-generation-executor",
+        attempts: [],
+        totalDurationMs: 180,
+      },
+    });
+
+    const { executeTeamRunSkillTurn } = await import("../teamRunSkillExecutor");
+    const result = await executeTeamRunSkillTurn(
+      makeInput({
+        route: {
+          route: "skill",
+          reason: "auto_team_plan_step:compose-final-video",
+          selectedSkillId: "veo-video-creator",
+          selectedCapabilityId: "skill:veo-video-creator",
+        },
+        objective: "Create a 60 second final video with veo 3.1",
+      }),
+    );
+
+    expect(result.skillId).toBe("veo-video-creator");
+    expect(result.content).toContain("failed before producing a result");
+    expect(result.content).toContain("media_generation_failed");
+    expect(result.content).not.toContain("[No response generated]");
+    expect(result.metadata).toMatchObject({
+      success: false,
+      runtimeDispatchOutcome: "execution_failed",
+      executionError: "media_generation_failed",
+    });
+    expect(mockRegisterAutoTeamMediaArtifact).not.toHaveBeenCalled();
   });
 
   it("blocks media execution when artifact registration fails", async () => {
@@ -1756,7 +1906,7 @@ describe("Team Room → Unified Orchestrator Wiring", () => {
     );
     expect(mockExecuteUnified).toHaveBeenCalledTimes(1);
     expect(result.skillId).toBe("image-creator");
-    expect(result.content).toContain("Image Creator finished image generation");
+    expect(result.content).toContain("Image Creator produced an image artifact");
     expect(result.metadata).toMatchObject({
       routeReason: "auto_team_image:image_prompt_engineer",
       promptSkillId: "image_prompt_engineer",

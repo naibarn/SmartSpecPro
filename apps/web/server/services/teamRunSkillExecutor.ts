@@ -34,7 +34,11 @@ import {
   type ContextPack,
 } from "./contextEngineAdapter";
 import { recordContextEngineMetric } from "./monitoringService";
-import type { UnifiedExecutionRequest } from "./executors/types";
+import type {
+  MediaJobResult,
+  UnifiedExecutionRequest,
+  UnifiedExecutionResult,
+} from "./executors/types";
 import { getDb } from "../db";
 import {
   agencies,
@@ -1273,15 +1277,199 @@ function summarizeMediaExecutionResult(input: {
         : typeof payload?.sourceUrl === "string" && payload.sourceUrl.trim()
           ? payload.sourceUrl.trim()
           : null;
-  const mediaLabel = input.mediaType === "image" ? "image" : "video";
+  const status =
+    typeof payload?.status === "string" && payload.status.trim()
+      ? payload.status.trim().toLowerCase()
+      : typeof payload?.providerStatus === "string" && payload.providerStatus.trim()
+        ? payload.providerStatus.trim().toLowerCase()
+        : null;
+  const errorMessage =
+    typeof payload?.errorMessage === "string" && payload.errorMessage.trim()
+      ? payload.errorMessage.trim()
+      : typeof payload?.error_message === "string" && payload.error_message.trim()
+        ? payload.error_message.trim()
+        : null;
+  const mediaLabel =
+    input.mediaType === "image"
+      ? "image"
+      : input.mediaType === "audio"
+        ? "audio"
+        : "video";
+  const mediaArticle = mediaLabel === "image" || mediaLabel === "audio" ? "an" : "a";
+  const action =
+    status && ["failed", "error", "cancelled", "canceled"].includes(status)
+      ? `returned a failed ${mediaLabel} generation job`
+      : resultUrl
+        ? `produced ${mediaArticle} ${mediaLabel} artifact`
+        : `queued ${mediaLabel} generation`;
   const pieces = [
-    `${input.mediaSkillName} finished ${mediaLabel} generation.`,
+    `${input.mediaSkillName} ${action}.`,
     `Prompt skill: ${input.promptSkillId}.`,
     taskId ? `Task: ${taskId}.` : null,
+    status ? `Status: ${status}.` : null,
+    errorMessage ? `Error: ${errorMessage}.` : null,
     resultUrl ? `Result: ${resultUrl}.` : null,
     input.promptText ? `Prompt: ${input.promptText}` : null,
   ].filter(Boolean);
   return pieces.join(" ");
+}
+
+type UnifiedMediaJobExecutionResult = UnifiedExecutionResult & {
+  result: MediaJobResult;
+};
+
+function isUnifiedMediaJobResult(
+  result: UnifiedExecutionResult,
+): result is UnifiedMediaJobExecutionResult {
+  return result.result.type === "media_job";
+}
+
+function readNumberParam(
+  value: unknown,
+): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return undefined;
+}
+
+async function buildDirectMediaJobExecutionResult(input: {
+  executionInput: TeamRunSkillExecutionInput;
+  skill: SkillDefinition;
+  result: UnifiedMediaJobExecutionResult;
+  routeInput: TeamRunSkillExecutionInput;
+}): Promise<TeamRunSkillExecutionResult> {
+  const mediaJob = input.result.result;
+  const mediaParams = input.executionInput.dynamicParams ?? {};
+  const promptText =
+    typeof mediaParams.prompt === "string" && mediaParams.prompt.trim()
+      ? mediaParams.prompt.trim()
+      : input.executionInput.objective;
+  const clipPlan =
+    mediaJob.mediaType === "video"
+      ? resolveAutoTeamClipPlan({
+          objective: input.executionInput.objective,
+          durationSeconds: readNumberParam(mediaParams.duration),
+          requestedClipCount: readNumberParam(mediaParams.clipCount),
+        })
+      : null;
+
+  if (mediaJob.mediaType === "image" || mediaJob.mediaType === "video") {
+    await registerAutoTeamMediaArtifact({
+      runId: input.executionInput.run.id,
+      roomId: input.executionInput.roomId,
+      teamId: input.executionInput.teamId,
+      tenantId: input.executionInput.tenantId,
+      userId: input.executionInput.userId,
+      assistantId: input.executionInput.assistantId,
+      objective: input.executionInput.objective,
+      mediaType: mediaJob.mediaType,
+      mediaPayload: mediaJob.jobPayload,
+      promptText,
+      promptSkillId: input.skill.id,
+      mediaSkillId: input.result.skillId,
+      modelId: input.result.modelUsed,
+      plannedDurationSeconds: clipPlan?.durationSeconds,
+      clipIndex: mediaJob.mediaType === "video" ? 1 : undefined,
+      clipCount: clipPlan?.clipCount,
+    });
+  }
+
+  const mediaSkillName =
+    input.skill.name || input.result.skillId || input.skill.id;
+  const awaitingPipeline = mediaJob.mediaType === "video";
+
+  return {
+    content: summarizeMediaExecutionResult({
+      promptSkillId: input.skill.id,
+      mediaSkillId: input.result.skillId,
+      mediaSkillName,
+      mediaType: mediaJob.mediaType,
+      mediaResult: input.result,
+      promptText,
+    }),
+    inputTokens: input.result.tokens.input,
+    outputTokens: input.result.tokens.output,
+    costCredits: input.result.costCredits,
+    metadata: {
+      ...input.result.metadata,
+      unifiedPath: true,
+      route: input.result.route.capability,
+      routeReason: input.result.route.reason,
+      selectedSkillId: input.result.skillId,
+      selectedCapabilityId: input.routeInput.route.selectedCapabilityId ?? null,
+      capabilityGapResolution:
+        input.routeInput.route.capabilityGapResolution ?? null,
+      nextSpeakerHint: input.result.nextSpeakerHint ?? null,
+      attempts: input.result.telemetry.attempts,
+      llmModelId: input.result.modelUsed,
+      mediaJob,
+      mediaJobs: [mediaJob],
+      mediaChain: {
+        promptSkillId: input.skill.id,
+        mediaSkillId: input.result.skillId,
+        mediaSkillName,
+        mediaType: mediaJob.mediaType,
+        mediaRoute: input.result.route,
+        mediaMetadata: input.result.metadata,
+        promptText,
+        clipCount: clipPlan?.clipCount ?? 1,
+      },
+      ...(awaitingPipeline
+        ? {
+            mediaPipelineAwaitingAssets: true,
+            runtimeDispatchOutcome: "awaiting_async_assets",
+            retryAfterMs: 30_000,
+          }
+        : {}),
+    },
+    skillId: input.result.skillId,
+    nextSpeakerHint: input.result.nextSpeakerHint,
+  };
+}
+
+function buildUnifiedExecutionFailureResult(input: {
+  skill: SkillDefinition;
+  result: UnifiedExecutionResult;
+  routeInput: TeamRunSkillExecutionInput;
+}): TeamRunSkillExecutionResult {
+  const error =
+    typeof input.result.metadata?.error === "string" &&
+    input.result.metadata.error.trim()
+      ? input.result.metadata.error.trim()
+      : input.result.route.reason || "executor_failed";
+  const fallbackContent =
+    input.result.result.type === "text" && input.result.result.content.trim()
+      ? input.result.result.content.trim()
+      : `${input.skill.name || input.result.skillId || input.skill.id} failed before producing a result. Error: ${error}.`;
+
+  return {
+    content: fallbackContent,
+    inputTokens: input.result.tokens.input,
+    outputTokens: input.result.tokens.output,
+    costCredits: input.result.costCredits,
+    metadata: {
+      ...input.result.metadata,
+      unifiedPath: true,
+      route: input.result.route.capability,
+      routeReason: `unified_executor_failed:${input.result.route.reason}`,
+      selectedSkillId: input.result.skillId,
+      selectedCapabilityId: input.routeInput.route.selectedCapabilityId ?? null,
+      capabilityGapResolution:
+        input.routeInput.route.capabilityGapResolution ?? null,
+      nextSpeakerHint: input.result.nextSpeakerHint ?? null,
+      attempts: input.result.telemetry.attempts,
+      llmModelId: input.result.modelUsed,
+      runtimeDispatchOutcome: "execution_failed",
+      executionError: error,
+    },
+    skillId: input.result.skillId,
+    nextSpeakerHint: input.result.nextSpeakerHint,
+  };
 }
 
 async function maybeChainPromptSkillToMedia(
@@ -1619,6 +1807,13 @@ async function maybeChainPromptSkillToMedia(
         firstMediaResult.nextSpeakerHint ?? promptResult.nextSpeakerHint ?? null,
       mediaJob: firstMediaResult.result,
       mediaJobs: mediaResults.map(result => result.result),
+      ...(firstMediaJob.mediaType === "video"
+        ? {
+            mediaPipelineAwaitingAssets: true,
+            runtimeDispatchOutcome: "awaiting_async_assets",
+            retryAfterMs: 30_000,
+          }
+        : {}),
       llmModelId: firstMediaResult.modelUsed ?? promptResult.modelId ?? null,
       attempts: promptResult.attempts ?? [],
     },
@@ -1759,6 +1954,58 @@ export async function executeTeamRunSkillTurn(
       ];
       if (errorReasons.includes(result.route.reason)) {
         throw new Error(`Orchestrator error: ${result.route.reason}`);
+      }
+
+      if (isUnifiedMediaJobResult(result)) {
+        const finalResult = await buildDirectMediaJobExecutionResult({
+          executionInput,
+          skill,
+          result,
+          routeInput,
+        });
+
+        if (plannerResult) {
+          const finalModelId =
+            typeof finalResult.metadata.llmModelId === "string" &&
+            finalResult.metadata.llmModelId.trim()
+              ? finalResult.metadata.llmModelId.trim()
+              : (result.modelUsed ?? executionPolicy.modelId ?? "unknown");
+          recordStepAttempt({
+            taskRunId: plannerResult.taskRunId,
+            plan: plannerResult.plan,
+            model: finalModelId,
+            provider: undefined,
+            inputTokens: finalResult.inputTokens,
+            outputTokens: finalResult.outputTokens,
+            snapshot: plannerResult.snapshot,
+            creditsUsed: finalResult.costCredits,
+          }).catch(() => {});
+        }
+
+        return finalResult;
+      }
+
+      if (result.metadata?.success === false) {
+        const finalResult = buildUnifiedExecutionFailureResult({
+          skill,
+          result,
+          routeInput,
+        });
+
+        if (plannerResult) {
+          recordStepAttempt({
+            taskRunId: plannerResult.taskRunId,
+            plan: plannerResult.plan,
+            model: result.modelUsed ?? executionPolicy.modelId ?? "unknown",
+            provider: undefined,
+            inputTokens: finalResult.inputTokens,
+            outputTokens: finalResult.outputTokens,
+            snapshot: plannerResult.snapshot,
+            creditsUsed: finalResult.costCredits,
+          }).catch(() => {});
+        }
+
+        return finalResult;
       }
 
       const primaryResult: TeamRunSkillExecutionResult = {

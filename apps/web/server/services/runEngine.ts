@@ -7659,6 +7659,15 @@ function normalizeTurnSignal(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+function isPlaceholderTurnSignal(value: string): boolean {
+  const normalized = normalizeTurnSignal(value);
+  return (
+    normalized === "[no response generated]" ||
+    normalized === "no response generated" ||
+    normalized.includes("step_result_too_short")
+  );
+}
+
 export function detectRepeatedTurnPattern(
   turns: Array<{
     summary?: string | null;
@@ -7700,6 +7709,12 @@ export function detectRepeatedTurnPattern(
                 : null;
 
     if (!signalSource) {
+      previousSignal = null;
+      repeatedCount = 0;
+      continue;
+    }
+
+    if (isPlaceholderTurnSignal(signalSource)) {
       previousSignal = null;
       repeatedCount = 0;
       continue;
@@ -9142,7 +9157,111 @@ export async function runNextTurn(
           } as Partial<monitoringService.RunRuntimeState>,
         });
 
-        if (!stepValidation.retryable) {
+        const awaitingAsyncMediaPipeline =
+          stepValidation.issues.includes("awaiting_async_media_assets") &&
+          (turnResponse.metadata?.mediaPipelineAwaitingAssets === true ||
+            turnResponse.metadata?.runtimeDispatchOutcome === "awaiting_async_assets");
+
+        if (awaitingAsyncMediaPipeline) {
+          const runtimeState =
+            run.runtimeStateJson &&
+            typeof run.runtimeStateJson === "object" &&
+            !Array.isArray(run.runtimeStateJson)
+              ? (run.runtimeStateJson as Record<string, unknown>)
+              : {};
+          await db
+            .update(teamRuns)
+            .set({
+              status: "paused",
+              stopReason: "awaiting_async_media_pipeline",
+              runtimeCurrentStepKey: currentAutoTeamStep.stepKey,
+              runtimeTerminalReason: null,
+              runtimeStateJson: {
+                ...runtimeState,
+                currentPhase: "waiting_for_poll",
+                waitingReason:
+                  "Waiting for async media generation/composition before continuing.",
+                runtimeCurrentStepKey: currentAutoTeamStep.stepKey,
+                verificationState: "pending",
+                planArtifact: autoTeamPlanArtifact,
+                stepValidation: {
+                  stepKey: currentAutoTeamStep.stepKey,
+                  issues: stepValidation.issues,
+                  summary: stepValidation.summary,
+                  attempt: stepValidation.attempt,
+                  maxAttempts: stepValidation.maxAttempts,
+                  retryable: true,
+                },
+              },
+            })
+            .where(eq(teamRuns.id, runId));
+          await monitoringService.captureSnapshot(runId, tenantId, {
+            artifactCountJson: { planArtifact: autoTeamPlanArtifact },
+            runtimeState: {
+              currentPhase: "waiting_for_poll",
+              waitingReason:
+                "Waiting for async media generation/composition before continuing.",
+              nextPollAt: new Date(
+                Date.now() + AUTO_TEAM_CONTINUATION_DELAY_MS,
+              ).toISOString(),
+              verificationState: "pending",
+              stepValidation: {
+                stepKey: currentAutoTeamStep.stepKey,
+                issues: stepValidation.issues,
+                summary: stepValidation.summary,
+                attempt: stepValidation.attempt,
+                maxAttempts: stepValidation.maxAttempts,
+                retryable: true,
+              },
+              selectedSkillId:
+                (turnResponse.metadata?.selectedSkillId as string | null | undefined) ??
+                route.selectedSkillId ??
+                null,
+              routeReason:
+                (turnResponse.metadata?.routeReason as string | null | undefined) ??
+                route.reason ??
+                null,
+              planArtifact: autoTeamPlanArtifact,
+            } as Partial<monitoringService.RunRuntimeState>,
+          });
+          autoTeamPausedByGate = true;
+          autoTeamPauseNextSpeakerReason = "awaiting_async_media_pipeline";
+          clearQueuedAutoAdvance(runId);
+          await roomService
+            .postWorkUpdate({
+              roomId: run.roomId,
+              tenantId,
+              senderAssistantId: assistantId,
+              runId,
+              workItemId: autoTeamActiveWorkItem?.id ?? undefined,
+              replyToMessageId: message.id,
+              threadRootMessageId:
+                autoTeamActiveWorkItem?.threadRootMessageId ?? message.id,
+              messageType: "work_update",
+              content:
+                room.language === "th"
+                  ? "ระบบเริ่มงานสร้างสื่อแล้ว และจะรอผลลัพธ์/การตัดต่อจาก media pipeline อัตโนมัติก่อนเดินต่อ"
+                  : "Media generation has started. Work OS will wait for the media pipeline to finish before continuing.",
+              metadataJson: {
+                stepKey: currentAutoTeamStep.stepKey,
+                stepTitle: currentAutoTeamStep.title,
+                stepIndex:
+                  currentAutoTeamStepIndex >= 0 ? currentAutoTeamStepIndex + 1 : null,
+                stepCount: currentAutoTeamStepCount,
+                runStopReason: "awaiting_async_media_pipeline",
+                validationIssues: stepValidation.issues,
+              },
+              sensitivity: "medium",
+            })
+            .catch(error => {
+              console.warn("[runEngine] failed to post async media wait message", {
+                runId,
+                roomId: run.roomId,
+                stepKey: currentAutoTeamStep.stepKey,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            });
+        } else if (!stepValidation.retryable) {
           const capabilityGapResolution = getCapabilityGapResolutionFromMetadata(
             turnResponse.metadata ?? {},
           );
