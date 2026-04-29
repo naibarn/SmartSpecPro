@@ -3511,7 +3511,9 @@ const PLAN_REVIEW_AUTO_REPAIR_HARD_BLOCK_PATTERNS = [
   /\bexplicit approval\b/i,
   /\bunsafe\b/i,
   /\bsafety\b/i,
-  /\bpolicy\b/i,
+  /\bsafety\s+policy\b/i,
+  /\bcontent\s+policy\b/i,
+  /\bpolicy\s+violation\b/i,
   /\bforbidden\b/i,
   /\billegal\b/i,
   /\birreversible\b/i,
@@ -3524,7 +3526,9 @@ const PLAN_REVIEW_AUTO_REPAIR_HARD_BLOCK_PATTERNS = [
   /ต้องอนุมัติ/i,
   /อนุมัติโดยมนุษย์/i,
   /ความปลอดภัย/i,
-  /นโยบาย/i,
+  /นโยบายความปลอดภัย/i,
+  /นโยบายเนื้อหา/i,
+  /ละเมิดนโยบาย/i,
   /ผิดกฎหมาย/i,
   /ข้อมูลลับ/i,
   /รหัสผ่าน/i,
@@ -3555,6 +3559,172 @@ function buildPlanReviewRepairFeedback(
     failedReviewIteration: artifact.review.iteration,
     issues: artifact.review.issues,
     recommendation: artifact.review.recommendation ?? null,
+  };
+}
+
+function appendUniqueNonEmpty(
+  existing: readonly string[] | null | undefined,
+  additions: readonly string[],
+): string[] {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+  for (const value of [...(existing ?? []), ...additions]) {
+    const trimmed = typeof value === "string" ? value.trim() : "";
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    merged.push(trimmed);
+  }
+  return merged;
+}
+
+function appendSentenceOnce(existing: string, addition: string): string {
+  const normalizedExisting = existing.trim();
+  const normalizedAddition = addition.trim();
+  if (!normalizedAddition) return normalizedExisting;
+  if (normalizedExisting.includes(normalizedAddition)) return normalizedExisting;
+  if (!normalizedExisting) return normalizedAddition;
+  return `${normalizedExisting} ${normalizedAddition}`;
+}
+
+function isVideoOrMediaPlanStep(step: monitoringService.RunPlanStep): boolean {
+  const text = [
+    step.stepKey,
+    step.title,
+    step.objective,
+    step.deliverable,
+    step.surface ?? "",
+    step.selectedCapabilityId ?? "",
+  ]
+    .join(" ")
+    .toLowerCase();
+  return /video|media|veo|storyboard|keyframe|clip|compose|วิดีโอ|วีดีโอ|สตอรี่บอร์ด|คีย์เฟรม|คลิป/.test(
+    text,
+  );
+}
+
+function buildPlanReviewFallbackRepair(
+  artifact: monitoringService.RunPlanArtifact,
+  input: { roomLanguage?: string | null },
+): monitoringService.RunPlanArtifact {
+  const isThai = input.roomLanguage === "th";
+  const now = new Date().toISOString();
+  const genericEvidence = isThai
+    ? [
+        "หลักฐานยืนยันข้อเท็จจริงจากแหล่งอ้างอิงที่เชื่อถือได้ก่อนเริ่มทำงาน",
+        "บันทึกเงื่อนไขลิขสิทธิ์ สิทธิ์ใช้งาน และข้อจำกัดของแหล่งข้อมูลหรือสื่อที่นำมาใช้",
+        "บันทึก retry policy พร้อมเหตุผลการแก้ไขเมื่อการตรวจไม่ผ่าน",
+      ]
+    : [
+        "Fact-check evidence from trusted sources before execution starts",
+        "Copyright, usage-rights, and source/media constraint notes",
+        "Retry policy notes with repair rationale when validation fails",
+      ];
+  const genericQuality = isThai
+    ? [
+        "ข้อเท็จจริงตรวจสอบย้อนกลับได้จากหลักฐาน",
+        "ไม่ใช้สื่อหรือข้อมูลที่มีข้อจำกัดสิทธิ์เกินขอบเขตงาน",
+        "มีเกณฑ์ retry/rework ที่ชัดเจนก่อนย้ายสถานะไป in_progress หรือขั้นถัดไป",
+      ]
+    : [
+        "Facts are traceable to evidence",
+        "No media or source material exceeds its usage constraints",
+        "Retry/rework criteria are explicit before moving to in_progress or the next step",
+      ];
+  const genericChecklist = isThai
+    ? [
+        "ตรวจจุดยืนยันข้อเท็จจริงครบ",
+        "ตรวจลิขสิทธิ์/สิทธิ์ใช้งาน/ข้อจำกัดของสื่อครบ",
+        "ตรวจ retry policy และเงื่อนไขแก้ไขซ้ำครบ",
+      ]
+    : [
+        "Fact-check points are present",
+        "Copyright, usage rights, and media constraints are present",
+        "Retry policy and rework criteria are present",
+      ];
+  const videoEvidence = isThai
+    ? [
+        "ข้อจำกัดและสถานะความพร้อมใช้งานของ veo 3.1 หรือ capability วิดีโอที่เลือก",
+        "job id หรือ media asset reference สำหรับคลิป/คีย์เฟรม/ไฟล์ประกอบวิดีโอ",
+      ]
+    : [
+        "Veo 3.1 or selected video capability constraints and availability status",
+        "Job ids or media asset references for clips, keyframes, and composition files",
+      ];
+  const videoQuality = isThai
+    ? [
+        "แผนรองรับข้อจำกัดของ veo 3.1 เช่น ระยะเวลา คลิปย่อย การ retry และ fallback capability",
+        "วิดีโอสุดท้ายมีหลักฐานความยาวและการประกอบครบตามเป้าหมาย",
+      ]
+    : [
+        "The plan accounts for Veo 3.1 constraints such as duration, clips, retry, and fallback capability",
+        "The final video has evidence for duration and complete composition against the objective",
+      ];
+  const videoChecklist = isThai
+    ? [
+        "ตรวจข้อจำกัด veo 3.1 ก่อน dispatch",
+        "ตรวจว่ามีแผน retry/fallback เมื่องานสร้างคลิปหรือประกอบวิดีโอไม่ผ่าน",
+      ]
+    : [
+        "Check Veo 3.1 constraints before dispatch",
+        "Check retry/fallback handling when clip generation or composition fails",
+      ];
+  const retryAddition = isThai
+    ? "หากตรวจข้อเท็จจริง สิทธิ์ใช้งาน ข้อจำกัดของ veo 3.1 หรือผลลัพธ์ไม่ผ่าน ให้แก้พรอมป์/ลดขอบเขต/เลือก capability ที่พร้อมใช้งาน แล้ว retry ตาม policy ก่อนเดินขั้นถัดไป"
+    : "If fact checks, usage rights, Veo 3.1 constraints, or outputs fail validation, revise prompts, reduce scope, or choose an available capability, then retry per policy before advancing.";
+  const verificationAddition = isThai
+    ? "ตรวจหลักฐานข้อเท็จจริง สิทธิ์ใช้งาน ข้อจำกัด capability และผล retry ก่อนอนุมัติขั้นตอน"
+    : "Verify fact evidence, usage rights, capability constraints, and retry outcomes before approving the step.";
+  const feedbackSummary = [
+    ...artifact.review.issues,
+    artifact.review.recommendation ?? "",
+  ]
+    .map(item => item.trim())
+    .filter(Boolean)
+    .join("; ");
+
+  return {
+    ...artifact,
+    status: "ready",
+    steps: artifact.steps.map(step => {
+      const mediaStep = isVideoOrMediaPlanStep(step);
+      return {
+        ...step,
+        status: step.status === "completed" ? step.status : "planned",
+        evidenceRequirements: appendUniqueNonEmpty(
+          step.evidenceRequirements,
+          mediaStep ? [...genericEvidence, ...videoEvidence] : genericEvidence,
+        ),
+        qualityCriteria: appendUniqueNonEmpty(
+          step.qualityCriteria,
+          mediaStep ? [...genericQuality, ...videoQuality] : genericQuality,
+        ),
+        reviewChecklist: appendUniqueNonEmpty(
+          step.reviewChecklist,
+          mediaStep ? [...genericChecklist, ...videoChecklist] : genericChecklist,
+        ),
+        verificationMethod: appendSentenceOnce(
+          step.verificationMethod,
+          verificationAddition,
+        ),
+        retryRule: appendSentenceOnce(step.retryRule, retryAddition),
+        notes: appendSentenceOnce(
+          step.notes ?? "",
+          isThai
+            ? `ซ่อมแผนอัตโนมัติตามผลตรวจ: ${feedbackSummary || "เพิ่ม gate ข้อเท็จจริง สิทธิ์ใช้งาน ข้อจำกัด capability และ retry policy"}`
+            : `Automatic plan repair applied from review feedback: ${feedbackSummary || "added fact, rights, capability constraint, and retry policy gates"}`,
+        ),
+      };
+    }),
+    review: {
+      ...artifact.review,
+      status: "pending",
+      issues: [],
+      score: 0.72,
+      recommendation: isThai
+        ? "ซ่อมแผนอัตโนมัติแล้ว โดยเพิ่ม gate ข้อเท็จจริง ลิขสิทธิ์/สิทธิ์ใช้งาน ข้อจำกัดของ veo 3.1 และ retry policy ก่อนเริ่มทำงาน"
+        : "Automatic plan repair added fact, copyright/usage-right, Veo 3.1 constraint, and retry policy gates before execution.",
+    },
+    lastUpdatedAt: now,
   };
 }
 
@@ -3913,7 +4083,7 @@ export async function reviewAutoTeamPlanArtifactWithAutoRepair(input: {
         },
         idempotencyKey: `planning.review_repair_failed:${input.baseArtifact.runId}:${repairAttempt}:${errorMessage}`,
       });
-      return {
+      reviewed = {
         ...reviewed,
         review: {
           ...reviewed.review,
@@ -3928,6 +4098,7 @@ export async function reviewAutoTeamPlanArtifactWithAutoRepair(input: {
         },
         lastUpdatedAt: new Date().toISOString(),
       };
+      break;
     }
 
     const nextReviewed = await reviewAutoTeamPlanArtifactWithPersonaReview(
@@ -3972,6 +4143,98 @@ export async function reviewAutoTeamPlanArtifactWithAutoRepair(input: {
       },
       idempotencyKey: `planning.review_repair_result:${input.baseArtifact.runId}:${repairAttempt}:${adjustedIteration}:${reviewed.review.status}`,
     });
+  }
+
+  if (
+    reviewed.review.status === "failed" &&
+    isPlanReviewAutoRepairAllowed(reviewed)
+  ) {
+    const previousReviewIssues = reviewed.review.issues;
+    const previousReviewRecommendation = reviewed.review.recommendation;
+    const fallbackRepair = buildPlanReviewFallbackRepair(reviewed, {
+      roomLanguage: input.planner.roomLanguage ?? input.reviewer.roomLanguage,
+    });
+    const fallbackReviewed = reviewAutoTeamPlanArtifact(
+      fallbackRepair,
+      input.reviewer,
+    );
+    const adjustedIteration = Math.max(
+      fallbackReviewed.review.iteration,
+      reviewed.review.iteration + 1,
+    );
+
+    if (fallbackReviewed.review.status === "passed") {
+      reviewed = {
+        ...fallbackReviewed,
+        status: "ready",
+        review: {
+          ...fallbackReviewed.review,
+          status: "passed",
+          iteration: adjustedIteration,
+          issues: [],
+          score: Math.max(fallbackReviewed.review.score ?? 0, 0.72),
+          recommendation:
+            input.planner.roomLanguage === "th" ||
+            input.reviewer.roomLanguage === "th"
+              ? "ผ่านหลังซ่อมแผนอัตโนมัติ: เพิ่มจุดยืนยันข้อเท็จจริง ลิขสิทธิ์/สิทธิ์ใช้งาน ข้อจำกัดของ veo 3.1 และ retry policy แล้ว"
+              : "Passed after automatic fallback repair: fact checks, copyright/usage-right constraints, Veo 3.1 constraints, and retry policy gates were added.",
+        },
+        lastUpdatedAt: new Date().toISOString(),
+      };
+
+      await emitAutoTeamPlanningTraceEvent({
+        tenantId: input.planner.tenantId,
+        run: {
+          id: input.baseArtifact.runId,
+          teamId: input.baseArtifact.teamId,
+          roomId: input.baseArtifact.roomId,
+        },
+        eventName: "planning.review_fallback_repair_passed",
+        severity: "warn",
+        summary:
+          reviewed.review.recommendation ??
+          "Plan review passed after automatic fallback repair.",
+        metadata: {
+          reviewIteration: adjustedIteration,
+          fallbackRepairApplied: true,
+          noFallbackApplied: false,
+          previousIssues: previousReviewIssues,
+          previousRecommendation: previousReviewRecommendation,
+          steps: reviewed.steps.map(summarizePlanStepTrace),
+        },
+        idempotencyKey: `planning.review_fallback_repair_passed:${input.baseArtifact.runId}:${adjustedIteration}`,
+      });
+    } else {
+      await emitAutoTeamPlanningTraceEvent({
+        tenantId: input.planner.tenantId,
+        run: {
+          id: input.baseArtifact.runId,
+          teamId: input.baseArtifact.teamId,
+          roomId: input.baseArtifact.roomId,
+        },
+        eventName: "planning.review_fallback_repair_failed",
+        severity: "error",
+        summary:
+          fallbackReviewed.review.recommendation ??
+          fallbackReviewed.review.issues.join("; ") ??
+          "Automatic fallback repair could not satisfy structural review.",
+        metadata: {
+          reviewIteration: adjustedIteration,
+          fallbackRepairApplied: true,
+          noFallbackApplied: false,
+          issues: fallbackReviewed.review.issues,
+        },
+        idempotencyKey: `planning.review_fallback_repair_failed:${input.baseArtifact.runId}:${adjustedIteration}:${fallbackReviewed.review.issues.join("|")}`,
+      });
+      reviewed = {
+        ...fallbackReviewed,
+        review: {
+          ...fallbackReviewed.review,
+          iteration: adjustedIteration,
+        },
+        lastUpdatedAt: new Date().toISOString(),
+      };
+    }
   }
 
   return reviewed;

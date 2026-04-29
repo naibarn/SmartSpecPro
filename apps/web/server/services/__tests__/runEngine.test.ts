@@ -105,6 +105,167 @@ function makePlanExploration(selectedCandidateId: string = "balanced-hybrid") {
   } as const;
 }
 
+function makeAutoTeamPlannerMembers() {
+  return [
+    {
+      id: "assistant-lead",
+      displayName: "Content Director",
+      memberKind: "assistant",
+      memberRole: "orchestrator",
+      isLead: true,
+    },
+    {
+      id: "assistant-researcher",
+      displayName: "Trend Researcher",
+      memberKind: "assistant",
+      memberRole: "researcher",
+      isLead: false,
+    },
+    {
+      id: "assistant-producer",
+      displayName: "Video Producer",
+      memberKind: "assistant",
+      memberRole: "specialist",
+      isLead: false,
+    },
+    {
+      id: "assistant-qa",
+      displayName: "Quality Reviewer",
+      memberKind: "assistant",
+      memberRole: "reviewer",
+      isLead: false,
+    },
+  ] as any;
+}
+
+function makeReviewablePlanArtifact(
+  overrides: Partial<Record<string, unknown>> = {},
+) {
+  const base = {
+    version: 1,
+    runId: "run-reviewable",
+    roomId: "room-reviewable",
+    teamId: "team-reviewable",
+    caseId: "case-reviewable",
+    requestId: "request-reviewable",
+    objective:
+      "สร้างวิดีโอประเพณีปีใหม่ไทยเปรียบเทียบกับปีใหม่ไทย 2570 ด้วย veo 3.1",
+    source: "work_os",
+    status: "ready",
+    generatedAt: "2026-04-29T00:00:00.000Z",
+    lastUpdatedAt: "2026-04-29T00:00:00.000Z",
+    evidenceRefs: ["source:request-reviewable"],
+    planEvidenceRefs: ["source:request-reviewable"],
+    reviewerMatrix: [
+      {
+        riskClass: "low",
+        reviewerPersona: "technical reviewer",
+        escalationRule: "stay in automation unless repeated repair fails",
+      },
+      {
+        riskClass: "medium",
+        reviewerPersona: "qa validator",
+        escalationRule: "require stronger validation before advancing",
+      },
+      {
+        riskClass: "high",
+        reviewerPersona: "safety policy",
+        escalationRule: "block or escalate if policy remains unresolved",
+      },
+      {
+        riskClass: "critical",
+        reviewerPersona: "human approval",
+        escalationRule: "do not continue without explicit approval",
+      },
+    ],
+    exploration: makePlanExploration(),
+    review: {
+      status: "pending",
+      iteration: 0,
+      reviewedAt: null,
+      reviewerPersona: "Content Director",
+      issues: [],
+      score: null,
+      recommendation: null,
+    },
+    steps: [
+      {
+        stepKey: "plan-decompose",
+        title: "วางแผนงาน",
+        objective: "วางแผนการผลิตวิดีโอ",
+        deliverable: "แผนงาน",
+        ownerPersona: "Content Director",
+        ownerMemberId: "assistant-lead",
+        reviewerPersona: "Quality Reviewer",
+        reviewerMemberId: "assistant-qa",
+        verificationMethod: "plan review",
+        retryRule: "แก้จนผ่าน",
+        evidenceRequirements: ["plan artifact"],
+        qualityCriteria: ["ตรวจได้"],
+        reviewChecklist: ["มีเจ้าของและผู้ตรวจ"],
+        status: "planned",
+        evidenceRefs: ["source:request-reviewable"],
+        notes: null,
+      },
+      {
+        stepKey: "research-context",
+        title: "ค้นคว้า",
+        objective: "ค้นคว้าข้อมูล",
+        deliverable: "research notes",
+        ownerPersona: "Trend Researcher",
+        ownerMemberId: "assistant-researcher",
+        reviewerPersona: "Content Director",
+        reviewerMemberId: "assistant-lead",
+        verificationMethod: "source review",
+        retryRule: "แก้ข้อมูลที่ไม่ผ่าน",
+        evidenceRequirements: ["research notes"],
+        qualityCriteria: ["มีแหล่งอ้างอิง"],
+        reviewChecklist: ["แหล่งอ้างอิงครบ"],
+        status: "planned",
+        evidenceRefs: ["source:request-reviewable"],
+        notes: null,
+      },
+      {
+        stepKey: "compose-final-video",
+        title: "สร้างวิดีโอด้วย veo 3.1",
+        objective: "ผลิตและประกอบวิดีโอ",
+        deliverable: "video",
+        ownerPersona: "Video Producer",
+        ownerMemberId: "assistant-producer",
+        reviewerPersona: "Quality Reviewer",
+        reviewerMemberId: "assistant-qa",
+        verificationMethod: "media review",
+        retryRule: "แก้จนผ่าน",
+        evidenceRequirements: ["video"],
+        qualityCriteria: ["มีวิดีโอ"],
+        reviewChecklist: ["ตรวจไฟล์"],
+        status: "planned",
+        evidenceRefs: ["source:request-reviewable"],
+        notes: null,
+      },
+      {
+        stepKey: "final-review",
+        title: "ตรวจสุดท้าย",
+        objective: "ตรวจผลลัพธ์สุดท้าย",
+        deliverable: "final review",
+        ownerPersona: "Quality Reviewer",
+        ownerMemberId: "assistant-qa",
+        reviewerPersona: "Content Director",
+        reviewerMemberId: "assistant-lead",
+        verificationMethod: "final checklist",
+        retryRule: "ส่งกลับหากไม่ผ่าน",
+        evidenceRequirements: ["final review"],
+        qualityCriteria: ["ผ่านเป้าหมาย"],
+        reviewChecklist: ["หลักฐานครบ"],
+        status: "planned",
+        evidenceRefs: ["source:request-reviewable"],
+        notes: null,
+      },
+    ],
+  };
+  return { ...base, ...overrides } as any;
+}
+
 describe("RunEngine", () => {
   describe("type exports", () => {
     it("exports StartRunInput interface", () => {
@@ -1875,10 +2036,10 @@ describe("RunEngine", () => {
             pass: false,
             score: 0.58,
             issues: [
-              "ปรับนิยามปีอ้างอิงและสเปคผลลัพธ์สุดท้ายให้ชัดก่อนเริ่ม in_progress",
+              "ควรเพิ่มจุดยืนยันข้อเท็จจริงและเงื่อนไขลิขสิทธิ์/ข้อจำกัดของ veo 3.1 รวมถึงทำ retry policy ให้ชัดเจนก่อนย้ายสถานะไป in_progress",
             ],
             recommendation:
-              "ระบุปีอ้างอิง ความยาววิดีโอ และเกณฑ์ตรวจผลลัพธ์สุดท้ายให้ชัด",
+              "ระบุจุดยืนยันข้อเท็จจริง เงื่อนไขลิขสิทธิ์ ข้อจำกัดของ veo 3.1 และ retry policy ก่อนเริ่มงาน",
           },
           tokensUsed: 40,
           creditsUsed: 1,
@@ -2145,7 +2306,58 @@ describe("RunEngine", () => {
       expect(mockCallLLMStructured).toHaveBeenCalledTimes(3);
       const repairPlannerCall = mockCallLLMStructured.mock.calls[1]?.[0] as any;
       expect(repairPlannerCall.userMessage).toContain("planReviewFeedback");
-      expect(repairPlannerCall.userMessage).toContain("ปีอ้างอิง");
+      expect(repairPlannerCall.userMessage).toContain("retry policy");
+      expect(repairPlannerCall.userMessage).toContain("ข้อจำกัดของ veo");
+    });
+
+    it("uses deterministic fallback repair when the repair planner is unavailable for a repairable review failure", async () => {
+      mockCallLLMStructured
+        .mockResolvedValueOnce({
+          data: {
+            pass: false,
+            score: 0.58,
+            issues: [
+              "ควรเพิ่มจุดยืนยันข้อเท็จจริงและเงื่อนไขลิขสิทธิ์/ข้อจำกัดของ veo 3.1 รวมถึงทำ retry policy ให้ชัดเจนก่อนย้ายสถานะไป in_progress",
+            ],
+            recommendation:
+              "ระบุจุดยืนยันข้อเท็จจริง เงื่อนไขลิขสิทธิ์ ข้อจำกัดของ veo 3.1 และ retry policy ก่อนเริ่มงาน",
+          },
+          tokensUsed: 40,
+          creditsUsed: 1,
+        })
+        .mockRejectedValueOnce(new Error("planner unavailable"));
+
+      const reviewed = await runEngine.reviewAutoTeamPlanArtifactWithAutoRepair({
+        baseArtifact: makeReviewablePlanArtifact({ steps: [] }),
+        planArtifact: makeReviewablePlanArtifact(),
+        planner: {
+          tenantId: "tenant-1",
+          userId: 1,
+          members: makeAutoTeamPlannerMembers(),
+          roomTitle: "ทีมคอนเทนต์",
+          roomGoal:
+            "สร้างวิดีโอประเพณีปีใหม่ไทยเปรียบเทียบกับปีใหม่ไทย 2570 ด้วย veo 3.1",
+          roomLanguage: "th",
+        },
+        reviewer: {
+          tenantId: "tenant-1",
+          userId: 1,
+          coordinatorPersona: "Content Director",
+          reviewerPersona: "Quality Reviewer",
+          specialtyPersona: "Video Producer",
+          publisherPersona: "Content Director",
+          roomLanguage: "th",
+        },
+        maxRepairAttempts: 2,
+      });
+
+      expect(reviewed.review.status).toBe("passed");
+      expect(reviewed.review.recommendation).toContain("ซ่อมแผนอัตโนมัติ");
+      expect(reviewed.steps[2]?.evidenceRequirements.join(" ")).toContain(
+        "ข้อจำกัดและสถานะความพร้อมใช้งานของ veo 3.1"
+      );
+      expect(reviewed.steps[2]?.retryRule).toContain("retry ตาม policy");
+      expect(mockCallLLMStructured).toHaveBeenCalledTimes(2);
     });
 
     it("uses an LLM-assisted persona review when the plan is ready for semantic evaluation", async () => {
