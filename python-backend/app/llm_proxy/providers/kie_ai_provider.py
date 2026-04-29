@@ -35,6 +35,11 @@ FALLBACK_MODEL_NAME_MAP = {
     "recraft-v3": "recraft-v3",
     "ghibli-ai": "ghibli-ai",
     # Video models
+    "veo3": "veo3",
+    "veo3_fast": "veo3_fast",
+    "veo3/generate-veo-3-video": "veo3",
+    "veo3/generate-veo-3-video-fast": "veo3_fast",
+    "veo3/veo3_fast": "veo3_fast",
     "veo-3.1-fast": "veo-3.1-fast",
     "veo-3.1-quality": "veo-3.1",
     "veo-3-1": "veo-3.1",

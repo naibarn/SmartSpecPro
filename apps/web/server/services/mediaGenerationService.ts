@@ -138,6 +138,82 @@ function resolveProvider(modelId: string, apiConfig?: Record<string, string>): s
   return "kie.ai";
 }
 
+function setApiConfigString(
+  target: Record<string, string>,
+  key: string,
+  value: unknown,
+): void {
+  if (typeof value === "string" && value.trim()) {
+    target[key] = value.trim();
+  }
+}
+
+function mergeApiConfigRecord(
+  target: Record<string, string>,
+  value: unknown,
+): void {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return;
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof raw === "string" && raw.trim()) {
+      target[key] = raw.trim();
+    } else if (typeof raw === "number" || typeof raw === "boolean") {
+      target[key] = String(raw);
+    }
+  }
+}
+
+function buildApiConfigFromModelConfig(
+  configJson?: Record<string, unknown> | null,
+): Record<string, string> {
+  const apiConfig: Record<string, string> = {};
+  if (!configJson || typeof configJson !== "object" || Array.isArray(configJson)) {
+    return apiConfig;
+  }
+
+  setApiConfigString(apiConfig, "endpoint", configJson.apiEndpoint);
+  setApiConfigString(apiConfig, "query_endpoint", configJson.apiQueryEndpoint);
+  setApiConfigString(apiConfig, "payload_format", configJson.apiPayloadFormat);
+  setApiConfigString(apiConfig, "kie_model_id", configJson.kieModelId);
+  mergeApiConfigRecord(apiConfig, configJson.apiConfig);
+  return apiConfig;
+}
+
+function resolveStaticModelConfigJson(modelId: string): Record<string, unknown> | null {
+  const normalizedModelId = mapToApiModelId(modelId);
+  const candidates = [
+    getModelById(modelId),
+    normalizedModelId !== modelId ? getModelById(normalizedModelId) : undefined,
+    MEDIA_MODELS[modelId],
+    normalizedModelId !== modelId ? MEDIA_MODELS[normalizedModelId] : undefined,
+  ];
+  for (const candidate of candidates) {
+    if (candidate?.configJson && typeof candidate.configJson === "object") {
+      return candidate.configJson;
+    }
+  }
+  return null;
+}
+
+function buildEffectiveApiConfig(input: {
+  modelId: string;
+  provider: string;
+  providerName?: string | null;
+  modelConfigJson?: Record<string, unknown> | null;
+  requestedApiConfig?: Record<string, string>;
+}): Record<string, string> | undefined {
+  const modelApiConfig = buildApiConfigFromModelConfig(
+    input.modelConfigJson ?? resolveStaticModelConfigJson(input.modelId),
+  );
+  const merged = {
+    ...modelApiConfig,
+    ...(input.requestedApiConfig ?? {}),
+    provider: input.provider,
+    ...(input.providerName ? { providerName: input.providerName } : {}),
+    model: input.modelId,
+  };
+  return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
 async function resolveEffectiveMediaRequestModel(input: {
   mediaType: MediaType;
   requestedModel?: string | null;
@@ -160,12 +236,13 @@ async function resolveEffectiveMediaRequestModel(input: {
     return {
       modelId: selection.modelId,
       provider: selection.provider,
-      apiConfig: {
-        ...(input.requestedApiConfig ?? {}),
+      apiConfig: buildEffectiveApiConfig({
+        modelId: selection.modelId,
         provider: selection.provider,
         providerName: selection.providerName,
-        model: selection.modelId,
-      },
+        modelConfigJson: selection.model.configJson,
+        requestedApiConfig: input.requestedApiConfig,
+      }),
     };
   }
 
@@ -174,10 +251,15 @@ async function resolveEffectiveMediaRequestModel(input: {
   }
 
   const modelId = requestedModel || input.fallbackModel;
+  const provider = resolveProvider(modelId, input.requestedApiConfig);
   return {
     modelId,
-    provider: resolveProvider(modelId, input.requestedApiConfig),
-    apiConfig: input.requestedApiConfig,
+    provider,
+    apiConfig: buildEffectiveApiConfig({
+      modelId,
+      provider,
+      requestedApiConfig: input.requestedApiConfig,
+    }),
   };
 }
 
@@ -262,6 +344,12 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     supportsDurations: [5, 10, 15],
     supportsAspectRatios: ["16:9", "9:16", "1:1"],
     creditCost: 50,
+    configJson: {
+      apiEndpoint: "/api/v1/veo/generate",
+      apiPayloadFormat: "veo",
+      kieModelId: "veo3_fast",
+      maxPromptLength: 3000,
+    },
   },
   "sora-2": {
     id: "sora-2",

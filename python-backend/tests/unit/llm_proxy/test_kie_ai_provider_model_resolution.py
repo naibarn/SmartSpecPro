@@ -20,6 +20,16 @@ def test_resolve_api_model_prefers_config_kie_model_id_variants():
     assert stats["explicit_api_model"] == 2
 
 
+def test_resolve_api_model_maps_veo_internal_route_aliases_to_kie_models():
+    reset_model_resolution_stats()
+
+    assert resolve_api_model("veo3/generate-veo-3-video-fast") == "veo3_fast"
+    assert resolve_api_model("veo3/generate-veo-3-video") == "veo3"
+
+    stats = get_model_resolution_stats()
+    assert stats["fallback_alias_map"] == 2
+
+
 @pytest.mark.asyncio
 async def test_generate_image_uses_db_model_id_and_endpoint_aliases():
     reset_model_resolution_stats()

@@ -191,7 +191,12 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     creditCost: 50,
     durations: [5, 10, 15],
     aspectRatios: ["16:9", "9:16", "1:1"],
-    configJson: { maxPromptLength: 5000 },
+    configJson: {
+      apiEndpoint: "/api/v1/veo/generate",
+      apiPayloadFormat: "veo",
+      kieModelId: "veo3_fast",
+      maxPromptLength: 3000,
+    },
     isEnabled: true,
     priority: 1,
   },

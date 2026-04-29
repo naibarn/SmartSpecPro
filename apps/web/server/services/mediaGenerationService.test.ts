@@ -251,6 +251,69 @@ describe("MediaGenerationService retry behavior", () => {
     });
   });
 
+  it("passes provider-specific KIE model config for async Veo video generation", async () => {
+    vi.mocked(getModelById).mockReturnValue({
+      id: "veo-3-1",
+      type: "video",
+      name: "Veo 3.1",
+      provider: "kie.ai",
+      description: "Test Veo model",
+      aliases: ["veo3/generate-veo-3-video-fast"],
+      creditCost: 50,
+      configJson: {
+        apiEndpoint: "/api/v1/veo/generate",
+        apiPayloadFormat: "veo",
+        kieModelId: "veo3_fast",
+      },
+    } as never);
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          id: "video-task-42",
+          task_id: null,
+          user_id: 1,
+          media_type: "video",
+          status: "pending",
+          model: "veo3/generate-veo-3-video-fast",
+          prompt: "A concise cinematic Songkran video prompt",
+          parameters: {},
+          result_url: null,
+          result_data: null,
+          error_message: null,
+          credits_used: null,
+          credits_balance: null,
+          created_at: "2026-03-06T04:21:05.493354Z",
+          started_at: null,
+          completed_at: null,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateVideoAsync(
+      {
+        prompt: "A concise cinematic Songkran video prompt",
+        model: "veo3/generate-veo-3-video-fast",
+        apiConfig: { provider: "kie.ai" },
+      },
+      "test-token",
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const requestInit = fetchMock.mock.calls[0]?.[1];
+    expect(requestInit).toBeDefined();
+    const payload = JSON.parse(String(requestInit?.body));
+    expect(payload.api_config).toMatchObject({
+      provider: "kie.ai",
+      endpoint: "/api/v1/veo/generate",
+      payload_format: "veo",
+      kie_model_id: "veo3_fast",
+      model: "veo3/generate-veo-3-video-fast",
+    });
+  });
+
   it("preserves structured Gemini TTS speaker rows in extraParams", async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify(taskPayload), { status: 200 }),
