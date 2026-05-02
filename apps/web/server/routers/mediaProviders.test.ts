@@ -35,6 +35,7 @@ import {
   PROVIDER_TEMPLATES,
   mediaProvidersRouter,
   testBytePlusModelArk,
+  testElevenLabs,
   testKieAI,
   testUVoice,
   testWaveSpeedAI,
@@ -174,7 +175,7 @@ describe("PROVIDER_TEMPLATES — WaveSpeed entry", () => {
   it("uses the official API root and launch model", () => {
     expect(wavespeedTemplate?.baseUrl).toBe("https://api.wavespeed.ai/api/v3");
     expect(wavespeedTemplate?.defaultModel).toBe("wavespeed-ai/cinematic-video-generator");
-    expect(wavespeedTemplate?.availableModels).toHaveLength(5);
+    expect(wavespeedTemplate?.availableModels).toHaveLength(11);
     expect(wavespeedTemplate?.availableModels).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: "bytedance/seedance-2.0/text-to-video",
@@ -184,7 +185,94 @@ describe("PROVIDER_TEMPLATES — WaveSpeed entry", () => {
         id: "bytedance/seedance-2.0-fast/image-to-video",
         type: "video",
       }),
+      expect.objectContaining({
+        id: "wavespeed-ai/elevenlabs/voice-changer",
+        type: "audio",
+      }),
     ]));
+  });
+});
+
+describe("PROVIDER_TEMPLATES — ElevenLabs direct entry", () => {
+  const elevenLabsTemplate = PROVIDER_TEMPLATES.find(
+    (t) => t.providerName === "elevenlabs"
+  );
+
+  it("uses the official API root and direct text-to-speech model", () => {
+    expect(elevenLabsTemplate).toBeDefined();
+    expect(elevenLabsTemplate?.baseUrl).toBe("https://api.elevenlabs.io");
+    expect(elevenLabsTemplate?.defaultModel).toBe("elevenlabs/text-to-speech");
+    expect(elevenLabsTemplate?.providerType).toBe("audio");
+    expect(elevenLabsTemplate?.availableModels).toHaveLength(5);
+    expect(elevenLabsTemplate?.availableModels).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "elevenlabs/text-to-speech", type: "audio" }),
+      expect.objectContaining({ id: "elevenlabs/voice-changer", type: "audio" }),
+      expect.objectContaining({ id: "elevenlabs/speech-to-text", type: "audio" }),
+      expect.objectContaining({ id: "elevenlabs/sound-effects", type: "audio" }),
+      expect.objectContaining({ id: "elevenlabs/voice-isolator", type: "audio" }),
+    ]));
+  });
+});
+
+describe("testElevenLabs", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("calls GET /v1/user/subscription with xi-api-key auth and no bearer authorization", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ character_count: 123, character_limit: 1000 }),
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await testElevenLabs("eleven-secret", "https://api.elevenlabs.io");
+
+    expect(result.success).toBe(true);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchSpy.mock.calls[0];
+    expect(url).toBe("https://api.elevenlabs.io/v1/user/subscription");
+    expect(options.method).toBe("GET");
+    expect(options.headers["xi-api-key"]).toBe("eleven-secret");
+    expect(options.headers.Authorization).toBeUndefined();
+  });
+
+  it("falls back to /v1/voices when subscription probing is unavailable", async () => {
+    const fetchSpy = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({ detail: "not found" }),
+        text: async () => "not found",
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ voices: [] }),
+      });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await testElevenLabs("eleven-secret", "https://api.elevenlabs.io");
+
+    expect(result.success).toBe(true);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy.mock.calls[1][0]).toBe("https://api.elevenlabs.io/v1/voices");
+  });
+
+  it("returns concise provider errors without leaking API keys", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ detail: { message: "invalid key eleven-secret" } }),
+      text: async () => "invalid key eleven-secret",
+    }));
+
+    const result = await testElevenLabs("eleven-secret", "https://api.elevenlabs.io");
+
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/401/i);
+    expect(result.message).not.toContain("eleven-secret");
   });
 });
 

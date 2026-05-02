@@ -160,9 +160,35 @@ import {
 import { buildMediaStudioAutoPromptIdea } from "@/lib/mediaStudioAutoPromptIdea";
 import { composePromptWithNotes, parseMediaStudioPromptPackage } from "@/lib/mediaStudioPromptPackage";
 import { applyMediaStudioAspectRatioPromptParams } from "@/lib/mediaStudioPromptParams";
-import { parseMultiVideoPrompts, splitMultiVideoPromptOutput } from "@/lib/mediaStudioPromptParsing";
-import { buildStoryboardVideoProject } from "@/lib/storyboardVideoProject";
 import {
+  VEO_STORYBOARD_SKILL_ID,
+  buildMediaStudioToVeoSkillSync,
+  buildVeoSkillToMediaStudioSync,
+  getVeoProviderModelId,
+  isFastVeoProviderModelId,
+  isVeoProviderModelId,
+  normalizeVeoAspectRatioForGenerationType,
+  resolveVeoSyncedAspectRatio,
+  sanitizeVeoStoryboardSkillInputs,
+  type MediaStudioVeoModelLike,
+} from "@/lib/mediaStudioVeoSync";
+import {
+  extractMusicBriefFromPromptText,
+  extractVoiceoverScriptFromPromptText,
+  parseMultiVideoPrompts,
+  prepareSilentVideoPromptDisplayForExternalAudio,
+  prepareSilentVideoPromptForExternalAudio,
+  sanitizeMediaGenerationPromptText,
+  splitMultiVideoPromptOutput,
+} from "@/lib/mediaStudioPromptParsing";
+import {
+  buildVoiceoverSegments,
+  inferVoiceoverTextLimitCharacters,
+  splitVoiceoverTextByLimit,
+} from "@/lib/mediaStudioAudioSegments";
+import { buildStoryboardVideoProject, type StoryboardCompanionAudioCandidate } from "@/lib/storyboardVideoProject";
+import {
+  buildDefaultExtraParamsForModel,
   clampReferenceImagesToModelLimit,
   getAllowedLibraryExtensionsForField,
   getMissingRequiredModelFields,
@@ -179,6 +205,7 @@ import { videoEditorRenderService } from "@/services/videoEditorService";
 import { sanitizeProjectName } from "@smartspec/shared";
 
 import DynamicSkillForm, { type SkillInputSchema, type StyleAction } from "@/components/media/DynamicSkillForm";
+import { ModelInputFieldsPanel } from "@/components/media/ModelInputFieldsPanel";
 import { ModelInputArrayFieldEditor } from "@/components/media/ModelInputArrayFieldEditor";
 import { GeminiTtsPromptGuidance } from "@/components/media/GeminiTtsPromptGuidance";
 import { LibraryFilePicker } from "@/components/library/LibraryFilePicker";
@@ -200,11 +227,120 @@ import {
 } from "@/lib/imageGridSplitter";
 
 type MediaType = "image" | "video" | "audio";
+type AudioWorkflow = "tts" | "voice_changer" | "speech_to_text" | "sound_effects" | "voice_isolator";
 type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
 type StudioSidebarTab = "history" | "library";
-type HistoryGalleryTab = "image" | "video";
+type HistoryGalleryTab = "image" | "video" | "audio";
+type VideoAudioWorkflow = "native" | "separate_voice" | "separate_music" | "separate_voice_music";
+type StoryboardAudioPrepMode = "off" | "generate_voice" | "existing_voice";
 const MEDIA_STUDIO_CREDIT_ORIGIN = "media_studio" as const;
 const GEMINI_3_1_FLASH_TTS_MODEL_ID = "fal-ai/gemini-3.1-flash-tts";
+const ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID = "elevenlabs/text-to-speech";
+const ELEVENLABS_VOICE_CHANGER_MODEL_ID = "elevenlabs/voice-changer";
+const ELEVENLABS_SPEECH_TO_TEXT_MODEL_ID = "elevenlabs/speech-to-text";
+const ELEVENLABS_SOUND_EFFECTS_MODEL_ID = "elevenlabs/sound-effects";
+const ELEVENLABS_VOICE_ISOLATOR_MODEL_ID = "elevenlabs/voice-isolator";
+const WAVESPEED_ELEVENLABS_VOICE_CHANGER_MODEL_ID = "wavespeed-ai/elevenlabs/voice-changer";
+const AUDIO_WORKFLOW_MODEL_IDS: Record<AudioWorkflow, Set<string>> = {
+  tts: new Set([
+    ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID,
+    GEMINI_3_1_FLASH_TTS_MODEL_ID,
+    "alibaba/qwen3-tts-flash",
+    "google/gemini-2.5-flash/text-to-speech",
+    "google/gemini-2.5-pro/text-to-speech",
+    "gpt-4o-mini-tts",
+    "tts-1",
+    "omnivoice-tts",
+    "uvoice/tts-standard",
+    "uvoice/tts-natural",
+    "uvoice/tts-premium",
+  ]),
+  voice_changer: new Set([ELEVENLABS_VOICE_CHANGER_MODEL_ID, WAVESPEED_ELEVENLABS_VOICE_CHANGER_MODEL_ID]),
+  speech_to_text: new Set([ELEVENLABS_SPEECH_TO_TEXT_MODEL_ID]),
+  sound_effects: new Set([ELEVENLABS_SOUND_EFFECTS_MODEL_ID, "google/lyria-3-clip/music", "google/lyria-3-pro/music"]),
+  voice_isolator: new Set([ELEVENLABS_VOICE_ISOLATOR_MODEL_ID]),
+};
+const DEFAULT_SEPARATE_VOICE_MODEL_ID = GEMINI_3_1_FLASH_TTS_MODEL_ID;
+const DEFAULT_SEPARATE_MUSIC_MODEL_ID = "google/lyria-3-pro/music";
+const SEPARATE_VOICE_MODEL_IDS = new Set([
+  GEMINI_3_1_FLASH_TTS_MODEL_ID,
+  "alibaba/qwen3-tts-flash",
+  "google/gemini-2.5-flash/text-to-speech",
+  "google/gemini-2.5-pro/text-to-speech",
+  "wavespeed/gemini-2.5-flash/text-to-speech",
+  "wavespeed/gemini-2.5-pro/text-to-speech",
+]);
+const SEPARATE_MUSIC_MODEL_IDS = new Set([
+  "google/lyria-3-clip/music",
+  "google/lyria-3-pro/music",
+  "wavespeed/lyria-3-clip/music",
+  "wavespeed/lyria-3-pro/music",
+]);
+
+const GEMINI_TTS_LANGUAGE_FIELD_OPTIONS = [
+  "English (United States)",
+  "English (India)",
+  "Thai (Thailand)",
+  "French (France)",
+  "German (Germany)",
+  "Hindi (India)",
+  "Indonesian (Indonesia)",
+  "Arabic (Egypt)",
+  "Bangla (Bangladesh)",
+  "Dutch (Netherlands)",
+].map((language) => ({ value: language, label: language }));
+
+const GEMINI_31_TTS_LANGUAGE_CODE_FIELD_OPTIONS = [
+  { value: "__auto__", label: "Auto-detect" },
+  { value: "Thai (Thailand)", label: "Thai (Thailand)" },
+  { value: "English (US)", label: "English (US)" },
+  { value: "English (UK)", label: "English (UK)" },
+  { value: "English (India)", label: "English (India)" },
+  { value: "Japanese (Japan)", label: "Japanese (Japan)" },
+  { value: "Korean (South Korea)", label: "Korean (South Korea)" },
+  { value: "Chinese Mandarin (China)", label: "Chinese Mandarin (China)" },
+];
+
+const GEMINI_TTS_VOICE_FIELD_OPTIONS = [
+  { value: "Zephyr", label: "Zephyr (female, bright) - friendly explainers, product demos" },
+  { value: "Puck", label: "Puck (male, upbeat) - energetic hosts, creator content" },
+  { value: "Charon", label: "Charon (male, informative) - news reads, technical explainers" },
+  { value: "Kore", label: "Kore (female, firm) - announcements, confident narration" },
+  { value: "Fenrir", label: "Fenrir (male, excitable) - trailers, upbeat ads, gaming" },
+  { value: "Leda", label: "Leda (female, youthful) - education, social shorts, light stories" },
+  { value: "Orus", label: "Orus (male, firm) - corporate, authority, training" },
+  { value: "Aoede", label: "Aoede (female, breezy) - lifestyle, beauty, casual explainers" },
+  { value: "Callirrhoe", label: "Callirrhoe (female, easy-going) - podcasts, soft brand narration" },
+  { value: "Autonoe", label: "Autonoe (female, bright) - assistant voice, friendly updates" },
+  { value: "Enceladus", label: "Enceladus (male, breathy) - intimate narration, dramatic scenes" },
+  { value: "Iapetus", label: "Iapetus (male, clear) - tutorials, e-learning, documentation" },
+  { value: "Umbriel", label: "Umbriel (male, easy-going) - casual podcasts, conversational reads" },
+  { value: "Algieba", label: "Algieba (male, smooth) - premium brand, polished narration" },
+  { value: "Despina", label: "Despina (female, smooth) - luxury, beauty, calm commercials" },
+  { value: "Erinome", label: "Erinome (female, clear) - support, instructions, neutral narration" },
+  { value: "Algenib", label: "Algenib (male, gravelly) - documentary, cinematic, character voice" },
+  { value: "Rasalgethi", label: "Rasalgethi (male, informative) - documentary, news analysis" },
+  { value: "Laomedeia", label: "Laomedeia (female, upbeat) - ads, social content, promos" },
+  { value: "Achernar", label: "Achernar (female, soft) - wellness, empathy, emotional reads" },
+  { value: "Alnilam", label: "Alnilam (male, firm) - executive, corporate, command voice" },
+  { value: "Schedar", label: "Schedar (male, even) - balanced narration, long-form reads" },
+  { value: "Gacrux", label: "Gacrux (female, mature) - history, documentary, serious narration" },
+  { value: "Pulcherrima", label: "Pulcherrima (female, forward) - confident promos, calls to action" },
+  { value: "Achird", label: "Achird (male, friendly) - support, podcast host, explainer" },
+  { value: "Zubenelgenubi", label: "Zubenelgenubi (male, casual) - vlogs, conversational social clips" },
+  { value: "Vindemiatrix", label: "Vindemiatrix (female, gentle) - meditation, guidance, soft narration" },
+  { value: "Sadachbia", label: "Sadachbia (male, lively) - kids, playful ads, upbeat social" },
+  { value: "Sadaltager", label: "Sadaltager (male, knowledgeable) - expert commentary, education" },
+  { value: "Sulafat", label: "Sulafat (female, warm) - e-learning, family, welcoming narration" },
+];
+
+const QWEN3_TTS_VOICE_FIELD_OPTIONS = [
+  { value: "Cherry", label: "Cherry - Qwen preset" },
+  { value: "Serena", label: "Serena - Qwen preset" },
+  { value: "Ethan", label: "Ethan - Qwen preset" },
+  { value: "Chelsie", label: "Chelsie - Qwen preset" },
+  { value: "Dylan", label: "Dylan - Qwen preset" },
+];
 
 interface ReferenceImage {
   url: string;
@@ -225,6 +361,16 @@ interface GeneratedMedia {
   model: string;
   createdAt: string;
   creditsUsed?: number;
+}
+
+interface StoryboardPreparedAudioTiming {
+  mode: Exclude<StoryboardAudioPrepMode, "off">;
+  durationSeconds: number;
+  clipDurationSeconds: number;
+  promptCount: number;
+  sourceName: string;
+  voiceoverScript?: string;
+  companionAudio: StoryboardCompanionAudioCandidate[];
 }
 
 interface StoryboardVideoGenerationContext {
@@ -591,6 +737,11 @@ const normalizePromptReviewSummary = (value: unknown): PromptReviewSummary | nul
 interface TabState {
   prompt: string;
   enhancedPrompt: string;
+  externalAudioPromptSource: string;
+  externalVoiceoverScript: string;
+  externalSoundBedBrief: string;
+  externalVoiceoverScriptEdited: boolean;
+  externalSoundBedBriefEdited: boolean;
   promptReview: PromptReviewSummary | null;
   referenceNotes: string;
   continuityNotes: string;
@@ -621,6 +772,11 @@ interface TabState {
 const createDefaultTabState = (mediaType: MediaType): TabState => ({
   prompt: "",
   enhancedPrompt: "",
+  externalAudioPromptSource: "",
+  externalVoiceoverScript: "",
+  externalSoundBedBrief: "",
+  externalVoiceoverScriptEdited: false,
+  externalSoundBedBriefEdited: false,
   promptReview: null,
   referenceNotes: "",
   continuityNotes: "",
@@ -640,7 +796,7 @@ const createDefaultTabState = (mediaType: MediaType): TabState => ({
   modelInputValues: {},
   selectedModel: "",
   numImages: 1,
-  aspectRatio: mediaType === "video" ? (localStorage.getItem("smartspec_aspect_video") || "16:9") : (localStorage.getItem("smartspec_aspect_image") || "1:1"),
+  aspectRatio: mediaType === "video" ? (localStorage.getItem("smartspec_aspect_video") || "auto") : (localStorage.getItem("smartspec_aspect_image") || "1:1"),
   duration: parseInt(localStorage.getItem("smartspec_duration_video") || "5", 10),
   selectedLlmModel: AUTO_MODEL,
   skillInitialized: false,
@@ -804,12 +960,85 @@ function resolveArrayFieldRuntimeValue(
     return items;
   }
 
-  return items.map((item, index) => interpolateTemplate(template, {
-    ...context,
-    value: item,
-    item,
-    index,
-  }));
+  return items.map((item, index) => {
+    const resolvedTemplate = interpolateTemplate(template, {
+      ...context,
+      value: item,
+      item,
+      index,
+    });
+
+    // Structured array editors return objects such as { speaker, voice }.
+    // Keep those user-selected values as the source of truth while allowing
+    // itemTemplate to fill missing defaults.
+    if (item && typeof item === "object" && !Array.isArray(item)) {
+      return {
+        ...(resolvedTemplate && typeof resolvedTemplate === "object" && !Array.isArray(resolvedTemplate)
+          ? resolvedTemplate as Record<string, unknown>
+          : {}),
+        ...(item as Record<string, unknown>),
+      };
+    }
+
+    return resolvedTemplate;
+  });
+}
+
+function buildRuntimeExtraParamsFromModelInputs(params: {
+  model: any;
+  inputValues: Record<string, unknown>;
+  prompt: string;
+  aspectRatio?: string;
+  activeTab: MediaType;
+}): Record<string, unknown> {
+  const modelConfig = parseMediaModelConfig(params.model?.configJson);
+  const inputFields = Array.isArray(modelConfig?.inputFields)
+    ? modelConfig.inputFields as Record<string, any>[]
+    : [];
+  const templateBaseContext = {
+    prompt: params.prompt,
+    aspectRatio: params.aspectRatio,
+    activeTab: params.activeTab,
+    fields: params.inputValues,
+  } as Record<string, unknown>;
+  const extraParams: Record<string, unknown> = {};
+
+  for (const field of inputFields) {
+    const syncWith = inferModelInputSyncTarget(field);
+    const resolveFieldValue = (value: unknown): unknown => (
+      field.type === "array"
+        ? resolveArrayFieldRuntimeValue(field, value, templateBaseContext)
+        : value
+    );
+
+    if (syncWith === "prompt") {
+      extraParams[field.key] = resolveFieldValue(params.prompt);
+      continue;
+    }
+    if (syncWith === "aspect_ratio") {
+      extraParams[field.key] = resolveFieldValue(params.aspectRatio ?? "");
+      continue;
+    }
+    if (syncWith === "reference_images" || syncWith === "reference_videos") {
+      continue;
+    }
+
+    const rawValue = params.inputValues[field.key] ?? field.default;
+    const value = resolveFieldValue(rawValue);
+    if (field.key === "language_code" && String(value) === "__auto__") {
+      continue;
+    }
+    if (
+      value !== undefined
+      && value !== null
+      && value !== ""
+      && !(Array.isArray(value) && value.length === 0)
+    ) {
+      extraParams[field.key] = value;
+    }
+  }
+
+  return extraParams;
 }
 
 function countCharactersForPricing(value: unknown, options: { ignoreWhitespace?: boolean } = {}): number {
@@ -893,6 +1122,11 @@ function buildApiConfigFromModelConfig(modelConfig: Record<string, unknown> | nu
   setApiConfigValue(apiConfig, "query_endpoint", modelConfig.apiQueryEndpoint);
   setApiConfigValue(apiConfig, "payload_format", modelConfig.apiPayloadFormat);
   setApiConfigValue(apiConfig, "kie_model_id", modelConfig.kieModelId);
+  setApiConfigValue(apiConfig, "generate_type", modelConfig.generateType);
+  setApiConfigValue(apiConfig, "veo_4k_endpoint", modelConfig.veo4kEndpoint);
+  setApiConfigValue(apiConfig, "veo_4k_endpoint", modelConfig.veo4KEndpoint);
+  setApiConfigValue(apiConfig, "veo_4k_endpoint", modelConfig.veo4kUpgradeEndpoint);
+  setApiConfigValue(apiConfig, "veo_4k_endpoint", modelConfig.veo4KUpgradeEndpoint);
 
   const customApiConfig = modelConfig.apiConfig;
   if (customApiConfig && typeof customApiConfig === "object" && !Array.isArray(customApiConfig)) {
@@ -902,6 +1136,438 @@ function buildApiConfigFromModelConfig(modelConfig: Record<string, unknown> | nu
   }
 
   return apiConfig;
+}
+
+function parseMediaModelConfig(configJson: unknown): Record<string, unknown> | null {
+  if (!configJson) return null;
+  if (typeof configJson === "string") {
+    try {
+      const parsed = JSON.parse(configJson);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : null;
+    } catch {
+      return null;
+    }
+  }
+  return typeof configJson === "object" && !Array.isArray(configJson)
+    ? configJson as Record<string, unknown>
+    : null;
+}
+
+function getMediaModelCandidateIds(model: any): string[] {
+  const config = parseMediaModelConfig(model?.configJson);
+  const apiConfig = parseMediaModelConfig(config?.apiConfig);
+  return [
+    model?.modelId,
+    model?.id,
+    config?.providerModelId,
+    apiConfig?.provider_model_id,
+    apiConfig?.model,
+    ...(Array.isArray(model?.aliases) ? model.aliases : []),
+  ]
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean);
+}
+
+function hasAnyModelIdCandidate(model: any, allowedIds: Set<string>): boolean {
+  const normalizedAllowed = new Set(Array.from(allowedIds, (id) => id.trim().toLowerCase()));
+  return getMediaModelCandidateIds(model).some((id) => {
+    const normalized = id.toLowerCase();
+    if (normalizedAllowed.has(normalized)) return true;
+    if (normalized.startsWith("wavespeed/")) {
+      return normalizedAllowed.has(normalized.replace(/^wavespeed\//, "google/"));
+    }
+    if (normalized.startsWith("google/")) {
+      return normalizedAllowed.has(normalized.replace(/^google\//, "wavespeed/"));
+    }
+    return false;
+  });
+}
+
+function hasCandidateIdContaining(model: any, token: string): boolean {
+  const normalizedToken = token.trim().toLowerCase();
+  if (!normalizedToken) return false;
+  return getMediaModelCandidateIds(model).some((id) => id.toLowerCase().includes(normalizedToken));
+}
+
+function buildGemini25TtsFallbackFields(): ModelInputField[] {
+  return [
+    {
+      key: "text",
+      label: "Text",
+      type: "text",
+      required: true,
+      syncWith: "prompt",
+      description: "Gemini TTS has a long context window; split very long scripts for steadier voice quality.",
+    },
+    {
+      key: "language",
+      label: "Language",
+      type: "select",
+      required: true,
+      syncWith: "none",
+      default: "English (United States)",
+      options: GEMINI_TTS_LANGUAGE_FIELD_OPTIONS,
+    },
+    {
+      key: "speakers",
+      label: "Speakers",
+      type: "array",
+      required: true,
+      syncWith: "none",
+      default: [{ speaker: "Speaker 1", voice: "Zephyr" }],
+      itemLabel: "Speaker",
+      itemFields: [
+        { key: "speaker", label: "Speaker", type: "text", required: true, syncWith: "none", default: "Speaker 1" },
+        {
+          key: "voice",
+          label: "Voice",
+          type: "select",
+          required: true,
+          searchable: true,
+          syncWith: "none",
+          default: "Zephyr",
+          options: GEMINI_TTS_VOICE_FIELD_OPTIONS,
+        },
+      ],
+    },
+  ];
+}
+
+function buildFalGemini31TtsFallbackFields(): ModelInputField[] {
+  return [
+    {
+      key: "prompt",
+      label: "Prompt",
+      type: "text",
+      required: true,
+      syncWith: "prompt",
+    },
+    {
+      key: "voice",
+      label: "Voice",
+      type: "select",
+      searchable: true,
+      syncWith: "none",
+      default: "Kore",
+      description: "Single-speaker voice preset. Ignored when speakers is set.",
+      options: GEMINI_TTS_VOICE_FIELD_OPTIONS,
+    },
+    {
+      key: "language_code",
+      label: "Language Code",
+      type: "select",
+      searchable: true,
+      syncWith: "none",
+      default: "__auto__",
+      options: GEMINI_31_TTS_LANGUAGE_CODE_FIELD_OPTIONS,
+    },
+    {
+      key: "speakers",
+      label: "Speakers",
+      type: "array",
+      syncWith: "none",
+      default: [{ speaker_id: "Host", voice: "Kore" }],
+      maxItems: 2,
+      itemLabel: "Speaker",
+      itemFields: [
+        { key: "speaker_id", label: "Speaker ID", type: "text", required: true, syncWith: "none", default: "Host" },
+        {
+          key: "voice",
+          label: "Voice",
+          type: "select",
+          required: true,
+          searchable: true,
+          syncWith: "none",
+          default: "Kore",
+          options: GEMINI_TTS_VOICE_FIELD_OPTIONS,
+        },
+      ],
+    },
+  ];
+}
+
+function buildQwen3TtsFallbackFields(): ModelInputField[] {
+  return [
+    { key: "text", label: "Text", type: "text", required: true, syncWith: "prompt" },
+    {
+      key: "voice",
+      label: "Voice",
+      type: "select",
+      required: true,
+      searchable: true,
+      syncWith: "none",
+      default: "Cherry",
+      options: QWEN3_TTS_VOICE_FIELD_OPTIONS,
+    },
+    {
+      key: "language_type",
+      label: "Language",
+      type: "select",
+      syncWith: "none",
+      default: "English",
+      options: [
+        { value: "English", label: "English" },
+        { value: "Chinese", label: "Chinese" },
+      ],
+    },
+    { key: "speed", label: "Speed", type: "number", syncWith: "none", default: 1 },
+    {
+      key: "format",
+      label: "Format",
+      type: "select",
+      syncWith: "none",
+      default: "mp3",
+      options: [
+        { value: "mp3", label: "MP3" },
+        { value: "wav", label: "WAV" },
+        { value: "ogg", label: "OGG" },
+      ],
+    },
+  ];
+}
+
+function getSeparateVoiceFallbackFields(model: any): ModelInputField[] {
+  if (!model) return [];
+  if (hasCandidateIdContaining(model, "gemini-2.5")) {
+    return buildGemini25TtsFallbackFields();
+  }
+  if (hasCandidateIdContaining(model, "gemini-3.1-flash-tts")) {
+    return buildFalGemini31TtsFallbackFields();
+  }
+  if (hasCandidateIdContaining(model, "qwen3-tts")) {
+    return buildQwen3TtsFallbackFields();
+  }
+  return [];
+}
+
+function mergeModelFieldOptions(
+  currentOptions: unknown,
+  requiredOptions: Array<{ value: string; label: string }>,
+  options: { preferRequiredLabels?: boolean; prioritizeRequiredOptions?: boolean } = {},
+): Array<{ value: string; label: string }> {
+  const byValue = new Map<string, { value: string; label: string }>();
+  if (Array.isArray(currentOptions)) {
+    for (const option of currentOptions) {
+      if (!option || typeof option !== "object") continue;
+      const record = option as Record<string, unknown>;
+      const value = String(record.value ?? "").trim();
+      if (!value) continue;
+      byValue.set(value, {
+        value,
+        label: String(record.label ?? value).trim() || value,
+      });
+    }
+  }
+
+  for (const option of requiredOptions) {
+    const existing = byValue.get(option.value);
+    if (!existing || options.preferRequiredLabels || existing.label === option.value) {
+      byValue.set(option.value, option);
+    }
+  }
+
+  if (options.prioritizeRequiredOptions) {
+    const prioritized = new Map<string, { value: string; label: string }>();
+    for (const option of requiredOptions) {
+      const merged = byValue.get(option.value) ?? option;
+      prioritized.set(option.value, merged);
+    }
+    for (const option of byValue.values()) {
+      if (!prioritized.has(option.value)) {
+        prioritized.set(option.value, option);
+      }
+    }
+    return Array.from(prioritized.values());
+  }
+
+  return Array.from(byValue.values());
+}
+
+function normalizeModelInputFieldsForStudio(model: any, rawFields: unknown): unknown[] {
+  if (!Array.isArray(rawFields)) {
+    return [];
+  }
+  const isGemini25Tts = hasCandidateIdContaining(model, "gemini-2.5")
+    && hasCandidateIdContaining(model, "text-to-speech");
+  const isGemini31Tts = hasCandidateIdContaining(model, "gemini-3.1-flash-tts");
+
+  return rawFields.map((field) => {
+    if (!field || typeof field !== "object" || Array.isArray(field)) {
+      return field;
+    }
+    const record = { ...(field as Record<string, unknown>) };
+    const normalizedKey = String(record.key ?? "").trim().toLowerCase();
+
+    if (Array.isArray(record.itemFields)) {
+      record.itemFields = normalizeModelInputFieldsForStudio(model, record.itemFields);
+    }
+
+    if (isGemini25Tts && normalizedKey === "language") {
+      record.options = mergeModelFieldOptions(record.options, GEMINI_TTS_LANGUAGE_FIELD_OPTIONS, {
+        prioritizeRequiredOptions: true,
+      });
+    }
+    if (isGemini31Tts && normalizedKey === "language_code") {
+      record.options = mergeModelFieldOptions(record.options, GEMINI_31_TTS_LANGUAGE_CODE_FIELD_OPTIONS, {
+        prioritizeRequiredOptions: true,
+      });
+      record.searchable = true;
+    }
+    if ((isGemini25Tts || isGemini31Tts) && normalizedKey === "voice") {
+      record.options = mergeModelFieldOptions(record.options, GEMINI_TTS_VOICE_FIELD_OPTIONS, {
+        preferRequiredLabels: true,
+      });
+      record.searchable = true;
+    }
+
+    return record;
+  });
+}
+
+function withFallbackModelInputFields(model: any, fallbackFields: ModelInputField[]): any {
+  if (!model) {
+    return model;
+  }
+  const config = parseMediaModelConfig(model.configJson);
+  const rawFields = Array.isArray(config?.inputFields) && config.inputFields.length > 0
+    ? config.inputFields
+    : fallbackFields;
+  if (!Array.isArray(rawFields) || rawFields.length === 0) {
+    return model;
+  }
+  return {
+    ...model,
+    id: model.id ?? model.modelId,
+    configJson: {
+      ...(config ?? {}),
+      inputFields: normalizeModelInputFieldsForStudio(model, rawFields),
+    },
+  };
+}
+
+function applyTtsLanguageDefaultsForPrompt(
+  model: any,
+  text: string,
+  extraParams: Record<string, unknown>,
+): void {
+  if (!containsThaiText(text)) {
+    return;
+  }
+  if (hasCandidateIdContaining(model, "gemini-2.5") && hasCandidateIdContaining(model, "text-to-speech")) {
+    const selectedLanguage = String(extraParams.language ?? "").trim();
+    if (!selectedLanguage || selectedLanguage.startsWith("English")) {
+      extraParams.language = "Thai (Thailand)";
+    }
+    return;
+  }
+  if (hasCandidateIdContaining(model, "gemini-3.1-flash-tts")) {
+    const selectedLanguageCode = String(extraParams.language_code ?? "").trim();
+    if (
+      !selectedLanguageCode
+      || selectedLanguageCode === "__auto__"
+      || selectedLanguageCode.startsWith("English")
+    ) {
+      extraParams.language_code = "Thai (Thailand)";
+    }
+  }
+}
+
+function inferStoryboardClipDurationSeconds(promptText: string, fallbackSeconds = 8): number {
+  const match = promptText.match(/(\d+(?:\.\d+)?)\s*seconds?/i);
+  const parsed = match ? Number.parseFloat(match[1] ?? "") : Number.NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackSeconds;
+}
+
+function buildVoiceoverText(params: {
+  script: string;
+  targetDurationSeconds: number;
+  languageHint?: string;
+}): string {
+  return params.script.trim();
+}
+
+function buildVoiceoverStyleInstruction(params: {
+  targetDurationSeconds: number;
+  languageHint?: string;
+}): string {
+  const duration = Math.max(1, Math.round(params.targetDurationSeconds));
+  const languageHint = params.languageHint?.trim();
+  return [
+    languageHint ? `${languageHint} news voiceover.` : "News voiceover.",
+    `Finish in about ${duration} seconds.`,
+    "Crisp, natural, professional, slightly brisk, no stretched syllables, no long dramatic pauses.",
+  ].join(" ");
+}
+
+function buildMusicPromptFromPrompts(promptTexts: string[], targetDurationSeconds: number, fallbackPrompt: string): string {
+  const soundDesign = promptTexts
+    .flatMap((promptText) => promptText.split(/\r?\n/))
+    .map((line) => line.trim())
+    .find((line) => /^Sound Design\s*:/i.test(line));
+  const duration = Math.max(1, Math.round(targetDurationSeconds));
+  return [
+    `${soundDesign || fallbackPrompt || "Subtle modern newsroom technology ambience"}.`,
+    `Create a low-volume background music bed around ${duration} seconds, consistent across the whole video.`,
+    "Clean, modern, restrained, no vocals, no spoken words, no sudden loud hits, leave room for voiceover.",
+  ].join(" ");
+}
+
+function containsThaiText(text: string): boolean {
+  return /[\u0E00-\u0E7F]/.test(text);
+}
+
+function estimateVoiceoverDurationSeconds(text: string): number {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) return 8;
+
+  const thaiCharacters = (normalized.match(/[\u0E00-\u0E7F]/g) || []).length;
+  const latinWords = (normalized.match(/[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)?/g) || []).length;
+  const nonThaiCharacters = Math.max(0, normalized.length - thaiCharacters);
+  const thaiSeconds = thaiCharacters > 0 ? thaiCharacters / 11 : 0;
+  const englishSeconds = latinWords > 0 ? latinWords / 2.45 : 0;
+  const mixedFallbackSeconds = nonThaiCharacters > 0 && latinWords === 0 ? nonThaiCharacters / 14 : 0;
+
+  return Math.max(4, Math.ceil(thaiSeconds + englishSeconds + mixedFallbackSeconds));
+}
+
+function formatMediaDuration(seconds: number | null | undefined): string {
+  if (!Number.isFinite(seconds ?? Number.NaN) || !seconds || seconds <= 0) {
+    return "";
+  }
+  if (seconds < 60) {
+    return `${seconds.toFixed(seconds >= 10 ? 0 : 1)}s`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  const remaining = Math.round(seconds % 60);
+  return `${minutes}:${String(remaining).padStart(2, "0")}`;
+}
+
+async function probeMediaDurationSeconds(url: string, fallbackSeconds: number): Promise<number> {
+  if (typeof window === "undefined") return fallbackSeconds;
+  return new Promise((resolve) => {
+    const media = document.createElement("audio");
+    let settled = false;
+    const finish = (value: number) => {
+      if (settled) return;
+      settled = true;
+      media.removeAttribute("src");
+      media.load();
+      resolve(Number.isFinite(value) && value > 0 ? value : fallbackSeconds);
+    };
+    const timeout = window.setTimeout(() => finish(fallbackSeconds), 8000);
+    media.preload = "metadata";
+    media.onloadedmetadata = () => {
+      window.clearTimeout(timeout);
+      finish(media.duration);
+    };
+    media.onerror = () => {
+      window.clearTimeout(timeout);
+      finish(fallbackSeconds);
+    };
+    media.src = url;
+  });
 }
 
 function normalizeModelFieldOptions(raw: unknown): SearchableFieldOption[] {
@@ -1074,6 +1740,110 @@ function inferModelInputSyncTarget(field: Record<string, any> | null | undefined
   }
 
   return "none";
+}
+
+function getVeo31ProviderModelId(model: unknown, extraParams?: Record<string, unknown>): string {
+  const explicit = String(extraParams?.model ?? "").trim();
+  if (explicit) {
+    return explicit;
+  }
+  return getVeoProviderModelId(model as MediaStudioVeoModelLike | null | undefined);
+}
+
+function hasChangedRecordValues(base: Record<string, unknown>, patch: Record<string, unknown>): boolean {
+  return Object.entries(patch).some(([key, value]) => base[key] !== value);
+}
+
+function getVeo31InputValidationErrors(params: {
+  model: unknown;
+  extraParams: Record<string, unknown>;
+  referenceImageUrls: string[];
+  aspectRatio?: string;
+}): string[] {
+  const generationType = String(params.extraParams.generationType ?? "").trim();
+  if (!generationType) {
+    return [];
+  }
+
+  const providerModel = getVeo31ProviderModelId(params.model, params.extraParams);
+  const imageCount = params.referenceImageUrls.length;
+  const errors: string[] = [];
+
+  if (generationType === "FIRST_AND_LAST_FRAMES_2_VIDEO" && (imageCount < 1 || imageCount > 2)) {
+    errors.push("Veo 3.1 First & Last Frames mode requires 1 or 2 reference images. Use @Image1 as the Start frame and @Image2 as the End frame when provided.");
+  }
+
+  if (generationType === "REFERENCE_2_VIDEO") {
+    if (!isFastVeoProviderModelId(providerModel)) {
+      errors.push("Veo Reference to Video is available only with a Fast Veo model.");
+    }
+    if (imageCount < 1 || imageCount > 3) {
+      errors.push("Veo 3.1 Reference to Video requires 1 to 3 reference images.");
+    }
+    if (String(params.aspectRatio ?? "").trim().toLowerCase() === "auto") {
+      errors.push("Veo 3.1 Reference to Video requires an explicit 16:9 or 9:16 aspect ratio.");
+    }
+  }
+
+  return errors;
+}
+
+const VEO_REFERENCE_IMAGE_ROLE_INSTRUCTION = [
+  "Reference image mode: use the attached image(s) only as material, identity, style, product, object, animal, or scene references.",
+  "Do not treat any attached image as a start frame, end frame, frozen opening frame, or exact first/last frame unless generationType is FIRST_AND_LAST_FRAMES_2_VIDEO.",
+].join(" ");
+
+function prepareVeoPromptForGenerationType(promptText: string, generationType: unknown): string {
+  if (String(generationType ?? "").trim() !== "REFERENCE_2_VIDEO") {
+    return promptText;
+  }
+
+  if (/Reference image mode:/i.test(promptText) || /not .*start frame/i.test(promptText)) {
+    return promptText;
+  }
+
+  return `${VEO_REFERENCE_IMAGE_ROLE_INSTRUCTION}\n${promptText}`.trim();
+}
+
+function shouldSendReferenceImagesForMediaGeneration(
+  model: unknown,
+  extraParams: Record<string, unknown>,
+): boolean {
+  const providerModel = getVeo31ProviderModelId(model, extraParams);
+  if (!isVeoProviderModelId(providerModel)) {
+    return true;
+  }
+
+  const generationType = String(extraParams.generationType ?? "").trim();
+  return generationType !== "TEXT_2_VIDEO";
+}
+
+function removeReferenceImageSyncedParams(
+  extraParams: Record<string, unknown>,
+  inputFields: unknown,
+): void {
+  if (!Array.isArray(inputFields)) {
+    delete extraParams.imageUrls;
+    delete extraParams.image_urls;
+    delete extraParams.referenceImages;
+    delete extraParams.reference_image_urls;
+    return;
+  }
+
+  for (const field of inputFields) {
+    if (inferModelInputSyncTarget(field as Record<string, unknown>) === "reference_images") {
+      const key = String((field as Record<string, unknown>).key ?? "").trim();
+      if (key) {
+        delete extraParams[key];
+      }
+    }
+  }
+}
+
+function countMultiVideoPromptBlocks(rawText: string): number {
+  const parsed = parseMediaStudioPromptPackage(rawText);
+  const promptText = parsed.promptText || rawText.trim();
+  return splitMultiVideoPromptOutput(promptText).prompts.length;
 }
 
 type MediaHistoryTaskLite = {
@@ -1405,6 +2175,11 @@ export default function MediaStudio() {
   const currentTabState = tabStates[activeTab];
   const prompt = currentTabState.prompt;
   const enhancedPrompt = currentTabState.enhancedPrompt;
+  const externalAudioPromptSource = currentTabState.externalAudioPromptSource;
+  const externalVoiceoverScript = currentTabState.externalVoiceoverScript;
+  const externalSoundBedBrief = currentTabState.externalSoundBedBrief;
+  const externalVoiceoverScriptEdited = currentTabState.externalVoiceoverScriptEdited;
+  const externalSoundBedBriefEdited = currentTabState.externalSoundBedBriefEdited;
   const promptReview = currentTabState.promptReview;
   const referenceNotes = currentTabState.referenceNotes;
   const continuityNotes = currentTabState.continuityNotes;
@@ -1531,6 +2306,11 @@ export default function MediaStudio() {
     }));
   }, [activeTab]);
 
+  const setExternalAudioPromptSource = useCallback((value: string) => updateTabState('externalAudioPromptSource', value), [updateTabState]);
+  const setExternalVoiceoverScript = useCallback((value: string) => updateTabState('externalVoiceoverScript', value), [updateTabState]);
+  const setExternalSoundBedBrief = useCallback((value: string) => updateTabState('externalSoundBedBrief', value), [updateTabState]);
+  const setExternalVoiceoverScriptEdited = useCallback((value: boolean) => updateTabState('externalVoiceoverScriptEdited', value), [updateTabState]);
+  const setExternalSoundBedBriefEdited = useCallback((value: boolean) => updateTabState('externalSoundBedBriefEdited', value), [updateTabState]);
   const setPromptReview = useCallback((value: PromptReviewSummary | null) => updateTabState('promptReview', value), [updateTabState]);
   const setReferenceNotes = useCallback((value: string) => updateTabState('referenceNotes', value), [updateTabState]);
   const setContinuityNotes = useCallback((value: string) => updateTabState('continuityNotes', value), [updateTabState]);
@@ -1581,15 +2361,42 @@ export default function MediaStudio() {
   const setSelectedLlmModel = useCallback((value: string) => updateTabState('selectedLlmModel', value), [updateTabState]);
   const setSkillInitialized = useCallback((value: boolean) => updateTabState('skillInitialized', value), [updateTabState]);
   const setModelInitialized = useCallback((value: boolean) => updateTabState('modelInitialized', value), [updateTabState]);
-  const applyPromptPackageToCurrentTab = useCallback((rawText: string, target: "prompt" | "enhancedPrompt" = "enhancedPrompt") => {
+  const applyPromptPackageToCurrentTab = useCallback((
+    rawText: string,
+    target: "prompt" | "enhancedPrompt" = "enhancedPrompt",
+    options?: {
+      displayPromptText?: string;
+      externalAudioSourcePromptText?: string;
+      externalVoiceoverScript?: string;
+      externalSoundBedBrief?: string;
+    },
+  ) => {
     const parsed = parseMediaStudioPromptPackage(rawText);
     const cleanedPrompt = parsed.promptText || rawText.trim();
+    const displayPrompt = options?.displayPromptText?.trim() || cleanedPrompt;
 
     if (target === "enhancedPrompt") {
-      setEnhancedPrompt(cleanedPrompt);
+      setEnhancedPrompt(displayPrompt);
     } else {
-      setPrompt(cleanedPrompt);
+      setPrompt(displayPrompt);
     }
+    const nextExternalAudioSourcePromptText = options?.externalAudioSourcePromptText?.trim() || "";
+    const nextExternalVoiceoverScript = options?.externalVoiceoverScript?.trim() || "";
+    const nextExternalSoundBedBrief = options?.externalSoundBedBrief?.trim() || "";
+    const keepEditedVoiceoverScript =
+      Boolean(nextExternalAudioSourcePromptText) &&
+      externalVoiceoverScriptEdited &&
+      Boolean(externalVoiceoverScript.trim());
+    const keepEditedSoundBedBrief =
+      Boolean(nextExternalAudioSourcePromptText) &&
+      externalSoundBedBriefEdited &&
+      Boolean(externalSoundBedBrief.trim());
+
+    setExternalAudioPromptSource(nextExternalAudioSourcePromptText);
+    setExternalVoiceoverScript(keepEditedVoiceoverScript ? externalVoiceoverScript : nextExternalVoiceoverScript);
+    setExternalSoundBedBrief(keepEditedSoundBedBrief ? externalSoundBedBrief : nextExternalSoundBedBrief);
+    setExternalVoiceoverScriptEdited(keepEditedVoiceoverScript);
+    setExternalSoundBedBriefEdited(keepEditedSoundBedBrief);
 
     setReferenceNotes(parsed.referenceNotes);
     setContinuityNotes(parsed.continuityNotes);
@@ -1604,8 +2411,17 @@ export default function MediaStudio() {
     setAutoReferenceNotes,
     setContinuityNotes,
     setEnhancedPrompt,
+    setExternalAudioPromptSource,
+    setExternalSoundBedBrief,
+    setExternalSoundBedBriefEdited,
+    setExternalVoiceoverScript,
+    setExternalVoiceoverScriptEdited,
     setPrompt,
     setReferenceNotes,
+    externalSoundBedBrief,
+    externalSoundBedBriefEdited,
+    externalVoiceoverScript,
+    externalVoiceoverScriptEdited,
   ]);
 
   const clearPromptSupportNotes = useCallback(() => {
@@ -1651,12 +2467,151 @@ export default function MediaStudio() {
     const saved = localStorage.getItem("smartspec_video_output_type");
     return (saved === "multi-shot" || saved === "multi-video") ? saved : "multi-shot";
   });
+  const [videoAudioWorkflow, setVideoAudioWorkflow] = useState<VideoAudioWorkflow>(() => {
+    const saved = localStorage.getItem("smartspec_video_audio_workflow");
+    return (
+      saved === "native" ||
+      saved === "separate_voice" ||
+      saved === "separate_music" ||
+      saved === "separate_voice_music"
+    ) ? saved : "native";
+  });
+  const [videoVoiceModel, setVideoVoiceModel] = useState<string>(() =>
+    localStorage.getItem("smartspec_video_voice_model") || DEFAULT_SEPARATE_VOICE_MODEL_ID,
+  );
+  const [videoVoiceModelInputValues, setVideoVoiceModelInputValues] = useState<Record<string, unknown>>({});
+  const [videoMusicModel, setVideoMusicModel] = useState<string>(() =>
+    localStorage.getItem("smartspec_video_music_model") || DEFAULT_SEPARATE_MUSIC_MODEL_ID,
+  );
+  const [videoMusicModelInputValues, setVideoMusicModelInputValues] = useState<Record<string, unknown>>({});
+  const [videoMusicPrompt, setVideoMusicPrompt] = useState<string>(() =>
+    localStorage.getItem("smartspec_video_music_prompt") || "",
+  );
+  const [storyboardAudioPrepMode, setStoryboardAudioPrepMode] = useState<StoryboardAudioPrepMode>(() => {
+    const saved = localStorage.getItem("smartspec_storyboard_audio_prep_mode");
+    return saved === "generate_voice" || saved === "existing_voice" ? saved : "off";
+  });
+  const [storyboardAudioSourceUrl, setStoryboardAudioSourceUrl] = useState("");
+  const [storyboardAudioSourceName, setStoryboardAudioSourceName] = useState("");
+  const [storyboardAudioSourceDurationSeconds, setStoryboardAudioSourceDurationSeconds] = useState<number | null>(null);
+  const [storyboardAudioPrepStatus, setStoryboardAudioPrepStatus] = useState<string | null>(null);
+  const [storyboardPreparedAudio, setStoryboardPreparedAudio] = useState<StoryboardCompanionAudioCandidate[]>([]);
+
+  const buildExternalAudioPromptDisplayOptions = useCallback((rawText: string): {
+    displayPromptText?: string;
+    externalAudioSourcePromptText?: string;
+    externalVoiceoverScript?: string;
+    externalSoundBedBrief?: string;
+  } | undefined => {
+    if (
+      activeTab !== "video" ||
+      selectedSkillId !== VEO_STORYBOARD_SKILL_ID ||
+      videoAudioWorkflow === "native"
+    ) {
+      return undefined;
+    }
+
+    const parsed = parseMediaStudioPromptPackage(rawText);
+    const sourcePromptText = parsed.promptText || rawText.trim();
+    if (!sourcePromptText) {
+      return undefined;
+    }
+
+    return {
+      displayPromptText: prepareSilentVideoPromptDisplayForExternalAudio(sourcePromptText),
+      externalAudioSourcePromptText: rawText.trim(),
+      externalVoiceoverScript: extractVoiceoverScriptFromPromptText(rawText),
+      externalSoundBedBrief: extractMusicBriefFromPromptText(rawText),
+    };
+  }, [activeTab, selectedSkillId, videoAudioWorkflow]);
+
+  useEffect(() => {
+    if (activeTab !== "video" || selectedSkillId !== VEO_STORYBOARD_SKILL_ID) {
+      return;
+    }
+
+    const currentPrompt = (enhancedPrompt || prompt).trim();
+    if (!currentPrompt) {
+      if (externalAudioPromptSource) {
+        setExternalAudioPromptSource("");
+        setExternalVoiceoverScript("");
+        setExternalSoundBedBrief("");
+        setExternalVoiceoverScriptEdited(false);
+        setExternalSoundBedBriefEdited(false);
+      }
+      return;
+    }
+
+    const applyDisplayedPrompt = (nextPrompt: string) => {
+      if (enhancedPrompt) {
+        setEnhancedPrompt(nextPrompt);
+      } else {
+        setPrompt(nextPrompt);
+      }
+    };
+
+    if (videoAudioWorkflow !== "native") {
+      if (externalAudioPromptSource.trim()) {
+        return;
+      }
+
+      const sourcePrompt = currentPrompt;
+      const parsedSource = parseMediaStudioPromptPackage(sourcePrompt);
+      const sourcePromptText = parsedSource.promptText || sourcePrompt;
+      const visualOnlyPrompt = prepareSilentVideoPromptDisplayForExternalAudio(sourcePromptText);
+      setExternalAudioPromptSource(sourcePrompt);
+      setExternalVoiceoverScript(externalVoiceoverScriptEdited && externalVoiceoverScript.trim()
+        ? externalVoiceoverScript
+        : extractVoiceoverScriptFromPromptText(sourcePrompt));
+      setExternalSoundBedBrief(externalSoundBedBriefEdited && externalSoundBedBrief.trim()
+        ? externalSoundBedBrief
+        : extractMusicBriefFromPromptText(sourcePrompt));
+      if (visualOnlyPrompt && visualOnlyPrompt !== currentPrompt) {
+        applyDisplayedPrompt(visualOnlyPrompt);
+      }
+      return;
+    }
+
+    if (externalAudioPromptSource.trim()) {
+      const parsedSource = parseMediaStudioPromptPackage(externalAudioPromptSource);
+      const sourcePromptText = parsedSource.promptText || externalAudioPromptSource.trim();
+      if (sourcePromptText && sourcePromptText !== currentPrompt) {
+        applyDisplayedPrompt(sourcePromptText);
+      }
+      setExternalAudioPromptSource("");
+      setExternalVoiceoverScript("");
+      setExternalSoundBedBrief("");
+      setExternalVoiceoverScriptEdited(false);
+      setExternalSoundBedBriefEdited(false);
+    }
+  }, [
+    activeTab,
+    enhancedPrompt,
+    externalAudioPromptSource,
+    externalSoundBedBrief,
+    externalSoundBedBriefEdited,
+    externalVoiceoverScript,
+    externalVoiceoverScriptEdited,
+    prompt,
+    selectedSkillId,
+    setEnhancedPrompt,
+    setExternalAudioPromptSource,
+    setExternalSoundBedBrief,
+    setExternalSoundBedBriefEdited,
+    setExternalVoiceoverScript,
+    setExternalVoiceoverScriptEdited,
+    setPrompt,
+    videoAudioWorkflow,
+  ]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoFileInputRef = useRef<HTMLInputElement>(null);
+  const storyboardAudioFileInputRef = useRef<HTMLInputElement>(null);
 
   // Ref to track current prompt textarea value (for reliable history storage)
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const voiceoverScriptTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const soundBedBriefTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Generation state (global - shows results from any tab)
   const [isGenerating, setIsGenerating] = useState(false);
@@ -1676,9 +2631,11 @@ export default function MediaStudio() {
   const [isCompoundingStoryboard, setIsCompoundingStoryboard] = useState(false);
   const [isCreatingStoryboardProject, setIsCreatingStoryboardProject] = useState(false);
   const [regeneratingStoryboardTaskId, setRegeneratingStoryboardTaskId] = useState<string | null>(null);
+  const [regeneratingStoryboardAudioId, setRegeneratingStoryboardAudioId] = useState<string | null>(null);
   const [storyboardCompoundStatus, setStoryboardCompoundStatus] = useState<string | null>(null);
   const [storyboardProjectLink, setStoryboardProjectLink] = useState<string | null>(null);
   const [storyboardRenderJobId, setStoryboardRenderJobId] = useState<string | null>(null);
+  const [storyboardCompanionAudio, setStoryboardCompanionAudio] = useState<StoryboardCompanionAudioCandidate[]>([]);
   const [previewContextTab, setPreviewContextTab] = useState<MediaType | null>(null);
   const autoPreviewSessionStartRef = useRef<number>(0);
   const autoPreviewWindowUntilRef = useRef<number>(0);
@@ -1798,6 +2755,22 @@ export default function MediaStudio() {
   const [omnivoiceReferenceAudioMimeType, setOmnivoiceReferenceAudioMimeType] = useState("");
   const [omnivoiceReferenceText, setOmnivoiceReferenceText] = useState("");
   const [omnivoiceInstruct, setOmnivoiceInstruct] = useState("");
+  const [audioWorkflow, setAudioWorkflow] = useState<AudioWorkflow>(() => {
+    const saved = localStorage.getItem("smartspec_audio_workflow");
+    return saved === "voice_changer"
+      || saved === "speech_to_text"
+      || saved === "sound_effects"
+      || saved === "voice_isolator"
+      ? saved
+      : "tts";
+  });
+  const [voiceChangerSourceAudioUrl, setVoiceChangerSourceAudioUrl] = useState("");
+  const [voiceChangerSourceAudioName, setVoiceChangerSourceAudioName] = useState("");
+  const voiceChangerAudioInputRef = useRef<HTMLInputElement | null>(null);
+  const isVoiceChangerMode = activeTab === "audio" && audioWorkflow === "voice_changer";
+  const isSpeechToTextMode = activeTab === "audio" && audioWorkflow === "speech_to_text";
+  const isVoiceIsolatorMode = activeTab === "audio" && audioWorkflow === "voice_isolator";
+  const isSourceAudioWorkflow = isVoiceChangerMode || isSpeechToTextMode || isVoiceIsolatorMode;
 
   // API queries
   const { data: credits } = trpc.credits.balance.useQuery();
@@ -1836,16 +2809,67 @@ export default function MediaStudio() {
     }));
   }, [userVisibleSkillsRaw]);
   const { data: mediaModels } = trpc.mediaModels.list.useQuery({ type: activeTab });
+  const { data: audioMediaModels } = trpc.mediaModels.list.useQuery({ type: "audio" });
   const visibleMediaModels = useMemo(() => {
     const models = (mediaModels?.models as any[] | undefined) ?? [];
-    return isDesktopPlatform
+    const platformModels = isDesktopPlatform
       ? models
       : models.filter((model) => model.provider !== "omnivoice");
-  }, [isDesktopPlatform, mediaModels?.models]);
+    if (activeTab === "audio") {
+      const workflowModelIds = AUDIO_WORKFLOW_MODEL_IDS[audioWorkflow] ?? AUDIO_WORKFLOW_MODEL_IDS.tts;
+      return platformModels.filter((model) => hasAnyModelIdCandidate(model, workflowModelIds));
+    }
+    return platformModels;
+  }, [activeTab, audioWorkflow, isDesktopPlatform, mediaModels?.models]);
   const visibleMediaProviders = useMemo(() => {
     const providers = (mediaModels?.providers as string[] | undefined) ?? [];
     return isDesktopPlatform ? providers : providers.filter((provider) => provider !== "omnivoice");
   }, [isDesktopPlatform, mediaModels?.providers]);
+  const visibleAudioMediaModels = useMemo(() => {
+    const models = (audioMediaModels?.models as any[] | undefined) ?? [];
+    return isDesktopPlatform
+      ? models
+      : models.filter((model) => model.provider !== "omnivoice");
+  }, [audioMediaModels?.models, isDesktopPlatform]);
+  const separateVoiceModels = useMemo(
+    () => visibleAudioMediaModels.filter((model) => hasAnyModelIdCandidate(model, SEPARATE_VOICE_MODEL_IDS)),
+    [visibleAudioMediaModels],
+  );
+  const separateMusicModels = useMemo(
+    () => visibleAudioMediaModels.filter((model) => hasAnyModelIdCandidate(model, SEPARATE_MUSIC_MODEL_IDS)),
+    [visibleAudioMediaModels],
+  );
+  const selectedSeparateVoiceModel = useMemo(() => {
+    const matched = separateVoiceModels.find((model) => hasAnyModelIdCandidate(model, new Set([videoVoiceModel])));
+    if (!matched) return undefined;
+    const normalized = {
+      ...matched,
+      id: matched.id ?? matched.modelId,
+      configJson: parseMediaModelConfig(matched.configJson) ?? matched.configJson,
+    };
+    const parsedFields = parseModelInputFields(normalized as any);
+    return withFallbackModelInputFields(
+      normalized,
+      parsedFields.length > 0 ? [] : getSeparateVoiceFallbackFields(normalized),
+    );
+  }, [separateVoiceModels, videoVoiceModel]);
+  const selectedSeparateMusicModel = useMemo(() => {
+    const matched = separateMusicModels.find((model) => hasAnyModelIdCandidate(model, new Set([videoMusicModel])));
+    if (!matched) return undefined;
+    return {
+      ...matched,
+      id: matched.id ?? matched.modelId,
+      configJson: parseMediaModelConfig(matched.configJson) ?? matched.configJson,
+    };
+  }, [separateMusicModels, videoMusicModel]);
+  const selectedSeparateVoiceFields = useMemo(
+    () => parseModelInputFields(selectedSeparateVoiceModel as any),
+    [selectedSeparateVoiceModel],
+  );
+  const selectedSeparateMusicFields = useMemo(
+    () => parseModelInputFields(selectedSeparateMusicModel as any),
+    [selectedSeparateMusicModel],
+  );
   const selectedMediaModel = useMemo(
     () => visibleMediaModels.find((m) => m.modelId === selectedModel),
     [selectedModel, visibleMediaModels],
@@ -1866,10 +2890,15 @@ export default function MediaStudio() {
     return null;
   }, [selectedMediaModel?.configJson]);
   const selectedMediaModelMaxPromptLength = useMemo(() => {
+    const inferredLimit = inferVoiceoverTextLimitCharacters(getMediaModelCandidateIds(selectedMediaModel));
     const rawLimit = selectedMediaModelConfig?.maxPromptLength;
     const parsedLimit = Number(rawLimit);
-    return Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : null;
-  }, [selectedMediaModelConfig]);
+    if (Number.isFinite(parsedLimit) && parsedLimit > 0) {
+      return inferredLimit !== null ? Math.min(parsedLimit, inferredLimit) : parsedLimit;
+    }
+
+    return inferredLimit;
+  }, [selectedMediaModel, selectedMediaModelConfig]);
   const selectedMediaModelReferenceSupport = useMemo(
     () => getModelReferenceInputSupport(selectedMediaModel as any),
     [selectedMediaModel],
@@ -1920,8 +2949,15 @@ export default function MediaStudio() {
     }
   }, [isOmnivoiceDesktopCloneMode]);
   const selectedMediaModelForInputFields = useMemo(
-    () => (selectedMediaModel ? { ...selectedMediaModel, configJson: selectedMediaModelConfig ?? undefined } : undefined),
-    [selectedMediaModel, selectedMediaModelConfig],
+    () => {
+      if (!selectedMediaModel) return undefined;
+      const normalized = { ...selectedMediaModel, configJson: selectedMediaModelConfig ?? undefined };
+      if (activeTab === "audio" && hasAnyModelIdCandidate(normalized, SEPARATE_VOICE_MODEL_IDS)) {
+        return withFallbackModelInputFields(normalized, getSeparateVoiceFallbackFields(normalized));
+      }
+      return normalized;
+    },
+    [activeTab, selectedMediaModel, selectedMediaModelConfig],
   );
   const selectedMediaModelParsedInputFields = useMemo(
     () => parseModelInputFields(selectedMediaModelForInputFields),
@@ -2108,6 +3144,27 @@ export default function MediaStudio() {
     });
   }, [expiredUrls, historyGalleryTasks]);
 
+  const audioPickerHistoryOptions = useMemo(() => {
+    const tasks = (mediaHistory?.tasks ?? []) as MediaHistoryTaskLite[];
+    return tasks
+      .filter((task) => task.mediaType === "audio" && task.status === "completed")
+      .map((task) => {
+        const url = extractTaskResultUrl(task);
+        if (!url || expiredUrls.has(url)) return null;
+        const title = (task.prompt || task.model || "Generated audio").trim();
+        const urlPath = url.split("?")[0] || "";
+        const extension = (urlPath.includes(".") ? urlPath.split(".").pop() : "audio") || "audio";
+        return {
+          id: `history-${task.id}`,
+          title: title.length > 90 ? `${title.slice(0, 87)}...` : title,
+          url,
+          extension: extension.toLowerCase(),
+          groupLabel: "History",
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  }, [expiredUrls, mediaHistory?.tasks]);
+
   const historyGalleryPendingTasks = useMemo(() => {
     return historyGalleryTasks.filter((task) => {
       if (task.status === "processing" || task.status === "pending") return true;
@@ -2173,6 +3230,7 @@ export default function MediaStudio() {
   const generateImageAsyncMutation = trpc.media.generateImageAsync.useMutation();
   const generateVideoAsyncMutation = trpc.media.generateVideoAsync.useMutation();
   const generateAudioMutation = trpc.media.generateAudio.useMutation();
+  const generateAudioAsyncMutation = trpc.media.generateAudioAsync.useMutation();
   const enhancePromptMutation = trpc.skills.enhancePrompt.useMutation();
   const executeCustomSkillMutation = trpc.skills.executeCustomSkill.useMutation();
 
@@ -2259,6 +3317,20 @@ export default function MediaStudio() {
     setSelectedLibraryItemId(null);
   }, [activeTab]);
 
+  useEffect(() => {
+    localStorage.setItem("smartspec_audio_workflow", audioWorkflow);
+  }, [audioWorkflow]);
+
+  useEffect(() => {
+    if (activeTab !== "audio" || visibleMediaModels.length === 0) {
+      return;
+    }
+    if (selectedModel && visibleMediaModels.some((model: any) => model.modelId === selectedModel)) {
+      return;
+    }
+    setSelectedModel(visibleMediaModels[0].modelId);
+  }, [activeTab, audioWorkflow, selectedModel, setSelectedModel, visibleMediaModels]);
+
   // Set model from localStorage or default when models load
   useEffect(() => {
     if (modelInitialized) return;
@@ -2311,7 +3383,7 @@ export default function MediaStudio() {
       setModelInputValues({});
       return;
     }
-    const model = visibleMediaModels.find((m) => m.modelId === selectedModel);
+    const model = selectedMediaModelForInputFields ?? visibleMediaModels.find((m) => m.modelId === selectedModel);
     const config = model?.configJson as any;
     if (!config?.inputFields) {
       setModelInputValues({});
@@ -2348,13 +3420,13 @@ export default function MediaStudio() {
         setAspectRatio(defaultAr);
       }
     }
-  }, [selectedModel, visibleMediaModels, activeTab, aspectRatio, setAspectRatio]);
+  }, [selectedModel, visibleMediaModels, activeTab, aspectRatio, setAspectRatio, selectedMediaModelForInputFields]);
 
   // Keep modelInputValues in sync with runtime values for fields that declare syncWith targets.
   // Runs whenever prompt / referenceImages / aspectRatio changes so the read-only display stays current.
   useEffect(() => {
     if (!selectedModel || visibleMediaModels.length === 0) return;
-    const model = visibleMediaModels.find((m) => m.modelId === selectedModel);
+    const model = selectedMediaModelForInputFields ?? visibleMediaModels.find((m) => m.modelId === selectedModel);
     const config = model?.configJson as any;
     if (!config?.inputFields) return;
 
@@ -2375,7 +3447,134 @@ export default function MediaStudio() {
       setModelInputValues((prev: Record<string, any>) => ({ ...prev, ...syncedValues }));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prompt, referenceImages, referenceVideos, aspectRatio, selectedModel, visibleMediaModels]);
+  }, [prompt, referenceImages, referenceVideos, aspectRatio, selectedModel, visibleMediaModels, selectedMediaModelForInputFields]);
+
+  // Keep Veo 3.1 storyboard skill options and Media Studio's model controls aligned.
+  // This bridge is deliberately scoped to the video storyboard skill and Veo models so other models keep their own controls.
+  useEffect(() => {
+    if (activeTab !== "video" || selectedSkillId !== VEO_STORYBOARD_SKILL_ID || !useAdvancedMode) return;
+    if (!selectedModel || visibleMediaModels.length === 0) return;
+
+    const sync = buildVeoSkillToMediaStudioSync({
+      skillValues: dynamicFormValues,
+      selectedModel,
+      visibleModels: visibleMediaModels,
+      aspectRatio,
+    });
+
+    if (sync.selectedModelId) {
+      setSelectedModel(sync.selectedModelId);
+    }
+    if (sync.aspectRatio) {
+      setAspectRatio(sync.aspectRatio);
+    }
+    if (Object.keys(sync.modelInputPatch).length > 0) {
+      setModelInputValues((prev: Record<string, any>) => (
+        hasChangedRecordValues(prev, sync.modelInputPatch)
+          ? { ...prev, ...sync.modelInputPatch }
+          : prev
+      ));
+    }
+    const nextAudioWorkflow = String(dynamicFormValues.videoAudioWorkflow ?? "").trim();
+    if (
+      nextAudioWorkflow === "native" ||
+      nextAudioWorkflow === "separate_voice" ||
+      nextAudioWorkflow === "separate_music" ||
+      nextAudioWorkflow === "separate_voice_music"
+    ) {
+      setVideoAudioWorkflow(nextAudioWorkflow);
+    }
+    if (typeof dynamicFormValues.separateVoiceModel === "string" && dynamicFormValues.separateVoiceModel.trim()) {
+      setVideoVoiceModel(dynamicFormValues.separateVoiceModel.trim());
+    }
+    if (typeof dynamicFormValues.separateMusicModel === "string" && dynamicFormValues.separateMusicModel.trim()) {
+      setVideoMusicModel(dynamicFormValues.separateMusicModel.trim());
+    }
+    if (typeof dynamicFormValues.separateMusicPrompt === "string") {
+      setVideoMusicPrompt(dynamicFormValues.separateMusicPrompt);
+    }
+  }, [
+    activeTab,
+    selectedSkillId,
+    useAdvancedMode,
+    dynamicFormValues,
+    selectedModel,
+    visibleMediaModels,
+    aspectRatio,
+    setSelectedModel,
+    setAspectRatio,
+    setModelInputValues,
+    setVideoAudioWorkflow,
+    setVideoVoiceModel,
+    setVideoMusicModel,
+    setVideoMusicPrompt,
+  ]);
+
+  useEffect(() => {
+    if (activeTab !== "video" || selectedSkillId !== VEO_STORYBOARD_SKILL_ID || !useAdvancedMode) return;
+    if (!selectedModel || visibleMediaModels.length === 0) return;
+
+    const selectedModelData = visibleMediaModels.find((model) => model.modelId === selectedModel);
+    const patch = buildMediaStudioToVeoSkillSync({
+      selectedModelData,
+      modelInputValues,
+      aspectRatio,
+    });
+    patch.videoAudioWorkflow = videoAudioWorkflow;
+    patch.separateVoiceModel = videoVoiceModel;
+    patch.separateMusicModel = videoMusicModel;
+    patch.separateMusicPrompt = videoMusicPrompt;
+    if (Object.keys(patch).length === 0 || !hasChangedRecordValues(dynamicFormValues, patch)) return;
+
+    setDynamicFormValues({ ...dynamicFormValues, ...patch });
+  }, [
+    activeTab,
+    selectedSkillId,
+    useAdvancedMode,
+    selectedModel,
+    visibleMediaModels,
+    modelInputValues,
+    aspectRatio,
+    videoAudioWorkflow,
+    videoVoiceModel,
+    videoMusicModel,
+    videoMusicPrompt,
+    dynamicFormValues,
+    setDynamicFormValues,
+  ]);
+
+  useEffect(() => {
+    if (
+      activeTab !== "video"
+      || selectedSkillId !== VEO_STORYBOARD_SKILL_ID
+      || !useAdvancedMode
+      || dynamicFormValues.contentMode !== "news_narration"
+    ) {
+      return;
+    }
+
+    if (videoOutputType !== "multi-video") {
+      setVideoOutputType("multi-video");
+    }
+
+    const normalizedSkillInputs = sanitizeVeoStoryboardSkillInputs(dynamicFormValues);
+    if (
+      normalizedSkillInputs.dialogueLanguage
+      && normalizedSkillInputs.dialogueLanguage !== dynamicFormValues.dialogueLanguage
+    ) {
+      setDynamicFormValues({
+        ...dynamicFormValues,
+        dialogueLanguage: normalizedSkillInputs.dialogueLanguage,
+      });
+    }
+  }, [
+    activeTab,
+    selectedSkillId,
+    useAdvancedMode,
+    dynamicFormValues,
+    videoOutputType,
+    setDynamicFormValues,
+  ]);
 
   // Save aspect ratio to localStorage when changed (per-tab)
   useEffect(() => {
@@ -2392,6 +3591,72 @@ export default function MediaStudio() {
   useEffect(() => {
     localStorage.setItem("smartspec_video_output_type", videoOutputType);
   }, [videoOutputType]);
+
+  useEffect(() => {
+    localStorage.setItem("smartspec_video_audio_workflow", videoAudioWorkflow);
+  }, [videoAudioWorkflow]);
+
+  useEffect(() => {
+    localStorage.setItem("smartspec_video_voice_model", videoVoiceModel);
+  }, [videoVoiceModel]);
+
+  useEffect(() => {
+    localStorage.setItem("smartspec_video_music_model", videoMusicModel);
+  }, [videoMusicModel]);
+
+  useEffect(() => {
+    localStorage.setItem("smartspec_video_music_prompt", videoMusicPrompt);
+  }, [videoMusicPrompt]);
+
+  useEffect(() => {
+    localStorage.setItem("smartspec_storyboard_audio_prep_mode", storyboardAudioPrepMode);
+  }, [storyboardAudioPrepMode]);
+
+  useEffect(() => {
+    if (
+      storyboardAudioPrepMode === "off" ||
+      !(videoAudioWorkflow === "separate_voice" || videoAudioWorkflow === "separate_voice_music")
+    ) {
+      setStoryboardPreparedAudio([]);
+      setStoryboardAudioPrepStatus(null);
+    }
+  }, [storyboardAudioPrepMode, videoAudioWorkflow]);
+
+  useEffect(() => {
+    if (separateVoiceModels.length === 0) return;
+    const selected = separateVoiceModels.find((model) => hasAnyModelIdCandidate(model, new Set([videoVoiceModel])));
+    if (selected?.modelId && selected.modelId !== videoVoiceModel) {
+      setVideoVoiceModel(selected.modelId);
+    } else if (!selected) {
+      const preferred = separateVoiceModels.find((model) => hasAnyModelIdCandidate(model, new Set([DEFAULT_SEPARATE_VOICE_MODEL_ID])))
+        ?? separateVoiceModels[0];
+      if (preferred?.modelId) {
+        setVideoVoiceModel(preferred.modelId);
+      }
+    }
+  }, [separateVoiceModels, videoVoiceModel]);
+
+  useEffect(() => {
+    setVideoVoiceModelInputValues(buildDefaultExtraParamsForModel(selectedSeparateVoiceModel as any) ?? {});
+  }, [selectedSeparateVoiceModel?.modelId]);
+
+  useEffect(() => {
+    if (separateMusicModels.length === 0) return;
+    const selected = separateMusicModels.find((model) => hasAnyModelIdCandidate(model, new Set([videoMusicModel])));
+    if (selected?.modelId && selected.modelId !== videoMusicModel) {
+      setVideoMusicModel(selected.modelId);
+    } else if (!selected) {
+      const preferred = separateMusicModels.find((model) => hasAnyModelIdCandidate(model, new Set([DEFAULT_SEPARATE_MUSIC_MODEL_ID])))
+        ?? separateMusicModels[0];
+      if (preferred?.modelId) {
+        setVideoMusicModel(preferred.modelId);
+      }
+    }
+  }, [separateMusicModels, videoMusicModel]);
+
+  useEffect(() => {
+    setVideoMusicModelInputValues(buildDefaultExtraParamsForModel(selectedSeparateMusicModel as any) ?? {});
+  }, [selectedSeparateMusicModel?.modelId]);
 
   // Smart skill selection: localStorage > priority > type match > first enabled
   useEffect(() => {
@@ -2426,11 +3691,15 @@ export default function MediaStudio() {
     if (activeTab === "image" && imageTabPrompt) {
       applyPromptPackageToCurrentTab(imageTabPrompt, "enhancedPrompt");
     } else if (activeTab === "video" && videoTabPrompt) {
-      applyPromptPackageToCurrentTab(videoTabPrompt, "enhancedPrompt");
+      applyPromptPackageToCurrentTab(
+        videoTabPrompt,
+        "enhancedPrompt",
+        buildExternalAudioPromptDisplayOptions(videoTabPrompt),
+      );
     }
     // Don't clear enhancedPrompt when switching to a tab without split prompt
     // User may have typed their own prompt
-  }, [activeTab, applyPromptPackageToCurrentTab, imageTabPrompt, videoTabPrompt]);
+  }, [activeTab, applyPromptPackageToCurrentTab, buildExternalAudioPromptDisplayOptions, imageTabPrompt, videoTabPrompt]);
 
   // Reset dynamic form values when skill changes (per-tab)
   useEffect(() => {
@@ -2605,6 +3874,86 @@ export default function MediaStudio() {
 
     if (videoFileInputRef.current) {
       videoFileInputRef.current.value = "";
+    }
+  };
+
+  const handleStoryboardAudioFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("audio/")) {
+      toast.error(t('mediaStudio.storyboardAudioPrepInvalidFile'));
+      if (storyboardAudioFileInputRef.current) {
+        storyboardAudioFileInputRef.current.value = "";
+      }
+      return;
+    }
+
+    setStoryboardAudioPrepStatus(t('mediaStudio.storyboardAudioPrepUploading'));
+    try {
+      const fileBase64 = await blobToBase64(file);
+      const result = await uploadMutation.mutateAsync({
+        fileName: file.name,
+        fileType: file.type,
+        fileBase64,
+      });
+      const fallbackSeconds = estimateVoiceoverDurationSeconds(externalVoiceoverScript || prompt || "");
+      const durationSeconds = await probeMediaDurationSeconds(result.url, fallbackSeconds);
+      setStoryboardAudioSourceUrl(result.url);
+      setStoryboardAudioSourceName(file.name);
+      setStoryboardAudioSourceDurationSeconds(durationSeconds);
+      setStoryboardAudioPrepMode("existing_voice");
+      setGeneratedMedia((prev) => [{
+        id: `uploaded-storyboard-audio-${Date.now()}`,
+        type: "audio",
+        url: result.url,
+        prompt: file.name,
+        model: "uploaded-audio",
+        createdAt: new Date().toISOString(),
+      }, ...prev]);
+      setStoryboardAudioPrepStatus(t('mediaStudio.storyboardAudioPrepDurationReady', {
+        duration: formatMediaDuration(durationSeconds),
+      }));
+      toast.success(t('mediaStudio.storyboardAudioPrepAudioReady'));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t('mediaStudio.storyboardAudioPrepUploadFailed');
+      setStoryboardAudioPrepStatus(message);
+      toast.error(message);
+    } finally {
+      if (storyboardAudioFileInputRef.current) {
+        storyboardAudioFileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleVoiceChangerAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("audio/")) {
+      toast.error("Please choose an audio file for Voice Changer.");
+      if (voiceChangerAudioInputRef.current) {
+        voiceChangerAudioInputRef.current.value = "";
+      }
+      return;
+    }
+
+    try {
+      const fileBase64 = await blobToBase64(file);
+      const result = await uploadMutation.mutateAsync({
+        fileName: file.name,
+        fileType: file.type,
+        fileBase64,
+      });
+      setVoiceChangerSourceAudioUrl(result.url);
+      setVoiceChangerSourceAudioName(file.name);
+      setModelInputValues((prev: Record<string, any>) => ({ ...prev, audio: [result.url] }));
+      toast.success("Source audio is ready for Voice Changer.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Voice Changer audio upload failed";
+      toast.error(message);
+    } finally {
+      if (voiceChangerAudioInputRef.current) {
+        voiceChangerAudioInputRef.current.value = "";
+      }
     }
   };
 
@@ -2896,6 +4245,296 @@ export default function MediaStudio() {
     return false;
   }, [useAdvancedMode, skillSchema]);
 
+  const getStoryboardAudioTimingClipSeconds = useCallback(() => {
+    const selectedModelData = visibleMediaModels.find((model) => model.modelId === selectedModel);
+    const selectedVeoProviderModelId = getVeoProviderModelId(selectedModelData);
+    if (activeTab === "video" && isVeoProviderModelId(selectedVeoProviderModelId)) {
+      return Math.max(0.25, selectedVideoDuration ?? 8);
+    }
+    return Math.max(0.25, selectedVideoDuration ?? tabStates.video.duration ?? 8);
+  }, [activeTab, selectedModel, selectedVideoDuration, tabStates.video.duration, visibleMediaModels]);
+
+  const buildStoryboardAudioPrepScript = useCallback((values: Record<string, any>, fallbackText: string): string => {
+    const liveVoiceoverScript = voiceoverScriptTextareaRef.current?.value ?? externalVoiceoverScript;
+    const candidates = [
+      liveVoiceoverScript,
+      values.storyboardPreparedVoiceoverScript,
+      values.voiceoverScript,
+      values.newsScript,
+      values.userIdea,
+      values.request,
+      values.prompt,
+      fallbackText,
+    ];
+    for (const candidate of candidates) {
+      const text = String(candidate ?? "").trim();
+      if (text) return text;
+    }
+    return "";
+  }, [externalVoiceoverScript]);
+
+  const prepareStoryboardAudioTimingForAutoPrompt = useCallback(async (
+    values: Record<string, any>,
+    fallbackText: string,
+  ): Promise<StoryboardPreparedAudioTiming | null> => {
+    if (
+      activeTab !== "video" ||
+      selectedSkillId !== VEO_STORYBOARD_SKILL_ID ||
+      storyboardAudioPrepMode === "off" ||
+      !(videoAudioWorkflow === "separate_voice" || videoAudioWorkflow === "separate_voice_music")
+    ) {
+      return null;
+    }
+
+    const clipDurationSeconds = getStoryboardAudioTimingClipSeconds();
+    const script = buildStoryboardAudioPrepScript(values, fallbackText);
+    const buildTiming = (
+      durationSeconds: number,
+      mode: Exclude<StoryboardAudioPrepMode, "off">,
+      sourceName: string,
+      companionAudio: StoryboardCompanionAudioCandidate[],
+      voiceoverScript?: string,
+    ): StoryboardPreparedAudioTiming => {
+      const safeDuration = Math.max(clipDurationSeconds, durationSeconds);
+      return {
+        mode,
+        durationSeconds: safeDuration,
+        clipDurationSeconds,
+        promptCount: Math.max(1, Math.ceil(safeDuration / clipDurationSeconds)),
+        sourceName,
+        voiceoverScript,
+        companionAudio,
+      };
+    };
+
+    if (storyboardAudioPrepMode === "existing_voice") {
+      if (!storyboardAudioSourceUrl.trim()) {
+        toast.warning(t('mediaStudio.storyboardAudioPrepSelectAudioFirst'));
+        return null;
+      }
+      setStoryboardAudioPrepStatus(t('mediaStudio.storyboardAudioPrepProbing'));
+      const fallbackSeconds = estimateVoiceoverDurationSeconds(script || fallbackText);
+      const durationSeconds = storyboardAudioSourceDurationSeconds
+        ?? await probeMediaDurationSeconds(storyboardAudioSourceUrl, fallbackSeconds);
+      setStoryboardAudioSourceDurationSeconds(durationSeconds);
+      const title = storyboardAudioSourceName.trim() || t('mediaStudio.storyboardAudioPrepExistingTitle');
+      const audio: StoryboardCompanionAudioCandidate = {
+        id: `prepared-voiceover-existing-${Date.now()}`,
+        kind: "voiceover",
+        title,
+        url: storyboardAudioSourceUrl,
+        prompt: script,
+        model: "uploaded-audio",
+        startTimeSeconds: 0,
+        actualDurationSeconds: durationSeconds,
+        targetDurationSeconds: durationSeconds,
+        volume: 1,
+      };
+      setStoryboardAudioPrepStatus(t('mediaStudio.storyboardAudioPrepDurationReady', {
+        duration: formatMediaDuration(durationSeconds),
+      }));
+      return buildTiming(durationSeconds, "existing_voice", title, [audio], script || undefined);
+    }
+
+    if (!script.trim()) {
+      toast.warning(t('mediaStudio.storyboardAudioPrepNoScript'));
+      return null;
+    }
+
+    const findAudioModel = (modelId: string, fallbackModels: any[]) =>
+      visibleAudioMediaModels.find((model) => hasAnyModelIdCandidate(model, new Set([modelId])))
+      ?? fallbackModels.find((model) => hasAnyModelIdCandidate(model, new Set([modelId])))
+      ?? fallbackModels[0]
+      ?? null;
+    const pollAudioTaskResult = async (task: any): Promise<string> => {
+      const immediateUrl = extractTaskResultUrl(task);
+      if (immediateUrl) return immediateUrl;
+      const pollId = task?.taskId || task?.id;
+      if (!pollId) {
+        throw new Error("Audio task did not return a task id");
+      }
+      for (let attempt = 0; attempt < 120; attempt += 1) {
+        const currentTask = await trpcUtils.media.getTask.fetch({ taskId: pollId });
+        const status = String((currentTask as any)?.status || "").toLowerCase();
+        if (status === "completed") {
+          const url = extractTaskResultUrl(currentTask as any);
+          if (url) return url;
+          throw new Error("Audio generation completed without a media URL");
+        }
+        if (status === "failed" || status === "cancelled") {
+          throw new Error((currentTask as any)?.errorMessage || "Audio generation failed");
+        }
+        await sleepMs(2000);
+      }
+      throw new Error("Audio generation timeout. Please try again.");
+    };
+
+    const rawVoiceModel = findAudioModel(videoVoiceModel, separateVoiceModels);
+    const voiceModel = withFallbackModelInputFields(rawVoiceModel, getSeparateVoiceFallbackFields(rawVoiceModel));
+    if (!voiceModel?.modelId) {
+      toast.warning(t('mediaStudio.storyboardAudioPrepNoVoiceModel'));
+      return null;
+    }
+
+    const voiceModelIds = new Set(getMediaModelCandidateIds(voiceModel).map((id) => id.toLowerCase()));
+    const isThai = containsThaiText(script);
+    const voiceExtraParams: Record<string, unknown> = buildRuntimeExtraParamsFromModelInputs({
+      model: voiceModel,
+      inputValues: videoVoiceModelInputValues,
+      prompt: script,
+      aspectRatio,
+      activeTab: "audio",
+    });
+    if (voiceModelIds.has(GEMINI_3_1_FLASH_TTS_MODEL_ID)) {
+      if (!voiceExtraParams.style_instructions) {
+        voiceExtraParams.style_instructions = buildVoiceoverStyleInstruction({
+          targetDurationSeconds: estimateVoiceoverDurationSeconds(script),
+          languageHint: isThai ? "Thai" : undefined,
+        });
+      }
+      const selectedLanguageCode = String(voiceExtraParams.language_code ?? "").trim();
+      if (
+        !selectedLanguageCode ||
+        selectedLanguageCode === "__auto__" ||
+        (isThai && selectedLanguageCode.startsWith("English"))
+      ) {
+        voiceExtraParams.language_code = isThai ? "Thai (Thailand)" : "__auto__";
+      }
+      if (!voiceExtraParams.voice) {
+        voiceExtraParams.voice = "Kore";
+      }
+      if (!voiceExtraParams.output_format) {
+        voiceExtraParams.output_format = "mp3";
+      }
+    } else if (Array.from(voiceModelIds).some((id) => id.includes("gemini-2.5"))) {
+      const selectedLanguage = String(voiceExtraParams.language ?? "").trim();
+      if (!selectedLanguage || (isThai && selectedLanguage.startsWith("English"))) {
+        voiceExtraParams.language = isThai ? "Thai (Thailand)" : "English (United States)";
+      }
+      if (!Array.isArray(voiceExtraParams.speakers) || voiceExtraParams.speakers.length === 0) {
+        voiceExtraParams.speakers = [{ speaker: "Speaker 1", voice: "Charon" }];
+      }
+    } else if (Array.from(voiceModelIds).some((id) => id.includes("qwen3-tts"))) {
+      if (!voiceExtraParams.voice) {
+        voiceExtraParams.voice = "Ethan";
+      }
+      if (!voiceExtraParams.speed) {
+        voiceExtraParams.speed = 1.08;
+      }
+      if (!voiceExtraParams.format) {
+        voiceExtraParams.format = "mp3";
+      }
+    }
+
+    const modelConfig = parseMediaModelConfig(voiceModel.configJson);
+    const audioApiConfig = buildApiConfigFromModelConfig(modelConfig);
+    const estimatedDurationSeconds = estimateVoiceoverDurationSeconds(script);
+    const voiceoverSegments = buildVoiceoverSegments({
+      script,
+      targetDurationSeconds: estimatedDurationSeconds,
+      maxCharacters: inferVoiceoverTextLimitCharacters(voiceModelIds),
+    });
+    const companionAudio: StoryboardCompanionAudioCandidate[] = [];
+    let actualCursorSeconds = 0;
+    for (const segment of voiceoverSegments) {
+      setStoryboardAudioPrepStatus(
+        segment.count > 1
+          ? t('mediaStudio.storyboardAudioPrepGeneratingSegment', {
+            index: segment.index + 1,
+            count: segment.count,
+          })
+          : t('mediaStudio.storyboardAudioPrepGenerating'),
+      );
+      const segmentExtraParams = { ...voiceExtraParams };
+      if (voiceModelIds.has(GEMINI_3_1_FLASH_TTS_MODEL_ID)) {
+        segmentExtraParams.style_instructions = buildVoiceoverStyleInstruction({
+          targetDurationSeconds: segment.targetDurationSeconds,
+          languageHint: isThai ? "Thai" : undefined,
+        });
+      }
+      const submittedTask = await generateAudioAsyncMutation.mutateAsync({
+        text: buildVoiceoverText({
+          script: segment.text,
+          targetDurationSeconds: segment.targetDurationSeconds,
+          languageHint: isThai ? "Thai" : undefined,
+        }),
+        model: voiceModel.modelId,
+        originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+        ...(Object.keys(segmentExtraParams).length > 0 ? { extraParams: segmentExtraParams } : {}),
+        ...(Object.keys(audioApiConfig).length > 0 ? { apiConfig: audioApiConfig } : {}),
+      });
+      const audioUrl = await pollAudioTaskResult(submittedTask);
+      const actualDurationSeconds = await probeMediaDurationSeconds(audioUrl, segment.targetDurationSeconds);
+      const audio: StoryboardCompanionAudioCandidate = {
+        id: `prepared-voiceover-generated-${Date.now()}-${segment.index}`,
+        kind: "voiceover",
+        title: segment.count > 1
+          ? `${t('mediaStudio.storyboardAudioPrepGeneratedTitle')} ${segment.index + 1}/${segment.count}`
+          : t('mediaStudio.storyboardAudioPrepGeneratedTitle'),
+        url: audioUrl,
+        prompt: segment.text,
+        model: voiceModel.modelId,
+        startTimeSeconds: actualCursorSeconds,
+        segmentIndex: segment.index,
+        segmentCount: segment.count,
+        actualDurationSeconds,
+        targetDurationSeconds: actualDurationSeconds,
+        volume: 1,
+      };
+      companionAudio.push(audio);
+      actualCursorSeconds += actualDurationSeconds;
+      setGeneratedMedia((prev) => [{
+        id: `${audio.id}-${Date.now()}`,
+        type: "audio",
+        url: audio.url,
+        prompt: audio.prompt,
+        model: audio.model || "",
+        createdAt: new Date().toISOString(),
+      }, ...prev]);
+    }
+    const durationSeconds = companionAudio.reduce(
+      (sum, audio) => sum + (audio.actualDurationSeconds ?? audio.targetDurationSeconds ?? 0),
+      0,
+    ) || estimatedDurationSeconds;
+    const firstAudio = companionAudio[0];
+    if (firstAudio) {
+      setStoryboardAudioSourceUrl(firstAudio.url);
+    }
+    setStoryboardAudioSourceName(t('mediaStudio.storyboardAudioPrepGeneratedTitle'));
+    setStoryboardAudioSourceDurationSeconds(durationSeconds);
+    setStoryboardAudioPrepStatus(t('mediaStudio.storyboardAudioPrepDurationReady', {
+      duration: formatMediaDuration(durationSeconds),
+    }));
+    toast.success(t('mediaStudio.storyboardAudioPrepAudioReady'));
+    return buildTiming(
+      durationSeconds,
+      "generate_voice",
+      t('mediaStudio.storyboardAudioPrepGeneratedTitle'),
+      companionAudio,
+      script,
+    );
+  }, [
+    activeTab,
+    aspectRatio,
+    buildStoryboardAudioPrepScript,
+    externalVoiceoverScript,
+    generateAudioAsyncMutation,
+    getStoryboardAudioTimingClipSeconds,
+    selectedSkillId,
+    separateVoiceModels,
+    storyboardAudioPrepMode,
+    storyboardAudioSourceDurationSeconds,
+    storyboardAudioSourceName,
+    storyboardAudioSourceUrl,
+    t,
+    toast,
+    trpcUtils.media.getTask,
+    videoAudioWorkflow,
+    videoVoiceModel,
+    videoVoiceModelInputValues,
+    visibleAudioMediaModels,
+  ]);
+
   // Auto Prompt - enhance prompt using the selected skill. Native Python prompt skills may be model-free.
   // Works with: text only, images only, or text + images
   // Passes all selected options: style, VFX, realistic skin, face lock, etc.
@@ -3059,6 +4698,70 @@ export default function MediaStudio() {
           delete mappedValues.maxPromptLength;
         }
 
+        if (activeTab === "video" && selectedSkillId === VEO_STORYBOARD_SKILL_ID) {
+          mappedValues.videoAudioWorkflow = videoAudioWorkflow;
+          mappedValues.separateVoiceModel = videoVoiceModel;
+          mappedValues.separateMusicModel = videoMusicModel;
+          if (videoMusicPrompt.trim()) {
+            mappedValues.separateMusicPrompt = videoMusicPrompt.trim();
+          }
+          const normalizedSkillInputs = sanitizeVeoStoryboardSkillInputs(mappedValues);
+          for (const key of Object.keys(mappedValues)) {
+            if (!Object.prototype.hasOwnProperty.call(normalizedSkillInputs, key)) {
+              delete mappedValues[key];
+            }
+          }
+          Object.assign(mappedValues, normalizedSkillInputs);
+
+          const veoSync = buildVeoSkillToMediaStudioSync({
+            skillValues: mappedValues,
+            selectedModel,
+            visibleModels: visibleMediaModels,
+            aspectRatio,
+          });
+          if (veoSync.resolvedProviderModel) {
+            mappedValues.veoProviderModel = veoSync.resolvedProviderModel;
+          }
+          if (mappedValues.outputQuality && !mappedValues.resolution) {
+            mappedValues.resolution = mappedValues.outputQuality;
+          }
+          const resolvedAspectRatio = normalizeVeoAspectRatioForGenerationType(
+            mappedValues.generationType,
+            aspectRatio,
+          );
+          mappedValues.aspectRatio = resolvedAspectRatio;
+          mappedValues.aspect_ratio = resolvedAspectRatio;
+
+          try {
+            const preparedAudioTiming = await prepareStoryboardAudioTimingForAutoPrompt(
+              mappedValues,
+              inlinePromptContext || userIdea,
+            );
+            if (preparedAudioTiming) {
+              mappedValues.storyboardAudioDurationSeconds = Number(preparedAudioTiming.durationSeconds.toFixed(2));
+              mappedValues.storyboardClipDurationSeconds = Number(preparedAudioTiming.clipDurationSeconds.toFixed(2));
+              mappedValues.storyboardAudioPromptCount = preparedAudioTiming.promptCount;
+              mappedValues.storyboardAudioTimingMode = preparedAudioTiming.mode;
+              mappedValues.storyboardAudioSourceName = preparedAudioTiming.sourceName;
+              if (preparedAudioTiming.voiceoverScript?.trim()) {
+                mappedValues.storyboardPreparedVoiceoverScript = preparedAudioTiming.voiceoverScript.trim();
+              }
+              mappedValues.targetDurationSeconds = Math.ceil(
+                preparedAudioTiming.promptCount * preparedAudioTiming.clipDurationSeconds,
+              );
+              mappedValues.sceneCount = preparedAudioTiming.promptCount;
+              setStoryboardPreparedAudio(preparedAudioTiming.companionAudio);
+            } else if (storyboardAudioPrepMode !== "off") {
+              setStoryboardPreparedAudio([]);
+            }
+          } catch (error) {
+            const message = error instanceof Error ? error.message : t('mediaStudio.storyboardAudioPrepFailed');
+            setStoryboardAudioPrepStatus(message);
+            setStoryboardPreparedAudio([]);
+            toast.error(message);
+          }
+        }
+
         // Remove null/empty placeholder values before sending to skill execution
         const sanitizedInputs = Object.fromEntries(
           Object.entries(mappedValues).filter(([, value]) => hasUsableSkillValue(value))
@@ -3076,6 +4779,21 @@ export default function MediaStudio() {
           const nextPromptReview = normalizePromptReviewSummary(
             (result as { promptReview?: unknown }).promptReview,
           );
+          const isNewsNarrationSkillOutput = (
+            activeTab === "video"
+            && selectedSkillId === VEO_STORYBOARD_SKILL_ID
+            && sanitizedInputs.contentMode === "news_narration"
+          );
+          const newsPromptCount = isNewsNarrationSkillOutput
+            ? countMultiVideoPromptBlocks(result.content)
+            : 0;
+          const skillSuccessDescription = newsPromptCount > 0
+            ? (
+                isThaiLocale
+                  ? `Credits used: ${result.creditsUsed}. ตรวจพบ ${newsPromptCount} news beats และตั้งค่า Multi Video พร้อมสร้างทีละคลิป.`
+                  : `Credits used: ${result.creditsUsed}. Detected ${newsPromptCount} news beats and prepared Multi Video prompts for sequential generation.`
+              )
+            : `Credits used: ${result.creditsUsed}`;
           // Check if outputType="both" - try to parse and split prompts for Image/Video tabs
           // Note: outputType may be undefined if user didn't change from default (especially in Basic Mode)
           const outputType = dynamicFormValues?.outputType as string | undefined;
@@ -3096,32 +4814,46 @@ export default function MediaStudio() {
               if (activeTab === "image") {
                 applyPromptPackageToCurrentTab(parsed.imagePrompt, "enhancedPrompt");
               } else if (activeTab === "video") {
-                applyPromptPackageToCurrentTab(parsed.videoPrompt, "enhancedPrompt");
+                applyPromptPackageToCurrentTab(
+                  parsed.videoPrompt,
+                  "enhancedPrompt",
+                  buildExternalAudioPromptDisplayOptions(parsed.videoPrompt),
+                );
               } else {
                 applyPromptPackageToCurrentTab(result.content, "enhancedPrompt");
               }
 
               toast.success(t('mediaStudio.skillExecutedSuccessfully', { skillName: result.skillName }), {
-                description: `Credits: ${result.creditsUsed}. Prompts split for Image and Video tabs.`,
+                description: newsPromptCount > 0
+                  ? skillSuccessDescription
+                  : `Credits: ${result.creditsUsed}. Prompts split for Image and Video tabs.`,
               });
             } else {
               // Parsing failed (no image/video sections found), use full content
-              applyPromptPackageToCurrentTab(result.content, "enhancedPrompt");
+              applyPromptPackageToCurrentTab(
+                result.content,
+                "enhancedPrompt",
+                buildExternalAudioPromptDisplayOptions(result.content),
+              );
               setPromptReview(nextPromptReview);
               setImageTabPrompt(null);
               setVideoTabPrompt(null);
               toast.success(t('mediaStudio.skillExecutedSuccessfully', { skillName: result.skillName }), {
-                description: `Credits used: ${result.creditsUsed}`,
+                description: skillSuccessDescription,
               });
             }
           } else {
             // Use the skill's generated content as the prompt (normal mode)
-            applyPromptPackageToCurrentTab(result.content, "enhancedPrompt");
+            applyPromptPackageToCurrentTab(
+              result.content,
+              "enhancedPrompt",
+              buildExternalAudioPromptDisplayOptions(result.content),
+            );
             setPromptReview(nextPromptReview);
             setImageTabPrompt(null);
             setVideoTabPrompt(null);
             toast.success(t('mediaStudio.skillExecutedSuccessfully', { skillName: result.skillName }), {
-              description: `Credits used: ${result.creditsUsed}`,
+              description: skillSuccessDescription,
             });
           }
         } else {
@@ -3281,22 +5013,46 @@ export default function MediaStudio() {
     const advancedFallback = useAdvancedMode ? (dynamicFormValues.request as string || "") : "";
     const combinedFallback = prompt || advancedFallback;
     const stateBasedPrompt = enhancedPrompt || combinedFallback;
-    const rawPromptText = currentTextareaValue.trim() || stateBasedPrompt;
+    const rawPromptText = currentTextareaValue.trim()
+      || stateBasedPrompt
+      || (isVoiceChangerMode ? "Voice Changer conversion" : "")
+      || (isSpeechToTextMode ? "Speech to Text transcription" : "")
+      || (isVoiceIsolatorMode ? "Voice isolation cleanup" : "");
     const parsedGenerationPromptPackage = parseMediaStudioPromptPackage(rawPromptText);
     const promptText = parsedGenerationPromptPackage.promptText || rawPromptText.trim();
     const effectiveReferenceNotes = referenceNotes.trim() || parsedGenerationPromptPackage.referenceNotes;
     const effectiveContinuityNotes = continuityNotes.trim() || parsedGenerationPromptPackage.continuityNotes;
-    const finalPrompt = composePromptWithNotes({
+    const selectedModelData = visibleMediaModels.find((m: any) => m.modelId === selectedModel);
+    const selectedVeoProviderModelId = getVeoProviderModelId(selectedModelData);
+    const shouldSanitizeVeoGenerationPrompt = (
+      activeTab === "video"
+      && isVeoProviderModelId(selectedVeoProviderModelId)
+    );
+    const composedFinalPrompt = composePromptWithNotes({
       prompt: promptText,
       referenceNotes: effectiveReferenceNotes,
       continuityNotes: effectiveContinuityNotes,
+      placement: activeTab === "video" ? "before" : "after",
     });
+    const finalPrompt = shouldSanitizeVeoGenerationPrompt
+      ? sanitizeMediaGenerationPromptText(composedFinalPrompt)
+      : composedFinalPrompt;
 
     console.log('[handleGenerate] promptText length:', promptText?.length || 0);
     console.log('[handleGenerate] promptText preview:', promptText?.substring(0, 100));
 
     if (!promptText?.trim()) {
       console.log('[handleGenerate] ERROR: No prompt provided, exiting');
+      return;
+    }
+
+    const voiceChangerAudioValue = isSpeechToTextMode ? modelInputValues.file : modelInputValues.audio;
+    const voiceChangerSourceAudio = (
+      voiceChangerSourceAudioUrl ||
+      (Array.isArray(voiceChangerAudioValue) ? String(voiceChangerAudioValue[0] ?? "") : String(voiceChangerAudioValue ?? ""))
+    ).trim();
+    if (isSourceAudioWorkflow && !voiceChangerSourceAudio) {
+      toast.error(isSpeechToTextMode ? "Add source audio or video before transcription." : "Add source audio before running this workflow.");
       return;
     }
 
@@ -3312,42 +5068,128 @@ export default function MediaStudio() {
     console.log('[Generate] Video output type:', videoOutputType);
     console.log('[Generate] Is Multi Video:', isMultiVideo);
 
+    const shouldUseSeparateAudioWorkflow = activeTab === "video" && videoAudioWorkflow !== "native";
+    const shouldGenerateSeparateVoice =
+      shouldUseSeparateAudioWorkflow && (videoAudioWorkflow === "separate_voice" || videoAudioWorkflow === "separate_voice_music");
+    const shouldGenerateSeparateMusic =
+      shouldUseSeparateAudioWorkflow && (videoAudioWorkflow === "separate_music" || videoAudioWorkflow === "separate_voice_music");
+    const preparedStoryboardCompanionAudioForRun = shouldUseSeparateAudioWorkflow
+      ? storyboardPreparedAudio
+      : [];
+    const selectedVeoGenerationType = String(modelInputValues.generationType ?? dynamicFormValues.generationType ?? "").trim();
+    const effectiveSelectedVideoDuration = activeTab === "video" && isVeoProviderModelId(selectedVeoProviderModelId)
+      ? (selectedVideoDuration ?? 8)
+      : selectedVideoDuration;
+    const separateAudioSourceText = shouldUseSeparateAudioWorkflow
+      ? externalAudioPromptSource.trim()
+      : "";
+    const parsedAudioSourcePackage = separateAudioSourceText
+      ? parseMediaStudioPromptPackage(separateAudioSourceText)
+      : null;
+    const audioPromptText = parsedAudioSourcePackage
+      ? (parsedAudioSourcePackage.promptText || separateAudioSourceText)
+      : promptText;
+    const composedAudioSourcePrompt = composePromptWithNotes({
+      prompt: audioPromptText,
+      referenceNotes: effectiveReferenceNotes || parsedAudioSourcePackage?.referenceNotes || "",
+      continuityNotes: effectiveContinuityNotes || parsedAudioSourcePackage?.continuityNotes || "",
+      placement: "before",
+    });
+
     // Parse prompts if Multi Video mode
     let promptsToGenerate: string[] = [finalPrompt];
+    let audioSourcePrompts: string[] = [composedAudioSourcePrompt];
     if (isMultiVideo) {
       const parsed = splitMultiVideoPromptOutput(promptText);
-      const parsedPrompts = parsed.prompts.length > 0 ? parsed.prompts : parseMultiVideoPrompts(promptText);
+      const parsedPrompts = parseMultiVideoPrompts(promptText);
+      const parsedAudioSourcePrompts = parseMultiVideoPrompts(audioPromptText);
       console.log('[Multi Video] Shared context length:', parsed.sharedContext.length);
       console.log('[Multi Video] Parsed prompts count:', parsedPrompts.length);
       if (parsedPrompts.length > 0) {
-        promptsToGenerate = parsedPrompts.map((prompt) => composePromptWithNotes({
+        const sourcePromptsForAudio = parsedAudioSourcePrompts.length > 0
+          ? parsedAudioSourcePrompts
+          : parsedPrompts;
+        audioSourcePrompts = sourcePromptsForAudio.map((prompt) => composePromptWithNotes({
           prompt,
-          referenceNotes: effectiveReferenceNotes,
-          continuityNotes: effectiveContinuityNotes,
+          referenceNotes: effectiveReferenceNotes || parsedAudioSourcePackage?.referenceNotes || "",
+          continuityNotes: effectiveContinuityNotes || parsedAudioSourcePackage?.continuityNotes || "",
+          placement: "before",
         }));
+        promptsToGenerate = parsedPrompts.map((prompt) => {
+          const composedPrompt = composePromptWithNotes({
+            prompt,
+            referenceNotes: effectiveReferenceNotes,
+            continuityNotes: effectiveContinuityNotes,
+            placement: "before",
+          });
+          return shouldSanitizeVeoGenerationPrompt
+            ? sanitizeMediaGenerationPromptText(composedPrompt)
+            : composedPrompt;
+        });
         console.log(`[Multi Video] Using ${parsedPrompts.length} prompts`);
         toast.info(t('mediaStudio.multiVideoModeGenerating', { count: parsedPrompts.length }), { duration: 3000 });
       } else {
         toast.warning(t('mediaStudio.noMultiplePrompts'), { duration: 3000 });
       }
     }
+    if (
+      activeTab === "audio"
+      && !isMultiVideo
+      && selectedMediaModelMaxPromptLength !== null
+      && finalPrompt.length > selectedMediaModelMaxPromptLength
+    ) {
+      const splitPrompts = splitVoiceoverTextByLimit(finalPrompt, selectedMediaModelMaxPromptLength);
+      if (splitPrompts.length > 1) {
+        promptsToGenerate = splitPrompts;
+        toast.info(
+          `Audio text was split into ${splitPrompts.length} parts for ${selectedMediaModel?.name || selectedModel}.`,
+          { duration: 5000 },
+        );
+      }
+    }
+    const videoPromptTextsForDuration = isMultiVideo ? audioSourcePrompts : [finalPrompt];
+    const targetStoryboardDurationSeconds = videoPromptTextsForDuration.reduce(
+      (sum, item) => sum + inferStoryboardClipDurationSeconds(item, effectiveSelectedVideoDuration || 8),
+      0,
+    );
+    if (shouldUseSeparateAudioWorkflow) {
+      promptsToGenerate = promptsToGenerate.map((item) => prepareSilentVideoPromptForExternalAudio(item));
+    }
+    if (activeTab === "video" && isVeoProviderModelId(selectedVeoProviderModelId)) {
+      promptsToGenerate = promptsToGenerate.map((item) => prepareVeoPromptForGenerationType(item, selectedVeoGenerationType));
+    }
 
     // Determine how many items to generate
-    const imageCount = isMultiVideo ? promptsToGenerate.length : (activeTab === "image" ? numImages : 1);
+    const imageCount = isMultiVideo
+      ? promptsToGenerate.length
+      : activeTab === "image"
+        ? numImages
+        : promptsToGenerate.length;
     console.log('[Generate] Image/Video count to generate:', imageCount);
 
     // Generate media via model-driven gateway for all tabs.
     // Skills are only used for Auto Prompt / prompt enhancement.
     const shouldUseDirectMediaGateway = true;
 
-    // When Advanced Mode is ON, use aspectRatio from dynamicFormValues (if set)
-    const currentAspectRatio = aspectRatio;
-    const finalAspectRatio = useAdvancedMode && dynamicFormValues.aspectRatio
-      ? dynamicFormValues.aspectRatio
-      : currentAspectRatio;
+    const shouldUseVeoStoryboardAspectSync = (
+      activeTab === "video"
+      && selectedSkillId === VEO_STORYBOARD_SKILL_ID
+      && isVeoProviderModelId(selectedVeoProviderModelId)
+    );
+    const finalAspectRatio = shouldUseVeoStoryboardAspectSync
+      ? resolveVeoSyncedAspectRatio({
+        generationType: selectedVeoGenerationType,
+        studioAspectRatio: aspectRatio,
+        modelInputValues,
+        skillAspectRatio: dynamicFormValues.aspectRatio ?? dynamicFormValues.aspect_ratio,
+      })
+      : (
+        useAdvancedMode && dynamicFormValues.aspectRatio
+          ? dynamicFormValues.aspectRatio
+          : aspectRatio
+      );
 
     // Build extra params from dynamic model input fields
-    const selectedModelData = visibleMediaModels.find((m: any) => m.modelId === selectedModel);
     const rawConfig = selectedModelData?.configJson;
     const modelConfig = (typeof rawConfig === "string" ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })() : rawConfig) as any;
     const extraParams: Record<string, any> = {};
@@ -3423,19 +5265,33 @@ export default function MediaStudio() {
       }
     }
 
+    const mergedExtraParams = {
+      ...extraParams,
+      ...omnivoiceExtraParams,
+    };
+    if (isSourceAudioWorkflow && voiceChangerSourceAudio) {
+      if (isSpeechToTextMode) {
+        mergedExtraParams.file = voiceChangerSourceAudio;
+      } else {
+        mergedExtraParams.audio = voiceChangerSourceAudio;
+      }
+    }
     const outputFormatValue = modelInputValues.outputFormat ?? modelInputValues.output_format;
     const referenceStyleUrl = (modelInputValues.referenceStyleUrl ?? modelInputValues.reference_style_url) as string | undefined;
     const referenceVideoUrl = (modelInputValues.referenceVideoUrl ?? modelInputValues.reference_video_url) as string | undefined;
-    const effectiveReferenceImages = selectedMediaModelReferenceSupport.imageUrls
+    const shouldSendReferenceImages = shouldSendReferenceImagesForMediaGeneration(
+      selectedMediaModelForInputFields,
+      mergedExtraParams,
+    );
+    if (!shouldSendReferenceImages) {
+      removeReferenceImageSyncedParams(mergedExtraParams, modelConfig?.inputFields);
+    }
+    const effectiveReferenceImages = selectedMediaModelReferenceSupport.imageUrls && shouldSendReferenceImages
       ? referenceImages
       : [];
     const effectiveReferenceVideos = selectedMediaModelReferenceSupport.videoUrls
       ? referenceVideos
       : [];
-    const mergedExtraParams = {
-      ...extraParams,
-      ...omnivoiceExtraParams,
-    };
     const modelInputValidationErrors = getMediaStudioModelInputValidationErrors({
       modelId: selectedMediaModel?.modelId,
       fields: selectedMediaModelParsedInputFields,
@@ -3449,11 +5305,21 @@ export default function MediaStudio() {
       toast.error(modelInputValidationErrors.join(" "));
       return;
     }
+    const veo31ValidationErrors = getVeo31InputValidationErrors({
+      model: selectedMediaModelForInputFields,
+      extraParams: mergedExtraParams,
+      referenceImageUrls: effectiveReferenceImages.map((item) => item.url),
+      aspectRatio: finalAspectRatio,
+    });
+    if (veo31ValidationErrors.length > 0) {
+      toast.error(veo31ValidationErrors.join(" "));
+      return;
+    }
     const storyboardGenerationContext: StoryboardVideoGenerationContext | undefined =
       activeTab === "video"
       ? {
             aspectRatio: finalAspectRatio,
-            duration: selectedVideoDuration,
+            duration: effectiveSelectedVideoDuration,
             model: selectedModel || undefined,
             referenceImages: effectiveReferenceImages.map((item) => ({ ...item })),
             referenceVideos: effectiveReferenceVideos.map((item) => ({ ...item })),
@@ -3474,7 +5340,7 @@ export default function MediaStudio() {
       index: i,
       status: 'queued' as const,
       type: activeTab,
-      prompt: isMultiVideo ? promptsToGenerate[i] : finalPrompt,
+      prompt: promptsToGenerate[i] ?? finalPrompt,
       model: selectedModel,
       createdAt: nowMs,
       updatedAt: nowMs,
@@ -3484,15 +5350,25 @@ export default function MediaStudio() {
     setIsGenerationQueueHidden(false);
     setIsGenerationQueueCollapsed(false);
     setFocusedGenerationTaskId(initialTasks[0]?.id ?? null);
-    setStoryboardReviewOpen(false);
     const initialStoryboardTaskIds = isMultiVideo && imageCount > 1
       ? initialTasks.map((task) => task.id)
       : [];
+    const shouldOpenStoryboardReviewImmediately = initialStoryboardTaskIds.length > 0;
     setStoryboardReviewTaskIds(initialStoryboardTaskIds);
     setSelectedStoryboardTaskIds(new Set(initialStoryboardTaskIds));
-    setStoryboardCompoundStatus(null);
+    setStoryboardReviewOpen(shouldOpenStoryboardReviewImmediately);
+    setStoryboardCompoundStatus(
+      shouldOpenStoryboardReviewImmediately
+        ? shouldUseSeparateAudioWorkflow
+          ? preparedStoryboardCompanionAudioForRun.length > 0
+            ? "Submitting storyboard clips. Prepared separate audio is already attached."
+            : "Submitting storyboard clips. Separate audio will appear here when it is ready."
+          : "Submitting storyboard clips. Completed clips will appear here as they finish."
+        : null
+    );
     setStoryboardProjectLink(null);
     setStoryboardRenderJobId(null);
+    setStoryboardCompanionAudio(preparedStoryboardCompanionAudioForRun);
     setIsGenerating(true);
 
     // Loop through each image generation with delay
@@ -3504,8 +5380,11 @@ export default function MediaStudio() {
       );
 
       // Get the appropriate prompt for this iteration
-      const currentPrompt = isMultiVideo ? promptsToGenerate[i] : finalPrompt;
+      const currentPrompt = promptsToGenerate[i] ?? finalPrompt;
       const currentExtraParams = { ...mergedExtraParams };
+      if (activeTab === "audio") {
+        applyTtsLanguageDefaultsForPrompt(selectedMediaModelForInputFields, currentPrompt, currentExtraParams);
+      }
       if (promptSyncedFields.length > 0 && resolveRuntimeFieldValue) {
         for (const field of promptSyncedFields) {
           currentExtraParams[field.key] = resolveRuntimeFieldValue(field, currentPrompt);
@@ -3513,7 +5392,7 @@ export default function MediaStudio() {
       }
       console.log(`[Generate] Iteration ${i + 1}/${imageCount}, Prompt length:`, currentPrompt.length);
       console.log(`[Generate] Model:`, selectedModel);
-      console.log(`[Generate] Duration:`, activeTab === "video" ? selectedVideoDuration : undefined);
+      console.log(`[Generate] Duration:`, activeTab === "video" ? effectiveSelectedVideoDuration : undefined);
 
       try {
         let resultUrl: string | undefined;
@@ -3546,7 +5425,7 @@ export default function MediaStudio() {
         } else if (shouldUseDirectMediaGateway && activeTab === "video") {
           const task = await generateVideoAsyncMutation.mutateAsync({
             ...commonPayload,
-            ...(selectedVideoDuration !== undefined ? { duration: selectedVideoDuration } : {}),
+            ...(effectiveSelectedVideoDuration !== undefined ? { duration: effectiveSelectedVideoDuration } : {}),
             ...(selectedMediaModelReferenceSupport.videoUrls && effectiveReferenceVideos.length === 0 && referenceVideoUrl
               ? { referenceVideoUrl }
               : {}),
@@ -3684,6 +5563,272 @@ export default function MediaStudio() {
       if (i < imageCount - 1) {
         const delayMs = isMultiVideo ? 2500 : 1000;
         await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+
+    const generatedCompanionAudio: StoryboardCompanionAudioCandidate[] = [...preparedStoryboardCompanionAudioForRun];
+    if (
+      activeTab === "video"
+      && successCount > 0
+      && (shouldGenerateSeparateVoice || shouldGenerateSeparateMusic)
+    ) {
+      const targetDurationSeconds = Math.max(
+        effectiveSelectedVideoDuration || 8,
+        targetStoryboardDurationSeconds || (imageCount * (effectiveSelectedVideoDuration || 8)),
+      );
+      const findAudioModel = (modelId: string, fallbackModels: any[]) =>
+        visibleAudioMediaModels.find((model) => hasAnyModelIdCandidate(model, new Set([modelId])))
+        ?? fallbackModels.find((model) => hasAnyModelIdCandidate(model, new Set([modelId])))
+        ?? fallbackModels[0]
+        ?? null;
+      const pollAudioTaskResult = async (task: any): Promise<string> => {
+        const immediateUrl = extractTaskResultUrl(task);
+        if (immediateUrl) return immediateUrl;
+        const pollId = task?.taskId || task?.id;
+        if (!pollId) {
+          throw new Error("Audio task did not return a task id");
+        }
+        for (let attempt = 0; attempt < 120; attempt += 1) {
+          const currentTask = await trpcUtils.media.getTask.fetch({ taskId: pollId });
+          const status = String((currentTask as any)?.status || "").toLowerCase();
+          if (status === "completed") {
+            const url = extractTaskResultUrl(currentTask as any);
+            if (url) return url;
+            throw new Error("Audio generation completed without a media URL");
+          }
+          if (status === "failed" || status === "cancelled") {
+            throw new Error((currentTask as any)?.errorMessage || "Audio generation failed");
+          }
+          await sleepMs(2000);
+        }
+        throw new Error("Audio generation timeout. Please try again.");
+      };
+      const runSeparateAudio = async (params: {
+        kind: "voiceover" | "music";
+        text: string;
+        modelId: string;
+        fallbackModels: any[];
+        extraParams?: Record<string, unknown>;
+        title: string;
+        volume?: number;
+        startTimeSeconds?: number;
+        targetDurationSeconds?: number;
+        segmentIndex?: number;
+        segmentCount?: number;
+      }): Promise<StoryboardCompanionAudioCandidate> => {
+        const audioModel = findAudioModel(params.modelId, params.fallbackModels);
+        if (!audioModel?.modelId) {
+          throw new Error(`No ${params.kind} audio model is enabled`);
+        }
+        const modelConfig = parseMediaModelConfig(audioModel.configJson);
+        const audioApiConfig = buildApiConfigFromModelConfig(modelConfig);
+        const task = await generateAudioAsyncMutation.mutateAsync({
+          text: params.text,
+          model: audioModel.modelId,
+          originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+          ...(params.extraParams && Object.keys(params.extraParams).length > 0
+            ? { extraParams: params.extraParams }
+            : {}),
+          ...(Object.keys(audioApiConfig).length > 0 ? { apiConfig: audioApiConfig } : {}),
+        });
+        const audioUrl = await pollAudioTaskResult(task);
+        const audioTargetDurationSeconds = params.targetDurationSeconds ?? targetDurationSeconds;
+        const actualDurationSeconds = await probeMediaDurationSeconds(audioUrl, audioTargetDurationSeconds);
+        return {
+          id: `${params.kind}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          kind: params.kind,
+          title: params.title,
+          url: audioUrl,
+          prompt: params.text,
+          model: audioModel.modelId,
+          startTimeSeconds: params.startTimeSeconds,
+          segmentIndex: params.segmentIndex,
+          segmentCount: params.segmentCount,
+          actualDurationSeconds,
+          targetDurationSeconds: audioTargetDurationSeconds,
+          volume: params.volume,
+        };
+      };
+
+      try {
+        setStoryboardCompoundStatus("Generating separate audio for the storyboard...");
+        const appendGeneratedCompanionAudio = (audio: StoryboardCompanionAudioCandidate) => {
+          generatedCompanionAudio.push(audio);
+          setStoryboardCompanionAudio([...generatedCompanionAudio]);
+          setGeneratedMedia((prev) => [{
+            id: `${audio.id}-${Date.now()}`,
+            type: "audio",
+            url: audio.url,
+            prompt: audio.prompt,
+            model: audio.model || "",
+            createdAt: new Date().toISOString(),
+          }, ...prev]);
+        };
+        const externalAudioExtractionSource = separateAudioSourceText || audioSourcePrompts.join("\n\n");
+        const liveVoiceoverScript = voiceoverScriptTextareaRef.current?.value ?? externalVoiceoverScript;
+        const liveSoundBedBrief = soundBedBriefTextareaRef.current?.value ?? externalSoundBedBrief;
+        const script = liveVoiceoverScript.trim() || extractVoiceoverScriptFromPromptText(externalAudioExtractionSource);
+        const isThai = containsThaiText(script || promptText);
+        const hasPreparedVoiceover = generatedCompanionAudio.some((audio) => audio.kind === "voiceover" && audio.url);
+        if (shouldGenerateSeparateVoice && !hasPreparedVoiceover) {
+          if (!script.trim()) {
+            throw new Error("No spoken script could be extracted for separate voiceover generation.");
+          }
+          const voiceModelIdForGeneration = videoVoiceModel;
+          const voiceModel = withFallbackModelInputFields(
+            findAudioModel(voiceModelIdForGeneration, separateVoiceModels),
+            getSeparateVoiceFallbackFields(findAudioModel(voiceModelIdForGeneration, separateVoiceModels)),
+          );
+          const voiceModelIds = new Set(getMediaModelCandidateIds(voiceModel).map((id) => id.toLowerCase()));
+          const voiceExtraParams: Record<string, unknown> = buildRuntimeExtraParamsFromModelInputs({
+            model: voiceModel,
+            inputValues: videoVoiceModelInputValues,
+            prompt: script,
+            aspectRatio: finalAspectRatio,
+            activeTab: "audio",
+          });
+          if (voiceModelIds.has(GEMINI_3_1_FLASH_TTS_MODEL_ID)) {
+            if (!voiceExtraParams.style_instructions) {
+              voiceExtraParams.style_instructions = buildVoiceoverStyleInstruction({
+                targetDurationSeconds,
+                languageHint: isThai ? "Thai" : undefined,
+              });
+            }
+            const selectedLanguageCode = String(voiceExtraParams.language_code ?? "").trim();
+            if (
+              !selectedLanguageCode
+              || selectedLanguageCode === "__auto__"
+              || (isThai && selectedLanguageCode.startsWith("English"))
+            ) {
+              voiceExtraParams.language_code = isThai ? "Thai (Thailand)" : "__auto__";
+            }
+            if (!voiceExtraParams.voice) {
+              voiceExtraParams.voice = "Kore";
+            }
+            if (!voiceExtraParams.output_format) {
+              voiceExtraParams.output_format = "mp3";
+            }
+          } else if (Array.from(voiceModelIds).some((id) => id.includes("gemini-2.5"))) {
+            const selectedLanguage = String(voiceExtraParams.language ?? "").trim();
+            if (!selectedLanguage || (isThai && selectedLanguage === "English (United States)")) {
+              voiceExtraParams.language = isThai ? "Thai (Thailand)" : "English (United States)";
+            }
+            if (!Array.isArray(voiceExtraParams.speakers) || voiceExtraParams.speakers.length === 0) {
+              voiceExtraParams.speakers = [{ speaker: "Speaker 1", voice: "Zephyr" }];
+            }
+          } else if (Array.from(voiceModelIds).some((id) => id.includes("qwen3-tts"))) {
+            if (!voiceExtraParams.voice) {
+              voiceExtraParams.voice = "Cherry";
+            }
+            if (!voiceExtraParams.speed) {
+              voiceExtraParams.speed = 1.08;
+            }
+            if (!voiceExtraParams.format) {
+              voiceExtraParams.format = "mp3";
+            }
+          }
+          const voiceoverSegments = buildVoiceoverSegments({
+            script,
+            targetDurationSeconds,
+            maxCharacters: inferVoiceoverTextLimitCharacters(voiceModelIds),
+          });
+          for (const segment of voiceoverSegments) {
+            setStoryboardCompoundStatus(
+              segment.count > 1
+                ? `Generating separate voiceover audio ${segment.index + 1}/${segment.count}...`
+                : "Generating separate voiceover audio...",
+            );
+            const segmentVoiceExtraParams = { ...voiceExtraParams };
+            if (voiceModelIds.has(GEMINI_3_1_FLASH_TTS_MODEL_ID)) {
+              segmentVoiceExtraParams.style_instructions = buildVoiceoverStyleInstruction({
+                targetDurationSeconds: segment.targetDurationSeconds,
+                languageHint: isThai ? "Thai" : undefined,
+              });
+            }
+            const voiceoverAudio = await runSeparateAudio({
+              kind: "voiceover",
+              text: buildVoiceoverText({
+                script: segment.text,
+                targetDurationSeconds: segment.targetDurationSeconds,
+                languageHint: isThai ? "Thai" : undefined,
+              }),
+              modelId: voiceModelIdForGeneration,
+              fallbackModels: separateVoiceModels,
+              extraParams: segmentVoiceExtraParams,
+              title: segment.count > 1
+                ? `Storyboard voiceover ${segment.index + 1}/${segment.count}`
+                : "Storyboard voiceover",
+              volume: 1,
+              startTimeSeconds: segment.startTimeSeconds,
+              targetDurationSeconds: segment.targetDurationSeconds,
+              segmentIndex: segment.index,
+              segmentCount: segment.count,
+            });
+            appendGeneratedCompanionAudio(voiceoverAudio);
+          }
+          const voiceoverAudio = generatedCompanionAudio.find((audio) => audio.kind === "voiceover");
+          if (voiceoverAudio?.actualDurationSeconds && voiceoverAudio.targetDurationSeconds) {
+            const voiceoverTracks = generatedCompanionAudio.filter((audio) => audio.kind === "voiceover");
+            const actualSeconds = voiceoverTracks.reduce((sum, audio) => sum + (audio.actualDurationSeconds ?? audio.targetDurationSeconds ?? 0), 0);
+            const targetSeconds = voiceoverTracks.reduce((sum, audio) => sum + (audio.targetDurationSeconds ?? 0), 0);
+            const deltaSeconds = Math.abs(actualSeconds - targetSeconds);
+            const warnThresholdSeconds = Math.max(3, targetSeconds * 0.15);
+            if (deltaSeconds > warnThresholdSeconds) {
+              toast.warning(t('mediaStudio.audioDurationMismatchTitle'), {
+                description: t('mediaStudio.audioDurationMismatchDesc', {
+                  audio: actualSeconds.toFixed(1),
+                  video: targetSeconds.toFixed(1),
+                }),
+                duration: 7000,
+              });
+            }
+          }
+        }
+
+        if (shouldGenerateSeparateVoice && hasPreparedVoiceover) {
+          setStoryboardCompoundStatus("Prepared voiceover audio is attached and will be used in the video edit project.");
+        }
+
+        if (shouldGenerateSeparateMusic) {
+          const explicitMusicBrief = liveSoundBedBrief.trim() || extractMusicBriefFromPromptText(externalAudioExtractionSource);
+          const musicPromptText = explicitMusicBrief || buildMusicPromptFromPrompts(
+            audioSourcePrompts,
+            targetDurationSeconds,
+            videoMusicPrompt.trim() || "Subtle modern newsroom technology ambience",
+          );
+          const musicModel = findAudioModel(videoMusicModel, separateMusicModels);
+          setStoryboardCompoundStatus("Generating separate music bed...");
+          appendGeneratedCompanionAudio(await runSeparateAudio({
+            kind: "music",
+            text: musicPromptText,
+            modelId: videoMusicModel,
+            fallbackModels: separateMusicModels,
+            extraParams: buildRuntimeExtraParamsFromModelInputs({
+              model: musicModel,
+              inputValues: videoMusicModelInputValues,
+              prompt: musicPromptText,
+              aspectRatio: finalAspectRatio,
+              activeTab: "audio",
+            }),
+            title: "Storyboard music bed",
+            volume: 0.16,
+            startTimeSeconds: 0,
+            targetDurationSeconds,
+          }));
+        }
+
+        if (generatedCompanionAudio.length > 0) {
+          toast.success(`Generated ${generatedCompanionAudio.length} separate audio track(s) for video edit.`);
+          setStoryboardCompoundStatus("Separate audio is ready and will be attached to the video edit project.");
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Separate audio generation failed";
+        toast.error(message);
+        setStoryboardCompoundStatus(
+          generatedCompanionAudio.length > 0
+            ? `${message}. ${generatedCompanionAudio.length} audio track(s) are still available.`
+            : message,
+        );
       }
     }
 
@@ -4115,8 +6260,8 @@ export default function MediaStudio() {
       return;
     }
 
-    const retryPrompt = task.prompt.trim();
-    if (!retryPrompt) {
+    const rawRetryPrompt = task.prompt.trim();
+    if (!rawRetryPrompt) {
       toast.error(t('mediaStudio.cannotRetryWithoutPrompt'));
       return;
     }
@@ -4124,6 +6269,14 @@ export default function MediaStudio() {
     const tabState = tabStates[targetTab];
     const retryModel = task.model || tabState.selectedModel || selectedModel || "";
     const selectedModelData = visibleMediaModels.find((m: any) => m.modelId === retryModel);
+    const retryVeoProviderModelId = getVeoProviderModelId(selectedModelData);
+    const retryPrompt = targetTab === "video" && isVeoProviderModelId(retryVeoProviderModelId)
+      ? sanitizeMediaGenerationPromptText(rawRetryPrompt)
+      : rawRetryPrompt;
+    if (!retryPrompt) {
+      toast.error(t('mediaStudio.cannotRetryWithoutPrompt'));
+      return;
+    }
     const rawConfig = selectedModelData?.configJson;
     const modelConfig = (typeof rawConfig === "string" ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })() : rawConfig) as any;
     const retryModelForInputFields = selectedModelData
@@ -4135,22 +6288,46 @@ export default function MediaStudio() {
     const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
       (modelConfig as Record<string, unknown>) ?? null,
     );
+    const shouldUseVeoStoryboardAspectSync = (
+      targetTab === "video"
+      && tabState.selectedSkillId === VEO_STORYBOARD_SKILL_ID
+      && isVeoProviderModelId(retryVeoProviderModelId)
+    );
+    const finalAspectRatio = shouldUseVeoStoryboardAspectSync
+      ? resolveVeoSyncedAspectRatio({
+        generationType: tabState.modelInputValues.generationType ?? tabState.dynamicFormValues.generationType,
+        studioAspectRatio: tabState.aspectRatio,
+        modelInputValues: tabState.modelInputValues,
+        skillAspectRatio: tabState.dynamicFormValues.aspectRatio ?? tabState.dynamicFormValues.aspect_ratio,
+      })
+      : (
+        tabState.useAdvancedMode && tabState.dynamicFormValues.aspectRatio
+          ? tabState.dynamicFormValues.aspectRatio
+          : tabState.aspectRatio
+      );
+    const retryStoryboardContext = (task as any).storyboardContext as StoryboardVideoGenerationContext | undefined;
+    const retryVideoDuration = targetTab === "video"
+      ? (
+        typeof retryStoryboardContext?.duration === "number"
+          ? retryStoryboardContext.duration
+          : retryDurationField
+            ? (
+              Number.isFinite(Number(tabState.modelInputValues.duration ?? tabState.duration))
+                ? Number(tabState.modelInputValues.duration ?? tabState.duration)
+                : tabState.duration
+            )
+            : isVeoProviderModelId(retryVeoProviderModelId)
+              ? 8
+              : undefined
+      )
+      : undefined;
     const templateBaseContext = {
       prompt: retryPrompt,
-      aspectRatio: tabState.aspectRatio,
+      aspectRatio: finalAspectRatio,
       activeTab: targetTab,
       fields: tabState.modelInputValues,
     } as Record<string, unknown>;
     const retryModelReferenceSupport = getModelReferenceInputSupport(retryModelForInputFields as any);
-    const effectiveReferenceImages = retryModelReferenceSupport.imageUrls
-      ? tabState.referenceImages
-      : [];
-    const effectiveReferenceVideos = retryModelReferenceSupport.videoUrls
-      ? tabState.referenceVideos
-      : [];
-    const finalAspectRatio = tabState.useAdvancedMode && tabState.dynamicFormValues.aspectRatio
-      ? tabState.dynamicFormValues.aspectRatio
-      : tabState.aspectRatio;
 
     if (modelConfig) {
       const resolveFieldValue = (field: any, value: unknown): unknown => {
@@ -4182,7 +6359,7 @@ export default function MediaStudio() {
         }
 
         if (syncWith === "aspect_ratio") {
-          extraParams[field.key] = resolveFieldValue(field, tabState.aspectRatio);
+          extraParams[field.key] = resolveFieldValue(field, finalAspectRatio);
           continue;
         }
 
@@ -4208,6 +6385,22 @@ export default function MediaStudio() {
       ...extraParams,
       ...omnivoiceExtraParams,
     };
+    if (targetTab === "audio") {
+      applyTtsLanguageDefaultsForPrompt(retryModelForInputFields, retryPrompt, mergedExtraParams);
+    }
+    const shouldSendReferenceImages = shouldSendReferenceImagesForMediaGeneration(
+      retryModelForInputFields,
+      mergedExtraParams,
+    );
+    if (!shouldSendReferenceImages) {
+      removeReferenceImageSyncedParams(mergedExtraParams, modelConfig?.inputFields);
+    }
+    const effectiveReferenceImages = retryModelReferenceSupport.imageUrls && shouldSendReferenceImages
+      ? tabState.referenceImages
+      : [];
+    const effectiveReferenceVideos = retryModelReferenceSupport.videoUrls
+      ? tabState.referenceVideos
+      : [];
     const retryModelInputFields = parseModelInputFields(retryModelForInputFields);
     const modelInputValidationErrors = getMediaStudioModelInputValidationErrors({
       modelId: retryModel,
@@ -4222,6 +6415,16 @@ export default function MediaStudio() {
       toast.error(modelInputValidationErrors.join(" "));
       return;
     }
+    const veo31ValidationErrors = getVeo31InputValidationErrors({
+      model: retryModelForInputFields,
+      extraParams: mergedExtraParams,
+      referenceImageUrls: effectiveReferenceImages.map((item) => item.url),
+      aspectRatio: finalAspectRatio,
+    });
+    if (veo31ValidationErrors.length > 0) {
+      toast.error(veo31ValidationErrors.join(" "));
+      return;
+    }
 
     const outputFormatValue = tabState.modelInputValues.outputFormat ?? tabState.modelInputValues.output_format;
     const referenceStyleUrl = (tabState.modelInputValues.referenceStyleUrl ?? tabState.modelInputValues.reference_style_url) as string | undefined;
@@ -4232,7 +6435,7 @@ export default function MediaStudio() {
       aspectRatio: finalAspectRatio,
       referenceImages: effectiveReferenceImages,
       referenceVideos: targetTab === "video" ? effectiveReferenceVideos : [],
-      extraParams: Object.keys(extraParams).length > 0 ? extraParams : undefined,
+      extraParams: Object.keys(mergedExtraParams).length > 0 ? mergedExtraParams : undefined,
       apiConfig: Object.keys(apiConfig).length > 0 ? apiConfig : undefined,
       resolution: tabState.modelInputValues.resolution || undefined,
     });
@@ -4291,13 +6494,7 @@ export default function MediaStudio() {
       } else if (targetTab === "video") {
         const taskResult = await generateVideoAsyncMutation.mutateAsync({
           ...commonPayload,
-          ...(retryDurationField
-            ? {
-                duration: Number.isFinite(Number(tabState.modelInputValues.duration ?? tabState.duration))
-                  ? Number(tabState.modelInputValues.duration ?? tabState.duration)
-                  : tabState.duration,
-              }
-            : {}),
+          ...(retryVideoDuration !== undefined ? { duration: retryVideoDuration } : {}),
           ...(retryModelReferenceSupport.videoUrls && effectiveReferenceVideos.length === 0 && referenceVideoUrl
             ? { referenceVideoUrl }
             : {}),
@@ -4399,6 +6596,7 @@ export default function MediaStudio() {
     openPreview,
     tabStates,
     t,
+    videoAudioWorkflow,
   ]);
 
   const dismissGenerationQueueTask = useCallback((taskId: string) => {
@@ -4499,16 +6697,35 @@ export default function MediaStudio() {
   const storyboardReviewTasks = useMemo<StoryboardReviewTask[]>(
     () => generationTasks
       .filter((task) => storyboardReviewTaskIds.includes(task.id))
-      .map((task) => ({
-        id: task.id,
-        index: task.index,
-        prompt: task.prompt,
-        url: task.url,
-        model: task.model,
-        status: task.status,
-        error: task.error,
-      })),
+      .map((task) => {
+        const context = task.storyboardContext;
+        const extraParams = context
+          ? {
+              ...(context.extraParams ?? {}),
+              ...(context.resolution ? { resolution: context.resolution } : {}),
+            }
+          : {};
+        return {
+          id: task.id,
+          index: task.index,
+          prompt: task.prompt,
+          url: task.url,
+          model: task.model,
+          generationModelId: context?.model || task.model,
+          referenceUrls: context?.referenceImages.map((image) => image.url),
+          generationAspectRatio: context?.aspectRatio,
+          generationExtraParams: Object.keys(extraParams).length > 0 ? extraParams : undefined,
+          status: task.status,
+          error: task.error,
+        };
+      }),
     [generationTasks, storyboardReviewTaskIds],
+  );
+  const shouldMuteStoryboardNativeAudio = useMemo(
+    () => videoAudioWorkflow !== "native"
+      || storyboardCompanionAudio.length > 0
+      || storyboardReviewTasks.some((task) => /External audio workflow/i.test(task.prompt)),
+    [storyboardCompanionAudio.length, storyboardReviewTasks, videoAudioWorkflow],
   );
 
   const toggleStoryboardTaskSelection = useCallback((taskId: string) => {
@@ -4569,8 +6786,12 @@ export default function MediaStudio() {
     promptText: string,
     context: StoryboardVideoGenerationContext,
   ): Record<string, unknown> => {
+    const promptForGeneration = prepareVeoPromptForGenerationType(
+      promptText,
+      context.extraParams?.generationType,
+    );
     const payload = buildMediaStudioCommonPayload({
-      prompt: promptText,
+      prompt: promptForGeneration,
       model: context.model,
       aspectRatio: context.aspectRatio,
       referenceImages: context.referenceImages,
@@ -4601,15 +6822,21 @@ export default function MediaStudio() {
         prompt: task.prompt,
         url: task.url!,
         model: task.model,
+        generationModelId: task.generationModelId,
+        referenceUrls: task.referenceUrls,
+        generationAspectRatio: task.generationAspectRatio,
+        generationExtraParams: task.generationExtraParams,
       })),
       {
         projectName: sanitizeProjectName(`Storyboard Edit ${new Date().toLocaleString()}`),
         defaultDurationSeconds: tabStates.video.duration,
+        companionAudio: storyboardCompanionAudio,
+        muteVideoClipAudio: shouldMuteStoryboardNativeAudio,
       },
     );
 
     return project;
-  }, [selectedStoryboardTaskIds, storyboardReviewTasks, tabStates.video.duration]);
+  }, [selectedStoryboardTaskIds, shouldMuteStoryboardNativeAudio, storyboardCompanionAudio, storyboardReviewTasks, tabStates.video.duration]);
 
   const createStoryboardEditProject = useCallback(async () => {
     const project = buildSelectedStoryboardProject();
@@ -4829,6 +7056,210 @@ export default function MediaStudio() {
     toast,
     trpcUtils.media.getTask,
     upsertGeneratedMediaForTask,
+  ]);
+
+  const regenerateStoryboardAudio = useCallback(async (audioId: string) => {
+    const existingAudio = storyboardCompanionAudio.find((audio) => audio.id === audioId);
+    if (!existingAudio) {
+      toast.error("Storyboard audio track not found");
+      return;
+    }
+
+    const completedSelectedTasks = storyboardReviewTasks.filter((task) =>
+      selectedStoryboardTaskIds.has(task.id) && task.status === "completed" && task.url
+    );
+    const fallbackClipDuration = Math.max(0.25, tabStates.video.duration || 8);
+    const selectedDurationSeconds = completedSelectedTasks.reduce(
+      (sum, task) => sum + inferStoryboardClipDurationSeconds(task.prompt, fallbackClipDuration),
+      0,
+    );
+    const targetDurationSeconds = Math.max(
+      fallbackClipDuration,
+      existingAudio.targetDurationSeconds || selectedDurationSeconds || fallbackClipDuration,
+    );
+    const liveVoiceoverScript = voiceoverScriptTextareaRef.current?.value ?? externalVoiceoverScript;
+    const liveSoundBedBrief = soundBedBriefTextareaRef.current?.value ?? externalSoundBedBrief;
+    const isSegmentedVoiceover = existingAudio.kind === "voiceover" && (existingAudio.segmentCount ?? 0) > 1;
+    const nextPrompt = existingAudio.kind === "voiceover"
+      ? (isSegmentedVoiceover ? existingAudio.prompt : (liveVoiceoverScript.trim() || existingAudio.prompt))
+      : (liveSoundBedBrief.trim() || videoMusicPrompt.trim() || existingAudio.prompt);
+    if (!nextPrompt.trim()) {
+      toast.error(existingAudio.kind === "voiceover"
+        ? "No voiceover script is available for regeneration."
+        : "No music prompt is available for regeneration.");
+      return;
+    }
+
+    const findAudioModel = (modelId: string, fallbackModels: any[]) =>
+      visibleAudioMediaModels.find((model) => hasAnyModelIdCandidate(model, new Set([modelId])))
+      ?? fallbackModels.find((model) => hasAnyModelIdCandidate(model, new Set([modelId])))
+      ?? fallbackModels[0]
+      ?? null;
+    const pollAudioTaskResult = async (task: any): Promise<string> => {
+      const immediateUrl = extractTaskResultUrl(task);
+      if (immediateUrl) return immediateUrl;
+      const pollId = task?.taskId || task?.id;
+      if (!pollId) {
+        throw new Error("Audio task did not return a task id");
+      }
+      for (let attempt = 0; attempt < 120; attempt += 1) {
+        const currentTask = await trpcUtils.media.getTask.fetch({ taskId: pollId });
+        const status = String((currentTask as any)?.status || "").toLowerCase();
+        if (status === "completed") {
+          const url = extractTaskResultUrl(currentTask as any);
+          if (url) return url;
+          throw new Error("Audio generation completed without a media URL");
+        }
+        if (status === "failed" || status === "cancelled") {
+          throw new Error((currentTask as any)?.errorMessage || "Audio generation failed");
+        }
+        await sleepMs(2000);
+      }
+      throw new Error("Audio generation timeout. Please try again.");
+    };
+
+    setRegeneratingStoryboardAudioId(audioId);
+    setStoryboardCompoundStatus(`Regenerating ${existingAudio.kind === "voiceover" ? "voiceover" : "music"} audio...`);
+      try {
+      const modelIdForGeneration = existingAudio.model || (existingAudio.kind === "voiceover" ? videoVoiceModel : videoMusicModel);
+      const fallbackModels = existingAudio.kind === "voiceover" ? separateVoiceModels : separateMusicModels;
+      const rawAudioModel = findAudioModel(modelIdForGeneration, fallbackModels);
+      const audioModel = existingAudio.kind === "voiceover"
+        ? withFallbackModelInputFields(rawAudioModel, getSeparateVoiceFallbackFields(rawAudioModel))
+        : rawAudioModel;
+      if (!audioModel?.modelId) {
+        throw new Error(`No ${existingAudio.kind} audio model is enabled`);
+      }
+
+      const extraParams: Record<string, unknown> = existingAudio.kind === "voiceover"
+        ? buildRuntimeExtraParamsFromModelInputs({
+          model: audioModel,
+          inputValues: videoVoiceModelInputValues,
+          prompt: nextPrompt,
+          aspectRatio,
+          activeTab: "audio",
+        })
+        : buildRuntimeExtraParamsFromModelInputs({
+          model: audioModel,
+          inputValues: videoMusicModelInputValues,
+          prompt: nextPrompt,
+          aspectRatio,
+          activeTab: "audio",
+        });
+      if (existingAudio.kind === "voiceover") {
+        const voiceModelIds = new Set(getMediaModelCandidateIds(audioModel).map((id) => id.toLowerCase()));
+        const isThai = containsThaiText(nextPrompt);
+
+        if (voiceModelIds.has(GEMINI_3_1_FLASH_TTS_MODEL_ID)) {
+          if (!extraParams.style_instructions) {
+            extraParams.style_instructions = buildVoiceoverStyleInstruction({
+              targetDurationSeconds,
+              languageHint: isThai ? "Thai" : undefined,
+            });
+          }
+          const selectedLanguageCode = String(extraParams.language_code ?? "").trim();
+          if (
+            !selectedLanguageCode
+            || selectedLanguageCode === "__auto__"
+            || (isThai && selectedLanguageCode.startsWith("English"))
+          ) {
+            extraParams.language_code = isThai ? "Thai (Thailand)" : "__auto__";
+          }
+          if (!extraParams.voice) {
+            extraParams.voice = "Kore";
+          }
+          if (!extraParams.output_format) {
+            extraParams.output_format = "mp3";
+          }
+        } else if (Array.from(voiceModelIds).some((id) => id.includes("gemini-2.5"))) {
+          const selectedLanguage = String(extraParams.language ?? "").trim();
+          if (!selectedLanguage || (isThai && selectedLanguage === "English (United States)")) {
+            extraParams.language = isThai ? "Thai (Thailand)" : "English (United States)";
+          }
+          if (!Array.isArray(extraParams.speakers) || extraParams.speakers.length === 0) {
+            extraParams.speakers = [{ speaker: "Speaker 1", voice: "Zephyr" }];
+          }
+        } else if (Array.from(voiceModelIds).some((id) => id.includes("qwen3-tts"))) {
+          if (!extraParams.voice) {
+            extraParams.voice = "Cherry";
+          }
+          if (!extraParams.speed) {
+            extraParams.speed = 1.08;
+          }
+          if (!extraParams.format) {
+            extraParams.format = "mp3";
+          }
+        }
+      }
+
+      const modelConfig = parseMediaModelConfig(audioModel.configJson);
+      const audioApiConfig = buildApiConfigFromModelConfig(modelConfig);
+      const submittedTask = await generateAudioAsyncMutation.mutateAsync({
+        text: existingAudio.kind === "voiceover"
+          ? buildVoiceoverText({
+            script: nextPrompt,
+            targetDurationSeconds,
+            languageHint: containsThaiText(nextPrompt) ? "Thai" : undefined,
+          })
+          : nextPrompt,
+        model: audioModel.modelId,
+        originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+        ...(Object.keys(extraParams).length > 0 ? { extraParams } : {}),
+        ...(Object.keys(audioApiConfig).length > 0 ? { apiConfig: audioApiConfig } : {}),
+      });
+      const audioUrl = await pollAudioTaskResult(submittedTask);
+      const actualDurationSeconds = await probeMediaDurationSeconds(audioUrl, targetDurationSeconds);
+      const updatedAudio: StoryboardCompanionAudioCandidate = {
+        ...existingAudio,
+        url: audioUrl,
+        prompt: nextPrompt,
+        model: audioModel.modelId,
+        actualDurationSeconds,
+        targetDurationSeconds,
+        startTimeSeconds: existingAudio.startTimeSeconds,
+        segmentIndex: existingAudio.segmentIndex,
+        segmentCount: existingAudio.segmentCount,
+      };
+
+      setStoryboardCompanionAudio((prev) =>
+        prev.map((audio) => audio.id === audioId ? updatedAudio : audio)
+      );
+      setGeneratedMedia((prev) => [{
+        id: `${updatedAudio.id}-${Date.now()}`,
+        type: "audio",
+        url: updatedAudio.url,
+        prompt: updatedAudio.prompt,
+        model: updatedAudio.model || "",
+        createdAt: new Date().toISOString(),
+      }, ...prev]);
+      setStoryboardCompoundStatus(`${existingAudio.kind === "voiceover" ? "Voiceover" : "Music"} audio regenerated.`);
+      toast.success(`${existingAudio.kind === "voiceover" ? "Voiceover" : "Music"} audio regenerated`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to regenerate audio";
+      setStoryboardCompoundStatus(message);
+      toast.error(message);
+    } finally {
+      setRegeneratingStoryboardAudioId(null);
+    }
+  }, [
+    aspectRatio,
+    externalSoundBedBrief,
+    externalVoiceoverScript,
+    generateAudioAsyncMutation,
+    selectedStoryboardTaskIds,
+    separateMusicModels,
+    separateVoiceModels,
+    storyboardCompanionAudio,
+    storyboardReviewTasks,
+    tabStates.video.duration,
+    toast,
+    trpcUtils.media.getTask,
+    videoMusicModelInputValues,
+    videoMusicModel,
+    videoMusicPrompt,
+    videoVoiceModelInputValues,
+    videoVoiceModel,
+    visibleAudioMediaModels,
   ]);
 
   const handleGenerationQueueTaskClick = useCallback((task: QueueGenerationTask) => {
@@ -5393,6 +7824,33 @@ export default function MediaStudio() {
               </TabsList>
             </Tabs>
 
+            {activeTab === "audio" && (
+              <Tabs value={audioWorkflow} onValueChange={(value) => setAudioWorkflow(value as AudioWorkflow)}>
+                <TabsList className="grid h-auto w-full grid-cols-2 bg-white/70 p-1 shadow-sm md:grid-cols-5">
+                  <TabsTrigger value="tts" className="min-w-0 gap-2 py-2 text-xs sm:text-sm">
+                    <Music className="h-4 w-4 shrink-0" />
+                    <span className="truncate">TTS</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="voice_changer" className="min-w-0 gap-2 py-2 text-xs sm:text-sm">
+                    <Mic className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Voice Changer</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="speech_to_text" className="min-w-0 gap-2 py-2 text-xs sm:text-sm">
+                    <Languages className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Speech to Text</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="sound_effects" className="min-w-0 gap-2 py-2 text-xs sm:text-sm">
+                    <Zap className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Sound Effects</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="voice_isolator" className="min-w-0 gap-2 py-2 text-xs sm:text-sm">
+                    <Volume2 className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Voice Isolator</span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+
             <DashboardCard
               className="overflow-hidden border-cyan-200/70 bg-gradient-to-br from-white via-white to-cyan-50/60 shadow-[0_18px_50px_rgba(14,165,233,0.08)]"
               bodyClassName="p-4"
@@ -5564,6 +8022,11 @@ export default function MediaStudio() {
                             onClick={() => {
                               setPrompt("");
                               setEnhancedPrompt("");
+                              setExternalAudioPromptSource("");
+                              setExternalVoiceoverScript("");
+                              setExternalSoundBedBrief("");
+                              setExternalVoiceoverScriptEdited(false);
+                              setExternalSoundBedBriefEdited(false);
                               setPromptReview(null);
                               clearPromptSupportNotes();
                               setImageTabPrompt(null);
@@ -5583,6 +8046,88 @@ export default function MediaStudio() {
                 </div>
                 </div>
 
+              {isVoiceChangerMode && (
+                <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-orange-950">
+                        <Mic className="h-4 w-4" />
+                        Source audio
+                      </div>
+                      <p className="text-xs text-orange-900/75">
+                        MP3, WAV, M4A, OGG, FLAC, or AAC. Clips up to 10 minutes work best.
+                      </p>
+                      {(voiceChangerSourceAudioUrl || modelInputValues.audio) && (
+                        <div className="mt-2 rounded-lg border bg-white/80 p-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="min-w-0 truncate text-xs font-medium text-slate-700">
+                              {voiceChangerSourceAudioName || "Selected library audio"}
+                            </p>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-muted-foreground"
+                              onClick={() => {
+                                setVoiceChangerSourceAudioUrl("");
+                                setVoiceChangerSourceAudioName("");
+                                setModelInputValues((prev: Record<string, any>) => ({ ...prev, audio: [] }));
+                              }}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                              Clear
+                            </Button>
+                          </div>
+                          {(voiceChangerSourceAudioUrl || (Array.isArray(modelInputValues.audio) ? modelInputValues.audio[0] : modelInputValues.audio)) && (
+                            <audio
+                              src={String(voiceChangerSourceAudioUrl || (Array.isArray(modelInputValues.audio) ? modelInputValues.audio[0] : modelInputValues.audio) || "")}
+                              controls
+                              className="mt-2 w-full"
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex w-full flex-col gap-2 sm:w-60">
+                      <input
+                        ref={voiceChangerAudioInputRef}
+                        type="file"
+                        accept="audio/*"
+                        className="hidden"
+                        onChange={handleVoiceChangerAudioUpload}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-center border-orange-200 bg-white"
+                        onClick={() => voiceChangerAudioInputRef.current?.click()}
+                        disabled={uploadMutation.isPending}
+                      >
+                        {uploadMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4" />
+                        )}
+                        <span className="ml-2">Upload audio</span>
+                      </Button>
+                      <LibraryFilePicker
+                        value=""
+                        onValueChange={(url) => {
+                          const normalized = String(url || "").trim();
+                          if (!normalized) return;
+                          const historyAudio = audioPickerHistoryOptions.find((item) => item.url === normalized);
+                          setVoiceChangerSourceAudioUrl(normalized);
+                          setVoiceChangerSourceAudioName(historyAudio?.title || "Library audio");
+                          setModelInputValues((prev: Record<string, any>) => ({ ...prev, audio: [normalized] }));
+                        }}
+                        allowedExtensions={["mp3", "wav", "m4a", "ogg", "flac", "aac"]}
+                        extraOptions={audioPickerHistoryOptions}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <Textarea
                 ref={promptTextareaRef}
                 value={enhancedPrompt || prompt}
@@ -5595,11 +8140,13 @@ export default function MediaStudio() {
                   setPromptReview(null);
                 }}
                 placeholder={
-                  isGeminiFlashTtsAudioModel
+                  isVoiceChangerMode
+                    ? "Optional notes for this conversion..."
+                    : isGeminiFlashTtsAudioModel
                     ? "Host: Welcome back.\nGuest: Glad to be here."
                     : `Describe the ${activeTab} you want to create...`
                 }
-                className="min-h-[120px] resize-y"
+                className={cn("resize-y", isVoiceChangerMode ? "min-h-[84px]" : "min-h-[120px]")}
               />
 
               {isGeminiFlashTtsAudioModel && (
@@ -5908,10 +8455,7 @@ export default function MediaStudio() {
               {/* Character Count */}
               {(() => {
                 const currentPromptLength = (enhancedPrompt || prompt).length;
-                const modelData = visibleMediaModels.find((m: any) => m.modelId === selectedModel);
-                const config = modelData?.configJson as any;
-                const parsedMaxLength = Number(config?.maxPromptLength);
-                const maxLength = Number.isFinite(parsedMaxLength) && parsedMaxLength > 0 ? parsedMaxLength : null;
+                const maxLength = selectedMediaModelMaxPromptLength;
                 const isOverLimit = maxLength !== null ? currentPromptLength > maxLength : false;
                 const isNearLimit = maxLength !== null ? currentPromptLength > maxLength * 0.95 : false;
 
@@ -6185,14 +8729,26 @@ export default function MediaStudio() {
               {/* Generate Button - Primary location under Prompt */}
               <Button
                 onClick={handleGenerate}
-                disabled={!canGenerateInMediaStudio({
-                  prompt,
-                  enhancedPrompt,
-                  advancedRequest: useAdvancedMode ? dynamicFormValues.request as string : "",
-                  isGenerating,
-                  credits: credits?.credits || 0,
-                  modelCost: getModelCost(),
-                })}
+                disabled={
+                  isVoiceChangerMode
+                    ? (
+                        isGenerating ||
+                        (credits?.credits || 0) < getModelCost() ||
+                        !selectedModel ||
+                        !(
+                          voiceChangerSourceAudioUrl ||
+                          (Array.isArray(modelInputValues.audio) ? modelInputValues.audio[0] : modelInputValues.audio)
+                        )
+                      )
+                    : !canGenerateInMediaStudio({
+                        prompt,
+                        enhancedPrompt,
+                        advancedRequest: useAdvancedMode ? dynamicFormValues.request as string : "",
+                        isGenerating,
+                        credits: credits?.credits || 0,
+                        modelCost: getModelCost(),
+                      })
+                }
                 className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
                 size="lg"
               >
@@ -6390,9 +8946,9 @@ export default function MediaStudio() {
 
                 {/* Dynamic Model Input Fields from configJson */}
                 {(() => {
-                  const modelData = visibleMediaModels.find((m) => m.modelId === selectedModel);
-                  const config = modelData?.configJson as any;
-                  const allFields: any[] = config?.inputFields ?? [];
+	                  const modelData = visibleMediaModels.find((m) => m.modelId === selectedModel);
+	                  const config = modelData?.configJson as any;
+	                  const allFields: any[] = normalizeModelInputFieldsForStudio(modelData, config?.inputFields ?? []) as any[];
 
                   const SYNC_LABELS: Record<string, string> = {
                     reference_images: t('mediaStudio.referenceImagesLabel'),
@@ -6413,6 +8969,7 @@ export default function MediaStudio() {
                     if (sw !== "none") return false;
                     if (f.key === "aspect_ratio" || f.key === "aspect.ratio") return false;
                     if (f.key === "duration" && activeTab === "video") return false;
+                    if (isVoiceChangerMode && f.key === "audio") return false;
                     return true;
                   });
 
@@ -6853,7 +9410,318 @@ export default function MediaStudio() {
                     </Select>
                   </div>
                 )}
+
+                {activeTab === "video" && (
+                  <div className="space-y-1">
+                    <label className="text-sm text-muted-foreground">
+                      {t('mediaStudio.videoAudioWorkflow')}
+                    </label>
+                    <Select
+                      value={videoAudioWorkflow}
+                      onValueChange={(v) => setVideoAudioWorkflow(v as VideoAudioWorkflow)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="native">{t('mediaStudio.videoAudioNative')}</SelectItem>
+                        <SelectItem value="separate_voice">{t('mediaStudio.videoAudioSeparateVoice')}</SelectItem>
+                        <SelectItem value="separate_music">{t('mediaStudio.videoAudioSeparateMusic')}</SelectItem>
+                        <SelectItem value="separate_voice_music">{t('mediaStudio.videoAudioSeparateVoiceMusic')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {activeTab === "video" && (videoAudioWorkflow === "separate_voice" || videoAudioWorkflow === "separate_voice_music") && (
+                  <div className="space-y-1">
+                    <label className="text-sm text-muted-foreground">
+                      {t('mediaStudio.voiceModel')}
+                    </label>
+                    <Select
+                      value={videoVoiceModel}
+                      onValueChange={setVideoVoiceModel}
+                      disabled={separateVoiceModels.length === 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('mediaStudio.selectModel')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {separateVoiceModels.map((model: any) => (
+                          <SelectItem key={model.modelId} value={model.modelId}>
+                            {model.name || model.modelId}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {activeTab === "video" && (videoAudioWorkflow === "separate_voice" || videoAudioWorkflow === "separate_voice_music") && (
+                  <div className="space-y-1">
+                    <label className="text-sm text-muted-foreground">
+                      {t('mediaStudio.storyboardAudioPrepMode')}
+                    </label>
+                    <Select
+                      value={storyboardAudioPrepMode}
+                      onValueChange={(value) => setStoryboardAudioPrepMode(value as StoryboardAudioPrepMode)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="off">{t('mediaStudio.storyboardAudioPrepOff')}</SelectItem>
+                        <SelectItem value="generate_voice">{t('mediaStudio.storyboardAudioPrepGenerate')}</SelectItem>
+                        <SelectItem value="existing_voice">{t('mediaStudio.storyboardAudioPrepExisting')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {activeTab === "video" && (videoAudioWorkflow === "separate_music" || videoAudioWorkflow === "separate_voice_music") && (
+                  <div className="space-y-1">
+                    <label className="text-sm text-muted-foreground">
+                      {t('mediaStudio.musicModel')}
+                    </label>
+                    <Select
+                      value={videoMusicModel}
+                      onValueChange={setVideoMusicModel}
+                      disabled={separateMusicModels.length === 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('mediaStudio.selectModel')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {separateMusicModels.map((model: any) => (
+                          <SelectItem key={model.modelId} value={model.modelId}>
+                            {model.name || model.modelId}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
+
+              {activeTab === "video" && (videoAudioWorkflow === "separate_voice" || videoAudioWorkflow === "separate_voice_music") && (
+                <ModelInputFieldsPanel
+                  enabled={Boolean(selectedSeparateVoiceModel)}
+                  model={selectedSeparateVoiceModel as any}
+                  fields={selectedSeparateVoiceFields}
+                  extraParams={videoVoiceModelInputValues}
+                  onChange={(key, value) => setVideoVoiceModelInputValues((prev) => ({ ...prev, [key]: value }))}
+                  promptPreview={externalVoiceoverScript || t('mediaStudio.voiceoverScript')}
+                  className="mt-4 bg-white/70"
+                  titlePrefix={t('mediaStudio.voiceSettings')}
+                  ariaLabelPrefix="Separate voice"
+                  panelTestId="video-separate-voice-settings"
+                  emptyTestId="video-separate-voice-settings-empty"
+                />
+              )}
+
+              {activeTab === "video" && (videoAudioWorkflow === "separate_voice" || videoAudioWorkflow === "separate_voice_music") && storyboardAudioPrepMode !== "off" && (
+                <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/70 p-3">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm font-medium text-slate-800">
+                        <Clock className="h-4 w-4 text-sky-600" />
+                        {t('mediaStudio.storyboardAudioPrepTitle')}
+                      </div>
+                      <p className="text-xs text-slate-600">
+                        {storyboardAudioPrepMode === "generate_voice"
+                          ? t('mediaStudio.storyboardAudioPrepGenerateHelp')
+                          : t('mediaStudio.storyboardAudioPrepExistingHelp')}
+                      </p>
+                    </div>
+                    {storyboardAudioSourceDurationSeconds ? (
+                      <Badge variant="outline" className="w-fit border-sky-300 bg-white text-sky-700">
+                        {formatMediaDuration(storyboardAudioSourceDurationSeconds)}
+                      </Badge>
+                    ) : null}
+                  </div>
+
+                  {storyboardAudioPrepMode === "existing_voice" && (
+                    <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto]">
+                      <div className="space-y-2">
+                        <LibraryFilePicker
+                          value={storyboardAudioSourceUrl}
+                          onValueChange={async (url) => {
+                            const normalizedUrl = String(url || "").trim();
+                            const historyAudio = audioPickerHistoryOptions.find((item) => item.url === normalizedUrl);
+                            setStoryboardAudioSourceUrl(normalizedUrl);
+                            setStoryboardAudioSourceName(
+                              normalizedUrl
+                                ? (historyAudio?.title || t('mediaStudio.storyboardAudioPrepLibraryAudio'))
+                                : "",
+                            );
+                            setStoryboardPreparedAudio([]);
+                            if (!normalizedUrl) {
+                              setStoryboardAudioSourceDurationSeconds(null);
+                              setStoryboardAudioPrepStatus(null);
+                              return;
+                            }
+                            setStoryboardAudioPrepStatus(t('mediaStudio.storyboardAudioPrepProbing'));
+                            const fallbackSeconds = estimateVoiceoverDurationSeconds(externalVoiceoverScript || prompt || "");
+                            const durationSeconds = await probeMediaDurationSeconds(normalizedUrl, fallbackSeconds);
+                            setStoryboardAudioSourceDurationSeconds(durationSeconds);
+                            setStoryboardAudioPrepStatus(t('mediaStudio.storyboardAudioPrepDurationReady', {
+                              duration: formatMediaDuration(durationSeconds),
+                            }));
+                          }}
+                          allowedExtensions={["mp3", "wav", "m4a", "aac", "ogg", "flac", "webm"]}
+                          extraOptions={audioPickerHistoryOptions}
+                        />
+                        <Input
+                          value={storyboardAudioSourceUrl}
+                          onChange={(event) => {
+                            setStoryboardAudioSourceUrl(event.target.value);
+                            setStoryboardAudioSourceName(event.target.value ? t('mediaStudio.storyboardAudioPrepUrlAudio') : "");
+                            setStoryboardAudioSourceDurationSeconds(null);
+                            setStoryboardPreparedAudio([]);
+                          }}
+                          placeholder={t('mediaStudio.storyboardAudioPrepUrlPlaceholder')}
+                        />
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <input
+                          ref={storyboardAudioFileInputRef}
+                          type="file"
+                          accept="audio/*"
+                          onChange={handleStoryboardAudioFileUpload}
+                          className="hidden"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => storyboardAudioFileInputRef.current?.click()}
+                          disabled={uploadMutation.isPending}
+                          className="shrink-0"
+                        >
+                          {uploadMutation.isPending ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="mr-2 h-4 w-4" />
+                          )}
+                          {t('mediaStudio.storyboardAudioPrepUpload')}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {storyboardAudioPrepStatus ? (
+                    <p className="mt-2 text-xs text-slate-600">{storyboardAudioPrepStatus}</p>
+                  ) : null}
+                </div>
+              )}
+
+              {activeTab === "video" && (videoAudioWorkflow === "separate_music" || videoAudioWorkflow === "separate_voice_music") && (
+                <ModelInputFieldsPanel
+                  enabled={Boolean(selectedSeparateMusicModel)}
+                  model={selectedSeparateMusicModel as any}
+                  fields={selectedSeparateMusicFields}
+                  extraParams={videoMusicModelInputValues}
+                  onChange={(key, value) => setVideoMusicModelInputValues((prev) => ({ ...prev, [key]: value }))}
+                  promptPreview={videoMusicPrompt || t('mediaStudio.musicPrompt')}
+                  referenceImageUrls={referenceImages.map((item) => item.url)}
+                  className="mt-4 bg-white/70"
+                  titlePrefix={t('mediaStudio.musicSettings')}
+                  ariaLabelPrefix="Separate music"
+                  panelTestId="video-separate-music-settings"
+                  emptyTestId="video-separate-music-settings-empty"
+                />
+              )}
+
+              {activeTab === "video" && (videoAudioWorkflow === "separate_music" || videoAudioWorkflow === "separate_voice_music") && (
+                <div className="mt-3 space-y-1">
+                  <label className="text-sm text-muted-foreground">
+                    {t('mediaStudio.musicPrompt')}
+                  </label>
+                  <Textarea
+                    value={videoMusicPrompt}
+                    onChange={(event) => setVideoMusicPrompt(event.target.value)}
+                    placeholder={t('mediaStudio.musicPromptPlaceholder')}
+                    className="min-h-[72px]"
+                  />
+                </div>
+              )}
+
+              {activeTab === "video" && videoAudioWorkflow !== "native" && (
+                <div className="mt-4 grid grid-cols-1 gap-3 border-t pt-4 xl:grid-cols-2">
+                  {(videoAudioWorkflow === "separate_voice" || videoAudioWorkflow === "separate_voice_music") && (
+                    <div className="space-y-2 rounded-lg border bg-white/70 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="text-sm font-medium text-slate-700">
+                          {t('mediaStudio.voiceoverScript')}
+                        </label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8"
+                          onClick={() => {
+                            const source = externalAudioPromptSource.trim() || (enhancedPrompt || prompt).trim();
+                            setExternalVoiceoverScript(extractVoiceoverScriptFromPromptText(source));
+                            setExternalVoiceoverScriptEdited(false);
+                          }}
+                        >
+                          <RefreshCw className="mr-1 h-3.5 w-3.5" />
+                          {t('mediaStudio.syncFromPrompt')}
+                        </Button>
+                      </div>
+                      <Textarea
+                        ref={voiceoverScriptTextareaRef}
+                        value={externalVoiceoverScript}
+                        onChange={(event) => {
+                          setExternalVoiceoverScript(event.target.value);
+                          setExternalVoiceoverScriptEdited(true);
+                        }}
+                        placeholder={t('mediaStudio.voiceoverScriptPlaceholder')}
+                        className="min-h-[132px]"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {t('mediaStudio.voiceoverScriptHelp')}
+                      </p>
+                    </div>
+                  )}
+
+                  {(videoAudioWorkflow === "separate_music" || videoAudioWorkflow === "separate_voice_music") && (
+                    <div className="space-y-2 rounded-lg border bg-white/70 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="text-sm font-medium text-slate-700">
+                          {t('mediaStudio.soundBedBrief')}
+                        </label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8"
+                          onClick={() => {
+                            const source = externalAudioPromptSource.trim() || (enhancedPrompt || prompt).trim();
+                            setExternalSoundBedBrief(extractMusicBriefFromPromptText(source));
+                            setExternalSoundBedBriefEdited(false);
+                          }}
+                        >
+                          <RefreshCw className="mr-1 h-3.5 w-3.5" />
+                          {t('mediaStudio.syncFromPrompt')}
+                        </Button>
+                      </div>
+                      <Textarea
+                        ref={soundBedBriefTextareaRef}
+                        value={externalSoundBedBrief}
+                        onChange={(event) => {
+                          setExternalSoundBedBrief(event.target.value);
+                          setExternalSoundBedBriefEdited(true);
+                        }}
+                        placeholder={t('mediaStudio.soundBedBriefPlaceholder')}
+                        className="min-h-[132px]"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {t('mediaStudio.soundBedBriefHelp')}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* VFX and Advanced Options (for image only) */}
               {activeTab === "image" && (
@@ -7743,7 +10611,7 @@ export default function MediaStudio() {
               <TabsContent value="history" className="mt-4">
                 <div className="pr-0 sm:pr-3">
                     <Tabs value={historyGalleryTab} onValueChange={(value) => setHistoryGalleryTab(value as HistoryGalleryTab)}>
-                        <TabsList className="grid h-auto w-full grid-cols-2 bg-muted/50 p-1">
+                        <TabsList className="grid h-auto w-full grid-cols-3 bg-muted/50 p-1">
                           <TabsTrigger value="image" className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm">
                             <Image className="h-4 w-4" />
                             <span className="truncate">{t('mediaStudio.tabs.image')}</span>
@@ -7751,6 +10619,10 @@ export default function MediaStudio() {
                           <TabsTrigger value="video" className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm">
                             <Video className="h-4 w-4" />
                             <span className="truncate">{t('mediaStudio.tabs.video')}</span>
+                          </TabsTrigger>
+                          <TabsTrigger value="audio" className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm">
+                            <Music className="h-4 w-4" />
+                            <span className="truncate">{t('mediaStudio.tabs.audio')}</span>
                           </TabsTrigger>
                         </TabsList>
 
@@ -7858,8 +10730,22 @@ export default function MediaStudio() {
                                       </div>
                                     </div>
                                   ) : task.mediaType === "audio" ? (
-                                    <div className="w-full aspect-square rounded-lg border border-orange-200 bg-orange-50 hover:border-orange-400 transition-colors flex items-center justify-center">
-                                      <Music className="h-8 w-8 text-orange-500" />
+                                    <div className="flex aspect-square w-full flex-col justify-between rounded-lg border border-orange-200 bg-orange-50 p-3 transition-colors hover:border-orange-400">
+                                      <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+                                        <div className="rounded-full bg-orange-100 p-3">
+                                          <Music className="h-7 w-7 text-orange-500" />
+                                        </div>
+                                        <p className="line-clamp-2 text-xs font-medium text-orange-950">
+                                          {task.prompt || task.model || t('mediaStudio.tabs.audio')}
+                                        </p>
+                                      </div>
+                                      <audio
+                                        src={resultUrl}
+                                        controls
+                                        className="h-8 w-full"
+                                        onClick={(event) => event.stopPropagation()}
+                                        onError={() => markExpired(resultUrl)}
+                                      />
                                     </div>
                                   ) : (
                                     <img
@@ -8019,7 +10905,9 @@ export default function MediaStudio() {
                             <p className="text-sm text-muted-foreground text-center py-8">
                               {historyGalleryTab === "image"
                                 ? t('mediaStudio.noHistoryImage')
-                                : t('mediaStudio.noHistoryVideo')}
+                                : historyGalleryTab === "video"
+                                  ? t('mediaStudio.noHistoryVideo')
+                                  : t('mediaStudio.noHistoryAudio')}
                             </p>
                           )}
                         </div>
@@ -8620,6 +11508,10 @@ export default function MediaStudio() {
         regeneratingTaskId={regeneratingStoryboardTaskId}
         compoundStatus={storyboardCompoundStatus}
         projectLink={storyboardProjectLink}
+        companionAudio={storyboardCompanionAudio}
+        regeneratingAudioId={regeneratingStoryboardAudioId}
+        onRegenerateAudio={regenerateStoryboardAudio}
+        muteVideoPreviewAudio={shouldMuteStoryboardNativeAudio}
       />
       )}
 

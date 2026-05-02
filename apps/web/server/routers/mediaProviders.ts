@@ -6,6 +6,10 @@ import { eq, asc, desc, sql } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
 import {
   assertPublicSafeHttpUrl,
+  ELEVENLABS_BASE_URL,
+  ELEVENLABS_PROVIDER,
+  ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID,
+  getElevenLabsProviderAvailableModels,
   getWaveSpeedProviderAvailableModels,
   normalizeMediaProviderName,
   normalizePersistedMediaProviderBaseUrl,
@@ -114,11 +118,20 @@ export const PROVIDER_TEMPLATES = [
   {
     providerName: WAVESPEED_PROVIDER,
     displayName: "WaveSpeedAI",
-    description: "WaveSpeed media-generation provider for cinematic and ByteDance Seedance 2.0 text-to-video / image-to-video generation",
+    description: "WaveSpeed media-generation provider for video, text-to-speech, and music generation",
     providerType: "multimodal" as const,
     baseUrl: "https://api.wavespeed.ai/api/v3",
     defaultModel: WAVESPEED_LAUNCH_MODEL_ID,
     availableModels: getWaveSpeedProviderAvailableModels(),
+  },
+  {
+    providerName: ELEVENLABS_PROVIDER,
+    displayName: "ElevenLabs",
+    description: "Direct ElevenLabs audio provider for text-to-speech, voice changing, speech-to-text, sound effects, and voice isolation",
+    providerType: "audio" as const,
+    baseUrl: ELEVENLABS_BASE_URL,
+    defaultModel: ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID,
+    availableModels: getElevenLabsProviderAvailableModels(),
   },
   {
     providerName: "uvoice",
@@ -414,6 +427,12 @@ export const mediaProvidersRouter = router({
               provider.baseUrl || "https://api.wavespeed.ai/api/v3"
             );
             break;
+          case ELEVENLABS_PROVIDER:
+            result = await testElevenLabs(
+              apiKey,
+              provider.baseUrl || ELEVENLABS_BASE_URL
+            );
+            break;
           case "uvoice":
             result = await testUVoice(
               apiKey,
@@ -648,6 +667,24 @@ function summarizeResponseText(text: string, maxLength = 160): string {
     : normalized;
 }
 
+function redactProviderSecret(value: string, apiKey: string): string {
+  const secret = String(apiKey ?? "");
+  if (!secret) {
+    return value;
+  }
+  return value.split(secret).join("[redacted]");
+}
+
+async function summarizeProviderResponse(response: Response, apiKey: string): Promise<string> {
+  let raw = "";
+  try {
+    raw = JSON.stringify(await response.json());
+  } catch {
+    raw = await response.text().catch(() => "");
+  }
+  return redactProviderSecret(summarizeResponseText(raw), apiKey);
+}
+
 export async function testWaveSpeedAI(
   apiKey: string,
   baseUrl: string,
@@ -705,6 +742,62 @@ export async function testWaveSpeedAI(
     message: "Connection successful",
     latencyMs,
     balance,
+  };
+}
+
+export async function testElevenLabs(
+  apiKey: string,
+  baseUrl: string,
+): Promise<{ success: boolean; message: string; latencyMs?: number }> {
+  const normalizedBaseUrl = new URL(baseUrl || ELEVENLABS_BASE_URL).toString().replace(/\/$/, "");
+  validateExternalUrl(normalizedBaseUrl);
+  const startTime = Date.now();
+  const headers = {
+    "xi-api-key": apiKey,
+    Accept: "application/json",
+  };
+
+  const subscriptionResponse = await fetch(`${normalizedBaseUrl}/v1/user/subscription`, {
+    method: "GET",
+    headers,
+  });
+  const latencyMs = Date.now() - startTime;
+
+  if (subscriptionResponse.ok) {
+    return { success: true, message: "Connection successful", latencyMs };
+  }
+
+  if (subscriptionResponse.status === 404 || subscriptionResponse.status === 405) {
+    const voicesResponse = await fetch(`${normalizedBaseUrl}/v1/voices`, {
+      method: "GET",
+      headers,
+    });
+    if (voicesResponse.ok) {
+      return { success: true, message: "Connection successful", latencyMs: Date.now() - startTime };
+    }
+    const fallbackSummary = await summarizeProviderResponse(voicesResponse, apiKey);
+    return {
+      success: false,
+      message: `ElevenLabs API error (HTTP ${voicesResponse.status}): ${fallbackSummary}`,
+      latencyMs: Date.now() - startTime,
+    };
+  }
+
+  const responseSummary = await summarizeProviderResponse(subscriptionResponse, apiKey);
+  if (subscriptionResponse.status === 401) {
+    return { success: false, message: `Invalid API key (401 Unauthorized): ${responseSummary}`, latencyMs };
+  }
+  if (subscriptionResponse.status === 403) {
+    return { success: false, message: `ElevenLabs API key forbidden (403 Forbidden): ${responseSummary}`, latencyMs };
+  }
+  if (subscriptionResponse.status === 429) {
+    return { success: true, message: "ElevenLabs API key valid (rate limited)", latencyMs };
+  }
+
+  return {
+    success: false,
+    message: `ElevenLabs API error (HTTP ${subscriptionResponse.status}): ${responseSummary}`,
+    latencyMs,
   };
 }
 

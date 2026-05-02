@@ -19,6 +19,7 @@ import {
 } from "./appRuntimeConfig";
 import {
   assertRelativeUploadMediaReferencePath,
+  buildElevenLabsModelSeeds,
   buildWaveSpeedModelSeeds,
   getReferenceImageLimitFromConfig,
   normalizeMediaProviderName,
@@ -70,6 +71,23 @@ export { normalizeMediaPrompt } from "./mediaPromptNormalization";
 
 const wavespeedModelMetadata: Record<string, ModelMetadata> = Object.fromEntries(
   buildWaveSpeedModelSeeds().map((seed) => [
+    seed.modelId,
+    {
+      id: seed.modelId,
+      type: seed.modelType,
+      name: seed.name,
+      provider: seed.provider,
+      description: seed.description,
+      supportsDurations: [...seed.durations],
+      supportsAspectRatios: [...seed.aspectRatios],
+      creditCost: seed.creditCost,
+      configJson: seed.configJson,
+    } satisfies ModelMetadata,
+  ]),
+);
+
+const elevenLabsModelMetadata: Record<string, ModelMetadata> = Object.fromEntries(
+  buildElevenLabsModelSeeds().map((seed) => [
     seed.modelId,
     {
       id: seed.modelId,
@@ -174,6 +192,11 @@ function buildApiConfigFromModelConfig(
   setApiConfigString(apiConfig, "query_endpoint", configJson.apiQueryEndpoint);
   setApiConfigString(apiConfig, "payload_format", configJson.apiPayloadFormat);
   setApiConfigString(apiConfig, "kie_model_id", configJson.kieModelId);
+  setApiConfigString(apiConfig, "generate_type", configJson.generateType);
+  setApiConfigString(apiConfig, "veo_4k_endpoint", configJson.veo4kEndpoint);
+  setApiConfigString(apiConfig, "veo_4k_endpoint", configJson.veo4KEndpoint);
+  setApiConfigString(apiConfig, "veo_4k_endpoint", configJson.veo4kUpgradeEndpoint);
+  setApiConfigString(apiConfig, "veo_4k_endpoint", configJson.veo4KUpgradeEndpoint);
   mergeApiConfigRecord(apiConfig, configJson.apiConfig);
   return apiConfig;
 }
@@ -335,20 +358,186 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     creditCost: 14,
   },
   // Video models
+  "veo3/generate-veo-3-video-lite": {
+    id: "veo3/generate-veo-3-video-lite",
+    type: "video",
+    name: "Veo 3.1 Lite",
+    provider: "kie.ai",
+    description: "Google's cost-effective Veo 3.1 video generation model",
+    supportsDurations: [8],
+    supportsAspectRatios: ["auto", "16:9", "9:16"],
+    creditCost: 150,
+    configJson: {
+      apiEndpoint: "/api/v1/veo/generate",
+      apiQueryEndpoint: "/api/v1/veo/record-info",
+      veo4kEndpoint: "/api/v1/veo/get-4k-video",
+      apiPayloadFormat: "veo",
+      kieModelId: "veo3_lite",
+      maxPromptLength: 5000,
+    },
+  },
   "veo-3-1": {
     id: "veo-3-1",
     type: "video",
-    name: "Veo 3.1",
+    name: "Veo 3.1 Quality",
     provider: "kie.ai",
-    description: "Google's video generation model",
-    supportsDurations: [5, 10, 15],
-    supportsAspectRatios: ["16:9", "9:16", "1:1"],
-    creditCost: 50,
+    description: "Google's flagship Veo 3.1 video generation model",
+    supportsDurations: [8],
+    supportsAspectRatios: ["auto", "16:9", "9:16"],
+    creditCost: 2000,
     configJson: {
       apiEndpoint: "/api/v1/veo/generate",
+      apiQueryEndpoint: "/api/v1/veo/record-info",
+      veo4kEndpoint: "/api/v1/veo/get-4k-video",
+      apiPayloadFormat: "veo",
+      kieModelId: "veo3",
+      maxPromptLength: 5000,
+    },
+  },
+  "veo3/generate-veo-3-video-fast": {
+    id: "veo3/generate-veo-3-video-fast",
+    type: "video",
+    name: "Veo 3.1 Fast",
+    provider: "kie.ai",
+    description: "Google's fast Veo 3.1 video generation model",
+    supportsDurations: [8],
+    supportsAspectRatios: ["auto", "16:9", "9:16"],
+    creditCost: 300,
+    configJson: {
+      apiEndpoint: "/api/v1/veo/generate",
+      apiQueryEndpoint: "/api/v1/veo/record-info",
+      veo4kEndpoint: "/api/v1/veo/get-4k-video",
       apiPayloadFormat: "veo",
       kieModelId: "veo3_fast",
-      maxPromptLength: 3000,
+      maxPromptLength: 5000,
+    },
+  },
+  "veo3/extend-video": {
+    id: "veo3/extend-video",
+    type: "video",
+    name: "Veo 3.1 Extend",
+    provider: "kie.ai",
+    description: "Extend an existing video with Veo 3.1 technology",
+    supportsDurations: [8],
+    supportsAspectRatios: ["auto", "16:9", "9:16"],
+    creditCost: 1250,
+    configJson: {
+      apiEndpoint: "/api/v1/veo/extend",
+      apiQueryEndpoint: "/api/v1/veo/record-info",
+      apiPayloadFormat: "veo_extend",
+      kieModelId: null,
+      apiConfig: {
+        extend_model: "fast",
+      },
+      generateType: "video-extend",
+      maxPromptLength: 5000,
+      inputFields: [
+        { key: "source_task_id", label: "Original Veo Task ID", type: "text", required: true },
+        { key: "video_urls", label: "Source Video Preview", type: "video_urls", required: false, syncWith: "reference_videos" },
+        { key: "seeds", label: "Seed", type: "number", required: false },
+        { key: "watermark", label: "Watermark", type: "text", required: false },
+      ],
+      pricingTiers: { default: 1250 },
+      pricingFormula: "flat",
+    },
+  },
+  "happyhorse/text-to-video": {
+    id: "happyhorse/text-to-video",
+    type: "video",
+    name: "HappyHorse 1.0 Text-to-Video",
+    provider: "kie.ai",
+    description: "Alibaba ATH HappyHorse 1.0 text-to-video generation",
+    supportsDurations: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    supportsAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    creditCost: 100,
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+      apiPayloadFormat: "market",
+      kieModelId: "happyhorse/text-to-video",
+      generateType: "text-to-video",
+      maxPromptLength: 5000,
+    },
+  },
+  "happyhorse/image-to-video": {
+    id: "happyhorse/image-to-video",
+    type: "video",
+    name: "HappyHorse 1.0 Image-to-Video",
+    provider: "kie.ai",
+    description: "Animate a single source image with HappyHorse 1.0",
+    supportsDurations: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    creditCost: 100,
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+      apiPayloadFormat: "market",
+      kieModelId: "happyhorse/image-to-video",
+      generateType: "image-to-video",
+      maxPromptLength: 5000,
+      maxReferenceImages: 1,
+      apiConfig: {
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        omit_aspect_ratio: true,
+      },
+      inputFields: [
+        { key: "image_urls", label: "Source Image", type: "image_urls", required: true, syncWith: "reference_images" },
+      ],
+    },
+  },
+  "happyhorse/reference-to-video": {
+    id: "happyhorse/reference-to-video",
+    type: "video",
+    name: "HappyHorse 1.0 Reference-to-Video",
+    provider: "kie.ai",
+    description: "Generate video from 1-9 character or style references with HappyHorse 1.0",
+    supportsDurations: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    supportsAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    creditCost: 100,
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+      apiPayloadFormat: "market",
+      kieModelId: "happyhorse/reference-to-video",
+      generateType: "reference-to-video",
+      maxPromptLength: 5000,
+      maxReferenceImages: 9,
+      apiConfig: {
+        reference_image_input_key: "reference_image",
+        reference_image_input_type: "array",
+      },
+      inputFields: [
+        { key: "reference_image", label: "Reference Images", type: "image_urls", required: true, syncWith: "reference_images" },
+      ],
+    },
+  },
+  "happyhorse/video-edit": {
+    id: "happyhorse/video-edit",
+    type: "video",
+    name: "HappyHorse 1.0 Video Edit",
+    provider: "kie.ai",
+    description: "Edit an existing video with optional reference images using HappyHorse 1.0",
+    creditCost: 100,
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+      apiPayloadFormat: "market",
+      kieModelId: "happyhorse/video-edit",
+      generateType: "video-edit",
+      maxPromptLength: 5000,
+      maxReferenceImages: 5,
+      apiConfig: {
+        reference_image_input_key: "reference_image",
+        reference_image_input_type: "array",
+        reference_video_input_key: "video_url",
+        reference_video_input_type: "url",
+        omit_aspect_ratio: true,
+        omit_duration: true,
+      },
+      inputFields: [
+        { key: "video_url", label: "Source Video", type: "video_urls", required: true, syncWith: "reference_videos" },
+        { key: "reference_image", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images" },
+      ],
     },
   },
   "sora-2": {
@@ -392,6 +581,7 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     creditCost: 36,
   },
   ...wavespeedModelMetadata,
+  ...elevenLabsModelMetadata,
   // ========== BytePlus ModelArk — Seedream Image Models ==========
   "seedream-4-5-251128": {
     id: "seedream-4-5-251128",
@@ -535,7 +725,7 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
 // Default models
 export const DEFAULT_MODELS = {
   image: "google-nano-banana-pro" as ImageModel,
-  video: "veo-3-1" as VideoModel,
+  video: "veo3/generate-veo-3-video-lite" as VideoModel,
   audio: "elevenlabs-tts" as AudioModel,
 };
 
@@ -725,6 +915,9 @@ function isLikelyUrlLikeExtraParamKey(key: string): boolean {
     || normalizedKey === "uri"
     || normalizedKey.endsWith("uri")
     || normalizedKey.endsWith("uris")
+    || normalizedKey === "audio"
+    || normalizedKey === "image"
+    || normalizedKey === "video"
     || normalizedKey.includes("referenceimage")
     || normalizedKey.includes("referencevideo")
     || normalizedKey.includes("referenceaudio")

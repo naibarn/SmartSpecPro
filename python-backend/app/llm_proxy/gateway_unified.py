@@ -88,6 +88,40 @@ class LLMGateway:
         gateway = LLMGateway(db)
         response = await gateway.invoke(request, user)
     """
+
+    @staticmethod
+    def _format_provider_http_error(prefix: str, exc: httpx.HTTPStatusError) -> str:
+        """Include provider response details for debuggable media failures."""
+        detail = ""
+        try:
+            payload = exc.response.json()
+            if isinstance(payload, dict):
+                for key in ("message", "detail", "error", "errorMessage", "msg"):
+                    value = payload.get(key)
+                    if isinstance(value, str) and value.strip():
+                        detail = value.strip()
+                        break
+                    if isinstance(value, dict):
+                        nested = (
+                            value.get("message")
+                            or value.get("detail")
+                            or value.get("error")
+                            or value.get("errorMessage")
+                            or value.get("msg")
+                        )
+                        if isinstance(nested, str) and nested.strip():
+                            detail = nested.strip()
+                            break
+                if not detail and payload:
+                    detail = str(payload)
+            else:
+                detail = str(payload)
+        except Exception:
+            detail = (exc.response.text or "").strip()
+
+        if detail:
+            return f"{prefix}: HTTP {exc.response.status_code} - {detail[:500]}"
+        return f"{prefix}: HTTP {exc.response.status_code}"
     
     def __init__(self, db: AsyncSession):
         """
@@ -126,6 +160,8 @@ class LLMGateway:
             return "fal_ai"
         if normalized in {"wavespeed_ai", "wavespeedai"}:
             return "wavespeed_ai"
+        if normalized in {"elevenlabs", "eleven_labs", "elevenlabs_ai", "eleven_labs_ai"}:
+            return "elevenlabs"
         return normalized
 
     @staticmethod
@@ -1328,7 +1364,7 @@ class LLMGateway:
             except httpx.HTTPStatusError as exc:
                 raise HTTPException(
                     status_code=exc.response.status_code,
-                    detail=f"WaveSpeed API error: HTTP {exc.response.status_code}",
+                    detail=self._format_provider_http_error("WaveSpeed API error", exc),
                 ) from exc
             except Exception as exc:
                 logger.error(
@@ -1543,7 +1579,7 @@ class LLMGateway:
 
         try:
             provider_kwargs = request.dict(exclude_unset=True, exclude={
-                "model", "prompt", "user", "reference_video_url", "reference_image_urls"
+                "model", "prompt", "user"
             })
 
             if wait_for_completion:
@@ -1616,14 +1652,249 @@ class LLMGateway:
             resolved_provider == "uvoice"
             or normalized_model in uvoice_audio_models
         )
+        route_to_wavespeed_audio = resolved_provider == "wavespeed_ai"
+        route_to_elevenlabs_audio = (
+            resolved_provider == "elevenlabs"
+            or str(normalized_request.model or "").strip().lower().startswith("elevenlabs/")
+        )
 
         logger.info(
             "audio_provider_routing",
             model=request.model,
             normalized_model=normalized_model,
             resolved_provider=resolved_provider,
-            route="uvoice" if route_to_uvoice else "kie_ai",
+            route=(
+                "wavespeed_ai"
+                if route_to_wavespeed_audio
+                else "elevenlabs"
+                if route_to_elevenlabs_audio
+                else "uvoice"
+                if route_to_uvoice
+                else "kie_ai"
+            ),
         )
+
+        if route_to_elevenlabs_audio:
+            from app.llm_proxy.providers.elevenlabs_media_provider import (
+                ElevenLabsBinaryResult,
+                ElevenLabsMediaError,
+                ElevenLabsMediaProvider,
+                ElevenLabsTranscriptResult,
+            )
+            from app.services.media_provider_service import get_media_provider_key
+
+            provider_config = await get_media_provider_key("elevenlabs")
+            if not provider_config or not provider_config.get("apiKey"):
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="ElevenLabs not configured. Please add API key in Admin > Media Providers.",
+                )
+
+            api_config = normalized_request.api_config if isinstance(normalized_request.api_config, dict) else {}
+            extra_params = normalized_request.extra_params if isinstance(normalized_request.extra_params, dict) else {}
+            capability = (
+                self._get_api_config_string(api_config, "elevenlabs_capability", "elevenlabsCapability")
+                or "text_to_speech"
+            )
+            payload = {key: value for key, value in extra_params.items() if value is not None}
+            if normalized_request.text:
+                payload.setdefault("text", normalized_request.text)
+            if normalized_request.voice_id:
+                payload.setdefault("voice_id", normalized_request.voice_id)
+            if normalized_request.output_format:
+                payload.setdefault("output_format", normalized_request.output_format)
+            if normalized_request.stability is not None:
+                payload.setdefault("stability", normalized_request.stability)
+            if normalized_request.similarity_boost is not None:
+                payload.setdefault("similarity_boost", normalized_request.similarity_boost)
+            if normalized_request.speed is not None:
+                payload.setdefault("speed", normalized_request.speed)
+
+            client = None
+            try:
+                client = ElevenLabsMediaProvider(
+                    api_key=provider_config["apiKey"],
+                    base_url=provider_config.get("baseUrl"),
+                )
+                if capability == "voice_changer":
+                    provider_result = await client.convert_voice(payload)
+                elif capability == "speech_to_text":
+                    provider_result = await client.transcribe(payload)
+                elif capability == "sound_effects":
+                    provider_result = await client.generate_sound_effect(payload)
+                elif capability == "voice_isolator":
+                    provider_result = await client.isolate_voice(payload)
+                else:
+                    provider_result = await client.generate_text_to_speech(payload)
+
+                response_id = f"elevenlabs-{uuid4().hex}"
+                metadata: Dict[str, Any]
+                data: List[Dict[str, str]]
+                if isinstance(provider_result, ElevenLabsBinaryResult):
+                    result_url = await self._upload_generated_media_bytes(
+                        user_id=int(user.id),
+                        job_id=response_id,
+                        media_type="audio",
+                        payload=provider_result.content,
+                        content_type=provider_result.content_type,
+                        ext=provider_result.extension,
+                    )
+                    data = [{"url": result_url}]
+                    metadata = {
+                        "artifactKind": "audio",
+                        "provider": "elevenlabs",
+                        "capability": provider_result.capability,
+                        "contentType": provider_result.content_type,
+                        "outputFormat": provider_result.output_format,
+                    }
+                elif isinstance(provider_result, ElevenLabsTranscriptResult):
+                    data = []
+                    metadata = {
+                        "artifactKind": "transcript",
+                        "provider": "elevenlabs",
+                        "capability": provider_result.capability,
+                        "text": provider_result.text,
+                        "transcript": provider_result.transcript,
+                        "words": provider_result.transcript.get("words"),
+                        "languageCode": provider_result.transcript.get("language_code"),
+                    }
+                else:  # pragma: no cover - defensive guard
+                    raise ElevenLabsMediaError("Unsupported ElevenLabs response type")
+
+                response = AudioGenerationResponse(
+                    id=response_id,
+                    model=normalized_request.model,
+                    provider="elevenlabs",
+                    created=0,
+                    data=data,
+                    metadata=metadata,
+                )
+                transaction = await self._deduct_credits(
+                    user, estimated_cost, normalized_request, response, estimated_cost, False
+                )
+                response.credits_used = abs(transaction.amount)
+                response.credits_balance = transaction.balance_after
+                return response
+            except HTTPException:
+                raise
+            except ElevenLabsMediaError as exc:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+            except httpx.HTTPStatusError as exc:
+                raise HTTPException(
+                    status_code=exc.response.status_code,
+                    detail=self._format_provider_http_error("ElevenLabs API error", exc),
+                ) from exc
+            except Exception as exc:
+                logger.error(
+                    "elevenlabs_audio_generation_failed",
+                    user_id=user.id,
+                    model=normalized_request.model,
+                    error=str(exc),
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="ElevenLabs audio generation failed",
+                ) from exc
+            finally:
+                if client is not None:
+                    await client.aclose()
+
+        if route_to_wavespeed_audio:
+            from app.llm_proxy.providers.wavespeed_media_provider import (
+                WaveSpeedError,
+                WaveSpeedMediaProvider,
+                WaveSpeedPollingTimeoutError,
+                WaveSpeedTerminalError,
+            )
+            from app.services.media_provider_service import get_media_provider_key
+
+            provider_config = await get_media_provider_key("wavespeed_ai")
+            if not provider_config or not provider_config.get("apiKey"):
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="WaveSpeedAI not configured. Please add API key in Admin > Media Providers.",
+                )
+
+            api_config = normalized_request.api_config if isinstance(normalized_request.api_config, dict) else {}
+            extra_params = normalized_request.extra_params if isinstance(normalized_request.extra_params, dict) else {}
+            text_input_key = (
+                self._get_api_config_string(api_config, "text_input_key", "textInputKey")
+                or "text"
+            )
+            omit_text_input = self._get_api_config_bool(api_config, "omit_text_input", "omitTextInput") is True
+            payload = {
+                key: value
+                for key, value in extra_params.items()
+                if value is not None
+            }
+            if not omit_text_input:
+                payload[text_input_key] = normalized_request.text
+            if normalized_request.voice:
+                payload.setdefault("voice", normalized_request.voice)
+            if normalized_request.voice_id:
+                payload.setdefault("voice_id", normalized_request.voice_id)
+            if normalized_request.speed is not None:
+                payload.setdefault("speed", normalized_request.speed)
+            if normalized_request.output_format:
+                payload.setdefault("format", normalized_request.output_format)
+
+            client = None
+            try:
+                client = WaveSpeedMediaProvider(
+                    api_key=provider_config["apiKey"],
+                    base_url=provider_config.get("baseUrl"),
+                    submit_endpoint=WaveSpeedMediaProvider.resolve_submit_endpoint(api_config),
+                    result_endpoint_template=WaveSpeedMediaProvider.resolve_result_endpoint_template(api_config),
+                    provider_model_id=WaveSpeedMediaProvider.resolve_provider_model_id(normalized_request.model, api_config),
+                )
+                submit_result = await client.create_audio_prediction(payload=payload)
+                completion = await client.wait_for_completion(
+                    request_id=submit_result["provider_task_id"],
+                )
+                if not completion.result_url:
+                    raise WaveSpeedTerminalError(
+                        "WaveSpeed completed without a final media URL"
+                    )
+                response = AudioGenerationResponse(
+                    id=submit_result["provider_task_id"],
+                    model=normalized_request.model,
+                    provider="wavespeed_ai",
+                    created=0,
+                    data=[{"url": completion.result_url}],
+                )
+                transaction = await self._deduct_credits(
+                    user, estimated_cost, normalized_request, response, estimated_cost, False
+                )
+                response.credits_used = abs(transaction.amount)
+                response.credits_balance = transaction.balance_after
+                return response
+            except HTTPException:
+                raise
+            except WaveSpeedError as exc:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+            except WaveSpeedTerminalError as exc:
+                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+            except WaveSpeedPollingTimeoutError as exc:
+                raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail=str(exc)) from exc
+            except httpx.HTTPStatusError as exc:
+                raise HTTPException(
+                    status_code=exc.response.status_code,
+                    detail=self._format_provider_http_error("WaveSpeed API error", exc),
+                ) from exc
+            except Exception as exc:
+                logger.error(
+                    "wavespeed_audio_generation_failed",
+                    user_id=user.id,
+                    model=normalized_request.model,
+                    error=str(exc),
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="WaveSpeed audio generation failed",
+                ) from exc
+            finally:
+                if client is not None:
+                    await client.aclose()
 
         if route_to_uvoice:
             from app.services.media_provider_service import get_media_provider_key
@@ -1899,12 +2170,16 @@ class LLMGateway:
             fal_client = None
             try:
                 fal_client = FalAIAudioProvider(api_key=provider_config_fal["apiKey"])
-                extra = normalized_request.extra_params if isinstance(normalized_request.extra_params, dict) else {}
+                extra = dict(normalized_request.extra_params) if isinstance(normalized_request.extra_params, dict) else {}
                 if normalized_request.text:
-                    extra["text"] = normalized_request.text
+                    if normalized_model == self._normalize_model_id("fal-ai/gemini-3.1-flash-tts"):
+                        extra["prompt"] = normalized_request.text
+                        extra.pop("text", None)
+                    else:
+                        extra["text"] = normalized_request.text
                 result = await fal_client.generate_audio(normalized_request.model, extra)
                 response = AudioGenerationResponse(
-                    id="",
+                    id=str(result.get("id") or result.get("request_id") or ""),
                     model=normalized_request.model,
                     provider="fal_ai",
                     created=0,
@@ -2224,6 +2499,36 @@ class LLMGateway:
                                 usd_cost=float(db_cost),
                             )
                             return db_cost
+                if isinstance(request, AudioGenerationRequest):
+                    provider_hint = self._normalize_provider_id(
+                        self._get_api_config_string(request.api_config, "provider", "provider_id", "providerId", "providerName")
+                    )
+                    if provider_hint == "wavespeed_ai":
+                        api_config = request.api_config if isinstance(request.api_config, dict) else {}
+                        extra_params = request.extra_params if isinstance(request.extra_params, dict) else {}
+                        pricing_formula = self._get_api_config_string(api_config, "pricing_formula", "pricingFormula")
+                        pricing_tier_default = None
+                        raw_tiers = api_config.get("pricingTiers") if isinstance(api_config, dict) else None
+                        if isinstance(raw_tiers, dict):
+                            pricing_tier_default = raw_tiers.get("default")
+                        if pricing_tier_default is None:
+                            pricing_tier_default = self._get_api_config_string(api_config, "default_credit_cost", "defaultCreditCost")
+                        credit_cost = float(pricing_tier_default or 0)
+                        if credit_cost > 0:
+                            if pricing_formula == "per_unit":
+                                unit_size_raw = self._get_api_config_string(api_config, "pricing_unit_size", "pricingUnitSize")
+                                unit_size = int(unit_size_raw or 1000)
+                                measured = len(str(request.text or ""))
+                                units = max(1, math.ceil(measured / max(1, unit_size)))
+                                credit_cost *= units
+                            db_cost = Decimal(str(credit_cost)) / Decimal("1000")
+                            logger.info(
+                                "estimate_cost_from_wavespeed_audio_static_fallback",
+                                model=request.model,
+                                credit_cost=credit_cost,
+                                usd_cost=float(db_cost),
+                            )
+                            return db_cost
             except Exception as e:
                 logger.debug(f"Could not apply WaveSpeed static fallback cost: {e}")
 
@@ -2329,10 +2634,13 @@ class LLMGateway:
         # to prevent SQL injection (model list comes from frozenset, but defense-in-depth)
         all_models = list(_FalProvider.ALL_MODELS)
         query = sa_text(
-            'SELECT count(*) FROM media_tasks WHERE "userId" = :uid '
-            "AND status = 'PROCESSING' AND model = ANY(:models)"
+            "SELECT count(*) FROM media_tasks WHERE user_id = :uid "
+            "AND status = :processing_status AND model = ANY(:models)"
         )
-        result = await self.db.execute(query, {"uid": user_id, "models": all_models})
+        result = await self.db.execute(
+            query,
+            {"uid": user_id, "processing_status": "processing", "models": all_models},
+        )
         count = result.scalar() or 0
         if count >= max_concurrent:
             raise HTTPException(

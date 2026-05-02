@@ -1,0 +1,28 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/deep_plan/feature/099-ElevenLabsDirectProvider/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/deep_plan/feature/099-ElevenLabsDirectProvider/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-provider-and-model-registry",
+    "section-02-backend-elevenlabs-client",
+    "section-03-media-task-results-and-artifacts",
+    "section-04-media-studio-ui",
+    "section-05-skills-and-routing",
+    "section-06-eleven-agents-follow-on",
+    "section-07-tests-and-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-05-02T03:32:51.415446+00:00"
+}

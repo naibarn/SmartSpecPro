@@ -7,6 +7,7 @@ from pydantic import BaseModel
 import structlog
 import os
 import json
+from datetime import datetime
 
 from app.llm_proxy.gateway_unified import LLMGateway
 from app.llm_proxy.models import (
@@ -164,7 +165,87 @@ def _detect_task_provider(task: MediaTask) -> str:
     model = str(task.model or "").strip().lower()
     if model.startswith("wavespeed-ai/"):
         return "wavespeed_ai"
+    if model.startswith("elevenlabs/"):
+        return "elevenlabs"
     return "kie_ai"
+
+
+def _normalize_resolution_value(value: Any) -> str:
+    return str(value or "").strip().lower().replace(" ", "")
+
+
+def _is_4k_resolution(value: Any) -> bool:
+    return _normalize_resolution_value(value) in {"4k", "2160p", "uhd", "ultrahd"}
+
+
+def _extract_task_api_config(task: MediaTask) -> dict[str, Any]:
+    parameters = _coerce_json_dict(task.parameters)
+    api_config = parameters.get("api_config") or parameters.get("apiConfig")
+    return dict(api_config) if isinstance(api_config, dict) else {}
+
+
+def _is_veo_task(task: MediaTask) -> bool:
+    model = str(task.model or "").strip().lower()
+    if "veo" in model:
+        return True
+    api_config = _extract_task_api_config(task)
+    candidates = [
+        api_config.get("endpoint"),
+        api_config.get("api_endpoint"),
+        api_config.get("apiEndpoint"),
+        api_config.get("kie_model_id"),
+        api_config.get("kieModelId"),
+        api_config.get("model_id"),
+        api_config.get("modelId"),
+    ]
+    return any("veo" in str(candidate).lower() for candidate in candidates if candidate)
+
+
+def _task_requests_veo_4k(task: MediaTask) -> bool:
+    if not _is_veo_task(task):
+        return False
+    parameters = _coerce_json_dict(task.parameters)
+    extra_params = parameters.get("extra_params") or parameters.get("extraParams")
+    if not isinstance(extra_params, dict):
+        extra_params = {}
+    candidates = [
+        parameters.get("resolution"),
+        extra_params.get("resolution"),
+        extra_params.get("__reserved_resolution"),
+        parameters.get("__reserved_resolution"),
+    ]
+    return any(_is_4k_resolution(candidate) for candidate in candidates)
+
+
+def _extract_veo_4k_index(task: MediaTask) -> int:
+    parameters = _coerce_json_dict(task.parameters)
+    extra_params = parameters.get("extra_params") or parameters.get("extraParams")
+    if not isinstance(extra_params, dict):
+        extra_params = {}
+    raw_index = (
+        extra_params.get("index")
+        or extra_params.get("outputIndex")
+        or extra_params.get("veo4kIndex")
+        or parameters.get("index")
+    )
+    try:
+        return max(0, int(raw_index)) if raw_index is not None else 0
+    except (TypeError, ValueError):
+        return 0
+
+
+def _veo_4k_status(task: MediaTask) -> str:
+    result_data = _coerce_json_dict(task.result_data)
+    veo_4k = result_data.get("veo_4k")
+    if isinstance(veo_4k, dict):
+        return str(veo_4k.get("status") or "").strip().lower()
+    return ""
+
+
+def _merge_task_result_data(task: MediaTask, patch: dict[str, Any]) -> dict[str, Any]:
+    result_data = _coerce_json_dict(task.result_data)
+    result_data.update(patch)
+    return result_data
 
 
 def _normalize_kie_task_state(status_response: dict) -> tuple[str, str]:
@@ -369,6 +450,48 @@ def _extract_model_query_endpoint(config_json: Any) -> Optional[str]:
     if isinstance(endpoint, str) and endpoint.strip():
         return endpoint.strip()
     return None
+
+
+async def _submit_veo_4k_upgrade_for_task(
+    db: AsyncSession,
+    task: MediaTask,
+    kie_client: Any,
+    *,
+    original_task_id: str,
+    original_result_url: Optional[str] = None,
+    original_response: Optional[dict[str, Any]] = None,
+) -> MediaTask:
+    api_config = _extract_task_api_config(task)
+    index = _extract_veo_4k_index(task)
+    submit_response, upgrade_task_id = await kie_client.submit_veo_4k_upgrade(
+        original_task_id,
+        index=index,
+        api_config=api_config,
+    )
+    updated_result_data = _merge_task_result_data(
+        task,
+        {
+            "veo_4k": {
+                "status": "submitted",
+                "original_task_id": original_task_id,
+                "upgrade_task_id": upgrade_task_id,
+                "index": index,
+                "original_result_url": original_result_url,
+                "submitted_at": datetime.utcnow().isoformat(),
+                "submit_response": submit_response,
+            },
+            **({"kie_ai_original_response": original_response} if original_response else {}),
+        },
+    )
+    updated_task = await MediaTaskService.update_task_status(
+        db,
+        task.id,
+        TaskStatus.PROCESSING,
+        result_data=updated_result_data,
+        external_task_id=upgrade_task_id,
+    )
+    return updated_task or task
+
 
 @router.post("/image", response_model=ImageGenerationResponse)
 async def generate_image_endpoint(
@@ -748,8 +871,37 @@ async def fetch_task_result(
             detail=f"Task {task_id} not found"
         )
 
-    # If task already has result, return it
+    # If task already has result, return it unless a requested Veo 4K post-process
+    # still needs to be started from the original completed Veo task.
     if task.result_url and task.status == TaskStatus.COMPLETED.value:
+        if _task_requests_veo_4k(task) and _veo_4k_status(task) not in {"submitted", "processing", "completed"}:
+            from app.services.media_provider_service import initialize_kie_ai_client
+            kie_client = await initialize_kie_ai_client()
+            if not kie_client:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Kie.ai client not configured"
+                )
+            original_task_id = task.task_id
+            if not original_task_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Missing provider_task_id for Veo 4K post-process."
+                )
+            updated_task = await _submit_veo_4k_upgrade_for_task(
+                db,
+                task,
+                kie_client,
+                original_task_id=original_task_id,
+                original_result_url=task.result_url,
+            )
+            return {
+                "success": True,
+                "message": "Original Veo task completed; 4K post-process submitted",
+                "task": TaskResponse(**updated_task.to_dict()),
+                "fetched": False,
+                "kie_state": "veo_4k_submitted",
+            }
         return {
             "success": True,
             "message": "Task already completed",
@@ -868,6 +1020,59 @@ async def fetch_task_result(
             result_url = _extract_first_kie_result_url(status_response)
 
             if result_url:
+                if _task_requests_veo_4k(task):
+                    veo_4k_status = _veo_4k_status(task)
+                    if veo_4k_status in {"submitted", "processing"}:
+                        current_result_data = _coerce_json_dict(task.result_data)
+                        current_veo_4k = current_result_data.get("veo_4k") if isinstance(current_result_data.get("veo_4k"), dict) else {}
+                        updated_result_data = _merge_task_result_data(
+                            task,
+                            {
+                                "kie_ai_response": status_response,
+                                "actual_resolution": "4K",
+                                "veo_4k": {
+                                    **(current_veo_4k if isinstance(current_veo_4k, dict) else {}),
+                                    "status": "completed",
+                                    "upgrade_task_id": external_task_id,
+                                    "result_url": result_url,
+                                    "completed_at": datetime.utcnow().isoformat(),
+                                    "response": status_response,
+                                },
+                            },
+                        )
+                        updated_task = await MediaTaskService.update_task_status(
+                            db,
+                            task_id,
+                            TaskStatus.COMPLETED,
+                            result_url=result_url,
+                            result_data=updated_result_data,
+                            credits_used=task.credits_used,
+                        )
+                        return {
+                            "success": True,
+                            "message": "Veo 4K post-process completed, result fetched",
+                            "task": TaskResponse(**updated_task.to_dict()),
+                            "fetched": True,
+                            "kie_state": raw_state or task_state,
+                            "actual_resolution": "4K",
+                        }
+
+                    updated_task = await _submit_veo_4k_upgrade_for_task(
+                        db,
+                        task,
+                        kie_client,
+                        original_task_id=external_task_id,
+                        original_result_url=result_url,
+                        original_response=status_response,
+                    )
+                    return {
+                        "success": True,
+                        "message": "Original Veo task completed; 4K post-process submitted",
+                        "task": TaskResponse(**updated_task.to_dict()),
+                        "fetched": False,
+                        "kie_state": "veo_4k_submitted",
+                    }
+
                 # Look up actual credit cost from media_models table
                 actual_credits = task.credits_used  # Use existing if already set
                 if not actual_credits and task.model:
@@ -1721,14 +1926,54 @@ async def kie_ai_callback(
         store_pending_callback(task_id, callback_data)
 
         try:
+            task_record = await MediaTaskService.get_task_by_external_id(db, task_id)
             if status_str == "completed" and result_url:
-                await MediaTaskService.update_task_by_external_id(
-                    db,
-                    task_id,
-                    TaskStatus.COMPLETED,
-                    result_url=result_url,
-                    result_data={"output": output},
-                )
+                if task_record and _task_requests_veo_4k(task_record) and _veo_4k_status(task_record) in {"submitted", "processing"}:
+                    existing_result_data = _coerce_json_dict(task_record.result_data)
+                    existing_veo_4k = existing_result_data.get("veo_4k")
+                    result_data = _merge_task_result_data(
+                        task_record,
+                        {
+                            "output": output,
+                            "actual_resolution": "4K",
+                            "veo_4k": {
+                                **(existing_veo_4k if isinstance(existing_veo_4k, dict) else {}),
+                                "status": "completed",
+                                "upgrade_task_id": task_id,
+                                "result_url": result_url,
+                                "completed_at": datetime.utcnow().isoformat(),
+                            },
+                        },
+                    )
+                    await MediaTaskService.update_task_by_external_id(
+                        db,
+                        task_id,
+                        TaskStatus.COMPLETED,
+                        result_url=result_url,
+                        result_data=result_data,
+                    )
+                elif task_record and _task_requests_veo_4k(task_record):
+                    from app.services.media_provider_service import initialize_kie_ai_client
+
+                    kie_client = await initialize_kie_ai_client()
+                    if not kie_client:
+                        raise RuntimeError("Kie.ai client not configured for Veo 4K post-process")
+                    await _submit_veo_4k_upgrade_for_task(
+                        db,
+                        task_record,
+                        kie_client,
+                        original_task_id=task_id,
+                        original_result_url=result_url,
+                        original_response=body,
+                    )
+                else:
+                    await MediaTaskService.update_task_by_external_id(
+                        db,
+                        task_id,
+                        TaskStatus.COMPLETED,
+                        result_url=result_url,
+                        result_data={"output": output},
+                    )
             elif status_str == "failed":
                 await MediaTaskService.update_task_by_external_id(
                     db,

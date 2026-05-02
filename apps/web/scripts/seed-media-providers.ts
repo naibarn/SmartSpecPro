@@ -6,6 +6,10 @@
 import postgres from "postgres";
 import crypto from "crypto";
 import {
+  ELEVENLABS_BASE_URL,
+  ELEVENLABS_PROVIDER,
+  ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID,
+  getElevenLabsProviderAvailableModels,
   getWaveSpeedProviderAvailableModels,
   WAVESPEED_LAUNCH_MODEL_ID,
 } from "../server/services/mediaProviderUtils";
@@ -95,6 +99,18 @@ export const DEFAULT_PROVIDERS = [
     isEnabled: false,
     isPrimary: false,
     priority: 12,
+  },
+  {
+    providerName: ELEVENLABS_PROVIDER,
+    displayName: "ElevenLabs",
+    description: "Direct ElevenLabs audio provider for text-to-speech, voice changing, speech-to-text, sound effects, and voice isolation",
+    providerType: "audio",
+    baseUrl: ELEVENLABS_BASE_URL,
+    defaultModel: ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID,
+    availableModels: getElevenLabsProviderAvailableModels(),
+    isEnabled: false,
+    isPrimary: false,
+    priority: 13,
   },
   {
     providerName: "uvoice",

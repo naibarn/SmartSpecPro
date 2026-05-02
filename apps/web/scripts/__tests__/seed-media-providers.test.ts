@@ -14,7 +14,7 @@ describe("seed-media-providers", () => {
       defaultModel: "wavespeed-ai/cinematic-video-generator",
       isEnabled: false,
     });
-    expect(wavespeed?.availableModels).toHaveLength(5);
+    expect(wavespeed?.availableModels).toHaveLength(11);
     expect(wavespeed?.availableModels).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: "wavespeed-ai/cinematic-video-generator",
@@ -28,6 +28,31 @@ describe("seed-media-providers", () => {
         id: "bytedance/seedance-2.0-fast/image-to-video",
         type: "video",
       }),
+      expect.objectContaining({
+        id: "wavespeed-ai/elevenlabs/voice-changer",
+        type: "audio",
+      }),
+    ]));
+  });
+
+  it("includes an ElevenLabs direct provider row with all first-party audio workflows", () => {
+    const elevenlabs = DEFAULT_PROVIDERS.find((provider) => provider.providerName === "elevenlabs");
+
+    expect(elevenlabs).toBeDefined();
+    expect(elevenlabs).toMatchObject({
+      displayName: "ElevenLabs",
+      providerType: "audio",
+      baseUrl: "https://api.elevenlabs.io",
+      defaultModel: "elevenlabs/text-to-speech",
+      isEnabled: false,
+    });
+    expect(elevenlabs?.availableModels).toHaveLength(5);
+    expect(elevenlabs?.availableModels).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "elevenlabs/text-to-speech", type: "audio" }),
+      expect.objectContaining({ id: "elevenlabs/voice-changer", type: "audio" }),
+      expect.objectContaining({ id: "elevenlabs/speech-to-text", type: "audio" }),
+      expect.objectContaining({ id: "elevenlabs/sound-effects", type: "audio" }),
+      expect.objectContaining({ id: "elevenlabs/voice-isolator", type: "audio" }),
     ]));
   });
 });

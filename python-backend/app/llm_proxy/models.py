@@ -3,7 +3,7 @@ SmartSpec Pro - LLM Proxy Models
 Phase 0.2
 """
 
-from typing import List, Dict, Optional, Literal, Union, TYPE_CHECKING
+from typing import Any, List, Dict, Optional, Literal, Union, TYPE_CHECKING
 from decimal import Decimal
 from pydantic import BaseModel, Field
 
@@ -46,7 +46,7 @@ class ImageGenerationRequest(BaseModel):
     reference_image_urls: Optional[List[str]] = Field(default=None, alias="referenceImageUrls")
     reference_style_url: Optional[str] = Field(default=None, alias="referenceStyleUrl")
     # Per-model API config (passed from Node.js based on configJson)
-    api_config: Optional[Dict[str, Union[str, int, float, bool]]] = Field(default=None, alias="apiConfig")
+    api_config: Optional[Dict[str, Any]] = Field(default=None, alias="apiConfig")
     extra_params: Optional[Dict[str, Union[str, int, float, bool, List]]] = Field(default=None, alias="extraParams")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name
@@ -120,6 +120,7 @@ class AudioGenerationResponse(BaseModel):
     provider: str
     created: int
     data: List[Dict[str, str]]  # List of {'url': '...'}
+    metadata: Optional[Dict[str, Any]] = None
     credits_used: Optional[Decimal] = None
     credits_balance: Optional[Decimal] = None
     task_id: Optional[str] = None  # Internal task ID for history tracking

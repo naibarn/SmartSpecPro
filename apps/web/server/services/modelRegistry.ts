@@ -11,6 +11,7 @@ import { db } from "../db";
 import { mediaModels } from "../../drizzle/schema";
 import { eq, asc } from "drizzle-orm";
 import {
+  buildElevenLabsModelSeeds,
   buildWaveSpeedModelSeeds,
 } from "./mediaProviderUtils";
 import {
@@ -62,6 +63,120 @@ export interface ModelDefinition {
  * This ensures the system works even without database connection
  */
 const wavespeedModelSeeds = buildWaveSpeedModelSeeds();
+const elevenLabsModelSeeds = buildElevenLabsModelSeeds();
+
+const VEO_31_INPUT_FIELDS = [
+  {
+    key: "generationType",
+    label: "Generation Mode",
+    type: "select",
+    options: [
+      { value: "TEXT_2_VIDEO", label: "Text to Video" },
+      { value: "FIRST_AND_LAST_FRAMES_2_VIDEO", label: "First & Last Frames to Video" },
+      { value: "REFERENCE_2_VIDEO", label: "Reference to Video (Fast only)" },
+    ],
+    default: "TEXT_2_VIDEO",
+  },
+  {
+    key: "imageUrls",
+    label: "Start/End or Reference Images",
+    type: "image_urls",
+    syncWith: "reference_images",
+  },
+  {
+    key: "resolution",
+    label: "Output Quality",
+    type: "select",
+    options: [
+      { value: "720p", label: "720p" },
+      { value: "1080p", label: "1080P" },
+      { value: "4K", label: "4K" },
+    ],
+    default: "720p",
+    affectsPricing: true,
+  },
+  { key: "enableTranslation", label: "Enable Translation", type: "boolean", default: false },
+  { key: "enableFallback", label: "Enable Fallback", type: "boolean", default: false },
+  { key: "watermark", label: "Watermark", type: "text" },
+  {
+    key: "aspect_ratio",
+    label: "Aspect Ratio",
+    type: "select",
+    options: [
+      { value: "auto", label: "Auto" },
+      { value: "16:9", label: "16:9" },
+      { value: "9:16", label: "9:16" },
+    ],
+    default: "auto",
+    syncWith: "aspect_ratio",
+  },
+];
+
+const HAPPYHORSE_ASPECT_RATIO_OPTIONS = [
+  { value: "16:9", label: "16:9" },
+  { value: "9:16", label: "9:16" },
+  { value: "1:1", label: "1:1" },
+  { value: "4:3", label: "4:3" },
+  { value: "3:4", label: "3:4" },
+];
+
+const HAPPYHORSE_RESOLUTION_OPTIONS = [
+  { value: "720p", label: "720p" },
+  { value: "1080p", label: "1080p" },
+];
+
+const HAPPYHORSE_DURATION_OPTIONS = Array.from({ length: 13 }, (_, index) => {
+  const seconds = index + 3;
+  return { value: String(seconds), label: `${seconds}s` };
+});
+
+function buildHappyHorseConfig(
+  kieModelId: "happyhorse/text-to-video" | "happyhorse/image-to-video" | "happyhorse/reference-to-video" | "happyhorse/video-edit",
+  generateType: "text-to-video" | "image-to-video" | "reference-to-video" | "video-edit",
+  inputFields: any[],
+  extraConfig: Record<string, any> = {},
+) {
+  return {
+    apiEndpoint: "/api/v1/jobs/createTask",
+    apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+    apiPayloadFormat: "market",
+    kieModelId,
+    generateType,
+    maxDuration: generateType === "video-edit" ? 60 : 15,
+    maxPromptLength: 5000,
+    supportedResolutions: ["720p", "1080p"],
+    supportedDurations: generateType === "video-edit"
+      ? undefined
+      : HAPPYHORSE_DURATION_OPTIONS.map((option) => Number(option.value)),
+    supportedAspectRatios: generateType === "image-to-video" || generateType === "video-edit"
+      ? undefined
+      : HAPPYHORSE_ASPECT_RATIO_OPTIONS.map((option) => option.value),
+    inputFields,
+    pricingTiers: { default: 100 },
+    pricingFormula: "flat",
+    ...extraConfig,
+  };
+}
+
+function buildVeo31Config(kieModelId: "veo3" | "veo3_fast" | "veo3_lite", pricingTiers: Record<string, number>) {
+  return {
+    apiEndpoint: "/api/v1/veo/generate",
+    apiQueryEndpoint: "/api/v1/veo/record-info",
+    veo4kEndpoint: "/api/v1/veo/get-4k-video",
+    apiPayloadFormat: "veo",
+    kieModelId,
+    generateType: "text-to-video",
+    hasAudio: true,
+    maxDuration: 8,
+    maxPromptLength: 5000,
+    maxReferenceImages: 3,
+    supportedResolutions: ["720p", "1080p", "4K"],
+    supportedAspectRatios: ["auto", "16:9", "9:16"],
+    inputFields: VEO_31_INPUT_FIELDS,
+    pricingTiers,
+    pricingFormula: "matrix",
+  };
+}
 
 const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
   // ==================== Image Models ====================
@@ -172,33 +287,198 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
 
   // ==================== Video Models ====================
   {
+    id: "veo3/generate-veo-3-video-lite",
+    type: "video",
+    name: "Veo 3.1 Lite",
+    provider: "kie.ai",
+    description: "Cost-effective Google Veo 3.1 video generation with native audio",
+    aliases: ["veo 3.1 lite", "veo3-lite", "veo3_lite", "veo-3.1-lite"],
+    creditCost: 150,
+    durations: [8],
+    aspectRatios: ["auto", "16:9", "9:16"],
+    configJson: buildVeo31Config("veo3_lite", {
+      "720p": 150,
+      "1080p": 300,
+      "4K": 600,
+    }),
+    isEnabled: true,
+    priority: 1,
+  },
+  {
     id: "veo-3-1",
     type: "video",
-    name: "Veo 3.1",
+    name: "Veo 3.1 Quality",
     provider: "kie.ai",
-    description: "Google's video generation model",
+    description: "Flagship Google Veo 3.1 video generation with native audio",
     aliases: [
+      "veo 3.1 quality",
       "veo 3.1",
       "veo 3",
       "veo3",
       "veo_3_1",
       "veo-3.1",
       "veo3/generate-veo-3-video",
-      "veo3/extend-video",
       "google veo",
       "veo",
     ],
-    creditCost: 50,
-    durations: [5, 10, 15],
-    aspectRatios: ["16:9", "9:16", "1:1"],
+    creditCost: 2000,
+    durations: [8],
+    aspectRatios: ["auto", "16:9", "9:16"],
+    configJson: buildVeo31Config("veo3", {
+      "720p": 2000,
+      "1080p": 2000,
+      "4K": 4000,
+    }),
+    isEnabled: true,
+    priority: 2,
+  },
+  {
+    id: "veo3/generate-veo-3-video-fast",
+    type: "video",
+    name: "Veo 3.1 Fast",
+    provider: "kie.ai",
+    description: "Fast Google Veo 3.1 video generation with native audio",
+    aliases: ["veo 3.1 fast", "veo3-fast", "veo3_fast", "veo-fast"],
+    creditCost: 300,
+    durations: [8],
+    aspectRatios: ["auto", "16:9", "9:16"],
+    configJson: buildVeo31Config("veo3_fast", {
+      "720p": 300,
+      "1080p": 300,
+      "4K": 600,
+    }),
+    isEnabled: true,
+    priority: 3,
+  },
+  {
+    id: "veo3/extend-video",
+    type: "video",
+    name: "Veo 3.1 Extend",
+    provider: "kie.ai",
+    description: "Extend an existing video with Veo 3.1 technology",
+    aliases: ["veo 3.1 extend", "veo3-extend", "veo-extend", "extend video"],
+    creditCost: 1250,
+    durations: [8],
+    aspectRatios: ["auto", "16:9", "9:16"],
     configJson: {
-      apiEndpoint: "/api/v1/veo/generate",
-      apiPayloadFormat: "veo",
-      kieModelId: "veo3_fast",
-      maxPromptLength: 3000,
+      apiEndpoint: "/api/v1/veo/extend",
+      apiQueryEndpoint: "/api/v1/veo/record-info",
+      apiPayloadFormat: "veo_extend",
+      kieModelId: null,
+      apiConfig: {
+        extend_model: "fast",
+      },
+      generateType: "video-extend",
+      maxPromptLength: 5000,
+      inputFields: [
+        { key: "source_task_id", label: "Original Veo Task ID", type: "text", required: true },
+        { key: "video_urls", label: "Source Video Preview", type: "video_urls", required: false, syncWith: "reference_videos" },
+        { key: "seeds", label: "Seed", type: "number", required: false },
+        { key: "watermark", label: "Watermark", type: "text", required: false },
+      ],
+      pricingTiers: { default: 1250 },
+      pricingFormula: "flat",
     },
     isEnabled: true,
-    priority: 1,
+    priority: 4,
+  },
+  {
+    id: "happyhorse/text-to-video",
+    type: "video",
+    name: "HappyHorse 1.0 Text-to-Video",
+    provider: "kie.ai",
+    description: "Alibaba ATH HappyHorse 1.0 text-to-video generation",
+    aliases: ["happyhorse", "happyhorse 1.0", "happyhorse-1.0", "happyhorse t2v", "happyhorse text to video"],
+    creditCost: 100,
+    durations: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    configJson: buildHappyHorseConfig("happyhorse/text-to-video", "text-to-video", [
+      { key: "resolution", label: "Resolution", type: "select", options: HAPPYHORSE_RESOLUTION_OPTIONS, default: "1080p", affectsPricing: true },
+      { key: "aspect_ratio", label: "Aspect Ratio", type: "select", options: HAPPYHORSE_ASPECT_RATIO_OPTIONS, default: "16:9", syncWith: "aspect_ratio" },
+      { key: "duration", label: "Duration", type: "select", options: HAPPYHORSE_DURATION_OPTIONS, default: "5", affectsPricing: true },
+      { key: "seed", label: "Seed", type: "number", required: false },
+    ]),
+    isEnabled: true,
+    priority: 5,
+  },
+  {
+    id: "happyhorse/image-to-video",
+    type: "video",
+    name: "HappyHorse 1.0 Image-to-Video",
+    provider: "kie.ai",
+    description: "Animate a single source image with HappyHorse 1.0",
+    aliases: ["happyhorse i2v", "happyhorse image to video", "happyhorse-image-to-video"],
+    creditCost: 100,
+    durations: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    configJson: buildHappyHorseConfig("happyhorse/image-to-video", "image-to-video", [
+      { key: "image_urls", label: "Source Image", type: "image_urls", required: true, syncWith: "reference_images" },
+      { key: "resolution", label: "Resolution", type: "select", options: HAPPYHORSE_RESOLUTION_OPTIONS, default: "1080p", affectsPricing: true },
+      { key: "duration", label: "Duration", type: "select", options: HAPPYHORSE_DURATION_OPTIONS, default: "5", affectsPricing: true },
+      { key: "seed", label: "Seed", type: "number", required: false },
+    ], {
+      maxReferenceImages: 1,
+      apiConfig: {
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        omit_aspect_ratio: true,
+      },
+    }),
+    isEnabled: true,
+    priority: 6,
+  },
+  {
+    id: "happyhorse/reference-to-video",
+    type: "video",
+    name: "HappyHorse 1.0 Reference-to-Video",
+    provider: "kie.ai",
+    description: "Generate video from 1-9 character or style references with HappyHorse 1.0",
+    aliases: ["happyhorse r2v", "happyhorse reference to video", "happyhorse-reference-to-video"],
+    creditCost: 100,
+    durations: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    configJson: buildHappyHorseConfig("happyhorse/reference-to-video", "reference-to-video", [
+      { key: "reference_image", label: "Reference Images", type: "image_urls", required: true, syncWith: "reference_images" },
+      { key: "resolution", label: "Resolution", type: "select", options: HAPPYHORSE_RESOLUTION_OPTIONS, default: "1080p", affectsPricing: true },
+      { key: "aspect_ratio", label: "Aspect Ratio", type: "select", options: HAPPYHORSE_ASPECT_RATIO_OPTIONS, default: "16:9", syncWith: "aspect_ratio" },
+      { key: "duration", label: "Duration", type: "select", options: HAPPYHORSE_DURATION_OPTIONS, default: "5", affectsPricing: true },
+      { key: "seed", label: "Seed", type: "number", required: false },
+    ], {
+      maxReferenceImages: 9,
+      apiConfig: {
+        reference_image_input_key: "reference_image",
+        reference_image_input_type: "array",
+      },
+    }),
+    isEnabled: true,
+    priority: 7,
+  },
+  {
+    id: "happyhorse/video-edit",
+    type: "video",
+    name: "HappyHorse 1.0 Video Edit",
+    provider: "kie.ai",
+    description: "Edit an existing video with optional reference images using HappyHorse 1.0",
+    aliases: ["happyhorse edit", "happyhorse video edit", "happyhorse-video-edit"],
+    creditCost: 100,
+    configJson: buildHappyHorseConfig("happyhorse/video-edit", "video-edit", [
+      { key: "video_url", label: "Source Video", type: "video_urls", required: true, syncWith: "reference_videos" },
+      { key: "reference_image", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images" },
+      { key: "resolution", label: "Resolution", type: "select", options: HAPPYHORSE_RESOLUTION_OPTIONS, default: "1080p", affectsPricing: true },
+      { key: "audio_setting", label: "Audio", type: "select", options: [{ value: "auto", label: "Auto" }, { value: "origin", label: "Original" }], default: "auto" },
+      { key: "seed", label: "Seed", type: "number", required: false },
+    ], {
+      maxReferenceImages: 5,
+      apiConfig: {
+        reference_image_input_key: "reference_image",
+        reference_image_input_type: "array",
+        reference_video_input_key: "video_url",
+        reference_video_input_type: "url",
+        omit_aspect_ratio: true,
+        omit_duration: true,
+      },
+    }),
+    isEnabled: true,
+    priority: 8,
   },
   {
     id: "sora-2",
@@ -211,7 +491,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     durations: [5, 10, 15, 20],
     aspectRatios: ["16:9", "9:16", "1:1"],
     isEnabled: true,
-    priority: 2,
+    priority: 5,
   },
   {
     id: "kling-2.6",
@@ -224,7 +504,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     durations: [5, 10],
     aspectRatios: ["16:9", "9:16"],
     isEnabled: true,
-    priority: 3,
+    priority: 6,
   },
   {
     id: "veo_3_1-fast",
@@ -244,7 +524,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     aspectRatios: ["16:9", "9:16", "1:1"],
     configJson: { maxPromptLength: 5000 },
     isEnabled: true,
-    priority: 4,
+    priority: 7,
   },
   {
     id: "grok-video-3",
@@ -260,6 +540,20 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     priority: 5,
   },
   ...wavespeedModelSeeds.map((seed) => ({
+    id: seed.modelId,
+    type: seed.modelType,
+    name: seed.name,
+    provider: seed.provider,
+    description: seed.description,
+    aliases: seed.aliases,
+    creditCost: seed.creditCost,
+    durations: seed.durations,
+    aspectRatios: seed.aspectRatios,
+    configJson: seed.configJson,
+    isEnabled: seed.isEnabled,
+    priority: seed.priority,
+  })),
+  ...elevenLabsModelSeeds.map((seed) => ({
     id: seed.modelId,
     type: seed.modelType,
     name: seed.name,
@@ -747,11 +1041,23 @@ export function mapToApiModelId(internalId: string): string {
     flux_2_0: "flux-2.0",
     z_image: "z-image",
     grok_imagine: "grok-imagine",
-    veo_3_1: "veo-3-1",
+    veo_3_1: "veo3/generate-veo-3-video-lite",
+    veo_3_1_extend: "veo3/extend-video",
+    veo_extend: "veo3/extend-video",
+    happyhorse: "happyhorse/text-to-video",
+    happyhorse_1_0: "happyhorse/text-to-video",
+    happyhorse_text_to_video: "happyhorse/text-to-video",
+    happyhorse_image_to_video: "happyhorse/image-to-video",
+    happyhorse_reference_to_video: "happyhorse/reference-to-video",
+    happyhorse_video_edit: "happyhorse/video-edit",
     sora_2: "sora-2",
     kling_2_6: "kling-2.6",
     elevenlabs_tts: "elevenlabs-tts",
     elevenlabs_sfx: "elevenlabs-sfx",
+    "wavespeed/gemini-2.5-flash/text-to-speech": "google/gemini-2.5-flash/text-to-speech",
+    "wavespeed/gemini-2.5-pro/text-to-speech": "google/gemini-2.5-pro/text-to-speech",
+    "wavespeed/lyria-3-clip/music": "google/lyria-3-clip/music",
+    "wavespeed/lyria-3-pro/music": "google/lyria-3-pro/music",
   };
 
   return legacyMappings[trimmed] || trimmed;

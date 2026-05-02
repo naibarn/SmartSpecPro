@@ -317,6 +317,49 @@ def _normalize_kie_task_state(status_response: dict) -> tuple[str, str]:
     return "unknown", ""
 
 
+def _extract_kie_failure_message(status_response: dict) -> str:
+    """Extract a provider failure message without treating top-level msg=success as an error."""
+    if not isinstance(status_response, dict):
+        return "Unknown error from provider"
+
+    data = status_response.get("data", {})
+    if not isinstance(data, dict):
+        data = {}
+
+    def _message_from(value: Any) -> Optional[str]:
+        if isinstance(value, str):
+            text = value.strip()
+            if text and text.lower() not in {"success", "ok"}:
+                return text
+            return None
+        if isinstance(value, dict):
+            for key in ("message", "detail", "error", "errorMessage", "msg"):
+                nested = _message_from(value.get(key))
+                if nested:
+                    return nested
+        return None
+
+    for candidate in (
+        data.get("failMsg"),
+        data.get("errorMessage"),
+        data.get("error"),
+        data.get("message"),
+        data.get("msg"),
+        status_response.get("failMsg"),
+        status_response.get("error"),
+        status_response.get("message"),
+        status_response.get("msg"),
+    ):
+        message = _message_from(candidate)
+        if message:
+            return message
+
+    error_code = data.get("errorCode") or status_response.get("errorCode")
+    if error_code not in (None, ""):
+        return f"Provider error code: {error_code}"
+    return "Unknown error from provider"
+
+
 def _normalize_byteplus_task_state(status_response: dict) -> tuple[str, str]:
     """Normalize BytePlus task status to internal state.
 
@@ -856,12 +899,26 @@ def _infer_audio_provider_hint(model: Any, api_config: dict[str, Any]) -> str:
     provider_raw = str(api_config.get("provider") or "").strip().lower()
     if "uvoice" in provider_raw:
         return "uvoice"
+    if "wavespeed" in provider_raw:
+        return "wavespeed_ai"
+    if "elevenlabs" in provider_raw or "eleven_labs" in provider_raw:
+        return "elevenlabs"
     if "kie" in provider_raw:
         return "kie_ai"
 
     model_raw = str(model or "").strip().lower()
     if model_raw.startswith("uvoice/"):
         return "uvoice"
+    if (
+        model_raw.startswith("wavespeed/")
+        or model_raw.startswith("wavespeed-ai/elevenlabs/")
+        or model_raw.startswith("google/lyria-")
+        or model_raw.startswith("google/gemini-")
+        or model_raw.startswith("alibaba/qwen3-tts")
+    ):
+        return "wavespeed_ai"
+    if model_raw.startswith("elevenlabs/"):
+        return "elevenlabs"
     return "kie_ai"
 
 
@@ -872,7 +929,12 @@ def _resolve_audio_api_target(provider_hint: str, api_config: dict[str, Any]) ->
         api_config.get("apiEndpoint"),
     )
     if not endpoint:
-        endpoint = "/generate" if provider_hint == "uvoice" else "/api/v1/jobs/createTask"
+        if provider_hint == "uvoice":
+            endpoint = "/generate"
+        elif provider_hint == "elevenlabs":
+            endpoint = "/v1"
+        else:
+            endpoint = "/api/v1/jobs/createTask"
 
     if endpoint.startswith("http://") or endpoint.startswith("https://"):
         return endpoint, endpoint
@@ -883,7 +945,14 @@ def _resolve_audio_api_target(provider_hint: str, api_config: dict[str, Any]) ->
         api_config.get("url"),
     )
     if not base_url:
-        base_url = "https://api.uvoice.ai" if provider_hint == "uvoice" else "https://api.kie.ai/api/v1"
+        if provider_hint == "uvoice":
+            base_url = "https://api.uvoice.ai"
+        elif provider_hint == "wavespeed_ai":
+            base_url = "https://api.wavespeed.ai/api/v3"
+        elif provider_hint == "elevenlabs":
+            base_url = "https://api.elevenlabs.io"
+        else:
+            base_url = "https://api.kie.ai/api/v1"
 
     request_url = f"{base_url.rstrip('/')}/{endpoint.lstrip('/')}"
     return endpoint, request_url
@@ -967,6 +1036,28 @@ def _build_audio_debug_request_snapshot(request_data: dict[str, Any]) -> dict[st
 
     if provider_hint == "uvoice":
         provider_payload = _build_uvoice_payload_preview(request_data, api_config, selected_voice_id)
+    elif provider_hint == "wavespeed_ai":
+        text_input_key = _extract_first_string(
+            api_config.get("text_input_key"),
+            api_config.get("textInputKey"),
+        ) or "text"
+        provider_payload = {
+            key: _mask_sensitive_debug_value(value, key)
+            for key, value in extra_params.items()
+            if value is not None
+        }
+        provider_payload[text_input_key] = _truncate_debug_text(
+            str(request_data.get("text") or ""),
+            limit=1200,
+        )
+        if request_data.get("voice"):
+            provider_payload.setdefault("voice", request_data.get("voice"))
+        if request_data.get("voice_id"):
+            provider_payload.setdefault("voice_id", request_data.get("voice_id"))
+        if request_data.get("speed") is not None:
+            provider_payload.setdefault("speed", request_data.get("speed"))
+        if request_data.get("output_format"):
+            provider_payload.setdefault("format", request_data.get("output_format"))
     else:
         provider_payload = {
             "model": request_data.get("model"),
@@ -1443,8 +1534,10 @@ async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
 
             result_url = response.data[0].get("url") if response.data else None
             task.result_url = result_url
+            response_metadata = response.metadata if isinstance(response.metadata, dict) else {}
             task.result_data = _make_json_safe({
                 "response": response.dict(),
+                **response_metadata,
                 "debug": {
                     "trace_id": trace_id,
                     "provider_hint": audio_debug_snapshot.get("provider_hint"),
@@ -1455,7 +1548,7 @@ async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
             })
             task.credits_used = int(response.credits_used) if response.credits_used else None
             task.credits_balance = int(response.credits_balance) if response.credits_balance else None
-            if result_url:
+            if result_url or response_metadata.get("artifactKind") == "transcript":
                 task.status = TaskStatus.COMPLETED
                 task.completed_at = datetime.utcnow()
             await db.commit()
@@ -1468,7 +1561,7 @@ async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
                 "log_file": debug_log_file,
             })
 
-            if result_url:
+            if result_url or response_metadata.get("artifactKind") == "transcript":
                 logger.info("generate_audio_task_completed", task_id=task_id, provider_task_id=provider_task_id)
                 return {
                     "status": "completed",
@@ -2315,14 +2408,7 @@ async def _recover_stuck_tasks_async():
 
                         elif task_state == "fail":
                             # Task failed on provider side
-                            data = status_response.get("data", {}) if isinstance(status_response, dict) else {}
-                            error_msg = (
-                                status_response.get("msg")
-                                or status_response.get("message")
-                                or data.get("error")
-                                or data.get("errorMessage")
-                                or "Unknown error from provider"
-                            )
+                            error_msg = _extract_kie_failure_message(status_response)
                             task.status = TaskStatus.FAILED
                             task.error_message = f"Provider failed: {error_msg}"
                             task.result_data = _make_json_safe(status_response)
