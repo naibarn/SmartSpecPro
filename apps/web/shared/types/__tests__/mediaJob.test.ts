@@ -207,6 +207,7 @@ describe("projectToTimeline", () => {
     expect(clip.startMs).toBe(1500);
     expect(clip.inMs).toBe(500);
     expect(clip.outMs).toBe(4000);
+    expect(clip.durationMs).toBe(3000);
     expect(timeline.fps).toBe(30);
     expect(timeline.width).toBe(1920);
     expect(timeline.height).toBe(1080);
@@ -252,6 +253,7 @@ describe("projectToTimeline", () => {
     expect(mappedVideoTrack!.type).toBe("video");
     expect(mappedVideoTrack!.clips[0].clipId).toBe("clip-v1");
     expect(mappedVideoTrack!.clips[0].assetId).toBe("asset-v1");
+    expect(mappedVideoTrack!.clips[0].durationMs).toBe(5000);
     expect(mappedVideoTrack!.clips[0].playbackRate).toBe(1.5);
     expect(mappedVideoTrack!.clips[0].volume).toBe(1.0);
 
@@ -842,6 +844,7 @@ describe("projectToTimeline — additional cases", () => {
     const newClip = roundTripped.timeline.tracks[0].clips[0];
 
     expect(newClip.startTime).toBe(originalClip.startTime);
+    expect(newClip.duration).toBe(originalClip.duration);
     expect(newClip.trimIn).toBe(originalClip.trimIn);
     expect(newClip.trimOut).toBe(originalClip.trimOut);
     expect(newClip.volume).toBe(originalClip.volume);

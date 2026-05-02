@@ -87,6 +87,7 @@ export interface AddCreditsParams {
   type: TransactionType;
   description: string;
   referenceId?: string;
+  idempotencyKey?: string;
   metadata?: Record<string, any>;
   /** Context fields for rich transaction tracking */
   conversationId?: number;
@@ -548,52 +549,95 @@ export async function deductCredits(params: DeductCreditsParams) {
  * to prevent race conditions on concurrent additions.
  */
 export async function addCredits(params: AddCreditsParams) {
-  const { userId, amount, type, description, referenceId, metadata } = params;
+  const { userId, amount, type, description, referenceId, metadata, idempotencyKey } = params;
 
   if (amount <= 0) {
     throw new Error("Amount must be positive");
   }
 
+  if (idempotencyKey && isRedisAvailable()) {
+    try {
+      const redis = getRedisClient();
+      const cached = await redis.get(`credit:idemp:${idempotencyKey}`);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch {
+      // Redis unavailable -- fall through to DB check
+    }
+  }
+
   let transactionId: number = 0;
   let newBalance: number = 0;
 
-  await db.transaction(async (tx) => {
-    // Atomic addition
-    const [result] = await tx
-      .update(users)
-      .set({ credits: sql`${users.credits} + ${amount}` })
-      .where(eq(users.id, userId))
-      .returning({ newBalance: users.credits });
+  try {
+    await db.transaction(async (tx) => {
+      // Atomic addition
+      const [result] = await tx
+        .update(users)
+        .set({ credits: sql`${users.credits} + ${amount}` })
+        .where(eq(users.id, userId))
+        .returning({ newBalance: users.credits });
 
-    if (!result) {
-      throw new Error("User not found");
+      if (!result) {
+        throw new Error("User not found");
+      }
+
+      newBalance = result.newBalance;
+
+      const [txRecord] = await tx.insert(creditTransactions).values({
+        userId,
+        amount, // Positive for additions
+        type,
+        description,
+        metadata,
+        balanceAfter: newBalance,
+        referenceId,
+        idempotencyKey: idempotencyKey ?? null,
+        traceId: getTraceId() ?? null,
+        conversationId: params.conversationId ?? null,
+        skillSlug: params.skillSlug ?? null,
+        sourceType: normalizeCreditSourceType(params.sourceType ?? null) ?? null,
+      }).returning({ id: creditTransactions.id });
+
+      transactionId = txRecord?.id || 0;
+    });
+  } catch (err: any) {
+    if (idempotencyKey && err?.code === "23505" && err?.constraint?.includes("idempotency")) {
+      const existing = await db
+        .select({ id: creditTransactions.id, amount: creditTransactions.amount, balanceAfter: creditTransactions.balanceAfter })
+        .from(creditTransactions)
+        .where(eq(creditTransactions.idempotencyKey, idempotencyKey))
+        .limit(1);
+      if (existing[0]) {
+        return {
+          success: true,
+          creditsAdded: Math.abs(existing[0].amount),
+          newBalance: existing[0].balanceAfter ?? 0,
+          transactionId: existing[0].id,
+        };
+      }
     }
+    throw err;
+  }
 
-    newBalance = result.newBalance;
-
-    const [txRecord] = await tx.insert(creditTransactions).values({
-      userId,
-      amount, // Positive for additions
-      type,
-      description,
-      metadata,
-      balanceAfter: newBalance,
-      referenceId,
-      traceId: getTraceId() ?? null,
-      conversationId: params.conversationId ?? null,
-      skillSlug: params.skillSlug ?? null,
-      sourceType: normalizeCreditSourceType(params.sourceType ?? null) ?? null,
-    }).returning({ id: creditTransactions.id });
-
-    transactionId = txRecord?.id || 0;
-  });
-
-  return {
+  const result = {
     success: true,
     creditsAdded: amount,
     newBalance,
     transactionId,
   };
+
+  if (idempotencyKey && isRedisAvailable()) {
+    try {
+      const redis = getRedisClient();
+      await redis.set(`credit:idemp:${idempotencyKey}`, JSON.stringify(result), "EX", 86400);
+    } catch {
+      // Non-critical -- DB constraint is the safety net
+    }
+  }
+
+  return result;
 }
 
 // ── Credit Reservation Pattern ───────────────────────────────────────────
@@ -761,6 +805,7 @@ export async function refundCredits(params: {
   amount: number;
   description: string;
   originalTransactionId?: number;
+  idempotencyKey?: string;
   metadata?: Record<string, any>;
   sourceType?: CreditSourceType;
   conversationId?: number;
@@ -774,6 +819,7 @@ export async function refundCredits(params: {
     type: "refund",
     description,
     referenceId: originalTransactionId ? `refund-${originalTransactionId}` : undefined,
+    idempotencyKey: params.idempotencyKey,
     metadata: {
       ...metadata,
       originalTransactionId,

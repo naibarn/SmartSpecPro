@@ -72,7 +72,7 @@ export async function seedWaveSpeedMediaModels(): Promise<void> {
       console.log(`  upsert ${model.name} (${model.creditCost} default credits, tiered via configJson.pricingTiers)`);
     }
 
-    console.log(`\nUpserted ${models.length} WaveSpeed video models.`);
+    console.log(`\nUpserted ${models.length} WaveSpeed media models.`);
     console.log("Next step: Add a WaveSpeed provider key in Admin > Media Providers and enable provider.\n");
   } catch (error) {
     console.error("Error seeding WaveSpeed models:", error);

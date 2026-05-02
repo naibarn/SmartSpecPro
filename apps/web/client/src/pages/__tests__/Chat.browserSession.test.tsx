@@ -21,7 +21,10 @@ const invalidateMessages = vi.fn();
 const invalidateConversations = vi.fn();
 
 let messagesData: Array<Record<string, unknown>> = [];
-let tenantFlagsData: Record<string, unknown> | undefined = { chatBrowserSessionEntry: true };
+let tenantFlagsData: Record<string, unknown> | undefined = {
+  chatBrowserSessionEntry: true,
+  liveBrowser: true,
+};
 
 const translationMap: Record<string, string> = {
   "common.back": "Back",
@@ -192,6 +195,10 @@ vi.mock("@/components/browser-session/BrowserSessionHelpDialog", () => ({
   BrowserSessionHelpDialog: () => <button type="button">Help</button>,
 }));
 
+vi.mock("@/components/LocaleToggle", () => ({
+  LocaleToggle: () => <button type="button">Locale</button>,
+}));
+
 vi.mock("@/lib/analytics/browserSessionEvents", () => ({
   trackBrowserSessionOpened,
   trackBrowserSessionReopened,
@@ -268,7 +275,7 @@ describe("Chat Browser Session entry", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     messagesData = [];
-    tenantFlagsData = { chatBrowserSessionEntry: true };
+    tenantFlagsData = { chatBrowserSessionEntry: true, liveBrowser: true };
     window.history.replaceState({}, "", "/chat?c=12");
     createConversationMutateAsync.mockResolvedValue({ id: 88 });
     createPersonalConversationMutateAsync.mockResolvedValue({ id: 89 });
@@ -324,14 +331,25 @@ describe("Chat Browser Session entry", () => {
     expect(screen.getAllByRole("button", { name: "Help" }).length).toBeGreaterThan(0);
   });
 
-  it("keeps the Browser Session launcher visible when tenant flags have not loaded yet", () => {
+  it("hides the Browser Session launcher while tenant flags have not loaded yet", () => {
     tenantFlagsData = undefined;
 
     render(<Chat />);
 
-    expect(screen.getAllByRole("button", { name: "Start Browser Session" }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("button", { name: "Help" }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: /Open Browser Session/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Start Browser Session" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Open Browser Session/i })).not.toBeInTheDocument();
+  });
+
+  it("hides the Browser Session launcher when Playwright-backed flags are disabled", () => {
+    tenantFlagsData = {
+      chatBrowserSessionEntry: false,
+      liveBrowser: false,
+    };
+
+    render(<Chat />);
+
+    expect(screen.queryByRole("button", { name: "Start Browser Session" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Let AI work in a live browser directly from this chat\./i)).not.toBeInTheDocument();
   });
 
   it("keeps the right panel collapsed until a panel is opened", () => {

@@ -13,6 +13,7 @@ import pytest
 
 from app.services.browser_pool import (
     BrowserPool,
+    get_browser_pool,
     get_worker_loop,
 )
 
@@ -37,6 +38,28 @@ class TestGetWorkerLoop:
             if bp._worker_loop is not old:
                 bp._worker_loop.close()
             bp._worker_loop = old
+
+    def test_get_browser_pool_respects_playwright_kill_switch(self, monkeypatch):
+        """get_browser_pool() fails closed when local Playwright is disabled."""
+        from app.services.automation_exceptions import BrowserLaunchError
+        import app.services.browser_pool as bp
+
+        monkeypatch.setenv("SMARTSPEC_PLAYWRIGHT_ENABLED", "false")
+        old_pool = bp._pool
+        bp._pool = None
+        try:
+            with pytest.raises(BrowserLaunchError, match="Playwright features are disabled"):
+                get_browser_pool()
+        finally:
+            bp._pool = old_pool
+
+    def test_browser_pool_health_check_skips_when_disabled(self, monkeypatch):
+        """Beat health checks must not lazy-start Playwright during an incident."""
+        from app.tasks.automation_copilot_task import browser_pool_health_check
+
+        monkeypatch.setenv("SMARTSPEC_PLAYWRIGHT_ENABLED", "false")
+
+        assert browser_pool_health_check() == {"disabled": True, "released": 0}
 
     def test_returns_same_loop_on_second_call(self):
         """get_worker_loop() returns the same loop instance on repeated calls."""

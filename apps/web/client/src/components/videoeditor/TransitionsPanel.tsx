@@ -57,12 +57,18 @@ const ALIGNMENT_OPTIONS: Array<{ value: TransitionAlignment; label: string; icon
   { value: 'start',  label: 'At Start', icon: '\u25AA\u25B7' },
 ];
 
+const SPEED_MIN = 0.5;
+const SPEED_MAX = 2;
+const SPEED_STEP = 0.01;
+const SPEED_PRESETS = [0.75, 0.9, 0.95, 1, 1.02, 1.05, 1.08, 1.1, 1.15, 1.25, 1.5, 2];
+
 interface TransitionsPanelProps {
   selectedClip: Clip | null;
   previousClip: Clip | null;
   nextClip: Clip | null;
   onTransitionsChange: (clipId: string, transitions: { fadeIn?: number; fadeOut?: number }) => void;
   onEffectsChange?: (clipId: string, effects: Effect[]) => void;
+  onSpeedChange?: (clipId: string, speed: number) => void;
   onClipTransitionChange?: (clipId: string, transition: ClipTransition | undefined) => void;
 }
 
@@ -72,10 +78,13 @@ export const TransitionsPanel: React.FC<TransitionsPanelProps> = ({
   nextClip,
   onTransitionsChange,
   onEffectsChange,
+  onSpeedChange,
   onClipTransitionChange,
 }) => {
   const [fadeIn, setFadeIn] = useState(0);
   const [fadeOut, setFadeOut] = useState(0);
+  const [speed, setSpeed] = useState(1);
+  const [speedInput, setSpeedInput] = useState('1.00');
   const [filters, setFilters] = useState<FilterState>({ ...DEFAULT_FILTERS });
   const [transitionDuration, setTransitionDuration] = useState(500);
   // Track which transition the user is editing: 'incoming' (on selectedClip) or 'outgoing' (on nextClip)
@@ -104,6 +113,8 @@ export const TransitionsPanel: React.FC<TransitionsPanelProps> = ({
     if (selectedClip) {
       setFadeIn(selectedClip.transitions?.fadeIn || 0);
       setFadeOut(selectedClip.transitions?.fadeOut || 0);
+      setSpeed(selectedClip.speed || 1);
+      setSpeedInput((selectedClip.speed || 1).toFixed(2));
 
       // Load transition duration from the relevant clip
       const trClip = editingDirection === 'incoming' ? selectedClip : nextClip;
@@ -119,6 +130,8 @@ export const TransitionsPanel: React.FC<TransitionsPanelProps> = ({
     } else {
       setFadeIn(0);
       setFadeOut(0);
+      setSpeed(1);
+      setSpeedInput('1.00');
       setTransitionDuration(500);
       setFilters({ ...DEFAULT_FILTERS });
     }
@@ -175,6 +188,29 @@ export const TransitionsPanel: React.FC<TransitionsPanelProps> = ({
     const newFilters = { ...filters, [key]: value };
     setFilters(newFilters);
     emitFilterEffects(newFilters);
+  };
+
+  const handleSpeedChange = (value: number, syncInput = true) => {
+    if (!selectedClip || !onSpeedChange) return;
+    if (!Number.isFinite(value)) return;
+    const nextSpeed = Math.round(Math.max(SPEED_MIN, Math.min(SPEED_MAX, value)) * 100) / 100;
+    setSpeed(nextSpeed);
+    if (syncInput) {
+      setSpeedInput(nextSpeed.toFixed(2));
+    }
+    onSpeedChange(selectedClip.id, nextSpeed);
+  };
+
+  const handleSpeedInputChange = (value: string) => {
+    setSpeedInput(value);
+    const parsed = parseFloat(value);
+    if (Number.isFinite(parsed)) {
+      handleSpeedChange(parsed, false);
+    }
+  };
+
+  const handleSpeedInputBlur = () => {
+    setSpeedInput(speed.toFixed(2));
   };
 
   const emitFilterEffects = (f: FilterState) => {
@@ -283,8 +319,18 @@ export const TransitionsPanel: React.FC<TransitionsPanelProps> = ({
         .transition-slider::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; background: #0078d4; border-radius: 50%; cursor: pointer; }
         .transition-slider::-moz-range-thumb { width: 14px; height: 14px; background: #0078d4; border-radius: 50%; cursor: pointer; border: none; }
         .transitions-presets { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 12px; }
+        .speed-presets { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin-bottom: 12px; }
+        .speed-field-row { display: grid; grid-template-columns: 32px minmax(88px, 118px) 32px; gap: 6px; align-items: center; margin-bottom: 12px; }
+        .speed-step-button { height: 30px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #e0e0e0; font-size: 14px; line-height: 1; cursor: pointer; transition: all 0.2s; }
+        .speed-step-button:hover:not(:disabled) { background: #333; border-color: #0078d4; color: #79c6ff; }
+        .speed-step-button:disabled { opacity: 0.45; cursor: not-allowed; }
+        .speed-number-input { height: 30px; width: 100%; background: #151515; border: 1px solid #444; border-radius: 4px; color: #e0e0e0; font-size: 12px; text-align: center; outline: none; }
+        .speed-number-input:focus { border-color: #0078d4; box-shadow: 0 0 0 2px #0078d430; }
+        .speed-number-input:disabled { opacity: 0.55; cursor: not-allowed; }
+        .speed-helper { margin-top: 6px; color: #777; font-size: 10px; line-height: 1.4; }
         .preset-button { padding: 6px 10px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #e0e0e0; font-size: 11px; cursor: pointer; transition: all 0.2s; }
         .preset-button:hover { background: #333; border-color: #0078d4; }
+        .preset-button.active { background: #0078d420; border-color: #0078d4; color: #79c6ff; }
         .filter-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; }
         .filter-preset-btn { padding: 8px 4px; background: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #e0e0e0; font-size: 10px; cursor: pointer; transition: all 0.2s; text-align: center; }
         .filter-preset-btn:hover { background: #333; border-color: #0078d4; }
@@ -409,6 +455,80 @@ export const TransitionsPanel: React.FC<TransitionsPanelProps> = ({
 
       <hr className="section-divider" />
 
+      {/* Playback Speed Section */}
+      <div className="transitions-section">
+        <div className="transitions-title">Playback Speed</div>
+        <div className="speed-presets">
+          {SPEED_PRESETS.map((preset) => (
+            <button
+              key={preset}
+              className={`preset-button ${Math.abs(speed - preset) < 0.001 ? 'active' : ''}`}
+              onClick={() => handleSpeedChange(preset)}
+              title={`Set clip speed to ${preset.toFixed(2)}x`}
+            >
+              {preset.toFixed(preset === 1 ? 0 : 2)}x
+            </button>
+          ))}
+        </div>
+        <div className="transition-control">
+          <div className="transition-label">
+            <span>Fine Tune</span>
+            <span className="transition-value">0.01x steps</span>
+          </div>
+          <div className="speed-field-row">
+            <button
+              type="button"
+              className="speed-step-button"
+              onClick={() => handleSpeedChange(speed - SPEED_STEP)}
+              disabled={!onSpeedChange || speed <= SPEED_MIN}
+              title="Decrease speed by 0.01x"
+            >
+              -
+            </button>
+            <input
+              type="number"
+              className="speed-number-input"
+              min={SPEED_MIN}
+              max={SPEED_MAX}
+              step={SPEED_STEP}
+              value={speedInput}
+              onChange={(e) => handleSpeedInputChange(e.target.value)}
+              onBlur={handleSpeedInputBlur}
+              disabled={!onSpeedChange}
+              aria-label="Playback speed"
+            />
+            <button
+              type="button"
+              className="speed-step-button"
+              onClick={() => handleSpeedChange(speed + SPEED_STEP)}
+              disabled={!onSpeedChange || speed >= SPEED_MAX}
+              title="Increase speed by 0.01x"
+            >
+              +
+            </button>
+          </div>
+        </div>
+        <div className="transition-control">
+          <div className="transition-label">
+            <span>Speed</span>
+            <span className="transition-value">{speed.toFixed(2)}x</span>
+          </div>
+          <input
+            type="range"
+            className="transition-slider"
+            min={SPEED_MIN}
+            max={SPEED_MAX}
+            step={SPEED_STEP}
+            value={speed}
+            onChange={(e) => handleSpeedChange(parseFloat(e.target.value))}
+            disabled={!onSpeedChange}
+          />
+          <div className="speed-helper">Use values like 1.01x, 1.03x, or 1.07x for subtle video and audio timing changes.</div>
+        </div>
+      </div>
+
+      <hr className="section-divider" />
+
       {/* Fade In/Out Section */}
       <div className="transitions-section">
         <div className="transitions-title">Fade Presets</div>
@@ -472,6 +592,7 @@ export const TransitionsPanel: React.FC<TransitionsPanelProps> = ({
       <div className="transitions-info">
         <div className="transitions-info-title">Clip Info</div>
         <div>Duration: {selectedClip.duration.toFixed(2)}s</div>
+        <div>Speed: {speed.toFixed(2)}x</div>
         <div>Max Fade: {maxFadeDuration.toFixed(2)}s</div>
       </div>
     </div>

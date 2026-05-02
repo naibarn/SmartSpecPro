@@ -84,6 +84,11 @@ async def execute_browser_actions(req: BrowserActionRequest) -> BrowserActionRes
     This endpoint is called by the Node.js browser tool route after
     credit reservation and concurrency checks are complete.
     """
+    from app.services.playwright_feature_gate import is_playwright_enabled
+
+    if not is_playwright_enabled():
+        raise HTTPException(status_code=503, detail="Playwright browser automation is disabled.")
+
     if not req.actions:
         raise HTTPException(status_code=400, detail="No actions provided.")
 

@@ -33,7 +33,7 @@ services:
       context: ./python-backend
       dockerfile: Dockerfile
     container_name: smartspec-celery-media
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=8 --max-tasks-per-child=50 --max-memory-per-child=1200000 -Q media -n media@%h
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=3 --max-tasks-per-child=20 --max-memory-per-child=700000 -Q media -n media@%h
     env_file:
       - ./python-backend/.env
     environment:
@@ -45,6 +45,7 @@ services:
       - MEDIA_STORAGE_PATH=/app/media_storage
       - SMARTSPEC_WEB_GATEWAY_URL=http://host.docker.internal:3000
       - WEB_APP_URL=http://host.docker.internal:3000
+      - SMARTSPEC_PLAYWRIGHT_ENABLED=false
       # API keys inherited from env_file
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -301,7 +302,7 @@ services:
       context: ./python-backend
       dockerfile: Dockerfile
     container_name: smartspec-flower
-    command: celery -A app.core.celery_app flower --port=5555 --broker=redis://smartspec-redis:6379/0
+    command: celery --broker=redis://smartspec-redis:6379/0 flower --port=5555
     environment:
       - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
       - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
@@ -316,7 +317,7 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 256M
+          memory: 512M
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5555/ || exit 1"]
       interval: 30s

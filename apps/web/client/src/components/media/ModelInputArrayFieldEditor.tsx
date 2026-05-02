@@ -105,6 +105,27 @@ function renderSubFieldDescription(field: { description?: string } | null | unde
   );
 }
 
+function renderSelectedOptionDescription(
+  selectedOption: { value: unknown; label?: string } | null | undefined,
+  variant: "light" | "dark",
+) {
+  const label = String(selectedOption?.label ?? "").trim();
+  const value = String(selectedOption?.value ?? "").trim();
+  if (!label || label === value) {
+    return null;
+  }
+
+  return (
+    <p className={cn(
+      "text-[11px] leading-snug",
+      variant === "dark" ? "text-zinc-400" : "text-muted-foreground",
+    )}
+    >
+      {label}
+    </p>
+  );
+}
+
 export function ModelInputArrayFieldEditor({
   field,
   value,
@@ -194,6 +215,7 @@ export function ModelInputArrayFieldEditor({
         ? filteredOptions
         : subField.options;
       const currentString = String(currentValue ?? subField.options[0]?.value ?? "");
+      const selectedOption = subField.options.find((option) => String(option.value) === currentString);
       return (
         <label key={subFieldKey} className="flex flex-col gap-1.5">
           <span className={cn("text-xs", subtleTextClasses)}>
@@ -230,6 +252,7 @@ export function ModelInputArrayFieldEditor({
               </option>
             ))}
           </select>
+          {renderSelectedOptionDescription(selectedOption, variant)}
           {searchTerm.length > 0 && filteredOptions.length === 0 ? (
             <span className={cn("text-[11px]", subtleTextClasses)}>
               No matching options. Showing current value.

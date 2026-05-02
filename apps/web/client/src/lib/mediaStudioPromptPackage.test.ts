@@ -61,6 +61,133 @@ describe("parseMediaStudioPromptPackage", () => {
     });
   });
 
+  it("extracts generated continuity and reference notes from a top-level skill preamble", () => {
+    const input = [
+      "REFERENCE NOTES:",
+      "Generated reference bible: same Thai news anchor, same glass desk, same MiMo product wall behind every clip.",
+      "",
+      "CONTINUITY NOTES:",
+      "Story arc: headline, core fact, workflow impact, cost caveat, balanced summary. Keep the same anchor identity and newsroom visual language across all prompts.",
+      "",
+      "VEO 3.1 SETTINGS:",
+      "Model: veo3_lite",
+      "Generation Type: TEXT_2_VIDEO",
+      "",
+      "NEWS BEAT PLAN:",
+      "Beat 1: hook",
+      "Beat 2: why it matters",
+      "",
+      "PROMPT 1 (8 seconds):",
+      "Continuity Lock: same Thai news anchor and same MiMo product wall.",
+      "ผู้ประกาศพูดเป็นภาษาไทยว่า \"Xiaomi เปิดตัว MiMo รุ่นใหม่\"",
+      "",
+      "PROMPT 2 (8 seconds):",
+      "Continuity Lock: same Thai news anchor and same MiMo product wall.",
+      "ผู้ประกาศพูดเป็นภาษาไทยว่า \"จุดเด่นคือทำงานยาวขึ้น\"",
+    ].join("\n");
+
+    expect(parseMediaStudioPromptPackage(input)).toEqual({
+      promptText: [
+        "PROMPT 1 (8 seconds):",
+        "Continuity Lock: same Thai news anchor and same MiMo product wall.",
+        "ผู้ประกาศพูดเป็นภาษาไทยว่า \"Xiaomi เปิดตัว MiMo รุ่นใหม่\"",
+        "",
+        "PROMPT 2 (8 seconds):",
+        "Continuity Lock: same Thai news anchor and same MiMo product wall.",
+        "ผู้ประกาศพูดเป็นภาษาไทยว่า \"จุดเด่นคือทำงานยาวขึ้น\"",
+      ].join("\n"),
+      continuityNotes: "Story arc: headline, core fact, workflow impact, cost caveat, balanced summary. Keep the same anchor identity and newsroom visual language across all prompts.",
+      referenceNotes: "Generated reference bible: same Thai news anchor, same glass desk, same MiMo product wall behind every clip.",
+      promptSequence: [
+        [
+          "PROMPT 1 (8 seconds):",
+          "Continuity Lock: same Thai news anchor and same MiMo product wall.",
+          "ผู้ประกาศพูดเป็นภาษาไทยว่า \"Xiaomi เปิดตัว MiMo รุ่นใหม่\"",
+        ].join("\n"),
+        [
+          "PROMPT 2 (8 seconds):",
+          "Continuity Lock: same Thai news anchor and same MiMo product wall.",
+          "ผู้ประกาศพูดเป็นภาษาไทยว่า \"จุดเด่นคือทำงานยาวขึ้น\"",
+        ].join("\n"),
+      ],
+      source: "plain_text",
+    });
+  });
+
+  it("extracts trailing generated notes after the final prompt block", () => {
+    const input = [
+      "PROMPT 1 (8 seconds):",
+      "Continuity Lock: same Thai anchor in the same studio.",
+      "ผู้ประกาศพูดเป็นภาษาไทยว่า \"Xiaomi เปิดตัว MiMo รุ่นใหม่\"",
+      "",
+      "PROMPT 2 (8 seconds):",
+      "Continuity Lock: same Thai anchor in the same studio.",
+      "ผู้ประกาศพูดเป็นภาษาไทยว่า \"จุดเด่นคือรองรับบริบทยาวขึ้น\"",
+      "",
+      "REFERENCE NOTES",
+      "Same Thai presenter, glass desk, vertical newsroom visual wall, AI workflow visuals.",
+      "",
+      "CONTINUITY NOTES",
+      "Fixed identity and same 9:16 medium newsroom framing across the complete news segment.",
+    ].join("\n");
+
+    expect(parseMediaStudioPromptPackage(input)).toEqual({
+      promptText: [
+        "PROMPT 1 (8 seconds):",
+        "Continuity Lock: same Thai anchor in the same studio.",
+        "ผู้ประกาศพูดเป็นภาษาไทยว่า \"Xiaomi เปิดตัว MiMo รุ่นใหม่\"",
+        "",
+        "PROMPT 2 (8 seconds):",
+        "Continuity Lock: same Thai anchor in the same studio.",
+        "ผู้ประกาศพูดเป็นภาษาไทยว่า \"จุดเด่นคือรองรับบริบทยาวขึ้น\"",
+      ].join("\n"),
+      continuityNotes: "Fixed identity and same 9:16 medium newsroom framing across the complete news segment.",
+      referenceNotes: "Same Thai presenter, glass desk, vertical newsroom visual wall, AI workflow visuals.",
+      promptSequence: [
+        [
+          "PROMPT 1 (8 seconds):",
+          "Continuity Lock: same Thai anchor in the same studio.",
+          "ผู้ประกาศพูดเป็นภาษาไทยว่า \"Xiaomi เปิดตัว MiMo รุ่นใหม่\"",
+        ].join("\n"),
+        [
+          "PROMPT 2 (8 seconds):",
+          "Continuity Lock: same Thai anchor in the same studio.",
+          "ผู้ประกาศพูดเป็นภาษาไทยว่า \"จุดเด่นคือรองรับบริบทยาวขึ้น\"",
+        ].join("\n"),
+      ],
+      source: "plain_text",
+    });
+  });
+
+  it("extracts generated continuity and reference notes from Thai heading aliases", () => {
+    const input = [
+      "บันทึกภาพอ้างอิง:",
+      "ใช้ @Image1 เป็นผู้นำเสนอหลัก และคงฉาก newsroom เดิมทุกคลิป",
+      "",
+      "บันทึกความต่อเนื่อง:",
+      "เล่าเรื่องต่อเนื่องจากประเด็นเปิดตัว ไปสู่ผลกระทบด้านต้นทุน แล้วจบด้วยข้อควรระวัง",
+      "",
+      "PROMPT 1 (8 seconds):",
+      "ผู้ประกาศพูดเป็นภาษาไทยว่า \"Xiaomi เปิดตัว MiMo รุ่นใหม่\"",
+    ].join("\n");
+
+    expect(parseMediaStudioPromptPackage(input)).toEqual({
+      promptText: [
+        "PROMPT 1 (8 seconds):",
+        "ผู้ประกาศพูดเป็นภาษาไทยว่า \"Xiaomi เปิดตัว MiMo รุ่นใหม่\"",
+      ].join("\n"),
+      continuityNotes: "เล่าเรื่องต่อเนื่องจากประเด็นเปิดตัว ไปสู่ผลกระทบด้านต้นทุน แล้วจบด้วยข้อควรระวัง",
+      referenceNotes: "ใช้ @Image1 เป็นผู้นำเสนอหลัก และคงฉาก newsroom เดิมทุกคลิป",
+      promptSequence: [
+        [
+          "PROMPT 1 (8 seconds):",
+          "ผู้ประกาศพูดเป็นภาษาไทยว่า \"Xiaomi เปิดตัว MiMo รุ่นใหม่\"",
+        ].join("\n"),
+      ],
+      source: "plain_text",
+    });
+  });
+
   it("parses structured JSON wrapped in a markdown code fence", () => {
     const input = [
       "```json",
@@ -79,6 +206,80 @@ describe("parseMediaStudioPromptPackage", () => {
       continuityNotes: "Keep the same rainy alley and courier silhouette.",
       referenceNotes: "Use @Image1 for the courier and @Image2 for the alley.",
       promptSequence: ["A courier pauses beneath neon rain in Bangkok."],
+      source: "structured_json",
+    });
+  });
+
+  it("parses camelCase continuityPackage structured output", () => {
+    const input = JSON.stringify({
+      continuityPackage: {
+        continuityNotes: "Keep the same presenter, studio wall, and Xiaomi AI explainer arc.",
+        referenceNotes: "Generated visual bible: MiMo logo wall, code workflow UI, token meter graphics.",
+        continuityLock: "Same Thai presenter in the same AI newsroom.",
+      },
+      prompt_sequence: [
+        {
+          prompt_id: "PROMPT 1 (8 seconds):",
+          prompt: "Continuity Lock: Same Thai presenter in the same AI newsroom.",
+        },
+      ],
+    });
+
+    expect(parseMediaStudioPromptPackage(input)).toMatchObject({
+      continuityNotes: "Keep the same presenter, studio wall, and Xiaomi AI explainer arc.",
+      referenceNotes: "Generated visual bible: MiMo logo wall, code workflow UI, token meter graphics.",
+      promptSequence: ["Continuity Lock: Same Thai presenter in the same AI newsroom."],
+      source: "structured_json",
+    });
+  });
+
+  it("parses video-storyboard structured videoPrompts output", () => {
+    const input = JSON.stringify({
+      continuityPackage: {
+        continuityNotes: "Same presenter, same studio, same visual wall through the complete segment.",
+        referenceNotes: "Use the attached presenter photo as identity reference.",
+      },
+      audioWorkflow: {
+        voiceoverScript: "OpenAI ออกอัปเดต Codex CLI รุ่นใหม่",
+      },
+      videoPrompts: [
+        {
+          sceneNumber: 1,
+          durationSeconds: 8,
+          prompt: "Continuity Lock: same presenter in a modern studio.\nA visual-only opening shot.",
+        },
+        {
+          sceneNumber: 2,
+          durationSeconds: 8,
+          prompt: "Continuity Lock: same presenter in a modern studio.\nA visual-only follow-up shot.",
+        },
+      ],
+    });
+
+    expect(parseMediaStudioPromptPackage(input)).toMatchObject({
+      promptText: [
+        "PROMPT 1 (8 seconds):",
+        "Continuity Lock: same presenter in a modern studio.",
+        "A visual-only opening shot.",
+        "",
+        "PROMPT 2 (8 seconds):",
+        "Continuity Lock: same presenter in a modern studio.",
+        "A visual-only follow-up shot.",
+      ].join("\n"),
+      continuityNotes: "Same presenter, same studio, same visual wall through the complete segment.",
+      referenceNotes: "Use the attached presenter photo as identity reference.",
+      promptSequence: [
+        [
+          "PROMPT 1 (8 seconds):",
+          "Continuity Lock: same presenter in a modern studio.",
+          "A visual-only opening shot.",
+        ].join("\n"),
+        [
+          "PROMPT 2 (8 seconds):",
+          "Continuity Lock: same presenter in a modern studio.",
+          "A visual-only follow-up shot.",
+        ].join("\n"),
+      ],
       source: "structured_json",
     });
   });
@@ -212,6 +413,23 @@ describe("composePromptWithNotes", () => {
       "",
       "Continuity Notes:",
       "Keep the same garden lighting and playful energy.",
+    ].join("\n"));
+  });
+
+  it("can prepend notes before the prompt for video generation", () => {
+    expect(composePromptWithNotes({
+      prompt: "A news anchor introduces Xiaomi MiMo in a bright AI newsroom.",
+      referenceNotes: "Generated visual bible: same anchor, desk, and MiMo wall.",
+      continuityNotes: "Story arc: headline, context, cost claim, caveat, summary.",
+      placement: "before",
+    })).toBe([
+      "Reference Notes:",
+      "Generated visual bible: same anchor, desk, and MiMo wall.",
+      "",
+      "Continuity Notes:",
+      "Story arc: headline, context, cost claim, caveat, summary.",
+      "",
+      "A news anchor introduces Xiaomi MiMo in a bright AI newsroom.",
     ].join("\n"));
   });
 });

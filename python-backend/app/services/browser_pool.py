@@ -8,15 +8,15 @@ import time
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, AsyncGenerator
 
-from playwright.async_api import BrowserContext, async_playwright
-
 from app.services.automation_exceptions import BrowserCapacityError, BrowserLaunchError
 
 if TYPE_CHECKING:
     import redis.asyncio as aioredis
-    from playwright.async_api import Browser, Playwright
+    from playwright.async_api import Browser, BrowserContext, Playwright
 
 logger = logging.getLogger(__name__)
+
+async_playwright = None
 
 SYSTEM_MAX_BROWSERS = 10
 TENANT_MAX_BROWSERS = 2
@@ -43,6 +43,15 @@ class BrowserPool:
 
     async def start(self) -> None:
         try:
+            global async_playwright
+            from app.services.playwright_feature_gate import require_playwright_enabled
+
+            require_playwright_enabled()
+            if async_playwright is None:
+                from playwright.async_api import async_playwright as _async_playwright
+
+                async_playwright = _async_playwright
+
             pw_cm = async_playwright()
             self._playwright = await pw_cm.start()
             self._browser = await self._playwright.chromium.launch(headless=True)
@@ -193,17 +202,26 @@ def get_worker_loop() -> asyncio.AbstractEventLoop:
 
 
 def get_browser_pool() -> BrowserPool:
-    """Return the worker-scoped BrowserPool singleton. Raises if not initialized."""
+    """Return the worker-scoped BrowserPool singleton, starting it on first use."""
+    from app.services.playwright_feature_gate import require_playwright_enabled
+
+    require_playwright_enabled()
     if _pool is None:
-        raise BrowserLaunchError("BrowserPool not initialized -- is this a Celery worker?")
+        init_browser_pool_sync()
+    if _pool is None:
+        raise BrowserLaunchError("BrowserPool not initialized -- Playwright failed to start")
     return _pool
 
 
 def init_browser_pool_sync() -> None:
-    """Initialize the BrowserPool singleton. Called from Celery worker_process_init signal."""
+    """Initialize the BrowserPool singleton for the current worker process."""
     global _pool
     if _pool is not None:
         return
+
+    from app.services.playwright_feature_gate import require_playwright_enabled
+
+    require_playwright_enabled()
 
     import os
 
@@ -217,7 +235,7 @@ def init_browser_pool_sync() -> None:
         pool = BrowserPool(redis_client=redis_client)
         loop.run_until_complete(pool.start())
         _pool = pool
-        logger.info("BrowserPool initialized via worker signal")
+        logger.info("BrowserPool initialized")
     except Exception:
         logger.warning("BrowserPool init skipped (Playwright not available)", exc_info=True)
     # NOTE: Do NOT close the loop — it must stay alive for Playwright operations

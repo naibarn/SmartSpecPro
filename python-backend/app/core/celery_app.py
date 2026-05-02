@@ -236,11 +236,11 @@ celery_app.autodiscover_tasks(["app.tasks", "app.workers"])
 
 
 # ---------------------------------------------------------------------------
-# Worker lifecycle signals — initialise BrowserPool for the media queue
+# Worker lifecycle signals
 # ---------------------------------------------------------------------------
 @worker_process_init.connect
 def _init_browser_pool_on_worker(**kwargs):
-    """Reinitialize DB engine and BrowserPool when a worker child process forks."""
+    """Reinitialize DB engine when a worker child process forks."""
     # CRITICAL: After fork(), the inherited asyncpg connection pool is corrupted.
     # Dispose it and recreate with NullPool to prevent
     # "cannot perform operation: another operation is in progress" errors.
@@ -253,18 +253,9 @@ def _init_browser_pool_on_worker(**kwargs):
         # Celery prefork supervisor will respawn this child process.
         os._exit(1)
 
-    queues = os.getenv("CELERY_WORKER_QUEUES", "")
-    # The -Q flag sets CELERY_WORKER_QUEUES at runtime; also check argv
-    import sys
-
-    argv_str = " ".join(sys.argv)
-    if "media" in queues or "-Q media" in argv_str or "-Q" not in argv_str:
-        try:
-            from app.services.browser_pool import init_browser_pool_sync
-
-            init_browser_pool_sync()
-        except Exception:
-            _celery_logger.warning("BrowserPool init failed — automation tasks will fail", exc_info=True)
+    # BrowserPool is intentionally lazy-initialized by get_browser_pool().
+    # Starting Chromium in every prefork child at boot exhausts the media
+    # worker cgroup before any browser automation task runs.
 
 
 @worker_process_shutdown.connect

@@ -283,20 +283,19 @@ function assertMediaPromptWithinModelLimit(params: {
  * Compares actual output (duration/resolution) against pre-reserved credits.
  */
 export async function reconcileTaskCredits(params: {
-  task: { id: string; status: string; model: string; resultData?: Record<string, unknown>; parameters?: Record<string, unknown> };
+  task: {
+    id: string;
+    status: string;
+    model: string;
+    resultData?: Record<string, unknown>;
+    parameters?: Record<string, unknown>;
+    errorMessage?: string | null;
+  };
   userId: number;
 }): Promise<{ adjusted: boolean; difference: number; action: "refund" | "charge" | "none" }> {
   const noOp = { adjusted: false, difference: 0, action: "none" as const };
   const { task, userId } = params;
 
-  // Guard: only completed tasks
-  if (task.status !== "completed") return noOp;
-
-  // Guard: must have actual_duration
-  const resultData = task.resultData;
-  if (!resultData || typeof resultData.actual_duration !== "number" || resultData.actual_duration <= 0) return noOp;
-
-  // Guard: idempotency via Redis
   try {
     const { getCacheClient } = await import("../services/redisClients");
     const redis = getCacheClient();
@@ -313,6 +312,35 @@ export async function reconcileTaskCredits(params: {
       : undefined;
     const reservedCredits = Number(extraParams.__reserved_credits);
     if (!reservedCredits || reservedCredits <= 0) return noOp;
+
+    if (task.status === "failed") {
+      await refundCredits({
+        userId,
+        amount: reservedCredits,
+        description: `Credit reconciliation refund: ${task.model} failed`,
+        idempotencyKey: `media:${task.id}:failed-refund`,
+        sourceType: "media_video",
+        metadata: {
+          model: task.model,
+          taskId: task.id,
+          type: "failed_task_refund",
+          reservedCost: reservedCredits,
+          error: task.errorMessage ?? undefined,
+          ...(originSurface ? { originSurface } : {}),
+        },
+      });
+
+      const difference = -reservedCredits;
+      await redis.set(reconcileKey, JSON.stringify({ action: "refund", difference, timestamp: Date.now() }), "EX", 86400);
+      return { adjusted: true, difference, action: "refund" };
+    }
+
+    // Guard: only completed tasks need actual output reconciliation.
+    if (task.status !== "completed") return noOp;
+
+    // Guard: must have actual_duration
+    const resultData = task.resultData;
+    if (!resultData || typeof resultData.actual_duration !== "number" || resultData.actual_duration <= 0) return noOp;
 
     // Get model pricing
     let dbModel: { creditCost: number; configJson: Record<string, any> | null };
@@ -350,6 +378,7 @@ export async function reconcileTaskCredits(params: {
         userId,
         amount: Math.abs(difference),
         description: `Credit reconciliation refund: ${task.model} (actual ${actualDuration}s)`,
+        idempotencyKey: `media:${task.id}:reconcile-refund`,
         sourceType: "media_video",
         metadata: {
           model: task.model,
@@ -367,6 +396,7 @@ export async function reconcileTaskCredits(params: {
         userId,
         amount: difference,
         description: `Credit reconciliation charge: ${task.model} (actual ${actualDuration}s)`,
+        idempotencyKey: `media:${task.id}:reconcile-charge`,
         sourceType: "media_video",
         metadata: {
           model: task.model,
@@ -2379,8 +2409,8 @@ export const mediaRouter = router({
           },
         );
 
-        // Credit reconciliation for completed async tasks (non-blocking)
-        if (task?.status === "completed" && task.resultData?.actual_duration) {
+        // Credit reconciliation for completed or failed async tasks (non-blocking)
+        if (task?.status === "completed" || task?.status === "failed") {
           reconcileTaskCredits({ task: task as any, userId: ctx.user.id }).catch(() => {});
         }
 

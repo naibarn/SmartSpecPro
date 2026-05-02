@@ -74,6 +74,7 @@ import {
   RefreshCw,
   RotateCcw,
   AlertTriangle,
+  Server,
 } from "lucide-react";
 
 interface MediaModel {
@@ -428,6 +429,47 @@ function summarizeProviderReadinessMessage(
   }
 
   return trimmed;
+}
+
+function formatProviderDisplayName(provider: string | null | undefined): string {
+  const normalized = String(provider ?? "").trim();
+  if (!normalized) return "Unknown Provider";
+
+  const knownNames: Record<string, string> = {
+    "kie.ai": "Kie AI",
+    kie_ai: "Kie AI",
+    knplabai: "KNPLabs AI",
+    knplabs: "KNPLabs AI",
+    fal_ai: "fal.ai",
+    wavespeed_ai: "WaveSpeed AI",
+    byteplus_modelark: "BytePlus ModelArk",
+    omnivoice: "OmniVoice",
+    uvoice: "UVoice",
+  };
+  const lookupKey = normalized.toLowerCase();
+  if (knownNames[lookupKey]) return knownNames[lookupKey];
+
+  return normalized
+    .replace(/[._-]+/g, " ")
+    .replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function getProviderLabel(item: {
+  provider: string;
+  providerDisplayName?: string | null;
+}): string {
+  return item.providerDisplayName || formatProviderDisplayName(item.provider);
+}
+
+function getProviderReadinessDetail(item: {
+  provider: string;
+  providerReadiness?: MediaModel["providerReadiness"];
+  providerReadinessMessage?: string | null;
+}): string | null {
+  if (item.providerReadiness === "provider_not_found") {
+    return `Provider record not found: ${getProviderLabel(item)} (${item.provider})`;
+  }
+  return summarizeProviderReadinessMessage(item.providerReadinessMessage);
 }
 
 function createEmptyInputFieldDraft(): InputFieldDraft {
@@ -1009,26 +1051,75 @@ const API_CONFIG_PRESETS: ApiConfigPreset[] = [
   },
   {
     id: "veo31_text_video",
-    label: "Veo 3.1 Text-to-Video",
+    label: "Veo 3.1 Complete",
     description:
-      "Simple Veo setup with aspect ratio selector, prompt length cap, and flat credits.",
-    pricingFormula: "flat",
+      "Veo 3.1 setup with Lite/Fast/Quality, text, first-last frame, reference-to-video, quality, translation, aspect ratio, and watermark controls.",
+    pricingFormula: "matrix",
     maxPromptLength: 5000,
     inputFields: [
+      {
+        key: "generationType",
+        label: "Generation Mode",
+        type: "select",
+        options: [
+          { value: "TEXT_2_VIDEO", label: "Text to Video" },
+          { value: "FIRST_AND_LAST_FRAMES_2_VIDEO", label: "First & Last Frames to Video" },
+          { value: "REFERENCE_2_VIDEO", label: "Reference to Video (Fast only)" },
+        ],
+        default: "TEXT_2_VIDEO",
+      },
+      {
+        key: "imageUrls",
+        label: "Start/End or Reference Images",
+        type: "image_urls",
+        syncWith: "reference_images",
+      },
+      {
+        key: "resolution",
+        label: "Output Quality",
+        type: "select",
+        options: [
+          { value: "720p", label: "720p" },
+          { value: "1080p", label: "1080P" },
+          { value: "4K", label: "4K" },
+        ],
+        default: "720p",
+        affectsPricing: true,
+      },
+      {
+        key: "enableTranslation",
+        label: "Enable Translation",
+        type: "boolean",
+        default: false,
+      },
+      {
+        key: "enableFallback",
+        label: "Enable Fallback",
+        type: "boolean",
+        default: false,
+      },
+      {
+        key: "watermark",
+        label: "Watermark",
+        type: "text",
+      },
       {
         key: "aspect_ratio",
         label: "Aspect Ratio",
         type: "select",
         options: [
+          { value: "auto", label: "Auto" },
           { value: "16:9", label: "16:9" },
           { value: "9:16", label: "9:16" },
-          { value: "1:1", label: "1:1" },
         ],
-        default: "16:9",
+        default: "auto",
+        syncWith: "aspect_ratio",
       },
     ],
     pricingTiers: {
-      default: 2000,
+      "720p": 2000,
+      "1080p": 2000,
+      "4K": 4000,
     },
   },
   {
@@ -1125,7 +1216,7 @@ export default function AdminMediaModels() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [operationFilter, setOperationFilter] = useState<string>("all");
   const [providerFilter, setProviderFilter] = useState<string>("all");
-  const [isTemplatesExpanded, setIsTemplatesExpanded] = useState(true);
+  const [isTemplatesExpanded, setIsTemplatesExpanded] = useState(false);
 
   // Wait for the user to pause typing before querying to avoid per-character fetch churn.
   const debouncedSearch = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
@@ -2001,6 +2092,9 @@ export default function AdminMediaModels() {
                   importTemplateMutation.isPending &&
                   importTemplateMutation.variables?.modelId ===
                     template.modelId;
+                const providerLabel = getProviderLabel(template);
+                const providerReadinessDetail =
+                  getProviderReadinessDetail(template);
 
                 return (
                   <DashboardCard
@@ -2035,6 +2129,18 @@ export default function AdminMediaModels() {
                             <div className="font-mono text-xs text-muted-foreground">
                               {template.modelId}
                             </div>
+                            <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                              <Server className="h-3.5 w-3.5" />
+                              <span>Provider:</span>
+                              <span className="font-medium text-foreground">
+                                {providerLabel}
+                              </span>
+                              {providerLabel !== template.provider && (
+                                <span className="font-mono text-[11px]">
+                                  ({template.provider})
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <Button
@@ -2064,7 +2170,8 @@ export default function AdminMediaModels() {
 
                       <div className="flex flex-wrap gap-2">
                         <Badge variant="outline">
-                          {template.providerDisplayName || template.provider}
+                          <Server className="mr-1 h-3 w-3" />
+                          {providerLabel}
                         </Badge>
                         <Badge variant="outline">
                           <Coins className="mr-1 h-3 w-3 text-amber-500" />
@@ -2128,11 +2235,9 @@ export default function AdminMediaModels() {
                                   "Health Test Failed"}
                                 {!template.providerReadiness && "Not Ready"}
                               </Badge>
-                              {template.providerReadinessMessage && (
+                              {providerReadinessDetail && (
                                 <div className="text-xs leading-5 text-muted-foreground">
-                                  {summarizeProviderReadinessMessage(
-                                    template.providerReadinessMessage
-                                  )}
+                                  {providerReadinessDetail}
                                 </div>
                               )}
                             </div>

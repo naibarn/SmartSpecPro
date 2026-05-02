@@ -49,10 +49,29 @@ VALID_JOB_TYPES = {
 # Validation
 # ========================================
 
+def _resolve_media_binary(binary: str) -> str | None:
+    resolved = shutil.which(binary)
+    if resolved:
+        return resolved
+
+    for candidate in (
+        f"/usr/bin/{binary}",
+        f"/usr/local/bin/{binary}",
+        f"/opt/homebrew/bin/{binary}",
+        f"/home/dev/.local/bin/{binary}",
+        f"/home/appuser/.local/bin/{binary}",
+    ):
+        if os.path.exists(candidate):
+            bin_dir = os.path.dirname(candidate)
+            os.environ["PATH"] = f"{bin_dir}:{os.environ.get('PATH', '')}"
+            return candidate
+    return None
+
+
 def _validate_ffmpeg():
     """Check ffmpeg and ffprobe are available. Called at import time."""
     for binary in ("ffmpeg", "ffprobe"):
-        if not shutil.which(binary):
+        if not _resolve_media_binary(binary):
             import warnings
             warnings.warn(f"{binary} not found in PATH. Media jobs will fail.")
 
@@ -154,6 +173,77 @@ def _clip_has_non_default_transform(clip: dict, eps: float = 1e-3) -> bool:
         or abs(scale_x - 1.0) > eps
         or abs(scale_y - 1.0) > eps
     )
+
+
+def _clip_playback_rate(clip: dict) -> float:
+    """Resolve a safe clip playback rate for preview/render parity."""
+    rate = _to_float(clip.get("playbackRate"), 1.0)
+    if rate <= 0:
+        rate = 1.0
+    return min(2.0, max(0.5, rate))
+
+
+def _clip_volume(clip: dict) -> float:
+    """Resolve a safe clip volume for preview/render parity."""
+    if bool(clip.get("mute")):
+        return 0.0
+    volume = _to_float(clip.get("volume"), 1.0)
+    return min(2.0, max(0.0, volume))
+
+
+def _clip_source_duration_seconds(clip: dict, asset_duration_map: dict[str, Any]) -> float:
+    """Duration consumed from source media before playback speed is applied."""
+    in_ms = _to_int(clip.get("inMs"))
+    out_ms = _to_int(clip.get("outMs"))
+    if in_ms != 0 or out_ms != 0:
+        return max(0.001, (out_ms - in_ms) / 1000.0)
+
+    asset_dur_ms = _to_int(asset_duration_map.get(clip.get("assetId", ""), 0))
+    if asset_dur_ms > 0:
+        return max(0.001, asset_dur_ms / 1000.0)
+
+    duration_ms = _to_int(clip.get("durationMs"))
+    if duration_ms > 0:
+        return max(0.001, (duration_ms / 1000.0) * _clip_playback_rate(clip))
+
+    return 0.001
+
+
+def _clip_timeline_duration_seconds(clip: dict, asset_duration_map: dict[str, Any]) -> float:
+    """Visible timeline duration after playback speed is applied."""
+    duration_ms = _to_int(clip.get("durationMs"))
+    if duration_ms > 0:
+        return max(0.001, duration_ms / 1000.0)
+    return max(0.001, _clip_source_duration_seconds(clip, asset_duration_map) / _clip_playback_rate(clip))
+
+
+def _project_timeline_duration_seconds(tracks: list[dict], asset_duration_map: dict[str, Any]) -> float:
+    """Return the max end time across all timeline clips."""
+    max_end = 0.001
+    for track in tracks:
+        for clip in track.get("clips", []):
+            start_s = _to_int(clip.get("startMs"), default=0) / 1000.0
+            duration_s = _clip_timeline_duration_seconds(clip, asset_duration_map)
+            max_end = max(max_end, start_s + duration_s)
+    return max_end
+
+
+def _atempo_filter_chain(rate: float) -> str:
+    """Build a safe FFmpeg atempo chain for playback speed changes."""
+    if abs(rate - 1.0) < 1e-3:
+        return ""
+
+    parts: list[str] = []
+    remaining = rate
+    while remaining > 2.0:
+        parts.append("atempo=2.0")
+        remaining /= 2.0
+    while remaining < 0.5:
+        parts.append("atempo=0.5")
+        remaining /= 0.5
+
+    parts.append(f"atempo={_safe_float_for_ffmpeg(remaining)}")
+    return ",".join(parts)
 
 
 def _safe_clip_id(clip: dict, max_len: int = 50) -> str:
@@ -794,12 +884,26 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
 
     # Build filter complex
     video_clips = []
+    audio_clips = []
     for track in tracks:
         if track.get("type") in ("video", "overlay"):
             video_clips.extend(track.get("clips", []))
+        elif track.get("type") == "audio":
+            audio_clips.extend(track.get("clips", []))
     has_clip_transforms = any(_clip_has_non_default_transform(clip) for clip in video_clips)
+    has_clip_trims = any(_to_int(clip.get("inMs")) != 0 or _to_int(clip.get("outMs")) != 0 for clip in video_clips)
+    has_clip_speed_changes = any(abs(_clip_playback_rate(clip) - 1.0) > 1e-3 for clip in video_clips)
+    has_explicit_clip_durations = any(_to_int(clip.get("durationMs")) > 0 for clip in video_clips)
 
-    if len(video_clips) <= 1 and len(input_files) == 1 and not has_clip_transforms:
+    if (
+        len(video_clips) <= 1
+        and len(input_files) == 1
+        and not has_clip_transforms
+        and not has_clip_trims
+        and not has_clip_speed_changes
+        and not has_explicit_clip_durations
+        and 0 not in image_inputs
+    ):
         # Simple case: single input (ignore transitions on single clips)
         cmd.extend([
             "-c:v", "libx264", "-profile:v", "high", "-level", "4.0",
@@ -820,6 +924,7 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
         proj_fps = _to_int(project.get("fps")) or 30
 
         filters = []
+        video_audio_output_label = "aoutv" if audio_clips else "aout"
         # Trim each clip (video + audio)
         for i, clip in enumerate(video_clips):
             uri = asset_map.get(clip["assetId"], "")
@@ -827,13 +932,17 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
             idx = input_index.get(path, 0)
             in_s = _to_int(clip.get("inMs")) / 1000.0
             out_s = _to_int(clip.get("outMs")) / 1000.0
-
-            # Compute clip segment duration for silent audio generation
-            if in_s > 0 or out_s > 0:
-                clip_seg_dur = max(0.001, out_s - in_s)
-            else:
-                asset_dur_ms = _to_int(asset_duration_map.get(clip.get("assetId", ""), 0))
-                clip_seg_dur = max(0.001, asset_dur_ms / 1000.0)
+            rate = _clip_playback_rate(clip)
+            rate_s = _safe_float_for_ffmpeg(rate)
+            timing_setpts = f"setpts=(PTS-STARTPTS)/{rate_s}" if abs(rate - 1.0) > 1e-3 else "setpts=PTS-STARTPTS"
+            atempo_chain = _atempo_filter_chain(rate)
+            clip_source_dur = _clip_source_duration_seconds(clip, asset_duration_map)
+            clip_timeline_dur = _clip_timeline_duration_seconds(clip, asset_duration_map)
+            has_source_trim = in_s > 0 or out_s > 0
+            has_source_duration_bound = (
+                _to_int(asset_duration_map.get(clip.get("assetId", ""), 0)) > 0
+                or _to_int(clip.get("durationMs")) > 0
+            )
 
             # Video filter: trim + fps + scale + format
             # fps normalizes framerate AND timebase (required for xfade)
@@ -844,21 +953,41 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
                 f"pad={proj_w}:{proj_h}:(ow-iw)/2:(oh-ih)/2:color=black,"
                 f"setsar=1,format=yuv420p"
             )
-            if in_s > 0 or out_s > 0:
-                filters.append(f"[{idx}:v]trim=start={in_s}:end={out_s},setpts=PTS-STARTPTS,{normalize_chain}[vnorm{i}]")
+            if has_source_trim:
+                filters.append(f"[{idx}:v]trim=start={in_s}:end={out_s},{timing_setpts},{normalize_chain}[vnorm{i}]")
+            elif has_source_duration_bound:
+                filters.append(f"[{idx}:v]trim=start=0:end={clip_source_dur},{timing_setpts},{normalize_chain}[vnorm{i}]")
             else:
-                filters.append(f"[{idx}:v]setpts=PTS-STARTPTS,{normalize_chain}[vnorm{i}]")
+                filters.append(f"[{idx}:v]{timing_setpts},{normalize_chain}[vnorm{i}]")
 
-            # Audio filter — generate silence for inputs without audio streams
-            if idx in silent_inputs:
+            # Audio filter — generate silence for muted clips or inputs without audio streams
+            volume = _clip_volume(clip)
+            if volume <= 1e-6 or idx in silent_inputs:
                 filters.append(
                     f"anullsrc=r=48000:cl=stereo[_sil{i}];"
-                    f"[_sil{i}]atrim=0:{clip_seg_dur},asetpts=PTS-STARTPTS[a{i}]"
+                    f"[_sil{i}]atrim=0:{clip_timeline_dur},asetpts=PTS-STARTPTS[a{i}]"
                 )
-            elif in_s > 0 or out_s > 0:
-                filters.append(f"[{idx}:a]atrim=start={in_s}:end={out_s},asetpts=PTS-STARTPTS[a{i}]")
+            elif has_source_trim:
+                audio_chain = f"[{idx}:a]atrim=start={in_s}:end={out_s},asetpts=PTS-STARTPTS"
+                if atempo_chain:
+                    audio_chain += f",{atempo_chain}"
+                if abs(volume - 1.0) > 1e-3:
+                    audio_chain += f",volume={_safe_float_for_ffmpeg(volume)}"
+                filters.append(f"{audio_chain}[a{i}]")
+            elif has_source_duration_bound:
+                audio_chain = f"[{idx}:a]atrim=start=0:end={clip_source_dur},asetpts=PTS-STARTPTS"
+                if atempo_chain:
+                    audio_chain += f",{atempo_chain}"
+                if abs(volume - 1.0) > 1e-3:
+                    audio_chain += f",volume={_safe_float_for_ffmpeg(volume)}"
+                filters.append(f"{audio_chain}[a{i}]")
             else:
-                filters.append(f"[{idx}:a]asetpts=PTS-STARTPTS[a{i}]")
+                audio_chain = f"[{idx}:a]asetpts=PTS-STARTPTS"
+                if atempo_chain:
+                    audio_chain += f",{atempo_chain}"
+                if abs(volume - 1.0) > 1e-3:
+                    audio_chain += f",volume={_safe_float_for_ffmpeg(volume)}"
+                filters.append(f"{audio_chain}[a{i}]")
 
             # Clip transform (static pan/zoom per clip)
             # 1) Scale normalized clip by user zoom.
@@ -868,7 +997,7 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
             scaled_h = max(2, int(round(proj_h * scale_y)))
             x_s = _safe_float_for_ffmpeg(x)
             y_s = _safe_float_for_ffmpeg(y)
-            d_s = _safe_float_for_ffmpeg(clip_seg_dur)
+            d_s = _safe_float_for_ffmpeg(clip_timeline_dur)
 
             filters.append(f"[vnorm{i}]scale={scaled_w}:{scaled_h}[vscaled{i}]")
             filters.append(f"color=c=black:s={proj_w}x{proj_h}:d={d_s}[vbg{i}]")
@@ -884,20 +1013,13 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
         if not has_transitions:
             # No transitions: simple concat
             concat_in = "".join(f"[v{i}][a{i}]" for i in range(n))
-            filters.append(f"{concat_in}concat=n={n}:v=1:a=1[vout][aout]")
+            filters.append(f"{concat_in}concat=n={n}:v=1:a=1[vout][{video_audio_output_label}]")
         else:
             # Build chained xfade (video) + acrossfade (audio)
             # Calculate clip durations in seconds (without mutating spec)
             clip_durations = []
             for clip in video_clips:
-                c_in = _to_int(clip.get("inMs"))
-                c_out = _to_int(clip.get("outMs"))
-                if c_in > 0 or c_out > 0:
-                    clip_durations.append(max(0.001, (c_out - c_in) / 1000.0))
-                else:
-                    # Untrimmed clip: use asset's actual duration
-                    asset_dur_ms = _to_int(asset_duration_map.get(clip.get("assetId", ""), 0))
-                    clip_durations.append(max(0.001, asset_dur_ms / 1000.0))
+                clip_durations.append(_clip_timeline_duration_seconds(clip, asset_duration_map))
 
             # Chain xfade for video
             prev_v_label = "v0"
@@ -945,7 +1067,7 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
                 if tr_dur > 0 and tr_dur < 0.04:
                     tr_dur = 0.0
 
-                out_label = "aout" if i == n - 1 else f"at{i}"
+                out_label = video_audio_output_label if i == n - 1 else f"at{i}"
 
                 if tr_name != "none" and tr_dur > 0:
                     filters.append(
@@ -960,6 +1082,67 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
                     accumulated_duration = accumulated_duration + clip_durations[i] - 0.001
 
                 prev_a_label = out_label
+
+        if audio_clips:
+            project_duration_s = _safe_float_for_ffmpeg(
+                _project_timeline_duration_seconds(tracks, asset_duration_map)
+            )
+            audio_mix_labels = [video_audio_output_label]
+
+            for j, clip in enumerate(audio_clips):
+                volume = _clip_volume(clip)
+                if volume <= 1e-6:
+                    continue
+
+                uri = asset_map.get(clip["assetId"], "")
+                path = _safe_uri_for_ffmpeg(uri)
+                idx = input_index.get(path, 0)
+                in_s = _to_int(clip.get("inMs")) / 1000.0
+                out_s = _to_int(clip.get("outMs")) / 1000.0
+                rate = _clip_playback_rate(clip)
+                atempo_chain = _atempo_filter_chain(rate)
+                clip_source_dur = _clip_source_duration_seconds(clip, asset_duration_map)
+                clip_timeline_dur = _clip_timeline_duration_seconds(clip, asset_duration_map)
+                clip_timeline_dur_s = _safe_float_for_ffmpeg(clip_timeline_dur)
+                delay_ms = max(0, _to_int(clip.get("startMs"), default=0))
+                out_label = f"exta{j}"
+                has_source_trim = in_s > 0 or out_s > 0
+                has_source_duration_bound = (
+                    _to_int(asset_duration_map.get(clip.get("assetId", ""), 0)) > 0
+                    or _to_int(clip.get("durationMs")) > 0
+                )
+
+                if idx in silent_inputs:
+                    filters.append(
+                        f"anullsrc=r=48000:cl=stereo[_extsil{j}];"
+                        f"[_extsil{j}]atrim=0:{clip_timeline_dur_s},asetpts=PTS-STARTPTS,"
+                        f"adelay={delay_ms}|{delay_ms}[{out_label}]"
+                    )
+                else:
+                    if has_source_trim:
+                        audio_chain = f"[{idx}:a]atrim=start={in_s}:end={out_s},asetpts=PTS-STARTPTS"
+                    elif has_source_duration_bound:
+                        audio_chain = f"[{idx}:a]atrim=start=0:end={clip_source_dur},asetpts=PTS-STARTPTS"
+                    else:
+                        audio_chain = f"[{idx}:a]asetpts=PTS-STARTPTS"
+                    if atempo_chain:
+                        audio_chain += f",{atempo_chain}"
+                    if abs(volume - 1.0) > 1e-3:
+                        audio_chain += f",volume={_safe_float_for_ffmpeg(volume)}"
+                    filters.append(
+                        f"{audio_chain},apad,atrim=0:{clip_timeline_dur_s},asetpts=PTS-STARTPTS,"
+                        f"adelay={delay_ms}|{delay_ms}[{out_label}]"
+                    )
+                audio_mix_labels.append(out_label)
+
+            if len(audio_mix_labels) == 1:
+                filters.append(f"[{audio_mix_labels[0]}]atrim=0:{project_duration_s},asetpts=PTS-STARTPTS[aout]")
+            else:
+                mix_inputs = "".join(f"[{label}]" for label in audio_mix_labels)
+                filters.append(
+                    f"{mix_inputs}amix=inputs={len(audio_mix_labels)}:duration=longest:dropout_transition=0,"
+                    f"atrim=0:{project_duration_s},asetpts=PTS-STARTPTS[aout]"
+                )
 
         cmd.extend(["-filter_complex", ";".join(filters)])
         cmd.extend(["-map", "[vout]", "-map", "[aout]"])

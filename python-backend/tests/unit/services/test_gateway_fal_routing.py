@@ -173,6 +173,7 @@ class TestAudioRouting:
             patch.object(gateway, "_normalize_audio_request_for_generation", return_value=mock_request),
             patch.object(gateway, "_estimate_cost", new_callable=AsyncMock, return_value=Decimal("0.05")),
             patch.object(gateway, "_check_credits", new_callable=AsyncMock),
+            patch.object(gateway, "_check_fal_concurrent_limit", new_callable=AsyncMock),
             patch.object(gateway, "_deduct_credits", new_callable=AsyncMock, return_value=MagicMock(amount=-5, balance_after=Decimal("95.0"))),
             patch("app.services.media_provider_service.get_media_provider_key", new_callable=AsyncMock, return_value=mock_provider_config),
             patch("app.llm_proxy.providers.fal_ai_provider.FalAIProvider") as MockFalProvider,
@@ -188,6 +189,49 @@ class TestAudioRouting:
 
             MockFalProvider.assert_called_once_with(api_key="test-key-123")
             assert result.data[0]["url"] == "https://v3b.fal.media/audio.mp3"
+            mock_fal_instance.aclose.assert_called_once()
+
+    async def test_gemini_tts_routes_prompt_payload(self, gateway):
+        """Gemini 3.1 Flash TTS expects the narration body in `prompt`."""
+        mock_request = MagicMock()
+        mock_request.model = "fal-ai/gemini-3.1-flash-tts"
+        mock_request.text = "Read this complete news script."
+        mock_request.api_config = {"provider": "fal_ai"}
+        mock_request.extra_params = {"style_instructions": "Crisp news voice", "text": "stale"}
+        mock_request.voice_id = None
+        mock_request.voice = None
+        mock_request.speed = 1.0
+
+        mock_user = MagicMock()
+        mock_user.id = 1
+        mock_provider_config = {"apiKey": "test-key-123", "baseUrl": None}
+
+        with (
+            patch.object(gateway, "_resolve_media_provider", new_callable=AsyncMock, return_value="fal_ai"),
+            patch.object(gateway, "_normalize_audio_request_for_generation", return_value=mock_request),
+            patch.object(gateway, "_estimate_cost", new_callable=AsyncMock, return_value=Decimal("0.05")),
+            patch.object(gateway, "_check_credits", new_callable=AsyncMock),
+            patch.object(gateway, "_check_fal_concurrent_limit", new_callable=AsyncMock),
+            patch.object(gateway, "_deduct_credits", new_callable=AsyncMock, return_value=MagicMock(amount=-5, balance_after=Decimal("95.0"))),
+            patch("app.services.media_provider_service.get_media_provider_key", new_callable=AsyncMock, return_value=mock_provider_config),
+            patch("app.llm_proxy.providers.fal_ai_provider.FalAIProvider") as MockFalProvider,
+        ):
+            mock_fal_instance = AsyncMock()
+            mock_fal_instance.generate_audio.return_value = {
+                "data": [{"url": "https://v3b.fal.media/gemini.mp3"}],
+                "status": "COMPLETED",
+            }
+            MockFalProvider.return_value = mock_fal_instance
+
+            await gateway.generate_audio(mock_request, mock_user)
+
+            mock_fal_instance.generate_audio.assert_called_once_with(
+                "fal-ai/gemini-3.1-flash-tts",
+                {
+                    "style_instructions": "Crisp news voice",
+                    "prompt": "Read this complete news script.",
+                },
+            )
             mock_fal_instance.aclose.assert_called_once()
 
 
@@ -223,6 +267,7 @@ class TestImageRouting:
             patch.object(gateway, "_resolve_media_provider", new_callable=AsyncMock, return_value="fal_ai"),
             patch.object(gateway, "_estimate_cost", new_callable=AsyncMock, return_value=Decimal("0.03")),
             patch.object(gateway, "_check_credits", new_callable=AsyncMock),
+            patch.object(gateway, "_check_fal_concurrent_limit", new_callable=AsyncMock),
             patch.object(gateway, "_deduct_credits", new_callable=AsyncMock, return_value=MagicMock(amount=-3, balance_after=Decimal("97.0"))),
             patch("app.services.media_provider_service.get_media_provider_key", new_callable=AsyncMock, return_value=mock_provider_config),
             patch("app.llm_proxy.providers.fal_ai_provider.FalAIProvider") as MockFalProvider,
@@ -259,6 +304,20 @@ class TestConcurrentTaskLimit:
 
         # Should not raise
         await gateway._check_fal_concurrent_limit(user_id=1)
+
+    async def test_uses_media_task_schema_columns(self, gateway):
+        mock_result = MagicMock()
+        mock_result.scalar.return_value = 0
+        gateway.db.execute = AsyncMock(return_value=mock_result)
+
+        await gateway._check_fal_concurrent_limit(user_id=1)
+
+        query, params = gateway.db.execute.await_args.args
+        query_sql = str(query)
+        assert "user_id = :uid" in query_sql
+        assert '"userId"' not in query_sql
+        assert "status = :processing_status" in query_sql
+        assert params["processing_status"] == "processing"
 
     async def test_allows_two_inflight(self, gateway):
         mock_result = MagicMock()

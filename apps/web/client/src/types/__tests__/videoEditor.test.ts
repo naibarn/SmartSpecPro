@@ -20,6 +20,14 @@ import {
   type MediaLibraryAsset,
 } from "../videoEditor";
 
+function getTrack(project: VideoEditorProject, trackId: string): Track {
+  const track = project.timeline.tracks.find((candidate) => candidate.id === trackId);
+  if (!track) {
+    throw new Error(`Expected default track '${trackId}' to exist`);
+  }
+  return track;
+}
+
 // ========================================
 // createEmptyProject
 // ========================================
@@ -37,12 +45,18 @@ describe("createEmptyProject", () => {
     expect(project.settings.duration).toBe(0);
   });
 
-  it("creates default video and audio tracks", () => {
+  it("creates default text, overlay, video, and audio tracks", () => {
     const project = createEmptyProject();
 
-    expect(project.timeline.tracks).toHaveLength(2);
+    expect(project.timeline.tracks).toHaveLength(4);
+    expect(project.timeline.tracks.map((track) => [track.id, track.type, track.name])).toEqual([
+      ["track-t1", "text", "T1"],
+      ["track-v2", "overlay", "V2"],
+      ["track-v1", "video", "V1"],
+      ["track-a1", "audio", "A1"],
+    ]);
 
-    const videoTrack = project.timeline.tracks[0];
+    const videoTrack = getTrack(project, "track-v1");
     expect(videoTrack.id).toBe("track-v1");
     expect(videoTrack.type).toBe("video");
     expect(videoTrack.name).toBe("V1");
@@ -50,7 +64,7 @@ describe("createEmptyProject", () => {
     expect(videoTrack.muted).toBe(false);
     expect(videoTrack.locked).toBe(false);
 
-    const audioTrack = project.timeline.tracks[1];
+    const audioTrack = getTrack(project, "track-a1");
     expect(audioTrack.id).toBe("track-a1");
     expect(audioTrack.type).toBe("audio");
     expect(audioTrack.name).toBe("A1");
@@ -360,6 +374,13 @@ describe("addAssetToProject", () => {
       model: "test-model",
       createdAt: new Date(),
       format: "mp4",
+      generationPrompt: "Create a blue newsroom clip",
+      referenceUrls: ["https://example.com/ref.png"],
+      generationModelId: "veo3_lite",
+      generationAspectRatio: "9:16",
+      generationExtraParams: {
+        resolution: "720p",
+      },
     };
 
     const result = addAssetToProject(project, mediaAsset, "/workspace/video.mp4");
@@ -372,6 +393,12 @@ describe("addAssetToProject", () => {
     expect(result.format).toBe("mp4");
     expect(result.taskId).toBe("media-1");
     expect(result.model).toBe("test-model");
+    expect(result.name).toBe("Test Video");
+    expect(result.generationPrompt).toBe("Create a blue newsroom clip");
+    expect(result.referenceUrls).toEqual(["https://example.com/ref.png"]);
+    expect(result.generationModelId).toBe("veo3_lite");
+    expect(result.generationAspectRatio).toBe("9:16");
+    expect(result.generationExtraParams).toEqual({ resolution: "720p" });
 
     // Verify it was added to the project
     expect(project.assets[result.id]).toBe(result);
@@ -425,7 +452,7 @@ describe("addAssetToProject", () => {
 describe("addClipToTrack", () => {
   it("adds clip to track with correct asset reference", () => {
     const project = createEmptyProject();
-    const track = project.timeline.tracks[0];
+    const track = getTrack(project, "track-v1");
     const asset: Asset = {
       id: "asset-1",
       type: "video",
@@ -451,7 +478,7 @@ describe("addClipToTrack", () => {
 
   it("places clip at specified startTime", () => {
     const project = createEmptyProject();
-    const track = project.timeline.tracks[0];
+    const track = getTrack(project, "track-v1");
     const asset: Asset = {
       id: "a1",
       type: "video",
@@ -468,7 +495,7 @@ describe("addClipToTrack", () => {
 
   it("sorts clips by startTime after insertion", () => {
     const project = createEmptyProject();
-    const track = project.timeline.tracks[0];
+    const track = getTrack(project, "track-v1");
     const makeAsset = (id: string): Asset => ({
       id,
       type: "video",
@@ -491,7 +518,7 @@ describe("addClipToTrack", () => {
 
   it("generates unique clip IDs", () => {
     const project = createEmptyProject();
-    const track = project.timeline.tracks[0];
+    const track = getTrack(project, "track-v1");
     const asset: Asset = {
       id: "a1",
       type: "video",
@@ -531,41 +558,43 @@ describe("findTrackByType", () => {
 
   it("skips muted tracks", () => {
     const project = createEmptyProject();
-    project.timeline.tracks[0].muted = true;
+    getTrack(project, "track-v1").muted = true;
     project.timeline.tracks.push({
-      id: "track-v2",
+      id: "track-v3",
       type: "video",
-      name: "V2",
+      name: "V3",
       clips: [],
       muted: false,
       locked: false,
+      visible: true,
     });
 
     const track = findTrackByType(project.timeline, "video");
     expect(track).toBeDefined();
-    expect(track!.id).toBe("track-v2");
+    expect(track!.id).toBe("track-v3");
   });
 
   it("skips locked tracks", () => {
     const project = createEmptyProject();
-    project.timeline.tracks[0].locked = true;
+    getTrack(project, "track-v1").locked = true;
     project.timeline.tracks.push({
-      id: "track-v2",
+      id: "track-v3",
       type: "video",
-      name: "V2",
+      name: "V3",
       clips: [],
       muted: false,
       locked: false,
+      visible: true,
     });
 
     const track = findTrackByType(project.timeline, "video");
-    expect(track!.id).toBe("track-v2");
+    expect(track!.id).toBe("track-v3");
   });
 
   it("returns undefined if no matching track available", () => {
     const project = createEmptyProject();
-    project.timeline.tracks[0].muted = true; // mute video track
-    project.timeline.tracks[1].muted = true; // mute audio track
+    getTrack(project, "track-v1").muted = true;
+    getTrack(project, "track-a1").muted = true;
 
     expect(findTrackByType(project.timeline, "video")).toBeUndefined();
     expect(findTrackByType(project.timeline, "audio")).toBeUndefined();

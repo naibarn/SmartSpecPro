@@ -733,6 +733,37 @@ class WaveSpeedMediaProvider:
             "raw_response": raw_response,
         }
 
+    async def create_audio_prediction(self, *, payload: dict[str, Any]) -> dict[str, Any]:
+        cleaned_payload = {
+            key: value
+            for key, value in payload.items()
+            if value is not None and value != "" and value != []
+        }
+        response = await self.client.post(
+            self.build_submit_url(),
+            headers=self._headers,
+            json=cleaned_payload,
+        )
+        response.raise_for_status()
+        raw_response = response.json()
+
+        data = raw_response.get("data")
+        if not isinstance(data, dict):
+            data = {}
+
+        provider_task_id = (
+            str(data.get("id") or raw_response.get("id") or "").strip()
+            or None
+        )
+        if not provider_task_id:
+            raise WaveSpeedError("WaveSpeed submit response did not include a prediction id")
+
+        return {
+            "provider_task_id": provider_task_id,
+            "raw_status": str(data.get("status") or raw_response.get("status") or "created").strip().lower(),
+            "raw_response": raw_response,
+        }
+
     async def poll_prediction(self, request_id: str) -> WaveSpeedPollResult:
         response = await self.client.get(
             self.build_result_url(request_id),

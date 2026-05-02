@@ -10,7 +10,9 @@ Endpoints:
 All outbound calls use ``follow_redirects=False`` to prevent redirect-based SSRF.
 """
 
+import asyncio
 import re
+import time
 import unicodedata
 from typing import Any
 import httpx
@@ -39,6 +41,9 @@ _MAX_RESPONSE_BYTES = 10 * 1024 * 1024
 
 # Timeout for queue status polls (shorter than generation timeout)
 _POLL_TIMEOUT = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=5.0)
+_QUEUE_AUDIO_MODELS = frozenset({"fal-ai/gemini-3.1-flash-tts"})
+_QUEUE_AUDIO_POLL_INTERVAL_SECONDS = 1.5
+_QUEUE_AUDIO_TIMEOUT_SECONDS = 300.0
 
 # Regex to detect URL-like values in extra_params (catch-all SSRF check)
 _URL_PATTERN = re.compile(r"^https?://", re.IGNORECASE)
@@ -58,7 +63,10 @@ class FalAIProvider:
         "fal-ai/ltx-2.3/extend-video",
         "fal-ai/ltx-2.3/retake-video",
     })
-    AUDIO_MODELS: frozenset[str] = frozenset({"fal-ai/lux-tts"})
+    AUDIO_MODELS: frozenset[str] = frozenset({
+        "fal-ai/gemini-3.1-flash-tts",
+        "fal-ai/lux-tts",
+    })
     IMAGE_MODELS: frozenset[str] = frozenset({
         "fal-ai/flux/schnell",
         "fal-ai/flux/dev",
@@ -194,6 +202,8 @@ class FalAIProvider:
         """Convert HTTP status code to a user-safe error message."""
         if status == 401:
             return "Invalid fal.ai API key"
+        if status == 403:
+            return "fal.ai access denied for this model. Check the API key, account plan, and model access permissions."
         if status == 422:
             return "Content policy rejection"
         if status == 429:
@@ -237,6 +247,17 @@ class FalAIProvider:
 
         if "prompt" in params:
             params = {**params, "prompt": self._sanitize_prompt(params["prompt"])}
+
+        if model_id in _QUEUE_AUDIO_MODELS:
+            logger.info("fal_ai_generate_audio_queue", model_id=model_id)
+            request_id = await self._submit_queue(model_id, params)
+            result = await self._wait_for_queue_result(model_id, request_id)
+            return {
+                "id": request_id,
+                "data": result.get("data", []),
+                "actual_duration": result.get("actual_duration"),
+                "status": "COMPLETED",
+            }
 
         url = f"{self.base_url}/{model_id}"
         logger.info("fal_ai_generate_audio", model_id=model_id)
@@ -322,6 +343,33 @@ class FalAIProvider:
             self._handle_http_error(exc)
 
         return self._safe_parse_response(response)
+
+    async def _wait_for_queue_result(self, model_id: str, request_id: str) -> dict:
+        """Poll fal.ai queue until a synchronous worker can return the final result."""
+        deadline = time.monotonic() + _QUEUE_AUDIO_TIMEOUT_SECONDS
+        last_status = ""
+        while time.monotonic() < deadline:
+            status_data = await self.get_queue_status(model_id, request_id)
+            last_status = str(status_data.get("status") or "").upper()
+            if last_status in {"COMPLETED", "SUCCEEDED"}:
+                result = await self.get_queue_result(model_id, request_id)
+                if not result.get("data"):
+                    raise ValueError("fal.ai queue result did not include an audio URL")
+                return result
+            if last_status in {"FAILED", "ERROR"}:
+                detail = (
+                    status_data.get("error")
+                    or status_data.get("message")
+                    or status_data.get("detail")
+                    or last_status
+                )
+                raise ValueError(f"fal.ai queue request failed: {detail}")
+            await asyncio.sleep(_QUEUE_AUDIO_POLL_INTERVAL_SECONDS)
+
+        raise TimeoutError(
+            f"fal.ai queue request timed out after {_QUEUE_AUDIO_TIMEOUT_SECONDS:.0f}s "
+            f"(last status: {last_status or 'unknown'})"
+        )
 
     async def get_queue_result(self, model_id: str, request_id: str) -> dict:
         """GET queue result → normalized {data: [{url}], actual_duration, actual_resolution}."""

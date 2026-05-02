@@ -73,6 +73,11 @@ const IMPORTED_DRAFT_REPAIR_DIFF_THRESHOLD = 0.25;
 const DRAFT_MEDIA_BG_POLL_MS = 10_000; // background poll interval
 const DRAFT_MEDIA_BG_MAX_POLLS = 720; // 2 hours max (720 * 10s)
 
+const clampClipSpeed = (value: number): number => {
+  if (!Number.isFinite(value) || value <= 0) return 1;
+  return Math.max(0.5, Math.min(2, value));
+};
+
 function getErrorMessage(error: unknown, fallback = 'Failed to generate media'): string {
   if (error instanceof Error && error.message.trim()) {
     return error.message;
@@ -313,7 +318,7 @@ export const VideoEditorPhase3: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [zoom, setZoom] = useState(50);
-  const [clipboardClip, setClipboardClip] = useState<Clip | null>(null);
+  const [clipboardClips, setClipboardClips] = useState<Clip[]>([]);
   const [rippleEditMode, setRippleEditMode] = useState(false);
   const [razorToolActive, setRazorToolActive] = useState(false);
 
@@ -1459,106 +1464,119 @@ export const VideoEditorPhase3: React.FC = () => {
     void repairImportedDraftDurations();
   }, [repairImportedDraftDurations]);
 
-  const handleGenerateDraftMedia = useCallback(async (request: VideoDraftAIGenerateRequest) => {
+  const createDraftGeneratedMediaAsset = useCallback(async (
+    request: VideoDraftAIGenerateRequest,
+  ): Promise<{ mediaAsset: MediaLibraryAsset; localPath: string }> => {
     const normalizedPrompt = request.prompt.trim();
     if (!normalizedPrompt) {
-      showToast('Please enter prompt before generating.', 'error');
-      return;
+      throw new Error('Please enter prompt before generating.');
     }
 
+    const referenceImageUrls = request.referenceImageUrls.length > 0
+      ? request.referenceImageUrls
+      : undefined;
+    let taskResult: unknown;
+
+    if (request.mediaType === 'image') {
+      taskResult = await generateImageAsyncMutation.mutateAsync({
+        prompt: normalizedPrompt,
+        model: request.modelId,
+        aspectRatio: request.aspectRatio,
+        numImages: 1,
+        referenceImageUrls,
+        extraParams: request.extraParams,
+      });
+    } else {
+      const normalizedDuration = (() => {
+        const raw = request.extraParams?.duration;
+        const parsed = typeof raw === 'number' ? raw : Number.parseInt(String(raw ?? ''), 10);
+        if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
+        return Math.min(60, Math.max(1, Math.round(parsed)));
+      })();
+      const normalizedResolution = (() => {
+        const raw = request.extraParams?.resolution;
+        if (typeof raw !== 'string') return undefined;
+        const value = raw.trim();
+        return value.length > 0 ? value : undefined;
+      })();
+      taskResult = await generateVideoAsyncMutation.mutateAsync({
+        prompt: normalizedPrompt,
+        model: request.modelId,
+        aspectRatio: request.aspectRatio,
+        referenceImageUrls,
+        ...(normalizedDuration ? { duration: normalizedDuration } : {}),
+        ...(normalizedResolution ? { resolution: normalizedResolution } : {}),
+        extraParams: request.extraParams,
+      });
+    }
+
+    const taskRecord = taskResult as { id?: unknown; taskId?: unknown; model?: unknown };
+    const taskId = typeof taskRecord.id === 'string' && taskRecord.id.trim()
+      ? taskRecord.id.trim()
+      : (typeof taskRecord.taskId === 'string' && taskRecord.taskId.trim()
+        ? taskRecord.taskId.trim()
+        : null);
+    if (!taskId) {
+      throw new Error('Media generation started but task ID was not returned.');
+    }
+
+    const terminalTask = await pollTaskUntilTerminal(
+      taskId,
+      async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
+      request.mediaType,
+    );
+    const resultUrl = extractTaskResultUrl(terminalTask) || extractTaskResultUrl(taskResult);
+    if (!resultUrl) {
+      throw new Error('Media provider returned no URL.');
+    }
+
+    const createdAt = new Date();
+    const modelName = request.modelId?.trim()
+      || (typeof taskRecord.model === 'string' && taskRecord.model.trim()
+        ? taskRecord.model.trim()
+        : 'default');
+    const mediaAsset: MediaLibraryAsset = {
+      id: taskId,
+      type: request.mediaType,
+      title: normalizedPrompt.length > 60 ? `${normalizedPrompt.slice(0, 60)}...` : normalizedPrompt,
+      thumbnailUrl: request.mediaType === 'image' ? resultUrl : '',
+      duration: extractDurationSeconds(terminalTask, request.mediaType),
+      url: resultUrl,
+      model: modelName,
+      createdAt,
+      resolution: extractResolutionLabel(terminalTask),
+      format: extractFormatFromUrl(resultUrl, request.mediaType === 'image' ? 'png' : 'mp4'),
+      generationPrompt: normalizedPrompt,
+      referenceUrls: referenceImageUrls,
+      generationModelId: request.modelId?.trim() || (modelName !== 'default' ? modelName : undefined),
+      generationAspectRatio: request.aspectRatio,
+      generationExtraParams: request.extraParams ? { ...request.extraParams } : undefined,
+    };
+
+    const localPath = await videoEditorMediaLibrary.downloadToWorkspace(mediaAsset);
+    try {
+      const fileInfo = await videoEditorMediaLibrary.probeMediaFile(localPath);
+      if (Number.isFinite(fileInfo.duration) && fileInfo.duration > 0) {
+        mediaAsset.duration = fileInfo.duration;
+      }
+      if (fileInfo.width && fileInfo.height) {
+        mediaAsset.resolution = `${fileInfo.width}x${fileInfo.height}`;
+      }
+    } catch {
+      // Probe is best-effort only.
+    }
+
+    return { mediaAsset, localPath };
+  }, [
+    generateImageAsyncMutation,
+    generateVideoAsyncMutation,
+    trpcUtils.media.getTask,
+  ]);
+
+  const handleGenerateDraftMedia = useCallback(async (request: VideoDraftAIGenerateRequest) => {
     setIsGeneratingDraftMedia(true);
     try {
-      const referenceImageUrls = request.referenceImageUrls.length > 0
-        ? request.referenceImageUrls
-        : undefined;
-      let taskResult: unknown;
-
-      if (request.mediaType === 'image') {
-        taskResult = await generateImageAsyncMutation.mutateAsync({
-          prompt: normalizedPrompt,
-          model: request.modelId,
-          aspectRatio: request.aspectRatio,
-          numImages: 1,
-          referenceImageUrls,
-          extraParams: request.extraParams,
-        });
-      } else {
-        const normalizedDuration = (() => {
-          const raw = request.extraParams?.duration;
-          const parsed = typeof raw === 'number' ? raw : Number.parseInt(String(raw ?? ''), 10);
-          if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
-          return Math.min(60, Math.max(1, Math.round(parsed)));
-        })();
-        const normalizedResolution = (() => {
-          const raw = request.extraParams?.resolution;
-          if (typeof raw !== 'string') return undefined;
-          const value = raw.trim();
-          return value.length > 0 ? value : undefined;
-        })();
-        taskResult = await generateVideoAsyncMutation.mutateAsync({
-          prompt: normalizedPrompt,
-          model: request.modelId,
-          aspectRatio: request.aspectRatio,
-          referenceImageUrls,
-          ...(normalizedDuration ? { duration: normalizedDuration } : {}),
-          ...(normalizedResolution ? { resolution: normalizedResolution } : {}),
-          extraParams: request.extraParams,
-        });
-      }
-
-      const taskRecord = taskResult as { id?: unknown; taskId?: unknown; model?: unknown };
-      const taskId = typeof taskRecord.id === 'string' && taskRecord.id.trim()
-        ? taskRecord.id.trim()
-        : (typeof taskRecord.taskId === 'string' && taskRecord.taskId.trim()
-          ? taskRecord.taskId.trim()
-          : null);
-      if (!taskId) {
-        throw new Error('Media generation started but task ID was not returned.');
-      }
-
-      const terminalTask = await pollTaskUntilTerminal(
-        taskId,
-        async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
-        request.mediaType,
-      );
-      const resultUrl = extractTaskResultUrl(terminalTask) || extractTaskResultUrl(taskResult);
-      if (!resultUrl) {
-        throw new Error('Media provider returned no URL.');
-      }
-
-      const createdAt = new Date();
-      const modelName = request.modelId?.trim()
-        || (typeof taskRecord.model === 'string' && taskRecord.model.trim()
-          ? taskRecord.model.trim()
-          : 'default');
-      const mediaAsset: MediaLibraryAsset = {
-        id: taskId,
-        type: request.mediaType,
-        title: normalizedPrompt.length > 60 ? `${normalizedPrompt.slice(0, 60)}...` : normalizedPrompt,
-        thumbnailUrl: request.mediaType === 'image' ? resultUrl : '',
-        duration: extractDurationSeconds(terminalTask, request.mediaType),
-        url: resultUrl,
-        model: modelName,
-        createdAt,
-        resolution: extractResolutionLabel(terminalTask),
-        format: extractFormatFromUrl(resultUrl, request.mediaType === 'image' ? 'png' : 'mp4'),
-        generationPrompt: normalizedPrompt,
-        referenceUrls: referenceImageUrls,
-        generationModelId: request.modelId?.trim() || undefined,
-      };
-
-      const localPath = await videoEditorMediaLibrary.downloadToWorkspace(mediaAsset);
-      try {
-        const fileInfo = await videoEditorMediaLibrary.probeMediaFile(localPath);
-        if (Number.isFinite(fileInfo.duration) && fileInfo.duration > 0) {
-          mediaAsset.duration = fileInfo.duration;
-        }
-        if (fileInfo.width && fileInfo.height) {
-          mediaAsset.resolution = `${fileInfo.width}x${fileInfo.height}`;
-        }
-      } catch {
-        // Probe is best-effort only.
-      }
+      const { mediaAsset, localPath } = await createDraftGeneratedMediaAsset(request);
 
       let insertedClipId: string | null = null;
       setProject((prevProject) => {
@@ -1589,10 +1607,74 @@ export const VideoEditorPhase3: React.FC = () => {
     }
   }, [
     addToHistory,
+    createDraftGeneratedMediaAsset,
     currentTime,
-    generateImageAsyncMutation,
-    generateVideoAsyncMutation,
-    trpcUtils.media.getTask,
+  ]);
+
+  const handleReplaceFocusedClipMedia = useCallback(async (request: VideoDraftAIGenerateRequest) => {
+    if (!selectedClipId) {
+      showToast('Select a clip before replacing it.', 'error');
+      return;
+    }
+
+    setIsGeneratingDraftMedia(true);
+    try {
+      const { mediaAsset, localPath } = await createDraftGeneratedMediaAsset(request);
+      let replacedClip = false;
+
+      setProject((prevProject) => {
+        const newProject = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
+        let targetTrack: Track | null = null;
+        let targetClip: Clip | null = null;
+
+        for (const track of newProject.timeline.tracks) {
+          if (track.type !== 'video' && track.type !== 'overlay') continue;
+          const clip = track.clips.find((candidate) => candidate.id === selectedClipId);
+          if (clip) {
+            targetTrack = track;
+            targetClip = clip;
+            break;
+          }
+        }
+
+        if (!targetTrack || !targetClip) {
+          showToast('Selected clip is no longer available.', 'error');
+          return prevProject;
+        }
+
+        const newAsset = addAssetToProject(newProject, mediaAsset, localPath);
+        const previousDuration = Math.max(0.25, targetClip.duration || mediaAsset.duration || 5);
+        const generatedDuration = Math.max(0.25, mediaAsset.duration || previousDuration);
+        const replacementDuration = generatedDuration >= previousDuration
+          ? previousDuration
+          : generatedDuration;
+
+        targetClip.assetId = newAsset.id;
+        targetClip.trimIn = 0;
+        targetClip.trimOut = replacementDuration;
+        targetClip.duration = replacementDuration;
+        targetClip.trackId = targetTrack.id;
+
+        newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+        newProject.modifiedAt = new Date().toISOString();
+        addToHistory(newProject);
+        replacedClip = true;
+        return newProject;
+      });
+
+      if (replacedClip) {
+        showToast('Regenerated media and replaced the selected clip.', 'success');
+      }
+    } catch (error) {
+      console.error('Draft with AI replacement failed:', error);
+      showToast(getErrorMessage(error, 'Failed to replace selected clip'), 'error');
+    } finally {
+      setIsGeneratingDraftMedia(false);
+    }
+  }, [
+    addToHistory,
+    createDraftGeneratedMediaAsset,
+    selectedClipId,
   ]);
 
   const handleDropAsset = useCallback(async (asset: MediaLibraryAsset, trackId: string, startTime: number) => {
@@ -2114,6 +2196,65 @@ export const VideoEditorPhase3: React.FC = () => {
       return newProject;
     });
   }, [addToHistory]);
+
+  const handleClipSpeedChange = useCallback((clipId: string, speed: number) => {
+    setProject(prevProject => {
+      const newProject = JSON.parse(JSON.stringify(prevProject));
+      let targetClip: Clip | null = null;
+      let targetTrack: Track | null = null;
+
+      for (const track of newProject.timeline.tracks) {
+        const clip = track.clips.find((c: Clip) => c.id === clipId);
+        if (clip) {
+          targetClip = clip;
+          targetTrack = track;
+          break;
+        }
+      }
+
+      if (!targetClip || !targetTrack) return prevProject;
+
+      const nextSpeed = clampClipSpeed(speed);
+      const currentSpeed = clampClipSpeed(targetClip.speed || 1);
+      if (Math.abs(nextSpeed - currentSpeed) < 0.001) return prevProject;
+
+      const oldDuration = Math.max(0.05, targetClip.duration || 0.05);
+      const oldEnd = targetClip.startTime + oldDuration;
+      const explicitSourceDuration = targetClip.trimOut > targetClip.trimIn
+        ? targetClip.trimOut - targetClip.trimIn
+        : oldDuration * currentSpeed;
+      const sourceDuration = Math.max(0.05, explicitSourceDuration);
+      const nextDuration = Math.max(0.05, sourceDuration / nextSpeed);
+      const durationDelta = nextDuration - oldDuration;
+
+      targetClip.speed = nextSpeed;
+      targetClip.duration = nextDuration;
+      targetClip.trimOut = targetClip.trimIn + sourceDuration;
+      (targetClip as Clip & { durationMs?: number }).durationMs = Math.round(nextDuration * 1000);
+
+      if (Math.abs(durationDelta) > 0.001 && targetTrack.type !== 'text') {
+        if (rippleEditMode) {
+          targetTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+          let timeCursor = 0;
+          targetTrack.clips.forEach((clip: Clip) => {
+            clip.startTime = timeCursor;
+            timeCursor += clip.duration;
+          });
+        } else {
+          targetTrack.clips.forEach((clip: Clip) => {
+            if (clip.id !== clipId && clip.startTime >= oldEnd - 0.001) {
+              clip.startTime = Math.max(0, clip.startTime + durationDelta);
+            }
+          });
+        }
+      }
+
+      newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+      newProject.modifiedAt = new Date().toISOString();
+      addToHistory(newProject);
+      return newProject;
+    });
+  }, [addToHistory, rippleEditMode]);
 
   const handleClipTransitionChange = useCallback((clipId: string, transition: ClipTransition | undefined) => {
     setProject(prevProject => {
@@ -2656,6 +2797,8 @@ export const VideoEditorPhase3: React.FC = () => {
             clipStartTime: clip.startTime,
             trimIn: clip.trimIn,
             clipDuration: clip.duration,
+            playbackRate: clip.speed || 1,
+            volume: clip.volume,
             isImage: asset.type === 'image',
             transitions: clip.transitions,
             transform: clip.transform,
@@ -2687,6 +2830,8 @@ export const VideoEditorPhase3: React.FC = () => {
         generationPrompt: asset.generationPrompt,
         referenceUrls: asset.referenceUrls,
         generationModelId: asset.generationModelId,
+        generationAspectRatio: asset.generationAspectRatio,
+        generationExtraParams: asset.generationExtraParams,
         model: asset.model,
       };
     }
@@ -2723,7 +2868,7 @@ export const VideoEditorPhase3: React.FC = () => {
   // Active audio clips for preview playback
   const activeAudioClips = useMemo((): ActiveClipInfo[] => {
     const audioTracks = project.timeline.tracks.filter(
-      t => t.type === 'audio' && t.visible !== false
+      t => t.type === 'audio' && t.visible !== false && !t.muted
     );
     const clips: ActiveClipInfo[] = [];
     for (const track of audioTracks) {
@@ -2732,10 +2877,13 @@ export const VideoEditorPhase3: React.FC = () => {
           const asset = project.assets[clip.assetId];
           if (!asset || !asset.path) continue;
           clips.push({
+            id: clip.id,
             videoUrl: asset.path,
             clipStartTime: clip.startTime,
             trimIn: clip.trimIn,
             clipDuration: clip.duration,
+            playbackRate: clip.speed || 1,
+            volume: clip.volume,
           });
         }
       }
@@ -2803,10 +2951,13 @@ export const VideoEditorPhase3: React.FC = () => {
 
         return {
           outgoingClip: {
+            id: prevClip.id,
             videoUrl: prevAsset.path,
             clipStartTime: prevClip.startTime,
             trimIn: prevClip.trimIn,
             clipDuration: prevClip.duration,
+            playbackRate: prevClip.speed || 1,
+            volume: prevClip.volume,
             isImage: prevAsset.type === 'image',
             transitions: prevClip.transitions,
             transform: prevClip.transform,
@@ -2989,58 +3140,93 @@ export const VideoEditorPhase3: React.FC = () => {
 
   // Handle copy clip
   const handleCopyClip = useCallback(() => {
-    if (!selectedClipId) return;
+    const selectedSet = new Set(
+      selectedClipIds.length > 0
+        ? selectedClipIds
+        : selectedClipId
+          ? [selectedClipId]
+          : []
+    );
+    if (selectedSet.size === 0) return;
 
-    // Find the selected clip
-    for (const track of project.timeline.tracks) {
-      const clip = track.clips.find(c => c.id === selectedClipId);
-      if (clip) {
-        // Store a deep copy in clipboard
-        setClipboardClip(JSON.parse(JSON.stringify(clip)));
-        console.log('Copied clip:', clip.id);
-        break;
-      }
-    }
-  }, [selectedClipId, project.timeline.tracks]);
+    const clipsToCopy = project.timeline.tracks
+      .flatMap(track => track.clips.filter(clip => selectedSet.has(clip.id)))
+      .sort((a, b) => a.startTime - b.startTime);
+
+    if (clipsToCopy.length === 0) return;
+
+    setClipboardClips(JSON.parse(JSON.stringify(clipsToCopy)));
+    console.log('Copied clips:', clipsToCopy.map(clip => clip.id).join(', '));
+  }, [project.timeline.tracks, selectedClipId, selectedClipIds]);
 
   // Handle paste clip
   const handlePasteClip = useCallback(() => {
-    if (!clipboardClip) return;
+    if (clipboardClips.length === 0) return;
 
     setProject(prevProject => {
       const newProject = JSON.parse(JSON.stringify(prevProject));
+      const firstCopiedStart = Math.min(...clipboardClips.map(clip => clip.startTime));
+      const pastedClipIds: string[] = [];
+      const groupIdMap = new Map<string, string>();
 
-      // Find the track that matches the clipboard clip's type
-      const targetTrack = newProject.timeline.tracks.find((t: any) => t.id === clipboardClip.trackId);
-      if (!targetTrack) {
+      clipboardClips.forEach((clipboardClip, index) => {
+        // Find the original track so multi-track copies keep their lane layout.
+        const targetTrack = newProject.timeline.tracks.find((t: any) => t.id === clipboardClip.trackId);
+        if (!targetTrack) return;
+
+        let pastedGroupId = clipboardClip.groupId;
+        if (pastedGroupId) {
+          if (!groupIdMap.has(pastedGroupId)) {
+            groupIdMap.set(
+              pastedGroupId,
+              `group-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+            );
+          }
+          pastedGroupId = groupIdMap.get(pastedGroupId);
+        }
+
+        const shouldKeepIncomingTransition = clipboardClip.inTransition
+          ? clipboardClips.some((clip) => (
+              clip.trackId === clipboardClip.trackId
+              && clip.id !== clipboardClip.id
+              && clip.startTime < clipboardClip.startTime
+            ))
+          : false;
+
+        const pastedClip: Clip = {
+          ...clipboardClip,
+          id: `clip-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+          startTime: currentTime + (clipboardClip.startTime - firstCopiedStart),
+          groupId: pastedGroupId,
+          inTransition: shouldKeepIncomingTransition ? clipboardClip.inTransition : undefined,
+        };
+
+        targetTrack.clips.push(pastedClip);
+        pastedClipIds.push(pastedClip.id);
+      });
+
+      if (pastedClipIds.length === 0) {
         alert('Cannot paste: target track not found');
         return prevProject;
       }
 
-      // Create new clip at playhead position
-      const pastedClip: Clip = {
-        ...clipboardClip,
-        id: `clip-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        startTime: currentTime
-      };
+      for (const track of newProject.timeline.tracks) {
+        track.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
+      }
 
-      // Add to track and sort by start time
-      targetTrack.clips.push(pastedClip);
-      targetTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
-
-      // Select the new clip
-      setSelectedClipId(pastedClip.id);
+      setSelectedClipId(null);
+      setSelectedClipIds(pastedClipIds);
 
       // Update project
       newProject.settings.duration = calculateProjectDuration(newProject.timeline);
       newProject.modifiedAt = new Date().toISOString();
 
       addToHistory(newProject);
-      console.log('Pasted clip at:', currentTime);
+      console.log('Pasted clips at:', currentTime);
 
       return newProject;
     });
-  }, [clipboardClip, currentTime, addToHistory]);
+  }, [clipboardClips, currentTime, addToHistory]);
 
   // Handle Razor Tool toggle
   const handleToggleRazorTool = useCallback(() => {
@@ -3231,12 +3417,12 @@ export const VideoEditorPhase3: React.FC = () => {
         handleSplitClip();
       }
       // Ctrl+C: Copy Clip
-      else if (e.ctrlKey && e.key === 'c' && selectedClipId) {
+      else if (e.ctrlKey && e.key === 'c' && (selectedClipId || selectedClipIds.length > 0)) {
         e.preventDefault();
         handleCopyClip();
       }
       // Ctrl+V: Paste Clip
-      else if (e.ctrlKey && e.key === 'v' && clipboardClip) {
+      else if (e.ctrlKey && e.key === 'v' && clipboardClips.length > 0) {
         e.preventDefault();
         handlePasteClip();
       }
@@ -3286,7 +3472,7 @@ export const VideoEditorPhase3: React.FC = () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('wheel', handleWheel);
     };
-  }, [undo, redo, handleNewProject, handleDuplicateClip, handleSplitClip, handleCopyClip, handlePasteClip, handleZoomIn, handleZoomOut, handleResetZoom, handleSelectAll, handleDeselectAll, selectedClipId, clipboardClip]);
+  }, [undo, redo, handleNewProject, handleDuplicateClip, handleSplitClip, handleCopyClip, handlePasteClip, handleZoomIn, handleZoomOut, handleResetZoom, handleSelectAll, handleDeselectAll, selectedClipId, selectedClipIds.length, clipboardClips.length]);
 
   // Auto-save
   useEffect(() => {
@@ -3805,6 +3991,10 @@ export const VideoEditorPhase3: React.FC = () => {
               razorToolActive={razorToolActive}
               onToggleRazorTool={handleToggleRazorTool}
               selectedCount={selectedClipIds.length}
+              onCopyClips={handleCopyClip}
+              onPasteClips={handlePasteClip}
+              canCopyClips={selectedClipIds.length > 0 || !!selectedClipId}
+              canPasteClips={clipboardClips.length > 0}
               onGroupClips={handleGroupClips}
               onUngroupClips={handleUngroupClips}
               onAddText={textClipRolloutEnabled ? () => setSidebarView('text') : undefined}
@@ -3992,6 +4182,7 @@ export const VideoEditorPhase3: React.FC = () => {
                   nextClip={nextClip}
                   onTransitionsChange={handleTransitionsChange}
                   onEffectsChange={handleEffectsChange}
+                  onSpeedChange={handleClipSpeedChange}
                   onClipTransitionChange={handleClipTransitionChange}
                 />
               )}
@@ -4016,6 +4207,7 @@ export const VideoEditorPhase3: React.FC = () => {
                   isPreparingPresentationDraft={isPreparingPresentationDraft || isImportingPresentationDraft}
                   onOpenPresentationDraft={() => void handleOpenPresentationDraft()}
                   onGenerate={handleGenerateDraftMedia}
+                  onReplaceFocusedClip={handleReplaceFocusedClipMedia}
                   focusedClipMeta={focusedClipMeta}
                 />
               )}

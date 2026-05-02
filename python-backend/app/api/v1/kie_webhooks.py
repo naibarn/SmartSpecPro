@@ -24,6 +24,10 @@ from app.services.webhook_dedup import WebhookDedupService
 from app.api.v1.media_generation import (
     _normalize_kie_task_state,
     _extract_first_kie_result_url,
+    _coerce_json_dict,
+    _submit_veo_4k_upgrade_for_task,
+    _task_requests_veo_4k,
+    _veo_4k_status,
 )
 from app.models.media_task import TaskStatus
 
@@ -111,33 +115,74 @@ async def kie_webhook_handler(request: Request):
 
         # 7. Handle completed
         if normalized_state == "success" and result_url:
-            await MediaTaskService.update_task_by_external_id(
-                db,
-                kie_job_id,
-                TaskStatus.COMPLETED,
-                result_url=result_url,
-                result_data={"webhook_payload": body},
-            )
-            # Enqueue media processing (best-effort)
-            try:
-                await enqueue_task(
-                    queue_name="media-jobs",
-                    handler_path="/tasks/process-media",
-                    payload={
-                        "job_id": task.id,
-                        "kie_job_id": kie_job_id,
+            should_enqueue_processing = True
+            if _task_requests_veo_4k(task) and _veo_4k_status(task) in {"submitted", "processing"}:
+                result_data = _coerce_json_dict(task.result_data)
+                veo_4k = result_data.get("veo_4k") if isinstance(result_data.get("veo_4k"), dict) else {}
+                result_data.update({
+                    "webhook_payload": body,
+                    "actual_resolution": "4K",
+                    "veo_4k": {
+                        **(veo_4k if isinstance(veo_4k, dict) else {}),
+                        "status": "completed",
+                        "upgrade_task_id": kie_job_id,
                         "result_url": result_url,
-                        "media_type": task.media_type,
                     },
-                    task_id=f"process-{task.id}",
+                })
+                await MediaTaskService.update_task_by_external_id(
+                    db,
+                    kie_job_id,
+                    TaskStatus.COMPLETED,
+                    result_url=result_url,
+                    result_data=result_data,
                 )
-            except Exception as e:
-                logger.error(
-                    "kie_webhook_enqueue_media_failed",
-                    kie_job_id=kie_job_id,
-                    job_id=task.id,
-                    error=str(e),
+            elif _task_requests_veo_4k(task):
+                from app.services.media_provider_service import initialize_kie_ai_client
+
+                kie_client = await initialize_kie_ai_client()
+                if not kie_client:
+                    return JSONResponse(
+                        status_code=503,
+                        content={"success": False, "error": "Kie AI client unavailable for Veo 4K post-process"},
+                    )
+                await _submit_veo_4k_upgrade_for_task(
+                    db,
+                    task,
+                    kie_client,
+                    original_task_id=kie_job_id,
+                    original_result_url=result_url,
+                    original_response=body,
                 )
+                should_enqueue_processing = False
+            else:
+                await MediaTaskService.update_task_by_external_id(
+                    db,
+                    kie_job_id,
+                    TaskStatus.COMPLETED,
+                    result_url=result_url,
+                    result_data={"webhook_payload": body},
+                )
+            # Enqueue media processing (best-effort)
+            if should_enqueue_processing:
+                try:
+                    await enqueue_task(
+                        queue_name="media-jobs",
+                        handler_path="/tasks/process-media",
+                        payload={
+                            "job_id": task.id,
+                            "kie_job_id": kie_job_id,
+                            "result_url": result_url,
+                            "media_type": task.media_type,
+                        },
+                        task_id=f"process-{task.id}",
+                    )
+                except Exception as e:
+                    logger.error(
+                        "kie_webhook_enqueue_media_failed",
+                        kie_job_id=kie_job_id,
+                        job_id=task.id,
+                        error=str(e),
+                    )
 
         # 8. Handle failed
         elif normalized_state == "fail":

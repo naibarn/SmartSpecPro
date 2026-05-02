@@ -159,7 +159,7 @@ async def test_fetch_task_result_marks_kie_successflag_3_as_failed():
 
     with patch("app.api.v1.media_generation.MediaTaskService.get_task", new=AsyncMock(return_value=task)), \
          patch("app.api.v1.media_generation.MediaTaskService.update_task_status", new=AsyncMock(side_effect=fake_update_task_status)), \
-         patch("app.api.v1.media_generation.initialize_kie_ai_client", new=AsyncMock(return_value=fake_client)):
+         patch("app.services.media_provider_service.initialize_kie_ai_client", new=AsyncMock(return_value=fake_client)):
         result = await fetch_task_result(task.id, db=db, current_user=current_user)
 
     assert result["success"] is False
@@ -203,7 +203,7 @@ async def test_fetch_task_result_treats_kie_result_urls_as_completed_without_sta
 
     with patch("app.api.v1.media_generation.MediaTaskService.get_task", new=AsyncMock(return_value=task)), \
          patch("app.api.v1.media_generation.MediaTaskService.update_task_status", new=AsyncMock(side_effect=fake_update_task_status)), \
-         patch("app.api.v1.media_generation.initialize_kie_ai_client", new=AsyncMock(return_value=fake_client)):
+         patch("app.services.media_provider_service.initialize_kie_ai_client", new=AsyncMock(return_value=fake_client)):
         result = await fetch_task_result(task.id, db=db, current_user=current_user)
 
     assert result["success"] is True

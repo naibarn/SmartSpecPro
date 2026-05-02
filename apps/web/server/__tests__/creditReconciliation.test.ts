@@ -106,6 +106,32 @@ describe("reconcileTaskCredits", () => {
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
+  it("refunds full reservation when async task failed after submission", async () => {
+    const result = await reconcileTaskCredits({
+      task: makeTask({
+        status: "failed",
+        errorMessage: "Kie.ai task submission failed: Ratio error",
+        resultData: undefined,
+      }) as any,
+      userId: 1,
+    });
+
+    expect(result.action).toBe("refund");
+    expect(result.difference).toBe(-300);
+    expect(result.adjusted).toBe(true);
+    expect(mockRefundCredits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 300,
+        userId: 1,
+        metadata: expect.objectContaining({
+          type: "failed_task_refund",
+          error: "Kie.ai task submission failed: Ratio error",
+        }),
+      }),
+    );
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
   it("skips when actual_duration missing", async () => {
     const task = makeTask({ resultData: {} });
     const result = await reconcileTaskCredits({ task: task as any, userId: 1 });

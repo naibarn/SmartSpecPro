@@ -16,6 +16,13 @@ describe("mapToApiModelId", () => {
     expect(mapToApiModelId("fal gemini tts")).toBe("fal-ai/gemini-3.1-flash-tts");
   });
 
+  it("resolves WaveSpeed audio compatibility IDs to provider API IDs", () => {
+    expect(mapToApiModelId("wavespeed/gemini-2.5-flash/text-to-speech")).toBe("google/gemini-2.5-flash/text-to-speech");
+    expect(mapToApiModelId("wavespeed/gemini-2.5-pro/text-to-speech")).toBe("google/gemini-2.5-pro/text-to-speech");
+    expect(mapToApiModelId("wavespeed/lyria-3-clip/music")).toBe("google/lyria-3-clip/music");
+    expect(mapToApiModelId("wavespeed/lyria-3-pro/music")).toBe("google/lyria-3-pro/music");
+  });
+
   it("returns exact model ID unchanged", () => {
     expect(mapToApiModelId("google-banana-2")).toBe("google-banana-2");
   });

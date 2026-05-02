@@ -62,6 +62,7 @@ export interface MediaClip {
   assetId: string;
   inMs?: number;
   outMs?: number;
+  durationMs?: number;
   startMs: number;
   playbackRate?: number;
   volume?: number;
@@ -353,6 +354,7 @@ export function projectToTimeline(
             startMs: secondsToMs(clip.startTime),
             inMs: secondsToMs(clip.trimIn),
             outMs: secondsToMs(clip.trimOut),
+            durationMs: secondsToMs(clip.duration),
             playbackRate: clip.speed,
             volume: clip.volume,
             inTransition: clip.inTransition,
@@ -364,6 +366,22 @@ export function projectToTimeline(
       }),
     ),
   };
+}
+
+function mediaClipDurationSeconds(clip: MediaClip): number {
+  if (typeof clip.durationMs === "number" && Number.isFinite(clip.durationMs) && clip.durationMs > 0) {
+    return msToSeconds(clip.durationMs);
+  }
+
+  if (clip.outMs !== undefined && clip.inMs !== undefined) {
+    const playbackRate =
+      typeof clip.playbackRate === "number" && Number.isFinite(clip.playbackRate) && clip.playbackRate > 0
+        ? clip.playbackRate
+        : 1;
+    return msToSeconds(clip.outMs - clip.inMs) / playbackRate;
+  }
+
+  return 0;
 }
 
 export interface TimelineToProjectOptions {
@@ -399,9 +417,7 @@ export function timelineToProject(
           assetId: clip.assetId,
           trackId: track.trackId,
           startTime: msToSeconds(clip.startMs),
-          duration: clip.outMs && clip.inMs !== undefined
-            ? msToSeconds(clip.outMs - clip.inMs)
-            : 0,
+          duration: mediaClipDurationSeconds(clip),
           trimIn: clip.inMs !== undefined ? msToSeconds(clip.inMs) : 0,
           trimOut: clip.outMs !== undefined ? msToSeconds(clip.outMs) : 0,
           volume: clip.volume ?? 1.0,

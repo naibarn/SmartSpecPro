@@ -82,7 +82,8 @@ export function inferMediaModelHintFromText(mediaType: MediaType, text?: string 
   const normalized = String(text ?? "").trim().toLowerCase();
   if (!normalized) return null;
   if (mediaType === "video") {
-    if (/veo\s*3(?:\.\s*1|\.1)?|veo\s*3\.1|veo3/i.test(normalized)) return "veo-3-1";
+    if (/veo.*extend|extend.*veo|veo3\/extend-video/i.test(normalized)) return "veo3/extend-video";
+    if (/veo\s*3(?:\.\s*1|\.1)?|veo\s*3\.1|veo3/i.test(normalized)) return "veo3/generate-veo-3-video-lite";
     if (/\bsora\b|sora\s*2/i.test(normalized)) return "sora-2";
     if (/\bkling\b/i.test(normalized)) return "kling-2.6";
     if (/\bseedance\b/i.test(normalized)) return "seedance";

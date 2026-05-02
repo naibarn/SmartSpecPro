@@ -14,6 +14,8 @@ export interface ActiveClipInfo {
   clipStartTime: number;  // where the clip starts on the timeline
   trimIn: number;         // trim offset within the source file
   clipDuration: number;   // visible duration on timeline
+  playbackRate?: number;  // source playback speed for this clip
+  volume?: number;        // clip volume multiplier, 0.0 - 1.0+
   isImage?: boolean;      // true for image clips (renders <img> instead of <video>)
   transitions?: { fadeIn?: number; fadeOut?: number };
   transform?: ClipTransform;
@@ -158,6 +160,26 @@ function getTransitionStyles(
   }
 }
 
+const clampPlaybackRate = (value?: number): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return 1;
+  return Math.max(0.5, Math.min(2, value));
+};
+
+const clampClipVolume = (value?: number): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 1;
+  return Math.max(0, Math.min(2, value));
+};
+
+const timelineToSourceTime = (clip: ActiveClipInfo, timelineTime: number): number => (
+  clip.trimIn + (timelineTime - clip.clipStartTime) * clampPlaybackRate(clip.playbackRate)
+);
+
+const sourceToTimelineTime = (clip: ActiveClipInfo, sourceTime: number): number => (
+  clip.clipStartTime + (sourceTime - clip.trimIn) / clampPlaybackRate(clip.playbackRate)
+);
+
+const getAudioClipKey = (clip: ActiveClipInfo): string => clip.id || clip.videoUrl;
+
 export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   currentTime,
   duration,
@@ -202,6 +224,10 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   const safeCurrentTime = Number.isFinite(currentTime) ? currentTime : 0;
   const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
   const lastSkipTimestampRef = useRef(0);
+  const resolveElementVolume = useCallback(
+    (clip?: ActiveClipInfo | null) => (isMuted ? 0 : clamp01(volume) * clampClipVolume(clip?.volume)),
+    [isMuted, volume],
+  );
 
   // Pan state for zoomed preview
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -502,7 +528,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
 
     let targetTime: number;
     if (activeClip) {
-      targetTime = activeClip.trimIn + (safeCurrentTime - activeClip.clipStartTime);
+      targetTime = timelineToSourceTime(activeClip, safeCurrentTime);
     } else {
       targetTime = safeCurrentTime;
     }
@@ -520,6 +546,28 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     }
   }, [safeCurrentTime, activeClip, effectiveUrl, isPlaying, videoLoaded, allowSeekingWhilePlaying]);
 
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = clampPlaybackRate(activeClip?.playbackRate);
+    }
+    if (outgoingVideoRef.current) {
+      outgoingVideoRef.current.playbackRate = clampPlaybackRate(outgoingClip?.playbackRate);
+    }
+  }, [activeClip?.playbackRate, outgoingClip?.playbackRate]);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.volume = resolveElementVolume(activeClip);
+    }
+    if (outgoingVideoRef.current) {
+      outgoingVideoRef.current.volume = resolveElementVolume(outgoingClip);
+    }
+    audioRefs.current.forEach((audioEl, key) => {
+      const clip = activeAudioClips.find((candidate) => getAudioClipKey(candidate) === key);
+      audioEl.volume = resolveElementVolume(clip);
+    });
+  }, [activeClip, outgoingClip, activeAudioClips, resolveElementVolume]);
+
   // Sync outgoing video element during transition playback
   useEffect(() => {
     const video = outgoingVideoRef.current;
@@ -531,7 +579,8 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     // Wait for video to have enough data before seeking
     if (video.readyState < 2) return;
 
-    const targetTime = outgoingClip.trimIn + (safeCurrentTime - outgoingClip.clipStartTime);
+    video.playbackRate = clampPlaybackRate(outgoingClip.playbackRate);
+    const targetTime = timelineToSourceTime(outgoingClip, safeCurrentTime);
     const clamped = Math.max(0, targetTime);
     if (!Number.isFinite(clamped)) return;
     if (Math.abs(video.currentTime - clamped) > 0.05) {
@@ -558,12 +607,13 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     if (isPlaying) {
       // Seek to correct position before playing
       if (activeClip) {
-        const targetTime = activeClip.trimIn + (safeCurrentTime - activeClip.clipStartTime);
+        const targetTime = timelineToSourceTime(activeClip, safeCurrentTime);
         if (!Number.isFinite(targetTime)) return;
         if (Math.abs(videoRef.current.currentTime - targetTime) > 0.1) {
           videoRef.current.currentTime = Math.max(0, targetTime);
         }
       }
+      videoRef.current.playbackRate = clampPlaybackRate(activeClip?.playbackRate);
 
       videoRef.current.play().catch(err => {
         console.error('Failed to play:', err);
@@ -615,7 +665,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
 
       const sourceNow = Number.isFinite(video.currentTime) ? video.currentTime : 0;
       const timelineNow = activeClip
-        ? activeClip.clipStartTime + (sourceNow - activeClip.trimIn)
+        ? sourceToTimelineTime(activeClip, sourceNow)
         : sourceNow;
 
       if (Number.isFinite(timelineNow)) {
@@ -628,7 +678,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
           ) {
             const targetTimeline = activeRange.end;
             const targetSource = activeClip
-              ? activeClip.trimIn + (targetTimeline - activeClip.clipStartTime)
+              ? timelineToSourceTime(activeClip, targetTimeline)
               : targetTimeline;
             if (
               Number.isFinite(targetSource) &&
@@ -664,19 +714,20 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
 
   // Sync audio elements with playback state
   useEffect(() => {
-    audioRefs.current.forEach((audioEl, url) => {
-      const clip = activeAudioClips.find(c => c.videoUrl === url);
+    audioRefs.current.forEach((audioEl, key) => {
+      const clip = activeAudioClips.find(c => getAudioClipKey(c) === key);
       if (!clip) {
         audioEl.pause();
         return;
       }
-      const targetTime = clip.trimIn + (safeCurrentTime - clip.clipStartTime);
+      const targetTime = timelineToSourceTime(clip, safeCurrentTime);
       if (!Number.isFinite(targetTime)) return;
+      audioEl.playbackRate = clampPlaybackRate(clip.playbackRate);
       if (isPlaying) {
         if (Math.abs(audioEl.currentTime - targetTime) > 0.3) {
           audioEl.currentTime = Math.max(0, targetTime);
         }
-        audioEl.volume = isMuted ? 0 : volume;
+        audioEl.volume = resolveElementVolume(clip);
         audioEl.play().catch((err) => {
           if (err && err.name !== 'AbortError') {
             console.warn('Audio play failed:', err.name, err.message);
@@ -687,16 +738,16 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
         audioEl.currentTime = Math.max(0, targetTime);
       }
     });
-  }, [isPlaying, safeCurrentTime, activeAudioClips, volume, isMuted]);
+  }, [isPlaying, safeCurrentTime, activeAudioClips, resolveElementVolume]);
 
   // Clean up stale audio elements when clips change
   useEffect(() => {
-    const activeUrls = new Set(activeAudioClips.map(c => c.videoUrl));
-    audioRefs.current.forEach((audioEl, url) => {
-      if (!activeUrls.has(url)) {
+    const activeKeys = new Set(activeAudioClips.map(getAudioClipKey));
+    audioRefs.current.forEach((audioEl, key) => {
+      if (!activeKeys.has(key)) {
         audioEl.pause();
         audioEl.remove();
-        audioRefs.current.delete(url);
+        audioRefs.current.delete(key);
       }
     });
   }, [activeAudioClips]);
@@ -706,7 +757,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     if (!videoRef.current || !isPlaying) return;
 
     if (activeClip) {
-      const timelineTime = activeClip.clipStartTime + (videoRef.current.currentTime - activeClip.trimIn);
+      const timelineTime = sourceToTimelineTime(activeClip, videoRef.current.currentTime);
       if (!Number.isFinite(timelineTime)) return;
       // Only update if within clip bounds
       if (timelineTime >= activeClip.clipStartTime && timelineTime <= activeClip.clipStartTime + activeClip.clipDuration) {
@@ -739,19 +790,11 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
     const vol = parseFloat(e.target.value);
     if (isNaN(vol) || vol < 0 || vol > 1) return;
     setVolume(vol);
-    if (videoRef.current) {
-      videoRef.current.volume = vol;
-    }
-    audioRefs.current.forEach(el => { el.volume = vol; });
   };
 
   // Toggle mute
   const toggleMute = () => {
-    setIsMuted(!isMuted);
-    if (videoRef.current) {
-      videoRef.current.muted = !isMuted;
-    }
-    audioRefs.current.forEach(el => { el.volume = !isMuted ? 0 : volume; });
+    setIsMuted((prev) => !prev);
   };
 
   // Handle video error
@@ -1709,12 +1752,12 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
       {/* Hidden audio elements for timeline audio tracks */}
       {activeAudioClips.map(clip => (
         <audio
-          key={clip.videoUrl}
+          key={getAudioClipKey(clip)}
           src={clip.videoUrl}
           preload="auto"
           ref={el => {
             if (el) {
-              audioRefs.current.set(clip.videoUrl, el);
+              audioRefs.current.set(getAudioClipKey(clip), el);
             }
           }}
           style={{ display: 'none' }}

@@ -59,8 +59,8 @@ class AutomationCopilot:
 
     def __init__(
         self,
-        script_generator: PlaywrightScriptGenerator,
-        executor: SelfHealingExecutor,
+        script_generator: PlaywrightScriptGenerator | None,
+        executor: SelfHealingExecutor | None,
         gateway_client: LLMGatewayClient | None = None,
     ) -> None:
         self._generator = script_generator
@@ -97,6 +97,9 @@ class AutomationCopilot:
         allowed_domains: list[str],
     ) -> AutomationBuildResult:
         """Generate scripts for all tasks in the intent."""
+        if self._generator is None:
+            raise RuntimeError("Automation script generator is not configured")
+
         if intent.intent_type == "browser_rpa":
             scripts = []
             for task in intent.browser_tasks or []:
@@ -130,6 +133,9 @@ class AutomationCopilot:
         status_callback: Callable[[str, str | None], Awaitable[None]],
     ) -> Any:
         """Run all generated scripts via SelfHealingExecutor."""
+        if self._executor is None:
+            raise RuntimeError("Automation executor is not configured")
+
         scripts = self._scripts.get(execution_id, [])
         results = []
         for script in scripts:

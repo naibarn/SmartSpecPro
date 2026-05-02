@@ -10,6 +10,9 @@ from datetime import datetime, timezone, timedelta
 from app.tasks.media_tasks import (
     _normalize_byteplus_task_state,
     _extract_byteplus_result_url,
+    _build_audio_debug_request_snapshot,
+    _extract_kie_failure_message,
+    _normalize_kie_task_state,
 )
 from app.models.media_task import TaskStatus
 
@@ -38,6 +41,52 @@ def test_normalize_byteplus_task_state_missing_status():
     normalized, raw = _normalize_byteplus_task_state({"id": "task-123"})
     assert normalized == "unknown"
     assert raw == ""
+
+
+@pytest.mark.unit
+def test_kie_failure_message_prefers_nested_error_over_top_level_success():
+    """Kie can return msg=success while nested successFlag=3 contains the real failure."""
+    response = {
+        "code": 200,
+        "msg": "success",
+        "data": {
+            "successFlag": 3,
+            "errorCode": 400,
+            "errorMessage": "The Google model was unable to generate audio for this request.",
+        },
+    }
+
+    normalized, raw = _normalize_kie_task_state(response)
+
+    assert normalized == "fail"
+    assert raw == "successflag_3"
+    assert _extract_kie_failure_message(response) == (
+        "The Google model was unable to generate audio for this request."
+    )
+
+
+@pytest.mark.unit
+def test_audio_debug_snapshot_recognizes_wavespeed_audio_payload():
+    """WaveSpeed TTS debug snapshots should show the WaveSpeed URL and text key."""
+    snapshot = _build_audio_debug_request_snapshot({
+        "model": "alibaba/qwen3-tts-flash",
+        "text": "OpenAI ออกอัปเดต Codex CLI รุ่นใหม่",
+        "api_config": {
+            "provider": "wavespeed_ai",
+            "endpoint": "/alibaba/qwen3-tts-flash",
+            "query_endpoint": "/predictions/{requestId}/result",
+            "text_input_key": "text",
+        },
+        "extra_params": {
+            "voice": "Cherry",
+            "format": "mp3",
+        },
+    })
+
+    assert snapshot["provider_hint"] == "wavespeed_ai"
+    assert snapshot["api"]["request_url"] == "https://api.wavespeed.ai/api/v3/alibaba/qwen3-tts-flash"
+    assert snapshot["api"]["request_payload"]["text"] == "OpenAI ออกอัปเดต Codex CLI รุ่นใหม่"
+    assert snapshot["api"]["request_payload"]["voice"] == "Cherry"
 
 
 # --- _extract_byteplus_result_url ---

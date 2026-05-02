@@ -6,12 +6,222 @@
   "additionalProperties": false,
   "required": [
     "storyboardText",
+    "continuityPackage",
     "videoPrompts"
   ],
   "properties": {
     "storyboardText": {
       "type": "string",
-      "description": "Storyboard แบบข้อความปกติ (ห้ามอยู่ใน code block)"
+      "description": "Storyboard แบบข้อความปกติ (ห้ามอยู่ใน code block). For news_narration this may be the NEWS BEAT PLAN."
+    },
+    "continuityPackage": {
+      "type": "object",
+      "description": "Skill-generated shared notes that Media Studio syncs into Reference Notes and Continuity Notes so every separately generated video stays consistent.",
+      "additionalProperties": false,
+      "required": [
+        "referenceNotes",
+        "continuityNotes",
+        "continuityLock"
+      ],
+      "properties": {
+        "referenceNotes": {
+          "type": "string",
+          "description": "Useful visual/reference bible generated from user notes, idea, news source, and attached reference images. Must not be absence-only boilerplate."
+        },
+        "continuityNotes": {
+          "type": "string",
+          "description": "Shared story bible: fixed identity, wardrobe/props, setting, lighting, style, camera language, story arc, and beat-to-beat progression."
+        },
+        "continuityLock": {
+          "type": "string",
+          "description": "Exact Continuity Lock phrase that must be repeated in every prompt."
+        },
+        "beatContinuityPlan": {
+          "type": "string",
+          "description": "How each prompt progresses from the previous beat while staying visually continuous."
+        },
+        "sharedSoundDesign": {
+          "type": "string",
+          "description": "Shared low-volume sound bed and recurring audio accents that keep separately generated clips sonically consistent."
+        }
+      }
+    },
+    "veoSettings": {
+      "type": "object",
+      "description": "Resolved Veo 3.1 settings for Media Studio generation.",
+      "additionalProperties": false,
+      "properties": {
+        "veoModel": {
+          "type": "string",
+          "enum": [
+            "__selected_media_studio_veo_model__",
+            "veo3_lite",
+            "veo3_fast",
+            "veo3"
+          ]
+        },
+        "veoProviderModel": {
+          "type": "string"
+        },
+        "generationType": {
+          "type": "string",
+          "enum": [
+            "TEXT_2_VIDEO",
+            "FIRST_AND_LAST_FRAMES_2_VIDEO",
+            "REFERENCE_2_VIDEO"
+          ]
+        },
+        "outputQuality": {
+          "type": "string",
+          "enum": [
+            "720p",
+            "1080p",
+            "4K"
+          ]
+        },
+        "aspectRatio": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "9:16",
+            "16:9"
+          ]
+        },
+        "enableTranslation": {
+          "type": "boolean"
+        },
+        "enableFallback": {
+          "type": "boolean"
+        },
+        "watermark": {
+          "type": "string"
+        },
+        "referenceImageRole": {
+          "type": "string"
+        }
+      }
+    },
+    "audioPersona": {
+      "type": "string",
+      "description": "Selected audio persona value, or auto_match when the skill chose the cue automatically.",
+      "enum": [
+        "auto_match",
+        "corporate_presentation",
+        "e_learning_educational",
+        "news_broadcast",
+        "luxury_brand_beauty",
+        "upbeat_commercial",
+        "virtual_assistant",
+        "podcast_host_vlogger",
+        "documentary_narration",
+        "childrens_storytelling",
+        "cinematic_trailer",
+        "fantasy_villain",
+        "sad_vulnerable",
+        "furious_aggressive",
+        "panicked_scared",
+        "romantic_intimate",
+        "sports_commentator",
+        "retro_radio_dj",
+        "flight_attendant_pa",
+        "military_commander",
+        "kindly_grandparent",
+        "sarcastic_deadpan",
+        "tech_nerd_geek",
+        "laid_back_surfer",
+        "asmr_whisper",
+        "classic_robot_cyborg",
+        "auctioneer"
+      ]
+    },
+    "resolvedAudioCue": {
+      "type": "string",
+      "description": "Exact provider-facing Audio Cue text resolved from audioPersona and reused across prompt blocks when appropriate."
+    },
+    "audioWorkflow": {
+      "type": "object",
+      "description": "Resolved Media Studio audio workflow. Use this to keep video-native audio versus separate voice/music generation synced with the UI.",
+      "additionalProperties": false,
+      "properties": {
+        "videoAudioWorkflow": {
+          "type": "string",
+          "enum": [
+            "native",
+            "separate_voice",
+            "separate_music",
+            "separate_voice_music"
+          ]
+        },
+        "separateVoiceModel": {
+          "type": "string"
+        },
+        "separateMusicModel": {
+          "type": "string"
+        },
+        "separateMusicPrompt": {
+          "type": "string"
+        },
+        "voiceoverScript": {
+          "type": "string",
+          "description": "Continuous voiceover script assembled from all spoken lines when separate voice generation is enabled."
+        },
+        "musicPrompt": {
+          "type": "string",
+          "description": "Single shared music/ambience prompt when separate music generation is enabled."
+        },
+        "targetDurationSeconds": {
+          "type": "number",
+          "description": "Expected total duration of the selected video clips so generated audio can be aligned in the video editor."
+        }
+      }
+    },
+    "newsNarration": {
+      "type": "object",
+      "description": "Resolved news narration settings when contentMode=news_narration.",
+      "additionalProperties": false,
+      "properties": {
+        "sourceLanguage": {
+          "type": "string"
+        },
+        "clipCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "maxSpokenSecondsPerClip": {
+          "type": "number"
+        },
+        "speechPace": {
+          "type": "string",
+          "enum": [
+            "natural",
+            "brisk_news",
+            "fast_social"
+          ]
+        },
+        "clipDensity": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "compact",
+            "detailed"
+          ]
+        },
+        "mediaStudioOutputType": {
+          "type": "string",
+          "enum": [
+            "multi-video"
+          ]
+        },
+        "coveragePlan": {
+          "type": "string",
+          "description": "Short explanation of how the news source was split into enough 8-second clips to cover the whole story."
+        },
+        "sourceBeatCount": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
     },
     "videoPrompts": {
       "type": "array",
@@ -35,7 +245,45 @@
             "minimum": 4,
             "maximum": 15
           },
+          "generationType": {
+            "type": "string",
+            "enum": [
+              "TEXT_2_VIDEO",
+              "FIRST_AND_LAST_FRAMES_2_VIDEO",
+              "REFERENCE_2_VIDEO"
+            ]
+          },
+          "veoModel": {
+            "type": "string"
+          },
+          "outputQuality": {
+            "type": "string"
+          },
+          "aspectRatio": {
+            "type": "string"
+          },
+          "enableTranslation": {
+            "type": "boolean"
+          },
+          "enableFallback": {
+            "type": "boolean"
+          },
+          "watermark": {
+            "type": "string"
+          },
+          "referenceImageRole": {
+            "type": "string"
+          },
           "speaker": {
+            "type": "string"
+          },
+          "audioPersona": {
+            "type": "string"
+          },
+          "audioCue": {
+            "type": "string"
+          },
+          "soundDesign": {
             "type": "string"
           },
           "dialogue": {

@@ -40,6 +40,8 @@ export interface FocusedClipMeta {
   generationPrompt?: string;
   referenceUrls?: string[];
   generationModelId?: string;
+  generationAspectRatio?: string;
+  generationExtraParams?: Record<string, unknown>;
   model?: string;
 }
 
@@ -49,6 +51,7 @@ interface VideoDraftAIPanelProps {
   isGenerating: boolean;
   isPreparingPresentationDraft?: boolean;
   onGenerate: (request: VideoDraftAIGenerateRequest) => Promise<void>;
+  onReplaceFocusedClip?: (request: VideoDraftAIGenerateRequest) => Promise<void>;
   onOpenPresentationDraft?: () => void;
   focusedClipMeta?: FocusedClipMeta | null;
 }
@@ -84,6 +87,7 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
   isGenerating,
   isPreparingPresentationDraft = false,
   onGenerate,
+  onReplaceFocusedClip,
   onOpenPresentationDraft,
   focusedClipMeta,
 }) => {
@@ -477,11 +481,11 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
     [referenceImages.length, uploadReferenceMutation],
   );
 
-  const handleGenerate = useCallback(async () => {
+  const buildCurrentGenerateRequest = useCallback((): VideoDraftAIGenerateRequest | null => {
     const normalizedPrompt = prompt.trim();
     if (!normalizedPrompt) {
       toast.error("Please enter prompt.");
-      return;
+      return null;
     }
 
     if (advancedMediaOptionsEnabled) {
@@ -493,18 +497,18 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
       });
       if (missingRequiredFields.length > 0) {
         toast.error(`Please fill required model inputs: ${missingRequiredFields.join(", ")}`);
-        return;
+        return null;
       }
     }
 
-    await onGenerate({
+    return {
       prompt: normalizedPrompt,
       mediaType,
       modelId: selectedModelId.trim() || undefined,
       aspectRatio,
       referenceImageUrls: normalizedReferenceImageUrls,
       extraParams: advancedMediaOptionsEnabled ? syncedAdvancedExtraParams : undefined,
-    });
+    };
   }, [
     prompt,
     advancedMediaOptionsEnabled,
@@ -512,17 +516,64 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
     syncedAdvancedExtraParams,
     aspectRatio,
     normalizedReferenceImageUrls,
-    onGenerate,
     mediaType,
     selectedModelId,
   ]);
+
+  const buildFocusedClipGenerateRequest = useCallback((): VideoDraftAIGenerateRequest | null => {
+    if (!focusedClipMeta?.generationPrompt?.trim()) {
+      toast.error("Selected clip does not have a stored prompt.");
+      return null;
+    }
+
+    const clipAspectRatio = focusedClipMeta.generationAspectRatio?.trim();
+    const safeAspectRatio = clipAspectRatio && ASPECT_RATIOS.includes(clipAspectRatio)
+      ? clipAspectRatio
+      : aspectRatio;
+    const referenceImageUrls = (focusedClipMeta.referenceUrls ?? [])
+      .filter(isValidReferenceUrl)
+      .slice(0, MAX_REFERENCE_IMAGES);
+
+    return {
+      prompt: focusedClipMeta.generationPrompt.trim(),
+      mediaType: focusedClipMeta.type === "video" ? "video" : "image",
+      modelId: focusedClipMeta.generationModelId || focusedClipMeta.model || undefined,
+      aspectRatio: safeAspectRatio,
+      referenceImageUrls,
+      extraParams: focusedClipMeta.generationExtraParams,
+    };
+  }, [aspectRatio, focusedClipMeta]);
+
+  const handleGenerate = useCallback(async () => {
+    const request = buildCurrentGenerateRequest();
+    if (!request) return;
+    await onGenerate(request);
+  }, [buildCurrentGenerateRequest, onGenerate]);
+
+  const handleReplaceFocusedClip = useCallback(async () => {
+    if (!onReplaceFocusedClip) return;
+    const request = buildCurrentGenerateRequest();
+    if (!request) return;
+    await onReplaceFocusedClip(request);
+  }, [buildCurrentGenerateRequest, onReplaceFocusedClip]);
+
+  const handleReplaceFocusedClipFromStored = useCallback(async () => {
+    if (!onReplaceFocusedClip) return;
+    const request = buildFocusedClipGenerateRequest();
+    if (!request) return;
+    await onReplaceFocusedClip(request);
+  }, [buildFocusedClipGenerateRequest, onReplaceFocusedClip]);
 
   const handleReuseFromClip = useCallback(() => {
     if (!focusedClipMeta) return;
     // Always reset all form fields — clear stale state from previous clip
     setPrompt(focusedClipMeta.generationPrompt || "");
     setMediaType(focusedClipMeta.type === "video" ? "video" : "image");
-    setSelectedModelId(focusedClipMeta.generationModelId || "");
+    setSelectedModelId(focusedClipMeta.generationModelId || focusedClipMeta.model || "");
+    const clipAspectRatio = focusedClipMeta.generationAspectRatio?.trim();
+    if (clipAspectRatio && ASPECT_RATIOS.includes(clipAspectRatio)) {
+      setAspectRatio(clipAspectRatio);
+    }
     setReferenceImages(
       focusedClipMeta.referenceUrls && focusedClipMeta.referenceUrls.length > 0
         ? focusedClipMeta.referenceUrls
@@ -531,8 +582,9 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
             .map((url, i) => ({ url, name: `Reference ${i + 1}` }))
         : [],
     );
-    setAdvancedMediaOptionsEnabled(false);
-    setMediaModelExtraParams({});
+    const clipExtraParams = focusedClipMeta.generationExtraParams ?? {};
+    setAdvancedMediaOptionsEnabled(Object.keys(clipExtraParams).length > 0);
+    setMediaModelExtraParams({ ...clipExtraParams });
     toast.success("Loaded prompt and settings from selected clip.");
   }, [focusedClipMeta]);
 
@@ -635,16 +687,27 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
               </div>
             </div>
           )}
-          <div style={{ display: "flex", gap: 6 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <button
               type="button"
               className="generate-button"
-              style={{ fontSize: 12, padding: "6px 12px", flex: 1 }}
+              style={{ fontSize: 12, padding: "6px 12px", flex: "1 1 120px" }}
               onClick={handleReuseFromClip}
               disabled={isGenerating}
             >
               Load into form
             </button>
+            {onReplaceFocusedClip && focusedClipMeta.generationPrompt && (
+              <button
+                type="button"
+                className="generate-button replace-button"
+                style={{ fontSize: 12, padding: "6px 12px", flex: "1 1 160px" }}
+                onClick={handleReplaceFocusedClipFromStored}
+                disabled={isGenerating}
+              >
+                Regenerate & replace
+              </button>
+            )}
           </div>
           <div className="text-xs text-slate-500" style={{ marginTop: 4 }}>
             Loads prompt, model, and references into the form below for editing and regeneration.
@@ -901,6 +964,16 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
       >
         {isGenerating ? "Generating..." : `Generate ${mediaType === "image" ? "Image" : "Video"} to Timeline`}
       </button>
+      {focusedClipMeta && onReplaceFocusedClip && (
+        <button
+          className="generate-button replace-button"
+          onClick={handleReplaceFocusedClip}
+          disabled={isGenerating || !prompt.trim()}
+          type="button"
+        >
+          Generate & replace selected clip
+        </button>
+      )}
     </div>
   );
 };
@@ -925,6 +998,12 @@ const panelStyles = `
   }
   .generate-button:hover:not(:disabled) {
     background: #1d4ed8;
+  }
+  .replace-button {
+    background: #0f766e;
+  }
+  .replace-button:hover:not(:disabled) {
+    background: #0d9488;
   }
   .generate-button:disabled {
     opacity: 0.6;

@@ -7,7 +7,8 @@ export interface MediaStudioPromptPackage {
 }
 
 const PROMPT_MARKER_REGEX = /^(PROMPT|SCENE|SHOT|CLIP)\s+\d+\s*(?:\([^)]+\))?:\s*(.*)$/i;
-const NOTE_HEADING_REGEX = /(?:^|\n)\s*(Continuity Notes|Reference Notes|Shared Continuity Preamble)\s*:\s*/gi;
+const NOTE_HEADING_LINE_REGEX = /^\s*(Continuity Notes|Reference Notes|Reference Image Notes|Reference Image Bible|Visual Bible|Shared Continuity Preamble|Story Continuity Bible|Continuity Bible|Story Bible|บันทึกภาพอ้างอิง|โน้ตภาพอ้างอิง|ข้อมูลภาพอ้างอิง|ภาพอ้างอิง|บันทึกความต่อเนื่อง|โน้ตความต่อเนื่อง|ข้อมูลความต่อเนื่อง|ความต่อเนื่องของเรื่อง)(?:\s*\([^)]*\))?(?:\s*:\s*(.*)|\s*)$/i;
+const NOTE_BOUNDARY_HEADING_LINE_REGEX = /^\s*(?:VEO(?:\s+3\.1)?\s+SETTINGS|NEWS BEAT PLAN|INPUT CHECK|USER ORDER|VIRAL STRATEGY|STYLE|FULL STORYBOARD|VIDEO PROMPTS?|STORYBOARD)\s*:\s*$/i;
 const REFERENCE_NOTES_ABSENCE_LINE_PATTERNS = [
   /^\s*[-*•]?\s*ไม่มี(?:ภาพ|รูป|ไฟล์)(?:อ้างอิง)?(?:ที่(?:แนบมา|อัปโหลด|ใช้ในฉากนี้|ใช้ในคลิปนี้))?\.?\s*$/i,
   /^\s*[-*•]?\s*ไม่มีภาพอ้างอิง(?:ที่(?:แนบมา|อัปโหลด|ใช้ในฉากนี้|ใช้ในคลิปนี้))?\.?\s*$/i,
@@ -51,6 +52,22 @@ function sanitizeReferenceNotes(value: unknown): string {
   return stripReferenceAbsenceBoilerplate(trimText(value));
 }
 
+function normalizeNoteHeading(value: string): "continuity" | "reference" {
+  return /reference|visual|ภาพอ้างอิง/i.test(value) ? "reference" : "continuity";
+}
+
+function uniqueJoinedBlocks(values: string[]): string {
+  const seen = new Set<string>();
+  const blocks: string[] = [];
+  for (const value of values) {
+    const normalized = normalizeLineBreaks(value);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    blocks.push(normalized);
+  }
+  return blocks.join("\n\n").trim();
+}
+
 function collectJsonCandidates(text: string): string[] {
   const normalized = normalizeLineBreaks(text);
   if (!normalized) return [];
@@ -80,35 +97,63 @@ function extractSinglePromptSections(text: string): {
     return { promptText: "", continuityNotes: "", referenceNotes: "" };
   }
 
-  const matches = Array.from(normalized.matchAll(NOTE_HEADING_REGEX));
-  if (matches.length === 0) {
+  const lines = normalized.split("\n");
+  const promptLines: string[] = [];
+  const continuityBlocks: string[] = [];
+  const referenceBlocks: string[] = [];
+  let activeNote: "continuity" | "reference" | null = null;
+  let activeLines: string[] = [];
+  let sawNote = false;
+
+  const flushNote = () => {
+    if (!activeNote) return;
+    const value = activeLines.join("\n").trim();
+    if (value) {
+      if (activeNote === "reference") {
+        referenceBlocks.push(value);
+      } else {
+        continuityBlocks.push(value);
+      }
+    }
+    activeNote = null;
+    activeLines = [];
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+    const noteMatch = line.match(NOTE_HEADING_LINE_REGEX);
+    if (noteMatch) {
+      flushNote();
+      sawNote = true;
+      activeNote = normalizeNoteHeading(noteMatch[1]);
+      activeLines = noteMatch[2]?.trim() ? [noteMatch[2].trim()] : [];
+      continue;
+    }
+
+    if (activeNote && (PROMPT_MARKER_REGEX.test(line) || NOTE_BOUNDARY_HEADING_LINE_REGEX.test(line))) {
+      flushNote();
+      promptLines.push(line);
+      continue;
+    }
+
+    if (activeNote) {
+      activeLines.push(line);
+      continue;
+    }
+
+    promptLines.push(line);
+  }
+
+  flushNote();
+
+  if (!sawNote) {
     return { promptText: normalized, continuityNotes: "", referenceNotes: "" };
   }
 
-  const promptText = normalized.slice(0, matches[0].index ?? 0).trim();
-  let continuityNotes = "";
-  let referenceNotes = "";
-
-  for (let index = 0; index < matches.length; index += 1) {
-    const match = matches[index];
-    const start = (match.index ?? 0) + match[0].length;
-    const end = index + 1 < matches.length ? (matches[index + 1].index ?? normalized.length) : normalized.length;
-    const value = normalized.slice(start, end).trim();
-    const heading = trimText(match[1]).toLowerCase();
-
-    if (!value) continue;
-
-    if (heading === "reference notes") {
-      referenceNotes = value;
-    } else {
-      continuityNotes = value;
-    }
-  }
-
   return {
-    promptText,
-    continuityNotes,
-    referenceNotes: sanitizeReferenceNotes(referenceNotes),
+    promptText: promptLines.join("\n").trim(),
+    continuityNotes: uniqueJoinedBlocks(continuityBlocks),
+    referenceNotes: sanitizeReferenceNotes(uniqueJoinedBlocks(referenceBlocks)),
   };
 }
 
@@ -233,7 +278,7 @@ function parseStructuredJsonPromptPackage(text: string): MediaStudioPromptPackag
   }
 
   const promptSequenceItems = Array.isArray(parsed.prompt_sequence) ? parsed.prompt_sequence : [];
-  const promptSequence = promptSequenceItems
+  const promptSequenceFromPromptSequence = promptSequenceItems
     .map((item: any, index: number) => {
       const promptBody = trimText(item?.prompt) || trimText(item?.prompt_text) || trimText(item?.final_prompt);
       if (!promptBody) return "";
@@ -241,6 +286,28 @@ function parseStructuredJsonPromptPackage(text: string): MediaStudioPromptPackag
       return promptSequenceItems.length > 1 ? `${promptId}\n${promptBody}` : promptBody;
     })
     .filter(Boolean);
+  const videoPromptItems = Array.isArray(parsed.videoPrompts)
+    ? parsed.videoPrompts
+    : Array.isArray(parsed.video_prompts)
+      ? parsed.video_prompts
+      : [];
+  const promptSequenceFromVideoPrompts = videoPromptItems
+    .map((item: any, index: number) => {
+      const promptBody = trimText(item?.prompt) || trimText(item?.prompt_text) || trimText(item?.final_prompt);
+      if (!promptBody) return "";
+      const sceneNumber = Number(item?.sceneNumber ?? item?.scene_number ?? index + 1);
+      const promptNumber = Number.isFinite(sceneNumber) && sceneNumber > 0 ? sceneNumber : index + 1;
+      const durationSeconds = Number(item?.durationSeconds ?? item?.duration_seconds);
+      const durationSuffix = Number.isFinite(durationSeconds) && durationSeconds > 0
+        ? ` (${durationSeconds} seconds)`
+        : "";
+      const promptId = trimText(item?.prompt_id) || `PROMPT ${promptNumber}${durationSuffix}:`;
+      return videoPromptItems.length > 1 ? `${promptId}\n${promptBody}` : promptBody;
+    })
+    .filter(Boolean);
+  const promptSequence = promptSequenceFromPromptSequence.length > 0
+    ? promptSequenceFromPromptSequence
+    : promptSequenceFromVideoPrompts;
 
   const fallbackFromFinalPrompt = trimText(parsed.final_prompt)
     ? parsePlainTextPromptPackage(trimText(parsed.final_prompt))
@@ -263,6 +330,8 @@ function parseStructuredJsonPromptPackage(text: string): MediaStudioPromptPackag
 
   const continuityNotes =
     trimText(parsed?.continuity_package?.continuity_notes)
+    || trimText(parsed?.continuityPackage?.continuityNotes)
+    || trimText(parsed?.continuityPackage?.continuity_notes)
     || trimText(parsed?.continuity_notes)
     || trimText(promptSequenceItems[0]?.continuity_notes)
     || fallbackFromFinalPrompt?.continuityNotes
@@ -270,6 +339,8 @@ function parseStructuredJsonPromptPackage(text: string): MediaStudioPromptPackag
 
   const referenceNotes =
     sanitizeReferenceNotes(parsed?.continuity_package?.reference_notes)
+    || sanitizeReferenceNotes(parsed?.continuityPackage?.referenceNotes)
+    || sanitizeReferenceNotes(parsed?.continuityPackage?.reference_notes)
     || sanitizeReferenceNotes(parsed?.reference_notes)
     || sanitizeReferenceNotes(promptSequenceItems[0]?.reference_notes)
     || sanitizeReferenceNotes(fallbackFromFinalPrompt?.referenceNotes)
@@ -319,15 +390,20 @@ export function composePromptWithNotes(input: {
   prompt: string;
   referenceNotes?: string | null;
   continuityNotes?: string | null;
+  placement?: "before" | "after";
 }): string {
   const prompt = trimText(input.prompt);
   const referenceNotes = sanitizeReferenceNotes(input.referenceNotes);
   const continuityNotes = trimText(input.continuityNotes);
-
-  return [
-    prompt,
+  const noteBlocks = [
     referenceNotes ? `Reference Notes:\n${referenceNotes}` : "",
     continuityNotes ? `Continuity Notes:\n${continuityNotes}` : "",
+  ].filter(Boolean);
+
+  return [
+    ...(input.placement === "before" ? noteBlocks : []),
+    prompt,
+    ...(input.placement === "before" ? [] : noteBlocks),
   ]
     .filter(Boolean)
     .join("\n\n")

@@ -111,6 +111,10 @@ export default function Chat() {
   );
   const createLiveBrowserSessionMutation = trpc.liveBrowser.createSession.useMutation();
   const sendLiveBrowserCommandMutation = trpc.liveBrowser.sendCommand.useMutation();
+  const { data: tenantFlags } = trpc.tenantFeatureFlags.getFeatureFlags.useQuery(undefined, {
+    enabled: isAuthenticated,
+    staleTime: 60_000,
+  });
   const saveAssistantMessageMutation = trpc.chat.saveAssistantMessage.useMutation();
   const mirrorFinanceActivity = async (message: {
     content: string;
@@ -143,7 +147,10 @@ export default function Chat() {
   );
   const latestBrowserSessionArtifact = browserSessionArtifacts.at(-1) ?? null;
   const activeBrowserSessionArtifact = browserSessionArtifactOverride ?? latestBrowserSessionArtifact;
-  const chatBrowserSessionEnabled = true;
+  const chatBrowserSessionEnabled = Boolean(
+    tenantFlags?.chatBrowserSessionEntry
+      && tenantFlags.liveBrowser,
+  );
 
   // Extract artifacts from messages
   const artifacts: Artifact[] = (messagesData || [])

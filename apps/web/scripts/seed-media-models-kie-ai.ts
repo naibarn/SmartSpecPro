@@ -40,13 +40,15 @@ interface InputField {
   default?: string | number | boolean;
   required?: boolean;
   affectsPricing?: boolean;
-  syncWith?: "none" | "reference_images" | "prompt" | "aspect_ratio";
+  syncWith?: "none" | "reference_images" | "reference_videos" | "prompt" | "aspect_ratio";
   itemTemplate?: Record<string, unknown>;
 }
 
 interface ModelDefinition {
   apiEndpoint: string;
-  apiPayloadFormat: "market" | "veo" | "runway" | "suno" | "elevenlabs" | "custom";
+  apiQueryEndpoint?: string;
+  veo4kEndpoint?: string;
+  apiPayloadFormat: "market" | "veo" | "veo_extend" | "runway" | "suno" | "elevenlabs" | "custom";
   kieModelId: string | null;
   apiConfig?: Record<string, string | number | boolean>;
   inputFields: InputField[];
@@ -60,6 +62,8 @@ interface ModelDefinition {
   generateType?: string;
   hasAudio?: boolean;
   maxDuration?: number;
+  maxPromptLength?: number;
+  maxReferenceImages?: number;
   supportedResolutions?: string[];
   supportedDurations?: number[];
   supportedAspectRatios?: string[];
@@ -81,6 +85,132 @@ const FALLBACK_ELEVENLABS_VOICES: { value: string; label: string }[] = [
   { value: "Elli", label: "Elli" },
   { value: "Josh", label: "Josh" },
 ];
+
+const VEO_31_INPUT_FIELDS: InputField[] = [
+  {
+    key: "generationType",
+    label: "Generation Mode",
+    type: "select",
+    options: [
+      { value: "TEXT_2_VIDEO", label: "Text to Video" },
+      { value: "FIRST_AND_LAST_FRAMES_2_VIDEO", label: "First & Last Frames to Video" },
+      { value: "REFERENCE_2_VIDEO", label: "Reference to Video (Fast only)" },
+    ],
+    default: "TEXT_2_VIDEO",
+  },
+  {
+    key: "imageUrls",
+    label: "Start/End or Reference Images",
+    type: "image_urls",
+    required: false,
+    syncWith: "reference_images",
+  },
+  {
+    key: "resolution",
+    label: "Output Quality",
+    type: "select",
+    options: [
+      { value: "720p", label: "720p" },
+      { value: "1080p", label: "1080P" },
+      { value: "4K", label: "4K" },
+    ],
+    default: "720p",
+    affectsPricing: true,
+  },
+  {
+    key: "enableTranslation",
+    label: "Enable Translation",
+    type: "boolean",
+    default: false,
+  },
+  {
+    key: "enableFallback",
+    label: "Enable Fallback",
+    type: "boolean",
+    default: false,
+  },
+  {
+    key: "watermark",
+    label: "Watermark",
+    type: "text",
+  },
+  {
+    key: "aspect_ratio",
+    label: "Aspect Ratio",
+    type: "select",
+    options: [
+      { value: "auto", label: "Auto" },
+      { value: "16:9", label: "16:9" },
+      { value: "9:16", label: "9:16" },
+    ],
+    default: "auto",
+    syncWith: "aspect_ratio",
+  },
+];
+
+const HAPPYHORSE_ASPECT_RATIO_OPTIONS = [
+  { value: "16:9", label: "16:9" },
+  { value: "9:16", label: "9:16" },
+  { value: "1:1", label: "1:1" },
+  { value: "4:3", label: "4:3" },
+  { value: "3:4", label: "3:4" },
+];
+
+const HAPPYHORSE_RESOLUTION_OPTIONS = [
+  { value: "720p", label: "720p" },
+  { value: "1080p", label: "1080p" },
+];
+
+const HAPPYHORSE_DURATION_OPTIONS = Array.from({ length: 13 }, (_, index) => {
+  const seconds = index + 3;
+  return { value: String(seconds), label: `${seconds}s` };
+});
+
+function buildHappyHorseConfig(
+  kieModelId: "happyhorse/text-to-video" | "happyhorse/image-to-video" | "happyhorse/reference-to-video" | "happyhorse/video-edit",
+  generateType: "text-to-video" | "image-to-video" | "reference-to-video" | "video-edit",
+  inputFields: InputField[],
+  extraConfig: Partial<ModelDefinition> = {},
+): ModelDefinition {
+  return {
+    apiEndpoint: "/api/v1/jobs/createTask",
+    apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+    apiPayloadFormat: "market",
+    kieModelId,
+    generateType,
+    maxDuration: generateType === "video-edit" ? 60 : 15,
+    maxPromptLength: 5000,
+    supportedResolutions: ["720p", "1080p"],
+    supportedDurations: generateType === "video-edit" ? undefined : HAPPYHORSE_DURATION_OPTIONS.map((option) => Number(option.value)),
+    supportedAspectRatios: generateType === "image-to-video" || generateType === "video-edit"
+      ? undefined
+      : HAPPYHORSE_ASPECT_RATIO_OPTIONS.map((option) => option.value),
+    inputFields,
+    pricingTiers: { default: 100 },
+    pricingFormula: "flat",
+    ...extraConfig,
+  };
+}
+
+function buildVeo31Config(kieModelId: "veo3" | "veo3_fast" | "veo3_lite", pricingTiers: Record<string, number>): ModelDefinition {
+  return {
+    apiEndpoint: "/api/v1/veo/generate",
+    apiQueryEndpoint: "/api/v1/veo/record-info",
+    veo4kEndpoint: "/api/v1/veo/get-4k-video",
+    apiPayloadFormat: "veo",
+    kieModelId,
+    generateType: "text-to-video",
+    hasAudio: true,
+    maxDuration: 8,
+    maxPromptLength: 5000,
+    maxReferenceImages: 3,
+    supportedResolutions: ["720p", "1080p", "4K"],
+    supportedAspectRatios: ["auto", "16:9", "9:16"],
+    inputFields: VEO_31_INPUT_FIELDS,
+    pricingTiers,
+    pricingFormula: "matrix",
+  } as ModelDefinition;
+}
 
 type ElevenLabsVoiceRecord = {
   voice_id?: unknown;
@@ -260,31 +390,38 @@ async function loadElevenLabsVoiceOptions(): Promise<{ value: string; label: str
 const VIDEO_MODELS = [
   // === Google Veo 3 ===
   {
-    modelId: "veo3/generate-veo-3-video",
-    name: "Veo 3.1",
-    description: "Google Veo 3.1 - High-quality video with synchronized audio. Best for final production.",
+    modelId: "veo3/generate-veo-3-video-lite",
+    name: "Veo 3.1 Lite",
+    description: "Google Veo 3.1 Lite - Cost-effective video generation with native audio. Best for high-volume drafts.",
     modelType: "video",
     provider: "kie.ai",
-    aliases: ["veo3", "veo-3.1", "google-veo"],
+    aliases: ["veo3-lite", "veo-lite", "veo3_lite", "veo-3.1-lite"],
+    creditCost: 150,
+    priority: 3,
+    sortOrder: 3,
+    aspectRatios: ["auto", "16:9", "9:16"],
+    configJson: buildVeo31Config("veo3_lite", {
+      "720p": 150,
+      "1080p": 300,
+      "4K": 600,
+    }),
+  },
+  {
+    modelId: "veo3/generate-veo-3-video",
+    name: "Veo 3.1 Quality",
+    description: "Google Veo 3.1 Quality - Flagship video generation with synchronized audio. Best for final production.",
+    modelType: "video",
+    provider: "kie.ai",
+    aliases: ["veo3", "veo-3.1", "google-veo", "veo3-quality", "veo-3.1-quality"],
     creditCost: 2000,
     priority: 5,
     sortOrder: 5,
-    configJson: {
-      apiEndpoint: "/api/v1/veo/generate",
-      apiPayloadFormat: "veo",
-      kieModelId: "veo3",
-      generateType: "text-to-video",
-      hasAudio: true,
-      maxDuration: 8,
-      maxPromptLength: 5000,
-      inputFields: [
-        { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
-          options: [{ value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" }, { value: "1:1", label: "1:1" }],
-          default: "16:9" },
-      ],
-      pricingTiers: { "default": 2000 },
-      pricingFormula: "flat",
-    } as ModelDefinition,
+    aspectRatios: ["auto", "16:9", "9:16"],
+    configJson: buildVeo31Config("veo3", {
+      "720p": 2000,
+      "1080p": 2000,
+      "4K": 4000,
+    }),
   },
   {
     modelId: "veo3/generate-veo-3-video-fast",
@@ -296,22 +433,12 @@ const VIDEO_MODELS = [
     creditCost: 300,
     priority: 10,
     sortOrder: 10,
-    configJson: {
-      apiEndpoint: "/api/v1/veo/generate",
-      apiPayloadFormat: "veo",
-      kieModelId: "veo3_fast",
-      generateType: "text-to-video",
-      hasAudio: true,
-      maxDuration: 8,
-      maxPromptLength: 5000,
-      inputFields: [
-        { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
-          options: [{ value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" }, { value: "1:1", label: "1:1" }],
-          default: "16:9" },
-      ],
-      pricingTiers: { "default": 300 },
-      pricingFormula: "flat",
-    } as ModelDefinition,
+    aspectRatios: ["auto", "16:9", "9:16"],
+    configJson: buildVeo31Config("veo3_fast", {
+      "720p": 300,
+      "1080p": 300,
+      "4K": 600,
+    }),
   },
   {
     modelId: "veo3/extend-video",
@@ -324,17 +451,140 @@ const VIDEO_MODELS = [
     priority: 15,
     sortOrder: 15,
     configJson: {
-      apiEndpoint: "/api/v1/veo/generate",
-      apiPayloadFormat: "veo",
-      kieModelId: "veo3",
+      apiEndpoint: "/api/v1/veo/extend",
+      apiQueryEndpoint: "/api/v1/veo/record-info",
+      apiPayloadFormat: "veo_extend",
+      kieModelId: null,
+      apiConfig: {
+        extend_model: "fast",
+      },
       generateType: "video-extend",
       maxPromptLength: 5000,
       inputFields: [
-        { key: "video_urls", label: "Source Video", type: "video_urls", required: true },
+        { key: "source_task_id", label: "Original Veo Task ID", type: "text", required: true },
+        { key: "video_urls", label: "Source Video Preview", type: "video_urls", required: false, syncWith: "reference_videos" },
+        { key: "seeds", label: "Seed", type: "number", required: false },
+        { key: "watermark", label: "Watermark", type: "text", required: false },
       ],
       pricingTiers: { "default": 1250 },
       pricingFormula: "flat",
     } as ModelDefinition,
+  },
+
+  // === HappyHorse 1.0 ===
+  {
+    modelId: "happyhorse/text-to-video",
+    name: "HappyHorse 1.0 Text-to-Video",
+    description: "Alibaba ATH HappyHorse 1.0 text-to-video generation with 720p/1080p output.",
+    modelType: "video",
+    provider: "kie.ai",
+    aliases: ["happyhorse", "happyhorse-1.0", "happyhorse t2v", "happyhorse text to video"],
+    creditCost: 100,
+    priority: 18,
+    sortOrder: 18,
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    configJson: buildHappyHorseConfig(
+      "happyhorse/text-to-video",
+      "text-to-video",
+      [
+        { key: "resolution", label: "Resolution", type: "select", options: HAPPYHORSE_RESOLUTION_OPTIONS, default: "1080p", affectsPricing: true },
+        { key: "aspect_ratio", label: "Aspect Ratio", type: "select", options: HAPPYHORSE_ASPECT_RATIO_OPTIONS, default: "16:9", syncWith: "aspect_ratio" },
+        { key: "duration", label: "Duration", type: "select", options: HAPPYHORSE_DURATION_OPTIONS, default: "5", affectsPricing: true },
+        { key: "seed", label: "Seed", type: "number", required: false },
+      ],
+    ),
+  },
+  {
+    modelId: "happyhorse/image-to-video",
+    name: "HappyHorse 1.0 Image-to-Video",
+    description: "Animate a single source image with HappyHorse 1.0.",
+    modelType: "video",
+    provider: "kie.ai",
+    aliases: ["happyhorse i2v", "happyhorse image to video", "happyhorse-image-to-video"],
+    creditCost: 100,
+    priority: 19,
+    sortOrder: 19,
+    configJson: buildHappyHorseConfig(
+      "happyhorse/image-to-video",
+      "image-to-video",
+      [
+        { key: "image_urls", label: "Source Image", type: "image_urls", required: true, syncWith: "reference_images" },
+        { key: "resolution", label: "Resolution", type: "select", options: HAPPYHORSE_RESOLUTION_OPTIONS, default: "1080p", affectsPricing: true },
+        { key: "duration", label: "Duration", type: "select", options: HAPPYHORSE_DURATION_OPTIONS, default: "5", affectsPricing: true },
+        { key: "seed", label: "Seed", type: "number", required: false },
+      ],
+      {
+        maxReferenceImages: 1,
+        apiConfig: {
+          reference_image_input_key: "image_urls",
+          reference_image_input_type: "array",
+          omit_aspect_ratio: true,
+        },
+      },
+    ),
+  },
+  {
+    modelId: "happyhorse/reference-to-video",
+    name: "HappyHorse 1.0 Reference-to-Video",
+    description: "Generate video from 1-9 character or style references with HappyHorse 1.0.",
+    modelType: "video",
+    provider: "kie.ai",
+    aliases: ["happyhorse r2v", "happyhorse reference to video", "happyhorse-reference-to-video"],
+    creditCost: 100,
+    priority: 20,
+    sortOrder: 20,
+    aspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    configJson: buildHappyHorseConfig(
+      "happyhorse/reference-to-video",
+      "reference-to-video",
+      [
+        { key: "reference_image", label: "Reference Images", type: "image_urls", required: true, syncWith: "reference_images" },
+        { key: "resolution", label: "Resolution", type: "select", options: HAPPYHORSE_RESOLUTION_OPTIONS, default: "1080p", affectsPricing: true },
+        { key: "aspect_ratio", label: "Aspect Ratio", type: "select", options: HAPPYHORSE_ASPECT_RATIO_OPTIONS, default: "16:9", syncWith: "aspect_ratio" },
+        { key: "duration", label: "Duration", type: "select", options: HAPPYHORSE_DURATION_OPTIONS, default: "5", affectsPricing: true },
+        { key: "seed", label: "Seed", type: "number", required: false },
+      ],
+      {
+        maxReferenceImages: 9,
+        apiConfig: {
+          reference_image_input_key: "reference_image",
+          reference_image_input_type: "array",
+        },
+      },
+    ),
+  },
+  {
+    modelId: "happyhorse/video-edit",
+    name: "HappyHorse 1.0 Video Edit",
+    description: "Edit an existing video with optional reference images using HappyHorse 1.0.",
+    modelType: "video",
+    provider: "kie.ai",
+    aliases: ["happyhorse edit", "happyhorse video edit", "happyhorse-video-edit"],
+    creditCost: 100,
+    priority: 21,
+    sortOrder: 21,
+    configJson: buildHappyHorseConfig(
+      "happyhorse/video-edit",
+      "video-edit",
+      [
+        { key: "video_url", label: "Source Video", type: "video_urls", required: true, syncWith: "reference_videos" },
+        { key: "reference_image", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images" },
+        { key: "resolution", label: "Resolution", type: "select", options: HAPPYHORSE_RESOLUTION_OPTIONS, default: "1080p", affectsPricing: true },
+        { key: "audio_setting", label: "Audio", type: "select", options: [{ value: "auto", label: "Auto" }, { value: "origin", label: "Original" }], default: "auto" },
+        { key: "seed", label: "Seed", type: "number", required: false },
+      ],
+      {
+        maxReferenceImages: 5,
+        apiConfig: {
+          reference_image_input_key: "reference_image",
+          reference_image_input_type: "array",
+          reference_video_input_key: "video_url",
+          reference_video_input_type: "url",
+          omit_aspect_ratio: true,
+          omit_duration: true,
+        },
+      },
+    ),
   },
 
   // === Sora 2 ===

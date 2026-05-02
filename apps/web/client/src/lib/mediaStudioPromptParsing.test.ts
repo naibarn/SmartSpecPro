@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { applySharedContextToMultiVideoText, parseMultiVideoPrompts, splitMultiVideoPromptOutput } from "./mediaStudioPromptParsing";
+import {
+  applySharedContextToMultiVideoText,
+  extractMusicBriefFromPromptText,
+  extractVoiceoverScriptFromPromptText,
+  parseMultiVideoPrompts,
+  prepareSilentVideoPromptDisplayForExternalAudio,
+  prepareSilentVideoPromptForExternalAudio,
+  sanitizeMediaGenerationPromptText,
+  splitMultiVideoPromptOutput,
+} from "./mediaStudioPromptParsing";
 
 describe("parseMultiVideoPrompts", () => {
   it("splits prompts and prepends shared context to each one", () => {
@@ -64,6 +73,67 @@ describe("parseMultiVideoPrompts", () => {
     ]);
   });
 
+  it("does not split prompt marker words that appear inside shared planning text and does not prepend the plan to each generation prompt", () => {
+    const input = [
+      "NEWS BEAT PLAN:",
+      "Beat 1 mentions PROMPT 1 only as text, not as a split marker.",
+      "Beat 2 continues the same story arc.",
+      "",
+      "PROMPT 1 (8 seconds):",
+      "Speaker: Anchor",
+      "",
+      "PROMPT 2 (8 seconds):",
+      "Speaker: Anchor",
+    ].join("\n");
+
+    expect(parseMultiVideoPrompts(input)).toEqual([
+      "Speaker: Anchor",
+      "Speaker: Anchor",
+    ]);
+  });
+
+  it("keeps reference and continuity context but removes settings and beat plan from per-clip prompts", () => {
+    const input = [
+      "REFERENCE NOTES:",
+      "Same AI newsroom visual wall and Xiaomi MiMo graphics.",
+      "",
+      "CONTINUITY NOTES:",
+      "Same Thai presenter, same navy blazer, same desk.",
+      "",
+      "VEO 3.1 SETTINGS:",
+      "Model: veo3_lite",
+      "",
+      "NEWS BEAT PLAN:",
+      "Beat 1 - Xiaomi launches MiMo.",
+      "Beat 2 - Long context matters.",
+      "",
+      "PROMPT 1 (8 seconds):",
+      "Speaker: Anchor",
+      "",
+      "PROMPT 2 (8 seconds):",
+      "Speaker: Anchor",
+    ].join("\n");
+
+    expect(parseMultiVideoPrompts(input)).toEqual([
+      [
+        "Same AI newsroom visual wall and Xiaomi MiMo graphics.",
+        "",
+        "CONTINUITY NOTES:",
+        "Same Thai presenter, same navy blazer, same desk.",
+        "",
+        "Speaker: Anchor",
+      ].join("\n"),
+      [
+        "Same AI newsroom visual wall and Xiaomi MiMo graphics.",
+        "",
+        "CONTINUITY NOTES:",
+        "Same Thai presenter, same navy blazer, same desk.",
+        "",
+        "Speaker: Anchor",
+      ].join("\n"),
+    ]);
+  });
+
   it("replaces the shared continuity paragraph without disturbing prompt markers", () => {
     const input = [
       "REFERENCE NOTES:",
@@ -111,5 +181,279 @@ describe("parseMultiVideoPrompts", () => {
         "Speaker: Dog",
       ].join("\n"),
     );
+  });
+});
+
+describe("sanitizeMediaGenerationPromptText", () => {
+  it("removes Veo/provider metadata lines before generation", () => {
+    const input = [
+      "PROMPT 1 (8 seconds):",
+      "Continuity Lock: same Thai presenter in the same vertical AI newsroom.",
+      "Veo Settings: veo3_lite, TEXT_2_VIDEO, 720p, 9:16, enableTranslation=false, enableFallback=false",
+      "Reference Image Role: none required",
+      "A high-quality Realistic presenter-style news clip (8 seconds).",
+      "Audio Cue: A serious, authoritative, and articulate voice speaking rapidly with a neutral, professional journalistic tone.",
+      "Dialogue Budget: 1 short sentence, ~5.0 seconds max",
+      "Speaker: ผู้ชายชาวไทยอายุ 22 ปี",
+      "Speech Delivery: Natural Thai news cadence, crisp and conversational, no stretched syllables.",
+      "News Beat Goal: Xiaomi launches MiMo-V2.5 Series.",
+      "ผู้ประกาศพูดเป็นภาษาไทยว่า \"Xiaomi เปิดตัว MiMo-V2.5 Series\"",
+      "Background Visuals: vertical AI newsroom visual wall with non-readable MiMo workflow graphics.",
+      "Sound Design: Low-volume modern newsroom tech ambience under the voice, with a tiny UI whoosh.",
+      "No subtitles, no extra on-screen captions unless includeTextOverlays=true, no narrator. Only presenter voice.",
+    ].join("\n");
+
+    expect(sanitizeMediaGenerationPromptText(input)).toBe([
+      "Continuity Lock: same Thai presenter in the same vertical AI newsroom.",
+      "A high-quality Realistic presenter-style news clip (8 seconds).",
+      "Audio Cue: A serious, authoritative, and articulate voice speaking rapidly with a neutral, professional journalistic tone.",
+      "Speaker: ผู้ชายชาวไทยอายุ 22 ปี",
+      "Speech Delivery: Natural Thai news cadence, crisp and conversational, no stretched syllables.",
+      "ผู้ประกาศพูดเป็นภาษาไทยว่า \"Xiaomi เปิดตัว MiMo-V2.5 Series\"",
+      "Background Visuals: vertical AI newsroom visual wall with non-readable MiMo workflow graphics.",
+      "Sound Design: Low-volume modern newsroom tech ambience under the voice, with a tiny UI whoosh.",
+      "No subtitles, no captions, no lower-thirds, no readable text or numbers anywhere in frame, no logos with letters, no random glyphs, no narrator. Only the intended character or presenter voice.",
+    ].join("\n"));
+  });
+
+  it("removes leaked settings and beat-plan sections while keeping continuity notes", () => {
+    const input = [
+      "Reference Notes:",
+      "Same presenter, desk, and AI visual wall.",
+      "",
+      "VEO 3.1 SETTINGS:",
+      "Model: veo3_lite",
+      "Generation Type: TEXT_2_VIDEO",
+      "Aspect Ratio: 9:16",
+      "",
+      "NEWS BEAT PLAN:",
+      "Beat 1 - Xiaomi launches MiMo.",
+      "",
+      "Continuity Notes:",
+      "Same anchor identity and lighting.",
+      "",
+      "PROMPT 1 (8 seconds):",
+      "A high-quality Realistic presenter-style news clip.",
+    ].join("\n");
+
+    expect(sanitizeMediaGenerationPromptText(input)).toBe([
+      "Reference Notes:",
+      "Same presenter, desk, and AI visual wall.",
+      "",
+      "Continuity Notes:",
+      "Same anchor identity and lighting.",
+      "",
+      "A high-quality Realistic presenter-style news clip.",
+    ].join("\n"));
+  });
+
+  it("strengthens older no-text lines before generation", () => {
+    expect(sanitizeMediaGenerationPromptText(
+      "A high-quality clip.\nNo subtitles, no on-screen text. No narrator. Only character voice.",
+    )).toBe([
+      "A high-quality clip.",
+      "No subtitles, no captions, no lower-thirds, no readable text or numbers anywhere in frame, no logos with letters, no random glyphs, no narrator. Only the intended character or presenter voice.",
+    ].join("\n"));
+  });
+});
+
+describe("external audio prompt helpers", () => {
+  it("extracts the spoken news script from multi-video prompt blocks", () => {
+    const input = [
+      "PROMPT 1 (8 seconds):",
+      "Audio Cue: A serious news voice.",
+      "ผู้ประกาศพูดเป็นภาษาไทยว่า \"Xiaomi เปิดตัว MiMo-V2.5 Series\"",
+      "Background Visuals: AI newsroom.",
+      "",
+      "PROMPT 2 (8 seconds):",
+      "ผู้ประกาศพูดเป็นภาษาไทยว่า \"รองรับบริบทยาวได้ถึง 1 ล้าน token\"",
+    ].join("\n");
+
+    expect(extractVoiceoverScriptFromPromptText(input)).toBe([
+      "Xiaomi เปิดตัว MiMo-V2.5 Series",
+      "รองรับบริบทยาวได้ถึง 1 ล้าน token",
+    ].join("\n"));
+  });
+
+  it("prefers an explicit top-level voiceover script for separate audio workflows", () => {
+    const input = [
+      "VOICEOVER SCRIPT:",
+      "OpenAI ออกอัปเดต Codex CLI รุ่นใหม่",
+      "รุ่นนี้ช่วยให้ agent ทำงานต่อเนื่องได้ดีขึ้น",
+      "",
+      "SOUND BED BRIEF:",
+      "Low-volume modern tech newsroom pulse, restrained and continuous.",
+      "",
+      "PROMPT 1 (8 seconds):",
+      "A high-quality visual-only news clip.",
+    ].join("\n");
+
+    expect(extractVoiceoverScriptFromPromptText(input)).toBe([
+      "OpenAI ออกอัปเดต Codex CLI รุ่นใหม่",
+      "รุ่นนี้ช่วยให้ agent ทำงานต่อเนื่องได้ดีขึ้น",
+    ].join("\n"));
+    expect(extractMusicBriefFromPromptText(input)).toBe("Low-volume modern tech newsroom pulse, restrained and continuous.");
+  });
+
+  it("extracts inline top-level voiceover and music sections", () => {
+    const input = [
+      "VOICEOVER SCRIPT: OpenAI ออกอัปเดต Codex CLI รุ่นใหม่",
+      "รุ่นนี้ช่วยให้ agent ทำงานต่อเนื่องได้ดีขึ้น",
+      "",
+      "SOUND BED BRIEF: Low-volume modern tech newsroom pulse.",
+      "",
+      "PROMPT 1 (8 seconds):",
+      "A high-quality visual-only news clip.",
+    ].join("\n");
+
+    expect(extractVoiceoverScriptFromPromptText(input)).toBe([
+      "OpenAI ออกอัปเดต Codex CLI รุ่นใหม่",
+      "รุ่นนี้ช่วยให้ agent ทำงานต่อเนื่องได้ดีขึ้น",
+    ].join("\n"));
+    expect(extractMusicBriefFromPromptText(input)).toBe("Low-volume modern tech newsroom pulse.");
+  });
+
+  it("extracts separate audio fields from structured storyboard JSON", () => {
+    const input = JSON.stringify({
+      audioWorkflow: {
+        voiceoverScript: [
+          "OpenAI ออกอัปเดต Codex CLI รุ่นใหม่",
+          "รุ่นนี้ช่วยให้ agent ทำงานต่อเนื่องได้ดีขึ้น",
+        ].join("\n"),
+        musicPrompt: "Low-volume modern newsroom pulse.",
+      },
+      videoPrompts: [
+        {
+          sceneNumber: 1,
+          durationSeconds: 8,
+          prompt: "A visual-only presenter shot in a modern newsroom.",
+        },
+      ],
+    });
+
+    expect(extractVoiceoverScriptFromPromptText(input)).toBe([
+      "OpenAI ออกอัปเดต Codex CLI รุ่นใหม่",
+      "รุ่นนี้ช่วยให้ agent ทำงานต่อเนื่องได้ดีขึ้น",
+    ].join("\n"));
+    expect(extractMusicBriefFromPromptText(input)).toBe("Low-volume modern newsroom pulse.");
+  });
+
+  it("removes top-level external audio sections before sending prompts to video models", () => {
+    const input = [
+      "VOICEOVER SCRIPT:",
+      "OpenAI ออกอัปเดต Codex CLI รุ่นใหม่",
+      "",
+      "SOUND BED BRIEF:",
+      "Low-volume modern newsroom pulse.",
+      "",
+      "PROMPT 1 (8 seconds):",
+      "A high-quality visual-only news clip.",
+      "Background Visuals: abstract AI workflow shapes, no readable text.",
+    ].join("\n");
+
+    expect(sanitizeMediaGenerationPromptText(input)).toBe([
+      "A high-quality visual-only news clip.",
+      "Background Visuals: abstract AI workflow shapes, no readable text.",
+    ].join("\n"));
+  });
+
+  it("does not turn visual-only prompts into a TTS script when no narration is present", () => {
+    const input = [
+      "REFERENCE NOTES:",
+      "Same presenter in a newsroom.",
+      "",
+      "PROMPT 1 (8 seconds):",
+      "A high-quality Realistic visual-only presenter-style news clip (8 seconds).",
+      "Visual action: The presenter gestures while speaking.",
+      "No subtitles, no captions, no lower-thirds, no readable text or numbers anywhere in frame, no logos with letters, no random glyphs, no narrator, no speech, no dialogue, no music, no sound effects.",
+    ].join("\n");
+
+    expect(extractVoiceoverScriptFromPromptText(input)).toBe("");
+  });
+
+  it("derives a music brief from Sound Design lines when no top-level music section exists", () => {
+    const input = [
+      "PROMPT 1 (8 seconds):",
+      "Sound Design: Low-volume modern newsroom pulse with subtle UI whooshes.",
+      "",
+      "PROMPT 2 (8 seconds):",
+      "Sound Design: Low-volume modern newsroom pulse with subtle UI whooshes.",
+      "",
+      "PROMPT 3 (8 seconds):",
+      "Sound Design: Restrained clean tech ambience under the segment.",
+    ].join("\n");
+
+    expect(extractMusicBriefFromPromptText(input)).toBe([
+      "Low-volume modern newsroom pulse with subtle UI whooshes.",
+      "Restrained clean tech ambience under the segment.",
+    ].join("\n"));
+  });
+
+  it("turns provider prompts into visual-only prompts for separate audio workflows", () => {
+    const input = [
+      "Continuity Lock: same Thai presenter.",
+      "Audio Cue: A serious news voice.",
+      "Speaker: Anchor",
+      "ผู้ประกาศพูดเป็นภาษาไทยว่า \"Xiaomi เปิดตัว MiMo\"",
+      "Background Visuals: non-readable AI dashboard graphics.",
+      "Sound Design: subtle newsroom pulse.",
+      "No subtitles, no captions, no lower-thirds, no readable text or numbers anywhere in frame, no logos with letters, no random glyphs, no narrator, no speech, no dialogue, no music, no sound effects.",
+    ].join("\n");
+
+    const output = prepareSilentVideoPromptForExternalAudio(input);
+
+    expect(output).toContain("Continuity Lock: same Thai presenter.");
+    expect(output).toContain("must not speak, lip-sync, mouth words");
+    expect(output).toContain("Background Visuals: non-readable AI dashboard graphics.");
+    expect(output).toContain("visual-only footage");
+    expect(output).toContain("mouth-wording");
+    expect(output).toContain("Neutral ambient room tone is acceptable");
+    expect(output).not.toContain("Audio Cue:");
+    expect(output).not.toContain("Speaker:");
+    expect(output).not.toContain("Xiaomi เปิดตัว MiMo");
+    expect(output).not.toContain("Sound Design:");
+    expect(output).not.toContain("no music, no sound effects");
+  });
+
+  it("does not duplicate the external audio instruction on already visual-only prompts", () => {
+    const input = [
+      "Continuity Lock: same presenter.",
+      "Background Visuals: text-free AI workflow.",
+      "External audio workflow: create visual-only footage. Do not generate speech, dialogue, narration, music, sound effects, subtitles, captions, lower-thirds, readable text, logos with letters, or random glyphs. The final voiceover and music will be added later in the video editor.",
+    ].join("\n");
+
+    const output = prepareSilentVideoPromptForExternalAudio(input);
+    expect(output.match(/External audio workflow:/g)).toHaveLength(1);
+    expect(output.match(/Visual-only footage for external voiceover:/g)).toHaveLength(1);
+    expect(output).toContain("Neutral ambient room tone is acceptable");
+    expect(output).not.toContain("Do not generate speech, dialogue, narration, music, sound effects");
+  });
+
+  it("preserves multi-video prompt markers when preparing display text for external audio", () => {
+    const input = [
+      "PROMPT 1 (8 seconds):",
+      "Continuity Lock: same anchor.",
+      "Audio Cue: A serious news voice.",
+      "Speaker: Anchor",
+      "The presenter speaks in English: \"OpenAI updated Codex CLI.\"",
+      "Background Visuals: text-free software workflow icons.",
+      "",
+      "PROMPT 2 (8 seconds):",
+      "Continuity Lock: same anchor.",
+      "Speech Delivery: crisp news cadence.",
+      "The presenter speaks in English: \"The release improves agent workflows.\"",
+      "Background Visuals: text-free agent workflow diagram.",
+    ].join("\n");
+
+    const output = prepareSilentVideoPromptDisplayForExternalAudio(input);
+
+    expect(output).toContain("PROMPT 1 (8 seconds):");
+    expect(output).toContain("PROMPT 2 (8 seconds):");
+    expect(output).toContain("Background Visuals: text-free software workflow icons.");
+    expect(output).toContain("Background Visuals: text-free agent workflow diagram.");
+    expect(output).not.toContain("Audio Cue:");
+    expect(output).not.toContain("Speaker:");
+    expect(output).not.toContain("OpenAI updated Codex CLI");
+    expect(output).not.toContain("Speech Delivery:");
   });
 });

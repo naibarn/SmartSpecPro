@@ -140,7 +140,12 @@ export function buildCustomSkillUserPrompt(
   parts.push("USER_INPUTS_JSON:", serializedPayload);
 
   if ((options?.referenceImageCount ?? 0) > 0) {
-    parts.push("Attached reference images are supplied separately as vision inputs and correspond to the `reference_images` handles above.");
+    parts.push(
+      "Attached reference images are supplied separately as vision inputs and correspond to the `reference_images` handles above.",
+      "Analyze every attached image with vision before writing the final answer. Assign each handle the best role from: character/person identity, product/brand/object, animal/prop, scene/location/background, start frame, end frame, or supporting visual.",
+      "Use the detected roles in the final prompt output instead of generic wording. If the skill outputs REFERENCE NOTES, CONTINUITY NOTES, per-scene prompts, or video prompts, include the relevant @ImageN handle(s), the role, and the concrete visual details to preserve.",
+      "Do not claim an image is a person/product/scene unless the vision input supports that role; choose the most useful role for the user's media generation goal.",
+    );
   }
 
   parts.push("Return only the final output requested by the system prompt.");

@@ -396,6 +396,11 @@ async def render_markdown_pdf_internal(
     _require_localhost(request)
     await _verify_proxy_token(request, x_proxy_token)
 
+    from app.services.playwright_feature_gate import is_playwright_enabled
+
+    if not is_playwright_enabled():
+        raise HTTPException(status_code=503, detail="Playwright PDF rendering is disabled.")
+
     from playwright.async_api import async_playwright
 
     async with async_playwright() as playwright:

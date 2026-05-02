@@ -37,10 +37,15 @@ FALLBACK_MODEL_NAME_MAP = {
     # Video models
     "veo3": "veo3",
     "veo3_fast": "veo3_fast",
+    "veo3_lite": "veo3_lite",
     "veo3/generate-veo-3-video": "veo3",
     "veo3/generate-veo-3-video-fast": "veo3_fast",
+    "veo3/generate-veo-3-video-lite": "veo3_lite",
+    "veo3/extend-video": "fast",
     "veo3/veo3_fast": "veo3_fast",
-    "veo-3.1-fast": "veo-3.1-fast",
+    "veo3/veo3_lite": "veo3_lite",
+    "veo-3.1-lite": "veo3_lite",
+    "veo-3.1-fast": "veo3_fast",
     "veo-3.1-quality": "veo-3.1",
     "veo-3-1": "veo-3.1",
     "veo-3.1": "veo-3.1",
@@ -50,6 +55,13 @@ FALLBACK_MODEL_NAME_MAP = {
     "kling-2-6": "kling-2.6",
     "wan-2.6": "wan-2.6",
     "wan-2-6": "wan-2.6",
+    "happyhorse": "happyhorse/text-to-video",
+    "happyhorse-1.0": "happyhorse/text-to-video",
+    "happyhorse-1-0": "happyhorse/text-to-video",
+    "happyhorse/text-to-video": "happyhorse/text-to-video",
+    "happyhorse/image-to-video": "happyhorse/image-to-video",
+    "happyhorse/reference-to-video": "happyhorse/reference-to-video",
+    "happyhorse/video-edit": "happyhorse/video-edit",
     # Audio/Music models
     "suno-v4.5-plus": "suno-v4.5-plus",
     "suno-v4.5": "suno-v4.5",
@@ -92,6 +104,24 @@ def _get_api_config_value(api_config: Optional[Dict[str, Any]], *keys: str) -> O
     return None
 
 
+def _get_api_config_bool(api_config: Optional[Dict[str, Any]], *keys: str) -> bool:
+    if not isinstance(api_config, dict):
+        return False
+    for key in keys:
+        value = api_config.get(key)
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return value != 0
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"1", "true", "yes", "on"}:
+                return True
+            if normalized in {"0", "false", "no", "off"}:
+                return False
+    return False
+
+
 def _normalize_reference_image_input_type(raw_type: Optional[str]) -> Optional[str]:
     if not raw_type:
         return None
@@ -126,6 +156,205 @@ def _resolve_reference_image_input_config(
         )
     ) or "array"
     return key, input_type
+
+
+def _resolve_reference_video_input_config(
+    api_config: Optional[Dict[str, Any]],
+    *,
+    default_key: str,
+) -> tuple[str, str]:
+    key = _get_api_config_value(
+        api_config,
+        "reference_video_input_key",
+        "referenceVideoInputKey",
+        "reference_video_key",
+        "referenceVideoKey",
+    ) or default_key
+    input_type = _normalize_reference_image_input_type(
+        _get_api_config_value(
+            api_config,
+            "reference_video_input_type",
+            "referenceVideoInputType",
+            "reference_video_type",
+            "referenceVideoType",
+        )
+    ) or "array"
+    return key, input_type
+
+
+def _is_4k_resolution(value: Any) -> bool:
+    if value is None:
+        return False
+    normalized = str(value).strip().lower().replace(" ", "")
+    return normalized in {"4k", "2160p", "uhd", "ultrahd"}
+
+
+def _is_veo_endpoint(endpoint: Optional[str]) -> bool:
+    return bool(endpoint and "veo" in str(endpoint).strip().lower())
+
+
+def _is_veo_extend_endpoint(endpoint: Optional[str]) -> bool:
+    normalized = str(endpoint or "").strip().lower()
+    return "veo/extend" in normalized
+
+
+def _is_veo_extend_request(
+    api_endpoint: Optional[str],
+    api_config: Optional[Dict[str, Any]],
+    input_params: Optional[Dict[str, Any]] = None,
+) -> bool:
+    generate_type = _get_api_config_value(
+        api_config,
+        "generate_type",
+        "generateType",
+        "operation",
+        "task_type",
+        "taskType",
+    )
+    payload_format = _get_api_config_value(
+        api_config,
+        "payload_format",
+        "payloadFormat",
+        "apiPayloadFormat",
+    )
+    normalized_generate_type = str(generate_type or "").strip().lower().replace("_", "-")
+    normalized_payload_format = str(payload_format or "").strip().lower().replace("_", "-")
+    if _is_veo_extend_endpoint(api_endpoint):
+        return True
+    if normalized_generate_type in {"video-extend", "veo-extend", "extend-video"}:
+        return True
+    if normalized_payload_format in {"veo-extend", "veo3-extend"}:
+        return True
+    if isinstance(input_params, dict):
+        input_generate_type = str(
+            input_params.get("generateType")
+            or input_params.get("generationType")
+            or ""
+        ).strip().lower().replace("_", "-")
+        return input_generate_type in {"video-extend", "veo-extend", "extend-video"}
+    return False
+
+
+def _pop_first_non_empty(input_params: Dict[str, Any], keys: tuple[str, ...]) -> Optional[Any]:
+    for key in keys:
+        value = input_params.pop(key, None)
+        if value is None:
+            continue
+        if isinstance(value, str):
+            value = value.strip()
+        if value != "":
+            return value
+    return None
+
+
+def _resolve_veo_extend_model(api_model: Optional[str], api_config: Optional[Dict[str, Any]]) -> str:
+    configured = _get_api_config_value(
+        api_config,
+        "extend_model",
+        "extendModel",
+        "veo_extend_model",
+        "veoExtendModel",
+    )
+    if configured:
+        return configured
+
+    normalized = str(api_model or "").strip().lower()
+    if "fast" in normalized:
+        return "fast"
+    # Kie's Veo extension endpoint documents `model: "fast"` for Veo 3.1 extension.
+    return "fast"
+
+
+def _build_veo_extend_payload(
+    *,
+    prompt: str,
+    input_params: Dict[str, Any],
+    api_model: Optional[str],
+    api_config: Optional[Dict[str, Any]],
+    callback_url: Optional[str],
+) -> Dict[str, Any]:
+    task_id = _pop_first_non_empty(input_params, (
+        "taskId",
+        "task_id",
+        "sourceTaskId",
+        "source_task_id",
+        "providerTaskId",
+        "provider_task_id",
+        "kieTaskId",
+        "kie_task_id",
+    ))
+    if not task_id:
+        raise ValueError(
+            "Veo 3.1 Extend requires the original Kie taskId. "
+            "A video URL alone cannot be extended by Kie.ai's /veo/extend endpoint."
+        )
+
+    seeds = _pop_first_non_empty(input_params, ("seeds", "seed"))
+    watermark = _pop_first_non_empty(input_params, ("watermark",))
+
+    payload: Dict[str, Any] = {
+        "taskId": str(task_id),
+        "prompt": prompt,
+        "model": _resolve_veo_extend_model(api_model, api_config),
+    }
+    if seeds is not None:
+        payload["seeds"] = seeds
+    if watermark is not None:
+        payload["watermark"] = watermark
+    if callback_url:
+        payload["callBackUrl"] = callback_url
+    return payload
+
+
+def _normalize_veo_aspect_ratio_for_payload(value: Any, generation_type: Any = None) -> Optional[str]:
+    """Normalize SmartSpec's internal Veo aspect ratio values to Kie.ai's API enum."""
+    if value is None:
+        return None
+
+    cleaned = str(value).strip()
+    if not cleaned:
+        return None
+
+    if cleaned.lower() == "auto":
+        if str(generation_type or "").strip() == "REFERENCE_2_VIDEO":
+            return "16:9"
+        return "Auto"
+
+    if cleaned in {"16:9", "9:16"}:
+        return cleaned
+
+    return cleaned
+
+
+def _normalize_veo_generation_payload(input_params: Dict[str, Any]) -> None:
+    """Apply Veo-specific payload normalization in-place before submitting to Kie.ai."""
+    generation_type = input_params.get("generationType")
+    raw_aspect_ratio = input_params.get("aspect_ratio")
+
+    if raw_aspect_ratio is None and input_params.get("aspectRatio") is not None:
+        raw_aspect_ratio = input_params.get("aspectRatio")
+
+    input_params.pop("aspectRatio", None)
+    normalized_aspect_ratio = _normalize_veo_aspect_ratio_for_payload(raw_aspect_ratio, generation_type)
+    if normalized_aspect_ratio:
+        input_params["aspect_ratio"] = normalized_aspect_ratio
+    else:
+        input_params.pop("aspect_ratio", None)
+
+    if str(generation_type or "").strip() == "TEXT_2_VIDEO":
+        input_params.pop("imageUrls", None)
+        input_params.pop("image_urls", None)
+        return
+
+    image_urls = input_params.pop("image_urls", None)
+    if input_params.get("imageUrls") is None and image_urls is not None:
+        input_params["imageUrls"] = image_urls
+    if isinstance(input_params.get("imageUrls"), str):
+        image_url = str(input_params["imageUrls"]).strip()
+        if image_url:
+            input_params["imageUrls"] = [image_url]
+        else:
+            input_params.pop("imageUrls", None)
 
 
 def resolve_api_model(model: str, api_config: Optional[Dict[str, Any]] = None) -> str:
@@ -517,6 +746,45 @@ class KieAIProvider:
 
         logger.info("kie_ai_create_task", model=model, input_keys=list(input_params.keys()))
         return await self._make_request("POST", "jobs/createTask", data=payload)
+
+    async def submit_veo_4k_upgrade(
+        self,
+        task_id: str,
+        *,
+        index: int = 0,
+        callback_url: str | None = None,
+        api_config: Optional[Dict[str, Any]] = None,
+    ) -> tuple[Dict[str, Any], str]:
+        """Submit Kie Veo 4K post-processing for an already completed Veo task."""
+        endpoint = _get_api_config_value(
+            api_config,
+            "veo_4k_endpoint",
+            "veo4kEndpoint",
+            "veo4KEndpoint",
+            "veo4kUpgradeEndpoint",
+            "veo4KUpgradeEndpoint",
+        ) or "/api/v1/veo/get-4k-video"
+
+        payload: Dict[str, Any] = {
+            "taskId": task_id,
+            "index": max(0, int(index)),
+        }
+        effective_callback_url = callback_url if callback_url is not None else self.callback_url
+        if effective_callback_url:
+            payload["callBackUrl"] = effective_callback_url
+
+        result, upgrade_task_id = await self._submit_generation_task(
+            lambda: self._make_request("POST", endpoint.removeprefix("/api/v1/"), data=payload),
+            operation="veo_4k_upgrade",
+        )
+        logger.info(
+            "kie_ai_veo_4k_upgrade_submitted",
+            source_task_id=task_id,
+            upgrade_task_id=upgrade_task_id,
+            index=index,
+            has_callback=bool(effective_callback_url),
+        )
+        return result, upgrade_task_id
 
     async def get_task_status(
         self,
@@ -1063,16 +1331,23 @@ class KieAIProvider:
         extra_params = kwargs.pop("extra_params", None)
         wait_for_completion = kwargs.pop("wait_for_completion", True)
 
-        # Determine API model name
+        # Determine API model name and endpoint
         api_model = resolve_api_model(model, api_config)
+        api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
+        requested_resolution = kwargs.get("resolution")
+        requires_veo_4k_postprocess = _is_4k_resolution(requested_resolution) and _is_veo_endpoint(api_endpoint)
 
         input_params = {
             "prompt": prompt,
             "duration": kwargs.get("duration", 5),
             "aspect_ratio": kwargs.get("aspect_ratio", "16:9")
         }
+        if _get_api_config_bool(api_config, "omit_duration", "omitDuration"):
+            input_params.pop("duration", None)
+        if _get_api_config_bool(api_config, "omit_aspect_ratio", "omitAspectRatio"):
+            input_params.pop("aspect_ratio", None)
 
-        if kwargs.get("resolution"):
+        if kwargs.get("resolution") and not requires_veo_4k_postprocess:
             input_params["resolution"] = kwargs["resolution"]
         if kwargs.get("fps"):
             input_params["fps"] = kwargs["fps"]
@@ -1081,7 +1356,17 @@ class KieAIProvider:
         if extra_params and isinstance(extra_params, dict):
             for key, value in extra_params.items():
                 if value is not None:
+                    if requires_veo_4k_postprocess and str(key) == "resolution":
+                        continue
                     input_params[key] = value
+
+        is_veo_generation_request = (
+            _is_veo_endpoint(api_endpoint)
+            and not _is_veo_extend_request(api_endpoint, api_config, input_params)
+        )
+
+        if is_veo_generation_request:
+            _normalize_veo_generation_payload(input_params)
 
         # Add reference images if provided
         if kwargs.get("reference_image_urls"):
@@ -1089,12 +1374,52 @@ class KieAIProvider:
             if isinstance(ref_urls, list) and len(ref_urls) > 0:
                 reference_image_input_key, reference_image_input_type = _resolve_reference_image_input_config(
                     api_config,
-                    default_key="image_urls",
+                    default_key="imageUrls" if is_veo_generation_request else "image_urls",
                 )
                 if reference_image_input_type == "url":
                     input_params[reference_image_input_key] = ref_urls[0]
                 else:
                     input_params[reference_image_input_key] = ref_urls
+
+        if is_veo_generation_request:
+            _normalize_veo_generation_payload(input_params)
+
+        ref_video_urls: list[Any] = []
+        raw_ref_video_urls = kwargs.get("reference_video_urls")
+        raw_ref_video_url = kwargs.get("reference_video_url")
+        if isinstance(raw_ref_video_urls, list):
+            ref_video_urls.extend(raw_ref_video_urls)
+        if raw_ref_video_url:
+            ref_video_urls.append(raw_ref_video_url)
+        ref_video_urls = [
+            str(url).strip()
+            for url in ref_video_urls
+            if isinstance(url, str) and str(url).strip()
+        ]
+        if ref_video_urls:
+            reference_video_input_key, reference_video_input_type = _resolve_reference_video_input_config(
+                api_config,
+                default_key="video_urls",
+            )
+            if reference_video_input_type == "url":
+                input_params[reference_video_input_key] = ref_video_urls[0]
+            else:
+                input_params[reference_video_input_key] = ref_video_urls
+
+        reference_video_input_key, reference_video_input_type = _resolve_reference_video_input_config(
+            api_config,
+            default_key="video_urls",
+        )
+        existing_video_value = input_params.get(reference_video_input_key)
+        if reference_video_input_type == "url" and isinstance(existing_video_value, list):
+            first_video = next(
+                (str(url).strip() for url in existing_video_value if isinstance(url, str) and str(url).strip()),
+                None,
+            )
+            if first_video:
+                input_params[reference_video_input_key] = first_video
+            else:
+                input_params.pop(reference_video_input_key, None)
 
         # Use provided callback_url if explicitly passed, otherwise fall back to stored callback_url
         # Empty string ("") means "no callback" - use polling mode
@@ -1107,16 +1432,22 @@ class KieAIProvider:
         if callback_url == "":  # Empty string means explicitly disable callback
             callback_url = None
 
-        # Determine endpoint — use api_config endpoint or default to create_task
-        api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
-
         async def submit_request() -> Dict[str, Any]:
             if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
-                payload = {"prompt": prompt, **input_params}
-                if api_model:
-                    payload["model"] = api_model
-                if callback_url:
-                    payload["callBackUrl"] = callback_url
+                if _is_veo_extend_request(api_endpoint, api_config, input_params):
+                    payload = _build_veo_extend_payload(
+                        prompt=prompt,
+                        input_params=input_params,
+                        api_model=api_model,
+                        api_config=api_config,
+                        callback_url=callback_url,
+                    )
+                else:
+                    payload = {"prompt": prompt, **input_params}
+                    if api_model:
+                        payload["model"] = api_model
+                    if callback_url:
+                        payload["callBackUrl"] = callback_url
                 response = await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
                 logger.info("kie_ai_custom_endpoint_response", endpoint=api_endpoint, result_keys=list(response.keys()) if isinstance(response, dict) else "not_dict", result_type=type(response).__name__)
 
@@ -1144,7 +1475,27 @@ class KieAIProvider:
         # For async queue flows, return immediately after task submission.
         if wait_for_completion and not callback_url:
             logger.info("kie_ai_video_polling_started", task_id=task_id, max_wait=1200.0)
-            return await self.wait_for_task(task_id, poll_interval=5.0, max_wait=1200.0)
+            initial_result = await self.wait_for_task(task_id, poll_interval=5.0, max_wait=1200.0)
+            if requires_veo_4k_postprocess:
+                upgrade_index = 0
+                if isinstance(extra_params, dict):
+                    raw_index = extra_params.get("index") or extra_params.get("outputIndex") or extra_params.get("veo4kIndex")
+                    try:
+                        upgrade_index = max(0, int(raw_index)) if raw_index is not None else 0
+                    except (TypeError, ValueError):
+                        upgrade_index = 0
+                _, upgrade_task_id = await self.submit_veo_4k_upgrade(
+                    task_id,
+                    index=upgrade_index,
+                    callback_url="",
+                    api_config=api_config,
+                )
+                upgrade_result = await self.wait_for_task(upgrade_task_id, poll_interval=5.0, max_wait=1200.0)
+                upgrade_result["source_task_id"] = task_id
+                upgrade_result["source_result"] = initial_result
+                upgrade_result["actual_resolution"] = "4K"
+                return upgrade_result
+            return initial_result
 
         logger.info(
             "kie_ai_video_task_created_async",
@@ -1158,7 +1509,8 @@ class KieAIProvider:
             "status": "processing",
             "data": [],
             "created": int(time.time()),
-            "message": "Video task created. Result will be delivered via callback URL."
+            "message": "Video task created. Result will be delivered via callback URL.",
+            **({"requested_resolution": "4K", "requires_veo_4k_postprocess": True} if requires_veo_4k_postprocess else {}),
         }
 
     async def generate_audio(self, model: str, text: str, **kwargs) -> Dict:

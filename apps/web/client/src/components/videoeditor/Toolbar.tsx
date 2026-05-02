@@ -25,6 +25,10 @@ interface ToolbarProps {
   selectedCount?: number;
   onGroupClips?: () => void;
   onUngroupClips?: () => void;
+  onCopyClips?: () => void;
+  onPasteClips?: () => void;
+  canCopyClips?: boolean;
+  canPasteClips?: boolean;
   onAddText?: () => void;
   onOpenSilenceDetection?: () => void;
   onExtractAudio?: () => void;
@@ -53,6 +57,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   selectedCount = 0,
   onGroupClips,
   onUngroupClips,
+  onCopyClips,
+  onPasteClips,
+  canCopyClips = false,
+  canPasteClips = false,
   onAddText,
   onOpenSilenceDetection,
   onExtractAudio,
@@ -295,6 +303,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       {selectedCount > 0 && (
         <div className="toolbar-group">
           <span className="sel-info">{selectedCount} sel</span>
+          {onCopyClips && (
+            <button className="tb tb-text" onClick={onCopyClips} disabled={!canCopyClips} title="Copy selected clips (Ctrl+C)">
+              &#10697;
+            </button>
+          )}
           {selectedCount >= 2 && onGroupClips && (
             <button className="tb tb-text" onClick={onGroupClips} title="Group clips">&#128279;</button>
           )}
@@ -306,6 +319,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               &#128266;
             </button>
           )}
+        </div>
+      )}
+
+      {onPasteClips && (
+        <div className="toolbar-group">
+          <button className="tb tb-text" onClick={onPasteClips} disabled={!canPasteClips} title="Paste copied clips at playhead (Ctrl+V)">
+            &#128203;
+          </button>
         </div>
       )}
 

@@ -22,6 +22,31 @@ describe("enqueueTask", () => {
     process.env.GCP_REGION = "us-central1";
     process.env.CLOUD_RUN_PYTHON_URL = "https://python-service.run.app";
     process.env.CLOUD_RUN_SA_EMAIL = "cloud-run-api@test-project.iam.gserviceaccount.com";
+    delete process.env.CLOUD_RUN_NODE_URL;
+  });
+
+  it("reports missing Cloud Tasks configuration before creating a client", async () => {
+    delete process.env.CLOUD_RUN_PYTHON_URL;
+    const { getCloudTasksConfigStatus } = await import("../cloudTasks");
+
+    const status = getCloudTasksConfigStatus("python");
+
+    expect(status.configured).toBe(false);
+    expect(status.missingKeys).toContain("CLOUD_RUN_PYTHON_URL");
+  });
+
+  it("throws a clear configuration error when required env vars are missing", async () => {
+    delete process.env.GCP_PROJECT_ID;
+    const { enqueueTask } = await import("../cloudTasks");
+
+    await expect(
+      enqueueTask({
+        queueName: "media-jobs",
+        handlerPath: "/_internal/tasks/process-media",
+        payload: { job_id: "test-123" },
+      }),
+    ).rejects.toThrow("Cloud Tasks configuration is incomplete");
+    expect(mockCreateTask).not.toHaveBeenCalled();
   });
 
   it("creates a task with correct HTTP target URL", async () => {

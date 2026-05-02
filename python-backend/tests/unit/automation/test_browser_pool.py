@@ -65,6 +65,14 @@ def mock_playwright():
 
 
 class TestBrowserPoolStartStop:
+    async def test_start_respects_playwright_kill_switch(self, mock_redis, monkeypatch):
+        monkeypatch.setenv("SMARTSPEC_PLAYWRIGHT_ENABLED", "false")
+
+        pool = BrowserPool(redis_client=mock_redis)
+
+        with pytest.raises(BrowserLaunchError, match="Playwright features are disabled"):
+            await pool.start()
+
     async def test_start_initializes_playwright_and_launches_browser(self, mock_playwright, mock_redis):
         pool = BrowserPool(redis_client=mock_redis)
         await pool.start()

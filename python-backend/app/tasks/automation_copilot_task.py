@@ -85,26 +85,17 @@ def automation_analyze_task(
         import redis.asyncio as aioredis
 
         from app.services.automation_copilot import AutomationCopilot
-        from app.services.browser_pool import get_browser_pool
         from app.services.llm_gateway_client import LLMGatewayClient
-        from app.services.playwright_script_generator import PlaywrightScriptGenerator
-        from app.services.selector_cache import SelectorCache
-        from app.services.self_healing_executor import SelfHealingExecutor
 
         redis_client = aioredis.from_url(REDIS_URL)
         gateway = LLMGatewayClient()
         try:
-            pool = get_browser_pool()
-            cache = SelectorCache(redis_client=redis_client)
-            generator = PlaywrightScriptGenerator(browser_pool=pool, selector_cache=cache)
-            executor = SelfHealingExecutor(
-                browser_pool=pool,
-                selector_cache=cache,
-                redis_client=redis_client,
-            )
+            # Analyze only needs the LLM gateway. Do not create BrowserPool here:
+            # this endpoint is used for preview/clarification and must not launch
+            # Playwright unless execution actually starts.
             copilot = AutomationCopilot(
-                script_generator=generator,
-                executor=executor,
+                script_generator=None,
+                executor=None,
                 gateway_client=gateway,
             )
 
@@ -179,6 +170,9 @@ def automation_execute_task(
         redis_client = aioredis.from_url(REDIS_URL)
         gateway = LLMGatewayClient()
         try:
+            from app.services.playwright_feature_gate import require_playwright_enabled
+
+            require_playwright_enabled()
             pool = get_browser_pool()
             cache = SelectorCache(redis_client=redis_client)
             generator = PlaywrightScriptGenerator(
@@ -311,6 +305,11 @@ def browser_pool_health_check() -> dict:
     """Beat task: release orphaned browser contexts older than 360s."""
 
     async def _check():
+        from app.services.playwright_feature_gate import is_playwright_enabled
+
+        if not is_playwright_enabled():
+            return {"disabled": True, "released": 0}
+
         from app.services.browser_pool import get_browser_pool
 
         try:

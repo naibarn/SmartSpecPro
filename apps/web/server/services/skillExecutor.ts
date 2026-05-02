@@ -219,6 +219,11 @@ function buildMediaApiConfig(configJson?: Record<string, unknown>): Record<strin
   setApiConfigValue(apiConfig, "query_endpoint", configJson.apiQueryEndpoint);
   setApiConfigValue(apiConfig, "payload_format", configJson.apiPayloadFormat);
   setApiConfigValue(apiConfig, "kie_model_id", configJson.kieModelId);
+  setApiConfigValue(apiConfig, "generate_type", configJson.generateType);
+  setApiConfigValue(apiConfig, "veo_4k_endpoint", configJson.veo4kEndpoint);
+  setApiConfigValue(apiConfig, "veo_4k_endpoint", configJson.veo4KEndpoint);
+  setApiConfigValue(apiConfig, "veo_4k_endpoint", configJson.veo4kUpgradeEndpoint);
+  setApiConfigValue(apiConfig, "veo_4k_endpoint", configJson.veo4KUpgradeEndpoint);
   mergeApiConfigObject(apiConfig, configJson.apiConfig);
   addReferenceImageInputMetadata(apiConfig, configJson);
   return apiConfig;

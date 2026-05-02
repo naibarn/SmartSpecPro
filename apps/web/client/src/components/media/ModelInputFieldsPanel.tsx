@@ -101,6 +101,27 @@ function renderFieldDescription(field: { description?: string } | null | undefin
   );
 }
 
+function renderSelectedOptionDescription(
+  selectedOption: { value: unknown; label?: string } | null | undefined,
+  variant: "light" | "dark",
+) {
+  const label = String(selectedOption?.label ?? "").trim();
+  const value = String(selectedOption?.value ?? "").trim();
+  if (!label || label === value) {
+    return null;
+  }
+
+  return (
+    <p className={cn(
+      "text-[11px] leading-snug",
+      variant === "dark" ? "text-zinc-400" : "text-muted-foreground",
+    )}
+    >
+      {label}
+    </p>
+  );
+}
+
 export function ModelInputFieldsPanel({
   enabled,
   model,
@@ -542,6 +563,7 @@ export function ModelInputFieldsPanel({
                   </option>
                 ))}
               </select>
+              {renderSelectedOptionDescription(selectedOption, variant)}
               {searchTerm.length > 0 && filteredOptions.length === 0 ? (
                 <span className={cn("text-[11px]", variant === "dark" ? "text-zinc-500" : "text-muted-foreground")}>
                   No matching options. Showing current selected value.

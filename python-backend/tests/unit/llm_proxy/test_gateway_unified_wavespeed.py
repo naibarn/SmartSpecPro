@@ -2,10 +2,11 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import httpx
 from fastapi import HTTPException
 
 from app.llm_proxy.gateway_unified import LLMGateway
-from app.llm_proxy.models import VideoGenerationRequest
+from app.llm_proxy.models import AudioGenerationRequest, VideoGenerationRequest
 from app.llm_proxy.providers.wavespeed_media_provider import (
     WAVESPEED_SEEDANCE_2_FAST_TEXT_TO_VIDEO_MODEL_ID,
     WaveSpeedMediaProvider as _RealWaveSpeed,
@@ -54,6 +55,11 @@ def _make_wavespeed_client_mock() -> MagicMock:
         "raw_status": "created",
         "raw_response": {"data": {"id": "ws-pred-123", "status": "created"}},
     })
+    client.create_audio_prediction = AsyncMock(return_value={
+        "provider_task_id": "ws-audio-123",
+        "raw_status": "created",
+        "raw_response": {"data": {"id": "ws-audio-123", "status": "created"}},
+    })
     client.wait_for_completion = AsyncMock(return_value=WaveSpeedPollResult(
         state="success",
         raw_status="completed",
@@ -64,6 +70,20 @@ def _make_wavespeed_client_mock() -> MagicMock:
     ))
     client.aclose = AsyncMock()
     return client
+
+
+def test_format_provider_http_error_includes_wavespeed_response_body():
+    request = httpx.Request("POST", "https://api.wavespeed.ai/api/v3/example")
+    response = httpx.Response(
+        400,
+        request=request,
+        json={"message": "Text language is not supported by this model"},
+    )
+    exc = httpx.HTTPStatusError("bad request", request=request, response=response)
+
+    assert LLMGateway._format_provider_http_error("WaveSpeed API error", exc) == (
+        "WaveSpeed API error: HTTP 400 - Text language is not supported by this model"
+    )
 
 
 @pytest.mark.asyncio
@@ -117,6 +137,88 @@ async def test_generate_video_waits_for_completion_in_sync_mode(gateway):
 
     assert response.data == [{"url": "https://cdn.example.com/wavespeed.mp4"}]
     client.wait_for_completion.assert_awaited_once_with(request_id="ws-pred-123")
+
+
+@pytest.mark.asyncio
+async def test_generate_audio_routes_wavespeed_tts_and_maps_text_payload(gateway):
+    request = AudioGenerationRequest(
+        model="google/gemini-2.5-flash/text-to-speech",
+        text="Rose: Hello there.",
+        apiConfig={
+            "provider": "wavespeed_ai",
+            "endpoint": "/google/gemini-2.5-flash/text-to-speech",
+            "provider_model_id": "google/gemini-2.5-flash/text-to-speech",
+            "text_input_key": "text",
+        },
+        extraParams={
+            "language": "English (United States)",
+            "speakers": [{"speaker": "Rose", "voice": "Zephyr"}],
+        },
+    )
+    client = _make_wavespeed_client_mock()
+    client.wait_for_completion = AsyncMock(return_value=WaveSpeedPollResult(
+        state="success",
+        raw_status="completed",
+        provider_task_id="ws-audio-123",
+        result_url="https://cdn.example.com/wavespeed.mp3",
+        error_message=None,
+        raw_response={"data": {"id": "ws-audio-123", "status": "completed"}},
+    ))
+
+    with patch(WAVESPEED_PATCH, new=_wavespeed_class_mock(client)), \
+         patch(GET_PROVIDER_KEY_PATCH, new_callable=AsyncMock, return_value={"apiKey": "ws-key", "baseUrl": "https://api.wavespeed.ai"}):
+        response = await gateway.generate_audio(request, MagicMock(id=1))
+
+    assert response.provider == "wavespeed_ai"
+    assert response.id == "ws-audio-123"
+    assert response.data == [{"url": "https://cdn.example.com/wavespeed.mp3"}]
+    client.create_audio_prediction.assert_awaited_once_with(payload={
+        "language": "English (United States)",
+        "speakers": [{"speaker": "Rose", "voice": "Zephyr"}],
+        "text": "Rose: Hello there.",
+        "format": "mp3",
+    })
+    client.wait_for_completion.assert_awaited_once_with(request_id="ws-audio-123")
+    client.aclose.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_generate_audio_routes_wavespeed_music_with_prompt_key(gateway):
+    request = AudioGenerationRequest(
+        model="google/lyria-3-pro/music",
+        text="Dark ambient sci-fi underscore",
+        apiConfig={
+            "provider": "wavespeed_ai",
+            "endpoint": "/google/lyria-3-pro/music",
+            "provider_model_id": "google/lyria-3-pro/music",
+            "text_input_key": "prompt",
+        },
+        extraParams={
+            "negative_prompt": "vocals",
+            "seed": 123,
+        },
+    )
+    client = _make_wavespeed_client_mock()
+    client.wait_for_completion = AsyncMock(return_value=WaveSpeedPollResult(
+        state="success",
+        raw_status="completed",
+        provider_task_id="ws-audio-123",
+        result_url="https://cdn.example.com/lyria.wav",
+        error_message=None,
+        raw_response={"data": {"id": "ws-audio-123", "status": "completed"}},
+    ))
+
+    with patch(WAVESPEED_PATCH, new=_wavespeed_class_mock(client)), \
+         patch(GET_PROVIDER_KEY_PATCH, new_callable=AsyncMock, return_value={"apiKey": "ws-key", "baseUrl": "https://api.wavespeed.ai"}):
+        response = await gateway.generate_audio(request, MagicMock(id=1))
+
+    assert response.data == [{"url": "https://cdn.example.com/lyria.wav"}]
+    client.create_audio_prediction.assert_awaited_once_with(payload={
+        "negative_prompt": "vocals",
+        "seed": 123,
+        "prompt": "Dark ambient sci-fi underscore",
+        "format": "mp3",
+    })
 
 
 @pytest.mark.asyncio

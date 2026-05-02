@@ -171,7 +171,14 @@ async def execute(
     _: None = Depends(_verify_internal_token),
 ):
     """Generate and execute automation scripts."""
+    from app.services.playwright_feature_gate import is_playwright_enabled
     from app.tasks.automation_copilot_task import automation_execute_task
+
+    if not is_playwright_enabled():
+        raise HTTPException(
+            status_code=503,
+            detail=json.dumps({"error": "Playwright automation is disabled", "code": "playwright_disabled"}),
+        )
 
     r = _get_redis()
     flag = r.get(f"feature_flag:automationCopilot:{body.tenant_id}")

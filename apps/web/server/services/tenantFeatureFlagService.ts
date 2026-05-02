@@ -18,6 +18,29 @@ import {
 import { assertBrowserPolicyFeaturePromotionReady } from "./browserPolicyReleaseControl";
 import { setTenantFeatureFlag } from "./featureFlags";
 
+const FALSE_ENV_VALUES = new Set(["0", "false", "no", "off", "disabled"]);
+
+function isPlaywrightGloballyEnabled(): boolean {
+  const raw = process.env.SMARTSPEC_PLAYWRIGHT_ENABLED ?? "true";
+  return !FALSE_ENV_VALUES.has(raw.trim().toLowerCase());
+}
+
+function applyPlaywrightGlobalKillSwitch(flags: TenantFeatureFlags): TenantFeatureFlags {
+  if (isPlaywrightGloballyEnabled()) {
+    return flags;
+  }
+
+  return {
+    ...flags,
+    browserTool: false,
+    automationCopilot: false,
+    liveBrowser: false,
+    chatBrowserSessionEntry: false,
+    agencyBrowserSessionUi: false,
+    workflowBrowserSessionNodes: false,
+  };
+}
+
 /**
  * Flag keys that are also checked via Redis by backend route guards.
  * When these flags are updated in the DB, we sync to Redis so that
@@ -98,20 +121,21 @@ export function validateFeatureFlags(
 export function resolveFeatureFlags(
   storedFlags: Record<string, boolean> | null | undefined,
 ): TenantFeatureFlags {
+  let resolved: TenantFeatureFlags;
   if (!storedFlags) {
-    return { ...FEATURE_FLAG_DEFAULTS };
-  }
+    resolved = { ...FEATURE_FLAG_DEFAULTS };
+  } else {
+    resolved = { ...FEATURE_FLAG_DEFAULTS };
 
-  const result = { ...FEATURE_FLAG_DEFAULTS };
-
-  for (const key of Object.keys(FEATURE_FLAG_DEFAULTS) as TenantFeatureFlagKey[]) {
-    const stored = storedFlags[key];
-    if (typeof stored === "boolean") {
-      result[key] = stored;
+    for (const key of Object.keys(FEATURE_FLAG_DEFAULTS) as TenantFeatureFlagKey[]) {
+      const stored = storedFlags[key];
+      if (typeof stored === "boolean") {
+        resolved[key] = stored;
+      }
     }
   }
 
-  return result;
+  return applyPlaywrightGlobalKillSwitch(resolved);
 }
 
 /**

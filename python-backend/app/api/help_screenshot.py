@@ -86,6 +86,11 @@ async def capture_help_screenshot(req: ScreenshotRequest) -> ScreenshotResponse:
     resulting PNG to the Node.js uploads directory, and returns the public
     URL and ready-to-paste Markdown image tag.
     """
+    from app.services.playwright_feature_gate import is_playwright_enabled
+
+    if not is_playwright_enabled():
+        raise HTTPException(status_code=503, detail="Playwright screenshot capture is disabled.")
+
     from app.services.tools.browser_tool import BrowserSession
 
     logger.info(

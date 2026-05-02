@@ -314,6 +314,75 @@ describe("MediaGenerationService retry behavior", () => {
     });
   });
 
+  it("passes Veo Extend endpoint, generate type, and source task id for async video generation", async () => {
+    vi.mocked(getModelById).mockReturnValue({
+      id: "veo3/extend-video",
+      type: "video",
+      name: "Veo 3.1 Extend",
+      provider: "kie.ai",
+      description: "Extend test model",
+      aliases: [],
+      creditCost: 1250,
+      configJson: {
+        apiEndpoint: "/api/v1/veo/extend",
+        apiQueryEndpoint: "/api/v1/veo/record-info",
+        apiPayloadFormat: "veo_extend",
+        generateType: "video-extend",
+        apiConfig: {
+          extend_model: "fast",
+        },
+      },
+    } as never);
+
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          id: "extend-task-42",
+          task_id: null,
+          user_id: 1,
+          media_type: "video",
+          status: "pending",
+          model: "veo3/extend-video",
+          prompt: "Continue the segment naturally.",
+          parameters: {},
+          result_url: null,
+          result_data: null,
+          error_message: null,
+          credits_used: null,
+          credits_balance: null,
+          created_at: "2026-03-06T04:21:05.493354Z",
+          started_at: null,
+          completed_at: null,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateVideoAsync(
+      {
+        prompt: "Continue the segment naturally.",
+        model: "veo3/extend-video",
+        apiConfig: { provider: "kie.ai" },
+        extraParams: { source_task_id: "veo_task_abcdef123456" },
+      },
+      "test-token",
+    );
+
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(payload.api_config).toMatchObject({
+      provider: "kie.ai",
+      endpoint: "/api/v1/veo/extend",
+      payload_format: "veo_extend",
+      generate_type: "video-extend",
+      extend_model: "fast",
+      model: "veo3/extend-video",
+    });
+    expect(payload.extra_params).toMatchObject({
+      source_task_id: "veo_task_abcdef123456",
+    });
+  });
+
   it("preserves structured Gemini TTS speaker rows in extraParams", async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify(taskPayload), { status: 200 }),

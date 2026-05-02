@@ -44,8 +44,45 @@ export interface EnqueueTaskOptions {
   targetService?: "python" | "node";
 }
 
+export interface CloudTasksConfigStatus {
+  configured: boolean;
+  missingKeys: string[];
+  projectId: string;
+  region: string;
+  serviceUrl: string;
+  serviceAccountEmail: string;
+}
+
 let _client: CloudTasksClientLike | null = null;
 let _clientInitError: Error | null = null;
+
+function readEnvValue(key: string): string {
+  return (process.env[key] || "").trim();
+}
+
+export function getCloudTasksConfigStatus(
+  targetService: "python" | "node" = "python",
+): CloudTasksConfigStatus {
+  const serviceUrlKey = targetService === "node" ? "CLOUD_RUN_NODE_URL" : "CLOUD_RUN_PYTHON_URL";
+  const values = {
+    GCP_PROJECT_ID: readEnvValue("GCP_PROJECT_ID"),
+    GCP_REGION: readEnvValue("GCP_REGION"),
+    CLOUD_RUN_SA_EMAIL: readEnvValue("CLOUD_RUN_SA_EMAIL"),
+    [serviceUrlKey]: readEnvValue(serviceUrlKey),
+  };
+  const missingKeys = Object.entries(values)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+
+  return {
+    configured: missingKeys.length === 0,
+    missingKeys,
+    projectId: values.GCP_PROJECT_ID,
+    region: values.GCP_REGION,
+    serviceUrl: values[serviceUrlKey],
+    serviceAccountEmail: values.CLOUD_RUN_SA_EMAIL,
+  };
+}
 
 async function getClient(): Promise<CloudTasksClientLike> {
   if (!_client) {
@@ -85,31 +122,31 @@ export async function enqueueTask(
 ): Promise<string> {
   const { queueName, handlerPath, payload, delaySeconds, taskId, targetService = "python" } = options;
 
-  const projectId = process.env.GCP_PROJECT_ID!;
-  const region = process.env.GCP_REGION!;
-  const serviceUrl = targetService === "node"
-    ? process.env.CLOUD_RUN_NODE_URL!
-    : process.env.CLOUD_RUN_PYTHON_URL!;
-  const saEmail = process.env.CLOUD_RUN_SA_EMAIL!;
+  const config = getCloudTasksConfigStatus(targetService);
+  if (!config.configured) {
+    throw new Error(
+      `Cloud Tasks configuration is incomplete for ${targetService} target. Missing: ${config.missingKeys.join(", ")}`,
+    );
+  }
 
   const client = await getClient();
-  const parent = client.queuePath(projectId, region, queueName);
+  const parent = client.queuePath(config.projectId, config.region, queueName);
 
   const task: Record<string, any> = {
     httpRequest: {
       httpMethod: "POST" as const,
-      url: `${serviceUrl}${handlerPath}`,
+      url: `${config.serviceUrl}${handlerPath}`,
       headers: { "Content-Type": "application/json" },
       body: Buffer.from(JSON.stringify(payload)).toString("base64"),
       oidcToken: {
-        serviceAccountEmail: saEmail,
-        audience: serviceUrl,
+        serviceAccountEmail: config.serviceAccountEmail,
+        audience: config.serviceUrl,
       },
     },
   };
 
   if (taskId) {
-    task.name = client.taskPath(projectId, region, queueName, taskId);
+    task.name = client.taskPath(config.projectId, config.region, queueName, taskId);
   }
 
   if (delaySeconds && delaySeconds > 0) {

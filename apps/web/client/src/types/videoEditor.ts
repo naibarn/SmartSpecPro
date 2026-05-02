@@ -108,6 +108,8 @@ export interface Asset {
   generationPrompt?: string;
   referenceUrls?: string[];
   generationModelId?: string;
+  generationAspectRatio?: string;
+  generationExtraParams?: Record<string, unknown>;
 }
 
 export interface AudioMixing {
@@ -361,6 +363,10 @@ export interface MediaLibraryAsset {
   referenceUrls?: string[];
   /** Model ID used during generation */
   generationModelId?: string;
+  /** Aspect ratio used during generation */
+  generationAspectRatio?: string;
+  /** Model-specific options used during generation */
+  generationExtraParams?: Record<string, unknown>;
 }
 
 // ========================================
@@ -508,6 +514,7 @@ export function addAssetToProject(
     source: 'generated',
     taskId: asset.id,
     model: asset.model,
+    name: asset.title,
     path: localPath,
     originalPath: asset.url,
     filename: localPath.split('/').pop() || localPath.split('\\').pop() || 'unknown',
@@ -517,6 +524,8 @@ export function addAssetToProject(
     generationPrompt: asset.generationPrompt,
     referenceUrls: asset.referenceUrls,
     generationModelId: asset.generationModelId,
+    generationAspectRatio: asset.generationAspectRatio,
+    generationExtraParams: asset.generationExtraParams,
   };
 
   project.assets[newAsset.id] = newAsset;

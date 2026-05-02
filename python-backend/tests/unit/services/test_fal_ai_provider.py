@@ -27,7 +27,10 @@ class TestConstants:
         assert "fal-ai/ltx-2.3/retake-video" in FalAIProvider.VIDEO_MODELS
 
     def test_audio_models(self):
-        assert FalAIProvider.AUDIO_MODELS == frozenset({"fal-ai/lux-tts"})
+        assert FalAIProvider.AUDIO_MODELS == frozenset({
+            "fal-ai/gemini-3.1-flash-tts",
+            "fal-ai/lux-tts",
+        })
 
     def test_image_models_count(self):
         assert len(FalAIProvider.IMAGE_MODELS) == 4
@@ -157,6 +160,39 @@ class TestGenerateAudio:
                     {"text": "Hello", "audio_url": "https://example.com/ref.mp3"},
                 )
                 mock_validate.assert_called_once()
+
+    async def test_gemini_flash_tts_uses_queue_submit_and_result(self, provider):
+        submit_response = MagicMock()
+        submit_response.status_code = 200
+        submit_response.json.return_value = {"request_id": "req-tts-123", "status": "IN_QUEUE"}
+        submit_response.raise_for_status = MagicMock()
+
+        status_response = MagicMock()
+        status_response.status_code = 200
+        status_response.json.return_value = {"status": "COMPLETED"}
+        status_response.raise_for_status = MagicMock()
+
+        result_response = MagicMock()
+        result_response.status_code = 200
+        result_response.json.return_value = {
+            "audio": {"url": "https://v3b.fal.media/gemini.mp3", "duration": 12.5}
+        }
+        result_response.raise_for_status = MagicMock()
+
+        with patch.object(provider.client, "post", new_callable=AsyncMock, return_value=submit_response) as mock_post, \
+             patch.object(provider.client, "get", new_callable=AsyncMock, side_effect=[status_response, result_response]) as mock_get:
+            result = await provider.generate_audio(
+                "fal-ai/gemini-3.1-flash-tts",
+                {"prompt": "Hello world"},
+            )
+
+        assert mock_post.call_args[0][0].startswith("https://queue.fal.run/")
+        assert "fal-ai/gemini-3.1-flash-tts" in mock_post.call_args[0][0]
+        assert mock_get.await_count == 2
+        assert result["id"] == "req-tts-123"
+        assert result["status"] == "COMPLETED"
+        assert result["data"][0]["url"] == "https://v3b.fal.media/gemini.mp3"
+        assert result["actual_duration"] == 12.5
 
 
 # --- generate_image (sync Flux) ---
@@ -309,6 +345,7 @@ class TestErrorHandling:
 
     def test_map_http_error_to_message(self):
         assert FalAIProvider.map_http_error_to_message(401) == "Invalid fal.ai API key"
+        assert "access denied" in FalAIProvider.map_http_error_to_message(403)
         assert FalAIProvider.map_http_error_to_message(422) == "Content policy rejection"
         assert FalAIProvider.map_http_error_to_message(429) == "fal.ai rate limit exceeded"
         assert FalAIProvider.map_http_error_to_message(503) == "fal.ai error (HTTP 503)"
@@ -371,9 +408,10 @@ class TestModelIdValidation:
 
     def test_valid_audio_model(self):
         FalAIProvider._validate_model_id("fal-ai/lux-tts", FalAIProvider.AUDIO_MODELS)
+        FalAIProvider._validate_model_id("fal-ai/gemini-3.1-flash-tts", FalAIProvider.AUDIO_MODELS)
 
     def test_all_models_combined(self):
-        assert len(FalAIProvider.ALL_MODELS) == 12  # 7 + 1 + 4
+        assert len(FalAIProvider.ALL_MODELS) == 13  # 7 + 2 + 4
 
 
 class TestRequestIdValidation:

@@ -94,6 +94,23 @@ describe("buildCustomSkillUserPrompt", () => {
     expect(prompt).toContain("do not invent `@ImageN` handles");
   });
 
+  it("instructs vision-capable skill runs to analyze and role-tag attached reference images", () => {
+    const prompt = buildCustomSkillUserPrompt(
+      {
+        userIdea: "เล่าข่าวเทคโนโลยีพร้อมภาพประกอบ",
+        contentMode: "news_narration",
+      },
+      { referenceImageCount: 3 },
+    );
+
+    expect(prompt).toContain("\"reference_images\": [");
+    expect(prompt).toContain("@Image1");
+    expect(prompt).toContain("Analyze every attached image with vision");
+    expect(prompt).toContain("character/person identity");
+    expect(prompt).toContain("product/brand/object");
+    expect(prompt).toContain("scene/location/background");
+  });
+
   it("tells text prompt skills to rewrite the source idea instead of returning it unchanged", () => {
     const prompt = buildCustomSkillUserPrompt({
       topic: "ภาพผู้หญิงสูงวัยวัย 18 ปี เดินเล่นริมทะเล",

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Check, ExternalLink, Loader2, Minus, Pencil, RefreshCw, RotateCcw, Video, X } from "lucide-react";
+import { AlertCircle, Check, ExternalLink, Loader2, Mic2, Minus, Music2, Pencil, RefreshCw, RotateCcw, Video, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import type { StoryboardCompanionAudioCandidate } from "@/lib/storyboardVideoProject";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,10 @@ export interface StoryboardReviewTask {
   prompt: string;
   url?: string | null;
   model?: string;
+  generationModelId?: string;
+  referenceUrls?: string[];
+  generationAspectRatio?: string;
+  generationExtraParams?: Record<string, unknown>;
   status: "queued" | "generating" | "completed" | "error";
   error?: string;
 }
@@ -41,6 +45,10 @@ interface StoryboardBatchReviewDialogProps {
   regeneratingTaskId?: string | null;
   compoundStatus?: string | null;
   projectLink?: string | null;
+  companionAudio?: StoryboardCompanionAudioCandidate[];
+  regeneratingAudioId?: string | null;
+  onRegenerateAudio?: (audioId: string) => void;
+  muteVideoPreviewAudio?: boolean;
 }
 
 function summarizePrompt(prompt: string): string {
@@ -64,6 +72,10 @@ export function StoryboardBatchReviewDialog({
   regeneratingTaskId,
   compoundStatus,
   projectLink,
+  companionAudio = [],
+  regeneratingAudioId,
+  onRegenerateAudio,
+  muteVideoPreviewAudio = false,
 }: StoryboardBatchReviewDialogProps) {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [draftPrompts, setDraftPrompts] = useState<Record<string, string>>({});
@@ -86,8 +98,8 @@ export function StoryboardBatchReviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[88vh] overflow-hidden">
-        <DialogHeader>
+      <DialogContent className="!flex !max-w-[min(92vw,72rem)] !p-0 max-h-[calc(100dvh-2rem)] min-h-0 w-[min(92vw,72rem)] flex-col overflow-hidden">
+        <DialogHeader className="shrink-0 px-6 pt-6">
           <DialogTitle className="flex items-center gap-2">
             <Video className="h-5 w-5 text-blue-500" />
             Storyboard Review
@@ -99,7 +111,7 @@ export function StoryboardBatchReviewDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm">
+        <div className="mx-6 flex shrink-0 items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm">
           <div className="flex items-center gap-2">
             <Badge variant="secondary">{selectedCount} selected</Badge>
             <span className="text-muted-foreground">
@@ -116,8 +128,82 @@ export function StoryboardBatchReviewDialog({
           </div>
         </div>
 
-        <ScrollArea className="h-[48vh] pr-3">
-          <div className="space-y-3">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pr-4">
+          <div className="space-y-4">
+            {companionAudio.length > 0 ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-semibold text-emerald-950">Separate audio preview</div>
+                    <div className="text-xs text-emerald-800">
+                      Review voice/music before sending this storyboard to the video editor.
+                    </div>
+                  </div>
+                  <Badge variant="secondary">{companionAudio.length} audio track{companionAudio.length === 1 ? "" : "s"}</Badge>
+                </div>
+
+                <div className="space-y-2">
+                  {companionAudio.map((audio) => {
+                    const isVoiceover = audio.kind === "voiceover";
+                    const durationLabel = audio.actualDurationSeconds && audio.targetDurationSeconds
+                      ? `${audio.actualDurationSeconds.toFixed(1)}s / target ${audio.targetDurationSeconds.toFixed(1)}s`
+                      : audio.targetDurationSeconds
+                        ? `target ${audio.targetDurationSeconds.toFixed(1)}s`
+                        : null;
+                    const startTimeLabel = audio.startTimeSeconds && audio.startTimeSeconds > 0
+                      ? `starts ${audio.startTimeSeconds.toFixed(1)}s`
+                      : null;
+                    return (
+                      <div key={audio.id} className="rounded-lg border bg-background p-3">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                          <div className="flex min-w-0 flex-1 items-start gap-3">
+                            <div className="mt-0.5 rounded-full bg-emerald-100 p-2 text-emerald-700">
+                              {isVoiceover ? <Mic2 className="h-4 w-4" /> : <Music2 className="h-4 w-4" />}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="outline">{isVoiceover ? "Voiceover" : "Music"}</Badge>
+                                <span className="text-sm font-medium">{audio.title}</span>
+                                {audio.model ? <Badge variant="secondary">{audio.model}</Badge> : null}
+                                {audio.segmentCount && audio.segmentCount > 1 ? (
+                                  <Badge variant="outline">Part {(audio.segmentIndex ?? 0) + 1}/{audio.segmentCount}</Badge>
+                                ) : null}
+                                {durationLabel ? <Badge variant="outline">{durationLabel}</Badge> : null}
+                                {startTimeLabel ? <Badge variant="outline">{startTimeLabel}</Badge> : null}
+                              </div>
+                              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                                {summarizePrompt(audio.prompt)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 flex-col gap-2 lg:w-80">
+                            <audio src={audio.url} controls className="w-full" />
+                            {onRegenerateAudio ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={regeneratingAudioId === audio.id}
+                                onClick={() => onRegenerateAudio(audio.id)}
+                              >
+                                {regeneratingAudioId === audio.id ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="mr-2 h-4 w-4" />
+                                )}
+                                Regenerate audio
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="space-y-3">
             {tasks.map((task) => {
               const isSelected = selectedTaskIds.includes(task.id);
               const hasVideo = !!task.url && task.status === "completed";
@@ -144,6 +230,7 @@ export function StoryboardBatchReviewDialog({
                         <video
                           src={task.url || undefined}
                           controls
+                          muted={muteVideoPreviewAudio}
                           className="h-24 w-full object-cover"
                         />
                       ) : (
@@ -264,74 +351,77 @@ export function StoryboardBatchReviewDialog({
                 </div>
               );
             })}
-          </div>
-        </ScrollArea>
-
-        <div className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">
-          Shared continuity notes stay attached when the selected clips are compounded or sent to the editor.
-        </div>
-
-        {compoundStatus ? (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
-            {compoundStatus}
-          </div>
-        ) : null}
-
-        {projectLink ? (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-950 shadow-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <div className="font-medium">Project created</div>
-                <a className="mt-1 block break-all underline decoration-emerald-400 underline-offset-2" href={projectLink}>
-                  Open project in the editor
-                </a>
-                <p className="mt-1 text-xs text-emerald-800">
-                  Continue editing this storyboard as a Video Editor project.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button asChild size="lg" className="bg-emerald-600 text-white hover:bg-emerald-700">
-                  <a href={projectLink}>
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Open project
-                  </a>
-                </Button>
-                <Button asChild variant="outline" size="lg" className="border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-50">
-                  <a href={projectLink} target="_blank" rel="noreferrer">
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Open in new tab
-                  </a>
-                </Button>
-              </div>
             </div>
           </div>
-        ) : null}
+        </div>
 
-        <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="default"
-              onClick={onAutoCompound}
-              disabled={isCompounding || completedSelectedTasks.length === 0}
-            >
-              {isCompounding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Auto compound selected clips
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={onCreateProject}
-              disabled={isCreatingProject || completedSelectedTasks.length === 0}
-            >
-              {isCreatingProject ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Create video edit project
-            </Button>
+        <div className="shrink-0 space-y-3 border-t bg-background px-6 pb-6 pt-4">
+          <div className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">
+            Shared continuity notes stay attached when the selected clips are compounded or sent to the editor.
           </div>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-        </DialogFooter>
+
+          {compoundStatus ? (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+              {compoundStatus}
+            </div>
+          ) : null}
+
+          {projectLink ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-950 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="font-medium">Project created</div>
+                  <a className="mt-1 block break-all underline decoration-emerald-400 underline-offset-2" href={projectLink}>
+                    Open project in the editor
+                  </a>
+                  <p className="mt-1 text-xs text-emerald-800">
+                    Continue editing this storyboard as a Video Editor project.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild size="lg" className="bg-emerald-600 text-white hover:bg-emerald-700">
+                    <a href={projectLink}>
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Open project
+                    </a>
+                  </Button>
+                  <Button asChild variant="outline" size="lg" className="border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-50">
+                    <a href={projectLink} target="_blank" rel="noreferrer">
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Open in new tab
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="default"
+                onClick={onAutoCompound}
+                disabled={isCompounding || completedSelectedTasks.length === 0}
+              >
+                {isCompounding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Auto compound selected clips
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onCreateProject}
+                disabled={isCreatingProject || completedSelectedTasks.length === 0}
+              >
+                {isCreatingProject ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Create video edit project
+              </Button>
+            </div>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

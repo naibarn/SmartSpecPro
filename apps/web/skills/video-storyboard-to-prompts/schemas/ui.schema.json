@@ -27,26 +27,205 @@
         {
           "id": "continuityNotes",
           "type": "textarea",
-          "label": "Continuity Notes",
-          "labelTh": "บันทึกความต่อเนื่อง",
+          "label": "Continuity Notes / Story Bible",
+          "labelTh": "บันทึกความต่อเนื่อง / Story Bible",
           "placeholder": "e.g., Main character: a small yellow dog wearing a blue collar. Same park, same time of day, same red ball in every scene.",
           "placeholderTh": "เช่น ตัวละครหลัก: สุนัขตัวเล็กสีเหลืองใส่ปลอกคอสีน้ำเงิน ฉากสวนเดิม เวลาเดิม ลูกบอลสีแดงต้องอยู่ทุกฉาก",
-          "helpText": "Optional fixed character, wardrobe, props, and setting details that must remain identical in every prompt.",
-          "helpTextTh": "ระบุรายละเอียดตัวละคร เสื้อผ้า ของประกอบ และฉากที่ต้องเหมือนเดิมทุก prompt",
+          "helpText": "Optional. Leave blank to let the skill generate a shared story bible and Continuity Lock that will be repeated in every prompt.",
+          "helpTextTh": "ไม่บังคับ เว้นว่างเพื่อให้ skill สร้าง story bible และ Continuity Lock สำหรับใช้ซ้ำทุก prompt",
           "required": false,
           "rows": 3
         },
         {
           "id": "referenceNotes",
           "type": "textarea",
-          "label": "Reference Notes",
-          "labelTh": "บันทึกภาพอ้างอิง",
+          "label": "Reference Notes / Visual Bible",
+          "labelTh": "บันทึกภาพอ้างอิง / Visual Bible",
           "placeholder": "e.g., The attached image shows a small yellow dog with a blue collar, round eyes, and a red bandana. Keep the same character identity, outfit, and accessories across all prompts.",
           "placeholderTh": "เช่น ภาพที่แนบมาเป็นสุนัขตัวเล็กสีเหลือง ใส่ปลอกคอสีน้ำเงิน ตากลม และผ้าพันคอสีแดง ให้คงตัวตน เสื้อผ้า และเครื่องประดับเดิมในทุก prompt",
-          "helpText": "Optional notes for attached reference images, especially character identity and location details. If left blank, the skill will infer a continuity bible from the idea and reference images automatically.",
-          "helpTextTh": "บันทึกรายละเอียดของภาพอ้างอิง โดยเฉพาะตัวตนของตัวละครและสถานที่ ถ้าเว้นว่าง ระบบจะสร้าง continuity bible จากไอเดียและภาพอ้างอิงให้อัตโนมัติ",
+          "helpText": "Optional. Leave blank to let the skill generate a visual reference bible from the idea and dragged images.",
+          "helpTextTh": "ไม่บังคับ เว้นว่างเพื่อให้ skill สร้าง visual reference bible จากไอเดียและรูปที่ลากเข้ามา",
           "required": false,
           "rows": 3
+        },
+        {
+          "id": "contentMode",
+          "type": "select",
+          "label": "Content Mode",
+          "labelTh": "รูปแบบเนื้อหา",
+          "helpText": "Choose News Narration for short presenter-style news clips split into multiple Veo prompts.",
+          "helpTextTh": "เลือกเล่าข่าวเมื่อต้องการคลิปผู้ประกาศ/อธิบายข่าวที่แยกเป็นหลาย prompt สำหรับ Veo",
+          "required": true,
+          "default": "storyboard",
+          "options": [
+            { "value": "storyboard", "label": "Storyboard / Creative Video", "labelTh": "Storyboard / วิดีโอสร้างสรรค์" },
+            { "value": "news_narration", "label": "News Narration", "labelTh": "เล่าข่าวพร้อมภาพประกอบ" }
+          ]
+        },
+        {
+          "id": "newsScript",
+          "type": "textarea",
+          "label": "News Text",
+          "labelTh": "ข้อความข่าว",
+          "placeholder": "Paste the full news text here. If empty, the Video Idea field will be used as the news source.",
+          "placeholderTh": "วางข้อความข่าวเต็มที่นี่ ถ้าเว้นว่าง ระบบจะใช้ช่องไอเดียคลิปเป็นต้นฉบับข่าว",
+          "helpText": "The skill will split this into several 8-second-ready prompts for Multi Video generation.",
+          "helpTextTh": "ระบบจะแบ่งข่าวเป็น prompt หลายก้อนที่พร้อมสร้างแบบ Multi Video ก้อนละไม่เกิน 8 วินาที",
+          "required": false,
+          "rows": 6,
+          "dependsOn": { "field": "contentMode", "value": "news_narration" }
+        },
+        {
+          "id": "newsLanguageMode",
+          "type": "select",
+          "label": "News Language",
+          "labelTh": "ภาษาข่าว",
+          "helpText": "Auto-detect Thai or English from the news text, or force a spoken language.",
+          "helpTextTh": "ตรวจภาษาไทย/อังกฤษจากข้อความข่าวอัตโนมัติ หรือบังคับภาษาพูด",
+          "default": "auto_detect",
+          "dependsOn": { "field": "contentMode", "value": "news_narration" },
+          "options": [
+            { "value": "auto_detect", "label": "Auto Detect", "labelTh": "ตรวจอัตโนมัติ" },
+            { "value": "thai", "label": "Thai", "labelTh": "ภาษาไทย" },
+            { "value": "english", "label": "English", "labelTh": "ภาษาอังกฤษ" }
+          ]
+        },
+        {
+          "id": "newsNarrationStyle",
+          "type": "select",
+          "label": "News Narration Style",
+          "labelTh": "สไตล์การเล่าข่าว",
+          "default": "explainer_news",
+          "dependsOn": { "field": "contentMode", "value": "news_narration" },
+          "options": [
+            { "value": "news_anchor", "label": "News Anchor", "labelTh": "ผู้ประกาศข่าว" },
+            { "value": "explainer_news", "label": "Explainer News", "labelTh": "อธิบายข่าวเข้าใจง่าย" },
+            { "value": "short_social_news", "label": "Short Social News", "labelTh": "เล่าข่าวสั้นแนวโซเชียล" }
+          ]
+        },
+        {
+          "id": "newsSpeechPace",
+          "type": "select",
+          "label": "Speech Pace",
+          "labelTh": "จังหวะเสียงพูด",
+          "helpText": "Controls the presenter delivery in generated prompts. Brisk News is recommended for Thai news so speech does not feel slow or stretched.",
+          "helpTextTh": "ควบคุมจังหวะการพูดในพรอมต์ แนะนำจังหวะข่าวกระชับสำหรับภาษาไทยเพื่อลดอาการพูดช้า/ลากเสียง",
+          "default": "brisk_news",
+          "dependsOn": { "field": "contentMode", "value": "news_narration" },
+          "options": [
+            { "value": "natural", "label": "Natural", "labelTh": "ธรรมชาติ" },
+            { "value": "brisk_news", "label": "Brisk News", "labelTh": "ข่าวกระชับ" },
+            { "value": "fast_social", "label": "Fast Social", "labelTh": "เร็วแบบคลิปสั้น" }
+          ]
+        },
+        {
+          "id": "audioPersona",
+          "type": "select",
+          "label": "Audio Persona",
+          "labelTh": "Persona เสียง / Audio Cue",
+          "helpText": "Persona-specific voice direction inserted into every generated prompt. Auto Match chooses the best cue from the content and character.",
+          "helpTextTh": "เลือกแนวเสียงที่เหมาะกับคาแรคเตอร์และ Use Case ระบบจะใส่ Audio Cue ลงในทุก prompt โดยอัตโนมัติ",
+          "default": "auto_match",
+          "options": [
+            { "value": "auto_match", "label": "Auto Match", "labelTh": "เลือกให้อัตโนมัติ" },
+            { "value": "corporate_presentation", "label": "Corporate Presentation", "labelTh": "งานนำเสนอธุรกิจ / องค์กร" },
+            { "value": "e_learning_educational", "label": "E-Learning / Educational", "labelTh": "สื่อการสอน / คอร์สออนไลน์" },
+            { "value": "news_broadcast", "label": "News Broadcast", "labelTh": "รายงานข่าว / ประกาศสถานการณ์" },
+            { "value": "luxury_brand_beauty", "label": "Luxury Brand / Beauty", "labelTh": "โฆษณาหรูหรา / บิวตี้" },
+            { "value": "upbeat_commercial", "label": "Upbeat Commercial", "labelTh": "โฆษณาไอที / แคมเปญวัยรุ่น" },
+            { "value": "virtual_assistant", "label": "Virtual Assistant", "labelTh": "AI ผู้ช่วย / Customer Support" },
+            { "value": "podcast_host_vlogger", "label": "Podcast Host / Vlogger", "labelTh": "พอดแคสต์ / วิดีโอบล็อกเกอร์" },
+            { "value": "documentary_narration", "label": "Documentary Narration", "labelTh": "สารคดีธรรมชาติหรือประวัติศาสตร์" },
+            { "value": "childrens_storytelling", "label": "Children's Storytelling", "labelTh": "นิทานเด็ก / ครอบครัว" },
+            { "value": "cinematic_trailer", "label": "Cinematic Trailer", "labelTh": "ตัวอย่างภาพยนตร์" },
+            { "value": "fantasy_villain", "label": "Fantasy Villain", "labelTh": "ตัวร้ายแฟนตาซี" },
+            { "value": "sad_vulnerable", "label": "Sad & Vulnerable", "labelTh": "เศร้าสร้อย / เปราะบาง" },
+            { "value": "furious_aggressive", "label": "Furious & Aggressive", "labelTh": "โกรธจัด / เกรี้ยวกราด" },
+            { "value": "panicked_scared", "label": "Panicked & Scared", "labelTh": "หวาดกลัว / ตื่นตระหนก" },
+            { "value": "romantic_intimate", "label": "Romantic & Intimate", "labelTh": "โรแมนติก / เย้ายวน" },
+            { "value": "sports_commentator", "label": "Sports Commentator", "labelTh": "ผู้บรรยายกีฬา / นักพากย์มวย" },
+            { "value": "retro_radio_dj", "label": "Retro Radio DJ", "labelTh": "ดีเจวิทยุยุค 90s" },
+            { "value": "flight_attendant_pa", "label": "Flight Attendant / PA", "labelTh": "แอร์โฮสเตส / เสียงประกาศ" },
+            { "value": "military_commander", "label": "Military Commander", "labelTh": "ผู้บัญชาการทหาร" },
+            { "value": "kindly_grandparent", "label": "Kindly Grandparent", "labelTh": "คุณตา/คุณยายผู้ใจดี" },
+            { "value": "sarcastic_deadpan", "label": "Sarcastic & Deadpan", "labelTh": "ขี้ประชด / ไร้อารมณ์" },
+            { "value": "tech_nerd_geek", "label": "Tech Nerd / Geek", "labelTh": "เนิร์ด / ผู้คลั่งไคล้เทคโนโลยี" },
+            { "value": "laid_back_surfer", "label": "Laid-back / Surfer Dude", "labelTh": "สายชิล / วัยรุ่นติดเซิร์ฟ" },
+            { "value": "asmr_whisper", "label": "ASMR Whisper", "labelTh": "เสียงกระซิบ ASMR" },
+            { "value": "classic_robot_cyborg", "label": "Classic Robot / Cyborg", "labelTh": "หุ่นยนต์คลาสสิก" },
+            { "value": "auctioneer", "label": "Fast-talking Auctioneer", "labelTh": "นักขายของประมูล" }
+          ]
+        },
+        {
+          "id": "videoAudioWorkflow",
+          "type": "select",
+          "label": "Video Audio Workflow",
+          "labelTh": "วิธีจัดการเสียงวิดีโอ",
+          "helpText": "Keep this synced with Media Studio. Separate audio makes the generated video prompts visual-only so voice/music can be generated once and merged in the editor.",
+          "helpTextTh": "ต้อง sync กับ Media Studio เสมอ โหมดสร้างเสียงแยกจะให้ prompt วิดีโอเป็นภาพเงียบ แล้วสร้างเสียงพูด/เพลงไป merge ใน editor",
+          "default": "native",
+          "options": [
+            { "value": "native", "label": "Native video audio", "labelTh": "ให้วิดีโอสร้างเสียงเอง" },
+            { "value": "separate_voice", "label": "Separate voiceover", "labelTh": "สร้างเสียงพูดแยก" },
+            { "value": "separate_music", "label": "Separate music bed", "labelTh": "สร้างเพลงประกอบแยก" },
+            { "value": "separate_voice_music", "label": "Separate voice + music", "labelTh": "สร้างเสียงพูด + เพลงแยก" }
+          ]
+        },
+        {
+          "id": "separateVoiceModel",
+          "type": "text",
+          "label": "Separate Voice Model",
+          "labelTh": "โมเดลเสียงพูดแยก",
+          "default": "fal-ai/gemini-3.1-flash-tts",
+          "dependsOn": { "field": "videoAudioWorkflow", "values": ["separate_voice", "separate_voice_music"] }
+        },
+        {
+          "id": "separateMusicModel",
+          "type": "text",
+          "label": "Separate Music Model",
+          "labelTh": "โมเดลเพลงแยก",
+          "default": "google/lyria-3-pro/music",
+          "dependsOn": { "field": "videoAudioWorkflow", "values": ["separate_music", "separate_voice_music"] }
+        },
+        {
+          "id": "separateMusicPrompt",
+          "type": "textarea",
+          "label": "Music Direction",
+          "labelTh": "แนวเพลงประกอบ",
+          "helpText": "Optional. Leave blank to infer from Sound Design and storyboard continuity.",
+          "helpTextTh": "ไม่บังคับ ถ้าเว้นว่างจะดึงแนวเพลงจาก Sound Design และ continuity",
+          "default": "",
+          "dependsOn": { "field": "videoAudioWorkflow", "values": ["separate_music", "separate_voice_music"] }
+        },
+        {
+          "id": "newsBackgroundStyle",
+          "type": "select",
+          "label": "Background Visuals",
+          "labelTh": "ภาพประกอบฉากหลัง",
+          "helpText": "Background visuals must relate to each news beat.",
+          "helpTextTh": "ภาพประกอบด้านหลังต้องสัมพันธ์กับประเด็นข่าวแต่ละช่วง",
+          "default": "contextual_broll",
+          "dependsOn": { "field": "contentMode", "value": "news_narration" },
+          "options": [
+            { "value": "contextual_broll", "label": "Contextual B-roll", "labelTh": "ภาพประกอบตามเนื้อหา" },
+            { "value": "infographic_background", "label": "Infographic Background", "labelTh": "อินโฟกราฟิกด้านหลัง" },
+            { "value": "studio_visual_wall", "label": "Studio Visual Wall", "labelTh": "จอภาพในสตูดิโอ" }
+          ]
+        },
+        {
+          "id": "newsClipDensity",
+          "type": "select",
+          "label": "News Clip Detail",
+          "labelTh": "ระดับการแตกคลิปข่าว",
+          "helpText": "Auto chooses the clip count from the news. Compact keeps it shorter when possible. Detailed splits more finely for better coverage.",
+          "helpTextTh": "Auto ให้ระบบคำนวณจำนวนคลิปจากข่าว Compact กระชับเมื่อทำได้ Detailed แตกละเอียดขึ้นเพื่อเล่าให้ครบ",
+          "default": "auto",
+          "dependsOn": { "field": "contentMode", "value": "news_narration" },
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "compact", "label": "Compact", "labelTh": "กระชับ" },
+            { "value": "detailed", "label": "Detailed", "labelTh": "ละเอียด" }
+          ]
         },
         {
           "id": "dialogueLanguage",
@@ -100,10 +279,10 @@
           "type": "slider",
           "label": "Target Duration (seconds)",
           "labelTh": "ความยาวรวม (วินาที)",
-          "helpText": "Total video length in seconds",
-          "helpTextTh": "ความยาวรวมของวิดีโอ (วินาที)",
+          "helpText": "Total video length in seconds. Audio-first storyboard timing can override this to match measured voiceover length.",
+          "helpTextTh": "ความยาวรวมของวิดีโอ (วินาที) โหมด audio-first สามารถปรับค่านี้อัตโนมัติตามความยาวเสียงจริง",
           "min": 40,
-          "max": 120,
+          "max": 600,
           "step": 8,
           "default": 64
         },
@@ -112,10 +291,10 @@
           "type": "slider",
           "label": "Number of Scenes",
           "labelTh": "จำนวนฉาก",
-          "helpText": "How many scenes to generate",
-          "helpTextTh": "จำนวนฉากที่ต้องการสร้าง",
+          "helpText": "How many scenes to generate. Audio-first storyboard timing can override this to match measured voiceover length.",
+          "helpTextTh": "จำนวนฉากที่ต้องการสร้าง โหมด audio-first สามารถปรับค่านี้อัตโนมัติตามความยาวเสียงจริง",
           "min": 3,
-          "max": 12,
+          "max": 60,
           "step": 1,
           "default": 8
         },
@@ -124,26 +303,127 @@
           "type": "number",
           "label": "Max Prompt Length (chars)",
           "labelTh": "ความยาวพรอมต์สูงสุด (ตัวอักษร)",
-          "helpText": "Hard character cap for the combined storyboard and prompt output.",
-          "helpTextTh": "กำหนดจำนวนตัวอักษรสูงสุดของผลลัพธ์ storyboard และ prompt",
+          "helpText": "Hard character cap for non-news storyboard output. News Narration auto-generates a complete multi-prompt package instead of truncating the story.",
+          "helpTextTh": "จำกัดความยาวเฉพาะงาน storyboard ปกติ โหมดเล่าข่าวจะสร้างแพ็กหลาย prompt ให้ครบเรื่องโดยไม่ตัดข่าวกลางทาง",
           "min": 100,
           "max": 10000,
           "step": 10,
-          "default": 2000
+          "default": 5000,
+          "dependsOn": { "field": "contentMode", "value": "storyboard" }
+        },
+        {
+          "id": "maxSpokenSecondsPerClip",
+          "type": "slider",
+          "label": "Max Spoken Seconds / Clip",
+          "labelTh": "เวลาพูดสูงสุดต่อคลิป",
+          "helpText": "For Veo 3.1 news narration, keep spoken dialogue below 8 seconds. Recommended: 5-6 seconds.",
+          "helpTextTh": "สำหรับข่าวบน Veo 3.1 ต้องให้บทพูดสั้นกว่า 8 วินาที แนะนำ 5-6 วินาที",
+          "min": 3,
+          "max": 7,
+          "step": 0.5,
+          "default": 6,
+          "dependsOn": { "field": "contentMode", "value": "news_narration" }
+        },
+        {
+          "id": "veoModel",
+          "type": "select",
+          "label": "Veo 3.1 Model",
+          "labelTh": "โมเดล Veo 3.1",
+          "helpText": "Default is Veo 3.1 Lite. Reference-to-video requires Veo 3.1 Fast.",
+          "helpTextTh": "ค่าเริ่มต้นคือ Veo 3.1 Lite และ Reference-to-video ต้องใช้ Veo 3.1 Fast",
+          "required": true,
+          "default": "veo3_lite",
+          "options": [
+            { "value": "__selected_media_studio_veo_model__", "label": "Use selected Media Studio Veo model", "labelTh": "ใช้โมเดล Veo ที่เลือกใน Media Studio" },
+            { "value": "veo3_lite", "label": "Veo 3.1 Lite", "labelTh": "Veo 3.1 Lite" },
+            { "value": "veo3_fast", "label": "Veo 3.1 Fast", "labelTh": "Veo 3.1 Fast" },
+            { "value": "veo3", "label": "Veo 3.1 Quality", "labelTh": "Veo 3.1 Quality" }
+          ]
+        },
+        {
+          "id": "generationType",
+          "type": "select",
+          "label": "Generation Mode",
+          "labelTh": "โหมดการสร้าง",
+          "helpText": "Choose how Veo 3.1 should use text and dragged reference images.",
+          "helpTextTh": "เลือกวิธีให้ Veo 3.1 ใช้ข้อความและรูปอ้างอิงที่ลากเข้ามา",
+          "required": true,
+          "default": "TEXT_2_VIDEO",
+          "options": [
+            { "value": "TEXT_2_VIDEO", "label": "Text to Video", "labelTh": "ข้อความเป็นวิดีโอ" },
+            { "value": "FIRST_AND_LAST_FRAMES_2_VIDEO", "label": "Start + End Frames", "labelTh": "เฟรมเริ่ม + เฟรมจบ" },
+            { "value": "REFERENCE_2_VIDEO", "label": "Reference to Video", "labelTh": "รูปอ้างอิงเป็นวิดีโอ" }
+          ]
+        },
+        {
+          "id": "outputQuality",
+          "type": "select",
+          "label": "Output Quality",
+          "labelTh": "คุณภาพเอาต์พุต",
+          "helpText": "Requested Veo 3.1 resolution.",
+          "helpTextTh": "ความละเอียดที่ต้องการสำหรับ Veo 3.1",
+          "required": true,
+          "default": "720p",
+          "options": [
+            { "value": "720p", "label": "720p", "labelTh": "720p" },
+            { "value": "1080p", "label": "1080p", "labelTh": "1080p" },
+            { "value": "4K", "label": "4K", "labelTh": "4K" }
+          ]
         },
         {
           "id": "aspectRatio",
           "type": "select",
           "label": "Aspect Ratio",
           "labelTh": "อัตราส่วนภาพ",
-          "helpText": "Video aspect ratio (TikTok/Reels = 9:16)",
-          "helpTextTh": "อัตราส่วนของวิดีโอ (TikTok/Reels แนะนำ 9:16)",
-          "default": "9:16",
+          "helpText": "Veo 3.1 aspect ratio. Auto lets the model infer from the prompt and references.",
+          "helpTextTh": "อัตราส่วนภาพของ Veo 3.1 เลือก Auto เพื่อให้โมเดลประเมินจากพรอมต์และรูปอ้างอิง",
+          "default": "auto",
           "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
             { "value": "9:16", "label": "9:16 (Vertical — TikTok/Reels)", "labelTh": "9:16 (แนวตั้ง — TikTok/Reels)" },
-            { "value": "16:9", "label": "16:9 (Horizontal — YouTube)", "labelTh": "16:9 (แนวนอน — YouTube)" },
-            { "value": "1:1", "label": "1:1 (Square)", "labelTh": "1:1 (จัตุรัส)" }
+            { "value": "16:9", "label": "16:9 (Horizontal — YouTube)", "labelTh": "16:9 (แนวนอน — YouTube)" }
           ]
+        },
+        {
+          "id": "enableTranslation",
+          "type": "boolean",
+          "label": "Enable Translation",
+          "labelTh": "เปิดแปลภาษา",
+          "helpText": "Pass enableTranslation=true to Veo 3.1 when desired.",
+          "helpTextTh": "ส่งค่า enableTranslation=true ให้ Veo 3.1 เมื่อจำเป็น",
+          "default": false
+        },
+        {
+          "id": "enableFallback",
+          "type": "boolean",
+          "label": "Enable Fallback",
+          "labelTh": "เปิดใช้ fallback",
+          "helpText": "Allow Kie/Veo to use a compatible fallback route if the selected route is unavailable.",
+          "helpTextTh": "อนุญาตให้ Kie/Veo ใช้เส้นทาง fallback ที่เข้ากันได้เมื่อ route ที่เลือกไม่พร้อมใช้งาน",
+          "default": false
+        },
+        {
+          "id": "watermark",
+          "type": "text",
+          "label": "Watermark",
+          "labelTh": "ข้อความลายน้ำ",
+          "placeholder": "optional watermark text",
+          "placeholderTh": "ข้อความลายน้ำ (ไม่บังคับ)",
+          "helpText": "Optional watermark string for Veo 3.1.",
+          "helpTextTh": "ข้อความลายน้ำสำหรับ Veo 3.1 (ไม่บังคับ)",
+          "required": false
+        },
+        {
+          "id": "referenceImageUsageNotes",
+          "type": "textarea",
+          "label": "Veo Reference Image Usage",
+          "labelTh": "การใช้รูปอ้างอิงของ Veo",
+          "placeholder": "For Start + End Frames: drag 1-2 images into Media Studio in order, @Image1 = start frame, @Image2 = end frame when provided. For Reference to Video: drag 1-3 images and choose Veo 3.1 Fast.",
+          "placeholderTh": "Start + End Frames: ลากรูป 1-2 รูปใน Media Studio ตามลำดับ @Image1 = เฟรมเริ่ม, @Image2 = เฟรมจบเมื่อมี. Reference to Video: ลากรูป 1-3 รูปและเลือก Veo 3.1 Fast",
+          "helpText": "Use this to describe the role of dragged images. The actual files are added in Media Studio's reference image drop zone.",
+          "helpTextTh": "ใช้ระบุบทบาทของรูปที่ลากเข้ามา ไฟล์รูปจริงให้ใส่ในช่องรูปอ้างอิงของ Media Studio",
+          "required": false,
+          "rows": 3
         },
         {
           "id": "platform",
@@ -230,11 +510,30 @@
     "userIdea": "userIdea",
     "continuityNotes": "continuityNotes",
     "referenceNotes": "referenceNotes",
+    "contentMode": "contentMode",
+    "newsScript": "newsScript",
+    "newsLanguageMode": "newsLanguageMode",
+    "newsNarrationStyle": "newsNarrationStyle",
+    "newsSpeechPace": "newsSpeechPace",
+    "audioPersona": "audioPersona",
+    "newsBackgroundStyle": "newsBackgroundStyle",
+    "newsClipDensity": "newsClipDensity",
     "dialogueLanguage": "dialogueLanguage",
     "style": "style",
     "targetDurationSeconds": "targetDurationSeconds",
     "sceneCount": "sceneCount",
+    "maxPromptLength": "maxPromptLength",
+    "maxSpokenSecondsPerClip": "maxSpokenSecondsPerClip",
+    "veoModel": "veoModel",
+    "veoProviderModel": "veoProviderModel",
+    "generationType": "generationType",
+    "outputQuality": "outputQuality",
+    "resolution": "resolution",
     "aspectRatio": "aspectRatio",
+    "enableTranslation": "enableTranslation",
+    "enableFallback": "enableFallback",
+    "watermark": "watermark",
+    "referenceImageUsageNotes": "referenceImageUsageNotes",
     "platform": "platform",
     "viralStrategy": "viralStrategy",
     "tone": "tone",

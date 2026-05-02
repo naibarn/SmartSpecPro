@@ -27,6 +27,8 @@ export const TimelineClip: React.FC<TimelineClipProps> = memo(({
 }) => {
   const clipWidth = clip.duration * zoom;
   const clipLeft = clip.startTime * zoom;
+  const clipSpeed = Number.isFinite(clip.speed) && clip.speed > 0 ? clip.speed : 1;
+  const showSpeedBadge = Math.abs(clipSpeed - 1) > 0.01;
 
   const clipStyle: React.CSSProperties = {
     position: 'absolute',
@@ -88,6 +90,18 @@ export const TimelineClip: React.FC<TimelineClipProps> = memo(({
           flex: 1;
           pointer-events: none;
         }
+
+        .clip-speed-badge {
+          flex-shrink: 0;
+          margin-left: 6px;
+          padding: 1px 4px;
+          border-radius: 3px;
+          background: rgba(0, 0, 0, 0.35);
+          color: #d8f0ff;
+          font-size: 10px;
+          line-height: 1.4;
+          pointer-events: none;
+        }
       `}</style>
 
       {/* Left resize handle */}
@@ -104,6 +118,9 @@ export const TimelineClip: React.FC<TimelineClipProps> = memo(({
       <div className="clip-name">
         {asset.name || clip.id}
       </div>
+      {showSpeedBadge && (
+        <div className="clip-speed-badge">{clipSpeed.toFixed(2)}x</div>
+      )}
 
       {/* Right resize handle */}
       <div
@@ -124,6 +141,7 @@ export const TimelineClip: React.FC<TimelineClipProps> = memo(({
     prevProps.clip.startTime === nextProps.clip.startTime &&
     prevProps.clip.duration === nextProps.clip.duration &&
     prevProps.clip.trimIn === nextProps.clip.trimIn &&
+    prevProps.clip.speed === nextProps.clip.speed &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.zoom === nextProps.zoom &&
     prevProps.trackHeight === nextProps.trackHeight &&

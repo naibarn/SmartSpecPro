@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, describe, it, expect, vi, beforeEach } from "vitest";
 import { validateFeatureFlags, resolveFeatureFlags, isFeatureEnabled } from "../../services/tenantFeatureFlagService";
 import { FEATURE_FLAG_DEFAULTS } from "../../../shared/featureFlags";
 
@@ -154,6 +154,10 @@ describe("getFeatureFlagDefaults", () => {
 });
 
 describe("mergeFeatureFlags — resolveFeatureFlags", () => {
+  afterEach(() => {
+    delete process.env.SMARTSPEC_PLAYWRIGHT_ENABLED;
+  });
+
   it("preserves unchanged flags when updating", () => {
     const existing = { canvas: true, voiceChat: false };
     const merged = resolveFeatureFlags({ ...existing, voiceChat: true });
@@ -167,5 +171,25 @@ describe("mergeFeatureFlags — resolveFeatureFlags", () => {
     expect(resolved.canvas).toBe(true);
     expect(resolved.costDisplay).toBe(true); // default true
     expect(resolved.multiChannel).toBe(true); // default true
+  });
+
+  it("forces browser session feature flags off when Playwright is globally disabled", () => {
+    process.env.SMARTSPEC_PLAYWRIGHT_ENABLED = "false";
+
+    const resolved = resolveFeatureFlags({
+      browserTool: true,
+      automationCopilot: true,
+      liveBrowser: true,
+      chatBrowserSessionEntry: true,
+      agencyBrowserSessionUi: true,
+      workflowBrowserSessionNodes: true,
+    });
+
+    expect(resolved.browserTool).toBe(false);
+    expect(resolved.automationCopilot).toBe(false);
+    expect(resolved.liveBrowser).toBe(false);
+    expect(resolved.chatBrowserSessionEntry).toBe(false);
+    expect(resolved.agencyBrowserSessionUi).toBe(false);
+    expect(resolved.workflowBrowserSessionNodes).toBe(false);
   });
 });

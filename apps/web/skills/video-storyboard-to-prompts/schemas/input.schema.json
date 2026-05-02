@@ -17,12 +17,245 @@
     },
     "continuityNotes": {
       "type": "string",
-      "description": "Optional fixed character, wardrobe, props, and setting details that must stay identical across every prompt.",
+      "description": "Optional fixed character, wardrobe, props, setting, story arc, and transition details. If empty, the skill must generate shared CONTINUITY NOTES and a reusable Continuity Lock from the idea/reference images.",
       "default": ""
     },
     "referenceNotes": {
       "type": "string",
-      "description": "Optional notes for the attached reference images, especially character appearance and location details. If empty, the skill should infer a continuity bible from the idea and reference images automatically.",
+      "description": "Optional notes for attached reference images or generated visual identity. If empty, the skill must infer shared REFERENCE NOTES/visual bible from the idea and reference images, without absence-only boilerplate.",
+      "default": ""
+    },
+    "contentMode": {
+      "type": "string",
+      "description": "Storyboard content mode. Use news_narration for short news explainer clips with contextual background visuals.",
+      "enum": [
+        "storyboard",
+        "news_narration"
+      ],
+      "default": "storyboard"
+    },
+    "newsScript": {
+      "type": "string",
+      "description": "Optional full news text/script. If empty in news_narration mode, use userIdea as the source news text.",
+      "default": ""
+    },
+    "newsLanguageMode": {
+      "type": "string",
+      "description": "How to choose spoken language for news narration.",
+      "enum": [
+        "auto_detect",
+        "thai",
+        "english"
+      ],
+      "default": "auto_detect"
+    },
+    "newsNarrationStyle": {
+      "type": "string",
+      "description": "Presentation style for news narration.",
+      "enum": [
+        "news_anchor",
+        "explainer_news",
+        "short_social_news"
+      ],
+      "default": "explainer_news"
+    },
+    "newsSpeechPace": {
+      "type": "string",
+      "description": "Spoken delivery pace for news narration. Use brisk_news by default to avoid slow, drawn-out Veo delivery while staying natural.",
+      "enum": [
+        "natural",
+        "brisk_news",
+        "fast_social"
+      ],
+      "default": "brisk_news"
+    },
+    "audioPersona": {
+      "type": "string",
+      "description": "Persona-based audio cue for the spoken voice. auto_match lets the skill choose the best cue from the content mode, character, and use case.",
+      "enum": [
+        "auto_match",
+        "corporate_presentation",
+        "e_learning_educational",
+        "news_broadcast",
+        "luxury_brand_beauty",
+        "upbeat_commercial",
+        "virtual_assistant",
+        "podcast_host_vlogger",
+        "documentary_narration",
+        "childrens_storytelling",
+        "cinematic_trailer",
+        "fantasy_villain",
+        "sad_vulnerable",
+        "furious_aggressive",
+        "panicked_scared",
+        "romantic_intimate",
+        "sports_commentator",
+        "retro_radio_dj",
+        "flight_attendant_pa",
+        "military_commander",
+        "kindly_grandparent",
+        "sarcastic_deadpan",
+        "tech_nerd_geek",
+        "laid_back_surfer",
+        "asmr_whisper",
+        "classic_robot_cyborg",
+        "auctioneer"
+      ],
+      "default": "auto_match"
+    },
+    "videoAudioWorkflow": {
+      "type": "string",
+      "description": "How Media Studio should handle audio after video generation. native means Veo creates audio in each video. separate_* means prompts should be suitable for visual-only video and Media Studio will generate voice/music tracks separately for the video editor.",
+      "enum": [
+        "native",
+        "separate_voice",
+        "separate_music",
+        "separate_voice_music"
+      ],
+      "default": "native"
+    },
+    "separateVoiceModel": {
+      "type": "string",
+      "description": "Audio model ID for separate voiceover generation when videoAudioWorkflow includes voice.",
+      "default": "fal-ai/gemini-3.1-flash-tts"
+    },
+    "separateMusicModel": {
+      "type": "string",
+      "description": "Audio/music model ID for separate background music generation when videoAudioWorkflow includes music.",
+      "default": "google/lyria-3-pro/music"
+    },
+    "separateMusicPrompt": {
+      "type": "string",
+      "description": "Optional shared music direction for separate music generation. If blank, infer from Sound Design and continuity notes.",
+      "default": ""
+    },
+    "storyboardAudioTimingMode": {
+      "type": "string",
+      "description": "Runtime-only Media Studio audio timing mode for separate voice storyboard generation.",
+      "enum": [
+        "generate_voice",
+        "existing_voice"
+      ],
+      "default": "generate_voice"
+    },
+    "storyboardAudioDurationSeconds": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Measured voiceover audio duration from Media Studio. When > 0 and videoAudioWorkflow includes separate voice, the storyboard prompt count must align to this duration."
+    },
+    "storyboardClipDurationSeconds": {
+      "type": "number",
+      "minimum": 0.25,
+      "default": 8,
+      "description": "Runtime video clip duration used by Media Studio for each generated storyboard video."
+    },
+    "storyboardAudioPromptCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 60,
+      "description": "Runtime target prompt count computed as ceil(storyboardAudioDurationSeconds / storyboardClipDurationSeconds)."
+    },
+    "storyboardAudioSourceName": {
+      "type": "string",
+      "description": "Runtime display name of the generated/uploaded voiceover audio used for timing.",
+      "default": ""
+    },
+    "storyboardPreparedVoiceoverScript": {
+      "type": "string",
+      "description": "Exact voiceover script used to generate the prepared audio. If present, separate-audio storyboard output must keep VOICEOVER SCRIPT aligned with this text.",
+      "default": ""
+    },
+    "newsBackgroundStyle": {
+      "type": "string",
+      "description": "How background visuals should support the news content.",
+      "enum": [
+        "contextual_broll",
+        "infographic_background",
+        "studio_visual_wall"
+      ],
+      "default": "contextual_broll"
+    },
+    "newsClipDensity": {
+      "type": "string",
+      "description": "How many news clips to target. Completeness always wins: compact still adds more clips when needed to finish the story.",
+      "enum": [
+        "auto",
+        "compact",
+        "detailed"
+      ],
+      "default": "auto"
+    },
+    "maxSpokenSecondsPerClip": {
+      "type": "number",
+      "minimum": 3,
+      "maximum": 7,
+      "default": 6,
+      "description": "Maximum spoken-dialogue time per Veo clip. Keep below 8 seconds so each prompt can be sent separately."
+    },
+    "veoModel": {
+      "type": "string",
+      "description": "Veo 3.1 model to target in Media Studio. REFERENCE_2_VIDEO is supported only by Veo 3.1 Fast.",
+      "enum": [
+        "__selected_media_studio_veo_model__",
+        "veo3_lite",
+        "veo3_fast",
+        "veo3"
+      ],
+      "default": "veo3_lite"
+    },
+    "veoProviderModel": {
+      "type": "string",
+      "description": "Resolved provider model ID from Media Studio. This allows future Veo model IDs to pass through without changing the skill schema.",
+      "default": ""
+    },
+    "generationType": {
+      "type": "string",
+      "description": "Veo 3.1 generation mode. FIRST_AND_LAST_FRAMES_2_VIDEO needs one or two dragged reference images: @Image1 as start frame and @Image2 as end frame when provided. REFERENCE_2_VIDEO needs one to three dragged reference images and Veo 3.1 Fast.",
+      "enum": [
+        "TEXT_2_VIDEO",
+        "FIRST_AND_LAST_FRAMES_2_VIDEO",
+        "REFERENCE_2_VIDEO"
+      ],
+      "default": "TEXT_2_VIDEO"
+    },
+    "outputQuality": {
+      "type": "string",
+      "description": "Veo 3.1 output quality/resolution.",
+      "enum": [
+        "720p",
+        "1080p",
+        "4K"
+      ],
+      "default": "720p"
+    },
+    "resolution": {
+      "type": "string",
+      "description": "Runtime alias for outputQuality used by Media Studio model inputs.",
+      "enum": [
+        "720p",
+        "1080p",
+        "4K"
+      ],
+      "default": "720p"
+    },
+    "enableTranslation": {
+      "type": "boolean",
+      "description": "Whether Veo should translate non-English prompt/dialogue content before generation.",
+      "default": false
+    },
+    "enableFallback": {
+      "type": "boolean",
+      "description": "Whether Kie/Veo may fall back to a compatible generation route when the selected route is unavailable.",
+      "default": false
+    },
+    "watermark": {
+      "type": "string",
+      "description": "Optional watermark string to pass to Veo 3.1.",
+      "default": ""
+    },
+    "referenceImageUsageNotes": {
+      "type": "string",
+      "description": "Optional notes for how dragged Media Studio reference images should be used in the selected Veo mode. Use @Image1, @Image2, @Image3 handles.",
       "default": ""
     },
     "dialogueLanguage": {
@@ -57,33 +290,33 @@
     "targetDurationSeconds": {
       "type": "integer",
       "minimum": 40,
-      "maximum": 120,
+      "maximum": 600,
       "default": 64,
-      "description": "ความยาวรวมของเรื่อง (วินาที) 40–120"
+      "description": "ความยาวรวมของเรื่อง (วินาที). Runtime audio-first storyboard timing may raise this above the normal short-form UI range."
     },
     "sceneCount": {
       "type": "integer",
       "minimum": 3,
-      "maximum": 12,
+      "maximum": 60,
       "default": 8,
-      "description": "จำนวนฉาก (ปกติ 8 ฉากตามตัวอย่าง)"
+      "description": "จำนวนฉาก/prompt. Runtime audio-first storyboard timing may raise this to match measured audio duration."
     },
     "maxPromptLength": {
       "type": "integer",
       "minimum": 100,
       "maximum": 10000,
-      "default": 2000,
-      "description": "Maximum character length for the combined storyboard and prompt output."
+      "default": 5000,
+      "description": "Maximum character length for non-news storyboard output. In news_narration mode the skill returns a multi-prompt package, so runtime must not truncate the whole package."
     },
     "aspectRatio": {
       "type": "string",
       "enum": [
+        "auto",
         "9:16",
-        "16:9",
-        "1:1"
+        "16:9"
       ],
-      "default": "9:16",
-      "description": "อัตราส่วนวิดีโอ (TikTok/Reels แนะนำ 9:16)"
+      "default": "auto",
+      "description": "Veo 3.1 aspect ratio. Use auto, 16:9, or 9:16."
     },
     "platform": {
       "type": "string",

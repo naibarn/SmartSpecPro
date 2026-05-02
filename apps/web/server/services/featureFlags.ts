@@ -6,14 +6,37 @@
 
 import { getRedisClient } from "./redis";
 
+const PLAYWRIGHT_BACKED_FLAGS = new Set([
+  "browserTool",
+  "automationCopilot",
+  "liveBrowser",
+  "chatBrowserSessionEntry",
+  "agencyBrowserSessionUi",
+  "workflowBrowserSessionNodes",
+]);
+const FALSE_ENV_VALUES = new Set(["0", "false", "no", "off", "disabled"]);
+
+function isPlaywrightGloballyDisabled(): boolean {
+  const raw = process.env.SMARTSPEC_PLAYWRIGHT_ENABLED ?? "true";
+  return FALSE_ENV_VALUES.has(raw.trim().toLowerCase());
+}
+
+function isPlaywrightBackedFlag(flagName: string): boolean {
+  return PLAYWRIGHT_BACKED_FLAGS.has(flagName);
+}
+
 /**
  * Read a feature flag value.
  *
  * Checks Redis key `feature-flag:{flagName}` first.
  * Falls back to process.env[flagName] if Redis is unavailable.
- * Returns true by default — features are enabled unless explicitly disabled.
+ * Returns false by default — features are opt-in unless explicitly enabled.
  */
 export async function getFeatureFlag(flagName: string): Promise<boolean> {
+  if (isPlaywrightBackedFlag(flagName) && isPlaywrightGloballyDisabled()) {
+    return false;
+  }
+
   try {
     const redis = getRedisClient();
     const value = await redis.get(`feature-flag:${flagName}`);
@@ -30,7 +53,7 @@ export async function getFeatureFlag(flagName: string): Promise<boolean> {
     return envValue !== "false";
   }
 
-  return true;
+  return false;
 }
 
 /**
@@ -57,6 +80,10 @@ export async function getTenantFeatureFlag(
   flagName: string,
   tenantId: string,
 ): Promise<boolean> {
+  if (isPlaywrightBackedFlag(flagName) && isPlaywrightGloballyDisabled()) {
+    return false;
+  }
+
   try {
     const redis = getRedisClient();
     const value = await redis.get(`feature-flag:${flagName}:${tenantId}`);

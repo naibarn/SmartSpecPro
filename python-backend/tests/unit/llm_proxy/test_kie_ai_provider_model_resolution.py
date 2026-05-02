@@ -30,6 +30,15 @@ def test_resolve_api_model_maps_veo_internal_route_aliases_to_kie_models():
     assert stats["fallback_alias_map"] == 2
 
 
+def test_resolve_api_model_maps_happyhorse_alias_to_kie_model():
+    reset_model_resolution_stats()
+
+    assert resolve_api_model("happyhorse") == "happyhorse/text-to-video"
+
+    stats = get_model_resolution_stats()
+    assert stats["fallback_alias_map"] == 1
+
+
 @pytest.mark.asyncio
 async def test_generate_image_uses_db_model_id_and_endpoint_aliases():
     reset_model_resolution_stats()
@@ -127,6 +136,203 @@ async def test_generate_video_uses_db_kie_model_id_for_provider_payload():
     assert args[0] == "POST"
     assert args[1] == "veo/generate"
     assert kwargs["data"]["model"] == "veo3_fast"
+
+
+@pytest.mark.asyncio
+async def test_generate_video_uses_veo_extend_endpoint_and_task_id_payload():
+    provider = KieAIProvider(api_key="test-key")
+    provider._make_request = AsyncMock(return_value={"data": {"taskId": "veo_extend_task_xyz"}})
+
+    result = await provider.generate_video(
+        model="veo3/extend-video",
+        prompt="Continue the presenter segment with the same studio and tone.",
+        wait_for_completion=False,
+        api_config={
+            "endpoint": "/api/v1/veo/extend",
+            "payload_format": "veo_extend",
+            "generate_type": "video-extend",
+            "extend_model": "fast",
+        },
+        extra_params={
+            "source_task_id": "veo_task_abcdef123456",
+            "seeds": 12345,
+            "watermark": "MyBrand",
+            "aspect_ratio": "9:16",
+        },
+    )
+
+    provider._make_request.assert_awaited_once()
+    args, kwargs = provider._make_request.await_args
+    assert args[0] == "POST"
+    assert args[1] == "veo/extend"
+    assert kwargs["data"] == {
+        "taskId": "veo_task_abcdef123456",
+        "prompt": "Continue the presenter segment with the same studio and tone.",
+        "model": "fast",
+        "seeds": 12345,
+        "watermark": "MyBrand",
+    }
+    assert result["id"] == "veo_extend_task_xyz"
+
+
+@pytest.mark.asyncio
+async def test_generate_video_veo_extend_requires_source_task_id():
+    provider = KieAIProvider(api_key="test-key")
+    provider._make_request = AsyncMock()
+
+    with pytest.raises(Exception, match="requires the original Kie taskId"):
+        await provider.generate_video(
+            model="veo3/extend-video",
+            prompt="Extend this video.",
+            wait_for_completion=False,
+            api_config={
+                "endpoint": "/api/v1/veo/extend",
+                "payload_format": "veo_extend",
+                "generate_type": "video-extend",
+            },
+            extra_params={
+                "video_urls": ["https://cdn.example.com/video.mp4"],
+            },
+        )
+
+    provider._make_request.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_generate_video_normalizes_veo_auto_aspect_ratio_to_kie_enum():
+    provider = KieAIProvider(api_key="test-key")
+    provider._make_request = AsyncMock(return_value={"data": {"taskId": "task-auto"}})
+
+    await provider.generate_video(
+        model="veo3/generate-veo-3-video-lite",
+        prompt="test prompt",
+        wait_for_completion=False,
+        aspect_ratio="auto",
+        api_config={
+            "kie_model_id": "veo3_lite",
+            "endpoint": "/api/v1/veo/generate",
+        },
+        extra_params={
+            "generationType": "TEXT_2_VIDEO",
+            "aspect_ratio": "auto",
+        },
+    )
+
+    provider._make_request.assert_awaited_once()
+    _, kwargs = provider._make_request.await_args
+    assert kwargs["data"]["aspect_ratio"] == "Auto"
+    assert "aspectRatio" not in kwargs["data"]
+
+
+@pytest.mark.asyncio
+async def test_generate_video_normalizes_reference_mode_auto_ratio_to_supported_ratio():
+    provider = KieAIProvider(api_key="test-key")
+    provider._make_request = AsyncMock(return_value={"data": {"taskId": "task-ref"}})
+
+    await provider.generate_video(
+        model="veo3/generate-veo-3-video-fast",
+        prompt="test prompt",
+        wait_for_completion=False,
+        aspect_ratio="auto",
+        api_config={
+            "kie_model_id": "veo3_fast",
+            "endpoint": "/api/v1/veo/generate",
+        },
+        extra_params={
+            "generationType": "REFERENCE_2_VIDEO",
+            "aspectRatio": "auto",
+        },
+    )
+
+    provider._make_request.assert_awaited_once()
+    _, kwargs = provider._make_request.await_args
+    assert kwargs["data"]["aspect_ratio"] == "16:9"
+    assert "aspectRatio" not in kwargs["data"]
+
+
+@pytest.mark.asyncio
+async def test_generate_video_veo_reference_mode_uses_image_urls_as_material_references():
+    provider = KieAIProvider(api_key="test-key")
+    provider._make_request = AsyncMock(return_value={"data": {"taskId": "task-ref-images"}})
+
+    await provider.generate_video(
+        model="veo3/generate-veo-3-video-fast",
+        prompt="Use the attached product as visual reference, not as a start frame.",
+        wait_for_completion=False,
+        aspect_ratio="9:16",
+        reference_image_urls=["https://cdn.example.com/ref.png"],
+        api_config={
+            "kie_model_id": "veo3_fast",
+            "endpoint": "/api/v1/veo/generate",
+            "reference_image_input_key": "image_urls",
+        },
+        extra_params={
+            "generationType": "REFERENCE_2_VIDEO",
+            "imageUrls": ["https://cdn.example.com/ref.png"],
+            "enableFallback": False,
+        },
+    )
+
+    provider._make_request.assert_awaited_once()
+    _, kwargs = provider._make_request.await_args
+    assert kwargs["data"]["generationType"] == "REFERENCE_2_VIDEO"
+    assert kwargs["data"]["imageUrls"] == ["https://cdn.example.com/ref.png"]
+    assert "image_urls" not in kwargs["data"]
+    assert kwargs["data"]["enableFallback"] is False
+
+
+@pytest.mark.asyncio
+async def test_create_task_receives_happyhorse_video_edit_singular_video_url():
+    provider = KieAIProvider(api_key="test-key")
+    provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-happyhorse-edit"}})
+
+    await provider.generate_video(
+        model="happyhorse/video-edit",
+        prompt="Make the jacket red.",
+        wait_for_completion=False,
+        api_config={
+            "kie_model_id": "happyhorse/video-edit",
+            "reference_video_input_key": "video_url",
+            "reference_video_input_type": "url",
+        },
+        extra_params={
+            "video_url": ["https://cdn.example.com/source.mp4"],
+            "audio_setting": "auto",
+        },
+    )
+
+    provider.create_task.assert_awaited_once()
+    args, kwargs = provider.create_task.await_args
+    assert kwargs == {}
+    assert args[0] == "happyhorse/video-edit"
+    assert args[1]["video_url"] == "https://cdn.example.com/source.mp4"
+    assert args[1]["audio_setting"] == "auto"
+
+
+@pytest.mark.asyncio
+async def test_generate_video_can_omit_default_duration_and_aspect_ratio_from_market_payload():
+    provider = KieAIProvider(api_key="test-key")
+    provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-happyhorse-edit"}})
+
+    await provider.generate_video(
+        model="happyhorse/video-edit",
+        prompt="Make the jacket red.",
+        wait_for_completion=False,
+        api_config={
+            "kie_model_id": "happyhorse/video-edit",
+            "reference_video_input_key": "video_url",
+            "reference_video_input_type": "url",
+            "omit_duration": "true",
+            "omit_aspect_ratio": "true",
+        },
+        extra_params={
+            "video_url": ["https://cdn.example.com/source.mp4"],
+        },
+    )
+
+    args, _ = provider.create_task.await_args
+    assert "duration" not in args[1]
+    assert "aspect_ratio" not in args[1]
 
 
 @pytest.mark.asyncio

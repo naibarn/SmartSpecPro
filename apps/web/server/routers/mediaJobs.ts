@@ -17,8 +17,9 @@ import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
 import { assertTextClipRolloutEnabledForSpec } from "../services/textClipRollout";
-import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
+import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { buildMediaJobHandle, shouldPollAsyncJobHandle } from "../services/asyncJobHandle";
+import { shouldUseCloudTasksForMediaJobs } from "../services/mediaJobDispatchMode";
 
 // ========================================
 // Redis helpers (lazy import to avoid circular deps)
@@ -249,11 +250,11 @@ async function dispatchToCelery(
   // Resolve relative asset URIs so Python worker can access them via HTTP
   const resolvedSpecJson = resolveRelativeUris(specJson);
 
-  const internalToken = process.env.MEDIA_JOB_INTERNAL_TOKEN || await getPreferredInternalToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "x-internal-token": internalToken,
   };
+  const internalToken = (process.env.MEDIA_JOB_INTERNAL_TOKEN || "").trim();
+  if (internalToken) headers["x-internal-token"] = internalToken;
   if (requestId) headers["x-request-id"] = requestId;
 
   const res = await fetch(`${pythonUrl}/api/v1/media-jobs/execute`, {
@@ -277,7 +278,14 @@ async function dispatchToCelery(
  * with exponential backoff (2min, 4min, 8min, ... capped at 30min).
  */
 async function enqueuePollingTask(jobId: string, kieJobId: string) {
-  const { enqueueTask } = await import("../services/cloudTasks");
+  const { enqueueTask, getCloudTasksConfigStatus } = await import("../services/cloudTasks");
+  const config = getCloudTasksConfigStatus("python");
+  if (!config.configured) {
+    console.warn(
+      `[MediaJobs] Skipping Cloud Tasks polling safety net; missing config: ${config.missingKeys.join(", ")}`,
+    );
+    return;
+  }
   await enqueueTask({
     queueName: "polling-tasks",
     handlerPath: "/_internal/tasks/poll-job",
@@ -301,23 +309,30 @@ async function dispatchJob(specJson: string, userId: string, jobId: string, requ
   const useCloudTasks = await getFeatureFlag("USE_CLOUD_TASKS");
 
   if (useCloudTasks) {
-    const { enqueueTask } = await import("../services/cloudTasks");
-    const resolvedSpecJson = resolveRelativeUris(specJson);
-    await enqueueTask({
-      queueName: "media-jobs",
-      handlerPath: "/_internal/tasks/process-media",
-      payload: { spec_json: resolvedSpecJson, user_id: userId, job_id: jobId, request_id: requestId },
-    });
-  } else {
-    const result = await dispatchToCelery(specJson, userId, jobId, requestId);
-    // If the Python backend returned a kie_job_id, enqueue polling as a safety net
-    if (result.kie_job_id) {
-      try {
-        await enqueuePollingTask(jobId, result.kie_job_id);
-      } catch (e) {
-        // Polling is a safety net; don't fail the submission
-        console.warn("Failed to enqueue polling task:", e);
-      }
+    const { enqueueTask, getCloudTasksConfigStatus } = await import("../services/cloudTasks");
+    const config = getCloudTasksConfigStatus("python");
+    if (config.configured) {
+      const resolvedSpecJson = resolveRelativeUris(specJson);
+      await enqueueTask({
+        queueName: "media-jobs",
+        handlerPath: "/_internal/tasks/process-media",
+        payload: { spec_json: resolvedSpecJson, user_id: userId, job_id: jobId, request_id: requestId },
+      });
+      return;
+    }
+    console.warn(
+      `[MediaJobs] USE_CLOUD_TASKS is enabled but Cloud Tasks config is incomplete; falling back to Python dispatch. Missing: ${config.missingKeys.join(", ")}`,
+    );
+  }
+
+  const result = await dispatchToCelery(specJson, userId, jobId, requestId);
+  // If the Python backend returned a kie_job_id, enqueue polling as a safety net
+  if (result.kie_job_id) {
+    try {
+      await enqueuePollingTask(jobId, result.kie_job_id);
+    } catch (e) {
+      // Polling is a safety net; don't fail the submission
+      console.warn("Failed to enqueue polling task:", e);
     }
   }
 }
@@ -463,6 +478,7 @@ const jobSpecInputSchema = z.object({
                 assetId: z.string(),
                 inMs: z.number().optional(),
                 outMs: z.number().optional(),
+                durationMs: z.number().optional(),
                 startMs: z.number(),
                 playbackRate: z.number().optional(),
                 volume: z.number().optional(),
@@ -591,12 +607,9 @@ export const mediaJobsRouter = router({
       await addActiveJob(String(ctx.user.id), jobId);
       await addRecentJob(String(ctx.user.id), jobId);
 
-      // Enqueue to Cloud Tasks
+      // Enqueue to Cloud Tasks when configured, otherwise dispatch directly to Python.
       try {
-        const { getFeatureFlag } = await import("../services/featureFlags");
-        const useCloudTasks = await getFeatureFlag("USE_CLOUD_TASKS");
-
-        if (useCloudTasks) {
+        if (await shouldUseCloudTasksForMediaJobs()) {
           const { enqueueTask } = await import("../services/cloudTasks");
           await enqueueTask({
             queueName,

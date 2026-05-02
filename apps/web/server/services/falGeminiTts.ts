@@ -135,9 +135,42 @@ export const GEMINI_3_1_FLASH_TTS_LANGUAGE_CODES = [
   "Urdu (Pakistan)",
 ] as const;
 
+const GEMINI_3_1_FLASH_TTS_VOICE_LABELS: Record<typeof GEMINI_3_1_FLASH_TTS_VOICES[number], string> = {
+  Achernar: "Achernar (female, soft) - wellness, empathy, emotional reads",
+  Achird: "Achird (male, friendly) - support, podcast host, explainer",
+  Algenib: "Algenib (male, gravelly) - documentary, cinematic, character voice",
+  Algieba: "Algieba (male, smooth) - premium brand, polished narration",
+  Alnilam: "Alnilam (male, firm) - executive, corporate, command voice",
+  Aoede: "Aoede (female, breezy) - lifestyle, beauty, casual explainers",
+  Autonoe: "Autonoe (female, bright) - assistant voice, friendly updates",
+  Callirrhoe: "Callirrhoe (female, easy-going) - podcasts, soft brand narration",
+  Charon: "Charon (male, informative) - news reads, technical explainers",
+  Despina: "Despina (female, smooth) - luxury, beauty, calm commercials",
+  Enceladus: "Enceladus (male, breathy) - intimate narration, dramatic scenes",
+  Erinome: "Erinome (female, clear) - support, instructions, neutral narration",
+  Fenrir: "Fenrir (male, excitable) - trailers, upbeat ads, gaming",
+  Gacrux: "Gacrux (female, mature) - history, documentary, serious narration",
+  Iapetus: "Iapetus (male, clear) - tutorials, e-learning, documentation",
+  Kore: "Kore (female, firm) - announcements, confident narration",
+  Laomedeia: "Laomedeia (female, upbeat) - ads, social content, promos",
+  Leda: "Leda (female, youthful) - education, social shorts, light stories",
+  Orus: "Orus (male, firm) - corporate, authority, training",
+  Pulcherrima: "Pulcherrima (female, forward) - confident promos, calls to action",
+  Puck: "Puck (male, upbeat) - energetic hosts, creator content",
+  Rasalgethi: "Rasalgethi (male, informative) - documentary, news analysis",
+  Sadachbia: "Sadachbia (male, lively) - kids, playful ads, upbeat social",
+  Sadaltager: "Sadaltager (male, knowledgeable) - expert commentary, education",
+  Schedar: "Schedar (male, even) - balanced narration, long-form reads",
+  Sulafat: "Sulafat (female, warm) - e-learning, family, welcoming narration",
+  Umbriel: "Umbriel (male, easy-going) - casual podcasts, conversational reads",
+  Vindemiatrix: "Vindemiatrix (female, gentle) - meditation, guidance, soft narration",
+  Zephyr: "Zephyr (female, bright) - friendly explainers, product demos",
+  Zubenelgenubi: "Zubenelgenubi (male, casual) - vlogs, conversational social clips",
+};
+
 const GEMINI_3_1_FLASH_TTS_VOICE_OPTIONS = GEMINI_3_1_FLASH_TTS_VOICES.map((voice) => ({
   value: voice,
-  label: voice,
+  label: GEMINI_3_1_FLASH_TTS_VOICE_LABELS[voice] ?? voice,
 }));
 
 const GEMINI_3_1_FLASH_TTS_LANGUAGE_OPTIONS = [

@@ -31,6 +31,7 @@ class TestFalAiDetection:
         from app.llm_proxy.providers.fal_ai_provider import FalAIProvider
 
         assert "fal-ai/lux-tts" in FalAIProvider.AUDIO_MODELS
+        assert "fal-ai/gemini-3.1-flash-tts" in FalAIProvider.AUDIO_MODELS
 
     def test_non_fal_model_not_detected(self):
         from app.llm_proxy.providers.fal_ai_provider import FalAIProvider

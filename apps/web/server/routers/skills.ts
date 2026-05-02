@@ -101,6 +101,7 @@ import { resolveSkillExecutionPolicy } from "../services/skillExecutionPolicy";
 import { loadEnabledLlmModelRows } from "../services/enabledLlmModels";
 import { resolveMediaTypeFromSkillCategory, sanitizeMediaModelSelection } from "../services/mediaModelSelection";
 import { buildCustomSkillUserPrompt } from "../services/skillExecutionPromptBuilder";
+import { prepareSkillExecutionInputsForPromptPackage } from "../services/skillExecutionInput";
 import {
   buildNativeSkillRuntimePlanContext,
   buildRuntimeModelConfig,
@@ -2267,10 +2268,16 @@ export const skillsRouter = router({
       // Merge user inputs with schema defaults, and drop null/empty placeholders
       const sanitizedUserInputs = sanitizeUserInputs(input.userInputs);
       const schemaDefaults = loadSkillInputDefaults(skill.slug, skill.folderPath);
-      const mergedUserInputs = {
+      let mergedUserInputs = {
         ...schemaDefaults,
         ...sanitizedUserInputs,
       };
+      const preparedPromptPackageInputs = prepareSkillExecutionInputsForPromptPackage(
+        input.skillId,
+        mergedUserInputs,
+      );
+      mergedUserInputs = preparedPromptPackageInputs.userInputs;
+      const isNewsNarrationPromptPackage = preparedPromptPackageInputs.suppressPromptLengthPlan;
 
       const requestedMaxPromptLength = Number(mergedUserInputs.maxPromptLength);
       const promptLengthPlan = Number.isFinite(requestedMaxPromptLength) && requestedMaxPromptLength > 0
@@ -2440,6 +2447,7 @@ export const skillsRouter = router({
             responseMode: mergedUserInputs.response_mode ?? null,
             requiresWebSearch,
             maxPromptLength: promptLengthPlan?.maxPromptLength ?? null,
+            ...(isNewsNarrationPromptPackage ? { multiPromptPackage: true, promptPackageMode: "news_narration" } : {}),
             nativeSkillRuntime,
           },
           modelConfig: buildRuntimeModelConfig({
@@ -2455,7 +2463,7 @@ export const skillsRouter = router({
               userId,
               input.referenceImages || [],
               visionModel,
-              promptLengthPlan?.maxTokens ?? 4000,
+              promptLengthPlan?.maxTokens ?? (isNewsNarrationPromptPackage ? 7000 : 4000),
               {
                 ...webSearchOptions,
                 publicUrl: ctx.publicUrl ?? null,

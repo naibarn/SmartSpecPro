@@ -206,6 +206,10 @@ class Settings(BaseSettings):
     # Agency-Swarm
     AGENCY_SWARM_ENABLED: bool = False
 
+    # Local Playwright/Chromium kill switch. Set false during incidents or on
+    # hosts that should never launch local browser processes.
+    SMARTSPEC_PLAYWRIGHT_ENABLED: bool = True
+
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_BURST: int = 10

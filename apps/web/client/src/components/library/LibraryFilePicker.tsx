@@ -19,6 +19,13 @@ interface LibraryFilePickerProps {
   onValueChange: (url: string) => void;
   /** Allowed file extensions without leading dot, e.g. ["png", "jpg"]. Omit to allow all. */
   allowedExtensions?: string[];
+  extraOptions?: Array<{
+    id: string;
+    title: string;
+    url: string;
+    extension?: string;
+    groupLabel?: string;
+  }>;
   disabled?: boolean;
 }
 
@@ -31,6 +38,18 @@ function getItemExt(item: {
   const metaExt =
     typeof item.metadata?.extension === "string" ? item.metadata.extension : "";
   if (metaExt) return metaExt.toLowerCase().replace(/^\./, "");
+  const mimeType = (
+    typeof item.metadata?.mimeType === "string" ? item.metadata.mimeType :
+    typeof item.metadata?.mime_type === "string" ? item.metadata.mime_type :
+    typeof item.metadata?.contentType === "string" ? item.metadata.contentType :
+    typeof item.metadata?.content_type === "string" ? item.metadata.content_type :
+    ""
+  ).toLowerCase();
+  if (mimeType.startsWith("audio/")) {
+    const subtype = mimeType.split("/")[1]?.split(";")[0]?.trim();
+    if (subtype) return subtype === "mpeg" ? "mp3" : subtype;
+    return "audio";
+  }
   const url = item.source_url ?? "";
   if (!url) return item.item_type.toLowerCase();
   const withoutQuery = url.split("?")[0];
@@ -39,10 +58,26 @@ function getItemExt(item: {
   return (parts.pop() ?? "").toLowerCase();
 }
 
+function isAllowedByExtensionOrType(
+  item: { item_type: string; source_url: string | null; metadata?: Record<string, unknown> },
+  allowedExtensions?: string[],
+): boolean {
+  if (!allowedExtensions || allowedExtensions.length === 0) return true;
+  const normalizedAllowed = allowedExtensions.map((ext) => ext.toLowerCase().replace(/^\./, ""));
+  const ext = getItemExt(item);
+  if (normalizedAllowed.includes(ext)) return true;
+  const itemType = String(item.item_type ?? "").toLowerCase();
+  const acceptsAudio = normalizedAllowed.some((value) =>
+    ["audio", "mp3", "wav", "m4a", "ogg", "flac", "aac", "webm", "mpeg"].includes(value),
+  );
+  return acceptsAudio && (itemType === "audio" || itemType === "sound");
+}
+
 export function LibraryFilePicker({
   value,
   onValueChange,
   allowedExtensions,
+  extraOptions = [],
   disabled,
 }: LibraryFilePickerProps) {
   const [open, setOpen] = useState(false);
@@ -71,7 +106,7 @@ export function LibraryFilePicker({
     }
   }, [open, query]);
 
-  const allResults = (
+  const libraryResults = (
     query.trim().length > 0
       ? (searchQuery.data?.results ?? []).map((item: any) => ({
           ...item,
@@ -79,14 +114,31 @@ export function LibraryFilePicker({
         }))
       : (docsQuery.data?.results ?? [])
   );
+  const normalizedQuery = query.trim().toLowerCase();
+  const extraResults = extraOptions
+    .filter((item) => item.url)
+    .filter((item) => {
+      if (!normalizedQuery) return true;
+      return item.title.toLowerCase().includes(normalizedQuery)
+        || item.url.toLowerCase().includes(normalizedQuery)
+        || (item.extension ?? "").toLowerCase().includes(normalizedQuery);
+    })
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      source_url: item.url,
+      item_type: item.extension || "audio",
+      metadata: item.extension ? { extension: item.extension } : undefined,
+      groupLabel: item.groupLabel,
+      __extra: true,
+    }));
+  const allResults = [...extraResults, ...libraryResults];
   const isLoading = docsQuery.isLoading || searchQuery.isLoading;
 
   // Filter by extension if specified
   const matchingResults =
     allowedExtensions && allowedExtensions.length > 0
-      ? allResults.filter((item) =>
-          allowedExtensions.includes(getItemExt(item)),
-        )
+      ? allResults.filter((item) => isAllowedByExtensionOrType(item, allowedExtensions))
       : allResults;
 
   // Find display name for the currently-selected URL
@@ -148,7 +200,7 @@ export function LibraryFilePicker({
                 return (
                   <CommandItem
                     key={item.id}
-                    value={item.title}
+                    value={`${item.title} ${item.source_url ?? ""}`}
                     onSelect={() => {
                       onValueChange(item.source_url ?? "");
                       setOpen(false);
@@ -162,6 +214,14 @@ export function LibraryFilePicker({
                     />
                     <div className="flex flex-1 items-center gap-2 overflow-hidden">
                       <span className="truncate">{item.title}</span>
+                      {(item as any).__extra && (item as any).groupLabel ? (
+                        <Badge
+                          variant="secondary"
+                          className="shrink-0 px-1.5 py-0 text-[10px]"
+                        >
+                          {(item as any).groupLabel}
+                        </Badge>
+                      ) : null}
                       {ext && (
                         <Badge
                           variant="outline"
