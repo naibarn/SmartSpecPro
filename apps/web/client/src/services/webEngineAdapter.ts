@@ -4,6 +4,16 @@ import type {
   MediaJobProgress,
 } from "@shared/types/mediaJob";
 
+export class MediaJobRateLimitError extends Error {
+  retryAfterMs: number;
+
+  constructor(retryAfterMs: number = 5_000) {
+    super("Get status rate limited");
+    this.name = "MediaJobRateLimitError";
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
 export class WebEngineAdapter implements IEngineAdapter {
   private baseUrl: string;
 
@@ -37,6 +47,14 @@ export class WebEngineAdapter implements IEngineAdapter {
     if (!res.ok) {
       if (res.status === 404) {
         throw new Error(`Job not found: ${jobId}`);
+      }
+      if (res.status === 429) {
+        const retryAfterSeconds = Number(res.headers?.get?.("Retry-After") || "");
+        throw new MediaJobRateLimitError(
+          Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+            ? retryAfterSeconds * 1000
+            : 5_000,
+        );
       }
       throw new Error(`Get status failed: ${res.status}`);
     }

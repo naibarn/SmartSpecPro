@@ -7,6 +7,7 @@
 import * as mediaService from './mediaService';
 import { sanitizeRenderOutputFilename } from '@smartspec/shared';
 import { createMediaJobClient, type MediaJobClient } from './mediaJobClient';
+import { MediaJobRateLimitError } from './webEngineAdapter';
 import type { MediaLibraryAsset, RenderJob, VideoEditorProject } from '../types/videoEditor';
 import { projectToTimeline } from '../../../shared/types/mediaJob';
 
@@ -554,7 +555,20 @@ export class VideoEditorRenderService {
     intervalMs: number = 1000
   ): Promise<RenderJob> {
     return new Promise((resolve, reject) => {
-      const interval = setInterval(async () => {
+      let pollTimer: ReturnType<typeof setTimeout> | null = null;
+      let settled = false;
+
+      const cleanup = () => {
+        settled = true;
+        if (pollTimer) {
+          clearTimeout(pollTimer);
+          pollTimer = null;
+        }
+      };
+
+      const schedulePoll = (delayMs: number) => {
+        pollTimer = setTimeout(async () => {
+          if (settled) return;
         try {
           const job = await this.getRenderStatus(jobId);
 
@@ -563,17 +577,26 @@ export class VideoEditorRenderService {
           }
 
           if (job.status === 'completed') {
-            clearInterval(interval);
+            cleanup();
             resolve(job);
           } else if (job.status === 'failed' || job.status === 'cancelled') {
-            clearInterval(interval);
+            cleanup();
             reject(new Error(job.error || `Render ${job.status}`));
+          } else {
+            schedulePoll(intervalMs);
           }
         } catch (error) {
-          clearInterval(interval);
+          if (error instanceof MediaJobRateLimitError) {
+            schedulePoll(Math.max(error.retryAfterMs, intervalMs * 2));
+            return;
+          }
+          cleanup();
           reject(error);
         }
-      }, intervalMs);
+        }, delayMs);
+      };
+
+      schedulePoll(0);
     });
   }
 }

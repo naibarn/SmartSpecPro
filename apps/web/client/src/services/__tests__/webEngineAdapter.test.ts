@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { WebEngineAdapter } from "../webEngineAdapter";
+import { MediaJobRateLimitError, WebEngineAdapter } from "../webEngineAdapter";
 import type { MediaJobSpec, MediaJobProgress } from "@shared/types/mediaJob";
 
 const mockFetch = vi.fn();
@@ -217,6 +217,19 @@ describe("WebEngineAdapter", () => {
     await expect(adapter.getStatus("job-xyz")).rejects.toThrow(
       "Get status failed: 500",
     );
+  });
+
+  it("getStatus throws rate limit error with retry-after for 429", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 429,
+      headers: { get: vi.fn(() => "7") },
+    });
+
+    await expect(adapter.getStatus("job-xyz")).rejects.toMatchObject({
+      name: "MediaJobRateLimitError",
+      retryAfterMs: 7000,
+    } satisfies Partial<MediaJobRateLimitError>);
   });
 
   it("submitJob falls back to statusText when json parsing fails", async () => {

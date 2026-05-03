@@ -1306,7 +1306,7 @@ export function registerMediaJobRoutes(app: Express) {
   // ========================================
 
   const mediaJobLimiter = rateLimit("media-jobs", { rpm: 30 });
-  const mediaJobStatusLimiter = rateLimit("media-jobs-status", { rpm: 120 });
+  const mediaJobStatusLimiter = rateLimit("media-jobs-status", { rpm: 600 });
 
   app.post("/api/media-jobs", mediaJobLimiter, async (req: Request, res: Response) => {
     try {

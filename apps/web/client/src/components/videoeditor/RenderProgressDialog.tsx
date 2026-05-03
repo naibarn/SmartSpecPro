@@ -49,7 +49,7 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
             setError(updatedJob.error || 'Render failed');
           }
         },
-        500 // poll every 500ms
+        2000
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');

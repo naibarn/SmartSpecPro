@@ -56,6 +56,9 @@ export function rateLimit(namespace: string, opts: { rpm: number; windowMs?: num
     b.ts = b.ts.filter((x) => x > cutoff);
 
     if (b.ts.length >= rpm) {
+      const oldest = b.ts[0] ?? t;
+      const retryAfterSeconds = Math.max(1, Math.ceil((oldest + windowMs - t) / 1000));
+      res.setHeader("Retry-After", String(retryAfterSeconds));
       res.status(429).json({
         error: { message: "Rate limit exceeded", type: "rate_limit" },
       });
