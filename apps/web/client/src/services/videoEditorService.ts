@@ -7,7 +7,6 @@
 import * as mediaService from './mediaService';
 import { sanitizeRenderOutputFilename } from '@smartspec/shared';
 import { createMediaJobClient, type MediaJobClient } from './mediaJobClient';
-import { MediaJobRateLimitError } from './webEngineAdapter';
 import type { MediaLibraryAsset, RenderJob, VideoEditorProject } from '../types/videoEditor';
 import { projectToTimeline } from '../../../shared/types/mediaJob';
 
@@ -48,6 +47,18 @@ function isDesktop(): boolean {
 async function tauriInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   const { invoke } = await import('@tauri-apps/api/core');
   return invoke<T>(cmd, args);
+}
+
+function getRateLimitRetryAfterMs(error: unknown): number | null {
+  if (
+    error
+    && typeof error === 'object'
+    && (error as { name?: unknown }).name === 'MediaJobRateLimitError'
+    && typeof (error as { retryAfterMs?: unknown }).retryAfterMs === 'number'
+  ) {
+    return (error as { retryAfterMs: number }).retryAfterMs;
+  }
+  return null;
 }
 
 // ========================================
@@ -586,8 +597,9 @@ export class VideoEditorRenderService {
             schedulePoll(intervalMs);
           }
         } catch (error) {
-          if (error instanceof MediaJobRateLimitError) {
-            schedulePoll(Math.max(error.retryAfterMs, intervalMs * 2));
+          const retryAfterMs = getRateLimitRetryAfterMs(error);
+          if (retryAfterMs !== null) {
+            schedulePoll(Math.max(retryAfterMs, intervalMs * 2));
             return;
           }
           cleanup();
