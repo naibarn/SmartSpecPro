@@ -5,6 +5,7 @@
  */
 
 import * as mediaService from './mediaService';
+import { sanitizeRenderOutputFilename } from '@smartspec/shared';
 import { createMediaJobClient, type MediaJobClient } from './mediaJobClient';
 import type { MediaLibraryAsset, RenderJob, VideoEditorProject } from '../types/videoEditor';
 import { projectToTimeline } from '../../../shared/types/mediaJob';
@@ -435,9 +436,11 @@ export class VideoEditorMediaLibrary {
 export class VideoEditorRenderService {
 
   async startRender(projectJson: string, outputPath: string): Promise<string> {
+    const safeOutputPath = sanitizeRenderOutputFilename(outputPath);
+
     if (isDesktop()) {
       try {
-        return await tauriInvoke<string>('start_render', { projectJson, outputPath });
+        return await tauriInvoke<string>('start_render', { projectJson, outputPath: safeOutputPath });
       } catch (error) {
         console.error('Failed to start render:', error);
         throw error;
@@ -465,7 +468,7 @@ export class VideoEditorRenderService {
         specVersion: "0.1",
         jobType: "render_mp4_h264",
         inputs: { project: timeline, assets },
-        output: { mode: "file", target: outputPath },
+        output: { mode: "file", target: safeOutputPath },
       } as any);
       return jobId;
     } catch (error) {

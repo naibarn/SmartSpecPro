@@ -22,6 +22,8 @@ def mock_settings_enabled():
         mock_settings.is_enabled = True
         mock_settings.OPENSANDBOX_ENABLED = True
         mock_settings.OPENSANDBOX_BASE_URL = "http://localhost:8080"
+        mock_settings.OPENSANDBOX_DISPATCH_MODE = "optional"
+        mock_settings.SANDBOX_REQUIRE_FOR_MEDIA = False
         yield mock_settings
 
 
@@ -152,6 +154,54 @@ class TestSandboxMediaRunner:
             await runner.__aexit__(None, None, None)
 
             mock_lifecycle.destroy_sandbox.assert_called_once_with("sandbox-abc-123")
+
+    @pytest.mark.asyncio
+    async def test_session_falls_back_to_subprocess_when_optional_sandbox_unavailable(
+        self, mock_settings_enabled, mock_client, mock_lifecycle
+    ):
+        """Optional OpenSandbox failures should not fail media rendering."""
+        mock_lifecycle.provision_sandbox.side_effect = RuntimeError("sandbox offline")
+        mock_result = subprocess.CompletedProcess(
+            args=["echo", "ok"], returncode=0, stdout="ok\n", stderr=""
+        )
+
+        with patch(
+            "app.integrations.opensandbox.client.OpenSandboxClient",
+            return_value=mock_client,
+        ), patch(
+            "app.integrations.opensandbox.lifecycle.SandboxLifecycleManager",
+            return_value=mock_lifecycle,
+        ), patch("asyncio.to_thread", new_callable=AsyncMock, return_value=mock_result):
+            from app.video.sandbox_runner import SandboxMediaRunner
+
+            async with SandboxMediaRunner.session(profile="media-processing", job_id="job-1") as runner:
+                result = await runner.run_command(["echo", "ok"])
+
+        assert result.returncode == 0
+        assert result.stdout == "ok\n"
+        assert runner._enabled is False
+        assert runner._sandbox_id is None
+
+    @pytest.mark.asyncio
+    async def test_session_raises_when_required_sandbox_unavailable(
+        self, mock_settings_enabled, mock_client, mock_lifecycle
+    ):
+        """Required OpenSandbox failures should still fail fast."""
+        mock_settings_enabled.OPENSANDBOX_DISPATCH_MODE = "required"
+        mock_lifecycle.provision_sandbox.side_effect = RuntimeError("sandbox offline")
+
+        with patch(
+            "app.integrations.opensandbox.client.OpenSandboxClient",
+            return_value=mock_client,
+        ), patch(
+            "app.integrations.opensandbox.lifecycle.SandboxLifecycleManager",
+            return_value=mock_lifecycle,
+        ):
+            from app.video.sandbox_runner import SandboxMediaRunner
+
+            with pytest.raises(RuntimeError, match="sandbox offline"):
+                async with SandboxMediaRunner.session(profile="media-processing", job_id="job-1"):
+                    pass
 
     @pytest.mark.asyncio
     async def test_session_reuse_single_sandbox(

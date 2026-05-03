@@ -82,7 +82,25 @@ class SandboxMediaRunner:
         )
 
         job_key = self._job_id or f"session-{id(self)}"
-        self._sandbox_id = await self._lifecycle.provision_sandbox(config, job_key)
+        try:
+            self._sandbox_id = await self._lifecycle.provision_sandbox(config, job_key)
+        except Exception:
+            if (
+                opensandbox_settings.OPENSANDBOX_DISPATCH_MODE == "required"
+                or opensandbox_settings.SANDBOX_REQUIRE_FOR_MEDIA
+            ):
+                raise
+            logger.warning(
+                "sandbox_session_provision_failed_falling_back_to_subprocess",
+                profile=self._profile,
+                job_id=self._job_id,
+                exc_info=True,
+            )
+            self._enabled = False
+            self._sandbox_id = None
+            self._client = None
+            self._lifecycle = None
+            return self
         logger.info(
             "sandbox_session_started",
             sandbox_id=self._sandbox_id,

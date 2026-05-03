@@ -31,6 +31,53 @@ export function sanitizeFilename(filename: string): string {
   return sanitizeHtml(cleaned);
 }
 
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/gi, '/')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => {
+      const codePoint = Number.parseInt(hex, 16);
+      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : '';
+    })
+    .replace(/&#(\d+);/g, (_, decimal: string) => {
+      const codePoint = Number.parseInt(decimal, 10);
+      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : '';
+    });
+}
+
+/**
+ * Sanitize a video render output filename before it reaches FFmpeg workers.
+ */
+export function sanitizeRenderOutputFilename(filename: string, fallback = 'video-export.mp4'): string {
+  if (typeof filename !== 'string') return fallback;
+
+  let decoded = filename.trim();
+  for (let i = 0; i < 3; i += 1) {
+    const next = decodeHtmlEntities(decoded);
+    if (next === decoded) break;
+    decoded = next;
+  }
+
+  const withExtension = /\.[a-z0-9]{2,5}$/i.test(decoded)
+    ? decoded
+    : `${decoded}.mp4`;
+  const sanitized = withExtension
+    .replace(/[\x00-\x1f\x7f]/g, '')
+    .replace(/[;|&`$(){}[\]<>'"\\/:*?]+/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^\.+/, '')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 180);
+
+  if (!sanitized || sanitized === '.mp4') return fallback;
+  return sanitized.toLowerCase().endsWith('.mp4') ? sanitized : `${sanitized}.mp4`;
+}
+
 /**
  * Validate and sanitize number input
  */

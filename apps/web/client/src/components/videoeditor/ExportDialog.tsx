@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { sanitizeRenderOutputFilename } from '@smartspec/shared';
 import { videoEditorMediaLibrary } from '../../services/videoEditorService';
 import type { VideoEditorProject, ExportSettings } from '../../types/videoEditor';
 
@@ -116,7 +117,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
 
   const generateDefaultOutputPath = () => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
-    const filename = `${project.name}_${timestamp}.mp4`;
+    const filename = sanitizeRenderOutputFilename(`${project.name}_${timestamp}.mp4`);
     setOutputPath(filename);
   };
 
@@ -153,7 +154,9 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
       return;
     }
 
-    onExport(outputPath, customSettings);
+    const safeOutputPath = sanitizeRenderOutputFilename(outputPath);
+    setOutputPath(safeOutputPath);
+    onExport(safeOutputPath, customSettings);
   };
 
   const formatFileSize = (mb: number): string => {
@@ -458,6 +461,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
               <input
                 type="text"
                 className="form-input"
+                aria-label="Filename"
                 value={outputPath}
                 onChange={(e) => setOutputPath(e.target.value)}
                 placeholder="output.mp4"
