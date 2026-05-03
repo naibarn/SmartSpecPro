@@ -25,6 +25,7 @@ from typing import Any
 
 import structlog
 
+from app.integrations.opensandbox.client import SandboxAPIError
 from app.integrations.opensandbox.config import opensandbox_settings
 from app.integrations.opensandbox.models import SandboxConfig
 
@@ -51,6 +52,19 @@ class SandboxMediaRunner:
         self._client: Any = None
         self._lifecycle: Any = None
 
+    def _sandbox_required(self) -> bool:
+        return (
+            opensandbox_settings.OPENSANDBOX_DISPATCH_MODE == "required"
+            or opensandbox_settings.SANDBOX_REQUIRE_FOR_MEDIA
+        )
+
+    def _can_fallback_from_command_error(self, exc: Exception) -> bool:
+        if self._sandbox_required():
+            return False
+        if isinstance(exc, SandboxAPIError) and exc.status_code == 404:
+            return True
+        return isinstance(exc, RuntimeError) and str(exc) == "Event loop is closed"
+
     @classmethod
     def session(
         cls,
@@ -72,7 +86,7 @@ class SandboxMediaRunner:
         self._lifecycle = SandboxLifecycleManager(self._client)
 
         config = SandboxConfig(
-            image="smartspec/ffmpeg:latest",
+            image=opensandbox_settings.OPENSANDBOX_MEDIA_IMAGE,
             timeout_seconds=1800,
             cpu_limit="2000m",
             memory_limit_mb=4096,
@@ -85,10 +99,7 @@ class SandboxMediaRunner:
         try:
             self._sandbox_id = await self._lifecycle.provision_sandbox(config, job_key)
         except Exception:
-            if (
-                opensandbox_settings.OPENSANDBOX_DISPATCH_MODE == "required"
-                or opensandbox_settings.SANDBOX_REQUIRE_FOR_MEDIA
-            ):
+            if self._sandbox_required():
                 raise
             logger.warning(
                 "sandbox_session_provision_failed_falling_back_to_subprocess",
@@ -164,7 +175,25 @@ class SandboxMediaRunner:
                 timeout=timeout,
                 cwd=cwd,
             )
-        return asyncio.run(self._run_in_sandbox(cmd, timeout=timeout, check=check, text=text))
+        try:
+            return asyncio.run(self._run_in_sandbox(cmd, timeout=timeout, check=check, text=text))
+        except Exception as exc:
+            if not self._can_fallback_from_command_error(exc):
+                raise
+            logger.warning(
+                "sandbox_command_failed_falling_back_to_subprocess",
+                profile=self._profile,
+                job_id=self._job_id,
+                error=str(exc),
+            )
+            return subprocess.run(
+                cmd,
+                capture_output=capture_output,
+                text=text,
+                check=check,
+                timeout=timeout,
+                cwd=cwd,
+            )
 
     async def run_command(
         self,
@@ -190,7 +219,25 @@ class SandboxMediaRunner:
                 cwd=cwd,
             )
 
-        return await self._run_in_sandbox(cmd, timeout=timeout, check=check)
+        try:
+            return await self._run_in_sandbox(cmd, timeout=timeout, check=check)
+        except Exception as exc:
+            if not self._can_fallback_from_command_error(exc):
+                raise
+            logger.warning(
+                "sandbox_command_failed_falling_back_to_subprocess",
+                profile=self._profile,
+                job_id=self._job_id,
+                error=str(exc),
+            )
+            return await self._run_subprocess(
+                cmd,
+                timeout=timeout,
+                capture_output=capture_output,
+                text=text,
+                check=check,
+                cwd=cwd,
+            )
 
     async def _run_subprocess(
         self,

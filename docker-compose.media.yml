@@ -43,6 +43,8 @@ services:
       - REDIS_URL=redis://smartspec-redis:6379/0
       - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
       - MEDIA_STORAGE_PATH=/app/media_storage
+      - OPENSANDBOX_BASE_URL=http://smartspec-opensandbox:8080
+      - OPENSANDBOX_MEDIA_IMAGE=jrottenberg/ffmpeg:6-ubuntu
       - SMARTSPEC_WEB_GATEWAY_URL=http://host.docker.internal:3000
       - WEB_APP_URL=http://host.docker.internal:3000
       - SMARTSPEC_PLAYWRIGHT_ENABLED=false
@@ -69,6 +71,7 @@ services:
     restart: unless-stopped
     networks:
       - smartspec-network
+      - opensandbox-network
 
   # ============================================
   # CELERY VIDEO WORKER
@@ -93,6 +96,8 @@ services:
       - REDIS_URL=redis://smartspec-redis:6379/0
       - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
       - MEDIA_STORAGE_PATH=/app/media_storage
+      - OPENSANDBOX_BASE_URL=http://smartspec-opensandbox:8080
+      - OPENSANDBOX_MEDIA_IMAGE=jrottenberg/ffmpeg:6-ubuntu
       - SMARTSPEC_WEB_GATEWAY_URL=http://host.docker.internal:3000
       - WEB_APP_URL=http://host.docker.internal:3000
     extra_hosts:
@@ -117,6 +122,7 @@ services:
     restart: unless-stopped
     networks:
       - smartspec-network
+      - opensandbox-network
 
   # ============================================
   # CELERY IMPORT WORKER

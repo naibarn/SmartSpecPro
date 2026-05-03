@@ -20,6 +20,7 @@ class OpenSandboxSettings(BaseSettings):
     OPENSANDBOX_REQUEST_TIMEOUT_SECONDS: int = 30
     OPENSANDBOX_CREATE_TIMEOUT_SECONDS: int = 120
     OPENSANDBOX_READY_POLL_INTERVAL_MS: int = 2000
+    OPENSANDBOX_MEDIA_IMAGE: str = "jrottenberg/ffmpeg:6-ubuntu"
     SANDBOX_ARTIFACT_BUCKET: str = "smartspec-sandbox-artifacts"
     SANDBOX_SIGNED_URL_TTL_SECONDS: int = 900
     SANDBOX_DEFAULT_NETWORK_ACTION: str = "deny"

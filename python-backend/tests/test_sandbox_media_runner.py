@@ -22,6 +22,7 @@ def mock_settings_enabled():
         mock_settings.is_enabled = True
         mock_settings.OPENSANDBOX_ENABLED = True
         mock_settings.OPENSANDBOX_BASE_URL = "http://localhost:8080"
+        mock_settings.OPENSANDBOX_MEDIA_IMAGE = "jrottenberg/ffmpeg:6-ubuntu"
         mock_settings.OPENSANDBOX_DISPATCH_MODE = "optional"
         mock_settings.SANDBOX_REQUIRE_FOR_MEDIA = False
         yield mock_settings
@@ -204,6 +205,101 @@ class TestSandboxMediaRunner:
                     pass
 
     @pytest.mark.asyncio
+    async def test_run_command_falls_back_when_optional_sandbox_command_unavailable(
+        self, mock_settings_enabled
+    ):
+        """Optional command execution failures should fall back to subprocess."""
+        from app.integrations.opensandbox.client import SandboxAPIError
+        from app.video.sandbox_runner import SandboxMediaRunner
+
+        mock_result = subprocess.CompletedProcess(
+            args=["echo", "ok"], returncode=0, stdout="ok\n", stderr=""
+        )
+        runner = SandboxMediaRunner(profile="media-processing", job_id="job-1")
+        runner._enabled = True
+        runner._sandbox_id = "sandbox-abc-123"
+
+        with patch.object(
+            runner,
+            "_run_in_sandbox",
+            new_callable=AsyncMock,
+            side_effect=SandboxAPIError(404, "commands endpoint unavailable"),
+        ), patch.object(
+            runner,
+            "_run_subprocess",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ) as mock_subprocess:
+            result = await runner.run_command(["echo", "ok"])
+
+        assert result.returncode == 0
+        assert result.stdout == "ok\n"
+        mock_subprocess.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_run_command_raises_when_required_sandbox_command_unavailable(
+        self, mock_settings_enabled
+    ):
+        """Required command execution failures should not fall back."""
+        from app.video.sandbox_runner import SandboxMediaRunner
+
+        mock_settings_enabled.OPENSANDBOX_DISPATCH_MODE = "required"
+        runner = SandboxMediaRunner(profile="media-processing", job_id="job-1")
+        runner._enabled = True
+        runner._sandbox_id = "sandbox-abc-123"
+
+        with patch.object(
+            runner,
+            "_run_in_sandbox",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("commands endpoint unavailable"),
+        ), pytest.raises(RuntimeError, match="commands endpoint unavailable"):
+            await runner.run_command(["echo", "ok"])
+
+    def test_run_command_sync_falls_back_when_optional_sandbox_command_closes_loop(
+        self, mock_settings_enabled
+    ):
+        """Sync command execution should fall back for latest OpenSandbox HTTP close errors."""
+        from app.video.sandbox_runner import SandboxMediaRunner
+
+        mock_result = subprocess.CompletedProcess(
+            args=["echo", "ok"], returncode=0, stdout="ok\n", stderr=""
+        )
+        runner = SandboxMediaRunner(profile="media-processing", job_id="job-1")
+        runner._enabled = True
+        runner._sandbox_id = "sandbox-abc-123"
+
+        with patch(
+            "asyncio.run",
+            side_effect=RuntimeError("Event loop is closed"),
+        ), patch(
+            "subprocess.run",
+            return_value=mock_result,
+        ) as mock_subprocess:
+            result = runner.run_command_sync(["echo", "ok"])
+
+        assert result.returncode == 0
+        assert result.stdout == "ok\n"
+        mock_subprocess.assert_called_once()
+
+    def test_run_command_sync_raises_when_required_sandbox_command_closes_loop(
+        self, mock_settings_enabled
+    ):
+        """Required mode should still fail if command execution cannot use OpenSandbox."""
+        from app.video.sandbox_runner import SandboxMediaRunner
+
+        mock_settings_enabled.OPENSANDBOX_DISPATCH_MODE = "required"
+        runner = SandboxMediaRunner(profile="media-processing", job_id="job-1")
+        runner._enabled = True
+        runner._sandbox_id = "sandbox-abc-123"
+
+        with patch(
+            "asyncio.run",
+            side_effect=RuntimeError("Event loop is closed"),
+        ), pytest.raises(RuntimeError, match="Event loop is closed"):
+            runner.run_command_sync(["echo", "ok"])
+
+    @pytest.mark.asyncio
     async def test_session_reuse_single_sandbox(
         self, mock_settings_enabled, mock_client, mock_lifecycle
     ):
@@ -286,6 +382,7 @@ class TestSandboxMediaRunner:
                 await runner.__aenter__()
 
             call_args = mock_config_cls.call_args
+            assert call_args.kwargs["image"] == "jrottenberg/ffmpeg:6-ubuntu"
             assert call_args.kwargs["cpu_limit"] == "2000m"
             assert call_args.kwargs["memory_limit_mb"] == 4096
 

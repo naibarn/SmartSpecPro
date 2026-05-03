@@ -50,7 +50,7 @@ services:
 networks:
   opensandbox-network:
     name: opensandbox-network
-    driver: bridge
+    external: true
   opensandbox-exec:
     name: opensandbox-exec
     driver: bridge
