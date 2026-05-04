@@ -1,21 +1,21 @@
 const MULTI_PROMPT_REGEX = /^\s*(?:PROMPT|SCENE|SHOT|CLIP)\s+\d+\s*(?:\([^)]+\))?:/im;
 const PROMPT_MARKER_LINE_REGEX = /^\s*(?:PROMPT|SCENE|SHOT|CLIP)\s+\d+\s*(?:\([^)]+\))?:\s*(.*)$/i;
-const NON_GENERATION_SHARED_SECTION_REGEX = /^\s*(?:VEO(?:\s+3\.1)?\s+SETTINGS|NEWS BEAT PLAN)\s*:\s*$/i;
+const NON_GENERATION_SHARED_SECTION_REGEX = /^\s*(?:VEO(?:\s+3\.1)?\s+SETTINGS|NEWS BEAT PLAN|STORY BEAT PLAN)\s*:\s*$/i;
 const TECHNICAL_CONTROL_LINE_REGEX = /^\s*(?:Veo Settings|Reference Image Role|Dialogue Budget(?: Example)?|News Beat Goal|Model|Resolved Veo Provider Model|Veo 3\.1 Model|Generation Type|Reference Images|Output Quality|Runtime Resolution Alias|Aspect Ratio|Enable Translation|Enable Fallback|Watermark)\s*:/i;
 const NEWS_BEAT_PLAN_LINE_REGEX = /^\s*Beat\s+\d+\s*[-:]/i;
 const UNRESOLVED_TEXT_OVERLAY_CONDITION_REGEX = /No subtitles,\s*no extra on-screen captions unless includeTextOverlays=true,\s*no narrator\.\s*Only presenter voice\./i;
 const GENERIC_NO_TEXT_LINE_REGEX = /No subtitles,\s*no on-screen text(?:\.|,)\s*No narrator\.\s*Only (?:character|presenter) voice\./i;
 const STRONG_NO_TEXT_LINE = "No subtitles, no captions, no lower-thirds, no readable text or numbers anywhere in frame, no logos with letters, no random glyphs, no narrator. Only the intended character or presenter voice.";
-const EXTERNAL_AUDIO_VISUAL_ONLY_LINE = "Visual-only footage for external voiceover: the on-screen person must not speak, lip-sync, mouth words, narrate, sing, or make speaking mouth movements; keep lips closed or neutral, use natural gestures only.";
-const EXTERNAL_AUDIO_NO_TEXT_SPEECH_LINE = "No subtitles, no captions, no lower-thirds, no readable text or numbers anywhere in frame, no logos with letters, no random glyphs, no narrator, no speech, no dialogue, no lip-sync or mouth-wording. Neutral ambient room tone is acceptable because native Veo audio will be muted and replaced later.";
-const EXTERNAL_AUDIO_WORKFLOW_LINE = "External audio workflow: create visual-only footage for later voiceover/music. Do not generate speech, dialogue, narration, lip-sync, mouth-wording, subtitles, captions, lower-thirds, readable text, logos with letters, or random glyphs. Neutral ambient room tone is acceptable because native Veo audio will be muted and replaced later in the video editor.";
+const VISUAL_TEXT_RESTRICTION_LINE = "No subtitles, no captions, no lower-thirds, no readable text or numbers anywhere in frame, no logos with letters, no random glyphs.";
 const EXTERNAL_AUDIO_WORKFLOW_LINE_REGEX = /^\s*External audio workflow\s*:/i;
 const HARD_EXTERNAL_NO_AUDIO_LINE_REGEX = /no narrator,\s*no speech,\s*no dialogue(?:,\s*no music,\s*no sound effects)?/i;
+const TEXT_RESTRICTION_WITH_AUDIO_CONTROL_REGEX = /^No subtitles\b.*\b(?:no narrator|no speech|no dialogue|no music|no sound effects)\b/i;
 const AUDIO_DIRECTION_LINE_REGEX = /^\s*(?:Audio Cue|Speech Delivery|Sound Design)\s*:/i;
 const SPEAKER_LINE_REGEX = /^\s*Speaker\s*:/i;
 const EXTERNAL_VOICEOVER_SECTION_HEADING_REGEX = /^\s*(?:VOICEOVER SCRIPT|NARRATION SCRIPT|SEPARATE VOICEOVER SCRIPT|EXTERNAL VOICEOVER SCRIPT|AUDIO SCRIPT)\s*:\s*(.*)$/i;
 const EXTERNAL_MUSIC_SECTION_HEADING_REGEX = /^\s*(?:SOUND BED BRIEF|MUSIC BRIEF|BACKGROUND MUSIC BRIEF|SEPARATE MUSIC BRIEF|EXTERNAL MUSIC BRIEF)\s*:\s*(.*)$/i;
-const SECTION_BOUNDARY_HEADING_REGEX = /^\s*(?:REFERENCE NOTES|CONTINUITY NOTES|VEO(?:\s+3\.1)?\s+SETTINGS|NEWS BEAT PLAN|VOICEOVER SCRIPT|NARRATION SCRIPT|SEPARATE VOICEOVER SCRIPT|EXTERNAL VOICEOVER SCRIPT|AUDIO SCRIPT|SOUND BED BRIEF|MUSIC BRIEF|BACKGROUND MUSIC BRIEF|SEPARATE MUSIC BRIEF|EXTERNAL MUSIC BRIEF|PROMPT|SCENE|SHOT|CLIP)\b/i;
+const SECTION_BOUNDARY_HEADING_REGEX = /^\s*(?:REFERENCE NOTES|CONTINUITY NOTES|VEO(?:\s+3\.1)?\s+SETTINGS|NEWS BEAT PLAN|STORY BEAT PLAN|VOICEOVER SCRIPT|NARRATION SCRIPT|SEPARATE VOICEOVER SCRIPT|EXTERNAL VOICEOVER SCRIPT|AUDIO SCRIPT|SOUND BED BRIEF|MUSIC BRIEF|BACKGROUND MUSIC BRIEF|SEPARATE MUSIC BRIEF|EXTERNAL MUSIC BRIEF|PROMPT|SCENE|SHOT|CLIP)\b/i;
+const CONTINUITY_LOCK_LINE_REGEX = /^\s*Continuity Lock\s*:/im;
 const SPOKEN_DIALOGUE_LINE_REGEX = /^\s*(?:(?:the\s+)?(?:ผู้ประกาศ|ตัวละคร|speaker|presenter|host|narrator|character)|[A-Za-zก-๙0-9 _-]+\s*)[^:\n]*(?:พูดเป็น[^"]*ว่า|says?|speaks?|กล่าวว่า)\s*(?:in\s+[A-Za-z() ]+\s*:)?\s*["“](.+?)["”]\s*\.?\s*$/i;
 const QUOTED_DIALOGUE_REGEXES = [
   /พูดเป็น[^"]*ว่า\s*["“](.+?)["”]/i,
@@ -270,9 +270,10 @@ export function applySharedContextToMultiVideoText(text: string, sharedContext: 
 /**
  * Split a multi-prompt video script into per-shot prompts.
  *
- * If the text includes a shared preamble before the first prompt marker,
- * preserve it and prepend it to each extracted prompt so recurring character
- * and setting details survive the split.
+ * If a legacy prompt block has no continuity lock, prepend the shared preamble
+ * so recurring character and setting details survive the split. Modern storyboard
+ * prompts already carry a scene-specific Continuity Lock, so avoid prepending
+ * long story bibles that can make each generated shot repeat the full arc.
  */
 export function parseMultiVideoPrompts(text: string): string[] {
   const { sharedContext, prompts } = splitMultiVideoPromptOutput(text);
@@ -280,7 +281,12 @@ export function parseMultiVideoPrompts(text: string): string[] {
     return [];
   }
 
-  return prompts.map((promptText) => (sharedContext ? `${sharedContext}\n\n${promptText}` : promptText));
+  return prompts.map((promptText) => {
+    if (!sharedContext || CONTINUITY_LOCK_LINE_REGEX.test(promptText)) {
+      return promptText;
+    }
+    return `${sharedContext}\n\n${promptText}`;
+  });
 }
 
 /**
@@ -417,8 +423,6 @@ export function extractMusicBriefFromPromptText(text: string): string {
 
 export function prepareSilentVideoPromptForExternalAudio(text: string): string {
   const kept: string[] = [];
-  let hasExternalAudioInstruction = false;
-  let hasVisualOnlySilentInstruction = false;
   for (const rawLine of sanitizeMediaGenerationPromptText(text).replace(/\r\n/g, "\n").split("\n")) {
     let line = rawLine.trimEnd();
     const trimmed = line.trim();
@@ -430,34 +434,28 @@ export function prepareSilentVideoPromptForExternalAudio(text: string): string {
       continue;
     }
     if (EXTERNAL_AUDIO_WORKFLOW_LINE_REGEX.test(trimmed)) {
-      hasExternalAudioInstruction = true;
-      kept.push(EXTERNAL_AUDIO_WORKFLOW_LINE);
       continue;
     }
     if (/visual-only (?:silent )?footage/i.test(trimmed) || /must not (?:speak|lip-sync|mouth words)/i.test(trimmed)) {
-      hasVisualOnlySilentInstruction = true;
-      kept.push(EXTERNAL_AUDIO_VISUAL_ONLY_LINE);
       continue;
     }
     if (/Only (?:the intended character or presenter|character|presenter) voice\./i.test(trimmed)) {
+      kept.push(VISUAL_TEXT_RESTRICTION_LINE);
       continue;
     }
-    if (HARD_EXTERNAL_NO_AUDIO_LINE_REGEX.test(trimmed)) {
-      kept.push(EXTERNAL_AUDIO_NO_TEXT_SPEECH_LINE);
+    if (HARD_EXTERNAL_NO_AUDIO_LINE_REGEX.test(trimmed) || TEXT_RESTRICTION_WITH_AUDIO_CONTROL_REGEX.test(trimmed)) {
+      kept.push(VISUAL_TEXT_RESTRICTION_LINE);
       continue;
     }
     line = line
-      .replace(/presenter-style news clip/gi, "presenter-style silent b-roll clip")
-      .replace(/presenter-style news segment/gi, "presenter-style silent b-roll segment");
+      .replace(/\bwhile speaking\b/gi, "with natural presenter gestures")
+      .replace(/\bspeaking to camera\b/gi, "addressing the camera with natural gestures")
+      .replace(/\bspeaks? to camera\b/gi, "addresses the camera with natural gestures")
+      .replace(/\bspeaking\b/gi, "presenting visually")
+      .replace(/\bspeaks?\b/gi, "presents visually")
+      .replace(/\blip-sync(?:ing)?\b/gi, "natural facial expression")
+      .replace(/\bnarrat(?:e|es|ing|ion)\b/gi, "present");
     kept.push(line);
-  }
-
-  if (!hasVisualOnlySilentInstruction) {
-    kept.unshift(EXTERNAL_AUDIO_VISUAL_ONLY_LINE);
-  }
-
-  if (!hasExternalAudioInstruction) {
-    kept.push(EXTERNAL_AUDIO_WORKFLOW_LINE);
   }
 
   return kept

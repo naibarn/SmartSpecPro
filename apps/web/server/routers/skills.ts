@@ -2277,7 +2277,8 @@ export const skillsRouter = router({
         mergedUserInputs,
       );
       mergedUserInputs = preparedPromptPackageInputs.userInputs;
-      const isNewsNarrationPromptPackage = preparedPromptPackageInputs.suppressPromptLengthPlan;
+      const isMultiPromptPackage = preparedPromptPackageInputs.suppressPromptLengthPlan;
+      const promptPackageMode = preparedPromptPackageInputs.promptPackageMode;
 
       const requestedMaxPromptLength = Number(mergedUserInputs.maxPromptLength);
       const promptLengthPlan = Number.isFinite(requestedMaxPromptLength) && requestedMaxPromptLength > 0
@@ -2447,7 +2448,7 @@ export const skillsRouter = router({
             responseMode: mergedUserInputs.response_mode ?? null,
             requiresWebSearch,
             maxPromptLength: promptLengthPlan?.maxPromptLength ?? null,
-            ...(isNewsNarrationPromptPackage ? { multiPromptPackage: true, promptPackageMode: "news_narration" } : {}),
+            ...(isMultiPromptPackage ? { multiPromptPackage: true, promptPackageMode } : {}),
             nativeSkillRuntime,
           },
           modelConfig: buildRuntimeModelConfig({
@@ -2463,7 +2464,7 @@ export const skillsRouter = router({
               userId,
               input.referenceImages || [],
               visionModel,
-              promptLengthPlan?.maxTokens ?? (isNewsNarrationPromptPackage ? 7000 : 4000),
+              promptLengthPlan?.maxTokens ?? (isMultiPromptPackage ? 9000 : 4000),
               {
                 ...webSearchOptions,
                 publicUrl: ctx.publicUrl ?? null,

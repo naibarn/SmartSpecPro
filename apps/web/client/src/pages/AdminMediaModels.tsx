@@ -147,6 +147,7 @@ interface FormData {
   aspectRatios: string;
   sizes: string;
   durations: string;
+  storyboardClipDurationSeconds: string;
   voices: string;
   isEnabled: boolean;
   priority: number;
@@ -171,6 +172,16 @@ interface FormData {
 
 const SEARCH_DEBOUNCE_MS = 900;
 const MIN_SEARCH_LENGTH = 2;
+
+function readPositiveConfigNumber(...values: unknown[]): number | undefined {
+  for (const value of values) {
+    const parsed = typeof value === "number" ? value : Number(String(value ?? "").trim());
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return undefined;
+}
 
 type InputFieldType =
   | "select"
@@ -1184,6 +1195,7 @@ const DEFAULT_FORM_DATA: FormData = {
   aspectRatios: "",
   sizes: "",
   durations: "",
+  storyboardClipDurationSeconds: "",
   voices: "",
   isEnabled: true,
   priority: 99,
@@ -1457,6 +1469,14 @@ export default function AdminMediaModels() {
       aspectRatios: (model.aspectRatios || []).join(", "),
       sizes: (model.sizes || []).join(", "),
       durations: (model.durations || []).join(", "),
+      storyboardClipDurationSeconds: String(readPositiveConfigNumber(
+        cfg.storyboardClipDurationSeconds,
+        cfg.storyboard_clip_duration_seconds,
+        cfg.defaultStoryboardClipDurationSeconds,
+        cfg.default_storyboard_clip_duration_seconds,
+        cfg.clipDurationSeconds,
+        cfg.clip_duration_seconds
+      ) ?? ""),
       voices: (model.voices || []).join("\n"),
       isEnabled: model.isEnabled,
       priority: model.priority,
@@ -1509,6 +1529,14 @@ export default function AdminMediaModels() {
       aspectRatios: (model.aspectRatios || []).join(", "),
       sizes: (model.sizes || []).join(", "),
       durations: (model.durations || []).join(", "),
+      storyboardClipDurationSeconds: String(readPositiveConfigNumber(
+        cfg.storyboardClipDurationSeconds,
+        cfg.storyboard_clip_duration_seconds,
+        cfg.defaultStoryboardClipDurationSeconds,
+        cfg.default_storyboard_clip_duration_seconds,
+        cfg.clipDurationSeconds,
+        cfg.clip_duration_seconds
+      ) ?? ""),
       voices: (model.voices || []).join("\n"),
       isEnabled: false, // Start disabled for safety
       priority: model.priority,
@@ -1555,6 +1583,10 @@ export default function AdminMediaModels() {
     const durations = splitDelimitedTextValues(formData.durations)
       .map(s => parseInt(s, 10))
       .filter(n => !Number.isNaN(n));
+    const storyboardClipDurationSecondsRaw = formData.storyboardClipDurationSeconds.trim();
+    const storyboardClipDurationSeconds = storyboardClipDurationSecondsRaw
+      ? Number(storyboardClipDurationSecondsRaw)
+      : undefined;
     const voices = parseVoiceCatalogValues(formData.voices).map(
       entry => entry.value
     );
@@ -1605,6 +1637,13 @@ export default function AdminMediaModels() {
       }
     }
 
+    if (
+      storyboardClipDurationSecondsRaw
+      && (!Number.isFinite(storyboardClipDurationSeconds) || Number(storyboardClipDurationSeconds) <= 0)
+    ) {
+      parseErrors.push("Storyboard clip duration must be a positive number.");
+    }
+
     // Show validation errors and abort save
     if (parseErrors.length > 0) {
       toast.error("Validation Error", {
@@ -1644,6 +1683,7 @@ export default function AdminMediaModels() {
           : undefined,
       operationType: formData.operationType,
       generateType: formData.generateType || undefined,
+      storyboardClipDurationSeconds,
       ...(includeMaxPromptLength
         ? { maxPromptLength: formData.maxPromptLength }
         : {}),
@@ -1657,6 +1697,14 @@ export default function AdminMediaModels() {
       const merged = { ...existing, ...configJson };
       if (!includeMaxPromptLength) {
         delete merged.maxPromptLength;
+      }
+      if (storyboardClipDurationSeconds === undefined) {
+        delete merged.storyboardClipDurationSeconds;
+        delete merged.storyboard_clip_duration_seconds;
+        delete merged.defaultStoryboardClipDurationSeconds;
+        delete merged.default_storyboard_clip_duration_seconds;
+        delete merged.clipDurationSeconds;
+        delete merged.clip_duration_seconds;
       }
       updateMutation.mutate({
         id: editingModel.id,
@@ -1682,6 +1730,14 @@ export default function AdminMediaModels() {
         : configJson;
       if (!includeMaxPromptLength) {
         delete finalConfigJson.maxPromptLength;
+      }
+      if (storyboardClipDurationSeconds === undefined) {
+        delete finalConfigJson.storyboardClipDurationSeconds;
+        delete finalConfigJson.storyboard_clip_duration_seconds;
+        delete finalConfigJson.defaultStoryboardClipDurationSeconds;
+        delete finalConfigJson.default_storyboard_clip_duration_seconds;
+        delete finalConfigJson.clipDurationSeconds;
+        delete finalConfigJson.clip_duration_seconds;
       }
       createMutation.mutate({
         modelId: formData.modelId,
@@ -3309,19 +3365,44 @@ function ModelForm({
           )}
 
           {formData.modelType === "video" && (
-            <div className="grid gap-2">
-              <Label htmlFor="durations">Supported Durations (seconds)</Label>
-              <Input
-                id="durations"
-                value={formData.durations}
-                onChange={e =>
-                  setFormData({ ...formData, durations: e.target.value })
-                }
-                placeholder="5, 10, 15, 20"
-              />
-              <p className="text-xs text-muted-foreground">
-                Comma-separated list of supported video durations in seconds
-              </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="durations">Supported Durations (seconds)</Label>
+                <Input
+                  id="durations"
+                  value={formData.durations}
+                  onChange={e =>
+                    setFormData({ ...formData, durations: e.target.value })
+                  }
+                  placeholder="5, 10, 15, 20"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Comma-separated list of supported video durations in seconds
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="storyboardClipDurationSeconds">
+                  Storyboard Clip Duration (seconds)
+                </Label>
+                <Input
+                  id="storyboardClipDurationSeconds"
+                  type="number"
+                  min="0.25"
+                  step="0.25"
+                  value={formData.storyboardClipDurationSeconds}
+                  onChange={e =>
+                    setFormData({
+                      ...formData,
+                      storyboardClipDurationSeconds: e.target.value,
+                    })
+                  }
+                  placeholder="8"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Media Studio uses this value to calculate how many storyboard
+                  prompts are needed when an audio file is attached.
+                </p>
+              </div>
             </div>
           )}
 

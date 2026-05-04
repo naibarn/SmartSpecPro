@@ -60,6 +60,15 @@ import {
 } from "../services/falGeminiTts";
 
 import { validateExtraParamsNoSsrf } from "../services/ssrfValidation";
+import {
+  cancelDeferredMediaTask,
+  deleteDeferredMediaTask,
+  getDeferredMediaTask,
+  getMediaRetryDelayMsFromError,
+  isMediaProviderCapacityError,
+  listDeferredMediaTasks,
+  scheduleDeferredVideoRetry,
+} from "../services/deferredMediaRetryService";
 
 const extraParamsSchema = z
   .record(z.any())
@@ -2325,15 +2334,15 @@ export const mediaRouter = router({
         },
       });
 
-      try {
-        const userToken = getUserToken(ctx);
-        const debugTraceId = crypto.randomUUID();
-        const apiConfigWithProvider = {
-          ...(input.apiConfig ?? {}),
-          provider: modelMeta.provider,
-          trace_id: debugTraceId,
-        };
+      const userToken = getUserToken(ctx);
+      const debugTraceId = crypto.randomUUID();
+      const apiConfigWithProvider = {
+        ...(input.apiConfig ?? {}),
+        provider: modelMeta.provider,
+        trace_id: debugTraceId,
+      };
 
+      try {
         const task = await mediaGenerationService.generateVideoAsync(
           {
             prompt: input.prompt,
@@ -2366,6 +2375,48 @@ export const mediaRouter = router({
 
         return task;
       } catch (error) {
+        if (isMediaProviderCapacityError(error)) {
+          const retryDelayMs = getMediaRetryDelayMsFromError(error) ?? 5 * 60 * 1000;
+          console.warn("[Media] Video generation deferred due to provider capacity/rate limit:", {
+            model,
+            duration,
+            retryDelayMs,
+            error: error instanceof Error ? error.message : String(error ?? "Unknown error"),
+          });
+          return await scheduleDeferredVideoRetry({
+            userId: ctx.user.id,
+            userToken,
+            retryDelayMs,
+            errorMessage: error instanceof Error ? error.message : "Provider capacity limit",
+            request: {
+              prompt: input.prompt,
+              model,
+              duration: input.duration,
+              aspectRatio: input.aspectRatio,
+              fps: input.fps,
+              resolution: input.resolution,
+              referenceImageUrls: input.referenceImageUrls,
+              referenceVideoUrls: input.referenceVideoUrls,
+              referenceVideoUrl: input.referenceVideoUrl,
+              apiConfig: apiConfigWithProvider,
+              extraParams: {
+                ...input.extraParams,
+                __reserved_credits: creditCost,
+                __reserved_resolution: input.resolution,
+                __reserved_duration: duration,
+                ...(input.originSurface ? { __origin_surface: input.originSurface } : {}),
+              },
+              publicUrl: ctx.publicUrl ?? undefined,
+              auditContext: {
+                userId: ctx.user.id,
+                traceId: debugTraceId,
+                source: "trpc.media.generateVideoAsync",
+                stage: "deferred_after_capacity_limit",
+              },
+            },
+          });
+        }
+
         // Refund credits on failure
         console.error("[Media] Video generation failed, refunding credits:", error);
         try {
@@ -2399,6 +2450,20 @@ export const mediaRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         const userToken = getUserToken(ctx);
+        const deferredTask = await getDeferredMediaTask(
+          input.taskId,
+          ctx.user.id,
+          userToken,
+          {
+            userId: ctx.user.id,
+            source: "trpc.media.getTask",
+            stage: "deferred_poll",
+          },
+        );
+        if (deferredTask) {
+          return deferredTask;
+        }
+
         const task = await mediaGenerationService.getTask(
           input.taskId,
           userToken,
@@ -2421,6 +2486,62 @@ export const mediaRouter = router({
           message: error instanceof Error ? error.message : "Task not found",
         });
       }
+    }),
+
+  // Persist a failed provider-capacity task as a deferred retry job.
+  retryTaskLater: protectedProcedure
+    .input(z.object({
+      taskId: z.string().min(1),
+      retryDelayMs: z.number().min(1000).max(60 * 60 * 1000).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const userToken = getUserToken(ctx);
+      const task = await mediaGenerationService.getTask(input.taskId, userToken, {
+        userId: ctx.user.id,
+        source: "trpc.media.retryTaskLater",
+        stage: "inspect_failed_task",
+      });
+      if (task.mediaType !== "video") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only video tasks can be deferred for retry." });
+      }
+
+      const retryDelayMs =
+        input.retryDelayMs
+        ?? getMediaRetryDelayMsFromError(task.errorMessage || task.resultData)
+        ?? 5 * 60 * 1000;
+
+      const parameters = task.parameters ?? {};
+      const extraParams = typeof parameters.extra_params === "object" && parameters.extra_params
+        ? parameters.extra_params as Record<string, unknown>
+        : typeof parameters.extraParams === "object" && parameters.extraParams
+          ? parameters.extraParams as Record<string, unknown>
+          : undefined;
+
+      return await scheduleDeferredVideoRetry({
+        userId: ctx.user.id,
+        userToken,
+        retryDelayMs,
+        errorMessage: task.errorMessage || "Provider capacity limit",
+        request: {
+          prompt: task.prompt,
+          model: task.model,
+          duration: typeof parameters.duration === "number" ? parameters.duration : undefined,
+          aspectRatio: typeof parameters.aspect_ratio === "string" ? parameters.aspect_ratio : typeof parameters.aspectRatio === "string" ? parameters.aspectRatio : undefined,
+          fps: typeof parameters.fps === "number" ? parameters.fps : undefined,
+          resolution: typeof parameters.resolution === "string" ? parameters.resolution : undefined,
+          referenceImageUrls: Array.isArray(parameters.reference_image_urls) ? parameters.reference_image_urls.filter((url): url is string => typeof url === "string") : undefined,
+          referenceVideoUrls: Array.isArray(parameters.reference_video_urls) ? parameters.reference_video_urls.filter((url): url is string => typeof url === "string") : undefined,
+          referenceVideoUrl: typeof parameters.reference_video_url === "string" ? parameters.reference_video_url : undefined,
+          extraParams,
+          apiConfig: { provider: "kie.ai" },
+          publicUrl: ctx.publicUrl ?? undefined,
+          auditContext: {
+            userId: ctx.user.id,
+            source: "trpc.media.retryTaskLater",
+            stage: "scheduled_from_failed_task",
+          },
+        },
+      });
     }),
 
   // Add completed media task result into library + enqueue indexing
@@ -2519,7 +2640,59 @@ export const mediaRouter = router({
           offset: input?.offset,
           daysAgo: input?.daysAgo,
         });
-        return result;
+        const deferredTasks = await listDeferredMediaTasks(ctx.user.id, input?.limit ?? 50);
+        const filteredDeferredTasks = deferredTasks.filter((task) => {
+          if (input?.mediaType && task.mediaType !== input.mediaType) return false;
+          if (input?.status && task.status !== input.status) return false;
+          return true;
+        });
+        const providerTasksForShadowCheck = result.tasks ?? [];
+        const activeDeferredTasks = filteredDeferredTasks.filter((task) => {
+          if (task.status !== "pending" && task.status !== "processing") {
+            return true;
+          }
+          const deferredCreatedAt = Date.parse(task.createdAt) || 0;
+          const hasCompletedReplacement = providerTasksForShadowCheck.some((providerTask) => {
+            if (providerTask.mediaType !== task.mediaType) return false;
+            if (providerTask.status !== "completed") return false;
+            if ((providerTask.prompt || "").trim() !== (task.prompt || "").trim()) return false;
+            if ((providerTask.model || "").trim() !== (task.model || "").trim()) return false;
+            const providerCreatedAt = Date.parse(providerTask.createdAt) || Date.parse(providerTask.completedAt ?? "") || 0;
+            return providerCreatedAt >= deferredCreatedAt;
+          });
+          return !hasCompletedReplacement;
+        });
+        const deferredLinkedIds = new Set<string>();
+        for (const task of activeDeferredTasks) {
+          const parameters = task.parameters ?? {};
+          const resultData = typeof task.resultData === "object" && task.resultData ? task.resultData : {};
+          for (const candidate of [
+            parameters.linkedTaskId,
+            parameters.linkedBackendTaskId,
+            parameters.linkedProviderTaskId,
+            (resultData as Record<string, unknown>).linkedBackendTaskId,
+            (resultData as Record<string, unknown>).linkedProviderTaskId,
+          ]) {
+            if (typeof candidate === "string" && candidate.trim()) {
+              deferredLinkedIds.add(candidate);
+            }
+          }
+        }
+        const providerTasks = (result.tasks ?? []).filter((task) => {
+          if (deferredLinkedIds.has(task.id)) return false;
+          if (task.taskId && deferredLinkedIds.has(task.taskId)) return false;
+          return true;
+        });
+        const mergedTasks = [...activeDeferredTasks, ...providerTasks]
+          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+          .slice(0, input?.limit ?? 50);
+        return {
+          ...result,
+          tasks: mergedTasks,
+          total: (result.total ?? result.tasks?.length ?? 0) + activeDeferredTasks.length,
+          limit: input?.limit ?? result.limit,
+          offset: input?.offset ?? result.offset,
+        };
       } catch (error) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -2583,6 +2756,11 @@ export const mediaRouter = router({
     .input(z.object({ taskId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       try {
+        const deferredTask = await cancelDeferredMediaTask(input.taskId, ctx.user.id);
+        if (deferredTask) {
+          return deferredTask;
+        }
+
         const userToken = getUserToken(ctx);
         const task = await mediaGenerationService.cancelTask(input.taskId, userToken);
         return task;
@@ -2599,6 +2777,11 @@ export const mediaRouter = router({
     .input(z.object({ taskId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       try {
+        const deletedDeferredTask = await deleteDeferredMediaTask(input.taskId, ctx.user.id);
+        if (deletedDeferredTask) {
+          return { success: true, taskId: input.taskId };
+        }
+
         const userToken = getUserToken(ctx);
         const runtime = await getAppRuntimeConfig();
 

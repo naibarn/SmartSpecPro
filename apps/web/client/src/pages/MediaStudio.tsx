@@ -186,6 +186,10 @@ import {
   inferVoiceoverTextLimitCharacters,
   splitVoiceoverTextByLimit,
 } from "@/lib/mediaStudioAudioSegments";
+import {
+  DEFAULT_STORYBOARD_CLIP_DURATION_SECONDS,
+  resolveStoryboardClipDurationSeconds,
+} from "@/lib/mediaModelStoryboardTiming";
 import { buildStoryboardVideoProject, type StoryboardCompanionAudioCandidate } from "@/lib/storyboardVideoProject";
 import {
   buildDefaultExtraParamsForModel,
@@ -402,6 +406,74 @@ interface GenerationTask {
   providerTaskId?: string;
   statusDetail?: string;
   storyboardContext?: StoryboardVideoGenerationContext;
+}
+
+interface StoryboardReviewDraft {
+  version: 1;
+  reviewId?: number | null;
+  updatedAt: number;
+  taskIds: string[];
+  selectedTaskIds: string[];
+  tasks: GenerationTask[];
+  companionAudio: StoryboardCompanionAudioCandidate[];
+  compoundStatus: string | null;
+  projectLink: string | null;
+  renderJobId: string | null;
+}
+
+const STORYBOARD_REVIEW_DRAFT_STORAGE_KEY = "smartspec_media_studio_storyboard_review_draft_v1";
+const STORYBOARD_REVIEW_DRAFT_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+
+function readStoryboardReviewDraft(): StoryboardReviewDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORYBOARD_REVIEW_DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoryboardReviewDraft>;
+    if (parsed.version !== 1 || !Array.isArray(parsed.taskIds) || !Array.isArray(parsed.tasks)) {
+      return null;
+    }
+    if (typeof parsed.updatedAt !== "number" || Date.now() - parsed.updatedAt > STORYBOARD_REVIEW_DRAFT_TTL_MS) {
+      window.localStorage.removeItem(STORYBOARD_REVIEW_DRAFT_STORAGE_KEY);
+      return null;
+    }
+    return {
+      version: 1,
+      reviewId: typeof parsed.reviewId === "number" ? parsed.reviewId : null,
+      updatedAt: parsed.updatedAt,
+      taskIds: parsed.taskIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0),
+      selectedTaskIds: Array.isArray(parsed.selectedTaskIds)
+        ? parsed.selectedTaskIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0)
+        : [],
+      tasks: parsed.tasks as GenerationTask[],
+      companionAudio: Array.isArray(parsed.companionAudio)
+        ? parsed.companionAudio as StoryboardCompanionAudioCandidate[]
+        : [],
+      compoundStatus: typeof parsed.compoundStatus === "string" ? parsed.compoundStatus : null,
+      projectLink: typeof parsed.projectLink === "string" ? parsed.projectLink : null,
+      renderJobId: typeof parsed.renderJobId === "string" ? parsed.renderJobId : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoryboardReviewDraft(draft: StoryboardReviewDraft): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORYBOARD_REVIEW_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  } catch {
+    // Ignore storage quota/private mode failures; active in-memory state still works.
+  }
+}
+
+function clearStoryboardReviewDraft(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(STORYBOARD_REVIEW_DRAFT_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
 }
 
 interface StyleOption {
@@ -1474,7 +1546,10 @@ function applyTtsLanguageDefaultsForPrompt(
   }
 }
 
-function inferStoryboardClipDurationSeconds(promptText: string, fallbackSeconds = 8): number {
+function inferStoryboardClipDurationSeconds(
+  promptText: string,
+  fallbackSeconds = DEFAULT_STORYBOARD_CLIP_DURATION_SECONDS,
+): number {
   const match = promptText.match(/(\d+(?:\.\d+)?)\s*seconds?/i);
   const parsed = match ? Number.parseFloat(match[1] ?? "") : Number.NaN;
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackSeconds;
@@ -1685,18 +1760,6 @@ function getMediaStudioModelInputValidationErrors(params: {
   return errors;
 }
 
-function renderMediaStudioFieldDescription(field: { description?: string } | null | undefined) {
-  if (!field?.description) {
-    return null;
-  }
-
-  return (
-    <p className="text-[11px] leading-snug text-muted-foreground">
-      {field.description}
-    </p>
-  );
-}
-
 function inferModelInputSyncTarget(field: Record<string, any> | null | undefined): string {
   if (!field || typeof field !== "object") {
     return "none";
@@ -1854,6 +1917,8 @@ type MediaHistoryTaskLite = {
   prompt?: string | null;
   model?: string | null;
   resultUrl?: string | null;
+  parameters?: Record<string, unknown> | null;
+  resultData?: Record<string, unknown> | null;
   errorMessage?: string | null;
   createdAt?: string | null;
   startedAt?: string | null;
@@ -1890,6 +1955,37 @@ function normalizeQueueStatus(status: string | undefined | null): QueueGeneratio
   }
 }
 
+function collectStringValues(value: unknown, output: string[], depth = 0): void {
+  if (depth > 5 || value == null) return;
+  if (typeof value === "string") {
+    output.push(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectStringValues(item, output, depth + 1));
+    return;
+  }
+  if (typeof value === "object") {
+    Object.values(value as Record<string, unknown>).forEach((item) => collectStringValues(item, output, depth + 1));
+  }
+}
+
+function getMediaCapacityRetryDelayMsFromMessage(value: unknown): number | null {
+  const messages: string[] = [];
+  collectStringValues(value, messages);
+  const text = messages.join("\n").replace(/\s+/g, " ").trim();
+  if (!text) return null;
+  if (!/points used by apiKey has exceeded the hourly limit|hourly limit|rate limit exceeded for media generation|too many requests|quota/i.test(text)) {
+    return null;
+  }
+  const secondsMatch = text.match(/try again in\s+(\d+(?:\.\d+)?)\s*seconds?/i)
+    || text.match(/retry after\s+(\d+(?:\.\d+)?)\s*seconds?/i);
+  if (!secondsMatch) {
+    return 5 * 60 * 1000;
+  }
+  return Math.max(15 * 1000, Math.min(60 * 60 * 1000, Math.ceil(Number(secondsMatch[1]) * 1000 + 5000)));
+}
+
 function getQueueProgress(status: QueueGenerationTask["status"]): number {
   switch (status) {
     case "queued":
@@ -1923,6 +2019,53 @@ export default function MediaStudio() {
       return tNs(key.slice("credits.".length), params);
     }
     return tNs(key, params);
+  };
+  const getModelInputFieldLabel = (field: Record<string, any>) => {
+    const rawKey = String(field?.key ?? "");
+    const rawLabel = String(field?.label ?? rawKey);
+    const normalized = `${rawKey} ${rawLabel}`.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    if (normalized.includes("generationmode") || normalized.includes("generatemode")) return t('mediaStudio.modelField.generationMode');
+    if (normalized.includes("outputquality") || normalized === "qualityquality") return t('mediaStudio.modelField.outputQuality');
+    if (normalized.includes("watermark")) return t('mediaStudio.modelField.watermark');
+    if (normalized.includes("enabletranslation")) return t('mediaStudio.modelField.enableTranslation');
+    if (normalized.includes("enablefallback")) return t('mediaStudio.modelField.enableFallback');
+    if (normalized.includes("startendorreferenceimages") || normalized.includes("referenceimages")) return t('mediaStudio.modelField.startEndReferenceImages');
+    if (normalized.includes("aspectratio")) return t('mediaStudio.aspectRatio');
+    if (normalized.includes("voiceover") && normalized.includes("script")) return t('mediaStudio.voiceoverScript');
+    if (normalized.includes("voicemodel")) return t('mediaStudio.voiceModel');
+    if (normalized.includes("storyboardaudioprepmode")) return t('mediaStudio.storyboardAudioPrepMode');
+    if (normalized.includes("videoaudioworkflow")) return t('mediaStudio.videoAudioWorkflow');
+    if (normalized.includes("outputtype") || normalized.includes("resulttype")) return t('mediaStudio.outputType');
+    if (normalized.includes("style")) return t('mediaStudio.style');
+    if (normalized.includes("duration")) return t('mediaStudio.duration');
+    if (normalized === "texttext" || normalized === "promptprompt") return t('mediaStudio.promptLabel');
+
+    return rawLabel || rawKey;
+  };
+  const getModelInputFieldPlaceholder = (field: Record<string, any>) => {
+    const placeholder = typeof field?.placeholder === "string" ? field.placeholder.trim() : "";
+    if (!placeholder || placeholder === field?.label) {
+      return getModelInputFieldLabel(field);
+    }
+    return placeholder;
+  };
+  const getModelInputFieldDescription = (field: Record<string, any>) => {
+    const description = typeof field?.description === "string" ? field.description.trim() : "";
+    const normalized = `${field?.key ?? ""} ${field?.label ?? ""} ${description}`.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (normalized.includes("geminittshas") || normalized.includes("32ktokencontext")) {
+      return t('mediaStudio.modelFieldDescription.geminiTtsText');
+    }
+    return description;
+  };
+  const renderModelInputFieldDescription = (field: Record<string, any>) => {
+    const description = getModelInputFieldDescription(field);
+    if (!description) return null;
+    return (
+      <p className="text-[11px] leading-snug text-muted-foreground">
+        {description}
+      </p>
+    );
   };
 
   // Active tab state
@@ -2626,6 +2769,8 @@ export default function MediaStudio() {
   const [isGenerationQueueHidden, setIsGenerationQueueHidden] = useState(false);
   const [focusedGenerationTaskId, setFocusedGenerationTaskId] = useState<string | null>(null);
   const [storyboardReviewOpen, setStoryboardReviewOpen] = useState(false);
+  const [storyboardReviewProjectsOpen, setStoryboardReviewProjectsOpen] = useState(false);
+  const [storyboardReviewId, setStoryboardReviewId] = useState<number | null>(null);
   const [storyboardReviewTaskIds, setStoryboardReviewTaskIds] = useState<string[]>([]);
   const [selectedStoryboardTaskIds, setSelectedStoryboardTaskIds] = useState<Set<string>>(new Set());
   const [isCompoundingStoryboard, setIsCompoundingStoryboard] = useState(false);
@@ -2640,6 +2785,10 @@ export default function MediaStudio() {
   const autoPreviewSessionStartRef = useRef<number>(0);
   const autoPreviewWindowUntilRef = useRef<number>(0);
   const autoPreviewSeenTaskIdsRef = useRef<Set<string>>(new Set());
+  const scheduledDeferredRetryTaskIdsRef = useRef<Set<string>>(new Set());
+  const storyboardReviewDraftRestoredRef = useRef(false);
+  const storyboardReviewSaveTimerRef = useRef<number | null>(null);
+  const storyboardReviewSaveInFlightRef = useRef(false);
   // Track session start time to filter out old failed tasks from History Gallery
   const [sessionStartTime] = useState<Date>(() => new Date());
   const [expiredUrls, setExpiredUrls] = useState<Set<string>>(() => new Set());
@@ -2767,6 +2916,7 @@ export default function MediaStudio() {
   const [voiceChangerSourceAudioUrl, setVoiceChangerSourceAudioUrl] = useState("");
   const [voiceChangerSourceAudioName, setVoiceChangerSourceAudioName] = useState("");
   const voiceChangerAudioInputRef = useRef<HTMLInputElement | null>(null);
+  const isTextToSpeechMode = activeTab === "audio" && audioWorkflow === "tts";
   const isVoiceChangerMode = activeTab === "audio" && audioWorkflow === "voice_changer";
   const isSpeechToTextMode = activeTab === "audio" && audioWorkflow === "speech_to_text";
   const isVoiceIsolatorMode = activeTab === "audio" && audioWorkflow === "voice_isolator";
@@ -2865,6 +3015,14 @@ export default function MediaStudio() {
   const selectedSeparateVoiceFields = useMemo(
     () => parseModelInputFields(selectedSeparateVoiceModel as any),
     [selectedSeparateVoiceModel],
+  );
+  const selectedSeparateVoiceSettingFields = useMemo(
+    () => selectedSeparateVoiceFields.filter((field) => {
+      const key = String(field.key ?? "").trim().toLowerCase();
+      const syncWith = String(field.syncWith ?? "").trim().toLowerCase();
+      return syncWith !== "prompt" && key !== "text" && key !== "prompt";
+    }),
+    [selectedSeparateVoiceFields],
   );
   const selectedSeparateMusicFields = useMemo(
     () => parseModelInputFields(selectedSeparateMusicModel as any),
@@ -2979,6 +3137,22 @@ export default function MediaStudio() {
     const parsed = Number(rawValue);
     return Number.isFinite(parsed) ? parsed : undefined;
   }, [activeTab, duration, modelInputValues.duration, selectedDurationField]);
+  const selectedStoryboardClipDurationSeconds = useMemo(() => {
+    if (activeTab !== "video") {
+      return undefined;
+    }
+    return resolveStoryboardClipDurationSeconds({
+      model: selectedMediaModelForInputFields ?? selectedMediaModel,
+      selectedDurationSeconds: selectedVideoDuration,
+      fallbackSeconds: tabStates.video.duration,
+    });
+  }, [
+    activeTab,
+    selectedMediaModel,
+    selectedMediaModelForInputFields,
+    selectedVideoDuration,
+    tabStates.video.duration,
+  ]);
   const selectedModelInputFields = useMemo(() => {
     const inputFields = Array.isArray(selectedMediaModelConfig?.inputFields)
       ? selectedMediaModelConfig.inputFields as any[]
@@ -3109,7 +3283,21 @@ export default function MediaStudio() {
   );
   const trpcUtils = trpc.useUtils();
   const saveStoryboardProjectMutation = trpc.videoEditorProjects.save.useMutation();
+  const saveStoryboardReviewMutation = trpc.videoEditorProjects.saveStoryboardReview.useMutation();
+  const deleteStoryboardReviewMutation = trpc.videoEditorProjects.deleteStoryboardReview.useMutation();
   const addTaskToLibraryMutation = trpc.media.addTaskToLibrary.useMutation();
+  const retryTaskLaterMutation = trpc.media.retryTaskLater.useMutation();
+  const deleteMediaTaskMutation = trpc.media.deleteTask.useMutation();
+  const {
+    data: storyboardReviewProjectsData,
+    refetch: refetchStoryboardReviewProjects,
+  } = trpc.videoEditorProjects.listStoryboardReviews.useQuery(
+    { limit: 30 },
+    {
+      refetchInterval: 20000,
+      refetchOnWindowFocus: true,
+    },
+  );
   const {
     data: librarySearchData,
     isLoading: isLibrarySearchLoading,
@@ -3164,6 +3352,42 @@ export default function MediaStudio() {
       })
       .filter((item): item is NonNullable<typeof item> => Boolean(item));
   }, [expiredUrls, mediaHistory?.tasks]);
+
+  const selectExistingStoryboardAudio = useCallback(async (
+    url: string,
+    name?: string,
+  ) => {
+    const normalizedUrl = String(url || "").trim();
+    setStoryboardAudioPrepMode("existing_voice");
+    setStoryboardAudioSourceUrl(normalizedUrl);
+    setStoryboardAudioSourceName(normalizedUrl ? (name || t('mediaStudio.storyboardAudioPrepLibraryAudio')) : "");
+    setStoryboardPreparedAudio([]);
+    if (!normalizedUrl) {
+      setStoryboardAudioSourceDurationSeconds(null);
+      setStoryboardAudioPrepStatus(null);
+      return;
+    }
+    setStoryboardAudioPrepStatus(t('mediaStudio.storyboardAudioPrepProbing'));
+    const fallbackSeconds = estimateVoiceoverDurationSeconds(externalVoiceoverScript || prompt || "");
+    const durationSeconds = await probeMediaDurationSeconds(normalizedUrl, fallbackSeconds);
+    setStoryboardAudioSourceDurationSeconds(durationSeconds);
+    setStoryboardPreparedAudio([{
+      id: `prepared-voiceover-existing-${Date.now()}`,
+      kind: "voiceover",
+      title: name || t('mediaStudio.storyboardAudioPrepExistingTitle'),
+      url: normalizedUrl,
+      prompt: externalVoiceoverScript || prompt || "",
+      model: "existing-audio",
+      startTimeSeconds: 0,
+      actualDurationSeconds: durationSeconds,
+      targetDurationSeconds: durationSeconds,
+      volume: 1,
+    }]);
+    setStoryboardAudioPrepStatus(t('mediaStudio.storyboardAudioPrepDurationReady', {
+      duration: formatMediaDuration(durationSeconds),
+    }));
+    toast.success(t('mediaStudio.storyboardAudioPrepAudioReady'));
+  }, [externalVoiceoverScript, prompt, t]);
 
   const historyGalleryPendingTasks = useMemo(() => {
     return historyGalleryTasks.filter((task) => {
@@ -3233,6 +3457,129 @@ export default function MediaStudio() {
   const generateAudioAsyncMutation = trpc.media.generateAudioAsync.useMutation();
   const enhancePromptMutation = trpc.skills.enhancePrompt.useMutation();
   const executeCustomSkillMutation = trpc.skills.executeCustomSkill.useMutation();
+
+  useEffect(() => {
+    if (storyboardReviewDraftRestoredRef.current) return;
+    storyboardReviewDraftRestoredRef.current = true;
+
+    const draft = readStoryboardReviewDraft();
+    if (!draft || draft.taskIds.length === 0 || draft.tasks.length === 0) {
+      return;
+    }
+
+    setGenerationTasks((prev) => {
+      const existingIds = new Set(prev.flatMap((task) => getGenerationQueueIdentityCandidates(task)));
+      const restoredTasks = draft.tasks.filter((task) =>
+        !getGenerationQueueIdentityCandidates(task).some((id) => existingIds.has(id)),
+      );
+      return restoredTasks.length > 0 ? [...prev, ...restoredTasks] : prev;
+    });
+    setStoryboardReviewId(draft.reviewId ?? null);
+    setStoryboardReviewTaskIds(draft.taskIds);
+    setSelectedStoryboardTaskIds(new Set(draft.selectedTaskIds.length > 0 ? draft.selectedTaskIds : draft.taskIds));
+    setStoryboardCompanionAudio(draft.companionAudio);
+    setStoryboardCompoundStatus(draft.compoundStatus || t('mediaStudio.storyboardReviewRestored'));
+    setStoryboardProjectLink(draft.projectLink);
+    setStoryboardRenderJobId(draft.renderJobId);
+    setTrackedGenerationQueueTaskIds((prev) => {
+      const next = new Set(prev);
+      draft.tasks.forEach((task) => {
+        getGenerationQueueIdentityCandidates(task).forEach((id) => next.add(id));
+      });
+      return next;
+    });
+  }, []);
+
+  const buildStoryboardReviewDraft = useCallback((): StoryboardReviewDraft | null => {
+    if (storyboardReviewTaskIds.length === 0) return null;
+    const draftTasks = generationTasks.filter((task) => storyboardReviewTaskIds.includes(task.id));
+    if (draftTasks.length === 0) return null;
+    return {
+      version: 1,
+      reviewId: storyboardReviewId,
+      updatedAt: Date.now(),
+      taskIds: storyboardReviewTaskIds,
+      selectedTaskIds: Array.from(selectedStoryboardTaskIds),
+      tasks: draftTasks,
+      companionAudio: storyboardCompanionAudio,
+      compoundStatus: storyboardCompoundStatus,
+      projectLink: storyboardProjectLink,
+      renderJobId: storyboardRenderJobId,
+    };
+  }, [
+    generationTasks,
+    selectedStoryboardTaskIds,
+    storyboardCompanionAudio,
+    storyboardCompoundStatus,
+    storyboardProjectLink,
+    storyboardRenderJobId,
+    storyboardReviewTaskIds,
+  ]);
+
+  const getStoryboardReviewName = useCallback((draft: StoryboardReviewDraft) => {
+    const firstPrompt = draft.tasks[0]?.prompt?.trim();
+    const base = firstPrompt ? firstPrompt.slice(0, 52) : "Storyboard Review";
+    return `${base}${firstPrompt && firstPrompt.length > 52 ? "..." : ""}`;
+  }, []);
+
+  useEffect(() => {
+    if (!storyboardReviewDraftRestoredRef.current) return;
+    if (storyboardReviewTaskIds.length === 0) {
+      clearStoryboardReviewDraft();
+      return;
+    }
+
+    const draft = buildStoryboardReviewDraft();
+    if (!draft) return;
+
+    writeStoryboardReviewDraft(draft);
+
+    if (storyboardReviewSaveTimerRef.current) {
+      window.clearTimeout(storyboardReviewSaveTimerRef.current);
+    }
+    storyboardReviewSaveTimerRef.current = window.setTimeout(() => {
+      if (storyboardReviewSaveInFlightRef.current) return;
+      storyboardReviewSaveInFlightRef.current = true;
+      const completedClipCount = draft.tasks.filter((task) => task.status === "completed" && task.url).length;
+      const thumbnailUrl = draft.tasks.find((task) => task.url)?.url ?? null;
+      saveStoryboardReviewMutation
+        .mutateAsync({
+          id: storyboardReviewId ?? undefined,
+          name: getStoryboardReviewName(draft),
+          reviewData: draft,
+          clipCount: draft.tasks.length,
+          completedClipCount,
+          thumbnailUrl,
+        })
+        .then((result) => {
+          if (!storyboardReviewId) {
+            setStoryboardReviewId(result.id);
+          }
+          void refetchStoryboardReviewProjects();
+        })
+        .catch((error) => {
+          console.error(t('mediaStudio.storyboardReviewSaveFailed'), error);
+        })
+        .finally(() => {
+          storyboardReviewSaveInFlightRef.current = false;
+        });
+    }, 900);
+
+    return () => {
+      if (storyboardReviewSaveTimerRef.current) {
+        window.clearTimeout(storyboardReviewSaveTimerRef.current);
+        storyboardReviewSaveTimerRef.current = null;
+      }
+    };
+  }, [
+    buildStoryboardReviewDraft,
+    getStoryboardReviewName,
+    refetchStoryboardReviewProjects,
+    saveStoryboardReviewMutation,
+    storyboardReviewId,
+    storyboardReviewTaskIds,
+    t,
+  ]);
 
   const blobToBase64 = async (blob: Blob) =>
     new Promise<string>((resolve, reject) => {
@@ -3544,11 +3891,15 @@ export default function MediaStudio() {
   ]);
 
   useEffect(() => {
+    const separateVoiceAudioFirst = (
+      videoAudioWorkflow === "separate_voice" ||
+      videoAudioWorkflow === "separate_voice_music"
+    ) && storyboardAudioPrepMode !== "off";
     if (
       activeTab !== "video"
       || selectedSkillId !== VEO_STORYBOARD_SKILL_ID
       || !useAdvancedMode
-      || dynamicFormValues.contentMode !== "news_narration"
+      || (dynamicFormValues.contentMode !== "news_narration" && !separateVoiceAudioFirst)
     ) {
       return;
     }
@@ -3572,6 +3923,8 @@ export default function MediaStudio() {
     selectedSkillId,
     useAdvancedMode,
     dynamicFormValues,
+    storyboardAudioPrepMode,
+    videoAudioWorkflow,
     videoOutputType,
     setDynamicFormValues,
   ]);
@@ -3902,6 +4255,18 @@ export default function MediaStudio() {
       setStoryboardAudioSourceName(file.name);
       setStoryboardAudioSourceDurationSeconds(durationSeconds);
       setStoryboardAudioPrepMode("existing_voice");
+      setStoryboardPreparedAudio([{
+        id: `prepared-voiceover-uploaded-${Date.now()}`,
+        kind: "voiceover",
+        title: file.name,
+        url: result.url,
+        prompt: externalVoiceoverScript || prompt || "",
+        model: "uploaded-audio",
+        startTimeSeconds: 0,
+        actualDurationSeconds: durationSeconds,
+        targetDurationSeconds: durationSeconds,
+        volume: 1,
+      }]);
       setGeneratedMedia((prev) => [{
         id: `uploaded-storyboard-audio-${Date.now()}`,
         type: "audio",
@@ -4127,6 +4492,10 @@ export default function MediaStudio() {
     if (!url) return false;
     return /\.(jpg|jpeg|png|gif|webp|svg|avif|bmp)([?#].*)?$/i.test(url.trim());
   };
+  const isAudioMediaUrl = (url?: string | null) => {
+    if (!url) return false;
+    return /\.(mp3|wav|m4a|aac|ogg|flac|webm)([?#].*)?$/i.test(url.trim());
+  };
 
   const getDraggedMediaType = (dataTransfer: DataTransfer) => {
     return dataTransfer.getData("application/x-smartspec-media-type")
@@ -4203,6 +4572,20 @@ export default function MediaStudio() {
     }
   };
 
+  const handleStoryboardAudioDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const url = getDraggedMediaUrl(e.dataTransfer);
+    const draggedMediaType = getDraggedMediaType(e.dataTransfer);
+    if (!(draggedMediaType === "audio" || isAudioMediaUrl(url))) {
+      return;
+    }
+    const historyAudio = audioPickerHistoryOptions.find((item) => item.url === url);
+    void selectExistingStoryboardAudio(
+      url,
+      historyAudio?.title || t('mediaStudio.storyboardAudioPrepDroppedAudio'),
+    );
+  };
+
   // Handle drag start for history media
   const handleHistoryDragStart = (e: React.DragEvent, url: string, mediaType: MediaType | null | undefined) => {
     e.dataTransfer.setData("text/uri-list", url);
@@ -4247,12 +4630,12 @@ export default function MediaStudio() {
 
   const getStoryboardAudioTimingClipSeconds = useCallback(() => {
     const selectedModelData = visibleMediaModels.find((model) => model.modelId === selectedModel);
-    const selectedVeoProviderModelId = getVeoProviderModelId(selectedModelData);
-    if (activeTab === "video" && isVeoProviderModelId(selectedVeoProviderModelId)) {
-      return Math.max(0.25, selectedVideoDuration ?? 8);
-    }
-    return Math.max(0.25, selectedVideoDuration ?? tabStates.video.duration ?? 8);
-  }, [activeTab, selectedModel, selectedVideoDuration, tabStates.video.duration, visibleMediaModels]);
+    return resolveStoryboardClipDurationSeconds({
+      model: selectedModelData,
+      selectedDurationSeconds: selectedVideoDuration,
+      fallbackSeconds: tabStates.video.duration,
+    });
+  }, [selectedModel, selectedVideoDuration, tabStates.video.duration, visibleMediaModels]);
 
   const buildStoryboardAudioPrepScript = useCallback((values: Record<string, any>, fallbackText: string): string => {
     const liveVoiceoverScript = voiceoverScriptTextareaRef.current?.value ?? externalVoiceoverScript;
@@ -4779,19 +5162,21 @@ export default function MediaStudio() {
           const nextPromptReview = normalizePromptReviewSummary(
             (result as { promptReview?: unknown }).promptReview,
           );
-          const isNewsNarrationSkillOutput = (
+          const isVeoStoryboardSkillOutput = (
             activeTab === "video"
             && selectedSkillId === VEO_STORYBOARD_SKILL_ID
-            && sanitizedInputs.contentMode === "news_narration"
           );
-          const newsPromptCount = isNewsNarrationSkillOutput
+          const skillPromptCount = isVeoStoryboardSkillOutput
             ? countMultiVideoPromptBlocks(result.content)
             : 0;
-          const skillSuccessDescription = newsPromptCount > 0
+          if (isVeoStoryboardSkillOutput && skillPromptCount > 1 && videoOutputType !== "multi-video") {
+            setVideoOutputType("multi-video");
+          }
+          const skillSuccessDescription = skillPromptCount > 0
             ? (
                 isThaiLocale
-                  ? `Credits used: ${result.creditsUsed}. ตรวจพบ ${newsPromptCount} news beats และตั้งค่า Multi Video พร้อมสร้างทีละคลิป.`
-                  : `Credits used: ${result.creditsUsed}. Detected ${newsPromptCount} news beats and prepared Multi Video prompts for sequential generation.`
+                  ? `Credits used: ${result.creditsUsed}. ตรวจพบ ${skillPromptCount} prompts และตั้งค่า Multi Video พร้อมสร้างทีละคลิป.`
+                  : `Credits used: ${result.creditsUsed}. Detected ${skillPromptCount} prompts and prepared Multi Video prompts for sequential generation.`
               )
             : `Credits used: ${result.creditsUsed}`;
           // Check if outputType="both" - try to parse and split prompts for Image/Video tabs
@@ -4824,7 +5209,7 @@ export default function MediaStudio() {
               }
 
               toast.success(t('mediaStudio.skillExecutedSuccessfully', { skillName: result.skillName }), {
-                description: newsPromptCount > 0
+                description: skillPromptCount > 0
                   ? skillSuccessDescription
                   : `Credits: ${result.creditsUsed}. Prompts split for Image and Video tabs.`,
               });
@@ -5077,8 +5462,15 @@ export default function MediaStudio() {
       ? storyboardPreparedAudio
       : [];
     const selectedVeoGenerationType = String(modelInputValues.generationType ?? dynamicFormValues.generationType ?? "").trim();
-    const effectiveSelectedVideoDuration = activeTab === "video" && isVeoProviderModelId(selectedVeoProviderModelId)
-      ? (selectedVideoDuration ?? 8)
+    const storyboardClipDurationSeconds = activeTab === "video"
+      ? resolveStoryboardClipDurationSeconds({
+        model: selectedModelData,
+        selectedDurationSeconds: selectedVideoDuration,
+        fallbackSeconds: tabStates.video.duration,
+      })
+      : undefined;
+    const effectiveSelectedVideoDuration = activeTab === "video"
+      ? storyboardClipDurationSeconds
       : selectedVideoDuration;
     const separateAudioSourceText = shouldUseSeparateAudioWorkflow
       ? externalAudioPromptSource.trim()
@@ -5149,7 +5541,7 @@ export default function MediaStudio() {
     }
     const videoPromptTextsForDuration = isMultiVideo ? audioSourcePrompts : [finalPrompt];
     const targetStoryboardDurationSeconds = videoPromptTextsForDuration.reduce(
-      (sum, item) => sum + inferStoryboardClipDurationSeconds(item, effectiveSelectedVideoDuration || 8),
+      (sum, item) => sum + inferStoryboardClipDurationSeconds(item, storyboardClipDurationSeconds),
       0,
     );
     if (shouldUseSeparateAudioWorkflow) {
@@ -5354,6 +5746,7 @@ export default function MediaStudio() {
       ? initialTasks.map((task) => task.id)
       : [];
     const shouldOpenStoryboardReviewImmediately = initialStoryboardTaskIds.length > 0;
+    setStoryboardReviewId(null);
     setStoryboardReviewTaskIds(initialStoryboardTaskIds);
     setSelectedStoryboardTaskIds(new Set(initialStoryboardTaskIds));
     setStoryboardReviewOpen(shouldOpenStoryboardReviewImmediately);
@@ -5505,6 +5898,11 @@ export default function MediaStudio() {
           void refetchMediaHistory();
         } else if (startedAsyncTask) {
           // Async task created successfully; output will appear in history.
+          const asyncTaskIsDeferredRetry = Boolean(asyncTask?.parameters?.deferredRetry || asyncTask?.resultData?.deferredRetry);
+          const asyncTaskPendingDetail =
+            asyncTaskIsDeferredRetry && asyncTask?.errorMessage
+              ? asyncTask.errorMessage
+              : t('mediaStudio.generationStatus.waitingForProviderPickup');
           setGenerationTasks(prev =>
             prev.map((task, idx) => idx === i ? {
               ...task,
@@ -5520,7 +5918,7 @@ export default function MediaStudio() {
               providerTaskId: asyncTask?.taskId || task.providerTaskId,
               statusDetail:
                 asyncTask?.status === "processing" ? t('mediaStudio.generationStatus.providerProcessing') :
-                asyncTask?.status === "pending" ? t('mediaStudio.generationStatus.waitingForProviderPickup') :
+                asyncTask?.status === "pending" ? asyncTaskPendingDetail :
                 asyncTask?.status === "completed" ? t('mediaStudio.generationStatus.taskCompleted') :
                 asyncTask?.status === "failed" ? (asyncTask?.errorMessage || t('mediaStudio.generationStatus.taskFailed')) :
                 t('mediaStudio.generationStatus.queuedForSubmission'),
@@ -5572,9 +5970,13 @@ export default function MediaStudio() {
       && successCount > 0
       && (shouldGenerateSeparateVoice || shouldGenerateSeparateMusic)
     ) {
+      if (generatedCompanionAudio.length > 0) {
+        setStoryboardCompanionAudio([...generatedCompanionAudio]);
+      }
+
       const targetDurationSeconds = Math.max(
-        effectiveSelectedVideoDuration || 8,
-        targetStoryboardDurationSeconds || (imageCount * (effectiveSelectedVideoDuration || 8)),
+        storyboardClipDurationSeconds ?? effectiveSelectedVideoDuration ?? 0.25,
+        targetStoryboardDurationSeconds || (imageCount * (storyboardClipDurationSeconds ?? effectiveSelectedVideoDuration ?? 0.25)),
       );
       const findAudioModel = (modelId: string, fallbackModels: any[]) =>
         visibleAudioMediaModels.find((model) => hasAnyModelIdCandidate(model, new Set([modelId])))
@@ -6095,6 +6497,7 @@ export default function MediaStudio() {
       }
 
       const resultUrl = task.resultUrl || extractTaskResultUrl(task as any) || undefined;
+      const isDeferredRetryTask = Boolean(task.parameters?.deferredRetry || task.resultData?.deferredRetry);
       const queueTask: QueueGenerationTask = {
         id: task.taskId || task.id,
         type: taskType,
@@ -6109,7 +6512,7 @@ export default function MediaStudio() {
         backendTaskId: task.id,
         providerTaskId: task.taskId || undefined,
         statusDetail:
-          status === "pending" ? t('mediaStudio.generationStatus.waitingForProvider') :
+          status === "pending" ? (isDeferredRetryTask && task.errorMessage ? task.errorMessage : t('mediaStudio.generationStatus.waitingForProvider')) :
           status === "processing" ? t('mediaStudio.generationStatus.providerProcessing') :
           status === "completed" ? t('mediaStudio.generationStatus.completed') :
           status === "failed" ? (task.errorMessage || t('mediaStudio.generationStatus.failed')) :
@@ -6131,6 +6534,74 @@ export default function MediaStudio() {
     () => generationQueueTasks.filter((task) => !isGenerationQueueTaskDismissed(task, dismissedGenerationQueueTaskIds)),
     [dismissedGenerationQueueTaskIds, generationQueueTasks],
   );
+
+  const deleteDeferredTaskIds = useCallback((taskIds: readonly string[]) => {
+    const deferredTaskIds = Array.from(new Set(taskIds.filter((id) => id.startsWith("deferred-"))));
+    for (const taskId of deferredTaskIds) {
+      deleteMediaTaskMutation.mutate(
+        { taskId },
+        {
+          onSuccess: () => {
+            void refetchMediaHistory();
+          },
+          onError: (error) => {
+            console.error("Failed to delete deferred media task:", taskId, error);
+          },
+        },
+      );
+    }
+  }, [deleteMediaTaskMutation, refetchMediaHistory]);
+
+  useEffect(() => {
+    const historyTasks = (mediaHistory?.tasks ?? []) as MediaHistoryTaskLite[];
+    if (historyTasks.length === 0) return;
+
+    for (const task of historyTasks) {
+      const status = normalizeQueueStatus(task.status);
+      if (status !== "failed" || task.mediaType !== "video") continue;
+      if (task.parameters?.deferredRetry || task.resultData?.deferredRetry) continue;
+
+      const retryDelayMs = getMediaCapacityRetryDelayMsFromMessage({
+        errorMessage: task.errorMessage,
+        resultData: task.resultData,
+        parameters: task.parameters,
+      });
+      if (retryDelayMs === null) continue;
+
+      const retryTaskId = task.id || task.taskId;
+      if (!retryTaskId || scheduledDeferredRetryTaskIdsRef.current.has(retryTaskId)) continue;
+
+      scheduledDeferredRetryTaskIdsRef.current.add(retryTaskId);
+      retryTaskLaterMutation
+        .mutateAsync({ taskId: retryTaskId, retryDelayMs })
+        .then((deferredTask) => {
+          setGenerationTasks((prev) => prev.map((item) => {
+            const matchesTask =
+              item.backendTaskId === task.id
+              || item.backendTaskId === task.taskId
+              || item.providerTaskId === task.id
+              || item.providerTaskId === task.taskId
+              || item.id === task.id
+              || item.id === task.taskId;
+            if (!matchesTask) return item;
+            return {
+              ...item,
+              status: "queued",
+              error: undefined,
+              backendTaskId: deferredTask.id || item.backendTaskId,
+              providerTaskId: deferredTask.taskId || item.providerTaskId,
+              statusDetail: deferredTask.errorMessage || t('mediaStudio.generationStatus.queuedForRetry'),
+              updatedAt: Date.now(),
+            };
+          }));
+          void refetchMediaHistory();
+        })
+        .catch((error) => {
+          console.error("Failed to queue deferred media retry:", error);
+          scheduledDeferredRetryTaskIdsRef.current.delete(retryTaskId);
+        });
+    }
+  }, [mediaHistory?.tasks, refetchMediaHistory, retryTaskLaterMutation, setGenerationTasks, t]);
 
   useEffect(() => {
     const historyTasks = (mediaHistory?.tasks ?? []) as MediaHistoryTaskLite[];
@@ -6539,6 +7010,11 @@ export default function MediaStudio() {
         openPreview(resultUrl);
         void refetchMediaHistory();
       } else if (startedAsyncTask) {
+        const asyncTaskIsDeferredRetry = Boolean(asyncTask?.parameters?.deferredRetry || asyncTask?.resultData?.deferredRetry);
+        const asyncTaskPendingDetail =
+          asyncTaskIsDeferredRetry && asyncTask?.errorMessage
+            ? asyncTask.errorMessage
+            : t('mediaStudio.generationStatus.waitingForProviderPickup');
         updateRetryTask({
           status: asyncTask?.status === "processing"
             ? "generating"
@@ -6552,7 +7028,7 @@ export default function MediaStudio() {
           providerTaskId: asyncTask?.taskId,
           statusDetail:
             asyncTask?.status === "processing" ? t('mediaStudio.generationStatus.providerProcessing') :
-            asyncTask?.status === "pending" ? t('mediaStudio.generationStatus.waitingForProviderPickup') :
+            asyncTask?.status === "pending" ? asyncTaskPendingDetail :
             asyncTask?.status === "completed" ? t('mediaStudio.generationStatus.taskCompleted') :
             asyncTask?.status === "failed" ? (asyncTask?.errorMessage || t('mediaStudio.generationStatus.taskFailed')) :
             t('mediaStudio.generationStatus.queuedForSubmission'),
@@ -6618,18 +7094,20 @@ export default function MediaStudio() {
       }
       return next;
     });
+    deleteDeferredTaskIds(dismissIds);
 
     setGenerationTasks((prev) =>
       prev.filter(
         (candidate) =>
-          !getGenerationQueueIdentityCandidates(candidate).some((candidateId) => dismissIds.includes(candidateId))
+          storyboardReviewTaskIds.includes(candidate.id)
+          || !getGenerationQueueIdentityCandidates(candidate).some((candidateId) => dismissIds.includes(candidateId))
       )
     );
 
     setFocusedGenerationTaskId((prev) => (
       prev && dismissIds.includes(prev) ? null : prev
     ));
-  }, [generationQueueTasks]);
+  }, [deleteDeferredTaskIds, generationQueueTasks, storyboardReviewTaskIds]);
 
   const clearCompletedGenerationTasks = useCallback(() => {
     const terminalTaskIds = collectGenerationQueueTaskIdentityCandidates(
@@ -6654,12 +7132,15 @@ export default function MediaStudio() {
 
     setGenerationTasks((prev) =>
       prev.filter((candidate) =>
-        !terminalTaskIds.includes(candidate.id)
-        && !terminalTaskIds.includes(candidate.backendTaskId || "")
-        && !terminalTaskIds.includes(candidate.providerTaskId || "")
+        storyboardReviewTaskIds.includes(candidate.id)
+        || (
+          !terminalTaskIds.includes(candidate.id)
+          && !terminalTaskIds.includes(candidate.backendTaskId || "")
+          && !terminalTaskIds.includes(candidate.providerTaskId || "")
+        )
       )
     );
-  }, [generationQueueTasks]);
+  }, [generationQueueTasks, storyboardReviewTaskIds]);
 
   const closeGenerationQueue = useCallback(() => {
     const terminalTaskIds = collectGenerationQueueTaskIdentityCandidates(
@@ -6681,18 +7162,74 @@ export default function MediaStudio() {
 
       setGenerationTasks((prev) =>
         prev.filter((candidate) =>
-          !getGenerationQueueIdentityCandidates(candidate).some((candidateId) => terminalTaskIds.includes(candidateId))
+          storyboardReviewTaskIds.includes(candidate.id)
+          || !getGenerationQueueIdentityCandidates(candidate).some((candidateId) => terminalTaskIds.includes(candidateId))
         ),
       );
     }
 
     setIsGenerationQueueHidden(true);
-  }, [generationQueueTasks]);
+  }, [generationQueueTasks, storyboardReviewTaskIds]);
 
   const showGenerationQueue = useCallback(() => {
     setIsGenerationQueueHidden(false);
     setIsGenerationQueueCollapsed(false);
   }, []);
+
+  const openStoryboardReviewProject = useCallback(async (reviewId: number) => {
+    try {
+      const review = await trpcUtils.videoEditorProjects.getStoryboardReview.fetch({ id: reviewId });
+      const draft = review?.reviewData as StoryboardReviewDraft | null | undefined;
+      if (!review || !draft || !Array.isArray(draft.tasks) || !Array.isArray(draft.taskIds)) {
+        toast.error(t('mediaStudio.storyboardReviewNotFound'));
+        return;
+      }
+
+      setStoryboardReviewId(review.id);
+      setGenerationTasks((prev) => {
+        const draftTaskIds = new Set(draft.tasks.map((task) => task.id));
+        return [
+          ...prev.filter((task) => !draftTaskIds.has(task.id)),
+          ...draft.tasks,
+        ];
+      });
+      setStoryboardReviewTaskIds(draft.taskIds);
+      setSelectedStoryboardTaskIds(new Set(draft.selectedTaskIds.length > 0 ? draft.selectedTaskIds : draft.taskIds));
+      setStoryboardCompanionAudio(draft.companionAudio);
+      setStoryboardCompoundStatus(draft.compoundStatus || t('mediaStudio.storyboardReviewLoaded'));
+      setStoryboardProjectLink(draft.projectLink);
+      setStoryboardRenderJobId(draft.renderJobId);
+      setStoryboardReviewOpen(true);
+      setStoryboardReviewProjectsOpen(false);
+      setIsGenerationQueueHidden(false);
+      setTrackedGenerationQueueTaskIds((prev) => {
+        const next = new Set(prev);
+        draft.tasks.forEach((task) => {
+          getGenerationQueueIdentityCandidates(task).forEach((id) => next.add(id));
+        });
+        return next;
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('mediaStudio.storyboardReviewOpenFailed'));
+    }
+  }, [trpcUtils, toast, t]);
+
+  const deleteStoryboardReviewProject = useCallback(async (reviewId: number) => {
+    try {
+      await deleteStoryboardReviewMutation.mutateAsync({ id: reviewId });
+      if (storyboardReviewId === reviewId) {
+        setStoryboardReviewId(null);
+        setStoryboardReviewTaskIds([]);
+        setSelectedStoryboardTaskIds(new Set());
+        setStoryboardReviewOpen(false);
+        clearStoryboardReviewDraft();
+      }
+      void refetchStoryboardReviewProjects();
+      toast.success(t('mediaStudio.storyboardReviewDeleted'));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('mediaStudio.storyboardReviewDeleteFailed'));
+    }
+  }, [deleteStoryboardReviewMutation, refetchStoryboardReviewProjects, storyboardReviewId, toast, t]);
 
   const storyboardReviewTasks = useMemo<StoryboardReviewTask[]>(
     () => generationTasks
@@ -6726,6 +7263,10 @@ export default function MediaStudio() {
       || storyboardCompanionAudio.length > 0
       || storyboardReviewTasks.some((task) => /External audio workflow/i.test(task.prompt)),
     [storyboardCompanionAudio.length, storyboardReviewTasks, videoAudioWorkflow],
+  );
+  const storyboardReviewCompletedCount = useMemo(
+    () => storyboardReviewTasks.filter((task) => task.status === "completed" && task.url).length,
+    [storyboardReviewTasks],
   );
 
   const toggleStoryboardTaskSelection = useCallback((taskId: string) => {
@@ -6829,14 +7370,21 @@ export default function MediaStudio() {
       })),
       {
         projectName: sanitizeProjectName(`Storyboard Edit ${new Date().toLocaleString()}`),
-        defaultDurationSeconds: tabStates.video.duration,
+        defaultDurationSeconds: selectedStoryboardClipDurationSeconds ?? tabStates.video.duration,
         companionAudio: storyboardCompanionAudio,
         muteVideoClipAudio: shouldMuteStoryboardNativeAudio,
       },
     );
 
     return project;
-  }, [selectedStoryboardTaskIds, shouldMuteStoryboardNativeAudio, storyboardCompanionAudio, storyboardReviewTasks, tabStates.video.duration]);
+  }, [
+    selectedStoryboardClipDurationSeconds,
+    selectedStoryboardTaskIds,
+    shouldMuteStoryboardNativeAudio,
+    storyboardCompanionAudio,
+    storyboardReviewTasks,
+    tabStates.video.duration,
+  ]);
 
   const createStoryboardEditProject = useCallback(async () => {
     const project = buildSelectedStoryboardProject();
@@ -6861,6 +7409,20 @@ export default function MediaStudio() {
       const link = `/video-editor?projectId=${result.id}`;
       setStoryboardProjectLink(link);
       setStoryboardCompoundStatus("Project saved. Choose how to open it below.");
+      const draft = buildStoryboardReviewDraft();
+      if (storyboardReviewId && draft) {
+        await saveStoryboardReviewMutation.mutateAsync({
+          id: storyboardReviewId,
+          name: getStoryboardReviewName(draft),
+          reviewData: { ...draft, projectLink: link },
+          clipCount: draft.tasks.length,
+          completedClipCount: draft.tasks.filter((task) => task.status === "completed" && task.url).length,
+          thumbnailUrl: draft.tasks.find((task) => task.url)?.url ?? null,
+          videoEditorProjectId: result.id,
+        });
+        void refetchStoryboardReviewProjects();
+      }
+      clearStoryboardReviewDraft();
       void navigator.clipboard?.writeText(`${window.location.origin}${link}`).catch(() => undefined);
       toast.success("Storyboard project created and link copied");
     } catch (error) {
@@ -6871,9 +7433,14 @@ export default function MediaStudio() {
     }
   }, [
     buildSelectedStoryboardProject,
+    buildStoryboardReviewDraft,
+    getStoryboardReviewName,
+    refetchStoryboardReviewProjects,
     saveStoryboardProjectMutation,
+    saveStoryboardReviewMutation,
     setStoryboardCompoundStatus,
     setStoryboardProjectLink,
+    storyboardReviewId,
     toast,
   ]);
 
@@ -6899,6 +7466,20 @@ export default function MediaStudio() {
 
       const link = `/video-editor?projectId=${saved.id}`;
       setStoryboardProjectLink(link);
+      const draft = buildStoryboardReviewDraft();
+      if (storyboardReviewId && draft) {
+        await saveStoryboardReviewMutation.mutateAsync({
+          id: storyboardReviewId,
+          name: getStoryboardReviewName(draft),
+          reviewData: { ...draft, projectLink: link },
+          clipCount: draft.tasks.length,
+          completedClipCount: draft.tasks.filter((task) => task.status === "completed" && task.url).length,
+          thumbnailUrl: draft.tasks.find((task) => task.url)?.url ?? null,
+          videoEditorProjectId: saved.id,
+        });
+        void refetchStoryboardReviewProjects();
+      }
+      clearStoryboardReviewDraft();
       void navigator.clipboard?.writeText(`${window.location.origin}${link}`).catch(() => undefined);
       const outputPath = `/tmp/storyboard-compound-${saved.id}.mp4`;
       const jobId = await videoEditorRenderService.startRender(JSON.stringify(project), outputPath);
@@ -6914,13 +7495,18 @@ export default function MediaStudio() {
     }
   }, [
     buildSelectedStoryboardProject,
+    buildStoryboardReviewDraft,
+    getStoryboardReviewName,
+    refetchStoryboardReviewProjects,
     saveStoryboardProjectMutation,
+    saveStoryboardReviewMutation,
     toast,
     videoEditorRenderService,
     setStoryboardCompoundStatus,
     setStoryboardProjectLink,
     setStoryboardRenderJobId,
     setStoryboardReviewOpen,
+    storyboardReviewId,
   ]);
 
   const handleStoryboardRenderComplete = useCallback((outputPath: string) => {
@@ -6946,6 +7532,7 @@ export default function MediaStudio() {
       toast.error("Prompt cannot be empty");
       return;
     }
+    const staleDeferredTaskIds = getGenerationQueueIdentityCandidates(task).filter((id) => id.startsWith("deferred-"));
 
     setRegeneratingStoryboardTaskId(taskId);
     setStoryboardCompoundStatus(`Regenerating clip ${task.index + 1}...`);
@@ -6976,6 +7563,7 @@ export default function MediaStudio() {
       const providerTaskId = taskResultAny.taskId || taskResultAny.providerTaskId || undefined;
 
       if (resultUrl) {
+        deleteDeferredTaskIds(staleDeferredTaskIds);
         updateTask({
           status: "completed",
           url: resultUrl,
@@ -6991,6 +7579,7 @@ export default function MediaStudio() {
       }
 
       if (startedAsyncTask && (backendTaskId || providerTaskId)) {
+        deleteDeferredTaskIds(staleDeferredTaskIds);
         updateTask({
           backendTaskId,
           providerTaskId,
@@ -7046,6 +7635,7 @@ export default function MediaStudio() {
     }
   }, [
     buildStoryboardVideoGenerationPayload,
+    deleteDeferredTaskIds,
     extractTaskResultUrl,
     generationTasks,
     generateVideoAsyncMutation,
@@ -7068,7 +7658,7 @@ export default function MediaStudio() {
     const completedSelectedTasks = storyboardReviewTasks.filter((task) =>
       selectedStoryboardTaskIds.has(task.id) && task.status === "completed" && task.url
     );
-    const fallbackClipDuration = Math.max(0.25, tabStates.video.duration || 8);
+    const fallbackClipDuration = selectedStoryboardClipDurationSeconds ?? Math.max(0.25, tabStates.video.duration);
     const selectedDurationSeconds = completedSelectedTasks.reduce(
       (sum, task) => sum + inferStoryboardClipDurationSeconds(task.prompt, fallbackClipDuration),
       0,
@@ -7246,6 +7836,7 @@ export default function MediaStudio() {
     externalSoundBedBrief,
     externalVoiceoverScript,
     generateAudioAsyncMutation,
+    selectedStoryboardClipDurationSeconds,
     selectedStoryboardTaskIds,
     separateMusicModels,
     separateVoiceModels,
@@ -7826,24 +8417,39 @@ export default function MediaStudio() {
 
             {activeTab === "audio" && (
               <Tabs value={audioWorkflow} onValueChange={(value) => setAudioWorkflow(value as AudioWorkflow)}>
-                <TabsList className="grid h-auto w-full grid-cols-2 bg-white/70 p-1 shadow-sm md:grid-cols-5">
-                  <TabsTrigger value="tts" className="min-w-0 gap-2 py-2 text-xs sm:text-sm">
+                <TabsList className="grid h-auto w-full grid-cols-2 gap-1 bg-white/80 p-1 shadow-sm md:grid-cols-5">
+                  <TabsTrigger
+                    value="tts"
+                    className="min-w-0 gap-2 rounded-lg py-2 text-xs text-slate-600 transition-all hover:bg-sky-50 hover:text-sky-700 data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=active]:shadow-md sm:text-sm"
+                  >
                     <Music className="h-4 w-4 shrink-0" />
                     <span className="truncate">TTS</span>
                   </TabsTrigger>
-                  <TabsTrigger value="voice_changer" className="min-w-0 gap-2 py-2 text-xs sm:text-sm">
+                  <TabsTrigger
+                    value="voice_changer"
+                    className="min-w-0 gap-2 rounded-lg py-2 text-xs text-slate-600 transition-all hover:bg-orange-50 hover:text-orange-700 data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-md sm:text-sm"
+                  >
                     <Mic className="h-4 w-4 shrink-0" />
                     <span className="truncate">Voice Changer</span>
                   </TabsTrigger>
-                  <TabsTrigger value="speech_to_text" className="min-w-0 gap-2 py-2 text-xs sm:text-sm">
+                  <TabsTrigger
+                    value="speech_to_text"
+                    className="min-w-0 gap-2 rounded-lg py-2 text-xs text-slate-600 transition-all hover:bg-violet-50 hover:text-violet-700 data-[state=active]:bg-violet-600 data-[state=active]:text-white data-[state=active]:shadow-md sm:text-sm"
+                  >
                     <Languages className="h-4 w-4 shrink-0" />
                     <span className="truncate">Speech to Text</span>
                   </TabsTrigger>
-                  <TabsTrigger value="sound_effects" className="min-w-0 gap-2 py-2 text-xs sm:text-sm">
+                  <TabsTrigger
+                    value="sound_effects"
+                    className="min-w-0 gap-2 rounded-lg py-2 text-xs text-slate-600 transition-all hover:bg-amber-50 hover:text-amber-700 data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:shadow-md sm:text-sm"
+                  >
                     <Zap className="h-4 w-4 shrink-0" />
                     <span className="truncate">Sound Effects</span>
                   </TabsTrigger>
-                  <TabsTrigger value="voice_isolator" className="min-w-0 gap-2 py-2 text-xs sm:text-sm">
+                  <TabsTrigger
+                    value="voice_isolator"
+                    className="min-w-0 gap-2 rounded-lg py-2 text-xs text-slate-600 transition-all hover:bg-emerald-50 hover:text-emerald-700 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-md sm:text-sm"
+                  >
                     <Volume2 className="h-4 w-4 shrink-0" />
                     <span className="truncate">Voice Isolator</span>
                   </TabsTrigger>
@@ -7921,9 +8527,9 @@ export default function MediaStudio() {
             {/* Prompt Input */}
             <DashboardCard className="space-y-4" bodyClassName="p-4">
               <DashboardSectionHeader
-                eyebrow={t('mediaStudio.prompt.eyebrow')}
-                title={t('mediaStudio.prompt.title')}
-                description={t('mediaStudio.prompt.description')}
+                eyebrow={isTextToSpeechMode ? t('mediaStudio.ttsText.eyebrow') : t('mediaStudio.prompt.eyebrow')}
+                title={isTextToSpeechMode ? t('mediaStudio.ttsText.title') : t('mediaStudio.prompt.title')}
+                description={isTextToSpeechMode ? t('mediaStudio.ttsText.description') : t('mediaStudio.prompt.description')}
                 trailing={(
                   <Badge variant="outline">{getModelCost()} credits</Badge>
                 )}
@@ -8142,12 +8748,18 @@ export default function MediaStudio() {
                 placeholder={
                   isVoiceChangerMode
                     ? "Optional notes for this conversion..."
-                    : isGeminiFlashTtsAudioModel
-                    ? "Host: Welcome back.\nGuest: Glad to be here."
+                    : isTextToSpeechMode
+                    ? t('mediaStudio.ttsText.placeholder')
                     : `Describe the ${activeTab} you want to create...`
                 }
                 className={cn("resize-y", isVoiceChangerMode ? "min-h-[84px]" : "min-h-[120px]")}
               />
+
+              {isTextToSpeechMode && !isGeminiFlashTtsAudioModel && (
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {t('mediaStudio.ttsText.help')}
+                </p>
+              )}
 
               {isGeminiFlashTtsAudioModel && (
                 <GeminiTtsPromptGuidance className="mt-3" />
@@ -8466,24 +9078,29 @@ export default function MediaStudio() {
                       isNearLimit && !isOverLimit && "text-amber-600"
                     )}>
                       {maxLength !== null
-                        ? `${currentPromptLength.toLocaleString()} / ${maxLength.toLocaleString()} characters`
-                        : `${currentPromptLength.toLocaleString()} characters`}
+                        ? t('mediaStudio.promptCharacterCountWithMax', {
+                            current: currentPromptLength.toLocaleString(),
+                            max: maxLength.toLocaleString(),
+                          })
+                        : t('mediaStudio.promptCharacterCount', {
+                            current: currentPromptLength.toLocaleString(),
+                          })}
                     </span>
                     {isOverLimit && maxLength !== null && (
                       <span className="text-red-600 flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
-                        Exceeds model limit
+                        {t('mediaStudio.exceedsLimit')}
                       </span>
                     )}
                     {isNearLimit && !isOverLimit && maxLength !== null && (
                       <span className="text-amber-600 flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
-                        Approaching limit
+                        {t('mediaStudio.nearLimit')}
                       </span>
                     )}
                     {maxLength === null && (
                       <span className="text-muted-foreground">
-                        No model prompt limit configured
+                        {t('mediaStudio.noModelPromptLimitConfigured')}
                       </span>
                     )}
                   </div>
@@ -8624,13 +9241,13 @@ export default function MediaStudio() {
                     )
                   ) : (
                     <div className="rounded-md border border-dashed border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-800">
-                      This model does not accept image references.
+                      {t('mediaStudio.modelDoesNotAcceptImageReferences')}
                     </div>
                   )}
 
                   <p className="text-xs text-muted-foreground">
                     {selectedModel && !selectedMediaModelReferenceSupport.imageUrls
-                      ? "Image references are disabled for the selected model."
+                      ? t('mediaStudio.imageReferencesDisabled')
                       : t('mediaStudio.dragHistoryHint')}
                   </p>
                 </div>
@@ -8653,7 +9270,10 @@ export default function MediaStudio() {
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <label className="text-sm font-medium">
-                      Reference Videos ({referenceVideos.length}{maxReferenceVideos > 0 ? `/${maxReferenceVideos}` : ""})
+                      {t('mediaStudio.referenceVideos', {
+                        count: referenceVideos.length,
+                        max: maxReferenceVideos > 0 ? `/${maxReferenceVideos}` : "",
+                      })}
                     </label>
                     <input
                       ref={videoFileInputRef}
@@ -8675,7 +9295,7 @@ export default function MediaStudio() {
                       ) : (
                         <Video className="h-4 w-4" />
                       )}
-                      <span className="ml-1">Add Video</span>
+                      <span className="ml-1">{t('mediaStudio.addVideo')}</span>
                     </Button>
                   </div>
 
@@ -8709,19 +9329,19 @@ export default function MediaStudio() {
                     ) : (
                       <div className="flex items-center justify-center py-4 text-muted-foreground">
                         <Upload className="h-4 w-4 mr-2" />
-                        <span className="text-sm">Drop or add reference videos here.</span>
+                        <span className="text-sm">{t('mediaStudio.referenceVideosDropHint')}</span>
                       </div>
                     )
                   ) : (
                     <div className="rounded-md border border-dashed border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-800">
-                      This model does not accept video references.
+                      {t('mediaStudio.modelDoesNotAcceptVideoReferences')}
                     </div>
                   )}
 
                   <p className="text-xs text-muted-foreground">
                     {selectedModel && !selectedMediaModelReferenceSupport.videoUrls
-                      ? "Video references are disabled for the selected model."
-                      : "Use one or more reference videos when the selected model supports vid2vid."}
+                      ? t('mediaStudio.videoReferencesDisabled')
+                      : t('mediaStudio.referenceVideosHelp')}
                   </p>
                 </div>
               )}
@@ -8864,7 +9484,7 @@ export default function MediaStudio() {
                       <label className={cn("text-sm text-muted-foreground", isDisabled && "opacity-50")}>
                         {t('mediaStudio.aspectRatio')}
                         {arField?.affectsPricing && <span className="ml-1 text-xs text-amber-500">($)</span>}
-                        {isDisabled && <span className="ml-1 text-xs text-blue-500">(use Advanced)</span>}
+                        {isDisabled && <span className="ml-1 text-xs text-blue-500">({t('mediaStudio.useAdvanced')})</span>}
                       </label>
                       <Select
                         value={aspectRatio}
@@ -8897,7 +9517,7 @@ export default function MediaStudio() {
                       <SelectContent>
                         {[1, 2, 3, 4].map((n) => (
                           <SelectItem key={n} value={String(n)}>
-                            {n} image{n > 1 ? "s" : ""}
+                            {t(n === 1 ? 'mediaStudio.imageCountOption' : 'mediaStudio.imageCountOption_plural', { count: n })}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -8934,7 +9554,7 @@ export default function MediaStudio() {
                               ))
                             : [5, 10, 15, 20].map((d) => (
                                 <SelectItem key={d} value={String(d)}>
-                                  {d} seconds
+                                  {t('mediaStudio.secondsOption', { count: d })}
                                 </SelectItem>
                               ))
                           }
@@ -8952,7 +9572,7 @@ export default function MediaStudio() {
 
                   const SYNC_LABELS: Record<string, string> = {
                     reference_images: t('mediaStudio.referenceImagesLabel'),
-                    reference_videos: "Reference Videos",
+                    reference_videos: t('mediaStudio.referenceVideosLabel'),
                     prompt: t('mediaStudio.promptLabel'),
                     aspect_ratio: t('mediaStudio.aspectRatioLabel'),
                   };
@@ -8986,11 +9606,11 @@ export default function MediaStudio() {
                         if (sw === "reference_images") {
                           preview = referenceImages.length === 0
                             ? t('mediaStudio.noImagesSelected')
-                            : `${referenceImages.length} image${referenceImages.length !== 1 ? "s" : ""} synced`;
+                            : t(referenceImages.length === 1 ? 'mediaStudio.syncedImages' : 'mediaStudio.syncedImages_plural', { count: referenceImages.length });
                         } else if (sw === "reference_videos") {
                           preview = referenceVideos.length === 0
-                            ? "No videos selected"
-                            : `${referenceVideos.length} video${referenceVideos.length !== 1 ? "s" : ""} synced`;
+                            ? t('mediaStudio.noVideosSelected')
+                            : t(referenceVideos.length === 1 ? 'mediaStudio.syncedVideos' : 'mediaStudio.syncedVideos_plural', { count: referenceVideos.length });
                         } else if (sw === "prompt") {
                           const src = (enhancedPrompt || prompt).trim();
                           preview = src.length === 0 ? t('mediaStudio.noPromptYet') : src.length > 60 ? src.slice(0, 60) + "…" : src;
@@ -9002,7 +9622,7 @@ export default function MediaStudio() {
                           <div key={field.key} className="space-y-1">
                             <div className="flex items-center justify-between">
                               <label className="text-sm text-muted-foreground">
-                                {field.label}
+                                {getModelInputFieldLabel(field)}
                                 {field.affectsPricing && <span className="ml-1 text-xs text-amber-500">($)</span>}
                               </label>
                               <Badge variant="secondary" className="flex items-center gap-1 px-1.5 py-0 text-[10px] font-normal">
@@ -9013,7 +9633,7 @@ export default function MediaStudio() {
                             <div className="flex min-h-9 cursor-not-allowed items-center rounded-md border border-dashed bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground select-none">
                               {preview}
                             </div>
-                            {renderMediaStudioFieldDescription(field)}
+                            {renderModelInputFieldDescription(field)}
                           </div>
                         );
                       })}
@@ -9022,7 +9642,7 @@ export default function MediaStudio() {
                       {editableFields.map((field: any) => (
                         <div key={field.key} className="space-y-1">
                           <label className="text-sm text-muted-foreground">
-                            {field.label}
+                            {getModelInputFieldLabel(field)}
                             {field.affectsPricing && <span className="ml-1 text-xs text-amber-500">($)</span>}
                           </label>
                           {isSearchableModelField(field) ? (
@@ -9079,7 +9699,7 @@ export default function MediaStudio() {
                                   </PopoverTrigger>
                                   <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                                     <Command>
-                                      <CommandInput placeholder={t('mediaStudio.searchField', { field: String(field.label || field.key).toLowerCase() })} />
+                                      <CommandInput placeholder={t('mediaStudio.searchField', { field: getModelInputFieldLabel(field).toLowerCase() })} />
                                       <CommandList>
                                         <CommandEmpty>
                                           {isLoadingOptions ? t('mediaStudio.loadingOptions') : t('mediaStudio.noOptionsFound')}
@@ -9161,7 +9781,7 @@ export default function MediaStudio() {
                               {supportsManualInput && (
                                 <Input
                                   type="text"
-                                  placeholder={t('mediaStudio.customValuePlaceholder', { field: String(field.label || field.key) })}
+                                  placeholder={t('mediaStudio.customValuePlaceholder', { field: getModelInputFieldLabel(field) })}
                                   value={currentValue}
                                   onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: e.target.value }))}
                                 />
@@ -9171,7 +9791,7 @@ export default function MediaStudio() {
                                   {t('mediaStudio.optionListUnavailable')}
                                 </p>
                               )}
-                              {renderMediaStudioFieldDescription(field)}
+                              {renderModelInputFieldDescription(field)}
                                   </>
                                 );
                               })()}
@@ -9187,13 +9807,13 @@ export default function MediaStudio() {
                                     : undefined
                                 }
                               />
-                              {renderMediaStudioFieldDescription(field)}
+                              {renderModelInputFieldDescription(field)}
                             </>
                           ) : field.type === "image_urls" || field.type === "video_urls" || field.type === "audio_urls" ? (
                             <div className="space-y-2">
                               <Textarea
                                 rows={4}
-                                placeholder={t('mediaStudio.arrayPlaceholder', { field: String(field.label) })}
+                                placeholder={t('mediaStudio.arrayPlaceholder', { field: getModelInputFieldLabel(field) })}
                                 value={
                                   Array.isArray(modelInputValues[field.key])
                                     ? modelInputValues[field.key].join("\n")
@@ -9226,7 +9846,7 @@ export default function MediaStudio() {
                                 }}
                                 allowedExtensions={getAllowedLibraryExtensionsForField(field)}
                               />
-                              {renderMediaStudioFieldDescription(field)}
+                              {renderModelInputFieldDescription(field)}
                             </div>
                           ) : field.type === "select" && field.options ? (
                             <>
@@ -9245,7 +9865,7 @@ export default function MediaStudio() {
                                   ))}
                                 </SelectContent>
                               </Select>
-                              {renderMediaStudioFieldDescription(field)}
+                              {renderModelInputFieldDescription(field)}
                             </>
                           ) : field.type === "boolean" ? (
                             <>
@@ -9256,7 +9876,7 @@ export default function MediaStudio() {
                                 />
                                 <span className="text-sm">{modelInputValues[field.key] ? t('mediaStudio.on') : t('mediaStudio.off')}</span>
                               </div>
-                              {renderMediaStudioFieldDescription(field)}
+                              {renderModelInputFieldDescription(field)}
                             </>
                           ) : field.type === "array" && field.itemFields?.length ? (
                             <ModelInputArrayFieldEditor
@@ -9268,7 +9888,7 @@ export default function MediaStudio() {
                             <>
                               <Textarea
                                 rows={4}
-                                placeholder={t('mediaStudio.arrayPlaceholder', { field: String(field.label) })}
+                                placeholder={t('mediaStudio.arrayPlaceholder', { field: getModelInputFieldLabel(field) })}
                                 value={
                                   typeof modelInputValues[field.key] === "string"
                                     ? modelInputValues[field.key]
@@ -9278,7 +9898,7 @@ export default function MediaStudio() {
                                 }
                                 onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: e.target.value }))}
                               />
-                              {renderMediaStudioFieldDescription(field)}
+                              {renderModelInputFieldDescription(field)}
                             </>
                           ) : field.type === "number" ? (
                             <>
@@ -9298,17 +9918,17 @@ export default function MediaStudio() {
                                   }));
                                 }}
                               />
-                              {renderMediaStudioFieldDescription(field)}
+                              {renderModelInputFieldDescription(field)}
                             </>
                           ) : (
                             <>
                               <Input
                                 type="text"
-                                placeholder={field.placeholder || field.label}
+                                placeholder={getModelInputFieldPlaceholder(field)}
                                 value={modelInputValues[field.key] ?? ""}
                                 onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: e.target.value }))}
                               />
-                              {renderMediaStudioFieldDescription(field)}
+                              {renderModelInputFieldDescription(field)}
                             </>
                           )}
                         </div>
@@ -9326,7 +9946,7 @@ export default function MediaStudio() {
                   )}>
                     {t('mediaStudio.style')}
                     {isFieldDisabledByAdvancedMode("style") && (
-                      <span className="ml-1 text-xs text-blue-500">(use Advanced)</span>
+                      <span className="ml-1 text-xs text-blue-500">({t('mediaStudio.useAdvanced')})</span>
                     )}
                   </label>
                   <Dialog open={showStyleDialog} onOpenChange={setShowStyleDialog}>
@@ -9503,11 +10123,11 @@ export default function MediaStudio() {
                 )}
               </div>
 
-              {activeTab === "video" && (videoAudioWorkflow === "separate_voice" || videoAudioWorkflow === "separate_voice_music") && (
+              {activeTab === "video" && (videoAudioWorkflow === "separate_voice" || videoAudioWorkflow === "separate_voice_music") && storyboardAudioPrepMode !== "existing_voice" && (
                 <ModelInputFieldsPanel
                   enabled={Boolean(selectedSeparateVoiceModel)}
                   model={selectedSeparateVoiceModel as any}
-                  fields={selectedSeparateVoiceFields}
+                  fields={selectedSeparateVoiceSettingFields}
                   extraParams={videoVoiceModelInputValues}
                   onChange={(key, value) => setVideoVoiceModelInputValues((prev) => ({ ...prev, [key]: value }))}
                   promptPreview={externalVoiceoverScript || t('mediaStudio.voiceoverScript')}
@@ -9519,8 +10139,19 @@ export default function MediaStudio() {
                 />
               )}
 
-              {activeTab === "video" && (videoAudioWorkflow === "separate_voice" || videoAudioWorkflow === "separate_voice_music") && storyboardAudioPrepMode !== "off" && (
-                <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/70 p-3">
+              {activeTab === "video" && (videoAudioWorkflow === "separate_voice" || videoAudioWorkflow === "separate_voice_music") && (
+                <div
+                  className="mt-3 rounded-lg border border-sky-200 bg-sky-50/70 p-3"
+                  onDragOver={(event) => {
+                    const url = getDraggedMediaUrl(event.dataTransfer);
+                    const draggedMediaType = getDraggedMediaType(event.dataTransfer);
+                    if (draggedMediaType === "audio" || isAudioMediaUrl(url)) {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "copy";
+                    }
+                  }}
+                  onDrop={handleStoryboardAudioDrop}
+                >
                   <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-sm font-medium text-slate-800">
@@ -9528,7 +10159,9 @@ export default function MediaStudio() {
                         {t('mediaStudio.storyboardAudioPrepTitle')}
                       </div>
                       <p className="text-xs text-slate-600">
-                        {storyboardAudioPrepMode === "generate_voice"
+                        {storyboardAudioPrepMode === "off"
+                          ? t('mediaStudio.storyboardAudioPrepOffHelp')
+                          : storyboardAudioPrepMode === "generate_voice"
                           ? t('mediaStudio.storyboardAudioPrepGenerateHelp')
                           : t('mediaStudio.storyboardAudioPrepExistingHelp')}
                       </p>
@@ -9540,33 +10173,47 @@ export default function MediaStudio() {
                     ) : null}
                   </div>
 
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={storyboardAudioPrepMode === "existing_voice" ? "default" : "outline"}
+                      onClick={() => setStoryboardAudioPrepMode("existing_voice")}
+                    >
+                      <Library className="mr-2 h-4 w-4" />
+                      {t('mediaStudio.storyboardAudioPrepExisting')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={storyboardAudioPrepMode === "generate_voice" ? "default" : "outline"}
+                      onClick={() => setStoryboardAudioPrepMode("generate_voice")}
+                    >
+                      <Mic className="mr-2 h-4 w-4" />
+                      {t('mediaStudio.storyboardAudioPrepGenerateShort')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={storyboardAudioPrepMode === "off" ? "secondary" : "ghost"}
+                      onClick={() => setStoryboardAudioPrepMode("off")}
+                    >
+                      {t('mediaStudio.storyboardAudioPrepOff')}
+                    </Button>
+                  </div>
+
                   {storyboardAudioPrepMode === "existing_voice" && (
                     <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto]">
                       <div className="space-y-2">
                         <LibraryFilePicker
                           value={storyboardAudioSourceUrl}
-                          onValueChange={async (url) => {
+                          onValueChange={(url) => {
                             const normalizedUrl = String(url || "").trim();
                             const historyAudio = audioPickerHistoryOptions.find((item) => item.url === normalizedUrl);
-                            setStoryboardAudioSourceUrl(normalizedUrl);
-                            setStoryboardAudioSourceName(
-                              normalizedUrl
-                                ? (historyAudio?.title || t('mediaStudio.storyboardAudioPrepLibraryAudio'))
-                                : "",
+                            void selectExistingStoryboardAudio(
+                              normalizedUrl,
+                              historyAudio?.title || t('mediaStudio.storyboardAudioPrepLibraryAudio'),
                             );
-                            setStoryboardPreparedAudio([]);
-                            if (!normalizedUrl) {
-                              setStoryboardAudioSourceDurationSeconds(null);
-                              setStoryboardAudioPrepStatus(null);
-                              return;
-                            }
-                            setStoryboardAudioPrepStatus(t('mediaStudio.storyboardAudioPrepProbing'));
-                            const fallbackSeconds = estimateVoiceoverDurationSeconds(externalVoiceoverScript || prompt || "");
-                            const durationSeconds = await probeMediaDurationSeconds(normalizedUrl, fallbackSeconds);
-                            setStoryboardAudioSourceDurationSeconds(durationSeconds);
-                            setStoryboardAudioPrepStatus(t('mediaStudio.storyboardAudioPrepDurationReady', {
-                              duration: formatMediaDuration(durationSeconds),
-                            }));
                           }}
                           allowedExtensions={["mp3", "wav", "m4a", "aac", "ogg", "flac", "webm"]}
                           extraOptions={audioPickerHistoryOptions}
@@ -9581,6 +10228,36 @@ export default function MediaStudio() {
                           }}
                           placeholder={t('mediaStudio.storyboardAudioPrepUrlPlaceholder')}
                         />
+                        {storyboardAudioSourceUrl ? (
+                          <div className="rounded-md border bg-white/80 p-2">
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              <p className="min-w-0 truncate text-xs font-medium text-slate-700">
+                                {storyboardAudioSourceName || t('mediaStudio.storyboardAudioPrepExistingTitle')}
+                              </p>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                onClick={() => {
+                                  setStoryboardAudioSourceUrl("");
+                                  setStoryboardAudioSourceName("");
+                                  setStoryboardAudioSourceDurationSeconds(null);
+                                  setStoryboardPreparedAudio([]);
+                                  setStoryboardAudioPrepStatus(null);
+                                }}
+                              >
+                                <X className="mr-1 h-3.5 w-3.5" />
+                                {t('mediaStudio.clear')}
+                              </Button>
+                            </div>
+                            <audio src={storyboardAudioSourceUrl} controls className="h-9 w-full" />
+                          </div>
+                        ) : (
+                          <div className="rounded-md border border-dashed border-sky-300 bg-white/60 px-3 py-4 text-center text-xs text-slate-600">
+                            {t('mediaStudio.storyboardAudioPrepDropHint')}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-start gap-2">
                         <input
@@ -9734,7 +10411,7 @@ export default function MediaStudio() {
                     )}>
                       {t('mediaStudio.vfxEffect')}
                       {isFieldDisabledByAdvancedMode("vfx") && (
-                        <span className="ml-1 text-xs text-blue-500">(use Advanced)</span>
+                        <span className="ml-1 text-xs text-blue-500">({t('mediaStudio.useAdvanced')})</span>
                       )}
                     </label>
                     <Dialog open={showVfxDialog} onOpenChange={setShowVfxDialog}>
@@ -9796,7 +10473,7 @@ export default function MediaStudio() {
                     )}>
                       {t('mediaStudio.realisticSkin')}
                       {isFieldDisabledByAdvancedMode("realisticSkin") && (
-                        <span className="ml-1 text-xs text-blue-500">(use Advanced)</span>
+                        <span className="ml-1 text-xs text-blue-500">({t('mediaStudio.useAdvanced')})</span>
                       )}
                     </label>
                     <div className={cn(
@@ -9824,7 +10501,7 @@ export default function MediaStudio() {
                     )}>
                       {t('mediaStudio.faceLock')}
                       {isFieldDisabledByAdvancedMode("faceLock") && (
-                        <span className="ml-1 text-xs text-blue-500">(use Advanced)</span>
+                        <span className="ml-1 text-xs text-blue-500">({t('mediaStudio.useAdvanced')})</span>
                       )}
                     </label>
                     <div className={cn(
@@ -9868,7 +10545,7 @@ export default function MediaStudio() {
 
               {activeTab === "audio" && selectedMediaModel?.provider === "omnivoice" && !isDesktopPlatform && (
                 <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-                  OmniVoice voice cloning is available in the desktop app only. Open Media Studio in the Tauri desktop build to upload a reference clip and generate cloned TTS.
+                  {t('mediaStudio.omnivoiceDesktopOnlyMessage')}
                 </div>
               )}
 
@@ -9876,13 +10553,13 @@ export default function MediaStudio() {
                 <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <Music className="h-4 w-4 text-sky-600" />
-                    <h3 className="font-semibold text-sky-900">OmniVoice Desktop Clone</h3>
+                    <h3 className="font-semibold text-sky-900">{t('mediaStudio.omnivoiceDesktopClone')}</h3>
                     <Badge variant="outline" className="text-[10px] border-sky-200 text-sky-700 bg-white">
-                      desktop only
+                      {t('mediaStudio.omnivoiceDesktopOnly')}
                     </Badge>
                   </div>
                   <p className="text-xs text-sky-800/80">
-                    Open the clone studio to upload a reference clip, add transcript and style notes, and generate cloned TTS with OmniVoice.
+                    {t('mediaStudio.omnivoiceDesktopCloneDesc')}
                   </p>
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
@@ -9892,11 +10569,11 @@ export default function MediaStudio() {
                       onClick={() => setShowOmnivoiceCloneDialog(true)}
                     >
                       <Upload className="h-4 w-4 mr-2" />
-                      Open Clone Studio
+                      {t('mediaStudio.omnivoiceDesktopCloneAction')}
                     </Button>
                     {omnivoiceReferenceAudioName && (
                       <Badge variant="outline" className="text-[10px] border-sky-200 text-sky-700 bg-white">
-                        Loaded: {omnivoiceReferenceAudioName}
+                        {t('mediaStudio.loadedAudioName', { name: omnivoiceReferenceAudioName })}
                       </Badge>
                     )}
                   </div>
@@ -10656,13 +11333,13 @@ export default function MediaStudio() {
                                   key={task.id}
                                   className={cn(
                                     "relative",
-                                    task.mediaType === "image" || task.mediaType === "video"
+                                    task.mediaType === "image" || task.mediaType === "video" || task.mediaType === "audio"
                                       ? "cursor-grab active:cursor-grabbing"
                                       : "cursor-pointer"
                                   )}
-                                  draggable={task.mediaType === "image" || task.mediaType === "video"}
+                                  draggable={task.mediaType === "image" || task.mediaType === "video" || task.mediaType === "audio"}
                                   onDragStart={
-                                    task.mediaType === "image" || task.mediaType === "video"
+                                    task.mediaType === "image" || task.mediaType === "video" || task.mediaType === "audio"
                                       ? (e) => handleHistoryDragStart(e, resultUrl, task.mediaType)
                                       : undefined
                                   }
@@ -10833,6 +11510,29 @@ export default function MediaStudio() {
                                             </Button>
                                           </TooltipTrigger>
                                           <TooltipContent>{t('mediaStudio.cropByRatio')}</TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                    {task.mediaType === "audio" && activeTab === "video" && (videoAudioWorkflow === "separate_voice" || videoAudioWorkflow === "separate_voice_music") && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-9 w-9 rounded-lg"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                void selectExistingStoryboardAudio(
+                                                  resultUrl!,
+                                                  task.prompt || task.model || t('mediaStudio.storyboardAudioPrepExistingTitle'),
+                                                );
+                                              }}
+                                            >
+                                              <Mic className="h-5 w-5" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>{t('mediaStudio.useAudioAsVoiceover')}</TooltipContent>
                                         </Tooltip>
                                       </TooltipProvider>
                                     )}
@@ -11490,6 +12190,125 @@ export default function MediaStudio() {
         instruct={omnivoiceInstruct}
         onInstructChange={setOmnivoiceInstruct}
       />
+
+      {activeTab === "video" && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setStoryboardReviewProjectsOpen(true)}
+          className="fixed bottom-36 right-3 z-[61] rounded-full border-cyan-200 bg-white/95 px-4 py-2 text-cyan-700 shadow-xl backdrop-blur hover:bg-cyan-50 sm:right-4"
+        >
+          <History className="mr-2 h-4 w-4" />
+          {t('mediaStudio.storyboardProjects')}
+          {(storyboardReviewProjectsData?.total ?? 0) > 0 && (
+            <span className="ml-2 rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-medium text-cyan-700">
+              {storyboardReviewProjectsData?.total}
+            </span>
+          )}
+        </Button>
+      )}
+
+      <Dialog open={storyboardReviewProjectsOpen} onOpenChange={setStoryboardReviewProjectsOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5" />
+              {t('mediaStudio.storyboardReviewProjects')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {t('mediaStudio.storyboardReviewProjectsDesc')}
+            </p>
+            <ScrollArea className="max-h-[58vh] pr-3">
+              <div className="space-y-2">
+                {(storyboardReviewProjectsData?.reviews ?? []).length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                    {t('mediaStudio.storyboardReviewProjectsEmpty')}
+                  </div>
+                ) : (
+                  (storyboardReviewProjectsData?.reviews ?? []).map((review) => (
+                    <div
+                      key={review.id}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg border p-3",
+                        storyboardReviewId === review.id ? "border-cyan-300 bg-cyan-50/70" : "bg-background",
+                      )}
+                    >
+                      <div className="h-14 w-20 shrink-0 overflow-hidden rounded-md border bg-muted">
+                        {review.thumbnailUrl ? (
+                          <video src={review.thumbnailUrl} className="h-full w-full object-cover" muted playsInline />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                            <Video className="h-5 w-5" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold">{review.name}</div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span>{t('mediaStudio.storyboardReviewClipsReady', {
+                            completed: review.completedClipCount ?? 0,
+                            total: review.clipCount ?? 0,
+                          })}</span>
+                          <span>{t('mediaStudio.storyboardReviewUpdated', {
+                            date: review.updatedAt ? new Date(review.updatedAt).toLocaleString() : "-",
+                          })}</span>
+                          {review.videoEditorProjectId && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {t('mediaStudio.storyboardReviewProjectBadge', { id: review.videoEditorProjectId })}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => void openStoryboardReviewProject(review.id)}
+                      >
+                        {t('mediaStudio.storyboardReviewOpen')}
+                      </Button>
+                      {review.videoEditorProjectId && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setLocation(`/video-editor?projectId=${review.videoEditorProjectId}`)}
+                        >
+                          {t('mediaStudio.storyboardReviewOpenEditor')}
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => void deleteStoryboardReviewProject(review.id)}
+                        disabled={deleteStoryboardReviewMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {!storyboardReviewOpen && storyboardReviewTaskIds.length > 0 && (
+        <Button
+          type="button"
+          onClick={() => setStoryboardReviewOpen(true)}
+          className="fixed bottom-20 right-3 z-[61] rounded-full bg-cyan-600 px-4 py-2 text-white shadow-xl hover:bg-cyan-700 sm:right-4"
+        >
+          <Layers className="mr-2 h-4 w-4" />
+          {t('mediaStudio.storyboardReview')}
+          <span className="ml-2 rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-medium">
+            {storyboardReviewCompletedCount}/{storyboardReviewTaskIds.length}
+          </span>
+        </Button>
+      )}
 
       {storyboardReviewOpen && (
       <StoryboardBatchReviewDialog

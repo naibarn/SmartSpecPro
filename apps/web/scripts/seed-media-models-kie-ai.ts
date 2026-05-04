@@ -62,6 +62,7 @@ interface ModelDefinition {
   generateType?: string;
   hasAudio?: boolean;
   maxDuration?: number;
+  storyboardClipDurationSeconds?: number;
   maxPromptLength?: number;
   maxReferenceImages?: number;
   supportedResolutions?: string[];
@@ -202,6 +203,7 @@ function buildVeo31Config(kieModelId: "veo3" | "veo3_fast" | "veo3_lite", pricin
     generateType: "text-to-video",
     hasAudio: true,
     maxDuration: 8,
+    storyboardClipDurationSeconds: 8,
     maxPromptLength: 5000,
     maxReferenceImages: 3,
     supportedResolutions: ["720p", "1080p", "4K"],
@@ -1144,6 +1146,7 @@ const VIDEO_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "grok-imagine/text-to-video",
       generateType: "text-to-video",
+      storyboardClipDurationSeconds: 10,
       inputFields: [
         { key: "duration", label: "Duration", type: "select",
           options: [{ value: "5", label: "5s" }, { value: "10", label: "10s" }],
@@ -1168,6 +1171,7 @@ const VIDEO_MODELS = [
       apiPayloadFormat: "market",
       kieModelId: "grok-imagine/image-to-video",
       generateType: "image-to-video",
+      storyboardClipDurationSeconds: 10,
       inputFields: [
         { key: "image_urls", label: "Source Image", type: "image_urls", required: true },
         { key: "mode", label: "Mode", type: "select",

@@ -2067,6 +2067,8 @@ export interface OpsAnomaly {
   recommendation: string;
   signal: string | null;
   observedAt: string | null;
+  status: "active" | "recovered";
+  statusMessage: string | null;
   source: string;
 }
 
@@ -2794,11 +2796,39 @@ function toIsoString(value: Date | string | null | undefined): string | null {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
-function buildAnomaly(input: Omit<OpsAnomaly, "id">): OpsAnomaly {
+function buildAnomaly(
+  input: Omit<OpsAnomaly, "id" | "status" | "statusMessage"> &
+    Partial<Pick<OpsAnomaly, "status" | "statusMessage">>
+): OpsAnomaly {
   return {
     id: `${input.category}:${input.type}`,
     ...input,
+    status: input.status ?? "active",
+    statusMessage: input.statusMessage ?? null,
   };
+}
+
+function inferOpenAlertAnomalyType(alert: OpenAlertContext | null): string | null {
+  const explicit = alert?.anomalyType?.trim();
+  if (explicit) {
+    return explicit;
+  }
+
+  const haystack = `${alert?.title ?? ""} ${alert?.message ?? ""}`.toLowerCase();
+  if (haystack.includes("memory") || haystack.includes("ram")) return "memory_pressure";
+  if (haystack.includes("cpu")) return "cpu_saturation";
+  if (haystack.includes("disk")) return "disk_pressure";
+  if (haystack.includes("service")) return "service_degraded";
+  if (haystack.includes("llm") && haystack.includes("latency")) return "llm_latency_spike";
+  if (haystack.includes("llm")) return "llm_error_spike";
+  if (haystack.includes("media") && haystack.includes("latency")) return "media_latency_spike";
+  if (haystack.includes("media")) return "media_error_spike";
+  return null;
+}
+
+function buildRecoveredOpenAlertMessage(alert: OpenAlertContext | null): string {
+  const observedAt = alert?.createdAt ? ` since ${alert.createdAt}` : "";
+  return `The original signal has returned to normal in the current monitoring window, but the alert remains unacknowledged${observedAt}.`;
 }
 
 export function buildOpsAlertDedupeKey(
@@ -3094,49 +3124,6 @@ export function deriveOpsOverview(input: OpsOverviewInput): OpsOverview {
               : null,
         observedAt: queueStats.lastCheckAt,
         source: "queue_health_monitor",
-      })
-    );
-  }
-
-  const criticalLikeAlerts =
-    input.unackedAlerts.critical + input.unackedAlerts.error;
-  if (criticalLikeAlerts > 0) {
-    const latestOpenAlert = input.latestOpenAlert ?? null;
-    const backlogAnomaly = buildAnomaly({
-      severity: "critical",
-      category: "monitoring",
-      type: "alert_backlog",
-      title: "Critical monitoring alerts are still unacknowledged",
-      message: latestOpenAlert
-        ? `${criticalLikeAlerts} high-severity alerts are pending acknowledgement. Latest unresolved alert: ${latestOpenAlert.title}${latestOpenAlert.message ? ` - ${latestOpenAlert.message}` : ""}.`
-        : `${criticalLikeAlerts} high-severity alerts are pending acknowledgement.`,
-      recommendation: latestOpenAlert
-        ? `Triage ${latestOpenAlert.title} first, then acknowledge the backlog once ownership and the root cause note are clear.`
-        : "Triage the outstanding alerts now so the same failure does not silently compound.",
-      signal: latestOpenAlert
-        ? `${criticalLikeAlerts} pending · latest unresolved: ${latestOpenAlert.title}`
-        : `${criticalLikeAlerts} pending`,
-      observedAt: toIsoString(input.lastCheckAt),
-      source: "monitoring_alerts",
-    });
-    backlogAnomaly.dedupeKey = buildOpsAlertDedupeKey(backlogAnomaly, {
-      unackedAlerts: input.unackedAlerts,
-      latestOpenAlert,
-    });
-    anomalies.push(backlogAnomaly);
-  } else if (input.unackedAlerts.warning >= 3) {
-    anomalies.push(
-      buildAnomaly({
-        severity: "warning",
-        category: "monitoring",
-        type: "alert_backlog",
-        title: "Warning alerts are accumulating",
-        message: `${input.unackedAlerts.warning} warning alerts are still open.`,
-        recommendation:
-          "Review the alert backlog before warning-level churn hides the next real incident.",
-        signal: `${input.unackedAlerts.warning} pending`,
-        observedAt: toIsoString(input.lastCheckAt),
-        source: "monitoring_alerts",
       })
     );
   }
@@ -3473,6 +3460,59 @@ export function deriveOpsOverview(input: OpsOverviewInput): OpsOverview {
         signal: `avg ${formatLatency(input.orchestrationStats.avgClassifyLatencyMs)}`,
         observedAt: input.orchestrationStats.lastSeenAt,
         source: "audit_jsonl",
+      })
+    );
+  }
+
+  const criticalLikeAlerts =
+    input.unackedAlerts.critical + input.unackedAlerts.error;
+  if (criticalLikeAlerts > 0) {
+    const latestOpenAlert = input.latestOpenAlert ?? null;
+    const latestOpenAlertType = inferOpenAlertAnomalyType(latestOpenAlert);
+    const latestOpenAlertRecovered = latestOpenAlertType
+      ? !anomalies.some(anomaly => anomaly.type === latestOpenAlertType)
+      : false;
+    const backlogAnomaly = buildAnomaly({
+      severity: "critical",
+      category: "monitoring",
+      type: "alert_backlog",
+      title: "Critical monitoring alerts are still unacknowledged",
+      message: latestOpenAlert
+        ? `${criticalLikeAlerts} high-severity alerts are pending acknowledgement. Latest unresolved alert: ${latestOpenAlert.title}${latestOpenAlert.message ? ` - ${latestOpenAlert.message}` : ""}.${latestOpenAlertRecovered ? " Current telemetry shows this condition has returned to normal." : ""}`
+        : `${criticalLikeAlerts} high-severity alerts are pending acknowledgement.`,
+      recommendation: latestOpenAlert
+        ? latestOpenAlertRecovered
+          ? `Confirm the recovery for ${latestOpenAlert.title}, add an owner/root-cause note, then acknowledge the stale alert backlog.`
+          : `Triage ${latestOpenAlert.title} first, then acknowledge the backlog once ownership and the root cause note are clear.`
+        : "Triage the outstanding alerts now so the same failure does not silently compound.",
+      signal: latestOpenAlert
+        ? `${criticalLikeAlerts} pending · latest unresolved: ${latestOpenAlert.title}`
+        : `${criticalLikeAlerts} pending`,
+      observedAt: latestOpenAlert?.createdAt ?? toIsoString(input.lastCheckAt),
+      status: latestOpenAlertRecovered ? "recovered" : "active",
+      statusMessage: latestOpenAlertRecovered
+        ? buildRecoveredOpenAlertMessage(latestOpenAlert)
+        : null,
+      source: "monitoring_alerts",
+    });
+    backlogAnomaly.dedupeKey = buildOpsAlertDedupeKey(backlogAnomaly, {
+      unackedAlerts: input.unackedAlerts,
+      latestOpenAlert,
+    });
+    anomalies.push(backlogAnomaly);
+  } else if (input.unackedAlerts.warning >= 3) {
+    anomalies.push(
+      buildAnomaly({
+        severity: "warning",
+        category: "monitoring",
+        type: "alert_backlog",
+        title: "Warning alerts are accumulating",
+        message: `${input.unackedAlerts.warning} warning alerts are still open.`,
+        recommendation:
+          "Review the alert backlog before warning-level churn hides the next real incident.",
+        signal: `${input.unackedAlerts.warning} pending`,
+        observedAt: toIsoString(input.lastCheckAt),
+        source: "monitoring_alerts",
       })
     );
   }

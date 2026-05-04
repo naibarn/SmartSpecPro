@@ -476,6 +476,151 @@ function readFirstHttpUrl(
   return null;
 }
 
+function findFirstScalarString(
+  value: unknown,
+  keys: string[],
+  visited = new WeakSet<object>(),
+  depth = 0
+): string | null {
+  if (depth > 6 || value === null || value === undefined) return null;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findFirstScalarString(item, keys, visited, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (typeof value !== "object") return null;
+
+  const record = value as Record<string, unknown>;
+  if (visited.has(record)) return null;
+  visited.add(record);
+
+  for (const key of keys) {
+    const candidate = record[key];
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+    if (typeof candidate === "number" && Number.isFinite(candidate)) return String(candidate);
+  }
+
+  for (const nestedValue of Object.values(record)) {
+    const found = findFirstScalarString(nestedValue, keys, visited, depth + 1);
+    if (found) return found;
+  }
+
+  return null;
+}
+
+function findFirstNumber(
+  value: unknown,
+  keys: string[],
+  visited = new WeakSet<object>(),
+  depth = 0
+): number | null {
+  if (depth > 6 || value === null || value === undefined) return null;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findFirstNumber(item, keys, visited, depth + 1);
+      if (found !== null) return found;
+    }
+    return null;
+  }
+  if (typeof value !== "object") return null;
+
+  const record = value as Record<string, unknown>;
+  if (visited.has(record)) return null;
+  visited.add(record);
+
+  for (const key of keys) {
+    const candidate = record[key];
+    if (typeof candidate === "number" && Number.isFinite(candidate)) return candidate;
+    if (typeof candidate === "string" && candidate.trim()) {
+      const parsed = Number(candidate);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+
+  for (const nestedValue of Object.values(record)) {
+    const found = findFirstNumber(nestedValue, keys, visited, depth + 1);
+    if (found !== null) return found;
+  }
+
+  return null;
+}
+
+function extractMediaHistoryResultUrl(task: MediaTask): string | null {
+  return (
+    (typeof task.resultUrl === "string" && task.resultUrl.trim() ? task.resultUrl.trim() : null) ||
+    readFirstHttpUrl(task.resultData?.resultUrl) ||
+    readFirstHttpUrl(task.resultData?.result_url) ||
+    readFirstHttpUrl(task.resultData?.url) ||
+    readFirstHttpUrl(task.resultData?.videoUrl) ||
+    readFirstHttpUrl(task.resultData?.video_url) ||
+    readFirstHttpUrl(task.resultData?.imageUrl) ||
+    readFirstHttpUrl(task.resultData?.image_url) ||
+    readFirstHttpUrl(task.resultData?.audioUrl) ||
+    readFirstHttpUrl(task.resultData?.audio_url) ||
+    readFirstHttpUrl(task.resultData?.output) ||
+    readFirstHttpUrl(task.resultData?.data) ||
+    readFirstHttpUrl(task.resultData?.response) ||
+    readFirstHttpUrl(task.resultData?.resultJson) ||
+    null
+  );
+}
+
+function extractMediaHistoryExternalTaskId(task: MediaTask): string | null {
+  return (
+    task.taskId?.trim() ||
+    task.celeryTaskId?.trim() ||
+    findFirstScalarString(task.parameters, [
+      "taskId",
+      "task_id",
+      "externalTaskId",
+      "external_task_id",
+      "providerTaskId",
+      "provider_task_id",
+      "jobId",
+      "job_id",
+      "requestId",
+      "request_id",
+      "linkedProviderTaskId",
+      "linkedBackendTaskId",
+    ]) ||
+    findFirstScalarString(task.resultData, [
+      "taskId",
+      "task_id",
+      "externalTaskId",
+      "external_task_id",
+      "providerTaskId",
+      "provider_task_id",
+      "jobId",
+      "job_id",
+      "requestId",
+      "request_id",
+      "linkedProviderTaskId",
+      "linkedBackendTaskId",
+    ])
+  );
+}
+
+function extractMediaHistoryCreditsUsed(task: MediaTask): number | null {
+  if (typeof task.creditsUsed === "number" && Number.isFinite(task.creditsUsed)) {
+    return task.creditsUsed;
+  }
+  return findFirstNumber(task.parameters, [
+    "creditsUsed",
+    "credits_used",
+    "creditCost",
+    "credit_cost",
+    "__reserved_credits",
+  ]) ?? findFirstNumber(task.resultData, [
+    "creditsUsed",
+    "credits_used",
+    "creditCost",
+    "credit_cost",
+    "__reserved_credits",
+  ]);
+}
+
 function extractMediaHistoryThumbnailUrl(task: MediaTask): string | null {
   const resultData = task.resultData;
   if (!resultData || typeof resultData !== "object") {
@@ -1000,7 +1145,15 @@ export default function MediaHistory() {
     offset: 0,
     daysAgo: 12, // Only show tasks from last 12 days
   });
-  const tasks: MediaTask[] = tasksData?.tasks || [];
+  const tasks: MediaTask[] = useMemo(
+    () => (tasksData?.tasks || []).map((task: MediaTask) => {
+      const resultUrl = extractMediaHistoryResultUrl(task);
+      return resultUrl && resultUrl !== task.resultUrl
+        ? { ...task, resultUrl }
+        : task;
+    }),
+    [tasksData?.tasks]
+  );
   const totalTasks = tasksData?.total || 0;
 
   const { data: recentLibraryData } = trpc.library.search.useQuery(
@@ -2559,6 +2712,8 @@ export default function MediaHistory() {
                       const status = getStatusMeta(task.status, t);
                       const StatusIcon = status?.icon || AlertCircle;
                       const TypeIcon = typeConfig?.icon || FileImage;
+                      const externalTaskId = extractMediaHistoryExternalTaskId(task);
+                      const creditsUsed = extractMediaHistoryCreditsUsed(task);
                       const canAddToLibrary =
                         isMediaTaskEligibleForLibraryAdd(task);
                       const canFetchResult = canManuallyFetchTaskResult(task);
@@ -2679,22 +2834,22 @@ export default function MediaHistory() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {task.taskId ? (
+                            {externalTaskId ? (
                               <span
                                 className="font-mono text-xs text-gray-600"
-                                title={task.taskId}
+                                title={externalTaskId}
                               >
-                                {task.taskId.substring(0, 8)}...
+                                {externalTaskId.substring(0, 8)}...
                               </span>
                             ) : (
                               <span className="text-gray-400">-</span>
                             )}
                           </TableCell>
                           <TableCell>
-                            {task.creditsUsed ? (
+                            {creditsUsed !== null ? (
                               <span className="flex items-center gap-1 text-sm">
                                 <Zap className="w-3 h-3 text-yellow-500" />
-                                {task.creditsUsed}
+                                {creditsUsed}
                               </span>
                             ) : (
                               <span className="text-gray-400">-</span>

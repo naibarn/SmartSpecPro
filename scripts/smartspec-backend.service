@@ -23,7 +23,7 @@ ExecStartPre=/bin/bash -c '/usr/bin/fuser -k 8000/tcp 2>/dev/null || true'
 ExecStartPre=/bin/bash -c 'for i in $(seq 1 20); do ss -tlnp 2>/dev/null | grep -q ":8000 " || exit 0; sleep 0.5; done; echo "WARN: port 8000 still in use after 10s"'
 
 # Start backend directly (no wrapper scripts)
-ExecStart=/home/dev/projects/SmartSpecPro/python-backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+ExecStart=/home/dev/projects/SmartSpecPro/python-backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 # Verify backend is actually responding after startup (30s — Python imports take ~15s on cold boot)
 ExecStartPost=/bin/bash -c 'for i in $(seq 1 30); do curl -sf http://localhost:8000/health >/dev/null 2>&1 && exit 0; sleep 1; done; echo "FATAL: health check failed after 30s"; exit 1'

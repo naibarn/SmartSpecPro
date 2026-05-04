@@ -127,6 +127,29 @@ If you need to change service configuration:
 
 ## Quick Reference Commands
 
+## SocratiCode Codebase Intelligence — MANDATORY
+
+SocratiCode is installed as the local codebase intelligence MCP for this repo.
+Use it as the default discovery layer before broad file reads or grep-style
+exploration.
+
+When doing real development work in this repository:
+- Use `codebase_status` first if you are unsure whether the index is ready.
+- Use `codebase_search` before opening many files or running broad `rg`
+  searches for architecture, behavior, feature, service, router, UI, or domain
+  questions.
+- Use `codebase_impact` before refactoring, deleting, renaming, or changing
+  shared modules, routers, schemas, services, or exported symbols.
+- Use `codebase_graph_query`, `codebase_graph_stats`, or `codebase_flow` when
+  tracing imports, dependency direction, or runtime call flow.
+- Use `codebase_symbol` or `codebase_symbols` when locating or understanding a
+  function, class, exported constant, route handler, or shared type.
+
+It is acceptable to use `rg` after SocratiCode has narrowed the search, or for
+exact text matches, generated files, non-indexed artifacts, and quick local
+verification. If a SocratiCode tool is unavailable or returns a transport error,
+fall back to normal shell search and mention the fallback in the work summary.
+
 ### Root-level
 ```bash
 npm run dev:web          # Start web app in dev mode (Turbo)

@@ -215,7 +215,7 @@
         },
         "coveragePlan": {
           "type": "string",
-          "description": "Short explanation of how the news source was split into enough 8-second clips to cover the whole story."
+          "description": "Short explanation of how the news source was split into enough configured-duration clips to cover the whole story."
         },
         "sourceBeatCount": {
           "type": "integer",

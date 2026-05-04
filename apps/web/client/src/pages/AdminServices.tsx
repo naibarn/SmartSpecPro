@@ -151,9 +151,12 @@ export default function AdminServices() {
   }, [isLoading, isAuthenticated, user, setLocation]);
 
   useEffect(() => {
-    fetchServices();
-    fetchDockerContainers();
-    const interval = setInterval(fetchServices, 5000); // Auto-refresh every 5s
+    const refreshRuntimeData = () => {
+      void Promise.all([fetchServices(), fetchDockerContainers()]);
+    };
+
+    refreshRuntimeData();
+    const interval = setInterval(refreshRuntimeData, 5000); // Auto-refresh every 5s
     return () => clearInterval(interval);
   }, []);
 

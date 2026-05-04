@@ -190,7 +190,7 @@
       "minimum": 3,
       "maximum": 7,
       "default": 6,
-      "description": "Maximum spoken-dialogue time per Veo clip. Keep below 8 seconds so each prompt can be sent separately."
+      "description": "Maximum spoken-dialogue time per video clip. Keep below the configured clip duration so each prompt can be sent separately."
     },
     "veoModel": {
       "type": "string",
@@ -306,7 +306,7 @@
       "minimum": 100,
       "maximum": 10000,
       "default": 5000,
-      "description": "Maximum character length for non-news storyboard output. In news_narration mode the skill returns a multi-prompt package, so runtime must not truncate the whole package."
+      "description": "Maximum character length per provider prompt. Multi-prompt packages such as news_narration and audio-first storyboard must keep every required prompt block and must not truncate the whole package."
     },
     "aspectRatio": {
       "type": "string",

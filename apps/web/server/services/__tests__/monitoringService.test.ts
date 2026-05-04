@@ -134,8 +134,105 @@ describe("monitoringService", () => {
       expect(overview.anomalies.find((anomaly) => anomaly.type === "llm_error_spike")?.signal).toContain("OpenRouter");
       expect(overview.anomalies.find((anomaly) => anomaly.type === "alert_backlog")?.message).toContain("LLM error rate spiked");
       expect(overview.anomalies.find((anomaly) => anomaly.type === "alert_backlog")?.signal).toContain("latest unresolved");
+      expect(overview.anomalies.find((anomaly) => anomaly.type === "alert_backlog")?.observedAt).toBe("2026-03-30T07:58:30.000Z");
+      expect(overview.anomalies.find((anomaly) => anomaly.type === "alert_backlog")?.status).toBe("active");
       expect(overview.leadingSignals.maxRestartDelta).toBe(4);
       expect(overview.leadingSignals.llmErrorRate).toBeCloseTo(0.24);
+    });
+
+    it("marks stale alert backlog as recovered when the original condition is normal now", () => {
+      const overview = deriveOpsOverview({
+        latestMetrics: {
+          id: 1,
+          memoryUsedMb: 2_900,
+          memoryTotalMb: 8_192,
+          memoryPercent: 35.4,
+          cpuPercent: 40.1,
+          diskUsedGb: 61,
+          diskTotalGb: 100,
+          serviceStatuses: { web: "running", backend: "running" },
+          processRestartCounts: { web: 0, backend: 0 },
+          createdAt: new Date("2026-05-03T15:07:00.000Z"),
+        },
+        baselineMetrics: {
+          id: 2,
+          memoryUsedMb: 2_800,
+          memoryTotalMb: 8_192,
+          memoryPercent: 34.2,
+          cpuPercent: 38.1,
+          diskUsedGb: 60,
+          diskTotalGb: 100,
+          serviceStatuses: { web: "running", backend: "running" },
+          processRestartCounts: { web: 0, backend: 0 },
+          createdAt: new Date("2026-05-03T09:07:00.000Z"),
+        },
+        lastCheckAt: new Date("2026-05-03T15:07:00.000Z"),
+        services: [
+          { name: "web", status: "running" },
+          { name: "backend", status: "running" },
+        ],
+        unackedAlerts: {
+          critical: 1,
+          warning: 0,
+          error: 0,
+          info: 0,
+        },
+        latestOpenAlert: {
+          title: "High Memory Usage",
+          message: "System RAM at 85.1% — risk of OOM",
+          signal: null,
+          recommendation: null,
+          source: null,
+          anomalyType: null,
+          severity: "critical",
+          createdAt: "2026-04-22T23:46:05.448Z",
+        },
+        llmStats: {
+          total: 10,
+          errorCount: 0,
+          serverErrorCount: 0,
+          timeoutCount: 0,
+          fallbackCount: 0,
+          p95LatencyMs: 900,
+          avgLatencyMs: 500,
+          lastSeenAt: "2026-05-03T15:06:00.000Z",
+        },
+        mediaStats: {
+          total: 10,
+          errorCount: 0,
+          serverErrorCount: 0,
+          timeoutCount: 0,
+          fallbackCount: 0,
+          p95LatencyMs: 900,
+          avgLatencyMs: 500,
+          lastSeenAt: "2026-05-03T15:06:00.000Z",
+        },
+        orchestrationStats: {
+          totalEvents: 10,
+          classifyCount: 5,
+          fallbackCount: 0,
+          qualityCount: 5,
+          riskyQualityCount: 0,
+          avgClassifyLatencyMs: 400,
+          fallbackRate: 0,
+          qualityRiskRate: 0,
+          topFallbackReason: null,
+          lastSeenAt: "2026-05-03T15:06:00.000Z",
+        },
+        windows: {
+          metricsHours: 6,
+          auditHours: 6,
+          orchestrationHours: 6,
+        },
+        now: new Date("2026-05-03T15:08:00.000Z"),
+      });
+
+      const backlog = overview.anomalies.find((anomaly) => anomaly.type === "alert_backlog");
+      expect(backlog?.observedAt).toBe("2026-04-22T23:46:05.448Z");
+      expect(backlog?.status).toBe("recovered");
+      expect(backlog?.message).toContain("returned to normal");
+      expect(backlog?.statusMessage).toContain("returned to normal");
+      expect(backlog?.recommendation).toContain("Confirm the recovery");
     });
 
     it("keeps alert backlog dedupe stable for the same unresolved incident", () => {

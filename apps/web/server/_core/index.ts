@@ -33,6 +33,7 @@ import { registerModelSuggestToolRoute } from "../routers/modelSuggestTool";
 import { registerFileParseToolRoute } from "../routers/fileParseTool";
 import { registerScheduleDraftToolRoute } from "../routers/scheduleDraftTool";
 import { registerSkillDiscoveryToolRoute } from "../routers/skillDiscoveryTool";
+import { startDeferredMediaRetryWorker } from "../services/deferredMediaRetryService";
 import { registerInternalSocialToolRoute } from "../routes/internalSocialTool";
 import { registerInternalSocialActionsRoute } from "../routes/internalSocialActions";
 import { registerInternalMetricsRoute } from "../routes/internalMetrics";
@@ -1383,6 +1384,12 @@ async function main() {
     startHistoryCollection();
   } catch (error) {
     console.error("[Startup] Failed to start history collection:", error);
+  }
+
+  try {
+    startDeferredMediaRetryWorker();
+  } catch (error) {
+    console.error("[Startup] Failed to start deferred media retry worker:", error);
   }
 
   // Initialize Telegram notification queue

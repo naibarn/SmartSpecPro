@@ -6,10 +6,167 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
-import { videoEditorProjects } from "../../drizzle/schema";
+import { mediaStudioStoryboardReviews, videoEditorProjects } from "../../drizzle/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
 export const videoEditorProjectsRouter = router({
+  /** List persistent Media Studio storyboard review workspaces */
+  listStoryboardReviews: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).default(20),
+        offset: z.number().min(0).default(0),
+        includeArchived: z.boolean().default(false),
+      }).optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return { reviews: [], total: 0 };
+
+      const limit = input?.limit ?? 20;
+      const offset = input?.offset ?? 0;
+      const includeArchived = input?.includeArchived ?? false;
+      const where = includeArchived
+        ? eq(mediaStudioStoryboardReviews.userId, ctx.user.id)
+        : and(
+            eq(mediaStudioStoryboardReviews.userId, ctx.user.id),
+            eq(mediaStudioStoryboardReviews.status, "active"),
+          );
+
+      const [reviews, [{ total }]] = await Promise.all([
+        db
+          .select({
+            id: mediaStudioStoryboardReviews.id,
+            name: mediaStudioStoryboardReviews.name,
+            status: mediaStudioStoryboardReviews.status,
+            clipCount: mediaStudioStoryboardReviews.clipCount,
+            completedClipCount: mediaStudioStoryboardReviews.completedClipCount,
+            thumbnailUrl: mediaStudioStoryboardReviews.thumbnailUrl,
+            videoEditorProjectId: mediaStudioStoryboardReviews.videoEditorProjectId,
+            createdAt: mediaStudioStoryboardReviews.createdAt,
+            updatedAt: mediaStudioStoryboardReviews.updatedAt,
+          })
+          .from(mediaStudioStoryboardReviews)
+          .where(where)
+          .orderBy(desc(mediaStudioStoryboardReviews.updatedAt))
+          .limit(limit)
+          .offset(offset),
+        db
+          .select({ total: sql<number>`count(*)::int` })
+          .from(mediaStudioStoryboardReviews)
+          .where(where),
+      ]);
+
+      return { reviews, total };
+    }),
+
+  /** Get a storyboard review workspace by ID */
+  getStoryboardReview: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return null;
+
+      const [review] = await db
+        .select()
+        .from(mediaStudioStoryboardReviews)
+        .where(
+          and(
+            eq(mediaStudioStoryboardReviews.id, input.id),
+            eq(mediaStudioStoryboardReviews.userId, ctx.user.id),
+          ),
+        )
+        .limit(1);
+
+      return review ?? null;
+    }),
+
+  /** Save a Media Studio storyboard review workspace */
+  saveStoryboardReview: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().optional(),
+        name: z.string().min(1).max(256),
+        reviewData: z.any(),
+        clipCount: z.number().min(0).optional(),
+        completedClipCount: z.number().min(0).optional(),
+        thumbnailUrl: z.string().optional().nullable(),
+        videoEditorProjectId: z.number().optional().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+
+      const now = new Date();
+      if (input.id) {
+        const [existing] = await db
+          .select({ id: mediaStudioStoryboardReviews.id })
+          .from(mediaStudioStoryboardReviews)
+          .where(
+            and(
+              eq(mediaStudioStoryboardReviews.id, input.id),
+              eq(mediaStudioStoryboardReviews.userId, ctx.user.id),
+            ),
+          )
+          .limit(1);
+        if (!existing) throw new Error("Storyboard review not found");
+
+        await db
+          .update(mediaStudioStoryboardReviews)
+          .set({
+            name: input.name,
+            reviewData: input.reviewData,
+            clipCount: input.clipCount,
+            completedClipCount: input.completedClipCount,
+            thumbnailUrl: input.thumbnailUrl ?? undefined,
+            videoEditorProjectId: input.videoEditorProjectId ?? undefined,
+            status: "active",
+            updatedAt: now,
+          })
+          .where(eq(mediaStudioStoryboardReviews.id, input.id));
+
+        return { id: input.id };
+      }
+
+      const [inserted] = await db
+        .insert(mediaStudioStoryboardReviews)
+        .values({
+          userId: ctx.user.id,
+          name: input.name,
+          reviewData: input.reviewData,
+          clipCount: input.clipCount,
+          completedClipCount: input.completedClipCount,
+          thumbnailUrl: input.thumbnailUrl ?? undefined,
+          videoEditorProjectId: input.videoEditorProjectId ?? undefined,
+          status: "active",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning({ id: mediaStudioStoryboardReviews.id });
+
+      return { id: inserted.id };
+    }),
+
+  /** Delete a storyboard review workspace after it is no longer needed */
+  deleteStoryboardReview: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database unavailable");
+
+      await db
+        .delete(mediaStudioStoryboardReviews)
+        .where(
+          and(
+            eq(mediaStudioStoryboardReviews.id, input.id),
+            eq(mediaStudioStoryboardReviews.userId, ctx.user.id),
+          ),
+        );
+
+      return { success: true };
+    }),
+
   /** List user's projects, sorted by most recently updated */
   list: protectedProcedure
     .input(

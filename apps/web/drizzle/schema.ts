@@ -5523,6 +5523,28 @@ export const videoEditorProjects = pgTable("video_editor_projects", {
 export type VideoEditorProject = typeof videoEditorProjects.$inferSelect;
 export type InsertVideoEditorProject = typeof videoEditorProjects.$inferInsert;
 
+// Media Studio Storyboard Review Projects — persistent pre-edit review workspaces
+export const mediaStudioStoryboardReviews = pgTable("media_studio_storyboard_reviews", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 256 }).notNull(),
+  reviewData: json("reviewData").notNull(),
+  status: varchar("status", { length: 24 }).default("active").notNull(),
+  videoEditorProjectId: integer("videoEditorProjectId").references(() => videoEditorProjects.id, { onDelete: "set null" }),
+  clipCount: integer("clipCount").default(0),
+  completedClipCount: integer("completedClipCount").default(0),
+  thumbnailUrl: text("thumbnailUrl"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("media_studio_storyboard_reviews_user_idx").on(t.userId),
+  index("media_studio_storyboard_reviews_updated_idx").on(t.updatedAt),
+  index("media_studio_storyboard_reviews_status_idx").on(t.status),
+]);
+
+export type MediaStudioStoryboardReview = typeof mediaStudioStoryboardReviews.$inferSelect;
+export type InsertMediaStudioStoryboardReview = typeof mediaStudioStoryboardReviews.$inferInsert;
+
 // Email verification tokens for signup flow
 export const emailVerificationTokens = pgTable("email_verification_tokens", {
   id: serial("id").primaryKey(),

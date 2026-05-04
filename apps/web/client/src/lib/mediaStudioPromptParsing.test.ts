@@ -92,7 +92,7 @@ describe("parseMultiVideoPrompts", () => {
     ]);
   });
 
-  it("keeps reference and continuity context but removes settings and beat plan from per-clip prompts", () => {
+  it("keeps reference and continuity context for legacy prompt blocks without a continuity lock", () => {
     const input = [
       "REFERENCE NOTES:",
       "Same AI newsroom visual wall and Xiaomi MiMo graphics.",
@@ -130,6 +130,39 @@ describe("parseMultiVideoPrompts", () => {
         "Same Thai presenter, same navy blazer, same desk.",
         "",
         "Speaker: Anchor",
+      ].join("\n"),
+    ]);
+  });
+
+  it("does not prepend long shared story notes when each prompt already has a continuity lock", () => {
+    const input = [
+      "REFERENCE NOTES:",
+      "The whole video follows a luxurious building journey from exterior, through the entrance, into the elevator, and finally to the office desk with a large computer screen.",
+      "",
+      "CONTINUITY NOTES:",
+      "Keep one continuous forward camera path through the full building journey. Do not repeat the path inside every generated shot.",
+      "",
+      "STORY BEAT PLAN:",
+      "Beat 1 - exterior.",
+      "Beat 2 - entrance.",
+      "",
+      "PROMPT 1 (8 seconds):",
+      "Continuity Lock: same realistic luxury building and forward camera path.",
+      "Visual action: Establish the exterior facade only.",
+      "",
+      "PROMPT 2 (8 seconds):",
+      "Continuity Lock: same realistic luxury building and forward camera path.",
+      "Visual action: Move toward the entrance doors only.",
+    ].join("\n");
+
+    expect(parseMultiVideoPrompts(input)).toEqual([
+      [
+        "Continuity Lock: same realistic luxury building and forward camera path.",
+        "Visual action: Establish the exterior facade only.",
+      ].join("\n"),
+      [
+        "Continuity Lock: same realistic luxury building and forward camera path.",
+        "Visual action: Move toward the entrance doors only.",
       ].join("\n"),
     ]);
   });
@@ -403,19 +436,36 @@ describe("external audio prompt helpers", () => {
     const output = prepareSilentVideoPromptForExternalAudio(input);
 
     expect(output).toContain("Continuity Lock: same Thai presenter.");
-    expect(output).toContain("must not speak, lip-sync, mouth words");
     expect(output).toContain("Background Visuals: non-readable AI dashboard graphics.");
-    expect(output).toContain("visual-only footage");
-    expect(output).toContain("mouth-wording");
-    expect(output).toContain("Neutral ambient room tone is acceptable");
+    expect(output).toContain("No subtitles, no captions, no lower-thirds, no readable text or numbers anywhere in frame");
     expect(output).not.toContain("Audio Cue:");
     expect(output).not.toContain("Speaker:");
     expect(output).not.toContain("Xiaomi เปิดตัว MiMo");
     expect(output).not.toContain("Sound Design:");
+    expect(output).not.toContain("no speech");
+    expect(output).not.toContain("no dialogue");
     expect(output).not.toContain("no music, no sound effects");
+    expect(output).not.toContain("External audio workflow");
   });
 
-  it("does not duplicate the external audio instruction on already visual-only prompts", () => {
+  it("removes compact no-speech text restriction lines from external-audio video prompts", () => {
+    const input = [
+      "Continuity Lock: no visible person.",
+      "Visual action: The camera moves through a luxury lobby.",
+      "No subtitles, no captions, no lower-thirds, no readable text or numbers anywhere in frame, no logos with letters, no random glyphs, no narrator, no speech.",
+    ].join("\n");
+
+    const output = prepareSilentVideoPromptForExternalAudio(input);
+
+    expect(output).toBe([
+      "Continuity Lock: no visible person.",
+      "Visual action: The camera moves through a luxury lobby.",
+      "No subtitles, no captions, no lower-thirds, no readable text or numbers anywhere in frame, no logos with letters, no random glyphs.",
+    ].join("\n"));
+    expect(output).not.toMatch(/\bno narrator|no speech|no dialogue\b/i);
+  });
+
+  it("removes external audio control instructions instead of passing them to the video model", () => {
     const input = [
       "Continuity Lock: same presenter.",
       "Background Visuals: text-free AI workflow.",
@@ -423,10 +473,28 @@ describe("external audio prompt helpers", () => {
     ].join("\n");
 
     const output = prepareSilentVideoPromptForExternalAudio(input);
-    expect(output.match(/External audio workflow:/g)).toHaveLength(1);
-    expect(output.match(/Visual-only footage for external voiceover:/g)).toHaveLength(1);
-    expect(output).toContain("Neutral ambient room tone is acceptable");
+    expect(output).toBe([
+      "Continuity Lock: same presenter.",
+      "Background Visuals: text-free AI workflow.",
+    ].join("\n"));
+    expect(output).not.toContain("External audio workflow:");
+    expect(output).not.toContain("Visual-only footage for external voiceover:");
     expect(output).not.toContain("Do not generate speech, dialogue, narration, music, sound effects");
+  });
+
+  it("removes speech wording from visual action without adding audio control text", () => {
+    const input = [
+      "A presenter-style news clip.",
+      "Visual action: The presenter gestures while speaking to camera.",
+      "Background Visuals: newsroom backdrop.",
+    ].join("\n");
+
+    const output = prepareSilentVideoPromptForExternalAudio(input);
+
+    expect(output).toContain("A presenter-style news clip.");
+    expect(output).toContain("Visual action: The presenter gestures with natural presenter gestures to camera.");
+    expect(output).toContain("Background Visuals: newsroom backdrop.");
+    expect(output).not.toMatch(/\bspeak|speech|dialogue|audio|voiceover|mute|sound/i);
   });
 
   it("preserves multi-video prompt markers when preparing display text for external audio", () => {

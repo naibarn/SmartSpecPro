@@ -66,10 +66,16 @@ ENV PORT=3000
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 smartspec
 
-# Copy built app + workspace packages (needed at runtime for @smartspec/* imports)
+# Copy built app + runtime source. The production server is server/_core/index.ts;
+# dist/ only contains the Vite client bundle.
 COPY --from=builder /app/apps/web/dist ./dist
 COPY --from=builder /app/apps/web/package.json ./package.json
+COPY --from=builder /app/apps/web/server ./server
+COPY --from=builder /app/apps/web/shared ./shared
+COPY --from=builder /app/apps/web/skills ./skills
 COPY --from=builder /app/apps/web/drizzle ./drizzle
+COPY --from=builder /app/apps/web/vite.config.ts ./vite.config.ts
+COPY --from=builder /app/apps/web/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 
@@ -81,4 +87,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/health || exit 1
 
 EXPOSE 3000
-CMD ["node", "dist/index.js"]
+CMD ["npm", "run", "start"]

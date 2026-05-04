@@ -19,6 +19,8 @@ type OpsAnomaly = {
   recommendation: string;
   signal: string | null;
   observedAt: string | null;
+  status?: "active" | "recovered";
+  statusMessage?: string | null;
   source: string;
 };
 
@@ -110,6 +112,11 @@ const anomalySeverityClassName: Record<OpsAnomaly["severity"], string> = {
   critical: "border-rose-200 bg-rose-50/80 text-rose-800",
 };
 
+const anomalyStatusClassName: Record<NonNullable<OpsAnomaly["status"]>, string> = {
+  active: "border-current/20 bg-white/60 text-current",
+  recovered: "border-emerald-200 bg-emerald-50 text-emerald-700",
+};
+
 const categoryLabel: Record<OpsAnomaly["category"], string> = {
   resources: "Resources",
   services: "Services",
@@ -141,6 +148,20 @@ function relativeTimeLabel(value: string | Date | null): string | null {
   if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m ago`;
   if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)}h ago`;
   return `${Math.floor(diffSeconds / 86400)}d ago`;
+}
+
+function absoluteTimeLabel(value: string | Date | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 }
 
 export function OpsEarlyWarningPanel({
@@ -322,7 +343,12 @@ export function OpsEarlyWarningPanel({
               {visibleAnomalies.map((anomaly) => (
                 <div
                   key={anomaly.id}
-                  className={cn("rounded-2xl border px-4 py-4", anomalySeverityClassName[anomaly.severity])}
+                  className={cn(
+                    "rounded-2xl border px-4 py-4",
+                    anomaly.status === "recovered"
+                      ? "border-emerald-200 bg-emerald-50/80 text-emerald-800"
+                      : anomalySeverityClassName[anomaly.severity],
+                  )}
                 >
                   <div className="flex flex-wrap items-start gap-2">
                     <Badge variant="outline" className="border-current/20 bg-white/60 text-current">
@@ -336,15 +362,30 @@ export function OpsEarlyWarningPanel({
                         {anomaly.signal}
                       </Badge>
                     ) : null}
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "capitalize",
+                        anomalyStatusClassName[anomaly.status ?? "active"],
+                      )}
+                    >
+                      {anomaly.status === "recovered" ? "Recovered" : "Active"}
+                    </Badge>
                     {anomaly.observedAt ? (
                       <span className="ml-auto text-xs text-current/80">
-                        {relativeTimeLabel(anomaly.observedAt)}
+                        Occurred {absoluteTimeLabel(anomaly.observedAt)}
+                        {relativeTimeLabel(anomaly.observedAt) ? ` (${relativeTimeLabel(anomaly.observedAt)})` : ""}
                       </span>
                     ) : null}
                   </div>
                   <div className="mt-2">
                     <p className="text-sm font-semibold text-slate-900">{anomaly.title}</p>
                     <p className="mt-1 text-sm text-slate-700">{anomaly.message}</p>
+                    {anomaly.statusMessage ? (
+                      <p className="mt-1 text-xs font-medium text-emerald-700">
+                        Status: {anomaly.statusMessage}
+                      </p>
+                    ) : null}
                     <p className="mt-1 text-xs text-slate-600">
                       Recommended: {anomaly.recommendation}
                     </p>
