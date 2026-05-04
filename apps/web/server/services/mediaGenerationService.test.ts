@@ -132,6 +132,61 @@ describe("MEDIA_MODELS — OmniVoice audio entry", () => {
   });
 });
 
+describe("MEDIA_MODELS — HappyHorse video entries", () => {
+  it("includes Kie market payload metadata for all HappyHorse modes", () => {
+    const ids = [
+      "happyhorse/text-to-video",
+      "happyhorse/image-to-video",
+      "happyhorse/reference-to-video",
+      "happyhorse/video-edit",
+    ];
+
+    for (const id of ids) {
+      expect(MEDIA_MODELS[id]).toMatchObject({
+        id,
+        provider: "kie.ai",
+        type: "video",
+        creditCost: 100,
+      });
+      expect(MEDIA_MODELS[id].configJson).toMatchObject({
+        apiEndpoint: "/api/v1/jobs/createTask",
+        apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+        apiPayloadFormat: "market",
+        kieModelId: id,
+      });
+    }
+  });
+
+  it("keeps HappyHorse reference and edit input fields aligned with Kie docs", () => {
+    expect(MEDIA_MODELS["happyhorse/image-to-video"].configJson).toMatchObject({
+      maxReferenceImages: 1,
+      apiConfig: {
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        omit_aspect_ratio: true,
+      },
+    });
+    expect(MEDIA_MODELS["happyhorse/reference-to-video"].configJson).toMatchObject({
+      maxReferenceImages: 9,
+      apiConfig: {
+        reference_image_input_key: "reference_image",
+        reference_image_input_type: "array",
+      },
+    });
+    expect(MEDIA_MODELS["happyhorse/video-edit"].configJson).toMatchObject({
+      maxReferenceImages: 5,
+      apiConfig: {
+        reference_image_input_key: "reference_image",
+        reference_image_input_type: "array",
+        reference_video_input_key: "video_url",
+        reference_video_input_type: "url",
+        omit_aspect_ratio: true,
+        omit_duration: true,
+      },
+    });
+  });
+});
+
 describe("MediaGenerationService retry behavior", () => {
   const taskPayload = {
     id: "task-123",

@@ -286,6 +286,34 @@ async function resolveEffectiveMediaRequestModel(input: {
   };
 }
 
+const HAPPYHORSE_DURATIONS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+const HAPPYHORSE_ASPECT_RATIOS = ["16:9", "9:16", "1:1", "4:3", "3:4"];
+const HAPPYHORSE_RESOLUTION_FIELD = {
+  key: "resolution",
+  label: "Resolution",
+  type: "select",
+  options: [{ value: "720p", label: "720p" }, { value: "1080p", label: "1080p" }],
+  default: "1080p",
+  affectsPricing: true,
+};
+const HAPPYHORSE_DURATION_FIELD = {
+  key: "duration",
+  label: "Duration",
+  type: "select",
+  options: HAPPYHORSE_DURATIONS.map((seconds) => ({ value: String(seconds), label: `${seconds}s` })),
+  default: "5",
+  affectsPricing: true,
+};
+const HAPPYHORSE_ASPECT_RATIO_FIELD = {
+  key: "aspect_ratio",
+  label: "Aspect Ratio",
+  type: "select",
+  options: HAPPYHORSE_ASPECT_RATIOS.map((ratio) => ({ value: ratio, label: ratio })),
+  default: "16:9",
+  syncWith: "aspect_ratio",
+};
+const HAPPYHORSE_SEED_FIELD = { key: "seed", label: "Seed", type: "number", required: false };
+
 // Model registry with metadata
 export const MEDIA_MODELS: Record<string, ModelMetadata> = {
   // Image models
@@ -447,8 +475,8 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     name: "HappyHorse 1.0 Text-to-Video",
     provider: "kie.ai",
     description: "Alibaba ATH HappyHorse 1.0 text-to-video generation",
-    supportsDurations: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    supportsAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    supportsDurations: HAPPYHORSE_DURATIONS,
+    supportsAspectRatios: HAPPYHORSE_ASPECT_RATIOS,
     creditCost: 100,
     configJson: {
       apiEndpoint: "/api/v1/jobs/createTask",
@@ -456,7 +484,14 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
       apiPayloadFormat: "market",
       kieModelId: "happyhorse/text-to-video",
       generateType: "text-to-video",
+      maxDuration: 15,
       maxPromptLength: 5000,
+      supportedResolutions: ["720p", "1080p"],
+      supportedDurations: HAPPYHORSE_DURATIONS,
+      supportedAspectRatios: HAPPYHORSE_ASPECT_RATIOS,
+      inputFields: [HAPPYHORSE_RESOLUTION_FIELD, HAPPYHORSE_ASPECT_RATIO_FIELD, HAPPYHORSE_DURATION_FIELD, HAPPYHORSE_SEED_FIELD],
+      pricingTiers: { default: 100 },
+      pricingFormula: "flat",
     },
   },
   "happyhorse/image-to-video": {
@@ -465,7 +500,7 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     name: "HappyHorse 1.0 Image-to-Video",
     provider: "kie.ai",
     description: "Animate a single source image with HappyHorse 1.0",
-    supportsDurations: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    supportsDurations: HAPPYHORSE_DURATIONS,
     creditCost: 100,
     configJson: {
       apiEndpoint: "/api/v1/jobs/createTask",
@@ -473,8 +508,11 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
       apiPayloadFormat: "market",
       kieModelId: "happyhorse/image-to-video",
       generateType: "image-to-video",
+      maxDuration: 15,
       maxPromptLength: 5000,
       maxReferenceImages: 1,
+      supportedResolutions: ["720p", "1080p"],
+      supportedDurations: HAPPYHORSE_DURATIONS,
       apiConfig: {
         reference_image_input_key: "image_urls",
         reference_image_input_type: "array",
@@ -482,7 +520,12 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
       },
       inputFields: [
         { key: "image_urls", label: "Source Image", type: "image_urls", required: true, syncWith: "reference_images" },
+        HAPPYHORSE_RESOLUTION_FIELD,
+        HAPPYHORSE_DURATION_FIELD,
+        HAPPYHORSE_SEED_FIELD,
       ],
+      pricingTiers: { default: 100 },
+      pricingFormula: "flat",
     },
   },
   "happyhorse/reference-to-video": {
@@ -491,8 +534,8 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     name: "HappyHorse 1.0 Reference-to-Video",
     provider: "kie.ai",
     description: "Generate video from 1-9 character or style references with HappyHorse 1.0",
-    supportsDurations: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    supportsAspectRatios: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    supportsDurations: HAPPYHORSE_DURATIONS,
+    supportsAspectRatios: HAPPYHORSE_ASPECT_RATIOS,
     creditCost: 100,
     configJson: {
       apiEndpoint: "/api/v1/jobs/createTask",
@@ -500,15 +543,25 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
       apiPayloadFormat: "market",
       kieModelId: "happyhorse/reference-to-video",
       generateType: "reference-to-video",
+      maxDuration: 15,
       maxPromptLength: 5000,
       maxReferenceImages: 9,
+      supportedResolutions: ["720p", "1080p"],
+      supportedDurations: HAPPYHORSE_DURATIONS,
+      supportedAspectRatios: HAPPYHORSE_ASPECT_RATIOS,
       apiConfig: {
         reference_image_input_key: "reference_image",
         reference_image_input_type: "array",
       },
       inputFields: [
         { key: "reference_image", label: "Reference Images", type: "image_urls", required: true, syncWith: "reference_images" },
+        HAPPYHORSE_RESOLUTION_FIELD,
+        HAPPYHORSE_ASPECT_RATIO_FIELD,
+        HAPPYHORSE_DURATION_FIELD,
+        HAPPYHORSE_SEED_FIELD,
       ],
+      pricingTiers: { default: 100 },
+      pricingFormula: "flat",
     },
   },
   "happyhorse/video-edit": {
@@ -524,8 +577,10 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
       apiPayloadFormat: "market",
       kieModelId: "happyhorse/video-edit",
       generateType: "video-edit",
+      maxDuration: 60,
       maxPromptLength: 5000,
       maxReferenceImages: 5,
+      supportedResolutions: ["720p", "1080p"],
       apiConfig: {
         reference_image_input_key: "reference_image",
         reference_image_input_type: "array",
@@ -537,7 +592,12 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
       inputFields: [
         { key: "video_url", label: "Source Video", type: "video_urls", required: true, syncWith: "reference_videos" },
         { key: "reference_image", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images" },
+        HAPPYHORSE_RESOLUTION_FIELD,
+        { key: "audio_setting", label: "Audio", type: "select", options: [{ value: "auto", label: "Auto" }, { value: "origin", label: "Original" }], default: "auto" },
+        HAPPYHORSE_SEED_FIELD,
       ],
+      pricingTiers: { default: 100 },
+      pricingFormula: "flat",
     },
   },
   "sora-2": {
