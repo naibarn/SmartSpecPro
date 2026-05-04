@@ -18,6 +18,12 @@ Before dispatching any Task Packet, verify all of the following:
 - [ ] **CONTRACT** is filled in for parallel agents, or explicitly `N/A` for solo agents
 - [ ] **OUTPUT** names the specific file to modify or the report format to return
 - [ ] **QUALITY GATE** contains exact shell commands, not descriptions
+- [ ] **IMPACT PREFLIGHT** is reflected in FILES/CONTEXT/CONSTRAINTS:
+      SocratiCode or targeted-shell discovery identified downstream files, tests,
+      routes, symbols, and shared contracts that may be affected
+- [ ] **LEAST-IMPACT DECISION** is recorded when multiple fixes are possible:
+      choose the smallest contract-compliant option, or ask the user if product,
+      security, data, performance, or API tradeoffs are materially different
 
 ---
 
@@ -61,12 +67,22 @@ Match the domain to the `subagent_type` you will pass to the `Task` tool:
 
 **Construction rule:** List every file the agent needs to *read* to understand the codebase, plus every file the agent will *write or modify*. If an agent writes a new file that does not exist yet, include the target path anyway — this signals to the agent where to create it.
 
-**Conductor note:** Agents that receive incomplete file lists make assumptions, read wrong files, and produce incorrect implementations. Err on the side of including more files.
+**Conductor note:** Agents that receive incomplete file lists make assumptions, read wrong files, and produce incorrect implementations. Err on the side of including the right bounded files, not broad directories or whole subsystems.
 
-**Resolution shortcut:** If unsure which files are relevant, run a quick Grep before dispatching:
+**Resolution shortcut:** If SocratiCode is active, use it before shell search:
+1. Run `codebase_search` for the feature/error/domain question.
+2. Use `codebase_symbols`, `codebase_symbol`, `codebase_graph_query`, or
+   `codebase_impact` when symbols, dependencies, or blast radius matter.
+3. Confirm exact paths with targeted `rg` inside the narrowed files/directories.
+
+If SocratiCode is unavailable, run a targeted grep/rg instead:
 ```bash
-grep -r "functionName" <absolute-repo-root>/apps/web/server/ --include="*.ts" -l
+rg -n "functionName" <absolute-repo-root>/apps/web/server/
 ```
+
+Avoid repository-wide grep/rg in Task Packet construction unless the target
+domain is still unknown after SocratiCode or targeted searches. If broad search
+is used, summarize the reason and only pass the relevant file paths to agents.
 
 ---
 
@@ -80,6 +96,21 @@ grep -r "functionName" <absolute-repo-root>/apps/web/server/ --include="*.ts" -l
 
 **For a new-feature wave:** Describe what the previous wave did and what this wave must build on top of.
 
+**Impact context requirement:** For implementation, feature, and bug-fix packets, include a short
+`Impact preflight` block:
+
+```
+Impact preflight:
+  SocratiCode: active
+  Direct targets: <absolute paths/symbols>
+  Downstream affected: <paths/tests/routes/symbols from codebase_impact or graph checks>
+  Chosen approach: <least-impact option and why>
+  Escalate if: <what tradeoff or extra file would require conductor/user decision>
+```
+
+If SocratiCode is unavailable, write `SocratiCode: unavailable — targeted shell fallback`
+and summarize the exact narrowed shell search used.
+
 ---
 
 ### CONSTRAINTS
@@ -90,6 +121,12 @@ grep -r "functionName" <absolute-repo-root>/apps/web/server/ --include="*.ts" -l
 - API surface shapes the agent must preserve
 
 **Conductor note:** The most common constraint violation is a backend agent modifying shared types in ways that break the frontend. Always add: "Do not change the response type shape if it is already in the CONTRACT."
+
+**Shared operational constraint:** Include the rules from
+`../../sub-agents/references/shared-operational-discipline.md` in every Task Packet. The
+most important scope rule is: if the agent discovers it must touch a file outside the
+packet's Write list or change a shared/exported contract not already approved, it must
+return a blocker/options report instead of silently expanding scope.
 
 ---
 

@@ -36,6 +36,24 @@ Orchestrates a multi-step planning process: Research → Interview → Self-Revi
 - Branch/working tree warnings — log and continue
 - Task list conflicts — auto-overwrite with `--force`
 
+## SocratiCode Discovery & Token-Efficient Reading
+
+When this skill runs inside a repository that has SocratiCode available, use SocratiCode as the default codebase research layer. SocratiCode narrows the search space; shell tools still verify exact lines, diffs, and tests before final decisions.
+
+**Mandatory active check:** Before codebase research, repository-wide `rg`, opening many files, dependency tracing, or writing implementation plans that depend on existing code, call `codebase_status` for the target project. If the index is ready, use SocratiCode first. If it is unavailable or MCP transport fails, fall back to shell search and record the fallback in `claude-research.md` and the final summary.
+
+**Where to use it:**
+- Step 6 Research Decision: if the project is a git repo with existing code, mark codebase research as required and start with `codebase_status`.
+- Step 7 Execute Research: use `codebase_search` for architecture, services, routers, UI, schemas, tests, and integration boundaries before opening files.
+- Step 11 Plan Writing: use `codebase_symbols`, `codebase_symbol`, `codebase_graph_query`, or `codebase_flow` when exported symbols, call flow, or dependency direction affect the plan.
+- Step 11.5, Step 13, Step 20.5, and Step 21 Review: use `codebase_impact` before recommending refactors, renames, deletes, schema changes, router changes, shared service changes, or exported API/type changes.
+
+**Token budget guardrails:**
+- Prefer SocratiCode snippets, symbol summaries, graph queries, and impact summaries before full file reads.
+- After SocratiCode identifies candidates, verify with line-range reads and targeted `rg`.
+- Use `git diff --stat`, focused diffs, and exact file paths instead of large diff dumps.
+- Read generated planning artifacts fully when reviewing them, but keep source-code reads narrow and evidence-driven.
+
 ## CRITICAL: First Actions
 
 **BEFORE using any other tools**, do these in order:

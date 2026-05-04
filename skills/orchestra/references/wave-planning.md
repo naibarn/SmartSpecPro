@@ -34,6 +34,17 @@ What each agent is expected to test. The frontend agent tests the component rend
 the mocked API contract; the backend agent tests the tRPC handler with a real database
 call. Test boundaries prevent overlap and ensure coverage is complementary, not duplicated.
 
+**4. Impact Boundary**
+The downstream files, tests, routes, symbols, and workflows discovered during impact
+preflight. Mark each item as:
+- `in-scope-now` — handled by this wave or a later planned wave
+- `quality-gate-only` — covered by a gate command or read-only review
+- `out-of-scope` — intentionally deferred with rationale in `orchestra/backlog.md`
+
+When SocratiCode is active, derive this boundary from `codebase_impact`,
+`codebase_graph_query`, `codebase_flow`, or `codebase_symbols` before grouping waves.
+If SocratiCode is unavailable, use targeted shell search and record the fallback.
+
 > **Rule:** Parallel dispatch requires a contract — no contract = sequential execution.
 
 ### Example Contract Stub
@@ -57,6 +68,12 @@ call. Test boundaries prevent overlap and ensure coverage is complementary, not 
 ### Test Boundary
 - frontend: test component renders with mocked `getSummary` response
 - backend: test `getSummary` procedure with Drizzle test DB, verify tenantId isolation
+
+### Impact Boundary
+| Affected path/symbol | Handling |
+|----------------------|----------|
+| <absolute-repo-root>/apps/web/client/src/lib/trpc.ts | quality-gate-only via TypeScript check |
+| <absolute-repo-root>/apps/web/client/src/pages/Dashboard.tsx | in-scope-now |
 ```
 
 ---
@@ -69,12 +86,13 @@ A task belongs to wave N+1 if and only if it requires the output of a wave N tas
 **Grouping guidelines:**
 
 1. Read the ownership boundaries of all planned tasks
-2. If task A writes files that task B reads or imports, B goes in a later wave
-3. If tasks A and B share no files and have no import relationship, they can run in the
+2. Check SocratiCode graph/impact results for import, caller, route, schema, or test dependencies
+3. If task A writes files that task B reads or imports, B goes in a later wave
+4. If tasks A and B share no files and have no import relationship, they can run in the
    same wave
-4. Database migrations always occupy their own wave (1 DB agent constraint — see Section 3)
-5. Git operations (commit, branch) always occupy their own wave (1 git agent constraint)
-6. TypeScript types shared between frontend and backend must be written in wave N before
+5. Database migrations always occupy their own wave (1 DB agent constraint — see Section 3)
+6. Git operations (commit, branch) always occupy their own wave (1 git agent constraint)
+7. TypeScript types shared between frontend and backend must be written in wave N before
    both consumers run in wave N+1
 
 **Example wave breakdown for a tRPC endpoint + React page:**

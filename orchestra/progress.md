@@ -1,65 +1,26 @@
-# Orchestra Progress
+[COMPLETE] wave-1-direct-edit — Updated video-storyboard-to-prompts prompt templates for stronger continuity, reference filtering, text/logo sanitization, separate-audio visual-only handling, presenter visibility, and final QA audit.
+[COMPLETE] wave-2-orchestra-socraticode-flow — Updated Orchestra skill flow to require SocratiCode active checks before repository shell exploration, prefer token-efficient line-range reads/diff stat, and use SocratiCode for Task Packet file resolution before targeted rg.
+[COMPLETE] wave-3-deep-skills-socraticode-alignment — Aligned deep-project, deep-plan, and deep-implement with SocratiCode-first discovery, impact checks, fallback logging, and token-efficient shell verification.
+[COMPLETE] wave-4-orchestra-subagent-impact-flow — Audited all 29 sub-agent roles and added central shared operational discipline, impact preflight, Task Packet impact context, wave impact boundaries, and post-wave impact closure so Orchestra must choose least-impact fixes or escalate real tradeoffs.
 
-## Session: Work Requests UI Polish
-Started: 2026-04-26
-
-## Advisory Git State
-The repository already had unrelated dirty files before this session, including backend services, skill-system files, and prior edits to `apps/web/client/src/pages/MyRequests.tsx` and `apps/web/client/src/pages/WorkRequest.tsx`. This session only intentionally modified the Work Requests frontend page files and produced screenshot verification artifacts.
-
-## Waves
-- [x] Wave 1: Inspect existing Work Requests UI and tests
-- [x] Wave 2: Apply visual UI polish and state coverage
-- [x] Wave 3: Verification and responsive screenshot gate
+## Advisory Dirty State
+The repository had pre-existing uncommitted changes before this Orchestra session, including prior edits under `apps/web/skills/video-storyboard-to-prompts/`. This session will preserve existing work and only patch the requested skill prompt behavior.
 
 ## Verification
-- `cd apps/web && npm run check -- --pretty false` — PASS
-- `cd apps/web && npm run test -- client/src/pages/__tests__/MyRequests.test.tsx client/src/pages/__tests__/WorkRequest.test.tsx` — PASS (32 tests)
-- Playwright Chromium via temporary `/tmp/smartspec-pw` install against local dev server — PASS
-  - `/work/requests` and `/work/request`
-  - mobile 390x844, tablet 820x1180, desktop 1440x1000
-  - white mode, expected headings rendered, welcome language modal suppressed for page QA, no horizontal overflow
-- `git diff --check -- apps/web/client/src/pages/MyRequests.tsx apps/web/client/src/pages/WorkRequest.tsx` — PASS
-
-## Artifacts
-- `/home/dev/projects/SmartSpecPro/artifacts/work-requests-ui/mobile-work-requests.png`
-- `/home/dev/projects/SmartSpecPro/artifacts/work-requests-ui/mobile-work-request.png`
-- `/home/dev/projects/SmartSpecPro/artifacts/work-requests-ui/tablet-work-requests.png`
-- `/home/dev/projects/SmartSpecPro/artifacts/work-requests-ui/tablet-work-request.png`
-- `/home/dev/projects/SmartSpecPro/artifacts/work-requests-ui/desktop-work-requests.png`
-- `/home/dev/projects/SmartSpecPro/artifacts/work-requests-ui/desktop-work-request.png`
-
----
-
-## Session: Skill System vNext
-Started: 2026-04-26
-
-## Advisory Git State
-The repository has unrelated dirty `apps/web/` and `specs/quick/001-auto-team-capability-routing/` files from prior work. This session will not touch those files.
-
-## Waves
-- [x] Wave 1: Superpowers Pattern Foundation
-- [x] Wave 2: Visual UI Skill Integration
-- [x] Wave 3: UI/UX Agent Coverage
-- [x] Wave 4: Gates and Behavior Validation
-- [x] Wave 5: Verification and Publication
-
-## Verification
-- `bash skills/publish-to-installed-skills.sh` — PASS
-- `bash skills/verify-installed-skills-sync.sh` — PASS
-- `bash skills/audit-skills.sh` — PASS
-  - skill structure audit passed
-  - installed skill sync verified
-  - deep-implement: 135 passed
-  - deep-project: 166 passed
-  - deep-plan: 327 passed
-  - total deep-* tests: 628 passed
-- `bash skills/clean-runtime-artifacts.sh` — PASS
-- `bash skills/verify-installed-skills-sync.sh` after cleanup — PASS
-- `visual-ui-enhancement` installed at `/home/dev/.codex/skills/visual-ui-enhancement/` — PASS
-
-## Completion Notes
-- Active visual UI skill is now `skills/visual-ui-enhancement/`.
-- `skills/mirrored-skills.txt` now includes `visual-ui-enhancement`, so publish/verify covers it.
-- `skills/clean-runtime-artifacts.sh` now removes only untracked `uv.lock` files created by test runs, preserving tracked lockfiles.
-- Source archive `skills/visual-ui-enhancement-multiplatform.zip` was removed after extraction to avoid committing a duplicate package artifact.
-- Unrelated dirty `apps/web/` and `specs/quick/001-auto-team-capability-routing/` files remain untouched.
+- PASS: `git diff --check -- apps/web/skills/video-storyboard-to-prompts/prompts/system.prompt.md apps/web/skills/video-storyboard-to-prompts/prompts/storyboard.prompt.md apps/web/skills/video-storyboard-to-prompts/prompts/video_prompts.prompt.md orchestra`
+- PASS: targeted `rg` audit for separate-audio conflict terms, text/logo sanitizer rules, visual-only mouth lock, presenter visibility, and reference filtering.
+- SKIPPED: TypeScript/unit tests because only Markdown prompt templates and Orchestra session notes changed; no runtime TypeScript/Python code changed in this wave.
+- PASS: SocratiCode active preflight before shell edits for wave 2 (`codebase_status` green).
+- PASS: `git diff --check -- skills/orchestra/SKILL.md skills/orchestra/references/task-packet-format.md orchestra`
+- PASS: targeted `rg` audit for `Token-Efficient Reading Discipline`, `SocratiCode Discovery`, `Token Budget Guardrails`, `codebase_status` before shell exploration, and Task Packet `Resolution shortcut`.
+- PASS: `bash skills/audit-skills.sh` (skill structure/sync plus deep-implement 135 tests, deep-project 166 tests, deep-plan 327 tests).
+- PASS: SocratiCode active preflight before shell edits for wave 3 (`codebase_status` green).
+- PASS: active installed skill copies match repo mirrors for deep-project, deep-plan, and deep-implement.
+- PASS: `git diff --check -- skills/deep-project/skills/deep-project/SKILL.md skills/deep-plan/skills/deep-plan/SKILL.md skills/deep-implement/skills/deep-implement/SKILL.md orchestra/progress.md`
+- PASS: targeted `rg` audit for deep skill `SocratiCode Discovery`, mandatory `codebase_status`, `codebase_impact`, fallback logging, and token guardrails.
+- PASS: `bash skills/audit-skills.sh` (skill structure/sync plus deep-implement 135 tests, deep-project 166 tests, deep-plan 327 tests).
+- PASS: SocratiCode active preflight before shell edits for wave 4 (`codebase_status` green).
+- PASS: active installed skill copies match repo mirrors for Orchestra/sub-agents impact-flow files.
+- PASS: `git diff --check -- skills/orchestra/SKILL.md skills/orchestra/references/wave-planning.md skills/orchestra/references/task-packet-format.md skills/orchestra/references/sub-agent-dispatch.md skills/orchestra/references/result-integration.md skills/sub-agents/contracts/task-packet.schema.md skills/sub-agents/README.md skills/sub-agents/references/shared-operational-discipline.md`
+- PASS: targeted `rg` audit for `Impact & Option Preflight`, `Impact Closure`, `shared-operational-discipline`, `Impact preflight`, `codebase_impact`, `least-impact`, `blocker/options`, and `Impact Boundary`.
+- PASS: `bash skills/audit-skills.sh` (skill structure/sync plus deep-implement 135 tests, deep-project 166 tests, deep-plan 327 tests).

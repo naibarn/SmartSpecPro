@@ -55,7 +55,23 @@ Compare each agent's output against the contract in `orchestra/contracts.md`:
 If an agent went out of scope, flag a contract violation. Log it to `orchestra/decisions.md`
 and re-dispatch with tighter constraints.
 
-### Step 5: Update Progress
+### Step 5: Impact Closure
+
+Before marking a wave complete, close the blast radius:
+
+1. Build the changed shared-surface list from Result Reports:
+   - routers, route handlers, services, schemas, migrations, shared types, exported symbols,
+     auth/RBAC code, public API shapes, dependency/config files, and user-facing workflows
+2. If SocratiCode is active, run `codebase_impact` or graph/symbol checks for each shared
+   surface. If it is unavailable, use targeted shell search and record the fallback.
+3. For every newly affected file/test/symbol:
+   - add it to a later wave if code changes are needed
+   - verify it through an existing quality gate if no code change is needed
+   - or record it in `orchestra/backlog.md` with a rationale if it is intentionally deferred
+4. If the impact closure finds a required fix that is on the current path, create the next
+   Task Packet and continue. Do not finish the session while a known dependent path is broken.
+
+### Step 6: Update Progress
 
 Write wave status to `orchestra/progress.md`:
 - Wave number and completion status (completed / partial / blocked)
@@ -63,7 +79,7 @@ Write wave status to `orchestra/progress.md`:
 - Gate results (which gates passed/failed)
 - Any blockers to carry into the next wave
 
-### Step 6: Check Pre-Merge Security Gate
+### Step 7: Check Pre-Merge Security Gate
 
 After the **final wave only**, evaluate whether trigger conditions in
 `security-review-protocol.md` apply to the full session's changed files. If any condition

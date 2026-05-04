@@ -59,6 +59,12 @@ CONSTRAINTS: [What NOT to touch, max scope, coding conventions]
 OUTPUT: [Exact deliverable format — "modify file X to add Y" or "return analysis of Z"]
 ```
 
+Before dispatching any agent, Orchestra also injects
+`references/shared-operational-discipline.md` into the packet context/constraints. This
+keeps all 29 roles aligned on SocratiCode-first discovery, impact boundaries,
+least-impact implementation choices, and when to return blocker/options instead of
+expanding scope.
+
 ### Parallel Dispatch Rule
 
 On platforms with a Task/sub-agent tool, all agents in the same wave are dispatched in a single batch. On platforms without that tool, keep the same wave boundaries but execute agents sequentially. Serialization is only required for:

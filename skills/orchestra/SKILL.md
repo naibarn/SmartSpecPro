@@ -47,6 +47,7 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | `references/platform-compat.md` | Only for `medium` scope and above — Step 4 |
 | `references/result-integration.md` | Only for `medium` scope and above — Step 5 |
 | `references/quality-gates.md` | Always — Step 6 |
+| `../sub-agents/references/shared-operational-discipline.md` | Always before dispatching or inline-executing any sub-agent role |
 | `references/meta-activation.md` | Always — before Step 1 skill/route classification |
 | `references/worktree-discipline.md` | When scope is `large`/`project`, risk is `high`/`critical`, or unrelated dirty files overlap planned edits |
 | `references/tdd-discipline.md` | When changing routing, gates, security behavior, orchestration behavior, or bug fixes with reproducible failures |
@@ -58,6 +59,23 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | `references/session-resume.md` | Only on resume path — Step 0 |
 | `references/artifact-management.md` | Always on Step 0 when orchestra/ needs to be created, archived, or verified — fresh start, archive path, and first-ever invocation all read this file |
 | `../BACKUP-PLAYBOOK.md` | Any time the planned route includes destructive data risk, backup creation, restore planning, or irreversible transforms |
+
+### Token-Efficient Reading Discipline
+
+When SocratiCode is active, use it to narrow files, symbols, and line ranges before
+opening source files or producing large diffs. Prefer this sequence:
+
+1. `codebase_status` or `codebase_health` once near Step 0/Step 1.
+2. `codebase_search`, `codebase_symbols`, `codebase_symbol`, `codebase_graph_query`,
+   `codebase_flow`, or `codebase_impact` as appropriate for the question.
+3. Targeted `rg` only within SocratiCode-narrowed files/directories.
+4. Targeted file reads using small line ranges around the matched section.
+5. `git diff --stat` before full diffs; inspect only relevant hunks unless a full
+   diff is needed for a quality gate or conflict resolution.
+
+Avoid broad `rg`, whole-file `sed`, `cat` of large files, or full `git diff` as
+the first discovery step. If a broad read is necessary, record why in
+`orchestra/progress.md`.
 
 ---
 
@@ -120,6 +138,67 @@ Detect the language of the user's task description at invocation time:
 - If mixed → default to **Thai** (respect the dominant language).
 
 This applies to ALL user-facing output from Orchestra: questions, confirmations, progress messages, and final summaries. Internal artifact files (`orchestra/plan.md`, `orchestra/decisions.md`, etc.) are always written in English for consistency.
+
+---
+
+## SocratiCode Discovery — MANDATORY When Active
+
+When Orchestra is running inside a code repository, treat SocratiCode as the
+preferred codebase discovery layer if it is active.
+
+### Active Detection
+
+SocratiCode is considered active when any of these are true:
+- MCP tools named `codebase_*` / `mcp__socraticode__.*` are available and
+  `codebase_status` or `codebase_health` succeeds.
+- The Codex config includes an MCP server named `socraticode` and a manual MCP
+  smoke test succeeds.
+- A project-local SocratiCode watcher/index service is running and logs show a
+  healthy index, even if the current MCP transport must be restarted.
+
+### Required Use
+
+If SocratiCode is active:
+- Run `codebase_status` near Step 0/Step 1 before any repository shell
+  exploration, broad repository analysis, or dispatch planning. This preflight
+  is allowed before shell commands even when the banner/platform check would
+  otherwise be first.
+- Use `codebase_search` before reading many files, asking explorers to inspect
+  the codebase, or running broad `rg` searches for architecture, feature,
+  service, router, UI, data model, or domain questions.
+- Use `codebase_impact` before planning or executing refactors, renames,
+  deletions, schema changes, route changes, shared service changes, or exported
+  symbol changes.
+- Use `codebase_graph_query`, `codebase_graph_stats`, or `codebase_flow` when
+  planning dependency direction, blast radius, call flow, or integration waves.
+- Use `codebase_symbols` / `codebase_symbol` when routing work around specific
+  functions, classes, route handlers, exported constants, or shared types.
+
+After SocratiCode narrows the relevant area, use `rg`, file reads, and normal
+shell tools for exact verification and implementation details.
+
+### Token Budget Guardrails
+
+When SocratiCode is active, Orchestra must minimize context spent on discovery:
+- Prefer SocratiCode result snippets over opening whole files.
+- Prefer `sed -n 'start,endp'` or equivalent narrow reads over `cat`/whole-file
+  output for files larger than a few hundred lines.
+- Prefer `rg pattern narrowed/path` over repository-wide `rg` once candidate
+  paths are known.
+- Prefer `git diff --stat` and targeted hunk inspection before printing a full
+  diff.
+- Ask sub-agents for specific answers or bounded patches, not broad exploratory
+  dumps, unless the task explicitly requires a wide audit.
+- Record in `orchestra/progress.md` when SocratiCode was active, what it
+  narrowed, and any fallback to shell discovery.
+
+### Fallback
+
+If SocratiCode is configured but the current MCP transport fails, do not block
+the task. Fall back to shell search, record the transport failure in
+`orchestra/progress.md`, and mention the fallback in the final summary. If a
+manual wrapper or project watcher log can provide status safely, use it to
+confirm the index/watch health before proceeding.
 
 ---
 
@@ -237,6 +316,22 @@ Write classification result to `orchestra/plan.md`:
 
 Print the classification summary to the user before proceeding.
 
+### Impact & Option Preflight
+
+For implementation, feature, refactor, and bug-fix tasks, perform impact preflight before final routing or dispatch planning:
+
+1. If SocratiCode is active, use `codebase_search` to identify candidate files, symbols, routes, services, schemas, and tests.
+2. Use `codebase_impact` before changing shared modules, routers, schemas, services, exported symbols/types, public API shapes, auth/RBAC code, DB models/migrations, or config consumed by other systems.
+3. Use `codebase_graph_query`, `codebase_flow`, or `codebase_symbols` when dependency direction or call flow determines the order of work.
+4. Record the blast-radius summary in `orchestra/plan.md`:
+   - directly changed files
+   - dependent files/tests that may need updates
+   - risk-sensitive surfaces (auth, tenant isolation, DB, security, public API, UI workflow)
+   - confidence level and unknowns
+5. Choose the least-impact option that satisfies the user's goal and preserves existing contracts. If multiple valid options have materially different product, security, data, performance, or API tradeoffs, ask the user the smallest direct decision question before implementation.
+
+If SocratiCode is unavailable, do the same preflight with targeted shell search and record the fallback.
+
 ---
 
 ## Step 2: Routing Decision
@@ -277,6 +372,8 @@ For every pair of agents that will run in parallel, define and write to `orchest
 - Shared interface: API endpoint, tRPC procedure signature, or schema shape
 - Ownership boundaries: which agent owns which files
 - Test boundary: what each agent tests vs. what the other tests
+- Impact boundary: which downstream files/tests from the preflight are in-scope now,
+  which are explicitly out-of-scope, and which must be verified by quality gates
 
 **Contracts are frozen after Wave 1 begins — they are never modified once dispatching has started.** There is a legitimate window between Step 3 completion and Wave 1 dispatch to amend contracts if needed. After Wave 1 begins, amendments are prohibited. See `references/artifact-management.md` for the full enforcement rule.
 
@@ -302,6 +399,8 @@ Check whether `orchestra/platform.md` exists. If missing:
 - ask the user only if runtime evidence is contradictory and dispatch strategy would materially change
 
 **Build Task Packets:** For each agent in the current wave, construct a Task Packet following `references/sub-agent-dispatch.md`. See `references/task-packet-format.md` for the construction guide. The packet must include all 8 required sections: TASK, DOMAIN, FILES, CONTEXT, CONSTRAINTS, CONTRACT, OUTPUT, QUALITY GATE.
+
+Before dispatching, read `../sub-agents/references/shared-operational-discipline.md` and include its rules in every Task Packet's CONTEXT/CONSTRAINTS. In Standard or Open-Code mode, also inject those rules with the agent identity.
 
 **Wave N context injection (for wave 2+):** Prepend prior wave results to each Task Packet's CONTEXT section:
 
@@ -342,8 +441,12 @@ Read `references/result-integration.md`.
    - Changes in different sections → manual merge
    - Contradictory implementations of the same section → pick the contract-compliant result; re-dispatch the other agent with the conflict as CONTEXT
 3. Verify contract compliance — each agent's output must match the interface written in `orchestra/contracts.md`.
-4. Update `orchestra/progress.md` with wave status: `COMPLETE`, `PARTIAL`, or `FAILED`.
-5. Append all auto-resolution decisions to `orchestra/decisions.md` with ISO timestamp.
+4. Run impact closure for the wave:
+   - If SocratiCode is active, re-run `codebase_impact` or graph/symbol checks for any changed shared module, route, schema, service, exported symbol/type, auth/RBAC surface, DB model/migration, or public API shape.
+   - Verify every newly affected file/test is either already handled, added to a later wave, covered by a quality gate, or recorded as an explicit backlog item with rationale.
+   - If the wave introduced an unplanned required change, add it to the current flow and continue; do not silently finish with a broken dependent path.
+5. Update `orchestra/progress.md` with wave status: `COMPLETE`, `PARTIAL`, or `FAILED`.
+6. Append all auto-resolution decisions to `orchestra/decisions.md` with ISO timestamp.
 
 **Pre-merge security gate trigger check (run AFTER integration, BEFORE quality gates):**
 

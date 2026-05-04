@@ -7,6 +7,7 @@ Packets, and when the pre-merge security gate triggers automatically.
 For the Task Packet format definition, see:
 - `../../sub-agents/contracts/task-packet.schema.md`
 - `task-packet-format.md`
+- `../../sub-agents/references/shared-operational-discipline.md`
 
 For wave grouping and contract format, see:
 - `wave-planning.md`
@@ -94,6 +95,13 @@ dispatch mechanics only.
 3. If the agent is part of a parallel pair, include the contract reference in the CONTRACT
    section (point to the relevant entry in `orchestra/contracts.md`)
 4. Use absolute file paths only — never relative paths
+5. Include the shared operational discipline in CONTEXT/CONSTRAINTS:
+   - SocratiCode-first or targeted-shell fallback for local discovery
+   - stay within FILES and CONTRACT
+   - report blockers/options for unapproved shared contract or out-of-scope file changes
+   - choose the least-impact contract-compliant implementation when options are equivalent
+6. Include the conductor's impact preflight summary and escalation criteria. A sub-agent
+   should know exactly which downstream files/tests are in scope and when to stop.
 
 ---
 
@@ -109,12 +117,15 @@ primary responsibility.]
 [Full Task Packet follows]
 ```
 
-**Inject only identity and constraints** from `../../sub-agents/agents/NAME.md`.
+**Inject only identity, constraints, and shared operational discipline** from
+`../../sub-agents/agents/NAME.md` plus
+`../../sub-agents/references/shared-operational-discipline.md`.
 Do not inject the full file — it inflates prompt size beyond what Standard mode handles reliably.
 
 **Include:**
 - Identity paragraph (who the agent is, what stack it specializes in)
 - Constraints section (what it must NOT do)
+- Shared operational discipline summary (SocratiCode/impact/scope/least-impact rules)
 
 **Skip:**
 - Workflow steps

@@ -37,6 +37,24 @@ Implements code from /deep-plan section files with integrated review and git wor
 
 **For code review triage (Step 7):** Auto-fix obvious improvements and low-risk changes. Only escalate to user for genuine tradeoffs where both options have significant pros/cons. Log all auto-decisions.
 
+## SocratiCode Discovery & Token-Efficient Reading
+
+When this skill runs inside a repository that has SocratiCode available, use SocratiCode before broad implementation discovery. SocratiCode is for narrowing and impact analysis; tests, shell reads, diffs, and compiler/linter output remain the verification source.
+
+**Mandatory active check:** Before reading many project files, running broad `rg`, changing shared modules, tracing dependencies, or starting a section whose target files are not already precise, call `codebase_status` for `target_dir` or the repo root. If the index is ready, use SocratiCode first. If it is unavailable or MCP transport fails, fall back to shell search and record the fallback in the section documentation or finalization summary.
+
+**Where to use it:**
+- Step 2 Read Section File: extract referenced files, symbols, APIs, and tests from the section. For vague or missing paths, use `codebase_search` before shell search.
+- Step 3 Implement Section: use `codebase_symbols`, `codebase_symbol`, `codebase_graph_query`, or `codebase_flow` to understand existing functions, exports, call paths, and integration boundaries before editing.
+- Step 5.5 Completeness Review and Finalization: use `codebase_impact` before changing shared services, routers, schemas, exported types, public APIs, or deleting/renaming files.
+- Step 6 Code Review and Cross-Section Integration: use SocratiCode graph/symbol tools to verify import/export assumptions before reading large diffs or many files.
+
+**Token budget guardrails:**
+- Prefer section-specified paths and SocratiCode snippets before full file reads.
+- After SocratiCode narrows the area, use line-range reads, targeted `rg`, and focused diffs.
+- Use `git diff --stat` before full diff review; read only the staged section diff when possible.
+- Do not replace test execution, type checks, lint checks, or log-driven debugging with SocratiCode findings.
+
 ## CRITICAL: First Actions
 
 **BEFORE using any other tools**, do these in order:

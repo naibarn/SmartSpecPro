@@ -70,6 +70,9 @@ FILES:
 - Must be specific — include actual error output, not summaries
 - Include traceId from audit logs if available: `grep '"traceId":"abc123"' apps/web/logs/audit/audit-*.jsonl`
 - State what was already tried and why it failed
+- For implementation, feature, refactor, and bug-fix packets, include an `Impact preflight`
+  block showing SocratiCode status, direct targets, downstream affected files/tests/symbols,
+  chosen least-impact approach, and escalation criteria
 
 **Example:**
 ```
@@ -89,6 +92,9 @@ CONTEXT:
 **Format constraints:**
 - List every off-limits file, table, or API surface
 - Include relevant coding standards for this domain (TypeScript strict, Zod schemas, etc.)
+- Include the shared operational discipline: SocratiCode-first when tools are available,
+  targeted shell fallback when they are not, stay within FILES/CONTRACT, and return
+  blocker/options instead of expanding scope into unapproved shared contracts
 
 **Example:**
 ```
