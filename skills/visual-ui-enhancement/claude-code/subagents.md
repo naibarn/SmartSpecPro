@@ -21,10 +21,10 @@ Use the installed visual UI subagents for requirement analysis, visual direction
 
 ## Agent responsibilities
 
-1. `visual-ui-requirement-analyzer` — requirements, files, constraints, risks.
+1. `vue-requirement-analyzer` — requirements, files, constraints, risks.
 2. `visual-ui-direction-agent` — aesthetic direction, hierarchy, typography, colors, surfaces.
 3. `shadcn-tailwind-builder` — implementation strategy and patch suggestions.
-4. `visual-ux-reviewer` — usability, flow, states, copy, recovery.
+4. `vue-ux-reviewer` — usability, flow, states, copy, recovery.
 5. `visual-accessibility-reviewer` — semantic HTML, focus, keyboard, labels, contrast, ARIA.
 6. `visual-responsive-reviewer` — mobile/tablet/desktop, navigation, tables, forms, overflow.
 7. `visual-final-refactor-agent` — consolidate and simplify final output.

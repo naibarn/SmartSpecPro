@@ -56,8 +56,9 @@ def _find_global_config_path(plugin_root: str | Path) -> Path:
 def load_global_config() -> dict:
     """Load global config from plugin root.
 
-    Looks for config.json at CLAUDE_PLUGIN_ROOT, falling back to
-    relative path resolution if env var not set.
+    Looks for config.json at DEEP_PLUGIN_ROOT, CODEX_PLUGIN_ROOT,
+    CLAUDE_PLUGIN_ROOT, or DEEP_PLAN_ROOT, falling back to relative path
+    resolution if env var not set.
 
     Returns:
         dict: Parsed configuration
@@ -67,8 +68,11 @@ def load_global_config() -> dict:
         json.JSONDecodeError: If config.json is malformed
     """
     plugin_root = os.environ.get(
-        "CLAUDE_PLUGIN_ROOT",
-        Path(__file__).resolve().parent.parent.parent,
+        "DEEP_PLUGIN_ROOT",
+        os.environ.get("CODEX_PLUGIN_ROOT")
+        or os.environ.get("CLAUDE_PLUGIN_ROOT")
+        or os.environ.get("DEEP_PLAN_ROOT")
+        or Path(__file__).resolve().parent.parent.parent,
     )
     config_path = _find_global_config_path(plugin_root)
     return json.loads(config_path.read_text())

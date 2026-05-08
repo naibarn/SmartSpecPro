@@ -11,7 +11,7 @@ This document is the conductor's reference for **building** Task Packets. It cov
 Before dispatching any Task Packet, verify all of the following:
 
 - [ ] **TASK** starts with an imperative verb and names the exact target (not just the feature area)
-- [ ] **DOMAIN** matches the `subagent_type` you will use in the Task tool call
+- [ ] **DOMAIN** matches the registered agent name or inline role you will use
 - [ ] **FILES** uses absolute paths only (`<absolute-repo-root>/...`) — no relative paths
 - [ ] **CONTEXT** includes the actual error text or audit log traceId (not a paraphrase)
 - [ ] **CONSTRAINTS** lists every file/table the agent must not touch
@@ -42,24 +42,24 @@ Write the task as though it is a Git commit message subject line: imperative, sp
 
 ### DOMAIN
 
-Match the domain to the `subagent_type` you will pass to the `Task` tool:
+Match the domain to the registered agent name or inline role you will use:
 
-| DOMAIN | subagent_type | Edits files in |
+| DOMAIN | Agent role | Edits files in |
 |--------|---------------|----------------|
 | CMD-0 Product UX | `Plan` | Read-only product/UX brief |
-| CMD-1 Frontend | `general-purpose` | `apps/web/client/src/`, `packages/ui/` |
-| CMD-2 Backend | `backend-api-security:backend-architect` | `apps/web/server/`, `packages/shared/` |
-| CMD-3 Python | `python-development:fastapi-pro` | `python-backend/app/` |
-| CMD-4 Database | `general-purpose` (write) or `Explore` (analysis) | `apps/web/drizzle/`, `packages/db/` |
-| CMD-5 Infra | `Explore` (analysis) or `general-purpose` (write) | `docker/`, `nginx/`, `docker-compose*.yml` |
-| CMD-6 Security | `backend-api-security:backend-security-coder` | Audit only or targeted fixes |
-| CMD-7 Debug | `error-debugging:debugger` or `error-debugging:error-detective` | Targeted fix or read-only investigation |
-| CMD-8 QA | `general-purpose` or `Explore` | Tests/review reports |
-| CMD-8E E2E | `general-purpose` | Playwright/browser tests and minimal selectors |
-| CMD-9 Performance | `general-purpose` | Performance-sensitive source/config after baseline |
-| CMD-10 CI Release | `general-purpose` | `.github/workflows/`, workflow scripts, release docs |
-| CMD-11 Supply Chain | `general-purpose` | Manifests, lockfiles, Dockerfiles, workflow versions |
-| CMD-12 Visual UI | `Plan`, `Explore`, or `general-purpose` | UI requirement briefs, visual direction, Tailwind/shadcn UI patches, UX/a11y/responsive review |
+| CMD-1 Frontend | `frontend` | `apps/web/client/src/`, `packages/ui/` |
+| CMD-2 Backend | `backend` | `apps/web/server/`, `packages/shared/` |
+| CMD-3 Python | `python` | `python-backend/app/` |
+| CMD-4 Database | `database` | `apps/web/drizzle/`, `packages/db/` |
+| CMD-5 Infra | `infrastructure` | `docker/`, `nginx/`, `docker-compose*.yml` |
+| CMD-6 Security | `security` | Audit only or targeted fixes |
+| CMD-7 Debug | `debugger` or `error-detective` | Targeted fix or read-only investigation |
+| CMD-8 QA | `test-qa` or `reviewer` | Tests/review reports |
+| CMD-8E E2E | `e2e-playwright` | Playwright/browser tests and minimal selectors |
+| CMD-9 Performance | `performance` | Performance-sensitive source/config after baseline |
+| CMD-10 CI Release | `ci-release` | `.github/workflows/`, workflow scripts, release docs |
+| CMD-11 Supply Chain | `dependency-supply-chain` | Manifests, lockfiles, Dockerfiles, workflow versions |
+| CMD-12 Visual UI | visual UI roles from `sub-agents/agents/` | UI requirement briefs, visual direction, Tailwind/shadcn UI patches, UX/a11y/responsive review |
 
 ---
 
@@ -151,7 +151,7 @@ return a blocker/options report instead of silently expanding scope.
 
 ```
 OUTPUT:
-  Modify /home/dev/projects/.../skills.ts:
+  Modify <absolute-repo-root>/src/server/skills.ts:
     - Add createSkillInput Zod schema above router definition
     - Apply .input(createSkillInput) to the create procedure
   Return a Result Report per result-report.schema.md with status success or partial.
@@ -191,7 +191,7 @@ Standard dispatch via the Task tool:
 
 ```
 Task(
-  subagent_type="backend-api-security:backend-architect",
+  agent="backend",
   prompt="
     TASK: Add Zod validation to createSkill procedure
     DOMAIN: CMD-2 Backend
@@ -205,17 +205,17 @@ Task(
 )
 ```
 
-Use the `subagent_type` that matches the DOMAIN (see domain table above).
+Use the registered agent name or inline role that matches the DOMAIN (see domain table above).
 
 ---
 
 ### Mode: `standard`
 
-If this environment exposes a general-purpose sub-agent tool, do not rely on `subagent_type` specialization. Prepend only the condensed identity + constraints from the agent definition before the Task Packet. If no sub-agent tool is available, use the inline fallback described below:
+If this environment exposes default/worker/explorer-style agents, do not rely on specialized dispatch names. Prepend only the condensed identity + constraints from the agent definition before the Task Packet. If no agent tool is available, use the inline fallback described below:
 
 ```
 Task(
-  subagent_type="general-purpose",
+  agent="default or worker",
   prompt="
     [Condensed identity + constraints from ../../sub-agents/agents/backend.md]
 

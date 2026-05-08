@@ -10,6 +10,8 @@ Why this exists:
 - runtime hooks use `python3` directly and must not require per-skill `.venv`
 - external LLM API credentials are not required; review loops use the active
   host model through the skill instructions
+- the same source can install to Codex runtime skills and generate native
+  Claude Code sub-agent definitions
 
 Mirrored installed skills:
 - see `mirrored-skills.txt`
@@ -20,11 +22,37 @@ Main usage guide:
 Notes:
 - `.system` skills are intentionally not mirrored here because they are managed
   separately from the project skill pack.
-- `cybersecurity` and `sub-agents` are support/reference packs used by
-  `orchestra` and the deep-* skills. They intentionally do not expose top-level
-  `SKILL.md` files unless promoted to standalone skills later.
+- `mirrored-skills.txt` should include every portable non-system installed skill
+  that must travel with this repo for deployment to another machine.
+- `sub-agents` is a support/reference pack used by `orchestra` and the deep-*
+  skills. It intentionally does not expose a top-level `SKILL.md`.
+- Native Claude Code agent files are generated from
+  `skills/sub-agents/agents/*.md`; do not edit generated `.claude/agents/ssp-*`
+  files as the source of truth.
 - Do not distribute a raw copied working directory that includes `.venv`,
   `.pytest_cache`, or `__pycache__`; run the cleanup command first.
+
+Install on a new machine or project:
+
+```bash
+bash skills/install-portable-skills.sh
+```
+
+By default this installs Codex skills to `${CODEX_HOME:-~/.codex}/skills` and
+generates Claude Code native agents in `.claude/agents/`. Override paths when
+needed:
+
+```bash
+bash skills/install-portable-skills.sh \
+  --codex-skills-root /path/to/.codex/skills \
+  --claude-agents-dir /path/to/project/.claude/agents
+```
+
+Generate only Claude Code agents:
+
+```bash
+bash skills/generate-claude-agents.sh
+```
 
 Sync command:
 

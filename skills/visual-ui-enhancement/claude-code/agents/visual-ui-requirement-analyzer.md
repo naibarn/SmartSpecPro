@@ -1,5 +1,5 @@
 ---
-name: visual-ui-requirement-analyzer
+name: vue-requirement-analyzer
 description: Analyze UI enhancement requirements, target files, product context, constraints, and implementation risks before visual redesign or Tailwind/shadcn refactor work.
 ---
 

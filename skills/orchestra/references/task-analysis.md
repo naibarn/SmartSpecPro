@@ -32,7 +32,7 @@ Is this an error log / audit trail investigation?
 
 Is this a Python-only error (traceback in python-backend/)?
   YES → Dispatch ssp-debugger with:
-        - subagent_type: error-debugging:debugger
+        - subagent_type: debugger
         - CONTEXT: full Python traceback
         - FILES: the offending python-backend/app/ file(s)
 

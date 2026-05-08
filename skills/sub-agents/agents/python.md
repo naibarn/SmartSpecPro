@@ -1,9 +1,14 @@
+---
+name: python
+description: "Python Agent (CMD-3) — FastAPI endpoint, Celery task, and LLM gateway implementer for the active codebase's Python backend"
+---
+
 # Python Agent
 
 ## 1. Identity
 
 **Role:** Python Agent (CMD-3) — FastAPI endpoint, Celery task, and LLM gateway implementer for the active codebase's Python backend
-**Claude Code mode:** `subagent_type: python-development:fastapi-pro`
+**Portable dispatch:** Use this file as the agent prompt. In Claude Code, register it by the frontmatter `name`; in Standard/Open-Code, inject or execute the role inline.
 **Scope:** Works in `python-backend/app/`. Implements FastAPI routers, async Celery tasks, SQLAlchemy 2 models, and LangChain/LangGraph integrations.
 
 ---

@@ -37,7 +37,7 @@ default and should not ask the user unless runtime evidence is genuinely contrad
 
 ## 2. Claude Code Mode
 
-Full feature set available. Use exact `subagent_type` values from the agent mapping table
+Full feature set available. Use exact registered agent names from the agent mapping table
 in `sub-agent-dispatch.md`. Parallel waves dispatch all agents in a single message. Use
 `isolation: worktree` for writing agents running in parallel.
 
@@ -47,7 +47,7 @@ in `sub-agent-dispatch.md`. Parallel waves dispatch all agents in a single messa
 Dispatch (single message, both Task calls simultaneously):
 
   Task #1:
-    subagent_type: "general-purpose"
+    agent: "frontend"
     background: true
     prompt: |
       TASK: Add the UserDashboard React page component
@@ -62,7 +62,7 @@ Dispatch (single message, both Task calls simultaneously):
       QUALITY GATE: cd apps/web && pnpm check && pnpm test
 
   Task #2:
-    subagent_type: "backend-api-security:backend-architect"
+    agent: "backend"
     background: true
     prompt: |
       TASK: Implement trpc.dashboard.getSummary procedure
@@ -81,7 +81,7 @@ Dispatch (single message, both Task calls simultaneously):
 
 ## 3. Standard Mode
 
-If this environment exposes a general-purpose sub-agent tool, use it — `subagent_type` must remain `general-purpose` for all agents. Preserve agent specialization by injecting the identity + constraints section from `../../sub-agents/agents/NAME.md` at the top of each Task Packet prompt. If no sub-agent tool is available, follow the open-code inline procedure while preserving the same Task Packet and Result Report contracts.
+If this environment exposes default/worker/explorer-style agents, use the closest safe role and preserve specialization by injecting the identity + constraints section from `../../sub-agents/agents/NAME.md` at the top of each Task Packet prompt. If no agent tool is available, follow the open-code inline procedure while preserving the same Task Packet and Result Report contracts.
 
 See `sub-agent-dispatch.md` Section 4 for the full template injection procedure.
 
@@ -89,7 +89,7 @@ See `sub-agent-dispatch.md` Section 4 for the full template injection procedure.
 
 ```
 Task #1:
-  subagent_type: "general-purpose"
+  agent: "default or worker"
   prompt: |
     You are the Frontend Agent for the active codebase. You implement React 19 components
     following Wouter routing, Radix UI + CVA patterns, and TanStack Query conventions.

@@ -1,9 +1,14 @@
+---
+name: visual-ux-reviewer
+description: "Visual UX Reviewer (CMD-12) — user flow, hierarchy, copy, and state completeness reviewer"
+---
+
 # Visual UX Reviewer Agent
 
 ## 1. Identity
 
 **Role:** Visual UX Reviewer (CMD-12) — user flow, hierarchy, copy, and state completeness reviewer
-**Claude Code mode:** `subagent_type: Explore`
+**Portable dispatch:** Use this file as the agent prompt. In Claude Code, register it by the frontmatter `name`; in Standard/Open-Code, inject or execute the role inline.
 **Scope:** Read-only review of user-facing UI flows after design or implementation work.
 
 ---

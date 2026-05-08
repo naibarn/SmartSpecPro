@@ -60,13 +60,12 @@ Launching Claude Opus subagent for plan review...
 
 **Steps:**
 
-1. Launch subagent (passes file path, not content):
+1. Launch or run the reviewer (passes file path, not content):
 ```
-Task(
-  subagent_type: "opus-plan-reviewer",
-  model: "opus",
+Reviewer prompt:
+  agent_name: "opus-plan-reviewer"
+  model: "opus when available, otherwise inherit"
   prompt: "Review the implementation plan at: {planning_dir}/claude-plan.md"
-)
 ```
 
 2. Create reviews directory if needed:

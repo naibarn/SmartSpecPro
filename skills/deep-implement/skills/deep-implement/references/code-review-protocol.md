@@ -69,7 +69,7 @@ Launch the `code-reviewer` subagent with both the section plan and the diff:
 
 ```
 Task:
-  subagent_type: "code-reviewer"
+  agent_name: "code-reviewer"
   description: "Review section NN code"
   prompt: |
     Review this implementation:

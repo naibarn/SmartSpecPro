@@ -4,7 +4,7 @@
 This hook runs when Claude Code starts a session. It reads session_id from
 the JSON payload on stdin and:
 1. Outputs it to stdout as additionalContext (Claude sees this directly)
-2. Also captures CLAUDE_PLUGIN_ROOT as DEEP_PLUGIN_ROOT (for SKILL.md path resolution)
+2. Also captures the active plugin root as DEEP_PLUGIN_ROOT (for SKILL.md path resolution)
 3. Optionally writes to CLAUDE_ENV_FILE if available (for bash commands)
 
 The stdout approach works even when CLAUDE_ENV_FILE is unavailable (after /clear).
@@ -20,7 +20,7 @@ Usage:
             "hooks": [
               {
                 "type": "command",
-                "command": "uv run ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/capture-session-id.py"
+                "command": "uv run ${DEEP_PLUGIN_ROOT}/scripts/hooks/capture-session-id.py"
               }
             ]
           }
@@ -69,11 +69,11 @@ def main() -> int:
     session_id = payload.get("session_id")
     transcript_path = payload.get("transcript_path")
 
-    # Capture CLAUDE_PLUGIN_ROOT (available because hooks.json expands it)
+    # Capture the active plugin root when hooks provide it
     plugin_root = (
         os.environ.get("DEEP_PLUGIN_ROOT")
         or os.environ.get("CODEX_PLUGIN_ROOT")
-        or os.environ.get("CLAUDE_PLUGIN_ROOT", "")
+        or os.environ.get("DEEP_IMPLEMENT_ROOT", "")
     )
 
     if not session_id:

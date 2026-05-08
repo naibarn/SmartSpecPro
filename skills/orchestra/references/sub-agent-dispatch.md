@@ -1,7 +1,7 @@
 # Sub-Agent Dispatch
 
 Tells the conductor exactly how to dispatch each of the 29 agent roles — which
-`subagent_type` to use per platform, how to inject wave context and contracts into Task
+registered agent name or fallback role to use per platform, how to inject wave context and contracts into Task
 Packets, and when the pre-merge security gate triggers automatically.
 
 For the Task Packet format definition, see:
@@ -16,34 +16,34 @@ For wave grouping and contract format, see:
 
 ## 1. Agent Type Mapping Table
 
-For each of the 29 agent roles, the `subagent_type` for Claude Code mode and the fallback
+For each of the 29 agent roles, the registered name for Claude Code mode and the fallback
 behavior for Standard/open-code are shown below. Agent identity files live in
 `../../sub-agents/agents/NAME.md`.
 
-| Agent Role | Claude Code `subagent_type` | Standard Fallback | Open-Code Mode |
+| Agent Role | Claude Code registered name | Standard Fallback | Open-Code Mode |
 |-----------|---------------------------|----------------|----------------|
 | product-ux | `Plan` | `general-purpose` + injected template | Inline |
 | research | `Explore` | `general-purpose` + injected template | Inline (conductor adopts role) |
 | architect | `Plan` | `general-purpose` + injected template | Inline |
 | frontend | `general-purpose` | `general-purpose` + injected template | Inline |
-| backend | `backend-api-security:backend-architect` | `general-purpose` + injected template | Inline |
-| python | `python-development:fastapi-pro` | `general-purpose` + injected template | Inline |
+| backend | `backend` | `general-purpose` + injected template | Inline |
+| python | `python` | `general-purpose` + injected template | Inline |
 | database | `general-purpose` | `general-purpose` + injected template | Inline (sequential only) |
 | test-qa | `general-purpose` | `general-purpose` + injected template | Inline |
 | e2e-playwright | `general-purpose` | `general-purpose` + injected template | Inline |
 | reviewer | `Explore` | `general-purpose` + injected template | Inline |
-| security | `backend-api-security:backend-security-coder` | `general-purpose` + injected template | Inline |
-| debugger | `error-debugging:debugger` | `general-purpose` + injected template | Inline (sequential) |
-| error-detective | `error-debugging:error-detective` | `general-purpose` + injected template | Inline |
+| security | `security` | `general-purpose` + injected template | Inline |
+| debugger | `debugger` | `general-purpose` + injected template | Inline (sequential) |
+| error-detective | `error-detective` | `general-purpose` + injected template | Inline |
 | infrastructure | `Explore` (analysis) or `general-purpose` (write) | `general-purpose` + injected template | Inline |
 | performance | `general-purpose` | `general-purpose` + injected template | Inline |
 | ci-release | `general-purpose` | `general-purpose` + injected template | Inline (sequential only) |
 | dependency-supply-chain | `general-purpose` | `general-purpose` + injected template | Inline |
 | docs-release | `general-purpose` | `general-purpose` + injected template | Inline |
 | security-review | `Explore` | `general-purpose` + injected template | Inline |
-| security-trpc | `backend-api-security:backend-security-coder` | `general-purpose` + injected template | Inline |
-| security-fastapi | `backend-api-security:backend-security-coder` | `general-purpose` + injected template | Inline |
-| security-frontend | `backend-api-security:backend-security-coder` | `general-purpose` + injected template | Inline |
+| security-trpc | `security` | `general-purpose` + injected template | Inline |
+| security-fastapi | `security` | `general-purpose` + injected template | Inline |
+| security-frontend | `security` | `general-purpose` + injected template | Inline |
 | visual-ui-requirement-analyzer | `Plan` | `general-purpose` + injected template | Inline |
 | visual-ui-direction | `Plan` | `general-purpose` + injected template | Inline |
 | ui-builder | `general-purpose` | `general-purpose` + injected template | Inline |

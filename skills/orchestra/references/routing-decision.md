@@ -10,6 +10,7 @@ This reference defines when orchestra should stay in its normal wave model and w
 | `small` and implementation-ready | `single-agent` | Direct implementation |
 | `medium` and implementation-ready | `multi-agent-waves` | Wave-based implementation |
 | `small` or `medium` but under-specified / plan-beneficial | `quick-plan-chain` | Auto-run `deep-plan-quick`, then `deep-implement` |
+| explicit installed skill/slash tool or specialized scan/generator | `installed-skill-flow` | Read `installed-skill-routing.md`, run the smallest matching skill, and wrap with Orchestra state/gates when multi-step |
 | user-facing behavior unclear | `product-ux-preflight` | Dispatch `product-ux`, then route to architecture/planning |
 | visual polish / responsive / accessibility UI work | `visual-ui-flow` | Dispatch visual UI requirement/direction agents, then builder/review/refactor waves |
 | `large` | `deep-plan-chain` | Auto-run full `deep-plan`, then `deep-implement` |
@@ -31,6 +32,21 @@ Interrupt the user only for:
 - ambiguous product intent
 - critical blocker that cannot be resolved safely
 - critical security acceptance
+
+## Route: `installed-skill-flow`
+
+Use this route when:
+- the user names an installed skill or slash-style tool
+- the task is primarily an audit, scanner, generator, analytics query, health check, SEO/content task, security verification, deploy/release workflow, UI enhancement, image prompt, OpenAI-docs question, or skill/plugin maintenance task
+- a specialized skill can perform the task more directly than generic agent dispatch
+
+Execution:
+1. Read `installed-skill-routing.md`.
+2. Select the smallest matching operational skill. For broad launch/security requests, compose skill groups from that registry.
+3. Read the selected skill's `SKILL.md` and only the needed references/tools.
+4. Run read-only checks automatically. Ask only before overwrites, external side effects, credential-backed operations, destructive actions, or accepted-risk security bypasses.
+5. Feed results back into Orchestra progress, risk register, backlog, and quality gates when the task is multi-step or risk is medium+.
+6. If implementation is required after the skill report, route into direct edit, waves, quick-plan, deep-plan, or deep-implement as appropriate.
 
 ## Route: `quick-plan-chain`
 

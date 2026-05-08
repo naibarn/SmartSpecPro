@@ -98,13 +98,10 @@ If auto-decision results in no research needed:
 
 ### 7.1 Codebase Research (if selected)
 
-Launch Task tool with `subagent_type=Explore`:
+Run codebase research with the available runtime capability. Prefer SocratiCode when active; otherwise use targeted shell discovery or a registered `research`/explorer-style agent.
 
 ```
-Task tool:
-  subagent_type: Explore
-  description: "Research codebase patterns"
-  prompt: |
+Research prompt:
     Research this codebase to understand:
     - Project structure and architecture
     - Existing patterns and conventions
@@ -124,13 +121,10 @@ Task tool:
 
 ### 7.2 Web Research (if topics selected)
 
-Launch Task tool with `subagent_type=web-search-researcher`:
+Run web research with the available runtime capability. Use the configured web/search tool or a registered web researcher if one exists; otherwise perform the research inline.
 
 ```
-Task tool:
-  subagent_type: web-search-researcher
-  description: "Research best practices"
-  prompt: |
+Research prompt:
     Research current best practices for the following topics:
     {selected_topics_list}
 
@@ -157,7 +151,7 @@ If both codebase and web research are needed, launch **both Task tools in a sing
 ```
 # Single message with multiple tool calls:
 [Task tool call 1: Explore subagent]
-[Task tool call 2: web-search-researcher subagent]
+[Research track 2: web best-practice research]
 ```
 
 Wait for both to complete, then proceed to combining results.
@@ -208,8 +202,8 @@ Research auto-decision:
 **Step 7 - Claude launches parallel tasks immediately (no confirmation):**
 ```
 # Single message:
-Task(subagent_type=Explore, prompt="Research codebase...")
-Task(subagent_type=web-search-researcher, prompt="Research OAuth2, JWT...")
+Codebase research prompt: "Research codebase..."
+Web research prompt: "Research OAuth2, JWT..."
 ```
 
 **Step 7 - After both complete:**

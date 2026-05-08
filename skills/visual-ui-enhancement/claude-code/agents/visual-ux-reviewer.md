@@ -1,5 +1,5 @@
 ---
-name: visual-ux-reviewer
+name: vue-ux-reviewer
 description: Review UI flow, hierarchy, primary action clarity, friction, forms, copy, empty/loading/error states, and recovery paths.
 ---
 

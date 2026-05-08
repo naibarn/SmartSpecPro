@@ -1,6 +1,6 @@
 # Quality Gates
 
-Defines all 16 gate types that the orchestra conductor runs after each wave of agent work. Read by SKILL.md Step 6. Risk level terminology follows `task-analysis.md`. Commands below are repository example defaults. If the active plan or repository docs define explicit `typecheck`, `lint`, or `test` commands, those discovered commands override the defaults.
+Defines all 17 gate types that the orchestra conductor runs after each wave of agent work. Read by SKILL.md Step 6. Risk level terminology follows `task-analysis.md`. Commands below are repository example defaults. If the active plan or repository docs define explicit `typecheck`, `lint`, or `test` commands, those discovered commands override the defaults.
 
 ---
 
@@ -24,6 +24,7 @@ Defines all 16 gate types that the orchestra conductor runs after each wave of a
 | 14 | Component State Gate | Apply `visual-ui-enhancement/references/component-states.md` | New/modified UI with async data, forms, or actions | Warning for LOW; blocking for MEDIUM+ user workflows | 2 |
 | 15 | Dark/Light Mode Gate | Inspect semantic tokens and dark-mode classes | UI surface uses color/surfaces or theme-aware components | Warning; blocking when contrast/readability fails on primary workflow | 2 |
 | 16 | UI Screenshot/E2E Gate | Dispatch `e2e-playwright.md` or run discovered Playwright screenshot command | Browser-visible workflow, responsive behavior, or route-level UI changed | HIGH/CRITICAL blocking; MEDIUM warning unless explicitly requested | 2 |
+| 17 | Installed Skill Gate | Run the matching skill from `installed-skill-routing.md` | SEO, security, launch, deploy, release, content, analytics, generator, health, or docs tasks | Follows the selected skill's safety policy; CRITICAL security and deploy/release side effects block | 2 |
 
 ---
 
@@ -164,6 +165,20 @@ borders, focus rings, destructive states, and status colors remain readable in b
 Use `e2e-playwright.md` or a discovered Playwright command for route-level UI changes,
 responsive work, or when visual correctness cannot be inferred from code. Include viewport
 coverage in the result.
+
+### Gate 17: Installed Skill Gate
+
+Use `installed-skill-routing.md` to select a specialized installed skill as a gate or
+sub-check. Common examples:
+
+- Launch readiness: `ship`, `security-audit`, `migration-checker`, `bundle-tracker`, `api-smoke-test`, `health-check`.
+- Security: `security-audit`, `secret-scanner`, `pentest`, `dep-doctor`.
+- SEO/content: `seo-audit`, `content-scorer`, `og-validator`, `sitemap-generator`, `robots-generator`, `llms-txt-generator`, `structured-data-generator`.
+- Deploy/release: `deploy`, `release`, `health-check`, `redirect-checker`.
+- UI: `visual-ui-enhancement`, `visual-diff`.
+
+Record skipped checks explicitly with reasons. Never mark missing credentials, missing
+browser tooling, or missing build artifacts as pass.
 
 ---
 

@@ -34,6 +34,22 @@ for a wide audit.
 - When adding or fixing code, update directly affected tests or return the exact missing
   test path/command as a blocker if tests are outside the packet's scope.
 
+## Cross-Project Portability
+
+- Treat paths, frameworks, commands, and examples inside role files as project-profile
+  defaults, not universal facts. Before acting in a new repository, discover the actual
+  stack, package manager, source roots, test commands, routing framework, ORM, migration
+  tool, and security conventions from the active project.
+- If a role mentions a path that does not exist in the target repository, map the intent
+  to the closest discovered equivalent and state that mapping in the Result Report.
+- If no equivalent exists, return a blocker/options report instead of creating a new stack
+  convention just to satisfy the role prompt.
+- Prefer repository-local instructions (`AGENTS.md`, `CLAUDE.md`, `.cursor/rules`,
+  package scripts, Makefiles, CI workflows) over examples embedded in the portable agent
+  source.
+- Verification commands must come from the target repository when available. Only use
+  embedded example commands when the target project has the same layout and scripts.
+
 ## Decision Policy
 
 - Choose the smallest contract-compliant change that satisfies the task.

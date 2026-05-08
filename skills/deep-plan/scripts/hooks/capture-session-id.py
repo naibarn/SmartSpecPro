@@ -3,7 +3,7 @@
 
 This hook reads session_id from the JSON payload on stdin and:
 1. Outputs it to stdout as additionalContext (Claude sees this directly)
-2. Also captures CLAUDE_PLUGIN_ROOT as DEEP_PLUGIN_ROOT for downstream scripts
+2. Also captures the active plugin root as DEEP_PLUGIN_ROOT for downstream scripts
 3. Optionally writes to CLAUDE_ENV_FILE if available (fallback for bash)
 
 The additionalContext approach is primary because:
@@ -22,7 +22,7 @@ Usage:
             "hooks": [
               {
                 "type": "command",
-                "command": "uv run ${CLAUDE_PLUGIN_ROOT}/scripts/hooks/capture-session-id.py"
+                "command": "uv run ${DEEP_PLUGIN_ROOT}/scripts/hooks/capture-session-id.py"
               }
             ]
           }
@@ -80,7 +80,7 @@ def main() -> int:
     plugin_root = (
         os.environ.get("DEEP_PLUGIN_ROOT")
         or os.environ.get("CODEX_PLUGIN_ROOT")
-        or os.environ.get("CLAUDE_PLUGIN_ROOT", "")
+        or os.environ.get("DEEP_PLAN_ROOT", "")
     )
 
     # Need at least session_id to proceed

@@ -55,11 +55,22 @@ for text_file in sorted(root.rglob("*")):
     }:
         continue
     text = text_file.read_text(encoding="utf-8", errors="ignore").lower()
+    project_name = "".join(chr(code) for code in [115, 109, 97, 114, 116, 115, 112, 101, 99, 112, 114, 111])
+    project_short = project_name[:-3]
+    legacy_domain = project_short + "aihub"
+    legacy_tool_name = "".join(chr(code) for code in [117, 108, 116, 114, 97, 115, 104, 105, 112])
+    fake_source_url = "github.com/" + "portable " + "skill " + "source"
+    fake_source_name = "portable " + "skill " + "source"
+    plugin_config_phrase = "plugin configure " + "portable-" + "skill-" + "pack"
     forbidden_terms = [
-        "smart" + "spec" + "pro",
-        "smart" + "ai" + "hub",
-        "smart" + "spec",
-        "/home/dev/projects/" + "smart" + "spec" + "pro",
+        project_name,
+        legacy_domain,
+        project_short,
+        str(Path.home() / "dev" / "projects" / project_name),
+        legacy_tool_name,
+        fake_source_url,
+        fake_source_name,
+        plugin_config_phrase,
     ]
     for forbidden in forbidden_terms:
         if forbidden in text:
@@ -74,11 +85,22 @@ sub_agents_dir = root / "sub-agents" / "agents"
 sub_agents_readme = root / "sub-agents" / "README.md"
 claude_agents_dir = Path(".claude") / "agents"
 
+for portable_script in [
+    root / "portable_install.py",
+    root / "install-portable-skills.sh",
+    root / "generate-claude-agents.sh",
+]:
+    if not portable_script.exists():
+        errors.append(f"{portable_script}: missing portable install support")
+
 if sub_agents_dir.exists() and sub_agents_readme.exists():
     readme_text = sub_agents_readme.read_text(encoding="utf-8")
     dispatch_text = (root / "orchestra" / "references" / "sub-agent-dispatch.md").read_text(encoding="utf-8")
     task_packet_text = (root / "orchestra" / "references" / "task-packet-format.md").read_text(encoding="utf-8")
     quality_gates_text = (root / "orchestra" / "references" / "quality-gates.md").read_text(encoding="utf-8")
+    shared_discipline_text = (root / "sub-agents" / "references" / "shared-operational-discipline.md").read_text(encoding="utf-8")
+    if "Cross-Project Portability" not in shared_discipline_text:
+        errors.append("skills/sub-agents/references/shared-operational-discipline.md: missing Cross-Project Portability rules")
     agent_files = sorted(path.name for path in sub_agents_dir.glob("*.md"))
     for agent_file in agent_files:
         agent_name = agent_file.removesuffix(".md")
@@ -88,9 +110,15 @@ if sub_agents_dir.exists() and sub_agents_readme.exists():
             errors.append(f"skills/orchestra/references/sub-agent-dispatch.md: missing mapping for {agent_name}")
         native_path = claude_agents_dir / f"ssp-{agent_name}.md"
         if claude_agents_dir.exists() and not native_path.exists():
-            warnings.append(
-                f"{native_path}: missing optional native Claude compatibility definition for {agent_file}"
+            errors.append(
+                f"{native_path}: missing native Claude compatibility definition for {agent_file}; run skills/generate-claude-agents.sh"
             )
+        if native_path.exists():
+            native_text = native_path.read_text(encoding="utf-8")
+            if f"name: ssp-{agent_name}" not in native_text:
+                errors.append(f"{native_path}: native agent name mismatch")
+            if f"skills/sub-agents/agents/{agent_file}" not in native_text:
+                errors.append(f"{native_path}: missing source file pointer")
 
     registry_agents = set(re.findall(r"\| `([^`]+\.md)` \|", readme_text))
     missing_files = sorted(registry_agents - set(agent_files))

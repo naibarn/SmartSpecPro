@@ -14,7 +14,7 @@ Check if `<planning_dir>/claude-research.md` contains testing information. You c
 
 ### For Existing Codebases
 
-If no testing section exists, use Task tool with `subagent_type=Explore` to research:
+If no testing section exists, use SocratiCode, targeted shell discovery, or a registered research/explorer-style agent to research:
 
 - Testing framework used (pytest, jest, unittest, etc.)
 - Test file locations and naming conventions (e.g., `tests/`, `*_test.py`)

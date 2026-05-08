@@ -234,13 +234,13 @@ Read `{plugin_root}/references/research-protocol.md` for details.
 
 Read `{plugin_root}/references/research-protocol.md` for details.
 
-Based on decisions from step 6, launch research subagents:
-- **Codebase research:** `Task(subagent_type=Explore)`
-- **Web research:** `Task(subagent_type=web-search-researcher)`
+Based on decisions from step 6, run research using the capabilities available in the current runtime:
+- **Codebase research:** prefer SocratiCode when active, otherwise use targeted shell discovery or a registered `research`/explorer-style agent if available.
+- **Web research:** use the configured web/search capability or run inline research when no registered web researcher exists.
 
-If both are needed, launch both Task tools in parallel (single message with multiple tool calls).
+If the runtime supports safe parallel research workers, launch both research tracks together. Otherwise run them sequentially and preserve the same output contract.
 
-**Important:** Subagents return their findings - they do NOT write files directly. After collecting results from all subagents, combine them and write to `<planning_dir>/claude-research.md`.
+**Important:** Research workers return their findings - they do NOT write files directly. After collecting results, combine them and write to `<planning_dir>/claude-research.md`.
 
 Skip this step entirely if user chose no research in step 6.
 

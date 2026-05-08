@@ -2,7 +2,7 @@
 name: orchestra
 description: "AI Orchestra Conductor: analyzes tasks, dispatches specialized sub-agents, integrates results, manages file-based memory to survive context compaction, and automatically chains into deep-project, deep-plan, deep-plan-quick, and deep-implement when needed."
 license: MIT
-compatibility: "Claude Code (full features), Standard (general-purpose subagents), OpenCode (sequential mode)"
+compatibility: "Claude Code (registered agents), Standard (default/worker/explorer agents when available), OpenCode (sequential mode)"
 ---
 
 # Orchestra — AI Multi-Agent Conductor
@@ -40,6 +40,7 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | `references/intent-matrix.md` | Always — Step 1 plain-text activation and edge-case calibration |
 | `references/intent-regression-suite.md` | Always when tuning or validating Step 1 trigger behavior; recommended for ambiguous trigger decisions |
 | `references/routing-decision.md` | Always — Step 2 |
+| `references/installed-skill-routing.md` | When the user names a skill/slash tool, asks for audit/scan/generate/deploy/release/SEO/security/content/analytics/UI/image/OpenAI-docs work, or when routing needs installed skill coverage |
 | `references/skill-pack-integration.md` | Only when scope is `large` or `project` — Step 2 |
 | `references/wave-planning.md` | Only for `medium` scope and above — Step 3 |
 | `references/sub-agent-dispatch.md` | Only for `medium` scope and above — Step 4 |
@@ -417,8 +418,8 @@ Do NOT dump raw conversation history. Include only file paths, change descriptio
 
 | Platform | Method |
 |----------|--------|
-| `claude-code` | Task tool with specific `subagent_type`. All wave agents dispatched in a **single message** (multiple Task calls). Max 4 concurrent agents. |
-| `standard` | Prefer general-purpose sub-agents only when this environment exposes them. Inject a condensed agent identity template. If no sub-agent tool is available, execute the role inline while preserving the same Task Packet and Result Report contracts. |
+| `claude-code` | Task tool with registered agent names from `sub-agents/agents/*.md`. All wave agents dispatched in a **single message** where supported. Max 4 concurrent agents. |
+| `standard` | Prefer default/worker/explorer-style agents only when this environment exposes them. Inject a condensed agent identity template. If no agent tool is available, execute the role inline while preserving the same Task Packet and Result Report contracts. |
 | `open-code` | No Task tool. Conductor executes each agent role sequentially. For medium+ scope: warn "This task requires parallel agents. Consider switching to Claude Code or Standard mode. Proceeding sequentially." |
 
 **Parallelism hard constraints:**

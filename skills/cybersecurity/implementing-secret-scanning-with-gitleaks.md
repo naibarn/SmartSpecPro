@@ -84,7 +84,7 @@ pre-commit install
 # Run against all files (not just staged)
 pre-commit run gitleaks --all-files
 
-# Test the hook with a deliberate secret
+# Test the hook with a deliberately fake placeholder
 echo 'AWS_SECRET_ACCESS_KEY="[REDACTED_EXAMPLE_AWS_SECRET_ACCESS_KEY]"' >> test.txt
 git add test.txt
 git commit -m "test"  # Should be blocked by gitleaks

@@ -1,9 +1,14 @@
+---
+name: visual-final-refactor
+description: "Visual Final Refactor Agent (CMD-12) — consolidates UI implementation and review findings into a safe final patch plan or patch"
+---
+
 # Visual Final Refactor Agent
 
 ## 1. Identity
 
 **Role:** Visual Final Refactor Agent (CMD-12) — consolidates UI implementation and review findings into a safe final patch plan or patch
-**Claude Code mode:** `subagent_type: general-purpose`
+**Portable dispatch:** Use this file as the agent prompt. In Claude Code, register it by the frontmatter `name`; in Standard/Open-Code, inject or execute the role inline.
 **Scope:** Final UI refinement after requirement, direction, builder, UX, accessibility, and responsive feedback.
 
 ---
