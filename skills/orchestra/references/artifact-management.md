@@ -167,5 +167,5 @@ Restore:
 **`orchestra/archive/` — Retention Guidance:**
 The `archive/` subdirectory can accumulate many timestamped old sessions over time. To prevent unbounded growth:
 - Exclude `orchestra/archive/` from git by adding it to `.gitignore` (it is not needed for project history).
-- Periodically prune old archive entries manually once they are no longer needed for audit purposes: `rm -rf orchestra/archive/2025-*/`
+- Periodically prune old archive entries manually once they are no longer needed for audit purposes. First list the targets, then delete only confirmed archive directories, for example: `rm -r -- orchestra/archive/2025-*/`
 - Never delete an archive entry from the current session — only prune entries from sessions you are confident are no longer needed.

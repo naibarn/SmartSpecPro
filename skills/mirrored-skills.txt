@@ -13,7 +13,9 @@ deep-project
 dep-doctor
 deploy
 ga4-client
+gpt-image-2
 health-check
+kb-retriever
 llms-txt-generator
 migration-checker
 og-validator
@@ -34,4 +36,6 @@ sitemap-generator
 structured-data-generator
 sub-agents
 visual-diff
+web-design-engineer
+web-video-presentation
 visual-ui-enhancement

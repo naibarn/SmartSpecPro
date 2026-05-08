@@ -78,16 +78,26 @@ Read `intent-regression-suite.md` whenever a message feels borderline, when you 
 ### Auto-Own The Request When The Message Implies:
 - multi-step software work
 - planning + implementation together
+- open-ended product ideation that may turn into implementation
 - decomposition, coordination, or staged execution
 - cross-domain or system-level changes
 - resume/continue semantics for prior implementation work
 - “analyze then execute” behavior rather than a narrow one-shot change
+- code-aware product help, onboarding, walkthroughs, tutorials, demo scripts,
+  premium help-center content, visual explainers, or video companions generated
+  from an existing page/feature/flow
 
 ### Message Patterns That Usually Mean Orchestra
 - “ช่วยวางแผนแล้วทำต่อ” / “ช่วยจัดการงานนี้ให้จบ” / “แตกงานให้หน่อย”
 - “implement this end-to-end” / “plan and execute” / “coordinate this work”
 - “what all needs to change” / “drive this to completion”
+- “ช่วยคิดระบบใหม่” / “คิดไอเดีย feature” / “ออกแบบ concept” / “ยังไม่แน่ใจว่าควรทำแบบไหนดี”
+- “แตกงานระบบนี้” / “แบ่ง module” / “decompose this project” / “break this project into specs”
 - “ปรับ UI ให้ premium/modern/responsive/accessible” / “ทำ UX ให้ดีขึ้น” when the request implies code changes or review across UI files
+- “อ่าน code ของหน้านี้แล้วทำ help/tutorial/video demo”
+- “สร้างคู่มือในระบบพร้อมรูปประกอบ”
+- “ทำ script.md + outline.md จาก feature/page จริง”
+- “ทำ onboarding/help center ให้ดูหรูหรา/professional พร้อมภาพและวิดีโอ”
 
 ### Message Patterns That Usually Do NOT Mean Orchestra
 - narrow factual Q&A
@@ -102,6 +112,28 @@ Read `intent-regression-suite.md` whenever a message feels borderline, when you 
 - the job is likely to require `deep-plan-quick`, `deep-plan`, `deep-project`, or `deep-implement`
 
 If orchestra takes ownership from plain text, treat the original message itself as the task description and continue into scope/risk classification.
+
+## Brainstorming vs Deep-Project Decision
+
+Run this check before selecting a deep-* route:
+
+1. If the user is asking to explore options, choose a product direction, define
+   the audience/workflow, or invent the concept, route to
+   `brainstorming-prelude`.
+2. If the user already has a concrete project/module/system goal and asks to
+   split, decompose, plan, or implement it, skip brainstorming and classify scope.
+3. If scope is `project` after a direction is chosen, route to `full-pipeline`
+   and run `deep-project` first.
+4. If scope is `small` or `medium`, do not use `deep-project`; use
+   `quick-plan-chain` when planning is useful.
+5. If scope is `large`, use `deep-plan-chain` unless the work must first be
+   decomposed into multiple independent feature specs.
+
+Decision shorthand:
+- Open idea space -> `brainstorming-prelude`
+- Chosen project needing decomposition -> `full-pipeline` / `deep-project`
+- Chosen feature needing a plan -> `quick-plan-chain` or `deep-plan-chain`
+- Chosen implementation-ready task -> direct route or waves
 
 ## Scope Classification Table
 

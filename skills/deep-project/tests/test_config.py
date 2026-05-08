@@ -128,12 +128,13 @@ class TestConcurrentAccess:
         file_path = tmp_path / "locked.txt"
         write_order = []
 
-        def writer(value: str):
+        def writer(value: str, delay: float):
+            time.sleep(delay)
             _atomic_write(file_path, value)
             write_order.append(value)
 
         threads = [
-            threading.Thread(target=writer, args=(f"w{i}",))
+            threading.Thread(target=writer, args=(f"w{i}", i * 0.01))
             for i in range(3)
         ]
         for t in threads:
@@ -143,8 +144,8 @@ class TestConcurrentAccess:
 
         # All writes should complete
         assert len(write_order) == 3
-        # Final content should match last write
-        assert file_path.read_text() == write_order[-1]
+        # Final content should match the last scheduled writer.
+        assert file_path.read_text() == "w2"
 
 
 class TestComputeFileHash:

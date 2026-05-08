@@ -76,25 +76,33 @@ def _atomic_write(path: Path, content: str) -> None:
     File locking prevents concurrent write races.
     """
     path = Path(os.fspath(path))
-    fd, tmp_path = tempfile.mkstemp(
-        dir=path.parent,
-        prefix=f".{path.name}.",
-        suffix=".tmp"
-    )
-    fd_closed = False
+    lock_root = Path(tempfile.gettempdir()) / "deep-project-locks"
+    lock_root.mkdir(parents=True, exist_ok=True)
+    lock_name = hashlib.sha256(os.fspath(path.resolve(strict=False)).encode("utf-8")).hexdigest()
+    lock_fd = os.open(lock_root / f"{lock_name}.lock", os.O_CREAT | os.O_RDWR, 0o600)
+    fd: int | None = None
+    tmp_path: str | None = None
     try:
-        # Acquire exclusive lock
-        fcntl.flock(fd, fcntl.LOCK_EX)
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        fd, tmp_path = tempfile.mkstemp(
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp"
+        )
         os.write(fd, content.encode("utf-8"))
         os.close(fd)
-        fd_closed = True
-        os.rename(tmp_path, path)
+        fd = None
+        os.replace(tmp_path, path)
+        tmp_path = None
     except Exception:
-        if not fd_closed:
+        if fd is not None:
             os.close(fd)
-        if os.path.exists(tmp_path):
+        if tmp_path is not None and os.path.exists(tmp_path):
             os.unlink(tmp_path)
         raise
+    finally:
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        os.close(lock_fd)
 
 
 def compute_file_hash(file_path: str | Path) -> str:

@@ -31,6 +31,11 @@ Notes:
   files as the source of truth.
 - Do not distribute a raw copied working directory that includes `.venv`,
   `.pytest_cache`, or `__pycache__`; run the cleanup command first.
+- Image generation routes through `gpt-image-2` by default. In Codex, it should
+  use the host-native image tool/auth path, not local `OPENAI_API_KEY` scripts,
+  unless local API mode is explicitly requested.
+- `web-video-presentation` can run package installs and optional TTS generation;
+  its scripts require explicit `--yes` confirmation for those side effects.
 
 Install on a new machine or project:
 

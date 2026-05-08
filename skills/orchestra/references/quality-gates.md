@@ -175,7 +175,21 @@ sub-check. Common examples:
 - Security: `security-audit`, `secret-scanner`, `pentest`, `dep-doctor`.
 - SEO/content: `seo-audit`, `content-scorer`, `og-validator`, `sitemap-generator`, `robots-generator`, `llms-txt-generator`, `structured-data-generator`.
 - Deploy/release: `deploy`, `release`, `health-check`, `redirect-checker`.
-- UI: `visual-ui-enhancement`, `visual-diff`.
+- Image: `gpt-image-2` with Codex-native execution when available.
+- UI: `visual-ui-enhancement`, `web-design-engineer`, `visual-diff`.
+- Knowledge/video: `kb-retriever`, `web-video-presentation`.
+
+For code-aware help/tutorial/video work, Gate 17 must also verify:
+- Source-grounding: the help/tutorial/script claims are traceable to discovered
+  route/page/component/API files or observed behavior.
+- Image routing: illustrative assets use `gpt-image-2` first and Codex-native
+  image execution when available.
+- Video readiness: `script.md` and `outline.md` from `web-video-presentation`
+  reflect the real feature flow and user states.
+- Side-effect safety: scaffolding, npm installs, TTS, and external audio calls
+  were confirmed immediately before execution.
+- Product polish: in-product help UI also runs Visual Polish, Accessibility, and
+  Responsive gates.
 
 Record skipped checks explicitly with reasons. Never mark missing credentials, missing
 browser tooling, or missing build artifacts as pass.

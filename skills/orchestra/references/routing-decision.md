@@ -10,7 +10,9 @@ This reference defines when orchestra should stay in its normal wave model and w
 | `small` and implementation-ready | `single-agent` | Direct implementation |
 | `medium` and implementation-ready | `multi-agent-waves` | Wave-based implementation |
 | `small` or `medium` but under-specified / plan-beneficial | `quick-plan-chain` | Auto-run `deep-plan-quick`, then `deep-implement` |
+| idea/product direction unclear before planning | `brainstorming-prelude` | Use `brainstorming` to clarify intent/options, then route to quick plan, deep plan, or full pipeline |
 | explicit installed skill/slash tool or specialized scan/generator | `installed-skill-flow` | Read `installed-skill-routing.md`, run the smallest matching skill, and wrap with Orchestra state/gates when multi-step |
+| product help/tutorial/demo generated from code | `code-aware-help-flow` | Discover real behavior from code, generate help/script/outline, add GPT Image 2 visuals, and optionally build a web-video companion |
 | user-facing behavior unclear | `product-ux-preflight` | Dispatch `product-ux`, then route to architecture/planning |
 | visual polish / responsive / accessibility UI work | `visual-ui-flow` | Dispatch visual UI requirement/direction agents, then builder/review/refactor waves |
 | `large` | `deep-plan-chain` | Auto-run full `deep-plan`, then `deep-implement` |
@@ -47,6 +49,68 @@ Execution:
 4. Run read-only checks automatically. Ask only before overwrites, external side effects, credential-backed operations, destructive actions, or accepted-risk security bypasses.
 5. Feed results back into Orchestra progress, risk register, backlog, and quality gates when the task is multi-step or risk is medium+.
 6. If implementation is required after the skill report, route into direct edit, waves, quick-plan, deep-plan, or deep-implement as appropriate.
+
+## Route: `brainstorming-prelude`
+
+Use this route before any deep-* planning chain when:
+- the user is still exploring what to build, who it is for, which workflow or
+  product shape is best, or which option to choose
+- the request uses ideation language such as brainstorm, explore, design the
+  concept, คิดไอเดีย, ช่วยคิดระบบ, ออกแบบ feature, or อยากทำอะไรดี
+- a project/module/system may be large enough for `deep-project`, but the
+  product intent, audience, success criteria, or option choice is not settled
+
+Do not use this route when:
+- the user already provided a concrete project/module goal and asks to split,
+  decompose, plan, or implement it
+- the next required action is mechanical decomposition into specs
+- the user explicitly asks for `deep-project` and the requirements are already
+  clear enough to split
+
+Execution:
+1. Read `../brainstorming/SKILL.md`.
+2. Run a bounded ideation pass that outputs:
+   - chosen direction or shortlist
+   - target user and main job-to-be-done
+   - non-goals and constraints
+   - success criteria
+   - open questions that block decomposition
+3. If the chosen direction is still ambiguous, ask the smallest product question.
+4. If the direction is chosen and scope is project-scale, continue into
+   `full-pipeline` (`deep-project` -> per-split `deep-plan` -> `deep-implement`).
+5. If the result is a small or medium feature, continue into `quick-plan-chain`
+   or `deep-plan-chain` based on scope and risk.
+
+## Route: `code-aware-help-flow`
+
+Use this route when:
+- the user asks for help docs, onboarding, walkthroughs, demo scripts, release
+  tutorials, or professional help-center content for an existing feature
+- the requested material should be based on a real page, route, component, API,
+  workflow, or product behavior in the codebase
+- the user wants visual explanation, premium imagery, or a video companion
+
+Execution:
+1. Use SocratiCode first when active:
+   - `codebase_search` to locate the page/feature/route/API
+   - `codebase_flow` or `codebase_graph_query` when runtime flow matters
+   - `codebase_symbols` / `codebase_symbol` for named handlers/components
+2. Verify the discovered behavior with targeted file reads and `rg`.
+3. Produce a source-grounded Help Brief:
+   - target user and goal
+   - discovered route/page/API/component files
+   - happy path, important states, permission/role constraints, and failure cases
+   - claims that need screenshots, diagrams, or visual metaphors
+4. For written help, draft the article/guide directly or route UI integration
+   through `visual-ui-enhancement` when it becomes in-product UI.
+5. For video-ready help, read `../web-video-presentation/SKILL.md` and create
+   `script.md` + `outline.md` from the Help Brief and discovered code behavior.
+6. For imagery, read `../gpt-image-2/SKILL.md`; generate visual prompts for
+   hero images, diagrams, or chapter frames and execute through Codex-native
+   image generation when available.
+7. Before any scaffold, npm install, TTS, or external audio generation, ask for
+   explicit confirmation immediately before the side effect.
+8. Run the relevant installed skill and UI quality gates before final delivery.
 
 ## Route: `quick-plan-chain`
 
@@ -111,6 +175,10 @@ Execution:
 ## Route: `full-pipeline`
 
 Use this route when scope is `project` and decomposition is required first.
+
+Use `brainstorming-prelude` before this route only when the product direction is
+not yet chosen. If the project goal is clear, do not add a brainstorming step;
+start with `deep-project`.
 
 Execution:
 1. Create or refresh `specs/project/NNN-name/requirements.md`.

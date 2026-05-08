@@ -7,7 +7,7 @@ cd "${ROOT_DIR}"
 
 find skills \
   \( -path '*/.venv' -o -path '*/.pytest_cache' -o -path '*/__pycache__' \) \
-  -type d -prune -print -exec rm -rf {} +
+  -type d -prune -print -exec rm -r -- {} +
 
 find skills \
   \( -name '*.pyc' -o -name '*.pyo' \) \

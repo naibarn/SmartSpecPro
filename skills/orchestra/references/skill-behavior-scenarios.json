@@ -57,6 +57,66 @@
       "expected_agents": [],
       "expected_gates": ["Skill Behavior Tests", "Verification Before Completion"],
       "why": "Routing behavior changes should be test-backed and verified through skill behavior scenarios."
+    },
+    {
+      "id": "IMAGE-001",
+      "user_message": "generate ภาพ hero product แบบ cinematic ด้วย GPT Image 2",
+      "expected_owner": "gpt-image-2",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [],
+      "expected_gates": ["Installed Skill Gate", "Verification Before Completion"],
+      "why": "Image generation should route through gpt-image-2 first, then use Codex-native image execution when available."
+    },
+    {
+      "id": "KB-001",
+      "user_message": "ค้นคำตอบจาก knowledge/ และ cite ไฟล์ PDF กับ Excel ที่เกี่ยวข้อง",
+      "expected_owner": "kb-retriever",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [],
+      "expected_gates": ["Installed Skill Gate", "Verification Before Completion"],
+      "why": "Local knowledge-base retrieval should use bounded local search with file citations."
+    },
+    {
+      "id": "VIDEO-001",
+      "user_message": "เอาบทความนี้ไปทำเป็น web video presentation สำหรับอัดหน้าจอ",
+      "expected_owner": "web-video-presentation",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [],
+      "expected_gates": ["Installed Skill Gate", "Verification Before Completion"],
+      "why": "Screen-recordable narrated web presentations should use the web-video-presentation skill with side-effect confirmations."
+    },
+    {
+      "id": "HELP-001",
+      "user_message": "อ่าน code ของหน้า billing แล้วสร้าง help ในระบบ พร้อมรูปประกอบด้วย GPT Image 2 และทำวิดีโอ walkthrough ให้ดูหรูหรา",
+      "expected_owner": "orchestra",
+      "expected_route": "code-aware-help-flow",
+      "expected_agents": [],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Visual Polish Gate",
+        "Accessibility Gate",
+        "Responsive Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Code-aware product help should discover real behavior from code, generate help/script/outline, add gpt-image-2 visuals, and optionally build a web-video companion with UI quality gates."
+    },
+    {
+      "id": "PLANORDER-001",
+      "user_message": "ช่วยคิดระบบใหม่สำหรับจัดการลูกค้า VIP ยังไม่แน่ใจว่าควรทำแบบไหนดี แล้วถ้าโอเคค่อยแตกงานต่อ",
+      "expected_owner": "orchestra",
+      "expected_route": "brainstorming-prelude",
+      "expected_agents": [],
+      "expected_gates": ["Installed Skill Gate", "Verification Before Completion"],
+      "why": "Open-ended product direction should use brainstorming first, then continue to deep-project only after a direction is chosen."
+    },
+    {
+      "id": "PLANORDER-002",
+      "user_message": "แตกงานระบบ marketplace module ออกเป็น specs และลำดับการทำงานให้พร้อมไป deep-plan",
+      "expected_owner": "orchestra",
+      "expected_route": "full-pipeline",
+      "expected_agents": [],
+      "expected_gates": ["Verification Before Completion"],
+      "why": "A concrete project-scale module should skip brainstorming and start with deep-project decomposition."
     }
   ]
 }

@@ -162,6 +162,118 @@ for ref in required_orchestra_refs:
     if not ref_path.exists():
         errors.append(f"{ref_path}: missing orchestra reference")
 
+routing_path = root / "orchestra" / "references" / "installed-skill-routing.md"
+if routing_path.exists():
+    routing_text = routing_path.read_text(encoding="utf-8")
+    for required_skill in [
+        "gpt-image-2",
+        "kb-retriever",
+        "web-design-engineer",
+        "web-video-presentation",
+    ]:
+        if f"`{required_skill}`" not in routing_text:
+            errors.append(f"{routing_path}: missing routing entry for {required_skill}")
+    for required_help_marker in [
+        "Code-Aware Help And Tutorial Workflow",
+        "script.md",
+        "outline.md",
+        "host-native Codex image tool/auth",
+        "web-video-presentation",
+    ]:
+        if required_help_marker not in routing_text:
+            errors.append(f"{routing_path}: missing code-aware help marker: {required_help_marker}")
+    for required_planning_marker in [
+        "Planning Skill Order",
+        "`brainstorming` first only when product direction is not yet chosen",
+        "`deep-project` first when the project/module/system goal is already concrete",
+        "`brainstorming` -> `deep-project`",
+        "Skip `brainstorming` when the user explicitly provides a direction",
+    ]:
+        if required_planning_marker not in routing_text:
+            errors.append(f"{routing_path}: missing planning skill order marker: {required_planning_marker}")
+
+orchestra_ref_dir = root / "orchestra" / "references"
+route_decision_path = orchestra_ref_dir / "routing-decision.md"
+task_analysis_path = orchestra_ref_dir / "task-analysis.md"
+quality_gates_path = orchestra_ref_dir / "quality-gates.md"
+
+if route_decision_path.exists():
+    route_decision_text = route_decision_path.read_text(encoding="utf-8")
+    for required_help_marker in [
+        "code-aware-help-flow",
+        "script.md",
+        "outline.md",
+        "Codex-native",
+    ]:
+        if required_help_marker not in route_decision_text:
+            errors.append(f"{route_decision_path}: missing code-aware help routing marker: {required_help_marker}")
+    for required_planning_marker in [
+        "brainstorming-prelude",
+        "Use this route before any deep-* planning chain",
+        "`full-pipeline`",
+        "If the project goal is clear, do not add a brainstorming step",
+    ]:
+        if required_planning_marker not in route_decision_text:
+            errors.append(f"{route_decision_path}: missing brainstorming/deep-project order marker: {required_planning_marker}")
+
+if task_analysis_path.exists():
+    task_analysis_text = task_analysis_path.read_text(encoding="utf-8")
+    for required_help_marker in [
+        "code-aware product help",
+        "อ่าน code ของหน้านี้แล้วทำ help/tutorial/video demo",
+        "ทำ script.md + outline.md จาก feature/page จริง",
+    ]:
+        if required_help_marker not in task_analysis_text:
+            errors.append(f"{task_analysis_path}: missing code-aware help trigger marker: {required_help_marker}")
+    for required_planning_marker in [
+        "Brainstorming vs Deep-Project Decision",
+        "Open idea space -> `brainstorming-prelude`",
+        "Chosen project needing decomposition -> `full-pipeline` / `deep-project`",
+        "ช่วยคิดระบบใหม่",
+        "แตกงานระบบนี้",
+    ]:
+        if required_planning_marker not in task_analysis_text:
+            errors.append(f"{task_analysis_path}: missing brainstorming/deep-project trigger marker: {required_planning_marker}")
+
+if quality_gates_path.exists():
+    quality_gates_text_for_help = quality_gates_path.read_text(encoding="utf-8")
+    for required_help_marker in [
+        "Source-grounding",
+        "Image routing",
+        "Video readiness",
+        "Side-effect safety",
+        "Product polish",
+    ]:
+        if required_help_marker not in quality_gates_text_for_help:
+            errors.append(f"{quality_gates_path}: missing code-aware help quality marker: {required_help_marker}")
+
+gpt_image_skill = root / "gpt-image-2"
+if gpt_image_skill.exists():
+    gpt_skill_text = (gpt_image_skill / "SKILL.md").read_text(encoding="utf-8")
+    gpt_shared_text = (gpt_image_skill / "scripts" / "shared.js").read_text(encoding="utf-8")
+    if "host-native Codex image tool/auth" not in gpt_skill_text:
+        errors.append("skills/gpt-image-2/SKILL.md: missing Codex-native default image routing")
+    if "SKILLPACK_ALLOW_CUSTOM_OPENAI_BASE_URL" not in gpt_shared_text:
+        errors.append("skills/gpt-image-2/scripts/shared.js: missing custom base URL safety gate")
+
+video_skill = root / "web-video-presentation"
+if video_skill.exists():
+    scaffold_text = (video_skill / "scripts" / "scaffold.sh").read_text(encoding="utf-8")
+    synth_text = (video_skill / "templates" / "scripts" / "synthesize-audio.sh").read_text(encoding="utf-8")
+    if "--yes" not in scaffold_text:
+        errors.append("skills/web-video-presentation/scripts/scaffold.sh: missing side-effect confirmation flag")
+    if "--yes" not in synth_text:
+        errors.append("skills/web-video-presentation/templates/scripts/synthesize-audio.sh: missing TTS confirmation flag")
+    for text_file in video_skill.rglob("*"):
+        if text_file.is_dir() or any(part in {".venv", ".pytest_cache", "__pycache__"} for part in text_file.parts):
+            continue
+        if text_file.suffix.lower() not in {".md", ".sh", ".ts", ".tsx", ".js", ".json"}:
+            continue
+        text = text_file.read_text(encoding="utf-8", errors="ignore")
+        for risky_pattern in ["sk-" + "xxxxx", "rm " + "-rf"]:
+            if risky_pattern in text:
+                errors.append(f"{text_file}: forbidden high-risk example pattern: {risky_pattern}")
+
 visual_skill_dir = root / "visual-ui-enhancement"
 if visual_skill_dir.exists():
     for required in [
@@ -200,6 +312,12 @@ if scenario_path.exists():
     scenarios = scenario_data.get("scenarios", []) if isinstance(scenario_data, dict) else []
     if len(scenarios) < 5:
         errors.append(f"{scenario_path}: expected at least 5 behavior scenarios")
+    scenario_ids = {scenario.get("id") for scenario in scenarios if isinstance(scenario, dict)}
+    if "HELP-001" not in scenario_ids:
+        errors.append(f"{scenario_path}: missing code-aware help behavior scenario HELP-001")
+    for required_scenario_id in ["PLANORDER-001", "PLANORDER-002"]:
+        if required_scenario_id not in scenario_ids:
+            errors.append(f"{scenario_path}: missing planning order behavior scenario {required_scenario_id}")
     known_agents = {path.stem for path in sub_agents_dir.glob("*.md")} if sub_agents_dir.exists() else set()
     known_gates = (root / "orchestra" / "references" / "quality-gates.md").read_text(encoding="utf-8") if (root / "orchestra" / "references" / "quality-gates.md").exists() else ""
     for scenario in scenarios:
