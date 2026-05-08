@@ -22,6 +22,7 @@ export type CreditSourceType =
   | "worker_runtime"
   | "api_chat" | "api_skill" | "api_agency" | "api_job"
   | "api_mcp" | "api_media" | "api_presentation" | "api_video_project"
+  | "voice_agent"
   // Section 07/08 — multimodal memory pipeline
   | "vision_analysis" | "embedding_generation" | "reference_resolution";
 

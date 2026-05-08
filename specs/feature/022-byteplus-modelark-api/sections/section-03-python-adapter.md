@@ -106,8 +106,8 @@ def test_init_strips_trailing_slash():
 def test_init_api_key_not_in_headers_value():
     """API key is stored only as Bearer token, not exposed elsewhere."""
     # Structural check: headers contain Authorization but key not leaked as plain field
-    provider = BytePlusModelArkProvider(api_key="super-secret-key-123")
-    assert "super-secret-key-123" not in str(provider._headers.get("X-API-Key", ""))
+    provider = BytePlusModelArkProvider(api_key="super-key.test")
+    assert "super-key.test" not in str(provider._headers.get("X-API-Key", ""))
 
 
 # --- Image generation ---

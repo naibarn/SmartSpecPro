@@ -12,6 +12,7 @@ import { mediaModels } from "../../drizzle/schema";
 import { eq, asc } from "drizzle-orm";
 import {
   buildElevenLabsModelSeeds,
+  buildMagnificModelSeeds,
   buildWaveSpeedModelSeeds,
 } from "./mediaProviderUtils";
 import {
@@ -64,6 +65,7 @@ export interface ModelDefinition {
  */
 const wavespeedModelSeeds = buildWaveSpeedModelSeeds();
 const elevenLabsModelSeeds = buildElevenLabsModelSeeds();
+const magnificModelSeeds = buildMagnificModelSeeds();
 
 const VEO_31_INPUT_FIELDS = [
   {
@@ -564,6 +566,21 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     creditCost: seed.creditCost,
     durations: seed.durations,
     aspectRatios: seed.aspectRatios,
+    configJson: seed.configJson,
+    isEnabled: seed.isEnabled,
+    priority: seed.priority,
+  })),
+  ...magnificModelSeeds.map((seed) => ({
+    id: seed.modelId,
+    type: seed.modelType,
+    name: seed.name,
+    provider: seed.provider,
+    description: seed.description,
+    aliases: seed.aliases,
+    creditCost: seed.creditCost,
+    durations: seed.durations,
+    aspectRatios: seed.aspectRatios,
+    sizes: seed.sizes,
     configJson: seed.configJson,
     isEnabled: seed.isEnabled,
     priority: seed.priority,

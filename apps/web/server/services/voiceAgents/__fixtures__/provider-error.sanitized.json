@@ -1,0 +1,6 @@
+{
+  "code": "provider_request_failed",
+  "message": "ElevenLabs request failed",
+  "retryable": true,
+  "status": 503
+}

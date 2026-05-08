@@ -314,6 +314,25 @@ describe("GlobalNotificationBell occurrence badge", () => {
     expect(bellRoot.style.left).toBe("");
   });
 
+  it("ignores stored custom positions and docks the bell to the top right", () => {
+    notificationCountData = { count: 2 };
+    localStorage.setItem(
+      "global-notification-bell-position",
+      JSON.stringify({
+        version: 1,
+        placement: { mode: "custom", x: 420, y: 240 },
+      }),
+    );
+
+    render(<GlobalAlerts />);
+
+    const bellRoot = screen.getByTestId("global-notification-bell");
+    expect(bellRoot.style.right).toBe("12px");
+    expect(bellRoot.style.top).toBe("12px");
+    expect(bellRoot.style.left).toBe("");
+    expect(localStorage.getItem("global-notification-bell-position")).toBeNull();
+  });
+
   it("uses actionUrl for urgent monitoring reminders instead of falling back to chat", async () => {
     urgentRemindersData = [
       {

@@ -34,6 +34,7 @@ import { memoryRouter } from "./routers/memory";
 import { mediaRouter } from "./routers/media";
 import { mediaProvidersRouter } from "./routers/mediaProviders";
 import { mediaModelsRouter } from "./routers/mediaModels";
+import { voiceAgentsRouter } from "./routers/voiceAgents";
 import { skillsRouter } from "./routers/skills";
 import { storageSettingsRouter } from "./routers/storageSettings";
 import { systemSettingsRouter } from "./routers/systemSettings";
@@ -1590,6 +1591,9 @@ export const appRouter = router({
 
   // Media Models management (admin) - AI models for image/video/audio generation
   mediaModels: mediaModelsRouter,
+
+  // Voice Agent runtime (ElevenLabs ElevenAgents)
+  voiceAgents: voiceAgentsRouter,
 
   // Chat system (conversations, messages, memory)
   chat: chatRouter,

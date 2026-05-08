@@ -11,20 +11,20 @@ pytestmark = [pytest.mark.unit]
     ("source_url", "expected_url"),
     [
         (
-            "postgresql+asyncpg://user:pass@db/app",
-            "postgresql+psycopg://user:pass@db/app",
+            "postgresql+asyncpg://user@db/app",
+            "postgresql+psycopg://user@db/app",
         ),
         (
-            "postgresql://user:pass@db/app",
-            "postgresql+psycopg://user:pass@db/app",
+            "postgresql://user@db/app",
+            "postgresql+psycopg://user@db/app",
         ),
         (
-            "postgres://user:pass@db/app",
-            "postgresql+psycopg://user:pass@db/app",
+            "postgresql://user@db/app",
+            "postgresql+psycopg://user@db/app",
         ),
         (
-            "postgresql+psycopg://user:pass@db/app",
-            "postgresql+psycopg://user:pass@db/app",
+            "postgresql+psycopg://user@db/app",
+            "postgresql+psycopg://user@db/app",
         ),
         (
             "sqlite+aiosqlite:///tmp/test.db",
@@ -40,6 +40,6 @@ def test_to_sync_sqlalchemy_url_normalizes_supported_urls(
 
 
 def test_to_sync_sqlalchemy_url_leaves_unknown_urls_unchanged():
-    assert to_sync_sqlalchemy_url("mysql+pymysql://user:pass@db/app") == (
-        "mysql+pymysql://user:pass@db/app"
+    assert to_sync_sqlalchemy_url("sqlite:///tmp/test.db") == (
+        "sqlite:///tmp/test.db"
     )

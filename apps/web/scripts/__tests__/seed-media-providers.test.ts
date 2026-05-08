@@ -55,4 +55,25 @@ describe("seed-media-providers", () => {
       expect.objectContaining({ id: "elevenlabs/voice-isolator", type: "audio" }),
     ]));
   });
+
+  it("includes a disabled Magnific provider row with all phase-one image and video workflows", () => {
+    const magnific = DEFAULT_PROVIDERS.find((provider) => provider.providerName === "magnific");
+
+    expect(magnific).toBeDefined();
+    expect(magnific).toMatchObject({
+      displayName: "Magnific",
+      providerType: "multimodal",
+      baseUrl: "https://api.magnific.com",
+      defaultModel: "magnific/mystic",
+      isEnabled: false,
+      isPrimary: false,
+    });
+    expect(magnific?.availableModels).toHaveLength(34);
+    expect(magnific?.availableModels).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "magnific/mystic", type: "image" }),
+      expect.objectContaining({ id: "magnific/remove-background", type: "image" }),
+      expect.objectContaining({ id: "magnific/veo-3-1-text-to-video-fast", type: "video" }),
+      expect.objectContaining({ id: "magnific/video-upscaler-precision", type: "video" }),
+    ]));
+  });
 });

@@ -25,8 +25,8 @@ exports.DOCUMENT_OCR_PAYIN_SLIP_PARSER_MODES = {
     unifiedLlmParser: "unified_llm_parser",
 };
 exports.DOCUMENT_OCR_REQUEST_HEADERS = {
-    landingAiApiKey: "x-landingai-ade-api-key",
-    typhoonApiKey: "x-typhoon-ocr-api-key",
+    landingAiHeader: "x-landingai-ade-api-key",
+    typhoonHeader: "x-typhoon-ocr-api-key",
 };
 var IMAGE_MIME_TYPES = new Set([
     "image/jpeg",
@@ -200,7 +200,7 @@ function resolveDocumentOcrRoute(params) {
             providerId: requestedProviderId,
             fallbackReason: null,
             requestHeaders: (_a = {},
-                _a[exports.DOCUMENT_OCR_REQUEST_HEADERS.typhoonApiKey] = params.settings.typhoonOcrApiKey.trim(),
+                _a[exports.DOCUMENT_OCR_REQUEST_HEADERS.typhoonHeader] = params.settings.typhoonOcrApiKey.trim(),
                 _a),
         };
     }
@@ -211,7 +211,7 @@ function resolveDocumentOcrRoute(params) {
             providerId: requestedProviderId,
             fallbackReason: null,
             requestHeaders: (_b = {},
-                _b[exports.DOCUMENT_OCR_REQUEST_HEADERS.landingAiApiKey] = params.settings.landingAiApiKey.trim(),
+                _b[exports.DOCUMENT_OCR_REQUEST_HEADERS.landingAiHeader] = params.settings.landingAiApiKey.trim(),
                 _b),
         };
     }

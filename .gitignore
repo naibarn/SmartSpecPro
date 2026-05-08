@@ -147,6 +147,12 @@ docker-compose.override.yml
 !docker/hermes.env.example
 !docker/hermes.multi.env.example
 
+# Local TLS material must be generated per environment.
+nginx/ssl/*.key
+nginx/ssl/*.pem
+nginx/ssl/*.p12
+nginx/ssl/*.pfx
+
 # ============================================================================
 # Compiled files
 # ============================================================================

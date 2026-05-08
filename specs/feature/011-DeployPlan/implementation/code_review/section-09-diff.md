@@ -330,7 +330,7 @@ index c36aee8..46978e6 100644
 -      "Bash(# Check if this header comes from nginx or cloudflare curl -sI \"\"http://localhost:3000\"\")",
 -      "Bash(env)",
 -      "Bash(# Test if OpenRouter supports Whisper API curl -s -w \"\"\\\\nHTTP:%{http_code}\"\" \"\"https://openrouter.ai/api/v1/audio/transcriptions\"\" \\\\ -H \"\"Authorization: Bearer sk-or-v1-test\"\" \\\\ -F \"\"file=@/dev/null\"\" \\\\ -F \"\"model=whisper-1\"\")",
--      "Bash(DATABASE_URL=\"mysql://smartspec:smartspec123@localhost:3306/smartspecweb\" npx drizzle-kit push:*)",
+-      "Bash(DATABASE_URL=\"sqlite:///tmp/smartspecweb\" npx drizzle-kit push:*)",
 -      "Bash(redis-cli ping:*)",
 -      "Bash(DATABASE_URL=\"postgresql://localhost/fake\" npx drizzle-kit generate:*)",
 -      "Bash(cargo tauri signer generate:*)",

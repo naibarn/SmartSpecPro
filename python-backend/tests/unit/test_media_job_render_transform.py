@@ -104,6 +104,19 @@ def test_build_render_command_applies_clip_playback_rate(monkeypatch):
     assert "color=c=black:s=1920x1080:d=4.000000" in fc
 
 
+def test_build_render_command_crops_detected_letterbox_before_normalizing(monkeypatch):
+    worker = _load_worker_module()
+    monkeypatch.setattr(worker, "_has_audio_stream", lambda _path, runner=None: True)
+    monkeypatch.setattr(worker, "_detect_letterbox_crop_filter", lambda _path, runner=None: "crop=iw:1100:0:90")
+
+    spec = _make_render_spec(transform=None, duration_ms=4000)
+    cmd = worker.build_ffmpeg_command_for_render(spec)
+
+    assert "-filter_complex" in cmd
+    fc = cmd[cmd.index("-filter_complex") + 1]
+    assert "crop=iw:1100:0:90,fps=30,scale=1920:1080" in fc
+
+
 def test_build_render_command_mixes_storyboard_companion_audio(monkeypatch):
     worker = _load_worker_module()
     monkeypatch.setattr(worker, "_has_audio_stream", lambda _path, runner=None: True)

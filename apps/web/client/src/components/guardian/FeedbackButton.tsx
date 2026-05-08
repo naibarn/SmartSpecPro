@@ -25,7 +25,6 @@ const MAX_FILES = 5;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "pdf", "md"]);
 const FEEDBACK_STORAGE_KEY = "feedback-button-position";
-const FEEDBACK_STORAGE_VERSION = 1;
 const FEEDBACK_MARGIN = 16;
 const FEEDBACK_DEFAULT_WIDTH = 138;
 const FEEDBACK_DEFAULT_HEIGHT = 40;
@@ -39,11 +38,6 @@ type FeedbackPosition = {
 type FeedbackPlacement =
   | { mode: "docked" }
   | ({ mode: "custom" } & FeedbackPosition);
-
-type FeedbackPlacementStorage = {
-  version: number;
-  placement: FeedbackPlacement;
-};
 
 type FeedbackDragState = {
   pointerId: number;
@@ -95,41 +89,20 @@ function getInitialFeedbackPlacement(): FeedbackPlacement {
   }
 
   try {
-    const saved = window.localStorage.getItem(FEEDBACK_STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved) as Partial<FeedbackPlacementStorage> & Partial<FeedbackPlacement>;
-      if (parsed.version === FEEDBACK_STORAGE_VERSION) {
-        const placement = parsed.placement;
-        if (placement?.mode === "custom" && typeof placement.x === "number" && typeof placement.y === "number") {
-          return {
-            mode: "custom",
-            ...clampFeedbackPosition({ x: placement.x, y: placement.y }, window.innerWidth, window.innerHeight),
-          };
-        }
-      }
-    }
+    window.localStorage.removeItem(FEEDBACK_STORAGE_KEY);
   } catch {
-    // Ignore malformed storage and fall back to the default docked position.
+    // Ignore storage failures and fall back to the default docked position.
   }
 
   return { mode: "docked" };
 }
 
-function persistFeedbackPlacement(placement: FeedbackPlacement) {
+function clearPersistedFeedbackPlacement() {
   if (typeof window === "undefined") {
     return;
   }
 
   try {
-    if (placement.mode === "custom") {
-      const payload: FeedbackPlacementStorage = {
-        version: FEEDBACK_STORAGE_VERSION,
-        placement,
-      };
-      window.localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify(payload));
-      return;
-    }
-
     window.localStorage.removeItem(FEEDBACK_STORAGE_KEY);
   } catch {
     // Ignore storage failures in private mode / restricted environments.
@@ -226,7 +199,7 @@ export function FeedbackButton() {
   }, []);
 
   useEffect(() => {
-    persistFeedbackPlacement(feedbackPlacement);
+    clearPersistedFeedbackPlacement();
   }, [feedbackPlacement]);
 
   useEffect(() => {

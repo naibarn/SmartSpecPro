@@ -28,7 +28,7 @@ preserved while normalized value is lowercased — both assertions confirmed.
 
 ### MEDIUM-4: Trivially-guessable secret in video task API key log test
 **Finding:** `secret = "test-key"` is unlikely to appear in logs accidentally, making the test weak.
-**Fix:** Changed to `secret = "bp-sk-sentinel-7f3a9d2c1e4b8f6a"` and moved provider construction
+**Fix:** Changed to `secret = "bp-sentinel"` and moved provider construction
 into the test body so the fixture key isn't used. The provider's `_api_key` is now the sentinel.
 
 ### MEDIUM-5: Missing multi-item iteration test for `_extract_byteplus_result_url`

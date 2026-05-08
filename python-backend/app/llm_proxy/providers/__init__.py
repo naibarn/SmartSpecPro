@@ -19,6 +19,7 @@ from .knplabai_provider import KNPLabsProvider
 from .nvidia_nim_provider import NvidiaNimProvider
 from .omnivoice_provider import OmniVoiceProvider
 from .wavespeed_media_provider import WaveSpeedMediaProvider
+from .magnific_provider import MagnificProvider
 
 __all__ = [
     "BaseLLMProvider",
@@ -37,4 +38,5 @@ __all__ = [
     "NvidiaNimProvider",
     "OmniVoiceProvider",
     "WaveSpeedMediaProvider",
+    "MagnificProvider",
 ]

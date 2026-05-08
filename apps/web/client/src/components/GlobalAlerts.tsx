@@ -15,7 +15,6 @@ import { Bell, AlarmClock, X, Check, ChevronDown, Clock3 } from "lucide-react";
 import { toast } from "sonner";
 
 const BELL_STORAGE_KEY = "global-notification-bell-position";
-const BELL_STORAGE_VERSION = 1;
 const BELL_MARGIN = 12;
 const BELL_DEFAULT_WIDTH = 60;
 const BELL_DEFAULT_HEIGHT = 44;
@@ -29,11 +28,6 @@ type BellPosition = {
 type BellPlacement =
   | { mode: "docked" }
   | ({ mode: "custom" } & BellPosition);
-
-type BellPlacementStorage = {
-  version: number;
-  placement: BellPlacement;
-};
 
 type BellDragState = {
   pointerId: number;
@@ -72,30 +66,9 @@ function getInitialBellPlacement(): BellPlacement {
   }
 
   try {
-    const saved = window.localStorage.getItem(BELL_STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved) as Partial<BellPlacementStorage> & Partial<BellPlacement>;
-      if (parsed.version === BELL_STORAGE_VERSION) {
-        const placement = parsed.placement;
-        if (placement?.mode === "custom" && typeof placement.x === "number" && typeof placement.y === "number") {
-          return {
-            mode: "custom",
-            ...clampBellPosition({ x: placement.x, y: placement.y }, window.innerWidth, window.innerHeight),
-          };
-        }
-      } else {
-        const legacyPlacement = parsed as Partial<BellPlacement> & Partial<BellPosition>;
-        if (legacyPlacement.mode === "custom" && typeof legacyPlacement.x === "number" && typeof legacyPlacement.y === "number") {
-        // Legacy migration path: discard pre-versioned placements so the bell
-        // re-docks to the top-right on first load after the fix.
-        window.localStorage.removeItem(BELL_STORAGE_KEY);
-        } else if (legacyPlacement.x !== undefined || legacyPlacement.y !== undefined) {
-          window.localStorage.removeItem(BELL_STORAGE_KEY);
-        }
-      }
-    }
+    window.localStorage.removeItem(BELL_STORAGE_KEY);
   } catch {
-    // Ignore malformed storage and fall back to the default docked position.
+    // Ignore storage failures and fall back to the default docked position.
   }
 
   return { mode: "docked" };
@@ -116,21 +89,12 @@ function clampBellPosition(
   };
 }
 
-function persistBellPlacement(placement: BellPlacement) {
+function clearPersistedBellPlacement() {
   if (typeof window === "undefined") {
     return;
   }
 
   try {
-    if (placement.mode === "custom") {
-      const payload: BellPlacementStorage = {
-        version: BELL_STORAGE_VERSION,
-        placement,
-      };
-      window.localStorage.setItem(BELL_STORAGE_KEY, JSON.stringify(payload));
-      return;
-    }
-
     window.localStorage.removeItem(BELL_STORAGE_KEY);
   } catch {
     // Ignore storage failures in private mode / restricted environments.
@@ -1241,7 +1205,7 @@ function GlobalNotificationBell() {
   }, []);
 
   useEffect(() => {
-    persistBellPlacement(bellPlacement);
+    clearPersistedBellPlacement();
   }, [bellPlacement]);
 
   useEffect(() => {

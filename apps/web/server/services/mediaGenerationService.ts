@@ -20,8 +20,10 @@ import {
 import {
   assertRelativeUploadMediaReferencePath,
   buildElevenLabsModelSeeds,
+  buildMagnificModelSeeds,
   buildWaveSpeedModelSeeds,
   getReferenceImageLimitFromConfig,
+  MAGNIFIC_PROVIDER,
   normalizeMediaProviderName,
   WAVESPEED_PROVIDER,
 } from "./mediaProviderUtils";
@@ -103,6 +105,24 @@ const elevenLabsModelMetadata: Record<string, ModelMetadata> = Object.fromEntrie
   ]),
 );
 
+const magnificModelMetadata: Record<string, ModelMetadata> = Object.fromEntries(
+  buildMagnificModelSeeds().map((seed) => [
+    seed.modelId,
+    {
+      id: seed.modelId,
+      type: seed.modelType,
+      name: seed.name,
+      provider: seed.provider,
+      description: seed.description,
+      supportsDurations: [...seed.durations],
+      supportsAspectRatios: [...seed.aspectRatios],
+      supportsSizes: [...seed.sizes],
+      creditCost: seed.creditCost,
+      configJson: seed.configJson,
+    } satisfies ModelMetadata,
+  ]),
+);
+
 const RETRYABLE_MEDIA_SETTINGS_ERROR = /\bSETTINGS_KEY_NOT_FOUND\b/i;
 const MEDIA_SUBMIT_RETRY_DELAY_MS = 250;
 const MEDIA_SUBMIT_MAX_ATTEMPTS = 2;
@@ -131,7 +151,7 @@ function resolveProviderFromApiConfig(apiConfig?: Record<string, string>): strin
     const value = apiConfig[key as keyof typeof apiConfig];
     if (typeof value === "string" && value.trim().length > 0) {
       const normalized = normalizeMediaProviderName(value);
-      return normalized === WAVESPEED_PROVIDER ? normalized : value.trim();
+      return normalized === WAVESPEED_PROVIDER || normalized === MAGNIFIC_PROVIDER ? normalized : value.trim();
     }
   }
   return null;
@@ -642,6 +662,7 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
   },
   ...wavespeedModelMetadata,
   ...elevenLabsModelMetadata,
+  ...magnificModelMetadata,
   // ========== BytePlus ModelArk — Seedream Image Models ==========
   "seedream-4-5-251128": {
     id: "seedream-4-5-251128",

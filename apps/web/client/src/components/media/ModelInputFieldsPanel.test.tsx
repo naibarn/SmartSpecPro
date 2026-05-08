@@ -69,4 +69,31 @@ describe("ModelInputFieldsPanel", () => {
     expect(screen.getByText(/Single-speaker voice preset/i)).toBeInTheDocument();
     expect(screen.getByDisplayValue("Host: Welcome back.")).toBeInTheDocument();
   });
+
+  it("applies numeric min max and step metadata to number inputs", () => {
+    render(
+      <ModelInputFieldsPanel
+        enabled
+        model={{ id: "magnific/change-camera", name: "Change Camera" }}
+        fields={[
+          {
+            key: "horizontal_angle",
+            label: "Horizontal Angle",
+            type: "number",
+            syncWith: "none",
+            min: 0,
+            max: 360,
+            step: 1,
+          },
+        ]}
+        extraParams={{ horizontal_angle: 12 }}
+        onChange={vi.fn()}
+      />,
+    );
+
+    const input = screen.getByLabelText("Advanced Horizontal Angle");
+    expect(input).toHaveAttribute("min", "0");
+    expect(input).toHaveAttribute("max", "360");
+    expect(input).toHaveAttribute("step", "1");
+  });
 });

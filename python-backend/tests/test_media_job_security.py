@@ -8,6 +8,7 @@ input sanitization for FFmpeg command construction.
 import pytest
 
 from app.core.media_job_validators import (
+    validate_provider_result_uri,
     validate_job_spec_security,
     validate_uri_no_ssrf,
     validate_output_path,
@@ -149,6 +150,14 @@ class TestFFmpegArgSanitization:
     def test_rejects_pipe_in_uri(self):
         with pytest.raises(ValueError, match="metacharacter"):
             validate_uri_no_ssrf("https://example.com/file| cat /etc/passwd")
+
+    def test_provider_result_uri_allows_signed_query_delimiters(self):
+        uri = "https://storage.googleapis.com/smartspec-test/result.png?token=exp=123~hmac=abc&size=stable"
+        assert validate_provider_result_uri(uri) == uri
+
+    def test_provider_result_uri_still_rejects_shell_metacharacters_in_path(self):
+        with pytest.raises(ValueError, match="metacharacter"):
+            validate_provider_result_uri("https://cdn.example.com/file|cat.png?token=abc&size=stable")
 
 
 # ========================================

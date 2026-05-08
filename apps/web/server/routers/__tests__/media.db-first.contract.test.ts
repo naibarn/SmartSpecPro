@@ -703,6 +703,157 @@ describe("media router DB-first model contract", () => {
     );
   });
 
+  it("generateImage rejects user-supplied Magnific webhook fields before provider calls", async () => {
+    const magnificConfig = {
+      provider: "magnific",
+      inputFields: [
+        { key: "prompt", type: "text", syncWith: "prompt", maxLength: 4096, required: true },
+        { key: "aspect_ratio", type: "select", syncWith: "aspect_ratio", options: [{ value: "1:1", label: "1:1" }] },
+      ],
+    };
+    mockGetDb.mockResolvedValue(makeDbWithSequentialSelectResults([
+      [{ name: "Mystic", modelType: "image", provider: "magnific", isEnabled: true }],
+      [{ creditCost: 20, configJson: magnificConfig }],
+    ]) as any);
+
+    const fn = mediaRouter.generateImage as Function;
+    await expect(
+      fn({
+        ctx: makeCtx(),
+        input: {
+          prompt: "test prompt",
+          model: "magnific/mystic",
+          aspectRatio: "1:1",
+          extraParams: {
+            webhook_url: "https://example.com/hook",
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      message: "Magnific does not allow user-supplied webhook_url.",
+    });
+
+    expect(mockGenerateImage).not.toHaveBeenCalled();
+  });
+
+  it("generateImage enforces Magnific numeric ranges and Google-search model support", async () => {
+    const magnificConfig = {
+      provider: "magnific",
+      inputFields: [
+        { key: "prompt", type: "text", syncWith: "prompt", maxLength: 4096, required: true },
+        { key: "horizontal_angle", label: "Horizontal Angle", type: "number", min: 0, max: 360 },
+      ],
+    };
+    const fn = mediaRouter.generateImage as Function;
+
+    mockGetDb.mockResolvedValue(makeDbWithSequentialSelectResults([
+      [{ name: "Change Camera", modelType: "image", provider: "magnific", isEnabled: true }],
+      [{ creditCost: 12, configJson: magnificConfig }],
+    ]) as any);
+    await expect(
+      fn({
+        ctx: makeCtx(),
+        input: {
+          prompt: "test prompt",
+          model: "magnific/change-camera",
+          extraParams: { horizontal_angle: 361 },
+        },
+      }),
+    ).rejects.toMatchObject({
+      message: "Horizontal Angle must be at most 360.",
+    });
+
+    mockGetDb.mockResolvedValue(makeDbWithSequentialSelectResults([
+      [{ name: "Change Camera", modelType: "image", provider: "magnific", isEnabled: true }],
+      [{ creditCost: 12, configJson: magnificConfig }],
+    ]) as any);
+    await expect(
+      fn({
+        ctx: makeCtx(),
+        input: {
+          prompt: "test prompt",
+          model: "magnific/change-camera",
+          extraParams: { use_google_search_tool: true },
+        },
+      }),
+    ).rejects.toMatchObject({
+      message: "use_google_search_tool is only supported on Magnific Nano Banana models.",
+    });
+  });
+
+  it("generateVideoAsync enforces Magnific reference video and resolution metadata", async () => {
+    const magnificConfig = {
+      provider: "magnific",
+      inputFields: [
+        { key: "video_urls", label: "Reference Video", type: "video_urls", syncWith: "reference_videos", required: true, maxItems: 1 },
+        {
+          key: "resolution",
+          label: "Resolution",
+          type: "select",
+          options: [
+            { value: "720p", label: "720p" },
+            { value: "1080p", label: "1080p" },
+          ],
+        },
+        { key: "duration", type: "select", options: [{ value: "4", label: "4s" }] },
+      ],
+    };
+    const fn = mediaRouter.generateVideoAsync as Function;
+
+    mockGetDb.mockResolvedValue(makeDbWithSequentialSelectResults([
+      [{ name: "Video Upscaler", modelType: "video", provider: "magnific", isEnabled: true }],
+      [{ creditCost: 200, configJson: magnificConfig }],
+    ]) as any);
+    await expect(
+      fn({
+        ctx: makeCtx(),
+        input: {
+          prompt: "upscale this",
+          model: "magnific/video-upscaler-precision",
+          duration: 4,
+          resolution: "4k",
+        },
+      }),
+    ).rejects.toMatchObject({
+      message: 'Unsupported resolution "4k" for model "magnific/video-upscaler-precision".',
+    });
+
+    mockGetDb.mockResolvedValue(makeDbWithSequentialSelectResults([
+      [{ name: "Video Upscaler", modelType: "video", provider: "magnific", isEnabled: true }],
+      [{ creditCost: 200, configJson: magnificConfig }],
+    ]) as any);
+    await expect(
+      fn({
+        ctx: makeCtx(),
+        input: {
+          prompt: "upscale this",
+          model: "magnific/video-upscaler-precision",
+          duration: 4,
+          resolution: "720p",
+        },
+      }),
+    ).rejects.toMatchObject({
+      message: 'The selected model "magnific/video-upscaler-precision" requires at least one reference video.',
+    });
+
+    mockGetDb.mockResolvedValue(makeDbWithSequentialSelectResults([
+      [{ name: "Video Upscaler", modelType: "video", provider: "magnific", isEnabled: true }],
+      [{ creditCost: 200, configJson: magnificConfig }],
+    ]) as any);
+    await expect(
+      fn({
+        ctx: makeCtx(),
+        input: {
+          prompt: "upscale this",
+          model: "magnific/video-upscaler-precision",
+          duration: 4,
+          resolution: "720p",
+          referenceVideoUrls: ["/uploads/source.mp4"],
+        },
+      }),
+    ).resolves.toMatchObject({ success: true });
+  });
+
   it("prefers a configured provider when resolving the DB default model", async () => {
     const db = makeDbWithSequentialSelectResults([
       [
@@ -1132,6 +1283,72 @@ describe("media router DB-first model contract", () => {
         }),
       }),
     );
+  });
+
+  it("listModelFieldOptions uses Magnific API-key header for provider-discovered LoRA options", async () => {
+    mockDecrypt.mockReturnValue("magnific-test-key");
+    const db = makeDbWithSequentialSelectResults([
+      [{
+        modelType: "image",
+        provider: "magnific",
+        isEnabled: true,
+        configJson: {
+          inputFields: [
+            {
+              key: "style_lora_id",
+              options: [],
+              optionsSource: {
+                type: "provider_api",
+                endpoint: "/v1/ai/loras",
+                method: "GET",
+                itemsPath: "data",
+                valueField: "id",
+                labelField: "name",
+                queryParam: "query",
+              },
+            },
+          ],
+        },
+      }],
+      [{
+        providerName: "magnific",
+        baseUrl: "https://api.magnific.com",
+        apiKeyEncrypted: "encrypted-key",
+      }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: "lora-style-1", name: "Painterly" },
+        ],
+      }),
+    }));
+
+    const fn = mediaRouter.listModelFieldOptions as Function;
+    const result = await fn({
+      input: {
+        modelId: "magnific/mystic",
+        fieldKey: "style_lora_id",
+        query: "paint",
+        limit: 20,
+      },
+    });
+
+    expect(result.source).toBe("dynamic");
+    expect(result.options).toEqual([{ value: "lora-style-1", label: "Painterly" }]);
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.magnific.com/v1/ai/loras?query=paint",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          "x-magnific-api-key": "magnific-test-key",
+        }),
+      }),
+    );
+    const [, fetchInit] = (fetch as any).mock.calls[0];
+    expect(fetchInit.headers.Authorization).toBeUndefined();
   });
 
   it("listModelFieldOptions rejects absolute provider_api endpoint and keeps static options only", async () => {

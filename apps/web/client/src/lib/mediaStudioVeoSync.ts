@@ -193,6 +193,9 @@ export function buildVeoSkillToMediaStudioSync(params: {
   const skillModel = cleanString(params.skillValues.veoModel);
   const selectedModelData = params.visibleModels.find((model) => cleanString(model.modelId ?? model.id) === params.selectedModel);
   const selectedProviderModel = getVeoProviderModelId(selectedModelData);
+  if (!isVeoProviderModelId(selectedProviderModel)) {
+    return { modelInputPatch: {} };
+  }
   const generationType = normalizeVeoGenerationType(params.skillValues.generationType);
   const skillProviderModel = cleanString(params.skillValues.veoProviderModel);
   const isAutoSeededLiteAgainstFutureVeo = (

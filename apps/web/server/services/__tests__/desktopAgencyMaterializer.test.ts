@@ -29,7 +29,7 @@ describe("desktopAgencyMaterializer", () => {
       signer: {
         signerId: "org-signer-1",
         keyVersion: "2026-04",
-        signerSecret: "top-secret-signing-key",
+        signerSecret: "signing-key.test",
       },
     });
 
@@ -49,7 +49,7 @@ describe("desktopAgencyMaterializer", () => {
       signer: {
         signerId: "org-signer-1",
         keyVersion: "2026-04",
-        signerSecret: "top-secret-signing-key",
+        signerSecret: "signing-key.test",
       },
     });
 
@@ -60,7 +60,7 @@ describe("desktopAgencyMaterializer", () => {
       revocationFeed: buildRevocationFeedSnapshot({
         generatedAt: "2026-04-09T10:00:00.000Z",
       }),
-      resolveSignerSecret: () => "top-secret-signing-key",
+      resolveSignerSecret: () => "signing-key.test",
     });
 
     expect(descriptor.runtimeDestination).toBe("agency_swarm");
@@ -74,7 +74,7 @@ describe("desktopAgencyMaterializer", () => {
           generatedAt: "2026-04-09T10:00:00.000Z",
           revokedSignerIds: ["org-signer-1"],
         }),
-        resolveSignerSecret: () => "top-secret-signing-key",
+        resolveSignerSecret: () => "signing-key.test",
       }),
     ).toThrow(/revoked/i);
   });

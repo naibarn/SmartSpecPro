@@ -51,6 +51,12 @@ const SNAP_THRESHOLD = 5; // pixels
 const PLAYHEAD_SNAP_DISTANCE = 0.2; // seconds - snap when within 0.2s of playhead
 const RESIZE_SNAP_DISTANCE = 0.15; // seconds - snap resize edges to other clip edges
 
+type DragPreview = {
+  clipId: string;
+  trackId: string;
+  startTime: number;
+};
+
 function isEditableShortcutTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   if (target.isContentEditable) return true;
@@ -114,6 +120,7 @@ export const Timeline: React.FC<TimelineProps> = ({
     offsetX: number;
     originalStartTime: number;
   } | null>(null);
+  const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
   const [resizingClip, setResizingClip] = useState<{
     clipId: string;
     edge: 'left' | 'right';
@@ -125,6 +132,7 @@ export const Timeline: React.FC<TimelineProps> = ({
   const [hoveredClipId, setHoveredClipId] = useState<string | null>(null);
   const [snapIndicatorTime, setSnapIndicatorTime] = useState<number | null>(null);
   const rafIdRef = useRef<number | null>(null);
+  const dragPreviewRef = useRef<DragPreview | null>(null);
 
   // Calculate timeline width
   const timelineWidth = Math.max(duration * zoom, 1000);
@@ -164,6 +172,51 @@ export const Timeline: React.FC<TimelineProps> = ({
     }
     return pixels / zoom;
   }, [zoom]);
+
+  const getTrackAtClientY = useCallback((clientY: number, rect: DOMRect) => {
+    const y = clientY - rect.top;
+    let cumulativeY = 0;
+    for (const track of timeline.tracks) {
+      const h = getTrackHeight(track);
+      if (y < cumulativeY + h) return track;
+      cumulativeY += h;
+    }
+    return undefined;
+  }, [timeline.tracks]);
+
+  const calculateDragPreview = useCallback((clientX: number, clientY: number): DragPreview | null => {
+    if (!timelineRef.current || !draggingClip) return null;
+
+    const rect = timelineRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const time = pixelsToTime(Math.max(0, x));
+
+    let newStartTime = Math.max(0, time - draggingClip.offsetX);
+    let snapTime: number | null = null;
+
+    const distanceToPlayhead = Math.abs(newStartTime - currentTime);
+    if (distanceToPlayhead < PLAYHEAD_SNAP_DISTANCE) {
+      newStartTime = currentTime;
+      snapTime = currentTime;
+    } else if (Math.abs(newStartTime % 0.5) < 0.1) {
+      newStartTime = Math.round(newStartTime * 2) / 2;
+    }
+
+    const track = getTrackAtClientY(clientY, rect);
+    if (!track || track.locked) return null;
+
+    setSnapIndicatorTime(snapTime);
+    return {
+      clipId: draggingClip.clipId,
+      trackId: track.id,
+      startTime: newStartTime,
+    };
+  }, [currentTime, draggingClip, getTrackAtClientY, pixelsToTime]);
+
+  const updateDragPreview = useCallback((preview: DragPreview | null) => {
+    dragPreviewRef.current = preview;
+    setDragPreview(preview);
+  }, []);
 
   // Handle playhead click
   const handleTimelineClick = (e: React.MouseEvent) => {
@@ -206,12 +259,18 @@ export const Timeline: React.FC<TimelineProps> = ({
         startMouseTime
       });
     } else {
+      const preview = {
+        clipId: clip.id,
+        trackId,
+        startTime: clip.startTime,
+      };
       setDraggingClip({
         clipId: clip.id,
         trackId,
         offsetX: pixelsToTime(offsetX),
         originalStartTime: clip.startTime
       });
+      updateDragPreview(preview);
     }
 
     const timelineRect = timelineRef.current?.getBoundingClientRect();
@@ -243,35 +302,9 @@ export const Timeline: React.FC<TimelineProps> = ({
       const time = pixelsToTime(Math.max(0, x));
 
       if (draggingClip) {
-        // Calculate new start time
-        let newStartTime = time - draggingClip.offsetX;
-        newStartTime = Math.max(0, newStartTime);
-
-        // Snap to playhead (priority snapping)
-        const distanceToPlayhead = Math.abs(newStartTime - currentTime);
-        if (distanceToPlayhead < PLAYHEAD_SNAP_DISTANCE) {
-          newStartTime = currentTime;
-        }
-        // Otherwise, snap to grid (0.5 second intervals)
-        else if (Math.abs(newStartTime % 0.5) < 0.1) {
-          newStartTime = Math.round(newStartTime * 2) / 2;
-        }
-
-        // Find track under cursor (variable heights)
-        const y = e.clientY - rect.top;
-        let cumulativeY = 0;
-        let track: typeof timeline.tracks[number] | undefined;
-        for (const t of timeline.tracks) {
-          const h = getTrackHeight(t);
-          if (y < cumulativeY + h) {
-            track = t;
-            break;
-          }
-          cumulativeY += h;
-        }
-
-        if (track && !track.locked) {
-          onClipMove(draggingClip.clipId, newStartTime, track.id);
+        const preview = calculateDragPreview(e.clientX, e.clientY);
+        if (preview) {
+          updateDragPreview(preview);
         }
       } else if (resizingClip) {
         const asset = (() => {
@@ -352,19 +385,39 @@ export const Timeline: React.FC<TimelineProps> = ({
         }
       }
     });
-  }, [draggingClip, resizingClip, zoom, timeline, assets, pixelsToTime, onClipMove, onClipResize, currentTime, resizeSnapPoints]);
+  }, [draggingClip, resizingClip, zoom, timeline, assets, pixelsToTime, onClipResize, resizeSnapPoints, calculateDragPreview, updateDragPreview]);
 
   // Handle mouse up (end drag or resize)
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((e?: MouseEvent) => {
+    if (draggingClip && e) {
+      const finalPreview = calculateDragPreview(e.clientX, e.clientY);
+      if (finalPreview) {
+        dragPreviewRef.current = finalPreview;
+      }
+    }
+
     // Cancel any pending animation frame to prevent race conditions
     if (rafIdRef.current !== null) {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
     }
+
+    if (draggingClip) {
+      const finalPreview = dragPreviewRef.current;
+      if (finalPreview) {
+        const movedTrack = finalPreview.trackId !== draggingClip.trackId;
+        const movedTime = Math.abs(finalPreview.startTime - draggingClip.originalStartTime) > 0.001;
+        if (movedTrack || movedTime) {
+          onClipMove(finalPreview.clipId, finalPreview.startTime, finalPreview.trackId);
+        }
+      }
+    }
+
     setDraggingClip(null);
+    updateDragPreview(null);
     setResizingClip(null);
     setSnapIndicatorTime(null);
-  }, []);
+  }, [calculateDragPreview, draggingClip, onClipMove, updateDragPreview]);
 
   // Add mouse event listeners
   useEffect(() => {
@@ -519,11 +572,12 @@ export const Timeline: React.FC<TimelineProps> = ({
     const asset = assets[clip.assetId];
     if (!asset) return null;
 
-    const x = timeToPixels(clip.startTime);
+    const isDragging = draggingClip?.clipId === clip.id;
+    const previewStartTime = isDragging && dragPreview ? dragPreview.startTime : clip.startTime;
+    const x = timeToPixels(previewStartTime);
     const width = timeToPixels(clip.duration);
     const isSelected = clip.id === selectedClipId || selectedClipIds.includes(clip.id);
     const isHovered = clip.id === hoveredClipId;
-    const isDragging = draggingClip?.clipId === clip.id;
     const isResizing = resizingClip?.clipId === clip.id;
     const isMultiSelected = selectedClipIds.includes(clip.id);
     const isOverlay = track.type === 'overlay' || track.type === 'text';
@@ -632,7 +686,16 @@ export const Timeline: React.FC<TimelineProps> = ({
         )}
       </div>
     );
-  }, [assets, zoom, selectedClipId, selectedClipIds, hoveredClipId, draggingClip, resizingClip, timeToPixels, handleClipMouseDown, onClipSelect, onTimeChange]);
+  }, [assets, selectedClipId, selectedClipIds, hoveredClipId, draggingClip, dragPreview, resizingClip, timeToPixels, handleClipMouseDown, onClipSelect, onTimeChange]);
+
+  const draggedClip = useMemo(() => {
+    if (!draggingClip || !dragPreview) return null;
+    for (const track of timeline.tracks) {
+      const clip = track.clips.find(c => c.id === draggingClip.clipId);
+      if (clip) return clip;
+    }
+    return null;
+  }, [dragPreview, draggingClip, timeline.tracks]);
 
   return (
     <div className="timeline-container">
@@ -909,7 +972,7 @@ export const Timeline: React.FC<TimelineProps> = ({
         .timeline-clip.dragging {
           opacity: 0.7;
           cursor: grabbing;
-          transform: scale(1.05) rotate(1deg);
+          transform: scale(1.02);
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
           z-index: 1000;
         }
@@ -1147,7 +1210,12 @@ export const Timeline: React.FC<TimelineProps> = ({
                   aria-label={`${track.name} track lane`}
                   aria-readonly={track.locked}
                 >
-                  {track.clips.map(clip => renderClip(clip, track))}
+                  {track.clips
+                    .filter(clip => clip.id !== draggingClip?.clipId || dragPreview?.trackId === track.id)
+                    .map(clip => renderClip(clip, track))}
+                  {draggedClip && dragPreview?.trackId === track.id && draggedClip.trackId !== track.id
+                    ? renderClip(draggedClip, track)
+                    : null}
                 </div>
               );
             })}

@@ -17,17 +17,17 @@
     },
     "continuityNotes": {
       "type": "string",
-      "description": "Optional fixed character, wardrobe, props, setting, story arc, and transition details. If empty, the skill must generate shared CONTINUITY NOTES and a reusable Continuity Lock from the idea/reference images.",
+      "description": "Optional fixed character, wardrobe, props, setting, story arc, and transition details. In storyboard mode, use this to keep the narrative and recurring characters consistent across every prompt. If empty, the skill must generate shared CONTINUITY NOTES and a reusable Continuity Lock from the idea/reference images.",
       "default": ""
     },
     "referenceNotes": {
       "type": "string",
-      "description": "Optional notes for attached reference images or generated visual identity. If empty, the skill must infer shared REFERENCE NOTES/visual bible from the idea and reference images, without absence-only boilerplate.",
+      "description": "Optional notes for attached reference images or generated visual identity. If reference images are attached, the skill must explicitly mention the @Image handles, their roles, and the visual details being preserved. For storyboard/news modes, attached images should be declared as reference assets, not start frames, unless generationType is FIRST_AND_LAST_FRAMES_2_VIDEO. If empty, the skill must infer shared REFERENCE NOTES/visual bible from the idea and reference images, without absence-only boilerplate.",
       "default": ""
     },
     "contentMode": {
       "type": "string",
-      "description": "Storyboard content mode. Use news_narration for short news explainer clips with contextual background visuals.",
+      "description": "Storyboard content mode. storyboard creates one continuous creative storyboard with strong story continuity and recurring character consistency. Use news_narration for short news explainer clips with contextual background visuals.",
       "enum": [
         "storyboard",
         "news_narration"
@@ -210,7 +210,7 @@
     },
     "generationType": {
       "type": "string",
-      "description": "Veo 3.1 generation mode. FIRST_AND_LAST_FRAMES_2_VIDEO needs one or two dragged reference images: @Image1 as start frame and @Image2 as end frame when provided. REFERENCE_2_VIDEO needs one to three dragged reference images and Veo 3.1 Fast.",
+      "description": "Veo 3.1 generation mode. FIRST_AND_LAST_FRAMES_2_VIDEO needs one or two dragged reference images: @Image1 as start frame and @Image2 as end frame when provided. REFERENCE_2_VIDEO needs one to three dragged reference images and Veo 3.1 Fast; these images are reference assets, not start frames.",
       "enum": [
         "TEXT_2_VIDEO",
         "FIRST_AND_LAST_FRAMES_2_VIDEO",

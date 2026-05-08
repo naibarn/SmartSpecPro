@@ -162,7 +162,14 @@ def _detect_task_provider(task: MediaTask) -> str:
         if isinstance(provider, str) and provider.strip():
             return provider.strip().lower()
 
+    api_config = _extract_task_api_config(task)
+    provider = api_config.get("provider") or api_config.get("providerName")
+    if isinstance(provider, str) and provider.strip():
+        return provider.strip().lower()
+
     model = str(task.model or "").strip().lower()
+    if model.startswith("magnific/"):
+        return "magnific"
     if model.startswith("wavespeed-ai/"):
         return "wavespeed_ai"
     if model.startswith("elevenlabs/"):
@@ -953,6 +960,49 @@ async def fetch_task_result(
 
         polling_state = _coerce_json_dict(task.result_data).get("polling")
         raw_status = polling_state.get("raw_status") if isinstance(polling_state, dict) else None
+        return {
+            "success": True,
+            "message": f"Task still in progress (state: {raw_status or poll_status or 'processing'})",
+            "task": TaskResponse(**task.to_dict()),
+            "fetched": False,
+            "provider_state": raw_status or poll_status or "processing",
+        }
+
+    if provider_name == "magnific":
+        from app.tasks.media_tasks import _poll_magnific_media_task_async
+
+        try:
+            poll_result = await _poll_magnific_media_task_async(task_id, schedule_next_poll=False)
+            await db.refresh(task)
+        except Exception as e:
+            logger.error("fetch_task_result_magnific_error", task_id=task_id, external_task_id=external_task_id, error=str(e))
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to fetch task result: {str(e)}"
+            )
+
+        poll_status = str(poll_result.get("status") or "").strip().lower()
+        if task.result_url and task.status == TaskStatus.COMPLETED.value:
+            return {
+                "success": True,
+                "message": "Task completed, result fetched",
+                "task": TaskResponse(**task.to_dict()),
+                "fetched": poll_status != "terminal",
+                "provider_state": "completed",
+            }
+
+        if task.status == TaskStatus.FAILED.value:
+            error_message = task.error_message or "Task failed on Magnific"
+            return {
+                "success": False,
+                "message": f"Task failed: {error_message}",
+                "task": TaskResponse(**task.to_dict()),
+                "fetched": poll_status == "failed",
+                "provider_state": "failed",
+            }
+
+        polling_state = _coerce_json_dict(task.result_data).get("polling")
+        raw_status = polling_state.get("provider_status") or polling_state.get("raw_status") or polling_state.get("state") if isinstance(polling_state, dict) else None
         return {
             "success": True,
             "message": f"Task still in progress (state: {raw_status or poll_status or 'processing'})",

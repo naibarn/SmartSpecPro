@@ -3,6 +3,9 @@ export const WAVESPEED_LAUNCH_MODEL_ID = "wavespeed-ai/cinematic-video-generator
 export const WAVESPEED_LAUNCH_MODEL_NAME = "Seedance 2.0 Grade Cinematic Video Generator";
 export const WAVESPEED_LAUNCH_MODEL_DESCRIPTION =
   "WaveSpeed Seedance 2.0 cinematic video generation with optional image guidance and native audio.";
+export const MAGNIFIC_PROVIDER = "magnific";
+export const MAGNIFIC_BASE_URL = "https://api.magnific.com";
+export const MAGNIFIC_DEFAULT_MODEL_ID = "magnific/mystic";
 export const WAVESPEED_ALLOWED_DURATIONS = [5, 10, 15] as const;
 export const WAVESPEED_ALLOWED_ASPECT_RATIOS = ["16:9", "9:16", "4:3", "3:4"] as const;
 export const WAVESPEED_SEEDANCE_ALLOWED_ASPECT_RATIOS = ["16:9", "9:16", "4:3", "3:4", "1:1", "21:9"] as const;
@@ -63,6 +66,23 @@ export type WaveSpeedLaunchModelSeed = {
 
 export type WaveSpeedModelSeed = WaveSpeedLaunchModelSeed;
 export type ElevenLabsModelSeed = WaveSpeedLaunchModelSeed;
+export type MagnificModelSeed = {
+  modelId: string;
+  name: string;
+  description: string;
+  modelType: "image" | "video";
+  provider: string;
+  modelFamily: string;
+  aliases: string[];
+  creditCost: number;
+  aspectRatios: string[];
+  durations: number[];
+  sizes: string[];
+  priority: number;
+  sortOrder: number;
+  isEnabled: boolean;
+  configJson: Record<string, unknown>;
+};
 
 type WaveSpeedGenerateType = "text-to-video" | "image-to-video";
 type WaveSpeedModelDefinition = {
@@ -106,6 +126,12 @@ type WaveSpeedAudioModelDefinition = {
 type ModelInputFieldRecord = Record<string, unknown>;
 type PublicUrlValidationOptions = {
   requireHttps?: boolean;
+};
+type ProviderAvailableModelRecord = {
+  id: string;
+  name: string;
+  type: "image" | "video" | "audio";
+  description: string;
 };
 type ElevenLabsCapability =
   | "text_to_speech"
@@ -152,6 +178,94 @@ const PRIVATE_HOST_PATTERNS = [
   /\.internal$/i,
   /\.local$/i,
 ];
+
+const MAGNIFIC_PROVIDER_MODEL_DEFINITIONS: readonly ProviderAvailableModelRecord[] = [
+  { id: "magnific/mystic", name: "Mystic", type: "image", description: "Magnific Mystic text-to-image generation" },
+  { id: "magnific/seedream-v5-lite", name: "Seedream 5 Lite", type: "image", description: "Magnific Seedream 5 Lite text-to-image generation" },
+  { id: "magnific/seedream-v5-lite-edit", name: "Seedream 5 Lite Edit", type: "image", description: "Magnific Seedream 5 Lite image editing" },
+  { id: "magnific/nano-banana-pro", name: "Nano Banana Pro", type: "image", description: "Magnific Google Nano Banana Pro image generation" },
+  { id: "magnific/nano-banana-pro-flash", name: "Nano Banana Pro Flash", type: "image", description: "Magnific Google Nano Banana Pro Flash image generation" },
+  { id: "magnific/z-image-turbo", name: "Z-Image Turbo", type: "image", description: "Magnific Z-Image Turbo image generation" },
+  { id: "magnific/upscaler-creative", name: "Upscaler Creative", type: "image", description: "Magnific creative image upscaling" },
+  { id: "magnific/relight", name: "Relight", type: "image", description: "Magnific image relighting" },
+  { id: "magnific/style-transfer", name: "Style Transfer", type: "image", description: "Magnific image style transfer" },
+  { id: "magnific/remove-background", name: "Remove Background", type: "image", description: "Magnific synchronous background removal" },
+  { id: "magnific/image-expand", name: "Image Expand", type: "image", description: "Magnific image expansion" },
+  { id: "magnific/skin-enhancer-creative", name: "Skin Enhancer Creative", type: "image", description: "Magnific creative skin enhancement" },
+  { id: "magnific/skin-enhancer-faithful", name: "Skin Enhancer Faithful", type: "image", description: "Magnific faithful skin enhancement" },
+  { id: "magnific/skin-enhancer-flexible", name: "Skin Enhancer Flexible", type: "image", description: "Magnific flexible skin enhancement" },
+  { id: "magnific/change-camera", name: "Change Camera", type: "image", description: "Magnific image camera-angle change" },
+  { id: "magnific/kling-v3-pro", name: "Kling 3 Pro", type: "video", description: "Magnific Kling 3 Pro video generation" },
+  { id: "magnific/kling-v3-standard", name: "Kling 3 Standard", type: "video", description: "Magnific Kling 3 Standard video generation" },
+  { id: "magnific/kling-v3-omni-pro", name: "Kling 3 Omni Pro", type: "video", description: "Magnific Kling 3 Omni Pro video generation" },
+  { id: "magnific/kling-v3-omni-standard", name: "Kling 3 Omni Standard", type: "video", description: "Magnific Kling 3 Omni Standard video generation" },
+  { id: "magnific/kling-v3-omni-reference-pro", name: "Kling 3 Omni Reference Pro", type: "video", description: "Magnific Kling 3 Omni Pro reference-to-video" },
+  { id: "magnific/kling-v3-omni-reference-standard", name: "Kling 3 Omni Reference Standard", type: "video", description: "Magnific Kling 3 Omni Standard reference-to-video" },
+  { id: "magnific/kling-v3-motion-control-pro", name: "Kling 3 Motion Control Pro", type: "video", description: "Magnific Kling 3 Pro motion-control video" },
+  { id: "magnific/kling-v3-motion-control-standard", name: "Kling 3 Motion Control Standard", type: "video", description: "Magnific Kling 3 Standard motion-control video" },
+  { id: "magnific/kling-v2-6-motion-control-pro", name: "Kling 2.6 Motion Control Pro", type: "video", description: "Magnific Kling 2.6 Pro motion-control video" },
+  { id: "magnific/kling-v2-6-motion-control-standard", name: "Kling 2.6 Motion Control Standard", type: "video", description: "Magnific Kling 2.6 Standard motion-control video" },
+  { id: "magnific/wan-v2-7-text-to-video", name: "Wan 2.7 Text to Video", type: "video", description: "Magnific Wan 2.7 text-to-video" },
+  { id: "magnific/wan-v2-7-image-to-video", name: "Wan 2.7 Image to Video", type: "video", description: "Magnific Wan 2.7 image-to-video" },
+  { id: "magnific/wan-v2-7-reference-to-video", name: "Wan 2.7 Reference to Video", type: "video", description: "Magnific Wan 2.7 reference-to-video" },
+  { id: "magnific/veo-3-1-text-to-video", name: "Veo 3.1 Text to Video", type: "video", description: "Magnific Google Veo 3.1 text-to-video" },
+  { id: "magnific/veo-3-1-text-to-video-fast", name: "Veo 3.1 Text to Video Fast", type: "video", description: "Magnific Google Veo 3.1 Fast text-to-video" },
+  { id: "magnific/veo-3-1-image-to-video", name: "Veo 3.1 Image to Video", type: "video", description: "Magnific Google Veo 3.1 image-to-video" },
+  { id: "magnific/veo-3-1-image-to-video-fast", name: "Veo 3.1 Image to Video Fast", type: "video", description: "Magnific Google Veo 3.1 Fast image-to-video" },
+  { id: "magnific/veo-3-1-reference-to-video", name: "Veo 3.1 Reference to Video", type: "video", description: "Magnific Google Veo 3.1 reference-to-video" },
+  { id: "magnific/video-upscaler-precision", name: "Video Upscaler Precision", type: "video", description: "Magnific precision video upscaling" },
+];
+
+const MAGNIFIC_PRICING_REVIEWED_AT = "2026-05-06";
+const MAGNIFIC_IMAGE_ASPECT_RATIOS = ["1:1", "16:9", "9:16", "4:3", "3:4"] as const;
+const MAGNIFIC_VIDEO_ASPECT_RATIOS = ["16:9", "9:16"] as const;
+const MAGNIFIC_VIDEO_DURATIONS = [4, 6, 8] as const;
+
+type MagnificEndpointMetadata = {
+  family: string;
+  endpoint: string;
+  dispatchMode?: "async-polling" | "sync";
+  resultType: "image" | "video" | "image-set";
+  cost: number;
+  enabled: boolean;
+};
+
+const MAGNIFIC_ENDPOINT_METADATA: Record<string, MagnificEndpointMetadata> = {
+  "magnific/mystic": { family: "magnific/mystic", endpoint: "/v1/ai/mystic", resultType: "image", cost: 20, enabled: true },
+  "magnific/seedream-v5-lite": { family: "magnific/seedream-v5-lite", endpoint: "/v1/ai/text-to-image/seedream-v5-lite", resultType: "image", cost: 10, enabled: true },
+  "magnific/seedream-v5-lite-edit": { family: "magnific/seedream-v5-lite", endpoint: "/v1/ai/text-to-image/seedream-v5-lite-edit", resultType: "image", cost: 12, enabled: true },
+  "magnific/nano-banana-pro": { family: "magnific/nano-banana-pro", endpoint: "/v1/ai/text-to-image/nano-banana-pro", resultType: "image", cost: 20, enabled: true },
+  "magnific/nano-banana-pro-flash": { family: "magnific/nano-banana-pro", endpoint: "/v1/ai/text-to-image/nano-banana-pro-flash", resultType: "image", cost: 12, enabled: true },
+  "magnific/z-image-turbo": { family: "magnific/z-image-turbo", endpoint: "/v1/ai/text-to-image/z-image", resultType: "image", cost: 8, enabled: true },
+  "magnific/upscaler-creative": { family: "magnific/upscaler-creative", endpoint: "/v1/ai/image-upscaler", resultType: "image", cost: 20, enabled: true },
+  "magnific/relight": { family: "magnific/relight", endpoint: "/v1/ai/image-relight", resultType: "image", cost: 15, enabled: true },
+  "magnific/style-transfer": { family: "magnific/style-transfer", endpoint: "/v1/ai/image-style-transfer", resultType: "image", cost: 15, enabled: true },
+  "magnific/remove-background": { family: "magnific/remove-background", endpoint: "/v1/ai/beta/remove-background", dispatchMode: "sync", resultType: "image-set", cost: 5, enabled: true },
+  "magnific/image-expand": { family: "magnific/image-expand", endpoint: "/v1/ai/image-expand/seedream-v4-5", resultType: "image", cost: 12, enabled: true },
+  "magnific/skin-enhancer-creative": { family: "magnific/skin-enhancer", endpoint: "/v1/ai/skin-enhancer/creative", resultType: "image", cost: 15, enabled: true },
+  "magnific/skin-enhancer-faithful": { family: "magnific/skin-enhancer", endpoint: "/v1/ai/skin-enhancer/faithful", resultType: "image", cost: 15, enabled: true },
+  "magnific/skin-enhancer-flexible": { family: "magnific/skin-enhancer", endpoint: "/v1/ai/skin-enhancer/flexible", resultType: "image", cost: 15, enabled: true },
+  "magnific/change-camera": { family: "magnific/change-camera", endpoint: "/v1/ai/image-change-camera", resultType: "image", cost: 12, enabled: true },
+  "magnific/kling-v3-pro": { family: "magnific/kling-v3", endpoint: "/v1/ai/video/kling-v3-pro", resultType: "video", cost: 120, enabled: false },
+  "magnific/kling-v3-standard": { family: "magnific/kling-v3", endpoint: "/v1/ai/video/kling-v3-std", resultType: "video", cost: 80, enabled: false },
+  "magnific/kling-v3-omni-pro": { family: "magnific/kling-v3-omni", endpoint: "/v1/ai/video/kling-v3-omni-pro", resultType: "video", cost: 120, enabled: false },
+  "magnific/kling-v3-omni-standard": { family: "magnific/kling-v3-omni", endpoint: "/v1/ai/video/kling-v3-omni-std", resultType: "video", cost: 80, enabled: false },
+  "magnific/kling-v3-omni-reference-pro": { family: "magnific/kling-v3-omni", endpoint: "/v1/ai/reference-to-video/kling-v3-omni-pro", resultType: "video", cost: 140, enabled: false },
+  "magnific/kling-v3-omni-reference-standard": { family: "magnific/kling-v3-omni", endpoint: "/v1/ai/reference-to-video/kling-v3-omni-std", resultType: "video", cost: 90, enabled: false },
+  "magnific/kling-v3-motion-control-pro": { family: "magnific/kling-v3-motion-control", endpoint: "/v1/ai/video/kling-v3-motion-control-pro", resultType: "video", cost: 140, enabled: false },
+  "magnific/kling-v3-motion-control-standard": { family: "magnific/kling-v3-motion-control", endpoint: "/v1/ai/video/kling-v3-motion-control-std", resultType: "video", cost: 90, enabled: false },
+  "magnific/kling-v2-6-motion-control-pro": { family: "magnific/kling-v2-6", endpoint: "/v1/ai/video/kling-v2-6-motion-control-pro", resultType: "video", cost: 120, enabled: false },
+  "magnific/kling-v2-6-motion-control-standard": { family: "magnific/kling-v2-6", endpoint: "/v1/ai/video/kling-v2-6-motion-control-std", resultType: "video", cost: 80, enabled: false },
+  "magnific/wan-v2-7-text-to-video": { family: "magnific/wan-v2-7", endpoint: "/v1/ai/text-to-video/wan-2-7", resultType: "video", cost: 90, enabled: false },
+  "magnific/wan-v2-7-image-to-video": { family: "magnific/wan-v2-7", endpoint: "/v1/ai/image-to-video/wan-2-7", resultType: "video", cost: 100, enabled: false },
+  "magnific/wan-v2-7-reference-to-video": { family: "magnific/wan-v2-7", endpoint: "/v1/ai/reference-to-video/wan-2-7", resultType: "video", cost: 120, enabled: false },
+  "magnific/veo-3-1-text-to-video": { family: "magnific/veo-3-1", endpoint: "/v1/ai/text-to-video/veo-3-1", resultType: "video", cost: 120, enabled: false },
+  "magnific/veo-3-1-text-to-video-fast": { family: "magnific/veo-3-1", endpoint: "/v1/ai/text-to-video/veo-3-1-fast", resultType: "video", cost: 80, enabled: false },
+  "magnific/veo-3-1-image-to-video": { family: "magnific/veo-3-1", endpoint: "/v1/ai/image-to-video/veo-3-1", resultType: "video", cost: 130, enabled: false },
+  "magnific/veo-3-1-image-to-video-fast": { family: "magnific/veo-3-1", endpoint: "/v1/ai/image-to-video/veo-3-1-fast", resultType: "video", cost: 90, enabled: false },
+  "magnific/veo-3-1-reference-to-video": { family: "magnific/veo-3-1", endpoint: "/v1/ai/reference-to-video/veo-3-1", resultType: "video", cost: 140, enabled: false },
+  "magnific/video-upscaler-precision": { family: "magnific/video-upscaler-precision", endpoint: "/v1/ai/video-upscaler-precision", resultType: "video", cost: 200, enabled: false },
+};
 
 const WAVESPEED_MODEL_DEFINITIONS: readonly WaveSpeedModelDefinition[] = [
   {
@@ -862,6 +976,9 @@ export function normalizeMediaProviderName(providerName: string | null | undefin
   if (normalized === "wavespeed_ai" || normalized === "wavespeedai") {
     return WAVESPEED_PROVIDER;
   }
+  if (normalized === "magnific" || normalized === "magnific_api" || normalized === "magnific_ai") {
+    return MAGNIFIC_PROVIDER;
+  }
   if (
     normalized === "elevenlabs"
     || normalized === "eleven_labs"
@@ -924,7 +1041,9 @@ export function normalizePersistedMediaProviderBaseUrl(
   const normalizedProviderName = normalizeMediaProviderName(providerName);
   const normalizedUrl = normalizedProviderName === WAVESPEED_PROVIDER
     ? normalizeWaveSpeedBaseUrl(trimmed)
-    : new URL(trimmed).toString().replace(/\/$/, "");
+    : normalizedProviderName === MAGNIFIC_PROVIDER
+      ? normalizeMagnificBaseUrl(trimmed)
+      : new URL(trimmed).toString().replace(/\/$/, "");
 
   assertPublicSafeHttpUrl(normalizedUrl, "Provider base URL", { requireHttps: true });
   return normalizedUrl;
@@ -963,6 +1082,15 @@ export function normalizeWaveSpeedBaseUrl(baseUrl: string | null | undefined): s
   }
 
   return parsed.toString().replace(/\/$/, "");
+}
+
+export function normalizeMagnificBaseUrl(baseUrl: string | null | undefined): string {
+  const rawValue = String(baseUrl ?? "").trim() || MAGNIFIC_BASE_URL;
+  const parsed = new URL(rawValue);
+  parsed.pathname = parsed.pathname.replace(/\/+$/, "");
+  const normalized = parsed.toString().replace(/\/$/, "");
+  assertPublicSafeHttpUrl(normalized, "Magnific base URL", { requireHttps: true });
+  return normalized;
 }
 
 export function normalizeRelativeMediaEndpointPath(
@@ -1248,6 +1376,317 @@ export function getWaveSpeedProviderAvailableModels(): Array<{
     type: "textInputKey" in definition ? "audio" : "video",
     description: definition.description,
   }));
+}
+
+export function getMagnificProviderAvailableModels(): ProviderAvailableModelRecord[] {
+  return MAGNIFIC_PROVIDER_MODEL_DEFINITIONS.map((definition) => ({ ...definition }));
+}
+
+function getMagnificOutputExtractors(resultType: "image" | "video" | "image-set"): string[] {
+  if (resultType === "video") {
+    return ["data.video_url", "data.output_url", "data.generated[]", "video_url", "output_url", "generated[]"];
+  }
+  if (resultType === "image-set") {
+    return ["data.url", "data.high_resolution", "data.preview", "url", "high_resolution", "preview"];
+  }
+  return ["data.generated[]", "data.image_url", "data.url", "data.output_url", "generated[]", "image_url", "url", "output_url"];
+}
+
+function buildMagnificInputFields(definition: ProviderAvailableModelRecord): ModelInputFieldRecord[] {
+  const metadata = MAGNIFIC_ENDPOINT_METADATA[definition.id as keyof typeof MAGNIFIC_ENDPOINT_METADATA];
+  const fields: ModelInputFieldRecord[] = [];
+
+  if (definition.id !== "magnific/remove-background" && definition.id !== "magnific/video-upscaler-precision") {
+    fields.push({
+      key: "prompt",
+      label: "Prompt",
+      type: "text",
+      required: true,
+      maxLength: metadata.resultType === "video" ? 20000 : 4096,
+    });
+  }
+
+  if (definition.id !== "magnific/remove-background") {
+    fields.push({
+      key: "negative_prompt",
+      label: "Negative Prompt",
+      type: "text",
+      syncWith: "none",
+      required: false,
+      maxLength: metadata.resultType === "video" ? 20000 : 4096,
+    });
+  }
+
+  if (definition.id === "magnific/mystic") {
+    const loraOptionsSource = {
+      type: "provider_api" as const,
+      endpoint: "/v1/ai/loras",
+      method: "GET" as const,
+      itemsPath: "data",
+      valueField: "id",
+      labelField: "name",
+      queryParam: "query",
+      cacheTtlSeconds: 300,
+    };
+    fields.push(
+      {
+        key: "style_lora_id",
+        label: "Style LoRA",
+        type: "select",
+        required: false,
+        options: [],
+        optionsSource: loraOptionsSource,
+        helpText: "Optional read-only Magnific LoRA selector. You can type an id if discovery is unavailable.",
+      },
+      {
+        key: "character_lora_id",
+        label: "Character LoRA",
+        type: "select",
+        required: false,
+        options: [],
+        optionsSource: loraOptionsSource,
+        helpText: "Optional read-only Magnific LoRA selector. Use prompt @character syntax when needed.",
+      },
+    );
+  }
+
+  if (
+    definition.id.includes("edit")
+    || definition.id.includes("image-to-video")
+    || definition.id.includes("reference")
+    || definition.id.includes("motion-control")
+    || ["magnific/upscaler-creative", "magnific/relight", "magnific/style-transfer", "magnific/remove-background", "magnific/image-expand", "magnific/skin-enhancer-creative", "magnific/skin-enhancer-faithful", "magnific/skin-enhancer-flexible", "magnific/change-camera"].includes(definition.id)
+  ) {
+    fields.push({
+      key: "image_urls",
+      label: "Reference Images",
+      type: "image_urls",
+      syncWith: "reference_images",
+      required: definition.id === "magnific/remove-background" || definition.id.includes("image-to-video"),
+      maxItems: definition.id.includes("nano-banana") ? 3 : 5,
+      allowedExtensions: "jpg,jpeg,png,webp",
+    });
+  }
+
+  if (definition.id === "magnific/video-upscaler-precision" || definition.id.includes("motion-control")) {
+    fields.push({
+      key: "video_urls",
+      label: "Reference Video",
+      type: "video_urls",
+      syncWith: "reference_videos",
+      required: true,
+      maxItems: 1,
+      allowedExtensions: "mp4,webm,mov,m4v",
+    });
+  }
+
+  if (metadata.resultType === "video") {
+    fields.push(
+      {
+        key: "duration",
+        label: "Duration",
+        type: "select",
+        required: true,
+        affectsPricing: true,
+        default: String(MAGNIFIC_VIDEO_DURATIONS[0]),
+        options: MAGNIFIC_VIDEO_DURATIONS.map((duration) => ({ value: String(duration), label: `${duration}s` })),
+      },
+      {
+        key: "resolution",
+        label: "Resolution",
+        type: "select",
+        required: true,
+        affectsPricing: true,
+        default: "720p",
+        options: ["720p", "1080p", "4k"].map((value) => ({ value, label: value })),
+      },
+      {
+        key: "aspect_ratio",
+        label: "Aspect Ratio",
+        type: "select",
+        default: MAGNIFIC_VIDEO_ASPECT_RATIOS[0],
+        syncWith: "aspect_ratio",
+        options: MAGNIFIC_VIDEO_ASPECT_RATIOS.map((value) => ({ value, label: value })),
+      },
+    );
+  } else if (definition.id !== "magnific/remove-background") {
+    fields.push({
+      key: "aspect_ratio",
+      label: "Aspect Ratio",
+      type: "select",
+      default: MAGNIFIC_IMAGE_ASPECT_RATIOS[0],
+      syncWith: "aspect_ratio",
+      options: MAGNIFIC_IMAGE_ASPECT_RATIOS.map((value) => ({ value, label: value })),
+    });
+  }
+
+  if (definition.id === "magnific/video-upscaler-precision") {
+    fields.push(
+      {
+        key: "fps_boost",
+        label: "FPS Boost",
+        type: "boolean",
+        default: false,
+        affectsPricing: true,
+      },
+      {
+        key: "strength",
+        label: "Strength",
+        type: "number",
+        min: 0,
+        max: 100,
+        step: 1,
+        default: 50,
+      },
+    );
+  }
+
+  if (definition.id.includes("nano-banana")) {
+    fields.push({
+      key: "use_google_search_tool",
+      label: "Use Google Search Tool",
+      type: "boolean",
+      default: false,
+    });
+  }
+
+  if (definition.id === "magnific/change-camera") {
+    fields.push(
+      {
+        key: "horizontal_angle",
+        label: "Horizontal Angle",
+        type: "number",
+        min: 0,
+        max: 360,
+        step: 1,
+        default: 0,
+      },
+      {
+        key: "vertical_angle",
+        label: "Vertical Angle",
+        type: "number",
+        min: -30,
+        max: 90,
+        step: 1,
+        default: 0,
+      },
+      {
+        key: "zoom",
+        label: "Zoom",
+        type: "number",
+        min: 0,
+        max: 10,
+        step: 0.1,
+        default: 1,
+      },
+    );
+  }
+
+  if (definition.id === "magnific/image-expand") {
+    for (const key of ["left", "right", "top", "bottom"]) {
+      fields.push({
+        key,
+        label: `${key[0]?.toUpperCase() ?? ""}${key.slice(1)} Expand`,
+        type: "number",
+        min: 0,
+        max: 100,
+        step: 1,
+        default: 0,
+      });
+    }
+  }
+
+  return fields;
+}
+
+export function buildMagnificModelConfigJson(modelId: string): Record<string, unknown> {
+  const definition = MAGNIFIC_PROVIDER_MODEL_DEFINITIONS.find((model) => model.id === modelId);
+  if (!definition) {
+    throw new Error(`Unknown Magnific model id: ${modelId}`);
+  }
+  const metadata = MAGNIFIC_ENDPOINT_METADATA[modelId as keyof typeof MAGNIFIC_ENDPOINT_METADATA];
+  const endpoint = {
+    submit: normalizeRelativeMediaEndpointPath(metadata.endpoint),
+    ...(metadata.dispatchMode === "sync"
+      ? {}
+      : {
+        list: normalizeRelativeMediaEndpointPath(metadata.endpoint),
+        status: normalizeRelativeMediaEndpointPath(`${metadata.endpoint}/{taskId}`, { allowedPlaceholders: ["taskId"] }),
+      }),
+  };
+  const isVideo = metadata.resultType === "video";
+  const readinessReason = metadata.enabled
+    ? "estimated-pricing"
+    : metadata.resultType === "video" && modelId === "magnific/video-upscaler-precision"
+      ? "estimated-pricing; staging-smoke-required; high-cost"
+      : "estimated-pricing; staging-smoke-required";
+
+  return {
+    provider: MAGNIFIC_PROVIDER,
+    providerModelId: modelId,
+    modelFamily: metadata.family,
+    endpoint,
+    dispatchMode: metadata.dispatchMode ?? "async-polling",
+    resultType: metadata.resultType,
+    outputExtractors: getMagnificOutputExtractors(metadata.resultType),
+    inputFields: buildMagnificInputFields(definition),
+    validation: {
+      maxPromptLength: isVideo ? 20000 : 4096,
+      maxReferenceImages: modelId.includes("nano-banana") ? 3 : 5,
+      allowedDurations: isVideo ? [...MAGNIFIC_VIDEO_DURATIONS] : undefined,
+      allowedAspectRatios: isVideo ? [...MAGNIFIC_VIDEO_ASPECT_RATIOS] : [...MAGNIFIC_IMAGE_ASPECT_RATIOS],
+      requirePublicHttpsMediaUrls: true,
+      rejectWebhookUrl: true,
+    },
+    pricing: {
+      formula: isVideo ? "matrix" : "flat",
+      defaultCredits: metadata.cost,
+      matrix: isVideo
+        ? {
+          "720p": { "4": metadata.cost, "6": metadata.cost + 20, "8": metadata.cost + 40 },
+          "1080p": { "4": metadata.cost + 30, "6": metadata.cost + 50, "8": metadata.cost + 70 },
+          "4k": { "4": metadata.cost + 80, "6": metadata.cost + 110, "8": metadata.cost + 140 },
+        }
+        : undefined,
+      provisionalConversion: "creditCost = ceil(providerPriceUsdOrEur * 1000), minimum 1 credit",
+    },
+    pricingStatus: "estimated",
+    pricingSource: "magnific-docs-or-admin",
+    pricingLastReviewedAt: MAGNIFIC_PRICING_REVIEWED_AT,
+    readiness: metadata.enabled ? "estimated-pricing" : "disabled-contract-unverified",
+    readinessReason,
+    enabledDefault: metadata.enabled,
+    adminVisible: true,
+  };
+}
+
+export function buildMagnificModelSeeds(): MagnificModelSeed[] {
+  return MAGNIFIC_PROVIDER_MODEL_DEFINITIONS.map((definition, index) => {
+    const metadata = MAGNIFIC_ENDPOINT_METADATA[definition.id as keyof typeof MAGNIFIC_ENDPOINT_METADATA];
+    const isVideo = metadata.resultType === "video";
+    const configJson = buildMagnificModelConfigJson(definition.id);
+    return {
+      modelId: definition.id,
+      name: definition.name,
+      description: definition.description,
+      modelType: isVideo ? "video" : "image",
+      provider: MAGNIFIC_PROVIDER,
+      modelFamily: metadata.family,
+      aliases: [
+        definition.name.toLowerCase(),
+        definition.id,
+        definition.id.replace(/^magnific\//, ""),
+      ],
+      creditCost: metadata.cost,
+      aspectRatios: isVideo ? [...MAGNIFIC_VIDEO_ASPECT_RATIOS] : [...MAGNIFIC_IMAGE_ASPECT_RATIOS],
+      durations: isVideo ? [...MAGNIFIC_VIDEO_DURATIONS] : [],
+      sizes: isVideo ? [] : ["1K", "2K", "4K"],
+      priority: 30 + index,
+      sortOrder: 300 + index,
+      isEnabled: metadata.enabled,
+      configJson,
+    };
+  });
 }
 
 export function buildElevenLabsModelConfigJson(modelId: string): Record<string, unknown> {

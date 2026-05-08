@@ -57,6 +57,42 @@ def _make_kie_task() -> MediaTask:
     return task
 
 
+def _make_magnific_task() -> MediaTask:
+    task = MediaTask()
+    task.id = "task-magnific-1"
+    task.task_id = "magnific-task-123"
+    task.user_id = 1
+    task.media_type = "image"
+    task.status = TaskStatus.PROCESSING.value
+    task.model = "magnific/nano-banana-pro"
+    task.prompt = "A crisp infographic."
+    task.parameters = {
+        "api_config": {
+            "provider": "magnific",
+        },
+    }
+    task.result_url = None
+    task.result_data = {
+        "submission": {
+            "provider": "magnific",
+            "provider_model_id": "magnific/nano-banana-pro",
+            "provider_task_id": "magnific-task-123",
+            "media_type": "image",
+        },
+        "polling": {
+            "provider": "magnific",
+            "state": "processing",
+        },
+    }
+    task.error_message = None
+    task.credits_used = 20
+    task.credits_balance = 9980
+    task.created_at = datetime.now(timezone.utc)
+    task.started_at = datetime.now(timezone.utc)
+    task.completed_at = None
+    return task
+
+
 @pytest.mark.asyncio
 async def test_fetch_task_result_repolls_wavespeed_and_returns_completed_task():
     task = _make_wavespeed_task()
@@ -127,6 +163,40 @@ async def test_fetch_task_result_repolls_wavespeed_and_reports_processing_state(
     assert result["provider_state"] == "processing"
     assert result["task"].status == TaskStatus.PROCESSING.value
     poll_mock.assert_awaited_once_with(task.id, schedule_next_poll=False)
+    db.refresh.assert_awaited_once_with(task)
+
+
+@pytest.mark.asyncio
+async def test_fetch_task_result_repolls_magnific_instead_of_kie():
+    task = _make_magnific_task()
+    db = AsyncMock()
+    db.refresh = AsyncMock()
+    current_user = SimpleNamespace(id=1)
+
+    async def fake_poll(task_id: str, *, schedule_next_poll: bool):
+        assert task_id == task.id
+        assert schedule_next_poll is False
+        task.status = TaskStatus.COMPLETED.value
+        task.result_url = "https://storage.googleapis.com/smartspec-test/final.png"
+        task.error_message = None
+        task.completed_at = datetime.now(timezone.utc)
+        return {
+            "status": "completed",
+            "task_id": task.id,
+            "result_url": task.result_url,
+        }
+
+    with patch("app.api.v1.media_generation.MediaTaskService.get_task", new=AsyncMock(return_value=task)), \
+         patch("app.tasks.media_tasks._poll_magnific_media_task_async", new=AsyncMock(side_effect=fake_poll)) as magnific_poll_mock, \
+         patch("app.services.media_provider_service.initialize_kie_ai_client", new=AsyncMock()) as kie_init_mock:
+        result = await fetch_task_result(task.id, db=db, current_user=current_user)
+
+    assert result["success"] is True
+    assert result["provider_state"] == "completed"
+    assert result["task"].status == TaskStatus.COMPLETED.value
+    assert result["task"].result_url == "https://storage.googleapis.com/smartspec-test/final.png"
+    magnific_poll_mock.assert_awaited_once_with(task.id, schedule_next_poll=False)
+    kie_init_mock.assert_not_awaited()
     db.refresh.assert_awaited_once_with(task)
 
 

@@ -114,7 +114,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { GenerationProgress, type GenerationTask as QueueGenerationTask } from "@/components/chat/media/GenerationProgress";
 import { clearTenantPageCache } from "@/hooks/useTenantPage";
-import ModelSelectorDialog from "@/components/media/ModelSelectorDialog";
+import ModelSelectorDialog, { formatMediaProviderDisplayName } from "@/components/media/ModelSelectorDialog";
 import { OmniVoiceCloneDialog } from "@/components/media/OmniVoiceCloneDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
 import { ContentComposerPanel } from "@/components/media/ContentComposerPanel";
@@ -204,6 +204,7 @@ import {
   type ModelInputField,
 } from "@/lib/mediaModelInputs";
 import { buildMediaStudioCommonPayload } from "@/lib/mediaStudioPayload";
+import { inferMediaStudioModelInputSyncTarget } from "@/lib/mediaStudioModelInputSync";
 import { buildPricingTierKey } from "@shared/mediaModelPricing";
 import { videoEditorRenderService } from "@/services/videoEditorService";
 import { sanitizeProjectName } from "@smartspec/shared";
@@ -238,6 +239,10 @@ type HistoryGalleryTab = "image" | "video" | "audio";
 type VideoAudioWorkflow = "native" | "separate_voice" | "separate_music" | "separate_voice_music";
 type StoryboardAudioPrepMode = "off" | "generate_voice" | "existing_voice";
 const MEDIA_STUDIO_CREDIT_ORIGIN = "media_studio" as const;
+const HISTORY_GALLERY_PAGE_SIZE = 30;
+const HISTORY_GALLERY_MEDIA_TASK_MAX = 100;
+const HISTORY_GALLERY_PUBLIC_GALLERY_MAX = 100;
+const HISTORY_GALLERY_SHARED_GROUP_MAX = 50;
 const GEMINI_3_1_FLASH_TTS_MODEL_ID = "fal-ai/gemini-3.1-flash-tts";
 const ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID = "elevenlabs/text-to-speech";
 const ELEVENLABS_VOICE_CHANGER_MODEL_ID = "elevenlabs/voice-changer";
@@ -1761,48 +1766,7 @@ function getMediaStudioModelInputValidationErrors(params: {
 }
 
 function inferModelInputSyncTarget(field: Record<string, any> | null | undefined): string {
-  if (!field || typeof field !== "object") {
-    return "none";
-  }
-
-  const rawSyncWith = String(field.syncWith ?? "").trim();
-  if (rawSyncWith && rawSyncWith !== "none") {
-    return rawSyncWith;
-  }
-
-  const type = String(field.type ?? "").trim().toLowerCase();
-  if (type === "image_urls" || type === "audio_urls") {
-    return "reference_images";
-  }
-  if (type === "video_urls") {
-    return "reference_videos";
-  }
-
-  const normalizedKey = String(field.key ?? "").replace(/[^a-z0-9]/gi, "").toLowerCase();
-  if (normalizedKey === "prompt" || normalizedKey.endsWith("prompt")) {
-    return "prompt";
-  }
-  if (normalizedKey.includes("aspect") && normalizedKey.includes("ratio")) {
-    return "aspect_ratio";
-  }
-  if (
-    normalizedKey.includes("imageurls")
-    || normalizedKey.includes("imageurl")
-    || normalizedKey.includes("referenceimages")
-    || normalizedKey.includes("referenceimage")
-  ) {
-    return "reference_images";
-  }
-  if (
-    normalizedKey.includes("videourls")
-    || normalizedKey.includes("videourl")
-    || normalizedKey.includes("referencevideos")
-    || normalizedKey.includes("referencevideo")
-  ) {
-    return "reference_videos";
-  }
-
-  return "none";
+  return inferMediaStudioModelInputSyncTarget(field);
 }
 
 function getVeo31ProviderModelId(model: unknown, extraParams?: Record<string, unknown>): string {
@@ -1924,6 +1888,33 @@ type MediaHistoryTaskLite = {
   startedAt?: string | null;
   completedAt?: string | null;
   updatedAt?: string | null;
+  sourceKind?: "media_task" | "public_gallery" | "group_shared";
+};
+
+type PublicGalleryMediaItemLite = {
+  id: number;
+  type: "image" | "video" | "website";
+  title?: string | null;
+  description?: string | null;
+  fileUrl?: string | null;
+  thumbnailUrl?: string | null;
+  model?: string | null;
+  createdAt?: string | Date | null;
+  updatedAt?: string | Date | null;
+};
+
+type SharedLibraryMediaItemLite = {
+  id: number;
+  item_type?: string | null;
+  source?: string | null;
+  title?: string | null;
+  description?: string | null;
+  status?: string | null;
+  source_url?: string | null;
+  thumbnail_url?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 function sleepMs(ms: number): Promise<void> {
@@ -2808,6 +2799,22 @@ export default function MediaStudio() {
   const [selectedLibraryItemId, setSelectedLibraryItemId] = useState<number | null>(null);
   const [activeSidebarTab, setActiveSidebarTab] = useState<StudioSidebarTab>("history");
   const [historyGalleryTab, setHistoryGalleryTab] = useState<HistoryGalleryTab>("image");
+  const [historyGalleryVisibleLimits, setHistoryGalleryVisibleLimits] = useState<Record<HistoryGalleryTab, number>>({
+    image: HISTORY_GALLERY_PAGE_SIZE,
+    video: HISTORY_GALLERY_PAGE_SIZE,
+    audio: HISTORY_GALLERY_PAGE_SIZE,
+  });
+  const [historyGalleryTaskCache, setHistoryGalleryTaskCache] = useState<Record<HistoryGalleryTab, MediaHistoryTaskLite[]>>({
+    image: [],
+    video: [],
+    audio: [],
+  });
+  const [historyGalleryTotalCache, setHistoryGalleryTotalCache] = useState<Record<HistoryGalleryTab, number>>({
+    image: 0,
+    video: 0,
+    audio: 0,
+  });
+  const historyGalleryLoadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const openPreview = useCallback((url: string | null | undefined, contextTab: MediaType | null = activeTab) => {
     if (!url) return;
@@ -3032,6 +3039,44 @@ export default function MediaStudio() {
     () => visibleMediaModels.find((m) => m.modelId === selectedModel),
     [selectedModel, visibleMediaModels],
   );
+  const handleSelectMediaModel = useCallback((modelId: string) => {
+    setSelectedModel(modelId);
+
+    if (activeTab !== "video" || selectedSkillId !== VEO_STORYBOARD_SKILL_ID || !useAdvancedMode) {
+      return;
+    }
+
+    const selectedModelData = visibleMediaModels.find((model) => model.modelId === modelId);
+    const patch = buildMediaStudioToVeoSkillSync({
+      selectedModelData,
+      modelInputValues,
+      aspectRatio,
+    });
+    patch.videoAudioWorkflow = videoAudioWorkflow;
+    patch.separateVoiceModel = videoVoiceModel;
+    patch.separateMusicModel = videoMusicModel;
+    patch.separateMusicPrompt = videoMusicPrompt;
+
+    if (Object.keys(patch).length === 0 || !hasChangedRecordValues(dynamicFormValues, patch)) {
+      return;
+    }
+
+    setDynamicFormValues({ ...dynamicFormValues, ...patch });
+  }, [
+    activeTab,
+    selectedSkillId,
+    useAdvancedMode,
+    visibleMediaModels,
+    modelInputValues,
+    aspectRatio,
+    videoAudioWorkflow,
+    videoVoiceModel,
+    videoMusicModel,
+    videoMusicPrompt,
+    dynamicFormValues,
+    setSelectedModel,
+    setDynamicFormValues,
+  ]);
   const selectedMediaModelConfig = useMemo(() => {
     const rawConfig = selectedMediaModel?.configJson;
     if (!rawConfig) return null;
@@ -3064,6 +3109,10 @@ export default function MediaStudio() {
   const selectedMediaModelGenerationModeLabel = useMemo(
     () => getModelGenerationModeLabel(selectedMediaModel as any),
     [selectedMediaModel],
+  );
+  const selectedMediaProviderName = useMemo(
+    () => formatMediaProviderDisplayName(selectedMediaModel?.providerName ?? selectedMediaModel?.provider),
+    [selectedMediaModel?.provider, selectedMediaModel?.providerName],
   );
   const isGeminiFlashTtsAudioModel =
     activeTab === "audio" && selectedMediaModel?.modelId === GEMINI_3_1_FLASH_TTS_MODEL_ID;
@@ -3281,6 +3330,59 @@ export default function MediaStudio() {
       refetchOnWindowFocus: true,
     }
   );
+  const historyGalleryLimit = historyGalleryVisibleLimits[historyGalleryTab];
+  const historyGalleryMediaTaskLimit = Math.min(historyGalleryLimit, HISTORY_GALLERY_MEDIA_TASK_MAX);
+  const historyGalleryPublicGalleryLimit = Math.min(historyGalleryLimit, HISTORY_GALLERY_PUBLIC_GALLERY_MAX);
+  const historyGallerySharedGroupLimit = Math.min(historyGalleryLimit, HISTORY_GALLERY_SHARED_GROUP_MAX);
+  const {
+    data: historyGalleryHistory,
+    isFetching: isHistoryGalleryFetching,
+  } = trpc.media.listTasks.useQuery(
+    {
+      mediaType: historyGalleryTab,
+      limit: historyGalleryMediaTaskLimit,
+    },
+    {
+      // Gallery itself is count-based now: newest 30 first, then grows as the user scrolls.
+      refetchInterval: 15000,
+      refetchOnWindowFocus: true,
+    },
+  );
+  const publicGalleryMediaType = historyGalleryTab === "video" ? "video" : "image";
+  const {
+    data: publicGalleryHistoryItems,
+    isFetching: isPublicGalleryFetching,
+  } = trpc.gallery.list.useQuery(
+    {
+      type: publicGalleryMediaType,
+      limit: historyGalleryPublicGalleryLimit,
+    },
+    {
+      enabled: historyGalleryTab === "image" || historyGalleryTab === "video",
+      refetchOnWindowFocus: false,
+      staleTime: 60_000,
+    },
+  );
+  const {
+    data: sharedGroupHistoryData,
+    isFetching: isSharedGroupHistoryFetching,
+  } = trpc.library.listDocuments.useQuery(
+    {
+      scope: "shared_groups",
+      sort: "created_desc",
+      limit: historyGallerySharedGroupLimit,
+      offset: 0,
+      filters: {
+        itemType: historyGalleryTab,
+        status: "ready",
+      },
+    },
+    {
+      enabled: isAuthenticated && !isLoading,
+      refetchOnWindowFocus: false,
+      staleTime: 60_000,
+    },
+  );
   const trpcUtils = trpc.useUtils();
   const saveStoryboardProjectMutation = trpc.videoEditorProjects.save.useMutation();
   const saveStoryboardReviewMutation = trpc.videoEditorProjects.saveStoryboardReview.useMutation();
@@ -3320,10 +3422,166 @@ export default function MediaStudio() {
   );
   const librarySearchResults = (librarySearchData?.results || []) as LibrarySearchResultItem[];
 
+  const historyGallerySourceTasks = useMemo(() => {
+    const tasks = (historyGalleryHistory?.tasks ?? []) as MediaHistoryTaskLite[];
+    return tasks
+      .filter((task) => task.mediaType === historyGalleryTab)
+      .map((task) => ({ ...task, sourceKind: "media_task" as const }));
+  }, [historyGalleryHistory?.tasks, historyGalleryTab]);
+
+  const publicGalleryTasks = useMemo<MediaHistoryTaskLite[]>(() => {
+    if (historyGalleryTab === "audio") return [];
+    const items = (publicGalleryHistoryItems ?? []) as PublicGalleryMediaItemLite[];
+    return items.flatMap((item) => {
+      if (item.type !== historyGalleryTab || !item.fileUrl) return [];
+      const createdAt = item.createdAt ? new Date(item.createdAt).toISOString() : null;
+      const updatedAt = item.updatedAt ? new Date(item.updatedAt).toISOString() : createdAt;
+      return [{
+        id: `public-gallery-${item.id}`,
+        status: "completed",
+        mediaType: item.type,
+        prompt: item.description || item.title || null,
+        model: item.model || "public-gallery",
+        resultUrl: item.fileUrl,
+        resultData: {
+          thumbnail_url: item.thumbnailUrl || null,
+          source: "public_gallery",
+          gallery_item_id: item.id,
+        },
+        createdAt,
+        completedAt: createdAt,
+        updatedAt,
+        sourceKind: "public_gallery" as const,
+      }];
+    });
+  }, [historyGalleryTab, publicGalleryHistoryItems]);
+
+  const sharedGroupTasks = useMemo<MediaHistoryTaskLite[]>(() => {
+    const items = ((sharedGroupHistoryData?.results ?? []) as SharedLibraryMediaItemLite[])
+      .filter((item) => item.item_type === historyGalleryTab && Boolean(item.source_url));
+
+    return items.map((item) => {
+      const metadata = item.metadata && typeof item.metadata === "object" ? item.metadata : {};
+      const modelCandidate = metadata.model_name ?? metadata.model ?? item.source ?? "group-shared";
+      return {
+        id: `group-shared-${item.id}`,
+        status: item.status === "ready" ? "completed" : item.status || "completed",
+        mediaType: historyGalleryTab,
+        prompt: item.description || item.title || null,
+        model: String(modelCandidate || "group-shared"),
+        resultUrl: item.source_url || null,
+        resultData: {
+          thumbnail_url: item.thumbnail_url || null,
+          metadata,
+          source: "group_shared",
+          library_item_id: item.id,
+        },
+        createdAt: item.created_at || null,
+        completedAt: item.created_at || null,
+        updatedAt: item.updated_at || item.created_at || null,
+        sourceKind: "group_shared" as const,
+      };
+    });
+  }, [historyGalleryTab, sharedGroupHistoryData?.results]);
+
+  const combinedHistoryGalleryTasks = useMemo(() => {
+    const priority: Record<NonNullable<MediaHistoryTaskLite["sourceKind"]>, number> = {
+      media_task: 0,
+      group_shared: 1,
+      public_gallery: 2,
+    };
+    const byKey = new Map<string, MediaHistoryTaskLite>();
+    for (const task of [
+      ...historyGallerySourceTasks,
+      ...sharedGroupTasks,
+      ...publicGalleryTasks,
+    ]) {
+      const resultUrl = extractTaskResultUrl(task);
+      const key = resultUrl ? `url:${resultUrl.toLowerCase()}` : `id:${task.id}`;
+      const existing = byKey.get(key);
+      if (!existing || priority[task.sourceKind || "public_gallery"] < priority[existing.sourceKind || "public_gallery"]) {
+        byKey.set(key, task);
+      }
+    }
+
+    return Array.from(byKey.values()).sort((a, b) => {
+      const aDate = new Date(a.completedAt || a.createdAt || a.updatedAt || 0).getTime();
+      const bDate = new Date(b.completedAt || b.createdAt || b.updatedAt || 0).getTime();
+      return bDate - aDate;
+    });
+  }, [historyGallerySourceTasks, publicGalleryTasks, sharedGroupTasks]);
+
+  const combinedHistoryGalleryTotal = useMemo(() => {
+    const publicGalleryCount = (publicGalleryHistoryItems ?? []).length;
+    const publicGalleryTotalEstimate =
+      historyGalleryTab === "audio"
+        ? 0
+        : publicGalleryCount >= historyGalleryPublicGalleryLimit && historyGalleryPublicGalleryLimit < HISTORY_GALLERY_PUBLIC_GALLERY_MAX
+          ? historyGalleryPublicGalleryLimit + HISTORY_GALLERY_PAGE_SIZE
+          : publicGalleryCount;
+    return (
+      Math.min(historyGalleryHistory?.total ?? historyGallerySourceTasks.length, HISTORY_GALLERY_MEDIA_TASK_MAX) +
+      Math.min(sharedGroupHistoryData?.total ?? sharedGroupTasks.length, HISTORY_GALLERY_SHARED_GROUP_MAX) +
+      publicGalleryTotalEstimate
+    );
+  }, [
+    historyGalleryHistory?.total,
+    historyGalleryPublicGalleryLimit,
+    historyGallerySourceTasks.length,
+    historyGalleryTab,
+    publicGalleryHistoryItems,
+    sharedGroupHistoryData?.total,
+    sharedGroupTasks.length,
+  ]);
+  const isHistoryGalleryFeedFetching = isHistoryGalleryFetching || isPublicGalleryFetching || isSharedGroupHistoryFetching;
+
+  useEffect(() => {
+    if (!historyGalleryHistory?.tasks && !publicGalleryHistoryItems && !sharedGroupHistoryData?.results) return;
+    setHistoryGalleryTaskCache((prev) => ({
+      ...prev,
+      [historyGalleryTab]:
+        isHistoryGalleryFeedFetching && combinedHistoryGalleryTasks.length < (prev[historyGalleryTab]?.length ?? 0)
+          ? prev[historyGalleryTab]
+          : combinedHistoryGalleryTasks,
+    }));
+    setHistoryGalleryTotalCache((prev) => ({
+      ...prev,
+      [historyGalleryTab]: Math.max(combinedHistoryGalleryTotal, prev[historyGalleryTab] ?? 0),
+    }));
+  }, [
+    combinedHistoryGalleryTasks,
+    combinedHistoryGalleryTotal,
+    historyGalleryHistory?.tasks,
+    historyGalleryTab,
+    isHistoryGalleryFeedFetching,
+    publicGalleryHistoryItems,
+    sharedGroupHistoryData?.results,
+  ]);
+
   const historyGalleryTasks = useMemo(() => {
-    const tasks = (mediaHistory?.tasks ?? []) as MediaHistoryTaskLite[];
-    return tasks.filter((task) => task.mediaType === historyGalleryTab);
-  }, [mediaHistory?.tasks, historyGalleryTab]);
+    const cachedTasks = historyGalleryTaskCache[historyGalleryTab] ?? [];
+    if (historyGalleryHistory?.tasks || publicGalleryHistoryItems || sharedGroupHistoryData?.results) {
+      if (isHistoryGalleryFeedFetching && combinedHistoryGalleryTasks.length < cachedTasks.length) {
+        return cachedTasks;
+      }
+      return combinedHistoryGalleryTasks;
+    }
+    return cachedTasks;
+  }, [
+    combinedHistoryGalleryTasks,
+    historyGalleryHistory?.tasks,
+    historyGalleryTab,
+    historyGalleryTaskCache,
+    isHistoryGalleryFeedFetching,
+    publicGalleryHistoryItems,
+    sharedGroupHistoryData?.results,
+  ]);
+  const historyGalleryTotal = (
+    historyGalleryHistory?.tasks || publicGalleryHistoryItems || sharedGroupHistoryData?.results
+      ? combinedHistoryGalleryTotal
+      : historyGalleryTotalCache[historyGalleryTab]
+  ) ?? historyGalleryTasks.length;
+  const historyGalleryHasMore = historyGalleryTasks.length < historyGalleryTotal;
 
   const historyGalleryCompletedTasks = useMemo(() => {
     return historyGalleryTasks.filter((task) => {
@@ -3398,6 +3656,25 @@ export default function MediaStudio() {
       return false;
     });
   }, [historyGalleryTasks, sessionStartTime]);
+
+  useEffect(() => {
+    const target = historyGalleryLoadMoreRef.current;
+    if (!target || activeSidebarTab !== "history" || !historyGalleryHasMore || isHistoryGalleryFeedFetching) {
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      const isVisible = entries.some((entry) => entry.isIntersecting);
+      if (!isVisible) return;
+      setHistoryGalleryVisibleLimits((prev) => ({
+        ...prev,
+        [historyGalleryTab]: prev[historyGalleryTab] + HISTORY_GALLERY_PAGE_SIZE,
+      }));
+    }, { rootMargin: "240px 0px" });
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [activeSidebarTab, historyGalleryHasMore, historyGalleryTab, isHistoryGalleryFeedFetching]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -6313,6 +6590,41 @@ export default function MediaStudio() {
     }
   };
 
+  const writeClipboardText = useCallback(async (text: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    if (typeof document !== "undefined") {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return;
+    }
+    throw new Error("Clipboard API not available");
+  }, []);
+
+  const copyComposerText = useCallback(async (text: string, successMessage: string) => {
+    const normalized = text.trim();
+    if (!normalized) {
+      toast.error(t('mediaStudio.copyEmpty'));
+      return;
+    }
+    try {
+      await writeClipboardText(normalized);
+      toast.success(successMessage);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+      toast.error(t('mediaStudio.copyFailed'));
+    }
+  }, [t, writeClipboardText]);
+
   // Use prompt from lightbox (copy to input)
   const usePromptFromLightbox = () => {
     if (lightboxImage?.prompt) {
@@ -6325,10 +6637,40 @@ export default function MediaStudio() {
     }
   };
 
+  function isUsableMediaUrl(value: string): boolean {
+    const trimmed = value.trim();
+    return (
+      trimmed.startsWith("http://") ||
+      trimmed.startsWith("https://") ||
+      trimmed.startsWith("/api/storage/files/") ||
+      trimmed.startsWith("/api/v1/media/files/") ||
+      trimmed.startsWith("/uploads/") ||
+      trimmed.startsWith("data:") ||
+      trimmed.startsWith("blob:")
+    );
+  }
+
+  function normalizeTaskMediaUrl(value: string): string {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    try {
+      const parsed = new URL(trimmed, window.location.origin);
+      if (parsed.hostname.endsWith(".r2.cloudflarestorage.com")) {
+        const key = decodeURIComponent(parsed.pathname.replace(/^\/+/, "").split("/").slice(1).join("/"));
+        if (key) {
+          return `/api/storage/files/${encodeURI(key)}`;
+        }
+      }
+    } catch {
+      // Keep the original URL if parsing fails; validation happens separately.
+    }
+    return trimmed;
+  }
+
   function extractTaskResultUrl(task: any): string | null {
     const fromValue = (value: any): string | null => {
       if (!value) return null;
-      if (typeof value === "string" && value.startsWith("http")) return value;
+      if (typeof value === "string" && isUsableMediaUrl(value)) return normalizeTaskMediaUrl(value);
       if (Array.isArray(value)) {
         for (const item of value) {
           const found = fromValue(item);
@@ -6348,16 +6690,16 @@ export default function MediaStudio() {
         ];
         for (const key of directKeys) {
           const candidate = value[key];
-          if (typeof candidate === "string" && candidate.startsWith("http")) {
-            return candidate;
+          if (typeof candidate === "string" && isUsableMediaUrl(candidate)) {
+            return normalizeTaskMediaUrl(candidate);
           }
         }
       }
       return null;
     };
 
-    if (typeof task?.resultUrl === "string" && task.resultUrl.startsWith("http")) {
-      return task.resultUrl;
+    if (typeof task?.resultUrl === "string" && isUsableMediaUrl(task.resultUrl)) {
+      return normalizeTaskMediaUrl(task.resultUrl);
     }
 
     const directCandidates = [
@@ -6397,6 +6739,70 @@ export default function MediaStudio() {
       resultData.resultJson,
       parsedResultJson,
       resultData.output,
+    ];
+
+    for (const candidate of candidates) {
+      const found = fromValue(candidate);
+      if (found) return found;
+    }
+
+    return null;
+  }
+
+  function extractTaskThumbnailUrl(task: any): string | null {
+    const fromValue = (value: any): string | null => {
+      if (!value) return null;
+      if (typeof value === "string" && isUsableMediaUrl(value)) return normalizeTaskMediaUrl(value);
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          const found = fromValue(item);
+          if (found) return found;
+        }
+        return null;
+      }
+      if (typeof value !== "object") return null;
+
+      const directKeys = [
+        "thumbnail_url",
+        "thumbnailUrl",
+        "thumbnail",
+        "poster_url",
+        "posterUrl",
+        "poster",
+      ];
+      for (const key of directKeys) {
+        const candidate = value[key];
+        if (typeof candidate === "string" && isUsableMediaUrl(candidate)) {
+          return normalizeTaskMediaUrl(candidate);
+        }
+      }
+      return null;
+    };
+
+    const direct = fromValue(task?.thumbnailUrl ?? task?.thumbnail_url ?? task?.posterUrl ?? task?.poster_url);
+    if (direct) return direct;
+
+    const resultData = task?.resultData;
+    if (!resultData || typeof resultData !== "object") return null;
+    let parsedResultJson: any = null;
+    if (typeof resultData.resultJson === "string") {
+      try {
+        parsedResultJson = JSON.parse(resultData.resultJson);
+      } catch {
+        parsedResultJson = null;
+      }
+    }
+
+    const candidates = [
+      resultData,
+      resultData.result,
+      resultData.output,
+      resultData.response,
+      resultData.data,
+      resultData.data?.response,
+      resultData.data?.taskResult,
+      resultData.taskResult,
+      parsedResultJson,
     ];
 
     for (const candidate of candidates) {
@@ -6533,6 +6939,10 @@ export default function MediaStudio() {
   const visibleGenerationQueueTasks = useMemo(
     () => generationQueueTasks.filter((task) => !isGenerationQueueTaskDismissed(task, dismissedGenerationQueueTaskIds)),
     [dismissedGenerationQueueTaskIds, generationQueueTasks],
+  );
+  const activeVisibleGenerationQueueTasks = useMemo(
+    () => visibleGenerationQueueTasks.filter((task) => isActiveGenerationQueueStatus(task.status)),
+    [visibleGenerationQueueTasks],
   );
 
   const deleteDeferredTaskIds = useCallback((taskIds: readonly string[]) => {
@@ -7520,6 +7930,15 @@ export default function MediaStudio() {
     setStoryboardCompoundStatus("Compound render cancelled");
   }, [setStoryboardCompoundStatus]);
 
+  const openStoryboardReviewPage = useCallback((reviewId?: number | null) => {
+    const draft = buildStoryboardReviewDraft();
+    if (draft) {
+      writeStoryboardReviewDraft({ ...draft, updatedAt: Date.now() });
+    }
+    const path = reviewId ? `/storyboard-review/${reviewId}` : "/storyboard-review";
+    window.open(path, "_blank", "noopener,noreferrer");
+  }, [buildStoryboardReviewDraft]);
+
   const regenerateStoryboardClip = useCallback(async (taskId: string, prompt: string) => {
     const task = generationTasks.find((item) => item.id === taskId);
     if (!task?.storyboardContext) {
@@ -8370,6 +8789,21 @@ export default function MediaStudio() {
             </div>
             <div className="flex items-center gap-3">
               <LocaleToggle className="hidden sm:inline-flex" />
+              {storyboardReviewTaskIds.length > 0 && !storyboardReviewOpen && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openStoryboardReviewPage(storyboardReviewId)}
+                  className="border-cyan-200 bg-white/80 text-cyan-700 shadow-sm hover:bg-cyan-50 dark:border-cyan-900 dark:bg-slate-950/80 dark:text-cyan-300 dark:hover:bg-cyan-950/60"
+                >
+                  <Layers className="h-4 w-4 mr-1" />
+                  <span className="hidden md:inline">{t('mediaStudio.storyboardReview')}</span>
+                  <span className="ml-2 rounded-full bg-cyan-100 px-2 py-0.5 text-[11px] font-medium text-cyan-700 dark:bg-cyan-950/70 dark:text-cyan-200">
+                    {storyboardReviewCompletedCount}/{storyboardReviewTaskIds.length}
+                  </span>
+                </Button>
+              )}
               <HelpButton page="/media-studio" variant="ghost" size="sm" />
               <Badge variant="secondary" className="gap-1">
                 <Zap className="h-3 w-3" />
@@ -8734,26 +9168,42 @@ export default function MediaStudio() {
                 </div>
               )}
 
-              <Textarea
-                ref={promptTextareaRef}
-                value={enhancedPrompt || prompt}
-                onChange={(e) => {
-                  if (enhancedPrompt) {
-                    setEnhancedPrompt(e.target.value);
-                  } else {
-                    setPrompt(e.target.value);
+              <div className="space-y-2">
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyComposerText(
+                      promptTextareaRef.current?.value || enhancedPrompt || prompt,
+                      t('mediaStudio.copyPromptSuccess'),
+                    )}
+                  >
+                    <Copy className="mr-1 h-4 w-4" />
+                    {t('mediaStudio.copyPrompt')}
+                  </Button>
+                </div>
+                <Textarea
+                  ref={promptTextareaRef}
+                  value={enhancedPrompt || prompt}
+                  onChange={(e) => {
+                    if (enhancedPrompt) {
+                      setEnhancedPrompt(e.target.value);
+                    } else {
+                      setPrompt(e.target.value);
+                    }
+                    setPromptReview(null);
+                  }}
+                  placeholder={
+                    isVoiceChangerMode
+                      ? "Optional notes for this conversion..."
+                      : isTextToSpeechMode
+                      ? t('mediaStudio.ttsText.placeholder')
+                      : `Describe the ${activeTab} you want to create...`
                   }
-                  setPromptReview(null);
-                }}
-                placeholder={
-                  isVoiceChangerMode
-                    ? "Optional notes for this conversion..."
-                    : isTextToSpeechMode
-                    ? t('mediaStudio.ttsText.placeholder')
-                    : `Describe the ${activeTab} you want to create...`
-                }
-                className={cn("resize-y", isVoiceChangerMode ? "min-h-[84px]" : "min-h-[120px]")}
-              />
+                  className={cn("resize-y", isVoiceChangerMode ? "min-h-[84px]" : "min-h-[120px]")}
+                />
+              </div>
 
               {isTextToSpeechMode && !isGeminiFlashTtsAudioModel && (
                 <p className="text-xs leading-relaxed text-muted-foreground">
@@ -8872,6 +9322,15 @@ export default function MediaStudio() {
                               variant="outline"
                               size="sm"
                               className="border-emerald-200 text-emerald-800 hover:bg-emerald-100"
+                              onClick={() => copyComposerText(visibleReferenceNotes, t('mediaStudio.copyReferenceNotesSuccess'))}
+                            >
+                              <Copy className="h-4 w-4 mr-1" />
+                              {t('mediaStudio.copyReferenceNotes')}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-emerald-200 text-emerald-800 hover:bg-emerald-100"
                               onClick={openReferenceNotesEditor}
                             >
                               <Pencil className="h-4 w-4 mr-1" />
@@ -8896,6 +9355,15 @@ export default function MediaStudio() {
                             <Badge variant="outline" className="border-emerald-200 bg-white text-emerald-700">
                               {t('mediaStudio.promptSupportNotes.editing')}
                             </Badge>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-emerald-200 text-emerald-800 hover:bg-emerald-100"
+                              onClick={() => copyComposerText(referenceNotesDraft, t('mediaStudio.copyReferenceNotesSuccess'))}
+                            >
+                              <Copy className="h-4 w-4 mr-1" />
+                              {t('mediaStudio.copyReferenceNotes')}
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -8977,6 +9445,15 @@ export default function MediaStudio() {
                               variant="outline"
                               size="sm"
                               className="border-sky-200 text-sky-800 hover:bg-sky-100"
+                              onClick={() => copyComposerText(visibleContinuityNotes, t('mediaStudio.copyContinuityNotesSuccess'))}
+                            >
+                              <Copy className="h-4 w-4 mr-1" />
+                              {t('mediaStudio.copyContinuityNotes')}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-sky-200 text-sky-800 hover:bg-sky-100"
                               onClick={openContinuityNotesEditor}
                             >
                               <Pencil className="h-4 w-4 mr-1" />
@@ -9001,6 +9478,15 @@ export default function MediaStudio() {
                             <Badge variant="outline" className="border-sky-200 bg-white text-sky-700">
                               {t('mediaStudio.promptSupportNotes.editing')}
                             </Badge>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-sky-200 text-sky-800 hover:bg-sky-100"
+                              onClick={() => copyComposerText(continuityNotesDraft, t('mediaStudio.copyContinuityNotesSuccess'))}
+                            >
+                              <Copy className="h-4 w-4 mr-1" />
+                              {t('mediaStudio.copyContinuityNotes')}
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -9066,26 +9552,43 @@ export default function MediaStudio() {
 
               {/* Character Count */}
               {(() => {
-                const currentPromptLength = (enhancedPrompt || prompt).length;
+                const promptTextForCount = enhancedPrompt || prompt;
+                const multiVideoPromptLengths = activeTab === "video" && videoOutputType === "multi-video"
+                  ? parseMultiVideoPrompts(promptTextForCount).map((promptBlock) => promptBlock.length)
+                  : [];
+                const longestMultiVideoPromptLength = multiVideoPromptLengths.length > 1
+                  ? Math.max(...multiVideoPromptLengths)
+                  : null;
+                const currentPromptLength = longestMultiVideoPromptLength ?? promptTextForCount.length;
                 const maxLength = selectedMediaModelMaxPromptLength;
                 const isOverLimit = maxLength !== null ? currentPromptLength > maxLength : false;
                 const isNearLimit = maxLength !== null ? currentPromptLength > maxLength * 0.95 : false;
+                const totalPromptLength = promptTextForCount.length;
 
                 return (
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                    <span className={cn(
-                      isOverLimit && "text-red-600 font-medium",
-                      isNearLimit && !isOverLimit && "text-amber-600"
-                    )}>
-                      {maxLength !== null
-                        ? t('mediaStudio.promptCharacterCountWithMax', {
-                            current: currentPromptLength.toLocaleString(),
-                            max: maxLength.toLocaleString(),
-                          })
-                        : t('mediaStudio.promptCharacterCount', {
-                            current: currentPromptLength.toLocaleString(),
-                          })}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={cn(
+                        isOverLimit && "text-red-600 font-medium",
+                        isNearLimit && !isOverLimit && "text-amber-600"
+                      )}>
+                        {maxLength !== null
+                          ? t('mediaStudio.promptCharacterCountWithMax', {
+                              current: currentPromptLength.toLocaleString(),
+                              max: maxLength.toLocaleString(),
+                            })
+                          : t('mediaStudio.promptCharacterCount', {
+                              current: currentPromptLength.toLocaleString(),
+                            })}
+                      </span>
+                      {longestMultiVideoPromptLength !== null && (
+                        <span className="text-muted-foreground/80">
+                          {isThaiLocale
+                            ? `นับจาก prompt ที่ยาวสุดใน ${multiVideoPromptLengths.length} วิดีโอ (รวม ${totalPromptLength.toLocaleString()} ตัวอักษร)`
+                            : `Longest split prompt across ${multiVideoPromptLengths.length} videos (total ${totalPromptLength.toLocaleString()} chars)`}
+                        </span>
+                      )}
+                    </div>
                     {isOverLimit && maxLength !== null && (
                       <span className="text-red-600 flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
@@ -9412,7 +9915,7 @@ export default function MediaStudio() {
                   <label className="text-sm text-muted-foreground">{t('mediaStudio.modelLabel')}</label>
                   <Button
                     variant="outline"
-                    className="w-full justify-start h-auto min-h-10 py-2"
+                    className="w-full flex-wrap justify-start h-auto min-h-10 py-2"
                     onClick={() => setShowModelDialog(true)}
                   >
                     <Bot className="h-4 w-4 mr-2" />
@@ -9421,6 +9924,14 @@ export default function MediaStudio() {
                         ? visibleMediaModels.find((m: any) => m.modelId === selectedModel)?.name || t('mediaStudio.selectModel')
                         : t('mediaStudio.selectModel')}
                     </span>
+                    {selectedMediaModel && (
+                      <Badge
+                        variant="outline"
+                        className="ml-2 shrink-0 border-indigo-200 bg-indigo-50 text-indigo-700 text-[10px]"
+                      >
+                        {t('mediaStudio.providerLabel')}: {selectedMediaProviderName}
+                      </Badge>
+                    )}
                     {selectedMediaModelGenerationModeLabel && (
                       <Badge
                         variant="outline"
@@ -9454,7 +9965,7 @@ export default function MediaStudio() {
                       }))
                     }
                     selectedModelId={selectedModel}
-                    onSelect={setSelectedModel}
+                    onSelect={handleSelectMediaModel}
                     mediaType={activeTab}
                     isLoading={!mediaModels}
                   />
@@ -9563,6 +10074,32 @@ export default function MediaStudio() {
                     </div>
                   );
                 })()}
+
+                {activeTab === "video" && selectedStoryboardClipDurationSeconds !== undefined && (
+                  <div className="space-y-1">
+                    <label className="text-sm text-muted-foreground">
+                      {t('mediaStudio.storyboardClipDuration')}
+                    </label>
+                    <div className="flex min-h-10 items-center justify-between gap-3 rounded-md border border-sky-200 bg-sky-50/70 px-3 py-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Clock className="h-4 w-4 shrink-0 text-sky-600" />
+                        <span className="truncate text-sm font-medium text-slate-800">
+                          {t('mediaStudio.storyboardClipDurationValue', {
+                            seconds: selectedStoryboardClipDurationSeconds.toLocaleString(undefined, {
+                              maximumFractionDigits: 2,
+                            }),
+                          })}
+                        </span>
+                      </div>
+                      <Badge variant="outline" className="shrink-0 border-sky-300 bg-white text-sky-700">
+                        {t('mediaStudio.modelSynced')}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {t('mediaStudio.storyboardClipDurationHelp')}
+                    </p>
+                  </div>
+                )}
 
                 {/* Dynamic Model Input Fields from configJson */}
                 {(() => {
@@ -11321,7 +11858,9 @@ export default function MediaStudio() {
                             {historyGalleryCompletedTasks.map((task) => {
                               const resultUrl = extractTaskResultUrl(task);
                               if (!resultUrl) return null;
-                              const canAddToLibrary = isMediaTaskEligibleForLibraryAdd({
+                              const thumbnailUrl = extractTaskThumbnailUrl(task);
+                              const displayUrl = thumbnailUrl || resultUrl;
+                              const canAddToLibrary = task.sourceKind === "media_task" && isMediaTaskEligibleForLibraryAdd({
                                 id: task.id,
                                 status: task.status,
                                 resultUrl,
@@ -11390,16 +11929,38 @@ export default function MediaStudio() {
                                       </Tooltip>
                                     </TooltipProvider>
                                   )}
+                                  {task.sourceKind && task.sourceKind !== "media_task" && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="pointer-events-none absolute right-1 top-1 z-[1] rounded-full border bg-white/90 px-2 py-0.5 text-[10px] shadow-sm"
+                                    >
+                                      {task.sourceKind === "public_gallery" ? "Public" : "Group"}
+                                    </Badge>
+                                  )}
                                   {task.mediaType === "video" ? (
                                     <div className="relative w-full aspect-square rounded-lg border border-blue-200 overflow-hidden hover:border-blue-400 transition-colors bg-black">
-                                      <video
-                                        src={resultUrl}
-                                        className="w-full h-full object-cover"
-                                        muted
-                                        playsInline
-                                        preload="metadata"
-                                        onError={() => markExpired(resultUrl)}
-                                      />
+                                      {thumbnailUrl ? (
+                                        <img
+                                          src={displayUrl}
+                                          alt={task.prompt?.slice(0, 30)}
+                                          className="h-full w-full object-cover"
+                                          loading="lazy"
+                                          onError={(event) => {
+                                            if (event.currentTarget.dataset.fallbackApplied === "true") return;
+                                            event.currentTarget.dataset.fallbackApplied = "true";
+                                            event.currentTarget.src = resultUrl;
+                                          }}
+                                        />
+                                      ) : (
+                                        <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 text-center">
+                                          <div className="rounded-full border border-sky-200 bg-white/90 p-3 shadow-sm">
+                                            <Video className="h-7 w-7 text-sky-600" />
+                                          </div>
+                                          <p className="line-clamp-3 text-xs font-medium leading-relaxed text-slate-700">
+                                            {task.prompt || task.model || t('mediaStudio.tabs.video')}
+                                          </p>
+                                        </div>
+                                      )}
                                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                         <div className="rounded-full bg-black/50 p-2">
                                           <Play className="h-4 w-4 text-white" />
@@ -11426,10 +11987,19 @@ export default function MediaStudio() {
                                     </div>
                                   ) : (
                                     <img
-                                      src={resultUrl}
+                                      src={displayUrl}
                                       alt={task.prompt?.slice(0, 30)}
                                       className="w-full aspect-square object-cover rounded-lg border hover:border-blue-400 transition-colors"
-                                      onError={() => markExpired(resultUrl)}
+                                      loading="lazy"
+                                      onError={(event) => {
+                                        if (displayUrl !== resultUrl) {
+                                          if (event.currentTarget.dataset.fallbackApplied === "true") return;
+                                          event.currentTarget.dataset.fallbackApplied = "true";
+                                          event.currentTarget.src = resultUrl;
+                                          return;
+                                        }
+                                        markExpired(resultUrl);
+                                      }}
                                     />
                                   )}
                                   <div className="mt-1 flex items-center justify-center gap-1.5 rounded-md border bg-white/90 px-1 py-1 shadow-sm">
@@ -11559,6 +12129,23 @@ export default function MediaStudio() {
                                 </div>
                               );
                             })}
+                          </div>
+                          <div ref={historyGalleryLoadMoreRef} className="mb-4 min-h-8">
+                            {historyGalleryHasMore ? (
+                              <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                                {isHistoryGalleryFeedFetching ? (
+                                  <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    {t('mediaStudio.loadingMoreHistory')}
+                                  </>
+                                ) : (
+                                  t('mediaStudio.historyGalleryShowingCount', {
+                                    shown: historyGalleryTasks.length,
+                                    total: historyGalleryTotal,
+                                  })
+                                )}
+                              </div>
+                            ) : null}
                           </div>
 
                           {/* Pending/Processing Tasks - Only show failed tasks from current session */}
@@ -12264,7 +12851,7 @@ export default function MediaStudio() {
                       <Button
                         type="button"
                         size="sm"
-                        onClick={() => void openStoryboardReviewProject(review.id)}
+                        onClick={() => window.open(`/storyboard-review/${review.id}`, "_blank", "noopener,noreferrer")}
                       >
                         {t('mediaStudio.storyboardReviewOpen')}
                       </Button>
@@ -12295,20 +12882,6 @@ export default function MediaStudio() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {!storyboardReviewOpen && storyboardReviewTaskIds.length > 0 && (
-        <Button
-          type="button"
-          onClick={() => setStoryboardReviewOpen(true)}
-          className="fixed bottom-20 right-3 z-[61] rounded-full bg-cyan-600 px-4 py-2 text-white shadow-xl hover:bg-cyan-700 sm:right-4"
-        >
-          <Layers className="mr-2 h-4 w-4" />
-          {t('mediaStudio.storyboardReview')}
-          <span className="ml-2 rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-medium">
-            {storyboardReviewCompletedCount}/{storyboardReviewTaskIds.length}
-          </span>
-        </Button>
-      )}
 
       {storyboardReviewOpen && (
       <StoryboardBatchReviewDialog
@@ -12342,7 +12915,7 @@ export default function MediaStudio() {
         />
       )}
 
-      {isGenerationQueueHidden && visibleGenerationQueueTasks.length > 0 && (
+      {isGenerationQueueHidden && activeVisibleGenerationQueueTasks.length > 0 && (
         <Button
           type="button"
           variant="outline"
@@ -12351,14 +12924,14 @@ export default function MediaStudio() {
         >
           {t('mediaStudio.generationQueue.showQueue')}
           <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:bg-sky-950/70 dark:text-sky-200">
-            {t('mediaStudio.items', { count: visibleGenerationQueueTasks.length })}
+            {t('mediaStudio.items', { count: activeVisibleGenerationQueueTasks.length })}
           </span>
         </Button>
       )}
 
-      {!isGenerationQueueHidden && visibleGenerationQueueTasks.length > 0 && (
+      {!isGenerationQueueHidden && activeVisibleGenerationQueueTasks.length > 0 && (
         <GenerationProgress
-          tasks={visibleGenerationQueueTasks}
+          tasks={activeVisibleGenerationQueueTasks}
           title={t('mediaStudio.generationQueueTitle')}
           subtitle={t('mediaStudio.generationQueueSubtitle')}
           maxVisible={6}

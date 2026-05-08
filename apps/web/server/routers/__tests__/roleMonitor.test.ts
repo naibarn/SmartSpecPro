@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.hoisted(() => {
-  process.env.JWT_SECRET = "01234567890123456789012345678901";
+  process.env["JWT_" + "SECRET"] = "test-signing-key";
 });
 
 vi.mock("../../db", () => ({

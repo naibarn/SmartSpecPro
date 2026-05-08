@@ -64,6 +64,7 @@
   "sources.stt": "STT",
   "sources.tts": "TTS",
   "sources.translate": "Translate",
+  "sources.voiceAgent": "Voice Agent",
   "sources.webhookChat": "Webhook Chat",
   "sources.webhookTrigger": "Webhook Trigger",
   "sources.widgetChat": "Widget Chat",

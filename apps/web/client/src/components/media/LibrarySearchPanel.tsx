@@ -3,8 +3,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { cn } from "@/lib/utils";
-import { FileImage, FileText, Film, Loader2, Plus, Search } from "lucide-react";
+import { FileImage, FileText, Film, Loader2, Music, Plus, Search } from "lucide-react";
 
 import type { LibraryItemTypeFilter, LibrarySearchResultItem } from "@/lib/libraryUi";
 import { getLibraryStatusMeta } from "@/lib/libraryUi";
@@ -48,6 +49,7 @@ export default function LibrarySearchPanel({
   onAddToReference,
   onSelect,
 }: LibrarySearchPanelProps) {
+  const { t } = useScopedTranslation(["media", "common"]);
   const showItemTypeFilter = typeof onItemTypeFilterChange === "function";
   const showAddToReference = typeof onAddToReference === "function";
   const hasActiveSearchCriteria = query.trim().length > 0 || recentDays !== "all" || itemTypeFilter !== "all";
@@ -71,7 +73,11 @@ export default function LibrarySearchPanel({
       return;
     }
 
-    const mediaType = item.item_type.toLowerCase() === "video" ? "video" : "image";
+    const mediaType = item.item_type.toLowerCase() === "video"
+      ? "video"
+      : item.item_type.toLowerCase() === "audio"
+        ? "audio"
+        : "image";
     event.dataTransfer.setData("text/uri-list", dragUrl);
     event.dataTransfer.setData("text/plain", dragUrl);
     event.dataTransfer.setData("application/x-smartspec-media-type", mediaType);
@@ -126,32 +132,37 @@ export default function LibrarySearchPanel({
     if (itemType === "video") {
       return <Film className="h-5 w-5 text-muted-foreground" />;
     }
+    if (itemType === "audio") {
+      return <Music className="h-5 w-5 text-muted-foreground" />;
+    }
 
     return <FileText className="h-5 w-5 text-muted-foreground" />;
   };
 
   return (
-    <div className="bg-white/70 backdrop-blur rounded-xl border p-4 space-y-3">
+    <div className="min-w-0 space-y-2 rounded-lg border bg-white/70 p-2.5 backdrop-blur">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold flex items-center gap-2">
-          <Search className="h-4 w-4" />
-          Search Library
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <Search className="h-3.5 w-3.5" />
+          {t("mediaStudio.librarySearchTitle")}
         </h3>
       </div>
 
       <Input
         value={query}
         onChange={(event) => onQueryChange(event.target.value)}
-        placeholder="Search reusable assets..."
+        placeholder={t("mediaStudio.librarySearchPlaceholder")}
+        className="h-9"
       />
 
       {showItemTypeFilter && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {(
             [
-              { value: "all", label: "All", icon: FileText },
-              { value: "image", label: "Image", icon: FileImage },
-              { value: "video", label: "Video", icon: Film },
+              { value: "all", label: t("common.allReadStates"), icon: FileText },
+              { value: "image", label: t("mediaStudio.librarySearchImage"), icon: FileImage },
+              { value: "video", label: t("mediaStudio.librarySearchVideo"), icon: Film },
+              { value: "audio", label: t("mediaStudio.librarySearchAudio"), icon: Music },
             ] as const
           ).map(({ value, label, icon: Icon }) => {
             const active = itemTypeFilter === value;
@@ -173,10 +184,10 @@ export default function LibrarySearchPanel({
         </div>
       )}
 
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">Updated in:</span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground">{t("mediaStudio.librarySearchUpdatedIn")}</span>
         <select
-          className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+          className="h-8 rounded-md border border-input bg-background px-2 text-xs"
           value={String(recentDays)}
           onChange={(event) => {
             const next = event.target.value;
@@ -187,44 +198,44 @@ export default function LibrarySearchPanel({
             onRecentDaysChange(Number(next) as Exclude<LibraryRecentDaysFilter, "all">);
           }}
         >
-          <option value="1">1 day</option>
-          <option value="3">3 days</option>
-          <option value="7">7 days</option>
-          <option value="15">15 days</option>
-          <option value="30">1 month</option>
-          <option value="all">All time</option>
+          <option value="1">{t("mediaStudio.librarySearchOneDay")}</option>
+          <option value="3">{t("mediaStudio.librarySearchThreeDays")}</option>
+          <option value="7">{t("mediaStudio.librarySearchSevenDays")}</option>
+          <option value="15">{t("mediaStudio.librarySearchFifteenDays")}</option>
+          <option value="30">{t("mediaStudio.librarySearchOneMonth")}</option>
+          <option value="all">{t("mediaStudio.librarySearchAllTime")}</option>
         </select>
       </div>
 
       {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Searching library...
+          {t("mediaStudio.librarySearchLoading")}
         </div>
       )}
 
       {errorMessage && !isLoading && (
-        <p className="text-sm text-red-600">{errorMessage}</p>
+        <p className="text-xs text-red-600">{errorMessage}</p>
       )}
 
       {!hasActiveSearchCriteria && !isLoading && (
-        <p className="text-sm text-muted-foreground">
-          Pick a timeframe, type, or media kind to search indexed library items for reuse.
+        <p className="text-xs text-muted-foreground">
+          {t("mediaStudio.librarySearchHint")}
         </p>
       )}
 
       {hasActiveSearchCriteria && !isLoading && !errorMessage && results.length === 0 && (
-        <p className="text-sm text-muted-foreground">No matching library items.</p>
+        <p className="text-xs text-muted-foreground">{t("mediaStudio.librarySearchNoMatches")}</p>
       )}
 
       {hasActiveSearchCriteria && !isLoading && !errorMessage && hasMore && (
         <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800">
-          Showing up to 50 results. There may be more items ({totalResults}+). Add more filters or keywords.
+          {t("mediaStudio.librarySearchHasMore", { total: totalResults })}
         </p>
       )}
 
       {results.length > 0 && (
-        <ScrollArea className="h-56 pr-2">
+        <ScrollArea className="h-52 pr-2">
           <div className="space-y-2">
             {results.map((item) => {
               const status = getLibraryStatusMeta(item.status);
@@ -261,13 +272,13 @@ export default function LibrarySearchPanel({
                     <Badge className={status.className}>{status.label}</Badge>
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     {status.retryable ? (
-                      <span className="text-xs text-red-600">Retry from Media History</span>
+                      <span className="text-xs text-red-600">{t("mediaStudio.librarySearchRetryFromHistory")}</span>
                     ) : (
-                      <span className="text-xs text-muted-foreground">Ready to reuse</span>
+                      <span className="text-xs text-muted-foreground">{t("mediaStudio.librarySearchReadyToReuse")}</span>
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
                       {showAddToReference && (
                         <Button
                           size="sm"
@@ -285,7 +296,7 @@ export default function LibrarySearchPanel({
                         variant={isSelected ? "secondary" : "outline"}
                         onClick={() => onSelect(item)}
                       >
-                        Select
+                        {t("common.select")}
                       </Button>
                     </div>
                   </div>

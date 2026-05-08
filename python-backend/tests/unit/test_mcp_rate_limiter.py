@@ -226,7 +226,7 @@ class TestMcpToolError:
 class TestScrubParams:
     def test_scrubs_api_keys(self):
         patterns = [re.compile(r"sk-[a-zA-Z0-9]{20,}")]
-        params = {"query": "use key sk-abcdefghijklmnopqrstuvwxyz"}
+        params = {"query": "use key sk-example-redacted"}
         result = scrub_params(params, patterns)
         assert "[REDACTED]" in result["query"]
         assert "sk-" not in result["query"]

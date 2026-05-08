@@ -5,15 +5,20 @@ import { getStaticModelById } from "./modelRegistry";
 import {
   buildElevenLabsModelConfigJson,
   buildElevenLabsModelSeeds,
+  buildMagnificModelConfigJson,
+  buildMagnificModelSeeds,
   buildWaveSpeedModelConfigJson,
   buildWaveSpeedModelSeeds,
   assertRelativeUploadMediaReferencePath,
+  getMagnificProviderAvailableModels,
   getElevenLabsProviderAvailableModels,
   buildWaveSpeedLaunchModelConfigJson,
   buildWaveSpeedLaunchModelSeed,
   getWaveSpeedProviderAvailableModels,
   isReferenceImageRequiredFromConfig,
   normalizeMediaProviderName,
+  normalizeMagnificBaseUrl,
+  normalizePersistedMediaProviderBaseUrl,
   normalizeRelativeMediaEndpointPath,
   normalizeWaveSpeedBaseUrl,
   sanitizeMediaModelConfigJson,
@@ -43,10 +48,28 @@ describe("mediaProviderUtils", () => {
     expect(normalizeMediaProviderName("kie.ai")).toBe("kie_ai");
   });
 
+  it("normalizes Magnific provider aliases without regressing existing providers", () => {
+    expect(normalizeMediaProviderName("magnific")).toBe("magnific");
+    expect(normalizeMediaProviderName("magnific_api")).toBe("magnific");
+    expect(normalizeMediaProviderName("magnific-ai")).toBe("magnific");
+    expect(normalizeMediaProviderName("magnific ai")).toBe("magnific");
+    expect(normalizeMediaProviderName("wavespeed-ai")).toBe("wavespeed_ai");
+    expect(normalizeMediaProviderName("elevenlabs_ai")).toBe("elevenlabs");
+    expect(normalizeMediaProviderName("kie.ai")).toBe("kie_ai");
+  });
+
   it("normalizes both service-root and api-root WaveSpeed base URLs to a single api root", () => {
     expect(normalizeWaveSpeedBaseUrl("https://api.wavespeed.ai")).toBe("https://api.wavespeed.ai/api/v3");
     expect(normalizeWaveSpeedBaseUrl("https://api.wavespeed.ai/api/v3")).toBe("https://api.wavespeed.ai/api/v3");
     expect(normalizeWaveSpeedBaseUrl("https://proxy.example.com/wavespeed")).toBe("https://proxy.example.com/wavespeed/api/v3");
+  });
+
+  it("normalizes Magnific base URLs while requiring public HTTPS hosts", () => {
+    expect(normalizeMagnificBaseUrl("https://api.magnific.com/")).toBe("https://api.magnific.com");
+    expect(normalizePersistedMediaProviderBaseUrl("magnific_api", "https://api.magnific.com/")).toBe("https://api.magnific.com");
+    expect(() => normalizeMagnificBaseUrl("http://api.magnific.com")).toThrow(/https/i);
+    expect(() => normalizeMagnificBaseUrl("https://127.0.0.1")).toThrow(/public host/i);
+    expect(() => normalizePersistedMediaProviderBaseUrl("magnific", "https://metadata.google.internal")).toThrow(/public host/i);
   });
 
   it("rejects unsafe absolute and traversal endpoint metadata", () => {
@@ -56,6 +79,7 @@ describe("mediaProviderUtils", () => {
     expect(() => normalizeRelativeMediaEndpointPath("/predictions/%2e%2e/result")).toThrow(/\.\./i);
     expect(() => normalizeRelativeMediaEndpointPath("%68%74%74%70%73%3A%2F%2Fevil.example.com/submit")).toThrow(/relative/i);
     expect(() => normalizeRelativeMediaEndpointPath("/predictions/{jobId}/result", { allowRequestIdPlaceholder: true })).toThrow(/placeholder/i);
+    expect(normalizeRelativeMediaEndpointPath("/v1/ai/mystic/{taskId}", { allowedPlaceholders: ["taskId"] })).toBe("/v1/ai/mystic/{taskId}");
   });
 
   it("only allows relative media asset paths under the public upload/storage routes", () => {
@@ -183,6 +207,123 @@ describe("mediaProviderUtils", () => {
       WAVESPEED_ELEVENLABS_VOICE_CHANGER_MODEL_ID,
     ]));
     expect(providerModels.find((model) => model.id === WAVESPEED_GEMINI_25_FLASH_TTS_MODEL_ID)?.type).toBe("audio");
+  });
+
+  it("exposes Magnific provider models for admin templates and provider seeds", () => {
+    const providerModels = getMagnificProviderAvailableModels();
+
+    expect(providerModels).toHaveLength(34);
+    expect(providerModels).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "magnific/mystic", type: "image" }),
+      expect.objectContaining({ id: "magnific/remove-background", type: "image" }),
+      expect.objectContaining({ id: "magnific/veo-3-1-text-to-video-fast", type: "video" }),
+      expect.objectContaining({ id: "magnific/video-upscaler-precision", type: "video" }),
+    ]));
+  });
+
+  it("builds Magnific model seeds with required endpoint, pricing, readiness, and inventory metadata", () => {
+    const seeds = buildMagnificModelSeeds();
+
+    expect(seeds).toHaveLength(34);
+    expect(seeds.map((seed) => seed.modelId)).toEqual(getMagnificProviderAvailableModels().map((model) => model.id));
+    for (const seed of seeds) {
+      expect(seed.provider).toBe("magnific");
+      expect(seed.configJson).toMatchObject({
+        provider: "magnific",
+        providerModelId: seed.modelId,
+        modelFamily: seed.modelFamily,
+        dispatchMode: expect.any(String),
+        resultType: expect.any(String),
+        pricingStatus: "estimated",
+        pricingSource: "magnific-docs-or-admin",
+        pricingLastReviewedAt: "2026-05-06",
+        adminVisible: true,
+      });
+      expect((seed.configJson.endpoint as any).submit).toMatch(/^\//);
+      expect(Array.isArray(seed.configJson.outputExtractors)).toBe(true);
+      expect(Array.isArray(seed.configJson.inputFields)).toBe(true);
+      expect(seed.configJson.validation).toEqual(expect.objectContaining({
+        requirePublicHttpsMediaUrls: true,
+        rejectWebhookUrl: true,
+      }));
+      expect(seed.configJson.pricing).toEqual(expect.objectContaining({
+        defaultCredits: seed.creditCost,
+      }));
+    }
+  });
+
+  it("keeps all Veo 3.1 Magnific concrete records under one normalized family", () => {
+    const veoSeeds = buildMagnificModelSeeds().filter((seed) => seed.modelId.includes("veo-3-1"));
+
+    expect(veoSeeds).toHaveLength(5);
+    expect(new Set(veoSeeds.map((seed) => seed.modelFamily))).toEqual(new Set(["magnific/veo-3-1"]));
+  });
+
+  it("marks Magnific video and upscaler seeds rollout-safe by default", () => {
+    const seeds = buildMagnificModelSeeds();
+    const imageSeed = seeds.find((seed) => seed.modelId === "magnific/mystic");
+    const videoSeed = seeds.find((seed) => seed.modelId === "magnific/veo-3-1-text-to-video");
+    const upscalerSeed = seeds.find((seed) => seed.modelId === "magnific/video-upscaler-precision");
+
+    expect(imageSeed?.isEnabled).toBe(true);
+    expect(imageSeed?.configJson.readinessReason).toBe("estimated-pricing");
+    expect(videoSeed?.isEnabled).toBe(false);
+    expect(videoSeed?.configJson.readinessReason).toBe("estimated-pricing; staging-smoke-required");
+    expect(upscalerSeed?.isEnabled).toBe(false);
+    expect(upscalerSeed?.configJson.readinessReason).toBe("estimated-pricing; staging-smoke-required; high-cost");
+  });
+
+  it("builds Magnific endpoint configs with relative status paths and sync Remove Background metadata", () => {
+    const mystic = buildMagnificModelConfigJson("magnific/mystic");
+    const removeBackground = buildMagnificModelConfigJson("magnific/remove-background");
+
+    expect(mystic).toMatchObject({
+      endpoint: {
+        submit: "/v1/ai/mystic",
+        status: "/v1/ai/mystic/{taskId}",
+      },
+      dispatchMode: "async-polling",
+      resultType: "image",
+    });
+    expect(removeBackground).toMatchObject({
+      endpoint: {
+        submit: "/v1/ai/beta/remove-background",
+      },
+      dispatchMode: "sync",
+      resultType: "image-set",
+    });
+    expect((removeBackground.endpoint as any).status).toBeUndefined();
+  });
+
+  it("adds provider-discovered LoRA selectors only to Magnific Mystic metadata", () => {
+    const mystic = buildMagnificModelConfigJson("magnific/mystic");
+    const seedream = buildMagnificModelConfigJson("magnific/seedream-v5-lite");
+    const mysticFields = mystic.inputFields ?? [];
+
+    expect(mysticFields).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: "style_lora_id",
+        type: "select",
+        optionsSource: expect.objectContaining({
+          type: "provider_api",
+          endpoint: "/v1/ai/loras",
+          itemsPath: "data",
+          valueField: "id",
+          labelField: "name",
+          queryParam: "query",
+        }),
+      }),
+      expect.objectContaining({
+        key: "character_lora_id",
+        type: "select",
+        optionsSource: expect.objectContaining({
+          type: "provider_api",
+          endpoint: "/v1/ai/loras",
+        }),
+      }),
+    ]));
+    expect((seedream.inputFields ?? []).some((field: any) => field.key === "style_lora_id")).toBe(false);
+    expect((seedream.inputFields ?? []).some((field: any) => field.key === "character_lora_id")).toBe(false);
   });
 
   it("builds WaveSpeed audio model configs with per-unit and flat pricing", () => {

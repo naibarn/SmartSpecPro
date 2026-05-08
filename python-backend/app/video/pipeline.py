@@ -59,6 +59,71 @@ def _clips_are_compatible(clip_infos: list[dict]) -> bool:
     return True
 
 
+def _detect_letterbox_crop_filter(file_path: str, runner=None) -> str | None:
+    if runner is not None:
+        return None
+    info = _probe_clip(file_path)
+    width = int(info.get("width") or 0)
+    height = int(info.get("height") or 0)
+    if width <= 0 or height <= 0:
+        return None
+
+    sample_w, sample_h = 72, 128
+    raw_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".gray", delete=False) as tmp:
+            raw_path = tmp.name
+        result = subprocess.run(
+            [
+                "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                "-ss", "4", "-i", file_path,
+                "-frames:v", "1",
+                "-vf", f"scale={sample_w}:{sample_h},format=gray",
+                "-f", "rawvideo", raw_path,
+            ],
+            capture_output=True,
+            timeout=20,
+        )
+        if result.returncode != 0:
+            return None
+        with open(raw_path, "rb") as fh:
+            frame = fh.read()
+        if len(frame) < sample_w * sample_h:
+            return None
+
+        rows = [
+            sum(frame[row * sample_w:(row + 1) * sample_w]) / sample_w
+            for row in range(sample_h)
+        ]
+        threshold = 12
+        top_rows = 0
+        while top_rows < sample_h and rows[top_rows] < threshold:
+            top_rows += 1
+        bottom_rows = 0
+        while bottom_rows < sample_h and rows[sample_h - 1 - bottom_rows] < threshold:
+            bottom_rows += 1
+
+        top_px = int(round((top_rows / sample_h) * height))
+        bottom_px = int(round((bottom_rows / sample_h) * height))
+        top_px -= top_px % 2
+        bottom_px -= bottom_px % 2
+        crop_h = height - top_px - bottom_px
+        if top_px + bottom_px < max(24, int(height * 0.025)):
+            return None
+        if crop_h <= 0 or crop_h < int(height * 0.65):
+            return None
+        crop_h -= crop_h % 2
+        return f"crop=iw:{crop_h}:0:{top_px}"
+    except Exception:
+        return None
+    finally:
+        if raw_path:
+            try:
+                os.unlink(raw_path)
+            except OSError:
+                pass
+
+
 def run_assembly_stage(
     render_spec: dict,
     work_dir: str,
@@ -130,7 +195,9 @@ def run_assembly_stage(
     if progress_callback:
         progress_callback(0.1, "assembly")
 
-    if _clips_are_compatible(clip_infos):
+    source_crop_filters = [_detect_letterbox_crop_filter(path, runner=runner) for path in clip_paths]
+
+    if _clips_are_compatible(clip_infos) and not any(source_crop_filters):
         # Stream copy via concat demuxer
         concat_file = os.path.join(work_dir, "concat_list.txt")
         with open(concat_file, "w") as f:
@@ -159,7 +226,10 @@ def run_assembly_stage(
                 in_s = in_s / 1000.0
                 out_s = out_s / 1000.0
 
+            source_crop_filter = source_crop_filters[i]
             normalize = (
+                f"{source_crop_filter}," if source_crop_filter else ""
+            ) + (
                 f"fps={proj_fps},"
                 f"scale={proj_w}:{proj_h}:force_original_aspect_ratio=decrease,"
                 f"pad={proj_w}:{proj_h}:(ow-iw)/2:(oh-ih)/2:color=black,"
@@ -338,6 +408,8 @@ def run_final_render(
         font_family = text_config.get("fontFamily", "DejaVu Sans")
         font_size = text_config.get("fontSize", 48)
         color = text_config.get("color", "#FFFFFF")
+        effect = text_config.get("effect", "none")
+        effect_color = text_config.get("effectColor", "#000000")
         start_time = clip.get("startTime", clip.get("startMs", 0))
         duration = clip.get("duration", clip.get("durationMs", 0))
         if isinstance(start_time, (int, float)) and start_time > 100:
@@ -355,6 +427,17 @@ def run_final_render(
             f"font='{font_family}':"
             f"fontsize={font_size}:"
             f"fontcolor={color}:"
+            + (
+                f"borderw=2:bordercolor={effect_color}:"
+                if effect == "outline" or text_config.get("textStroke")
+                else ""
+            )
+            + (
+                f"shadowx=2:shadowy=2:shadowcolor={effect_color}:"
+                if effect in ("shadow", "glow") or text_config.get("textShadow")
+                else ""
+            )
+            +
             f"x=(w-text_w)/2:y=(h-text_h)/2:"
             f"enable='{enable}'[{out_label}]"
         )

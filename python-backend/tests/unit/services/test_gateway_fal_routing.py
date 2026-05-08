@@ -29,6 +29,12 @@ class TestProviderIdNormalization:
         assert LLMGateway._normalize_provider_id("kie") == "kie_ai"
         assert LLMGateway._normalize_provider_id("uvoice") == "uvoice"
 
+    def test_magnific_aliases(self):
+        assert LLMGateway._normalize_provider_id("magnific") == "magnific"
+        assert LLMGateway._normalize_provider_id("magnific_api") == "magnific"
+        assert LLMGateway._normalize_provider_id("magnific-ai") == "magnific"
+        assert LLMGateway._normalize_provider_id("magnific_ai") == "magnific"
+
 
 # --- Video Routing ---
 

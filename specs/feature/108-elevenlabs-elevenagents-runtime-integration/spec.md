@@ -33,13 +33,16 @@ ElevenAgents is a realtime/session runtime for conversational voice agents. It c
 
 Therefore this feature introduces a first-class **Voice Agent Runtime** integration for ElevenLabs. Skills may launch or route users into this runtime, but skills are not the runtime itself.
 
-The target outcome is:
+The MVP target outcome is:
 
-- users can start an ElevenLabs voice agent session from Chat, Work OS, or Team Rooms
+- users can start an ElevenLabs voice agent session from Chat
 - admins can configure ElevenLabs agent IDs and their SmartSpec permissions
 - transcripts and agent events are stored in SmartSpec conversation history
 - ElevenLabs tool calls are bridged into SmartSpec actions through an allowlisted policy layer
 - the existing one-shot media provider remains separate and unchanged
+
+Work OS, Team Rooms, and Agency Runtime are follow-on consumers of the same
+runtime contracts after the Chat session lifecycle is stable.
 
 ---
 
@@ -73,6 +76,23 @@ ElevenAgents must reuse the configured ElevenLabs credential where appropriate, 
 ElevenLabs documentation describes ElevenAgents as a platform for building, deploying, and monitoring conversational agents. Integration options include React/web SDKs, widgets, WebSocket APIs, mobile SDKs, telephony/SIP/Twilio, tool calling, knowledge base, and analytics.
 
 Key implication: this is a **session + event + tool runtime**, not a media generation endpoint.
+
+### 2.4 External API assumptions for MVP
+
+The implementation plan should verify these assumptions against current
+ElevenLabs documentation before writing production code:
+
+- React SDK voice sessions can start with a WebRTC conversation token generated
+  server-side.
+- WebSocket signed URLs remain available as a secondary browser path.
+- Conversation tokens/signed URLs can be generated without exposing the
+  ElevenLabs API key to the browser.
+- Provider conversation IDs can be captured from SDK return values, signed URL
+  options, post-call webhooks, or conversation-detail reconciliation.
+- Post-call webhooks or conversation-detail APIs can provide final transcript
+  and usage metadata for recovery after browser disconnects.
+- Webhook tools or equivalent signed callbacks can call SmartSpec server
+  endpoints without granting arbitrary API access.
 
 ---
 
@@ -295,27 +315,50 @@ Requirements:
 
 ### 7.4 Transport and session token
 
-The runtime should support one of two implementation modes:
+MVP transport decision:
 
-1. **Preferred for MVP: signed/session token bridge**
-   - backend creates/authorizes a session
-   - frontend receives only short-lived connection/session material
-   - frontend connects with ElevenLabs React SDK/widget/WebSocket as appropriate
+1. **Primary MVP path: ElevenLabs React SDK with WebRTC conversation token**
+   - backend creates and authorizes a SmartSpec session
+   - backend requests a short-lived ElevenLabs conversation token for the
+     configured agent ID
+   - frontend starts the React SDK session with `conversationToken`
+   - frontend passes SmartSpec `userId`/session metadata where supported
+   - frontend never receives the ElevenLabs API key
 
-2. **Fallback: server WebSocket relay**
-   - backend owns the ElevenLabs WebSocket
-   - frontend connects to SmartSpec WebSocket
-   - more control, more server complexity
+2. **Secondary path: ElevenLabs WebSocket signed URL**
+   - use only if WebRTC token mode cannot satisfy transcript/event capture or
+     tool mediation for the MVP browser flow
+   - backend requests a signed URL with `include_conversation_id=true` when
+     supported so provider conversation IDs can be bound before connection
 
-MVP should prefer the official browser integration path if it can satisfy:
+3. **Fallback path: SmartSpec server WebSocket relay**
+   - use if official browser paths cannot meet transcript durability, callback
+     authentication, stop/cancel control, or tenant/user authorization
+   - backend owns the ElevenLabs connection and exposes a SmartSpec WebSocket to
+     the browser
 
-- no API key exposure
-- transcript event capture
-- tool call mediation
-- stop/cancel control
-- tenant/user authorization
+Connection material returned to the browser must include:
 
-If any of those are not satisfied, use a SmartSpec server relay.
+- `smartSpecSessionId`
+- `provider`: `elevenlabs`
+- `connectionType`: `webrtc_token`, `websocket_signed_url`, or `server_relay`
+- `conversationToken` or `signedUrl`; never both unless a retry flow explicitly
+  requests both
+- `expiresAt`
+- `providerConversationId` when known before connection
+- `serverLocation`: `us`, `eu-residency`, `in-residency`, or `global`
+- `environment`: default `production`
+- `branchId`: optional ElevenLabs agent branch/version identifier
+
+MVP must start with WebRTC token mode unless the research spike proves one of
+these hard blockers:
+
+- final transcript events cannot be captured or reconciled
+- server-mediated tools cannot be authenticated and allowlisted safely
+- stop/cancel cannot be reflected into SmartSpec session status
+- provider conversation ID cannot be correlated reliably
+
+If a blocker is found, promote the fallback path before building UI.
 
 ### 7.5 Transcript and event persistence
 
@@ -345,19 +388,69 @@ Requirements:
 4. Preserve speaker/source: `user`, `agent`, `tool`, `system`.
 5. Support transcript export in admin/session detail.
 6. Redact configured sensitive values from tool logs and transcript snapshots where policy requires it.
+7. Persist browser SDK callbacks as realtime best-effort events.
+8. Reconcile final transcript and provider metadata after session end using
+   post-call webhook payloads or provider conversation-detail polling.
+9. Conversation-history writes must be idempotent by `(sessionId, eventType,
+   providerEventId|sequence)`.
+10. If final transcript reconciliation fails, mark the session
+    `transcript_pending` in metadata and expose it in admin failed-session views.
 
 ### 7.6 SmartSpec server tool bridge
 
 Add a server-side tool bridge for ElevenLabs tool calls.
 
-Initial tool classes:
+MVP tool mechanism:
+
+- ElevenLabs webhook tools are the primary server-mediated tool path.
+- Client tools are allowed only for UI-only actions such as navigation or local
+  notification. Client tools must not read or mutate SmartSpec data directly.
+- The webhook endpoint validates an HMAC/signature or equivalent signed metadata
+  before resolving the SmartSpec session.
+- Tool calls bind to SmartSpec by `smartSpecSessionId`, `providerConversationId`,
+  tenant, user, surface, and agent config.
+
+First MVP allowlisted tool:
 
 - `chat.create_message`
+
+Follow-on tool classes:
+
 - `media.create_job`
 - `library.search`
 - `workflow.start`
 - `task.create`
 - `case.update_note`
+
+`chat.create_message` input schema:
+
+```json
+{
+  "type": "object",
+  "required": ["conversationId", "message"],
+  "properties": {
+    "conversationId": { "type": "string", "minLength": 1 },
+    "message": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "source": { "type": "string", "enum": ["agent", "tool"] },
+    "metadata": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": false
+}
+```
+
+Sanitized result shape:
+
+```json
+{
+  "ok": true,
+  "toolCallId": "voice_tool_call_id",
+  "status": "completed",
+  "summary": "Message added to the conversation.",
+  "data": {
+    "messageId": "conversation_message_id"
+  }
+}
+```
 
 Requirements:
 
@@ -374,6 +467,12 @@ Requirements:
 5. Tool results must be summarized before returning to ElevenLabs.
 6. Long-running tools should return an accepted/queued response and stream completion back to SmartSpec, not block the voice session indefinitely.
 7. Tool calls must never leak internal stack traces or secrets to ElevenLabs.
+8. Duplicate callbacks must be idempotent by provider tool-call ID or a
+   SmartSpec-generated idempotency key.
+9. Tool payloads over the configured request-size limit must be rejected before
+   schema validation.
+10. Tool calls must record whether execution was allowed, denied, queued,
+    completed, or failed.
 
 ### 7.7 Launcher skills
 
@@ -453,14 +552,18 @@ Required columns:
 - `display_name`
 - `description`
 - `external_agent_id`
+- `external_agent_branch_id`
+- `external_environment`
 - `credential_provider_name`
 - `is_enabled`
 - `allowed_surfaces`
 - `allowed_tools`
 - `default_language`
+- `server_location`
 - `retention_policy`
 - `config_json`
 - `created_by`
+- `updated_by`
 - `created_at`
 - `updated_at`
 
@@ -469,6 +572,22 @@ Indexes:
 - `(tenant_id, provider)`
 - `(tenant_id, is_enabled)`
 - `(tenant_id, external_agent_id)`
+- unique `(tenant_id, provider, external_agent_id, external_agent_branch_id, external_environment)`
+
+Constraints:
+
+- `provider` enum: `elevenlabs`
+- `server_location` enum: `us`, `eu-residency`, `in-residency`, `global`
+- `server_location` defaults to the tenant data-residency setting; if the tenant
+  has no explicit setting, use `us` for MVP and record the default source in
+  `config_json`
+- `external_environment` defaults to `production`
+- `allowed_surfaces` defaults to `["chat"]` for MVP
+- `allowed_tools` defaults to `["chat.create_message"]` only when tool bridge is enabled
+- `retention_policy` defaults to persisting final transcripts and tool-call
+  audit records; partial transcript events are debug-only and may be dropped
+  after the configured retention window
+- raw API keys must not be stored in this table
 
 ### 8.3 `voice_agent_sessions`
 
@@ -482,11 +601,16 @@ Required columns:
 - `provider`
 - `provider_conversation_id`
 - `surface`
+- `connection_type`
+- `connection_expires_at`
+- `billing_status`
+- `credit_reservation_id`
 - `status`
 - `started_at`
 - `ended_at`
 - `last_event_at`
 - `error_message`
+- `sanitized_error_code`
 - `metadata_json`
 - `created_at`
 - `updated_at`
@@ -497,6 +621,20 @@ Indexes:
 - `(tenant_id, conversation_id, created_at)`
 - `(agent_config_id, created_at)`
 - `(status, last_event_at)`
+- `(tenant_id, provider_conversation_id)`
+
+Constraints:
+
+- `status` enum: `created`, `connecting`, `active`, `ended`, `failed`,
+  `cancelled`
+- `connection_type` enum: `webrtc_token`, `websocket_signed_url`,
+  `server_relay`
+- `surface` enum: `chat`, `work_os`, `team_room`, `agency`
+- `billing_status` enum: `reserved`, `settled`, `released`, `failed`
+- `agent_config_id` references `voice_agent_configs(id)` with restrict/no
+  cascade delete
+- `conversation_id` references the SmartSpec conversation history root with
+  tenant validation
 
 ### 8.4 `voice_agent_events`
 
@@ -506,10 +644,13 @@ Required columns:
 - `tenant_id`
 - `session_id`
 - `sequence`
+- `provider_event_id`
 - `event_type`
 - `source`
 - `text`
 - `payload_json`
+- `redaction_status`
+- `conversation_message_id`
 - `received_at`
 
 Indexes:
@@ -517,6 +658,15 @@ Indexes:
 - `(session_id, sequence)`
 - `(tenant_id, received_at)`
 - `(session_id, event_type)`
+- unique `(session_id, sequence)`
+- unique nullable `(session_id, provider_event_id)`
+
+Constraints:
+
+- `session_id` references `voice_agent_sessions(id)` with restrict/no cascade
+  delete
+- `source` enum: `user`, `agent`, `tool`, `system`
+- `redaction_status` enum: `not_required`, `redacted`, `failed`
 
 ### 8.5 `voice_agent_tool_calls`
 
@@ -525,12 +675,15 @@ Required columns:
 - `id`
 - `tenant_id`
 - `session_id`
+- `provider_tool_call_id`
 - `tool_name`
 - `status`
 - `input_json`
 - `output_json`
 - `policy_decision_json`
 - `error_message`
+- `sanitized_error_code`
+- `idempotency_key`
 - `started_at`
 - `completed_at`
 
@@ -539,6 +692,16 @@ Indexes:
 - `(session_id, started_at)`
 - `(tenant_id, tool_name, started_at)`
 - `(status, started_at)`
+- unique nullable `(session_id, provider_tool_call_id)`
+- unique `(session_id, idempotency_key)`
+
+Constraints:
+
+- `session_id` references `voice_agent_sessions(id)` with restrict/no cascade
+  delete
+- `status` enum: `received`, `denied`, `queued`, `running`, `completed`,
+  `failed`
+- `input_json` and `output_json` must be redacted before admin display
 
 ---
 
@@ -548,28 +711,59 @@ Indexes:
 
 Add endpoints/procedures for:
 
-- list voice agent configs
-- create config
-- update config
-- enable/disable config
-- test config
-- list sessions
-- get session detail
-- get session transcript
-- get session tool calls
+- `voiceAgents.admin.listConfigs(input: { surface?: VoiceAgentSurface; includeDisabled?: boolean })`
+- `voiceAgents.admin.createConfig(input: VoiceAgentConfigCreateInput)`
+- `voiceAgents.admin.updateConfig(input: VoiceAgentConfigUpdateInput)`
+- `voiceAgents.admin.setConfigEnabled(input: { id: string; isEnabled: boolean })`
+- `voiceAgents.admin.testConfig(input: { id?: string; externalAgentId?: string; credentialProviderName?: string; branchId?: string; environment?: string })`
+- `voiceAgents.admin.listSessions(input: { configId?: string; status?: VoiceAgentSessionStatus; cursor?: string; limit?: number })`
+- `voiceAgents.admin.getSession(input: { sessionId: string })`
+- `voiceAgents.admin.getTranscript(input: { sessionId: string; includePartial?: boolean })`
+- `voiceAgents.admin.getToolCalls(input: { sessionId: string })`
+
+Admin APIs require tenant admin or equivalent provider-management permission.
+All returned provider errors must use sanitized `code`, `message`, and
+`retryable` fields.
 
 ### 9.2 User/session APIs
 
 Add endpoints/procedures for:
 
-- list enabled configs for current user/surface
-- create session
-- get session connection material
-- stop session
-- append/ingest event
-- receive tool callback
+- `voiceAgents.listEnabled(input: { surface: VoiceAgentSurface })`
+- `voiceAgents.createSession(input: { agentConfigId: string; conversationId: string; surface: "chat"; connectionType?: VoiceAgentConnectionType; idempotencyKey: string })`
+- `voiceAgents.getConnectionMaterial(input: { sessionId: string })`
+- `voiceAgents.stopSession(input: { sessionId: string; reason?: "user_stop" | "navigation" | "timeout" })`
+- `voiceAgents.ingestClientEvent(input: VoiceAgentClientEventInput)`
+
+Session APIs require an authenticated SmartSpec user. `createSession` must be
+idempotent by `(tenantId, userId, idempotencyKey)`.
 
 ### 9.3 Tool callback API
+
+Add an `apps/web/server` public HTTP route for MVP:
+
+- `POST /api/voice-agents/elevenlabs/tool-callback`
+
+This route lives in the web server, not `python-backend`, for MVP. It must call
+the same TypeScript voice-agent services used by the tRPC `voiceAgents.*`
+procedures so session state, conversation writes, tool-call records, credit
+settlement, audit logs, and tenant authorization stay in one transactional
+boundary. A FastAPI relay may be added later only if provider delivery or
+network placement requires it; the relay must forward to the web-server service
+contract instead of duplicating policy logic.
+
+Request body:
+
+```json
+{
+  "smartSpecSessionId": "voice_session_id",
+  "providerConversationId": "conv_id",
+  "providerToolCallId": "tool_call_id",
+  "toolName": "chat.create_message",
+  "input": {},
+  "timestamp": "2026-05-02T00:00:00Z"
+}
+```
 
 The tool callback endpoint must:
 
@@ -580,6 +774,10 @@ The tool callback endpoint must:
 5. Execute with user/tenant context.
 6. Persist the tool call result.
 7. Return a sanitized response to ElevenLabs.
+8. Reject stale callbacks outside the timestamp tolerance.
+9. Reject replayed provider tool-call IDs and idempotency keys.
+10. Return 2xx only after the call is persisted as denied, queued, completed,
+    or failed.
 
 ---
 
@@ -633,6 +831,27 @@ Admin page should include:
 8. User consent state should be explicit before starting microphone capture.
 9. Browser microphone state must be visible.
 10. Tool execution must use SmartSpec permission checks, not ElevenLabs trust alone.
+11. Tool callbacks must use HMAC/signature validation or an equivalent
+    provider-supported signed metadata check.
+12. Callback replay protection must enforce provider tool-call ID uniqueness,
+    timestamp tolerance, and idempotency keys.
+13. Session connection material must expire within 5 minutes or the shortest
+    provider-supported TTL.
+14. Provider conversation IDs must never be trusted without matching tenant,
+    user, session, surface, and agent config.
+15. Request body size limits must be enforced for event ingestion and tool
+    callback endpoints.
+16. Secrets used for callback validation must support rotation without breaking
+    active sessions.
+17. Admin transcript/tool-call views must display redacted payloads by default
+    and require elevated permission for raw debug payloads, if raw payloads are
+    retained at all.
+18. Final user and agent transcript messages are persisted by default for MVP.
+    Tenants may shorten or disable future transcript retention through
+    `retention_policy`, but the MVP implementation must preserve final
+    transcripts unless an admin explicitly configures a stricter policy.
+19. Default provider data residency is resolved from tenant settings. If absent,
+    use `us` for MVP and include the applied default in session metadata.
 
 ---
 
@@ -670,7 +889,14 @@ Admin/ops views:
 
 ## 13. Credit and billing requirements
 
-MVP may use a conservative session-based credit estimate until provider usage details are available.
+MVP billing decision:
+
+- Use a conservative per-minute reservation model for Chat voice sessions.
+- Reserve the minimum session credit amount before requesting connection
+  material.
+- Settle by actual provider duration/cost when known from provider metadata.
+- If provider usage is unavailable, settle against elapsed SmartSpec session
+  duration with a conservative configured rate.
 
 Requirements:
 
@@ -680,6 +906,9 @@ Requirements:
 4. Session start should fail early if the user has insufficient credits for the minimum session reserve.
 5. On early failure, unused reserved credits should be released/refunded using existing credit patterns.
 6. Usage metadata should store provider session duration and known provider usage fields when available.
+7. Stop/cancel/failure must transition the reservation to `settled`,
+   `released`, or `failed` exactly once.
+8. Admin session detail must show estimated vs provider-reconciled credit usage.
 
 ---
 
@@ -693,17 +922,18 @@ Requirements:
 - Add session create/stop APIs.
 - Add basic Chat voice panel.
 - Persist transcript events.
+- Implement WebRTC token connection material.
+- Add transcript reconciliation via post-call webhook or provider polling.
 
 ### Phase 2: Tool bridge
 
 - Add tool registry.
 - Add signed/authenticated callback endpoint.
 - Add allowlist policy.
-- Add first safe tools:
+- Add first safe tool:
   - create chat message
-  - create media job
-  - search library
-  - create task
+- Defer media job, library search, workflow, task, and case tools until after
+  Chat session/transcript/tool-call contracts pass regression tests.
 
 ### Phase 3: Launcher skills
 
@@ -742,6 +972,13 @@ Requirements:
 13. Existing ElevenLabs media models continue to work unchanged.
 14. Launcher skills create sessions but do not call ElevenLabs directly.
 15. Relevant unit, integration, and UI tests pass.
+16. MVP connection material uses WebRTC conversation tokens unless a documented
+    blocker promotes WebSocket signed URL or server relay.
+17. Final transcript reconciliation succeeds after browser disconnect or marks
+    the session as transcript-pending for admin retry.
+18. Duplicate tool callbacks do not execute the tool twice.
+19. Credit reservation settles or releases exactly once for stop, failure, and
+    cancellation paths.
 
 ---
 
@@ -763,6 +1000,9 @@ Requirements:
 4. Stop session is idempotent.
 5. Provider failure stores sanitized error and `failed` status.
 6. User cannot start a session for another tenant's config.
+7. Create session is idempotent by user idempotency key.
+8. Connection material expires and cannot be reused after expiry.
+9. Stop/cancel releases or settles the credit reservation once.
 
 ### 16.3 Transcript tests
 
@@ -771,6 +1011,9 @@ Requirements:
 3. Partial transcript events do not spam conversation history.
 4. Event sequence order is stable.
 5. Transcript export returns ordered final transcript.
+6. Post-call webhook or provider polling reconciles final transcript after
+   browser disconnect.
+7. Duplicate transcript events do not duplicate conversation-history messages.
 
 ### 16.4 Tool bridge tests
 
@@ -781,6 +1024,9 @@ Requirements:
 5. Tool output is sanitized before returning to ElevenLabs.
 6. Long-running tool returns queued/accepted result.
 7. Failed tool call persists status and sanitized error.
+8. Replayed provider tool-call ID is idempotent and does not execute twice.
+9. Stale or unsigned callback is rejected.
+10. `chat.create_message` validates exact input/output schema.
 
 ### 16.5 Frontend tests
 
@@ -790,6 +1036,8 @@ Requirements:
 4. Live transcript panel renders user and agent messages.
 5. Stop button disables after session ends.
 6. Tool-running indicator appears for tool events.
+7. Browser receives no ElevenLabs API key in connection material.
+8. WebRTC token flow maps SDK status/mode callbacks to SmartSpec UI states.
 
 ### 16.6 Regression tests
 
@@ -797,33 +1045,51 @@ Requirements:
 2. Existing ElevenLabs speech-to-text media job still creates transcript artifact.
 3. Existing WaveSpeed audio models still route to WaveSpeed.
 4. Existing skill execution modes are not reclassified as voice-agent runtime unless explicitly configured.
+5. Existing credit ledger media/audio transactions remain distinct from
+   `voice_agent` transactions.
+6. Existing provider admin media configuration still works when voice-agent
+   configs are absent.
 
 ---
 
-## 17. Open questions
+## 17. Resolved decisions and deferred questions
 
-1. Which ElevenLabs integration mode should be primary for MVP: React SDK/widget/session-token path or SmartSpec WebSocket relay?
-2. Does ElevenLabs expose the exact transcript/tool events needed through the preferred browser SDK path, or do we need server relay for complete persistence?
-3. What is the minimum billing model: per-minute reserve, session start fee, or provider-usage reconciliation?
-4. Should session transcripts be persisted by default for every tenant, or controlled by per-agent retention policy?
-5. Which SmartSpec tools should be enabled in the first allowlist?
-6. Should Team Room support wait until Chat voice sessions are stable, or should the data model include team room binding from day one?
-7. Should ElevenLabs knowledge base be managed externally in ElevenLabs first, or synced from SmartSpec library later?
+Resolved for MVP:
+
+1. Primary integration mode is React SDK with WebRTC conversation token.
+2. Transcript durability uses browser callbacks plus post-call webhook or
+   provider polling reconciliation.
+3. Minimum billing model is per-minute reserve with provider-usage
+   reconciliation when available.
+4. First allowlisted server tool is `chat.create_message`.
+5. Team Room and Work OS support wait until Chat voice sessions are stable, but
+   the data model keeps `surface` extensible from day one.
+6. Tool callbacks are handled by an `apps/web/server` public HTTP route in MVP.
+7. Final transcripts are persisted by default under `retention_policy`.
+8. Provider data residency defaults to tenant settings, then `us` if unset.
+
+Deferred beyond MVP:
+
+1. Should ElevenLabs knowledge base be managed externally in ElevenLabs first,
+   or synced from SmartSpec library later?
 
 ---
 
 ## 18. Recommended implementation order
 
-1. Research exact ElevenLabs browser/session-token/tool callback APIs.
-2. Finalize transport decision.
-3. Add DB schema and admin config.
-4. Add provider config test endpoint.
-5. Add session create/stop backend service.
-6. Add transcript event ingestion and conversation-history persistence.
-7. Add Chat voice session UI.
-8. Add tool bridge with one low-risk tool.
-9. Add launcher skill.
-10. Add Team Room/Work OS hooks.
+1. Research spike: verify WebRTC token callback coverage, provider conversation
+   ID capture, tool webhook signature shape, and post-call transcript payloads.
+2. Add shared DTOs/enums for configs, sessions, connection material, events,
+   tool callbacks, and billing status.
+3. Add DB schema, constraints, and migration tests.
+4. Add admin config APIs and provider config test endpoint.
+5. Add session create/stop backend service with credit reservation.
+6. Add WebRTC conversation-token connection material endpoint.
+7. Add transcript event ingestion and post-call/polling reconciliation.
+8. Add Chat voice session UI using the React SDK status/mode callbacks.
+9. Add `chat.create_message` webhook tool bridge.
+10. Add launcher skill after Chat runtime contracts pass.
+11. Add Team Room/Work OS hooks in follow-on phases.
 
 ---
 
@@ -834,8 +1100,7 @@ This feature is done when:
 - ElevenLabs voice-agent configs can be managed by admins
 - a user can start and stop a Chat voice session
 - transcript events persist into SmartSpec history
-- at least one allowlisted SmartSpec server tool can be called safely
+- `chat.create_message` can be called safely through the allowlisted server tool bridge
 - all provider errors are sanitized
 - voice-agent sessions have distinct credit/audit records
 - existing one-shot ElevenLabs media generation remains separate and passing regression tests
-

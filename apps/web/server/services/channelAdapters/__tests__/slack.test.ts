@@ -15,7 +15,7 @@ vi.mock("../../registry", () => ({}));
 
 import { SlackAdapter } from "../slack";
 
-const SIGNING_SECRET = "8f742231b10e8888abcd99badc9d0f88";
+const SIGNING_SECRET = "slack-secret";
 
 function makeSlackSignature(body: string, secret: string, timestamp: string): string {
   const baseString = `v0:${timestamp}:${body}`;

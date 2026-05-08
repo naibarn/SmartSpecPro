@@ -1,0 +1,12 @@
+{
+  "type": "tool_call",
+  "event_timestamp": 1767225605,
+  "session_id": "voice_session_test_123",
+  "conversation_id": "conv_test_123",
+  "tool_call_id": "tool_call_test_123",
+  "tool_name": "chat.create_message",
+  "input": {
+    "conversationId": "chat_conversation_test_123",
+    "content": "Please add this note to the conversation."
+  }
+}

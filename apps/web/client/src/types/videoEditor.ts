@@ -75,6 +75,10 @@ export interface TextConfig {
   textAlign: 'left' | 'center' | 'right';
   effect: 'none' | 'shadow' | 'outline' | 'glow' | 'typewriter' | 'fade-in-word';
   effectColor?: string;      // for shadow/outline/glow
+  textShadow?: string;
+  textStroke?: string;
+  lineHeight?: number;
+  letterSpacing?: number;
 }
 
 export interface Asset {

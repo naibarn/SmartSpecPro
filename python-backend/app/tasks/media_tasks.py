@@ -15,6 +15,7 @@ from app.services.library_indexing_service import (
     retry_due_library_index_jobs,
 )
 from app.services.library_backfill_service import run_library_backfill_batch
+from app.services.media_thumbnail_backfill_service import run_missing_media_thumbnail_backfill_batch
 from app.services.media_debug_trace import write_media_debug_event
 from app.llm_proxy.gateway_unified import LLMGateway
 from app.llm_proxy.models import (
@@ -32,6 +33,8 @@ import re
 import structlog
 import asyncio
 import json
+import shutil
+import tempfile
 
 logger = structlog.get_logger()
 
@@ -157,6 +160,122 @@ def _is_recoverable_wavespeed_failure(
     if not provider_task_id:
         return False
     return _has_wavespeed_terminal_state_bug(task.error_message)
+
+
+MAGNIFIC_IMAGE_POLL_POLICY = {
+    "initial": 2,
+    "base": 3,
+    "max": 20,
+    "timeout": 15 * 60,
+}
+MAGNIFIC_VIDEO_POLL_POLICY = {
+    "initial": 5,
+    "base": 10,
+    "max": 60,
+    "timeout": 60 * 60,
+}
+MAGNIFIC_UPSCALER_POLL_POLICY = {
+    "initial": 10,
+    "base": 20,
+    "max": 90,
+    "timeout": 90 * 60,
+}
+
+
+def _is_magnific_task(task: MediaTask, submission: Any = None) -> bool:
+    if isinstance(submission, dict) and submission.get("provider") == "magnific":
+        return True
+    return str(task.model or "").strip().lower().startswith("magnific/")
+
+
+def _get_magnific_poll_policy(model_id: str) -> dict[str, int]:
+    if str(model_id or "").strip().lower() == "magnific/video-upscaler-precision":
+        return MAGNIFIC_UPSCALER_POLL_POLICY
+    if str(model_id or "").strip().lower().startswith("magnific/") and "video" in str(model_id or "").lower():
+        return MAGNIFIC_VIDEO_POLL_POLICY
+    return MAGNIFIC_IMAGE_POLL_POLICY
+
+
+def _next_magnific_poll_delay(model_id: str, previous_delay: int | None = None, retry_after: int | None = None) -> int:
+    policy = _get_magnific_poll_policy(model_id)
+    if retry_after and retry_after > 0:
+        return min(int(retry_after), policy["max"])
+    if not previous_delay or previous_delay <= 0:
+        return policy["initial"]
+    return min(max(policy["base"], previous_delay * 2), policy["max"])
+
+
+def _build_magnific_submission_record(
+    *,
+    provider_task_id: str | None,
+    model_id: str,
+    media_type: str,
+    request_data: dict[str, Any],
+) -> dict[str, Any]:
+    from app.llm_proxy.providers.magnific_provider import MagnificProvider
+
+    spec = MagnificProvider.MODEL_SPECS.get(model_id)
+    endpoint = spec.endpoint if spec else None
+    extra_params = request_data.get("extra_params") if isinstance(request_data.get("extra_params"), dict) else {}
+    return _make_json_safe({
+        "provider": "magnific",
+        "provider_model_id": model_id,
+        "provider_task_id": provider_task_id,
+        "submit_endpoint": endpoint,
+        "status_endpoint": f"{endpoint}/{{taskId}}" if endpoint else None,
+        "dispatch_mode": spec.dispatch_mode if spec else "async-polling",
+        "media_type": media_type,
+        "pricing_snapshot": {
+            "reserved_credits": extra_params.get("__reserved_credits"),
+            "reserved_resolution": extra_params.get("__reserved_resolution"),
+            "reserved_duration": extra_params.get("__reserved_duration"),
+        },
+        "sanitized_submission": {
+            "prompt_length": len(str(request_data.get("prompt") or "")),
+            "has_negative_prompt": bool(request_data.get("negative_prompt") or extra_params.get("negative_prompt")),
+            "reference_image_count": len(request_data.get("reference_image_urls") or []),
+            "reference_video_count": len(request_data.get("reference_video_urls") or ([] if not request_data.get("reference_video_url") else [request_data.get("reference_video_url")])),
+            "resolution": request_data.get("resolution") or extra_params.get("resolution"),
+            "duration": request_data.get("duration") or extra_params.get("duration"),
+        },
+    })
+
+
+async def _rehost_provider_result_url(
+    *,
+    user_id: str | int,
+    task_id: str,
+    result_url: str,
+    media_type: str,
+) -> dict[str, Any]:
+    from app.services.media_pipeline import (
+        download_media,
+        extract_metadata,
+        generate_thumbnail,
+        upload_to_r2,
+    )
+
+    tmp_dir = tempfile.mkdtemp(prefix=f"magnific_rehost_{task_id}_")
+    try:
+        file_path, file_size, content_type = await download_media(result_url, tmp_dir)
+        thumb_path = await generate_thumbnail(file_path, media_type, tmp_dir)
+        metadata = await extract_metadata(file_path, media_type)
+        r2_info = await upload_to_r2(str(user_id), task_id, file_path, thumb_path, media_type)
+        return _make_json_safe({
+            "result_url": r2_info["result_url"],
+            "thumbnail_url": r2_info.get("thumbnail_url"),
+            "r2_keys": {
+                "result": r2_info.get("result_key"),
+                "thumbnail": r2_info.get("thumbnail_key"),
+            },
+            "metadata": {
+                **metadata,
+                "downloaded_content_type": content_type,
+                "downloaded_file_size_bytes": file_size,
+            },
+        })
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 async def _mark_task_retrying_async(task_id: str, error: Exception, retry_after_seconds: int) -> None:
@@ -542,6 +661,10 @@ def _enqueue_wavespeed_poll(task_id: str, delay_seconds: int) -> None:
     poll_wavespeed_video_task.apply_async(args=[task_id], countdown=max(0, int(delay_seconds)))
 
 
+def _enqueue_magnific_poll(task_id: str, delay_seconds: int) -> None:
+    poll_magnific_media_task.apply_async(args=[task_id], countdown=max(0, int(delay_seconds)))
+
+
 async def _poll_wavespeed_video_task_async(
     task_id: str,
     *,
@@ -849,6 +972,262 @@ async def _poll_wavespeed_video_task_async(
         await db.commit()
         if schedule_next_poll:
             _enqueue_wavespeed_poll(task.id, next_delay)
+        return {"status": "processing", "task_id": task_id, "next_delay_seconds": next_delay}
+
+
+async def _poll_magnific_media_task_async(
+    task_id: str,
+    *,
+    schedule_next_poll: bool = True,
+) -> dict[str, Any]:
+    from app.llm_proxy.providers.magnific_provider import MagnificProvider, MagnificProviderError
+    from app.services.media_provider_service import get_media_provider_key
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(MediaTask).filter(MediaTask.id == task_id))
+        task = result.scalar_one_or_none()
+        if task is None:
+            return {"status": "missing", "task_id": task_id}
+
+        result_data = _coerce_json_dict(task.result_data)
+        submission = result_data.get("submission")
+        persisted_state = _enum_value_or_str(task.status)
+        if persisted_state in {TaskStatus.COMPLETED.value, TaskStatus.FAILED.value, TaskStatus.CANCELLED.value}:
+            return {"status": "terminal", "task_id": task_id, "state": persisted_state}
+        if not _is_magnific_task(task, submission):
+            return {"status": "skipped", "task_id": task_id}
+
+        provider_task_id = str(task.task_id or (submission or {}).get("provider_task_id") or "").strip()
+        now = datetime.now(timezone.utc)
+        if not provider_task_id:
+            task.status = TaskStatus.FAILED
+            task.error_message = "Magnific submission metadata is missing provider_task_id"
+            task.completed_at = now
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {"failure": {"error": task.error_message, "error_type": "MagnificSubmissionMetadataError"}},
+                remove_keys=("retry",),
+            )
+            await db.commit()
+            return {"status": "failed", "task_id": task_id}
+
+        model_id = str((submission or {}).get("provider_model_id") or task.model or "").strip()
+        media_type = str((submission or {}).get("media_type") or task.media_type or "image").strip().lower()
+        policy = _get_magnific_poll_policy(model_id)
+        polling_state = result_data.get("polling") if isinstance(result_data.get("polling"), dict) else {}
+        attempts = int(polling_state.get("attempts") or 0)
+        previous_delay = int(polling_state.get("next_delay_seconds") or polling_state.get("last_delay_seconds") or 0)
+        started_at = task.started_at or task.created_at or now
+        if started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=timezone.utc)
+        age_seconds = (now - started_at).total_seconds()
+        if age_seconds >= policy["timeout"]:
+            task.status = TaskStatus.FAILED
+            task.error_message = "Magnific polling timed out"
+            task.completed_at = now
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {
+                    "polling": {
+                        "provider": "magnific",
+                        "state": "timeout",
+                        "attempts": attempts,
+                        "last_polled_at": now.isoformat(),
+                    },
+                    "failure": {
+                        "error": task.error_message,
+                        "error_type": "MagnificPollingTimeoutError",
+                    },
+                },
+                remove_keys=("retry",),
+            )
+            await db.commit()
+            return {"status": "failed", "task_id": task_id, "reason": "timeout"}
+
+        provider_config = await get_media_provider_key("magnific")
+        if not provider_config or not provider_config.get("apiKey"):
+            next_delay = _next_magnific_poll_delay(model_id, previous_delay)
+            task.status = TaskStatus.PROCESSING
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {
+                    "polling": {
+                        "provider": "magnific",
+                        "state": "processing",
+                        "attempts": attempts + 1,
+                        "last_polled_at": now.isoformat(),
+                        "last_delay_seconds": previous_delay,
+                        "next_delay_seconds": next_delay,
+                        "last_error": "Magnific provider configuration unavailable during polling",
+                    },
+                },
+                remove_keys=("failure",),
+            )
+            await db.commit()
+            if schedule_next_poll:
+                _enqueue_magnific_poll(task.id, next_delay)
+            return {"status": "processing", "task_id": task_id, "next_delay_seconds": next_delay}
+
+        client = None
+        try:
+            client = MagnificProvider(
+                api_key=provider_config["apiKey"],
+                base_url=provider_config.get("baseUrl"),
+            )
+            status_result = await client.get_task_status(model_id, provider_task_id, media_type)
+        except MagnificProviderError as exc:
+            if exc.category in {"timeout", "provider_unavailable", "rate_limit"}:
+                retry_after = None
+                next_delay = _next_magnific_poll_delay(model_id, previous_delay, retry_after)
+                task.status = TaskStatus.PROCESSING
+                task.result_data = _merge_task_result_data(
+                    result_data,
+                    {
+                        "polling": {
+                            "provider": "magnific",
+                            "state": "processing",
+                            "attempts": attempts + 1,
+                            "last_polled_at": now.isoformat(),
+                            "last_delay_seconds": previous_delay,
+                            "next_delay_seconds": next_delay,
+                            "last_error": str(exc),
+                            "last_error_category": exc.category,
+                        },
+                    },
+                    remove_keys=("failure",),
+                )
+                await db.commit()
+                if schedule_next_poll:
+                    _enqueue_magnific_poll(task.id, next_delay)
+                return {"status": "processing", "task_id": task_id, "next_delay_seconds": next_delay}
+
+            task.status = TaskStatus.FAILED
+            task.error_message = str(exc)
+            task.completed_at = now
+            provider_detail = getattr(exc, "provider_detail", None)
+            failure_payload = {
+                "error": str(exc),
+                "error_type": "MagnificProviderError",
+                "category": exc.category,
+            }
+            if isinstance(provider_detail, dict):
+                failure_payload["provider_message"] = _extract_first_string(
+                    provider_detail.get("message"),
+                    provider_detail.get("detail"),
+                    provider_detail.get("error"),
+                )
+                failure_payload["provider_detail"] = _mask_sensitive_debug_value(provider_detail)
+                provider_response = provider_detail.get("response")
+                if provider_response is not None:
+                    failure_payload["provider_response"] = _mask_sensitive_debug_value(provider_response)
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {
+                    "polling": {
+                        "provider": "magnific",
+                        "state": "failed",
+                        "attempts": attempts + 1,
+                        "last_polled_at": now.isoformat(),
+                        "last_error_category": exc.category,
+                    },
+                    "failure": failure_payload,
+                },
+                remove_keys=("retry",),
+            )
+            await db.commit()
+            return {"status": "failed", "task_id": task_id}
+        finally:
+            if client is not None:
+                await client.aclose()
+
+        provider_status = str(status_result.get("status") or "processing")
+        if provider_status == "completed":
+            data = status_result.get("data") if isinstance(status_result.get("data"), list) else []
+            provider_url = data[0].get("url") if data and isinstance(data[0], dict) else None
+            if not provider_url:
+                task.status = TaskStatus.FAILED
+                task.error_message = "Magnific completed without a result URL"
+                task.completed_at = now
+                task.result_data = _merge_task_result_data(
+                    result_data,
+                    {"failure": {"error": task.error_message, "error_type": "MagnificResultExtractionError"}},
+                    remove_keys=("retry",),
+                )
+                await db.commit()
+                return {"status": "failed", "task_id": task_id}
+
+            try:
+                rehosted = await _rehost_provider_result_url(
+                    user_id=task.user_id,
+                    task_id=task.id,
+                    result_url=provider_url,
+                    media_type=media_type,
+                )
+            except Exception as exc:
+                task.status = TaskStatus.FAILED
+                task.error_message = "Magnific result re-hosting failed"
+                task.completed_at = now
+                task.result_data = _merge_task_result_data(
+                    result_data,
+                    {
+                        "failure": {
+                            "error": task.error_message,
+                            "error_type": type(exc).__name__,
+                        },
+                    },
+                    remove_keys=("retry",),
+                )
+                await db.commit()
+                return {"status": "failed", "task_id": task_id, "reason": "rehost_failed"}
+
+            task.status = TaskStatus.COMPLETED
+            task.error_message = None
+            task.result_url = rehosted["result_url"]
+            task.completed_at = now
+            task.result_data = _merge_task_result_data(
+                result_data,
+                {
+                    "polling": {
+                        "provider": "magnific",
+                        "state": "completed",
+                        "attempts": attempts + 1,
+                        "provider_status": provider_status,
+                        "last_polled_at": now.isoformat(),
+                    },
+                    "provider_status": provider_status,
+                    "result": {
+                        "url": rehosted["result_url"],
+                        "thumbnail_url": rehosted.get("thumbnail_url"),
+                    },
+                    "r2_keys": rehosted.get("r2_keys"),
+                    "metadata": rehosted.get("metadata"),
+                },
+                remove_keys=("failure", "retry"),
+            )
+            await db.commit()
+            return {"status": "completed", "task_id": task_id, "result_url": task.result_url}
+
+        next_delay = _next_magnific_poll_delay(model_id, previous_delay)
+        task.status = TaskStatus.PROCESSING
+        task.error_message = None
+        task.result_data = _merge_task_result_data(
+            result_data,
+            {
+                "polling": {
+                    "provider": "magnific",
+                    "state": provider_status if provider_status in {"queued", "processing"} else "processing",
+                    "attempts": attempts + 1,
+                    "provider_status": provider_status,
+                    "last_polled_at": now.isoformat(),
+                    "last_delay_seconds": previous_delay,
+                    "next_delay_seconds": next_delay,
+                },
+            },
+            remove_keys=("failure",),
+        )
+        await db.commit()
+        if schedule_next_poll:
+            _enqueue_magnific_poll(task.id, next_delay)
         return {"status": "processing", "task_id": task_id, "next_delay_seconds": next_delay}
 
 
@@ -1190,7 +1569,32 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
 
             result_url = response.data[0].get("url") if response.data else None
             task.result_url = result_url
-            task.result_data = _make_json_safe({"response": response.dict()})
+            submission_record = None
+            if response.provider == "magnific":
+                submission_record = _build_magnific_submission_record(
+                    provider_task_id=provider_task_id,
+                    model_id=request.model,
+                    media_type="image",
+                    request_data=request_data,
+                )
+            task.result_data = _make_json_safe({
+                "response": response.dict(),
+                **({"submission": submission_record} if submission_record else {}),
+                **(
+                    {
+                        "polling": {
+                            "provider": "magnific",
+                            "state": "scheduled",
+                            "attempts": 0,
+                            "raw_status": "created",
+                            "last_delay_seconds": 0,
+                            "next_delay_seconds": _get_magnific_poll_policy(request.model)["initial"],
+                        },
+                    }
+                    if response.provider == "magnific" and provider_task_id and not result_url
+                    else {}
+                ),
+            })
             task.credits_used = int(response.credits_used) if response.credits_used else None
             task.credits_balance = int(response.credits_balance) if response.credits_balance else None
             if result_url:
@@ -1214,6 +1618,9 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
                     "external_task_id": provider_task_id,
                     "result_url": task.result_url,
                 }
+
+            if response.provider == "magnific" and provider_task_id:
+                _enqueue_magnific_poll(task_id, _get_magnific_poll_policy(request.model)["initial"])
 
             logger.info("generate_image_task_submitted", task_id=task_id, provider_task_id=provider_task_id)
             return {
@@ -1364,6 +1771,13 @@ async def _generate_video_async(task_id: str, user_id: str, request_data: dict):
                     )
                 finally:
                     await wavespeed_provider.aclose()
+            elif response.provider == "magnific" and external_task_id:
+                submission_record = _build_magnific_submission_record(
+                    provider_task_id=external_task_id,
+                    model_id=request.model,
+                    media_type="video",
+                    request_data=request_data,
+                )
 
             task.result_data = _make_json_safe({
                 **({"submission": submission_record} if submission_record else {"submission": response.dict()}),
@@ -1380,6 +1794,20 @@ async def _generate_video_async(task_id: str, user_id: str, request_data: dict):
                         },
                     }
                     if response.provider == "wavespeed_ai"
+                    else {}
+                ),
+                **(
+                    {
+                        "polling": {
+                            "provider": "magnific",
+                            "state": "scheduled",
+                            "attempts": 0,
+                            "raw_status": "created",
+                            "last_delay_seconds": 0,
+                            "next_delay_seconds": _get_magnific_poll_policy(request.model)["initial"],
+                        },
+                    }
+                    if response.provider == "magnific"
                     else {}
                 ),
             })
@@ -1399,6 +1827,8 @@ async def _generate_video_async(task_id: str, user_id: str, request_data: dict):
             await db.commit()
             if response.provider == "wavespeed_ai":
                 _enqueue_wavespeed_poll(task_id, 3)
+            if response.provider == "magnific":
+                _enqueue_magnific_poll(task_id, _get_magnific_poll_policy(request.model)["initial"])
             logger.info("generate_video_task_submitted", task_id=task_id, external_task_id=external_task_id)
             return {"status": "submitted", "task_id": task_id, "external_task_id": external_task_id}
 
@@ -1472,6 +1902,30 @@ def poll_wavespeed_video_task(self, task_id: str):
         except Exception as fail_state_error:
             logger.warning(
                 "poll_wavespeed_video_task_final_state_update_failed",
+                task_id=task_id,
+                error=str(fail_state_error),
+            )
+        return {"status": "failed", "task_id": task_id, "error": str(e)}
+
+
+@celery_app.task(bind=True, max_retries=3)
+def poll_magnific_media_task(self, task_id: str):
+    """Poll a submitted Magnific task and reschedule until terminal or timed out."""
+    logger.info("poll_magnific_media_task_started", task_id=task_id)
+
+    try:
+        return _run_async(_poll_magnific_media_task_async(task_id, schedule_next_poll=True))
+    except Exception as e:
+        logger.error("poll_magnific_media_task_exception", task_id=task_id, error=str(e))
+
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e, countdown=15)
+
+        try:
+            _run_async(_mark_task_failed_async(task_id, e))
+        except Exception as fail_state_error:
+            logger.warning(
+                "poll_magnific_media_task_final_state_update_failed",
                 task_id=task_id,
                 error=str(fail_state_error),
             )
@@ -2073,6 +2527,17 @@ async def _recover_stuck_tasks_async():
                             failed_count += 1
                         continue
 
+                    if _is_magnific_task(task, task_result_data.get("submission")):
+                        magnific_result = await _poll_magnific_media_task_async(
+                            task.id,
+                            schedule_next_poll=True,
+                        )
+                        if magnific_result.get("status") == "completed":
+                            recovered_count += 1
+                        elif magnific_result.get("status") == "failed":
+                            failed_count += 1
+                        continue
+
                     if task.model in BytePlusModelArkProvider.VIDEO_MODELS:
                         # --- BytePlus polling branch ---
                         from app.services.media_provider_service import get_media_provider_key
@@ -2595,4 +3060,30 @@ def recover_stuck_tasks():
 
     except Exception as e:
         logger.error("recover_stuck_tasks_exception", error=str(e))
+        return {"status": "failed", "error": str(e)}
+
+
+async def _backfill_missing_media_thumbnails_async(
+    *,
+    limit: int = 10,
+    media_type: str | None = None,
+):
+    async with AsyncSessionLocal() as db:
+        return await run_missing_media_thumbnail_backfill_batch(
+            db,
+            limit=limit,
+            media_type=media_type,
+        )
+
+
+@celery_app.task
+def backfill_missing_media_thumbnails(limit: int = 10, media_type: str | None = None):
+    """Create lightweight thumbnails for historical completed image/video tasks."""
+    logger.info("backfill_missing_media_thumbnails_started", limit=limit, media_type=media_type)
+    try:
+        result = _run_async(_backfill_missing_media_thumbnails_async(limit=limit, media_type=media_type))
+        logger.info("backfill_missing_media_thumbnails_completed", **result)
+        return result
+    except Exception as e:
+        logger.error("backfill_missing_media_thumbnails_exception", error=str(e))
         return {"status": "failed", "error": str(e)}

@@ -32,7 +32,7 @@ index 0000000..1cc1d11
 +
 +import { LINEAdapter } from "../line";
 +
-+const CHANNEL_SECRET = "line-channel-secret-12345";
++const CHANNEL_SECRET = "line-secret";
 +
 +function makeLineSignature(body: string, secret: string): string {
 +  return crypto.createHmac("sha256", secret).update(body).digest("base64");
@@ -245,7 +245,7 @@ index 0000000..7a5f597
 +
 +import { WhatsAppAdapter } from "../whatsapp";
 +
-+const APP_SECRET = "test-app-secret-1234567890abcdef";
++const APP_SECRET = "app-secret";
 +
 +function makeWhatsAppSignature(body: string, secret: string): string {
 +  const hmac = crypto.createHmac("sha256", secret).update(body).digest("hex");

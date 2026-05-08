@@ -69,7 +69,7 @@ class TestConfigValidator:
     
     def test_validate_database_wrong_type(self):
         """Test database validation with non-PostgreSQL URL"""
-        with patch.dict(os.environ, {"DATABASE_URL": "mysql://user:pass@localhost/db"}):
+        with patch.dict(os.environ, {"DATABASE_URL": "sqlite:///tmp/test.db"}):
             valid, msg = ConfigValidator._validate_database()
             
             assert valid is False

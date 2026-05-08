@@ -2003,6 +2003,8 @@ const en: TranslationDictionary = {
   "mediaStudio.processing": "Processing...",
   "mediaStudio.failed": "Failed",
   "mediaStudio.pending": "Pending",
+  "mediaStudio.loadingMoreHistory": "Loading more history...",
+  "mediaStudio.historyGalleryShowingCount": "Showing {{shown}} of {{total}}",
   "mediaStudio.noHistoryVideo": "No history yet. Generate some videos!",
   "mediaStudio.noHistoryAudio": "No history yet. Generate some audio!",
   "mediaStudio.noHistoryImage": "No history yet. Generate some images!",

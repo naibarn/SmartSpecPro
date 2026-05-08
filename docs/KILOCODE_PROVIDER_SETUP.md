@@ -101,7 +101,7 @@ VALUES (
 
 ```bash
 # Kilo Code API
-KILOCODE_API_KEY=kilo_your_api_key_here
+KILOCODE_API_KEY=kilo_example_key
 KILOCODE_BASE_URL=https://api.kilo.ai/api/openrouter
 ```
 
@@ -126,7 +126,7 @@ python -m uvicorn app.main:app --reload --port 8000
 4. เลือก "Kilo Code" template
 5. กรอก:
    - **Display Name**: `Kilo Code`
-   - **API Key**: `kilo_your_api_key_here`
+   - **API Key**: `kilo_example_key`
    - **Base URL**: `https://api.kilo.ai/api/openrouter`
    - **Description**: (optional)
 6. เช็ค "Enable this provider"
@@ -145,7 +145,7 @@ from app.llm_proxy.providers.kilocode_provider import create_kilocode_provider
 async def test_kilocode():
     # Create provider
     provider = create_kilocode_provider(
-        api_key="kilo_your_api_key_here",
+        api_key="kilo_example_key",
         base_url="https://api.kilo.ai/api/openrouter"
     )
 

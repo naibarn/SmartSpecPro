@@ -1,0 +1,41 @@
+{
+  "type": "post_call_transcription",
+  "event_timestamp": 1767225610,
+  "data": {
+    "agent_id": "agent_test_123",
+    "conversation_id": "conv_test_123",
+    "status": "done",
+    "user_id": "user_test_123",
+    "transcript": [
+      {
+        "role": "user",
+        "message": "Create a short summary for this project.",
+        "time_in_call_secs": 1,
+        "tool_calls": null,
+        "tool_results": null,
+        "feedback": null,
+        "conversation_turn_metrics": null
+      },
+      {
+        "role": "agent",
+        "message": "Sure. I can help create that summary.",
+        "time_in_call_secs": 3,
+        "tool_calls": null,
+        "tool_results": null,
+        "feedback": null,
+        "conversation_turn_metrics": null
+      }
+    ],
+    "metadata": {
+      "start_time_unix_secs": 1767225600,
+      "call_duration_secs": 8,
+      "cost": 123
+    },
+    "analysis": {
+      "transcript_summary": "The user requested a short project summary."
+    },
+    "has_audio": true,
+    "has_user_audio": true,
+    "has_response_audio": true
+  }
+}

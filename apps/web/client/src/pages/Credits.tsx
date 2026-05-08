@@ -137,6 +137,7 @@ export default function Credits() {
     api_video_project: { label: t('credits.sources.apiVideoProject'), color: "bg-red-100 text-red-700", icon: Film },
     api_chat: { label: t('credits.sources.apiChat'), color: "bg-blue-100 text-blue-700", icon: MessageCircle },
     api_mcp: { label: t('credits.sources.apiMcp'), color: "bg-lime-100 text-lime-700", icon: Bot },
+    voice_agent: { label: t('credits.sources.voiceAgent'), color: "bg-indigo-100 text-indigo-700", icon: Mic },
   }), [t]);
   const originSurfaceLabels = useMemo<Record<CreditTransactionOriginSurface, string>>(() => ({
     media_studio: t('credits.sources.mediaStudio'),

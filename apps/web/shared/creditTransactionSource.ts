@@ -28,6 +28,7 @@ export const CREDIT_TRANSACTION_SOURCE_TYPES = [
   "api_video_project",
   "api_chat",
   "api_mcp",
+  "voice_agent",
 ] as const;
 
 export type CreditTransactionSourceType =

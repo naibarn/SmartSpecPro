@@ -3963,6 +3963,7 @@ export const VideoEditorPhase3: React.FC = () => {
                 transitionName={activeTransitionName}
                 transitionProgress={transitionProgress}
                 selectedClipId={selectedClipId}
+                onSelectClip={(clipId) => handleClipSelectWithGroup(clipId, false)}
                 onTransformChangeAtCurrentTime={handlePreviewTransformChangeAtCurrentTime}
                 onAddKeyframeAtCurrentTime={handleAddTransformKeyframeAtCurrentTime}
                 onDeleteKeyframeAtCurrentTime={handleDeleteTransformKeyframeAtCurrentTime}
@@ -4221,6 +4222,7 @@ export const VideoEditorPhase3: React.FC = () => {
                   config={selectedTextClip?.textConfig}
                   duration={selectedTextClip?.duration ?? 5}
                   transform={selectedTextClip?.transform}
+                  autoSaveExisting={!!selectedTextClip}
                   onSave={handleSaveTextClip}
                   onCancel={() => setSidebarView('library')}
                 />

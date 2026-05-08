@@ -62,7 +62,7 @@ echo "New JWT secret generated (DO NOT LOG THIS): $NEW_JWT_SECRET"
 DATABASE_URL=$(gcloud secrets versions access latest --secret=DATABASE_URL --project=smartspecpro-mvp)
 OLD_JWT_SECRET=$(gcloud secrets versions access latest --secret=JWT_SECRET --project=smartspecpro-mvp)
 
-DUAL_JWT_SECRET="${OLD_JWT_SECRET},${NEW_JWT_SECRET}"
+DUAL_JWT_SIGNING_KEYS="${OLD_JWT_SIGNING_KEY},${NEW_JWT_SIGNING_KEY}"
 
 echo -n "$DUAL_JWT_SECRET" | gcloud secrets versions add JWT_SECRET \
   --data-file=- \
@@ -145,8 +145,8 @@ gcloud run services update-traffic node-api \
 
 ```bash
 # 1. Update Secret Manager to only contain new secret
-NEW_JWT_SECRET="<value from Phase 1>"
-echo -n "$NEW_JWT_SECRET" | gcloud secrets versions add JWT_SECRET \
+NEW_JWT_SIGNING_KEY="<value from Phase 1>"
+echo -n "$NEW_JWT_SIGNING_KEY" | gcloud secrets versions add JWT_SECRET \
   --data-file=- \
   --project=smartspecpro-mvp
 
@@ -170,8 +170,8 @@ psql "$DATABASE_URL" -c "
 
 ```bash
 # 1. Immediate rollback to old secret only
-OLD_JWT_SECRET="<original value before rotation>"
-echo -n "$OLD_JWT_SECRET" | gcloud secrets versions add JWT_SECRET \
+OLD_JWT_SIGNING_KEY="<original value before rotation>"
+echo -n "$OLD_JWT_SIGNING_KEY" | gcloud secrets versions add JWT_SECRET \
   --data-file=- \
   --project=smartspecpro-mvp
 

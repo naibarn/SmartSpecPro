@@ -3,7 +3,7 @@ import request from "supertest";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { SignJWT } from "jose";
 
-const TEST_JWT_SECRET = "test-jwt-secret-32-chars-minimum-1234567890";
+const TEST_JWT_SIGNING_KEY = "test-jwt-key.local";
 
 const mocks = vi.hoisted(() => ({
   revokeJti: vi.fn().mockResolvedValue(undefined),
@@ -33,7 +33,7 @@ async function mintDesktopToken(params: {
     .setIssuedAt(now)
     .setExpirationTime(now + (params.expSeconds ?? 3600))
     .setJti(params.jti)
-    .sign(new TextEncoder().encode(TEST_JWT_SECRET));
+    .sign(new TextEncoder().encode(TEST_JWT_SIGNING_KEY));
 }
 
 async function mintSessionLikeToken() {

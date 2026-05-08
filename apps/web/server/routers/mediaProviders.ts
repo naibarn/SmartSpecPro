@@ -10,8 +10,13 @@ import {
   ELEVENLABS_PROVIDER,
   ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID,
   getElevenLabsProviderAvailableModels,
+  getMagnificProviderAvailableModels,
   getWaveSpeedProviderAvailableModels,
+  MAGNIFIC_BASE_URL,
+  MAGNIFIC_DEFAULT_MODEL_ID,
+  MAGNIFIC_PROVIDER,
   normalizeMediaProviderName,
+  normalizeMagnificBaseUrl,
   normalizePersistedMediaProviderBaseUrl,
   normalizeWaveSpeedBaseUrl,
   WAVESPEED_LAUNCH_MODEL_ID,
@@ -123,6 +128,15 @@ export const PROVIDER_TEMPLATES = [
     baseUrl: "https://api.wavespeed.ai/api/v3",
     defaultModel: WAVESPEED_LAUNCH_MODEL_ID,
     availableModels: getWaveSpeedProviderAvailableModels(),
+  },
+  {
+    providerName: MAGNIFIC_PROVIDER,
+    displayName: "Magnific",
+    description: "Magnific image and video media provider for Mystic, enhancement, Kling, Wan, Veo, and upscaling workflows",
+    providerType: "multimodal" as const,
+    baseUrl: MAGNIFIC_BASE_URL,
+    defaultModel: MAGNIFIC_DEFAULT_MODEL_ID,
+    availableModels: getMagnificProviderAvailableModels(),
   },
   {
     providerName: ELEVENLABS_PROVIDER,
@@ -425,6 +439,12 @@ export const mediaProvidersRouter = router({
             result = await testWaveSpeedAI(
               apiKey,
               provider.baseUrl || "https://api.wavespeed.ai/api/v3"
+            );
+            break;
+          case MAGNIFIC_PROVIDER:
+            result = await testMagnificAI(
+              apiKey,
+              provider.baseUrl || MAGNIFIC_BASE_URL
             );
             break;
           case ELEVENLABS_PROVIDER:
@@ -742,6 +762,64 @@ export async function testWaveSpeedAI(
     message: "Connection successful",
     latencyMs,
     balance,
+  };
+}
+
+export async function testMagnificAI(
+  apiKey: string,
+  baseUrl: string,
+): Promise<{ success: boolean; message: string; latencyMs?: number }> {
+  const normalizedBaseUrl = normalizeMagnificBaseUrl(baseUrl);
+  validateExternalUrl(normalizedBaseUrl);
+  const startTime = Date.now();
+  const response = await fetch(`${normalizedBaseUrl}/v1/ai/mystic`, {
+    method: "GET",
+    headers: {
+      "x-magnific-api-key": apiKey,
+      Accept: "application/json",
+    },
+  });
+  const latencyMs = Date.now() - startTime;
+
+  if (response.status === 401) {
+    return { success: false, message: "Invalid Magnific API key (401 Unauthorized)", latencyMs };
+  }
+  if (response.status === 403) {
+    return { success: false, message: "Magnific account is not authorized for this resource (403 Forbidden)", latencyMs };
+  }
+  if (response.status === 429) {
+    return { success: false, message: "Magnific rate limit reached (429 Too Many Requests)", latencyMs };
+  }
+
+  let payload: any = null;
+  let responseSummary = "";
+  try {
+    payload = await response.json();
+    responseSummary = summarizeResponseText(JSON.stringify(payload));
+  } catch {
+    responseSummary = summarizeResponseText(await response.text().catch(() => ""));
+  }
+
+  if (!response.ok) {
+    return {
+      success: false,
+      message: `Magnific API error (HTTP ${response.status}): ${redactProviderSecret(responseSummary, apiKey)}`,
+      latencyMs,
+    };
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return {
+      success: false,
+      message: "Magnific connection test returned an unexpected response body",
+      latencyMs,
+    };
+  }
+
+  return {
+    success: true,
+    message: "Connection successful",
+    latencyMs,
   };
 }
 

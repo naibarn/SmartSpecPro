@@ -417,12 +417,20 @@ def _generate_ass_document(text_clips: list[dict], width: int, height: int) -> s
         italic = 1 if str(cfg.get("fontStyle", "normal")).lower() == "italic" else 0
         primary = _ass_color_from_hex(cfg.get("color"))
         effect = str(cfg.get("effect", "none"))
-        if effect == "outline":
+        custom_stroke = str(cfg.get("textStroke", "") or "")
+        custom_shadow = str(cfg.get("textShadow", "") or "")
+        if custom_stroke:
+            outline = 3
+            shadow = 0
+        elif effect == "outline":
             outline = 2
             shadow = 0
         elif effect == "shadow":
             outline = 1
             shadow = 2
+        elif effect == "glow" or (custom_shadow and custom_shadow.lower() != "none"):
+            outline = 1
+            shadow = 3
         else:
             outline = 0
             shadow = 0
@@ -430,7 +438,7 @@ def _generate_ass_document(text_clips: list[dict], width: int, height: int) -> s
         alignment = align_map.get(str(cfg.get("textAlign", "center")).lower(), 2)
         styles.append(
             f"Style: {style_name},{font_name},{font_size},{primary},{primary},&H00000000,&H00000000,"
-            f"{bold},{italic},0,0,100,100,0,0,1,{outline},{shadow},{alignment},20,20,20,1"
+            f"{bold},{italic},0,0,100,100,{_to_float(cfg.get('letterSpacing'), 0.0)},0,1,{outline},{shadow},{alignment},20,20,20,1"
         )
 
         start_s = _to_int(clip.get("startMs"), default=0) / 1000.0
@@ -826,6 +834,108 @@ def _has_audio_stream(uri: str, runner=None) -> bool:
         return False
 
 
+def _probe_video_size(uri: str) -> tuple[int, int] | None:
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe", "-v", "error",
+                "-select_streams", "v:0",
+                "-show_entries", "stream=width,height",
+                "-of", "csv=p=0:s=x",
+                uri,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if result.returncode != 0:
+            return None
+        match = re.match(r"^\s*(\d+)x(\d+)\s*$", result.stdout.strip())
+        if not match:
+            return None
+        return int(match.group(1)), int(match.group(2))
+    except Exception:
+        return None
+
+
+def _detect_letterbox_crop_filter(uri: str, runner=None) -> str | None:
+    """Detect embedded horizontal black bars and return an FFmpeg crop filter.
+
+    Provider-generated vertical clips can be 9:16 at the container level while
+    still carrying cinematic matte bars inside the frame. The editor render step
+    should remove those source bars before scale/pad so the final export fills
+    the vertical canvas.
+    """
+    if runner is not None:
+        # Remote/abstract runners may not support binary rawvideo capture.
+        return None
+
+    size = _probe_video_size(uri)
+    if not size:
+        return None
+    width, height = size
+    if width <= 0 or height <= 0:
+        return None
+
+    sample_w, sample_h = 72, 128
+    raw_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".gray", delete=False) as tmp:
+            raw_path = tmp.name
+        result = subprocess.run(
+            [
+                "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                "-ss", "4",
+                "-i", uri,
+                "-frames:v", "1",
+                "-vf", f"scale={sample_w}:{sample_h},format=gray",
+                "-f", "rawvideo",
+                raw_path,
+            ],
+            capture_output=True,
+            timeout=20,
+        )
+        if result.returncode != 0:
+            return None
+        with open(raw_path, "rb") as fh:
+            frame = fh.read()
+        if len(frame) < sample_w * sample_h:
+            return None
+
+        rows = [
+            sum(frame[row * sample_w:(row + 1) * sample_w]) / sample_w
+            for row in range(sample_h)
+        ]
+        threshold = 12
+        top_rows = 0
+        while top_rows < sample_h and rows[top_rows] < threshold:
+            top_rows += 1
+        bottom_rows = 0
+        while bottom_rows < sample_h and rows[sample_h - 1 - bottom_rows] < threshold:
+            bottom_rows += 1
+
+        top_px = int(round((top_rows / sample_h) * height))
+        bottom_px = int(round((bottom_rows / sample_h) * height))
+        # Keep crop dimensions even for yuv420p compatibility.
+        top_px -= top_px % 2
+        bottom_px -= bottom_px % 2
+        crop_h = height - top_px - bottom_px
+        if top_px + bottom_px < max(24, int(height * 0.025)):
+            return None
+        if crop_h <= 0 or crop_h < int(height * 0.65):
+            return None
+        crop_h -= crop_h % 2
+        return f"crop=iw:{crop_h}:0:{top_px}"
+    except Exception:
+        return None
+    finally:
+        if raw_path:
+            try:
+                os.unlink(raw_path)
+            except OSError:
+                pass
+
+
 def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
     """Build FFmpeg render command from timeline."""
     project = spec.get("inputs", {}).get("project")
@@ -947,7 +1057,10 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
             # Video filter: trim + fps + scale + format
             # fps normalizes framerate AND timebase (required for xfade)
             # scale + pad ensures all clips are exactly proj_w x proj_h
+            source_crop_filter = _detect_letterbox_crop_filter(path, runner=runner)
             normalize_chain = (
+                f"{source_crop_filter}," if source_crop_filter else ""
+            ) + (
                 f"fps={proj_fps},"
                 f"scale={proj_w}:{proj_h}:force_original_aspect_ratio=decrease,"
                 f"pad={proj_w}:{proj_h}:(ow-iw)/2:(oh-ih)/2:color=black,"

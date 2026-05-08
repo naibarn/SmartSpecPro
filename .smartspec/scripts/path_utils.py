@@ -140,7 +140,7 @@ if __name__ == "__main__":
             print(f"✅ Path traversal blocked: {e}")
         
         # Redaction test
-        text = "API key: sk-1234567890abcdef1234567890abcdef password=secret123"
+        text = "API key: [REDACTED_EXAMPLE_OPENAI_KEY] password=[REDACTED_EXAMPLE_PASSWORD]"
         redacted = redact_secrets(text)
         print(f"✅ Redacted: {redacted}")
         

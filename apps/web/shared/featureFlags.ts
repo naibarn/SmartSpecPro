@@ -83,6 +83,7 @@ export interface TenantFeatureFlags {
   openAiAgentsRuntimeSkillShadow: boolean; // F75 — Shared skill shadow runtime via OpenAI Agents adapter
   openAiAgentsRuntimeSkillActive: boolean; // F76 — Shared skill active runtime via OpenAI Agents adapter
   openAiAgentsRuntimeForceRollback: boolean; // F77 — Force new runtime selections back to legacy
+  voiceAgents: boolean; // F78 — ElevenLabs ElevenAgents Chat runtime and admin surface
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -169,6 +170,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "openAiAgentsRuntimeSkillShadow",
   "openAiAgentsRuntimeSkillActive",
   "openAiAgentsRuntimeForceRollback",
+  "voiceAgents",
 ]);
 
 /**
@@ -254,6 +256,7 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   openAiAgentsRuntimeSkillShadow: false, // Shared skill shadow stays off until manifest-driven selection is ready
   openAiAgentsRuntimeSkillActive: false, // Shared skill active stays off until typed caller contracts are proven
   openAiAgentsRuntimeForceRollback: false, // Rollback remains available but disabled by default
+  voiceAgents: false, // ElevenAgents runtime stays tenant-gated until security and rollout evidence passes
 };
 
 export type HermesRolloutSurface =

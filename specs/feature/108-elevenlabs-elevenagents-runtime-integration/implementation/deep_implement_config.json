@@ -1,0 +1,52 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/108-elevenlabs-elevenagents-runtime-integration/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/108-elevenlabs-elevenagents-runtime-integration/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-provider-research",
+    "section-02-schema-contracts",
+    "section-03-backend-services",
+    "section-04-api-callbacks",
+    "section-05-chat-admin-ui",
+    "section-06-observability-regression"
+  ],
+  "sections_state": {
+    "section-01-provider-research": {
+      "status": "complete",
+      "commit_hash": "uncommitted-protected-main"
+    },
+    "section-02-schema-contracts": {
+      "status": "complete",
+      "commit_hash": "uncommitted-protected-main"
+    },
+    "section-03-backend-services": {
+      "status": "complete",
+      "commit_hash": "uncommitted-protected-main"
+    },
+    "section-04-api-callbacks": {
+      "status": "complete",
+      "commit_hash": "uncommitted-protected-main"
+    },
+    "section-05-chat-admin-ui": {
+      "status": "complete",
+      "commit_hash": "uncommitted-protected-main"
+    },
+    "section-06-observability-regression": {
+      "status": "complete",
+      "commit_hash": "uncommitted-protected-main"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-05-07T00:20:35.342051+00:00"
+}

@@ -10,7 +10,11 @@ import {
   ELEVENLABS_PROVIDER,
   ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID,
   getElevenLabsProviderAvailableModels,
+  getMagnificProviderAvailableModels,
   getWaveSpeedProviderAvailableModels,
+  MAGNIFIC_BASE_URL,
+  MAGNIFIC_DEFAULT_MODEL_ID,
+  MAGNIFIC_PROVIDER,
   WAVESPEED_LAUNCH_MODEL_ID,
 } from "../server/services/mediaProviderUtils";
 
@@ -99,6 +103,18 @@ export const DEFAULT_PROVIDERS = [
     isEnabled: false,
     isPrimary: false,
     priority: 12,
+  },
+  {
+    providerName: MAGNIFIC_PROVIDER,
+    displayName: "Magnific",
+    description: "Magnific media provider for image generation, enhancement, video generation, and video upscaling",
+    providerType: "multimodal",
+    baseUrl: MAGNIFIC_BASE_URL,
+    defaultModel: MAGNIFIC_DEFAULT_MODEL_ID,
+    availableModels: getMagnificProviderAvailableModels(),
+    isEnabled: false,
+    isPrimary: false,
+    priority: 14,
   },
   {
     providerName: ELEVENLABS_PROVIDER,

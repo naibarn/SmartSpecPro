@@ -977,7 +977,7 @@ index 0000000..3b8d4fe
 +    return hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
 +
 +
-+WEBHOOK_SECRET = "test-webhook-secret-key"
++WEBHOOK_SECRET = "webhook-key"
 +KIE_JOB_ID = "kie-task-abc123"
 +JOB_ID = "job-uuid-12345"
 +

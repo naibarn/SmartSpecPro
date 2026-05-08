@@ -48,6 +48,7 @@ See `schemas/output.schema.json`
 
 - ต้องสร้าง Storyboard ก่อน แล้วค่อยสร้าง Video Prompts (ห้ามข้ามขั้น)
 - Storyboard ต้องพิมพ์เป็น Text ปกติ ห้ามใส่ code block
+- ถ้า `contentMode=storyboard` ให้ถือว่าผลลัพธ์เป็น storyboard ต่อเนื่องเรื่องเดียว ไม่ใช่ prompt แยกกันแบบไม่เกี่ยวกัน ต้องคง story arc, ลำดับ beat, ตัวละครประจำ, ใบหน้า/ทรงผม/รูปร่าง, เสื้อผ้า/เครื่องประดับ, prop, ฉาก, แสง, camera language และ transition ให้สอดคล้องกันตลอด storyboard
 - ความยาวรวมเป้าหมาย: 40–120 วินาที
 - ไม่มีซับ ไม่มี caption/lower-third ไม่มีข้อความ/ตัวเลข/โลโก้ตัวอักษรบนจอ ไม่มี narrator (ตาม constraints ดีฟอลต์)
 - วิดีโอแต่ละฉากควร 6–10 วินาที (ปรับตาม sceneCount และ targetDurationSeconds)
@@ -117,9 +118,10 @@ See `schemas/output.schema.json`
 - ถ้ามี reference image ของตัวละคร ให้ถือเป็น identity reference และคงใบหน้า ทรงผม รูปร่าง เสื้อผ้า เครื่องประดับ ท่าทาง และของประจำตัวเดิมให้สอดคล้องทุก prompt
 - ถ้ามี reference image ของสินค้า/วัตถุ/พร็อพ ให้คงรูปทรง สี วัสดุ ลวดลาย และรายละเอียดเด่นเดิมให้สอดคล้องทุก prompt
 - ถ้ามี reference image ของฉาก/สถานที่ ให้คง composition perspective layout และ mood แสงเดิมให้สอดคล้องทุก prompt
-- เมื่อ `reference_images` มี `@Image1`, `@Image2`, `@Image3` ให้ใช้ความสามารถ vision วิเคราะห์ภาพทุกภาพก่อนเขียน output แล้วจัด role ให้แต่ละภาพอย่างน้อยหนึ่งประเภท: character/person identity, product/brand/object, animal/prop, scene/location/background, start frame, end frame หรือ supporting visual
-- ในโหมดข่าว ถ้าภาพเป็นคน/ตัวละคร ให้พิจารณาใช้เป็น presenter หรือบุคคลที่ปรากฏใน visual wall ตามความเหมาะสม; ถ้าเป็นสินค้า/โลโก้/วัตถุ ให้ใช้เป็น product/object reference ในฉากหลังหรือพร็อพ; ถ้าเป็นฉาก ให้ใช้เป็น newsroom/background/B-roll reference; ถ้าเป็นสัตว์หรือสิ่งของประกอบ ให้ใส่เป็น prop/action ที่คงรายละเอียดเด่นเดิม
-- `REFERENCE NOTES` ต้องสรุปบทบาทของรูปด้วย handle ชัดเจน เช่น `@Image1 role: presenter identity`, `@Image2 role: product reference`, พร้อมรายละเอียดจาก vision ที่ต้อง preserve ห้ามเขียนว่า `none required` เมื่อมีรูปอ้างอิงจริง
+- เมื่อ `reference_images` มี `@Image1`, `@Image2`, `@Image3` ให้ใช้ความสามารถ vision วิเคราะห์ภาพทุกภาพก่อนเขียน output แล้วจัด role ให้แต่ละภาพอย่างน้อยหนึ่งประเภท: character/person identity, product/brand/object, animal/prop, scene/location/background, start frame, end frame หรือ supporting visual; สำหรับ `contentMode=storyboard` หรือ `news_narration` ให้ถือภาพแนบเป็น reference asset ไม่ใช่ start/end frame ยกเว้น `generationType=FIRST_AND_LAST_FRAMES_2_VIDEO` เท่านั้น
+- ถ้ามีภาพอ้างอิงแนบมา ต้องระบุใน `REFERENCE NOTES` อย่างชัดเจนว่าใช้ภาพอ้างอิงใด เช่น `@Image1 is used as a reference asset for recurring main character identity, not as a start frame` พร้อมรายละเอียดที่ต้อง preserve และถ้าเป็นตัวละครหลักใน `contentMode=storyboard` ต้องนำ handle/รายละเอียดนั้นเข้า `CONTINUITY NOTES` และ `Continuity Lock` เพื่อคงตัวละครเดิมตลอด storyboard
+- ในโหมดข่าว ถ้าภาพเป็นคน/ตัวละคร ให้พิจารณาใช้เป็น presenter หรือบุคคลที่ปรากฏใน visual wall ตามความเหมาะสม; ถ้าเป็นสินค้า/โลโก้/วัตถุ ให้ใช้เป็น product/object reference ในฉากหลังหรือพร็อพ; ถ้าเป็นฉาก ให้ใช้เป็น newsroom/background/B-roll reference; ถ้าเป็นสัตว์หรือสิ่งของประกอบ ให้ใส่เป็น prop/action ที่คงรายละเอียดเด่นเดิม และต้องประกาศว่าเป็น reference asset ไม่ใช่ start frame
+- `REFERENCE NOTES` ต้องสรุปบทบาทของรูปด้วย handle ชัดเจน เช่น `@Image1 is used as a reference asset for presenter identity, not as a start frame`, `@Image2 is used as a reference asset for product reference, not as a start frame`, พร้อมรายละเอียดจาก vision ที่ต้อง preserve ห้ามเขียนว่า `none required` เมื่อมีรูปอ้างอิงจริง
 - สำหรับ `TEXT_2_VIDEO` รูปที่แนบใน Media Studio เป็น visual analysis/reference สำหรับเขียน prompt เท่านั้น ไม่ต้องสั่งให้ provider ใช้ `imageUrls`; สำหรับ `FIRST_AND_LAST_FRAMES_2_VIDEO` และ `REFERENCE_2_VIDEO` ให้เขียนบทบาทของ `@ImageN` ให้ตรงกับรูปที่จะส่งไปสร้างวิดีโอ
 - ต้องสร้าง `REFERENCE NOTES` และ `CONTINUITY NOTES` จากตัว skill เสมอ แล้ววางไว้ด้านบนก่อน prompt blocks เพื่อให้ Media Studio sync กลับเข้า field ได้
 - ถ้า referenceNotes ว่างหรือสั้นเกินไป ให้ตัว skill สร้าง/ขยาย visual reference bible เองจากไอเดีย ข่าว และภาพอ้างอิง แล้ววางเป็นย่อหน้า `REFERENCE NOTES` ด้านบน ห้ามเขียนแค่ข้อความว่าไม่มีรูปอ้างอิงโดยไม่มีข้อมูลใช้งาน

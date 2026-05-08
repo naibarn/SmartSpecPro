@@ -12,6 +12,9 @@ import subprocess
 import tempfile
 from io import BytesIO
 from pathlib import Path
+from typing import Any
+from urllib.parse import quote
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 import structlog
@@ -49,10 +52,10 @@ async def download_media(
         MediaPipelineError: On SSRF-blocked URL (permanent).
     """
     # Validate URL against SSRF (block internal IPs, metadata endpoints)
-    from app.core.media_job_validators import validate_uri_no_ssrf
+    from app.core.media_job_validators import validate_provider_result_uri
 
     try:
-        validate_uri_no_ssrf(result_url)
+        validate_provider_result_uri(result_url)
     except ValueError as e:
         raise MediaPipelineError(f"Blocked URL: {e}") from e
 
@@ -73,7 +76,7 @@ async def download_media(
     file_size = len(response.content)
     logger.info(
         "media_downloaded",
-        url=result_url,
+        url=_redact_url_query(result_url),
         size=file_size,
         content_type=content_type,
     )
@@ -154,15 +157,19 @@ async def upload_to_r2(
     result_path: str,
     thumbnail_path: str | None,
     media_type: str,
+    db_session: Any | None = None,
 ) -> dict:
     """Upload result and thumbnail to R2.
 
     Returns dict with r2_keys and public URLs.
     """
-    from app.services.generation.r2_storage import get_r2_storage, StoragePath
+    from app.core.database import AsyncSessionLocal
+    from app.services.generation.r2_storage import StoragePath
+    from app.services.r2_storage_service import get_r2_storage_service
 
-    r2 = get_r2_storage()
     ext = Path(result_path).suffix.lstrip(".")
+    content_type, _ = mimetypes.guess_type(result_path)
+    content_type = content_type or "application/octet-stream"
 
     # Determine storage key based on media type
     if media_type == "video":
@@ -172,25 +179,94 @@ async def upload_to_r2(
     else:
         result_key = StoragePath.image_generated(user_id, job_id, ext or "png")
 
-    result_url = await r2.upload_file(result_path, result_key)
+    r2 = get_r2_storage_service()
 
-    r2_info = {
-        "result_key": result_key,
-        "result_url": result_url,
-        "thumbnail_key": None,
-        "thumbnail_url": None,
-    }
+    async def _upload_all(session: Any) -> dict:
+        result_bytes = await asyncio.to_thread(Path(result_path).read_bytes)
+        await r2.upload_bytes(
+            result_key,
+            result_bytes,
+            content_type,
+            db_session=session,
+        )
 
-    if thumbnail_path and os.path.exists(thumbnail_path):
-        if media_type == "video":
-            thumb_key = StoragePath.video_thumbnail(job_id)
-        else:
-            thumb_key = StoragePath.image_thumbnail(job_id, size="300")
-        thumb_url = await r2.upload_file(thumbnail_path, thumb_key, content_type="image/jpeg")
-        r2_info["thumbnail_key"] = thumb_key
-        r2_info["thumbnail_url"] = thumb_url
+        r2_info = {
+            "result_key": result_key,
+            "result_url": _storage_proxy_url(result_key),
+            "thumbnail_key": None,
+            "thumbnail_url": None,
+        }
+
+        if thumbnail_path and os.path.exists(thumbnail_path):
+            if media_type == "video":
+                thumb_key = StoragePath.video_thumbnail(job_id)
+            else:
+                thumb_key = StoragePath.image_thumbnail(job_id, size="300")
+            thumb_bytes = await asyncio.to_thread(Path(thumbnail_path).read_bytes)
+            await r2.upload_bytes(
+                thumb_key,
+                thumb_bytes,
+                "image/jpeg",
+                db_session=session,
+            )
+            r2_info["thumbnail_key"] = thumb_key
+            r2_info["thumbnail_url"] = _storage_proxy_url(thumb_key)
+
+        return r2_info
+
+    if db_session is None:
+        async with AsyncSessionLocal() as session:
+            r2_info = await _upload_all(session)
+    else:
+        r2_info = await _upload_all(db_session)
 
     logger.info("media_uploaded_to_r2", job_id=job_id, result_key=result_key)
+    return r2_info
+
+
+async def upload_thumbnail_to_r2(
+    user_id: str,
+    job_id: str,
+    thumbnail_path: str,
+    media_type: str,
+    db_session: Any | None = None,
+) -> dict:
+    """Upload only a generated thumbnail to R2/storage.
+
+    Used by background backfills for historical tasks that already have a full
+    result stored but are missing a lightweight preview image.
+    """
+    from app.core.database import AsyncSessionLocal
+    from app.services.generation.r2_storage import StoragePath
+    from app.services.r2_storage_service import get_r2_storage_service
+
+    if media_type == "video":
+        thumb_key = StoragePath.video_thumbnail(job_id)
+    else:
+        thumb_key = StoragePath.image_thumbnail(job_id, size="300")
+
+    r2 = get_r2_storage_service()
+
+    async def _upload(session: Any) -> dict:
+        thumb_bytes = await asyncio.to_thread(Path(thumbnail_path).read_bytes)
+        await r2.upload_bytes(
+            thumb_key,
+            thumb_bytes,
+            "image/jpeg",
+            db_session=session,
+        )
+        return {
+            "thumbnail_key": thumb_key,
+            "thumbnail_url": _storage_proxy_url(thumb_key),
+        }
+
+    if db_session is None:
+        async with AsyncSessionLocal() as session:
+            r2_info = await _upload(session)
+    else:
+        r2_info = await _upload(db_session)
+
+    logger.info("media_thumbnail_uploaded_to_r2", job_id=job_id, thumbnail_key=thumb_key)
     return r2_info
 
 
@@ -209,6 +285,20 @@ def _guess_extension(content_type: str, url: str) -> str:
     if "." in url_path.split("/")[-1]:
         return "." + url_path.split("/")[-1].rsplit(".", 1)[-1]
     return ".bin"
+
+
+def _redact_url_query(url: str) -> str:
+    """Remove signed query strings before writing provider URLs to logs."""
+    try:
+        parts = urlsplit(url)
+        return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+    except Exception:
+        return "<invalid-url>"
+
+
+def _storage_proxy_url(key: str) -> str:
+    """Return the web storage proxy URL for an uploaded object key."""
+    return f"/api/storage/files/{quote(key, safe='/')}"
 
 
 async def _generate_image_thumbnail(input_path: str, output_path: str) -> None:
@@ -255,6 +345,7 @@ async def _generate_video_thumbnail(input_path: str, output_path: str, runner=No
         "ffmpeg", "-y", "-ss", str(seek_time),
         "-i", input_path,
         "-frames:v", "1",
+        "-vf", f"scale={IMAGE_THUMB_WIDTH}:-2",
         "-q:v", "3",
         output_path,
     ]

@@ -34,7 +34,7 @@ index 00000000..ae096a30
 +  ENV: {
 +    mcpServerToken: "test-mcp-token",
 +    webGatewayToken: "test-gateway-token",
-+    apiKeyHmacSecret: "test-hmac-secret-that-is-at-least-32-characters-long",
++    apiKeyHmacSecret: "test-hmac-key.short",
 +  },
 +}));
 +

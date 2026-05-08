@@ -30,7 +30,12 @@ export interface ModelInputField {
   searchable?: boolean;
   placeholder?: string;
   description?: string;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+  step?: number;
   maxItems?: number;
+  allowedExtensions?: string[];
   itemLabel?: string;
   itemFields?: ModelInputField[];
   optionsSource?: {
@@ -186,7 +191,12 @@ function parseModelInputFieldRecords(rawFields: unknown[]): ModelInputField[] {
       searchable: Boolean(record.searchable),
       placeholder: typeof record.placeholder === "string" ? record.placeholder.trim() : undefined,
       description: typeof record.description === "string" ? record.description.trim() : undefined,
+      maxLength: parsePositiveInteger(record.maxLength) ?? undefined,
+      min: typeof record.min === "number" && Number.isFinite(record.min) ? record.min : undefined,
+      max: typeof record.max === "number" && Number.isFinite(record.max) ? record.max : undefined,
+      step: typeof record.step === "number" && Number.isFinite(record.step) && record.step > 0 ? record.step : undefined,
       maxItems: parsePositiveInteger(record.maxItems) ?? parsePositiveInteger(record.maxCount),
+      allowedExtensions: parseAllowedExtensions(record.allowedExtensions),
       itemLabel: typeof record.itemLabel === "string" ? record.itemLabel.trim() : undefined,
       itemFields,
       optionsSource:
@@ -252,6 +262,18 @@ function parsePositiveInteger(value: unknown): number | undefined {
     return undefined;
   }
   return Math.floor(parsed);
+}
+
+function parseAllowedExtensions(value: unknown): string[] | undefined {
+  const rawItems = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value.split(",")
+      : [];
+  const normalized = rawItems
+    .map((entry) => String(entry ?? "").trim().replace(/^\./, "").toLowerCase())
+    .filter((entry) => /^[a-z0-9]+$/.test(entry));
+  return normalized.length > 0 ? Array.from(new Set(normalized)) : undefined;
 }
 
 function normalizeGenerateType(configJson: unknown): string | null {
@@ -726,6 +748,9 @@ export function getMissingRequiredModelFields(
 }
 
 export function getAllowedLibraryExtensionsForField(field: ModelInputField): string[] | undefined {
+  if (field.allowedExtensions?.length) {
+    return field.allowedExtensions;
+  }
   if (field.type === "image_urls") {
     return LIBRARY_IMAGE_EXTENSIONS;
   }

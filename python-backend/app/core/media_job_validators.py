@@ -103,6 +103,7 @@ def validate_uri_no_ssrf(
     uri: str,
     *,
     allow_docker_internal: bool = True,
+    allow_query_metacharacters: bool = False,
 ) -> str:
     """Validate that a URI does not target internal/private network addresses.
 
@@ -114,10 +115,11 @@ def validate_uri_no_ssrf(
     Raises ValueError if the URI is SSRF-prone.
     Returns the URI unchanged if safe.
     """
-    if _has_shell_metacharacters(uri):
+    parsed = urlparse(uri)
+    shell_checked_uri = parsed._replace(query="").geturl() if allow_query_metacharacters else uri
+    if _has_shell_metacharacters(shell_checked_uri):
         raise ValueError(f"URI contains shell metacharacters: {uri!r}")
 
-    parsed = urlparse(uri)
     scheme = parsed.scheme.lower()
 
     # Block file:// scheme on web backend
@@ -154,6 +156,21 @@ def validate_uri_strict(uri: str) -> str:
     host access is ever needed.
     """
     return validate_uri_no_ssrf(uri, allow_docker_internal=False)
+
+
+def validate_provider_result_uri(uri: str) -> str:
+    """Validate a provider-hosted result URL for HTTP download/re-hosting.
+
+    Provider CDNs often return signed URLs with query delimiters such as ``&``.
+    Those URLs are consumed by httpx, not a shell, so the query string should not
+    be rejected as a shell expression. The path/host/scheme are still validated
+    strictly and SSRF protection remains enabled.
+    """
+    return validate_uri_no_ssrf(
+        uri,
+        allow_docker_internal=False,
+        allow_query_metacharacters=True,
+    )
 
 
 # ========================================

@@ -89,7 +89,7 @@ describe("userApiKeys router", () => {
       const caller = createCaller(createUnauthenticatedContext());
 
       await expect(
-        caller.setKey({ provider: "openai", apiKey: "sk-test-1234-longenough-key" }),
+        caller.setKey({ provider: "openai", apiKey: "sk-test.short" }),
       ).rejects.toThrow(/login/);
     });
 
@@ -125,14 +125,14 @@ describe("userApiKeys router", () => {
 
       const result = await caller.setKey({
         provider: "openai",
-        apiKey: "sk-test-key-1234-longenough",
+        apiKey: "sk-test.short",
       });
 
       expect(mockSetUserApiKey).toHaveBeenCalledWith(
         1,
         "tenant-1",
         "openai",
-        "sk-test-key-1234-longenough",
+        "sk-test.short",
       );
       expect(result).toEqual({
         provider: "openai",
@@ -150,7 +150,7 @@ describe("userApiKeys router", () => {
 
       const result = await caller.setKey({
         provider: "anthropic",
-        apiKey: "sk-ant-abcXYZW-longenough",
+        apiKey: "sk-ant.short",
       });
 
       expect(result).not.toHaveProperty("apiKey");
@@ -165,7 +165,7 @@ describe("userApiKeys router", () => {
       await expect(
         caller.setKey({
           provider: "openai",
-          apiKey: "sk-test-key-1234-longenough",
+          apiKey: "sk-test.short",
         }),
       ).rejects.toThrow("User-managed LLM API keys are disabled by admin");
 
@@ -179,7 +179,7 @@ describe("userApiKeys router", () => {
       const caller = createCaller(createAuthenticatedContext());
 
       await expect(
-        caller.setKey({ provider: "badprovider" as any, apiKey: "sk-test-badprovider-key-longenough" }),
+        caller.setKey({ provider: "badprovider" as any, apiKey: "sk-test.bad" }),
       ).rejects.toThrow();
     });
 

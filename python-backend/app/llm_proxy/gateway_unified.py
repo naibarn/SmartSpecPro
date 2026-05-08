@@ -3,6 +3,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Dict, Any, Optional, List, Literal, Union
 import re
 import math
+import mimetypes
 import httpx
 from uuid import uuid4
 from fastapi import HTTPException, status
@@ -160,6 +161,8 @@ class LLMGateway:
             return "fal_ai"
         if normalized in {"wavespeed_ai", "wavespeedai"}:
             return "wavespeed_ai"
+        if normalized in {"magnific", "magnific_api", "magnific_ai"}:
+            return "magnific"
         if normalized in {"elevenlabs", "eleven_labs", "elevenlabs_ai", "eleven_labs_ai"}:
             return "elevenlabs"
         return normalized
@@ -602,6 +605,39 @@ class LLMGateway:
 
         return await r2_service.upload_bytes(key, payload, content_type, db_session=self.db)
 
+    async def _rehost_provider_media_url(
+        self,
+        *,
+        user_id: int,
+        job_id: str,
+        media_type: str,
+        url: str,
+    ) -> str:
+        """Download a provider result URL and upload it to platform storage."""
+        from app.core.media_job_validators import validate_uri_strict
+
+        validate_uri_strict(url)
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(300.0, connect=10.0),
+            follow_redirects=True,
+        ) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+
+        content_type = response.headers.get("content-type", "application/octet-stream").split(";", 1)[0].strip()
+        allowed_prefix = "video/" if media_type == "video" else "image/"
+        if not content_type.startswith(allowed_prefix):
+            raise ValueError(f"Magnific returned unsupported {media_type} content type")
+        ext = mimetypes.guess_extension(content_type) or (".mp4" if media_type == "video" else ".png")
+        return await self._upload_generated_media_bytes(
+            user_id=user_id,
+            job_id=job_id,
+            media_type=media_type,
+            payload=response.content,
+            content_type=content_type,
+            ext=ext.lstrip("."),
+        )
+
     @staticmethod
     def _extract_first_url_from_payload(payload: Any) -> Optional[str]:
         if isinstance(payload, dict):
@@ -626,6 +662,120 @@ class LLMGateway:
                 if found:
                     return found
         return None
+
+    @staticmethod
+    def _is_magnific_model_id(model_id: Optional[str]) -> bool:
+        return isinstance(model_id, str) and model_id.strip().lower().startswith("magnific/")
+
+    @staticmethod
+    def _is_magnific_nano_banana_model_id(model_id: Optional[str]) -> bool:
+        if not isinstance(model_id, str):
+            return False
+        normalized = model_id.strip().lower()
+        return normalized in {"magnific/nano-banana-pro", "magnific/nano-banana-pro-flash"}
+
+    @staticmethod
+    def _normalize_magnific_reference_images(value: Any) -> list[dict[str, Any]]:
+        if not isinstance(value, list):
+            return []
+        references: list[dict[str, Any]] = []
+        for item in value[:3]:
+            if isinstance(item, str) and item.strip():
+                image_url = item.strip()
+                references.append({
+                    "image": image_url,
+                    "mime_type": LLMGateway._infer_magnific_reference_mime_type(image_url),
+                })
+            elif isinstance(item, dict):
+                image = item.get("image") or item.get("url") or item.get("image_url") or item.get("imageUrl")
+                if isinstance(image, str) and image.strip():
+                    normalized: dict[str, Any] = {"image": image.strip()}
+                    text_value = item.get("text")
+                    mime_type = item.get("mime_type") or item.get("mimeType")
+                    if isinstance(text_value, str) and text_value.strip():
+                        normalized["text"] = text_value.strip()
+                    if isinstance(mime_type, str) and mime_type.strip():
+                        normalized["mime_type"] = mime_type.strip()
+                    else:
+                        normalized["mime_type"] = LLMGateway._infer_magnific_reference_mime_type(image.strip())
+                    references.append(normalized)
+        return references
+
+    @staticmethod
+    def _infer_magnific_reference_mime_type(url: str) -> str:
+        lower_url = url.split("?", 1)[0].lower()
+        if lower_url.endswith((".jpg", ".jpeg")):
+            return "image/jpeg"
+        if lower_url.endswith(".webp"):
+            return "image/webp"
+        return "image/png"
+
+    @staticmethod
+    def _build_magnific_payload(
+        request: Union[ImageGenerationRequest, VideoGenerationRequest],
+    ) -> Dict[str, Any]:
+        extra = request.extra_params if isinstance(request.extra_params, dict) else {}
+        payload: Dict[str, Any] = {
+            key: value
+            for key, value in extra.items()
+            if not str(key).startswith("__")
+        }
+        style_loras = payload.pop("style_lora_ids", payload.pop("style_lora_id", None))
+        character_loras = payload.pop("character_lora_ids", payload.pop("character_lora_id", None))
+        styling: Dict[str, Any] = dict(payload.get("styling")) if isinstance(payload.get("styling"), dict) else {}
+        if style_loras:
+            styling["styles"] = style_loras if isinstance(style_loras, list) else [style_loras]
+        if character_loras:
+            styling["characters"] = character_loras if isinstance(character_loras, list) else [character_loras]
+        if styling:
+            payload["styling"] = styling
+        if getattr(request, "prompt", None):
+            payload.setdefault("prompt", request.prompt)
+        if getattr(request, "negative_prompt", None):
+            payload.setdefault("negative_prompt", request.negative_prompt)
+        if getattr(request, "aspect_ratio", None):
+            payload.setdefault("aspect_ratio", request.aspect_ratio)
+        if getattr(request, "resolution", None):
+            payload.setdefault("resolution", request.resolution)
+        if getattr(request, "duration", None):
+            payload.setdefault("duration", request.duration)
+        if getattr(request, "fps", None):
+            payload.setdefault("fps", request.fps)
+        if getattr(request, "seed", None) is not None:
+            payload.setdefault("seed", request.seed)
+
+        reference_image_urls = getattr(request, "reference_image_urls", None)
+        if reference_image_urls:
+            payload.setdefault("image_urls", reference_image_urls)
+        reference_video_url = getattr(request, "reference_video_url", None)
+        if reference_video_url:
+            payload.setdefault("video_url", reference_video_url)
+            payload.setdefault("video_urls", [reference_video_url])
+
+        if LLMGateway._is_magnific_nano_banana_model_id(getattr(request, "model", None)):
+            reference_images = (
+                LLMGateway._normalize_magnific_reference_images(payload.pop("reference_images", None))
+                or LLMGateway._normalize_magnific_reference_images(payload.pop("reference_image_urls", None))
+                or LLMGateway._normalize_magnific_reference_images(payload.pop("image_urls", None))
+            )
+            allowed_keys = {
+                "prompt",
+                "reference_images",
+                "aspect_ratio",
+                "resolution",
+                "use_google_search_tool",
+            }
+            payload = {key: value for key, value in payload.items() if key in allowed_keys}
+            if reference_images:
+                payload["reference_images"] = reference_images
+            if isinstance(payload.get("prompt"), str) and len(payload["prompt"]) > 3000:
+                payload["prompt"] = payload["prompt"][:3000]
+            payload.setdefault("aspect_ratio", "1:1")
+            if str(getattr(request, "model", "")).strip().lower() == "magnific/nano-banana-pro-flash":
+                payload.setdefault("resolution", "1K")
+            else:
+                payload.setdefault("resolution", "2K")
+        return payload
     
     async def invoke(
         self,
@@ -735,9 +885,19 @@ class LLMGateway:
             "prompt_preview": (request.prompt or "")[:180],
         })
 
-        # Estimate cost via Web Gateway or use local estimate
-        estimated_cost = await self._estimate_cost(request, False)
-        await self._check_credits(user, estimated_cost)
+        reserved_credit_amount = self._get_reserved_credit_amount(request)
+        if reserved_credit_amount is not None:
+            estimated_cost = self._get_reserved_cost_usd(request) or Decimal("0")
+            logger.info(
+                "image_generation_using_reserved_credits",
+                user_id=user.id,
+                model=request.model,
+                reserved_credits=float(reserved_credit_amount),
+            )
+        else:
+            # Estimate cost via Web Gateway or use local estimate
+            estimated_cost = await self._estimate_cost(request, False)
+            await self._check_credits(user, estimated_cost)
 
         # --- BytePlus ModelArk routing ---
         from app.llm_proxy.providers.byteplus_modelark_provider import BytePlusModelArkProvider
@@ -757,7 +917,7 @@ class LLMGateway:
             model=request.model,
             normalized_model=normalized_model,
             resolved_provider=resolved_provider,
-            route="byteplus_modelark" if route_to_byteplus else "kie_ai",
+            route="byteplus_modelark" if route_to_byteplus else "magnific" if resolved_provider == "magnific" or self._is_magnific_model_id(request.model) else "kie_ai",
         )
         write_media_debug_event("image.generate.routing", {
             "trace_id": trace_id,
@@ -767,7 +927,7 @@ class LLMGateway:
             "normalized_model": normalized_model,
             "resolved_provider": resolved_provider,
             "provider_hint": api_config.get("provider"),
-            "route": "byteplus_modelark" if route_to_byteplus else "kie_ai",
+            "route": "byteplus_modelark" if route_to_byteplus else "magnific" if resolved_provider == "magnific" or self._is_magnific_model_id(request.model) else "kie_ai",
         })
 
         if route_to_byteplus:
@@ -798,6 +958,9 @@ class LLMGateway:
                     created=0,
                     data=[{"url": result["result_url"]}],
                 )
+                if reserved_credit_amount is not None:
+                    response.credits_used = reserved_credit_amount
+                    return response
                 transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
                 response.credits_used = abs(transaction.amount)
                 response.credits_balance = transaction.balance_after
@@ -864,6 +1027,104 @@ class LLMGateway:
                     await client.aclose()
         # --- End BytePlus routing ---
 
+        # --- Magnific image routing ---
+        route_to_magnific_image = (
+            resolved_provider == "magnific"
+            or self._is_magnific_model_id(request.model)
+        )
+        if route_to_magnific_image:
+            from app.llm_proxy.providers.magnific_provider import MagnificProvider, MagnificProviderError
+            from app.services.media_provider_service import get_media_provider_key
+
+            provider_config = await get_media_provider_key("magnific")
+            if not provider_config or not provider_config.get("apiKey"):
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Magnific not configured. Please add API key in Admin > Media Providers.",
+                )
+
+            client = None
+            try:
+                client = MagnificProvider(
+                    api_key=provider_config["apiKey"],
+                    base_url=provider_config.get("baseUrl"),
+                )
+                payload = self._build_magnific_payload(request)
+                spec = client.get_model_spec(request.model)
+
+                if spec.dispatch_mode == "sync" and request.model == "magnific/remove-background":
+                    result = await client.remove_background(payload)
+                    rehosted_data = []
+                    for index, item in enumerate(result.get("data") or []):
+                        provider_url = item.get("url") if isinstance(item, dict) else None
+                        if not provider_url:
+                            continue
+                        platform_url = await self._rehost_provider_media_url(
+                            user_id=user.id,
+                            job_id=f"{request.model}-{uuid4().hex}-{index}",
+                            media_type="image",
+                            url=provider_url,
+                        )
+                        rehosted_data.append({"url": platform_url})
+                    if not rehosted_data:
+                        raise ValueError("Magnific Remove Background did not produce re-hostable media")
+                    response = ImageGenerationResponse(
+                        id=f"magnific-sync-{uuid4().hex}",
+                        model=request.model,
+                        provider="magnific",
+                        created=0,
+                        data=rehosted_data,
+                    )
+                else:
+                    result = await client.generate_image(request.model, payload)
+                    response = ImageGenerationResponse(
+                        id=result["provider_task_id"],
+                        model=request.model,
+                        provider="magnific",
+                        created=0,
+                        data=[],
+                    )
+
+                if reserved_credit_amount is not None:
+                    response.credits_used = reserved_credit_amount
+                    return response
+                transaction = await self._deduct_credits(user, estimated_cost, request, response, estimated_cost, False)
+                response.credits_used = abs(transaction.amount)
+                response.credits_balance = transaction.balance_after
+                write_media_debug_event("image.generate.magnific.success", {
+                    "trace_id": trace_id,
+                    "user_id": user.id,
+                    "model": request.model,
+                    "provider_task_id": response.id,
+                    "has_result_url": bool(response.data),
+                    "log_file": log_file,
+                })
+                return response
+            except HTTPException:
+                raise
+            except MagnificProviderError as exc:
+                logger.error(
+                    "magnific_image_generation_failed",
+                    user_id=user.id,
+                    model=request.model,
+                    category=exc.category,
+                    status_code=exc.status_code,
+                )
+                raise HTTPException(
+                    status_code=exc.status_code or status.HTTP_502_BAD_GATEWAY,
+                    detail=str(exc),
+                ) from exc
+            except Exception as exc:
+                logger.error("magnific_image_generation_failed", user_id=user.id, model=request.model, error=type(exc).__name__)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Magnific image generation failed",
+                ) from exc
+            finally:
+                if client is not None:
+                    await client.aclose()
+        # --- End Magnific image routing ---
+
         # --- fal.ai image routing ---
         from app.llm_proxy.providers.fal_ai_provider import FalAIProvider as FalAIImageProvider
         fal_image_models = {self._normalize_model_id(m) for m in FalAIImageProvider.IMAGE_MODELS}
@@ -895,6 +1156,9 @@ class LLMGateway:
                     data=result.get("data", []),
                 )
                 actual_cost = estimated_cost
+                if reserved_credit_amount is not None:
+                    response.credits_used = reserved_credit_amount
+                    return response
                 transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
                 response.credits_used = abs(transaction.amount)
                 response.credits_balance = transaction.balance_after
@@ -1017,6 +1281,9 @@ class LLMGateway:
                     )
 
                 actual_cost = estimated_cost
+                if reserved_credit_amount is not None:
+                    response.credits_used = reserved_credit_amount
+                    return response
                 transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
                 response.credits_used = abs(transaction.amount)
                 response.credits_balance = transaction.balance_after
@@ -1193,6 +1460,9 @@ class LLMGateway:
                 logger.info("image_actual_cost_from_kie", kie_credits=kie_credits, actual_cost_usd=float(actual_cost), estimated_cost_usd=float(estimated_cost))
             else:
                 actual_cost = estimated_cost
+            if reserved_credit_amount is not None:
+                response.credits_used = reserved_credit_amount
+                return response
             transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
             response.credits_used = abs(transaction.amount)  # Return positive value for credits used
             response.credits_balance = transaction.balance_after
@@ -1249,6 +1519,10 @@ class LLMGateway:
             resolved_provider == "wavespeed_ai"
             or normalized_model == wavespeed_launch_model
         )
+        route_to_magnific_video = (
+            resolved_provider == "magnific"
+            or self._is_magnific_model_id(request.model)
+        )
         byteplus_video_models = {
             self._normalize_model_id(model_name)
             for model_name in BytePlusModelArkProvider.VIDEO_MODELS
@@ -1266,6 +1540,8 @@ class LLMGateway:
             route=(
                 "wavespeed_ai"
                 if route_to_wavespeed
+                else "magnific"
+                if route_to_magnific_video
                 else "byteplus_modelark"
                 if route_to_byteplus
                 else "kie_ai"
@@ -1376,6 +1652,67 @@ class LLMGateway:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="WaveSpeed video generation failed",
+                ) from exc
+            finally:
+                if client is not None:
+                    await client.aclose()
+
+        if route_to_magnific_video:
+            from app.llm_proxy.providers.magnific_provider import MagnificProvider, MagnificProviderError
+            from app.services.media_provider_service import get_media_provider_key
+
+            provider_config = await get_media_provider_key("magnific")
+            if not provider_config or not provider_config.get("apiKey"):
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Magnific not configured. Please add API key in Admin > Media Providers.",
+                )
+
+            client = None
+            try:
+                client = MagnificProvider(
+                    api_key=provider_config["apiKey"],
+                    base_url=provider_config.get("baseUrl"),
+                )
+                payload = self._build_magnific_payload(request)
+                if request.model == "magnific/video-upscaler-precision":
+                    result = await client.upscale_video(request.model, payload)
+                else:
+                    result = await client.generate_video(request.model, payload)
+                response = VideoGenerationResponse(
+                    id=result["provider_task_id"],
+                    model=request.model,
+                    provider="magnific",
+                    created=0,
+                    data=[],
+                )
+
+                if reserved_credit_amount is not None:
+                    response.credits_used = reserved_credit_amount
+                    return response
+                transaction = await self._deduct_credits(user, estimated_cost, request, response, estimated_cost, False)
+                response.credits_used = abs(transaction.amount)
+                response.credits_balance = transaction.balance_after
+                return response
+            except HTTPException:
+                raise
+            except MagnificProviderError as exc:
+                logger.error(
+                    "magnific_video_generation_failed",
+                    user_id=user.id,
+                    model=request.model,
+                    category=exc.category,
+                    status_code=exc.status_code,
+                )
+                raise HTTPException(
+                    status_code=exc.status_code or status.HTTP_502_BAD_GATEWAY,
+                    detail=str(exc),
+                ) from exc
+            except Exception as exc:
+                logger.error("magnific_video_generation_failed", user_id=user.id, model=request.model, error=type(exc).__name__)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Magnific video generation failed",
                 ) from exc
             finally:
                 if client is not None:

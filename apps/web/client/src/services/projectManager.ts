@@ -44,12 +44,13 @@ export const TEXT_CONTRACT_VERSION = '1.0';
 
 export const STRICT_PARITY_TEXT_CAPABILITY_MATRIX = Object.freeze({
   mode: 'strict_parity',
-  supportedEffects: ['none', 'shadow', 'outline'] as const,
-  unsupportedEffects: ['glow', 'typewriter', 'fade-in-word'] as const,
+  supportedEffects: ['none', 'shadow', 'outline', 'glow'] as const,
+  unsupportedEffects: ['typewriter', 'fade-in-word'] as const,
   supportsPerPropertyEasingOverride: false,
 });
 
 const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
+const RGB_COLOR_RE = /^rgba?\(\s*(\d{1,3}\s*,\s*){2}\d{1,3}(\s*,\s*(0|1|0?\.\d+))?\s*\)$/i;
 const VALID_TRANSFORM_EASINGS: TransformEasing[] = ['linear', 'ease-in', 'ease-out', 'ease-in-out'];
 const VALID_TRANSFORM_EASING_PROPERTIES: TransformKeyframeProperty[] = [
   'x',
@@ -68,8 +69,17 @@ function clampNumber(value: unknown, min: number, max: number, fallback: number)
 function sanitizeColor(value: unknown, fallback: string): string {
   if (typeof value !== 'string') return fallback;
   if (value === 'transparent') return value;
+  if (RGB_COLOR_RE.test(value)) return value;
   if (!HEX_COLOR_RE.test(value)) return fallback;
   return value.toLowerCase();
+}
+
+function sanitizeCssTextEffect(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 240) return undefined;
+  if (/[;<>{}]/.test(trimmed)) return undefined;
+  return trimmed;
 }
 
 function normalizeTransformEasing(value: unknown, fallback: TransformEasing = 'linear'): TransformEasing {
@@ -210,6 +220,10 @@ function normalizeTextConfig(rawConfig: any): TextConfig {
         ? rawConfig.effect
         : 'none',
     effectColor: sanitizeColor(rawConfig.effectColor, '#000000'),
+    textShadow: sanitizeCssTextEffect(rawConfig.textShadow),
+    textStroke: sanitizeCssTextEffect(rawConfig.textStroke),
+    lineHeight: clampNumber(rawConfig.lineHeight, 0.8, 3, 1.25),
+    letterSpacing: clampNumber(rawConfig.letterSpacing, -8, 24, 0),
   };
 
   validateTextCapabilityMatrixCompliance(normalized);

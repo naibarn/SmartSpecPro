@@ -71,6 +71,32 @@ function hasThaiText(value: string): boolean {
   return /[\u0E00-\u0E7F]/.test(value);
 }
 
+function readPositiveNumber(value: unknown): number | null {
+  const parsed = typeof value === "number" ? value : Number(String(value ?? "").trim());
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function isSeparateVoiceStoryboardTimingPayload(payload: Record<string, unknown>): boolean {
+  const workflow = String(payload.videoAudioWorkflow ?? "").trim();
+  const durationSeconds = readPositiveNumber(payload.storyboardAudioDurationSeconds);
+  const clipDurationSeconds = readPositiveNumber(payload.storyboardClipDurationSeconds);
+  const promptCount = readPositiveNumber(payload.storyboardAudioPromptCount);
+  return (
+    (workflow === "separate_voice" || workflow === "separate_voice_music")
+    && durationSeconds !== null
+    && clipDurationSeconds !== null
+    && promptCount !== null
+  );
+}
+
+function isReferenceAssetStoryboardOrNewsPayload(payload: Record<string, unknown>): boolean {
+  const contentMode = String(payload.contentMode ?? "").trim();
+  return (
+    (contentMode === "storyboard" || contentMode === "news_narration")
+    && String(payload.generationType ?? "").trim() !== "FIRST_AND_LAST_FRAMES_2_VIDEO"
+  );
+}
+
 export function buildCustomSkillPromptInputPayload(
   userInputs: Record<string, unknown>,
   options?: { referenceImageCount?: number },
@@ -137,6 +163,20 @@ export function buildCustomSkillUserPrompt(
     }
   }
 
+  if (isSeparateVoiceStoryboardTimingPayload(payload)) {
+    const promptCount = Math.max(1, Math.ceil(readPositiveNumber(payload.storyboardAudioPromptCount) ?? 1));
+    const clipDurationSeconds = readPositiveNumber(payload.storyboardClipDurationSeconds);
+    const durationSeconds = readPositiveNumber(payload.storyboardAudioDurationSeconds);
+    parts.push(
+      "AUDIO_FIRST_STORYBOARD_PROMPT_COUNT_CONTRACT:",
+      `The attached or prepared voice audio is ${durationSeconds} seconds and each storyboard video prompt is ${clipDurationSeconds} seconds.`,
+      `The final answer must contain exactly ${promptCount} parseable video prompt blocks, with headers PROMPT 1 through PROMPT ${promptCount}.`,
+      `Every prompt header must use the configured clip duration, for example PROMPT N (${clipDurationSeconds} seconds):.`,
+      "Do not stop at 10 prompts, do not treat sceneCount or UI defaults as a cap, and do not use ellipses or placeholder continuation lines.",
+      "For storyboard mode, distribute the same continuous story, recurring reference-image characters, reactions, B-roll, camera changes, and transitions across every required prompt block.",
+    );
+  }
+
   parts.push("USER_INPUTS_JSON:", serializedPayload);
 
   if ((options?.referenceImageCount ?? 0) > 0) {
@@ -146,6 +186,13 @@ export function buildCustomSkillUserPrompt(
       "Use the detected roles in the final prompt output instead of generic wording. If the skill outputs REFERENCE NOTES, CONTINUITY NOTES, per-scene prompts, or video prompts, include the relevant @ImageN handle(s), the role, and the concrete visual details to preserve.",
       "Do not claim an image is a person/product/scene unless the vision input supports that role; choose the most useful role for the user's media generation goal.",
     );
+    if (isReferenceAssetStoryboardOrNewsPayload(payload)) {
+      parts.push(
+        "For contentMode storyboard or news_narration, attached images must be declared as reference assets, not start frames, unless generationType is FIRST_AND_LAST_FRAMES_2_VIDEO.",
+        "In REFERENCE NOTES, write each relevant handle with explicit wording such as `@Image1 is used as a reference asset for character identity, not as a start frame` or `@Image2 is used as a reference asset for the scene/background, not as a start frame`.",
+        "Do not call any @ImageN a Start frame, End frame, first frame, last frame, frozen opening frame, or exact video frame unless generationType is FIRST_AND_LAST_FRAMES_2_VIDEO.",
+      );
+    }
   }
 
   parts.push("Return only the final output requested by the system prompt.");

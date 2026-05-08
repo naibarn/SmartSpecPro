@@ -39,13 +39,13 @@ index 00000000..ee7d4f28
 +}));
 +
 +// Set HMAC secret before importing
-+const TEST_HMAC_SECRET = "test-hmac-secret-that-is-at-least-32-characters-long";
++const TEST_HMAC_SECRET = "test-hmac-key.short";
 +vi.stubEnv("API_KEY_HMAC_SECRET", TEST_HMAC_SECRET);
 +
 +// Mock ENV
 +vi.mock("../../_core/env", () => ({
 +  ENV: {
-+    apiKeyHmacSecret: "test-hmac-secret-that-is-at-least-32-characters-long",
++    apiKeyHmacSecret: "test-hmac-key.short",
 +  },
 +}));
 +

@@ -1978,6 +1978,8 @@ const th: TranslationDictionary = {
   "mediaStudio.processing": "กำลังประมวลผล...",
   "mediaStudio.failed": "ล้มเหลว",
   "mediaStudio.pending": "รอดำเนินการ",
+  "mediaStudio.loadingMoreHistory": "กำลังโหลดประวัติเพิ่ม...",
+  "mediaStudio.historyGalleryShowingCount": "แสดง {{shown}} จาก {{total}} รายการ",
   "mediaStudio.noHistoryVideo": "ยังไม่มีประวัติ ลองสร้างวิดีโอดูสักรายการ!",
   "mediaStudio.noHistoryAudio": "ยังไม่มีประวัติ ลองสร้างเสียงดูสักรายการ!",
   "mediaStudio.noHistoryImage": "ยังไม่มีประวัติ ลองสร้างรูปภาพดูสักรายการ!",

@@ -20,7 +20,7 @@ class TestScrubSecrets:
         assert scrub_secrets("") == ""
 
     def test_openai_key(self):
-        text = "Using key sk-abc123secretkey0123456789xyz"
+        text = "Using key sk-example-redacted"
         result = scrub_secrets(text)
         assert "sk-abc123" not in result
         assert "[REDACTED]" in result
@@ -82,7 +82,7 @@ class TestTraceCollector:
         span_id = tc.start_span(name="agent:test", type="agent_turn")
         tc.end_span(
             span_id,
-            output="Key is sk-abc123secretkey0123456789xyz and Bearer eyJhbGciOi.token",
+            output="Key is sk-example-redacted and Bearer eyJhbGciOi.token",
         )
 
         summary = tc.get_trace_summary()

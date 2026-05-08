@@ -120,6 +120,25 @@ describe("mediaStudioVeoSync", () => {
     expect(sync.modelInputPatch).toEqual({});
   });
 
+  it("does not force a non-Veo user selection back to stale Veo skill defaults", () => {
+    const sync = buildVeoSkillToMediaStudioSync({
+      skillValues: {
+        veoModel: "veo3_lite",
+        generationType: "TEXT_2_VIDEO",
+        outputQuality: "720p",
+      },
+      selectedModel: "kling-2.6",
+      visibleModels: [
+        ...models,
+        { modelId: "kling-2.6", configJson: { kieModelId: "kling-2.6" } },
+      ],
+      aspectRatio: "16:9",
+    });
+
+    expect(sync.selectedModelId).toBeUndefined();
+    expect(sync.modelInputPatch).toEqual({});
+  });
+
   it("keeps future Veo models synced through the selected-model option", () => {
     const patch = buildMediaStudioToVeoSkillSync({
       selectedModelData: models[2],

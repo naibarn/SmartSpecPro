@@ -1,0 +1,78 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/110-magnific-media-provider-models/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/110-magnific-media-provider-models/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-provider-foundation",
+    "section-02-model-seeding-and-fallback",
+    "section-03-media-studio-inputs-and-validation",
+    "section-04-python-provider-client",
+    "section-05-gateway-routing-and-sync-flow",
+    "section-06-polling-rehosting-and-billing",
+    "section-07-security-observability-and-rollout",
+    "section-08-regression-verification"
+  ],
+  "sections_state": {
+    "section-01-provider-foundation": {
+      "status": "complete",
+      "commit_hash": null,
+      "completed_at": "2026-05-06T02:42:00Z",
+      "notes": "Implemented without committing because the repository already has substantial unrelated dirty work. Web targeted tests and typecheck passed; Python pytest is unavailable in this environment."
+    },
+    "section-02-model-seeding-and-fallback": {
+      "status": "complete",
+      "commit_hash": null,
+      "completed_at": "2026-05-06T02:59:00Z",
+      "notes": "Implemented without committing because the repository is on protected branch main with substantial unrelated dirty work. Web targeted tests, dry-run seed summary, typecheck, and diff check passed."
+    },
+    "section-03-media-studio-inputs-and-validation": {
+      "status": "complete",
+      "commit_hash": null,
+      "completed_at": "2026-05-06T03:05:00Z",
+      "notes": "Implemented without committing because the repository is on protected branch main with substantial unrelated dirty work. Client/server targeted tests, combined Section 02/03 tests, full web typecheck, and diff check passed. Mystic LoRA provider discovery is deferred to later provider-client/runtime work."
+    },
+    "section-04-python-provider-client": {
+      "status": "complete_with_environment_caveat",
+      "commit_hash": null,
+      "completed_at": "2026-05-06T03:13:00Z",
+      "notes": "Implemented MagnificProvider and unit tests without committing because the repository is on protected branch main with substantial unrelated dirty work. Python py_compile passed; pytest and import smoke were blocked because this environment lacks pytest and httpx."
+    },
+    "section-05-gateway-routing-and-sync-flow": {
+      "status": "complete_with_environment_caveat",
+      "commit_hash": null,
+      "completed_at": "2026-05-06T04:20:00Z",
+      "notes": "Implemented Magnific image/video gateway routing, reserved-credit handoff, payload mapping, sync Remove Background re-hosting, and persistence audit. Python compile passed; live provider/R2 smoke remains staging-only."
+    },
+    "section-06-polling-rehosting-and-billing": {
+      "status": "complete_with_environment_caveat",
+      "commit_hash": null,
+      "completed_at": "2026-05-06T04:24:00Z",
+      "notes": "Implemented Magnific Celery polling, model-specific backoff/timeouts, provider result re-hosting, recovery metadata, stuck-task recovery, and Python unit coverage. Local pytest remains blocked by missing pytest/httpx."
+    },
+    "section-07-security-observability-and-rollout": {
+      "status": "complete_with_environment_caveat",
+      "commit_hash": null,
+      "completed_at": "2026-05-06T04:28:00Z",
+      "notes": "Implemented authenticated LoRA discovery metadata/header handling, gateway LoRA styling payload mapping, rollout smoke notes, and risk register updates. Live Magnific discovery requires staging credentials."
+    },
+    "section-08-regression-verification": {
+      "status": "complete_with_environment_caveat",
+      "commit_hash": null,
+      "completed_at": "2026-05-06T04:32:00Z",
+      "notes": "Added web/Python regression tests and verification artifacts. Web check and targeted tests were run locally; Python validation is compile-only until dependencies are installed."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-05-06T02:34:19.996062+00:00"
+}

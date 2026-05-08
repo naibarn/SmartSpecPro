@@ -28,7 +28,7 @@ vi.mock("../../../db", () => ({
 
 import { WhatsAppAdapter } from "../whatsapp";
 
-const APP_SECRET = "test-app-secret-1234567890abcdef";
+const APP_SECRET = "app-secret";
 
 function makeWhatsAppSignature(body: string, secret: string): string {
   const hmac = crypto.createHmac("sha256", secret).update(body).digest("hex");

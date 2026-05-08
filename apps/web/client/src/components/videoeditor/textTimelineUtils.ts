@@ -1,7 +1,7 @@
 import type { Clip, TextConfig, Track, VideoEditorProject } from '../../types/videoEditor';
 import { calculateProjectDuration, generateId } from '../../types/videoEditor';
 
-export const STRICT_PARITY_SUPPORTED_TEXT_EFFECTS = ['none', 'shadow', 'outline'] as const;
+export const STRICT_PARITY_SUPPORTED_TEXT_EFFECTS = ['none', 'shadow', 'outline', 'glow'] as const;
 
 function isSupportedStrictParityEffect(effect: TextConfig['effect']): boolean {
   return STRICT_PARITY_SUPPORTED_TEXT_EFFECTS.includes(

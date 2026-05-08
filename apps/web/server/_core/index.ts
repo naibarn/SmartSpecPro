@@ -43,6 +43,7 @@ import { createWebhookRouter } from "../routes/webhooks";
 import { createWebhookTriggerRouter } from "../routes/webhookTrigger";
 import { createTelegramWebhookRouter } from "../routes/telegramWebhook";
 import { createChannelWebhookRouter } from "../routes/channelWebhook";
+import { createVoiceAgentsElevenLabsCallbackRouter } from "../routes/voiceAgentsElevenLabsCallback";
 import { createBeamWebhookRouter } from "../routes/beamWebhook";
 import { createBeamPaymentMethodSetupRouter } from "../routes/beamPaymentMethodSetup";
 import {
@@ -240,6 +241,19 @@ app.use((_req, res, next) => {
 app.use("/api/payments", createBeamWebhookRouter({ processEvent: processBeamWebhookEvent }));
 app.use("/api/payments", createBeamPaymentMethodSetupRouter());
 
+// ElevenLabs ElevenAgents callbacks must capture raw body for HMAC validation
+// before the global JSON parser consumes the request stream.
+app.use(
+  "/api/voice-agents/elevenlabs",
+  express.json({
+    limit: "1mb",
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+  createVoiceAgentsElevenLabsCallbackRouter(),
+);
+
 // Default JSON body limit — 10MB covers all normal API requests.
 // Upload routes use raw body or multipart, not JSON, so they're unaffected.
 // Media/storage uploads bypass this via Nginx streaming (proxy_request_buffering off).
@@ -365,6 +379,7 @@ const csrfCheck = (req: any, res: any, next: any) => {
     // Inbound webhook triggers (external services sending events into SmartAIHub)
     // req.path includes the /api prefix at app-middleware level, so check originalUrl only.
     req.originalUrl.startsWith("/api/webhooks/trigger/") ||
+    req.originalUrl.startsWith("/api/voice-agents/elevenlabs/") ||
     // Generalized channel webhooks (platform callbacks: WhatsApp, Slack, Discord, etc.)
     /^\/webhooks\/[a-z]+\/[a-z0-9-]+$/.test(req.path) ||
     /^\/webhooks\/[a-z]+\/[a-z0-9-]+$/.test(req.originalUrl)

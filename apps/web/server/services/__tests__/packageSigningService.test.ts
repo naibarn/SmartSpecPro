@@ -35,14 +35,14 @@ describe("packageSigningService", () => {
       signer: {
         signerId: "org-signer-1",
         keyVersion: "2026-04",
-        signerSecret: "top-secret-signing-key",
+        signerSecret: "signing-key.test",
       },
     });
 
     const verification = verifyDesktopPackageEnvelope(envelope, {
       resolveSignerSecret: ({ signerId, keyVersion }) =>
         signerId === "org-signer-1" && keyVersion === "2026-04"
-          ? "top-secret-signing-key"
+          ? "signing-key.test"
           : null,
     });
 
@@ -60,7 +60,7 @@ describe("packageSigningService", () => {
         signer: {
           signerId: "org-signer-1",
           keyVersion: "2026-04",
-          signerSecret: "top-secret-signing-key",
+          signerSecret: "signing-key.test",
         },
       }),
     ).toThrow(/payloadDigest/i);
@@ -72,7 +72,7 @@ describe("packageSigningService", () => {
       signer: {
         signerId: "org-signer-1",
         keyVersion: "2026-04",
-        signerSecret: "top-secret-signing-key",
+        signerSecret: "signing-key.test",
       },
     });
 
@@ -85,7 +85,7 @@ describe("packageSigningService", () => {
         },
       },
       {
-        resolveSignerSecret: () => "top-secret-signing-key",
+        resolveSignerSecret: () => "signing-key.test",
       },
     );
 

@@ -3,7 +3,7 @@
  * User dashboard after login
  */
 
-import { useEffect, useState, useMemo, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, useMemo, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { HelpButton } from "@/components/help";
@@ -19,13 +19,11 @@ import { useAgencyList } from "@/hooks/useAgencyQuery";
 import { getResolvedMenuItems } from "@/hooks/useMenuItems";
 import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
 import { useDesktopHostStatus } from "@/features/desktop-host/useDesktopHostStatus";
-import { DesktopReleasePanel } from "@/features/desktop-releases/DesktopReleasePanel";
 import { trpc } from "@/lib/trpc";
 import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { JobCard } from "@/components/chat/JobCard";
-import { FinanceHub } from "@/components/finance/FinanceHub";
 import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
 import {
   DashboardSectionHeader,
@@ -78,6 +76,17 @@ import {
   ClipboardList,
   ClipboardCheck,
 } from "lucide-react";
+
+const DesktopReleasePanel = lazy(() =>
+  import("@/features/desktop-releases/DesktopReleasePanel").then((module) => ({
+    default: module.DesktopReleasePanel,
+  }))
+);
+const FinanceHub = lazy(() =>
+  import("@/components/finance/FinanceHub").then((module) => ({
+    default: module.FinanceHub,
+  }))
+);
 
 type ReviewAgencySummary = {
   id: string;
@@ -1002,6 +1011,12 @@ export default function Dashboard() {
       color: "from-slate-700 to-slate-900",
     },
     {
+      label: "Storyboard Review",
+      icon: Video,
+      href: "/storyboard-review",
+      color: "from-slate-700 to-cyan-700",
+    },
+    {
       label: t("dashboard:quickActions.chat"),
       icon: MessageSquare,
       href: "/chat",
@@ -1818,18 +1833,26 @@ export default function Dashboard() {
             className="mb-8"
           >
             <FinanceAccessGate>
-              <FinanceHub
-                surface="dashboard"
-                compact
-                conversationId={personalFinanceConversation?.id ?? null}
-                onCreatePersonalChat={async () => {
-                  const created = await createPersonalConversationMutation.mutateAsync({
-                    title: t("dashboard:finance.title"),
-                  });
-                  navigateTo(`/chat?c=${created.id}&panel=finance`);
-                }}
-                onOpenFinancePanel={() => navigateTo("/chat?panel=finance")}
-              />
+              <Suspense
+                fallback={
+                  <div className="rounded-[24px] border border-slate-200/80 bg-white/90 p-5 shadow-sm">
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                  </div>
+                }
+              >
+                <FinanceHub
+                  surface="dashboard"
+                  compact
+                  conversationId={personalFinanceConversation?.id ?? null}
+                  onCreatePersonalChat={async () => {
+                    const created = await createPersonalConversationMutation.mutateAsync({
+                      title: t("dashboard:finance.title"),
+                    });
+                    navigateTo(`/chat?c=${created.id}&panel=finance`);
+                  }}
+                  onOpenFinancePanel={() => navigateTo("/chat?panel=finance")}
+                />
+              </Suspense>
             </FinanceAccessGate>
           </motion.section>
 
@@ -2071,7 +2094,15 @@ export default function Dashboard() {
             transition={{ delay: 0.1 }}
             className="mb-8"
           >
-            <DesktopReleasePanel variant="dashboard" enabled={isAuthenticated} />
+            <Suspense
+              fallback={
+                <div className="rounded-[24px] border border-slate-200/80 bg-white/90 p-5 shadow-sm">
+                  <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                </div>
+              }
+            >
+              <DesktopReleasePanel variant="dashboard" enabled={isAuthenticated} />
+            </Suspense>
           </motion.section>
 
           {/* Trend & Health */}

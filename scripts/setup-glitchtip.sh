@@ -79,7 +79,7 @@ else
 
 GLITCHTIP_SECRET_KEY=${SECRET_KEY}
 
-DATABASE_URL=postgres://${PG_USER}:${PG_PASS}@smartspec-postgres:5432/glitchtip
+DATABASE_URL=postgresql://${PG_USER}:${PG_PASS}@smartspec-postgres:5432/glitchtip
 REDIS_URL=redis://smartspec-redis:6379/5
 
 GLITCHTIP_DOMAIN=https://glitchtip.smartaihub.app

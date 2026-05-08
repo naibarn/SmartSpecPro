@@ -81,6 +81,7 @@ export function useGenerationTasks() {
 
 interface GenerationProgressProps {
   tasks: GenerationTask[];
+  headerAction?: React.ReactNode;
   onTaskClick?: (task: GenerationTask) => void;
   onTaskRetry?: (task: GenerationTask) => void;
   onTaskRemove?: (taskId: string) => void;
@@ -134,6 +135,7 @@ function clampFloatingPanelPosition(
 
 export function GenerationProgress({
   tasks,
+  headerAction,
   onTaskClick,
   onTaskRetry,
   onTaskRemove,
@@ -445,6 +447,9 @@ export function GenerationProgress({
             </div>
 
             <div className="flex shrink-0 items-center gap-1 self-start">
+              {headerAction ? (
+                <div className="mr-1">{headerAction}</div>
+              ) : null}
               {completedCount > 0 && onClearCompleted && (
                 <button
                   onClick={onClearCompleted}

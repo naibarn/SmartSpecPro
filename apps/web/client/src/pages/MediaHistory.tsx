@@ -653,7 +653,7 @@ function extractMediaHistoryThumbnailUrl(task: MediaTask): string | null {
   );
 }
 
-function buildFallbackApiUrl(
+export function buildFallbackApiUrl(
   providerHint: string | undefined,
   endpoint: string | undefined,
   baseUrl?: string | undefined
@@ -668,14 +668,25 @@ function buildFallbackApiUrl(
   }
   const normalizedProvider = String(providerHint || "")
     .trim()
-    .toLowerCase();
-  const fallbackBaseUrl =
-    normalizedProvider === "uvoice"
-      ? "https://api.uvoice.ai"
-      : normalizedProvider === "wavespeed_ai" ||
-          normalizedProvider === "wavespeed"
-        ? "https://api.wavespeed.ai/api/v3"
-        : "https://api.kie.ai/api/v1";
+    .toLowerCase()
+    .replace(/[\s.-]+/g, "_");
+  const fallbackBaseUrl = (() => {
+    if (normalizedProvider === "uvoice") return "https://api.uvoice.ai";
+    if (normalizedProvider === "wavespeed_ai" || normalizedProvider === "wavespeed") {
+      return "https://api.wavespeed.ai/api/v3";
+    }
+    if (normalizedProvider === "magnific" || normalizedProvider === "magnific_ai") {
+      return "https://api.magnific.com";
+    }
+    if (normalizedProvider === "fal_ai" || normalizedProvider === "fal") {
+      return "https://fal.run";
+    }
+    if (normalizedProvider === "kie_ai" || normalizedProvider === "kie" || !normalizedProvider) {
+      return "https://api.kie.ai/api/v1";
+    }
+    return undefined;
+  })();
+  if (!fallbackBaseUrl) return undefined;
   return `${fallbackBaseUrl}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
 }
 
@@ -1141,7 +1152,7 @@ export default function MediaHistory() {
   } = trpc.media.listTasks.useQuery({
     mediaType: mediaTypeFilter !== "all" ? mediaTypeFilter : undefined,
     status: statusFilter !== "all" ? statusFilter : undefined,
-    limit: 100,
+    limit: 50,
     offset: 0,
     daysAgo: 12, // Only show tasks from last 12 days
   });
@@ -1158,7 +1169,7 @@ export default function MediaHistory() {
 
   const { data: recentLibraryData } = trpc.library.search.useQuery(
     {
-      limit: 200,
+      limit: 50,
       filters: {
         recentDays: 30,
       },

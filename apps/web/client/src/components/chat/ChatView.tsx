@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
 import { useLocation } from "wouter";
 import { SlashCommandMenu } from "./SlashCommandMenu";
+import { VoiceAgentPanel } from "./voice/VoiceAgentPanel";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -996,6 +997,7 @@ export function ChatView({
     typeof window !== "undefined" && (window as any).__TAURI__ != null
       ? "tauri"
       : "web";
+  const userSelectedModelRef = useRef(false);
 
   // Get credits balance
   const { data: credits } = trpc.credits.balance.useQuery();
@@ -1433,9 +1435,12 @@ export function ChatView({
     chatMicProvider.effectiveMode === "gemma4_local" &&
     localVoiceAvailability.ready;
 
-  // Current selected model (use conversation model, localStorage fallback, or first available)
+  // Current selected model (auto by default for new chats when smart routing is enabled).
   const [selectedModel, setSelectedModel] = useState<string>(
-    () => localStorage.getItem("smartspec_lastModel") || ""
+    () =>
+      chatAutoModelSelectionEnabled
+        ? AUTO_MODEL
+        : localStorage.getItem("smartspec_lastModel") || ""
   );
   const [selectedProviderId, setSelectedProviderId] = useState<number | null>(
     null
@@ -1542,6 +1547,36 @@ export function ChatView({
 
   // Sanitize stale localStorage state when the enabled model catalog changes.
   useEffect(() => {
+    if (
+      !chatAutoModelSelectionEnabled &&
+      !conversation?.model &&
+      !conversationModelSelection &&
+      (selectedModel === AUTO_MODEL || isAutoProviderValue(selectedModel))
+    ) {
+      const storedModel = localStorage.getItem("smartspec_lastModel") || "";
+      const fallbackModel =
+        storedModel &&
+        storedModel !== AUTO_MODEL &&
+        !isAutoProviderValue(storedModel)
+          ? storedModel
+          : "";
+      setSelectedModel(fallbackModel);
+      return;
+    }
+
+    if (
+      chatAutoModelSelectionEnabled &&
+      !userSelectedModelRef.current &&
+      !conversation?.model &&
+      !conversationModelSelection &&
+      selectedModel &&
+      selectedModel !== AUTO_MODEL &&
+      !isAutoProviderValue(selectedModel)
+    ) {
+      setSelectedModel(AUTO_MODEL);
+      return;
+    }
+
     if (!modelsData?.models) {
       return;
     }
@@ -1577,6 +1612,7 @@ export function ChatView({
   }, [
     chatAutoModelSelectionEnabled,
     conversation?.model,
+    conversationModelSelection,
     defaultEnabledModelId,
     enabledModelIds,
     modelsData?.models,
@@ -2301,6 +2337,8 @@ export function ChatView({
     providerName?: string
   ) => {
     if (!conversationId || isStreaming) return;
+
+    userSelectedModelRef.current = true;
 
     const parsedSelection = parsePickerSelectionValue({
       value: modelId,
@@ -6704,6 +6742,8 @@ export function ChatView({
 
       {/* Input Area */}
       <div className="shrink-0 border-t px-4 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <VoiceAgentPanel conversationId={conversation?.id ?? null} />
+
         {/* Quick Actions for Generation */}
         {!isStreaming && messages.length === 0 && (
           <div className="mb-3 flex flex-wrap gap-2">

@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render } from '@testing-library/react';
 import Timeline from '../Timeline';
 import type { Timeline as TimelineData, Asset } from '../../../types/videoEditor';
@@ -50,7 +50,10 @@ function makeAssets(): Record<string, Asset> {
   };
 }
 
-function renderTimeline(onClipDelete: (clipId: string) => void) {
+function renderTimeline(
+  onClipDelete: (clipId: string) => void,
+  onClipMove = vi.fn(),
+) {
   return render(
     <Timeline
       timeline={makeTimeline()}
@@ -62,7 +65,7 @@ function renderTimeline(onClipDelete: (clipId: string) => void) {
       selectedClipIds={[]}
       onTimeChange={vi.fn()}
       onClipSelect={vi.fn()}
-      onClipMove={vi.fn()}
+      onClipMove={onClipMove}
       onClipResize={vi.fn()}
       onClipDelete={onClipDelete}
     />,
@@ -70,6 +73,18 @@ function renderTimeline(onClipDelete: (clipId: string) => void) {
 }
 
 describe('Timeline keyboard shortcuts', () => {
+  beforeEach(() => {
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      callback(0);
+      return 1;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('does not delete selected clip on Backspace', () => {
     const onClipDelete = vi.fn();
     renderTimeline(onClipDelete);
@@ -98,5 +113,47 @@ describe('Timeline keyboard shortcuts', () => {
 
     expect(onClipDelete).not.toHaveBeenCalled();
     document.body.removeChild(textarea);
+  });
+
+  it('commits clip movement only after mouseup', () => {
+    const onClipDelete = vi.fn();
+    const onClipMove = vi.fn();
+    const { container } = renderTimeline(onClipDelete, onClipMove);
+
+    const clip = container.querySelector('.timeline-clip') as HTMLElement;
+    const tracks = container.querySelector('.timeline-tracks') as HTMLElement;
+
+    vi.spyOn(clip, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 200,
+      height: 70,
+      right: 200,
+      bottom: 70,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    });
+    vi.spyOn(tracks, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 1000,
+      height: 80,
+      right: 1000,
+      bottom: 80,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    });
+
+    fireEvent.mouseDown(clip, { clientX: 20, clientY: 20 });
+    fireEvent.mouseMove(document, { clientX: 170, clientY: 20 });
+
+    expect(onClipMove).not.toHaveBeenCalled();
+
+    fireEvent.mouseUp(document, { clientX: 170, clientY: 20 });
+
+    expect(onClipMove).toHaveBeenCalledTimes(1);
+    expect(onClipMove).toHaveBeenCalledWith('clip-1', 3, 'track-v1');
   });
 });

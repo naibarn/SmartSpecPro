@@ -29,4 +29,16 @@ describe("Private Files menu entry", () => {
     expect(items.find((menuItem) => menuItem.id === "workpack-roi")?.path).toBe("/workpacks/roi");
     expect(items.find((menuItem) => menuItem.id === "workpack-exceptions")?.path).toBe("/workpacks/exceptions");
   });
+
+  it("exposes storyboard review next to Media Studio in the main menu", () => {
+    const items = getMenuItemsByGroup("web", "user", "main");
+    const mediaIndex = items.findIndex((menuItem) => menuItem.id === "media");
+    const storyboardIndex = items.findIndex((menuItem) => menuItem.id === "storyboard-review");
+    const storyboardItem = items[storyboardIndex];
+
+    expect(storyboardItem).toBeDefined();
+    expect(storyboardItem?.path).toBe("/storyboard-review");
+    expect(storyboardItem?.icon).toBe("Film");
+    expect(storyboardIndex).toBeGreaterThan(mediaIndex);
+  });
 });

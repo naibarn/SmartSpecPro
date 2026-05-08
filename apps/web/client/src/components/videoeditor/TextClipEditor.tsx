@@ -13,7 +13,8 @@ const POPULAR_FONTS = [
   'Raleway', 'Poppins', 'Noto Sans', 'Ubuntu', 'Playfair Display',
   'Merriweather', 'Bebas Neue', 'Anton', 'Lobster', 'Pacifico',
   'Dancing Script', 'Permanent Marker', 'Shadows Into Light',
-  'Kanit', 'Sarabun', 'Prompt', 'Noto Sans Thai',
+  'Kanit', 'Sarabun', 'Prompt', 'Noto Sans Thai', 'Bangers',
+  'Paytone One', 'Fredoka One', 'Righteous', 'Boogaloo', 'Nunito',
 ];
 
 const FONT_WEIGHTS = [
@@ -38,6 +39,208 @@ const TEXT_EFFECTS = ALL_TEXT_EFFECTS.filter((effect) =>
   STRICT_PARITY_SUPPORTED_TEXT_EFFECTS.includes(effect.value as (typeof STRICT_PARITY_SUPPORTED_TEXT_EFFECTS)[number]),
 );
 
+interface TextPresetDefinition {
+  id: string;
+  label: string;
+  previewSize: number;
+  fontWeight: number;
+  fontStyle: 'normal' | 'italic';
+  patch: Partial<TextConfig>;
+}
+
+interface TextStyleCardDefinition {
+  id: string;
+  label: string;
+  sublabel: string;
+  preview: string;
+  patch: Partial<TextConfig>;
+  previewStyle: React.CSSProperties;
+  accent: string;
+}
+
+const TEXT_STYLE_PRESETS: TextPresetDefinition[] = [
+  {
+    id: 'heading',
+    label: 'Heading',
+    previewSize: 18,
+    fontWeight: 700,
+    fontStyle: 'normal',
+    patch: { fontSize: 64, fontWeight: 700, fontStyle: 'normal', textAlign: 'left', lineHeight: 1.1, letterSpacing: 0, backgroundColor: 'transparent' },
+  },
+  {
+    id: 'subheading',
+    label: 'Subheading',
+    previewSize: 15,
+    fontWeight: 600,
+    fontStyle: 'normal',
+    patch: { fontSize: 44, fontWeight: 600, fontStyle: 'normal', textAlign: 'left', lineHeight: 1.2, letterSpacing: 0, backgroundColor: 'transparent' },
+  },
+  {
+    id: 'body',
+    label: 'Body',
+    previewSize: 14,
+    fontWeight: 400,
+    fontStyle: 'normal',
+    patch: { fontSize: 32, fontWeight: 400, fontStyle: 'normal', textAlign: 'left', lineHeight: 1.5, letterSpacing: 0, backgroundColor: 'transparent' },
+  },
+  {
+    id: 'caption',
+    label: 'Caption',
+    previewSize: 13,
+    fontWeight: 400,
+    fontStyle: 'italic',
+    patch: { fontSize: 22, fontWeight: 400, fontStyle: 'italic', textAlign: 'left', lineHeight: 1.4, letterSpacing: 0.05, backgroundColor: 'transparent' },
+  },
+  {
+    id: 'citation',
+    label: 'Citation',
+    previewSize: 13,
+    fontWeight: 500,
+    fontStyle: 'italic',
+    patch: { fontSize: 26, fontWeight: 500, fontStyle: 'italic', textAlign: 'right', lineHeight: 1.3, letterSpacing: 0.1, backgroundColor: 'transparent' },
+  },
+  {
+    id: 'overline',
+    label: 'OVERLINE',
+    previewSize: 11,
+    fontWeight: 700,
+    fontStyle: 'normal',
+    patch: { fontSize: 18, fontWeight: 700, fontStyle: 'normal', textAlign: 'left', lineHeight: 1.3, letterSpacing: 2, backgroundColor: 'transparent' },
+  },
+];
+
+const TEXT_EFFECT_CARDS: TextStyleCardDefinition[] = [
+  {
+    id: 'none',
+    label: 'Text',
+    sublabel: 'NONE',
+    preview: 'Text',
+    accent: '#71717a',
+    patch: { color: '#ffffff', backgroundColor: 'transparent', effect: 'none', effectColor: undefined, textShadow: undefined, textStroke: undefined, fontFamily: 'Poppins', fontWeight: 700 },
+    previewStyle: { fontFamily: 'Poppins, sans-serif', fontSize: '1.7rem', color: '#e5e7eb', fontWeight: 700 },
+  },
+  {
+    id: 'blue',
+    label: 'Blue outline',
+    sublabel: 'OUTLINE',
+    preview: 'BLUE',
+    accent: '#3b82f6',
+    patch: { color: '#60a5fa', effect: 'outline', effectColor: '#ffffff', textStroke: '3px #ffffff', textShadow: '3px 3px 0px #1e3a8a, 0 0 15px #3b82f6', fontFamily: 'Bangers', fontWeight: 700 },
+    previewStyle: { fontFamily: 'Bangers, cursive', fontSize: '2rem', color: '#60a5fa', WebkitTextStroke: '2.5px #ffffff', textShadow: '3px 3px 0 #1e3a8a, 0 0 12px #3b82f6' },
+  },
+  {
+    id: 'red',
+    label: 'Red bold',
+    sublabel: 'BOLD',
+    preview: 'RED',
+    accent: '#ef4444',
+    patch: { color: '#ef4444', effect: 'outline', effectColor: '#1a0000', textStroke: '3px #1a0000', textShadow: '4px 4px 0px #7f1d1d, 0 0 15px #ef4444', fontFamily: 'Paytone One', fontWeight: 700 },
+    previewStyle: { fontFamily: "'Paytone One', sans-serif", fontSize: '1.9rem', color: '#ef4444', WebkitTextStroke: '2.5px #1a0000', textShadow: '4px 4px 0 #7f1d1d' },
+  },
+  {
+    id: 'gold',
+    label: 'Gold glow',
+    sublabel: 'GLOW',
+    preview: 'GOLD',
+    accent: '#fbbf24',
+    patch: { color: '#fbbf24', effect: 'glow', effectColor: '#fbbf24', textStroke: '3px #92400e', textShadow: '4px 4px 0px #78350f, 0 0 20px #fbbf24, 0 0 40px #f59e0b', fontFamily: 'Bebas Neue', fontWeight: 700, letterSpacing: 0.05 },
+    previewStyle: { fontFamily: "'Bebas Neue', sans-serif", fontSize: '2.2rem', color: '#fbbf24', WebkitTextStroke: '2.5px #92400e', textShadow: '3px 3px 0 #78350f, 0 0 16px #fbbf24' },
+  },
+  {
+    id: 'purple',
+    label: 'Purple magic',
+    sublabel: 'PURPLE',
+    preview: 'Magic',
+    accent: '#7c3aed',
+    patch: { color: '#c4b5fd', effect: 'glow', effectColor: '#7c3aed', textStroke: '3px #4c1d95', textShadow: '3px 3px 0px #4c1d95, 0 0 20px #7c3aed, 0 0 40px #7c3aed', fontFamily: 'Fredoka One', fontWeight: 700 },
+    previewStyle: { fontFamily: "'Fredoka One', cursive", fontSize: '1.9rem', color: '#c4b5fd', WebkitTextStroke: '2.5px #4c1d95', textShadow: '2px 2px 0 #4c1d95, 0 0 15px #7c3aed' },
+  },
+  {
+    id: 'neon',
+    label: 'Neon green',
+    sublabel: 'GLOW',
+    preview: 'Neon',
+    accent: '#22c55e',
+    patch: { color: '#ffffff', effect: 'glow', effectColor: '#22c55e', textStroke: '2px #22c55e', textShadow: '0 0 10px #22c55e, 0 0 25px #16a34a, 0 0 50px #15803d, 0 0 80px #14532d', fontFamily: 'Righteous', fontWeight: 700 },
+    previewStyle: { fontFamily: 'Righteous, cursive', fontSize: '1.9rem', color: '#ffffff', WebkitTextStroke: '1.5px #22c55e', textShadow: '0 0 10px #22c55e, 0 0 25px #16a34a, 0 0 40px #15803d' },
+  },
+  {
+    id: '3d',
+    label: '3D depth',
+    sublabel: 'DEPTH',
+    preview: '3D',
+    accent: '#94a3b8',
+    patch: { color: '#e2e8f0', effect: 'shadow', effectColor: '#475569', textStroke: '2px #475569', textShadow: '1px 1px 0 #cbd5e1, 2px 2px 0 #94a3b8, 3px 3px 0 #64748b, 4px 4px 0 #475569, 5px 5px 8px rgba(0,0,0,0.7)', fontFamily: 'Oswald', fontWeight: 700 },
+    previewStyle: { fontFamily: 'Oswald, sans-serif', fontSize: '2rem', color: '#e2e8f0', WebkitTextStroke: '1.5px #475569', textShadow: '1px 1px 0 #94a3b8, 3px 3px 0 #475569, 5px 5px 6px rgba(0,0,0,0.6)' },
+  },
+  {
+    id: 'hollow',
+    label: 'Hollow',
+    sublabel: 'HOLLOW',
+    preview: 'Open',
+    accent: '#d4d4d8',
+    patch: { color: 'transparent', effect: 'outline', effectColor: '#ffffff', textStroke: '4px #ffffff', textShadow: '0 0 10px rgba(255,255,255,0.4)', fontFamily: 'Boogaloo', fontWeight: 700 },
+    previewStyle: { fontFamily: 'Boogaloo, cursive', fontSize: '2rem', color: 'transparent', WebkitTextStroke: '2.5px #ffffff' },
+  },
+];
+
+const SUBTITLE_STYLE_CARDS: TextStyleCardDefinition[] = [
+  {
+    id: 'classic',
+    label: 'Classic',
+    sublabel: '',
+    preview: 'Lorem ipsum dolor sit amet',
+    accent: '#a1a1aa',
+    patch: { color: '#ffffff', backgroundColor: 'rgba(0,0,0,0.7)', effect: 'none', textStroke: undefined, textShadow: 'none', fontSize: 32, fontWeight: 400, textAlign: 'center', fontFamily: 'Poppins', lineHeight: 1.5, letterSpacing: 0 },
+    previewStyle: { fontFamily: 'Poppins, sans-serif', fontSize: '0.95rem', color: '#fff', background: 'rgba(0,0,0,0.7)', padding: '4px 16px', borderRadius: '4px', fontWeight: 400 },
+  },
+  {
+    id: 'yellow',
+    label: 'Yellow',
+    sublabel: '',
+    preview: 'Lorem ipsum dolor sit amet',
+    accent: '#facc15',
+    patch: { color: '#0a0a0a', backgroundColor: '#facc15', effect: 'none', textStroke: undefined, textShadow: 'none', fontSize: 30, fontWeight: 700, textAlign: 'center', fontFamily: 'Nunito', lineHeight: 1.4, letterSpacing: 0 },
+    previewStyle: { fontFamily: 'Nunito, sans-serif', fontSize: '0.9rem', fontWeight: 800, color: '#0a0a0a', background: '#facc15', padding: '4px 12px', borderRadius: '2px' },
+  },
+  {
+    id: 'gradient',
+    label: 'Gradient',
+    sublabel: '',
+    preview: 'Please Put Your Title Here',
+    accent: '#a855f7',
+    patch: { color: '#ffffff', backgroundColor: 'rgba(168,85,247,0.75)', effect: 'shadow', effectColor: '#000000', textStroke: undefined, textShadow: '0 2px 8px rgba(0,0,0,0.5)', fontSize: 30, fontWeight: 600, textAlign: 'center', fontFamily: 'Poppins', lineHeight: 1.4, letterSpacing: 0 },
+    previewStyle: { fontFamily: 'Poppins, sans-serif', fontSize: '0.9rem', fontWeight: 600, color: '#fff', background: 'linear-gradient(90deg, #ec4899 0%, #a855f7 100%)', padding: '5px 16px', borderRadius: '4px' },
+  },
+  {
+    id: 'bordered',
+    label: 'Bordered',
+    sublabel: '',
+    preview: 'Lorem ipsum dolor sit amet',
+    accent: '#ffffff',
+    patch: { color: '#ffffff', backgroundColor: 'transparent', effect: 'outline', effectColor: '#ffffff', textStroke: '2px #ffffff', textShadow: '2px 2px 8px rgba(0,0,0,0.8)', fontSize: 30, fontWeight: 700, textAlign: 'center', fontFamily: 'Montserrat', lineHeight: 1.4, letterSpacing: 1 },
+    previewStyle: { fontFamily: 'Montserrat, sans-serif', fontSize: '0.9rem', fontWeight: 700, color: '#fff', WebkitTextStroke: '0.5px #fff', border: '1.5px solid #ffffff', padding: '4px 14px', borderRadius: '4px', letterSpacing: '0.05em' },
+  },
+  {
+    id: 'cinema',
+    label: 'Cinema',
+    sublabel: '',
+    preview: 'Lorem ipsum dolor sit amet',
+    accent: '#e5e7eb',
+    patch: { color: '#f8f8f8', backgroundColor: 'transparent', effect: 'shadow', effectColor: '#000000', textStroke: undefined, textShadow: '0 2px 12px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,1)', fontSize: 28, fontWeight: 400, textAlign: 'center', fontFamily: 'Montserrat', lineHeight: 1.5, letterSpacing: 1 },
+    previewStyle: { fontFamily: 'Montserrat, sans-serif', fontSize: '0.85rem', fontWeight: 300, color: '#f8f8f8', textShadow: '0 1px 8px rgba(0,0,0,1)', letterSpacing: '0.08em' },
+  },
+  {
+    id: 'teal',
+    label: 'Teal',
+    sublabel: '',
+    preview: 'Please edit your text.',
+    accent: '#14b8a6',
+    patch: { color: '#ccfbf1', backgroundColor: 'rgba(15,118,110,0.8)', effect: 'glow', effectColor: '#14b8a6', textStroke: undefined, textShadow: '0 0 10px #14b8a6', fontSize: 30, fontWeight: 700, textAlign: 'center', fontFamily: 'Righteous', lineHeight: 1.4, letterSpacing: 0.5 },
+    previewStyle: { fontFamily: 'Righteous, cursive', fontSize: '0.9rem', fontWeight: 700, color: '#ccfbf1', background: 'rgba(15,118,110,0.85)', padding: '4px 14px', borderRadius: '4px', textShadow: '0 0 8px #14b8a6' },
+  },
+];
+
 function getDefaultTextConfig(): TextConfig {
   return {
     text: 'Your Text Here',
@@ -49,6 +252,10 @@ function getDefaultTextConfig(): TextConfig {
     backgroundColor: 'transparent',
     textAlign: 'center',
     effect: 'none',
+    textShadow: undefined,
+    textStroke: undefined,
+    lineHeight: 1.25,
+    letterSpacing: 0,
   };
 }
 
@@ -67,6 +274,7 @@ interface TextClipEditorProps {
   config?: TextConfig;
   duration?: number;
   transform?: ClipTransform;
+  autoSaveExisting?: boolean;
   onSave: (config: TextConfig, duration: number, transform: ClipTransform) => void;
   onCancel: () => void;
 }
@@ -92,6 +300,7 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
   config,
   duration: initialDuration = 5,
   transform,
+  autoSaveExisting = false,
   onSave,
   onCancel,
 }) => {
@@ -100,27 +309,62 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
   const [textTransform, setTextTransform] = useState<ClipTransform>(() => normalizeTransform(transform));
   const [isDraggingPreviewText, setIsDraggingPreviewText] = useState(false);
   const previewCanvasRef = useRef<HTMLDivElement | null>(null);
+  const isHydratingRef = useRef(false);
+  const autoSaveTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    isHydratingRef.current = true;
     setTextConfig(config || getDefaultTextConfig());
     setDuration(initialDuration);
     setTextTransform(normalizeTransform(transform));
+    window.setTimeout(() => {
+      isHydratingRef.current = false;
+    }, 0);
   }, [config, initialDuration, transform]);
+
+  useEffect(() => () => {
+    if (autoSaveTimerRef.current !== null) {
+      window.clearTimeout(autoSaveTimerRef.current);
+    }
+  }, []);
 
   // Load the selected font
   useEffect(() => {
     loadGoogleFont(textConfig.fontFamily, textConfig.fontWeight);
   }, [textConfig.fontFamily, textConfig.fontWeight]);
 
+  const scheduleAutoSave = (nextConfig: TextConfig, nextDuration = duration, nextTransform = textTransform) => {
+    if (!autoSaveExisting || isHydratingRef.current || !nextConfig.text.trim()) return;
+    if (autoSaveTimerRef.current !== null) {
+      window.clearTimeout(autoSaveTimerRef.current);
+    }
+    autoSaveTimerRef.current = window.setTimeout(() => {
+      onSave(nextConfig, nextDuration, nextTransform);
+      autoSaveTimerRef.current = null;
+    }, 120);
+  };
+
   const update = (partial: Partial<TextConfig>) => {
-    setTextConfig(prev => ({ ...prev, ...partial }));
+    setTextConfig(prev => {
+      const next = { ...prev, ...partial };
+      scheduleAutoSave(next);
+      return next;
+    });
+  };
+
+  const applyTextPatch = (patch: Partial<TextConfig>) => {
+    setTextConfig(prev => {
+      const next = { ...prev, ...patch };
+      scheduleAutoSave(next);
+      return next;
+    });
   };
 
   const updateTransform = (partial: Partial<ClipTransform>) => {
     setTextTransform((prev) => {
       const nextScaleX = partial.scaleX === undefined ? prev.scaleX : Math.max(0.1, Math.min(5, partial.scaleX));
       const nextScaleY = partial.scaleY === undefined ? prev.scaleY : Math.max(0.1, Math.min(5, partial.scaleY));
-      return {
+      const next = {
         ...prev,
         ...partial,
         x: partial.x === undefined ? prev.x : clamp01(partial.x),
@@ -128,7 +372,14 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
         scaleX: nextScaleX,
         scaleY: nextScaleY,
       };
+      scheduleAutoSave(textConfig, duration, next);
+      return next;
     });
+  };
+
+  const updateDuration = (nextDuration: number) => {
+    setDuration(nextDuration);
+    scheduleAutoSave(textConfig, nextDuration, textTransform);
   };
 
   const updatePositionFromPointer = (clientX: number, clientY: number) => {
@@ -175,6 +426,10 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
       color: textConfig.color,
       backgroundColor: textConfig.backgroundColor === 'transparent' ? 'transparent' : textConfig.backgroundColor,
       textAlign: textConfig.textAlign,
+      WebkitTextStroke: textConfig.textStroke,
+      textShadow: textConfig.textShadow === 'none' ? undefined : textConfig.textShadow,
+      lineHeight: textConfig.lineHeight ?? 1.25,
+      letterSpacing: textConfig.letterSpacing ? `${textConfig.letterSpacing}px` : undefined,
       padding: '8px 16px',
       borderRadius: '4px',
       wordBreak: 'break-word',
@@ -184,13 +439,13 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
     };
 
     if (textConfig.effect === 'shadow') {
-      base.textShadow = `2px 2px 4px ${textConfig.effectColor || '#000000'}`;
+      base.textShadow = textConfig.textShadow || `2px 2px 4px ${textConfig.effectColor || '#000000'}`;
     } else if (textConfig.effect === 'outline') {
       const c = textConfig.effectColor || '#000000';
-      base.textShadow = `-1px -1px 0 ${c}, 1px -1px 0 ${c}, -1px 1px 0 ${c}, 1px 1px 0 ${c}`;
+      base.textShadow = textConfig.textShadow || `-1px -1px 0 ${c}, 1px -1px 0 ${c}, -1px 1px 0 ${c}, 1px 1px 0 ${c}`;
     } else if (textConfig.effect === 'glow') {
       const c = textConfig.effectColor || '#0078d4';
-      base.textShadow = `0 0 10px ${c}, 0 0 20px ${c}, 0 0 40px ${c}`;
+      base.textShadow = textConfig.textShadow || `0 0 10px ${c}, 0 0 20px ${c}, 0 0 40px ${c}`;
     }
 
     return base;
@@ -203,33 +458,36 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
           display: flex;
           flex-direction: column;
           height: 100%;
-          background: #1e1e1e;
-          color: #e0e0e0;
+          background: #e9eef5;
+          color: #111827;
         }
         .tce-header {
           padding: 12px;
-          border-bottom: 1px solid #333;
+          border-bottom: 1px solid #d7dee8;
           font-size: 14px;
           font-weight: 600;
           display: flex;
           justify-content: space-between;
           align-items: center;
+          background: #f7f9fc;
         }
         .tce-body {
           flex: 1;
           overflow-y: auto;
-          padding: 12px;
+          padding: 14px;
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 14px;
         }
         .tce-preview {
-          background: #000;
-          border-radius: 6px;
+          background: #111318;
+          border: 1px solid #d7dee8;
+          border-radius: 14px;
           min-height: 180px;
           padding: 16px;
           overflow: hidden;
           position: relative;
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
         }
         .tce-preview-canvas {
           position: absolute;
@@ -239,24 +497,27 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
         .tce-field {
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 6px;
         }
         .tce-label {
-          font-size: 11px;
-          color: #888;
+          font-size: 12px;
+          color: #98a2b3;
           text-transform: uppercase;
+          font-weight: 700;
+          letter-spacing: 0.08em;
         }
         .tce-input, .tce-select, .tce-textarea {
-          background: #2a2a2a;
-          border: 1px solid #444;
-          border-radius: 4px;
-          color: #e0e0e0;
-          padding: 6px 8px;
-          font-size: 12px;
+          background: #25272d;
+          border: 1px solid #25272d;
+          border-radius: 18px;
+          color: #f8fafc;
+          padding: 9px 12px;
+          font-size: 13px;
           outline: none;
         }
         .tce-input:focus, .tce-select:focus, .tce-textarea:focus {
-          border-color: #0078d4;
+          border-color: #2f80ff;
+          box-shadow: 0 0 0 2px rgba(47,128,255,0.18);
         }
         .tce-textarea {
           resize: vertical;
@@ -274,9 +535,9 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
           width: 36px;
           height: 30px;
           padding: 2px;
-          border: 1px solid #444;
-          border-radius: 4px;
-          background: #2a2a2a;
+          border: 1px solid #25272d;
+          border-radius: 10px;
+          background: #25272d;
           cursor: pointer;
         }
         .tce-color-row {
@@ -291,21 +552,98 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
         .tce-btn-group button {
           flex: 1;
           padding: 6px;
-          background: #2a2a2a;
-          border: 1px solid #444;
-          border-radius: 4px;
-          color: #888;
+          background: #25272d;
+          border: 1px solid #25272d;
+          border-radius: 12px;
+          color: #d7dee8;
           cursor: pointer;
           font-size: 12px;
           transition: all 0.2s;
         }
         .tce-btn-group button:hover {
-          background: #333;
+          background: #31343b;
         }
         .tce-btn-group button.active {
-          background: #0078d4;
-          border-color: #0078d4;
+          background: #2f80ff;
+          border-color: #2f80ff;
           color: #fff;
+        }
+        .tce-presets-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+        }
+        .tce-preset-button {
+          min-height: 48px;
+          border: 1px solid #d7dee8;
+          border-radius: 16px;
+          background: #25272d;
+          color: #f8fafc;
+          cursor: pointer;
+          transition: all 0.18s;
+          overflow: hidden;
+        }
+        .tce-preset-button:hover {
+          border-color: #2f80ff;
+          box-shadow: 0 0 0 2px rgba(47,128,255,0.16);
+        }
+        .tce-card-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .tce-style-card {
+          min-height: 104px;
+          border: 1px solid #d7dee8;
+          border-radius: 22px;
+          background: #17181d;
+          color: #f8fafc;
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          transition: all 0.18s;
+          overflow: hidden;
+        }
+        .tce-style-card:hover {
+          border-color: var(--accent);
+          box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent);
+        }
+        .tce-style-preview {
+          line-height: 1;
+          max-width: 92%;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .tce-style-sublabel {
+          font-size: 10px;
+          color: #98a2b3;
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
+        }
+        .tce-subtitle-list {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+        .tce-subtitle-card {
+          min-height: 64px;
+          border: 1px solid #d7dee8;
+          border-radius: 20px;
+          background: #0d0e12;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          transition: all 0.18s;
+        }
+        .tce-subtitle-card:hover {
+          border-color: var(--accent);
+          box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 24%, transparent);
         }
         .tce-effects-grid {
           display: grid;
@@ -333,9 +671,10 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
         }
         .tce-footer {
           padding: 12px;
-          border-top: 1px solid #333;
+          border-top: 1px solid #d7dee8;
           display: flex;
           gap: 8px;
+          background: #f7f9fc;
         }
         .tce-footer button {
           flex: 1;
@@ -347,18 +686,18 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
           font-weight: 600;
         }
         .tce-save-btn {
-          background: #0078d4;
+          background: #2f80ff;
           color: #fff;
         }
         .tce-save-btn:hover {
-          background: #005a9e;
+          background: #1d68d8;
         }
         .tce-cancel-btn {
-          background: #444;
-          color: #e0e0e0;
+          background: #25272d;
+          color: #e0e7ef;
         }
         .tce-cancel-btn:hover {
-          background: #555;
+          background: #31343b;
         }
       `}</style>
 
@@ -386,13 +725,71 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
 
         {/* Text Input */}
         <div className="tce-field">
-          <div className="tce-label">Text</div>
+          <div className="tce-label">Content</div>
           <textarea
             className="tce-textarea"
             value={textConfig.text}
             onChange={e => update({ text: e.target.value })}
-            placeholder="Enter text..."
+            placeholder="Add your text"
           />
+        </div>
+
+        <div className="tce-field">
+          <div className="tce-label">Text Presets</div>
+          <div className="tce-presets-grid">
+            {TEXT_STYLE_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                className="tce-preset-button"
+                style={{
+                  fontSize: preset.previewSize,
+                  fontWeight: preset.fontWeight,
+                  fontStyle: preset.fontStyle,
+                }}
+                onClick={() => applyTextPatch(preset.patch)}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="tce-field">
+          <div className="tce-label">Text Effects</div>
+          <div className="tce-card-grid">
+            {TEXT_EFFECT_CARDS.map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                className="tce-style-card"
+                style={{ '--accent': card.accent } as React.CSSProperties}
+                onClick={() => applyTextPatch(card.patch)}
+                aria-label={card.label}
+              >
+                <span className="tce-style-preview" style={card.previewStyle}>{card.preview}</span>
+                <span className="tce-style-sublabel">{card.sublabel}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="tce-field">
+          <div className="tce-label">Subtitle Styles</div>
+          <div className="tce-subtitle-list">
+            {SUBTITLE_STYLE_CARDS.map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                className="tce-subtitle-card"
+                style={{ '--accent': card.accent } as React.CSSProperties}
+                onClick={() => applyTextPatch(card.patch)}
+                aria-label={card.label}
+              >
+                <span style={card.previewStyle}>{card.preview}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Font Family */}
@@ -574,7 +971,12 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
               <button
                 key={eff.value}
                 className={`tce-effect-btn ${textConfig.effect === eff.value ? 'active' : ''}`}
-                onClick={() => update({ effect: eff.value })}
+                onClick={() => update({
+                  effect: eff.value,
+                  textShadow: undefined,
+                  textStroke: undefined,
+                  effectColor: eff.value === 'none' ? undefined : textConfig.effectColor,
+                })}
               >
                 {eff.label}
               </button>
@@ -614,7 +1016,7 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
             max={60}
             step={0.5}
             value={duration}
-            onChange={e => setDuration(parseFloat(e.target.value) || 5)}
+            onChange={e => updateDuration(parseFloat(e.target.value) || 5)}
           />
         </div>
       </div>
@@ -626,7 +1028,7 @@ export const TextClipEditor: React.FC<TextClipEditorProps> = ({
           onClick={() => onSave(textConfig, duration, textTransform)}
           disabled={!textConfig.text.trim()}
         >
-          {config ? 'Update Text' : 'Add to Timeline'}
+          {autoSaveExisting ? 'Apply Now' : 'Add to Timeline'}
         </button>
       </div>
     </div>

@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch, mock_open
 
 import pytest
 
+from app.video import pipeline as video_pipeline
 from app.video.pipeline import run_assembly_stage, run_final_render, _clips_are_compatible
 from app.video.render_profiles import PROFILES, get_ffmpeg_output_args
 
@@ -82,6 +83,63 @@ class TestAssemblyStage:
     def test_empty_clips_list(self):
         """Empty clip infos should not be compatible."""
         assert _clips_are_compatible([]) is False
+
+    def test_letterbox_crop_forces_reencode_even_when_clips_match(self, tmp_path, monkeypatch):
+        clip_1 = tmp_path / "clip1.mp4"
+        clip_2 = tmp_path / "clip2.mp4"
+        clip_1.write_bytes(b"fake video data")
+        clip_2.write_bytes(b"fake video data")
+
+        render_spec = {
+            "renderHash": "testhash",
+            "inputAssetKeys": {"asset-1": "clip1.mp4", "asset-2": "clip2.mp4"},
+            "project": {
+                "settings": {"width": 1080, "height": 1920, "fps": 30},
+                "timeline": {
+                    "tracks": [
+                        {
+                            "type": "video",
+                            "name": "V1",
+                            "clips": [
+                                {"assetId": "asset-1", "startTime": 0, "duration": 5.0},
+                                {"assetId": "asset-2", "startTime": 5.0, "duration": 5.0},
+                            ],
+                        }
+                    ]
+                },
+                "assets": {
+                    "asset-1": {"path": "clip1.mp4"},
+                    "asset-2": {"path": "clip2.mp4"},
+                },
+            },
+        }
+
+        monkeypatch.setattr(video_pipeline, "_probe_clip", lambda _path, runner=None: {
+            "codec": "h264",
+            "width": 720,
+            "height": 1280,
+            "r_frame_rate": "30/1",
+        })
+        monkeypatch.setattr(video_pipeline, "_detect_letterbox_crop_filter", lambda _path, runner=None: "crop=iw:1100:0:90")
+        captured = {}
+
+        def fake_run(cmd, **_kwargs):
+            captured["cmd"] = cmd
+            result = MagicMock()
+            result.returncode = 0
+            result.stdout = ""
+            result.stderr = ""
+            return result
+
+        with patch("subprocess.run", side_effect=fake_run):
+            result = run_assembly_stage(render_spec, str(tmp_path))
+
+        assert result == str(tmp_path / "testhash_assembled.mp4")
+        cmd = captured["cmd"]
+        assert "-filter_complex" in cmd
+        fc = cmd[cmd.index("-filter_complex") + 1]
+        assert "crop=iw:1100:0:90,fps=30,scale=1080:1920" in fc
+        assert "-c" not in cmd[:cmd.index("-filter_complex")]
 
 
 @pytest.mark.unit

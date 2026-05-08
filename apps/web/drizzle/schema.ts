@@ -276,6 +276,48 @@ export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   "api_video_project",
   "api_chat",
   "api_mcp",
+  "voice_agent",
+]);
+
+export const voiceAgentProviderEnum = pgEnum("voice_agent_provider", ["elevenlabs"]);
+export const voiceAgentSurfaceEnum = pgEnum("voice_agent_surface", ["chat", "work_os", "team_room", "agency"]);
+export const voiceAgentConnectionTypeEnum = pgEnum("voice_agent_connection_type", [
+  "webrtc_token",
+  "websocket_signed_url",
+  "server_relay",
+]);
+export const voiceAgentSessionStatusEnum = pgEnum("voice_agent_session_status", [
+  "created",
+  "connecting",
+  "active",
+  "ended",
+  "failed",
+  "cancelled",
+]);
+export const voiceAgentBillingStatusEnum = pgEnum("voice_agent_billing_status", [
+  "reserved",
+  "settled",
+  "released",
+  "failed",
+]);
+export const voiceAgentEventSourceEnum = pgEnum("voice_agent_event_source", [
+  "user",
+  "agent",
+  "tool",
+  "system",
+]);
+export const voiceAgentRedactionStatusEnum = pgEnum("voice_agent_redaction_status", [
+  "not_required",
+  "redacted",
+  "failed",
+]);
+export const voiceAgentToolCallStatusEnum = pgEnum("voice_agent_tool_call_status", [
+  "received",
+  "denied",
+  "queued",
+  "running",
+  "completed",
+  "failed",
 ]);
 
 // Settlement status for creator revenue sharing
@@ -1908,6 +1950,148 @@ export const mediaProviders = pgTable("media_providers", {
 
 export type MediaProvider = typeof mediaProviders.$inferSelect;
 export type InsertMediaProvider = typeof mediaProviders.$inferInsert;
+
+/**
+ * Voice Agent Configs - Tenant-scoped mapping to provider-hosted realtime agents.
+ * Kept separate from one-shot media models.
+ */
+export const voiceAgentConfigs = pgTable("voice_agent_configs", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  provider: voiceAgentProviderEnum("provider").notNull().default("elevenlabs"),
+  externalAgentId: varchar("external_agent_id", { length: 128 }).notNull(),
+  displayName: varchar("display_name", { length: 160 }).notNull(),
+  description: text("description"),
+  credentialProviderName: varchar("credential_provider_name", { length: 64 }).notNull().default("elevenlabs"),
+  branchId: varchar("branch_id", { length: 128 }),
+  environment: varchar("environment", { length: 64 }),
+  defaultLanguage: varchar("default_language", { length: 16 }),
+  serverLocation: varchar("server_location", { length: 32 }).default("us").notNull(),
+  retentionPolicy: varchar("retention_policy", { length: 32 }).default("default").notNull(),
+  allowedSurfaces: json("allowed_surfaces").$type<Array<"chat" | "work_os" | "team_room" | "agency">>().notNull().default(["chat"]),
+  allowedTools: json("allowed_tools").$type<string[]>().notNull().default(["chat.create_message"]),
+  configJson: json("config_json").$type<Record<string, any>>().notNull().default({}),
+  isEnabled: boolean("is_enabled").default(false).notNull(),
+  lastTestedAt: timestamp("last_tested_at", { withTimezone: true }),
+  lastTestResult: json("last_test_result").$type<{
+    success: boolean;
+    message: string;
+    latencyMs?: number;
+    providerConversationId?: string;
+  }>(),
+  createdByUserId: integer("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  updatedByUserId: integer("updated_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("voice_agent_configs_tenant_provider_agent_unique").on(t.tenantId, t.provider, t.externalAgentId),
+  index("voice_agent_configs_tenant_enabled_idx").on(t.tenantId, t.isEnabled),
+  index("voice_agent_configs_provider_idx").on(t.provider),
+]);
+
+export type VoiceAgentConfig = typeof voiceAgentConfigs.$inferSelect;
+export type InsertVoiceAgentConfig = typeof voiceAgentConfigs.$inferInsert;
+
+/**
+ * Voice Agent Sessions - SmartSpec-owned session lifecycle and billing state.
+ */
+export const voiceAgentSessions = pgTable("voice_agent_sessions", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  conversationId: integer("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  configId: integer("config_id").notNull().references(() => voiceAgentConfigs.id, { onDelete: "restrict" }),
+  provider: voiceAgentProviderEnum("provider").notNull().default("elevenlabs"),
+  providerConversationId: varchar("provider_conversation_id", { length: 128 }),
+  surface: voiceAgentSurfaceEnum("surface").notNull().default("chat"),
+  connectionType: voiceAgentConnectionTypeEnum("connection_type").notNull().default("webrtc_token"),
+  connectionExpiresAt: timestamp("connection_expires_at", { withTimezone: true }),
+  status: voiceAgentSessionStatusEnum("status").notNull().default("created"),
+  billingStatus: voiceAgentBillingStatusEnum("billing_status").notNull().default("reserved"),
+  creditReservationTransactionId: integer("credit_reservation_transaction_id").references(() => creditTransactions.id, { onDelete: "set null" }),
+  idempotencyKey: varchar("idempotency_key", { length: 256 }).notNull(),
+  providerDurationSeconds: integer("provider_duration_seconds"),
+  providerCostCents: integer("provider_cost_cents"),
+  transcriptPending: boolean("transcript_pending").default(false).notNull(),
+  errorCode: varchar("error_code", { length: 128 }),
+  errorMessage: text("error_message"),
+  metadataJson: json("metadata_json").$type<Record<string, any>>().notNull().default({}),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("voice_agent_sessions_user_idempotency_unique").on(t.tenantId, t.userId, t.idempotencyKey),
+  uniqueIndex("voice_agent_sessions_provider_conversation_unique")
+    .on(t.tenantId, t.providerConversationId)
+    .where(sql`provider_conversation_id IS NOT NULL`),
+  index("voice_agent_sessions_tenant_user_created_idx").on(t.tenantId, t.userId, t.createdAt),
+  index("voice_agent_sessions_tenant_conversation_created_idx").on(t.tenantId, t.conversationId, t.createdAt),
+  index("voice_agent_sessions_status_idx").on(t.status),
+]);
+
+export type VoiceAgentSession = typeof voiceAgentSessions.$inferSelect;
+export type InsertVoiceAgentSession = typeof voiceAgentSessions.$inferInsert;
+
+/**
+ * Voice Agent Events - Normalized SDK, webhook, and provider events.
+ */
+export const voiceAgentEvents = pgTable("voice_agent_events", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull().references(() => voiceAgentSessions.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  providerEventId: varchar("provider_event_id", { length: 160 }),
+  eventType: varchar("event_type", { length: 80 }).notNull(),
+  source: voiceAgentEventSourceEnum("source").notNull().default("system"),
+  sequence: integer("sequence").notNull(),
+  text: text("text"),
+  payloadJson: json("payload_json").$type<Record<string, any>>().notNull().default({}),
+  redactionStatus: voiceAgentRedactionStatusEnum("redaction_status").notNull().default("not_required"),
+  conversationMessageId: integer("conversation_message_id").references(() => messages.id, { onDelete: "set null" }),
+  receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("voice_agent_events_session_sequence_unique").on(t.sessionId, t.sequence),
+  uniqueIndex("voice_agent_events_provider_event_unique")
+    .on(t.sessionId, t.providerEventId)
+    .where(sql`provider_event_id IS NOT NULL`),
+  index("voice_agent_events_tenant_received_idx").on(t.tenantId, t.receivedAt),
+  index("voice_agent_events_session_received_idx").on(t.sessionId, t.receivedAt),
+]);
+
+export type VoiceAgentEvent = typeof voiceAgentEvents.$inferSelect;
+export type InsertVoiceAgentEvent = typeof voiceAgentEvents.$inferInsert;
+
+/**
+ * Voice Agent Tool Calls - Durable idempotent tool bridge ledger.
+ */
+export const voiceAgentToolCalls = pgTable("voice_agent_tool_calls", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull().references(() => voiceAgentSessions.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  providerToolCallId: varchar("provider_tool_call_id", { length: 160 }),
+  idempotencyKey: varchar("idempotency_key", { length: 256 }).notNull(),
+  toolName: varchar("tool_name", { length: 128 }).notNull(),
+  status: voiceAgentToolCallStatusEnum("status").notNull().default("received"),
+  inputJson: json("input_json").$type<Record<string, any>>().notNull().default({}),
+  outputJson: json("output_json").$type<Record<string, any>>(),
+  policyDecisionJson: json("policy_decision_json").$type<Record<string, any>>().notNull().default({}),
+  errorCode: varchar("error_code", { length: 128 }),
+  errorMessage: text("error_message"),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("voice_agent_tool_calls_session_idempotency_unique").on(t.sessionId, t.idempotencyKey),
+  uniqueIndex("voice_agent_tool_calls_provider_tool_unique")
+    .on(t.sessionId, t.providerToolCallId)
+    .where(sql`provider_tool_call_id IS NOT NULL`),
+  index("voice_agent_tool_calls_tenant_tool_started_idx").on(t.tenantId, t.toolName, t.startedAt),
+  index("voice_agent_tool_calls_status_idx").on(t.status),
+]);
+
+export type VoiceAgentToolCall = typeof voiceAgentToolCalls.$inferSelect;
+export type InsertVoiceAgentToolCall = typeof voiceAgentToolCalls.$inferInsert;
 
 /**
  * Media Model Type Enum

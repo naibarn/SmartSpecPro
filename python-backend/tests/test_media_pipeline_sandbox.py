@@ -40,6 +40,9 @@ class TestMediaPipelineSandbox:
         await _generate_video_thumbnail("/tmp/input.mp4", "/tmp/thumb.jpg", runner=mock_runner)
 
         assert mock_runner.run_command.call_count == 2
+        ffmpeg_cmd = mock_runner.run_command.call_args_list[1].args[0]
+        assert "-vf" in ffmpeg_cmd
+        assert "scale=300:-2" in ffmpeg_cmd
 
     @pytest.mark.asyncio
     async def test_generate_video_thumbnail_falls_back_without_runner(self):

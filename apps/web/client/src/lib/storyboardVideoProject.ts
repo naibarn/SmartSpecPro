@@ -14,6 +14,7 @@ export interface StoryboardClipCandidate {
   prompt: string;
   url: string;
   model?: string;
+  durationSeconds?: number;
   generationModelId?: string;
   referenceUrls?: string[];
   generationAspectRatio?: string;
@@ -122,7 +123,9 @@ export function buildStoryboardVideoProject(
 
   for (let index = 0; index < completed.length; index += 1) {
     const clipSource = completed[index];
-    const duration = inferStoryboardDurationSeconds(clipSource.prompt, fallbackDuration);
+    const duration = typeof clipSource.durationSeconds === "number" && Number.isFinite(clipSource.durationSeconds) && clipSource.durationSeconds > 0
+      ? Math.max(0.25, clipSource.durationSeconds)
+      : inferStoryboardDurationSeconds(clipSource.prompt, fallbackDuration);
     const mediaAsset: MediaLibraryAsset = {
       id: `storyboard-${clipSource.id}`,
       type: "video",

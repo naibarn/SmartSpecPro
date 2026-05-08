@@ -281,8 +281,8 @@ index 0000000..bf2953f
 +
 +def test_init_api_key_not_in_headers_value():
 +    """API key is stored only as Bearer token, not exposed elsewhere."""
-+    provider = BytePlusModelArkProvider(api_key="super-secret-key-123")
-+    assert "super-secret-key-123" not in str(provider._headers.get("X-API-Key", ""))
++    provider = BytePlusModelArkProvider(api_key="super-key.test")
++    assert "super-key.test" not in str(provider._headers.get("X-API-Key", ""))
 +    provider.client.aclose = AsyncMock()
 +
 +

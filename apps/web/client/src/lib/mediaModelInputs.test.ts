@@ -115,6 +115,39 @@ describe("mediaModelInputs", () => {
     expect(getModelReferenceImageLimit(model)).toBe(4);
   });
 
+  it("preserves generic numeric and library metadata for Magnific controls", () => {
+    const model = {
+      id: "magnific/change-camera",
+      name: "Change Camera",
+      configJson: {
+        inputFields: [
+          {
+            key: "horizontal_angle",
+            label: "Horizontal Angle",
+            type: "number",
+            min: 0,
+            max: 360,
+            step: 1,
+          },
+          {
+            key: "image_urls",
+            label: "Reference Images",
+            type: "image_urls",
+            syncWith: "reference_images",
+            allowedExtensions: "jpg,jpeg,png,webp",
+          },
+        ],
+      },
+    };
+
+    expect(getModelInputField(model, "horizontal_angle")).toMatchObject({
+      min: 0,
+      max: 360,
+      step: 1,
+    });
+    expect(getModelInputField(model, "image_urls")?.allowedExtensions).toEqual(["jpg", "jpeg", "png", "webp"]);
+  });
+
   it("tracks reference image and video support independently", () => {
     const model = {
       id: "test-video-model",

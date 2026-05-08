@@ -37,6 +37,7 @@ import {
   testBytePlusModelArk,
   testElevenLabs,
   testKieAI,
+  testMagnificAI,
   testUVoice,
   testWaveSpeedAI,
 } from "./mediaProviders";
@@ -211,6 +212,86 @@ describe("PROVIDER_TEMPLATES — ElevenLabs direct entry", () => {
       expect.objectContaining({ id: "elevenlabs/sound-effects", type: "audio" }),
       expect.objectContaining({ id: "elevenlabs/voice-isolator", type: "audio" }),
     ]));
+  });
+});
+
+describe("PROVIDER_TEMPLATES — Magnific entry", () => {
+  const magnificTemplate = PROVIDER_TEMPLATES.find(
+    (t) => t.providerName === "magnific"
+  );
+
+  it("uses the official API root and Mystic default model", () => {
+    expect(magnificTemplate).toBeDefined();
+    expect(magnificTemplate?.displayName).toBe("Magnific");
+    expect(magnificTemplate?.providerType).toBe("multimodal");
+    expect(magnificTemplate?.baseUrl).toBe("https://api.magnific.com");
+    expect(magnificTemplate?.defaultModel).toBe("magnific/mystic");
+    expect(magnificTemplate?.availableModels).toHaveLength(34);
+    expect(magnificTemplate?.availableModels).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "magnific/mystic", type: "image" }),
+      expect.objectContaining({ id: "magnific/remove-background", type: "image" }),
+      expect.objectContaining({ id: "magnific/veo-3-1-reference-to-video", type: "video" }),
+      expect.objectContaining({ id: "magnific/video-upscaler-precision", type: "video" }),
+    ]));
+  });
+});
+
+describe("testMagnificAI", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("calls GET /v1/ai/mystic with x-magnific-api-key auth", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [] }),
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const result = await testMagnificAI("magnific-secret", "https://api.magnific.com/");
+
+    expect(result.success).toBe(true);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchSpy.mock.calls[0];
+    expect(url).toBe("https://api.magnific.com/v1/ai/mystic");
+    expect(options.method).toBe("GET");
+    expect(options.headers["x-magnific-api-key"]).toBe("magnific-secret");
+    expect(options.headers.Authorization).toBeUndefined();
+  });
+
+  it("returns sanitized auth and rate-limit failures", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: "invalid key magnific-secret" }),
+      text: async () => "invalid key magnific-secret",
+    }));
+    await expect(testMagnificAI("magnific-secret", "https://api.magnific.com")).resolves.toMatchObject({
+      success: false,
+      message: expect.stringMatching(/401/i),
+    });
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({ error: "rate limited magnific-secret" }),
+      text: async () => "rate limited magnific-secret",
+    }));
+    const result = await testMagnificAI("magnific-secret", "https://api.magnific.com");
+
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/429/i);
+    expect(result.message).not.toContain("magnific-secret");
+  });
+
+  it("rejects unsafe Magnific base URLs before fetch", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await expect(testMagnificAI("key", "https://127.0.0.1")).rejects.toThrow(/public host/i);
+    await expect(testMagnificAI("key", "http://api.magnific.com")).rejects.toThrow(/https/i);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
 

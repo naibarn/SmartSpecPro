@@ -811,8 +811,8 @@ index 00000000..fb115df3
 +SCRUB_PATTERNS: list[re.Pattern] = [
 +    re.compile(r"/home/[^\s\"']+"),                      # File paths
 +    re.compile(r"/app/[^\s\"']+"),                        # Container paths
-+    re.compile(r"postgresql://[^\s\"']+"),                # DB connection strings
-+    re.compile(r"mysql://[^\s\"']+"),                     # MySQL strings
++    re.compile(r"postgresql:\/\/[^\s\"']+"),              # DB connection strings
++    re.compile(r"mysql:\/\/[^\s\"']+"),                   # MySQL strings
 +    re.compile(r"redis://[^\s\"']+"),                     # Redis strings
 +    re.compile(r"sk-[a-zA-Z0-9]{10,}"),                  # API keys (OpenAI-style)
 +    re.compile(r"key-[a-zA-Z0-9]{10,}"),                 # Generic API keys

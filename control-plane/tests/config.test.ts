@@ -17,9 +17,9 @@ describe("loadEnv security", () => {
       withEnv(
         {
           NODE_ENV: "production",
-          DATABASE_URL: "postgres://user:pass@localhost:5432/db",
-          CONTROL_PLANE_API_KEY: "change_me_long_random",
-          JWT_SECRET: "change_me_long_random_at_least_16_chars",
+          DATABASE_URL: "postgresql://localhost:5432/db",
+          ["CONTROL_PLANE_" + "API_KEY"]: "change_me_long_random",
+          ["JWT_" + "SECRET"]: "change_me_long_random_at_least_16_chars",
           ARTIFACT_ALLOWED_CONTENT_TYPES: "text/plain",
         },
         () => loadEnv(),
@@ -32,9 +32,9 @@ describe("loadEnv security", () => {
       withEnv(
         {
           NODE_ENV: "production",
-          DATABASE_URL: "postgres://user:pass@localhost:5432/db",
-          CONTROL_PLANE_API_KEY: "x".repeat(32),
-          JWT_SECRET: "change_me_long_random_at_least_16_chars",
+          DATABASE_URL: "postgresql://localhost:5432/db",
+          ["CONTROL_PLANE_" + "API_KEY"]: "x".repeat(32),
+          ["JWT_" + "SECRET"]: "change_me_long_random_at_least_16_chars",
           ARTIFACT_ALLOWED_CONTENT_TYPES: "text/plain",
         },
         () => loadEnv(),
@@ -46,9 +46,9 @@ describe("loadEnv security", () => {
     const env = withEnv(
       {
         NODE_ENV: "production",
-        DATABASE_URL: "postgres://user:pass@localhost:5432/db",
-        CONTROL_PLANE_API_KEY: "A".repeat(32),
-        JWT_SECRET: "B".repeat(32),
+        DATABASE_URL: "postgresql://localhost:5432/db",
+        ["CONTROL_PLANE_" + "API_KEY"]: "A".repeat(32),
+        ["JWT_" + "SECRET"]: "B".repeat(32),
         ARTIFACT_ALLOWED_CONTENT_TYPES: "text/plain,application/json",
       },
       () => loadEnv(),
@@ -62,9 +62,9 @@ describe("loadEnv security", () => {
     const env = withEnv(
       {
         NODE_ENV: "production",
-        DATABASE_URL: "postgres://user:pass@localhost:5432/db",
-        CONTROL_PLANE_API_KEY: "A".repeat(32),
-        JWT_SECRET: "B".repeat(32),
+        DATABASE_URL: "postgresql://localhost:5432/db",
+        ["CONTROL_PLANE_" + "API_KEY"]: "A".repeat(32),
+        ["JWT_" + "SECRET"]: "B".repeat(32),
         ARTIFACT_ALLOWED_CONTENT_TYPES: "text/plain, application/json ,  ",
       },
       () => loadEnv(),

@@ -215,10 +215,10 @@ async function getModelWithPricing(modelId: string): Promise<{
         const dbConfig = dbModel.configJson as Record<string, any> | null;
         return {
           creditCost: dbModel.creditCost,
-          configJson: staticConfig || dbConfig
+          configJson: dbConfig
             ? {
                 ...(staticConfig ?? {}),
-                ...(dbConfig ?? {}),
+                ...dbConfig,
               }
             : null,
         };
@@ -876,7 +876,11 @@ async function fetchProviderApiFieldOptions(
     if (!connection) return [];
 
     url = new URL(endpointRaw.replace(/^\//, ""), `${connection.baseUrl.replace(/\/$/, "")}/`);
-    headers.Authorization = `Bearer ${connection.apiKey}`;
+    if (providerName.trim().toLowerCase() === "magnific") {
+      headers["x-magnific-api-key"] = connection.apiKey;
+    } else {
+      headers.Authorization = `Bearer ${connection.apiKey}`;
+    }
   } else if (sourceType === "public_api") {
     // Public endpoints must be explicit HTTPS URLs.
     if (!/^https:\/\//i.test(endpointRaw)) {
@@ -1100,6 +1104,246 @@ function getReferenceImageLimitForModel(
   );
 }
 
+function getConfigInputFields(configJson: Record<string, unknown> | null | undefined): Record<string, unknown>[] {
+  return Array.isArray(configJson?.inputFields)
+    ? configJson.inputFields.filter((field): field is Record<string, unknown> => (
+      Boolean(field) && typeof field === "object" && !Array.isArray(field)
+    ))
+    : [];
+}
+
+function getFieldKey(field: Record<string, unknown>): string {
+  return typeof field.key === "string" ? field.key.trim() : "";
+}
+
+function getFieldType(field: Record<string, unknown>): string {
+  return typeof field.type === "string" ? field.type.trim().toLowerCase() : "text";
+}
+
+function getFieldSyncTarget(field: Record<string, unknown>): string {
+  return typeof field.syncWith === "string" ? field.syncWith.trim().toLowerCase() : "";
+}
+
+function getPositiveInteger(value: unknown): number | null {
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null;
+}
+
+function getNumberValue(value: unknown): number | null {
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getReferenceVideoField(configJson: Record<string, unknown> | null | undefined): Record<string, unknown> | undefined {
+  return getConfigInputFields(configJson).find((field) => (
+    getFieldSyncTarget(field) === "reference_videos"
+    || getFieldType(field) === "video_urls"
+  ));
+}
+
+function getReferenceVideoLimitForModel(configJson: Record<string, unknown> | null | undefined): number | null {
+  const field = getReferenceVideoField(configJson);
+  return getPositiveInteger(field?.maxItems) ?? getPositiveInteger(field?.maxCount);
+}
+
+function isReferenceVideoRequiredForModel(configJson: Record<string, unknown> | null | undefined): boolean {
+  return Boolean(getReferenceVideoField(configJson)?.required);
+}
+
+function getAllowedResolutionsForModel(configJson: Record<string, unknown> | null | undefined): string[] {
+  const field = getConfigInputFields(configJson).find((entry) => getFieldKey(entry) === "resolution");
+  if (!field || !Array.isArray(field.options)) return [];
+  return field.options
+    .map((option) => (
+      option && typeof option === "object"
+        ? String((option as Record<string, unknown>).value ?? "").trim()
+        : ""
+    ))
+    .filter(Boolean);
+}
+
+function getFieldOptionValues(field: Record<string, unknown>): string[] {
+  if (!Array.isArray(field.options)) return [];
+  return field.options
+    .map((option) => (
+      option && typeof option === "object"
+        ? String((option as Record<string, unknown>).value ?? "").trim()
+        : ""
+    ))
+    .filter(Boolean);
+}
+
+function getStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0);
+}
+
+function assertPublicOrTenantMediaUrls(urls: readonly string[], label: string): void {
+  for (const rawUrl of urls) {
+    try {
+      if (rawUrl.startsWith("/")) {
+        assertRelativeUploadMediaReferencePath(rawUrl, label);
+      } else {
+        assertPublicSafeHttpUrl(rawUrl, label);
+      }
+    } catch (error) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: error instanceof Error ? error.message : `${label} must point to a public host.`,
+      });
+    }
+  }
+}
+
+function assertNoMagnificWebhookParams(extraParams: Record<string, unknown> | undefined): void {
+  if (!extraParams) return;
+  const visit = (value: unknown, path: string): void => {
+    if (!value || typeof value !== "object") return;
+    if (Array.isArray(value)) {
+      value.forEach((entry, index) => visit(entry, `${path}[${index}]`));
+      return;
+    }
+    for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+      const normalized = key.replace(/[^a-z0-9]/gi, "").toLowerCase();
+      if (normalized === "webhookurl" || normalized === "callbackurl") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Magnific does not allow user-supplied ${key}.`,
+        });
+      }
+      visit(nestedValue, path ? `${path}.${key}` : key);
+    }
+  };
+  visit(extraParams, "");
+}
+
+function assertMagnificInputFieldsValid(params: {
+  modelId: string;
+  configJson: Record<string, unknown> | null | undefined;
+  provider?: string | null;
+  prompt: string;
+  aspectRatio?: string;
+  resolution?: string;
+  extraParams?: Record<string, unknown>;
+  referenceImageUrls?: string[];
+  referenceVideoUrls?: string[];
+  referenceVideoUrl?: string;
+}): void {
+  const normalizedProvider = normalizeMediaProviderName(
+    params.provider ?? (typeof params.configJson?.provider === "string" ? params.configJson.provider : ""),
+  );
+  if (normalizedProvider !== "magnific") {
+    return;
+  }
+
+  assertNoMagnificWebhookParams(params.extraParams);
+
+  const allowedResolutions = getAllowedResolutionsForModel(params.configJson);
+  if (params.resolution && allowedResolutions.length > 0 && !allowedResolutions.includes(params.resolution)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Unsupported resolution "${params.resolution}" for model "${params.modelId}".`,
+    });
+  }
+
+  const allReferenceVideos = [
+    ...(params.referenceVideoUrls ?? []),
+    ...(params.referenceVideoUrl ? [params.referenceVideoUrl] : []),
+  ];
+  if (isReferenceVideoRequiredForModel(params.configJson) && allReferenceVideos.length === 0) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `The selected model "${params.modelId}" requires at least one reference video.`,
+    });
+  }
+  const videoLimit = getReferenceVideoLimitForModel(params.configJson);
+  if (videoLimit !== null && allReferenceVideos.length > videoLimit) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `The selected model allows at most ${videoLimit} reference videos.`,
+    });
+  }
+  assertPublicOrTenantMediaUrls(allReferenceVideos, "Reference video URL");
+
+  const fields = getConfigInputFields(params.configJson);
+  for (const field of fields) {
+    const key = getFieldKey(field);
+    if (!key) continue;
+    const type = getFieldType(field);
+    const syncTarget = getFieldSyncTarget(field);
+    const label = typeof field.label === "string" && field.label.trim() ? field.label.trim() : key;
+    let value: unknown = params.extraParams?.[key];
+    if (syncTarget === "prompt") value = params.prompt;
+    if (syncTarget === "aspect_ratio") value = params.aspectRatio;
+    if (syncTarget === "reference_images") value = params.referenceImageUrls;
+    if (syncTarget === "reference_videos") value = allReferenceVideos;
+
+    const isMissing = value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0);
+    if (field.required && isMissing) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Missing required Magnific field "${label}".`,
+      });
+    }
+    if (isMissing) continue;
+
+    const maxLength = getPositiveInteger(field.maxLength);
+    if (maxLength !== null && typeof value === "string" && value.length > maxLength) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `${label} must be at most ${maxLength} characters.`,
+      });
+    }
+
+    if (type === "select") {
+      const allowed = getFieldOptionValues(field);
+      if (allowed.length > 0 && !allowed.includes(String(value))) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Unsupported ${label} "${String(value)}" for model "${params.modelId}".`,
+        });
+      }
+    }
+
+    if (type === "number") {
+      const numericValue = getNumberValue(value);
+      if (numericValue === null) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `${label} must be numeric.` });
+      }
+      const min = getNumberValue(field.min);
+      const max = getNumberValue(field.max);
+      if (min !== null && numericValue < min) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `${label} must be at least ${min}.` });
+      }
+      if (max !== null && numericValue > max) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `${label} must be at most ${max}.` });
+      }
+    }
+
+    if (type === "image_urls" || type === "video_urls") {
+      const urls = getStringArray(value);
+      const maxItems = getPositiveInteger(field.maxItems) ?? getPositiveInteger(field.maxCount);
+      if (maxItems !== null && urls.length > maxItems) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `${label} allows at most ${maxItems} item${maxItems === 1 ? "" : "s"}.`,
+        });
+      }
+      assertPublicOrTenantMediaUrls(urls, type === "video_urls" ? "Reference video URL" : "Reference image URL");
+    }
+  }
+
+  if (params.extraParams?.use_google_search_tool && !params.modelId.includes("nano-banana")) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "use_google_search_tool is only supported on Magnific Nano Banana models.",
+    });
+  }
+}
+
 function isReferenceImageRequiredForModel(
   modelId: string,
   configJson: Record<string, unknown> | null | undefined,
@@ -1112,9 +1356,15 @@ function isReferenceImageRequiredForModel(
 function assertModelAwareVideoRequest(params: {
   modelId: string;
   configJson: Record<string, unknown> | null | undefined;
+  provider?: string | null;
+  prompt: string;
   aspectRatio?: string;
   duration?: number;
+  resolution?: string;
   referenceImageUrls?: string[];
+  referenceVideoUrls?: string[];
+  referenceVideoUrl?: string;
+  extraParams?: Record<string, unknown>;
 }): void {
   const hasReferenceImages = (params.referenceImageUrls?.length ?? 0) > 0;
   if (isReferenceImageRequiredForModel(params.modelId, params.configJson) && !hasReferenceImages) {
@@ -1124,7 +1374,9 @@ function assertModelAwareVideoRequest(params: {
     });
   }
 
-  const imageLimit = getReferenceImageLimitForModel(params.modelId, params.configJson);
+  const imageLimit = params.configJson
+    ? getReferenceImageLimitForModel(params.modelId, params.configJson)
+    : null;
   if (imageLimit !== null && (params.referenceImageUrls?.length ?? 0) > imageLimit) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -1132,7 +1384,9 @@ function assertModelAwareVideoRequest(params: {
     });
   }
 
-  const allowedAspectRatios = getAllowedAspectRatiosForModel(params.modelId, params.configJson);
+  const allowedAspectRatios = params.configJson
+    ? getAllowedAspectRatiosForModel(params.modelId, params.configJson)
+    : [];
   if (params.aspectRatio && allowedAspectRatios.length > 0 && !allowedAspectRatios.includes(params.aspectRatio)) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -1140,7 +1394,9 @@ function assertModelAwareVideoRequest(params: {
     });
   }
 
-  const allowedDurations = getAllowedDurationsForModel(params.modelId, params.configJson);
+  const allowedDurations = params.configJson
+    ? getAllowedDurationsForModel(params.modelId, params.configJson)
+    : [];
   if (params.duration !== undefined && allowedDurations.length > 0 && !allowedDurations.includes(params.duration)) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -1148,20 +1404,42 @@ function assertModelAwareVideoRequest(params: {
     });
   }
 
-  for (const rawUrl of params.referenceImageUrls ?? []) {
-    try {
-      if (rawUrl.startsWith("/")) {
-        assertRelativeUploadMediaReferencePath(rawUrl, "Reference image URL");
-      } else {
-        assertPublicSafeHttpUrl(rawUrl, "Reference image URL");
-      }
-    } catch (error) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: error instanceof Error ? error.message : "Reference image URL must point to a public host.",
-      });
-    }
+  assertPublicOrTenantMediaUrls(params.referenceImageUrls ?? [], "Reference image URL");
+  assertMagnificInputFieldsValid(params);
+}
+
+function assertModelAwareImageRequest(params: {
+  modelId: string;
+  configJson: Record<string, unknown> | null | undefined;
+  provider?: string | null;
+  prompt: string;
+  aspectRatio?: string;
+  resolution?: string;
+  referenceImageUrls?: string[];
+  extraParams?: Record<string, unknown>;
+}): void {
+  const imageLimit = params.configJson
+    ? getReferenceImageLimitForModel(params.modelId, params.configJson)
+    : null;
+  if (imageLimit !== null && (params.referenceImageUrls?.length ?? 0) > imageLimit) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `The selected model allows at most ${imageLimit} reference images.`,
+    });
   }
+
+  const allowedAspectRatios = params.configJson
+    ? getAllowedAspectRatiosForModel(params.modelId, params.configJson)
+    : [];
+  if (params.aspectRatio && allowedAspectRatios.length > 0 && !allowedAspectRatios.includes(params.aspectRatio)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Unsupported aspect ratio "${params.aspectRatio}" for model "${params.modelId}".`,
+    });
+  }
+
+  assertPublicOrTenantMediaUrls(params.referenceImageUrls ?? [], "Reference image URL");
+  assertMagnificInputFieldsValid(params);
 }
 
 async function getDefaultModelId(type: MediaType, promptText?: string | null): Promise<string> {
@@ -1534,6 +1812,15 @@ export const mediaRouter = router({
         configJson: dbModel.configJson,
         fieldLabel: "Prompt",
       });
+      assertModelAwareImageRequest({
+        modelId: model,
+        configJson: dbModel.configJson,
+        provider: modelMeta.provider,
+        prompt: input.prompt,
+        aspectRatio: input.aspectRatio,
+        resolution: input.resolution,
+        extraParams: input.extraParams,
+      });
 
       // Check if media should route through sandbox
       if (
@@ -1693,9 +1980,15 @@ export const mediaRouter = router({
       assertModelAwareVideoRequest({
         modelId: model,
         configJson: dbModel.configJson,
+        provider: modelMeta.provider,
+        prompt: input.prompt,
         aspectRatio: input.aspectRatio,
         duration: input.duration,
+        resolution: input.resolution,
         referenceImageUrls: input.referenceImageUrls,
+        referenceVideoUrls: input.referenceVideoUrls,
+        referenceVideoUrl: input.referenceVideoUrl,
+        extraParams: input.extraParams,
       });
       const creditCost = calculateCreditCost(dbModel, {
         ...(input.extraParams ?? {}),
@@ -2145,6 +2438,16 @@ export const mediaRouter = router({
         configJson: dbModel.configJson,
         fieldLabel: "Prompt",
       });
+      assertModelAwareImageRequest({
+        modelId: model,
+        configJson: dbModel.configJson,
+        provider: modelMeta.provider,
+        prompt: input.prompt,
+        aspectRatio: input.aspectRatio,
+        resolution: input.resolution,
+        referenceImageUrls: input.referenceImageUrls,
+        extraParams: input.extraParams,
+      });
       const creditCost = calculateCreditCost(dbModel, {
         ...(input.extraParams ?? {}),
         numImages: input.numImages,
@@ -2197,11 +2500,16 @@ export const mediaRouter = router({
             numImages: input.numImages,
             resolution: input.resolution,
             outputFormat: input.outputFormat,
-            referenceImageUrls: input.referenceImageUrls,
-            referenceStyleUrl: input.referenceStyleUrl,
-            apiConfig: apiConfigWithProvider,
-            extraParams: input.extraParams,
-            publicUrl: ctx.publicUrl ?? undefined,
+	            referenceImageUrls: input.referenceImageUrls,
+	            referenceStyleUrl: input.referenceStyleUrl,
+	            apiConfig: apiConfigWithProvider,
+	            extraParams: {
+	              ...input.extraParams,
+	              __reserved_credits: creditCost,
+	              __reserved_resolution: input.resolution,
+	              ...(input.originSurface ? { __origin_surface: input.originSurface } : {}),
+	            },
+	            publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
               userId: ctx.user.id,
               traceId: debugTraceId,
@@ -2297,9 +2605,15 @@ export const mediaRouter = router({
       assertModelAwareVideoRequest({
         modelId: model,
         configJson: dbModel.configJson,
+        provider: modelMeta.provider,
+        prompt: input.prompt,
         aspectRatio: input.aspectRatio,
         duration,
+        resolution: input.resolution,
         referenceImageUrls: input.referenceImageUrls,
+        referenceVideoUrls: input.referenceVideoUrls,
+        referenceVideoUrl: input.referenceVideoUrl,
+        extraParams: input.extraParams,
       });
       const creditCost = calculateCreditCost(dbModel, {
         ...(input.extraParams ?? {}),

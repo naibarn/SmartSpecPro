@@ -18,6 +18,36 @@ vi.mock("@/components/ui/scroll-area", () => ({
   ScrollArea: (props: Record<string, unknown>) => React.createElement("div", props),
 }));
 
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    t: (key: string, params?: Record<string, string | number>) => {
+      const messages: Record<string, string> = {
+        "common.allReadStates": "All",
+        "common.select": "Select",
+        "mediaStudio.librarySearchTitle": "Search Library",
+        "mediaStudio.librarySearchPlaceholder": "Search reusable assets...",
+        "mediaStudio.librarySearchImage": "Image",
+        "mediaStudio.librarySearchVideo": "Video",
+        "mediaStudio.librarySearchAudio": "Audio",
+        "mediaStudio.librarySearchUpdatedIn": "Updated in:",
+        "mediaStudio.librarySearchOneDay": "1 day",
+        "mediaStudio.librarySearchThreeDays": "3 days",
+        "mediaStudio.librarySearchSevenDays": "7 days",
+        "mediaStudio.librarySearchFifteenDays": "15 days",
+        "mediaStudio.librarySearchOneMonth": "1 month",
+        "mediaStudio.librarySearchAllTime": "All time",
+        "mediaStudio.librarySearchLoading": "Searching library...",
+        "mediaStudio.librarySearchHint": "Pick a timeframe, type, or media kind to search indexed library items for reuse.",
+        "mediaStudio.librarySearchNoMatches": "No matching library items.",
+        "mediaStudio.librarySearchHasMore": `Showing up to 50 results. There may be more items (${params?.total ?? 0}+). Add more filters or keywords.`,
+        "mediaStudio.librarySearchRetryFromHistory": "Retry from Media History",
+        "mediaStudio.librarySearchReadyToReuse": "Ready to reuse",
+      };
+      return messages[key] ?? key;
+    },
+  }),
+}));
+
 import LibrarySearchPanel from "./LibrarySearchPanel";
 
 describe("LibrarySearchPanel", () => {

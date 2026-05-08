@@ -107,7 +107,7 @@ describe("desktopPackageRegistryService", () => {
       signer: {
         signerId: "org-signer-1",
         keyVersion: "2026-04",
-        signerSecret: "top-secret-signing-key",
+        signerSecret: "signing-key.test",
       },
     });
 
@@ -132,7 +132,7 @@ describe("desktopPackageRegistryService", () => {
         signer: {
           signerId: "org-signer-1",
           keyVersion: "2026-04",
-          signerSecret: "top-secret-signing-key",
+          signerSecret: "signing-key.test",
         },
       }),
     ).toThrow(/local-unverified/i);
@@ -148,7 +148,7 @@ describe("desktopPackageRegistryService", () => {
       signer: {
         signerId: "org-signer-1",
         keyVersion: "2026-04",
-        signerSecret: "top-secret-signing-key",
+        signerSecret: "signing-key.test",
       },
     });
 
@@ -163,7 +163,7 @@ describe("desktopPackageRegistryService", () => {
         localBundlePath: "/tmp/storyboard-writer",
         currentProtocolVersion: DESKTOP_HOST_PROTOCOL_VERSION,
         revocationFeed,
-        resolveSignerSecret: () => "top-secret-signing-key",
+        resolveSignerSecret: () => "signing-key.test",
       }),
     ).toThrow(/revoked/i);
   });
@@ -182,7 +182,7 @@ describe("desktopPackageRegistryService", () => {
         revocationFeed: buildRevocationFeedSnapshot({
           generatedAt: "2026-04-08T10:00:00.000Z",
         }),
-        resolveSignerSecret: () => "top-secret-signing-key",
+        resolveSignerSecret: () => "signing-key.test",
       }),
     ).toThrow(/compatibility|signature/i);
   });

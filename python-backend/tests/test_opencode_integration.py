@@ -114,7 +114,7 @@ class TestAPIKeyService:
         
         result = await APIKeyService.validate_api_key(
             mock_db,
-            "sk-smartspec-test123456789"
+            "sk-test.short456789"
         )
         
         assert result is None
@@ -131,7 +131,7 @@ class TestAPIKeyService:
         
         result = await APIKeyService.validate_api_key(
             mock_db,
-            "sk-smartspec-test123456789"
+            "sk-test.short456789"
         )
         
         assert result is not None
@@ -153,7 +153,7 @@ class TestAPIKeyService:
         
         result = await APIKeyService.validate_api_key(
             mock_db,
-            "sk-smartspec-test123456789"
+            "sk-test.short456789"
         )
         
         assert result is None
@@ -266,12 +266,12 @@ class TestOpenCodeAdapter:
         
         adapter = OpenCodeAdapter(
             api_base_url="http://localhost:8000/v1/opencode",
-            api_key="sk-smartspec-test123",
+            api_key="sk-test.short",
             workspace_path="/tmp/test",
         )
         
         assert adapter.api_base_url == "http://localhost:8000/v1/opencode"
-        assert adapter.api_key == "sk-smartspec-test123"
+        assert adapter.api_key == "sk-test.short"
         assert adapter.workspace_path == "/tmp/test"
     
     def test_build_system_prompt(self):

@@ -26,8 +26,8 @@ export type DocumentOcrFileClass =
   (typeof DOCUMENT_OCR_FILE_CLASSES)[keyof typeof DOCUMENT_OCR_FILE_CLASSES];
 
 export const DOCUMENT_OCR_REQUEST_HEADERS = {
-  landingAiApiKey: "x-landingai-ade-api-key",
-  typhoonApiKey: "x-typhoon-ocr-api-key",
+  landingAiHeader: "x-landingai-ade-api-key",
+  typhoonHeader: "x-typhoon-ocr-api-key",
 } as const;
 
 export type DocumentOcrRouteSettings = {
@@ -256,7 +256,7 @@ export function resolveDocumentOcrRoute(params: {
       providerId: requestedProviderId,
       fallbackReason: null,
       requestHeaders: {
-        [DOCUMENT_OCR_REQUEST_HEADERS.typhoonApiKey]: params.settings.typhoonOcrApiKey.trim(),
+        [DOCUMENT_OCR_REQUEST_HEADERS.typhoonHeader]: params.settings.typhoonOcrApiKey.trim(),
       },
     };
   }
@@ -268,7 +268,7 @@ export function resolveDocumentOcrRoute(params: {
       providerId: requestedProviderId,
       fallbackReason: null,
       requestHeaders: {
-        [DOCUMENT_OCR_REQUEST_HEADERS.landingAiApiKey]: params.settings.landingAiApiKey.trim(),
+        [DOCUMENT_OCR_REQUEST_HEADERS.landingAiHeader]: params.settings.landingAiApiKey.trim(),
       },
     };
   }

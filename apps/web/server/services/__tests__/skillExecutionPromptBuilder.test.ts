@@ -111,6 +111,53 @@ describe("buildCustomSkillUserPrompt", () => {
     expect(prompt).toContain("scene/location/background");
   });
 
+  it("declares storyboard and news reference images as reference assets instead of start frames", () => {
+    const prompt = buildCustomSkillUserPrompt(
+      {
+        userIdea: "เล่าเรื่องเด็กตื่นกลางคืนแบบ storyboard",
+        contentMode: "storyboard",
+        generationType: "REFERENCE_2_VIDEO",
+      },
+      { referenceImageCount: 2 },
+    );
+
+    expect(prompt).toContain("declared as reference assets, not start frames");
+    expect(prompt).toContain("@Image1 is used as a reference asset");
+    expect(prompt).toContain("not as a start frame");
+    expect(prompt).toContain("Do not call any @ImageN a Start frame");
+  });
+
+  it("allows explicit first and last frame wording for first/last frame generation", () => {
+    const prompt = buildCustomSkillUserPrompt(
+      {
+        userIdea: "ทำ transition จากภาพแรกไปภาพสุดท้าย",
+        contentMode: "storyboard",
+        generationType: "FIRST_AND_LAST_FRAMES_2_VIDEO",
+      },
+      { referenceImageCount: 2 },
+    );
+
+    expect(prompt).not.toContain("declared as reference assets, not start frames");
+  });
+
+  it("adds a concrete prompt-count contract for audio-first storyboard runs", () => {
+    const prompt = buildCustomSkillUserPrompt({
+      userIdea: "เด็กชายวัย 6 เดือนตื่นร้องกลางคืน แม่อุ้มกล่อมในห้องนอนเด็ก",
+      contentMode: "storyboard",
+      videoAudioWorkflow: "separate_voice",
+      storyboardAudioDurationSeconds: 117,
+      storyboardClipDurationSeconds: 8,
+      storyboardAudioPromptCount: 15,
+      sceneCount: 15,
+    });
+
+    expect(prompt).toContain("AUDIO_FIRST_STORYBOARD_PROMPT_COUNT_CONTRACT");
+    expect(prompt).toContain("exactly 15 parseable video prompt blocks");
+    expect(prompt).toContain("PROMPT 1 through PROMPT 15");
+    expect(prompt).toContain("PROMPT N (8 seconds):");
+    expect(prompt).toContain("Do not stop at 10 prompts");
+  });
+
   it("tells text prompt skills to rewrite the source idea instead of returning it unchanged", () => {
     const prompt = buildCustomSkillUserPrompt({
       topic: "ภาพผู้หญิงสูงวัยวัย 18 ปี เดินเล่นริมทะเล",

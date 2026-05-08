@@ -388,7 +388,7 @@ class TestCreateVideoTask:
         self, task_response
     ):
         """API key must not appear in any structlog output during video task creation."""
-        secret = "bp-sk-sentinel-7f3a9d2c1e4b8f6a"
+        secret = "bp-sentinel"
         provider = BytePlusModelArkProvider(api_key=secret)
         provider.client.post = AsyncMock(return_value=task_response)
         with structlog.testing.capture_logs() as cap:

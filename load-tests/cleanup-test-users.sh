@@ -8,8 +8,8 @@ if [[ -z "$DB_URL" ]]; then
   exit 1
 fi
 
-if [[ ! "$DB_URL" =~ ^postgres(ql)?:// ]]; then
-  echo "Error: Invalid database URL format (must start with postgres:// or postgresql://)"
+if [[ ! "$DB_URL" =~ ^postgresql?:// ]]; then
+  echo "Error: Invalid database URL format (must use a PostgreSQL connection URL)"
   exit 1
 fi
 

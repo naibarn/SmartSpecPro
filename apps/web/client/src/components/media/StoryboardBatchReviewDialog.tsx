@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Check, ExternalLink, Loader2, Mic2, Minus, Music2, Pencil, RefreshCw, RotateCcw, Video, X } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, Check, ExternalLink, Loader2, Mic2, Minus, Music2, Pencil, RefreshCw, RotateCcw, Trash2, Video, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -10,9 +10,9 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { cn } from "@/lib/utils";
 
 export interface StoryboardReviewTask {
@@ -21,10 +21,13 @@ export interface StoryboardReviewTask {
   prompt: string;
   url?: string | null;
   model?: string;
+  durationSeconds?: number;
   generationModelId?: string;
   referenceUrls?: string[];
   generationAspectRatio?: string;
   generationExtraParams?: Record<string, unknown>;
+  canRegenerate?: boolean;
+  isImported?: boolean;
   status: "queued" | "generating" | "completed" | "error";
   error?: string;
 }
@@ -38,6 +41,8 @@ interface StoryboardBatchReviewDialogProps {
   onSelectAll: () => void;
   onSelectNone: () => void;
   onRegenerateTask: (taskId: string, prompt: string) => void;
+  onMoveTask?: (taskId: string, direction: "up" | "down") => void;
+  onRemoveTask?: (taskId: string) => void;
   onAutoCompound: () => void;
   onCreateProject: () => void;
   isCompounding: boolean;
@@ -48,7 +53,16 @@ interface StoryboardBatchReviewDialogProps {
   companionAudio?: StoryboardCompanionAudioCandidate[];
   regeneratingAudioId?: string | null;
   onRegenerateAudio?: (audioId: string) => void;
+  onRemoveAudio?: (audioId: string) => void;
   muteVideoPreviewAudio?: boolean;
+  renderDurationSeconds?: number | null;
+}
+
+export interface StoryboardBatchReviewPanelProps extends Omit<StoryboardBatchReviewDialogProps, "open"> {
+  closeLabel?: string;
+  className?: string;
+  contentClassName?: string;
+  showCloseButton?: boolean;
 }
 
 function summarizePrompt(prompt: string): string {
@@ -56,8 +70,7 @@ function summarizePrompt(prompt: string): string {
   return normalized.length > 120 ? `${normalized.slice(0, 120)}...` : normalized;
 }
 
-export function StoryboardBatchReviewDialog({
-  open,
+export function StoryboardBatchReviewPanel({
   tasks,
   selectedTaskIds,
   onOpenChange,
@@ -65,6 +78,8 @@ export function StoryboardBatchReviewDialog({
   onSelectAll,
   onSelectNone,
   onRegenerateTask,
+  onMoveTask,
+  onRemoveTask,
   onAutoCompound,
   onCreateProject,
   isCompounding,
@@ -75,8 +90,15 @@ export function StoryboardBatchReviewDialog({
   companionAudio = [],
   regeneratingAudioId,
   onRegenerateAudio,
+  onRemoveAudio,
   muteVideoPreviewAudio = false,
-}: StoryboardBatchReviewDialogProps) {
+  renderDurationSeconds,
+  closeLabel = "Close",
+  className,
+  contentClassName,
+  showCloseButton = true,
+}: StoryboardBatchReviewPanelProps) {
+  const { t } = useScopedTranslation(["media", "common"]);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [draftPrompts, setDraftPrompts] = useState<Record<string, string>>({});
 
@@ -95,63 +117,90 @@ export function StoryboardBatchReviewDialog({
     () => tasks.filter((task) => selectedTaskIds.includes(task.id) && task.status === "completed" && task.url),
     [selectedTaskIds, tasks],
   );
+  const renderDurationLabel = useMemo(() => {
+    if (typeof renderDurationSeconds !== "number" || !Number.isFinite(renderDurationSeconds) || renderDurationSeconds <= 0) {
+      return null;
+    }
+    const totalSeconds = Math.round(renderDurationSeconds);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return minutes > 0
+      ? t("mediaStudio.storyboardReviewDurationMinutes", { minutes, seconds: String(seconds).padStart(2, "0") })
+      : t("mediaStudio.storyboardReviewDurationSeconds", { seconds });
+  }, [renderDurationSeconds]);
+  const taskStatusLabel = (status: StoryboardReviewTask["status"]) => {
+    switch (status) {
+      case "completed":
+        return t("mediaStudio.storyboardReviewStatusReady");
+      case "generating":
+        return t("mediaStudio.storyboardReviewStatusGenerating");
+      case "queued":
+        return t("mediaStudio.storyboardReviewStatusQueued");
+      case "error":
+        return t("mediaStudio.storyboardReviewStatusError");
+      default:
+        return status;
+    }
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!flex !max-w-[min(92vw,72rem)] !p-0 max-h-[calc(100dvh-2rem)] min-h-0 w-[min(92vw,72rem)] flex-col overflow-hidden">
-        <DialogHeader className="shrink-0 px-6 pt-6">
-          <DialogTitle className="flex items-center gap-2">
-            <Video className="h-5 w-5 text-blue-500" />
-            Storyboard Review
-          </DialogTitle>
-          <DialogDescription>
-            Review all generated clips from this storyboard, remove any clips you do not want,
-            rerun a single prompt if needed, then either compound the selected clips or send the
-            batch into the video editor as a project.
-          </DialogDescription>
-        </DialogHeader>
+    <div className={cn("flex min-h-0 flex-1 flex-col overflow-hidden bg-background", className)}>
+        <div className="flex shrink-0 flex-col gap-1.5 px-3 pt-3 text-left sm:px-6 sm:pt-5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h2 className="flex items-center gap-2 text-base font-semibold leading-none sm:text-lg">
+              <Video className="h-5 w-5 text-blue-500" />
+              {t("mediaStudio.storyboardReview")}
+            </h2>
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              {t("mediaStudio.storyboardReviewPanelDescription")}
+            </p>
+          </div>
+        </div>
 
-        <div className="mx-6 flex shrink-0 items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm">
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary">{selectedCount} selected</Badge>
+        <div className="mx-3 flex shrink-0 flex-col gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm sm:mx-6 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary">{t("mediaStudio.storyboardReviewSelectedCount", { count: selectedCount })}</Badge>
             <span className="text-muted-foreground">
-              {completedSelectedTasks.length} ready for export
+              {t("mediaStudio.storyboardReviewReadyForExport", { count: completedSelectedTasks.length })}
             </span>
           </div>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex">
             <Button variant="outline" size="sm" onClick={onSelectAll}>
-              Select all
+              {t("mediaStudio.storyboardReviewSelectAll")}
             </Button>
             <Button variant="outline" size="sm" onClick={onSelectNone}>
-              Clear
+              {t("common.clear")}
             </Button>
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pr-4">
+        <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pr-2 sm:px-6 sm:pr-4", contentClassName)}>
           <div className="space-y-4">
             {companionAudio.length > 0 ? (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <div className="text-sm font-semibold text-emerald-950">Separate audio preview</div>
+                    <div className="text-sm font-semibold text-emerald-950">{t("mediaStudio.storyboardReviewSeparateAudioPreview")}</div>
                     <div className="text-xs text-emerald-800">
-                      Review voice/music before sending this storyboard to the video editor.
+                      {t("mediaStudio.storyboardReviewSeparateAudioDesc")}
                     </div>
                   </div>
-                  <Badge variant="secondary">{companionAudio.length} audio track{companionAudio.length === 1 ? "" : "s"}</Badge>
+                  <Badge variant="secondary">{t("mediaStudio.storyboardReviewAudioTrackCount", { count: companionAudio.length })}</Badge>
                 </div>
 
                 <div className="space-y-2">
                   {companionAudio.map((audio) => {
                     const isVoiceover = audio.kind === "voiceover";
                     const durationLabel = audio.actualDurationSeconds && audio.targetDurationSeconds
-                      ? `${audio.actualDurationSeconds.toFixed(1)}s / target ${audio.targetDurationSeconds.toFixed(1)}s`
+                      ? t("mediaStudio.storyboardReviewAudioDurationTarget", {
+                        actual: audio.actualDurationSeconds.toFixed(1),
+                        target: audio.targetDurationSeconds.toFixed(1),
+                      })
                       : audio.targetDurationSeconds
-                        ? `target ${audio.targetDurationSeconds.toFixed(1)}s`
+                        ? t("mediaStudio.storyboardReviewAudioTargetDuration", { target: audio.targetDurationSeconds.toFixed(1) })
                         : null;
                     const startTimeLabel = audio.startTimeSeconds && audio.startTimeSeconds > 0
-                      ? `starts ${audio.startTimeSeconds.toFixed(1)}s`
+                      ? t("mediaStudio.storyboardReviewAudioStarts", { start: audio.startTimeSeconds.toFixed(1) })
                       : null;
                     return (
                       <div key={audio.id} className="rounded-lg border bg-background p-3">
@@ -162,11 +211,16 @@ export function StoryboardBatchReviewDialog({
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
-                                <Badge variant="outline">{isVoiceover ? "Voiceover" : "Music"}</Badge>
+                                <Badge variant="outline">{isVoiceover ? t("mediaStudio.storyboardReviewVoiceover") : t("mediaStudio.storyboardReviewMusic")}</Badge>
                                 <span className="text-sm font-medium">{audio.title}</span>
                                 {audio.model ? <Badge variant="secondary">{audio.model}</Badge> : null}
                                 {audio.segmentCount && audio.segmentCount > 1 ? (
-                                  <Badge variant="outline">Part {(audio.segmentIndex ?? 0) + 1}/{audio.segmentCount}</Badge>
+                                  <Badge variant="outline">
+                                    {t("mediaStudio.storyboardReviewAudioPart", {
+                                      index: (audio.segmentIndex ?? 0) + 1,
+                                      count: audio.segmentCount,
+                                    })}
+                                  </Badge>
                                 ) : null}
                                 {durationLabel ? <Badge variant="outline">{durationLabel}</Badge> : null}
                                 {startTimeLabel ? <Badge variant="outline">{startTimeLabel}</Badge> : null}
@@ -178,22 +232,35 @@ export function StoryboardBatchReviewDialog({
                           </div>
                           <div className="flex shrink-0 flex-col gap-2 lg:w-80">
                             <audio src={audio.url} controls className="w-full" />
-                            {onRegenerateAudio ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                disabled={regeneratingAudioId === audio.id}
-                                onClick={() => onRegenerateAudio(audio.id)}
-                              >
-                                {regeneratingAudioId === audio.id ? (
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                  <RefreshCw className="mr-2 h-4 w-4" />
-                                )}
-                                Regenerate audio
-                              </Button>
-                            ) : null}
+                            <div className="flex flex-wrap gap-2">
+                              {onRegenerateAudio ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={regeneratingAudioId === audio.id}
+                                  onClick={() => onRegenerateAudio(audio.id)}
+                                >
+                                  {regeneratingAudioId === audio.id ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                  )}
+                                  {t("mediaStudio.storyboardReviewRegenerateAudio")}
+                                </Button>
+                              ) : null}
+                              {onRemoveAudio ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => onRemoveAudio(audio.id)}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  {t("common.remove")}
+                                </Button>
+                              ) : null}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -204,11 +271,12 @@ export function StoryboardBatchReviewDialog({
             ) : null}
 
             <div className="space-y-3">
-            {tasks.map((task) => {
+            {tasks.map((task, taskIndex) => {
               const isSelected = selectedTaskIds.includes(task.id);
               const hasVideo = !!task.url && task.status === "completed";
               const isEditing = editingTaskId === task.id;
               const draftPrompt = draftPrompts[task.id] ?? task.prompt;
+              const canRegenerate = task.canRegenerate !== false;
               return (
                 <div
                   key={task.id}
@@ -218,23 +286,23 @@ export function StoryboardBatchReviewDialog({
                     !isSelected && "opacity-70",
                   )}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={() => onToggleTask(task.id)}
                       className="mt-1"
                     />
 
-                    <div className="w-36 shrink-0 overflow-hidden rounded-lg border bg-muted/40">
+                    <div className="w-full shrink-0 overflow-hidden rounded-lg border bg-muted/40 sm:w-36">
                       {hasVideo ? (
                         <video
                           src={task.url || undefined}
                           controls
                           muted={muteVideoPreviewAudio}
-                          className="h-24 w-full object-cover"
+                          className="h-44 w-full object-cover sm:h-24"
                         />
                       ) : (
-                        <div className="flex h-24 items-center justify-center text-muted-foreground">
+                        <div className="flex h-44 items-center justify-center text-muted-foreground sm:h-24">
                           {task.status === "generating" ? (
                             <Loader2 className="h-6 w-6 animate-spin" />
                           ) : task.status === "error" ? (
@@ -248,17 +316,18 @@ export function StoryboardBatchReviewDialog({
 
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="outline">Clip {task.index + 1}</Badge>
+                        <Badge variant="outline">{t("mediaStudio.storyboardReviewClipLabel", { index: task.index + 1 })}</Badge>
                         <Badge
                           variant={task.status === "completed" ? "default" : task.status === "error" ? "destructive" : "secondary"}
                         >
-                          {task.status === "completed" ? "Ready" : task.status === "generating" ? "Generating" : task.status}
+                          {taskStatusLabel(task.status)}
                         </Badge>
                         {task.model ? <Badge variant="secondary">{task.model}</Badge> : null}
+                        {task.isImported ? <Badge variant="outline">{t("mediaStudio.storyboardReviewImported")}</Badge> : null}
                       </div>
 
                       <p className="mt-2 text-sm font-medium leading-6">
-                        {isEditing ? "Edit this prompt before regenerating:" : summarizePrompt(task.prompt)}
+                        {isEditing ? t("mediaStudio.storyboardReviewEditPromptLead") : summarizePrompt(task.prompt)}
                       </p>
 
                       {isEditing ? (
@@ -270,7 +339,7 @@ export function StoryboardBatchReviewDialog({
                               setDraftPrompts((prev) => ({ ...prev, [task.id]: value }));
                             }}
                             className="min-h-[140px]"
-                            placeholder="Edit the prompt for this clip..."
+                            placeholder={t("mediaStudio.storyboardReviewEditPromptPlaceholder")}
                           />
                           <div className="flex flex-wrap gap-2">
                             <Button
@@ -280,7 +349,7 @@ export function StoryboardBatchReviewDialog({
                               onClick={() => setEditingTaskId(null)}
                             >
                               <X className="mr-2 h-4 w-4" />
-                              Done editing
+                              {t("mediaStudio.storyboardReviewDoneEditing")}
                             </Button>
                             <Button
                               type="button"
@@ -289,7 +358,7 @@ export function StoryboardBatchReviewDialog({
                               onClick={() => setDraftPrompts((prev) => ({ ...prev, [task.id]: task.prompt }))}
                             >
                               <RotateCcw className="mr-2 h-4 w-4" />
-                              Reset
+                              {t("common.reset")}
                             </Button>
                           </div>
                         </div>
@@ -297,7 +366,7 @@ export function StoryboardBatchReviewDialog({
                         <p className="mt-1 text-xs text-destructive">{task.error}</p>
                       ) : null}
 
-                      <div className="mt-3 flex flex-wrap gap-2">
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                         <Button
                           type="button"
                           size="sm"
@@ -317,16 +386,41 @@ export function StoryboardBatchReviewDialog({
                           type="button"
                           size="sm"
                           variant="outline"
-                          disabled={regeneratingTaskId === task.id}
+                          disabled={!canRegenerate || regeneratingTaskId === task.id}
                           onClick={() => onRegenerateTask(task.id, draftPrompt)}
+                          title={canRegenerate ? t("mediaStudio.storyboardReviewRegenerateTitle") : t("mediaStudio.storyboardReviewImportedNoRegenerate")}
                         >
                           {regeneratingTaskId === task.id ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           ) : (
                             <RefreshCw className="mr-2 h-4 w-4" />
                           )}
-                          Regenerate
+                          {t("mediaStudio.storyboardReviewRegenerate")}
                         </Button>
+                        {onMoveTask ? (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={taskIndex === 0}
+                              onClick={() => onMoveTask(task.id, "up")}
+                            >
+                              <ArrowUp className="mr-2 h-4 w-4" />
+                              {t("common.up")}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={taskIndex === tasks.length - 1}
+                              onClick={() => onMoveTask(task.id, "down")}
+                            >
+                              <ArrowDown className="mr-2 h-4 w-4" />
+                              {t("common.down")}
+                            </Button>
+                          </>
+                        ) : null}
                         <Button
                           type="button"
                           size="sm"
@@ -336,15 +430,26 @@ export function StoryboardBatchReviewDialog({
                           {isSelected ? (
                             <>
                               <Check className="mr-2 h-4 w-4" />
-                              Keep in final cut
+                              {t("mediaStudio.storyboardReviewKeep")}
                             </>
                           ) : (
                             <>
                               <Minus className="mr-2 h-4 w-4" />
-                              Exclude
+                              {t("mediaStudio.storyboardReviewExclude")}
                             </>
                           )}
                         </Button>
+                        {onRemoveTask ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onRemoveTask(task.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            {t("common.remove")}
+                          </Button>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -355,9 +460,19 @@ export function StoryboardBatchReviewDialog({
           </div>
         </div>
 
-        <div className="shrink-0 space-y-3 border-t bg-background px-6 pb-6 pt-4">
-          <div className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">
-            Shared continuity notes stay attached when the selected clips are compounded or sent to the editor.
+        <div className="shrink-0 space-y-2 border-t bg-background px-3 pb-3 pt-3 sm:px-6 sm:pb-4">
+          <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="font-medium">{t("mediaStudio.storyboardReviewRenderEstimate")}</span>
+              <span className="text-sky-800">
+              {renderDurationLabel
+                ? t("mediaStudio.storyboardReviewRenderEstimateReady", {
+                  duration: renderDurationLabel,
+                  count: completedSelectedTasks.length,
+                })
+                : t("mediaStudio.storyboardReviewRenderEstimateEmpty")}
+              </span>
+            </div>
           </div>
 
           {compoundStatus ? (
@@ -367,28 +482,25 @@ export function StoryboardBatchReviewDialog({
           ) : null}
 
           {projectLink ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-950 shadow-sm">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-950 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <div className="font-medium">Project created</div>
-                  <a className="mt-1 block break-all underline decoration-emerald-400 underline-offset-2" href={projectLink}>
-                    Open project in the editor
+                  <div className="font-medium">{t("mediaStudio.storyboardReviewProjectCreated")}</div>
+                  <a className="block break-all underline decoration-emerald-400 underline-offset-2" href={projectLink}>
+                    {t("mediaStudio.storyboardReviewOpenProjectInEditor")}
                   </a>
-                  <p className="mt-1 text-xs text-emerald-800">
-                    Continue editing this storyboard as a Video Editor project.
-                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button asChild size="lg" className="bg-emerald-600 text-white hover:bg-emerald-700">
+                  <Button asChild size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700">
                     <a href={projectLink}>
                       <ExternalLink className="mr-2 h-4 w-4" />
-                      Open project
+                      {t("mediaStudio.storyboardReviewOpenProject")}
                     </a>
                   </Button>
-                  <Button asChild variant="outline" size="lg" className="border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-50">
+                  <Button asChild variant="outline" size="sm" className="border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-50">
                     <a href={projectLink} target="_blank" rel="noreferrer">
                       <ExternalLink className="mr-2 h-4 w-4" />
-                      Open in new tab
+                      {t("mediaStudio.storyboardReviewOpenNewTab")}
                     </a>
                   </Button>
                 </div>
@@ -397,7 +509,7 @@ export function StoryboardBatchReviewDialog({
           ) : null}
 
           <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
               <Button
                 type="button"
                 variant="default"
@@ -405,7 +517,7 @@ export function StoryboardBatchReviewDialog({
                 disabled={isCompounding || completedSelectedTasks.length === 0}
               >
                 {isCompounding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Auto compound selected clips
+                {t("mediaStudio.storyboardReviewRenderVideoAudio")}
               </Button>
               <Button
                 type="button"
@@ -414,14 +526,34 @@ export function StoryboardBatchReviewDialog({
                 disabled={isCreatingProject || completedSelectedTasks.length === 0}
               >
                 {isCreatingProject ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Create video edit project
+                {t("mediaStudio.storyboardReviewCreateVideoEditProject")}
               </Button>
             </div>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Close
-            </Button>
+            {showCloseButton ? (
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
+                {closeLabel}
+              </Button>
+            ) : null}
           </DialogFooter>
         </div>
+    </div>
+  );
+}
+
+export function StoryboardBatchReviewDialog({
+  open,
+  ...props
+}: StoryboardBatchReviewDialogProps) {
+  const { t } = useScopedTranslation(["media", "common"]);
+
+  return (
+    <Dialog open={open} onOpenChange={props.onOpenChange}>
+      <DialogContent className="!flex !max-w-[min(92vw,72rem)] !p-0 max-h-[calc(100dvh-2rem)] min-h-0 w-[min(92vw,72rem)] flex-col overflow-hidden">
+        <DialogTitle className="sr-only">{t("mediaStudio.storyboardReview")}</DialogTitle>
+        <DialogDescription className="sr-only">
+          {t("mediaStudio.storyboardReviewDialogDescription")}
+        </DialogDescription>
+        <StoryboardBatchReviewPanel {...props} />
       </DialogContent>
     </Dialog>
   );

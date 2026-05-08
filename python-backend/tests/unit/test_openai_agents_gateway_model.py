@@ -67,7 +67,7 @@ def test_provider_api_key_in_request_is_rejected(monkeypatch):
             surface="skill",
             model_config=_model_config(),
             attribution_token="platform-attribution-token",
-            provider_api_key="sk-live-direct-provider",
+            provider_api_key="provider-key.test",
         )
 
     assert exc_info.value.code == "provider_api_key_rejected"

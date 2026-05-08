@@ -70,14 +70,14 @@ USE_OPENROUTER=true
 
 ```bash
 # Option 2: OpenAI
-OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+OPENAI_API_KEY=[REDACTED_EXAMPLE_OPENAI_KEY]
 ```
 
 #### ตัวเลือก C: Anthropic Direct
 
 ```bash
 # Option 3: Anthropic Claude
-ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ANTHROPIC_API_KEY=[REDACTED_EXAMPLE_ANTHROPIC_KEY]
 ```
 
 #### ตัวเลือก D: Kilo Code (แนะนำ - OpenRouter-compatible)

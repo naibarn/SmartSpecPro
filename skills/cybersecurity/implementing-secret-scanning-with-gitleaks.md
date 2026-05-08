@@ -85,7 +85,7 @@ pre-commit install
 pre-commit run gitleaks --all-files
 
 # Test the hook with a deliberate secret
-echo 'AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"' >> test.txt
+echo 'AWS_SECRET_ACCESS_KEY="[REDACTED_EXAMPLE_AWS_SECRET_ACCESS_KEY]"' >> test.txt
 git add test.txt
 git commit -m "test"  # Should be blocked by gitleaks
 ```
@@ -174,7 +174,7 @@ tags = ["internal", "api"]
 id = "database-connection-string"
 description = "Database connection string with embedded credentials"
 regex = '''(?i)(postgres|mysql|mongodb|redis)://[^:]+:[^@]+@[^/]+/\w+'''
-keywords = ["postgres://", "mysql://", "mongodb://", "redis://"]
+keywords = ["postgres", "mysql", "mongodb", "redis"]
 tags = ["database", "credentials"]
 
 [[rules]]

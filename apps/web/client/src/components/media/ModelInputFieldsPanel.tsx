@@ -602,6 +602,9 @@ export function ModelInputFieldsPanel({
               <Input
                 type="number"
                 aria-label={`${ariaLabelPrefix} ${field.label}`}
+                min={field.min}
+                max={field.max}
+                step={field.step}
                 value={value === "" ? "" : String(value)}
                 onChange={(event) => {
                   const raw = event.target.value;

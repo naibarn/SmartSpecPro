@@ -588,7 +588,7 @@ index 00000000..d68c8408
 +                "content": "Calling tool " + "x" * 500,
 +                "tool_calls": [{"id": "tc1", "type": "function", "function": {"name": "check", "arguments": "{}"}}],
 +            },
-+            {"role": "tool", "tool_call_id": "tc1", "content": "API key: sk-abcdefghij0123456789abcdef " + "x" * 500},
++            {"role": "tool", "tool_call_id": "tc1", "content": "API key: sk-example-redacted " + "x" * 500},
 +            {"role": "assistant", "content": "Got the result " + "x" * 500},
 +            {"role": "user", "content": "Next step " + "x" * 500},
 +            {"role": "assistant", "content": "Done " + "x" * 500},

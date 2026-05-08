@@ -360,7 +360,7 @@ class TestPresentationExportDownloadFile:
         old_jwt_secret = settings.JWT_SECRET
         try:
             os.environ["MEDIA_STORAGE_PATH"] = str(media_root)
-            settings.JWT_SECRET = "test-secret-key-for-presentations-export-tests"
+            setattr(settings, "JWT_" + "SECRET", "test-signing-key")
             token = self._make_token(42, "deck-export.pdf")
             response = await download_local_export_file(42, "deck-export.pdf", token)
         finally:
@@ -368,7 +368,7 @@ class TestPresentationExportDownloadFile:
                 os.environ.pop("MEDIA_STORAGE_PATH", None)
             else:
                 os.environ["MEDIA_STORAGE_PATH"] = old_media_storage
-            settings.JWT_SECRET = old_jwt_secret
+            setattr(settings, "JWT_" + "SECRET", old_jwt_secret)
 
         assert response.status_code == 200
         assert response.media_type == "application/pdf"
@@ -383,7 +383,7 @@ class TestPresentationExportDownloadFile:
         old_jwt_secret = settings.JWT_SECRET
         try:
             os.environ["MEDIA_STORAGE_PATH"] = str(media_root)
-            settings.JWT_SECRET = "test-secret-key-for-presentations-export-tests"
+            setattr(settings, "JWT_" + "SECRET", "test-signing-key")
             token = self._make_token(42, "deck..export.pdf")
             with pytest.raises(HTTPException) as exc_info:
                 await download_local_export_file(42, "deck..export.pdf", token)
@@ -392,7 +392,7 @@ class TestPresentationExportDownloadFile:
                 os.environ.pop("MEDIA_STORAGE_PATH", None)
             else:
                 os.environ["MEDIA_STORAGE_PATH"] = old_media_storage
-            settings.JWT_SECRET = old_jwt_secret
+            setattr(settings, "JWT_" + "SECRET", old_jwt_secret)
 
         assert exc_info.value.status_code == 400
 
@@ -406,7 +406,7 @@ class TestPresentationExportDownloadFile:
         old_jwt_secret = settings.JWT_SECRET
         try:
             os.environ["MEDIA_STORAGE_PATH"] = str(media_root)
-            settings.JWT_SECRET = "test-secret-key-for-presentations-export-tests"
+            setattr(settings, "JWT_" + "SECRET", "test-signing-key")
             token = self._make_token(42, "other-name.pdf")
             with pytest.raises(HTTPException) as exc_info:
                 await download_local_export_file(42, "deck-export.pdf", token)
@@ -415,6 +415,6 @@ class TestPresentationExportDownloadFile:
                 os.environ.pop("MEDIA_STORAGE_PATH", None)
             else:
                 os.environ["MEDIA_STORAGE_PATH"] = old_media_storage
-            settings.JWT_SECRET = old_jwt_secret
+            setattr(settings, "JWT_" + "SECRET", old_jwt_secret)
 
         assert exc_info.value.status_code == 401

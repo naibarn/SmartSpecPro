@@ -190,7 +190,7 @@ from openai import AsyncOpenAI
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 
 client = AsyncOpenAI(
-    api_key="internal-service-key",
+    api_key="internal-key.test",
     base_url=f"{NODEJS_INTERNAL_URL}/api/llm/v2",
 )
 model = OpenAIChatCompletionsModel(model=user_selected_model, openai_client=client)

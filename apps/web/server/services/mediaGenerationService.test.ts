@@ -187,6 +187,39 @@ describe("MEDIA_MODELS — HappyHorse video entries", () => {
   });
 });
 
+describe("MEDIA_MODELS — Magnific static fallback entries", () => {
+  it("includes Magnific image, sync, and video metadata with provider routing config", () => {
+    expect(MEDIA_MODELS["magnific/mystic"]).toMatchObject({
+      id: "magnific/mystic",
+      provider: "magnific",
+      type: "image",
+      creditCost: 20,
+    });
+    expect(MEDIA_MODELS["magnific/remove-background"]).toMatchObject({
+      id: "magnific/remove-background",
+      provider: "magnific",
+      type: "image",
+      creditCost: 5,
+    });
+    expect(MEDIA_MODELS["magnific/veo-3-1-text-to-video-fast"]).toMatchObject({
+      id: "magnific/veo-3-1-text-to-video-fast",
+      provider: "magnific",
+      type: "video",
+    });
+    expect(MEDIA_MODELS["magnific/mystic"].configJson).toMatchObject({
+      endpoint: {
+        submit: "/v1/ai/mystic",
+      },
+      pricingStatus: "estimated",
+      pricingSource: "magnific-docs-or-admin",
+    });
+  });
+
+  it("does not make unknown model ids fall through to Magnific", () => {
+    expect(MEDIA_MODELS["not-a-real-magnific-model"]).toBeUndefined();
+  });
+});
+
 describe("MediaGenerationService retry behavior", () => {
   const taskPayload = {
     id: "task-123",

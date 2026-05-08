@@ -56,8 +56,32 @@ interface ModelSelectorDialogProps {
 }
 
 const getProviderId = (model: MediaModel) => model.providerId ?? model.provider;
+
+export function formatMediaProviderDisplayName(providerName: unknown): string {
+  const raw = String(providerName ?? "").trim();
+  if (!raw) return "Other";
+  const normalized = raw.toLowerCase().replace(/[\s.-]+/g, "_");
+  const knownNames: Record<string, string> = {
+    kie_ai: "Kie.ai",
+    kie: "Kie.ai",
+    fal_ai: "Fal.ai",
+    fal: "Fal.ai",
+    magnific: "Magnific",
+    wavespeed_ai: "WaveSpeed",
+    wavespeed: "WaveSpeed",
+    byteplus_modelark: "BytePlus ModelArk",
+    byteplus: "BytePlus ModelArk",
+    knplabs: "KNPLabs",
+    knplabai: "KNPLabs",
+    elevenlabs: "ElevenLabs",
+    eleven_labs: "ElevenLabs",
+    omnivoice: "OmniVoice",
+  };
+  return knownNames[normalized] ?? raw;
+}
+
 const getProviderName = (model: MediaModel) =>
-  model.providerName ?? model.provider ?? "Other";
+  formatMediaProviderDisplayName(model.providerName ?? model.provider);
 
 export default function ModelSelectorDialog({
   open,
@@ -188,7 +212,7 @@ export default function ModelSelectorDialog({
                   )}
                   onClick={() => setSelectedProvider(provider.id)}
                 >
-                  {provider.displayName || provider.name}
+                  {formatMediaProviderDisplayName(provider.displayName || provider.name)}
                 </Badge>
               ))}
           </div>
@@ -249,6 +273,7 @@ interface ModelCardProps {
 
 function ModelCard({ model, isSelected, onSelect }: ModelCardProps) {
   const modeLabel = getModelGenerationModeLabel(model);
+  const providerName = getProviderName(model);
   return (
     <button
       onClick={onSelect}
@@ -263,6 +288,12 @@ function ModelCard({ model, isSelected, onSelect }: ModelCardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-gray-900">{model.name}</span>
+            <Badge
+              variant="outline"
+              className="border-indigo-200 bg-indigo-50 text-indigo-700 text-[10px] px-1.5 py-0"
+            >
+              {providerName}
+            </Badge>
             {modeLabel && (
               <Badge
                 variant="outline"

@@ -101,7 +101,10 @@ import { resolveSkillExecutionPolicy } from "../services/skillExecutionPolicy";
 import { loadEnabledLlmModelRows } from "../services/enabledLlmModels";
 import { resolveMediaTypeFromSkillCategory, sanitizeMediaModelSelection } from "../services/mediaModelSelection";
 import { buildCustomSkillUserPrompt } from "../services/skillExecutionPromptBuilder";
-import { prepareSkillExecutionInputsForPromptPackage } from "../services/skillExecutionInput";
+import {
+  isAudioFirstStoryboardPromptPackage,
+  prepareSkillExecutionInputsForPromptPackage,
+} from "../services/skillExecutionInput";
 import {
   buildNativeSkillRuntimePlanContext,
   buildRuntimeModelConfig,
@@ -111,6 +114,17 @@ import {
   extractStructuredPromptBundleTextOutput,
   prepareMediaStudioPythonPromptSkillExecution,
 } from "../services/mediaStudioPromptSkillExecution";
+import {
+  buildAudioFirstStoryboardRepairPrompt,
+  buildAudioFirstStoryboardSharedSectionsFallback,
+  countStoryboardPromptBlocks,
+  extractStoryboardSharedSections,
+  mergeSharedSectionsWithPromptBlocks,
+  resolveAudioFirstStoryboardPromptRepair,
+  sanitizeAudioFirstStoryboardPromptBlocks,
+  shouldUseAudioFirstStoryboardSharedSectionsFallback,
+  stripSharedSectionsFromPromptBlocks,
+} from "../services/storyboardPromptPackageRepair";
 import { resolveEffectiveLocalSkillExecutionPolicy } from "../services/localAiSkillPolicy";
 import { getRequesterLocalAiSurfaceContext } from "../services/localAiUserContext";
 import { getConversationById } from "../services/chatService";
@@ -2580,6 +2594,77 @@ export const skillsRouter = router({
         }
 
         let wasTruncated = false;
+        const isAudioFirstStoryboard = isAudioFirstStoryboardPromptPackage(input.skillId, mergedUserInputs);
+        const audioFirstFallbackSharedSections = buildAudioFirstStoryboardSharedSectionsFallback({
+          skillId: input.skillId,
+          userInputs: mergedUserInputs,
+          referenceImageCount: input.referenceImages?.length ?? 0,
+        });
+        const audioFirstSharedSections = isAudioFirstStoryboard
+          ? shouldUseAudioFirstStoryboardSharedSectionsFallback({
+              skillId: input.skillId,
+              userInputs: mergedUserInputs,
+              referenceImageCount: input.referenceImages?.length ?? 0,
+            })
+            ? audioFirstFallbackSharedSections
+            : extractStoryboardSharedSections(processedContent) || audioFirstFallbackSharedSections
+          : "";
+        const promptBlocksForAudioFirstRepair = isAudioFirstStoryboard
+          ? stripSharedSectionsFromPromptBlocks(processedContent)
+          : processedContent;
+        if (isAudioFirstStoryboard) {
+          processedContent = mergeSharedSectionsWithPromptBlocks(
+            audioFirstSharedSections,
+            sanitizeAudioFirstStoryboardPromptBlocks(promptBlocksForAudioFirstRepair),
+          );
+        }
+        const audioFirstRepair = resolveAudioFirstStoryboardPromptRepair({
+          skillId: input.skillId,
+          userInputs: mergedUserInputs,
+          content: promptBlocksForAudioFirstRepair,
+          referenceImageCount: input.referenceImages?.length ?? 0,
+        });
+        if (audioFirstRepair) {
+          try {
+            console.warn(
+              `[Skills] Audio-first storyboard repair needed (${audioFirstRepair.reason}): ${audioFirstRepair.actualPromptCount}/${audioFirstRepair.expectedPromptCount} prompts.`,
+            );
+            const repairResult = await callLLMWithVision(
+              [
+                "You repair incomplete Media Studio video storyboard prompt packages.",
+                "Return only the corrected prompt blocks requested by the user.",
+                "No markdown fences, no explanations, no shared notes unless explicitly requested.",
+              ].join("\n"),
+              buildAudioFirstStoryboardRepairPrompt({
+                userInputs: mergedUserInputs,
+                previousContent: promptBlocksForAudioFirstRepair,
+                ...audioFirstRepair,
+              }),
+              userId,
+              input.referenceImages || [],
+              visionModel,
+              Math.max(6000, Math.min(16000, audioFirstRepair.expectedPromptCount * 900)),
+              {
+                ...webSearchOptions,
+                publicUrl: ctx.publicUrl ?? null,
+              },
+            );
+            const repairedPromptCount = countStoryboardPromptBlocks(repairResult.content);
+            if (repairedPromptCount >= audioFirstRepair.expectedPromptCount) {
+              processedContent = mergeSharedSectionsWithPromptBlocks(
+                audioFirstSharedSections,
+                sanitizeAudioFirstStoryboardPromptBlocks(stripSharedSectionsFromPromptBlocks(repairResult.content)),
+              );
+            } else {
+              console.warn(
+                `[Skills] Audio-first storyboard repair still returned ${repairedPromptCount}/${audioFirstRepair.expectedPromptCount} prompts; keeping original output.`,
+              );
+            }
+          } catch (repairError) {
+            console.warn("[Skills] Audio-first storyboard repair failed; keeping original output:", repairError);
+          }
+        }
+
         if (promptLengthPlan && responseMode !== "cms_json") {
           const originalLength = processedContent.length;
           const truncated = truncateToPromptLength(processedContent, promptLengthPlan.maxPromptLength);

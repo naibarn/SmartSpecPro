@@ -14,7 +14,7 @@ import os
 _celery_logger = logging.getLogger(__name__)
 
 # Required queues — worker MUST consume from all of these
-REQUIRED_QUEUES = ["celery", "video", "media", "presentation_export", "presentation_import", "sandbox", "vision"]
+REQUIRED_QUEUES = ["celery", "video", "media", "thumbnail_backfill", "presentation_export", "presentation_import", "sandbox", "vision"]
 ONEDRIVE_SCHEDULE_REQUIRED_VARS = (
     "MICROSOFT_CLIENT_ID",
     "MICROSOFT_CLIENT_SECRET",
@@ -49,6 +49,7 @@ celery_app.conf.update(
         Queue("celery"),
         Queue("video"),
         Queue("media"),
+        Queue("thumbnail_backfill"),
         Queue("presentation_export"),
         Queue("presentation_import"),
         Queue("sandbox"),  # OpenSandbox job execution
@@ -63,6 +64,7 @@ celery_app.conf.update(
         "app.tasks.media_tasks.generate_image_task": {"queue": "media"},
         "app.tasks.media_tasks.generate_video_task": {"queue": "media"},
         "app.tasks.media_tasks.poll_wavespeed_video_task": {"queue": "media"},
+        "app.tasks.media_tasks.poll_magnific_media_task": {"queue": "media"},
         "app.tasks.media_tasks.generate_audio_task": {"queue": "media"},
         # Periodic maintenance -> media queue (lightweight)
         "app.tasks.media_tasks.cleanup_expired_tasks": {"queue": "media"},
@@ -71,6 +73,7 @@ celery_app.conf.update(
         "app.tasks.media_tasks.process_library_index_job_task": {"queue": "media"},
         "app.tasks.media_tasks.retry_library_index_jobs": {"queue": "media"},
         "app.tasks.media_tasks.recover_stuck_tasks": {"queue": "media"},
+        "app.tasks.media_tasks.backfill_missing_media_thumbnails": {"queue": "thumbnail_backfill"},
         # Google Drive indexing -> media queue (network-bound)
         "app.tasks.google_drive_tasks.process_google_drive_index_job": {"queue": "media"},
         "app.tasks.google_drive_tasks.initial_drive_sync": {"queue": "media"},
@@ -154,6 +157,12 @@ beat_schedule = {
         "task": "app.tasks.media_tasks.recover_stuck_tasks",
         "schedule": crontab(minute="*/2"),  # Every 2 minutes - refresh provider status for processing tasks
     },
+    "backfill-missing-media-thumbnails": {
+        "task": "app.tasks.media_tasks.backfill_missing_media_thumbnails",
+        "schedule": crontab(minute="*/10"),  # Gradually create thumbnails for historical media
+        "kwargs": {"limit": 10},
+        "options": {"queue": "thumbnail_backfill"},
+    },
     "check-scheduled-workflows": {
         "task": "app.tasks.workflow_tasks.check_scheduled_workflows",
         "schedule": crontab(minute="*"),  # Every minute - check for due schedules
@@ -228,6 +237,11 @@ if all(os.getenv(var) for var in ONEDRIVE_SCHEDULE_REQUIRED_VARS):
             },
         }
     )
+
+if os.getenv("CELERY_BEAT_ONLY_THUMBNAIL_BACKFILL") == "true":
+    beat_schedule = {
+        "backfill-missing-media-thumbnails": beat_schedule["backfill-missing-media-thumbnails"],
+    }
 
 celery_app.conf.beat_schedule = beat_schedule
 
