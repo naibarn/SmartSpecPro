@@ -118,6 +118,8 @@ downloads/
 *.db
 *.sqlite
 *.sqlite3
+*_backup.sql
+*backup*.sql
 
 # ============================================================================
 # OS-specific

@@ -31,7 +31,7 @@ jobs:
           gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
 
       - name: Scan for leaked secrets
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@ba0a524d6e51744d9d4e306bc57ac5d6ca5173ea
         with:
           path: ./
           extra_args: --only-verified --fail
@@ -73,7 +73,7 @@ jobs:
           docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/video-job-runner:latest
 
       - name: Scan node-api image for vulnerabilities
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: '${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/node-api:${{ steps.tags.outputs.COMMIT_SHA }}'
           format: 'table'
@@ -81,7 +81,7 @@ jobs:
           exit-code: '1'
 
       - name: Scan python-orchestrator image for vulnerabilities
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: '${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/python-orchestrator:${{ steps.tags.outputs.COMMIT_SHA }}'
           format: 'table'
@@ -89,7 +89,7 @@ jobs:
           exit-code: '1'
 
       - name: Scan video-job-runner image for vulnerabilities
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           image-ref: '${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/smartspec-images/video-job-runner:${{ steps.tags.outputs.COMMIT_SHA }}'
           format: 'table'

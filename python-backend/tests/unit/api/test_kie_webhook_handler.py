@@ -3,10 +3,9 @@
 import hashlib
 import hmac
 import json
-
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
@@ -178,6 +177,28 @@ async def test_duplicate_webhook_returns_200_without_reprocessing(client):
     data = resp.json()
     assert data.get("duplicate") is True
     mock_enqueue.assert_not_awaited()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_webhook_missing_secret_fails_closed(client):
+    """Webhook must not accept callbacks when HMAC secret is missing."""
+    payload = {"taskId": KIE_JOB_ID, "status": "completed"}
+
+    with (
+        patch.dict("os.environ", {}, clear=True),
+        patch("app.api.v1.kie_webhooks.WebhookDedupService") as MockDedup,
+        patch("app.api.v1.kie_webhooks.MediaTaskService") as MockTaskService,
+    ):
+        resp = await client.post(
+            "/api/webhooks/kie",
+            content=json.dumps(payload),
+            headers={"content-type": "application/json"},
+        )
+
+    assert resp.status_code == 503
+    MockDedup.assert_not_called()
+    MockTaskService.get_task_by_external_id.assert_not_called()
 
 
 @pytest.mark.unit

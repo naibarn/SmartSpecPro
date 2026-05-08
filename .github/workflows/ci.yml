@@ -148,7 +148,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8
       - name: Install desktop runtime dependencies
         run: |
           sudo apt-get update

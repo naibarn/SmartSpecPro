@@ -11,25 +11,26 @@ because it needs to accept external calls from Kie AI.
 import hashlib
 import hmac
 import json
-import os
 
+import structlog
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
-import structlog
 
-from app.core.database import AsyncSessionLocal
-from app.services.cloud_tasks import enqueue_task
-from app.services.media_task_service import MediaTaskService
-from app.services.webhook_dedup import WebhookDedupService
 from app.api.v1.media_generation import (
-    _normalize_kie_task_state,
-    _extract_first_kie_result_url,
     _coerce_json_dict,
+    _extract_first_kie_result_url,
+    _get_required_kie_webhook_secret,
+    _normalize_kie_task_state,
+    _redact_kie_webhook_payload,
     _submit_veo_4k_upgrade_for_task,
     _task_requests_veo_4k,
     _veo_4k_status,
 )
+from app.core.database import AsyncSessionLocal
 from app.models.media_task import TaskStatus
+from app.services.cloud_tasks import enqueue_task
+from app.services.media_task_service import MediaTaskService
+from app.services.webhook_dedup import WebhookDedupService
 
 logger = structlog.get_logger()
 
@@ -45,22 +46,25 @@ async def kie_webhook_handler(request: Request):
     a media-processing Cloud Task.
     """
     # 1. Validate HMAC signature
-    kie_webhook_secret = os.environ.get("KIE_AI_WEBHOOK_SECRET", "")
+    kie_webhook_secret = _get_required_kie_webhook_secret()
     body_bytes = await request.body()
 
-    if kie_webhook_secret:
-        sig = request.headers.get("x-signature", "")
-        expected = hmac.new(
-            kie_webhook_secret.encode(), body_bytes, hashlib.sha256
-        ).hexdigest()
-        if not hmac.compare_digest(sig, expected):
-            logger.warning("kie_webhook_invalid_signature")
-            return JSONResponse(
-                status_code=401,
-                content={"success": False, "error": "Invalid signature"},
-            )
-    else:
-        logger.warning("kie_webhook_no_secret_configured")
+    if not kie_webhook_secret:
+        logger.error("kie_webhook_secret_missing")
+        return JSONResponse(
+            status_code=503,
+            content={"success": False, "error": "Webhook secret is not configured"},
+        )
+    sig = request.headers.get("x-signature", "")
+    expected = hmac.new(
+        kie_webhook_secret.encode(), body_bytes, hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(sig, expected):
+        logger.warning("kie_webhook_invalid_signature")
+        return JSONResponse(
+            status_code=401,
+            content={"success": False, "error": "Invalid signature"},
+        )
 
     # 2. Parse body
     try:
@@ -78,6 +82,7 @@ async def kie_webhook_handler(request: Request):
             content={"success": False, "error": "Missing taskId"},
         )
 
+    redacted_body = _redact_kie_webhook_payload(body)
     logger.info("kie_webhook_received", kie_job_id=kie_job_id)
 
     # 3. Redis dedup check
@@ -120,7 +125,7 @@ async def kie_webhook_handler(request: Request):
                 result_data = _coerce_json_dict(task.result_data)
                 veo_4k = result_data.get("veo_4k") if isinstance(result_data.get("veo_4k"), dict) else {}
                 result_data.update({
-                    "webhook_payload": body,
+                    "webhook_payload": redacted_body,
                     "actual_resolution": "4K",
                     "veo_4k": {
                         **(veo_4k if isinstance(veo_4k, dict) else {}),
@@ -160,7 +165,7 @@ async def kie_webhook_handler(request: Request):
                     kie_job_id,
                     TaskStatus.COMPLETED,
                     result_url=result_url,
-                    result_data={"webhook_payload": body},
+                    result_data={"webhook_payload": redacted_body},
                 )
             # Enqueue media processing (best-effort)
             if should_enqueue_processing:

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 
 import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
+import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
 import {
   voiceAgentClientEventInputSchema,
@@ -42,6 +43,9 @@ function sanitizeError(error: unknown): TRPCError {
 
 const voiceAgentsProcedure = protectedProcedure.use(requireFeatureFlag("voiceAgents"));
 const voiceAgentsAdminProcedure = adminProcedure.use(requireFeatureFlag("voiceAgents"));
+const rateLimitedVoiceAgentsProcedure = voiceAgentsProcedure.use(
+  createRateLimitMiddleware({ namespace: "voice-agents", limit: 20, windowMs: 60_000 }),
+);
 
 export const voiceAgentsRouter = router({
   admin: router({
@@ -116,14 +120,14 @@ export const voiceAgentsRouter = router({
       throw sanitizeError(err);
     }
   }),
-  createSession: voiceAgentsProcedure.input(voiceAgentSessionCreateInputSchema).mutation(async ({ ctx, input }) => {
+  createSession: rateLimitedVoiceAgentsProcedure.input(voiceAgentSessionCreateInputSchema).mutation(async ({ ctx, input }) => {
     try {
       return await createVoiceAgentSession(requireTenant(ctx), ctx.user.id, input);
     } catch (err) {
       throw sanitizeError(err);
     }
   }),
-  getConnectionMaterial: voiceAgentsProcedure.input(z.object({ sessionId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+  getConnectionMaterial: rateLimitedVoiceAgentsProcedure.input(z.object({ sessionId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
     try {
       return await getVoiceAgentConnectionMaterial(requireTenant(ctx), ctx.user.id, input.sessionId);
     } catch (err) {

@@ -7,14 +7,10 @@ extracts metadata, and uploads to R2 storage.
 import asyncio
 import mimetypes
 import os
-import shutil
 import subprocess
-import tempfile
-from io import BytesIO
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import quote, urljoin, urlsplit, urlunsplit
 
 import httpx
 import structlog
@@ -25,6 +21,7 @@ logger = structlog.get_logger()
 # Thumbnail settings
 IMAGE_THUMB_WIDTH = 300
 VIDEO_THUMB_POSITION_RATIO = 0.25  # Frame at 25% of duration
+MAX_DOWNLOAD_REDIRECTS = 3
 
 
 class MediaPipelineError(Exception):
@@ -61,10 +58,13 @@ async def download_media(
 
     async with httpx.AsyncClient(
         timeout=httpx.Timeout(300.0, connect=10.0),
-        follow_redirects=True,
+        follow_redirects=False,
     ) as client:
-        response = await client.get(result_url)
-        response.raise_for_status()
+        response = await _get_with_validated_redirects(
+            client,
+            result_url,
+            validate_provider_result_uri,
+        )
 
     content_type = response.headers.get("content-type", "application/octet-stream")
     ext = _guess_extension(content_type, result_url)
@@ -81,6 +81,36 @@ async def download_media(
         content_type=content_type,
     )
     return file_path, file_size, content_type
+
+
+async def _get_with_validated_redirects(
+    client: httpx.AsyncClient,
+    url: str,
+    validate_provider_result_uri,
+    *,
+    max_redirects: int = MAX_DOWNLOAD_REDIRECTS,
+) -> httpx.Response:
+    """Fetch a URL while validating every redirect target against SSRF rules."""
+    current_url = url
+    for _ in range(max_redirects + 1):
+        response = await client.get(current_url)
+        if response.status_code not in {301, 302, 303, 307, 308}:
+            response.raise_for_status()
+            return response
+
+        location = response.headers.get("location")
+        if not location:
+            response.raise_for_status()
+            return response
+
+        next_url = urljoin(str(response.url), location)
+        try:
+            validate_provider_result_uri(next_url)
+        except ValueError as exc:
+            raise MediaPipelineError(f"Blocked redirect URL: {exc}") from exc
+        current_url = next_url
+
+    raise MediaPipelineError("Too many redirects while downloading provider result")
 
 
 async def generate_thumbnail(

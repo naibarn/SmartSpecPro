@@ -7,6 +7,7 @@ route through sandbox when a runner is provided.
 import subprocess
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 pytestmark = [pytest.mark.sandbox, pytest.mark.unit]
@@ -43,6 +44,39 @@ class TestMediaPipelineSandbox:
         ffmpeg_cmd = mock_runner.run_command.call_args_list[1].args[0]
         assert "-vf" in ffmpeg_cmd
         assert "scale=300:-2" in ffmpeg_cmd
+
+    @pytest.mark.asyncio
+    async def test_download_redirect_revalidates_target(self, tmp_path):
+        """Provider result redirects are blocked if the Location points internal."""
+        from app.services.media_pipeline import MediaPipelineError, download_media
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            if str(request.url) == "https://cdn.example.com/result.png":
+                return httpx.Response(
+                    302,
+                    headers={"location": "http://169.254.169.254/latest/meta-data/"},
+                    request=request,
+                )
+            return httpx.Response(200, content=b"secret", request=request)
+
+        transport = httpx.MockTransport(handler)
+        original_client = httpx.AsyncClient
+
+        def make_client(*args, **kwargs):
+            kwargs["transport"] = transport
+            return original_client(*args, **kwargs)
+
+        def validate_url(url: str) -> str:
+            if "169.254.169.254" in url:
+                raise ValueError("internal metadata address")
+            return url
+
+        with (
+            patch("app.core.media_job_validators.validate_provider_result_uri", side_effect=validate_url),
+            patch("app.services.media_pipeline.httpx.AsyncClient", side_effect=make_client),
+        ):
+            with pytest.raises(MediaPipelineError, match="Blocked redirect URL"):
+                await download_media("https://cdn.example.com/result.png", str(tmp_path))
 
     @pytest.mark.asyncio
     async def test_generate_video_thumbnail_falls_back_without_runner(self):
@@ -84,5 +118,5 @@ class TestMediaPipelineSandbox:
                 stdout='{"format":{"duration":"5.0"},"streams":[]}',
                 stderr=""
             )
-            result = _ffprobe_metadata("/tmp/test.mp4")
+            _ffprobe_metadata("/tmp/test.mp4")
             mock_sub.assert_called_once()

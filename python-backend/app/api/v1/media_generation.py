@@ -1,37 +1,42 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
-from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
-from typing import List, Optional, Any
-from pydantic import BaseModel
-import structlog
-import os
 import json
+import os
 from datetime import datetime
+from typing import Any, List, Optional
+from urllib.parse import urlsplit, urlunsplit
 
+import structlog
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.auth import get_current_user
+from app.core.database import get_db
 from app.llm_proxy.gateway_unified import LLMGateway
 from app.llm_proxy.models import (
-    ImageGenerationRequest, ImageGenerationResponse,
-    VideoGenerationRequest, VideoGenerationResponse,
-    AudioGenerationRequest, AudioGenerationResponse
+    AudioGenerationRequest,
+    AudioGenerationResponse,
+    ImageGenerationRequest,
+    ImageGenerationResponse,
+    VideoGenerationRequest,
+    VideoGenerationResponse,
 )
-from app.core.database import get_db
-from app.core.auth import get_current_user
+from app.models.media_task import MediaTask, MediaType, TaskStatus
 from app.models.user import User
-from app.models.media_task import MediaTask, TaskStatus, MediaType
-from app.services.media_task_service import MediaTaskService
 from app.services.media_callback_service import (
     get_latest_callback_event_by_provider_task_id,
     process_kie_callback_payload,
 )
+from app.services.media_task_service import MediaTaskService
 
 # Import Celery tasks
 try:
     from app.tasks.media_tasks import (
+        _generate_image_async,
+        generate_audio_task,
         generate_image_task,
         generate_video_task,
-        generate_audio_task,
-        _generate_image_async,
     )
     CELERY_ENABLED = True
 except ImportError:
@@ -54,6 +59,42 @@ def _is_inline_media_fallback_enabled() -> bool:
     """Allow API-process fallback when Celery workers are unavailable."""
     raw = str(os.getenv("MEDIA_ASYNC_INLINE_FALLBACK_ENABLED", "true")).strip().lower()
     return raw not in {"0", "false", "no", "off"}
+
+
+def _get_required_kie_webhook_secret() -> str | None:
+    """Return the Kie webhook secret, or None when callbacks must fail closed."""
+    secret = os.environ.get("KIE_AI_WEBHOOK_SECRET", "").strip()
+    return secret or None
+
+
+def _redact_url_query(value: str) -> str:
+    try:
+        parts = urlsplit(value)
+    except ValueError:
+        return value
+    if not parts.scheme or not parts.netloc or not parts.query:
+        return value
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, "<redacted>", parts.fragment))
+
+
+def _redact_kie_webhook_payload(value: Any) -> Any:
+    """Redact sensitive callback fields before logging or storing provider payloads."""
+    if isinstance(value, dict):
+        redacted: dict[str, Any] = {}
+        for key, item in value.items():
+            lowered = str(key).lower()
+            if any(marker in lowered for marker in ("authorization", "signature", "secret", "token", "api_key", "apikey")):
+                redacted[key] = "<redacted>"
+            elif isinstance(item, str) and item.startswith(("http://", "https://")):
+                redacted[key] = _redact_url_query(item)
+            else:
+                redacted[key] = _redact_kie_webhook_payload(item)
+        return redacted
+    if isinstance(value, list):
+        return [_redact_kie_webhook_payload(item) for item in value]
+    if isinstance(value, str) and value.startswith(("http://", "https://")):
+        return _redact_url_query(value)
+    return value
 
 
 def _has_responsive_celery_worker() -> bool:
@@ -1326,8 +1367,9 @@ async def process_video_task(request: Request):
                     render_hash=render_hash,
                 )
                 # Fallback: call entrypoint directly with spec as argument
-                from app.video.entrypoint import main as render_main
                 import threading
+
+                from app.video.entrypoint import main as render_main
                 spec_copy = dict(render_spec)
                 thread = threading.Thread(target=render_main, args=(spec_copy,), daemon=True)
                 thread.start()
@@ -1335,8 +1377,9 @@ async def process_video_task(request: Request):
         except ImportError:
             logger.warning("google_cloud_run_sdk_not_available", render_hash=render_hash)
             # Fallback to inline execution
-            from app.video.entrypoint import main as render_main
             import threading
+
+            from app.video.entrypoint import main as render_main
             spec_copy = dict(render_spec)
             thread = threading.Thread(target=render_main, args=(spec_copy,), daemon=True)
             thread.start()
@@ -1876,28 +1919,29 @@ async def kie_ai_callback(
     """
     try:
         # Verify HMAC signature if webhook secret is configured
-        import hmac
         import hashlib
-        kie_webhook_secret = os.environ.get("KIE_AI_WEBHOOK_SECRET", "")
-        if kie_webhook_secret:
-            sig = request.headers.get("x-signature", "")
-            body_bytes = await request.body()
-            expected = hmac.new(
-                kie_webhook_secret.encode(), body_bytes, hashlib.sha256
-            ).hexdigest()
-            if not hmac.compare_digest(sig, expected):
-                logger.warning("kie_ai_callback_invalid_signature")
-                return JSONResponse(
-                    status_code=401,
-                    content={"success": False, "error": "Invalid signature"},
-                )
-            import json
-            body = json.loads(body_bytes)
-        else:
-            # No secret configured — accept without verification (log warning)
-            logger.warning("kie_ai_callback_no_webhook_secret_configured")
-            body = await request.json()
-        logger.info("kie_ai_callback_received", body=body)
+        import hmac
+        kie_webhook_secret = _get_required_kie_webhook_secret()
+        body_bytes = await request.body()
+        if not kie_webhook_secret:
+            logger.error("kie_ai_callback_secret_missing")
+            return JSONResponse(
+                status_code=503,
+                content={"success": False, "error": "Webhook secret is not configured"},
+            )
+        sig = request.headers.get("x-signature", "")
+        expected = hmac.new(
+            kie_webhook_secret.encode(), body_bytes, hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(sig, expected):
+            logger.warning("kie_ai_callback_invalid_signature")
+            return JSONResponse(
+                status_code=401,
+                content={"success": False, "error": "Invalid signature"},
+            )
+        body = json.loads(body_bytes)
+        redacted_body = _redact_kie_webhook_payload(body)
+        logger.info("kie_ai_callback_received", body=redacted_body)
         task_id = body.get("taskId") or body.get("task_id")
 
         # Durable pipeline: persist callback event first, then process idempotently.
@@ -2102,8 +2146,8 @@ async def clear_provider_cache(
             detail="Admin access required"
         )
 
-    from app.services.media_provider_service import clear_cache
     from app.llm_proxy.gateway_unified import LLMGateway
+    from app.services.media_provider_service import clear_cache
 
     # Clear the provider config cache
     clear_cache()
