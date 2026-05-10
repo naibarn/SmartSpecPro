@@ -620,25 +620,284 @@ Mitigation:
 
 ---
 
-## 13. Open Questions
+## 13. Product Decisions Locked for MVP
+
+These decisions are locked for the first shippable MVP unless the product owner explicitly reopens the spec:
+
+1. The feature is non-default and opt-in only.
+2. The existing `editable` and `full-slide-image` modes must remain unchanged.
+3. Each slide slot creates exactly two generated assets:
+   - `background`
+   - `text_overlay_green`
+4. Split-layer prompts are separate from full-slide prompts.
+5. The background layer must not contain text, icons, cards, panels, logos, or UI.
+6. The overlay layer must contain all visible text, cards, icons, and callouts on a flat chroma-green background.
+7. The overlay is panel/card based. The keyer should remove green around panels, not around individual text glyphs.
+8. MVP creates a Video Editor project with `V1` background clips and `V2` overlay clips.
+9. MVP may leave chroma key disabled or marked as pending in the Video Editor project. Production keying can ship in a later phase.
+10. Background image-to-video is deferred. MVP uses static image/video-editor-still clips unless existing infrastructure can support image-to-video without extra render risk.
+11. Users can regenerate a single layer without replacing the other layer.
+12. Ratio/style changes mark incompatible generated assets stale and trigger explicit regeneration instead of silently reusing old assets.
+
+---
+
+## 14. Video Editor Handoff API / Persistence Contract
+
+### 14.1 Handoff Input
+
+Presentation Builder should call a single handoff action after required split-layer assets are ready:
+
+```ts
+type PresentationSplitLayerHandoffRequest = {
+  source: "presentation_builder_split_layer";
+  sourceDraftId?: string;
+  topic: string;
+  locale: string;
+  canvasRatio: SlideCanvasRatio;
+  width: number;
+  height: number;
+  fps: number;
+  slideDurationSeconds: number;
+  styleId: string;
+  slides: Array<{
+    pageNumber: number;
+    title: string;
+    summary?: string;
+    slotKey: string;
+    backgroundAssetId: string;
+    overlayAssetId: string;
+  }>;
+};
+```
+
+### 14.2 Handoff Output
+
+The handoff action should return enough information for the UI to open the Video Editor project immediately:
+
+```ts
+type PresentationSplitLayerHandoffResult = {
+  projectId: string;
+  projectUrl: string;
+  createdAssetIds: string[];
+  warnings: Array<{
+    code: string;
+    message: string;
+    pageNumber?: number;
+    assetId?: string;
+  }>;
+};
+```
+
+### 14.3 Persistence Requirements
+
+The persisted Video Editor project must include:
+
+1. Project settings:
+   - `width`
+   - `height`
+   - `fps`
+   - `duration`
+   - `canvasRatio`
+2. Asset records for every background and overlay layer.
+3. Clip records on deterministic tracks:
+   - `V1` for background clips
+   - `V2` for overlay clips
+4. Clip metadata linking each clip back to:
+   - Presentation Builder source
+   - source draft id, if available
+   - page number
+   - slot key
+   - layer kind
+5. Optional effect metadata on overlay clips:
+   - `chromaKeyCandidate: true`
+   - `chromaKeyColor: "#00FF00"`
+   - `chromaKeyEnabled: false` for MVP unless render support is enabled
+
+### 14.4 Idempotency
+
+The handoff should be idempotent for repeated clicks:
+
+1. If the same source draft, ratio, style, slide set, and asset ids are handed off again, the system may reopen the existing project instead of creating duplicates.
+2. If any asset id changes, create a new project revision or a new project depending on existing Video Editor persistence conventions.
+3. Do not mutate previously exported Video Editor projects silently.
+
+---
+
+## 15. Asset Storage and Reuse Rules
+
+### 15.1 Storage Metadata
+
+Every split-layer media asset should store:
+
+1. `source: "presentation_builder_split_layer"`
+2. `layerKind: "background" | "text_overlay_green"`
+3. `pageNumber`
+4. `slotKey`
+5. `canvasRatio`
+6. `width`
+7. `height`
+8. `styleId`
+9. `mediaModelId`
+10. `promptHash`
+11. `assetVersion`
+12. `createdAt`
+
+### 15.2 Reuse Rules
+
+An existing split-layer asset can be reused only when all of these match:
+
+1. `layerKind`
+2. `pageNumber`
+3. `slotKey`
+4. `canvasRatio`
+5. `width` and `height`
+6. `styleId`
+7. `mediaModelId`
+8. `promptHash`
+9. asset status is `ready`
+
+If any of these values differ, show the asset as stale and require regeneration for that layer.
+
+### 15.3 Regeneration Rules
+
+1. Regenerating `background` replaces only the background asset for that slot.
+2. Regenerating `text_overlay_green` replaces only the overlay asset for that slot.
+3. Regenerating the whole slide creates both assets again.
+4. Changing ratio should mark both layers stale for every slide.
+5. Changing style should mark both layers stale for every slide.
+6. Stale assets should remain available in Media History but should not be selected for new handoff unless the user explicitly reselects them.
+
+### 15.4 Media History
+
+Media History should display split-layer assets with enough context to avoid confusion:
+
+- layer kind
+- page number
+- ratio/dimensions
+- style id or style label
+- source draft id, if available
+- whether the asset is currently used by a Presentation Builder draft or Video Editor project
+
+---
+
+## 16. Overlay Format Policy
+
+The overlay layer is a chroma-key candidate, so format matters.
+
+### 16.1 Preferred Formats
+
+Use lossless or visually lossless formats for `text_overlay_green`:
+
+1. PNG
+2. WebP lossless
+3. Provider-native format only if it can preserve flat green edges without compression artifacts
+
+### 16.2 JPG Policy
+
+JPG is not suitable for chroma key overlays because compression creates color noise around text, icons, and panel edges.
+
+Rules:
+
+1. Warn when a provider returns JPG/JPEG for `text_overlay_green`.
+2. Reject JPG/JPEG for `text_overlay_green` when chroma-key mode is enabled.
+3. If MVP does not key automatically, allow JPG only as a temporary preview asset with a visible warning.
+4. Prefer converting provider output to PNG/WebP only if the source preserves enough chroma integrity. Conversion cannot repair already-compressed green noise.
+
+### 16.3 Background Format
+
+Background assets may use PNG, WebP, JPG, or provider-native formats because they are not keyed.
+
+---
+
+## 17. Render Contract
+
+### 17.1 Track Assembly
+
+The Video Editor renderer must assemble tracks in this order:
+
+1. Build the `V1` background timeline first.
+2. Build `V2` overlay clips independently.
+3. Apply chroma key to `V2` overlay clips when enabled.
+4. Composite keyed `V2` clips over `V1` by z-order and time range.
+5. Mix audio tracks after visual composition according to existing Video Editor rules.
+
+### 17.2 Time Range Rules
+
+For each slide:
+
+1. `V1` background clip and `V2` overlay clip must share the same `startTime`.
+2. Both clips must share the same `duration`.
+3. A missing overlay clip should render the background clip alone with a warning.
+4. A missing background clip should block handoff/render for that slide because there is no base visual layer.
+
+### 17.3 Z-Order Rules
+
+1. `V1` is the base layer.
+2. `V2` is composited above `V1`.
+3. Future tracks above `V2` must follow existing Video Editor z-order semantics.
+4. `T1` remains reserved for future editable text and must not be required for MVP.
+
+### 17.4 FFmpeg Direction
+
+When chroma key is enabled, the renderer should translate the visual graph to a filter chain equivalent to:
+
+```text
+V1 background assembled first
+V2 overlay keyed by #00FF00
+keyed V2 composited over V1 by clip time range
+```
+
+The implementation may use `chromakey`, `colorkey`, masks, or another renderer-supported method as long as output behavior matches this contract.
+
+---
+
+## 18. Rollout / Feature Flag
+
+This feature must be closed by default until the MVP is validated.
+
+### 18.1 Rollout Rules
+
+1. The mode is non-default even when enabled.
+2. The UI option may be hidden behind a feature flag such as:
+   - `PRESENTATION_SPLIT_LAYER_VIDEO_ENABLED`
+   - or an existing presentation-builder experimental flag
+3. The handoff action may use a separate flag if Video Editor persistence is not ready:
+   - `PRESENTATION_SPLIT_LAYER_VIDEO_HANDOFF_ENABLED`
+4. Chroma-key render support should use a separate flag:
+   - `VIDEO_EDITOR_CHROMA_KEY_RENDER_ENABLED`
+
+### 18.2 Safe Defaults
+
+When flags are off:
+
+1. Existing Presentation Builder modes continue to work.
+2. Existing drafts containing `split-layer-video` should load read-only or gracefully fall back to hidden experimental UI if the user already has access.
+3. Existing Video Editor projects created from split-layer assets should still open as normal image-overlay projects.
+
+---
+
+## 19. Open Questions
 
 1. Should the handoff auto-create a persisted Video Editor project or only download/copy a project JSON draft?
 2. Should v1 automatically enable chroma key on overlay clips, or should users enable it manually in Video Editor?
 3. What default slide duration should Presentation Builder use for video projects: 4s, 5s, or user-configurable?
 4. Should background image-to-video be offered immediately or delayed until static split-layer flow is stable?
-5. Should overlay layer be stored as PNG/WebP lossless only, or allow provider-native JPG if that is all the media provider returns?
+5. Which storage layer is responsible for enforcing lossless overlay output: media provider adapter, media asset service, or Presentation Builder handoff?
+6. Should stale split-layer assets be visually grouped with their replacement assets in Media History?
 
 ---
 
-## 14. Recommended MVP
+## 20. Recommended MVP
 
 The recommended MVP is Waves 1-3 only:
 
-1. Add split-layer mode.
+1. Add split-layer mode behind a feature flag.
 2. Generate background and green overlay images separately.
-3. Build a Video Editor project with V1 background and V2 overlay clips.
-4. Do not automatically key green in MVP.
-5. Let users inspect/edit the generated timeline first.
+3. Enforce separate asset metadata, stale detection, and per-layer regeneration.
+4. Prefer PNG/WebP lossless for overlay assets and warn on JPG/JPEG.
+5. Build a persisted Video Editor project with `V1` background and `V2` overlay clips.
+6. Do not automatically key green in MVP unless `VIDEO_EDITOR_CHROMA_KEY_RENDER_ENABLED` is ready.
+7. Let users inspect/edit the generated timeline first.
 
 Then implement Wave 4 as the production compositing milestone.
 
@@ -647,6 +906,7 @@ This keeps the first release safe because it proves:
 - prompt separation
 - asset generation
 - per-layer UI state
+- asset storage/reuse rules
 - Video Editor handoff
 - project shape compatibility
 
@@ -654,20 +914,40 @@ without forcing chroma-key render changes into the same release.
 
 ---
 
-## 15. Definition of Done
+## 21. MVP Definition of Done
 
-The feature is complete when:
+MVP is complete when:
+
+1. Existing Presentation Builder modes remain unchanged.
+2. Split-layer mode is non-default and can be hidden behind a feature flag.
+3. Split-layer mode creates two assets per slide with separate prompts.
+4. Background prompts exclude text/panels/icons/logos.
+5. Overlay prompts require flat chroma green and opaque panel/card-contained text.
+6. Users can regenerate background, overlay, or both without replacing unrelated layers.
+7. Ratio/style changes mark incompatible generated assets stale.
+8. Overlay assets prefer PNG/WebP lossless and JPG/JPEG produces a warning.
+9. Users can create/open a Video Editor project from ready split-layer assets.
+10. The generated project persists `V1` background clips and `V2` overlay clips with aligned timing.
+11. The handoff records source metadata for page number, slot key, layer kind, ratio, style, and prompt hash.
+12. Typecheck and targeted tests for prompt generation, stale asset handling, and project handoff pass.
+
+---
+
+## 22. Full Definition of Done
+
+The full feature is complete when:
 
 1. Existing Presentation Builder modes remain unchanged.
 2. Split-layer mode creates two assets per slide with separate prompts.
 3. Users can regenerate either layer independently.
 4. Users can create/open a Video Editor project from generated split-layer assets.
-5. The generated project has aligned V1/V2 tracks and correct project settings.
-6. Video Editor can render keyed overlay clips over background clips when the chroma-key phase is enabled.
-7. Typecheck and targeted tests pass.
-8. A regression fixture exists for at least one Thai 9:16 parenting slide with:
+5. The generated project has aligned `V1`/`V2` tracks and correct project settings.
+6. Overlay storage rejects JPG/JPEG when chroma-key render mode is enabled.
+7. Video Editor can render keyed overlay clips over background clips when the chroma-key phase is enabled.
+8. The renderer assembles `V1` background first, keys `V2`, then composites by z-order and time range.
+9. Typecheck and targeted tests pass.
+10. A regression fixture exists for at least one Thai 9:16 parenting slide with:
    - realistic background layer
    - green panel overlay layer
    - generated Video Editor project
    - exported MP4 after keying
-
