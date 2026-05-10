@@ -1,6 +1,5 @@
 import type { Express, Request, Response } from "express";
 import Papa from "papaparse";
-import * as XLSX from "xlsx";
 
 import { classifyHostSafety } from "../services/libraryUrlPolicy";
 import { auditLogger } from "../services/auditLogger";
@@ -10,6 +9,8 @@ import { FileParseRequestSchema } from "@shared/contentAutomation/types";
 import { compareCachedInternalToken, getCachedAppRuntimeConfig } from "../services/appRuntimeConfig";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_FETCH_REDIRECTS = 5;
+const ALLOWED_FETCH_SCHEMES = new Set(["http:", "https:"]);
 const BLOCKED_SCHEMES = new Set(["file:", "gopher:", "dict:", "ftp:"]);
 const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04];
 
@@ -36,8 +37,6 @@ function emitAudit(eventType: string, metadata: Record<string, unknown>): void {
 
 function isAllowedUrl(parsed: URL): boolean {
   const runtimeConfig = getCachedAppRuntimeConfig();
-  // Allow /uploads/ path
-  if (parsed.pathname.startsWith("/uploads/")) return true;
   // Allow S3/R2 hosts from env
   const s3Endpoint = runtimeConfig.s3Endpoint;
   const r2Public = runtimeConfig.r2PublicUrl;
@@ -53,46 +52,84 @@ function isAllowedUrl(parsed: URL): boolean {
       if (parsed.hostname === r2Host) return true;
     } catch { /* ignore */ }
   }
-  // Allow any HTTPS URL that passes classifyHostSafety (public hosts)
+
+  // Allow public upload URLs and public hosts only after host safety checks.
   return classifyHostSafety(parsed.hostname) === "ok";
 }
 
-async function fetchFileBuffer(fileUrl: string): Promise<{ buffer: Buffer; error?: string }> {
-  const response = await fetch(fileUrl);
-  if (!response.ok) {
-    return { buffer: Buffer.alloc(0), error: "fetch_failed" };
+function validateFileUrl(parsed: URL): { code: string; message: string } | null {
+  if (BLOCKED_SCHEMES.has(parsed.protocol) || !ALLOWED_FETCH_SCHEMES.has(parsed.protocol)) {
+    return { code: "blocked_scheme", message: `Scheme '${parsed.protocol}' is not allowed` };
   }
 
-  // Check Content-Length first
-  const contentLength = response.headers.get("content-length");
-  if (contentLength && parseInt(contentLength, 10) > MAX_FILE_BYTES) {
-    return { buffer: Buffer.alloc(0), error: "file_too_large" };
+  if (!isAllowedUrl(parsed)) {
+    return { code: "blocked_host", message: "Private, local, or untrusted hosts are not allowed" };
   }
 
-  // Stream with byte counter
-  const reader = response.body!.getReader();
-  const chunks: Uint8Array[] = [];
-  let totalBytes = 0;
+  return null;
+}
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value) {
-      totalBytes += value.length;
-      if (totalBytes > MAX_FILE_BYTES) {
-        await reader.cancel();
-        return { buffer: Buffer.alloc(0), error: "file_too_large" };
-      }
-      chunks.push(value);
+async function fetchFileBuffer(initialUrl: URL): Promise<{ buffer: Buffer; error?: string }> {
+  let currentUrl = initialUrl;
+
+  for (let redirectCount = 0; redirectCount <= MAX_FETCH_REDIRECTS; redirectCount++) {
+    const response = await fetch(currentUrl.toString(), { redirect: "manual" });
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location) return { buffer: Buffer.alloc(0), error: "redirect_without_location" };
+      if (redirectCount === MAX_FETCH_REDIRECTS) return { buffer: Buffer.alloc(0), error: "too_many_redirects" };
+
+      const nextUrl = new URL(location, currentUrl);
+      const redirectError = validateFileUrl(nextUrl);
+      if (redirectError) return { buffer: Buffer.alloc(0), error: redirectError.code };
+      currentUrl = nextUrl;
+      continue;
     }
+
+    if (!response.ok) {
+      return { buffer: Buffer.alloc(0), error: "fetch_failed" };
+    }
+
+    // Check Content-Length first
+    const contentLength = response.headers.get("content-length");
+    if (contentLength && parseInt(contentLength, 10) > MAX_FILE_BYTES) {
+      return { buffer: Buffer.alloc(0), error: "file_too_large" };
+    }
+
+    // Stream with byte counter
+    if (!response.body) {
+      return { buffer: Buffer.alloc(0), error: "fetch_failed" };
+    }
+
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        totalBytes += value.length;
+        if (totalBytes > MAX_FILE_BYTES) {
+          await reader.cancel();
+          return { buffer: Buffer.alloc(0), error: "file_too_large" };
+        }
+        chunks.push(value);
+      }
+    }
+
+    const buffer = Buffer.concat(chunks.map((c) => Buffer.from(c)));
+    return { buffer };
   }
 
-  const buffer = Buffer.concat(chunks.map((c) => Buffer.from(c)));
-  return { buffer };
+  return { buffer: Buffer.alloc(0), error: "too_many_redirects" };
 }
 
 function detectFileType(buffer: Buffer, explicitType?: string): "xlsx" | "csv" | "txt" | "unknown" {
   if (explicitType === "txt") return "txt";
+  if (explicitType === "xlsx") return "xlsx";
+  if (explicitType === "csv") return "csv";
 
   // Check ZIP magic bytes
   if (
@@ -174,70 +211,25 @@ function parseCsv(
 }
 
 function parseXlsx(
-  buffer: Buffer,
-  topicColumn: string,
-  paramsColumns: Record<string, string> | undefined,
-  maxRows: number,
+  _buffer: Buffer,
+  _topicColumn: string,
+  _paramsColumns: Record<string, string> | undefined,
+  _maxRows: number,
 ): {
   items: Array<{ topic: string; params?: Record<string, unknown> }>;
   totalRows: number;
   warnings: string[];
   error?: { code: string; message: string };
 } {
-  const workbook = XLSX.read(buffer, { sheetRows: maxRows + 1 });
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-
-  const rawData = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1 });
-  if (rawData.length < 2) {
-    return { items: [], totalRows: 0, warnings: [] };
-  }
-
-  const headers = (rawData[0] as unknown[]).map((h) => sanitizeCell(h));
-  const topicIdx = headers.indexOf(topicColumn);
-  if (topicIdx === -1) {
-    return {
-      items: [],
-      totalRows: 0,
-      warnings: [],
-      error: {
-        code: "column_not_found",
-        message: `Column '${topicColumn}' not found. Available: ${headers.join(", ")}`,
-      },
-    };
-  }
-
-  const warnings: string[] = [];
-  const dataRows = rawData.slice(1);
-  const totalRows = dataRows.length;
-
-  let rows = dataRows;
-  if (rows.length > maxRows) {
-    rows = rows.slice(0, maxRows);
-    warnings.push(`Truncated to ${maxRows} rows (file had ${totalRows})`);
-  }
-
-  const items = rows
-    .map((row) => {
-      const cells = row as unknown[];
-      const topic = sanitizeCell(cells[topicIdx]);
-      if (!topic) return null;
-      const item: { topic: string; params?: Record<string, unknown> } = { topic };
-      if (paramsColumns) {
-        const params: Record<string, unknown> = {};
-        for (const [paramKey, colName] of Object.entries(paramsColumns)) {
-          const idx = headers.indexOf(colName);
-          if (idx >= 0 && cells[idx] !== undefined) {
-            params[paramKey] = sanitizeCell(cells[idx]);
-          }
-        }
-        if (Object.keys(params).length > 0) item.params = params;
-      }
-      return item;
-    })
-    .filter((item): item is NonNullable<typeof item> => item !== null);
-
-  return { items, totalRows, warnings };
+  return {
+    items: [],
+    totalRows: 0,
+    warnings: [],
+    error: {
+      code: "unsupported_file_type",
+      message: "XLSX parsing is disabled for security. Upload CSV or TXT instead.",
+    },
+  };
 }
 
 function parseTxt(
@@ -303,18 +295,11 @@ export async function fileParseHandler(req: Request, res: Response): Promise<voi
     return;
   }
 
-  if (BLOCKED_SCHEMES.has(parsedUrl.protocol)) {
+  const urlError = validateFileUrl(parsedUrl);
+  if (urlError) {
     res.status(400).json({
       success: false,
-      error: { code: "blocked_scheme", message: `Scheme '${parsedUrl.protocol}' is not allowed` },
-    });
-    return;
-  }
-
-  if (classifyHostSafety(parsedUrl.hostname) === "blocked_local_private_host" && !isAllowedUrl(parsedUrl)) {
-    res.status(400).json({
-      success: false,
-      error: { code: "blocked_host", message: "Private or local hosts are not allowed" },
+      error: urlError,
     });
     return;
   }
@@ -324,7 +309,7 @@ export async function fileParseHandler(req: Request, res: Response): Promise<voi
   // 4. Fetch file
   let buffer: Buffer;
   try {
-    const result = await fetchFileBuffer(file_url);
+    const result = await fetchFileBuffer(parsedUrl);
     if (result.error) {
       if (result.error === "file_too_large") {
         res.status(400).json({ success: false, error: { code: "file_too_large", message: "File exceeds 5MB limit" } });
@@ -345,7 +330,7 @@ export async function fileParseHandler(req: Request, res: Response): Promise<voi
   if (detectedType === "unknown") {
     res.status(400).json({
       success: false,
-      error: { code: "unsupported_file_type", message: "File type not recognized. Expected CSV, XLSX, or TXT." },
+      error: { code: "unsupported_file_type", message: "File type not recognized. Expected CSV or TXT." },
     });
     return;
   }

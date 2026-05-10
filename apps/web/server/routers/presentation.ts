@@ -147,7 +147,7 @@ const presentationEditorialPlannerOptionsSchema = z.object({
 }).optional();
 const AI_DRAFT_STALLED_PROGRESS_MS = 60_000;
 const AI_DRAFT_STALLED_LOCK_TTL_SECONDS = 240;
-const PRESENTATION_SLIDE_CANVAS_RATIOS = ["16:9", "9:16", "4:5", "5:4"] as const;
+const PRESENTATION_SLIDE_CANVAS_RATIOS = ["16:9", "9:16", "4:3", "3:4", "4:5", "5:4", "1:1"] as const;
 const PRESENTATION_SLIDE_OUTPUT_FORMATS = ["json", "md", "pptx", "pdf"] as const;
 
 type DraftProgressStatus = {

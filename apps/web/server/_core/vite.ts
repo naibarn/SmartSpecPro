@@ -5,11 +5,34 @@ import { nanoid } from "nanoid";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
+import { injectPublicSeoSnapshot } from "../services/publicSeoPrerender";
 
 const STATIC_ASSET_REQUEST = /\.(ico|svg|png|jpg|jpeg|gif|webp|css|js|mjs|woff2?|ttf|eot|map|json|wasm)(\?.*)?$/i;
 
 function isStaticAssetRequest(url: string): boolean {
   return STATIC_ASSET_REQUEST.test(url);
+}
+
+function resolveBaseUrl(req: { protocol?: string; hostname?: string; get?: (header: string) => string | undefined }): string {
+  const configured = process.env.SMARTAIHUB_PUBLIC_BASE_URL || process.env.PUBLIC_SITE_URL;
+  if (configured) {
+    try {
+      const url = new URL(configured);
+      if (url.protocol === "https:" || process.env.NODE_ENV !== "production") {
+        return `${url.protocol}//${url.host}`;
+      }
+    } catch {
+      // Fall through to the canonical public host.
+    }
+  }
+
+  const host = (req.hostname || "").trim().toLowerCase();
+  if (process.env.NODE_ENV !== "production" && (host === "localhost" || host === "127.0.0.1")) {
+    const requestHost = req.get?.("host") || host;
+    return `${req.protocol || "http"}://${requestHost}`;
+  }
+
+  return "https://smartaihub.app";
 }
 
 export async function setupVite(app: Express, server: Server) {
@@ -49,7 +72,8 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`
       );
-      const page = await vite.transformIndexHtml(url, template);
+      const transformed = await vite.transformIndexHtml(url, template);
+      const page = injectPublicSeoSnapshot(transformed, url, resolveBaseUrl(req));
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
@@ -77,14 +101,21 @@ export function serveStatic(app: Express) {
   );
 
   // fall through to index.html if the file doesn't exist
-  app.use("*", (req, res) => {
+  app.use("*", async (req, res, next) => {
     if (isStaticAssetRequest(req.originalUrl)) {
       res.setHeader("Cache-Control", "no-store");
       res.type("text/plain");
       return res.status(404).send("Not Found");
     }
 
-    res.setHeader("Cache-Control", "no-store");
-    res.sendFile(path.resolve(distPath, "index.html"));
+    try {
+      const indexPath = path.resolve(distPath, "index.html");
+      const template = await fs.promises.readFile(indexPath, "utf-8");
+      const page = injectPublicSeoSnapshot(template, req.originalUrl, resolveBaseUrl(req));
+      res.setHeader("Cache-Control", "no-store");
+      res.status(200).type("html").send(page);
+    } catch (error) {
+      next(error);
+    }
   });
 }

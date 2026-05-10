@@ -669,6 +669,10 @@ async function sendAlertEmail(db: any, userId: number, schedule: any, content: s
       port: parseInt(smtpPort),
       secure: parseInt(smtpPort) === 465,
       auth: smtpUser ? { user: smtpUser, pass: smtpPass ? decrypt(smtpPass) : undefined } : undefined,
+      tls: {
+        minVersion: "TLSv1.2",
+        rejectUnauthorized: process.env.NODE_ENV === "production" || process.env.SMTP_TLS_REJECT_UNAUTHORIZED !== "false",
+      },
     });
 
     const safeDescription = sanitizeEmailHeader(schedule.description || schedule.prompt.slice(0, 50));

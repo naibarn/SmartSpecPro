@@ -1,0 +1,55 @@
+# SmartAIHub
+
+> SmartAIHub is an enterprise AI skill marketplace for reusable skills, virtual workflows, swarm execution, and chat, presentation, image, and video outputs.
+
+Use this file as the LLM-readable navigation index for SmartAIHub public content. Prefer the linked pages for current product, workflow, docs, media, support, and trust information.
+
+## Core Pages
+
+Primary entry points for SmartAIHub visitors and search engines.
+
+- [Home](https://smartaihub.app/): Turn prompts and documents into answers, decks, and videos in one AI workspace.
+- [Features](https://smartaihub.app/features): Enterprise capabilities and platform surfaces.
+- [Marketplace](https://smartaihub.app/marketplace): Browse skills and reusable capabilities.
+- [Pricing](https://smartaihub.app/pricing): Plans and credits for teams and enterprises.
+- [Docs](https://smartaihub.app/docs): Guides, FAQs, and technical documentation.
+- [Blog](https://smartaihub.app/blog): Tutorials, guides, and product updates.
+- [Site Index](https://smartaihub.app/resources): Internal link hub for search and discovery.
+- [Contact](https://smartaihub.app/contact): Talk to the SmartAIHub team.
+
+## Docs Clusters
+
+Intent-specific documentation that owns a distinct keyword cluster.
+
+- [Marketplace Discovery](https://smartaihub.app/docs/marketplace-discovery): Find the right skill with strong intent matching.
+- [Workflow Builder](https://smartaihub.app/docs/workflow-builder): Turn prompts into repeatable virtual workflows.
+- [Swarm Execution](https://smartaihub.app/docs/swarm-execution): Run multiple specialist skills in parallel.
+- [Marketplace FAQ](https://smartaihub.app/docs/faq/marketplace): Publishing, governance, and discovery questions.
+- [Workflow FAQ](https://smartaihub.app/docs/faq/workflows): Workflow design and orchestration questions.
+- [Output FAQ](https://smartaihub.app/docs/faq/outputs): Chat, presentation, and video output packaging.
+- [Image Prompt Engineering](https://smartaihub.app/docs/image/prompt-engineering): Brand-safe prompts for AI image generation.
+- [Video Production Pipeline](https://smartaihub.app/docs/video/production-pipeline): Scripts, scenes, and production cues.
+- [AI Search Optimization](https://smartaihub.app/docs/seo/ai-search-optimization): Improve discoverability for AI and search engines.
+- [Content Factory](https://smartaihub.app/docs/content/factory): Skill-generated docs, FAQ, and blog automation.
+
+## Media & Outputs
+
+Pages that target image, video, presentation, and output packaging search intent.
+
+- [Gallery](https://smartaihub.app/gallery): Showcase and browse generated assets.
+- [Workflows](https://smartaihub.app/workflows): Workflow library and orchestration paths.
+- [Chat Outputs](https://smartaihub.app/docs/chat-outputs): Skill-aware chat delivery.
+- [Video Prompt Engineering](https://smartaihub.app/docs/video/prompt-engineering): Prompt structure for video generation.
+- [Image Workflow Pipeline](https://smartaihub.app/docs/image/workflow-pipeline): Batch generation, review, and export.
+- [Video Production Pipeline](https://smartaihub.app/docs/video/production-pipeline): End-to-end video workflow steps.
+
+## Support & Trust
+
+Operational pages that help trust, support, and compliance discovery.
+
+- [About](https://smartaihub.app/about): Company story and mission.
+- [Support](https://smartaihub.app/support): Help resources and support access.
+- [Status](https://smartaihub.app/status): Platform health and uptime.
+- [Security](https://smartaihub.app/security): Security and governance overview.
+- [Changelog](https://smartaihub.app/changelog): Product updates and release notes.
+- [Careers](https://smartaihub.app/careers): Open roles and team opportunities.

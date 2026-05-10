@@ -375,7 +375,10 @@ function extractPythonSkillLineage(parsed: Record<string, unknown>): Record<stri
 function resolvePythonSkillPaths(skill: SkillDefinition): PythonSkillPaths | null {
   const candidateDirs: string[] = [];
 
-  if (skill.skillFilePath) {
+  const addSkillFilePathCandidate = () => {
+    if (!skill.skillFilePath) {
+      return;
+    }
     const relativeDir = path.dirname(skill.skillFilePath);
     if (path.isAbsolute(relativeDir)) {
       candidateDirs.push(relativeDir);
@@ -383,19 +386,31 @@ function resolvePythonSkillPaths(skill: SkillDefinition): PythonSkillPaths | nul
       candidateDirs.push(path.resolve(process.cwd(), relativeDir));
       candidateDirs.push(path.resolve(process.cwd(), "..", "..", relativeDir));
     }
-  }
+  };
 
   const rootCandidates = [
     path.resolve(process.cwd(), "skills"),
     path.resolve(process.cwd(), "apps", "web", "skills"),
     path.resolve(process.cwd(), "..", "..", "apps", "web", "skills"),
   ];
-  for (const root of rootCandidates) {
-    candidateDirs.push(path.join(root, skill.id));
+
+  if (skill.id === "intelligence-skill-creator") {
+    for (const root of rootCandidates) {
+      candidateDirs.push(path.join(root, skill.id));
+    }
+    addSkillFilePathCandidate();
+  } else {
+    addSkillFilePathCandidate();
+    for (const root of rootCandidates) {
+      candidateDirs.push(path.join(root, skill.id));
+    }
   }
 
   const deduped = Array.from(new Set(candidateDirs));
   for (const skillDir of deduped) {
+    if (isWorkspaceArtifactPath(skillDir)) {
+      continue;
+    }
     const scriptPath = path.join(skillDir, "python", "skill.py");
     if (fs.existsSync(scriptPath)) {
       return { skillDir, scriptPath };
@@ -403,6 +418,11 @@ function resolvePythonSkillPaths(skill: SkillDefinition): PythonSkillPaths | nul
   }
 
   return null;
+}
+
+function isWorkspaceArtifactPath(value: string): boolean {
+  const normalized = value.replace(/\\/g, "/");
+  return normalized.includes("/runs/workspaces/");
 }
 
 function resolveCommandSkillPaths(skill: SkillDefinition): CommandSkillPaths | null {

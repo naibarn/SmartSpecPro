@@ -390,7 +390,7 @@ async function seed() {
       ogMetadata: {
         title: `${post.title} | SmartAIHub Blog`,
         description: post.metaDescription || post.excerpt,
-        image: "/images/og-image.png",
+        image: "/images/dashboard-preview.png",
         type: "article",
         url: path,
       },
@@ -398,7 +398,7 @@ async function seed() {
         card: "summary_large_image" as const,
         title: `${post.title} | SmartAIHub Blog`,
         description: post.metaDescription || post.excerpt,
-        image: "/images/og-image.png",
+        image: "/images/dashboard-preview.png",
       },
       aiContent: {
         context: post.metaDescription,

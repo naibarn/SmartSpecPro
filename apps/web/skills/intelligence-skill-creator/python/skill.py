@@ -487,8 +487,9 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
 
     repo_root: Path | None = None
     try:
-        from isc.runner import iterate_improve, resolve_repo_root
+        from isc.runner import canonical_isc_root, iterate_improve, resolve_repo_root
         repo_root = resolve_repo_root(Path(__file__))
+        canonical_root = canonical_isc_root(repo_root)
         run_result = iterate_improve(
             project_root=repo_root,
             skill_name=skill_name,
@@ -515,7 +516,8 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
 
     # Save proposals
     from isc.proposals import save_patch_proposal
-    proposals_dir = ISC_ROOT / "runs" / "proposals" / skill_name
+    canonical_root = canonical_isc_root(repo_root) if repo_root is not None else ISC_ROOT
+    proposals_dir = canonical_root / "runs" / "proposals" / skill_name
     saved: list[str] = []
     for p in run_result.proposals:
         if not p.patch_payload.strip():
@@ -533,7 +535,7 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
                 "llm_override": llm_override,
             },
         )
-        saved.append(str(proposal_path.relative_to(ISC_ROOT)))
+        saved.append(str(proposal_path.relative_to(canonical_root)))
 
     r = run_result.final_report
     lines = [
@@ -558,6 +560,9 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
                 "proposalRoot": str(proposals_dir),
                 "proposalCount": len(saved),
                 "targetPlatform": target_platform,
+                "entrypointRoot": str(ISC_ROOT),
+                "canonicalIscRoot": str(canonical_root),
+                "workspaceRootPolluted": ISC_ROOT.resolve() != canonical_root.resolve(),
             },
         },
         ensure_ascii=False,

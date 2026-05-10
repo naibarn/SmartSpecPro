@@ -38,22 +38,31 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function inferCanvasRatioFromSummarySpec(value: unknown): "16:9" | "9:16" | "4:5" | "5:4" {
+function inferCanvasRatioFromSummarySpec(value: unknown): "16:9" | "9:16" | "4:3" | "3:4" | "4:5" | "5:4" | "1:1" {
   if (typeof value !== "string") {
     return "16:9";
   }
   const trimmed = value.trim();
-  if (trimmed === "16:9" || trimmed === "9:16" || trimmed === "4:5" || trimmed === "5:4") {
+  if (trimmed === "16:9" || trimmed === "9:16" || trimmed === "4:3" || trimmed === "3:4" || trimmed === "4:5" || trimmed === "5:4" || trimmed === "1:1") {
     return trimmed;
   }
   if (trimmed === "1080x1920" || trimmed === "720x1280") {
     return "9:16";
+  }
+  if (trimmed === "1440x1080" || trimmed === "1024x768") {
+    return "4:3";
+  }
+  if (trimmed === "1080x1440" || trimmed === "768x1024") {
+    return "3:4";
   }
   if (trimmed === "1080x1350") {
     return "4:5";
   }
   if (trimmed === "1350x1080") {
     return "5:4";
+  }
+  if (trimmed === "1080x1080" || trimmed === "1024x1024") {
+    return "1:1";
   }
   if (trimmed === "1920x1080" || trimmed === "1280x720") {
     return "16:9";
@@ -62,17 +71,35 @@ function inferCanvasRatioFromSummarySpec(value: unknown): "16:9" | "9:16" | "4:5
 }
 
 function convertSummarySlidesToSpec(value: Record<string, unknown>): Record<string, unknown> | null {
-  const slides = Array.isArray(value.slides) ? value.slides : [];
+  const slides = Array.isArray(value.slides)
+    ? value.slides
+    : (Array.isArray(value.pages) ? value.pages : []);
   const convertedSlides: Array<Record<string, unknown>> = [];
   for (const [index, slide] of slides.entries()) {
     if (!isRecord(slide)) {
       continue;
     }
-    const headline = typeof slide.headline === "string" ? slide.headline.trim() : "";
-    const bodyText = typeof slide.body_text === "string" ? slide.body_text.trim() : "";
-    const image = isRecord(slide.image) ? slide.image : null;
-    const imageReference = typeof image?.reference === "string" ? image.reference.trim() : "";
-    if (!headline && !bodyText && !imageReference) {
+    let headline = typeof slide.headline === "string" ? slide.headline.trim() : "";
+    const bodyText = [
+      slide.body_text,
+      slide.body,
+      slide.text,
+      slide.content,
+      slide.summary,
+      slide.description,
+    ].find((candidate) => typeof candidate === "string" && candidate.trim()) as string | undefined;
+    const normalizedBodyText = bodyText?.trim() ?? "";
+    const titleHint = typeof slide.title_hint === "string" ? slide.title_hint.trim() : "";
+    const image = isRecord(slide.image)
+      ? slide.image
+      : (Array.isArray(slide.images) && isRecord(slide.images[0]) ? slide.images[0] : null);
+    const imageReference = typeof image?.reference === "string"
+      ? image.reference.trim()
+      : (typeof image?.url === "string" ? image.url.trim() : "");
+    if (!headline && titleHint && (normalizedBodyText || imageReference)) {
+      headline = titleHint;
+    }
+    if (!headline && !normalizedBodyText && !imageReference) {
       continue;
     }
     const elements: Array<Record<string, unknown>> = [];
@@ -100,16 +127,16 @@ function convertSummarySlidesToSpec(value: Record<string, unknown>): Record<stri
         xPct: 8,
         yPct: 26,
         wPct: 84,
-        hPct: bodyText ? 30 : 42,
+        hPct: normalizedBodyText ? 30 : 42,
         fit: "cover",
         cornerRadius: 18,
       });
     }
-    if (bodyText) {
+    if (normalizedBodyText) {
       elements.push({
         kind: "text",
         role: "body",
-        text: bodyText,
+        text: normalizedBodyText,
         xPct: 10,
         yPct: imageReference ? 60 : 24,
         wPct: 80,
@@ -198,6 +225,13 @@ function collectSlideSpecCandidates(value: unknown): Record<string, unknown>[] {
 
   if (Array.isArray(value.slides)) {
     candidates.push(value);
+    const converted = convertSummarySlidesToSpec(value);
+    if (converted) {
+      candidates.push(converted);
+    }
+  }
+
+  if (Array.isArray(value.pages)) {
     const converted = convertSummarySlidesToSpec(value);
     if (converted) {
       candidates.push(converted);

@@ -3051,6 +3051,7 @@ export default function PresentationEditor() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isAIDraftModalOpen, setIsAIDraftModalOpen] = useState(false);
   const [isArticleGeneratorDialogOpen, setIsArticleGeneratorDialogOpen] = useState(false);
+  const [isSaveTemplateConfirmOpen, setIsSaveTemplateConfirmOpen] = useState(false);
   const [isAutoLayoutDialogOpen, setIsAutoLayoutDialogOpen] = useState(false);
   const [isReorderDialogOpen, setIsReorderDialogOpen] = useState(false);
   const deckNoteDialogDrag = useDraggableDialog(isDeckNoteDialogOpen);
@@ -7823,35 +7824,6 @@ export default function PresentationEditor() {
     }
   }
 
-  async function handleResolvePendingMedia() {
-    if (!deck) {
-      return;
-    }
-    try {
-      const result = await resolvePendingMediaMutation.mutateAsync({
-        deckId: deck.id,
-        maxJobs: 60,
-      });
-      await refreshDeck();
-
-      if (result.jobsResolved > 0) {
-        toast.success(
-          `Resolved ${result.jobsResolved} pending media item(s). ${result.jobsRemaining} remaining.`,
-        );
-      } else if (result.jobsChecked > 0) {
-        toast.info(`Checked ${result.jobsChecked} pending media item(s). ${result.jobsRemaining} still pending.`);
-      } else {
-        toast.info(t("toast.noPendingMediaJobs"));
-      }
-
-      if (Array.isArray(result.warnings) && result.warnings.length > 0) {
-        toast.warning(result.warnings[0]);
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("toast.fetchPendingMediaFailed"));
-    }
-  }
-
   async function handleRestoreSavedVersion(versionId: number) {
     if (!deck) {
       return;
@@ -10381,7 +10353,7 @@ export default function PresentationEditor() {
                     className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                     onClick={() => {
                       setIsMobileHeaderMenuOpen(false);
-                      void handleSaveToTemplate();
+                      setIsSaveTemplateConfirmOpen(true);
                     }}
                     disabled={!deck || saveAsTemplateMutation.isPending || isProjectTitleSaving}
                   >
@@ -10412,27 +10384,6 @@ export default function PresentationEditor() {
                     <Upload className="mr-2 h-4 w-4" />
                     <span>{t("header.import")}</span>
                   </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                    onClick={() => {
-                      setIsMobileHeaderMenuOpen(false);
-                      setIsAutoLayoutDialogOpen(true);
-                    }}
-                    disabled={!deck || !selectedSlide || autoLayoutBusy}
-                  >
-                    {autoLayoutBusy ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <WandSparkles className="mr-2 h-4 w-4" />
-                    )}
-                      <span>
-                        {autoLayoutProgress
-                          ? t("header.autoLayoutProgress", { done: autoLayoutProgress.done, total: autoLayoutProgress.total })
-                          : t("header.autoLayout")}
-                      </span>
-                  </button>
                   {isAIGenerationEnabled ? (
                     <button
                       type="button"
@@ -10448,38 +10399,6 @@ export default function PresentationEditor() {
                       <span>{t("header.articleBuilder")}</span>
                     </button>
                   ) : null}
-                  {isAIGenerationEnabled ? (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                      onClick={() => {
-                        setIsMobileHeaderMenuOpen(false);
-                        setIsAIDraftModalOpen(true);
-                      }}
-                      disabled={!deck}
-                    >
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      <span>{t("header.draftWithAI")}</span>
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                    onClick={() => {
-                      setIsMobileHeaderMenuOpen(false);
-                      void handleResolvePendingMedia();
-                    }}
-                    disabled={!deck || pendingMediaJobCount <= 0 || resolvePendingMediaMutation.isPending}
-                  >
-                    {resolvePendingMediaMutation.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <RotateCw className="mr-2 h-4 w-4" />
-                    )}
-                    <span>{t("header.fetchPending", { count: pendingMediaJobCount })}</span>
-                  </button>
                   <div className="my-1 h-px bg-slate-700" aria-hidden="true" />
                   <button
                     type="button"
@@ -10513,7 +10432,7 @@ export default function PresentationEditor() {
           ) : (
             <>
               <Button
-                onClick={() => void handleSaveToTemplate()}
+                onClick={() => setIsSaveTemplateConfirmOpen(true)}
                 aria-label={t("header.saveToTemplate")}
                 variant="outline"
                 size="sm"
@@ -10534,26 +10453,6 @@ export default function PresentationEditor() {
                 <Upload className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{t("header.import")}</span>
               </Button>
-              <Button
-                onClick={() => setIsAutoLayoutDialogOpen(true)}
-                aria-label={t("header.autoLayout")}
-                title={t("header.autoLayoutTitle")}
-                variant="secondary"
-                size="sm"
-                className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
-                disabled={!deck || !selectedSlide || autoLayoutBusy}
-              >
-                {autoLayoutBusy ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <WandSparkles className="h-3.5 w-3.5" />
-                )}
-                <span className="hidden sm:inline">
-                  {autoLayoutProgress
-                    ? t("header.autoLayoutProgress", { done: autoLayoutProgress.done, total: autoLayoutProgress.total })
-                    : t("header.autoLayout")}
-                </span>
-              </Button>
               {isAIGenerationEnabled && (
                 <Button
                   onClick={() => setIsArticleGeneratorDialogOpen(true)}
@@ -10567,37 +10466,6 @@ export default function PresentationEditor() {
                   <span className="hidden sm:inline">{t("header.articleBuilder")}</span>
                 </Button>
               )}
-              {isAIGenerationEnabled && (
-                <Button
-                  onClick={() => setIsAIDraftModalOpen(true)}
-                  aria-label={t("header.draftWithAI")}
-                  variant="secondary"
-                  size="sm"
-                  className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
-                  disabled={!deck}
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">{t("header.draftWithAI")}</span>
-                </Button>
-              )}
-              <Button
-                onClick={() => void handleResolvePendingMedia()}
-                aria-label={t("header.fetchPendingMedia")}
-                variant="secondary"
-                size="sm"
-                className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
-                disabled={!deck || pendingMediaJobCount <= 0 || resolvePendingMediaMutation.isPending}
-                title={pendingMediaJobCount > 0
-                  ? t("header.fetchPendingMediaTitle", { count: pendingMediaJobCount })
-                  : t("header.noPendingMedia")}
-              >
-                {resolvePendingMediaMutation.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RotateCw className="h-3.5 w-3.5" />
-                )}
-                <span className="hidden sm:inline">{t("header.fetchPending", { count: pendingMediaJobCount })}</span>
-              </Button>
               <Button
                 onClick={() => setIsExportDialogOpen(true)}
                 aria-label={t("header.export")}
@@ -11423,6 +11291,31 @@ export default function PresentationEditor() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={isSaveTemplateConfirmOpen} onOpenChange={setIsSaveTemplateConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("dialog.templateConfirm.title")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("dialog.templateConfirm.description")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saveAsTemplateMutation.isPending}>
+              {t("dialog.templateConfirm.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setIsSaveTemplateConfirmOpen(false);
+                void handleSaveToTemplate();
+              }}
+              disabled={saveAsTemplateMutation.isPending}
+            >
+              {saveAsTemplateMutation.isPending ? (
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+              ) : null}
+              {t("dialog.templateConfirm.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog
         open={Boolean(restoreDialogVersion)}
         onOpenChange={(open) => {

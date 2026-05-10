@@ -10,6 +10,7 @@ vi.mock("../../db", () => ({
 }));
 
 vi.mock("../../services/skillStudioService", () => ({
+  applyIscProposal: vi.fn(),
   applyIscProposalDiff: vi.fn(),
   launchSkillStudioTask: vi.fn(),
   listIscProposalsWithOwners: vi.fn(),
@@ -47,7 +48,7 @@ function createAdminContext(): TrpcContext {
   };
 }
 
-function buildDb(rows: any[], skillRows: any[]) {
+function buildDb(rows: any[], skillRows: any[], latestRunRows: any[] = []) {
   const recommendationQuery = {
     where: vi.fn().mockReturnThis(),
     orderBy: vi.fn().mockReturnThis(),
@@ -62,7 +63,7 @@ function buildDb(rows: any[], skillRows: any[]) {
 
   const latestRunQuery = {
     where: vi.fn(() => latestRunQuery),
-    orderBy: vi.fn().mockResolvedValue([]),
+    orderBy: vi.fn().mockResolvedValue(latestRunRows),
     from: vi.fn(() => latestRunQuery),
   };
 
@@ -106,6 +107,30 @@ function buildNormalizeDb(rows: any[]) {
     from: vi.fn(() => applyRunsQuery),
     where: vi.fn().mockReturnThis(),
     orderBy: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue(rows),
+  };
+
+  const updateSetCalls: any[] = [];
+  const updateQuery = {
+    set: vi.fn((payload) => {
+      updateSetCalls.push(payload);
+      return updateQuery;
+    }),
+    where: vi.fn().mockResolvedValue(undefined),
+  };
+
+  return {
+    select: vi.fn().mockReturnValue(applyRunsQuery),
+    update: vi.fn().mockReturnValue(updateQuery),
+    updateSetCalls,
+  };
+}
+
+function buildRecoverStaleDb(rows: any[]) {
+  const applyRunsQuery = {
+    from: vi.fn(() => applyRunsQuery),
+    where: vi.fn().mockResolvedValue(rows),
+    orderBy: vi.fn(() => applyRunsQuery),
     limit: vi.fn().mockResolvedValue(rows),
   };
 
@@ -193,6 +218,74 @@ describe("skills router legacy upgrade queue", () => {
     expect(queue[1]?.upgradePriorityScore).toBe(25);
   });
 
+  it("hides completed proposal history from the default legacy upgrade queue", async () => {
+    const rows = [
+      {
+        id: 11,
+        skillId: 1,
+        recommendationType: "native-bundle-upgrade",
+        title: "Proposal already generated",
+        summary: "Done",
+        status: "approved",
+        riskLevel: "critical",
+        qualityScore: 90,
+        analyzedAt: new Date("2026-04-22T10:00:00.000Z"),
+        recommendationJson: {
+          upgradePriorityScore: 95,
+          upgradePriorityTier: "critical",
+          parallelUpgradeEligible: true,
+          legacyUpgradeSignals: { hasRunScript: false },
+        },
+      },
+      {
+        id: 12,
+        skillId: 2,
+        recommendationType: "native-bundle-upgrade",
+        title: "Still pending",
+        summary: "Pending",
+        status: "pending_review",
+        riskLevel: "high",
+        qualityScore: 72,
+        analyzedAt: new Date("2026-04-22T09:00:00.000Z"),
+        recommendationJson: {
+          upgradePriorityScore: 80,
+          upgradePriorityTier: "high",
+          parallelUpgradeEligible: true,
+          legacyUpgradeSignals: { hasRunScript: false },
+        },
+      },
+    ];
+    const skillRows = [
+      { id: 1, slug: "proposal-ready", name: "Proposal Ready", category: "automation", executionMode: "llm-only", sandboxProfileSlug: null },
+      { id: 2, slug: "still-pending", name: "Still Pending", category: "automation", executionMode: "llm-only", sandboxProfileSlug: null },
+    ];
+    const latestRunRows = [
+      {
+        id: 901,
+        recommendationId: 11,
+        runType: "apply",
+        status: "completed",
+        summary: "Proposal generated and ready for admin review",
+        errorMessage: null,
+        verificationJson: {},
+        logsJson: { applyStrategy: "proposal" },
+        startedAt: new Date("2026-04-22T10:01:00.000Z"),
+        endedAt: new Date("2026-04-22T10:02:00.000Z"),
+        createdAt: new Date("2026-04-22T10:01:00.000Z"),
+        updatedAt: new Date("2026-04-22T10:02:00.000Z"),
+      },
+    ];
+
+    mockGetDb.mockResolvedValue(buildDb(rows, skillRows, latestRunRows));
+
+    const caller = skillsRouter.createCaller(createAdminContext());
+    const queue = await caller.getLegacyUpgradeQueue({ limit: 50 });
+
+    expect(queue).toHaveLength(1);
+    expect(queue[0]?.id).toBe(12);
+    expect(queue[0]?.skill?.slug).toBe("still-pending");
+  });
+
   it("queues multiple legacy upgrade recommendations in bulk", async () => {
     mockGetDb.mockResolvedValue({
       select: vi.fn().mockReturnValue({
@@ -277,7 +370,11 @@ describe("skills router legacy upgrade queue", () => {
         summary: "Proposal generation failed",
         errorMessage: "Unknown proposal generation error",
         verificationJson: {},
-        logsJson: {},
+        logsJson: {
+          resultError: "Improvement failed: /repo/apps/web/skills/intelligence-skill-creator/runs/workspaces/demo/123/skills/intelligence-skill-creator",
+          workspaceRoot: "/repo/apps/web/skills/intelligence-skill-creator/runs/workspaces/demo/123",
+          entrypointRoot: "/repo/apps/web/skills/intelligence-skill-creator/runs/workspaces/demo/123/skills/intelligence-skill-creator",
+        },
         startedAt: new Date("2026-04-22T09:00:00.000Z"),
         endedAt: new Date("2026-04-22T09:05:00.000Z"),
         createdAt: new Date("2026-04-22T09:00:00.000Z"),
@@ -318,7 +415,118 @@ describe("skills router legacy upgrade queue", () => {
         expect(result.items[0]?.latestRun.lineage?.role).toBe("orchestrator");
         expect(result.items[1]?.queueState).toBe("failed");
         expect(result.items[1]?.latestRun.errorMessage).toBe("Unknown proposal generation error");
+        expect(result.items[1]?.workspaceRootIssue).toBe(true);
+        expect(result.items[1]?.diagnosticCode).toBe("isc_workspace_root_pollution");
+        expect(result.items[1]?.workspaceRoot).toContain("/runs/workspaces/");
       });
+
+  it("hides completed apply runs from the default all monitor", async () => {
+    mockGetDb.mockResolvedValue(buildApplyRunsDb([
+      {
+        id: 910,
+        recommendationId: 31,
+        skillId: 3,
+        runType: "apply",
+        status: "completed",
+        summary: "Native Agents Python improve complete",
+        errorMessage: null,
+        verificationJson: {},
+        logsJson: { resultMessage: "Files updated" },
+        startedAt: new Date("2026-05-08T12:00:00.000Z"),
+        endedAt: new Date("2026-05-08T12:05:00.000Z"),
+        createdAt: new Date("2026-05-08T12:00:00.000Z"),
+        updatedAt: new Date("2026-05-08T12:05:00.000Z"),
+        recommendationType: "native-bundle-upgrade",
+        recommendationStatus: "approved",
+        recommendationTitle: "Upgrade bundle",
+        recommendationRiskLevel: "high",
+        recommendationCompatibilityStatus: "warning",
+        recommendationQualityScore: 70,
+        recommendationCurrentRuntime: "markdown-only",
+        recommendationProposedRuntime: "native-bundle",
+        recommendationProposedAction: "upgrade",
+        recommendationIsAutoApplySafe: false,
+        recommendationJson: {},
+        skillSlug: "completed-skill",
+        skillName: "Completed Skill",
+        skillExecutionMode: "python",
+      },
+      {
+        id: 911,
+        recommendationId: 32,
+        skillId: 4,
+        runType: "apply",
+        status: "running",
+        summary: "Upgrade task queued",
+        errorMessage: null,
+        verificationJson: {},
+        logsJson: { taskId: "task-running" },
+        startedAt: new Date("2026-05-08T12:10:00.000Z"),
+        endedAt: null,
+        createdAt: new Date("2026-05-08T12:10:00.000Z"),
+        updatedAt: new Date("2026-05-08T12:10:00.000Z"),
+        recommendationType: "native-bundle-upgrade",
+        recommendationStatus: "approved",
+        recommendationTitle: "Upgrade bundle",
+        recommendationRiskLevel: "high",
+        recommendationCompatibilityStatus: "warning",
+        recommendationQualityScore: 70,
+        recommendationCurrentRuntime: "markdown-only",
+        recommendationProposedRuntime: "native-bundle",
+        recommendationProposedAction: "upgrade",
+        recommendationIsAutoApplySafe: false,
+        recommendationJson: {},
+        skillSlug: "running-skill",
+        skillName: "Running Skill",
+        skillExecutionMode: "python",
+      },
+    ]));
+
+    const caller = skillsRouter.createCaller(createAdminContext());
+    const allResult = await caller.getLegacyUpgradeApplyRuns({ state: "all", limit: 100 });
+
+    expect(allResult.counts.total).toBe(1);
+    expect(allResult.counts.completed).toBe(1);
+    expect(allResult.items).toHaveLength(1);
+    expect(allResult.items[0]?.skill?.slug).toBe("running-skill");
+
+    mockGetDb.mockResolvedValue(buildApplyRunsDb([
+      {
+        id: 910,
+        recommendationId: 31,
+        skillId: 3,
+        runType: "apply",
+        status: "completed",
+        summary: "Native Agents Python improve complete",
+        errorMessage: null,
+        verificationJson: {},
+        logsJson: { resultMessage: "Files updated" },
+        startedAt: new Date("2026-05-08T12:00:00.000Z"),
+        endedAt: new Date("2026-05-08T12:05:00.000Z"),
+        createdAt: new Date("2026-05-08T12:00:00.000Z"),
+        updatedAt: new Date("2026-05-08T12:05:00.000Z"),
+        recommendationType: "native-bundle-upgrade",
+        recommendationStatus: "approved",
+        recommendationTitle: "Upgrade bundle",
+        recommendationRiskLevel: "high",
+        recommendationCompatibilityStatus: "warning",
+        recommendationQualityScore: 70,
+        recommendationCurrentRuntime: "markdown-only",
+        recommendationProposedRuntime: "native-bundle",
+        recommendationProposedAction: "upgrade",
+        recommendationIsAutoApplySafe: false,
+        recommendationJson: {},
+        skillSlug: "completed-skill",
+        skillName: "Completed Skill",
+        skillExecutionMode: "python",
+      },
+    ]));
+
+    const completedResult = await caller.getLegacyUpgradeApplyRuns({ state: "completed", limit: 100 });
+
+    expect(completedResult.items).toHaveLength(1);
+    expect(completedResult.items[0]?.skill?.slug).toBe("completed-skill");
+  });
 
   it("retries legacy apply runs using the originating recommendation", async () => {
     mockGetDb.mockResolvedValue({
@@ -348,6 +556,56 @@ describe("skills router legacy upgrade queue", () => {
         recommendationId: 55,
         sourceRunId: 801,
         retryReason: "Retry from apply run 801",
+        requestedBy: 42,
+      }),
+    );
+  });
+
+  it("recovers stale running apply runs and queues automatic retries", async () => {
+    const staleTime = new Date(Date.now() - 61 * 60 * 1000);
+    const db = buildRecoverStaleDb([
+      {
+        id: 812,
+        recommendationId: 56,
+        runType: "apply",
+        status: "running",
+        summary: "Upgrade task queued",
+        errorMessage: null,
+        logsJson: { taskId: "task-stale-812" },
+        startedAt: staleTime,
+        createdAt: staleTime,
+        updatedAt: staleTime,
+      },
+    ]);
+    mockGetDb.mockResolvedValue(db);
+
+    const caller = skillsRouter.createCaller(createAdminContext());
+    const result = await caller.recoverStaleLegacyUpgradeApplyRuns({
+      runIds: [812],
+      olderThanMinutes: 30,
+    });
+
+    expect(result.scannedCount).toBe(1);
+    expect(result.staleCount).toBe(1);
+    expect(result.recoveredCount).toBe(1);
+    expect(result.retriedCount).toBe(1);
+    expect(db.update).toHaveBeenCalledTimes(2);
+    expect(db.updateSetCalls[0]).toEqual(expect.objectContaining({
+      status: "failed",
+      errorMessage: "Apply task exceeded the recovery threshold before completion.",
+    }));
+    expect(db.updateSetCalls[0].logsJson).toEqual(expect.objectContaining({
+      failureCode: "stale_apply_task",
+      staleTaskRecovered: true,
+    }));
+    expect(db.updateSetCalls[1]).toEqual(expect.objectContaining({
+      status: "failed",
+    }));
+    expect(mockApplySkillUpgradeRecommendation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recommendationId: 56,
+        sourceRunId: 812,
+        retryReason: "Automatic retry after stale apply run 812",
         requestedBy: 42,
       }),
     );
@@ -390,5 +648,31 @@ describe("skills router legacy upgrade queue", () => {
         summary: "ISC improve complete — no patches generated",
       }),
     ]);
+  });
+
+  it("does not normalize workspace-root failures without no-change evidence", async () => {
+    const db = buildNormalizeDb([
+      {
+        id: 911,
+        recommendationId: 78,
+        status: "failed",
+        summary: "Proposal generation failed",
+        errorMessage: "Improvement failed: /repo/apps/web/skills/intelligence-skill-creator/runs/workspaces/demo/123/skills/intelligence-skill-creator",
+        logsJson: {
+          workspaceRoot: "/repo/apps/web/skills/intelligence-skill-creator/runs/workspaces/demo/123",
+          resultError: "Improvement failed: /repo/apps/web/skills/intelligence-skill-creator/runs/workspaces/demo/123/skills/intelligence-skill-creator",
+        },
+        createdAt: new Date("2026-04-22T11:00:00.000Z"),
+      },
+    ]);
+    mockGetDb.mockResolvedValue(db);
+
+    const caller = skillsRouter.createCaller(createAdminContext());
+    const result = await caller.normalizeLegacyUpgradeApplyRuns();
+
+    expect(result.scannedCount).toBe(1);
+    expect(result.normalizedCount).toBe(0);
+    expect(result.normalizedRunIds).toEqual([]);
+    expect(db.update).not.toHaveBeenCalled();
   });
 });

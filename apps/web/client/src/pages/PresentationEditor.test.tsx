@@ -2270,124 +2270,10 @@ describe("PresentationEditor", () => {
     expect(within(sharedCard as HTMLElement).getByText("Shared")).toBeInTheDocument();
   });
 
-  it("applies Auto Layout with watermark payload from library image selection", async () => {
-    render(<PresentationEditor />);
-    fireEvent.click(screen.getByRole("button", { name: /auto layout slide/i }));
-
-    expect(screen.getByText("Support media clarity: 16%")).toBeInTheDocument();
-
-    const watermarkTitle = screen.getByText("Watermark");
-    const watermarkRow = watermarkTitle.closest("div")?.parentElement as HTMLElement;
-    const watermarkSwitch = within(watermarkRow).getByRole("switch");
-    fireEvent.click(watermarkSwitch);
-
-    await waitFor(() => {
-      expect(screen.getByText("Clarity: 20%")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: /apply auto layout/i }));
-
-    await waitFor(() => {
-      expect(mutationMocks.relayoutSlide).toHaveBeenCalled();
-    });
-    const payload = mutationMocks.relayoutSlide.mock.calls[0]?.[0];
-    expect(payload?.watermark).toEqual({
-      sourceUrl: "https://cdn.example.com/hero.png",
-      format: "png",
-      clarityPercent: 20,
-    });
-    expect(payload?.supplementalMediaClarityPercent).toBe(16);
-  });
-
-  it("sends a selected block layout through Auto Layout payload", async () => {
-    render(<PresentationEditor />);
-    fireEvent.click(screen.getByRole("button", { name: /auto layout slide/i }));
-
-    const autoLayoutDialog = screen.getByRole("dialog", { name: /auto layout/i });
-    expect(within(autoLayoutDialog).getByText("Block layout")).toBeInTheDocument();
-    const blockLayoutSelect = within(autoLayoutDialog).getAllByRole("combobox")[1];
-    fireEvent.click(blockLayoutSelect);
-    expect(screen.queryByRole("option", { name: /^hero center$/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: /^split left image$/i })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("option", { name: /^process steps$/i }));
-    fireEvent.click(screen.getByRole("button", { name: /apply auto layout/i }));
-
-    await waitFor(() => {
-      expect(mutationMocks.relayoutSlide).toHaveBeenCalled();
-    });
-    const payload = mutationMocks.relayoutSlide.mock.calls.at(-1)?.[0];
-    expect(payload?.componentRecipeId).toBe("process-steps");
-    expect(payload?.templateId).toBeUndefined();
-  });
-
-  it("keeps the Auto Layout dialog block list independent from the AI sidebar category filter", async () => {
+  it("hides the deprecated Auto Layout action from the editor toolbar", async () => {
     render(<PresentationEditor />);
 
-    const aiLayoutPanel = await screen.findByTestId("ai-layout-panel");
-    fireEvent.click(within(aiLayoutPanel).getByRole("button", { name: "Document" }));
-
-    fireEvent.click(screen.getByRole("button", { name: /auto layout slide/i }));
-    const autoLayoutDialog = screen.getByRole("dialog", { name: /auto layout/i });
-    const blockLayoutSelect = within(autoLayoutDialog).getAllByRole("combobox")[1];
-    fireEvent.click(blockLayoutSelect);
-
-    expect(screen.getByRole("option", { name: /^process steps$/i })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: /^sectioned explainer$/i })).toBeInTheDocument();
-  });
-
-  it("restores the pre-auto-layout canvas state with undo", async () => {
-    mutationMocks.relayoutSlide.mockImplementation(async () => {
-      queryState.deckByItem = {
-        ...queryState.deckByItem,
-        slides: queryState.deckByItem.slides.map((slide: any) => (
-          slide.id === 71
-            ? {
-              ...slide,
-              version: 4,
-              slideContent: {
-                elements: [
-                  { id: "relayout-title", type: "text", x: 120, y: 80, width: 320, height: 70, text: "Relayout headline", color: "#111827" },
-                ],
-              },
-            }
-            : slide
-        )),
-      };
-      return {
-        slide: {
-          id: 71,
-          version: 4,
-          slideContent: {
-            elements: [
-              { id: "relayout-title", type: "text", x: 120, y: 80, width: 320, height: 70, text: "Relayout headline", color: "#111827" },
-            ],
-          },
-        },
-        warnings: [],
-        applied: {
-          templateId: "split_right_image",
-          stylePresetId: "dark-professional",
-          graphicCategory: "Business",
-          reusedImage: false,
-        },
-      };
-    });
-
-    render(<PresentationEditor />);
-    expect(screen.getByLabelText("Element x")).toHaveValue(10);
-
-    fireEvent.click(screen.getByRole("button", { name: /auto layout slide/i }));
-    fireEvent.click(screen.getByRole("button", { name: /apply auto layout/i }));
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Element x")).toHaveValue(120);
-    });
-
-    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Element x")).toHaveValue(10);
-    });
+    expect(screen.queryByRole("button", { name: /auto layout/i })).not.toBeInTheDocument();
   });
 
   it("restores the pre-repair canvas state with undo after generating from the saved note", async () => {
@@ -2458,29 +2344,6 @@ describe("PresentationEditor", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("Element x")).toHaveValue(10);
     });
-  });
-
-  it("explains visual-only Auto Layout behavior in the dialog", async () => {
-    queryState.deckByItem = {
-      ...buildDeckByItem(),
-      slides: [
-        {
-          ...buildDeckByItem().slides[0],
-          slideContent: {
-            elements: [
-              { id: "img-1", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/existing.jpg", alt: "hero" },
-            ],
-            visualOnly: true,
-          },
-        },
-        buildDeckByItem().slides[1],
-      ],
-    } as any;
-
-    render(<PresentationEditor />);
-    fireEvent.click(screen.getByRole("button", { name: /auto layout slide/i }));
-
-    expect(screen.getByText(/visual-only slides keep text hidden during auto layout/i)).toBeInTheDocument();
   });
 
   it("filters asset cards by source chip", async () => {
@@ -4436,6 +4299,69 @@ describe("PresentationEditor", () => {
     });
   });
 
+  it("opens a large preview for a generated article-builder image", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "json",
+        preparedBundle: {
+          maxPages: 1,
+          plannedImageCount: 1,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [
+            {
+              id: "img-1-1",
+              pageNumber: 1,
+              imageIndex: 1,
+              placementRole: "hero",
+              shortLabel: "cover hero",
+              prompt: "Cover image prompt",
+            },
+          ],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+        },
+        generatedImages: [
+          {
+            id: "img-1-1",
+            pageNumber: 1,
+            imageIndex: 1,
+            placementRole: "hero",
+            shortLabel: "cover hero",
+            prompt: "Cover image prompt",
+            url: "https://cdn.example.com/generated-cover.png",
+          },
+        ],
+        generatedSlideDraft: null,
+        slidePayloadEditorJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+        slidePayloadEditorDirty: false,
+      }),
+    );
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.previewImage" })[0]!);
+
+    expect(screen.getByRole("dialog", { name: "dialog.articleBuilder.imagePreviewTitle" })).toBeInTheDocument();
+    expect(screen.getAllByAltText("Page 1 · cover hero").length).toBeGreaterThanOrEqual(2);
+  });
+
   it("allows removing an extra missing image slot from the planner", async () => {
     localStorage.setItem(
       "presentation-article-builder-draft:7",
@@ -4748,7 +4674,17 @@ describe("PresentationEditor", () => {
             },
           ],
         },
-        generatedImages: [],
+        generatedImages: [
+          {
+            id: "img-1-1",
+            pageNumber: 1,
+            imageIndex: 1,
+            placementRole: "hero",
+            shortLabel: "cover hero",
+            prompt: "Cover image prompt",
+            url: "https://cdn.example.com/old-generated-asset.png",
+          },
+        ],
         generatedSlideDraft: null,
         slidePayloadEditorJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
         slidePayloadEditorDirty: false,
@@ -4771,6 +4707,11 @@ describe("PresentationEditor", () => {
     await waitFor(() => {
       expect(screen.getByAltText("Page 1 · cover hero")).toHaveAttribute("src", "https://cdn.example.com/generated-asset.png");
     });
+
+    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.previewImage Page 1 · cover hero" }));
+
+    expect(screen.getByRole("dialog", { name: "dialog.articleBuilder.imagePreviewTitle" })).toBeInTheDocument();
+    expect(screen.getAllByAltText("Page 1 · cover hero").at(-1)).toHaveAttribute("src", "https://cdn.example.com/generated-asset.png");
   });
 
   it("shows regenerate actions in skill preflight and regenerates the lead slot without adding a new slot", async () => {
@@ -5429,7 +5370,7 @@ describe("PresentationEditor", () => {
     expect(mutationMocks.addSlide).not.toHaveBeenCalled();
   });
 
-  it("lets users generate slide json directly from a prepared manual-only bundle even when no images have been attached yet", async () => {
+  it("blocks slide json generation until planned images are attached", async () => {
     localStorage.setItem(
       "presentation-article-builder-draft:7",
       JSON.stringify({
@@ -5480,53 +5421,18 @@ describe("PresentationEditor", () => {
         slidePayloadEditorDirty: false,
       }),
     );
-    mutationMocks.generateSlideDraft.mockResolvedValue({
-      maxPages: 2,
-      slideSkillLabel: "Modern Editorial Slide",
-      slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
-      slideJson: JSON.stringify({
-        canvas: { ratio: "9:16" },
-        slides: [
-          {
-            elements: [
-              {
-                kind: "text",
-                role: "title",
-                text: "Manual-only slide",
-                xPct: 10,
-                yPct: 10,
-                wPct: 60,
-                hPct: 12,
-                fontFace: "Inter",
-                fontSize: 28,
-                color: "#111827",
-                align: "left",
-                bold: true,
-              },
-            ],
-          },
-        ],
-      }),
-      modelId: "gpt-5.4",
-    });
-    mutationMocks.addSlide.mockResolvedValueOnce({ id: 904 });
-
     render(<PresentationEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
 
-    await waitFor(() => {
-      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
-        imageAssets: [],
-      }));
-    });
+    const generateButton = screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" });
+    expect(generateButton).toBeDisabled();
+    expect(screen.getByText(/กรุณาสร้างรูปภาพประกอบให้ครบก่อน Generate Slide JSON \(0\/2\)/)).toBeInTheDocument();
 
+    fireEvent.click(generateButton);
+    expect(mutationMocks.generateSlideDraft).not.toHaveBeenCalled();
     expect(mutationMocks.generateImageAsync).not.toHaveBeenCalled();
-
-    await waitFor(() => {
-      expect(mutationMocks.addSlide).toHaveBeenCalledTimes(1);
-    });
+    expect(mutationMocks.addSlide).not.toHaveBeenCalled();
   });
 
   it("automatically imports generated slide json into the current presentation as real slides", async () => {
@@ -6113,6 +6019,7 @@ describe("PresentationEditor", () => {
     render(<PresentationEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: /save to template/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /create template/i }));
 
     await waitFor(() => {
       expect(mutationMocks.saveAsTemplate).toHaveBeenCalledWith(

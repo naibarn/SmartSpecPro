@@ -1,0 +1,27 @@
+{
+  "name": "Smart Landscape Designer",
+  "version": "1.3.2",
+  "target_platform": "agents_python",
+  "bundle_topology": "single-agent",
+  "entrypoints": {
+    "run": "scripts/run.sh",
+    "verify": "scripts/verify.sh"
+  },
+  "outputs": [
+    "SKILL.md",
+    "scripts/run.sh",
+    "scripts/verify.sh",
+    "references/input_contract.md",
+    "references/output_contract.md",
+    "references/maintenance.md",
+    "MODEL_COMPATIBILITY.md",
+    "skill.md"
+  ],
+  "supported_modes": [
+    "create",
+    "improve",
+    "maintenance"
+  ],
+  "compatibility_mirror_policy": "mirror-skill-md",
+  "subagent_manifest": null
+}

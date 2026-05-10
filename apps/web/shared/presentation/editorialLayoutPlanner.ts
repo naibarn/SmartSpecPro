@@ -2,7 +2,7 @@ export type EditorialPlannerAudiencePreset = "parents" | "educators" | "healthca
 export type EditorialPlannerTonePreset = "warm_parenting" | "premium_editorial" | "clinical_guidance";
 export type EditorialPlannerFitPreset = "balanced" | "image_forward" | "text_safe";
 export type EditorialPlannerPageCountMode = "auto" | "fixed";
-export type EditorialPlannerCanvasRatio = "16:9" | "9:16" | "4:5" | "5:4";
+export type EditorialPlannerCanvasRatio = "16:9" | "9:16" | "4:3" | "3:4" | "4:5" | "5:4" | "1:1";
 export type EditorialPlannerLanguage = "th" | "en";
 export type EditorialPlannerOutputFormat = "render_manifest_json";
 export type EditorialPlannerImageAssetType = "image_prompt" | "uploaded_image";
@@ -19,6 +19,7 @@ export interface EditorialPlannerQuickPreset {
 }
 
 export interface EditorialPlannerImageAssetInput {
+  id?: string;
   asset_type: EditorialPlannerImageAssetType;
   label: string;
   page_hint?: number;
@@ -171,8 +172,14 @@ export function getEditorialPlannerPageSizeOrRatio(
       return "1920x1080";
     case "9:16":
       return "1080x1920";
+    case "4:3":
+      return "1440x1080";
+    case "3:4":
+      return "1080x1440";
     case "5:4":
       return "1350x1080";
+    case "1:1":
+      return "1080x1080";
     case "4:5":
     default:
       return "1080x1350";
@@ -223,6 +230,8 @@ export function inferRecommendedEditorialPlannerPreset(params: {
 
   if (
     params.canvasRatio === "4:5"
+    || params.canvasRatio === "3:4"
+    || params.canvasRatio === "1:1"
     || /(editorial|lifestyle|story|เล่าเรื่อง|ภาพ|คารูเซล|โพสต์)/i.test(normalizedTopic)
   ) {
     return EDITORIAL_PLANNER_QUICK_PRESETS.find((preset) => preset.id === "image_led_story")
@@ -378,6 +387,7 @@ export function normalizeEditorialPlannerImageAssets(
   const normalized: EditorialPlannerImageAssetInput[] = [];
   for (const asset of assets) {
     const assetType = asset?.asset_type === "uploaded_image" ? "uploaded_image" : "image_prompt";
+    const id = String(asset?.id ?? "").trim();
     const label = String(asset?.label ?? "").trim();
     const prompt = String(asset?.prompt ?? "").trim();
     const reference = String(asset?.reference ?? "").trim();
@@ -387,6 +397,7 @@ export function normalizeEditorialPlannerImageAssets(
         continue;
       }
       normalized.push({
+        ...(id ? { id } : {}),
         asset_type: "uploaded_image",
         label: label || "Uploaded image",
         ...(typeof pageHint === "number" ? { page_hint: pageHint } : {}),
@@ -399,6 +410,7 @@ export function normalizeEditorialPlannerImageAssets(
       continue;
     }
     normalized.push({
+      ...(id ? { id } : {}),
       asset_type: "image_prompt",
       label: label || "Image prompt",
       ...(typeof pageHint === "number" ? { page_hint: pageHint } : {}),

@@ -192,7 +192,7 @@ function extractSavedProposalFiles(metadata: Record<string, unknown> | null | un
 
   return raw
     .map((value) => String(value || "").trim())
-    .filter(Boolean);
+    .filter((value) => Boolean(value) && !value.endsWith(".meta.json"));
 }
 
 function getLatestProposalInfo(metadata: Record<string, unknown> | null | undefined): {
@@ -203,6 +203,73 @@ function getLatestProposalInfo(metadata: Record<string, unknown> | null | undefi
   return {
     savedProposals,
     latestProposal: savedProposals.length > 0 ? savedProposals[savedProposals.length - 1] ?? null : null,
+  };
+}
+
+function hasNoChangeCompletionEvidence(
+  resultMessage: string | null | undefined,
+  metadata: Record<string, unknown> | null | undefined,
+): boolean {
+  if (metadata?.completionMode === "no_changes") {
+    return true;
+  }
+  if (metadata?.proposalCount === 0) {
+    return true;
+  }
+  const savedProposals = extractSavedProposalFiles(metadata);
+  const combined = [
+    resultMessage,
+    typeof metadata?.resultMessage === "string" ? metadata.resultMessage : null,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return savedProposals.length === 0 && [
+    "no patches generated",
+    "no changes required",
+    "completed without code changes",
+  ].some((signal) => combined.includes(signal));
+}
+
+function hasWorkspaceRootPollutionEvidence(
+  resultMessage: string | null | undefined,
+  metadata: Record<string, unknown> | null | undefined,
+): boolean {
+  if (metadata?.workspaceRootPolluted === true) {
+    return true;
+  }
+  const combined = [
+    resultMessage,
+    typeof metadata?.resultError === "string" ? metadata.resultError : null,
+    typeof metadata?.errorMessage === "string" ? metadata.errorMessage : null,
+    typeof metadata?.workspaceRoot === "string" ? metadata.workspaceRoot : null,
+    typeof metadata?.entrypointRoot === "string" ? metadata.entrypointRoot : null,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\\/g, "/")
+    .toLowerCase();
+  return combined.includes("/runs/workspaces/")
+    && combined.includes("/skills/intelligence-skill-creator/");
+}
+
+function buildFailureMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+  resultMessage: string | null | undefined,
+  fallbackError: string,
+): Record<string, unknown> {
+  const resultError = fallbackError || resultMessage || "Unknown apply error";
+  const workspaceRootPolluted = hasWorkspaceRootPollutionEvidence(resultMessage, metadata);
+  return {
+    ...(metadata ?? {}),
+    resultMessage,
+    resultError,
+    ...(workspaceRootPolluted
+      ? {
+          failureCode: "isc_workspace_root_pollution",
+          workspaceRootPolluted: true,
+        }
+      : {}),
   };
 }
 
@@ -307,6 +374,11 @@ async function finalizeStudioApply(params: {
   } = params;
 
   if (!success) {
+    const failureMetadata = buildFailureMetadata(
+      metadata,
+      resultMessage,
+      errorMessage || resultMessage || "Unknown generator-backed apply error",
+    );
     await db
       .update(skillImprovementRecommendations)
       .set({
@@ -323,10 +395,45 @@ async function finalizeStudioApply(params: {
         status: "failed",
         summary: resultMessage || "Generator-backed upgrade failed",
         errorMessage: errorMessage || resultMessage || "Unknown generator-backed apply error",
+        logsJson: failureMetadata,
+        endedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(skillImprovementRuns.id, runId));
+    return;
+  }
+
+  if (hasNoChangeCompletionEvidence(resultMessage, metadata)) {
+    await db
+      .update(skillImprovementRecommendations)
+      .set({
+        status: "approved",
+        reviewedAt: new Date(),
+        reviewedBy: requestedBy,
+        approvedAt: new Date(),
+        approvedBy: requestedBy,
+        updatedAt: new Date(),
+      })
+      .where(eq(skillImprovementRecommendations.id, recommendationId));
+
+    await db
+      .update(skillImprovementRuns)
+      .set({
+        status: "completed",
+        summary: "Generator-backed upgrade completed without code changes",
+        errorMessage: null,
         logsJson: {
           ...(metadata ?? {}),
+          savedProposals: [],
+          latestProposal: null,
           resultMessage,
-          resultError: errorMessage || resultMessage || "Unknown generator-backed apply error",
+          resultError: null,
+          completionMode: "no_changes",
+        },
+        diffSummaryJson: {
+          savedProposals: [],
+          latestProposal: null,
+          completionMode: "no_changes",
         },
         endedAt: new Date(),
         updatedAt: new Date(),
@@ -464,6 +571,11 @@ async function finalizeStudioProposal(params: {
   } = params;
 
   if (!success) {
+    const failureMetadata = buildFailureMetadata(
+      metadata,
+      resultMessage,
+      errorMessage || resultMessage || "Unknown proposal generation error",
+    );
     await db
       .update(skillImprovementRecommendations)
       .set({
@@ -480,11 +592,7 @@ async function finalizeStudioProposal(params: {
         status: "failed",
         summary: resultMessage || "Proposal generation failed",
         errorMessage: errorMessage || resultMessage || "Unknown proposal generation error",
-        logsJson: {
-          ...(metadata ?? {}),
-          resultMessage,
-          resultError: errorMessage || resultMessage || "Unknown proposal generation error",
-        },
+        logsJson: failureMetadata,
         endedAt: new Date(),
         updatedAt: new Date(),
       })
@@ -809,6 +917,7 @@ export async function applySkillUpgradeRecommendation(
     .returning();
 
   try {
+    let launchTaskId: string | null = null;
     const onCompleteMetadataBase = {
       resolvedLlmModelId,
       sourceRunId,
@@ -838,6 +947,7 @@ export async function applySkillUpgradeRecommendation(
           const completionMetadata = {
             ...(result.metadata && typeof result.metadata === "object" ? result.metadata as Record<string, unknown> : {}),
             ...onCompleteMetadataBase,
+            taskId: launchTaskId,
           };
           if (useProposalFirst) {
             await finalizeStudioProposal({
@@ -868,6 +978,7 @@ export async function applySkillUpgradeRecommendation(
         },
       },
     );
+    launchTaskId = launch.taskId;
 
     const [queuedRun] = await db
       .update(skillImprovementRuns)

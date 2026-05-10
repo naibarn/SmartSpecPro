@@ -636,4 +636,53 @@ describe("skillExecutor sandbox dispatch", () => {
       existsSpy.mockRestore();
     }
   });
+
+  it("skips copied workspace python skill paths and launches ISC from a canonical skill root", async () => {
+    const staleWorkspaceScript = "/repo/apps/web/skills/intelligence-skill-creator/runs/workspaces/intelligence-skill-creator/20260423_083541/skills/intelligence-skill-creator/python/skill.py";
+    const canonicalScriptSuffix = "/skills/intelligence-skill-creator/python/skill.py";
+    const existsSpy = vi.spyOn(fs, "existsSync").mockImplementation((targetPath) => {
+      const normalized = String(targetPath).replace(/\\/g, "/");
+      return normalized === staleWorkspaceScript || normalized.endsWith(canonicalScriptSuffix);
+    });
+
+    const child = new EventEmitter() as EventEmitter & {
+      stdin: { write: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> };
+      stdout: EventEmitter;
+      stderr: EventEmitter;
+      kill: ReturnType<typeof vi.fn>;
+    };
+    child.stdin = { write: vi.fn(), end: vi.fn() };
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.kill = vi.fn();
+
+    vi.mocked(spawn).mockReturnValue(child as any);
+
+    try {
+      const resultPromise = executeSkill(
+        makeSkill({
+          id: "intelligence-skill-creator",
+          executionMode: "python",
+          skillFilePath: staleWorkspaceScript.replace("/python/skill.py", "/SKILL.md"),
+        }),
+        defaultParams,
+        1,
+        "token",
+        "tenant-001",
+      );
+
+      child.stdout.emit("data", Buffer.from(JSON.stringify({ success: true, output: "done" })));
+      child.stderr.emit("data", Buffer.from(""));
+      child.emit("close", 0);
+
+      const result = await resultPromise;
+      const launchedScript = String(vi.mocked(spawn).mock.calls[0]?.[1]?.[0] ?? "").replace(/\\/g, "/");
+
+      expect(result.success).toBe(true);
+      expect(launchedScript).toContain("intelligence-skill-creator/python/skill.py");
+      expect(launchedScript).not.toContain("/runs/workspaces/");
+    } finally {
+      existsSpy.mockRestore();
+    }
+  });
 });

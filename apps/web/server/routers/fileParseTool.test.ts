@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { Request, Response } from "express";
-import * as XLSX from "xlsx";
 
 vi.mock("../_core/env", () => ({
   ENV: {
@@ -19,6 +18,14 @@ vi.mock("../middleware/contentAutomationGate", () => ({
 
 vi.mock("../services/auditLogger", () => ({
   auditLogger: { log: vi.fn() },
+}));
+
+vi.mock("../services/appRuntimeConfig", () => ({
+  compareCachedInternalToken: vi.fn((token?: string) => token === "test-gateway-token"),
+  getCachedAppRuntimeConfig: vi.fn(() => ({
+    s3Endpoint: "",
+    r2PublicUrl: "",
+  })),
 }));
 
 import { fileParseHandler, sanitizeCell } from "./fileParseTool";
@@ -48,11 +55,8 @@ function makeCsvBuffer(rows: string[][]): Buffer {
   return Buffer.from(csv, "utf-8");
 }
 
-function makeXlsxBuffer(rows: string[][]): Buffer {
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-  return Buffer.from(XLSX.write(wb, { type: "buffer", bookType: "xlsx" }));
+function makeXlsxLikeBuffer(): Buffer {
+  return Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00]);
 }
 
 function mockFetch(bodyBuffer: Buffer, contentLength?: number): void {
@@ -251,15 +255,17 @@ describe("fileParseHandler", () => {
   });
 
   describe("XLSX parsing", () => {
-    it("parses XLSX first sheet with topic_column", async () => {
-      const xlsxBuf = makeXlsxBuffer([["topic", "extra"], ["React", "val"]]);
+    it("rejects XLSX parsing because the vulnerable parser is disabled", async () => {
+      const xlsxBuf = makeXlsxLikeBuffer();
       mockFetch(xlsxBuf);
       const req = buildRequest({ file_url: "https://example.com/uploads/data.xlsx", file_type: "xlsx" });
-      const { res, jsonMock } = buildResponse();
+      const { res, statusMock, jsonMock } = buildResponse();
       await fileParseHandler(req, res);
-      const result = jsonMock.mock.calls[0][0];
-      expect(result.success).toBe(true);
-      expect(result.items[0].topic).toBe("React");
+      expect(statusMock).toHaveBeenCalledWith(400);
+      expect(jsonMock).toHaveBeenCalledWith(expect.objectContaining({
+        success: false,
+        error: expect.objectContaining({ code: "unsupported_file_type" }),
+      }));
     });
   });
 

@@ -12,6 +12,8 @@ const DATABASE_URL =
   process.env.DATABASE_URL ||
   "postgresql://smartspec:smartspec123@localhost:5432/smartspec";
 
+const DEFAULT_OG_IMAGE = "/images/dashboard-preview.png";
+
 type SeoSeed = {
   path: string;
   title: string;
@@ -46,7 +48,7 @@ const entries: SeoSeed[] = [
       "Thai English",
       "docs support status",
     ],
-    ogImage: "/images/og-image.png",
+    ogImage: DEFAULT_OG_IMAGE,
     twitterCard: "summary_large_image",
     aiContent: {
       context:
@@ -307,7 +309,7 @@ async function upsertSeo(db: any, tenantId: number, entry: SeoSeed) {
         ogMetadata: {
           title: entry.title,
           description: entry.description,
-          image: entry.ogImage || "/images/og-image.png",
+          image: entry.ogImage || DEFAULT_OG_IMAGE,
           type: "website",
           url: entry.canonicalUrl || entry.path,
         },
@@ -315,7 +317,7 @@ async function upsertSeo(db: any, tenantId: number, entry: SeoSeed) {
           card: entry.twitterCard || "summary_large_image",
           title: entry.title,
           description: entry.description,
-          image: entry.ogImage || "/images/og-image.png",
+          image: entry.ogImage || DEFAULT_OG_IMAGE,
         },
         aiContent: entry.aiContent,
         structuredData: entry.structuredData || null,
@@ -337,7 +339,7 @@ async function upsertSeo(db: any, tenantId: number, entry: SeoSeed) {
     ogMetadata: {
       title: entry.title,
       description: entry.description,
-      image: entry.ogImage || "/images/og-image.png",
+      image: entry.ogImage || DEFAULT_OG_IMAGE,
       type: "website",
       url: entry.canonicalUrl || entry.path,
     },
@@ -345,7 +347,7 @@ async function upsertSeo(db: any, tenantId: number, entry: SeoSeed) {
       card: entry.twitterCard || "summary_large_image",
       title: entry.title,
       description: entry.description,
-      image: entry.ogImage || "/images/og-image.png",
+      image: entry.ogImage || DEFAULT_OG_IMAGE,
     },
     aiContent: entry.aiContent || null,
     structuredData: entry.structuredData || null,

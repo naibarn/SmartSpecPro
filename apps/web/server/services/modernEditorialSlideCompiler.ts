@@ -1,4 +1,4 @@
-type CanvasRatio = "16:9" | "9:16" | "4:5" | "5:4";
+type CanvasRatio = "16:9" | "9:16" | "4:3" | "3:4" | "4:5" | "5:4" | "1:1";
 
 export type ModernEditorialSourcePage = {
   pageNumber: number;
@@ -68,8 +68,11 @@ type PageAnalysis = {
 const RATIO_FAMILY: Record<CanvasRatio, RatioFamily> = {
   "16:9": "landscape_wide",
   "9:16": "portrait_tall",
+  "4:3": "landscape_wide",
+  "3:4": "portrait_editorial",
   "4:5": "portrait_editorial",
   "5:4": "report_compact",
+  "1:1": "report_compact",
 };
 
 function cleanText(text: string): string {

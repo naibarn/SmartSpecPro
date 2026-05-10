@@ -1,8 +1,9 @@
 // Fix monorepo React version mismatch — MUST run before any React imports.
-// Root node_modules has React 18 (from @xyflow/react), apps/web has React 19.
+// Prefer apps/web React when present; fall back to the hoisted workspace copy.
 // @testing-library/react is hoisted to root and resolves react-dom v18.
 // This hook forces all react/react-dom imports to resolve from apps/web.
 import Module from "node:module";
+import fs from "node:fs";
 import path from "node:path";
 import i18next from "i18next";
 import { i18nReady } from "./i18n";
@@ -13,14 +14,29 @@ const webNodeModules = path.resolve(
   "..",
   "node_modules",
 );
+const workspaceNodeModules = path.resolve(
+  import.meta.dirname,
+  "..",
+  "..",
+  "..",
+  "..",
+  "node_modules",
+);
+
+function resolvePackageDir(packageName: string): string {
+  const localPackageDir = path.join(webNodeModules, packageName);
+  if (fs.existsSync(localPackageDir)) {
+    return localPackageDir;
+  }
+  return path.join(workspaceNodeModules, packageName);
+}
 
 const overrides: Record<string, string> = {
-  react: path.join(webNodeModules, "react"),
-  "react-dom": path.join(webNodeModules, "react-dom"),
-  "react-dom/client": path.join(webNodeModules, "react-dom", "client.js"),
+  react: resolvePackageDir("react"),
+  "react-dom": resolvePackageDir("react-dom"),
+  "react-dom/client": path.join(resolvePackageDir("react-dom"), "client.js"),
   "react-dom/test-utils": path.join(
-    webNodeModules,
-    "react-dom",
+    resolvePackageDir("react-dom"),
     "test-utils.js",
   ),
 };
@@ -48,7 +64,7 @@ const originalResolveFilename = (Module as any)._resolveFilename;
     ) {
       const marker = "/node_modules/react/";
       const suffix = normalized.split(marker)[1] ?? "";
-      const redirected = path.join(webNodeModules, "react", suffix);
+      const redirected = path.join(resolvePackageDir("react"), suffix);
       return originalResolveFilename.call(
         this,
         redirected,
@@ -64,7 +80,7 @@ const originalResolveFilename = (Module as any)._resolveFilename;
     ) {
       const marker = "/node_modules/react-dom/";
       const suffix = normalized.split(marker)[1] ?? "";
-      const redirected = path.join(webNodeModules, "react-dom", suffix);
+      const redirected = path.join(resolvePackageDir("react-dom"), suffix);
       return originalResolveFilename.call(
         this,
         redirected,
@@ -86,7 +102,7 @@ const originalResolveFilename = (Module as any)._resolveFilename;
   }
   if (request.startsWith("react-dom/") && !overrides[request]) {
     const subPath = request.slice("react-dom/".length);
-    const redirected = path.join(webNodeModules, "react-dom", subPath);
+    const redirected = path.join(resolvePackageDir("react-dom"), subPath);
     return originalResolveFilename.call(
       this,
       redirected,

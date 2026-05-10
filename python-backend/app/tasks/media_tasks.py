@@ -333,6 +333,28 @@ async def _mark_task_failed_async(task_id: str, error: Exception) -> None:
         await db.commit()
 
 
+def _is_non_retryable_media_error(error: Exception) -> bool:
+    """Return true for provider refusals that another Celery retry cannot fix."""
+    message = str(error).lower()
+    if not message:
+        return False
+    permanent_markers = (
+        "content policy",
+        "safety policy",
+        "moderation",
+        "prohibited",
+        "disallowed",
+        "not allowed",
+        "violat",
+        "nsfw",
+        "invalid prompt",
+        "sensitive content",
+    )
+    if any(marker in message for marker in permanent_markers):
+        return True
+    return ("we're so sorry" in message or "we are so sorry" in message) and "prompt" in message
+
+
 def _extract_model_query_endpoint(config_json: Any) -> Optional[str]:
     """Extract model-specific status/query endpoint from configJson."""
     if not config_json:
@@ -1679,6 +1701,14 @@ def generate_image_task(self, task_id: str, user_id: str, request_data: dict):
 
     except Exception as e:
         logger.error("generate_image_task_exception", task_id=task_id, error=str(e))
+
+        if _is_non_retryable_media_error(e):
+            try:
+                _run_async(_mark_task_failed_async(task_id, e))
+            except Exception as fail_state_error:
+                logger.warning("generate_image_task_non_retryable_state_update_failed", task_id=task_id, error=str(fail_state_error))
+            _run_async(_send_failure_notifications(task_id, user_id, "image", str(e)))
+            return {"status": "failed", "task_id": task_id, "error": str(e), "retryable": False}
 
         # Retry if max_retries not reached
         if self.request.retries < self.max_retries:

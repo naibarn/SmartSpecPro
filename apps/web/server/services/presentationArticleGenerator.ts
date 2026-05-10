@@ -42,7 +42,7 @@ import {
 type ArticleExecutionSource = "skill" | "agency";
 const MAX_PRESENTATION_ARTICLE_CHARS = 19_500;
 const MAX_PRESENTATION_SLIDE_JSON_CHARS = 120_000;
-const SUPPORTED_SLIDE_CANVAS_RATIOS = ["16:9", "9:16", "4:5", "5:4"] as const;
+const SUPPORTED_SLIDE_CANVAS_RATIOS = ["16:9", "9:16", "4:3", "3:4", "4:5", "5:4", "1:1"] as const;
 const SUPPORTED_SLIDE_OUTPUT_FORMATS = ["json", "md", "pptx", "pdf"] as const;
 const MODERN_EDITORIAL_SLIDE_SKILL_ID = "modern-editorial-slide";
 const EDITORIAL_LAYOUT_PLANNER_SKILL_ID = "editorial-layout-planner";
@@ -304,6 +304,7 @@ function buildEditorialPlannerImageAssetInputs(params: {
     }
     seen.add(dedupeKey);
     combined.push({
+      id: String(asset.id ?? "").trim() || undefined,
       asset_type: assetType,
       label,
       ...(typeof pageHint === "number" ? { page_hint: pageHint } : {}),
@@ -318,8 +319,9 @@ function buildEditorialPlannerImageAssetInputs(params: {
 
   for (const asset of params.imageAssets) {
     pushAsset({
+      id: asset.id,
       asset_type: "uploaded_image",
-      label: asset.shortLabel || `Page ${asset.pageNumber} image ${asset.imageIndex}`,
+      label: `Page ${asset.pageNumber} · ${asset.shortLabel || `image ${asset.imageIndex}`}`,
       page_hint: asset.pageNumber,
       reference: asset.url,
       prompt: asset.prompt,
@@ -1069,6 +1071,17 @@ function extractImportableSlideSpec(
     }
   }
 
+  if (Array.isArray(record.pages) && record.pages.length > 0) {
+    const convertedSummaryPages = convertSummaryEntriesToSlideSpec({
+      record,
+      entries: record.pages,
+      referenceLookup,
+    });
+    if (convertedSummaryPages) {
+      candidates.push(convertedSummaryPages);
+    }
+  }
+
   const nestedCandidates = [
     record.layoutSpec,
     record.layout_spec,
@@ -1119,6 +1132,15 @@ function inferCanvasRatioFromDimensions(width: number, height: number): string {
     return "16:9";
   }
   const rounded = `${Math.round(width)}x${Math.round(height)}`;
+  if (rounded === "1080x1080" || rounded === "1024x1024") {
+    return "1:1";
+  }
+  if (rounded === "1440x1080" || rounded === "1024x768") {
+    return "4:3";
+  }
+  if (rounded === "1080x1440" || rounded === "768x1024") {
+    return "3:4";
+  }
   if (rounded === "1080x1350") {
     return "4:5";
   }
@@ -1138,11 +1160,20 @@ function inferCanvasRatioFromDimensions(width: number, height: number): string {
   if (Math.abs(ratio - (9 / 16)) < 0.05) {
     return "9:16";
   }
+  if (Math.abs(ratio - (4 / 3)) < 0.05) {
+    return "4:3";
+  }
+  if (Math.abs(ratio - (3 / 4)) < 0.05) {
+    return "3:4";
+  }
   if (Math.abs(ratio - (4 / 5)) < 0.05) {
     return "4:5";
   }
   if (Math.abs(ratio - (5 / 4)) < 0.05) {
     return "5:4";
+  }
+  if (Math.abs(ratio - 1) < 0.05) {
+    return "1:1";
   }
   return "16:9";
 }
@@ -1307,6 +1338,22 @@ function addImageReferenceLookupEntry(
   }
 }
 
+function expandImageReferenceAliases(aliases: unknown[]): unknown[] {
+  const expanded: unknown[] = [];
+  for (const alias of aliases) {
+    expanded.push(alias);
+    if (typeof alias !== "string") {
+      continue;
+    }
+    const trimmedAlias = alias.trim();
+    const pageScopedAlias = trimmedAlias.replace(/^page\s*\d+\s*[·:-]\s*/i, "").trim();
+    if (pageScopedAlias && pageScopedAlias !== trimmedAlias) {
+      expanded.push(pageScopedAlias);
+    }
+  }
+  return expanded;
+}
+
 function buildImageReferenceLookup(value: unknown): Map<string, string> {
   const referenceLookup = new Map<string, string>();
   if (!value || typeof value !== "object") {
@@ -1321,13 +1368,13 @@ function buildImageReferenceLookup(value: unknown): Map<string, string> {
     }
     const assetRecord = asset as Record<string, unknown>;
     const source = firstNonEmptyString(assetRecord.reference, assetRecord.source, assetRecord.url);
-    addImageReferenceLookupEntry(referenceLookup, source, [
+    addImageReferenceLookupEntry(referenceLookup, source, expandImageReferenceAliases([
       assetRecord.label,
       assetRecord.id,
       assetRecord.reference,
       assetRecord.source,
       assetRecord.url,
-    ]);
+    ]));
   }
 
   const request = parseLooseObject(record.request);
@@ -1454,6 +1501,25 @@ function extractImageReferenceFromRecord(
     return directImage;
   }
 
+  const imageRecords = Array.isArray(record.images) ? record.images : [];
+  for (const image of imageRecords) {
+    const imageRecord = parseLooseObject(image);
+    if (!imageRecord) {
+      continue;
+    }
+    const imageReference = resolveImageReference(firstNonEmptyString(
+      imageRecord.reference,
+      imageRecord.url,
+      imageRecord.source,
+      imageRecord.image_asset,
+      imageRecord.image_url,
+      imageRecord.label,
+    ), referenceLookup);
+    if (imageReference) {
+      return imageReference;
+    }
+  }
+
   const imageRecord = parseLooseObject(record.image);
   if (!imageRecord) {
     return "";
@@ -1489,6 +1555,8 @@ function extractSummaryLikeSlideContent(
   );
   const titledHeadline = firstNonEmptyString(
     record.title,
+    record.titleHint,
+    record.title_hint,
     record.page_title,
     record.title_text,
   );
@@ -1592,24 +1660,24 @@ function buildSimpleSlideElements(input: {
   return elements;
 }
 
-function convertSummarySlidesToSlideSpec(
-  record: Record<string, unknown>,
-  referenceLookup?: Map<string, string>,
-): Record<string, unknown> | null {
-  const slides = Array.isArray(record.slides) ? record.slides : [];
-  const canvasRatioSource = typeof record.page_size_or_ratio === "string"
-    ? record.page_size_or_ratio
-    : (record.canvas && typeof record.canvas === "object" && typeof (record.canvas as Record<string, unknown>).ratio === "string")
-      ? String((record.canvas as Record<string, unknown>).ratio)
+function convertSummaryEntriesToSlideSpec(input: {
+  record: Record<string, unknown>;
+  entries: unknown[];
+  referenceLookup?: Map<string, string>;
+}): Record<string, unknown> | null {
+  const canvasRatioSource = typeof input.record.page_size_or_ratio === "string"
+    ? input.record.page_size_or_ratio
+    : (input.record.canvas && typeof input.record.canvas === "object" && typeof (input.record.canvas as Record<string, unknown>).ratio === "string")
+      ? String((input.record.canvas as Record<string, unknown>).ratio)
       : "16:9";
   const ratio = inferCanvasRatioFromSummarySpec(canvasRatioSource);
-  const convertedSlides = slides
-    .map((slide, index) => {
-      if (!slide || typeof slide !== "object") {
+  const convertedSlides = input.entries
+    .map((entry, index) => {
+      if (!entry || typeof entry !== "object") {
         return null;
       }
-      const slideRecord = slide as Record<string, unknown>;
-      const { headline, bodyText, imageReference } = extractSummaryLikeSlideContent(slideRecord, referenceLookup);
+      const entryRecord = entry as Record<string, unknown>;
+      const { headline, bodyText, imageReference } = extractSummaryLikeSlideContent(entryRecord, input.referenceLookup);
       if (!headline && !bodyText && !imageReference) {
         return null;
       }
@@ -1641,6 +1709,67 @@ function convertSummarySlidesToSlideSpec(
     },
     slides: convertedSlides,
   };
+}
+
+function convertSummarySlidesToSlideSpec(
+  record: Record<string, unknown>,
+  referenceLookup?: Map<string, string>,
+): Record<string, unknown> | null {
+  const slides = Array.isArray(record.slides) ? record.slides : [];
+  return convertSummaryEntriesToSlideSpec({ record, entries: slides, referenceLookup });
+}
+
+function buildDeterministicSlideJsonFromPayload(
+  payload: unknown,
+  referenceLookup?: Map<string, string>,
+): string | null {
+  const payloadRecord = parseLooseObject(payload);
+  const request = parseLooseObject(payloadRecord?.request);
+  const content = parseLooseObject(request?.content);
+  const modernPages = Array.isArray(content?.pages) ? content.pages : [];
+  const editorialPageBriefs = Array.isArray(payloadRecord?.page_briefs) ? payloadRecord.page_briefs : [];
+  const editorialImageAssets = Array.isArray(payloadRecord?.image_assets) ? payloadRecord.image_assets : [];
+  const pages = modernPages.length > 0
+    ? modernPages
+    : editorialPageBriefs.map((pageBrief) => {
+        const pageRecord = parseLooseObject(pageBrief);
+        if (!pageRecord) {
+          return pageBrief;
+        }
+        const pageNumber = Number(pageRecord.page_number ?? pageRecord.pageNumber ?? NaN);
+        const matchingImages = Number.isFinite(pageNumber)
+          ? editorialImageAssets.filter((asset) => {
+              const assetRecord = parseLooseObject(asset);
+              return Number(assetRecord?.page_hint ?? NaN) === pageNumber;
+            })
+          : [];
+        return {
+          ...pageRecord,
+          images: matchingImages,
+        };
+      });
+  if (pages.length === 0) {
+    return null;
+  }
+  const ratio = firstNonEmptyString(
+    request?.canvasRatio,
+    payloadRecord?.canvasRatio,
+    payloadRecord?.canvas_ratio,
+    payloadRecord?.page_size_or_ratio,
+    "16:9",
+  );
+  const convertedSpec = convertSummaryEntriesToSlideSpec({
+    record: {
+      canvas: { ratio },
+    },
+    entries: pages,
+    referenceLookup,
+  });
+  if (!convertedSpec) {
+    return null;
+  }
+  const rawJson = JSON.stringify(convertedSpec, null, 2);
+  return normalizeImportableSlideJson(rawJson, referenceLookup);
 }
 
 function convertRenderManifestBlocksToSlideElements(input: {
@@ -3217,12 +3346,25 @@ export async function generatePresentationSlideDraft(
             ? error.message.trim()
             : "Slide artifact generation failed";
         } else {
-          const llmFallback = await generateSlideJsonViaLlm();
-          slideJson = llmFallback.slideJson;
-          if (!isImportableSlideJson(slideJson, imageReferenceLookup)) {
-            throw error;
+          let llmFallbackError: unknown = null;
+          try {
+            const llmFallback = await generateSlideJsonViaLlm();
+            slideJson = llmFallback.slideJson;
+            modelId = llmFallback.modelId;
+          } catch (fallbackError) {
+            llmFallbackError = fallbackError;
           }
-          modelId = llmFallback.modelId;
+          if (!isImportableSlideJson(slideJson, imageReferenceLookup)) {
+            const deterministicFallback = buildDeterministicSlideJsonFromPayload(slidePayload, imageReferenceLookup);
+            if (!deterministicFallback) {
+              if (llmFallbackError) {
+                throw llmFallbackError;
+              }
+              throw error;
+            }
+            slideJson = deterministicFallback;
+            modelId = undefined;
+          }
           artifactJobId = null;
           artifacts = [];
           downloadUrl = null;

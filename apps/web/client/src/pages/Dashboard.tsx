@@ -969,6 +969,97 @@ export default function Dashboard() {
     return Math.max(1, ...values);
   }, [analyticsPoints]);
 
+  const creditBalance = user.credits ?? 0;
+  const totalDailyCredits = analyticsPoints.reduce(
+    (sum, point) => sum + Math.abs(point.credits),
+    0
+  );
+  const averageDailyCredits =
+    analyticsPoints.length > 0 ? totalDailyCredits / analyticsPoints.length : 0;
+  const creditRunwayDays =
+    averageDailyCredits > 0
+      ? Math.floor(creditBalance / averageDailyCredits)
+      : null;
+  const creditRunwayTargetDays = 14;
+  const creditRunwayPercent =
+    creditRunwayDays === null
+      ? 100
+      : Math.min(
+          100,
+          Math.max(
+            0,
+            Math.round((creditRunwayDays / creditRunwayTargetDays) * 100)
+          )
+        );
+  const creditRunwayTone =
+    creditBalance <= 250 || (creditRunwayDays !== null && creditRunwayDays < 3)
+      ? "critical"
+      : creditRunwayDays !== null && creditRunwayDays < 7
+        ? "warning"
+        : "positive";
+  const creditRunwayColor =
+    creditRunwayTone === "critical"
+      ? "text-red-600"
+      : creditRunwayTone === "warning"
+        ? "text-amber-600"
+        : "text-emerald-600";
+  const creditRunwayStroke =
+    creditRunwayTone === "critical"
+      ? "#dc2626"
+      : creditRunwayTone === "warning"
+        ? "#d97706"
+        : "#059669";
+  const creditRunwayDashOffset = 283 - (283 * creditRunwayPercent) / 100;
+  const peakUsagePoint =
+    analyticsPoints.length > 0
+      ? analyticsPoints.reduce((peak, point) =>
+          Math.abs(point.credits) > Math.abs(peak.credits) ? point : peak
+        )
+      : null;
+  const averageUsageLineY = Math.max(
+    18,
+    Math.min(106, 110 - (averageDailyCredits / sparklineMax) * 92)
+  );
+  const usageRhythmPolyline = analyticsPoints
+    .map((point, index) => {
+      const denominator = Math.max(1, analyticsPoints.length - 1);
+      const x = Math.round((index / denominator) * 320);
+      const y = Math.max(
+        18,
+        Math.min(110, 110 - (Math.abs(point.credits) / sparklineMax) * 92)
+      );
+      return `${x},${y}`;
+    })
+    .join(" ");
+  const usageRhythmArea =
+    usageRhythmPolyline.length > 0
+      ? `0,116 ${usageRhythmPolyline} 320,116`
+      : "";
+  const mediaAttentionCount =
+    recentTaskStats.processing + recentTaskStats.failed;
+  const mediaCompletionPercent =
+    recentTaskStats.total > 0 ? recentTaskStats.successRate : 0;
+  const mediaHealthSegments = [
+    {
+      key: "completed",
+      label: t("dashboard:signalPanel.completed"),
+      value: recentTaskStats.completed,
+      className: "bg-emerald-500",
+    },
+    {
+      key: "processing",
+      label: t("dashboard:signalPanel.processing"),
+      value: recentTaskStats.processing,
+      className: "bg-sky-500",
+    },
+    {
+      key: "failed",
+      label: t("dashboard:signalPanel.failed"),
+      value: recentTaskStats.failed,
+      className: "bg-red-500",
+    },
+  ];
+
   const topRecentTransaction = recentTransactions?.[0] ?? null;
   const personalFinanceConversation = personalFinanceConversationData ?? null;
   const latestConversation = chatData?.conversations?.[0] ?? null;
@@ -2110,30 +2201,323 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.14 }}
-            className="mb-8 rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl"
+            className="mb-8 overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/95 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl"
           >
-            <DashboardSectionHeader
-              eyebrow={t("dashboard:trendHealth.eyebrow")}
-              title={t("dashboard:trendHealth.title")}
-              description={t("dashboard:trendHealth.description")}
-              trailing={
-                <Badge
-                  variant="secondary"
-                  className="gap-1.5 border-slate-200 bg-slate-50 px-3 py-1 text-slate-700 shadow-sm"
-                >
-                  <Clock className="h-3 w-3" />
-                  {latestActivityAt
-                    ? t("dashboard:trendHealth.updated", {
-                        time: formatDashboardRelativeTime(latestActivityAt),
-                      })
-                    : t("dashboard:trendHealth.liveView")}
-                </Badge>
-              }
-            />
+            <div className="border-b border-slate-200/80 bg-gradient-to-br from-slate-50 via-white to-sky-50/70 p-5">
+              <DashboardSectionHeader
+                eyebrow={t("dashboard:trendHealth.eyebrow")}
+                title={t("dashboard:trendHealth.title")}
+                description={t("dashboard:trendHealth.description")}
+                trailing={
+                  <Badge
+                    variant="secondary"
+                    className="gap-1.5 border-slate-200 bg-white/80 px-3 py-1 text-slate-700 shadow-sm"
+                  >
+                    <Clock className="h-3 w-3" />
+                    {latestActivityAt
+                      ? t("dashboard:trendHealth.updated", {
+                          time: formatDashboardRelativeTime(latestActivityAt),
+                        })
+                      : t("dashboard:trendHealth.liveView")}
+                  </Badge>
+                }
+              />
+            </div>
 
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+            <div className="grid gap-0 xl:grid-cols-[0.9fr_1.35fr_0.95fr]">
+              <div className="border-b border-slate-200/80 p-5 xl:border-b-0 xl:border-r">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className={dashboardCardTitleClass}>
+                      {t("dashboard:signalPanel.creditRunway")}
+                    </p>
+                    <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
+                      {t("dashboard:signalPanel.creditRunwayDetail")}
+                    </p>
+                  </div>
+                  <Zap className={`h-5 w-5 ${creditRunwayColor}`} />
+                </div>
+                <div className="mt-5 flex items-center gap-5">
+                  <div className="relative h-28 w-28 shrink-0">
+                    <svg viewBox="0 0 120 120" className="h-28 w-28 -rotate-90">
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r="45"
+                        fill="none"
+                        stroke="#e2e8f0"
+                        strokeWidth="10"
+                      />
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r="45"
+                        fill="none"
+                        stroke={creditRunwayStroke}
+                        strokeLinecap="round"
+                        strokeWidth="10"
+                        strokeDasharray="283"
+                        strokeDashoffset={creditRunwayDashOffset}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span
+                        className={`text-2xl font-semibold ${creditRunwayColor}`}
+                      >
+                        {creditRunwayDays === null ? "∞" : creditRunwayDays}
+                      </span>
+                      <span className="text-[11px] font-medium text-slate-500">
+                        {t("dashboard:signalPanel.days")}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">
+                        {t("dashboard:signalPanel.availableCredits")}
+                      </p>
+                      <p className="mt-1 text-xl font-semibold text-slate-950">
+                        {creditBalance.toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-slate-500">
+                        {t("dashboard:signalPanel.averageDailyCredits")}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-800">
+                        {Math.round(averageDailyCredits).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <Badge
+                  variant="outline"
+                  className={`mt-5 border-slate-200 bg-white text-xs ${creditRunwayColor}`}
+                >
+                  {creditRunwayDays === null
+                    ? t("dashboard:signalPanel.noRunwayData")
+                    : t("dashboard:signalPanel.daysRemaining", {
+                        count: creditRunwayDays,
+                      })}
+                </Badge>
+              </div>
+
+              <div className="border-b border-slate-200/80 p-5 xl:border-b-0 xl:border-r">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className={dashboardCardTitleClass}>
+                      {t("dashboard:signalPanel.usageRhythm")}
+                    </p>
+                    <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
+                      {t("dashboard:signalPanel.usageRhythmDetail")}
+                    </p>
+                  </div>
+                  {topProvider && (
+                    <Badge
+                      variant="outline"
+                      className="border-slate-200 bg-slate-50 text-slate-700"
+                    >
+                      {t("dashboard:trendHealth.topProvider", {
+                        provider: topProvider.provider,
+                      })}
+                    </Badge>
+                  )}
+                </div>
+
+                {analyticsPoints.length > 0 ? (
+                  <div className="mt-5">
+                    <svg
+                      viewBox="0 0 320 128"
+                      role="img"
+                      aria-label={t("dashboard:signalPanel.usageRhythm")}
+                      className="h-40 w-full overflow-visible"
+                      preserveAspectRatio="none"
+                    >
+                      <defs>
+                        <linearGradient
+                          id="dashboardUsageArea"
+                          x1="0"
+                          x2="0"
+                          y1="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0%"
+                            stopColor="#0ea5e9"
+                            stopOpacity="0.24"
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor="#0f172a"
+                            stopOpacity="0.02"
+                          />
+                        </linearGradient>
+                        <linearGradient
+                          id="dashboardUsageLine"
+                          x1="0"
+                          x2="1"
+                          y1="0"
+                          y2="0"
+                        >
+                          <stop offset="0%" stopColor="#0f172a" />
+                          <stop offset="48%" stopColor="#0ea5e9" />
+                          <stop offset="100%" stopColor="#10b981" />
+                        </linearGradient>
+                      </defs>
+                      <line
+                        x1="0"
+                        x2="320"
+                        y1={averageUsageLineY}
+                        y2={averageUsageLineY}
+                        stroke="#94a3b8"
+                        strokeDasharray="4 6"
+                        strokeWidth="1.5"
+                      />
+                      <polygon
+                        points={usageRhythmArea}
+                        fill="url(#dashboardUsageArea)"
+                      />
+                      <polyline
+                        points={usageRhythmPolyline}
+                        fill="none"
+                        stroke="url(#dashboardUsageLine)"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="4"
+                      />
+                      {analyticsPoints.map((point, index) => {
+                        const denominator = Math.max(
+                          1,
+                          analyticsPoints.length - 1
+                        );
+                        const x = Math.round((index / denominator) * 320);
+                        const y = Math.max(
+                          18,
+                          Math.min(
+                            110,
+                            110 - (Math.abs(point.credits) / sparklineMax) * 92
+                          )
+                        );
+                        return (
+                          <circle
+                            key={point.timestamp}
+                            cx={x}
+                            cy={y}
+                            r="3.5"
+                            fill="#ffffff"
+                            stroke="#0284c7"
+                            strokeWidth="2"
+                          />
+                        );
+                      })}
+                    </svg>
+                    <div className="mt-3 grid gap-2 text-xs font-medium text-slate-500 sm:grid-cols-3">
+                      <span>
+                        {t("dashboard:signalPanel.dailyAverage", {
+                          count:
+                            Math.round(averageDailyCredits).toLocaleString(),
+                        })}
+                      </span>
+                      <span>
+                        {peakUsagePoint
+                          ? t("dashboard:signalPanel.peakDay", {
+                              day: new Date(
+                                peakUsagePoint.timestamp
+                              ).toLocaleDateString(locale, {
+                                weekday: "short",
+                              }),
+                              count: Math.round(
+                                Math.abs(peakUsagePoint.credits)
+                              ).toLocaleString(),
+                            })
+                          : t("dashboard:signalPanel.noUsageData")}
+                      </span>
+                      <span>
+                        {t("dashboard:stats.datapoints", {
+                          count: analyticsPoints.length,
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+                    {t("dashboard:trendHealth.noData")}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className={dashboardCardTitleClass}>
+                      {t("dashboard:signalPanel.mediaHealth")}
+                    </p>
+                    <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
+                      {t("dashboard:signalPanel.mediaHealthDetail")}
+                    </p>
+                  </div>
+                  <Image className="h-5 w-5 text-slate-500" />
+                </div>
+                <div className="mt-5">
+                  <div className="flex items-end justify-between gap-4">
+                    <div>
+                      <p className="text-4xl font-semibold text-slate-950">
+                        {recentTaskStats.total > 0
+                          ? `${mediaCompletionPercent}%`
+                          : "—"}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-slate-500">
+                        {t("dashboard:signalPanel.successRate")}
+                      </p>
+                    </div>
+                    <Badge
+                      variant="secondary"
+                      className={`${
+                        mediaAttentionCount > 0
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-emerald-100 text-emerald-800"
+                      }`}
+                    >
+                      {t("dashboard:signalPanel.needsAttention", {
+                        count: mediaAttentionCount,
+                      })}
+                    </Badge>
+                  </div>
+
+                  <div className="mt-5 space-y-3">
+                    {mediaHealthSegments.map(segment => {
+                      const width =
+                        recentTaskStats.total > 0
+                          ? Math.max(
+                              segment.value > 0 ? 8 : 0,
+                              Math.round(
+                                (segment.value / recentTaskStats.total) * 100
+                              )
+                            )
+                          : 0;
+                      return (
+                        <div key={segment.key}>
+                          <div className="mb-1 flex items-center justify-between text-xs font-medium text-slate-500">
+                            <span>{segment.label}</span>
+                            <span>{segment.value.toLocaleString()}</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-slate-100">
+                            <div
+                              className={`h-2 rounded-full ${segment.className}`}
+                              style={{ width: `${width}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 border-t border-slate-200/80 bg-slate-50/70 p-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-white bg-white/85 p-4 shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
                   {t("dashboard:stats.usageMomentum")}
                 </p>
                 <div className="mt-2 flex items-end gap-2">
@@ -2154,20 +2538,13 @@ export default function Dashboard() {
                     {usageMomentum.label}
                   </span>
                 </div>
-                <p className={`mt-2 ${dashboardCardBodyClass}`}>
-                  {analyticsPoints.length > 0
-                    ? t("dashboard:stats.datapoints", {
-                        count: analyticsPoints.length,
-                      })
-                    : t("dashboard:stats.noDatapoints")}
-                </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+              <div className="rounded-2xl border border-white bg-white/85 p-4 shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
                   {t("dashboard:stats.costPerRequest")}
                 </p>
-                <div className="mt-2 flex items-end gap-2">
+                <div className="mt-2 flex flex-wrap items-end gap-2">
                   <span className="text-2xl font-semibold text-slate-900">
                     ${analyticsAvgCostPerRequest.toFixed(3)}
                   </span>
@@ -2179,93 +2556,23 @@ export default function Dashboard() {
                     })}
                   </span>
                 </div>
-                <p className={`mt-2 ${dashboardCardBodyClass}`}>
-                  {t("dashboard:stats.requestsInWindow", {
-                    count: analyticsRequestCount.toLocaleString(),
-                  })}
-                </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                  {t("dashboard:stats.recentMediaSuccess")}
+              <div className="rounded-2xl border border-white bg-white/85 p-4 shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                  {t("dashboard:signalPanel.workload")}
                 </p>
-                <div className="mt-2 flex items-end gap-2">
+                <div className="mt-2 flex flex-wrap items-end gap-2">
                   <span className="text-2xl font-semibold text-slate-900">
-                    {recentTaskStats.total > 0
-                      ? `${recentTaskStats.successRate}%`
-                      : "—"}
+                    {(activeWorkflows?.workflows?.length ?? 0).toLocaleString()}
                   </span>
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
-                    {t("dashboard:stats.completedRatio", {
-                      completed: recentTaskStats.completed,
-                      total: recentTaskStats.total || 0,
+                    {t("dashboard:signalPanel.approvals", {
+                      count: pendingApprovals?.requests?.length ?? 0,
                     })}
                   </span>
                 </div>
-                <p className={`mt-2 ${dashboardCardBodyClass}`}>
-                  {t("dashboard:stats.recentQueueSummary", {
-                    processing: recentTaskStats.processing,
-                    failed: recentTaskStats.failed,
-                  })}
-                </p>
               </div>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className={dashboardCardTitleClass}>
-                    {t("dashboard:trendHealth.sparklineTitle")}
-                  </p>
-                  <p className={dashboardCardDescriptionClass}>
-                    {t("dashboard:trendHealth.creditBarHint")}
-                  </p>
-                </div>
-                {topProvider && (
-                  <Badge
-                    variant="outline"
-                    className="border-slate-200 bg-slate-50 text-slate-700"
-                  >
-                    {t("dashboard:trendHealth.topProvider", {
-                      provider: topProvider.provider,
-                    })}
-                  </Badge>
-                )}
-              </div>
-              {analyticsPoints.length > 0 ? (
-                <div className="mt-4 flex h-28 items-end gap-2">
-                  {analyticsPoints.map(point => {
-                    const height = Math.max(
-                      8,
-                      Math.round((Math.abs(point.credits) / sparklineMax) * 100)
-                    );
-                    return (
-                      <div
-                        key={point.timestamp}
-                        className="flex h-full flex-1 flex-col items-center justify-end gap-2"
-                      >
-                        <div className="flex w-full flex-1 items-end">
-                          <div
-                            className="w-full rounded-t-xl bg-gradient-to-t from-slate-700 via-sky-500 to-emerald-400 shadow-md shadow-sky-500/15"
-                            style={{ height: `${height}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-slate-400">
-                          {new Date(point.timestamp).toLocaleDateString(
-                            locale,
-                            { weekday: "short" }
-                          )}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                  {t("dashboard:trendHealth.noData")}
-                </div>
-              )}
             </div>
           </motion.section>
 

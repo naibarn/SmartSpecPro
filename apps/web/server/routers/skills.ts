@@ -69,7 +69,7 @@ import {
   isExecutionModeCompatibleWithSkillCategory,
 } from "@shared/skills/skillCategoryMetadata";
 import {
-  applyIscProposalDiff,
+  applyIscProposal as applyIscProposalFile,
   launchSkillStudioTask,
   listIscProposalsWithOwners,
   readIscProposalContent,
@@ -153,6 +153,7 @@ const LEGACY_UPGRADE_APPLY_RUN_STATES = [
   "blocked",
   "canceled",
 ] as const;
+const LEGACY_UPGRADE_STALE_APPLY_RUN_MINUTES = 30;
 const legacyUpgradeSeedLocks = new Map<string, Promise<void>>();
 
 function deriveLegacyUpgradeRunState(status: string): "queued" | "running" | "failed" | "completed" | "blocked" | "canceled" {
@@ -243,6 +244,62 @@ function isLegacyUpgradeNoChangeRunCandidate(run: {
     || (combined.includes("isc improve complete") && !errorMessage.includes("proposal generation failed"));
 }
 
+function isLegacyUpgradeCompletedHistoryRun(run: {
+  runType: string;
+  status: string;
+  summary: string | null;
+  errorMessage: string | null;
+  logsJson: unknown;
+} | null | undefined): boolean {
+  if (!run || run.status !== "completed") {
+    return false;
+  }
+
+  const applyStrategy = extractLegacyRunStringField(run.logsJson, "applyStrategy");
+  const completionMode = extractLegacyRunStringField(run.logsJson, "completionMode");
+  const resultMessage = extractLegacyRunStringField(run.logsJson, "resultMessage");
+  const combined = [
+    run.summary,
+    run.errorMessage,
+    resultMessage,
+    applyStrategy,
+    completionMode,
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ")
+    .toLowerCase();
+
+  return run.runType === "apply"
+    && (
+      applyStrategy === "proposal"
+      || completionMode === "no_changes"
+      || combined.includes("proposal generated")
+      || combined.includes("no patches generated")
+      || combined.includes("no code changes")
+      || combined.includes("without code changes")
+      || combined.includes("no changes required")
+      || combined.includes("no_changes")
+    );
+}
+
+function isLegacyUpgradeWorkspaceRootIssue(logsJson: unknown, resultText?: string | null): boolean {
+  const fields = [
+    extractLegacyRunStringField(logsJson, "failureCode"),
+    extractLegacyRunStringField(logsJson, "workspaceRoot"),
+    extractLegacyRunStringField(logsJson, "entrypointRoot"),
+    extractLegacyRunStringField(logsJson, "resultError"),
+    extractLegacyRunStringField(logsJson, "errorMessage"),
+    resultText,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\\/g, "/")
+    .toLowerCase();
+
+  return fields.includes("isc_workspace_root_pollution")
+    || (fields.includes("/runs/workspaces/") && fields.includes("/skills/intelligence-skill-creator/"));
+}
+
 function buildLegacyNoChangeCompletionLogs(logsJson: unknown): Record<string, unknown> {
   const current = logsJson && typeof logsJson === "object" ? logsJson as Record<string, unknown> : {};
   return {
@@ -252,6 +309,33 @@ function buildLegacyNoChangeCompletionLogs(logsJson: unknown): Record<string, un
     resultError: null,
     completionMode: "no_changes",
   };
+}
+
+function buildLegacyStaleApplyRunRecoveryLogs(logsJson: unknown, recoveredAt: Date): Record<string, unknown> {
+  const current = logsJson && typeof logsJson === "object" ? logsJson as Record<string, unknown> : {};
+  return {
+    ...current,
+    failureCode: "stale_apply_task",
+    staleTaskRecovered: true,
+    recoveredAt: recoveredAt.toISOString(),
+    resultError: "Apply task was queued or running past the recovery threshold and was retried automatically.",
+  };
+}
+
+function isLegacyApplyRunStale(run: {
+  status: string;
+  createdAt: Date | string;
+  updatedAt: Date | string | null;
+  startedAt?: Date | string | null;
+}, now = new Date(), thresholdMinutes = LEGACY_UPGRADE_STALE_APPLY_RUN_MINUTES): boolean {
+  if (run.status !== "queued" && run.status !== "running") {
+    return false;
+  }
+  const lastActivity = new Date(run.updatedAt ?? run.startedAt ?? run.createdAt).getTime();
+  if (!Number.isFinite(lastActivity)) {
+    return false;
+  }
+  return now.getTime() - lastActivity >= thresholdMinutes * 60 * 1000;
 }
 
 async function maybeSeedLegacyUpgradeQueue(params: {
@@ -4571,7 +4655,7 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
   getIscProposalContent: adminProcedure
     .input(z.object({
       skillName: z.string().min(1).max(100).regex(/^[\w-]+$/),
-      diffFile: z.string().min(1).max(200).regex(/^[\w.\-]+\.diff$/),
+      diffFile: z.string().min(1).max(200).regex(/^[\w.\-]+\.(diff|json)$/),
     }))
     .query(async ({ input }) => {
       try {
@@ -4589,19 +4673,18 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
     }),
 
   /**
-   * Apply an ISC proposal diff to the skill files (admin only).
-   * Runs: patch -N -r - -p0 < <diff_file>
-   * Working directory: apps/web/skills/intelligence-skill-creator/
+   * Apply an ISC proposal payload to the skill files (admin only).
+   * Supports current JSON payload proposals and legacy .diff proposals.
    */
   applyIscProposal: adminProcedure
     .input(z.object({
       skillName: z.string().min(1).max(100).regex(/^[\w-]+$/),
-      diffFile: z.string().min(1).max(200).regex(/^[\w.\-]+\.diff$/),
+      diffFile: z.string().min(1).max(200).regex(/^[\w.\-]+\.(diff|json)$/),
       recommendationId: z.number().int().positive().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const result = await applyIscProposalDiff(input.skillName, input.diffFile);
+        const result = await applyIscProposalFile(input.skillName, input.diffFile);
 
         if (input.recommendationId) {
           const dbInstance = await getDb();
@@ -5042,7 +5125,11 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
         }
       }
 
-      queue.sort((left, right) => {
+      const visibleQueue = input?.includeApplied
+        ? queue
+        : queue.filter((item) => !isLegacyUpgradeCompletedHistoryRun(latestRunByRecommendationId.get(item.id)));
+
+      visibleQueue.sort((left, right) => {
         if (right.upgradePriorityScore !== left.upgradePriorityScore) {
           return right.upgradePriorityScore - left.upgradePriorityScore;
         }
@@ -5054,7 +5141,7 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
         return String(left.skill?.slug ?? "").localeCompare(String(right.skill?.slug ?? ""));
       });
 
-      return queue.map((item) => ({
+      return visibleQueue.map((item) => ({
         ...item,
         latestRun: latestRunByRecommendationId.get(item.id) ?? null,
       }));
@@ -5177,6 +5264,7 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
         const queueState = deriveLegacyUpgradeRunState(row.status);
         const resultMessage = extractLegacyRunStringField(row.logsJson, "resultMessage");
         const resultError = extractLegacyRunStringField(row.logsJson, "resultError") ?? row.errorMessage ?? null;
+        const workspaceRootIssue = isLegacyUpgradeWorkspaceRootIssue(row.logsJson, `${resultMessage || ""} ${resultError || ""} ${row.summary || ""}`);
         return {
           ...row,
           queueState,
@@ -5184,6 +5272,12 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
           resolvedLlmModelId: extractLegacyRunStringField(row.logsJson, "resolvedLlmModelId"),
           resultMessage,
           resultError,
+          diagnosticCode: workspaceRootIssue ? "isc_workspace_root_pollution" : extractLegacyRunStringField(row.logsJson, "failureCode"),
+          workspaceRootIssue,
+          workspaceRoot: extractLegacyRunStringField(row.logsJson, "workspaceRoot"),
+          proposalRoot: extractLegacyRunStringField(row.logsJson, "proposalRoot"),
+          entrypointRoot: extractLegacyRunStringField(row.logsJson, "entrypointRoot"),
+          canonicalIscRoot: extractLegacyRunStringField(row.logsJson, "canonicalIscRoot"),
           sourceRunId: extractLegacyRunNumberField(row.logsJson, "sourceRunId"),
           retryReason: extractLegacyRunStringField(row.logsJson, "retryReason"),
           latestRun: {
@@ -5227,12 +5321,15 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
         };
       });
 
+      const activeItems = items.filter((item) => item.queueState !== "completed" && item.queueState !== "canceled");
       const filteredItems = input?.state && input.state !== "all"
         ? items.filter((item) => item.queueState === input.state)
-        : items;
+        : activeItems;
 
       const counts = items.reduce((acc, item) => {
-        acc.total += 1;
+        if (item.queueState !== "completed" && item.queueState !== "canceled") {
+          acc.total += 1;
+        }
         acc[item.queueState] += 1;
         return acc;
       }, {
@@ -5698,6 +5795,123 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
         requestedRunIds: uniqueRunIds,
         appliedCount: results.filter((item) => item.success).length,
         failedCount: results.filter((item) => !item.success).length,
+        results,
+      };
+    }),
+
+  recoverStaleLegacyUpgradeApplyRuns: adminProcedure
+    .input(z.object({
+      runIds: z.array(z.number().int().positive()).min(1).max(50).optional(),
+      olderThanMinutes: z.number().int().min(5).max(24 * 60).optional(),
+    }).optional())
+    .mutation(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const thresholdMinutes = input?.olderThanMinutes ?? LEGACY_UPGRADE_STALE_APPLY_RUN_MINUTES;
+      const now = new Date();
+      const runIds = input?.runIds ? Array.from(new Set(input.runIds)) : [];
+
+      const query = dbInstance
+        .select({
+          id: skillImprovementRuns.id,
+          recommendationId: skillImprovementRuns.recommendationId,
+          runType: skillImprovementRuns.runType,
+          status: skillImprovementRuns.status,
+          summary: skillImprovementRuns.summary,
+          errorMessage: skillImprovementRuns.errorMessage,
+          logsJson: skillImprovementRuns.logsJson,
+          startedAt: skillImprovementRuns.startedAt,
+          createdAt: skillImprovementRuns.createdAt,
+          updatedAt: skillImprovementRuns.updatedAt,
+        })
+        .from(skillImprovementRuns);
+
+      const rows = await (runIds.length > 0
+        ? query.where(inArray(skillImprovementRuns.id, runIds))
+        : query
+          .where(and(
+            eq(skillImprovementRuns.runType, "apply"),
+            inArray(skillImprovementRuns.status, ["queued", "running"]),
+          ))
+          .orderBy(desc(skillImprovementRuns.updatedAt))
+          .limit(200));
+
+      const candidates = rows.filter((row) => (
+        row.runType === "apply"
+        && !!row.recommendationId
+        && isLegacyApplyRunStale(row, now, thresholdMinutes)
+      ));
+
+      const results: Array<{
+        runId: number;
+        recommendationId: number | null;
+        recovered: boolean;
+        retried: boolean;
+        taskId?: string | null;
+        error?: string;
+      }> = [];
+
+      for (const row of candidates) {
+        try {
+          await dbInstance
+            .update(skillImprovementRuns)
+            .set({
+              status: "failed",
+              summary: row.summary || "Apply task became stale and was queued for automatic retry",
+              errorMessage: "Apply task exceeded the recovery threshold before completion.",
+              logsJson: buildLegacyStaleApplyRunRecoveryLogs(row.logsJson, now),
+              endedAt: now,
+              updatedAt: now,
+            })
+            .where(eq(skillImprovementRuns.id, row.id));
+
+          await dbInstance
+            .update(skillImprovementRecommendations)
+            .set({
+              status: "failed",
+              updatedAt: now,
+            })
+            .where(eq(skillImprovementRecommendations.id, row.recommendationId!));
+
+          const retryResult = await applySkillUpgradeRecommendation({
+            db: dbInstance,
+            recommendationId: row.recommendationId!,
+            requestedBy: ctx.user?.id ?? null,
+            tenantId: ctx.tenantId ?? null,
+            userRole: ctx.user?.role ?? "admin",
+            userToken: ctx.userToken ?? null,
+            publicUrl: ctx.publicUrl ?? null,
+            sourceRunId: row.id,
+            retryReason: `Automatic retry after stale apply run ${row.id}`,
+          });
+
+          results.push({
+            runId: row.id,
+            recommendationId: row.recommendationId,
+            recovered: true,
+            retried: true,
+            taskId: retryResult.taskId ?? null,
+          });
+        } catch (error) {
+          results.push({
+            runId: row.id,
+            recommendationId: row.recommendationId,
+            recovered: false,
+            retried: false,
+            error: error instanceof Error ? error.message : "Failed to recover stale apply run",
+          });
+        }
+      }
+
+      return {
+        scannedCount: rows.length,
+        staleCount: candidates.length,
+        recoveredCount: results.filter((item) => item.recovered).length,
+        retriedCount: results.filter((item) => item.retried).length,
+        failedCount: results.filter((item) => !item.recovered || !item.retried).length,
         results,
       };
     }),

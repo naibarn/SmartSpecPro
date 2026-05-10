@@ -1,8 +1,18 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import fs from "fs";
 import path from "path";
 
 const templateRoot = path.resolve(import.meta.dirname);
+const workspaceRoot = path.resolve(templateRoot, "..", "..");
+
+function resolvePackageDir(packageName: string): string {
+  const localPackageDir = path.resolve(templateRoot, "node_modules", packageName);
+  if (fs.existsSync(localPackageDir)) {
+    return localPackageDir;
+  }
+  return path.resolve(workspaceRoot, "node_modules", packageName);
+}
 
 export default defineConfig({
   plugins: [react()],
@@ -11,8 +21,8 @@ export default defineConfig({
     extensions: [".ts", ".tsx", ".mts", ".mjs", ".js", ".jsx", ".json"],
     dedupe: ["react", "react-dom"],
     alias: {
-      "react": path.resolve(templateRoot, "node_modules", "react"),
-      "react-dom": path.resolve(templateRoot, "node_modules", "react-dom"),
+      "react": resolvePackageDir("react"),
+      "react-dom": resolvePackageDir("react-dom"),
       "@": path.resolve(templateRoot, "client", "src"),
       "@shared": path.resolve(templateRoot, "shared"),
       "@assets": path.resolve(templateRoot, "attached_assets"),

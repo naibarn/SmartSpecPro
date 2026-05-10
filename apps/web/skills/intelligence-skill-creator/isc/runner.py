@@ -34,11 +34,35 @@ def resolve_repo_root(start: Path | None = None) -> Path:
     return probe if probe.is_dir() else probe.parent
 
 
+def canonical_skills_root(project_root: Path) -> Path:
+    return project_root / "apps" / "web" / "skills"
+
+
+def canonical_isc_root(project_root: Path) -> Path:
+    return canonical_skills_root(project_root) / "intelligence-skill-creator"
+
+
+def is_workspace_artifact_path(path: Path) -> bool:
+    return "/runs/workspaces/" in path.resolve().as_posix()
+
+
+def resolve_canonical_skill_dir(project_root: Path, skill_name: str) -> Path:
+    canonical = canonical_skills_root(project_root) / skill_name
+    if canonical.exists() and not is_workspace_artifact_path(canonical):
+        return canonical
+    resolved = resolve_skill_dir(skill_name)
+    if is_workspace_artifact_path(resolved):
+        fallback = canonical if canonical.exists() else resolved
+        if fallback != resolved:
+            return fallback
+    return resolved
+
+
 def make_workspace(project_root: Path, skill_name: str) -> Path:
     ts = _dt.datetime.now(_dt.timezone.utc).strftime("%Y%m%d_%H%M%S")
     ws = project_root / "runs" / "workspaces" / skill_name / ts
     ws.mkdir(parents=True, exist_ok=True)
-    src = resolve_skill_dir(skill_name)
+    src = resolve_canonical_skill_dir(project_root, skill_name)
     dst = ws / "skills" / skill_name
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(

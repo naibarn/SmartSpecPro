@@ -12,6 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -26,6 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogClose,
@@ -43,6 +52,7 @@ import {
 } from "@/components/ui/tooltip";
 import {
   ChevronLeft,
+  ChevronRight,
   Image,
   Video,
   Music,
@@ -65,14 +75,18 @@ import {
   LayoutGrid,
   List,
   Maximize2,
+  MoreHorizontal,
   Share2,
   Library,
   ArrowUpRight,
+  Search,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import ExpiredMediaPlaceholder from "@/components/media/ExpiredMediaPlaceholder";
 import { ShareDialog } from "@/components/library/ShareDialog";
 import { LocaleToggle } from "@/components/LocaleToggle";
+import { HelpButton } from "@/components/help";
 import { formatRelativeTime } from "@/i18n/formatters";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import {
@@ -103,6 +117,8 @@ type Translator = (
   key: string,
   params?: Record<string, string | number>
 ) => string;
+
+const MEDIA_HISTORY_PAGE_SIZE = 50;
 
 interface MediaTask {
   id: string;
@@ -1108,6 +1124,8 @@ export default function MediaHistory() {
     "all"
   );
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(0);
   const [selectedTask, setSelectedTask] = useState<MediaTask | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [fetchingResultTaskId, setFetchingResultTaskId] = useState<
@@ -1148,12 +1166,14 @@ export default function MediaHistory() {
   const {
     data: tasksData,
     isLoading: tasksLoading,
+    isError: tasksIsError,
+    error: tasksError,
     refetch,
   } = trpc.media.listTasks.useQuery({
     mediaType: mediaTypeFilter !== "all" ? mediaTypeFilter : undefined,
     status: statusFilter !== "all" ? statusFilter : undefined,
-    limit: 50,
-    offset: 0,
+    limit: MEDIA_HISTORY_PAGE_SIZE,
+    offset: currentPage * MEDIA_HISTORY_PAGE_SIZE,
     daysAgo: 12, // Only show tasks from last 12 days
   });
   const tasks: MediaTask[] = useMemo(
@@ -1166,6 +1186,34 @@ export default function MediaHistory() {
     [tasksData?.tasks]
   );
   const totalTasks = tasksData?.total || 0;
+  const totalPages = Math.max(1, Math.ceil(totalTasks / MEDIA_HISTORY_PAGE_SIZE));
+  const hasPreviousPage = currentPage > 0;
+  const hasNextPage = (currentPage + 1) * MEDIA_HISTORY_PAGE_SIZE < totalTasks;
+  const trimmedSearchQuery = searchQuery.trim().toLowerCase();
+  const visibleTasks = useMemo(() => {
+    if (!trimmedSearchQuery) return tasks;
+    return tasks.filter(task => {
+      const externalTaskId = extractMediaHistoryExternalTaskId(task) || "";
+      const errorInfo = extractTaskErrorInfo(task, t);
+      const searchable = [
+        task.id,
+        task.taskId,
+        task.celeryTaskId,
+        externalTaskId,
+        task.mediaType,
+        task.status,
+        task.model,
+        task.prompt,
+        errorInfo?.summary,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return searchable.includes(trimmedSearchQuery);
+    });
+  }, [tasks, trimmedSearchQuery, t]);
+  const hasActiveFilters =
+    mediaTypeFilter !== "all" || statusFilter !== "all" || searchQuery.trim().length > 0;
 
   const { data: recentLibraryData } = trpc.library.search.useQuery(
     {
@@ -1307,7 +1355,7 @@ export default function MediaHistory() {
   // Handle select all checkbox
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedTaskIds(new Set(tasks.map(t => t.id)));
+      setSelectedTaskIds(new Set(visibleTasks.map(t => t.id)));
     } else {
       setSelectedTaskIds(new Set());
     }
@@ -1408,6 +1456,30 @@ export default function MediaHistory() {
   }, [authLoading, isAuthenticated, setLocation]);
 
   useEffect(() => {
+    setCurrentPage(0);
+    setSelectedTaskIds(new Set());
+  }, [mediaTypeFilter, statusFilter]);
+
+  useEffect(() => {
+    setCurrentPage(0);
+    setSelectedTaskIds(new Set());
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (currentPage > 0 && currentPage >= totalPages) {
+      setCurrentPage(totalPages - 1);
+    }
+  }, [currentPage, totalPages]);
+
+  const handleClearFilters = useCallback(() => {
+    setMediaTypeFilter("all");
+    setStatusFilter("all");
+    setSearchQuery("");
+    setCurrentPage(0);
+    setSelectedTaskIds(new Set());
+  }, []);
+
+  useEffect(() => {
     if (viewMode === "gallery") {
       setSelectedTaskIds(new Set());
     }
@@ -1415,7 +1487,8 @@ export default function MediaHistory() {
 
   // Check if all visible tasks are selected
   const allSelected =
-    tasks.length > 0 && tasks.every(task => selectedTaskIds.has(task.id));
+    visibleTasks.length > 0 &&
+    visibleTasks.every(task => selectedTaskIds.has(task.id));
   const someSelected = selectedTaskIds.size > 0 && !allSelected;
 
   // Calculate stats
@@ -1943,6 +2016,13 @@ export default function MediaHistory() {
             </div>
             <div className="flex items-center gap-2 sm:justify-end">
               <LocaleToggle className="shrink-0" />
+              <HelpButton
+                page="/media-history"
+                topic="media-history"
+                variant="outline"
+                size="sm"
+                label={t("historyPage.actions.help")}
+              />
               <Button
                 variant="outline"
                 size="sm"
@@ -2005,6 +2085,9 @@ export default function MediaHistory() {
             <p className="mt-1">
               {t("historyPage.dataRetention.description", { days: 12 })}
             </p>
+            <p className="mt-2">
+              {t("historyPage.dataRetention.providerLimitations")}
+            </p>
           </div>
         </motion.div>
 
@@ -2015,7 +2098,29 @@ export default function MediaHistory() {
           transition={{ delay: 0.15 }}
           className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 p-4 mb-6 shadow-lg shadow-purple-500/5"
         >
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 lg:gap-4">
+            <div className="relative min-w-[240px] flex-1 sm:max-w-sm">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={searchQuery}
+                onChange={event => setSearchQuery(event.target.value)}
+                placeholder={t("historyPage.filters.searchPlaceholder")}
+                aria-label={t("historyPage.filters.searchLabel")}
+                className="h-10 bg-white pl-9 pr-9"
+              />
+              {searchQuery ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-slate-500"
+                  aria-label={t("historyPage.filters.clearSearch")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              ) : null}
+            </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-500">
                 {t("historyPage.filters.type")}
@@ -2077,7 +2182,20 @@ export default function MediaHistory() {
               </Select>
             </div>
 
-            <div className="ml-auto flex items-center gap-3">
+            {hasActiveFilters ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClearFilters}
+                className="gap-2 text-slate-600"
+              >
+                <X className="h-4 w-4" />
+                {t("historyPage.filters.clear")}
+              </Button>
+            ) : null}
+
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
               <div className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1">
                 <Button
                   type="button"
@@ -2120,9 +2238,43 @@ export default function MediaHistory() {
               )}
               <div className="text-sm text-gray-500">
                 {t("historyPage.selection.showing", {
-                  visible: tasks.length,
+                  visible: visibleTasks.length,
                   total: totalTasks,
                 })}
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage(page => Math.max(0, page - 1))}
+                  disabled={!hasPreviousPage || tasksLoading}
+                  aria-label={t("historyPage.pagination.previous")}
+                  className="h-9 w-9"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="min-w-20 text-center text-xs text-slate-500">
+                  {t("historyPage.pagination.page", {
+                    page: currentPage + 1,
+                    total: totalPages,
+                  })}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    setCurrentPage(page =>
+                      hasNextPage ? page + 1 : page
+                    )
+                  }
+                  disabled={!hasNextPage || tasksLoading}
+                  aria-label={t("historyPage.pagination.next")}
+                  className="h-9 w-9"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>
@@ -2135,26 +2287,95 @@ export default function MediaHistory() {
           transition={{ delay: 0.2 }}
           className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg shadow-purple-500/5 overflow-hidden"
         >
-          {tasksLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+          {tasksIsError ? (
+            <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+              <AlertCircle className="mb-4 h-11 w-11 text-red-500" />
+              <h3 className="text-lg font-semibold text-gray-900">
+                {t("historyPage.error.title")}
+              </h3>
+              <p className="mt-2 max-w-md text-sm text-gray-500">
+                {tasksError instanceof Error && tasksError.message
+                  ? tasksError.message
+                  : t("historyPage.error.description")}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                className="mt-5 gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                {t("common.retry")}
+              </Button>
             </div>
-          ) : tasks.length === 0 ? (
+          ) : tasksLoading ? (
+            <div className="p-4 sm:p-6">
+              {viewMode === "gallery" ? (
+                <div className="grid grid-cols-1 justify-items-center gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 bg-white"
+                    >
+                      <Skeleton className="aspect-square w-full rounded-none" />
+                      <div className="space-y-3 p-4">
+                        <Skeleton className="h-4 w-2/3" />
+                        <Skeleton className="h-16 w-full" />
+                        <div className="grid grid-cols-3 gap-2">
+                          <Skeleton className="h-9" />
+                          <Skeleton className="h-9" />
+                          <Skeleton className="h-9" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-4 rounded-xl border border-slate-100 bg-white p-3"
+                    >
+                      <Skeleton className="h-12 w-12 rounded-lg" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-1/3" />
+                        <Skeleton className="h-3 w-2/3" />
+                      </div>
+                      <Skeleton className="h-8 w-24" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : tasks.length === 0 || visibleTasks.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <FileImage className="w-12 h-12 text-gray-300 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-1">
                 {t("historyPage.empty.title")}
               </h3>
-              <p className="text-sm text-gray-500">
-                {mediaTypeFilter !== "all" || statusFilter !== "all"
+              <p className="max-w-md text-sm text-gray-500">
+                {hasActiveFilters
                   ? t("historyPage.empty.filtered")
                   : t("historyPage.empty.default")}
               </p>
+              <div className="mt-5 flex flex-wrap justify-center gap-2">
+                {hasActiveFilters ? (
+                  <Button variant="outline" size="sm" onClick={handleClearFilters}>
+                    <X className="mr-2 h-4 w-4" />
+                    {t("historyPage.filters.clear")}
+                  </Button>
+                ) : null}
+                <Button size="sm" onClick={() => setLocation("/media-studio")}>
+                  <ImagePlus className="mr-2 h-4 w-4" />
+                  {t("historyPage.empty.createMedia")}
+                </Button>
+              </div>
             </div>
           ) : viewMode === "gallery" ? (
             <div className="p-4 sm:p-6">
               <div className="grid grid-cols-1 justify-items-center gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                {tasks.map(task => {
+                {visibleTasks.map(task => {
                   const typeConfig = getMediaTypeMeta(task.mediaType, t);
                   const status = getStatusMeta(task.status, t);
                   const StatusIcon = status?.icon || AlertCircle;
@@ -2319,114 +2540,7 @@ export default function MediaHistory() {
                           </p>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                          {canFetchResult && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                void handleFetchResult(task);
-                              }}
-                              disabled={isFetchPending}
-                              className="justify-start gap-2"
-                              title={getTaskFetchResultTitle(task, t)}
-                            >
-                              {isFetchPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <RefreshCw className="h-4 w-4" />
-                              )}
-                              {getTaskFetchResultLabel(task, t)}
-                            </Button>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              task.resultUrl && handleDownload(task.resultUrl)
-                            }
-                            disabled={!task.resultUrl}
-                            className="justify-start gap-2"
-                          >
-                            <Download className="h-4 w-4" />
-                            {t("download")}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAddToLibrary(task)}
-                            disabled={
-                              !canAddToLibrary ||
-                              libraryState?.action === "adding"
-                            }
-                            className="justify-start gap-2"
-                          >
-                            {libraryState?.action === "adding" ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : libraryState?.action === "added" ? (
-                              <CheckCircle className="h-4 w-4 text-emerald-600" />
-                            ) : libraryState?.action === "error" ? (
-                              <AlertCircle className="h-4 w-4 text-red-600" />
-                            ) : (
-                              <ImagePlus className="h-4 w-4" />
-                            )}
-                            {libraryState?.action === "added"
-                              ? t("historyPage.library.inLibrary")
-                              : t("addToLibrary")}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleOpenShare(task)}
-                            disabled={!canShare}
-                            className="justify-start gap-2"
-                            title={
-                              canShare
-                                ? t("historyPage.actions.shareLibraryItem")
-                                : t(
-                                    "historyPage.actions.addToLibraryBeforeSharing"
-                                  )
-                            }
-                          >
-                            <Share2 className="h-4 w-4" />
-                            {t("historyPage.actions.share")}
-                          </Button>
-                          {canAddToGallery && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAddToGallery(task)}
-                              disabled={importingTaskId === task.id}
-                              className="justify-start gap-2"
-                              title={t(
-                                "historyPage.actions.addToPublicGallery"
-                              )}
-                            >
-                              {importingTaskId === task.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <ArrowUpRight className="h-4 w-4" />
-                              )}
-                              {importingTaskId === task.id
-                                ? t("historyPage.actions.publishing")
-                                : t("historyPage.actions.gallery")}
-                            </Button>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleOpenFullscreenMedia(task)}
-                            disabled={!canOpenFullscreen}
-                            className="justify-start gap-2"
-                            title={
-                              canOpenFullscreen
-                                ? t("historyPage.actions.openFullMedia")
-                                : t("historyPage.actions.imagesAndVideosOnly")
-                            }
-                          >
-                            <Maximize2 className="h-4 w-4" />
-                            {t("historyPage.actions.full")}
-                          </Button>
+                        <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
                           <Button
                             variant="outline"
                             size="sm"
@@ -2439,19 +2553,109 @@ export default function MediaHistory() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleCopyPrompt(task)}
-                            disabled={!task.prompt}
+                            onClick={() =>
+                              task.resultUrl && handleDownload(task.resultUrl)
+                            }
+                            disabled={!task.resultUrl}
                             className="justify-start gap-2"
                           >
-                            {copiedPromptTaskId === task.id ? (
-                              <Check className="h-4 w-4 text-emerald-600" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                            {copiedPromptTaskId === task.id
-                              ? t("copied")
-                              : t("historyPage.actions.prompt")}
+                            <Download className="h-4 w-4" />
+                            {t("download")}
                           </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-9 w-9"
+                                aria-label={t("historyPage.actions.more")}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                              {canFetchResult ? (
+                                <DropdownMenuItem
+                                  onSelect={() => {
+                                    void handleFetchResult(task);
+                                  }}
+                                  disabled={isFetchPending}
+                                >
+                                  {isFetchPending ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                  )}
+                                  {getTaskFetchResultLabel(task, t)}
+                                </DropdownMenuItem>
+                              ) : null}
+                              <DropdownMenuItem
+                                onSelect={() => handleAddToLibrary(task)}
+                                disabled={
+                                  !canAddToLibrary ||
+                                  libraryState?.action === "adding"
+                                }
+                              >
+                                {libraryState?.action === "adding" ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : libraryState?.action === "added" ? (
+                                  <CheckCircle className="mr-2 h-4 w-4 text-emerald-600" />
+                                ) : libraryState?.action === "error" ? (
+                                  <AlertCircle className="mr-2 h-4 w-4 text-red-600" />
+                                ) : (
+                                  <ImagePlus className="mr-2 h-4 w-4" />
+                                )}
+                                {libraryState?.action === "added"
+                                  ? t("historyPage.library.inLibrary")
+                                  : t("addToLibrary")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={() => handleOpenShare(task)}
+                                disabled={!canShare}
+                              >
+                                <Share2 className="mr-2 h-4 w-4" />
+                                {t("historyPage.actions.share")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={() => handleOpenFullscreenMedia(task)}
+                                disabled={!canOpenFullscreen}
+                              >
+                                <Maximize2 className="mr-2 h-4 w-4" />
+                                {t("historyPage.actions.full")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={() => handleCopyPrompt(task)}
+                                disabled={!task.prompt}
+                              >
+                                {copiedPromptTaskId === task.id ? (
+                                  <Check className="mr-2 h-4 w-4 text-emerald-600" />
+                                ) : (
+                                  <Copy className="mr-2 h-4 w-4" />
+                                )}
+                                {copiedPromptTaskId === task.id
+                                  ? t("copied")
+                                  : t("historyPage.actions.prompt")}
+                              </DropdownMenuItem>
+                              {canAddToGallery ? (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onSelect={() => handleAddToGallery(task)}
+                                    disabled={importingTaskId === task.id}
+                                  >
+                                    {importingTaskId === task.id ? (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <ArrowUpRight className="mr-2 h-4 w-4" />
+                                    )}
+                                    {importingTaskId === task.id
+                                      ? t("historyPage.actions.publishing")
+                                      : t("historyPage.actions.gallery")}
+                                  </DropdownMenuItem>
+                                </>
+                              ) : null}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     </div>
@@ -2463,7 +2667,7 @@ export default function MediaHistory() {
             <>
               {/* Mobile card list — hidden on sm+ */}
               <div className="sm:hidden divide-y divide-gray-100">
-                {tasks.map(task => {
+                {visibleTasks.map(task => {
                   const typeConfig = getMediaTypeMeta(task.mediaType, t);
                   const status = getStatusMeta(task.status, t);
                   const StatusIcon = status?.icon || AlertCircle;
@@ -2585,6 +2789,7 @@ export default function MediaHistory() {
                           size="sm"
                           onClick={() => handleViewDetails(task)}
                           className="h-8 w-8 p-0"
+                          aria-label={t("historyPage.actions.details")}
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -2598,6 +2803,7 @@ export default function MediaHistory() {
                             disabled={isFetchPending}
                             className="h-8 w-8 p-0 text-sky-600 hover:text-sky-700 hover:bg-sky-50"
                             title={getTaskFetchResultTitle(task, t)}
+                            aria-label={getTaskFetchResultLabel(task, t)}
                           >
                             {isFetchPending ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
@@ -2613,6 +2819,7 @@ export default function MediaHistory() {
                               onClick={() => handleRetryTask(task)}
                               className="h-8 w-8 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
                               title={t("historyPage.actions.retryGeneration")}
+                              aria-label={t("historyPage.actions.retryGeneration")}
                             >
                               <RefreshCw className="w-4 h-4" />
                             </Button>
@@ -2626,6 +2833,11 @@ export default function MediaHistory() {
                               onClick={() => handleAddToLibrary(task)}
                               disabled={libraryState?.action === "adding"}
                               className={`h-8 w-8 p-0 ${libraryState?.action === "added" ? "text-emerald-600" : "text-indigo-600"}`}
+                              aria-label={
+                                libraryState?.action === "added"
+                                  ? t("historyPage.library.inLibrary")
+                                  : t("addToLibrary")
+                              }
                             >
                               {libraryState?.action === "adding" ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -2640,6 +2852,7 @@ export default function MediaHistory() {
                               size="sm"
                               onClick={() => handleDownload(task.resultUrl!)}
                               className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                              aria-label={t("download")}
                             >
                               <Download className="w-4 h-4" />
                             </Button>
@@ -2655,6 +2868,7 @@ export default function MediaHistory() {
                             onClick={() => handleDeleteTask(task.id)}
                             disabled={deleteTaskMutation.isPending}
                             className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                            aria-label={t("historyPage.actions.deleteTask")}
                           >
                             {deleteTaskMutation.isPending ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
@@ -2718,7 +2932,7 @@ export default function MediaHistory() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tasks.map(task => {
+                    {visibleTasks.map(task => {
                       const typeConfig = getMediaTypeMeta(task.mediaType, t);
                       const status = getStatusMeta(task.status, t);
                       const StatusIcon = status?.icon || AlertCircle;
@@ -2926,6 +3140,7 @@ export default function MediaHistory() {
                                 size="sm"
                                 onClick={() => handleViewDetails(task)}
                                 className="h-8 px-2"
+                                aria-label={t("historyPage.actions.details")}
                               >
                                 <Eye className="w-4 h-4" />
                               </Button>
@@ -2939,6 +3154,7 @@ export default function MediaHistory() {
                                   disabled={isFetchPending}
                                   className="h-8 gap-1 border-sky-200 px-2 text-sky-700 hover:bg-sky-50 hover:text-sky-800"
                                   title={getTaskFetchResultTitle(task, t)}
+                                  aria-label={getTaskFetchResultLabel(task, t)}
                                 >
                                   {isFetchPending ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -2957,6 +3173,9 @@ export default function MediaHistory() {
                                     onClick={() => handleRetryTask(task)}
                                     className="h-8 gap-1 border-amber-200 px-2 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
                                     title={t(
+                                      "historyPage.actions.retryGeneration"
+                                    )}
+                                    aria-label={t(
                                       "historyPage.actions.retryGeneration"
                                     )}
                                   >
@@ -2983,6 +3202,11 @@ export default function MediaHistory() {
                                           ? t("retryAddToLibrary")
                                           : t("addToLibrary")
                                       }
+                                      aria-label={
+                                        libraryStatusMeta.retryable
+                                          ? t("retryAddToLibrary")
+                                          : t("addToLibrary")
+                                      }
                                     >
                                       {libraryState?.action === "adding" ? (
                                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -3001,6 +3225,7 @@ export default function MediaHistory() {
                                         handleDownload(task.resultUrl!)
                                       }
                                       className="h-8 px-2 text-green-600 hover:text-green-700"
+                                      aria-label={t("download")}
                                     >
                                       <Download className="w-4 h-4" />
                                     </Button>
@@ -3013,6 +3238,9 @@ export default function MediaHistory() {
                                         disabled={importingTaskId === task.id}
                                         className="h-8 px-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
                                         title={t(
+                                          "historyPage.actions.addToGallery"
+                                        )}
+                                        aria-label={t(
                                           "historyPage.actions.addToGallery"
                                         )}
                                       >
@@ -3036,6 +3264,7 @@ export default function MediaHistory() {
                                   disabled={deleteTaskMutation.isPending}
                                   className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
                                   title={t("historyPage.actions.deleteTask")}
+                                  aria-label={t("historyPage.actions.deleteTask")}
                                 >
                                   {deleteTaskMutation.isPending ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />

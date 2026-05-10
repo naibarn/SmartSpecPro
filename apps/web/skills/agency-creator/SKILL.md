@@ -1,73 +1,54 @@
 ---
 name: Agency Creator
-slug: agency-creator
 description: สร้าง multi-agent agency อัตโนมัติจาก prompt หรือ spec document พร้อม interview phase และ architecture preview
+version: 1.0.2
 category: automation
-icon: network
-version: 1.0.0
-author: SmartAIHub
-isAutoTrigger: false
-enabledByDefault: true
-priority: 90
-creditMultiplier: 2
-config:
-  _action: agency_create
-  maxInterviewQuestions: 7
-  useRAG: false
-tags: []
-auto_trigger: false
-trigger_patterns: []
-enabled_by_default: true
-credit_multiplier: 2
-execution_mode: llm-only
-strict_provider_pin: false
+execution_mode: sandbox-command
+target_platform: agents_python
+bundle_topology: single-agent
+triggerPatterns:
+  - Agency Creator
+  - Agency Creator
 ---
-# Agency Creator Skill
+# Agency Creator
+## When To Use
 
-## Purpose
-สร้าง multi-agent agency โดยอัตโนมัติจาก requirement ที่ผู้ใช้ระบุ ครอบคลุมตั้งแต่ discovery ไปจนถึง documentation
+Use this skill when the task should run through the native OpenAI Agents Python bundle contract.
+## OpenAI Agents SDK Compatibility
 
-## 7-Phase Pipeline
+- Mount this bundle into the Agents SDK `Skills` sandbox capability.
+- Keep `scripts/run.sh` and `scripts/verify.sh` deterministic and shell-safe.
+- Prefer structured outputs, explicit inputs, and resumable artifacts.
+## Inputs
 
-| Phase | ชื่อ | สิ่งที่ทำ |
-|---|---|---|
-| 1 DISCOVER | วิเคราะห์ requirement | Parse intent, classify domain, extract constraints |
-| 2 INTERVIEW | สัมภาษณ์ user (สูงสุด 7 คำถาม) | ถามเฉพาะสิ่งที่ยังไม่ชัดเจน skip ถ้า intent ชัดพอ |
-| 3 DESIGN | ออกแบบ architecture | สร้าง JSON spec: nodes[], edges[], rationale |
-| 4 VALIDATE | ตรวจสอบ spec | Self-review: entry points, topology, required fields |
-| 5 IMPLEMENT | สร้างใน database | เรียก saveBuilder API สร้าง agency จริง |
-| 6 VERIFY | ทดสอบ | ส่ง test message ดู response |
-| 7 DOCUMENT | เขียน guide | Usage guide + 3 starter conversations |
+- None
+## Workflow
 
-## Node Types Available
-- **agent**: AI agent ทั่วไป มี model, instructions, tools
-- **supervisor**: ควบคุม agents ลูก มี routingStrategy
-- **router**: ตัดสินใจเส้นทางตาม condition (keyword/regex/llm_classify)
-- **aggregator**: รวมผลจาก agents หลายตัว (first_wins/majority_vote/llm_merge/concatenate)
-- **knowledge_base**: ค้นหาจาก document collection
-- **skill_call**: เรียก SSP skill โดยตรง
-- **human_approval**: รอการอนุมัติจาก human
+- discover
+- inspect
+- plan
+- execute
+- verify
+- summarize
+- finalize
+## Exact Commands
 
-## Design Principles
-1. Entry point ได้เฉพาะ `agent` หรือ `supervisor` เท่านั้น
-2. ทุก agency ต้องมี entry point อย่างน้อย 1 node
-3. Router node ต้องมี routes อย่างน้อย 1 เส้นทาง + defaultTargetNodeId
-4. Aggregator รับ input จาก upstream nodes หลายตัว
-5. ใช้ delegation flowType สำหรับ sequential flow, parallel สำหรับ concurrent
+- `scripts/run.sh`
+- `scripts/verify.sh`
+## Guardrails
 
-## Example Agency Architectures
+- Use scripts/run.sh and scripts/verify.sh as the declared entrypoints.
+- Confine writes to declared output paths.
+- Do not finalize before verification passes.
+- Keep scripts deterministic, idempotent, and shell-safe.
+- Prefer structured outputs that validate against the bundle contract.
+- Keep logs trace-friendly with explicit task IDs and outcome messages.
+- Preserve compatibility with legacy skill metadata during migration.
+## Verification
 
-### Research Team (3 agents)
-```
-Entry: Coordinator (supervisor) → Researcher (agent) → Analyst (agent) → Writer (agent)
-```
+- Run `scripts/verify.sh` before finalizing any run.
+## Final Response Checklist
 
-### Customer Support (router + agents)
-```
-Entry: Classifier (agent) → Router (keyword) → [FAQ Agent | Escalation Agent | Billing Agent]
-```
-
-### RAG Pipeline
-```
-Entry: Query Processor (agent) → Knowledge Base (knowledge_base) → Answer Generator (agent)
-```
+- Verification command completed successfully.
+- Outputs are written to declared paths only.
+- No secrets were persisted.

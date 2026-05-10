@@ -12,6 +12,7 @@ import {
   LayoutTemplate,
   Loader2,
   Palette,
+  Maximize2,
   Sparkles,
   Trash2,
   WandSparkles,
@@ -60,7 +61,10 @@ import {
   type MediaModelOption,
 } from "@/lib/mediaModelInputs";
 import { trpc } from "@/lib/trpc";
-import { PRESENTATION_CANVAS_PRESETS } from "@/presentation-canvas/constants";
+import {
+  PRESENTATION_CANVAS_PRESETS,
+  type PresentationCanvasPresetId,
+} from "@/presentation-canvas/constants";
 import {
   buildEditorialLayoutPlannerPayload,
   EDITORIAL_LAYOUT_PLANNER_SKILL_ID,
@@ -79,8 +83,18 @@ import {
 
 type ExecutionSource = "skill" | "agency";
 type ArticleLanguage = "th" | "en";
-type SlideCanvasRatio = "16:9" | "9:16" | "4:5" | "5:4";
+type SlideCanvasRatio = PresentationCanvasPresetId;
 type SlideOutputFormat = "json" | "md" | "pptx" | "pdf";
+type SlideVisualMode = "editable" | "full-slide-image";
+type FullSlideImageStyleId = string;
+
+type FullSlideImageStylePreset = {
+  id: FullSlideImageStyleId;
+  label: string;
+  bestFor: string;
+  contract: string;
+  keywords: string[];
+};
 
 type SkillOption = {
   id: string;
@@ -137,6 +151,8 @@ type PreparedSlideBundle = {
 
 type GeneratedImageAsset = PreparedImagePrompt & {
   url: string;
+  canvasRatio?: SlideCanvasRatio;
+  updatedAt?: string;
 };
 
 type LibraryResultItemLike = {
@@ -213,11 +229,185 @@ export type PresentationInsertSlidesResult = {
 type WizardStepStatus = "idle" | "ready" | "running" | "done" | "stale";
 type GeneratedSlideDraftSessionSource = "empty" | "fresh-run" | "restored-draft";
 
-const SUPPORTED_SLIDE_RATIOS: SlideCanvasRatio[] = ["16:9", "9:16", "4:5", "5:4"];
+const SUPPORTED_SLIDE_RATIOS: SlideCanvasRatio[] = ["16:9", "9:16", "4:3", "3:4", "4:5", "5:4", "1:1"];
+const FULL_SLIDE_IMAGE_FALLBACK_RATIOS: SlideCanvasRatio[] = ["9:16", "16:9"];
 const SUPPORTED_OUTPUT_FORMATS: SlideOutputFormat[] = ["json", "md", "pptx", "pdf"];
 const ARTICLE_BUILDER_DRAFT_STORAGE_KEY_PREFIX = "presentation-article-builder-draft";
 const TASK_POLL_INTERVAL_MS = 2000;
 const TASK_POLL_MAX_ATTEMPTS = 120;
+const IMAGE_GENERATION_BATCH_CONCURRENCY = 3;
+const AUTO_FULL_SLIDE_STYLE_ID = "auto";
+
+const FULL_SLIDE_IMAGE_STYLE_PRESETS: FullSlideImageStylePreset[] = [
+  {
+    id: "premium-parenting-editorial",
+    label: "Premium Parenting Editorial",
+    bestFor: "พ่อแม่ เด็ก สุขภาพครอบครัว",
+    keywords: ["เด็ก", "แม่", "พ่อ", "ลูก", "baby", "parent", "sleep", "นอน", "นม", "family"],
+    contract: "Warm realistic parenting magazine cover. Cream, white, beige, soft brown, pale blue. Large Thai headline, intimate human photo, translucent cream explainer card, soft icons, calm bedtime/editorial healthcare mood.",
+  },
+  {
+    id: "modern-minimal-infographic",
+    label: "Modern Minimal Infographic",
+    bestFor: "ความรู้ทั่วไป ขั้นตอน สรุปบทความ",
+    keywords: ["วิธี", "ขั้นตอน", "how to", "guide", "tips", "สรุป", "เข้าใจ", "ความรู้"],
+    contract: "Clean modern infographic with restrained color blocks, crisp Thai sans-serif typography, numbered sections, high whitespace, simple line icons, clear hierarchy, and mobile-first readability.",
+  },
+  {
+    id: "magazine-cover-feature",
+    label: "Magazine Cover Feature",
+    bestFor: "บทความเปิดเรื่อง เรื่องเล่า ไลฟ์สไตล์",
+    keywords: ["cover", "เรื่อง", "ไลฟ์สไตล์", "lifestyle", "feature", "story"],
+    contract: "Premium vertical magazine cover. Oversized headline, elegant deck text, strong photo crop, editorial masthead-like spacing without fake logos, refined serif/sans pairing, polished feature article energy.",
+  },
+  {
+    id: "healthcare-clean",
+    label: "Healthcare Clean",
+    bestFor: "สุขภาพ การแพทย์ Wellness",
+    keywords: ["สุขภาพ", "แพทย์", "วัคซีน", "โรค", "health", "medical", "wellness", "doctor"],
+    contract: "Clean healthcare explainer with white/blue/teal palette, clinical but warm photography, rounded data cards, trustworthy typography, medical editorial clarity, no scary or graphic imagery.",
+  },
+  {
+    id: "luxury-cream-editorial",
+    label: "Luxury Cream Editorial",
+    bestFor: "บทความพรีเมียม ความงาม บ้าน ไลฟ์สไตล์",
+    keywords: ["luxury", "premium", "beauty", "บ้าน", "ความงาม", "หรู", "minimal"],
+    contract: "Luxury cream editorial design. Ivory, champagne, taupe, soft gold accents, refined spacing, elegant headline, translucent glassmorphism cards, premium lifestyle photography.",
+  },
+  {
+    id: "bold-social-carousel",
+    label: "Bold Social Carousel",
+    bestFor: "โพสต์โซเชียล ข้อความสั้น ดึงดูดเร็ว",
+    keywords: ["social", "viral", "โพสต์", "ขาย", "โปรโมท", "hook", "tiktok", "facebook"],
+    contract: "Bold social carousel cover. High-contrast headline, punchy accent color, large readable Thai text, cropped dynamic photo, sticker-like callouts used sparingly, energetic but polished.",
+  },
+  {
+    id: "news-explainer",
+    label: "News Explainer",
+    bestFor: "ข่าว เหตุการณ์ วิเคราะห์ประเด็น",
+    keywords: ["ข่าว", "วิเคราะห์", "policy", "เศรษฐกิจ", "news", "report", "เหตุการณ์"],
+    contract: "News explainer layout with strong headline bar, documentary image treatment, timeline/fact cards, restrained navy/red/white accents, credible editorial newspaper-inspired hierarchy.",
+  },
+  {
+    id: "photo-documentary",
+    label: "Photo Documentary",
+    bestFor: "เรื่องจริง สารคดี สังคม การเดินทาง",
+    keywords: ["สารคดี", "documentary", "travel", "ชุมชน", "story", "ชีวิต", "สังคม"],
+    contract: "Photo documentary poster. Natural light, authentic candid photography, understated text panels, muted earth tones, human-centered composition, cinematic realism with journalistic restraint.",
+  },
+  {
+    id: "corporate-report",
+    label: "Corporate Report",
+    bestFor: "ธุรกิจ รายงาน กลยุทธ์",
+    keywords: ["business", "ธุรกิจ", "รายงาน", "กลยุทธ์", "marketing", "ยอดขาย", "finance"],
+    contract: "Corporate report slide. Structured grid, navy/white/graphite palette, sharp section headers, subtle charts or metrics cards, professional photography, boardroom-ready hierarchy.",
+  },
+  {
+    id: "kids-friendly-soft",
+    label: "Kids Friendly Soft",
+    bestFor: "เด็ก การศึกษา ครอบครัว",
+    keywords: ["เด็ก", "นักเรียน", "เรียน", "education", "school", "kids", "นิทาน"],
+    contract: "Soft kids-friendly editorial. Pastel accents, playful rounded cards, warm family/learning photography, friendly Thai typography, gentle icons, safe and cheerful without cartooning the whole slide.",
+  },
+  {
+    id: "dark-cinematic",
+    label: "Dark Cinematic",
+    bestFor: "เทค เกม ภาพยนตร์ เรื่องเข้ม",
+    keywords: ["tech", "game", "หนัง", "cinematic", "dark", "ai", "security"],
+    contract: "Dark cinematic editorial poster. Deep charcoal background, dramatic rim lighting, neon or metallic accents, bold high-contrast Thai headline, premium tech/movie-poster atmosphere.",
+  },
+  {
+    id: "pastel-wellness",
+    label: "Pastel Wellness",
+    bestFor: "สุขภาพใจ โยคะ ความสงบ",
+    keywords: ["wellness", "mind", "ใจ", "โยคะ", "สมาธิ", "พักผ่อน", "sleep"],
+    contract: "Pastel wellness guide. Sage, blush, cream, soft lavender. Calm photography, airy cards, gentle iconography, rounded editorial layout, soothing Thai typography.",
+  },
+  {
+    id: "academic-clean",
+    label: "Academic Clean",
+    bestFor: "บทเรียน วิจัย อธิบายเชิงลึก",
+    keywords: ["เรียน", "วิจัย", "academic", "study", "บทเรียน", "วิทยาศาสตร์", "ข้อมูล"],
+    contract: "Academic clean slide. White background, structured headings, evidence cards, small diagrams/icons, blue/gray accents, textbook-quality Thai typography with careful spacing.",
+  },
+  {
+    id: "product-promo",
+    label: "Product Promo",
+    bestFor: "สินค้า รีวิว โปรโมชัน",
+    keywords: ["สินค้า", "รีวิว", "product", "promo", "sale", "ซื้อ", "ราคา"],
+    contract: "Premium product promo layout. Hero product/photo focus, bold benefit headline, feature chips, subtle price/CTA-style card without fake buttons, clean commercial editorial polish.",
+  },
+  {
+    id: "step-by-step-guide",
+    label: "Step-by-step Guide",
+    bestFor: "คู่มือ How-to Checklist",
+    keywords: ["step", "ขั้น", "checklist", "คู่มือ", "ทำอย่างไร", "วิธี"],
+    contract: "Step-by-step mobile guide. Numbered vertical cards, clear title, concise Thai body text, progress-like visual rhythm, clean icons, practical instructional layout.",
+  },
+  {
+    id: "data-story",
+    label: "Data Story",
+    bestFor: "ตัวเลข สถิติ เปรียบเทียบ",
+    keywords: ["สถิติ", "ตัวเลข", "data", "percent", "เทียบ", "ผลลัพธ์", "analytics"],
+    contract: "Data story infographic. Large key number, comparison cards, mini chart-like shapes, clean labels, navy/teal/orange accents, editorial analytics style with high legibility.",
+  },
+  {
+    id: "travel-editorial",
+    label: "Travel Editorial",
+    bestFor: "ท่องเที่ยว สถานที่ รีวิวเมือง",
+    keywords: ["เที่ยว", "travel", "เมือง", "ที่พัก", "ร้านอาหาร", "ทริป"],
+    contract: "Travel editorial poster. Immersive destination photo, warm natural color grading, map/tag cards, elegant headline, lifestyle magazine spacing, inviting premium travel tone.",
+  },
+  {
+    id: "food-lifestyle",
+    label: "Food Lifestyle",
+    bestFor: "อาหาร ร้านอาหาร สูตรอาหาร",
+    keywords: ["อาหาร", "food", "ร้าน", "สูตร", "กิน", "คาเฟ่"],
+    contract: "Food lifestyle editorial. Appetizing realistic food photography, warm table light, recipe/taste note cards, cream and herb accents, clean Thai typography.",
+  },
+  {
+    id: "tech-product-glass",
+    label: "Tech Product Glass",
+    bestFor: "AI SaaS เครื่องมือ เทคโนโลยี",
+    keywords: ["ai", "เทค", "software", "saas", "app", "tool", "ระบบ"],
+    contract: "Modern tech glass editorial. Dark or light glass panels, cyan/blue accents, product-like abstract visuals, crisp UI-inspired cards, premium SaaS presentation energy.",
+  },
+  {
+    id: "finance-premium",
+    label: "Finance Premium",
+    bestFor: "การเงิน ลงทุน ธุรกิจ",
+    keywords: ["เงิน", "ลงทุน", "finance", "stock", "ภาษี", "บัญชี", "รายได้"],
+    contract: "Premium finance explainer. Deep green/navy/cream palette, subtle chart motifs, confident headline, metric cards, realistic business imagery, trustworthy and calm.",
+  },
+  {
+    id: "eco-natural",
+    label: "Eco Natural",
+    bestFor: "สิ่งแวดล้อม เกษตร บ้านและสวน",
+    keywords: ["สวน", "เกษตร", "ธรรมชาติ", "eco", "green", "ต้นไม้", "environment"],
+    contract: "Eco natural editorial. Botanical greens, warm sunlight, organic paper cards, natural photography, calm explanatory Thai type, sustainable premium feel.",
+  },
+  {
+    id: "fashion-lookbook",
+    label: "Fashion Lookbook",
+    bestFor: "แฟชั่น เสื้อผ้า สไตล์",
+    keywords: ["แฟชั่น", "เสื้อ", "fashion", "style", "lookbook", "แต่งตัว"],
+    contract: "Fashion lookbook cover. Sophisticated portrait/product styling, editorial crop, elegant headline, minimal caption cards, premium magazine fashion aesthetic.",
+  },
+  {
+    id: "real-estate-brochure",
+    label: "Real Estate Brochure",
+    bestFor: "บ้าน คอนโด อสังหา ตกแต่ง",
+    keywords: ["บ้าน", "คอนโด", "อสังหา", "interior", "แต่งบ้าน", "property"],
+    contract: "Real estate brochure slide. Bright architectural photography, clean listing-style information cards, beige/white/charcoal palette, premium interior magazine layout.",
+  },
+  {
+    id: "sport-energy",
+    label: "Sport Energy",
+    bestFor: "กีฬา ฟิตเนส กิจกรรม",
+    keywords: ["กีฬา", "sport", "fitness", "วิ่ง", "ออกกำลัง", "ทีม"],
+    contract: "Sport energy poster. Dynamic action photography, bold condensed headline, energetic accent shapes, stat chips, high-contrast composition, motivational editorial tone.",
+  },
+];
 
 type EditorialPlannerImageAssetDraft = {
   id: string;
@@ -432,6 +622,81 @@ function normalizeCanvasRatio(value?: string | null): SlideCanvasRatio {
     : "16:9";
 }
 
+function getModelConfigRecord(model: MediaModelOption | null | undefined): Record<string, unknown> {
+  return model?.configJson && typeof model.configJson === "object" && !Array.isArray(model.configJson)
+    ? model.configJson as Record<string, unknown>
+    : {};
+}
+
+function normalizeModelStringList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .flatMap((item) => normalizeModelStringList(item))
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function getSizeRatio(size: string): SlideCanvasRatio | null {
+  const match = size.trim().match(/^(\d+)\s*[xX×]\s*(\d+)$/);
+  if (!match) {
+    return null;
+  }
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null;
+  }
+  const preset = PRESENTATION_CANVAS_PRESETS.find((candidate) => {
+    const expected = candidate.width / candidate.height;
+    const actual = width / height;
+    return Math.abs(expected - actual) < 0.05;
+  });
+  return preset ? preset.id as SlideCanvasRatio : null;
+}
+
+function getSupportedCanvasRatiosForModel(model: MediaModelOption | null | undefined): SlideCanvasRatio[] {
+  const config = getModelConfigRecord(model);
+  const ratioValues = [
+    ...normalizeModelStringList(model?.supportsAspectRatios),
+    ...normalizeModelStringList(config.supportedAspectRatios),
+    ...normalizeModelStringList(config.aspectRatios),
+  ];
+  const sizeValues = [
+    ...normalizeModelStringList(model?.supportsSizes),
+    ...normalizeModelStringList(config.supportedSizes),
+    ...normalizeModelStringList(config.sizes),
+  ];
+  const supported = new Set<SlideCanvasRatio>();
+  for (const ratio of ratioValues) {
+    const normalized = ratio.toLowerCase();
+    if (normalized === "auto") {
+      continue;
+    }
+    if (SUPPORTED_SLIDE_RATIOS.includes(normalized as SlideCanvasRatio)) {
+      supported.add(normalized as SlideCanvasRatio);
+    }
+  }
+  for (const size of sizeValues) {
+    const ratio = getSizeRatio(size);
+    if (ratio) {
+      supported.add(ratio);
+    }
+  }
+  return SUPPORTED_SLIDE_RATIOS.filter((ratio) => supported.has(ratio));
+}
+
+function getCanvasRatioCss(value: SlideCanvasRatio): string {
+  return value.replace(":", " / ");
+}
+
 function sleepMs(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -619,6 +884,8 @@ type PersistedArticleBuilderDraft = {
   targetImageCount: number;
   imageModel: string;
   canvasRatio: SlideCanvasRatio;
+  slideVisualMode?: SlideVisualMode;
+  fullSlideImageStyleId?: FullSlideImageStyleId;
   advancedMediaOptionsEnabled: boolean;
   mediaModelExtraParams: Record<string, unknown>;
   imagePromptContext: string;
@@ -855,71 +1122,281 @@ function getPreparedImageSlotKey(
   return `${value.pageNumber}:${value.imageIndex}:${value.placementRole}`;
 }
 
+function isSamePreparedImageSlot(
+  left: Pick<PreparedImagePrompt, "id" | "pageNumber" | "imageIndex" | "placementRole">,
+  right: Pick<PreparedImagePrompt, "id" | "pageNumber" | "imageIndex" | "placementRole">,
+): boolean {
+  return Boolean(left.id && right.id && left.id === right.id)
+    || getPreparedImageSlotKey(left) === getPreparedImageSlotKey(right)
+    || (left.pageNumber === right.pageNumber && left.imageIndex === right.imageIndex);
+}
+
 function normalizeGeneratedImagesForBundle(
   bundle: PreparedSlideBundle | null,
   assets: GeneratedImageAsset[],
+  canvasRatio?: SlideCanvasRatio,
 ): GeneratedImageAsset[] {
   if (!bundle) {
-    return assets.filter((asset) => Boolean(asset.url?.trim()));
+    return assets.filter((asset) => Boolean(asset.url?.trim()) && (!canvasRatio || asset.canvasRatio === canvasRatio));
   }
   const prompts = Array.isArray(bundle.imagePrompts) ? bundle.imagePrompts : [];
+  return normalizeGeneratedImagesForPrompts(prompts, assets, canvasRatio);
+}
+
+function normalizeGeneratedImagesForPrompts(
+  prompts: PreparedImagePrompt[],
+  assets: GeneratedImageAsset[],
+  canvasRatio?: SlideCanvasRatio,
+): GeneratedImageAsset[] {
   if (prompts.length === 0) {
     return [];
   }
-  const assetBySlot = new Map<string, GeneratedImageAsset>();
-  assets.forEach((asset) => {
-    if (!asset.url?.trim()) {
-      return;
-    }
-    const slotKey = getPreparedImageSlotKey(asset);
-    if (!assetBySlot.has(slotKey)) {
-      assetBySlot.set(slotKey, asset);
-    }
-  });
   return prompts.flatMap((prompt) => {
-    const matchedAsset = assetBySlot.get(getPreparedImageSlotKey(prompt));
+    const matchedAssets = assets.filter((asset) => (
+      Boolean(asset.url?.trim())
+      && isSamePreparedImageSlot(asset, prompt)
+      && (!canvasRatio || asset.canvasRatio === canvasRatio)
+    ));
+    const matchedAsset = matchedAssets
+      .map((asset, index) => ({
+        asset,
+        index,
+        timestamp: Date.parse(asset.updatedAt ?? ""),
+      }))
+      .sort((left, right) => (
+        (Number.isNaN(right.timestamp) ? 0 : right.timestamp)
+        - (Number.isNaN(left.timestamp) ? 0 : left.timestamp)
+      ) || right.index - left.index)[0]?.asset;
     if (!matchedAsset) {
       return [];
     }
     return [{
       ...prompt,
       url: matchedAsset.url,
+      canvasRatio: matchedAsset.canvasRatio,
+      updatedAt: matchedAsset.updatedAt,
     }];
   });
+}
+
+function generatedImagesMatchPrompts(
+  prompts: PreparedImagePrompt[],
+  assets: GeneratedImageAsset[],
+  canvasRatio?: SlideCanvasRatio,
+): boolean {
+  if (prompts.length === 0) {
+    return true;
+  }
+  return normalizeGeneratedImagesForPrompts(prompts, assets, canvasRatio).length === prompts.length;
 }
 
 function generatedImagesMatchPreparedBundle(
   bundle: PreparedSlideBundle | null,
   assets: GeneratedImageAsset[],
+  canvasRatio?: SlideCanvasRatio,
 ): boolean {
   if (!bundle) {
-    return assets.length === 0;
+    return canvasRatio
+      ? assets.filter((asset) => asset.canvasRatio === canvasRatio).length === 0
+      : assets.length === 0;
   }
   const prompts = Array.isArray(bundle.imagePrompts) ? bundle.imagePrompts : [];
   if (prompts.length === 0) {
     return true;
   }
-  return normalizeGeneratedImagesForBundle(bundle, assets).length === prompts.length;
+  return normalizeGeneratedImagesForBundle(bundle, assets, canvasRatio).length === prompts.length;
 }
 
-function generatedImageAssetsEqual(
-  left: GeneratedImageAsset[],
-  right: GeneratedImageAsset[],
-): boolean {
-  if (left.length !== right.length) {
-    return false;
+function sanitizeFullSlideVisualDirection(value: string): string {
+  return value
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .filter((line) => !/(?:no|without)\s+(?:text|letters|captions|typography|words|logos?)/i.test(line))
+    .filter((line) => !/(?:ไม่มี|ห้าม|ไม่ใส่).*(?:ข้อความ|ตัวอักษร|แคปชัน|โลโก้)/i.test(line))
+    .join("\n");
+}
+
+function normalizeFullSlideBodyText(value: string): string {
+  const compact = value
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,.!?;:])/g, "$1")
+    .trim();
+  if (compact.length <= 900) {
+    return compact;
   }
-  return left.every((asset, index) => {
-    const other = right[index];
-    return Boolean(other)
-      && asset.id === other.id
-      && asset.pageNumber === other.pageNumber
-      && asset.imageIndex === other.imageIndex
-      && asset.placementRole === other.placementRole
-      && asset.shortLabel === other.shortLabel
-      && asset.prompt === other.prompt
-      && asset.url === other.url;
+  return `${compact.slice(0, 897).trimEnd()}...`;
+}
+
+function normalizeFullSlideImageStyleId(value: string | null | undefined): FullSlideImageStyleId {
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  if (!trimmed || trimmed === AUTO_FULL_SLIDE_STYLE_ID) {
+    return AUTO_FULL_SLIDE_STYLE_ID;
+  }
+  return FULL_SLIDE_IMAGE_STYLE_PRESETS.some((preset) => preset.id === trimmed)
+    ? trimmed
+    : AUTO_FULL_SLIDE_STYLE_ID;
+}
+
+function resolveFullSlideImageStylePreset(input: {
+  styleId: FullSlideImageStyleId;
+  topic: string;
+  article: string;
+  bundle: PreparedSlideBundle | null;
+}): FullSlideImageStylePreset {
+  const normalizedStyleId = normalizeFullSlideImageStyleId(input.styleId);
+  const explicitPreset = FULL_SLIDE_IMAGE_STYLE_PRESETS.find((preset) => preset.id === normalizedStyleId);
+  if (explicitPreset) {
+    return explicitPreset;
+  }
+  const haystack = [
+    input.topic,
+    input.article,
+    input.bundle?.preflightPages?.map((page) => `${page.titleHint} ${page.compiledText}`).join(" "),
+  ].filter(Boolean).join(" ").toLowerCase();
+  const scoredPresets = FULL_SLIDE_IMAGE_STYLE_PRESETS.map((preset, index) => {
+    const score = preset.keywords.reduce((total, keyword) => (
+      haystack.includes(keyword.toLowerCase()) ? total + 1 : total
+    ), 0);
+    return { preset, score, index };
+  }).sort((left, right) => right.score - left.score || left.index - right.index);
+  return scoredPresets[0]?.score
+    ? scoredPresets[0].preset
+    : FULL_SLIDE_IMAGE_STYLE_PRESETS[0]!;
+}
+
+function buildFullSlideImagePrompt(input: {
+  topic: string;
+  title: string;
+  text: string;
+  canvasRatio: SlideCanvasRatio;
+  imagePromptContext: string;
+  stylePreset: FullSlideImageStylePreset;
+  requestedStyleId: FullSlideImageStyleId;
+  sourcePrompt?: string;
+}): string {
+  const title = input.title.trim() || input.topic.trim();
+  const bodyText = normalizeFullSlideBodyText(input.text);
+  const sanitizedSourcePrompt = sanitizeFullSlideVisualDirection(input.sourcePrompt ?? "");
+  const globalRequirements = input.imagePromptContext.trim();
+  return [
+    `สร้างภาพสไลด์สำเร็จรูปทั้งหน้า อัตราส่วน ${input.canvasRatio} โดยภาพสุดท้ายต้องเป็น poster/infographic editorial slide ไม่ใช่ภาพถ่ายเปล่า`,
+    "Style direction: realistic photography + premium parenting/editorial magazine layout + clean luxury infographic. Use cinematic realistic lighting, soft natural shadows, shallow depth of field, warm modern minimal mood, high-resolution details, realistic human expression.",
+    "Layout requirements: reserve a clear top area for a large Thai headline; use the photo as an integrated background/focal image; add one translucent white/cream rounded text box in the lower half for explanatory copy; add 2-4 small clean callout chips/cards near the bottom when the content supports it; keep generous spacing and mobile-readable hierarchy.",
+    "Typography requirements: render readable Thai modern sans-serif typography inside the image, large bold headline, concise body text, clean magazine spacing, no misspellings, no random extra words, no placeholder text.",
+    "Important: the image must visibly contain the title and explanatory Thai text. Do not create a photo-only result. Do not follow any old instruction that says no text or no letters.",
+    "Negative requirements: no cartoon, no illustration, no distorted hands, no blurry text, no watermark, no logo, no app UI, no empty text boxes, no unreadable micro text.",
+    `Style preset for every slide in this project: ${input.stylePreset.label}${input.requestedStyleId === AUTO_FULL_SLIDE_STYLE_ID ? " (auto-selected)" : ""}. Keep this exact visual system consistent across all pages in the project.`,
+    `Style preset contract:\n${input.stylePreset.contract}`,
+    input.topic.trim() ? `Presentation topic: ${input.topic.trim()}` : "",
+    title ? `หัวข้อใหญ่ที่ต้องอยู่บนภาพ:\n${title}` : "",
+    bodyText ? `ข้อความอธิบายที่ต้องจัดวางให้อ่านง่ายบนภาพ:\n${bodyText}` : "",
+    sanitizedSourcePrompt ? `Visual subject/background direction:\n${sanitizedSourcePrompt}` : "",
+    globalRequirements ? `Additional global visual requirements:\n${globalRequirements}` : "",
+    "Composition target: similar to a premium Thai parenting article cover or vertical mobile infographic, with photo realism plus designed text blocks and balanced editorial composition.",
+  ].filter(Boolean).join("\n\n");
+}
+
+function buildFullSlideImagePrompts(input: {
+  bundle: PreparedSlideBundle | null;
+  topic: string;
+  article: string;
+  canvasRatio: SlideCanvasRatio;
+  imagePromptContext: string;
+  styleId: FullSlideImageStyleId;
+}): PreparedImagePrompt[] {
+  if (!input.bundle) {
+    return [];
+  }
+  const stylePreset = resolveFullSlideImageStylePreset({
+    styleId: input.styleId,
+    topic: input.topic,
+    article: input.article,
+    bundle: input.bundle,
   });
+  if (input.bundle.preflightPages?.length) {
+    const promptByPage = new Map<number, PreparedImagePrompt[]>();
+    for (const prompt of input.bundle.imagePrompts) {
+      const bucket = promptByPage.get(prompt.pageNumber) ?? [];
+      bucket.push(prompt);
+      promptByPage.set(prompt.pageNumber, bucket);
+    }
+    return input.bundle.preflightPages
+      .slice()
+      .sort((left, right) => left.pageNumber - right.pageNumber)
+      .map((page) => {
+        const pagePrompts = (promptByPage.get(page.pageNumber) ?? [])
+          .slice()
+          .sort((left, right) => left.imageIndex - right.imageIndex);
+        return {
+          id: `full-slide-${page.pageNumber}`,
+          pageNumber: page.pageNumber,
+          imageIndex: 1,
+          placementRole: "hero",
+          shortLabel: page.titleHint || `Slide ${page.pageNumber}`,
+          prompt: buildFullSlideImagePrompt({
+            topic: input.topic,
+            title: page.titleHint,
+            text: page.compiledText,
+            canvasRatio: input.canvasRatio,
+            imagePromptContext: input.imagePromptContext,
+            stylePreset,
+            requestedStyleId: input.styleId,
+            sourcePrompt: pagePrompts.map((prompt) => prompt.prompt).join("\n\n"),
+          }),
+        };
+      });
+  }
+  const leadPromptsByPage = new Map<number, PreparedImagePrompt>();
+  for (const prompt of input.bundle.imagePrompts.slice().sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex)) {
+    if (!leadPromptsByPage.has(prompt.pageNumber)) {
+      leadPromptsByPage.set(prompt.pageNumber, prompt);
+    }
+  }
+  return Array.from(leadPromptsByPage.values()).map((prompt) => ({
+    ...prompt,
+    id: `full-slide-${prompt.pageNumber}`,
+    shortLabel: prompt.shortLabel || `Slide ${prompt.pageNumber}`,
+    prompt: buildFullSlideImagePrompt({
+      topic: input.topic,
+      title: prompt.shortLabel,
+      text: "",
+      canvasRatio: input.canvasRatio,
+      imagePromptContext: input.imagePromptContext,
+      stylePreset,
+      requestedStyleId: input.styleId,
+      sourcePrompt: prompt.prompt,
+    }),
+  }));
+}
+
+function buildFullSlideImageDeckJson(input: {
+  canvasRatio: SlideCanvasRatio;
+  assets: GeneratedImageAsset[];
+}): string {
+  return JSON.stringify({
+    canvas: { ratio: input.canvasRatio },
+    slides: input.assets
+      .slice()
+      .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex)
+      .map((asset) => ({
+        title: asset.shortLabel || `Slide ${asset.pageNumber}`,
+        notes: asset.prompt,
+        elements: [
+          {
+            kind: "image",
+            role: "full-slide",
+            source: asset.url,
+            xPct: 0,
+            yPct: 0,
+            wPct: 100,
+            hPct: 100,
+            fit: "cover",
+            cornerRadius: 0,
+          },
+        ],
+      })),
+  }, null, 2);
 }
 
 function normalizeLibraryMediaItems(
@@ -1160,6 +1637,8 @@ export function PresentationArticleGeneratorDialog({
   const [isAgencyModalOpen, setIsAgencyModalOpen] = useState(false);
   const [imageModel, setImageModel] = useState("");
   const [canvasRatio, setCanvasRatio] = useState<SlideCanvasRatio>(normalizeCanvasRatio(initialCanvasRatio));
+  const [slideVisualMode, setSlideVisualMode] = useState<SlideVisualMode>("editable");
+  const [fullSlideImageStyleId, setFullSlideImageStyleId] = useState<FullSlideImageStyleId>(AUTO_FULL_SLIDE_STYLE_ID);
   const [advancedMediaOptionsEnabled, setAdvancedMediaOptionsEnabled] = useState(false);
   const [mediaModelExtraParams, setMediaModelExtraParams] = useState<Record<string, unknown>>({});
   const [imagePromptContext, setImagePromptContext] = useState("");
@@ -1189,6 +1668,7 @@ export function PresentationArticleGeneratorDialog({
   const [slotPickerTab, setSlotPickerTab] = useState<"library" | "history">("library");
   const [slotPickerSearchQuery, setSlotPickerSearchQuery] = useState("");
   const [regeneratingSlotKey, setRegeneratingSlotKey] = useState<string | null>(null);
+  const [previewImageAsset, setPreviewImageAsset] = useState<GeneratedImageAsset | null>(null);
   const [guidedWorkflowStep, setGuidedWorkflowStep] = useState<number | null>(null);
   const [guidedFooterAction, setGuidedFooterAction] = useState<"insert" | null>(null);
 
@@ -1437,9 +1917,26 @@ export function PresentationArticleGeneratorDialog({
   );
   const selectedSlideSkillSupportsArtifacts = supportsGeneratedSlideArtifacts(selectedSlideSkill);
   const artifactRequiredForSelectedOutput = requiresGeneratedSlideArtifact(slideOutputFormat);
+  const isFullSlideImageMode = slideVisualMode === "full-slide-image";
+  const activeFullSlideImageStylePreset = useMemo(
+    () => resolveFullSlideImageStylePreset({
+      styleId: fullSlideImageStyleId,
+      topic,
+      article,
+      bundle: preparedBundle,
+    }),
+    [article, fullSlideImageStyleId, preparedBundle, topic],
+  );
+  const supportedCanvasRatioIds = useMemo<SlideCanvasRatio[]>(() => {
+    const modelRatios = getSupportedCanvasRatiosForModel(selectedImageModelConfig);
+    if (modelRatios.length > 0) {
+      return modelRatios;
+    }
+    return isFullSlideImageMode ? FULL_SLIDE_IMAGE_FALLBACK_RATIOS : SUPPORTED_SLIDE_RATIOS;
+  }, [isFullSlideImageMode, selectedImageModelConfig]);
   const supportedCanvasOptions = useMemo(
-    () => PRESENTATION_CANVAS_PRESETS.filter((preset) => SUPPORTED_SLIDE_RATIOS.includes(preset.id as SlideCanvasRatio)),
-    [],
+    () => PRESENTATION_CANVAS_PRESETS.filter((preset) => supportedCanvasRatioIds.includes(preset.id as SlideCanvasRatio)),
+    [supportedCanvasRatioIds],
   );
   const slideOutputFormats = useMemo(
     () => Array.from(new Set<SlideOutputFormat>(["json", slideOutputFormat])),
@@ -1449,21 +1946,36 @@ export function PresentationArticleGeneratorDialog({
     () => (isEditorialLayoutPlannerSelected ? ["json"] : SUPPORTED_OUTPUT_FORMATS),
     [isEditorialLayoutPlannerSelected],
   );
+  const fullSlideImagePrompts = useMemo(
+    () => buildFullSlideImagePrompts({
+      bundle: preparedBundle,
+      topic,
+      article,
+      canvasRatio,
+      imagePromptContext,
+      styleId: fullSlideImageStyleId,
+    }),
+    [article, canvasRatio, fullSlideImageStyleId, imagePromptContext, preparedBundle, topic],
+  );
+  const activeImagePrompts = useMemo(
+    () => (isFullSlideImageMode ? fullSlideImagePrompts : (preparedBundle?.imagePrompts ?? [])),
+    [fullSlideImagePrompts, isFullSlideImageMode, preparedBundle?.imagePrompts],
+  );
   const normalizedGeneratedImages = useMemo(
-    () => normalizeGeneratedImagesForBundle(preparedBundle, generatedImages),
-    [generatedImages, preparedBundle],
+    () => normalizeGeneratedImagesForPrompts(activeImagePrompts, generatedImages, canvasRatio),
+    [activeImagePrompts, canvasRatio, generatedImages],
   );
   const missingImagePrompts = useMemo(() => {
-    const prompts = preparedBundle?.imagePrompts ?? [];
+    const prompts = activeImagePrompts;
     if (prompts.length === 0) {
       return [] as PreparedImagePrompt[];
     }
     const availableSlots = new Set(normalizedGeneratedImages.map((asset) => getPreparedImageSlotKey(asset)));
     return prompts.filter((prompt) => !availableSlots.has(getPreparedImageSlotKey(prompt)));
-  }, [normalizedGeneratedImages, preparedBundle?.imagePrompts]);
+  }, [activeImagePrompts, normalizedGeneratedImages]);
   const generatedImagesAreCurrentForBundle = useMemo(
-    () => generatedImagesMatchPreparedBundle(preparedBundle, normalizedGeneratedImages),
-    [normalizedGeneratedImages, preparedBundle],
+    () => generatedImagesMatchPrompts(activeImagePrompts, normalizedGeneratedImages, canvasRatio),
+    [activeImagePrompts, canvasRatio, normalizedGeneratedImages],
   );
   const articleStepStatus = useMemo<WizardStepStatus>(() => {
     if (generateArticleMutation.isPending) {
@@ -1627,7 +2139,16 @@ export function PresentationArticleGeneratorDialog({
   const slideRefreshHint = bundleNeedsRefreshAfterSkillChange || slideDraftNeedsRefreshAfterSkillChange
     ? "Slide JSON เดิมมาจาก skill ก่อนหน้า กรุณา Generate Slide JSON ใหม่ก่อนนำเข้า"
     : null;
-  const canInsertGeneratedSlides = hasImportableSlides && !slideRefreshHint && !generateSlideDraftMutation.isPending;
+  const missingImagesBeforeSlideDraft = preparedBundle && activeImagePrompts.length > normalizedGeneratedImages.length
+    ? {
+        current: normalizedGeneratedImages.length,
+        total: activeImagePrompts.length,
+      }
+    : null;
+  const slideGenerationBlockedHint = missingImagesBeforeSlideDraft
+    ? `กรุณาสร้างรูปภาพประกอบให้ครบก่อน Generate Slide JSON (${missingImagesBeforeSlideDraft.current}/${missingImagesBeforeSlideDraft.total}) เพื่อป้องกัน slide ไม่มีภาพ`
+    : slideRefreshHint;
+  const canInsertGeneratedSlides = hasImportableSlides && !slideGenerationBlockedHint && !generateSlideDraftMutation.isPending;
   const guidedWorkflowMessage = guidedWorkflowStep === 2
     ? "Recommended next step: Refresh bundle เพื่อให้ layout plan และ payload ตรงกับ slide skill ใหม่"
     : guidedWorkflowStep === 4
@@ -1663,18 +2184,39 @@ export function PresentationArticleGeneratorDialog({
   }, [guidedWorkflowStep, open]);
   const generatedImageCards = useMemo(() => {
     const assetBySlot = new Map(normalizedGeneratedImages.map((asset) => [getPreparedImageSlotKey(asset), asset] as const));
-    const plannedPrompts = preparedBundle?.imagePrompts ?? [];
+    const fallbackAssetBySlot = new Map<string, GeneratedImageAsset>();
+    for (const asset of generatedImages) {
+      if (!asset.url) {
+        continue;
+      }
+      const slotKey = getPreparedImageSlotKey(asset);
+      if (assetBySlot.has(slotKey)) {
+        continue;
+      }
+      const previous = fallbackAssetBySlot.get(slotKey);
+      const previousTime = previous?.updatedAt ? Date.parse(previous.updatedAt) : 0;
+      const assetTime = asset.updatedAt ? Date.parse(asset.updatedAt) : 0;
+      if (!previous || assetTime >= previousTime) {
+        fallbackAssetBySlot.set(slotKey, asset);
+      }
+    }
+    const plannedPrompts = activeImagePrompts;
     if (plannedPrompts.length > 0) {
-      return plannedPrompts.map((prompt) => ({
-        prompt,
-        asset: assetBySlot.get(getPreparedImageSlotKey(prompt)) ?? null,
-      }));
+      return plannedPrompts.map((prompt) => {
+        const slotKey = getPreparedImageSlotKey(prompt);
+        return {
+          prompt,
+          asset: assetBySlot.get(slotKey) ?? null,
+          fallbackAsset: fallbackAssetBySlot.get(slotKey) ?? null,
+        };
+      });
     }
     return normalizedGeneratedImages.map((asset) => ({
       prompt: asset,
       asset,
+      fallbackAsset: null,
     }));
-  }, [normalizedGeneratedImages, preparedBundle?.imagePrompts]);
+  }, [activeImagePrompts, generatedImages, normalizedGeneratedImages]);
   const pageSlotCounts = useMemo(() => {
     const counts = new Map<number, number>();
     for (const prompt of preparedBundle?.imagePrompts ?? []) {
@@ -1684,7 +2226,7 @@ export function PresentationArticleGeneratorDialog({
   }, [preparedBundle?.imagePrompts]);
   const leadPromptByPage = useMemo(() => {
     const nextMap = new Map<number, PreparedImagePrompt>();
-    const sortedPrompts = [...(preparedBundle?.imagePrompts ?? [])]
+    const sortedPrompts = [...activeImagePrompts]
       .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
     for (const prompt of sortedPrompts) {
       if (!nextMap.has(prompt.pageNumber)) {
@@ -1692,7 +2234,7 @@ export function PresentationArticleGeneratorDialog({
       }
     }
     return nextMap;
-  }, [preparedBundle?.imagePrompts]);
+  }, [activeImagePrompts]);
   const pageImagePlanOverrides = useMemo(
     () => (preparedBundle?.preflightPages ?? []).map((page) => ({
       pageNumber: page.pageNumber,
@@ -1760,6 +2302,16 @@ export function PresentationArticleGeneratorDialog({
   );
 
   useEffect(() => {
+    if (supportedCanvasRatioIds.includes(canvasRatio)) {
+      return;
+    }
+    setCanvasRatio(supportedCanvasRatioIds[0] ?? "16:9");
+    setGeneratedImages([]);
+    setGeneratedSlideDraft(null);
+    setGeneratedSlideDraftSkillId("");
+  }, [canvasRatio, supportedCanvasRatioIds]);
+
+  useEffect(() => {
     const justOpened = open && !wasOpenRef.current;
     wasOpenRef.current = open;
     if (!justOpened) {
@@ -1787,6 +2339,8 @@ export function PresentationArticleGeneratorDialog({
       setTargetImageCount(clampImageCount(persistedDraft.targetImageCount));
       setImageModel(persistedDraft.imageModel);
       setCanvasRatio(normalizeCanvasRatio(persistedDraft.canvasRatio));
+      setSlideVisualMode(persistedDraft.slideVisualMode === "full-slide-image" ? "full-slide-image" : "editable");
+      setFullSlideImageStyleId(normalizeFullSlideImageStyleId(persistedDraft.fullSlideImageStyleId));
       setAdvancedMediaOptionsEnabled(Boolean(persistedDraft.advancedMediaOptionsEnabled));
       setMediaModelExtraParams(persistedDraft.mediaModelExtraParams ?? {});
       setImagePromptContext(persistedDraft.imagePromptContext);
@@ -1812,7 +2366,11 @@ export function PresentationArticleGeneratorDialog({
           ? (persistedDraft.preparedBundleSkillId?.trim() || persistedDraft.slideSkillId || "")
           : "",
       );
-      setGeneratedImages(persistedDraft.generatedImages ?? []);
+      const persistedCanvasRatio = normalizeCanvasRatio(persistedDraft.canvasRatio);
+      setGeneratedImages((persistedDraft.generatedImages ?? []).map((asset) => ({
+        ...asset,
+        canvasRatio: asset.canvasRatio ?? persistedCanvasRatio,
+      })));
       setGeneratedSlideDraft(persistedDraft.generatedSlideDraft);
       setGeneratedSlideDraftSkillId(
         persistedDraft.generatedSlideDraft
@@ -1844,6 +2402,8 @@ export function PresentationArticleGeneratorDialog({
     setTargetImageCount(8);
     setImageModel("");
     setCanvasRatio(normalizeCanvasRatio(initialCanvasRatio));
+    setSlideVisualMode("editable");
+    setFullSlideImageStyleId(AUTO_FULL_SLIDE_STYLE_ID);
     setAdvancedMediaOptionsEnabled(false);
     setMediaModelExtraParams({});
     setImagePromptContext("");
@@ -1896,6 +2456,8 @@ export function PresentationArticleGeneratorDialog({
       targetImageCount: clampImageCount(targetImageCount),
       imageModel,
       canvasRatio,
+      slideVisualMode,
+      fullSlideImageStyleId,
       advancedMediaOptionsEnabled,
       mediaModelExtraParams,
       imagePromptContext,
@@ -1927,6 +2489,7 @@ export function PresentationArticleGeneratorDialog({
     canvasRatio,
     deckId,
     executionSource,
+    fullSlideImageStyleId,
     generatedImages,
     generatedSlideDraft,
     imageModel,
@@ -1951,6 +2514,7 @@ export function PresentationArticleGeneratorDialog({
     slidePayloadEditorJson,
     slidePayloadEditorDirty,
     slideOutputFormat,
+    slideVisualMode,
     slideSkillId,
     generatedSlideDraftSkillId,
     targetImageCount,
@@ -2004,18 +2568,6 @@ export function PresentationArticleGeneratorDialog({
   ]);
 
   useEffect(() => {
-    if (!open || isGeneratingImages || !preparedBundle || generatedImages.length === 0) {
-      return;
-    }
-    if (generatedImageAssetsEqual(generatedImages, normalizedGeneratedImages)) {
-      return;
-    }
-    setGeneratedImages(normalizedGeneratedImages);
-    setGeneratedSlideDraft(null);
-    setGeneratedSlideDraftSkillId("");
-  }, [generatedImages, isGeneratingImages, normalizedGeneratedImages, open, preparedBundle]);
-
-  useEffect(() => {
     if (!open) {
       setSlotPickerKey(null);
       setSlotPickerSearchQuery("");
@@ -2024,10 +2576,10 @@ export function PresentationArticleGeneratorDialog({
   }, [open]);
 
   useEffect(() => {
-    if (!generatedSlideDraft || slideRefreshHint || !hasImportableSlides) {
+    if (!generatedSlideDraft || slideGenerationBlockedHint || !hasImportableSlides) {
       setGuidedFooterAction(null);
     }
-  }, [generatedSlideDraft, hasImportableSlides, slideRefreshHint]);
+  }, [generatedSlideDraft, hasImportableSlides, slideGenerationBlockedHint]);
 
   useEffect(() => {
     const artifacts = (sandboxJobStatusQuery.data?.artifacts ?? [])
@@ -2262,7 +2814,7 @@ export function PresentationArticleGeneratorDialog({
           : undefined,
       });
       const nextGeneratedImages = options?.preserveExistingImages
-        ? normalizeGeneratedImagesForBundle(result, generatedImages)
+        ? normalizeGeneratedImagesForBundle(result, generatedImages, canvasRatio)
         : [];
       const nextPayloadJson = normalizeSlidePayloadJson(
         result.slidePayloadJson,
@@ -2302,13 +2854,18 @@ export function PresentationArticleGeneratorDialog({
     if (!normalizedUrl) {
       return;
     }
-    const slotKey = getPreparedImageSlotKey(prompt);
+    const updatedAt = new Date().toISOString();
     setGeneratedImages((previous) => {
-      const nextAsset: GeneratedImageAsset = { ...prompt, url: normalizedUrl };
-      const withoutCurrentSlot = previous.filter((candidate) => getPreparedImageSlotKey(candidate) !== slotKey);
+      const nextAsset: GeneratedImageAsset = { ...prompt, url: normalizedUrl, canvasRatio, updatedAt };
+      const withoutCurrentSlot = previous.filter((candidate) => !isSamePreparedImageSlot(candidate, prompt));
       return [...withoutCurrentSlot, nextAsset]
         .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
     });
+    setPreviewImageAsset((current) => (
+      current && isSamePreparedImageSlot(current, prompt)
+        ? { ...prompt, url: normalizedUrl, canvasRatio, updatedAt }
+        : current
+    ));
     setGeneratedSlideDraft(null);
     setGeneratedSlideDraftSkillId("");
   };
@@ -2493,9 +3050,20 @@ export function PresentationArticleGeneratorDialog({
     const trimmedTopic = (topic.trim() || (
       slideSkillId === EDITORIAL_LAYOUT_PLANNER_SKILL_ID ? fallbackTopic : ""
     )).trim();
-    const imageAssets = normalizeGeneratedImagesForBundle(
-      preparedBundle,
+    const requiredPrompts = isFullSlideImageMode
+      ? buildFullSlideImagePrompts({
+          bundle: preparedBundle,
+          topic: trimmedTopic,
+          article: trimmedArticle,
+          canvasRatio,
+          imagePromptContext,
+          styleId: fullSlideImageStyleId,
+        })
+      : (preparedBundle?.imagePrompts ?? []);
+    const imageAssets = normalizeGeneratedImagesForPrompts(
+      requiredPrompts,
       options?.imageAssetsOverride ?? generatedImages,
+      canvasRatio,
     );
     const activeMaxPages = preparedBundle?.maxPages ?? null;
     if (!trimmedTopic) {
@@ -2519,6 +3087,69 @@ export function PresentationArticleGeneratorDialog({
     if (!activeMaxPages) {
       toast.error(t("dialog.articleBuilder.prepareBundleFirst"));
       return null;
+    }
+    const plannedImageCount = preparedBundle?.imagePrompts?.length ?? 0;
+    const requiredImageCount = requiredPrompts.length || plannedImageCount;
+    if (requiredImageCount > 0 && imageAssets.length < requiredImageCount) {
+      toast.error(t("dialog.articleBuilder.imagesRequired"));
+      setGuidedWorkflowStep(3);
+      return null;
+    }
+    if (isFullSlideImageMode) {
+      const slideJson = buildFullSlideImageDeckJson({
+        canvasRatio,
+        assets: imageAssets,
+      });
+      const slidePayloadJson = JSON.stringify({
+        mode: "full-slide-image",
+        topic: trimmedTopic,
+        canvasRatio,
+        style: {
+          requested: fullSlideImageStyleId,
+          resolved: activeFullSlideImageStylePreset.id,
+          label: activeFullSlideImageStylePreset.label,
+          contract: activeFullSlideImageStylePreset.contract,
+        },
+        pages: imageAssets.map((asset) => ({
+          pageNumber: asset.pageNumber,
+          title: asset.shortLabel,
+          prompt: asset.prompt,
+          imageUrl: asset.url,
+        })),
+      }, null, 2);
+      const nextDraft: GeneratedSlideDraft = {
+        slideJson,
+        slidePayloadJson,
+        modelId: imageModel.trim() || undefined,
+        generatedAt: new Date().toISOString(),
+        selectedSkillId: "full-slide-image",
+        selectedSkillName: t("dialog.articleBuilder.fullSlideImageMode"),
+        executionSkillId: "media-generate-full-slide-image",
+        executionSkillName: (selectedImageModelConfig?.name ?? imageModel.trim()) || t("dialog.articleBuilder.mediaModelLabel"),
+        runtimeBundleSkillId: null,
+        runtimeBundleSkillName: null,
+        runtimeAliasApplied: false,
+        artifactJobId: null,
+        artifacts: [],
+        downloadUrl: null,
+        debugTracePath: null,
+        importedSlideJson: null,
+        importedAt: null,
+        importedFromArtifact: false,
+        importedArtifactUrl: null,
+      };
+      const nextDraftHasImportableSlides = hasImportableSlidesJson(slideJson);
+      setGeneratedSlideDraft(nextDraft);
+      setGeneratedSlideDraftSkillId(slideSkillId.trim() || "full-slide-image");
+      setGeneratedSlideDraftSessionSource("fresh-run");
+      setSlidePayloadEditorJson(slidePayloadJson);
+      setSlidePayloadEditorDirty(false);
+      setGuidedWorkflowStep(null);
+      setGuidedFooterAction(nextDraftHasImportableSlides ? "insert" : null);
+      if (options?.successMessage) {
+        toast.success(`${options.successMessage} ขั้นถัดไป: นำเข้า Slides ล่าสุดได้เลย`);
+      }
+      return nextDraft;
     }
     const trimmedPayloadOverrideJson = slidePayloadEditorDirty ? slidePayloadEditorJson.trim() : "";
     if (trimmedPayloadOverrideJson) {
@@ -2687,13 +3318,23 @@ export function PresentationArticleGeneratorDialog({
     }
 
     setIsGeneratingImages(true);
-    const reusableAssets = normalizeGeneratedImagesForBundle(bundle, generatedImages);
+    const promptsForGeneration = isFullSlideImageMode
+      ? buildFullSlideImagePrompts({
+          bundle,
+          topic,
+          article,
+          canvasRatio,
+          imagePromptContext,
+          styleId: fullSlideImageStyleId,
+        })
+      : bundle.imagePrompts;
+    const reusableAssets = normalizeGeneratedImagesForPrompts(promptsForGeneration, generatedImages, canvasRatio);
     setGeneratedImages(reusableAssets);
     setGeneratedSlideDraft(null);
     setGeneratedSlideDraftSkillId("");
     try {
       const reusableSlotKeys = new Set(reusableAssets.map((asset) => getPreparedImageSlotKey(asset)));
-      const promptsToGenerate = bundle.imagePrompts.filter(
+      const promptsToGenerate = promptsForGeneration.filter(
         (prompt) => !reusableSlotKeys.has(getPreparedImageSlotKey(prompt)),
       );
       const nextAssets: GeneratedImageAsset[] = [...reusableAssets];
@@ -2705,9 +3346,22 @@ export function PresentationArticleGeneratorDialog({
         });
         return;
       }
-      for (let index = 0; index < promptsToGenerate.length; index += 1) {
-        const promptPlan = promptsToGenerate[index]!;
-        setImageGenerationProgress(`${reusableAssets.length + index + 1}/${bundle.imagePrompts.length}`);
+      let nextPromptIndex = 0;
+      let completedCount = reusableAssets.length;
+      const generatedByPromptIndex: Array<GeneratedImageAsset | null> = Array.from(
+        { length: promptsToGenerate.length },
+        () => null,
+      );
+      const updateGeneratedImageProgress = () => {
+        const orderedGeneratedAssets = generatedByPromptIndex.filter(
+          (asset): asset is GeneratedImageAsset => Boolean(asset),
+        );
+        setGeneratedImages([...reusableAssets, ...orderedGeneratedAssets]);
+        setImageGenerationProgress(`${completedCount}/${promptsForGeneration.length}`);
+      };
+      setImageGenerationProgress(`${completedCount}/${promptsForGeneration.length}`);
+
+      const generatePromptImage = async (promptPlan: PreparedImagePrompt): Promise<GeneratedImageAsset> => {
         const extraParams = applyModelSyncTargets(
           selectedImageModelConfig,
           syncedMediaModelExtraParams,
@@ -2756,10 +3410,32 @@ export function PresentationArticleGeneratorDialog({
         const nextAsset: GeneratedImageAsset = {
           ...promptPlan,
           url: resultUrl,
+          canvasRatio,
+          updatedAt: new Date().toISOString(),
         };
-        nextAssets.push(nextAsset);
-        setGeneratedImages([...nextAssets]);
+        return nextAsset;
+      };
+
+      const workerCount = Math.min(IMAGE_GENERATION_BATCH_CONCURRENCY, promptsToGenerate.length);
+      const workers = Array.from({ length: workerCount }, async () => {
+        while (nextPromptIndex < promptsToGenerate.length) {
+          const currentIndex = nextPromptIndex;
+          nextPromptIndex += 1;
+          const promptPlan = promptsToGenerate[currentIndex]!;
+          const nextAsset = await generatePromptImage(promptPlan);
+          generatedByPromptIndex[currentIndex] = nextAsset;
+          completedCount += 1;
+          updateGeneratedImageProgress();
+        }
+      });
+      const workerResults = await Promise.allSettled(workers);
+      const failedWorker = workerResults.find((result) => result.status === "rejected");
+      if (failedWorker?.status === "rejected") {
+        throw failedWorker.reason;
       }
+      nextAssets.push(...generatedByPromptIndex.filter(
+        (asset): asset is GeneratedImageAsset => Boolean(asset),
+      ));
       setImageGenerationProgress("");
       toast.success(t("dialog.articleBuilder.generateImagesSuccess"));
       await handleGenerateSlideDraft({
@@ -2914,6 +3590,73 @@ export function PresentationArticleGeneratorDialog({
                     </div>
 
                     <div className="space-y-1.5">
+                      <Label>{t("dialog.articleBuilder.slideVisualModeLabel")}</Label>
+                      <div className="grid grid-cols-2 gap-2" role="group" aria-label={t("dialog.articleBuilder.slideVisualModeLabel")}>
+                        {(["editable", "full-slide-image"] as SlideVisualMode[]).map((mode) => (
+                          <Button
+                            key={mode}
+                            type="button"
+                            variant={slideVisualMode === mode ? "default" : "outline"}
+                            size="sm"
+                            aria-pressed={slideVisualMode === mode}
+                            onClick={() => {
+                              if (slideVisualMode === mode) {
+                                return;
+                              }
+                              setSlideVisualMode(mode);
+                              setGeneratedImages([]);
+                              setGeneratedSlideDraft(null);
+                              setGeneratedSlideDraftSkillId("");
+                            }}
+                          >
+                            {mode === "full-slide-image"
+                              ? t("dialog.articleBuilder.fullSlideImageMode")
+                              : t("dialog.articleBuilder.editableSlideMode")}
+                          </Button>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {slideVisualMode === "full-slide-image"
+                          ? t("dialog.articleBuilder.fullSlideImageModeHint")
+                          : t("dialog.articleBuilder.editableSlideModeHint")}
+                      </p>
+                    </div>
+
+                    {isFullSlideImageMode ? (
+                      <div className="space-y-1.5">
+                        <Label htmlFor="presentation-article-full-slide-style">{t("dialog.articleBuilder.fullSlideStyleLabel")}</Label>
+                        <select
+                          id="presentation-article-full-slide-style"
+                          aria-label={t("dialog.articleBuilder.fullSlideStyleLabel")}
+                          className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                          value={fullSlideImageStyleId}
+                          onChange={(event) => {
+                            const nextStyleId = normalizeFullSlideImageStyleId(event.target.value);
+                            if (nextStyleId === fullSlideImageStyleId) {
+                              return;
+                            }
+                            setFullSlideImageStyleId(nextStyleId);
+                            setGeneratedImages([]);
+                            setGeneratedSlideDraft(null);
+                            setGeneratedSlideDraftSkillId("");
+                          }}
+                        >
+                          <option value={AUTO_FULL_SLIDE_STYLE_ID}>{t("dialog.articleBuilder.fullSlideStyleAuto")}</option>
+                          {FULL_SLIDE_IMAGE_STYLE_PRESETS.map((preset) => (
+                            <option key={preset.id} value={preset.id}>
+                              {preset.label} - {preset.bestFor}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-muted-foreground">
+                          {fullSlideImageStyleId === AUTO_FULL_SLIDE_STYLE_ID
+                            ? t("dialog.articleBuilder.fullSlideStyleAutoHint", { style: activeFullSlideImageStylePreset.label })
+                            : t("dialog.articleBuilder.fullSlideStyleHint")}
+                        </p>
+                      </div>
+                    ) : null}
+
+                    <div className="space-y-1.5">
                       <Label htmlFor="presentation-article-aspect-ratio">{t("dialog.articleBuilder.aspectRatioLabel")}</Label>
                       <select
                         id="presentation-article-aspect-ratio"
@@ -2929,7 +3672,9 @@ export function PresentationArticleGeneratorDialog({
                         ))}
                       </select>
                       <p className="text-xs text-muted-foreground">
-                        {t("dialog.articleBuilder.aspectRatioHint")}
+                        {isFullSlideImageMode
+                          ? t("dialog.articleBuilder.fullSlideAspectRatioHint")
+                          : t("dialog.articleBuilder.aspectRatioHint")}
                       </p>
                     </div>
 
@@ -3546,7 +4291,9 @@ export function PresentationArticleGeneratorDialog({
                         {
                           step: 3,
                           title: t("dialog.articleBuilder.workflowStep3Title"),
-                          description: t("dialog.articleBuilder.workflowStep3Description"),
+                          description: isFullSlideImageMode
+                            ? t("dialog.articleBuilder.workflowStep3FullSlideDescription")
+                            : t("dialog.articleBuilder.workflowStep3Description"),
                           status: imageStepStatus,
                           hint: imageRefreshHint,
                           action: (
@@ -3567,7 +4314,9 @@ export function PresentationArticleGeneratorDialog({
                               )}
                               {missingImagePrompts.length > 0 && normalizedGeneratedImages.length > 0
                                 ? t("dialog.articleBuilder.generateMissingImages")
-                                : t("dialog.articleBuilder.generateImages")}
+                                : isFullSlideImageMode
+                                  ? t("dialog.articleBuilder.generateFullSlideImages")
+                                  : t("dialog.articleBuilder.generateImages")}
                               {imageGenerationProgress ? ` ${imageGenerationProgress}` : ""}
                             </Button>
                           ),
@@ -3577,7 +4326,7 @@ export function PresentationArticleGeneratorDialog({
                           title: t("dialog.articleBuilder.workflowStep4Title"),
                           description: t("dialog.articleBuilder.workflowStep4Description"),
                           status: slideStepStatus,
-                          hint: slideRefreshHint,
+                          hint: slideGenerationBlockedHint,
                           action: (
                             <div className="flex flex-col gap-2">
                               <Button
@@ -3592,7 +4341,7 @@ export function PresentationArticleGeneratorDialog({
                                   !article.trim()
                                   || !preparedBundle
                                   || generateSlideDraftMutation.isPending
-                                  || Boolean(slideRefreshHint)
+                                  || Boolean(slideGenerationBlockedHint)
                                 }
                               >
                                 {generateSlideDraftMutation.isPending ? (
@@ -3760,10 +4509,14 @@ export function PresentationArticleGeneratorDialog({
                         {t("dialog.articleBuilder.generatedImagesHint")}
                       </p>
                       <div className="grid min-h-[220px] gap-3 sm:grid-cols-2">
-                        {generatedImageCards.length > 0 ? generatedImageCards.map(({ prompt, asset }) => {
+                        {generatedImageCards.length > 0 ? generatedImageCards.map(({ prompt, asset, fallbackAsset }) => {
                           const imageLabel = `Page ${prompt.pageNumber} · ${prompt.shortLabel}`;
                           const slotKey = getPreparedImageSlotKey(prompt);
+                          const isSlotRegenerating = regeneratingSlotKey === slotKey;
                           const isPickerOpen = slotPickerKey === slotKey;
+                          const previewAspectRatio = isFullSlideImageMode ? getCanvasRatioCss(canvasRatio) : undefined;
+                          const displayAsset = asset ?? fallbackAsset;
+                          const isFallbackAsset = !asset && Boolean(fallbackAsset);
                           const isPageLeadSlot = (preparedBundle?.imagePrompts ?? [])
                             .filter((candidate) => candidate.pageNumber === prompt.pageNumber)
                             .sort((left, right) => left.imageIndex - right.imageIndex)[0]?.id === prompt.id;
@@ -3776,21 +4529,62 @@ export function PresentationArticleGeneratorDialog({
                                     {prompt.placementRole} · #{prompt.imageIndex}
                                   </div>
                                 </div>
-                                <Badge variant={asset ? "secondary" : "outline"}>
-                                  {asset ? t("dialog.articleBuilder.generatedImageReady") : t("dialog.articleBuilder.generatedImageMissing")}
+                                <Badge variant={isSlotRegenerating ? "default" : asset ? "secondary" : "outline"}>
+                                  {isSlotRegenerating
+                                    ? t("dialog.articleBuilder.generating")
+                                    : asset
+                                      ? t("dialog.articleBuilder.generatedImageReady")
+                                      : isFallbackAsset
+                                        ? t("dialog.articleBuilder.generatedImageOldSize")
+                                        : t("dialog.articleBuilder.generatedImageMissing")}
                                 </Badge>
                               </div>
-                              {asset ? (
+                              {displayAsset ? (
                                 <div className="mt-3 space-y-3">
-                                  <img
-                                    src={asset.url}
-                                    alt={imageLabel}
-                                    className="h-40 w-full rounded-lg border object-cover"
-                                    loading="lazy"
-                                  />
+                                  <button
+                                    type="button"
+                                    className={`group relative block w-full overflow-hidden rounded-lg border text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary${isFullSlideImageMode ? "" : " h-40"}`}
+                                    style={previewAspectRatio ? { aspectRatio: previewAspectRatio } : undefined}
+                                    onClick={() => setPreviewImageAsset(displayAsset)}
+                                    aria-label={`${t("dialog.articleBuilder.previewImage")} ${imageLabel}`}
+                                  >
+                                    <img
+                                      src={displayAsset.url}
+                                      alt={imageLabel}
+                                      className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                                      loading="lazy"
+                                    />
+                                    <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-background/90 px-2 py-1 text-xs font-medium text-foreground shadow-sm opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                                      <Maximize2 className="h-3.5 w-3.5" />
+                                      {t("dialog.articleBuilder.previewImage")}
+                                    </span>
+                                    {isSlotRegenerating ? (
+                                      <span className="absolute inset-0 flex items-center justify-center bg-background/70 text-sm font-medium text-foreground backdrop-blur-[1px]">
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        {t("dialog.articleBuilder.generating")}
+                                      </span>
+                                    ) : null}
+                                    {isFallbackAsset ? (
+                                      <span className="absolute left-2 top-2 max-w-[calc(100%-1rem)] rounded-full bg-amber-100/95 px-2 py-1 text-xs font-medium text-amber-900 shadow-sm">
+                                        {t("dialog.articleBuilder.generatedImageOldSizeHint", {
+                                          ratio: fallbackAsset?.canvasRatio ?? "-",
+                                          currentRatio: canvasRatio,
+                                        })}
+                                      </span>
+                                    ) : null}
+                                  </button>
                                   <div className="flex flex-wrap gap-2">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setPreviewImageAsset(displayAsset)}
+                                    >
+                                      <Maximize2 className="mr-2 h-4 w-4" />
+                                      {t("dialog.articleBuilder.previewImage")}
+                                    </Button>
                                     <a
-                                      href={asset.url}
+                                      href={displayAsset.url}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="inline-flex"
@@ -3805,7 +4599,7 @@ export function PresentationArticleGeneratorDialog({
                                       variant="outline"
                                       size="sm"
                                       onClick={() => void copyText(
-                                        asset.url,
+                                        displayAsset.url,
                                         t("dialog.articleBuilder.copyImageUrlSuccess"),
                                         t("dialog.articleBuilder.copyImageUrlEmpty"),
                                       )}
@@ -3833,10 +4627,16 @@ export function PresentationArticleGeneratorDialog({
                                       variant="outline"
                                       size="sm"
                                       onClick={() => void handleRegenerateSlot(prompt)}
-                                      disabled={regeneratingSlotKey === slotKey}
+                                      disabled={isSlotRegenerating}
                                     >
-                                      <WandSparkles className="mr-2 h-4 w-4" />
-                                      {t("dialog.articleBuilder.regenerateSlot")}
+                                      {isSlotRegenerating ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <WandSparkles className="mr-2 h-4 w-4" />
+                                      )}
+                                      {isSlotRegenerating
+                                        ? t("dialog.articleBuilder.generating")
+                                        : t("dialog.articleBuilder.regenerateSlot")}
                                     </Button>
                                     <Button
                                       type="button"
@@ -3847,16 +4647,18 @@ export function PresentationArticleGeneratorDialog({
                                       <Images className="mr-2 h-4 w-4" />
                                       {t("dialog.articleBuilder.pickSlotImage")}
                                     </Button>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => removePreparedImageSlot(prompt)}
-                                    >
-                                      <Trash2 className="mr-2 h-4 w-4" />
-                                      {t("dialog.articleBuilder.removeImageSlot")}
-                                    </Button>
-                                    {isPageLeadSlot ? (
+                                    {!isFullSlideImageMode ? (
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => removePreparedImageSlot(prompt)}
+                                      >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        {t("dialog.articleBuilder.removeImageSlot")}
+                                      </Button>
+                                    ) : null}
+                                    {!isFullSlideImageMode && isPageLeadSlot ? (
                                       <Button
                                         type="button"
                                         variant="outline"
@@ -3884,10 +4686,16 @@ export function PresentationArticleGeneratorDialog({
                                     variant="outline"
                                     size="sm"
                                     onClick={() => void handleRegenerateSlot(prompt)}
-                                    disabled={regeneratingSlotKey === slotKey}
+                                    disabled={isSlotRegenerating}
                                   >
-                                    <WandSparkles className="mr-2 h-4 w-4" />
-                                    {t("dialog.articleBuilder.regenerateSlot")}
+                                    {isSlotRegenerating ? (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <WandSparkles className="mr-2 h-4 w-4" />
+                                    )}
+                                    {isSlotRegenerating
+                                      ? t("dialog.articleBuilder.generating")
+                                      : t("dialog.articleBuilder.regenerateSlot")}
                                   </Button>
                                   <Button
                                     type="button"
@@ -3898,16 +4706,18 @@ export function PresentationArticleGeneratorDialog({
                                     <Images className="mr-2 h-4 w-4" />
                                     {t("dialog.articleBuilder.pickSlotImage")}
                                   </Button>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => removePreparedImageSlot(prompt)}
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    {t("dialog.articleBuilder.removeImageSlot")}
-                                  </Button>
-                                  {isPageLeadSlot ? (
+                                  {!isFullSlideImageMode ? (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => removePreparedImageSlot(prompt)}
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      {t("dialog.articleBuilder.removeImageSlot")}
+                                    </Button>
+                                  ) : null}
+                                  {!isFullSlideImageMode && isPageLeadSlot ? (
                                     <Button
                                       type="button"
                                       variant="outline"
@@ -4007,6 +4817,7 @@ export function PresentationArticleGeneratorDialog({
                         {(preparedBundle?.preflightPages ?? []).map((page) => {
                           const leadPrompt = leadPromptByPage.get(page.pageNumber) ?? null;
                           const leadSlotKey = leadPrompt ? getPreparedImageSlotKey(leadPrompt) : null;
+                          const isLeadSlotRegenerating = leadSlotKey !== null && regeneratingSlotKey === leadSlotKey;
                           return (
                           <div key={page.pageNumber} className="rounded-lg border bg-muted/20 p-3">
                             <div className="flex flex-wrap items-center gap-2">
@@ -4022,10 +4833,16 @@ export function PresentationArticleGeneratorDialog({
                                   size="sm"
                                   variant="outline"
                                   onClick={() => void handleRegenerateSlot(leadPrompt)}
-                                  disabled={leadSlotKey !== null && regeneratingSlotKey === leadSlotKey}
+                                  disabled={isLeadSlotRegenerating}
                                 >
-                                  <WandSparkles className="mr-2 h-4 w-4" />
-                                  {t("dialog.articleBuilder.regenerateSlot")}
+                                  {isLeadSlotRegenerating ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <WandSparkles className="mr-2 h-4 w-4" />
+                                  )}
+                                  {isLeadSlotRegenerating
+                                    ? t("dialog.articleBuilder.generating")
+                                    : t("dialog.articleBuilder.regenerateSlot")}
                                 </Button>
                               ) : null}
                               {leadPrompt ? (
@@ -4175,9 +4992,9 @@ export function PresentationArticleGeneratorDialog({
                           </div>
                         ) : null}
                       </div>
-                      {slideRefreshHint ? (
+                      {slideGenerationBlockedHint ? (
                         <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-800">
-                          {slideRefreshHint}
+                          {slideGenerationBlockedHint}
                         </div>
                       ) : null}
                       <Textarea
@@ -4264,6 +5081,47 @@ export function PresentationArticleGeneratorDialog({
               </Button>
             </DialogFooter>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(previewImageAsset)} onOpenChange={(nextOpen) => !nextOpen && setPreviewImageAsset(null)}>
+        <DialogContent className="max-h-[92vh] w-[92vw] max-w-5xl overflow-hidden p-0">
+          {previewImageAsset ? (
+            <div className="flex max-h-[92vh] flex-col">
+              <DialogHeader className="shrink-0 border-b px-5 py-4">
+                <DialogTitle className="flex items-center gap-2">
+                  <Maximize2 className="h-4 w-4" />
+                  {t("dialog.articleBuilder.imagePreviewTitle")}
+                </DialogTitle>
+                <DialogDescription>
+                  {`Page ${previewImageAsset.pageNumber} · ${previewImageAsset.shortLabel} · #${previewImageAsset.imageIndex}`}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="min-h-0 flex-1 overflow-auto bg-muted/30 p-4">
+                <img
+                  src={previewImageAsset.url}
+                  alt={`Page ${previewImageAsset.pageNumber} · ${previewImageAsset.shortLabel}`}
+                  className="mx-auto max-h-[70vh] w-auto max-w-full rounded-lg border bg-background object-contain shadow-sm"
+                />
+              </div>
+              <DialogFooter className="shrink-0 border-t px-5 py-4">
+                <a
+                  href={previewImageAsset.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex"
+                >
+                  <Button type="button" variant="outline">
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    {t("dialog.articleBuilder.openImage")}
+                  </Button>
+                </a>
+                <Button type="button" onClick={() => setPreviewImageAsset(null)}>
+                  {t("dialog.articleBuilder.close")}
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
 

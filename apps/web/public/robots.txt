@@ -1,0 +1,29 @@
+# SmartAIHub crawler policy
+User-agent: *
+Content-Signal: search=yes,ai-input=yes,ai-train=no
+Allow: /
+
+# AI search and answer engines: allow retrieval/grounding for citation.
+User-agent: GPTBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+Sitemap: https://smartaihub.app/sitemap.xml
+LLMs: https://smartaihub.app/llms.txt

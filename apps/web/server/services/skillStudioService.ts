@@ -12,6 +12,7 @@ import { hasRelativeSkillManifest, resolveSkillDirCandidates, resolveSkillManife
 import {
   getSkillByIdAsync,
   refreshSkillCache,
+  resolveSkillSlugAlias,
   syncSingleSkillIfChanged,
 } from "./skillRegistry";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
@@ -125,7 +126,7 @@ function createSkillExecutionToken(userId: number): string {
 }
 
 function hasLocalSkillFolder(slug: string): boolean {
-  return hasRelativeSkillManifest(path.join("skills", slug));
+  return hasRelativeSkillManifest(path.join("skills", resolveSkillSlugAlias(slug)));
 }
 
 function slugify(raw: string): string {
@@ -254,7 +255,7 @@ async function resolveOwnedTargetSkill(
 }
 
 function summarizeSkillFolder(slug: string): string {
-  const skillDir = resolveSkillDirCandidates(path.join("skills", slug)).find((candidate) => fs.existsSync(candidate));
+  const skillDir = resolveSkillDirCandidates(path.join("skills", resolveSkillSlugAlias(slug))).find((candidate) => fs.existsSync(candidate));
   if (!skillDir) {
     return "No local skill folder found. Use database metadata only.";
   }
@@ -451,7 +452,7 @@ function extractCreatedSkillSlug(result: SkillExecutionResult): string | null {
   return null;
 }
 
-function extractSavedProposalFiles(result: SkillExecutionResult): string[] {
+export function extractSavedProposalFiles(result: SkillExecutionResult): string[] {
   const fromMetadata = Array.isArray(result.metadata?.savedProposals)
     ? result.metadata?.savedProposals
     : Array.isArray(result.metadata?.saved_proposals)
@@ -460,34 +461,102 @@ function extractSavedProposalFiles(result: SkillExecutionResult): string[] {
 
   const cleanedFromMetadata = (fromMetadata || [])
     .map((value) => String(value || "").trim())
-    .filter(Boolean);
+    .filter((value) => Boolean(value) && !value.endsWith(".meta.json"));
 
   if (cleanedFromMetadata.length > 0) {
     return cleanedFromMetadata;
   }
 
   const message = result.message || "";
-  const matches = Array.from(message.matchAll(/`([^`]+\.diff)`/g)).map((match) => match[1]);
+  const matches = Array.from(message.matchAll(/`([^`]+\.(?:diff|json))`/g))
+    .map((match) => match[1])
+    .filter((value) => !value.endsWith(".meta.json"));
   return matches;
 }
 
-export async function applyIscProposalDiff(skillName: string, diffFile: string): Promise<{ output: string }> {
+function isPathInsideDir(childPath: string, parentDir: string): boolean {
+  const relative = path.relative(parentDir, childPath);
+  return Boolean(relative) && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+function resolveIscProposalPath(skillName: string, proposalFile: string): string {
+  const proposalPath = path.resolve(ISC_PROPOSALS_ROOT, skillName, path.basename(proposalFile));
+  const resolvedProposal = path.resolve(proposalPath);
+  if (!isPathInsideDir(resolvedProposal, ISC_PROPOSALS_ROOT)) {
+    throw new Error("Invalid proposal path");
+  }
+  return resolvedProposal;
+}
+
+function resolveExistingSkillDir(skillName: string): string {
+  const candidates = resolveSkillDirCandidates(path.join("skills", skillName));
+  const skillDir = candidates.find((candidate) => !!resolveSkillManifestPath(candidate) || fs.existsSync(candidate));
+  if (!skillDir) {
+    throw new Error(`Skill directory not found for: ${skillName}`);
+  }
+  return skillDir;
+}
+
+function parseJsonPatchPayload(raw: string): Record<string, string> {
+  const parsed = JSON.parse(raw);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Patch payload must be a JSON object.");
+  }
+  const normalized: Record<string, string> = {};
+  for (const [relativePath, content] of Object.entries(parsed)) {
+    if (!relativePath.trim() || path.isAbsolute(relativePath)) {
+      throw new Error(`Invalid relative path in patch payload: ${relativePath}`);
+    }
+    const normalizedPath = relativePath.replace(/\\/g, "/");
+    const parts = normalizedPath.split("/");
+    if (parts.some((part) => !part || part === "." || part === "..")) {
+      throw new Error(`Invalid relative path in patch payload: ${relativePath}`);
+    }
+    if (typeof content !== "string") {
+      throw new Error(`Patch content for ${relativePath} must be a string.`);
+    }
+    normalized[normalizedPath] = content;
+  }
+  return normalized;
+}
+
+export async function applyIscProposal(skillName: string, proposalFile: string): Promise<{ output: string }> {
   const fsp = await import("fs/promises");
   const { spawnSync } = await import("child_process");
 
-  const diffPath = path.resolve(ISC_PROPOSALS_ROOT, skillName, diffFile);
-  const resolvedDiff = path.resolve(diffPath);
-  if (!resolvedDiff.startsWith(ISC_PROPOSALS_ROOT)) {
-    throw new Error("Invalid diff path");
+  const resolvedProposal = resolveIscProposalPath(skillName, proposalFile);
+  if (resolvedProposal.endsWith(".meta.json")) {
+    throw new Error("Metadata proposal files cannot be applied");
+  }
+  const proposalContent = await fsp.readFile(resolvedProposal, "utf8").catch(() => null);
+  if (!proposalContent) {
+    throw new Error(`Proposal file not found: ${proposalFile}`);
   }
 
-  const diffContent = await fsp.readFile(resolvedDiff, "utf8").catch(() => null);
-  if (!diffContent) {
-    throw new Error(`Diff file not found: ${diffFile}`);
+  if (resolvedProposal.endsWith(".json")) {
+    const skillDir = resolveExistingSkillDir(skillName);
+    const payload = parseJsonPatchPayload(proposalContent);
+    const changed: string[] = [];
+    for (const [relativePath, content] of Object.entries(payload)) {
+      const outputPath = path.resolve(skillDir, relativePath);
+      if (!isPathInsideDir(outputPath, skillDir)) {
+        throw new Error(`Invalid relative path in patch payload: ${relativePath}`);
+      }
+      await fsp.mkdir(path.dirname(outputPath), { recursive: true });
+      await fsp.writeFile(outputPath, content, "utf8");
+      changed.push(path.relative(skillDir, outputPath).split(path.sep).join("/"));
+    }
+
+    await syncSingleSkillIfChanged(skillName);
+    await refreshSkillCache();
+
+    return {
+      output: changed.length > 0 ? `Applied JSON proposal files:\n${changed.join("\n")}` : "Applied JSON proposal with no file changes.",
+    };
   }
 
   const result = spawnSync("patch", ["-N", "-r", "-", "-p0"], {
-    input: diffContent,
+    input: proposalContent,
     encoding: "utf8",
     cwd: ISC_ROOT,
   });
@@ -501,6 +570,10 @@ export async function applyIscProposalDiff(skillName: string, diffFile: string):
   await refreshSkillCache();
 
   return { output: (result.stdout || "").trim() };
+}
+
+export async function applyIscProposalDiff(skillName: string, diffFile: string): Promise<{ output: string }> {
+  return applyIscProposal(skillName, diffFile);
 }
 
 async function syncCreatedSkillRecord(
@@ -704,7 +777,7 @@ export async function launchSkillStudioTask(
       const latestDiffFile = latest ? path.basename(latest) : null;
 
       if (!isAdmin && latestDiffFile && targetSkill) {
-        const applied = await applyIscProposalDiff(targetSkill.slug, latestDiffFile);
+        const applied = await applyIscProposal(targetSkill.slug, latestDiffFile);
         await updateSkillVisibilityForReview(targetSkill.id, desiredVisibility);
         const finalResult = {
           ...result,
@@ -724,7 +797,7 @@ export async function launchSkillStudioTask(
 
       if (isAdmin && input.autoApplyProposal && proposalFiles.length > 0) {
         const diffFile = latestDiffFile!;
-        const applied = await applyIscProposalDiff(targetSkill!.slug, diffFile);
+        const applied = await applyIscProposal(targetSkill!.slug, diffFile);
         const finalResult = {
           ...result,
           message: `${result.message || ""}\n\n✅ Latest proposal applied automatically.\n${applied.output}`.trim(),
@@ -763,10 +836,9 @@ export async function launchSkillStudioTask(
 }
 
 export async function readIscProposalContent(skillName: string, diffFile: string): Promise<string> {
-  const proposalPath = path.resolve(ISC_PROPOSALS_ROOT, skillName, diffFile);
-  const resolvedPath = path.resolve(proposalPath);
-  if (!resolvedPath.startsWith(ISC_PROPOSALS_ROOT)) {
-    throw new Error("Invalid diff path");
+  const resolvedPath = resolveIscProposalPath(skillName, diffFile);
+  if (resolvedPath.endsWith(".meta.json")) {
+    throw new Error("Metadata proposal files cannot be read as proposal payloads");
   }
   return fs.readFileSync(resolvedPath, "utf8");
 }
@@ -818,9 +890,10 @@ export async function listIscProposalsWithOwners(): Promise<Array<{
     const stat = await fsp.stat(skillDir).catch(() => null);
     if (!stat?.isDirectory()) continue;
 
-    const files = (await fsp.readdir(skillDir)).filter((file) => file.endsWith(".diff"));
+    const files = (await fsp.readdir(skillDir))
+      .filter((file) => (file.endsWith(".diff") || file.endsWith(".json")) && !file.endsWith(".meta.json"));
     for (const file of files) {
-      const match = file.match(/^(\d{8}T?\d{6})_r(\d+)\.diff$/);
+      const match = file.match(/^(\d{8}T?\d{6})_r(\d+)\.(?:diff|json)$/);
       proposals.push({
         skillName,
         diffFile: file,

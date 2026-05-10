@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://smartaihub.app/</loc><priority>1.0</priority></url>
+  <url><loc>https://smartaihub.app/features</loc><priority>0.9</priority></url>
+  <url><loc>https://smartaihub.app/marketplace</loc><priority>0.9</priority></url>
+  <url><loc>https://smartaihub.app/pricing</loc><priority>0.8</priority></url>
+  <url><loc>https://smartaihub.app/docs</loc><priority>0.9</priority></url>
+  <url><loc>https://smartaihub.app/blog</loc><priority>0.9</priority></url>
+  <url><loc>https://smartaihub.app/resources</loc><priority>0.8</priority></url>
+  <url><loc>https://smartaihub.app/gallery</loc><priority>0.8</priority></url>
+  <url><loc>https://smartaihub.app/workflows</loc><priority>0.8</priority></url>
+  <url><loc>https://smartaihub.app/contact</loc><priority>0.7</priority></url>
+  <url><loc>https://smartaihub.app/about</loc><priority>0.6</priority></url>
+  <url><loc>https://smartaihub.app/changelog</loc><priority>0.6</priority></url>
+  <url><loc>https://smartaihub.app/careers</loc><priority>0.6</priority></url>
+  <url><loc>https://smartaihub.app/community</loc><priority>0.6</priority></url>
+  <url><loc>https://smartaihub.app/support</loc><priority>0.7</priority></url>
+  <url><loc>https://smartaihub.app/status</loc><priority>0.6</priority></url>
+  <url><loc>https://smartaihub.app/security</loc><priority>0.7</priority></url>
+  <url><loc>https://smartaihub.app/docs/marketplace-discovery</loc><priority>0.7</priority></url>
+  <url><loc>https://smartaihub.app/docs/workflow-builder</loc><priority>0.7</priority></url>
+  <url><loc>https://smartaihub.app/docs/swarm-execution</loc><priority>0.7</priority></url>
+  <url><loc>https://smartaihub.app/docs/faq/marketplace</loc><priority>0.7</priority></url>
+  <url><loc>https://smartaihub.app/docs/faq/workflows</loc><priority>0.7</priority></url>
+  <url><loc>https://smartaihub.app/docs/faq/outputs</loc><priority>0.7</priority></url>
+  <url><loc>https://smartaihub.app/docs/image/prompt-engineering</loc><priority>0.7</priority></url>
+  <url><loc>https://smartaihub.app/docs/image/workflow-pipeline</loc><priority>0.7</priority></url>
+  <url><loc>https://smartaihub.app/docs/video/prompt-engineering</loc><priority>0.7</priority></url>
+  <url><loc>https://smartaihub.app/docs/video/production-pipeline</loc><priority>0.7</priority></url>
+  <url><loc>https://smartaihub.app/docs/seo/ai-search-optimization</loc><priority>0.8</priority></url>
+  <url><loc>https://smartaihub.app/docs/content/factory</loc><priority>0.8</priority></url>
+</urlset>

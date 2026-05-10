@@ -7,6 +7,7 @@ from app.models.media_task import TaskStatus
 from app.tasks.media_tasks import (
     _generate_image_async,
     _generate_audio_async,
+    _is_non_retryable_media_error,
     _mark_task_failed_async,
     _mark_task_retrying_async,
 )
@@ -25,6 +26,16 @@ def _mock_session_with_execute_sequence(*results):
     session.execute = AsyncMock(side_effect=[_db_result(value) for value in results])
     session.commit = AsyncMock()
     return session
+
+
+def test_provider_prompt_refusals_are_non_retryable():
+    error = RuntimeError("500: Image generation failed: Task failed: We're so sorry, but the prompt cannot be processed.")
+
+    assert _is_non_retryable_media_error(error) is True
+
+
+def test_transient_provider_errors_remain_retryable():
+    assert _is_non_retryable_media_error(RuntimeError("temporary provider timeout")) is False
 
 
 @pytest.mark.unit
@@ -125,6 +136,7 @@ async def test_generate_audio_async_persists_provider_task_id_without_final_url(
     gateway.generate_audio = AsyncMock(return_value=SimpleNamespace(
         id="provider-audio-123",
         data=[],
+        metadata={},
         credits_used=5,
         credits_balance=95,
         provider="uvoice",

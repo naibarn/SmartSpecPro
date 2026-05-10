@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from isc.runner import make_workspace, resolve_repo_root
+from isc.runner import canonical_isc_root, make_workspace, resolve_canonical_skill_dir, resolve_repo_root
 
 
 class RunnerPathTests(unittest.TestCase):
@@ -38,3 +38,25 @@ class RunnerPathTests(unittest.TestCase):
             copied_skill = workspace / "skills" / "demo-skill"
             self.assertTrue((copied_skill / "python" / "skill.py").exists())
             self.assertFalse((copied_skill / "runs").exists())
+
+    def test_make_workspace_uses_canonical_skill_dir_when_entrypoint_is_copied(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "SmartSpecPro"
+            canonical_skill = root / "apps" / "web" / "skills" / "intelligence-skill-creator"
+            copied_skill = root / "apps" / "web" / "skills" / "intelligence-skill-creator" / "runs" / "workspaces" / "demo" / "123" / "skills" / "intelligence-skill-creator"
+            canonical_skill.mkdir(parents=True, exist_ok=True)
+            copied_skill.mkdir(parents=True, exist_ok=True)
+            (canonical_skill / "python").mkdir(parents=True, exist_ok=True)
+            (canonical_skill / "python" / "skill.py").write_text("CANONICAL = True\n", encoding="utf-8")
+            (copied_skill / "python").mkdir(parents=True, exist_ok=True)
+            (copied_skill / "python" / "skill.py").write_text("COPIED = True\n", encoding="utf-8")
+
+            resolved = resolve_canonical_skill_dir(root, "intelligence-skill-creator")
+
+            self.assertEqual(resolved, canonical_skill)
+            self.assertEqual(canonical_isc_root(root), canonical_skill)
+
+            workspace = make_workspace(root, "intelligence-skill-creator")
+            copied_workspace_skill = workspace / "skills" / "intelligence-skill-creator" / "python" / "skill.py"
+            self.assertIn("CANONICAL", copied_workspace_skill.read_text(encoding="utf-8"))
+            self.assertNotIn("apps/web/skills/intelligence-skill-creator/runs/workspaces", workspace.as_posix())

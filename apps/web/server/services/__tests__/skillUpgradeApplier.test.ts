@@ -46,8 +46,10 @@ function createMockDb(options: {
   const selectQueue = [...options.selectResults];
   const insertQueue = [...(options.insertReturningResults ?? [])];
   const updateQueue = [...(options.updateReturningResults ?? [])];
+  const updateSetCalls: any[] = [];
 
   return {
+    updateSetCalls,
     select: vi.fn(() => ({
       from: vi.fn(() => ({
         where: vi.fn(() => ({
@@ -61,11 +63,14 @@ function createMockDb(options: {
       })),
     })),
     update: vi.fn(() => ({
-      set: vi.fn(() => ({
-        where: vi.fn(() => ({
-          returning: vi.fn().mockImplementation(async () => updateQueue.shift() ?? []),
-        })),
-      })),
+      set: vi.fn((payload) => {
+        updateSetCalls.push(payload);
+        return {
+          where: vi.fn(() => ({
+            returning: vi.fn().mockImplementation(async () => updateQueue.shift() ?? []),
+          })),
+        };
+      }),
     })),
   };
 }
@@ -557,5 +562,112 @@ describe("skillUpgradeApplier", () => {
     });
 
     expect(compareSkillContractSnapshotsMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps workspace-root pollution failures retryable with a specific failure code", async () => {
+    const recommendation = {
+      id: 105,
+      skillId: 11,
+      scheduleId: null,
+      recommendationType: "migrate-to-genjs",
+      title: "Upgrade ISC",
+      summary: "Upgrade ISC safely.",
+      rationale: "Fix runtime layout",
+      currentRuntime: "python",
+      proposedRuntime: "native-bundle",
+      proposedAction: "migrate-to-genjs",
+      recommendationJson: {},
+      contractDeltaJson: {},
+      status: "pending_review",
+      isAutoApplySafe: false,
+    };
+    const skill = {
+      id: 11,
+      tenantId: "tenant-1",
+      slug: "intelligence-skill-creator",
+      name: "ISC",
+      description: "Skill creator",
+      folderPath: "skills/intelligence-skill-creator",
+      executionMode: "python",
+      configJson: {},
+      sandboxProfileSlug: null,
+      requiresNetwork: true,
+      requiresBrowser: false,
+      visibility: "private",
+    };
+    const run = { id: 505, skillId: 11, recommendationId: 105, status: "running" };
+    const db = createMockDb({
+      selectResults: [
+        [recommendation],
+        [skill],
+        [],
+      ],
+      insertReturningResults: [
+        [run],
+      ],
+      updateReturningResults: [
+        [{ ...recommendation, status: "approved" }],
+        [{ ...run, status: "running" }],
+        [{ ...recommendation, status: "failed" }],
+        [{ ...run, status: "failed" }],
+      ],
+    });
+
+    buildSkillContractSnapshotMock.mockReturnValue({
+      executionMode: "python",
+      runtimeProfile: "python",
+      manifestPath: "skills/intelligence-skill-creator/SKILL.md",
+      lockPath: null,
+      nativeBundleReady: false,
+      nativeBundleFiles: [],
+      manifestHash: "baseline-manifest",
+      inputSchemaHash: "baseline-input",
+      outputSchemaHash: "baseline-output",
+      fixtureHash: "baseline-fixture",
+      testsHash: "baseline-tests",
+      contractHash: "baseline-contract",
+      schemaSummary: {
+        input: { present: true, requiredFields: [], propertyTypes: {}, propertyCount: 0 },
+        output: { present: true, requiredFields: [], propertyTypes: {}, propertyCount: 0 },
+        uiPresent: true,
+      },
+      fileInventory: ["SKILL.md"],
+    });
+
+    let completionHook: ((result: any) => Promise<void>) | null = null;
+    launchSkillStudioTaskMock.mockImplementation(async (_ctx, _input, hooks) => {
+      completionHook = hooks?.onCompleted ?? null;
+      return {
+        taskId: "studio-task-workspace",
+        mode: "improve",
+        summary: "queued",
+      };
+    });
+
+    await applySkillUpgradeRecommendation({
+      db,
+      recommendationId: 105,
+      requestedBy: 11,
+      userRole: "admin",
+    });
+
+    await completionHook?.({
+      success: false,
+      message: "Improvement failed: /repo/apps/web/skills/intelligence-skill-creator/runs/workspaces/demo/123/skills/intelligence-skill-creator",
+      metadata: {
+        workspaceRoot: "/repo/apps/web/skills/intelligence-skill-creator/runs/workspaces/demo/123",
+      },
+    });
+
+    expect(db.updateSetCalls).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        status: "failed",
+        logsJson: expect.objectContaining({
+          failureCode: "isc_workspace_root_pollution",
+          workspaceRootPolluted: true,
+          taskId: "studio-task-workspace",
+        }),
+      }),
+    ]));
   });
 });

@@ -1,10 +1,11 @@
 # Orchestra Backlog
 
-1. Rotate/revoke exposed TLS private key and API-key-like values, then purge affected secrets and the removed SQL backup from git history with a coordinated secret-response plan.
-2. Replace, sandbox, or isolate `xlsx`; npm audit reports a remaining high vulnerability and no fix is available.
-3. Decide whether to force-upgrade `nodemailer` to the audit-recommended version or accept the moderate advisory after compatibility testing.
-4. Replace direct Docker socket mounts with a least-privilege socket proxy or isolated/rootless daemon.
-5. Harden production CSP by removing `unsafe-eval` and moving inline scripts/styles toward nonces/hashes.
-6. Verify `/api/voice/session` auth middleware wiring before exposing the REST voice session route.
-7. Replace reusable sample secrets in `.env.example` with generated placeholder guidance or required-env syntax.
-8. Return generic external callback failure responses in `apps/web/server/routes/voiceAgentsElevenLabsCallback.ts`.
+- Deploy the repo changes and then verify production `/robots.txt`, `/sitemap.xml`, `/llms.txt`, `/llms-full.txt`, and OG image responses.
+- Adjust Cloudflare Managed Content / robots policy outside the repo if it continues to inject `Disallow: /` for GPTBot, ClaudeBot, or other AI search crawlers.
+- Add path-specific SEO metadata for `/docs/seo/ai-search-optimization` and other docs/blog routes that currently return `metadata: null`.
+- Consider SSR/prerender/static snapshots for key public pages because the production HTML is primarily a React SPA shell; this is okay for Google rendering, weaker for LLM crawlers and simpler fetchers.
+- Expand curated prerender copy over time for more individual blog/docs/marketplace detail, or replace the lightweight snapshot helper with full React SSR/prerender when the app is ready for that architecture.
+- After deploy, fetch representative public pages with `curl` and verify the first HTML response contains `id="smartaihub-prerender"`, H1, JSON-LD, FAQ schema where applicable, and related internal links.
+- Move CSP toward nonce/hash-based scripts and remove `unsafe-eval`/`unsafe-inline` from production once Vite/runtime dependencies allow it.
+- Further optimize `/images/dashboard-preview.png` below 500 KB if visual quality remains acceptable, or add a WebP alternate for crawler/social use.
+- Fix the `PresentationEditor.test.tsx` harness issue where targeted renders produce only `<div />`, blocking Article Builder UI regression tests from reaching `header.articleBuilder`.

@@ -9,6 +9,8 @@ export interface MediaModelOption {
   id: string;
   name: string;
   provider?: string;
+  supportsAspectRatios?: unknown;
+  supportsSizes?: unknown;
   configJson?: unknown;
 }
 

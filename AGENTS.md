@@ -1,5 +1,19 @@
 # SmartSpecPro Codex Instructions
 
+## Project Rules
+
+- Read this file before making changes.
+- Prefer minimal, focused changes.
+- Do not rewrite unrelated files.
+- Preserve existing code style.
+- Use the package manager already used by this repo.
+- Do not add new dependencies unless necessary.
+- If you discover issues directly related to the requested work, required
+  verification, failing tests, data safety, security, or correctness, report and
+  address them as part of the task.
+- If you discover unrelated issues, report them separately and do not change
+  them unless the user asks.
+
 ## SocratiCode First
 
 This repository has SocratiCode installed as the local codebase intelligence MCP.
@@ -34,3 +48,34 @@ or obvious single-file edits where orchestration adds no value.
 When using the `orchestra` skill, apply the same SocratiCode-first rule during
 task analysis, routing, impact assessment, and sub-agent planning whenever
 SocratiCode is active.
+
+## Communication Style
+
+- Respond in Thai by default unless the user explicitly asks for another
+  language.
+- Keep answers concise, direct, and practical.
+- Put the answer, command, or patch first.
+- Avoid long background explanations unless requested.
+- For errors, explain the likely cause and the fix directly.
+
+## Coding Workflow
+
+Before editing:
+
+- Inspect relevant files first.
+- Identify the smallest safe change.
+
+After editing:
+
+- Summarize changed files.
+- Provide test or verification commands.
+- If tests were not run, state that clearly.
+
+## Pordee Mode
+
+When the user says "pordee", "พอดี", "ตอบสั้น", "สั้น ๆ", or "กระชับ":
+
+- Use extra concise Thai.
+- No long intro.
+- No unnecessary bullets.
+- Give the practical answer first.

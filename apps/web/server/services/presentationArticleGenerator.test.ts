@@ -412,8 +412,9 @@ describe("presentationArticleGenerator", () => {
         page_hint: 2,
       }),
       expect.objectContaining({
+        id: "img-1-1",
         asset_type: "uploaded_image",
-        label: "Cover hero",
+        label: "Page 1 · Cover hero",
         page_hint: 1,
         reference: "https://cdn.example.com/cover.png",
       }),
@@ -1783,6 +1784,75 @@ describe("presentationArticleGenerator", () => {
       .toContain("Sandbox slide skill completed but did not produce importable slide JSON");
   });
 
+  it("builds deterministic slide json from the prepared payload when sandbox and llm fallback are not importable", async () => {
+    vi.mocked(getJobArtifactUrls).mockResolvedValue([
+      {
+        artifactId: 1,
+        url: "https://cdn.example.com/empty-layout.json",
+        key: "sandbox-artifacts/job-default-slide-artifact/001-empty-layout.json",
+        mimeType: "application/json",
+        isPrimary: false,
+      },
+    ] as any);
+    vi.mocked(storageReadText).mockResolvedValue("{\"slides\":[]}");
+    vi.mocked(executeSkillLlmWithFallback).mockResolvedValue({
+      success: true,
+      content: "{\"slides\":[]}",
+      modelId: "gpt-5.4",
+    } as any);
+
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      outputFormats: ["json"] as const,
+    });
+
+    expect(result.slideJson).toContain("\"slides\"");
+    expect(result.slideJson).toContain("Problem");
+    expect(result.slideJson).toContain("https://cdn.example.com/cover.png");
+    expect(result.artifactJobId).toBeNull();
+    expect(result.artifactFailureMessage)
+      .toContain("Sandbox slide skill completed but did not produce importable slide JSON");
+  });
+
+  it("builds deterministic slide json from editorial planner page briefs when sandbox and llm fallback are empty", async () => {
+    vi.mocked(getSkillByIdAsync).mockResolvedValue(makeSlideSkill({
+      id: "editorial-layout-planner",
+      name: "Editorial Layout Planner",
+      executionMode: "sandbox-command",
+      systemPrompt: "Return render manifests.",
+    }) as any);
+    vi.mocked(getJobArtifactUrls).mockResolvedValue([
+      {
+        artifactId: 1,
+        url: "https://cdn.example.com/empty-layout.json",
+        key: "sandbox-artifacts/job-default-slide-artifact/001-empty-layout.json",
+        mimeType: "application/json",
+        isPrimary: false,
+      },
+    ] as any);
+    vi.mocked(storageReadText).mockResolvedValue("{\"slides\":[]}");
+    vi.mocked(executeSkillLlmWithFallback).mockResolvedValue({
+      success: true,
+      content: "{\"slides\":[]}",
+      modelId: "gpt-5.4",
+    } as any);
+
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      slideSkillId: "editorial-layout-planner",
+      outputFormats: ["json"] as const,
+      canvasRatio: "9:16",
+    });
+
+    expect(result.slideJson).toContain("\"slides\"");
+    expect(result.slideJson).toContain("Problem");
+    expect(result.slideJson).toContain("Solution");
+    expect(result.slideJson).toContain("https://cdn.example.com/cover.png");
+    expect(result.artifactJobId).toBeNull();
+    expect(result.artifactFailureMessage)
+      .toContain("Sandbox slide skill completed but did not produce importable slide JSON");
+  });
+
   it("charges credits for article generation through the selected skill model", async () => {
     const result = await generatePresentationArticle({
       tenantId: "tenant-1",
@@ -1889,7 +1959,7 @@ describe("presentationArticleGenerator", () => {
     ]);
   });
 
-  it("still throws when artifact generation fails and the returned slide json is not importable", async () => {
+  it("falls back to deterministic payload slides when artifact generation fails and llm slide json is not importable", async () => {
     vi.mocked(executeSkillLlmWithFallback).mockResolvedValue({
       success: true,
       content: "{\"slides\":[]}",
@@ -1900,8 +1970,12 @@ describe("presentationArticleGenerator", () => {
       error: "Slide artifact generation failed (failed)",
     } as any);
 
-    await expect(generatePresentationSlideDraft(makeSlideDraftInput()))
-      .rejects.toThrow("Slide skill did not return importable slide JSON");
+    const result = await generatePresentationSlideDraft(makeSlideDraftInput());
+
+    expect(result.slideJson).toContain("\"slides\"");
+    expect(result.slideJson).toContain("Problem / Solution");
+    expect(result.slideJson).toContain("https://cdn.example.com/cover.png");
+    expect(result.artifactFailureMessage).toBe("Slide artifact generation failed (failed)");
   });
 
   it("normalizes wrapped layoutSpec json into importable slide json", async () => {
@@ -2025,6 +2099,48 @@ describe("presentationArticleGenerator", () => {
     expect(result.slideJson).toContain("Editorial Planner Slide");
     expect(result.slideJson).toContain("https://cdn.example.com/cover.png");
     expect(result.slideJson).not.toContain("\"output_format\": \"render_manifest_json\"");
+  });
+
+  it("normalizes plain fallback pages into importable slide json", async () => {
+    vi.mocked(getSkillByIdAsync).mockResolvedValue(makeSlideSkill({
+      id: "editorial-layout-planner",
+      name: "Editorial Layout Planner",
+      executionMode: "llm-only",
+      systemPrompt: "Return render manifests.",
+    }) as any);
+    vi.mocked(executeSkillLlmWithFallback).mockResolvedValue({
+      success: true,
+      content: JSON.stringify({
+        pages: [
+          {
+            page_number: 1,
+            title_hint: "Fallback Planner Slide",
+            text: "Fallback Planner Slide\n\nGenerated as plain pages by the repair pass.",
+            images: [
+              {
+                reference: "https://cdn.example.com/fallback-cover.png",
+              },
+            ],
+          },
+        ],
+      }),
+      modelId: "gpt-5.4",
+      provider: { providerName: "OpenAI" },
+      inputTokens: 600,
+      outputTokens: 700,
+      rawData: { usage: { cost: 0.01 } },
+    } as any);
+
+    const result = await generatePresentationSlideDraft({
+      ...makeSlideDraftInput(),
+      slideSkillId: "editorial-layout-planner",
+      outputFormats: ["json"] as const,
+      maxPages: 1,
+    });
+
+    expect(result.slideJson).toContain("\"slides\"");
+    expect(result.slideJson).toContain("Fallback Planner Slide");
+    expect(result.slideJson).toContain("https://cdn.example.com/fallback-cover.png");
   });
 
   it("prefers an importable layout json artifact over manifest.json", async () => {

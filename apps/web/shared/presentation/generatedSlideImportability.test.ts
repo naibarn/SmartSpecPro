@@ -24,6 +24,31 @@ describe("generatedSlideImportability", () => {
     expect(countImportableGeneratedSlides(raw)).toBe(1);
   });
 
+  it("treats image-only full-slide decks as importable", () => {
+    const raw = JSON.stringify({
+      canvas: { ratio: "9:16" },
+      slides: [
+        {
+          title: "Full-slide image",
+          elements: [
+            {
+              kind: "image",
+              source: "https://cdn.example.com/full-slide.png",
+              xPct: 0,
+              yPct: 0,
+              wPct: 100,
+              hPct: 100,
+              fit: "cover",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(hasImportableGeneratedSlides(raw)).toBe(true);
+    expect(countImportableGeneratedSlides(raw)).toBe(1);
+  });
+
   it("rejects slide json when slides exist but every slide is empty", () => {
     const raw = JSON.stringify({
       slides: [
@@ -166,6 +191,29 @@ describe("generatedSlideImportability", () => {
           image: {
             reference: "https://cdn.example.com/hero.png",
           },
+        },
+      ],
+    });
+
+    expect(inspectGeneratedSlideImportability(raw)).toEqual({
+      status: "importable",
+      totalSlides: 1,
+      importableSlides: 1,
+    });
+  });
+
+  it("treats fallback pages with title hints, text, and images as importable", () => {
+    const raw = JSON.stringify({
+      pages: [
+        {
+          page_number: 1,
+          title_hint: "Fallback page",
+          text: "Fallback page\n\nGenerated as plain pages by the repair pass.",
+          images: [
+            {
+              reference: "https://cdn.example.com/fallback.png",
+            },
+          ],
         },
       ],
     });

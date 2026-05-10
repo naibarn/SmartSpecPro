@@ -64,6 +64,7 @@ import {
   ChevronsUpDown,
   Lock,
   Clock,
+  CalendarDays,
   Users,
   X,
   ShieldCheck,
@@ -204,11 +205,21 @@ interface MaintenanceRecommendationGroup {
   worstCompatibilityStatus: MaintenanceRecommendation["compatibilityStatus"];
   highestQualityScore: number | null;
   currentRuntime: string | null;
+  latestAnalyzedAt: Date | string | null;
+  latestUpdatedAt: Date | string | null;
 }
 
 type MaintenanceGroupStatusBadge = {
   label: string;
   variant: "secondary" | "outline" | "destructive";
+};
+
+type LegacyUpgradeNextAction = {
+  label: string;
+  description: string;
+  tone: "neutral" | "success" | "warning" | "danger" | "info";
+  buttonLabel: string | null;
+  canRun: boolean;
 };
 
 interface LegacyUpgradeQueueItem extends Omit<MaintenanceRecommendation, "latestRun"> {
@@ -250,6 +261,12 @@ interface LegacyUpgradeRunItem {
   resolvedLlmModelId: string | null;
   resultMessage: string | null;
   resultError: string | null;
+  diagnosticCode?: string | null;
+  workspaceRootIssue?: boolean | null;
+  workspaceRoot?: string | null;
+  proposalRoot?: string | null;
+  entrypointRoot?: string | null;
+  canonicalIscRoot?: string | null;
   sourceRunId: number | null;
   retryReason: string | null;
   recommendation: {
@@ -803,6 +820,10 @@ export default function AdminSkills() {
   const [selectedRecommendationViewMode, setSelectedRecommendationViewMode] = useState<"advice" | "reasoning">("advice");
   const [pendingMaintenanceApply, setPendingMaintenanceApply] = useState<PendingMaintenanceApply | null>(null);
   const openedSkillIdFromQueryRef = useRef<number | null>(null);
+  const autoNormalizedLegacyApplySignatureRef = useRef<string | null>(null);
+  const autoRetriedLegacyApplyRunIdsRef = useRef<Set<number>>(new Set());
+  const autoRecoveredStaleLegacyApplyRunIdsRef = useRef<Set<number>>(new Set());
+  const autoQueuedLegacyRecommendationIdsRef = useRef<Set<number>>(new Set());
   const [scheduleDraft, setScheduleDraft] = useState({
     id: null as number | null,
     name: "",
@@ -1188,6 +1209,33 @@ export default function AdminSkills() {
       });
     },
   });
+  const recoverStaleLegacyUpgradeApplyRunsMutation = trpc.skills.recoverStaleLegacyUpgradeApplyRuns.useMutation({
+    onSuccess: (result) => {
+      utils.skills.getLegacyUpgradeQueue.invalidate();
+      utils.skills.getLegacyUpgradeQueueSummary.invalidate();
+      utils.skills.getLegacyUpgradeApplyRuns.invalidate();
+      utils.skills.getUpgradeRecommendations.invalidate();
+      if (selectedRecommendationId) {
+        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
+      }
+      if (result.recoveredCount > 0 || result.retriedCount > 0) {
+        toast({
+          title: t("admin.skillsPage.legacyRunQueue.recoverStaleTitle"),
+          description: t("admin.skillsPage.legacyRunQueue.recoverStaleDescription", {
+            recovered: result.recoveredCount,
+            retried: result.retriedCount,
+          }),
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: t("admin.skillsPage.legacyRunQueue.recoverStaleFailedTitle"),
+        description: error.message || t("admin.skillsPage.legacyRunQueue.recoverStaleFailedDescription"),
+        variant: "destructive",
+      });
+    },
+  });
   const latestProposalBySkillName = new Map<string, { skillName: string; diffFile: string; createdAt: string }>();
   for (const proposal of (iscProposals?.proposals || [])) {
     if (!latestProposalBySkillName.has(proposal.skillName)) {
@@ -1213,14 +1261,15 @@ export default function AdminSkills() {
     }).length
   ), [maintenanceRecommendations]);
   const legacyApplyRunItems = legacyApplyRunsResponse?.items ?? [];
-  const legacyApplyRunCounts = legacyApplyRunsResponse?.counts ?? {
-    total: 0,
-    queued: 0,
-    running: 0,
-    failed: 0,
-    completed: 0,
-    blocked: 0,
-    canceled: 0,
+  const rawLegacyApplyRunCounts = legacyApplyRunsResponse?.counts;
+  const legacyApplyRunCounts = {
+    total: rawLegacyApplyRunCounts?.total ?? 0,
+    queued: rawLegacyApplyRunCounts?.queued ?? 0,
+    running: rawLegacyApplyRunCounts?.running ?? 0,
+    failed: rawLegacyApplyRunCounts?.failed ?? 0,
+    completed: rawLegacyApplyRunCounts?.completed ?? 0,
+    blocked: rawLegacyApplyRunCounts?.blocked ?? 0,
+    canceled: rawLegacyApplyRunCounts?.canceled ?? 0,
   };
   const retryableLegacyApplyRunIds = useMemo(
     () => legacyApplyRunItems
@@ -1234,6 +1283,71 @@ export default function AdminSkills() {
       .map((item) => item.id),
     [legacyApplyRunItems],
   );
+  const autoRetryableLegacyApplyRunIds = useMemo(
+    () => legacyApplyRunItems
+      .filter((item) => (
+        (item.queueState === "failed" || item.queueState === "blocked")
+        && isLegacyApplyRunWorkspaceRootIssue(item)
+        && !autoRetriedLegacyApplyRunIdsRef.current.has(item.id)
+      ))
+      .map((item) => item.id),
+    [legacyApplyRunItems],
+  );
+  const staleLegacyApplyRunIds = useMemo(
+    () => legacyApplyRunItems
+      .filter((item) => {
+        if (item.queueState !== "queued" && item.queueState !== "running") {
+          return false;
+        }
+        if (autoRecoveredStaleLegacyApplyRunIdsRef.current.has(item.id)) {
+          return false;
+        }
+        const activityAt = new Date(item.updatedAt ?? item.startedAt ?? item.createdAt).getTime();
+        return Number.isFinite(activityAt) && Date.now() - activityAt >= 30 * 60 * 1000;
+      })
+      .map((item) => item.id),
+    [legacyApplyRunItems],
+  );
+
+  useEffect(() => {
+    if (activeTab !== "maintenance" || isLegacyApplyRunsLoading || isLegacyApplyRunsFetching) {
+      return;
+    }
+
+    if (staleLegacyApplyRunIds.length > 0 && !recoverStaleLegacyUpgradeApplyRunsMutation.isPending) {
+      for (const runId of staleLegacyApplyRunIds) {
+        autoRecoveredStaleLegacyApplyRunIdsRef.current.add(runId);
+      }
+      recoverStaleLegacyUpgradeApplyRunsMutation.mutate({ runIds: staleLegacyApplyRunIds });
+      return;
+    }
+
+    if (normalizableLegacyApplyRunIds.length > 0 && !normalizeLegacyUpgradeApplyRunsMutation.isPending) {
+      const signature = normalizableLegacyApplyRunIds.join(",");
+      if (autoNormalizedLegacyApplySignatureRef.current !== signature) {
+        autoNormalizedLegacyApplySignatureRef.current = signature;
+        normalizeLegacyUpgradeApplyRunsMutation.mutate();
+        return;
+      }
+    }
+
+    if (autoRetryableLegacyApplyRunIds.length > 0 && !retryLegacyUpgradeApplyRunsMutation.isPending) {
+      for (const runId of autoRetryableLegacyApplyRunIds) {
+        autoRetriedLegacyApplyRunIdsRef.current.add(runId);
+      }
+      retryLegacyUpgradeApplyRunsMutation.mutate({ runIds: autoRetryableLegacyApplyRunIds });
+    }
+  }, [
+    activeTab,
+    autoRetryableLegacyApplyRunIds,
+    isLegacyApplyRunsFetching,
+    isLegacyApplyRunsLoading,
+    normalizableLegacyApplyRunIds,
+    normalizeLegacyUpgradeApplyRunsMutation,
+    recoverStaleLegacyUpgradeApplyRunsMutation,
+    retryLegacyUpgradeApplyRunsMutation,
+    staleLegacyApplyRunIds,
+  ]);
   const renderTableLoadingRow = (colSpan: number, label: string) => (
     <TableRow>
       <TableCell colSpan={colSpan} className="py-10 text-center text-muted-foreground">
@@ -1244,6 +1358,62 @@ export default function AdminSkills() {
       </TableCell>
     </TableRow>
   );
+
+  function toValidDate(value: Date | string | number | null | undefined): Date | null {
+    if (!value) {
+      return null;
+    }
+    const date = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function isDateAfter(left: Date | string | null | undefined, right: Date | string | null | undefined): boolean {
+    const leftDate = toValidDate(left);
+    const rightDate = toValidDate(right);
+    if (!leftDate) {
+      return false;
+    }
+    if (!rightDate) {
+      return true;
+    }
+    return leftDate.getTime() > rightDate.getTime();
+  }
+
+  function formatMaintenanceDateTime(value: Date | string | number | null | undefined): string {
+    const date = toValidDate(value);
+    if (!date) {
+      return t("admin.skillsPage.maintenance.timestamps.none");
+    }
+    return date.toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  function formatMaintenanceRelativeTime(value: Date | string | number | null | undefined): string {
+    const date = toValidDate(value);
+    if (!date) {
+      return t("admin.skillsPage.maintenance.timestamps.unknownAge");
+    }
+    const diffMs = Date.now() - date.getTime();
+    const absMs = Math.abs(diffMs);
+    const minuteMs = 60 * 1000;
+    const hourMs = 60 * minuteMs;
+    const dayMs = 24 * hourMs;
+    const valueAndUnit = absMs < hourMs
+      ? { value: Math.max(1, Math.round(absMs / minuteMs)), unit: "minute" as const }
+      : absMs < dayMs
+        ? { value: Math.round(absMs / hourMs), unit: "hour" as const }
+        : { value: Math.round(absMs / dayMs), unit: "day" as const };
+    return new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }).format(
+      diffMs > 0 ? -valueAndUnit.value : valueAndUnit.value,
+      valueAndUnit.unit,
+    );
+  }
+
   const maintenanceRecommendationGroups = useMemo<MaintenanceRecommendationGroup[]>(() => {
     const groups = new Map<number, MaintenanceRecommendationGroup>();
 
@@ -1259,6 +1429,8 @@ export default function AdminSkills() {
           worstCompatibilityStatus: item.compatibilityStatus,
           highestQualityScore: item.qualityScore,
           currentRuntime: item.currentRuntime,
+          latestAnalyzedAt: item.analyzedAt,
+          latestUpdatedAt: item.updatedAt,
         });
         continue;
       }
@@ -1277,7 +1449,13 @@ export default function AdminSkills() {
       if (!existing.currentRuntime && item.currentRuntime) {
         existing.currentRuntime = item.currentRuntime;
       }
-      if (item.analyzedAt > existing.primaryRecommendation.analyzedAt) {
+      if (isDateAfter(item.analyzedAt, existing.latestAnalyzedAt)) {
+        existing.latestAnalyzedAt = item.analyzedAt;
+      }
+      if (isDateAfter(item.updatedAt, existing.latestUpdatedAt)) {
+        existing.latestUpdatedAt = item.updatedAt;
+      }
+      if (isDateAfter(item.analyzedAt, existing.primaryRecommendation.analyzedAt)) {
         existing.primaryRecommendation = existing.recommendations[0] || item;
         existing.skill = item.skill ?? existing.skill;
       }
@@ -1297,33 +1475,70 @@ export default function AdminSkills() {
     )),
     [maintenanceRecommendationGroups],
   );
+  const maintenancePendingSkillCount = useMemo(
+    () => maintenanceRecommendationGroups.filter((group) => (
+      group.recommendations.some((item) => item.status === "pending_review" || item.status === "approved")
+    )).length,
+    [maintenanceRecommendationGroups],
+  );
+  const maintenanceBlockedOrFailedSkillCount = useMemo(
+    () => maintenanceRecommendationGroups.filter((group) => (
+      group.recommendations.some((item) => item.status === "blocked" || item.status === "failed")
+    )).length,
+    [maintenanceRecommendationGroups],
+  );
+  const maintenanceLatestActivityAt = useMemo(() => {
+    const candidates = [
+      ...maintenanceRecommendationGroups.flatMap((group) => [group.latestAnalyzedAt, group.latestUpdatedAt]),
+      ...legacyApplyRunItems.flatMap((item) => [item.createdAt, item.updatedAt, item.startedAt, item.endedAt]),
+    ].filter(Boolean) as Array<Date | string>;
+    return candidates.reduce<Date | string | null>((latest, value) => (
+      isDateAfter(value, latest) ? value : latest
+    ), null);
+  }, [legacyApplyRunItems, maintenanceRecommendationGroups]);
   const maintenanceExpandedSkillIdSet = useMemo(() => new Set(expandedMaintenanceSkillIds), [expandedMaintenanceSkillIds]);
   const legacyUpgradeQueueItems = (legacyUpgradeQueue || []) as LegacyUpgradeQueueItem[];
+  const visibleLegacyUpgradeQueueItems = useMemo(
+    () => legacyUpgradeIncludeApplied
+      ? legacyUpgradeQueueItems
+      : legacyUpgradeQueueItems.filter((item) => !isLegacyUpgradeTerminalHistory(item)),
+    [legacyUpgradeIncludeApplied, legacyUpgradeQueueItems],
+  );
   const legacyUpgradeFilteredItems = useMemo(() => {
     switch (legacyUpgradeQueueFilter) {
       case "critical":
-        return legacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "critical");
+        return visibleLegacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "critical");
       case "high":
-        return legacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "high");
+        return visibleLegacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "high");
       case "parallel":
-        return legacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible);
+        return visibleLegacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible);
       case "eligible":
-        return legacyUpgradeQueueItems.filter((item) => item.status !== "applied" && item.status !== "dismissed");
+        return visibleLegacyUpgradeQueueItems.filter((item) => item.status !== "applied" && item.status !== "dismissed");
       default:
-        return legacyUpgradeQueueItems;
+        return visibleLegacyUpgradeQueueItems;
     }
-  }, [legacyUpgradeQueueFilter, legacyUpgradeQueueItems]);
+  }, [legacyUpgradeQueueFilter, visibleLegacyUpgradeQueueItems]);
   const selectedLegacyUpgradeIdSet = useMemo(() => new Set(selectedLegacyUpgradeIds), [selectedLegacyUpgradeIds]);
   const expandedLegacyUpgradeIdSet = useMemo(() => new Set(expandedLegacyUpgradeIds), [expandedLegacyUpgradeIds]);
   const legacyUpgradeQueueById = useMemo(
-    () => new Map(legacyUpgradeQueueItems.map((item) => [item.id, item])),
-    [legacyUpgradeQueueItems],
+    () => new Map(visibleLegacyUpgradeQueueItems.map((item) => [item.id, item])),
+    [visibleLegacyUpgradeQueueItems],
   );
   const selectableLegacyUpgradeIds = useMemo(
-    () => legacyUpgradeQueueItems
-      .filter((item) => item.status !== "applied" && item.status !== "dismissed")
+    () => visibleLegacyUpgradeQueueItems
+      .filter((item) => canRunLegacyUpgradeAction(item))
       .map((item) => item.id),
-    [legacyUpgradeQueueItems],
+    [visibleLegacyUpgradeQueueItems],
+  );
+  const autoActionableLegacyUpgradeItems = useMemo(
+    () => visibleLegacyUpgradeQueueItems
+      .filter((item) => canRunLegacyUpgradeAction(item))
+      .slice(0, 50),
+    [visibleLegacyUpgradeQueueItems],
+  );
+  const autoActionableLegacyUpgradeIds = useMemo(
+    () => autoActionableLegacyUpgradeItems.map((item) => item.id),
+    [autoActionableLegacyUpgradeItems],
   );
   const selectedSelectableLegacyUpgradeIds = useMemo(
     () => selectedLegacyUpgradeIds.filter((id) => selectableLegacyUpgradeIds.includes(id)),
@@ -1342,14 +1557,18 @@ export default function AdminSkills() {
   );
   const visibleSelectableLegacyUpgradeIds = useMemo(
     () => legacyUpgradeFilteredItems
-      .filter((item) => item.status !== "applied" && item.status !== "dismissed")
+      .filter((item) => canRunLegacyUpgradeAction(item))
       .map((item) => item.id),
     [legacyUpgradeFilteredItems],
   );
-  const legacyUpgradeCriticalCount = legacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "critical").length;
-  const legacyUpgradeHighCount = legacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "high").length;
-  const legacyUpgradeBlockedCount = legacyUpgradeQueueItems.filter((item) => item.status === "blocked").length;
-  const legacyUpgradeFailedCount = legacyUpgradeQueueItems.filter((item) => item.status === "failed").length;
+  const legacyUpgradeCriticalCount = visibleLegacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "critical").length;
+  const legacyUpgradeHighCount = visibleLegacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "high").length;
+  const legacyUpgradeBlockedCount = visibleLegacyUpgradeQueueItems.filter((item) => item.status === "blocked").length;
+  const legacyUpgradeFailedCount = visibleLegacyUpgradeQueueItems.filter((item) => item.status === "failed").length;
+  const legacyUpgradeAutoBacklogCount = visibleLegacyUpgradeQueueItems.filter((item) => canRunLegacyUpgradeAction(item)).length;
+  const legacyUpgradeMonitorNames = autoActionableLegacyUpgradeItems
+    .slice(0, 6)
+    .map((item) => item.skill?.name || item.skill?.slug || `Skill #${item.skillId}`);
   const allVisibleLegacySelected = visibleSelectableLegacyUpgradeIds.length > 0
     && visibleSelectableLegacyUpgradeIds.every((id) => selectedLegacyUpgradeIdSet.has(id));
   const someVisibleLegacySelected = visibleSelectableLegacyUpgradeIds.some((id) => selectedLegacyUpgradeIdSet.has(id));
@@ -1388,7 +1607,7 @@ export default function AdminSkills() {
       setExpandedLegacyUpgradeIds([]);
       return;
     }
-    setExpandedLegacyUpgradeIds(legacyUpgradeQueueItems.map((item) => item.id));
+    setExpandedLegacyUpgradeIds(visibleLegacyUpgradeQueueItems.map((item) => item.id));
   }
 
   function collapseAllLegacyUpgradeDetails() {
@@ -1396,7 +1615,7 @@ export default function AdminSkills() {
   }
 
   useEffect(() => {
-    const criticalIds = legacyUpgradeQueueItems
+    const criticalIds = visibleLegacyUpgradeQueueItems
       .filter((item) => item.upgradePriorityTier === "critical")
       .map((item) => item.id);
 
@@ -1405,7 +1624,42 @@ export default function AdminSkills() {
     }
 
     setExpandedLegacyUpgradeIds((current) => Array.from(new Set([...current, ...criticalIds])));
-  }, [legacyUpgradeQueueItems]);
+  }, [visibleLegacyUpgradeQueueItems]);
+
+  useEffect(() => {
+    if (activeTab !== "maintenance") {
+      return;
+    }
+    if (isLegacyUpgradeQueueLoading || isLegacyUpgradeQueueFetching) {
+      return;
+    }
+    if (applyLegacyUpgradeRecommendationsMutation.isPending) {
+      return;
+    }
+    const unqueuedIds = visibleLegacyUpgradeQueueItems
+      .filter((item) => canRunLegacyUpgradeAction(item))
+      .filter((item) => !autoQueuedLegacyRecommendationIdsRef.current.has(item.id))
+      .slice(0, 50)
+      .map((item) => item.id);
+
+    if (unqueuedIds.length === 0) {
+      return;
+    }
+
+    for (const id of unqueuedIds) {
+      autoQueuedLegacyRecommendationIdsRef.current.add(id);
+    }
+
+    applyLegacyUpgradeRecommendationsMutation.mutate({
+      recommendationIds: unqueuedIds,
+    });
+  }, [
+    activeTab,
+    applyLegacyUpgradeRecommendationsMutation,
+    isLegacyUpgradeQueueFetching,
+    isLegacyUpgradeQueueLoading,
+    visibleLegacyUpgradeQueueItems,
+  ]);
 
   function describeLegacyUpgradeSignal(key: string, value: unknown): string {
     const friendlyKeyMap: Record<string, string> = {
@@ -1498,6 +1752,160 @@ export default function AdminSkills() {
     }
 
     return runReason ?? null;
+  }
+
+  function isLegacyUpgradeNoChangeOutcome(item: LegacyUpgradeQueueItem): boolean {
+    const combined = [
+      item.latestRun?.summary,
+      item.latestRun?.errorMessage,
+      getLegacyQueueLatestRunString(item, "resultMessage"),
+      getLegacyQueueLatestRunString(item, "completionMode"),
+      getLegacyQueueLatestRunString(item, "resultError"),
+      getLegacyUpgradeReason(item),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return combined.includes("no patches generated")
+      || combined.includes("no code changes")
+      || combined.includes("without code changes")
+      || combined.includes("no changes required")
+      || combined.includes("completionmode no_changes")
+      || combined.includes("no_changes");
+  }
+
+  function isLegacyUpgradeProposalReady(item: LegacyUpgradeQueueItem): boolean {
+    const applyStrategy = getLegacyQueueLatestRunString(item, "applyStrategy");
+    const combined = [
+      item.latestRun?.summary,
+      item.latestRun?.errorMessage,
+      getLegacyQueueLatestRunString(item, "resultMessage"),
+      applyStrategy,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return item.latestRun?.runType === "apply"
+      && item.latestRun.status === "completed"
+      && (applyStrategy === "proposal" || combined.includes("proposal generated"));
+  }
+
+  function isLegacyUpgradeTerminalHistory(item: LegacyUpgradeQueueItem): boolean {
+    return item.status === "applied"
+      || item.status === "dismissed"
+      || isLegacyUpgradeProposalReady(item)
+      || isLegacyUpgradeNoChangeOutcome(item);
+  }
+
+  function canRunLegacyUpgradeAction(item: LegacyUpgradeQueueItem): boolean {
+    if (item.status === "applied" || item.status === "dismissed") {
+      return false;
+    }
+    if (item.latestRun?.status === "running" || item.latestRun?.status === "queued") {
+      return false;
+    }
+    if (isLegacyUpgradeProposalReady(item)) {
+      return false;
+    }
+    if (isLegacyUpgradeNoChangeOutcome(item)) {
+      return false;
+    }
+    return true;
+  }
+
+  function getLegacyUpgradeNextAction(item: LegacyUpgradeQueueItem): LegacyUpgradeNextAction {
+    if (item.latestRun?.status === "running" || item.latestRun?.status === "queued") {
+      return {
+        label: t("admin.skillsPage.legacyQueue.nextAction.wait.label"),
+        description: t("admin.skillsPage.legacyQueue.nextAction.wait.description"),
+        tone: "info",
+        buttonLabel: null,
+        canRun: false,
+      };
+    }
+
+    if (isLegacyUpgradeNoChangeOutcome(item)) {
+      return {
+        label: t("admin.skillsPage.legacyQueue.nextAction.noChange.label"),
+        description: t("admin.skillsPage.legacyQueue.nextAction.noChange.description"),
+        tone: "success",
+        buttonLabel: null,
+        canRun: false,
+      };
+    }
+
+    if (isLegacyUpgradeProposalReady(item)) {
+      return {
+        label: t("admin.skillsPage.legacyQueue.nextAction.proposalReady.label"),
+        description: t("admin.skillsPage.legacyQueue.nextAction.proposalReady.description"),
+        tone: "info",
+        buttonLabel: t("admin.skillsPage.legacyQueue.viewAdvice"),
+        canRun: false,
+      };
+    }
+
+    if (item.status === "applied") {
+      return {
+        label: t("admin.skillsPage.legacyQueue.nextAction.done.label"),
+        description: t("admin.skillsPage.legacyQueue.nextAction.done.description"),
+        tone: "success",
+        buttonLabel: null,
+        canRun: false,
+      };
+    }
+
+    if (item.status === "blocked" || item.status === "failed") {
+      return {
+        label: t("admin.skillsPage.legacyQueue.nextAction.retry.label"),
+        description: t("admin.skillsPage.legacyQueue.nextAction.retry.description"),
+        tone: item.status === "blocked" ? "danger" : "warning",
+        buttonLabel: item.isAutoApplySafe
+          ? t("admin.skillsPage.legacyQueue.applyUpgrade")
+          : t("admin.skillsPage.legacyQueue.generateProposal"),
+        canRun: true,
+      };
+    }
+
+    if (item.status === "approved") {
+      return {
+        label: item.isAutoApplySafe
+          ? t("admin.skillsPage.legacyQueue.nextAction.apply.label")
+          : t("admin.skillsPage.legacyQueue.nextAction.generate.label"),
+        description: item.isAutoApplySafe
+          ? t("admin.skillsPage.legacyQueue.nextAction.apply.description")
+          : t("admin.skillsPage.legacyQueue.nextAction.generate.description"),
+        tone: item.isAutoApplySafe ? "success" : "info",
+        buttonLabel: item.isAutoApplySafe
+          ? t("admin.skillsPage.legacyQueue.applyUpgrade")
+          : t("admin.skillsPage.legacyQueue.generateProposal"),
+        canRun: true,
+      };
+    }
+
+    return {
+      label: t("admin.skillsPage.legacyQueue.nextAction.review.label"),
+      description: t("admin.skillsPage.legacyQueue.nextAction.review.description"),
+      tone: "neutral",
+      buttonLabel: t("admin.skillsPage.legacyQueue.viewAdvice"),
+      canRun: false,
+    };
+  }
+
+  function getLegacyUpgradeNextActionClass(tone: LegacyUpgradeNextAction["tone"]): string {
+    if (tone === "success") {
+      return "border-emerald-500 bg-emerald-50 text-emerald-700";
+    }
+    if (tone === "warning") {
+      return "border-orange-500 bg-orange-50 text-orange-700";
+    }
+    if (tone === "danger") {
+      return "border-red-500 bg-red-50 text-red-700";
+    }
+    if (tone === "info") {
+      return "border-blue-500 bg-blue-50 text-blue-700";
+    }
+    return "border-slate-300 bg-slate-50 text-slate-700";
   }
 
   function getLegacyQueueLatestRunString(item: LegacyUpgradeQueueItem, key: string): string | null {
@@ -1661,6 +2069,49 @@ export default function AdminSkills() {
       "completed without code changes",
       "isc improve complete",
     ].some((signal) => combined.includes(signal));
+  }
+
+  function isLegacyApplyRunWorkspaceRootIssue(run: LegacyUpgradeRunItem): boolean {
+    if (run.workspaceRootIssue || run.diagnosticCode === "isc_workspace_root_pollution") {
+      return true;
+    }
+    const combined = [
+      run.workspaceRoot,
+      run.entrypointRoot,
+      run.resultError,
+      run.errorMessage,
+      getLegacyApplyRunLogString(run, "workspaceRoot"),
+      getLegacyApplyRunLogString(run, "entrypointRoot"),
+      getLegacyApplyRunLogString(run, "resultError"),
+      getLegacyApplyRunLogString(run, "failureCode"),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .replace(/\\/g, "/")
+      .toLowerCase();
+    return combined.includes("isc_workspace_root_pollution")
+      || (combined.includes("/runs/workspaces/") && combined.includes("/skills/intelligence-skill-creator/"));
+  }
+
+  function getLegacyApplyRunDiagnosticPaths(run: LegacyUpgradeRunItem): Array<{ label: string; value: string }> {
+    return [
+      {
+        label: t("admin.skillsPage.legacyRunQueue.diagnostics.workspaceRoot"),
+        value: run.workspaceRoot || getLegacyApplyRunLogString(run, "workspaceRoot") || "",
+      },
+      {
+        label: t("admin.skillsPage.legacyRunQueue.diagnostics.proposalRoot"),
+        value: run.proposalRoot || getLegacyApplyRunLogString(run, "proposalRoot") || "",
+      },
+      {
+        label: t("admin.skillsPage.legacyRunQueue.diagnostics.entrypointRoot"),
+        value: run.entrypointRoot || getLegacyApplyRunLogString(run, "entrypointRoot") || "",
+      },
+      {
+        label: t("admin.skillsPage.legacyRunQueue.diagnostics.canonicalIscRoot"),
+        value: run.canonicalIscRoot || getLegacyApplyRunLogString(run, "canonicalIscRoot") || "",
+      },
+    ].filter((item) => item.value.trim());
   }
 
   function getLegacyApplyRunTaskId(run: LegacyUpgradeRunItem): string {
@@ -3197,6 +3648,54 @@ export default function AdminSkills() {
             leading={<ShieldCheck className="h-5 w-5 text-slate-500" />}
           >
             <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.maintenance.overview.pendingSkills")}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">{maintenancePendingSkillCount}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {t("admin.skillsPage.maintenance.overview.pendingSkillsHelp")}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.maintenance.overview.pendingRecommendations")}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">{maintenanceEligibleRecommendationIds.length}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {t("admin.skillsPage.maintenance.overview.eligibleHelp")}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.maintenance.overview.runningApply")}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.queued + legacyApplyRunCounts.running}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {t("admin.skillsPage.maintenance.overview.runningApplyHelp")}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.maintenance.overview.needsAttention")}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">{maintenanceBlockedOrFailedSkillCount + legacyApplyRunCounts.failed + legacyApplyRunCounts.blocked}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {t("admin.skillsPage.maintenance.overview.needsAttentionHelp")}
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.maintenance.overview.latestActivity")}
+                  </div>
+                  <div className="mt-1 text-sm font-semibold">{formatMaintenanceDateTime(maintenanceLatestActivityAt)}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {formatMaintenanceRelativeTime(maintenanceLatestActivityAt)}
+                  </div>
+                </div>
+              </div>
+
               <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-2">
                   <Label>{t("admin.skillsPage.maintenance.filters.statusLabel")}</Label>
@@ -3291,15 +3790,16 @@ export default function AdminSkills() {
                     <TableHead>{t("admin.skillsPage.maintenance.headers.compatibility")}</TableHead>
                     <TableHead>{t("admin.skillsPage.maintenance.headers.quality")}</TableHead>
                     <TableHead>{t("admin.skillsPage.maintenance.headers.runtime")}</TableHead>
+                    <TableHead>{t("admin.skillsPage.maintenance.headers.updated")}</TableHead>
                     <TableHead>{t("admin.skillsPage.maintenance.headers.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isMaintenanceRecommendationsLoading ? (
-                    renderTableLoadingRow(8, "Loading maintenance recommendations...")
+                    renderTableLoadingRow(9, "Loading maintenance recommendations...")
                   ) : (!maintenanceRecommendationGroups.length ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground">
+                      <TableCell colSpan={9} className="text-center text-muted-foreground">
                         {t("admin.skillsPage.maintenance.empty")}
                       </TableCell>
                     </TableRow>
@@ -3398,6 +3898,17 @@ export default function AdminSkills() {
                               )}
                             </TableCell>
                             <TableCell>
+                              <div className="space-y-1 text-sm">
+                                <div className="flex items-center gap-2 font-medium">
+                                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                                  {formatMaintenanceDateTime(group.latestAnalyzedAt)}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {t("admin.skillsPage.maintenance.timestamps.updated")}: {formatMaintenanceRelativeTime(group.latestUpdatedAt)}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
                               <div className="flex flex-wrap items-center gap-2">
                                 <Button
                                   variant="outline"
@@ -3436,7 +3947,7 @@ export default function AdminSkills() {
                           </TableRow>
                           {isExpanded && (
                             <TableRow>
-                              <TableCell colSpan={8} className="bg-muted/20">
+                              <TableCell colSpan={9} className="bg-muted/20">
                                 <div className="space-y-3 p-3">
                                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                                     {t("admin.skillsPage.maintenance.recommendations")}
@@ -3532,6 +4043,37 @@ export default function AdminSkills() {
             leading={<Clock className="h-5 w-5 text-slate-500" />}
           >
             <div className="space-y-4">
+              <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 text-sm text-blue-950">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Zap className="h-4 w-4 text-blue-700" />
+                      {t("admin.skillsPage.legacyRunQueue.autopilot.title")}
+                    </div>
+                    <p className="text-xs leading-5 text-blue-800">
+                      {t("admin.skillsPage.legacyRunQueue.autopilot.description")}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline" className="border-blue-300 bg-white/70 text-blue-800">
+                      {t("admin.skillsPage.legacyRunQueue.autopilot.normalizeCount", { count: normalizableLegacyApplyRunIds.length })}
+                    </Badge>
+                    <Badge variant="outline" className="border-blue-300 bg-white/70 text-blue-800">
+                      {t("admin.skillsPage.legacyRunQueue.autopilot.retryCount", { count: autoRetryableLegacyApplyRunIds.length })}
+                    </Badge>
+                    <Badge variant="outline" className="border-blue-300 bg-white/70 text-blue-800">
+                      {t("admin.skillsPage.legacyRunQueue.autopilot.staleCount", { count: staleLegacyApplyRunIds.length })}
+                    </Badge>
+                    {(normalizeLegacyUpgradeApplyRunsMutation.isPending || retryLegacyUpgradeApplyRunsMutation.isPending || recoverStaleLegacyUpgradeApplyRunsMutation.isPending) && (
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                        {t("admin.skillsPage.legacyRunQueue.autopilot.running")}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                   {[
@@ -3559,6 +4101,15 @@ export default function AdminSkills() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => recoverStaleLegacyUpgradeApplyRunsMutation.mutate({ runIds: staleLegacyApplyRunIds })}
+                    disabled={staleLegacyApplyRunIds.length === 0 || recoverStaleLegacyUpgradeApplyRunsMutation.isPending}
+                  >
+                    {recoverStaleLegacyUpgradeApplyRunsMutation.isPending
+                      ? t("admin.skillsPage.legacyRunQueue.recoverStalePending")
+                      : t("admin.skillsPage.legacyRunQueue.recoverStale", { count: staleLegacyApplyRunIds.length })}
+                  </Button>
                   <Button
                     variant="outline"
                     onClick={() => normalizeLegacyUpgradeApplyRunsMutation.mutate()}
@@ -3637,6 +4188,7 @@ export default function AdminSkills() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.skill")}</TableHead>
+                    <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.time")}</TableHead>
                     <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.task")}</TableHead>
                     <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.status")}</TableHead>
                     <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.result")}</TableHead>
@@ -3645,10 +4197,10 @@ export default function AdminSkills() {
                 </TableHeader>
                 <TableBody>
                   {isLegacyApplyRunsLoading ? (
-                    renderTableLoadingRow(5, t("admin.skillsPage.legacyRunQueue.loading"))
+                    renderTableLoadingRow(6, t("admin.skillsPage.legacyRunQueue.loading"))
                   ) : legacyApplyRunItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
                         {legacyApplyRunFilter === "queued" || legacyApplyRunFilter === "running"
                           ? t("admin.skillsPage.legacyRunQueue.emptyQueued")
                           : t("admin.skillsPage.legacyRunQueue.empty")}
@@ -3658,6 +4210,8 @@ export default function AdminSkills() {
                   legacyApplyRunItems.map((item) => {
                     const strategy = getLegacyApplyRunStrategy(item);
                     const reason = getLegacyApplyRunReason(item);
+                    const workspaceRootIssue = isLegacyApplyRunWorkspaceRootIssue(item);
+                    const diagnosticPaths = getLegacyApplyRunDiagnosticPaths(item);
                     const latestRunLineage = getLegacyRunLineageSource(item.latestRun);
                     const lineageRole = getLegacyRunLineageString(latestRunLineage, "role") || "orchestrator";
                     const lineageCheckpointVersion = getLegacyRunLineageNumber(latestRunLineage, "checkpointVersion");
@@ -3670,6 +4224,25 @@ export default function AdminSkills() {
                               <div className="text-xs text-muted-foreground">{item.skill?.slug || item.skillId}</div>
                               {item.recommendation?.title && (
                                 <div className="text-xs text-slate-600">{item.recommendation.title}</div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1 text-sm">
+                              <div className="flex items-center gap-2 font-medium">
+                                <Clock className="h-4 w-4 text-muted-foreground" />
+                                {formatMaintenanceDateTime(item.createdAt)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {t("admin.skillsPage.legacyRunQueue.time.updated")}: {formatMaintenanceDateTime(item.updatedAt)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatMaintenanceRelativeTime(item.updatedAt)}
+                              </div>
+                              {item.startedAt && (
+                                <div className="text-xs text-muted-foreground">
+                                  {t("admin.skillsPage.legacyRunQueue.time.started")}: {formatMaintenanceDateTime(item.startedAt)}
+                                </div>
                               )}
                             </div>
                           </TableCell>
@@ -3706,6 +4279,11 @@ export default function AdminSkills() {
                                     </div>
                                   )}
                                 </div>
+                              )}
+                              {workspaceRootIssue && (
+                                <Badge variant="outline" className="w-fit rounded-full border-amber-500 bg-amber-50 text-[11px] text-amber-700">
+                                  {t("admin.skillsPage.legacyRunQueue.diagnostics.workspaceRootIssue")}
+                                </Badge>
                               )}
                               {latestRunLineage && (
                                 <div className="flex flex-wrap items-center gap-2">
@@ -3770,6 +4348,28 @@ export default function AdminSkills() {
                                   {reason}
                                 </div>
                               )}
+                              {workspaceRootIssue && (
+                                <div className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-xs text-amber-900">
+                                  <div className="font-semibold">
+                                    {t("admin.skillsPage.legacyRunQueue.diagnostics.workspaceRootIssue")}
+                                  </div>
+                                  <div className="mt-1 text-amber-800">
+                                    {t("admin.skillsPage.legacyRunQueue.diagnostics.workspaceRootIssueDescription")}
+                                  </div>
+                                  {diagnosticPaths.length > 0 && (
+                                    <div className="mt-2 space-y-1">
+                                      {diagnosticPaths.map((diagnostic) => (
+                                        <div key={`${item.id}-${diagnostic.label}`} className="grid gap-1">
+                                          <span className="font-semibold">{diagnostic.label}</span>
+                                          <span className="min-w-0 break-all font-mono text-[11px] leading-4">
+                                            {diagnostic.value}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -3827,6 +4427,58 @@ export default function AdminSkills() {
             leading={<FolderSync className="h-5 w-5 text-slate-500" />}
           >
             <div className="space-y-4">
+              <div className="rounded-lg border border-sky-200 bg-sky-50/80 p-4 text-sky-950">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-full bg-sky-100 p-2">
+                      {applyLegacyUpgradeRecommendationsMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-sky-700" />
+                      ) : (
+                        <Zap className="h-4 w-4 text-sky-700" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-semibold">
+                        {t("admin.skillsPage.legacyQueue.autopilot.title")}
+                      </div>
+                      <div className="mt-1 max-w-4xl text-sm leading-6 text-sky-800">
+                        {t("admin.skillsPage.legacyQueue.autopilot.description")}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary" className="rounded-full bg-white text-sky-800">
+                      {t("admin.skillsPage.legacyQueue.autopilot.backlogCount", { count: legacyUpgradeAutoBacklogCount })}
+                    </Badge>
+                    <Badge variant="secondary" className="rounded-full bg-white text-sky-800">
+                      {applyLegacyUpgradeRecommendationsMutation.isPending
+                        ? t("admin.skillsPage.legacyQueue.autopilot.running")
+                        : t("admin.skillsPage.legacyQueue.autopilot.ready")}
+                    </Badge>
+                  </div>
+                </div>
+                {legacyUpgradeMonitorNames.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {legacyUpgradeMonitorNames.map((name) => (
+                      <Badge key={name} variant="outline" className="rounded-full border-sky-300 bg-white text-sky-800">
+                        {name}
+                      </Badge>
+                    ))}
+                    {legacyUpgradeAutoBacklogCount > legacyUpgradeMonitorNames.length && (
+                      <Badge variant="outline" className="rounded-full border-sky-300 bg-white text-sky-800">
+                        {t("admin.skillsPage.legacyQueue.autopilot.more", {
+                          count: legacyUpgradeAutoBacklogCount - legacyUpgradeMonitorNames.length,
+                        })}
+                      </Badge>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-3 text-sm text-sky-800">
+                    {t("admin.skillsPage.legacyQueue.autopilot.empty")}
+                  </div>
+                )}
+              </div>
+
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center gap-3">
@@ -3930,11 +4582,11 @@ export default function AdminSkills() {
                   </Badge>
                 )}
                 {[
-                  { key: "all", label: t("admin.skillsPage.legacyQueue.filters.all"), count: legacyUpgradeQueueItems.length },
+                  { key: "all", label: t("admin.skillsPage.legacyQueue.filters.all"), count: visibleLegacyUpgradeQueueItems.length },
                   { key: "critical", label: t("admin.skillsPage.legacyQueue.filters.critical"), count: legacyUpgradeCriticalCount },
                   { key: "high", label: t("admin.skillsPage.legacyQueue.filters.high"), count: legacyUpgradeHighCount },
-                  { key: "parallel", label: t("admin.skillsPage.legacyQueue.filters.parallel"), count: legacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible).length },
-                  { key: "eligible", label: t("admin.skillsPage.legacyQueue.filters.eligible"), count: legacyUpgradeQueueItems.filter((item) => item.status !== "applied" && item.status !== "dismissed").length },
+                  { key: "parallel", label: t("admin.skillsPage.legacyQueue.filters.parallel"), count: visibleLegacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible).length },
+                  { key: "eligible", label: t("admin.skillsPage.legacyQueue.filters.eligible"), count: visibleLegacyUpgradeQueueItems.filter((item) => item.status !== "applied" && item.status !== "dismissed").length },
                 ].map((filter) => (
                   <Button
                     key={filter.key}
@@ -3954,12 +4606,12 @@ export default function AdminSkills() {
               <div className="grid gap-3 md:grid-cols-6">
                 <div className="rounded-lg border bg-muted/30 p-3">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyQueue.stats.queued")}</div>
-                  <div className="mt-1 text-2xl font-semibold">{legacyUpgradeQueueItems.length}</div>
+                  <div className="mt-1 text-2xl font-semibold">{visibleLegacyUpgradeQueueItems.length}</div>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyQueue.stats.parallelEligible")}</div>
                   <div className="mt-1 text-2xl font-semibold">
-                    {legacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible).length}
+                    {visibleLegacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible).length}
                   </div>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3">
@@ -3983,10 +4635,10 @@ export default function AdminSkills() {
                 <div className="rounded-lg border bg-muted/30 p-3 md:col-span-6">
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="secondary" className="rounded-full">
-                      {t("admin.skillsPage.legacyQueue.summary.total", { count: legacyUpgradeQueueItems.length })}
+                      {t("admin.skillsPage.legacyQueue.summary.total", { count: visibleLegacyUpgradeQueueItems.length })}
                     </Badge>
                     <Badge variant="secondary" className="rounded-full">
-                      {t("admin.skillsPage.legacyQueue.summary.parallelEligible", { count: legacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible).length })}
+                      {t("admin.skillsPage.legacyQueue.summary.parallelEligible", { count: visibleLegacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible).length })}
                     </Badge>
                     <Badge variant="secondary" className="rounded-full">
                       {t("admin.skillsPage.legacyQueue.summary.critical", { count: legacyUpgradeCriticalCount })}
@@ -4025,27 +4677,30 @@ export default function AdminSkills() {
                     <TableHead>{t("admin.skillsPage.legacyQueue.headers.signals")}</TableHead>
                     <TableHead>{t("admin.skillsPage.legacyQueue.headers.runtime")}</TableHead>
                     <TableHead>{t("admin.skillsPage.legacyQueue.headers.status")}</TableHead>
+                    <TableHead>{t("admin.skillsPage.legacyQueue.headers.nextAction")}</TableHead>
                     <TableHead>{t("admin.skillsPage.legacyQueue.headers.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLegacyUpgradeQueueLoading ? (
-                    renderTableLoadingRow(7, "Loading legacy upgrade queue...")
-                  ) : (!legacyUpgradeQueueItems.length ? (
+                    renderTableLoadingRow(8, "Loading legacy upgrade queue...")
+                  ) : (!visibleLegacyUpgradeQueueItems.length ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground">
                         {t("admin.skillsPage.legacyQueue.empty")}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    legacyUpgradeFilteredItems.map((item, index) => (
+                    legacyUpgradeFilteredItems.map((item, index) => {
+                      const nextAction = getLegacyUpgradeNextAction(item);
+                      return (
                       <Fragment key={item.id}>
                         <TableRow>
                           <TableCell>
                             <Checkbox
                               checked={selectedLegacyUpgradeIdSet.has(item.id)}
                               onCheckedChange={(checked) => toggleLegacyUpgradeSelection(item.id, Boolean(checked))}
-                              disabled={item.status === "applied" || item.status === "dismissed"}
+                              disabled={!canRunLegacyUpgradeAction(item)}
                               aria-label={`Select ${item.skill?.name || `Skill #${item.skillId}`}`}
                             />
                           </TableCell>
@@ -4138,6 +4793,15 @@ export default function AdminSkills() {
                             </div>
                           </TableCell>
                           <TableCell>
+                            <div className={cn(
+                              "max-w-[260px] rounded-md border px-3 py-2 text-xs leading-5",
+                              getLegacyUpgradeNextActionClass(nextAction.tone),
+                            )}>
+                              <div className="font-semibold">{nextAction.label}</div>
+                              <div className="mt-1 opacity-90">{nextAction.description}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
                             <div className="flex items-center gap-2">
                               <Button
                                 variant="outline"
@@ -4156,9 +4820,9 @@ export default function AdminSkills() {
                               <Button
                                 size="sm"
                                 onClick={() => requestRecommendationApply(item, item.skill?.name || `Skill #${item.skillId}`)}
-                                disabled={item.status === "applied" || applyUpgradeMutation.isPending}
+                                disabled={!nextAction.canRun || applyUpgradeMutation.isPending}
                               >
-                                {item.isAutoApplySafe ? t("admin.skillsPage.legacyQueue.applyUpgrade") : t("admin.skillsPage.legacyQueue.generateProposal")}
+                                {nextAction.buttonLabel || t("admin.skillsPage.legacyQueue.noActionNeeded")}
                               </Button>
                               <Button
                                 variant="outline"
@@ -4357,7 +5021,8 @@ export default function AdminSkills() {
                           </TableRow>
                         )}
                       </Fragment>
-                    ))
+                      );
+                    })
                   ))}
                 </TableBody>
               </Table>

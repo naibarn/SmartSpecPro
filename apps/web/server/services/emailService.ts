@@ -25,6 +25,33 @@ let cachedConfig: SmtpConfig | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 60_000; // 1 minute
 
+function allowInsecureSmtpTls(): boolean {
+  return process.env.NODE_ENV !== "production" && process.env.SMTP_TLS_REJECT_UNAUTHORIZED === "false";
+}
+
+function shouldLogEmailCodes(): boolean {
+  return process.env.NODE_ENV !== "production" && process.env.LOG_EMAIL_VERIFICATION_CODES === "true";
+}
+
+function maskEmail(email: string): string {
+  const [local = "", domain = ""] = email.split("@");
+  if (!domain) return "[redacted]";
+  const visible = local.slice(0, 2);
+  return `${visible}${local.length > 2 ? "***" : "*"}@${domain}`;
+}
+
+function logCodeFallback(kind: "Verify" | "Reset", to: string, code: string): void {
+  if (!shouldLogEmailCodes()) {
+    console.log(`[Email] ${kind} code fallback suppressed for ${maskEmail(to)}`);
+    return;
+  }
+
+  console.log(`\n========================================`);
+  console.log(`[${kind}] Email: ${maskEmail(to)}`);
+  console.log(`[${kind}] Code:  ${code}`);
+  console.log(`========================================\n`);
+}
+
 export async function getSmtpConfig(): Promise<SmtpConfig | null> {
   if (cachedConfig && Date.now() - cacheTime < CACHE_TTL) return cachedConfig;
 
@@ -85,7 +112,7 @@ export async function createTransporter(): Promise<Transporter | null> {
     connectionTimeout: 15000,
     greetingTimeout: 10000,
     tls: {
-      rejectUnauthorized: false,
+      rejectUnauthorized: !allowInsecureSmtpTls(),
       minVersion: "TLSv1.2",
     },
   });
@@ -98,14 +125,9 @@ export async function sendVerificationEmail(to: string, code: string, name?: str
   const config = await getSmtpConfig();
   const transporter = await createTransporter();
 
-  // Always log to console as backup
-  console.log(`\n========================================`);
-  console.log(`[Verify] Email: ${to}`);
-  console.log(`[Verify] Code:  ${code}`);
-  console.log(`========================================\n`);
-
   if (!transporter || !config) {
-    console.log("[Email] SMTP not configured — code logged to console only");
+    logCodeFallback("Verify", to, code);
+    console.log("[Email] SMTP not configured; verification email was not sent");
     return false;
   }
 
@@ -129,10 +151,10 @@ export async function sendVerificationEmail(to: string, code: string, name?: str
         </div>
       `,
     });
-    console.log(`[Email] Verification email sent to ${to}`);
+    console.log(`[Email] Verification email sent to ${maskEmail(to)}`);
     return true;
   } catch (err) {
-    console.error(`[Email] Failed to send verification email to ${to}:`, err);
+    console.error(`[Email] Failed to send verification email to ${maskEmail(to)}:`, err);
     return false;
   }
 }
@@ -144,14 +166,9 @@ export async function sendPasswordResetEmail(to: string, code: string, name?: st
   const config = await getSmtpConfig();
   const transporter = await createTransporter();
 
-  // Always log to console as backup
-  console.log(`\n========================================`);
-  console.log(`[Reset] Email: ${to}`);
-  console.log(`[Reset] Code:  ${code}`);
-  console.log(`========================================\n`);
-
   if (!transporter || !config) {
-    console.log("[Email] SMTP not configured — code logged to console only");
+    logCodeFallback("Reset", to, code);
+    console.log("[Email] SMTP not configured; password reset email was not sent");
     return false;
   }
 
@@ -175,10 +192,10 @@ export async function sendPasswordResetEmail(to: string, code: string, name?: st
         </div>
       `,
     });
-    console.log(`[Email] Password reset email sent to ${to}`);
+    console.log(`[Email] Password reset email sent to ${maskEmail(to)}`);
     return true;
   } catch (err) {
-    console.error(`[Email] Failed to send password reset email to ${to}:`, err);
+    console.error(`[Email] Failed to send password reset email to ${maskEmail(to)}:`, err);
     return false;
   }
 }
@@ -201,9 +218,7 @@ export async function testSmtpConnection(config: {
       connectionTimeout: 15000, // 15s timeout
       greetingTimeout: 10000,   // 10s greeting timeout
       tls: {
-        // Allow self-signed certs for local/dev environments
-        // For production, this should ideally be true
-        rejectUnauthorized: false,
+        rejectUnauthorized: !allowInsecureSmtpTls(),
         minVersion: "TLSv1.2",
       },
     });

@@ -2,6 +2,7 @@ import { jsxLocPlugin } from "@builder.io/vite-plugin-jsx-loc";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "path";
 import { defineConfig } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
@@ -9,6 +10,9 @@ import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 
 const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime()];
+const require = createRequire(import.meta.url);
+const reactPath = path.dirname(require.resolve("react/package.json"));
+const reactDomPath = path.dirname(require.resolve("react-dom/package.json"));
 
 // Conditionally add Sentry source map upload plugin (CI builds only)
 if (process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG) {
@@ -32,11 +36,11 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
-      // Force all packages (including Radix) to use the same React 19 from apps/web
-      "react": path.resolve(import.meta.dirname, "node_modules", "react"),
-      "react-dom": path.resolve(import.meta.dirname, "node_modules", "react-dom"),
-      "react/jsx-runtime": path.resolve(import.meta.dirname, "node_modules", "react", "jsx-runtime"),
-      "react/jsx-dev-runtime": path.resolve(import.meta.dirname, "node_modules", "react", "jsx-dev-runtime"),
+      // Force all packages (including Radix) to use the same React copy even when npm hoists workspaces.
+      "react": reactPath,
+      "react-dom": reactDomPath,
+      "react/jsx-runtime": path.join(reactPath, "jsx-runtime"),
+      "react/jsx-dev-runtime": path.join(reactPath, "jsx-dev-runtime"),
     },
     dedupe: ["react", "react-dom"],
   },
@@ -94,10 +98,6 @@ export default defineConfig({
             id.includes("node_modules/codemirror/")
           ) {
             return "vendor-codemirror";
-          }
-          // Excel processing (xlsx is large — ~600 kB)
-          if (id.includes("node_modules/xlsx/")) {
-            return "vendor-xlsx";
           }
           // i18n runtime
           if (

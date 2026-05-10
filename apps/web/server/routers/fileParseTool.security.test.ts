@@ -9,6 +9,14 @@ vi.mock("../services/auditLogger", () => ({
   auditLogger: { log: vi.fn() },
 }));
 
+vi.mock("../services/appRuntimeConfig", () => ({
+  compareCachedInternalToken: vi.fn((token?: string) => token === "file-parse-token"),
+  getCachedAppRuntimeConfig: vi.fn(() => ({
+    s3Endpoint: "",
+    r2PublicUrl: "",
+  })),
+}));
+
 vi.mock("../middleware/contentAutomationGate", () => ({
   contentAutomationGate: vi.fn((_req: Request, _res: Response, next: () => void) => next()),
 }));
@@ -189,6 +197,22 @@ describe("fileParseTool security", () => {
       const { res, statusMock } = buildMockResponse();
       await fileParseHandler(req, res);
       expect(statusMock).toHaveBeenCalledWith(400);
+    });
+
+    it("rejects redirects from an allowed host to a private host", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 302,
+        headers: { get: (key: string) => key.toLowerCase() === "location" ? "http://127.0.0.1/private.csv" : null },
+        body: null,
+      });
+
+      const req = buildMockRequest({ file_url: "https://cdn.example.com/topics.csv", file_type: "csv" });
+      const { res, statusMock, jsonMock } = buildMockResponse();
+      await fileParseHandler(req, res);
+
+      expect(statusMock).toHaveBeenCalledWith(400);
+      expect(JSON.stringify(jsonMock.mock.calls)).toContain("blocked_host");
     });
   });
 

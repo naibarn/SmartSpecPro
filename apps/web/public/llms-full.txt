@@ -1,0 +1,17 @@
+# SmartAIHub
+
+> SmartAIHub is an enterprise AI skill marketplace for reusable skills, virtual workflows, swarm execution, and chat, presentation, image, and video outputs.
+
+Use this file as the LLM-readable navigation index for SmartAIHub public content. Prefer the linked pages for current product, workflow, docs, media, support, and trust information.
+
+See the concise index at https://smartaihub.app/llms.txt.
+
+## Citation Guidance
+
+- Cite the canonical SmartAIHub page URL when referencing product capabilities.
+- Use docs and FAQ pages for direct answers about marketplace discovery, workflows, swarms, and output generation.
+- Use blog pages for tutorials, implementation patterns, and content strategy examples.
+
+## AI Access Policy
+
+Search and real-time AI grounding are allowed. AI training is not granted by this file.

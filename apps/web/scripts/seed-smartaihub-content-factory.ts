@@ -310,7 +310,7 @@ async function upsertSeo(db: any, tenantId: number, blueprint: ContentBlueprint)
     ogMetadata: {
       title: `${blueprint.title} | SmartAIHub Docs`,
       description: blueprint.description,
-      image: "/images/og-image.png",
+      image: "/images/dashboard-preview.png",
       type: "article",
       url: path,
     },
@@ -318,7 +318,7 @@ async function upsertSeo(db: any, tenantId: number, blueprint: ContentBlueprint)
       card: "summary_large_image" as const,
       title: `${blueprint.title} | SmartAIHub Docs`,
       description: blueprint.description,
-      image: "/images/og-image.png",
+      image: "/images/dashboard-preview.png",
     },
     aiContent: {
       context: blueprint.aiContext,
