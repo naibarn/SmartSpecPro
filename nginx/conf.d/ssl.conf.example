@@ -68,6 +68,26 @@ server {
     # so they naturally fall through to the Express "/" location below,
     # bypassing the /api/ → Python rewrite.
 
+    # Notification SSE stream (Node.js) - must come BEFORE /api/
+    location = /api/notifications/stream {
+        proxy_pass http://smartspec_web;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+
+        proxy_buffering off;
+        proxy_cache off;
+        chunked_transfer_encoding off;
+
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 600s;
+        proxy_read_timeout 600s;
+    }
+
     # Python Backend API
     location /api/ {
         limit_req zone=api_limit burst=10 nodelay;

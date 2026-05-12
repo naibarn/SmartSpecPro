@@ -165,6 +165,7 @@ import {
   type PresentationGeneratedSlideDraft,
   type PresentationInsertSlidesResult,
   type PresentationInsertSlotVideosResult,
+  type PresentationSlotVideoImportOptions,
   type PresentationSlotVideoImportAsset,
 } from "@/components/presentation/PresentationArticleGeneratorDialog";
 import { SearchableCombobox } from "@/components/presentation/SearchableCombobox";
@@ -267,6 +268,48 @@ function parseDocId(value: string | undefined): number | null {
   if (!value) return null;
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function getComparablePresentationMediaUrl(value: string | null | undefined): string {
+  return normalizeMediaSourceUrl(String(value ?? "").trim()).trim();
+}
+
+function getPresentationMediaUrlPath(value: string | null | undefined): string {
+  return getComparablePresentationMediaUrl(value).split(/[?#]/, 1)[0]?.toLowerCase() ?? "";
+}
+
+function isLikelyPresentationImageUrl(value: string | null | undefined): boolean {
+  const normalized = getComparablePresentationMediaUrl(value).toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  if (normalized.startsWith("data:image/")) {
+    return true;
+  }
+  return /\.(?:avif|bmp|gif|jpe?g|png|svg|tiff?|webp)$/.test(getPresentationMediaUrlPath(normalized));
+}
+
+function isLikelyPresentationAudioUrl(value: string | null | undefined): boolean {
+  const normalized = getComparablePresentationMediaUrl(value).toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  if (normalized.startsWith("data:audio/")) {
+    return true;
+  }
+  return /\.(?:aac|flac|m4a|mp3|ogg|opus|wav)$/.test(getPresentationMediaUrlPath(normalized));
+}
+
+function isImportablePresentationVideoUrl(videoUrl: string | null | undefined, posterUrl: string | null | undefined): boolean {
+  const normalizedVideoUrl = getComparablePresentationMediaUrl(videoUrl);
+  if (!normalizedVideoUrl) {
+    return false;
+  }
+  const normalizedPosterUrl = getComparablePresentationMediaUrl(posterUrl);
+  if (normalizedPosterUrl && normalizedVideoUrl === normalizedPosterUrl) {
+    return false;
+  }
+  return !isLikelyPresentationImageUrl(normalizedVideoUrl) && !isLikelyPresentationAudioUrl(normalizedVideoUrl);
 }
 
 type SaveState = "idle" | "pending" | "saved" | "conflict" | "error";
@@ -2846,6 +2889,7 @@ export default function PresentationEditor() {
   const updateSlideMutation = trpc.presentation.updateSlide.useMutation();
   const uploadAndAttachAssetMutation = trpc.presentation.uploadAndAttachAsset.useMutation();
   const setSlideAudioMutation = trpc.presentation.setSlideAudio.useMutation();
+  const setDeckAudioMutation = trpc.presentation.setDeckAudio.useMutation();
   const addMediaTaskToLibraryMutation = trpc.media.addTaskToLibrary.useMutation();
   const restoreVersionMutation = trpc.presentation.restoreVersion.useMutation();
   const triggerExportMutation = trpc.presentation.triggerExport.useMutation();
@@ -7765,14 +7809,16 @@ export default function PresentationEditor() {
 
   async function handleInsertGeneratedSlotVideos(
     assets: PresentationSlotVideoImportAsset[],
-    options?: { closeDialog?: boolean; showSuccessToast?: boolean },
+    options?: PresentationSlotVideoImportOptions,
   ): Promise<PresentationInsertSlotVideosResult> {
     if (!deck) {
       toast.error(t("dialog.articleBuilder.noActiveDeck"));
       return { inserted: false };
     }
 
-    const importableAssets = assets.filter((asset) => asset.videoUrl.trim());
+    const importableAssets = assets.filter((asset) => (
+      isImportablePresentationVideoUrl(asset.videoUrl, asset.startFrameUrl ?? null)
+    ));
     if (!importableAssets.length) {
       toast.error(t("dialog.articleBuilder.noSlotVideosToInsert"));
       return { inserted: false };
@@ -7800,6 +7846,55 @@ export default function PresentationEditor() {
       let firstCreatedSlideId: number | null = null;
       let insertedCount = 0;
       let audioAttachedCount = 0;
+      let projectAudioAttachedCount = 0;
+      const projectAudioAssets = (options?.projectAudioAssets ?? [])
+        .filter((asset) => asset.audioScope === "full" && String(asset.audioTaskId ?? "").trim());
+      const projectAudioLibraryItemIds: number[] = [];
+
+      for (const audioAsset of projectAudioAssets) {
+        const chunkLabel = audioAsset.chunkCount && audioAsset.chunkCount > 1 && audioAsset.chunkIndex
+          ? ` ${audioAsset.chunkIndex}/${audioAsset.chunkCount}`
+          : "";
+        const libraryItemId = await addCompletedTaskToLibrary(
+          audioAsset.audioTaskId,
+          `${audioAsset.title || "Project narration"}${chunkLabel}`,
+        );
+        if (libraryItemId != null) {
+          projectAudioLibraryItemIds.push(libraryItemId);
+        }
+      }
+
+      if (projectAudioLibraryItemIds.length > 0) {
+        while (true) {
+          try {
+            const result = await setDeckAudioMutation.mutateAsync({
+              deckId: deck.id,
+              expectedVersion,
+              projectAudioTrack: {
+                libraryItemId: projectAudioLibraryItemIds[0],
+                volume: 1,
+                loop: false,
+                fadeOutMs: null,
+              },
+            });
+            const nextDeckVersion = Number((result as { deckVersion?: unknown } | null)?.deckVersion);
+            expectedVersion = Number.isFinite(nextDeckVersion) && nextDeckVersion >= 0
+              ? nextDeckVersion
+              : expectedVersion + 1;
+            projectAudioAttachedCount = 1;
+            break;
+          } catch (error) {
+            if (!isConflictError(error)) {
+              throw error;
+            }
+            const latestVersion = await readLatestDeckVersion();
+            if (latestVersion == null) {
+              throw error;
+            }
+            expectedVersion = latestVersion;
+          }
+        }
+      }
 
       for (const asset of importableAssets) {
         const audioLibraryItemId = await addCompletedTaskToLibrary(
@@ -7819,10 +7914,10 @@ export default function PresentationEditor() {
           y: 0,
           width: activeCanvasSize.width,
           height: activeCanvasSize.height,
-          src: normalizeMediaSourceUrl(asset.videoUrl),
-          poster: normalizeMediaSourceUrl(asset.startFrameUrl ?? ""),
+          src: getComparablePresentationMediaUrl(asset.videoUrl),
+          poster: getComparablePresentationMediaUrl(asset.startFrameUrl ?? ""),
           title: asset.title,
-          muted: audioLibraryItemId != null,
+          muted: audioLibraryItemId != null || projectAudioAttachedCount > 0,
           videoFit: "contain",
           videoPrompt: asset.videoPrompt ?? "",
           videoModelId: asset.videoModel ?? undefined,
@@ -7908,12 +8003,18 @@ export default function PresentationEditor() {
         setIsArticleGeneratorDialogOpen(false);
       }
       if (options?.showSuccessToast !== false) {
-        const audioSuffix = audioAttachedCount > 0
-          ? t("dialog.articleBuilder.insertSlotVideosAudioSuffix", { count: audioAttachedCount })
-          : "";
+        const audioParts = [
+          audioAttachedCount > 0
+            ? t("dialog.articleBuilder.insertSlotVideosAudioSuffix", { count: audioAttachedCount })
+            : "",
+          projectAudioAttachedCount > 0
+            ? t("dialog.articleBuilder.insertSlotVideosProjectAudioSuffix", { count: projectAudioAttachedCount })
+            : "",
+        ].filter(Boolean);
+        const audioSuffix = audioParts.join("");
         toast.success(t("dialog.articleBuilder.insertSlotVideosSuccess", { count: insertedCount, audioSuffix }));
       }
-      return { inserted: true, insertedCount, audioAttachedCount };
+      return { inserted: true, insertedCount, audioAttachedCount, projectAudioAttachedCount };
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("dialog.articleBuilder.insertSlotVideosError"));
       return { inserted: false };

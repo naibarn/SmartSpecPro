@@ -161,7 +161,7 @@ type GeneratedImageAsset = PreparedImagePrompt & {
   updatedAt?: string;
 };
 
-type SlotAudioGenerationMode = "full" | "slot";
+export type SlotAudioGenerationMode = "full" | "slot";
 
 type GeneratedSlotAudioAsset = {
   id: string;
@@ -275,10 +275,24 @@ export type PresentationSlotVideoImportAsset = {
   audioTaskId?: string | null;
   audioTitle?: string | null;
 };
+export type PresentationSlotVideoImportAudioAsset = {
+  title: string;
+  audioUrl: string;
+  audioTaskId?: string | null;
+  audioScope: SlotAudioGenerationMode;
+  chunkIndex?: number | null;
+  chunkCount?: number | null;
+};
+export type PresentationSlotVideoImportOptions = {
+  closeDialog?: boolean;
+  showSuccessToast?: boolean;
+  projectAudioAssets?: PresentationSlotVideoImportAudioAsset[];
+};
 export type PresentationInsertSlotVideosResult = {
   inserted: boolean;
   insertedCount?: number;
   audioAttachedCount?: number;
+  projectAudioAttachedCount?: number;
 };
 
 type WizardStepStatus = "idle" | "ready" | "running" | "done" | "stale" | "disabled";
@@ -792,6 +806,8 @@ function getErrorMessage(error: unknown, fallback: string): string {
       normalized.includes("unexpected token '<'")
       || normalized.includes("<!doctype")
       || normalized.includes("<html")
+      || normalized.includes("returned html instead of json")
+      || normalized.includes("routed to the web app shell")
       || normalized.includes("is not valid json")
     ) {
       return `${fallback} The server returned HTML instead of JSON.`;
@@ -799,6 +815,25 @@ function getErrorMessage(error: unknown, fallback: string): string {
     return rawMessage;
   }
   return fallback;
+}
+
+function isApiInfrastructureError(error: unknown): boolean {
+  const rawMessage = error instanceof Error
+    ? error.message
+    : typeof error === "string"
+      ? error
+      : "";
+  const normalized = rawMessage.toLowerCase();
+  return (
+    normalized.includes("returned html instead of json")
+    || normalized.includes("routed to the web app shell")
+    || normalized.includes("unexpected token '<'")
+    || normalized.includes("<!doctype")
+    || normalized.includes("<html")
+    || normalized.includes("is not valid json")
+    || normalized.includes("status of 502")
+    || normalized.includes("bad gateway")
+  );
 }
 
 function getRetryAfterSeconds(message: string): number | null {
@@ -993,6 +1028,8 @@ type PersistedArticleBuilderDraft = {
   videoModelExtraParams?: Record<string, unknown>;
   videoPromptSkillId?: string;
   videoDurationSeconds?: number;
+  videoDisableSpeech?: boolean;
+  videoDisableSoundtrack?: boolean;
   generatedSlideDraft: GeneratedSlideDraft | null;
   generatedSlideDraftSkillId?: string;
   slidePayloadEditorJson: string;
@@ -1104,25 +1141,67 @@ function extractTaskId(task: unknown): string | null {
   return null;
 }
 
+function getComparableMediaUrl(value: string | null | undefined): string {
+  return normalizeMediaSourceUrl(String(value ?? "").trim()).trim();
+}
+
+function getMediaUrlPath(value: string | null | undefined): string {
+  return getComparableMediaUrl(value).split(/[?#]/, 1)[0]?.toLowerCase() ?? "";
+}
+
+function isLikelyImageMediaUrl(value: string | null | undefined): boolean {
+  const normalized = getComparableMediaUrl(value).toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  if (normalized.startsWith("data:image/")) {
+    return true;
+  }
+  return /\.(?:avif|bmp|gif|jpe?g|png|svg|tiff?|webp)$/.test(getMediaUrlPath(normalized));
+}
+
+function isLikelyAudioMediaUrl(value: string | null | undefined): boolean {
+  const normalized = getComparableMediaUrl(value).toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  if (normalized.startsWith("data:audio/")) {
+    return true;
+  }
+  return /\.(?:aac|flac|m4a|mp3|ogg|opus|wav)$/.test(getMediaUrlPath(normalized));
+}
+
+function isImportableSlotVideoUrl(videoUrl: string | null | undefined, startFrameUrl: string | null | undefined): boolean {
+  const normalizedVideoUrl = getComparableMediaUrl(videoUrl);
+  if (!normalizedVideoUrl) {
+    return false;
+  }
+  const normalizedStartFrameUrl = getComparableMediaUrl(startFrameUrl);
+  if (normalizedStartFrameUrl && normalizedVideoUrl === normalizedStartFrameUrl) {
+    return false;
+  }
+  return !isLikelyImageMediaUrl(normalizedVideoUrl) && !isLikelyAudioMediaUrl(normalizedVideoUrl);
+}
+
 function extractTaskResultUrl(task: unknown): string | null {
   if (!task || typeof task !== "object") {
     return null;
   }
   const record = task as Record<string, unknown>;
-  const direct = typeof record.resultUrl === "string" ? record.resultUrl.trim() : "";
-  if (direct) {
-    return direct;
-  }
-  const outputUrl = typeof record.outputUrl === "string" ? record.outputUrl.trim() : "";
-  if (outputUrl) {
-    return outputUrl;
+  for (const key of ["videoUrl", "audioUrl", "mediaUrl", "resultUrl", "outputUrl", "url", "sourceUrl", "imageUrl"]) {
+    const value = typeof record[key] === "string" ? record[key].trim() : "";
+    if (value) {
+      return value;
+    }
   }
   const result = record.result;
   if (result && typeof result === "object") {
     const nested = result as Record<string, unknown>;
-    const nestedUrl = typeof nested.url === "string" ? nested.url.trim() : "";
-    if (nestedUrl) {
-      return nestedUrl;
+    for (const key of ["videoUrl", "audioUrl", "mediaUrl", "url", "resultUrl", "outputUrl", "sourceUrl", "imageUrl"]) {
+      const value = typeof nested[key] === "string" ? nested[key].trim() : "";
+      if (value) {
+        return value;
+      }
     }
   }
   return null;
@@ -1408,6 +1487,7 @@ function buildFallbackStartFrameVideoPrompt(input: {
   title: string;
   text: string;
   durationSeconds: number;
+  audioInstructions?: string[];
 }): string {
   const title = input.title.trim();
   const text = input.text.trim();
@@ -1417,6 +1497,7 @@ function buildFallbackStartFrameVideoPrompt(input: {
     title ? `หัวข้อสไลด์: ${title}` : "",
     text ? `บริบทเนื้อหา: ${text.slice(0, 500)}` : "",
     "ห้ามเพิ่มข้อความ ตัวอักษร คำบรรยาย subtitle caption ป้าย label โลโก้ watermark หรือกราฟิกข้อความใหม่ใด ๆ ในวิดีโอ นอกจากข้อความที่มีอยู่ใน start frame เดิมเท่านั้น",
+    ...(input.audioInstructions ?? []),
     "เพิ่มเฉพาะ motion ที่นุ่มและสมจริง เช่น push-in ช้ามาก แสงและเงาขยับเบา ๆ หรือ parallax เล็กน้อย ไม่มีคัต ไม่มีตัวอักษรบิด เบลอ เปลี่ยนคำ หรือสะกดผิด ห้ามเพิ่มวัตถุรบกวน",
   ].filter(Boolean).join(" ");
 }
@@ -1431,6 +1512,19 @@ function enforceNoAdditionalVideoTextInstruction(prompt: string): string {
     return trimmed;
   }
   return `${trimmed}\n\n${instruction}`;
+}
+
+function enforceVideoAudioInstructions(prompt: string, instructions: string[]): string {
+  const trimmed = prompt.trim();
+  const uniqueInstructions = Array.from(new Set(instructions.map((instruction) => instruction.trim()).filter(Boolean)));
+  if (uniqueInstructions.length === 0) {
+    return trimmed;
+  }
+  const missingInstructions = uniqueInstructions.filter((instruction) => !trimmed.includes(instruction));
+  if (missingInstructions.length === 0) {
+    return trimmed;
+  }
+  return [trimmed, ...missingInstructions].filter(Boolean).join("\n\n");
 }
 
 function isSamePreparedImageSlot(
@@ -1928,7 +2022,7 @@ export interface PresentationArticleGeneratorDialogProps {
   ) => Promise<PresentationInsertSlidesResult> | PresentationInsertSlidesResult;
   onInsertSlotVideos?: (
     assets: PresentationSlotVideoImportAsset[],
-    options?: { closeDialog?: boolean; showSuccessToast?: boolean },
+    options?: PresentationSlotVideoImportOptions,
   ) => Promise<PresentationInsertSlotVideosResult> | PresentationInsertSlotVideosResult;
 }
 
@@ -1995,6 +2089,8 @@ export function PresentationArticleGeneratorDialog({
   const [videoModelExtraParams, setVideoModelExtraParams] = useState<Record<string, unknown>>({});
   const [videoPromptSkillId, setVideoPromptSkillId] = useState("");
   const [videoDurationSeconds, setVideoDurationSeconds] = useState(5);
+  const [videoDisableSpeech, setVideoDisableSpeech] = useState(true);
+  const [videoDisableSoundtrack, setVideoDisableSoundtrack] = useState(true);
   const [generatedSlideDraft, setGeneratedSlideDraft] = useState<GeneratedSlideDraft | null>(null);
   const [generatedSlideDraftSkillId, setGeneratedSlideDraftSkillId] = useState("");
   const [generatedSlideDraftSessionSource, setGeneratedSlideDraftSessionSource] = useState<GeneratedSlideDraftSessionSource>("empty");
@@ -2601,18 +2697,18 @@ export function PresentationArticleGeneratorDialog({
     const assets: PresentationSlotVideoImportAsset[] = [];
     for (const slot of preflightSlotPlans) {
       const videoAsset = generatedSlotVideoByPage.get(slot.pageNumber);
-      if (!videoAsset?.url?.trim()) {
+      if (!videoAsset || !isImportableSlotVideoUrl(videoAsset.url, videoAsset.startFrameUrl)) {
         continue;
       }
       const audioAsset = generatedSlotAudioByPage.get(slot.pageNumber);
       assets.push({
         pageNumber: slot.pageNumber,
         title: slot.title,
-        videoUrl: videoAsset.url,
+        videoUrl: getComparableMediaUrl(videoAsset?.url),
         videoTaskId: videoAsset.taskId ?? null,
         videoModel: videoAsset.model ?? null,
         videoPrompt: videoAsset.prompt ?? null,
-        startFrameUrl: videoAsset.startFrameUrl ?? null,
+        startFrameUrl: getComparableMediaUrl(videoAsset.startFrameUrl) || null,
         durationSeconds: videoAsset.durationSeconds ?? videoDurationSeconds,
         audioUrl: audioAsset?.url ?? null,
         audioTaskId: audioAsset?.taskId ?? null,
@@ -2621,6 +2717,17 @@ export function PresentationArticleGeneratorDialog({
     }
     return assets;
   }, [generatedSlotAudioByPage, generatedSlotVideoByPage, preflightSlotPlans, videoDurationSeconds]);
+  const projectAudioImportAssets = useMemo<PresentationSlotVideoImportAudioAsset[]>(
+    () => generatedFullAudioAssets.map((asset) => ({
+      title: asset.title,
+      audioUrl: asset.url,
+      audioTaskId: asset.taskId ?? null,
+      audioScope: "full",
+      chunkIndex: asset.chunkIndex ?? null,
+      chunkCount: asset.chunkCount ?? null,
+    })),
+    [generatedFullAudioAssets],
+  );
   const generatedImageByPage = useMemo(() => {
     const map = new Map<number, GeneratedImageAsset>();
     for (const asset of normalizedGeneratedImages.slice().sort((left, right) => left.imageIndex - right.imageIndex)) {
@@ -2996,6 +3103,8 @@ export function PresentationArticleGeneratorDialog({
       setVideoDurationSeconds(Number.isFinite(persistedDraft.videoDurationSeconds)
         ? Math.max(1, Math.min(60, Math.round(persistedDraft.videoDurationSeconds ?? 5)))
         : 5);
+      setVideoDisableSpeech(persistedDraft.videoDisableSpeech !== false);
+      setVideoDisableSoundtrack(persistedDraft.videoDisableSoundtrack !== false);
       setGeneratedSlideDraft(persistedDraft.generatedSlideDraft);
       setGeneratedSlideDraftSkillId(
         persistedDraft.generatedSlideDraft
@@ -3065,6 +3174,8 @@ export function PresentationArticleGeneratorDialog({
     setVideoModelExtraParams({});
     setVideoPromptSkillId("");
     setVideoDurationSeconds(5);
+    setVideoDisableSpeech(true);
+    setVideoDisableSoundtrack(true);
     setGeneratedSlideDraft(null);
     setGeneratedSlideDraftSkillId("");
     setGeneratedSlideDraftSessionSource("empty");
@@ -3133,6 +3244,8 @@ export function PresentationArticleGeneratorDialog({
       videoModelExtraParams,
       videoPromptSkillId,
       videoDurationSeconds,
+      videoDisableSpeech,
+      videoDisableSoundtrack,
       generatedSlideDraft,
       generatedSlideDraftSkillId,
       slidePayloadEditorJson,
@@ -3183,6 +3296,8 @@ export function PresentationArticleGeneratorDialog({
     targetImageCount,
     topic,
     videoDurationSeconds,
+    videoDisableSpeech,
+    videoDisableSoundtrack,
     videoModelExtraParams,
     videoModelId,
     videoPromptSkillId,
@@ -4406,14 +4521,24 @@ export function PresentationArticleGeneratorDialog({
     slot: typeof preflightSlotPlans[number],
     startFrameUrl: string,
   ): Promise<string> => {
+    const hasNarrationAudio = generatedFullAudioAssets.length > 0 || Boolean(generatedSlotAudioByPage.get(slot.pageNumber));
+    const audioInstructions = [
+      videoDisableSoundtrack
+        ? "ห้ามสร้างเสียงประกอบ เพลงประกอบ sound effects ambient audio หรือ sound design ใด ๆ ในวิดีโอ ให้เป็นวิดีโอเงียบสำหรับนำไปประกอบเสียงภายนอก"
+        : "",
+      videoDisableSpeech || hasNarrationAudio
+        ? "ห้ามสร้างเสียงพูด voiceover บทสนทนา เสียงบรรยาย lip-sync หรือเสียงมนุษย์ใด ๆ ในวิดีโอ เพราะระบบจะใช้ไฟล์เสียงบรรยายแยกต่างหาก"
+        : "",
+    ].filter(Boolean);
     const fallbackPrompt = buildFallbackStartFrameVideoPrompt({
       title: slot.title,
       text: slot.sourceText,
       durationSeconds: videoDurationSeconds,
+      audioInstructions,
     });
     const skillIdForRun = videoPromptSkillId.trim();
     if (!skillIdForRun) {
-      return fallbackPrompt;
+      return enforceVideoAudioInstructions(fallbackPrompt, audioInstructions);
     }
     try {
       const result = await executeSkillMutation.mutateAsync({
@@ -4421,10 +4546,16 @@ export function PresentationArticleGeneratorDialog({
         prompt: [
           "Create a concise image-to-video prompt for this slide start frame.",
           "The generated video must not add any new text, letters, captions, subtitles, labels, logos, watermarks, or text graphics. Preserve only text already visible in the start frame.",
+          videoDisableSoundtrack
+            ? "The generated video must not include background music, sound effects, ambient audio, sound design, or any other soundtrack. It should be silent."
+            : "",
+          videoDisableSpeech || hasNarrationAudio
+            ? "The generated video must not include speech, voiceover, dialogue, narration, lip-sync, or any human voices because separate narration audio will be used."
+            : "",
           `Duration: ${videoDurationSeconds} seconds.`,
           `Slide title: ${slot.title}`,
           `Narration/source text:\n${slot.sourceText}`,
-        ].join("\n\n"),
+        ].filter(Boolean).join("\n\n"),
         referenceImageUrls: [startFrameUrl],
         dynamicParams: {
           start_frame_image: startFrameUrl,
@@ -4432,13 +4563,16 @@ export function PresentationArticleGeneratorDialog({
           duration_seconds: videoDurationSeconds,
           slide_title: slot.title,
           slide_text: slot.sourceText,
+          disable_speech: videoDisableSpeech || hasNarrationAudio,
+          disable_soundtrack: videoDisableSoundtrack,
+          has_external_narration_audio: hasNarrationAudio,
         },
       });
       const prompt = extractPromptFromSkillMessage((result as { message?: string | null } | undefined)?.message);
-      return enforceNoAdditionalVideoTextInstruction(prompt || fallbackPrompt);
+      return enforceVideoAudioInstructions(enforceNoAdditionalVideoTextInstruction(prompt || fallbackPrompt), audioInstructions);
     } catch (error) {
       console.warn("Video prompt skill failed; falling back to built-in slot video prompt.", error);
-      return enforceNoAdditionalVideoTextInstruction(fallbackPrompt);
+      return enforceVideoAudioInstructions(enforceNoAdditionalVideoTextInstruction(fallbackPrompt), audioInstructions);
     }
   };
 
@@ -4518,6 +4652,9 @@ export function PresentationArticleGeneratorDialog({
     if (!resultUrl) {
       throw new Error("Video provider returned no URL");
     }
+    if (!isImportableSlotVideoUrl(resultUrl, imageAsset.url)) {
+      throw new Error("Video provider returned an image/start-frame URL instead of a video URL. Please generate the slot video again.");
+    }
     return {
       id: slot.id,
       taskId,
@@ -4561,7 +4698,7 @@ export function PresentationArticleGeneratorDialog({
           upsertGeneratedSlotVideo(nextAsset);
         } catch (error) {
           failedSlots.push(`${currentSlot.pageNumber}: ${getErrorMessage(error, t("dialog.articleBuilder.generateSlotVideosError"))}`);
-          if (slot) {
+          if (slot || isApiInfrastructureError(error)) {
             throw error;
           }
         }
@@ -6427,6 +6564,40 @@ export function PresentationArticleGeneratorDialog({
                           </Select>
                         </div>
                       </div>
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-2">
+                          <div>
+                            <Label htmlFor="article-builder-video-disable-speech">
+                              {t("dialog.articleBuilder.videoDisableSpeechLabel")}
+                            </Label>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {t("dialog.articleBuilder.videoDisableSpeechHint")}
+                            </p>
+                          </div>
+                          <Switch
+                            id="article-builder-video-disable-speech"
+                            checked={videoDisableSpeech}
+                            onCheckedChange={setVideoDisableSpeech}
+                            disabled={isGeneratingSlotVideos}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/20 px-3 py-2">
+                          <div>
+                            <Label htmlFor="article-builder-video-disable-soundtrack">
+                              {t("dialog.articleBuilder.videoDisableSoundtrackLabel")}
+                            </Label>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {t("dialog.articleBuilder.videoDisableSoundtrackHint")}
+                            </p>
+                          </div>
+                          <Switch
+                            id="article-builder-video-disable-soundtrack"
+                            checked={videoDisableSoundtrack}
+                            onCheckedChange={setVideoDisableSoundtrack}
+                            disabled={isGeneratingSlotVideos}
+                          />
+                        </div>
+                      </div>
                       {selectedVideoModelFields.length > 0 ? (
                         <ModelInputFieldsPanel
                           enabled
@@ -6754,7 +6925,10 @@ export function PresentationArticleGeneratorDialog({
                     toast.error(t("dialog.articleBuilder.noSlotVideosToInsert"));
                     return;
                   }
-                  void onInsertSlotVideos(slotVideoImportAssets, { closeDialog: false });
+                  void onInsertSlotVideos(slotVideoImportAssets, {
+                    closeDialog: false,
+                    projectAudioAssets: audioGenerationMode === "full" ? projectAudioImportAssets : [],
+                  });
                 }}
                 disabled={!canInsertGeneratedSlotVideos}
               >
