@@ -34,6 +34,12 @@ def test_provider_prompt_refusals_are_non_retryable():
     assert _is_non_retryable_media_error(error) is True
 
 
+def test_invalid_audio_voice_errors_are_non_retryable():
+    error = RuntimeError("Kie.ai task submission failed: Invalid voice parameter: abc123.")
+
+    assert _is_non_retryable_media_error(error) is True
+
+
 def test_transient_provider_errors_remain_retryable():
     assert _is_non_retryable_media_error(RuntimeError("temporary provider timeout")) is False
 

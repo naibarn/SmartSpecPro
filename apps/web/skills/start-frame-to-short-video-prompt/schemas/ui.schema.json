@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Slide Start-Frame Video Prompt UI",
+  "type": "object",
+  "ui:order": [
+    "start_frame_image",
+    "output_language",
+    "custom_language_label"
+  ],
+  "properties": {
+    "start_frame_image": {
+      "ui:widget": "file",
+      "ui:options": {
+        "accept": "image/*",
+        "multiple": false,
+        "maxFiles": 1,
+        "dropzone": true,
+        "dropzoneText": "ลากรูปสไลด์ 1 รูปมาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์",
+        "preview": true
+      }
+    },
+    "output_language": {
+      "ui:widget": "select",
+      "ui:placeholder": "เลือกภาษาของ prompt",
+      "ui:options": {
+        "label": true
+      }
+    },
+    "custom_language_label": {
+      "ui:widget": "text",
+      "ui:placeholder": "เช่น Dutch, Polish, Turkish",
+      "ui:options": {
+        "showWhen": {
+          "output_language": "custom"
+        }
+      }
+    }
+  }
+}

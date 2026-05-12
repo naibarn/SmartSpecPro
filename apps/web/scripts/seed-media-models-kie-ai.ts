@@ -2361,15 +2361,6 @@ const AUDIO_MODELS = [
           type: "select",
           searchable: true,
           options: FALLBACK_ELEVENLABS_VOICES,
-          optionsSource: {
-            type: "public_api",
-            endpoint: ELEVENLABS_VOICE_LIST_URL,
-            method: "GET",
-            itemsPath: "voices",
-            valueField: "voice_id",
-            labelField: "name",
-            cacheTtlSeconds: 86400,
-          },
           default: FALLBACK_ELEVENLABS_VOICES[0]?.value || "Adam",
         },
         {
@@ -2549,11 +2540,11 @@ async function seed() {
           ${model.description},
           ${model.modelType},
           ${model.provider},
-          ${JSON.stringify(model.aliases)},
+          ${sql.json(model.aliases)},
           ${model.creditCost},
           ${model.priority},
           ${model.sortOrder},
-          ${JSON.stringify(model.configJson)},
+          ${sql.json(model.configJson)},
           true
         )
         ON CONFLICT ("modelId") DO UPDATE SET
@@ -2585,12 +2576,12 @@ async function seed() {
           ${model.description},
           ${model.modelType},
           ${model.provider},
-          ${JSON.stringify(model.aliases)},
-          ${JSON.stringify(model.aspectRatios)},
+          ${sql.json(model.aliases)},
+          ${sql.json(model.aspectRatios)},
           ${model.creditCost},
           ${model.priority},
           ${model.sortOrder},
-          ${JSON.stringify(model.configJson)},
+          ${sql.json(model.configJson)},
           true
         )
         ON CONFLICT ("modelId") DO UPDATE SET
@@ -2623,12 +2614,12 @@ async function seed() {
           ${model.description},
           ${model.modelType},
           ${model.provider},
-          ${JSON.stringify(model.aliases)},
-          ${JSON.stringify(model.voices)},
+          ${sql.json(model.aliases)},
+          ${sql.json(model.voices)},
           ${model.creditCost},
           ${model.priority},
           ${model.sortOrder},
-          ${JSON.stringify(model.configJson)},
+          ${sql.json(model.configJson)},
           true
         )
         ON CONFLICT ("modelId") DO UPDATE SET

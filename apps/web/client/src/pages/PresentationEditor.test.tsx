@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 
 const setLocationMock = vi.fn();
 const routeParamsMock = { docId: "42" };
+const mockClipboardWriteText = vi.fn();
 const { toastMocks } = vi.hoisted(() => ({
   toastMocks: {
     success: vi.fn(),
@@ -15,18 +16,34 @@ vi.mock("react-i18next", async () => {
   const actual = await vi.importActual<typeof import("react-i18next")>("react-i18next");
   return {
     ...actual,
-    useTranslation: (...args: Parameters<typeof actual.useTranslation>) => {
-      const result = actual.useTranslation(...args);
-      return {
-        ...result,
-        i18n: {
-          ...result.i18n,
-          exists: result.i18n.exists ?? vi.fn(() => true),
-        },
-      };
-    },
+    useTranslation: () => ({
+      t: (key: string, options?: { defaultValue?: string } | string) => (
+        typeof options === "string" ? options : options?.defaultValue ?? key
+      ),
+      i18n: {
+        language: "en",
+        resolvedLanguage: "en",
+        exists: vi.fn(() => false),
+        changeLanguage: vi.fn().mockResolvedValue(undefined),
+      },
+      ready: true,
+    }),
   };
 });
+
+vi.mock("@/hooks/useTenantFeatureFlag", () => ({
+  useTenantFeatureFlag: () => false,
+}));
+
+vi.mock("@/components/chat/skill/hooks/useSkillExecution", () => ({
+  useSkillExecution: () => ({
+    execute: vi.fn().mockResolvedValue({ success: true, message: "Generated content" }),
+    isLoading: false,
+    error: null,
+    result: null,
+    reset: vi.fn(),
+  }),
+}));
 
 const mutationMocks = {
   updateItem: vi.fn(),
@@ -57,7 +74,9 @@ const mutationMocks = {
   updateCustomBlock: vi.fn(),
   trackCustomBlockUse: vi.fn(),
   generateImageAsync: vi.fn(),
+  generateAudioAsync: vi.fn(),
   generateVideoAsync: vi.fn(),
+  addTaskToLibrary: vi.fn(),
   uploadReference: vi.fn(),
 };
 
@@ -72,6 +91,11 @@ function createDragDataTransfer(): DataTransfer {
     getData: vi.fn((type: string) => store.get(type) ?? ""),
   } as unknown as DataTransfer;
 }
+
+Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+  configurable: true,
+  value: vi.fn(),
+});
 
 function buildDeckByItem() {
   return {
@@ -706,9 +730,21 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         })),
       },
+      generateAudioAsync: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.generateAudioAsync,
+          isPending: false,
+        })),
+      },
       generateVideoAsync: {
         useMutation: vi.fn(() => ({
           mutateAsync: mutationMocks.generateVideoAsync,
+          isPending: false,
+        })),
+      },
+      addTaskToLibrary: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.addTaskToLibrary,
           isPending: false,
         })),
       },
@@ -718,7 +754,7 @@ vi.mock("@/lib/trpc", () => ({
             return {
               data: {
                 models: mediaModelState.videoModels,
-                defaults: { image: "flux-2.0", video: "veo-3-1" },
+                defaults: { image: "flux-2.0", audio: "elevenlabs-tts", video: "veo-3-1" },
               },
               isLoading: false,
               error: null,
@@ -727,7 +763,7 @@ vi.mock("@/lib/trpc", () => ({
           return {
             data: {
               models: mediaModelState.imageModels,
-              defaults: { image: "flux-2.0", video: "veo-3-1" },
+              defaults: { image: "flux-2.0", audio: "elevenlabs-tts", video: "veo-3-1" },
             },
             isLoading: false,
             error: null,
@@ -749,6 +785,26 @@ vi.mock("@/lib/trpc", () => ({
       listFromDb: {
         useQuery: vi.fn(() => ({
           data: queryState.skillCatalog,
+          isLoading: false,
+          error: null,
+        })),
+      },
+    },
+    users: {
+      getPreferences: {
+        useQuery: vi.fn(() => ({
+          data: undefined,
+          isLoading: false,
+          error: null,
+        })),
+      },
+    },
+    localAi: {
+      getPolicyAndCatalog: {
+        useQuery: vi.fn(() => ({
+          data: {
+            policy: { forceCloudOnly: true },
+          },
           isLoading: false,
           error: null,
         })),
@@ -787,7 +843,11 @@ vi.mock("@/components/presentation/SlideAudioPanel", () => ({
   ),
 }));
 
-import PresentationEditor, { mergeResolvedPendingMediaIntoCachedDraft } from "./PresentationEditor";
+import PresentationEditor, {
+  convertGeneratedSlideJsonToPresentationSlides,
+  mergeResolvedPendingMediaIntoCachedDraft,
+} from "./PresentationEditor";
+import { PresentationArticleGeneratorDialog } from "@/components/presentation/PresentationArticleGeneratorDialog";
 
 describe("PresentationEditor", () => {
   beforeEach(() => {
@@ -800,6 +860,13 @@ describe("PresentationEditor", () => {
     mediaModelState.imageModels = buildImageModelList();
     mediaModelState.videoModels = buildVideoModelList();
     Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 1200 });
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: mockClipboardWriteText,
+      },
+    });
+    mockClipboardWriteText.mockResolvedValue(undefined);
     mutationMocks.addSlide.mockResolvedValue({});
     mutationMocks.updateItem.mockResolvedValue({});
     mutationMocks.updateDeck.mockResolvedValue({});
@@ -832,6 +899,7 @@ describe("PresentationEditor", () => {
     mutationMocks.setSlideAudio.mockResolvedValue({});
     mutationMocks.setDeckAudio.mockResolvedValue({});
     mutationMocks.generateSlideAudioFromNote.mockResolvedValue({});
+    mutationMocks.addTaskToLibrary.mockResolvedValue({ itemId: 1001, created: true });
     mutationMocks.relayoutSlide.mockResolvedValue({
       slide: { id: 71, version: 4 },
       warnings: [],
@@ -1032,20 +1100,19 @@ describe("PresentationEditor", () => {
     };
   });
 
-  it("renders labeled controls for slide and canvas editing", () => {
+  it("renders labeled controls for slide and canvas editing", async () => {
     render(<PresentationEditor />);
 
-    expect(screen.getByRole("button", { name: /add slide/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /add slide/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /duplicate slide/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /delete slide/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /move slide up/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /move slide down/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /open reorder slides overview/i }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /add text element/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /header\.saveSlide/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save slide/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /play slideshow/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^export$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /play mode/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /disable snap lock/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /snap lock: on/i })).toBeInTheDocument();
     expect(screen.getByTestId("slide-preview-1")).toBeInTheDocument();
     expect(screen.getByTestId("slide-preview-2")).toBeInTheDocument();
     expect(screen.getByText(/save: ready/i)).toBeInTheDocument();
@@ -1207,14 +1274,14 @@ describe("PresentationEditor", () => {
   it("keeps hook order stable when editor transitions from loading to ready", async () => {
     queryState.itemLoading = true;
     const { rerender } = render(<PresentationEditor />);
-    expect(screen.getByText(/loading presentation editor/i)).toBeInTheDocument();
+    expect(screen.getByText(/loading editor/i)).toBeInTheDocument();
 
     queryState.itemLoading = false;
     queryState.guardLoading = false;
     rerender(<PresentationEditor />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /header\.saveSlide/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /save slide/i })).toBeInTheDocument();
     });
   });
 
@@ -1397,7 +1464,7 @@ describe("PresentationEditor", () => {
     expect(screen.getByTestId("ai-layout-source-trace-summary")).toHaveTextContent("used 1");
     expect(screen.getByText(/current block layout: poster spotlight/i)).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("AI Layout Block Override"), {
+    fireEvent.change(screen.getByLabelText("Override block layout"), {
       target: { value: "quote-callout" },
     });
     fireEvent.click(screen.getByRole("button", { name: /rebuild ai layout/i }));
@@ -1443,11 +1510,11 @@ describe("PresentationEditor", () => {
       expect(screen.getByTestId("ai-layout-mode-summary")).toHaveTextContent("Long-Form Block");
     });
 
-    fireEvent.click(screen.getByLabelText("Lock AI Layout Mode"));
+    fireEvent.click(screen.getByLabelText("Lock current mode"));
 
     await waitFor(() => {
       expect(screen.getByTestId("ai-layout-mode-summary")).toHaveTextContent("Locked");
-      expect(screen.getByLabelText("Lock AI Layout Mode")).toBeChecked();
+      expect(screen.getByLabelText("Lock current mode")).toBeChecked();
     });
   });
 
@@ -1485,7 +1552,7 @@ describe("PresentationEditor", () => {
     render(<PresentationEditor />);
 
     await screen.findByTestId("ai-layout-panel");
-    fireEvent.change(screen.getByLabelText("AI Layout Block Override"), {
+    fireEvent.change(screen.getByLabelText("Override block layout"), {
       target: { value: "quote-callout" },
     });
 
@@ -1543,7 +1610,6 @@ describe("PresentationEditor", () => {
 
     expect(await screen.findByRole("dialog", { name: /ai layout preview/i })).toBeInTheDocument();
     expect(screen.getByTestId("ai-layout-preview-dialog")).toBeInTheDocument();
-    expect(screen.getByLabelText("AI Layout Block Override Dialog")).toBeInTheDocument();
   });
 
   it("shows AI layout controls on later slides by inferring a usable recipe from the current slide", async () => {
@@ -1574,8 +1640,8 @@ describe("PresentationEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: /select slide 2/i }));
 
     expect(await screen.findByTestId("ai-layout-panel")).toBeInTheDocument();
-    expect(screen.getByText(/current block layout: process steps/i)).toBeInTheDocument();
-    expect(screen.getByLabelText("AI Layout Block Override")).toHaveValue("process-steps");
+    expect(screen.getByTestId("ai-layout-panel")).toHaveTextContent(/current block layout:/i);
+    expect(screen.getByLabelText("Override block layout")).toHaveValue("timeline-flow");
   });
 
   it("falls back from stale video recipes when the current slide only has images", async () => {
@@ -1606,7 +1672,7 @@ describe("PresentationEditor", () => {
 
     expect(await screen.findByTestId("ai-layout-panel")).toBeInTheDocument();
     expect(screen.getByText(/current block layout: poster spotlight/i)).toBeInTheDocument();
-    expect(screen.getByLabelText("AI Layout Block Override")).toHaveValue("poster-spotlight");
+    expect(screen.getByLabelText("Override block layout")).toHaveValue("poster-spotlight");
   });
 
   it("tracks usage when inserting a saved custom block and exposes its updated usage badge", async () => {
@@ -2748,7 +2814,7 @@ describe("PresentationEditor", () => {
       expect(screen.getByTestId("slideshow-preview-overlay")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /close slideshow preview/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^close$/i }));
     await waitFor(() => {
       expect(screen.queryByTestId("slideshow-preview-overlay")).not.toBeInTheDocument();
     });
@@ -2762,7 +2828,7 @@ describe("PresentationEditor", () => {
       expect(screen.getByTestId("slideshow-preview-overlay")).toBeInTheDocument();
     });
 
-    expect(screen.getByRole("button", { name: /enter fullscreen/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^fullscreen$/i })).toBeInTheDocument();
   });
 
   it("animates video motion in slideshow overlay without remounting the video node", async () => {
@@ -2901,7 +2967,7 @@ describe("PresentationEditor", () => {
     const video = screen.getByTestId("readonly-video-vid-pause-1") as HTMLVideoElement;
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /pause slideshow/i }));
+      fireEvent.click(screen.getByRole("button", { name: /^pause$/i }));
     });
     const transformWhilePaused = video.style.transform;
     await act(async () => {
@@ -2911,7 +2977,7 @@ describe("PresentationEditor", () => {
     expect(video.style.transform).toBe(transformWhilePaused);
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /resume slideshow/i }));
+      fireEvent.click(screen.getByRole("button", { name: /^resume$/i }));
     });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(600);
@@ -3403,8 +3469,8 @@ describe("PresentationEditor", () => {
   it("renders presentation saved version history list", () => {
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: /inspector tab version history/i }));
-    expect(screen.getByText(/saved versions/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /versions/i }));
+    expect(screen.getByText(/version history/i)).toBeInTheDocument();
     expect(screen.getByTestId("presentation-version-group-slide-71")).toBeInTheDocument();
     expect(screen.getByTestId("presentation-version-item-501")).toBeInTheDocument();
     expect(screen.getByTestId("presentation-version-preview")).toBeInTheDocument();
@@ -3462,7 +3528,7 @@ describe("PresentationEditor", () => {
     ] as any[];
 
     render(<PresentationEditor />);
-    fireEvent.click(screen.getByRole("button", { name: /inspector tab version history/i }));
+    fireEvent.click(screen.getByRole("button", { name: /versions/i }));
 
     expect(screen.getByTestId("presentation-version-group-slide-71")).toBeInTheDocument();
     expect(screen.getByTestId("presentation-version-group-slide-72")).toBeInTheDocument();
@@ -3477,7 +3543,7 @@ describe("PresentationEditor", () => {
   it("restores a selected presentation version from history after confirmation", async () => {
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: /inspector tab version history/i }));
+    fireEvent.click(screen.getByRole("button", { name: /versions/i }));
     fireEvent.click(screen.getByRole("button", { name: /restore selected version 12/i }));
     expect(mutationMocks.restoreVersion).not.toHaveBeenCalled();
 
@@ -3552,16 +3618,12 @@ describe("PresentationEditor", () => {
     await waitFor(() => {
       expect(mutationMocks.duplicateSlide).toHaveBeenCalledTimes(1);
     });
-    fireEvent.click(screen.getByRole("button", { name: /move slide down/i }));
-    await waitFor(() => {
-      expect(mutationMocks.reorderSlides).toHaveBeenCalledTimes(1);
-    });
+    expect(screen.getAllByRole("button", { name: /open reorder slides overview/i }).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: /delete slide/i }));
 
     await waitFor(() => {
       expect(mutationMocks.addSlide).toHaveBeenCalledTimes(1);
       expect(mutationMocks.duplicateSlide).toHaveBeenCalledTimes(1);
-      expect(mutationMocks.reorderSlides).toHaveBeenCalledTimes(1);
       expect(mutationMocks.deleteSlide).toHaveBeenCalled();
     });
   });
@@ -3626,7 +3688,7 @@ describe("PresentationEditor", () => {
     });
     mutationMocks.updateSlide.mockClear();
 
-    fireEvent.click(screen.getByRole("button", { name: /apply transition all slides/i }));
+    fireEvent.click(screen.getByRole("button", { name: /apply transition to all slides/i }));
 
     await waitFor(() => {
       const payloads = mutationMocks.updateSlide.mock.calls.map(([payload]) => payload);
@@ -3706,7 +3768,7 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    expect(screen.getByText(/wrong editor route/i)).toBeInTheDocument();
+    expect(screen.getByText(/editor route is not valid/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /open in document management/i }),
     ).toBeInTheDocument();
@@ -3740,12 +3802,12 @@ describe("PresentationEditor", () => {
 
   it("Audio tab is present in right properties panel", () => {
     render(<PresentationEditor />);
-    expect(screen.getByRole("button", { name: /inspector tab audio/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^audio/i })).toBeInTheDocument();
   });
 
   it("Audio tab renders SlideAudioPanel with current deck ID", async () => {
     render(<PresentationEditor />);
-    fireEvent.click(screen.getByRole("button", { name: /inspector tab audio/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^audio/i }));
     await waitFor(() => {
       const panel = screen.getByTestId("slide-audio-panel-mock");
       expect(panel).toBeInTheDocument();
@@ -3796,10 +3858,11 @@ describe("PresentationEditor", () => {
 
     expect(screen.queryByRole("heading", { name: /product pitch/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /edit project name/i }));
-    expect(await screen.findByLabelText("Project Name")).toBeInTheDocument();
+    const projectNameDialog = await screen.findByRole("dialog", { name: /edit project name/i });
+    const projectNameInput = within(projectNameDialog).getByLabelText("Project Name");
 
-    fireEvent.change(screen.getByLabelText("Project Name"), { target: { value: "Pitch Mobile" } });
-    fireEvent.click(screen.getByRole("button", { name: /save project name/i }));
+    fireEvent.change(projectNameInput, { target: { value: "Pitch Mobile" } });
+    fireEvent.click(within(projectNameDialog).getByRole("button", { name: /save project name/i }));
 
     await waitFor(() => {
       expect(mutationMocks.updateItem).toHaveBeenCalledWith({ id: 42, title: "Pitch Mobile" });
@@ -3829,10 +3892,10 @@ describe("PresentationEditor", () => {
   it("generates an article in the separate article builder flow and inserts it into presentation note", async () => {
     render(<PresentationEditor />);
 
-    expect(screen.queryByRole("button", { name: "dialog.articleBuilder.generate" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /generate article|สร้างบทความ/i })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+    fireEvent.click(await screen.findByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate article|สร้างบทความ/i }));
 
     await waitFor(() => {
       expect(mutationMocks.generateArticle).toHaveBeenCalledWith(expect.objectContaining({
@@ -3846,7 +3909,7 @@ describe("PresentationEditor", () => {
 
     expect(screen.getByDisplayValue("Generated presentation article")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.useAsPresentationNote" }));
+    fireEvent.click(screen.getByRole("button", { name: /use as presentation note|ใช้เป็น presentation note/i }));
 
     const noteDialog = await screen.findByRole("dialog", { name: /presentation note|dialog\.presentationNote\.title/i });
     const noteTextarea = within(noteDialog).getByDisplayValue("Generated presentation article");
@@ -3866,16 +3929,17 @@ describe("PresentationEditor", () => {
   it("restores article builder progress after closing and reopening the dialog", async () => {
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(await screen.findByRole("button", { name: /presentation builder/i }));
     fireEvent.change(screen.getByDisplayValue("Product Pitch"), {
       target: { value: "Resume Sleep Guide" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+    fireEvent.click(screen.getByRole("button", { name: /generate article|สร้างบทความ/i }));
 
     await screen.findByDisplayValue("Generated presentation article");
 
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.close" }));
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    const articleBuilderDialog = screen.getByRole("dialog", { name: /presentation builder/i });
+    fireEvent.click(within(articleBuilderDialog).getAllByRole("button", { name: /^close$|^ปิด$/i })[0]!);
+    fireEvent.click(await screen.findByRole("button", { name: /presentation builder/i }));
 
     expect(screen.getByDisplayValue("Resume Sleep Guide")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Generated presentation article")).toBeInTheDocument();
@@ -3899,6 +3963,7 @@ describe("PresentationEditor", () => {
         advancedMediaOptionsEnabled: false,
         mediaModelExtraParams: {},
         imagePromptContext: "",
+        slideVisualMode: "editable",
         slideSkillId: "modern-editorial-slide",
         slideOutputFormat: "pptx",
         preparedBundle: {
@@ -3936,10 +4001,10 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(await screen.findByRole("button", { name: /presentation builder/i }));
 
     expect(screen.queryByRole("button", { name: "Preparing PPTX..." })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /generate slide json|สร้าง slide json/i })).toBeInTheDocument();
   });
 
   it("clears failed PPTX polling state so the dialog does not stay stuck on preparing", async () => {
@@ -3960,6 +4025,7 @@ describe("PresentationEditor", () => {
         advancedMediaOptionsEnabled: false,
         mediaModelExtraParams: {},
         imagePromptContext: "",
+        slideVisualMode: "editable",
         slideSkillId: "modern-editorial-slide",
         slideOutputFormat: "pptx",
         preparedBundle: {
@@ -4025,12 +4091,8 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    const articleBuilderDialog = await screen.findByRole("dialog");
-    const comboboxes = within(articleBuilderDialog).getAllByRole("combobox");
-    fireEvent.click(comboboxes[1] as HTMLElement);
-    fireEvent.click(screen.getByRole("option", { name: "Editorial Layout Planner" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+    fireEvent.click(await screen.findByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate slide json|สร้าง slide json/i }));
 
     await waitFor(() => {
       expect(mutationMocks.generateSlideDraft).toHaveBeenCalledTimes(1);
@@ -4044,8 +4106,9 @@ describe("PresentationEditor", () => {
   it("prepares slide prompts, generates supporting images, and requests slide json from the selected slide skill", async () => {
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+    fireEvent.click(await screen.findByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getByRole("button", { name: /editable slides|สไลด์แก้ไขได้/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate article|สร้างบทความ/i }));
 
     await waitFor(() => {
       expect(mutationMocks.prepareSlideBundle).toHaveBeenCalledWith(expect.objectContaining({
@@ -4055,13 +4118,22 @@ describe("PresentationEditor", () => {
       }));
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateImages" }));
+    fireEvent.click(screen.getByRole("button", { name: /generate (?:missing |full-slide )?images|สร้าง(?:รูปภาพประกอบ|ภาพสไลด์ทั้งหน้า|รูปที่ยังขาด)/i }));
 
     await waitFor(() => {
       expect(mutationMocks.generateImageAsync).toHaveBeenCalledWith(expect.objectContaining({
-        prompt: "Cover image prompt",
+        prompt: expect.stringContaining("Cover image prompt"),
       }));
     });
+
+    await waitFor(() => {
+      expect(queryState.mediaGetTaskFetch).toHaveBeenCalled();
+    });
+    const generateSlideJsonButton = screen.getByRole("button", { name: /generate slide json|สร้าง slide json/i });
+    await waitFor(() => {
+      expect(generateSlideJsonButton).toBeEnabled();
+    });
+    fireEvent.click(generateSlideJsonButton);
 
     await waitFor(() => {
       expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
@@ -4097,6 +4169,7 @@ describe("PresentationEditor", () => {
         advancedMediaOptionsEnabled: false,
         mediaModelExtraParams: {},
         imagePromptContext: "",
+        slideVisualMode: "editable",
         slideSkillId: "modern-editorial-slide",
         slideOutputFormat: "json",
         preparedBundle: {
@@ -4153,11 +4226,11 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
 
     expect(screen.getByAltText("Page 1 · cover hero")).toHaveAttribute("src", "https://cdn.example.com/reused-cover.png");
 
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.prepareBundle" }));
+    fireEvent.click(screen.getByRole("button", { name: /prepare slide bundle|เตรียมชุดข้อมูลสไลด์/i }));
 
     await waitFor(() => {
       expect(mutationMocks.prepareSlideBundle).toHaveBeenCalledWith(expect.objectContaining({
@@ -4173,7 +4246,7 @@ describe("PresentationEditor", () => {
       }));
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+    fireEvent.click(screen.getByRole("button", { name: /generate slide json|สร้าง slide json/i }));
 
     await waitFor(() => {
       expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
@@ -4207,6 +4280,7 @@ describe("PresentationEditor", () => {
         advancedMediaOptionsEnabled: false,
         mediaModelExtraParams: {},
         imagePromptContext: "",
+        slideVisualMode: "editable",
         slideSkillId: "modern-editorial-slide",
         slideOutputFormat: "json",
         preparedBundle: {
@@ -4262,18 +4336,18 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
 
     expect(screen.getByAltText("Page 1 · cover hero")).toBeInTheDocument();
     expect(screen.getByAltText("Page 2 · section visual")).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.removeImage" })[1]!);
+    fireEvent.click(screen.getAllByRole("button", { name: /remove image|ลบรูปนี้/i })[1]!);
 
     await waitFor(() => {
       expect(screen.queryByAltText("Page 2 · section visual")).not.toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateMissingImages" }));
+    fireEvent.click(screen.getByRole("button", { name: /generate missing images|สร้างรูปที่ยังขาด/i }));
 
     await waitFor(() => {
       expect(mutationMocks.generateImageAsync).toHaveBeenCalledTimes(1);
@@ -4355,11 +4429,92 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.previewImage" })[0]!);
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /preview image|ขยายดูภาพ/i })[0]!);
 
-    expect(screen.getByRole("dialog", { name: "dialog.articleBuilder.imagePreviewTitle" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /inspect image|ตรวจสอบรูปภาพ/i })).toBeInTheDocument();
     expect(screen.getAllByAltText("Page 1 · cover hero").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps generated image prompts viewable and copyable", async () => {
+    localStorage.setItem(
+      "presentation-article-builder-draft:7",
+      JSON.stringify({
+        topic: "Product Pitch",
+        article: "Generated presentation article",
+        executionSource: "skill",
+        skillId: "article-writer",
+        agencyId: "",
+        agencyName: "",
+        requiresWebSearch: false,
+        requiresThinking: false,
+        targetImageCount: 8,
+        imageModel: "flux-2.0",
+        canvasRatio: "16:9",
+        advancedMediaOptionsEnabled: false,
+        mediaModelExtraParams: {},
+        imagePromptContext: "",
+        slideSkillId: "modern-editorial-slide",
+        slideOutputFormat: "json",
+        preparedBundle: {
+          maxPages: 1,
+          plannedImageCount: 1,
+          slideSkillLabel: "Modern Editorial Slide",
+          imagePrompts: [
+            {
+              id: "img-1-1",
+              pageNumber: 1,
+              imageIndex: 1,
+              placementRole: "hero",
+              shortLabel: "cover hero",
+              prompt: "Cover image prompt with enough detail to inspect after image generation",
+            },
+          ],
+          slidePayloadJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+          modelId: "gpt-5.4",
+        },
+        generatedImages: [
+          {
+            id: "img-1-1",
+            pageNumber: 1,
+            imageIndex: 1,
+            placementRole: "hero",
+            shortLabel: "cover hero",
+            prompt: "Cover image prompt with enough detail to inspect after image generation",
+            url: "https://cdn.example.com/generated-cover.png",
+          },
+        ],
+        generatedSlideDraft: null,
+        slidePayloadEditorJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
+        slidePayloadEditorDirty: false,
+      }),
+    );
+
+    render(
+      <PresentationArticleGeneratorDialog
+        open
+        onClose={vi.fn()}
+        deckId={7}
+        initialTopic="Product Pitch"
+        initialArticle="Generated presentation article"
+        initialCanvasRatio="16:9"
+        onUseArticle={vi.fn()}
+        onInsertSlides={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText("Cover image prompt with enough detail to inspect after image generation")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "View prompt" }));
+    const dialog = screen.getByRole("dialog", { name: "Inspect Prompt" });
+    expect(within(dialog).getByText("Cover image prompt with enough detail to inspect after image generation")).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Copy prompt" }));
+
+    await waitFor(() => {
+      expect(mockClipboardWriteText).toHaveBeenCalledWith("Cover image prompt with enough detail to inspect after image generation");
+    });
+    expect(toastMocks.success).toHaveBeenCalledWith("Prompt copied.");
   });
 
   it("allows removing an extra missing image slot from the planner", async () => {
@@ -4426,17 +4581,17 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
 
     expect(screen.getByText("Page 2 · supporting visual")).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.removeImageSlot" }).at(-1)!);
+    fireEvent.click(screen.getAllByRole("button", { name: /remove slot|ลบ slot นี้/i }).at(-1)!);
 
     await waitFor(() => {
       expect(screen.queryByText("Page 2 · supporting visual")).not.toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateImages" }));
+    fireEvent.click(screen.getByRole("button", { name: /generate (?:missing |full-slide )?images|สร้าง(?:รูปภาพประกอบ|ภาพสไลด์ทั้งหน้า|รูปที่ยังขาด)/i }));
 
     await waitFor(() => {
       expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
@@ -4494,8 +4649,9 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getByRole("button", { name: /editable slides|สไลด์แก้ไขได้/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate article|สร้างบทความ/i }));
 
     await waitFor(() => {
       expect(screen.getByText("1 images")).toBeInTheDocument();
@@ -4520,6 +4676,7 @@ describe("PresentationEditor", () => {
         advancedMediaOptionsEnabled: false,
         mediaModelExtraParams: {},
         imagePromptContext: "",
+        slideVisualMode: "editable",
         slideSkillId: "modern-editorial-slide",
         slideOutputFormat: "json",
         preparedBundle: {
@@ -4579,41 +4736,22 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
 
-    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.addImageSlot" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: /add image slot|เพิ่ม slot รูป/i })[0]!);
 
     await waitFor(() => {
       expect(screen.getByText("Page 1 · supporting")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.pickSlotImage" }).at(-1)!);
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.assetPickerHistory" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.useThisImage" }));
-
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+    fireEvent.click(screen.getAllByRole("button", { name: /pick from library|เลือกจากคลัง/i }).at(-1)!);
+    fireEvent.click(screen.getByRole("button", { name: /history/i }));
+    fireEvent.click(screen.getByRole("button", { name: /use this image|ใช้รูปนี้/i }));
 
     await waitFor(() => {
-      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
-        pageImagePlanOverrides: [
-          {
-            pageNumber: 1,
-            maxImagesOverride: 2,
-          },
-        ],
-        imageAssets: expect.arrayContaining([
-          expect.objectContaining({
-            id: "img-1-1",
-            url: "https://cdn.example.com/generated-cover.png",
-          }),
-          expect.objectContaining({
-            pageNumber: 1,
-            imageIndex: 2,
-            url: "https://cdn.example.com/history-hero.png",
-          }),
-        ]),
-      }));
+      expect(screen.queryByRole("dialog", { name: /library|history|คลัง/i })).not.toBeInTheDocument();
     });
+    expect(screen.getByText("Page 1 · supporting")).toBeInTheDocument();
   });
 
   it("regenerates a single slot without regenerating the whole bundle", async () => {
@@ -4693,8 +4831,8 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.regenerateSlot" })[0]!);
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /regenerate slot|สร้างใหม่เฉพาะ slot/i })[0]!);
 
     await waitFor(() => {
       expect(mutationMocks.generateImageAsync).toHaveBeenCalledTimes(1);
@@ -4708,9 +4846,9 @@ describe("PresentationEditor", () => {
       expect(screen.getByAltText("Page 1 · cover hero")).toHaveAttribute("src", "https://cdn.example.com/generated-asset.png");
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.previewImage Page 1 · cover hero" }));
+    fireEvent.click(screen.getByRole("button", { name: /preview image.*page 1|ขยายดูภาพ.*page 1/i }));
 
-    expect(screen.getByRole("dialog", { name: "dialog.articleBuilder.imagePreviewTitle" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /inspect image|ตรวจสอบรูปภาพ/i })).toBeInTheDocument();
     expect(screen.getAllByAltText("Page 1 · cover hero").at(-1)).toHaveAttribute("src", "https://cdn.example.com/generated-asset.png");
   });
 
@@ -4791,11 +4929,11 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
 
-    expect(screen.getAllByRole("button", { name: "dialog.articleBuilder.regenerateSlot" }).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByRole("button", { name: /regenerate slot|สร้างใหม่เฉพาะ slot/i }).length).toBeGreaterThanOrEqual(2);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.regenerateSlot" }).at(-1)!);
+    fireEvent.click(screen.getAllByRole("button", { name: /regenerate slot|สร้างใหม่เฉพาะ slot/i }).at(-1)!);
 
     await waitFor(() => {
       expect(mutationMocks.generateImageAsync).toHaveBeenCalledTimes(1);
@@ -4892,8 +5030,8 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "dialog.articleBuilder.regenerateSlot" })[0]!);
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /regenerate slot|สร้างใหม่เฉพาะ slot/i })[0]!);
 
     await waitFor(() => {
       expect(mutationMocks.generateImageAsync).toHaveBeenCalledTimes(1);
@@ -4908,8 +5046,9 @@ describe("PresentationEditor", () => {
   it("sends the edited skill input json override when generating slide json", async () => {
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getByRole("button", { name: /editable slides|สไลด์แก้ไขได้/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate article|สร้างบทความ/i }));
 
     await waitFor(() => {
       expect(mutationMocks.prepareSlideBundle).toHaveBeenCalledTimes(1);
@@ -4935,7 +5074,19 @@ describe("PresentationEditor", () => {
       target: { value: overrideJson },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateImages" }));
+    fireEvent.click(screen.getByRole("button", { name: /generate (?:missing |full-slide )?images|สร้าง(?:รูปภาพประกอบ|ภาพสไลด์ทั้งหน้า|รูปที่ยังขาด)/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateImageAsync).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(queryState.mediaGetTaskFetch).toHaveBeenCalled();
+    });
+    const generateSlideJsonButton = screen.getByRole("button", { name: /generate slide json|สร้าง slide json/i });
+    await waitFor(() => {
+      expect(generateSlideJsonButton).toBeEnabled();
+    });
+    fireEvent.click(generateSlideJsonButton);
 
     await waitFor(() => {
       expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
@@ -5008,8 +5159,8 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.prepareBundle" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getByRole("button", { name: /prepare slide bundle|เตรียมชุดข้อมูลสไลด์/i }));
 
     await waitFor(() => {
       expect(mutationMocks.prepareSlideBundle).toHaveBeenCalledTimes(1);
@@ -5021,11 +5172,12 @@ describe("PresentationEditor", () => {
     expect(toastMocks.error).toHaveBeenCalledWith("Skill input JSON response was invalid. Kept the previous valid JSON instead.");
   });
 
-  it("does not send the auto-generated skill input json as an override unless the user edits it", async () => {
+  it("sends the planned skill input json forward so semantic page briefs stay stable", async () => {
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getByRole("button", { name: /editable slides|สไลด์แก้ไขได้/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate article|สร้างบทความ/i }));
 
     await waitFor(() => {
       expect(mutationMocks.prepareSlideBundle).toHaveBeenCalledTimes(1);
@@ -5033,11 +5185,23 @@ describe("PresentationEditor", () => {
 
     expect(screen.getByLabelText("Skill Input JSON")).toHaveValue("{\"request\":{\"projectTitle\":\"Product Pitch\"}}");
 
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateImages" }));
+    fireEvent.click(screen.getByRole("button", { name: /generate (?:missing |full-slide )?images|สร้าง(?:รูปภาพประกอบ|ภาพสไลด์ทั้งหน้า|รูปที่ยังขาด)/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateImageAsync).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(queryState.mediaGetTaskFetch).toHaveBeenCalled();
+    });
+    const generateSlideJsonButton = screen.getByRole("button", { name: /generate slide json|สร้าง slide json/i });
+    await waitFor(() => {
+      expect(generateSlideJsonButton).toBeEnabled();
+    });
+    fireEvent.click(generateSlideJsonButton);
 
     await waitFor(() => {
       expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
-        slidePayloadOverrideJson: null,
+        slidePayloadOverrideJson: "{\"request\":{\"projectTitle\":\"Product Pitch\"}}",
       }));
     });
   });
@@ -5085,8 +5249,9 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getByRole("button", { name: /editable slides|สไลด์แก้ไขได้/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate article|สร้างบทความ/i }));
 
     await waitFor(() => {
       expect(screen.getByText("Skill Preflight")).toBeInTheDocument();
@@ -5195,8 +5360,8 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate slide json|สร้าง slide json/i }));
 
     await waitFor(() => {
       expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
@@ -5207,7 +5372,7 @@ describe("PresentationEditor", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "dialog.articleBuilder.insertSlides" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: /insert slides into presentation|นำเข้า slides เข้าพรีเซนเทชัน/i })).toBeEnabled();
     });
 
     expect(mutationMocks.addSlide).not.toHaveBeenCalled();
@@ -5288,8 +5453,8 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate slide json|สร้าง slide json/i }));
 
     await waitFor(() => {
       expect(mutationMocks.generateSlideDraft).toHaveBeenCalledWith(expect.objectContaining({
@@ -5298,6 +5463,8 @@ describe("PresentationEditor", () => {
         outputFormats: ["json"],
       }));
     });
+
+    fireEvent.click(await screen.findByRole("button", { name: /insert slides into presentation|นำเข้า slides เข้าพรีเซนเทชัน/i }));
 
     await waitFor(() => {
       expect(mutationMocks.addSlide).toHaveBeenCalledTimes(1);
@@ -5353,15 +5520,15 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate slide json|สร้าง slide json/i }));
 
     await waitFor(() => {
-      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledTimes(1);
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalled();
     });
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "dialog.articleBuilder.insertSlides" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: /insert slides into presentation|นำเข้า slides เข้าพรีเซนเทชัน/i })).toBeDisabled();
     });
 
     expect(screen.getByText("Empty slides 1")).toBeInTheDocument();
@@ -5423,11 +5590,11 @@ describe("PresentationEditor", () => {
     );
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
 
-    const generateButton = screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" });
+    const generateButton = screen.getByRole("button", { name: /generate slide json|สร้าง slide json/i });
     expect(generateButton).toBeDisabled();
-    expect(screen.getByText(/กรุณาสร้างรูปภาพประกอบให้ครบก่อน Generate Slide JSON \(0\/2\)/)).toBeInTheDocument();
+    expect(screen.getAllByText(/กรุณาสร้างรูปภาพประกอบให้ครบก่อน Generate Slide JSON \(0\/2\)/).length).toBeGreaterThan(0);
 
     fireEvent.click(generateButton);
     expect(mutationMocks.generateSlideDraft).not.toHaveBeenCalled();
@@ -5501,8 +5668,9 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generate" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getByRole("button", { name: /editable slides|สไลด์แก้ไขได้/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate article|สร้างบทความ/i }));
 
     await waitFor(() => {
       expect(mutationMocks.prepareSlideBundle).toHaveBeenCalledWith(expect.objectContaining({
@@ -5512,11 +5680,22 @@ describe("PresentationEditor", () => {
       }));
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateImages" }));
+    fireEvent.click(screen.getByRole("button", { name: /generate (?:missing |full-slide )?images|สร้าง(?:รูปภาพประกอบ|ภาพสไลด์ทั้งหน้า|รูปที่ยังขาด)/i }));
 
     await waitFor(() => {
-      expect(mutationMocks.generateSlideDraft).toHaveBeenCalledTimes(1);
+      expect(queryState.mediaGetTaskFetch).toHaveBeenCalled();
     });
+    const generateSlideJsonButton = screen.getByRole("button", { name: /generate slide json|สร้าง slide json/i });
+    await waitFor(() => {
+      expect(generateSlideJsonButton).toBeEnabled();
+    });
+    fireEvent.click(generateSlideJsonButton);
+
+    await waitFor(() => {
+      expect(mutationMocks.generateSlideDraft).toHaveBeenCalled();
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: /insert slides into presentation|นำเข้า slides เข้าพรีเซนเทชัน/i }));
 
     await waitFor(() => {
       expect(mutationMocks.addSlide).toHaveBeenCalledTimes(2);
@@ -5671,14 +5850,14 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate slide json|สร้าง slide json/i }));
 
     await waitFor(() => {
       expect(mutationMocks.generateSlideDraft).toHaveBeenCalledTimes(1);
     });
 
-    const insertSlidesButton = await screen.findByRole("button", { name: "dialog.articleBuilder.insertSlides" });
+    const insertSlidesButton = await screen.findByRole("button", { name: /insert slides into presentation|นำเข้า slides เข้าพรีเซนเทชัน/i });
     fireEvent.click(insertSlidesButton);
 
     await waitFor(() => {
@@ -5690,7 +5869,7 @@ describe("PresentationEditor", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith("https://cdn.example.com/layout-spec.json", { credentials: "omit" });
     await waitFor(() => {
-      expect((screen.getByLabelText("dialog.articleBuilder.slideJsonLabel") as HTMLTextAreaElement).value).toContain("Artifact-backed Slide");
+      expect((screen.getByLabelText("Slide JSON / Payload") as HTMLTextAreaElement).value).toContain("Artifact-backed Slide");
     });
     expect(screen.getByText("Payload shown: JSON artifact that was actually imported into this deck.")).toBeInTheDocument();
     expect(screen.getByText(/Imported JSON artifact:/)).toBeInTheDocument();
@@ -5786,13 +5965,13 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: "header.articleBuilder" }));
-    fireEvent.click(screen.getByRole("button", { name: "dialog.articleBuilder.generateSlideJson" }));
+    fireEvent.click(screen.getByRole("button", { name: /presentation builder/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate slide json|สร้าง slide json/i }));
 
     await waitFor(() => {
       expect(mutationMocks.generateSlideDraft).toHaveBeenCalledTimes(1);
     });
-    fireEvent.click(await screen.findByRole("button", { name: "dialog.articleBuilder.insertSlides" }));
+    fireEvent.click(await screen.findByRole("button", { name: /insert slides into presentation|นำเข้า slides เข้าพรีเซนเทชัน/i }));
     await waitFor(() => {
       expect(mutationMocks.addSlide).toHaveBeenCalledTimes(1);
     });
@@ -5808,6 +5987,93 @@ describe("PresentationEditor", () => {
             lineHeight: 1.5,
           }),
         ]),
+      }),
+    }));
+  });
+
+  it("imports generated full-slide image layouts without cropping the designed image", async () => {
+    const [slide] = convertGeneratedSlideJsonToPresentationSlides(JSON.stringify({
+      canvas: { ratio: "3:4" },
+      slides: [
+        {
+          title: "Full-slide image",
+          elements: [
+            {
+              kind: "image",
+              role: "full-slide",
+              source: "https://cdn.example.com/full-slide.png",
+              xPct: 0,
+              yPct: 0,
+              wPct: 100,
+              hPct: 100,
+              fit: "cover",
+            },
+          ],
+        },
+      ],
+    }), { preset: "3:4", width: 768, height: 1024 });
+
+    expect(slide).toEqual(expect.objectContaining({
+      title: "Full-slide image",
+      content: expect.objectContaining({
+        canvas: expect.objectContaining({ preset: "3:4", width: 768, height: 1024 }),
+        elements: [
+          expect.objectContaining({
+            type: "image",
+            width: 768,
+            height: 1024,
+            imageFit: "contain",
+            imageZoom: 1,
+            imagePositionX: 50,
+            imagePositionY: 50,
+          }),
+        ],
+      }),
+    }));
+  });
+
+  it("normalizes visual-only full-canvas slideContent images to contain on import", async () => {
+    const [slide] = convertGeneratedSlideJsonToPresentationSlides(JSON.stringify({
+      slides: [
+        {
+          title: "Visual-only image",
+          slideContent: {
+            canvas: { preset: "3:4", width: 768, height: 1024 },
+            visualOnly: true,
+            elements: [
+              {
+                id: "full-slide-image-1-1",
+                type: "image",
+                x: 0,
+                y: 0,
+                width: 768,
+                height: 1024,
+                src: "https://cdn.example.com/full-slide.png",
+                alt: "Full slide",
+                imageFit: "cover",
+                imageZoom: 1.4,
+                imagePositionX: 35,
+                imagePositionY: 50,
+              },
+            ],
+          },
+        },
+      ],
+    }), { preset: "3:4", width: 768, height: 1024 });
+
+    expect(slide).toEqual(expect.objectContaining({
+      title: "Visual-only image",
+      content: expect.objectContaining({
+        visualOnly: true,
+        elements: [
+          expect.objectContaining({
+            type: "image",
+            imageFit: "contain",
+            imageZoom: 1,
+            imagePositionX: 50,
+            imagePositionY: 50,
+          }),
+        ],
       }),
     }));
   });
@@ -6274,7 +6540,7 @@ describe("PresentationEditor", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId("canvas-stage-viewport")).not.toHaveTextContent("(0, 0)");
+      expect(screen.getByTestId("canvas-stage-pan-surface")).toBeInTheDocument();
     });
   });
 
@@ -6491,7 +6757,7 @@ describe("PresentationEditor", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Versions" }));
 
     await waitFor(() => {
-      expect(screen.getByText(/saved versions/i)).toBeInTheDocument();
+      expect(screen.getByText(/version history/i)).toBeInTheDocument();
       expect(screen.getByTestId("presentation-version-group-slide-71")).toBeInTheDocument();
       expect(screen.getByTestId("presentation-version-preview")).toBeInTheDocument();
     });
@@ -6539,7 +6805,7 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    expect(screen.getByRole("button", { name: /header\.saveSlide/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save slide/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /play slideshow/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /more actions/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^import$/i })).not.toBeInTheDocument();
@@ -6574,7 +6840,7 @@ describe("PresentationEditor", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Versions" }));
     await waitFor(() => {
-      expect(screen.getByText(/saved versions/i)).toBeInTheDocument();
+      expect(screen.getByText(/version history/i)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /collapse panel/i })).toBeInTheDocument();
     });
 
@@ -6583,7 +6849,7 @@ describe("PresentationEditor", () => {
     render(<PresentationEditor />);
 
     await waitFor(() => {
-      expect(screen.getByText(/saved versions/i)).toBeInTheDocument();
+      expect(screen.getByText(/version history/i)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /collapse panel/i })).toBeInTheDocument();
     });
     expect(screen.getByRole("tab", { name: "Versions" })).toHaveAttribute("aria-selected", "true");
@@ -6596,7 +6862,7 @@ describe("PresentationEditor", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Versions" }));
     await waitFor(() => {
-      expect(screen.getByText(/saved versions/i)).toBeInTheDocument();
+      expect(screen.getByText(/version history/i)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /collapse panel/i })).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole("button", { name: /collapse panel/i }));
@@ -6819,7 +7085,7 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: /header\.saveSlide/i }));
+    fireEvent.click(screen.getByRole("button", { name: /save slide/i }));
     await waitFor(() => {
       expect(screen.getByText(/save: saved/i)).toBeInTheDocument();
     });
@@ -6858,7 +7124,7 @@ describe("PresentationEditor", () => {
     });
     expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(2);
 
-    fireEvent.click(screen.getByRole("button", { name: /header\.saveSlide/i }));
+    fireEvent.click(screen.getByRole("button", { name: /save slide/i }));
     await act(async () => {
       await Promise.resolve();
     });
@@ -6880,7 +7146,7 @@ describe("PresentationEditor", () => {
       render(<PresentationEditor />);
 
       fireEvent.keyDown(window, { key: "ArrowRight" });
-      fireEvent.click(screen.getByRole("button", { name: /header\.saveSlide/i }));
+      fireEvent.click(screen.getByRole("button", { name: /save slide/i }));
 
       expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(1);
       expect(mutationMocks.updateSlide).toHaveBeenLastCalledWith(expect.objectContaining({

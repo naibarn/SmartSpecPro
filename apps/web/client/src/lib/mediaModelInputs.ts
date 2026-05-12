@@ -39,6 +39,7 @@ export interface ModelInputField {
   maxItems?: number;
   allowedExtensions?: string[];
   itemLabel?: string;
+  itemTemplate?: unknown;
   itemFields?: ModelInputField[];
   optionsSource?: {
     type?: string;
@@ -200,6 +201,7 @@ function parseModelInputFieldRecords(rawFields: unknown[]): ModelInputField[] {
       maxItems: parsePositiveInteger(record.maxItems) ?? parsePositiveInteger(record.maxCount),
       allowedExtensions: parseAllowedExtensions(record.allowedExtensions),
       itemLabel: typeof record.itemLabel === "string" ? record.itemLabel.trim() : undefined,
+      itemTemplate: record.itemTemplate,
       itemFields,
       optionsSource:
         record.optionsSource && typeof record.optionsSource === "object"
@@ -591,6 +593,62 @@ export function pickExtraParamsForModel(
   return Object.keys(next).length > 0 ? next : undefined;
 }
 
+function getTemplatePathValue(context: Record<string, unknown>, path: string): unknown {
+  return path.split(".").reduce<unknown>((current, segment) => {
+    if (!segment) {
+      return current;
+    }
+    if (current && typeof current === "object" && !Array.isArray(current)) {
+      return (current as Record<string, unknown>)[segment];
+    }
+    return undefined;
+  }, context);
+}
+
+function interpolateModelInputTemplate(template: unknown, context: Record<string, unknown>): unknown {
+  if (typeof template === "string") {
+    const tokenPattern = /^\{\{\s*([^}]+)\s*\}\}$/;
+    const fullToken = template.match(tokenPattern);
+    if (fullToken) {
+      const path = fullToken[1]?.trim() ?? "";
+      return path ? getTemplatePathValue(context, path) ?? "" : "";
+    }
+    return template.replace(/\{\{\s*([^}]+)\s*\}\}/g, (_match, rawPath: string) => {
+      const path = rawPath.trim();
+      const value = path ? getTemplatePathValue(context, path) : undefined;
+      return value === null || value === undefined ? "" : String(value);
+    });
+  }
+
+  if (Array.isArray(template)) {
+    return template.map((item) => interpolateModelInputTemplate(item, context));
+  }
+
+  if (template && typeof template === "object") {
+    const output: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(template as Record<string, unknown>)) {
+      output[key] = interpolateModelInputTemplate(value, context);
+    }
+    return output;
+  }
+
+  return template;
+}
+
+function buildPromptSyncedArrayValue(field: ModelInputField, prompt: string, fields: Record<string, unknown>): unknown[] {
+  if (!field.itemTemplate) {
+    return [prompt];
+  }
+  return [
+    interpolateModelInputTemplate(field.itemTemplate, {
+      value: prompt,
+      item: prompt,
+      index: 0,
+      fields,
+    }),
+  ];
+}
+
 export function applyModelSyncTargets(
   model: MediaModelOption | undefined,
   baseExtraParams: Record<string, unknown> | undefined,
@@ -609,7 +667,9 @@ export function applyModelSyncTargets(
   for (const field of fields) {
     const syncWith = field.syncWith;
     if (syncWith === "prompt" && syncValues.prompt) {
-      next[field.key] = syncValues.prompt;
+      next[field.key] = field.type === "array"
+        ? buildPromptSyncedArrayValue(field, syncValues.prompt, next)
+        : syncValues.prompt;
       continue;
     }
     if (syncWith === "aspect_ratio" && syncValues.aspectRatio) {

@@ -222,7 +222,7 @@ beforeEach(() => {
 });
 
 describe("presentationArticleGenerator", () => {
-  it("builds a prompt that keeps the requested image count in range", () => {
+  it("builds an article prompt for semantic slide planning instead of a fixed image count", () => {
     const prompt = buildPresentationArticlePrompt({
       topic: "Thai parenting nutrition guide",
       preferredLanguage: "en",
@@ -231,8 +231,9 @@ describe("presentationArticleGenerator", () => {
       targetImageCount: 12,
     });
 
-    expect(prompt).toContain("Supporting image plan: 12 images");
-    expect(prompt).toContain("Organize the article into 12 numbered sections");
+    expect(prompt).toContain("semantically split into slide pages");
+    expect(prompt).toContain("do not optimize around a fixed image count");
+    expect(prompt).not.toContain("Supporting image plan");
     expect(prompt).toContain("Thinking mode: Use deeper reasoning before writing.");
     expect(prompt).toContain("Preferred language: English");
     expect(prompt).toContain("Language code: en");
@@ -1908,6 +1909,168 @@ describe("presentationArticleGenerator", () => {
       recommendedImageCount: expect.any(Number),
     }));
     expect(result.imagePrompts.length).toBe(result.plannedImageCount);
+  });
+
+  it("uses semantic LLM page briefs as the source plan for slide payloads", async () => {
+    vi.mocked(executeSkillLlmWithFallback)
+      .mockResolvedValueOnce({
+        success: true,
+        content: JSON.stringify({
+          pages: [
+            {
+              page_number: 1,
+              title_hint: "เริ่มจากสัญญาณง่วง",
+              text: "สังเกตสัญญาณง่วงและเริ่มกิจวัตรก่อนลูกเหนื่อยเกินไป",
+              page_intent_hint: "cover",
+              estimated_read_seconds: 7,
+            },
+            {
+              page_number: 2,
+              title_hint: "ห้องนอนต้องนิ่ง",
+              text: "ลดแสง เสียง และสิ่งกระตุ้น เพื่อให้ลูกเชื่อมโยงห้องกับการพักผ่อน",
+              page_intent_hint: "content",
+              estimated_read_seconds: 8,
+            },
+          ],
+        }),
+        modelId: "gpt-5.4",
+        provider: { providerName: "OpenAI" },
+        inputTokens: 800,
+        outputTokens: 300,
+        rawData: { usage: { cost: 0.006 } },
+      } as any)
+      .mockResolvedValueOnce({
+        success: true,
+        content: JSON.stringify({
+          prompts: [
+            {
+              pageNumber: 1,
+              imageIndex: 1,
+              placementRole: "hero",
+              shortLabel: "sleep cues",
+              prompt: "Warm Thai nursery scene with sleepy baby, no text.",
+            },
+            {
+              pageNumber: 2,
+              imageIndex: 1,
+              placementRole: "hero",
+              shortLabel: "quiet room",
+              prompt: "Calm dark nursery with soft light, no text.",
+            },
+          ],
+        }),
+        modelId: "gpt-5.4",
+        provider: { providerName: "OpenAI" },
+        inputTokens: 700,
+        outputTokens: 300,
+        rawData: { usage: { cost: 0.005 } },
+      } as any);
+
+    const result = await preparePresentationSlideBundle({
+      userId: 7,
+      topic: "คู่มือฝึกลูกนอน",
+      article: [
+        "คู่มือฝึกลูกนอน",
+        "",
+        "บทความยาวเกี่ยวกับการสังเกตสัญญาณง่วง การจัดห้องนอน และการสร้างกิจวัตรที่ช่วยให้ลูกนอนง่ายขึ้น",
+      ].join("\n"),
+      slideSkillId: "sandbox-slide-skill",
+      preferredLanguage: "th",
+      requiresThinking: false,
+      targetImageCount: 12,
+      canvasRatio: "9:16",
+      outputFormats: ["json"],
+    });
+
+    expect(result.plannedImageCount).toBe(2);
+    expect(result.preflightPages?.map((page) => page.titleHint)).toEqual([
+      "เริ่มจากสัญญาณง่วง",
+      "ห้องนอนต้องนิ่ง",
+    ]);
+    expect(result.slidePayload.request.content.pages?.map((page) => page.titleHint)).toEqual([
+      "เริ่มจากสัญญาณง่วง",
+      "ห้องนอนต้องนิ่ง",
+    ]);
+    expect(result.slidePayload.request.content.pages?.[0]?.text).toContain("สังเกตสัญญาณง่วง");
+  });
+
+  it("returns the rewritten article when fixed page count planning rewrites the source", async () => {
+    vi.mocked(executeSkillLlmWithFallback)
+      .mockResolvedValueOnce({
+        success: true,
+        content: JSON.stringify({
+          rewritten_article: [
+            "คู่มือฝึกลูกนอน",
+            "",
+            "1. เริ่มจากสัญญาณง่วง",
+            "สังเกตสัญญาณง่วงและเริ่มกิจวัตรก่อนลูกเหนื่อยเกินไป",
+            "",
+            "2. ห้องนอนต้องนิ่ง",
+            "ลดแสง เสียง และสิ่งกระตุ้น เพื่อให้ลูกเชื่อมโยงห้องกับการพักผ่อน",
+            "",
+            "3. ทำซ้ำอย่างอ่อนโยน",
+            "ใช้กิจวัตรเดิมทุกคืนและปรับตามความพร้อมของลูก",
+          ].join("\n"),
+          pages: [
+            {
+              page_number: 1,
+              title_hint: "เริ่มจากสัญญาณง่วง",
+              text: "สังเกตสัญญาณง่วงและเริ่มกิจวัตรก่อนลูกเหนื่อยเกินไป",
+              page_intent_hint: "cover",
+              estimated_read_seconds: 7,
+            },
+            {
+              page_number: 2,
+              title_hint: "ห้องนอนต้องนิ่ง",
+              text: "ลดแสง เสียง และสิ่งกระตุ้น เพื่อให้ลูกเชื่อมโยงห้องกับการพักผ่อน",
+              page_intent_hint: "content",
+              estimated_read_seconds: 8,
+            },
+            {
+              page_number: 3,
+              title_hint: "ทำซ้ำอย่างอ่อนโยน",
+              text: "ใช้กิจวัตรเดิมทุกคืนและปรับตามความพร้อมของลูก",
+              page_intent_hint: "closing",
+              estimated_read_seconds: 7,
+            },
+          ],
+        }),
+        modelId: "gpt-5.4",
+        provider: { providerName: "OpenAI" },
+        inputTokens: 900,
+        outputTokens: 450,
+        rawData: { usage: { cost: 0.007 } },
+      } as any)
+      .mockResolvedValueOnce({
+        success: true,
+        content: JSON.stringify({ prompts: [] }),
+        modelId: "gpt-5.4",
+        provider: { providerName: "OpenAI" },
+        inputTokens: 300,
+        outputTokens: 80,
+        rawData: { usage: { cost: 0.001 } },
+      } as any);
+
+    const result = await preparePresentationSlideBundle({
+      userId: 7,
+      topic: "คู่มือฝึกลูกนอน",
+      article: "คู่มือฝึกลูกนอน\n\nบทความยาวมากที่ต้องจัดให้พอดีกับสามหน้า",
+      slideSkillId: "editorial-layout-planner",
+      preferredLanguage: "th",
+      requiresThinking: false,
+      targetImageCount: 8,
+      canvasRatio: "9:16",
+      outputFormats: ["json"],
+      editorialPlannerOptions: {
+        pageCountMode: "fixed",
+        requestedPageCount: 3,
+      },
+    });
+
+    expect(result.maxPages).toBe(3);
+    expect(result.article).toContain("3. ทำซ้ำอย่างอ่อนโยน");
+    expect(result.slidePayload.article_body).toContain("3. ทำซ้ำอย่างอ่อนโยน");
+    expect(result.slidePayload.page_briefs).toHaveLength(3);
   });
 
   it("keeps the existing image slot count when replanning with reusable generated images", async () => {

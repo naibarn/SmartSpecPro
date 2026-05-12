@@ -90,6 +90,44 @@ describe("mediaModelInputs", () => {
     });
   });
 
+  it("syncs prompt into array fields using itemTemplate", () => {
+    const model = {
+      id: "elevenlabs-dialogue",
+      name: "ElevenLabs Dialogue",
+      configJson: {
+        inputFields: [
+          { key: "voice", label: "Voice", type: "select", default: "voice-1" },
+          {
+            key: "dialogue",
+            label: "Dialogue",
+            type: "array",
+            syncWith: "prompt",
+            itemTemplate: {
+              text: "{{item}}",
+              voice: "{{fields.voice}}",
+            },
+          },
+        ],
+      },
+    };
+
+    const extraParams = applyModelSyncTargets(
+      model,
+      buildDefaultExtraParamsForModel(model),
+      { prompt: "Narration text" },
+    );
+
+    expect(extraParams).toMatchObject({
+      voice: "voice-1",
+      dialogue: [
+        {
+          text: "Narration text",
+          voice: "voice-1",
+        },
+      ],
+    });
+  });
+
   it("preserves maxItems metadata for synchronized image fields", () => {
     const model = {
       id: "wavespeed-video-model",

@@ -28,6 +28,7 @@ import {
   ELEVENLABS_SOUND_EFFECTS_MODEL_ID,
   ELEVENLABS_VOICE_CHANGER_MODEL_ID,
   ELEVENLABS_VOICE_ISOLATOR_MODEL_ID,
+  WAVESPEED_ELEVENLABS_ELEVEN_V3_MODEL_ID,
   WAVESPEED_GEMINI_25_FLASH_TTS_MODEL_ID,
   WAVESPEED_ELEVENLABS_VOICE_CHANGER_MODEL_ID,
   WAVESPEED_LAUNCH_MODEL_ID,
@@ -196,16 +197,18 @@ describe("mediaProviderUtils", () => {
     const seeds = buildWaveSpeedModelSeeds();
     const providerModels = getWaveSpeedProviderAvailableModels();
 
-    expect(seeds).toHaveLength(11);
-    expect(providerModels).toHaveLength(11);
+    expect(seeds).toHaveLength(12);
+    expect(providerModels).toHaveLength(12);
     expect(seeds.map((seed) => seed.modelId)).toEqual(expect.arrayContaining([
       WAVESPEED_LAUNCH_MODEL_ID,
       WAVESPEED_SEEDANCE_2_TEXT_TO_VIDEO_MODEL_ID,
       WAVESPEED_SEEDANCE_2_FAST_IMAGE_TO_VIDEO_MODEL_ID,
       WAVESPEED_GEMINI_25_FLASH_TTS_MODEL_ID,
       WAVESPEED_LYRIA_3_PRO_MUSIC_MODEL_ID,
+      WAVESPEED_ELEVENLABS_ELEVEN_V3_MODEL_ID,
       WAVESPEED_ELEVENLABS_VOICE_CHANGER_MODEL_ID,
     ]));
+    expect(providerModels.find((model) => model.id === WAVESPEED_ELEVENLABS_ELEVEN_V3_MODEL_ID)?.type).toBe("audio");
     expect(providerModels.find((model) => model.id === WAVESPEED_GEMINI_25_FLASH_TTS_MODEL_ID)?.type).toBe("audio");
   });
 
@@ -329,6 +332,7 @@ describe("mediaProviderUtils", () => {
   it("builds WaveSpeed audio model configs with per-unit and flat pricing", () => {
     const geminiFlash = buildWaveSpeedModelConfigJson(WAVESPEED_GEMINI_25_FLASH_TTS_MODEL_ID);
     const lyriaPro = buildWaveSpeedModelConfigJson(WAVESPEED_LYRIA_3_PRO_MUSIC_MODEL_ID);
+    const elevenV3 = buildWaveSpeedModelConfigJson(WAVESPEED_ELEVENLABS_ELEVEN_V3_MODEL_ID);
     const voiceChanger = buildWaveSpeedModelConfigJson(WAVESPEED_ELEVENLABS_VOICE_CHANGER_MODEL_ID);
 
     expect(geminiFlash).toMatchObject({
@@ -349,6 +353,25 @@ describe("mediaProviderUtils", () => {
       pricingTiers: { default: 80 },
       textInputKey: "prompt",
     });
+    expect(elevenV3).toMatchObject({
+      generateType: "text-to-speech",
+      providerModelId: WAVESPEED_ELEVENLABS_ELEVEN_V3_MODEL_ID,
+      apiEndpoint: "/elevenlabs/eleven-v3",
+      pricingFormula: "per_unit",
+      pricingUnitMetric: "characters",
+      pricingUnitField: "text",
+      pricingUnitSize: 1000,
+      pricingTiers: { default: 30 },
+      maxPromptLength: 1000,
+      textInputKey: "text",
+    });
+    expect(elevenV3.inputFields).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: "text",
+        syncWith: "prompt",
+        maxLength: 1000,
+      }),
+    ]));
     expect(voiceChanger).toMatchObject({
       generateType: "audio-to-audio",
       providerModelId: WAVESPEED_ELEVENLABS_VOICE_CHANGER_MODEL_ID,

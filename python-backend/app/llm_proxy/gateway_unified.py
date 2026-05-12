@@ -1990,10 +1990,7 @@ class LLMGateway:
             or normalized_model in uvoice_audio_models
         )
         route_to_wavespeed_audio = resolved_provider == "wavespeed_ai"
-        route_to_elevenlabs_audio = (
-            resolved_provider == "elevenlabs"
-            or str(normalized_request.model or "").strip().lower().startswith("elevenlabs/")
-        )
+        route_to_elevenlabs_audio = resolved_provider == "elevenlabs"
 
         logger.info(
             "audio_provider_routing",

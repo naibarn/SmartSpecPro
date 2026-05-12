@@ -14,7 +14,7 @@ describe("seed-media-providers", () => {
       defaultModel: "wavespeed-ai/cinematic-video-generator",
       isEnabled: false,
     });
-    expect(wavespeed?.availableModels).toHaveLength(11);
+    expect(wavespeed?.availableModels).toHaveLength(12);
     expect(wavespeed?.availableModels).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: "wavespeed-ai/cinematic-video-generator",
@@ -30,6 +30,10 @@ describe("seed-media-providers", () => {
       }),
       expect.objectContaining({
         id: "wavespeed-ai/elevenlabs/voice-changer",
+        type: "audio",
+      }),
+      expect.objectContaining({
+        id: "elevenlabs/eleven-v3",
         type: "audio",
       }),
     ]));

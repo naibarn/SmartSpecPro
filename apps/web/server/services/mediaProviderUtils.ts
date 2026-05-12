@@ -34,6 +34,7 @@ export const WAVESPEED_GEMINI_25_FLASH_TTS_MODEL_ID = "google/gemini-2.5-flash/t
 export const WAVESPEED_GEMINI_25_PRO_TTS_MODEL_ID = "google/gemini-2.5-pro/text-to-speech";
 export const WAVESPEED_LYRIA_3_CLIP_MUSIC_MODEL_ID = "google/lyria-3-clip/music";
 export const WAVESPEED_LYRIA_3_PRO_MUSIC_MODEL_ID = "google/lyria-3-pro/music";
+export const WAVESPEED_ELEVENLABS_ELEVEN_V3_MODEL_ID = "elevenlabs/eleven-v3";
 export const WAVESPEED_ELEVENLABS_VOICE_CHANGER_MODEL_ID = "wavespeed-ai/elevenlabs/voice-changer";
 export const ELEVENLABS_PROVIDER = "elevenlabs";
 export const ELEVENLABS_BASE_URL = "https://api.elevenlabs.io";
@@ -631,6 +632,65 @@ const WAVESPEED_AUDIO_MODEL_DEFINITIONS: readonly WaveSpeedAudioModelDefinition[
     sortOrder: 114,
   },
   {
+    modelId: WAVESPEED_ELEVENLABS_ELEVEN_V3_MODEL_ID,
+    name: "ElevenLabs Eleven v3",
+    description: "WaveSpeed ElevenLabs Eleven v3 expressive text-to-speech generation.",
+    aliases: [
+      "elevenlabs eleven v3",
+      "eleven v3",
+      "elevenlabs v3",
+      "elevenlabs/eleven-v3",
+      "wavespeed elevenlabs eleven v3",
+      "wavespeed eleven v3 text to speech",
+    ],
+    submitEndpoint: "/elevenlabs/eleven-v3",
+    generateType: "text-to-speech",
+    pricingFormula: "per_unit",
+    pricingTiers: { default: 30 },
+    pricingUnitMetric: "characters",
+    pricingUnitField: "text",
+    pricingUnitSize: 1000,
+    pricingUnitRounding: "ceil",
+    pricingMinUnits: 1,
+    maxPromptLength: 1000,
+    textInputKey: "text",
+    inputFields: [
+      {
+        key: "text",
+        label: "Text",
+        type: "text",
+        required: true,
+        syncWith: "prompt",
+        maxLength: 1000,
+        description: "Eleven v3 text-to-speech input. Presentation Builder splits longer narration before generation.",
+      },
+      {
+        key: "voice_id",
+        label: "Voice ID",
+        type: "select",
+        required: true,
+        searchable: true,
+        default: "Rachel",
+        options: [
+          { value: "Rachel", label: "Rachel" },
+          { value: "Domi", label: "Domi" },
+          { value: "Bella", label: "Bella" },
+          { value: "Antoni", label: "Antoni" },
+          { value: "Elli", label: "Elli" },
+          { value: "Josh", label: "Josh" },
+          { value: "Arnold", label: "Arnold" },
+          { value: "Adam", label: "Adam" },
+          { value: "Sam", label: "Sam" },
+        ],
+      },
+      { key: "similarity", label: "Similarity", type: "number", default: 0.75, min: 0, max: 1, step: 0.01 },
+      { key: "stability", label: "Stability", type: "number", default: 0.5, min: 0, max: 1, step: 0.01 },
+      { key: "use_speaker_boost", label: "Speaker Boost", type: "boolean", default: true },
+    ],
+    priority: 16,
+    sortOrder: 115,
+  },
+  {
     modelId: WAVESPEED_ELEVENLABS_VOICE_CHANGER_MODEL_ID,
     name: "ElevenLabs Voice Changer",
     description: "WaveSpeed ElevenLabs audio-to-audio voice transformation that preserves timing, emotion, and delivery.",
@@ -684,8 +744,8 @@ const WAVESPEED_AUDIO_MODEL_DEFINITIONS: readonly WaveSpeedAudioModelDefinition[
         description: "Clean background noise before applying the target voice.",
       },
     ],
-    priority: 16,
-    sortOrder: 115,
+    priority: 17,
+    sortOrder: 116,
   },
 ] as const;
 

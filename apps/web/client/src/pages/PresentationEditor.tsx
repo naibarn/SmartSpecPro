@@ -164,6 +164,8 @@ import {
   PresentationArticleGeneratorDialog,
   type PresentationGeneratedSlideDraft,
   type PresentationInsertSlidesResult,
+  type PresentationInsertSlotVideosResult,
+  type PresentationSlotVideoImportAsset,
 } from "@/components/presentation/PresentationArticleGeneratorDialog";
 import { SearchableCombobox } from "@/components/presentation/SearchableCombobox";
 import { SlideAudioPanel } from "@/components/presentation/SlideAudioPanel";
@@ -514,7 +516,19 @@ function convertImportedLayoutElement(
     if (!src) {
       return null;
     }
-    const imageFit = element.fit === "contain" || element.fit === "fill" ? element.fit : "cover";
+    const role = String(element.role ?? "").trim().toLowerCase();
+    const coversWholeSlide = (
+      percentToPixels(element.xPct, canvas.width) === 0
+      && percentToPixels(element.yPct, canvas.height) === 0
+      && Math.abs(percentToPixels(element.wPct, canvas.width) - canvas.width) <= 1
+      && Math.abs(percentToPixels(element.hPct, canvas.height) - canvas.height) <= 1
+    );
+    const isGeneratedFullSlideImage = role === "full-slide" && coversWholeSlide;
+    const imageFit = isGeneratedFullSlideImage
+      ? "contain"
+      : element.fit === "contain" || element.fit === "fill"
+        ? element.fit
+        : "cover";
     return {
       id,
       type: "image",
@@ -573,7 +587,42 @@ function convertImportedLayoutElement(
   return null;
 }
 
-function convertGeneratedSlideJsonToPresentationSlides(
+function normalizeGeneratedSlideContentForImport(
+  input: unknown,
+  fallbackCanvas: PresentationCanvasSize,
+): PresentationSlideContent {
+  const content = ensureSlideContent(input);
+  if (content.visualOnly !== true) {
+    return content;
+  }
+
+  const canvas = content.canvas ?? fallbackCanvas;
+  const normalizedElements = content.elements.map((element) => {
+    if (
+      element.type !== "image"
+      || Math.abs(element.x) > 1
+      || Math.abs(element.y) > 1
+      || Math.abs(element.width - canvas.width) > 1
+      || Math.abs(element.height - canvas.height) > 1
+    ) {
+      return element;
+    }
+    return {
+      ...element,
+      imageFit: "contain" as const,
+      imagePositionX: 50,
+      imagePositionY: 50,
+      imageZoom: 1,
+    };
+  }) satisfies PresentationSlideContent["elements"];
+
+  return {
+    ...content,
+    elements: normalizedElements,
+  };
+}
+
+export function convertGeneratedSlideJsonToPresentationSlides(
   raw: string,
   fallbackCanvas: PresentationCanvasSize,
 ): PreparedImportedSlide[] {
@@ -591,7 +640,7 @@ function convertGeneratedSlideJsonToPresentationSlides(
     if (slide.slideContent && typeof slide.slideContent === "object") {
       return {
         title: extractImportedSlideTitle(slide, index),
-        content: ensureSlideContent(slide.slideContent),
+        content: normalizeGeneratedSlideContentForImport(slide.slideContent, fallbackCanvas),
         notes: normalizedNotes,
       };
     }
@@ -2796,6 +2845,8 @@ export default function PresentationEditor() {
   const reorderSlidesMutation = trpc.presentation.reorderSlides.useMutation();
   const updateSlideMutation = trpc.presentation.updateSlide.useMutation();
   const uploadAndAttachAssetMutation = trpc.presentation.uploadAndAttachAsset.useMutation();
+  const setSlideAudioMutation = trpc.presentation.setSlideAudio.useMutation();
+  const addMediaTaskToLibraryMutation = trpc.media.addTaskToLibrary.useMutation();
   const restoreVersionMutation = trpc.presentation.restoreVersion.useMutation();
   const triggerExportMutation = trpc.presentation.triggerExport.useMutation();
   const customBlocksQuery = trpc.presentation.listCustomBlocks.useQuery({
@@ -7712,6 +7763,165 @@ export default function PresentationEditor() {
     }
   }
 
+  async function handleInsertGeneratedSlotVideos(
+    assets: PresentationSlotVideoImportAsset[],
+    options?: { closeDialog?: boolean; showSuccessToast?: boolean },
+  ): Promise<PresentationInsertSlotVideosResult> {
+    if (!deck) {
+      toast.error(t("dialog.articleBuilder.noActiveDeck"));
+      return { inserted: false };
+    }
+
+    const importableAssets = assets.filter((asset) => asset.videoUrl.trim());
+    if (!importableAssets.length) {
+      toast.error(t("dialog.articleBuilder.noSlotVideosToInsert"));
+      return { inserted: false };
+    }
+
+    const addCompletedTaskToLibrary = async (
+      taskId: string | null | undefined,
+      title: string,
+    ): Promise<number | null> => {
+      const normalizedTaskId = String(taskId ?? "").trim();
+      if (!normalizedTaskId) {
+        return null;
+      }
+      const result = await addMediaTaskToLibraryMutation.mutateAsync({
+        taskId: normalizedTaskId,
+        title: title.slice(0, 255),
+      });
+      const itemId = Number((result as { itemId?: unknown } | null)?.itemId);
+      return Number.isFinite(itemId) && itemId > 0 ? itemId : null;
+    };
+
+    setDeckMutationBusy(true);
+    try {
+      let expectedVersion = getExpectedDeckVersion();
+      let firstCreatedSlideId: number | null = null;
+      let insertedCount = 0;
+      let audioAttachedCount = 0;
+
+      for (const asset of importableAssets) {
+        const audioLibraryItemId = await addCompletedTaskToLibrary(
+          asset.audioTaskId,
+          asset.audioTitle || `${asset.title} audio`,
+        );
+        const durationMs = Math.max(
+          MIN_SLIDE_DURATION_MS,
+          Math.min(
+            MAX_SLIDE_DURATION_MS,
+            Math.round(Math.max(1, asset.durationSeconds ?? 5) * 1000),
+          ),
+        );
+        const videoElement: Extract<PresentationElement, { type: "video" }> = {
+          ...(createElement("video", nextElementId("video")) as Extract<PresentationElement, { type: "video" }>),
+          x: 0,
+          y: 0,
+          width: activeCanvasSize.width,
+          height: activeCanvasSize.height,
+          src: normalizeMediaSourceUrl(asset.videoUrl),
+          poster: normalizeMediaSourceUrl(asset.startFrameUrl ?? ""),
+          title: asset.title,
+          muted: audioLibraryItemId != null,
+          videoFit: "contain",
+          videoPrompt: asset.videoPrompt ?? "",
+          videoModelId: asset.videoModel ?? undefined,
+          videoReferenceUrls: asset.startFrameUrl ? [asset.startFrameUrl] : [],
+        };
+
+        let created: unknown;
+        while (true) {
+          try {
+            created = await addSlideMutation.mutateAsync({
+              deckId: deck.id,
+              expectedVersion,
+              title: asset.title.slice(0, 255) || `Video ${insertedCount + 1}`,
+              slideContent: {
+                canvas: activeCanvasSize,
+                durationMs,
+                background: { type: "color", value: "#000000" },
+                elements: [videoElement],
+              },
+              notes: asset.videoPrompt?.trim() ? asset.videoPrompt.trim().slice(0, 5_000) : undefined,
+            });
+            expectedVersion += 1;
+            break;
+          } catch (error) {
+            if (!isConflictError(error)) {
+              throw error;
+            }
+            const latestVersion = await readLatestDeckVersion();
+            if (latestVersion == null) {
+              throw error;
+            }
+            expectedVersion = latestVersion;
+          }
+        }
+
+        const createdSlideId = Number((created as { id?: unknown } | null)?.id);
+        if (firstCreatedSlideId == null && Number.isFinite(createdSlideId) && createdSlideId > 0) {
+          firstCreatedSlideId = createdSlideId;
+        }
+        insertedCount += 1;
+
+        if (audioLibraryItemId != null && Number.isFinite(createdSlideId) && createdSlideId > 0) {
+          while (true) {
+            try {
+              const result = await setSlideAudioMutation.mutateAsync({
+                deckId: deck.id,
+                slideId: createdSlideId,
+                expectedVersion,
+                audioTrack: {
+                  libraryItemId: audioLibraryItemId,
+                  volume: 1,
+                  startAtMs: 0,
+                  endAtMs: null,
+                },
+              });
+              const nextDeckVersion = Number((result as { deckVersion?: unknown } | null)?.deckVersion);
+              expectedVersion = Number.isFinite(nextDeckVersion) && nextDeckVersion >= 0
+                ? nextDeckVersion
+                : expectedVersion + 1;
+              audioAttachedCount += 1;
+              break;
+            } catch (error) {
+              if (!isConflictError(error)) {
+                throw error;
+              }
+              const latestVersion = await readLatestDeckVersion();
+              if (latestVersion == null) {
+                throw error;
+              }
+              expectedVersion = latestVersion;
+            }
+          }
+        }
+      }
+
+      deckVersionRef.current = expectedVersion;
+      await refreshDeck();
+      if (firstCreatedSlideId != null) {
+        switchToSlide(firstCreatedSlideId);
+      }
+      setLibraryTab("slides");
+      if (options?.closeDialog !== false) {
+        setIsArticleGeneratorDialogOpen(false);
+      }
+      if (options?.showSuccessToast !== false) {
+        const audioSuffix = audioAttachedCount > 0
+          ? t("dialog.articleBuilder.insertSlotVideosAudioSuffix", { count: audioAttachedCount })
+          : "";
+        toast.success(t("dialog.articleBuilder.insertSlotVideosSuccess", { count: insertedCount, audioSuffix }));
+      }
+      return { inserted: true, insertedCount, audioAttachedCount };
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("dialog.articleBuilder.insertSlotVideosError"));
+      return { inserted: false };
+    } finally {
+      setDeckMutationBusy(false);
+    }
+  }
+
   async function handleSaveDeckNote(options?: { forceOverwrite?: boolean }): Promise<boolean> {
     if (!deck) {
       return false;
@@ -11781,6 +11991,7 @@ export default function PresentationEditor() {
           initialCanvasRatio={activeCanvasSize.preset}
           onUseArticle={handleUseGeneratedArticle}
           onInsertSlides={handleInsertGeneratedSlides}
+          onInsertSlotVideos={handleInsertGeneratedSlotVideos}
         />
       )}
       {isMobileViewport && (

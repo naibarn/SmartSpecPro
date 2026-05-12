@@ -76,13 +76,14 @@ export interface PresentationEditorialPlannerOptions {
   imageAssets?: EditorialPlannerImageAssetInput[];
 }
 
-interface PresentationArticlePagePlan {
+export interface PresentationArticlePagePlan {
   pageNumber: number;
   titleHint: string;
   text: string;
   pageIntentHint?: string;
   preferredArchetype?: string;
   recommendedImageCount?: number;
+  estimatedReadSeconds?: number;
 }
 
 export interface PresentationSlideSkillRequestPayload {
@@ -127,6 +128,7 @@ export interface PreparePresentationSlideBundleResult {
   maxPages: number;
   plannedImageCount: number;
   slideSkillLabel: string;
+  article?: string;
   imagePrompts: PresentationSlideImagePrompt[];
   slidePayload: PresentationSlideSkillRequestPayload;
   slidePayloadJson: string;
@@ -185,13 +187,6 @@ function clampSlideCount(value: number): number {
     return 6;
   }
   return Math.max(1, Math.min(20, Math.round(value)));
-}
-
-function clampTargetImageCount(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 8;
-  }
-  return Math.min(20, Math.max(5, Math.round(value)));
 }
 
 function clampPreparedImageCount(value: number, maxPages: number): number {
@@ -452,6 +447,12 @@ function countThaiWordUnits(text: string): number {
   return Math.ceil(thaiChars / 6);
 }
 
+function estimatePageReadSeconds(text: string, language: "th" | "en"): number {
+  const units = language === "th" ? countThaiWordUnits(text) : countEnglishWords(text);
+  const unitsPerSecond = language === "th" ? 3 : 3.4;
+  return Math.max(1, Math.round(units / unitsPerSecond));
+}
+
 function listArticleSections(article: string): string[] {
   const numberedSections = article
     .split(/\n+/)
@@ -555,6 +556,224 @@ function mergeArticlePagePlansToLimit(
       text: tail.map((page) => page.text.trim()).filter(Boolean).join("\n\n"),
     },
   ];
+}
+
+function buildPresentationSemanticPagePlanPrompt(input: {
+  topic: string;
+  article: string;
+  preferredLanguage?: "th" | "en";
+  maxPages: number;
+  exactPageCount?: number;
+  canvasRatio: PresentationSlideCanvasRatio;
+  slideSkillName: string;
+}): string {
+  const language = input.preferredLanguage ?? inferArticleLanguage(input.article || input.topic);
+  const languageLabel = language === "th" ? "Thai" : "English";
+  const textBudget = language === "th"
+    ? "18-24 Thai word units or about 120-160 Thai characters"
+    : "20-28 English words or about 140-180 characters";
+
+  return [
+    "Create a semantic slide-page plan from the source article.",
+    `Topic: ${input.topic.trim()}`,
+    `Language: ${languageLabel} (${language})`,
+    `Canvas ratio: ${input.canvasRatio}`,
+    `Slide skill: ${input.slideSkillName}`,
+    input.exactPageCount
+      ? `Fixed page count: exactly ${clampSlideCount(input.exactPageCount)} pages`
+      : `Maximum pages: ${clampSlideCount(input.maxPages)}`,
+    "Page duration target: each page should be readable in 7-8 seconds.",
+    `Per-page visible text target: ${textBudget}.`,
+    input.exactPageCount
+      ? "Rewrite the article first so the whole story naturally fits the fixed page count. Keep the rewritten article coherent and complete."
+      : "Do not rewrite the whole article; only create coherent page briefs from it.",
+    "",
+    "Rules:",
+    input.exactPageCount
+      ? "- Return exactly the fixed page count. Do not return fewer or more pages."
+      : "- Choose the natural page count from the article, from 1 up to Maximum pages.",
+    "- Keep each page focused on one coherent topic or idea.",
+    "- Do not split a sentence or idea across pages in a way that makes it hard to understand.",
+    "- If a source section is too long, summarize its key point instead of copying all details.",
+    "- Prefer short complete sentences over fragments.",
+    "- Preserve factual meaning from the source article; do not invent new claims.",
+    "- Page 1 may be a concise cover/lead page.",
+    "- The last page may be a closing or summary page only when the article naturally supports it.",
+    "",
+    "Return strict JSON only with this shape:",
+    "{",
+    input.exactPageCount ? "  \"rewritten_article\": \"plain text article rewritten to fit the fixed page count\"," : "",
+    "  \"pages\": [",
+    "    {",
+    "      \"page_number\": 1,",
+    "      \"title_hint\": \"short headline\",",
+    "      \"text\": \"readable page text\",",
+    "      \"page_intent_hint\": \"cover | content | summary | closing\",",
+    "      \"estimated_read_seconds\": 7",
+    "    }",
+    "  ]",
+    "}",
+    "",
+    "<article>",
+    input.article.trim(),
+    "</article>",
+  ].join("\n");
+}
+
+function normalizeSemanticPagePlans(
+  raw: unknown,
+  fallbackPlans: PresentationArticlePagePlan[],
+  input: {
+    maxPages: number;
+    exactPageCount?: number;
+    preferredLanguage?: "th" | "en";
+    fallbackTopic: string;
+  },
+): { pages: PresentationArticlePagePlan[]; warnings: string[]; usedFallback: boolean; rewrittenArticle?: string } {
+  const record = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+  const rawPages = Array.isArray(record.pages) ? record.pages : [];
+  const language = input.preferredLanguage ?? inferArticleLanguage(input.fallbackTopic);
+  const maxPages = clampSlideCount(input.maxPages);
+  const exactPageCount = input.exactPageCount ? clampSlideCount(input.exactPageCount) : null;
+  const pages: PresentationArticlePagePlan[] = [];
+  const warnings: string[] = [];
+  const rewrittenArticle = normalizeGeneratedPresentationArticle(String(record.rewritten_article ?? record.rewrittenArticle ?? "")).trim();
+
+  for (const rawPage of rawPages.slice(0, exactPageCount ?? maxPages)) {
+    if (!rawPage || typeof rawPage !== "object") {
+      continue;
+    }
+    const pageRecord = rawPage as Record<string, unknown>;
+    const titleHint = String(pageRecord.title_hint ?? pageRecord.titleHint ?? "").trim();
+    const text = normalizeGeneratedPresentationArticle(String(pageRecord.text ?? "")).trim();
+    if (!titleHint && !text) {
+      continue;
+    }
+    const estimatedReadSeconds = Number.isFinite(Number(pageRecord.estimated_read_seconds))
+      ? Math.max(1, Math.min(30, Math.round(Number(pageRecord.estimated_read_seconds))))
+      : estimatePageReadSeconds([titleHint, text].filter(Boolean).join("\n\n"), language);
+    if (estimatedReadSeconds > 9) {
+      warnings.push(`Page ${pages.length + 1} may exceed the 7-8 second reading target.`);
+    }
+    pages.push({
+      pageNumber: pages.length + 1,
+      titleHint: titleHint || `${input.fallbackTopic} ${pages.length + 1}`,
+      text: [titleHint, text].filter(Boolean).join("\n\n"),
+      pageIntentHint: String(pageRecord.page_intent_hint ?? pageRecord.pageIntentHint ?? "").trim() || undefined,
+      estimatedReadSeconds,
+    });
+  }
+
+  if (pages.length === 0) {
+    return {
+      pages: fallbackPlans.map((page) => ({
+        ...page,
+        estimatedReadSeconds: estimatePageReadSeconds(page.text, language),
+      })),
+      warnings: ["Semantic page planning returned no usable pages, so deterministic planning was used."],
+      usedFallback: true,
+    };
+  }
+
+  if (exactPageCount && pages.length !== exactPageCount) {
+    warnings.push(`Fixed page planning requested ${exactPageCount} pages but the semantic planner returned ${pages.length}.`);
+  }
+
+  return {
+    pages,
+    warnings,
+    usedFallback: false,
+    rewrittenArticle: rewrittenArticle || (exactPageCount
+      ? [
+          input.fallbackTopic,
+          "",
+          ...pages.map((page) => page.text.trim()).filter(Boolean),
+        ].join("\n\n").trim()
+      : undefined),
+  };
+}
+
+async function buildSemanticPresentationPagePlans(input: {
+  topic: string;
+  article: string;
+  slideSkillId: string;
+  preferredLanguage?: "th" | "en";
+  requiresThinking?: boolean;
+  maxPages: number;
+  exactPageCount?: number;
+  canvasRatio: PresentationSlideCanvasRatio;
+  skill: SkillDefinition;
+  executionPolicy: SkillExecutionPolicyResult;
+  userId: number;
+}): Promise<{
+  pages: PresentationArticlePagePlan[];
+  warnings: string[];
+  modelId?: string;
+  rewrittenArticle?: string;
+}> {
+  const fallbackPlans = buildPresentationPagePlans(input.article, input.topic, input.maxPages);
+  try {
+    const result = await executeSkillLlmWithFallback({
+      messages: [
+        {
+          role: "system",
+          content: [
+            "You are a senior presentation editor. Your only job is semantic pagination.",
+            "Split source articles into coherent page briefs for slide creation.",
+            "Return strict JSON only.",
+          ].join("\n\n"),
+        },
+        {
+          role: "user",
+          content: buildPresentationSemanticPagePlanPrompt({
+            topic: input.topic,
+            article: input.article,
+            preferredLanguage: input.preferredLanguage,
+            maxPages: input.maxPages,
+            exactPageCount: input.exactPageCount,
+            canvasRatio: input.canvasRatio,
+            slideSkillName: input.skill.name || input.skill.id || input.slideSkillId,
+          }),
+        },
+      ],
+      skillSlug: input.slideSkillId,
+      userId: input.userId,
+      executionPolicy: input.executionPolicy,
+      maxModelAttempts: 1,
+      enableThinking: input.requiresThinking || undefined,
+      maxTokens: 4_000,
+    });
+
+    if (!result.success || !result.content?.trim()) {
+      throw new Error(result.error || "Semantic page planning failed");
+    }
+
+    const normalized = normalizeSemanticPagePlans(safeJsonParse(result.content), fallbackPlans, {
+      maxPages: input.maxPages,
+      preferredLanguage: input.preferredLanguage,
+      fallbackTopic: input.topic,
+      exactPageCount: input.exactPageCount,
+    });
+    if (!normalized.usedFallback) {
+      await chargePresentationSkillLlmUsage({
+        userId: input.userId,
+        skillSlug: input.slideSkillId,
+        operation: "presentation.semantic_page_plan",
+        result,
+      });
+    }
+    return {
+      pages: normalized.pages,
+      warnings: normalized.warnings,
+      modelId: result.modelId,
+      rewrittenArticle: normalized.rewrittenArticle,
+    };
+  } catch {
+    return {
+      pages: fallbackPlans,
+      warnings: ["Semantic page planning failed, so deterministic planning was used."],
+    };
+  }
 }
 
 function chunkParagraphsIntoPagePlans(
@@ -956,8 +1175,7 @@ export function buildPresentationArticlePrompt(input: Pick<
   GeneratePresentationArticleInput,
   "topic" | "preferredLanguage" | "requiresThinking" | "requiresWebSearch" | "targetImageCount"
 >): string {
-  const targetImageCount = clampTargetImageCount(input.targetImageCount);
-  const targetWords = Math.min(2400, Math.max(800, targetImageCount * 150));
+  const targetWords = 1_200;
   const language = input.preferredLanguage ?? inferArticleLanguage(input.topic);
   const languageLabel = language === "th" ? "Thai" : "English";
 
@@ -965,12 +1183,11 @@ export function buildPresentationArticlePrompt(input: Pick<
     `Topic: ${input.topic.trim()}`,
     `Preferred language: ${languageLabel}`,
     `Language code: ${language}`,
-    `Supporting image plan: ${targetImageCount} images`,
     `Web search priority: ${input.requiresWebSearch ? "Use current facts when available." : "Use general knowledge unless the topic already includes current facts."}`,
     `Thinking mode: ${input.requiresThinking ? "Use deeper reasoning before writing." : "Keep the reasoning lightweight and direct."}`,
     "Write a finished source article for a future presentation workflow.",
-    "The article will later be turned into 5-20 supporting images and then converted into a new slide deck.",
-    `Organize the article into ${targetImageCount} numbered sections so each section can later guide one supporting image.`,
+    "The article will later be semantically split into slide pages by a planning model.",
+    "Organize the article into coherent numbered sections, but do not optimize around a fixed image count.",
     `Aim for about ${targetWords} words total.`,
     `Write the entire article in ${languageLabel}.`,
     "Start with the article title on the first line.",
@@ -2212,8 +2429,9 @@ function buildFallbackImagePromptPlan(
   input: PreparePresentationSlideBundleInput,
   maxPages: number,
   plannedImageCount: number,
+  pagePlansOverride?: PresentationArticlePagePlan[],
 ): PresentationSlideImagePrompt[] {
-  const pagePlans = buildPresentationPagePlans(input.article, input.topic, maxPages);
+  const pagePlans = pagePlansOverride ?? buildPresentationPagePlans(input.article, input.topic, maxPages);
   const title = extractArticleTitle(input.article, input.topic);
   const prompts: PresentationSlideImagePrompt[] = [];
   const language = input.preferredLanguage ?? inferArticleLanguage(input.article);
@@ -2318,9 +2536,10 @@ function buildConstrainedImagePromptPlanFromExistingSlots(input: {
   topic: string;
   preferredLanguage?: "th" | "en";
   maxPages: number;
+  pagePlans?: PresentationArticlePagePlan[];
 }): PresentationSlideImagePrompt[] {
   const language = input.preferredLanguage ?? inferArticleLanguage(input.article || input.topic);
-  const pagePlans = buildPresentationPagePlans(input.article, input.topic, input.maxPages);
+  const pagePlans = input.pagePlans ?? buildPresentationPagePlans(input.article, input.topic, input.maxPages);
   const pagePlanByPage = new Map(pagePlans.map((page) => [page.pageNumber, page] as const));
   const promptBySlot = new Map<string, PresentationSlideImagePrompt>();
 
@@ -2425,7 +2644,7 @@ export function buildPresentationImagePromptPlanPrompt(input: {
     `Preferred language: ${languageLabel}`,
     `Language code: ${language}`,
     `Target max pages: ${clampSlideCount(input.maxPages)}`,
-    `Target image prompts: ${clampPreparedImageCount(input.plannedImageCount, input.maxPages)}`,
+    `Target image prompts: ${Math.max(1, Math.min(60, Math.round(input.plannedImageCount)))}`,
     `Canvas ratio: ${normalizeSlideCanvasRatio(input.canvasRatio)}`,
     `Slide skill: ${input.slideSkillName?.trim() || "Not specified"}`,
     input.imagePromptContext?.trim()
@@ -2588,6 +2807,7 @@ export function buildPresentationSlideRequestPayload(input: {
   imageAssets?: PresentationSlideImageAsset[];
   imagePromptContext?: string;
   editorialPlannerOptions?: PresentationEditorialPlannerOptions;
+  pagePlans?: PresentationArticlePagePlan[];
   pageImagePlanOverrides?: Array<{
     pageNumber: number;
     maxImagesOverride: number;
@@ -2607,7 +2827,10 @@ export function buildPresentationSlideRequestPayload(input: {
     maxPages: input.maxPages,
     editorialPlannerOptions: input.editorialPlannerOptions,
   });
-  const pagePlans = buildPresentationPagePlans(normalizedArticle, input.topic, effectiveMaxPages);
+  const pagePlans = input.pagePlans?.length
+    ? mergeArticlePagePlansToLimit(input.pagePlans, effectiveMaxPages)
+        .map((page, index) => ({ ...page, pageNumber: index + 1 }))
+    : buildPresentationPagePlans(normalizedArticle, input.topic, effectiveMaxPages);
 
   if (normalizedSkillId === EDITORIAL_LAYOUT_PLANNER_SKILL_ID) {
     const requestedPageCount = input.editorialPlannerOptions?.pageCountMode === "fixed"
@@ -2797,7 +3020,22 @@ export async function preparePresentationSlideBundle(
     maxPages: estimatePresentationMaxPages(trimmedArticle, input.preferredLanguage),
     editorialPlannerOptions: input.editorialPlannerOptions,
   });
-  const basePagePlans = buildPresentationPagePlans(trimmedArticle, input.topic, maxPages);
+  const { skill, executionSkill, executionPolicy } = await resolveSlideSkillForPlanning(input.slideSkillId, input);
+  const semanticPagePlan = await buildSemanticPresentationPagePlans({
+    topic: input.topic,
+    article: trimmedArticle,
+    slideSkillId: input.slideSkillId,
+    preferredLanguage: input.preferredLanguage,
+    requiresThinking: input.requiresThinking,
+    maxPages,
+    exactPageCount: input.editorialPlannerOptions?.pageCountMode === "fixed" ? maxPages : undefined,
+    canvasRatio: input.canvasRatio,
+    skill,
+    executionPolicy,
+    userId: input.userId,
+  });
+  const plannedArticle = semanticPagePlan.rewrittenArticle || trimmedArticle;
+  const basePagePlans = semanticPagePlan.pages;
   const modernEditorialCompilation = isDeterministicEditorialSlideSkill(input.slideSkillId)
     ? compileModernEditorialDeck({
         topic: input.topic,
@@ -2810,7 +3048,7 @@ export async function preparePresentationSlideBundle(
     ? existingImageAssets.length
     : modernEditorialCompilation
       ? modernEditorialCompilation.plannedImageCount
-      : clampPreparedImageCount(input.targetImageCount, maxPages);
+      : Math.max(1, basePagePlans.length);
   const fallbackPlan = modernEditorialCompilation
     ? buildFallbackImagePromptPlanFromModernEditorialPages({
         preferredLanguage: input.preferredLanguage,
@@ -2818,24 +3056,24 @@ export async function preparePresentationSlideBundle(
         pages: modernEditorialCompilation.pages,
       })
     : buildFallbackImagePromptPlan(
-        { ...input, article: trimmedArticle },
+        { ...input, article: plannedArticle },
         maxPages,
         plannedImageCount,
+        basePagePlans,
       );
   const constrainedFallbackPlan = existingImageAssets.length > 0
     ? buildConstrainedImagePromptPlanFromExistingSlots({
         plannedPrompts: fallbackPlan,
         existingImageAssets,
-        article: trimmedArticle,
+        article: plannedArticle,
         topic: input.topic,
         preferredLanguage: input.preferredLanguage,
         maxPages,
+        pagePlans: basePagePlans,
       })
     : fallbackPlan;
-  const { skill, executionSkill, executionPolicy } = await resolveSlideSkillForPlanning(input.slideSkillId, input);
-
   let imagePrompts = constrainedFallbackPlan;
-  let modelId: string | undefined;
+  let modelId: string | undefined = semanticPagePlan.modelId;
   try {
     const result = await executeSkillLlmWithFallback({
       messages: [
@@ -2853,21 +3091,29 @@ export async function preparePresentationSlideBundle(
           role: "user",
           content: buildPresentationImagePromptPlanPrompt({
             topic: input.topic,
-            article: trimmedArticle,
+            article: plannedArticle,
             preferredLanguage: input.preferredLanguage,
             maxPages,
             plannedImageCount,
             canvasRatio: input.canvasRatio,
             imagePromptContext: input.imagePromptContext,
             slideSkillName: skill.name || skill.id || input.slideSkillId,
-            pageBriefs: modernEditorialCompilation?.pages.map((page) => ({
-              pageNumber: page.pageNumber,
-              titleHint: page.titleHint,
-              pageIntentHint: page.pageIntentHint,
-              preferredArchetype: page.preferredArchetype,
-              recommendedImageCount: page.recommendedImageCount,
-              text: page.compiledText,
-            })),
+            pageBriefs: modernEditorialCompilation
+              ? modernEditorialCompilation.pages.map((page) => ({
+                  pageNumber: page.pageNumber,
+                  titleHint: page.titleHint,
+                  pageIntentHint: page.pageIntentHint,
+                  preferredArchetype: page.preferredArchetype,
+                  recommendedImageCount: page.recommendedImageCount,
+                  text: page.compiledText,
+                }))
+              : basePagePlans.map((page) => ({
+                  pageNumber: page.pageNumber,
+                  titleHint: page.titleHint,
+                  pageIntentHint: page.pageIntentHint,
+                  recommendedImageCount: imagePrompts.filter((prompt) => prompt.pageNumber === page.pageNumber).length || 1,
+                  text: page.text,
+                })),
           }),
         },
       ],
@@ -2896,10 +3142,11 @@ export async function preparePresentationSlideBundle(
         ? buildConstrainedImagePromptPlanFromExistingSlots({
             plannedPrompts: normalizedPrompts,
             existingImageAssets,
-            article: trimmedArticle,
+            article: plannedArticle,
             topic: input.topic,
             preferredLanguage: input.preferredLanguage,
             maxPages,
+            pagePlans: basePagePlans,
           })
         : normalizedPrompts;
       modelId = result.modelId;
@@ -2922,12 +3169,13 @@ export async function preparePresentationSlideBundle(
 
   const slidePayload = buildPresentationSlideRequestPayload({
     topic: input.topic,
-    article: trimmedArticle,
+    article: plannedArticle,
     slideSkillId: input.slideSkillId,
     preferredLanguage: input.preferredLanguage,
     canvasRatio: input.canvasRatio,
     outputFormats: input.outputFormats,
     maxPages,
+    pagePlans: basePagePlans,
     imageAssets: existingImageAssets,
     imagePromptContext: input.imagePromptContext,
     editorialPlannerOptions: input.editorialPlannerOptions,
@@ -2938,12 +3186,36 @@ export async function preparePresentationSlideBundle(
     maxPages,
     plannedImageCount,
     slideSkillLabel: skill.name || skill.id || input.slideSkillId,
+    article: semanticPagePlan.rewrittenArticle,
     imagePrompts,
     slidePayload,
     slidePayloadJson: JSON.stringify(slidePayload, null, 2),
     modelId,
-    preflightPages: modernEditorialCompilation?.pages,
-    preflightWarnings: modernEditorialCompilation?.warnings ?? [],
+    preflightPages: modernEditorialCompilation?.pages ?? basePagePlans.map((page) => ({
+      pageNumber: page.pageNumber,
+      titleHint: page.titleHint,
+      compiledText: page.text,
+      pageIntentHint: page.pageIntentHint ?? (page.pageNumber === 1 ? "cover" : "content"),
+      preferredArchetype: "text_focus",
+      forceArchetype: null,
+      archetypeMode: "guided",
+      recommendedImageCount: imagePrompts.filter((prompt) => prompt.pageNumber === page.pageNumber).length || 1,
+      maxImagesOverride: imagePrompts.filter((prompt) => prompt.pageNumber === page.pageNumber).length || 1,
+      warnings: page.estimatedReadSeconds && page.estimatedReadSeconds > 9
+        ? [`Estimated read time is ${page.estimatedReadSeconds}s.`]
+        : [],
+      structure: {
+        paragraphCount: page.text.split(/\n{2,}/).filter((part) => part.trim()).length,
+        bulletCount: (page.text.match(/(?:^|\n)\s*(?:[-*•]|\d+[.)])\s+/g) ?? []).length,
+        workflowStepCount: 0,
+        timelinePhaseCount: 0,
+        sectionCount: 1,
+      },
+    })),
+    preflightWarnings: [
+      ...semanticPagePlan.warnings,
+      ...(modernEditorialCompilation?.warnings ?? []),
+    ],
   };
 }
 
