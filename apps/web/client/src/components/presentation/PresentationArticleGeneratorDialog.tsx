@@ -825,6 +825,15 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function isInsufficientCreditsError(error: unknown): boolean {
+  const rawMessage = error instanceof Error
+    ? error.message
+    : typeof error === "string"
+      ? error
+      : "";
+  return rawMessage.toLowerCase().includes("insufficient credits");
+}
+
 function isApiInfrastructureError(error: unknown): boolean {
   const rawMessage = error instanceof Error
     ? error.message
@@ -4715,7 +4724,7 @@ export function PresentationArticleGeneratorDialog({
           upsertGeneratedSlotVideo(nextAsset);
         } catch (error) {
           failedSlots.push(`${currentSlot.pageNumber}: ${getErrorMessage(error, t("dialog.articleBuilder.generateSlotVideosError"))}`);
-          if (slot || isApiInfrastructureError(error)) {
+          if (slot || isInsufficientCreditsError(error) || isApiInfrastructureError(error)) {
             throw error;
           }
         }
