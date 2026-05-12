@@ -802,6 +802,14 @@ function getErrorMessage(error: unknown, fallback: string): string {
       : "";
   if (rawMessage) {
     const normalized = rawMessage.toLowerCase();
+    const insufficientCreditsMatch = rawMessage.match(/insufficient credits\.?\s*required:\s*(\d+(?:\.\d+)?)\s*for\s*(\d+(?:\.\d+)?)s\s*video/i);
+    if (insufficientCreditsMatch) {
+      const [, requiredCredits, durationSeconds] = insufficientCreditsMatch;
+      return `เครดิตไม่พอ: ต้องใช้ ${requiredCredits} เครดิตสำหรับวิดีโอ ${durationSeconds} วินาที กรุณาเติมเครดิต หรือเลือกโมเดล/ความยาวที่ใช้เครดิตน้อยลง`;
+    }
+    if (normalized.includes("insufficient credits")) {
+      return `เครดิตไม่พอ: ${rawMessage}`;
+    }
     if (
       normalized.includes("unexpected token '<'")
       || normalized.includes("<!doctype")
@@ -2102,6 +2110,7 @@ export function PresentationArticleGeneratorDialog({
   const [imageGenerationProgress, setImageGenerationProgress] = useState<string>("");
   const [slotAudioGenerationProgress, setSlotAudioGenerationProgress] = useState<string>("");
   const [slotVideoGenerationProgress, setSlotVideoGenerationProgress] = useState<string>("");
+  const [slotVideoGenerationError, setSlotVideoGenerationError] = useState<string>("");
   const [activeSlotAudioKey, setActiveSlotAudioKey] = useState<string | null>(null);
   const [activeSlotVideoKey, setActiveSlotVideoKey] = useState<string | null>(null);
   const [slotPickerKey, setSlotPickerKey] = useState<string | null>(null);
@@ -3121,6 +3130,7 @@ export function PresentationArticleGeneratorDialog({
       setImageGenerationProgress("");
       setSlotAudioGenerationProgress("");
       setSlotVideoGenerationProgress("");
+      setSlotVideoGenerationError("");
       setActiveSlotAudioKey(null);
       setActiveSlotVideoKey(null);
       setSlotPickerKey(null);
@@ -3184,6 +3194,7 @@ export function PresentationArticleGeneratorDialog({
     setImageGenerationProgress("");
     setSlotAudioGenerationProgress("");
     setSlotVideoGenerationProgress("");
+    setSlotVideoGenerationError("");
     setActiveSlotAudioKey(null);
     setActiveSlotVideoKey(null);
     setSlotPickerKey(null);
@@ -4674,20 +4685,26 @@ export function PresentationArticleGeneratorDialog({
   const handleGenerateSlotVideos = async (slot?: typeof preflightSlotPlans[number]) => {
     const slots = slot ? [slot] : preflightSlotPlans;
     if (slots.length === 0) {
-      toast.error(slotVideoBlockedHint ?? t("dialog.articleBuilder.generateSlotVideosError"));
+      const message = slotVideoBlockedHint ?? t("dialog.articleBuilder.generateSlotVideosError");
+      setSlotVideoGenerationError(message);
+      toast.error(message);
       return;
     }
     if (slotVideoBlockedHint) {
+      setSlotVideoGenerationError(slotVideoBlockedHint);
       toast.error(slotVideoBlockedHint);
       return;
     }
     const missingStartFrameSlot = slots.find((currentSlot) => !generatedImageByPage.get(currentSlot.pageNumber)?.url);
     if (missingStartFrameSlot || (!slot && slotVideoBlockedHint)) {
-      toast.error(slotVideoBlockedHint ?? t("dialog.articleBuilder.generateSlotVideosError"));
+      const message = slotVideoBlockedHint ?? t("dialog.articleBuilder.generateSlotVideosError");
+      setSlotVideoGenerationError(message);
+      toast.error(message);
       return;
     }
     setIsGeneratingSlotVideos(true);
     setSlotVideoGenerationProgress(`0/${slots.length}`);
+    setSlotVideoGenerationError("");
     let completedCount = 0;
     const failedSlots: string[] = [];
     try {
@@ -4706,12 +4723,17 @@ export function PresentationArticleGeneratorDialog({
         setSlotVideoGenerationProgress(`${completedCount}/${slots.length}`);
       }
       if (failedSlots.length > 0) {
+        const message = `${t("dialog.articleBuilder.generateSlotVideosError")} (${failedSlots.length}/${slots.length})\n${failedSlots.join("\n")}`;
+        setSlotVideoGenerationError(message);
         toast.error(`${t("dialog.articleBuilder.generateSlotVideosError")} (${failedSlots.length}/${slots.length})`);
       } else {
+        setSlotVideoGenerationError("");
         toast.success(t("dialog.articleBuilder.generateSlotVideosSuccess"));
       }
     } catch (error) {
-      toast.error(getErrorMessage(error, t("dialog.articleBuilder.generateSlotVideosError")));
+      const message = getErrorMessage(error, t("dialog.articleBuilder.generateSlotVideosError"));
+      setSlotVideoGenerationError(message);
+      toast.error(message);
     } finally {
       setIsGeneratingSlotVideos(false);
       setActiveSlotVideoKey(null);
@@ -6622,6 +6644,15 @@ export function PresentationArticleGeneratorDialog({
                       {slotVideoBlockedHint ? (
                         <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-800">
                           {slotVideoBlockedHint}
+                        </div>
+                      ) : null}
+                      {slotVideoGenerationError ? (
+                        <div
+                          role="alert"
+                          className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-5 text-rose-800"
+                        >
+                          <div className="font-semibold">สร้างวิดีโอไม่สำเร็จ</div>
+                          <div className="mt-1 whitespace-pre-wrap">{slotVideoGenerationError}</div>
                         </div>
                       ) : null}
                       <div className="flex justify-end">
