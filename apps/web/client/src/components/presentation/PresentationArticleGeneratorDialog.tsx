@@ -1251,6 +1251,12 @@ function isImportableSlotVideoUrl(videoUrl: string | null | undefined, startFram
   return !isLikelyImageMediaUrl(normalizedVideoUrl) && !isLikelyAudioMediaUrl(normalizedVideoUrl);
 }
 
+function isSameGeneratedMediaUrl(left: string | null | undefined, right: string | null | undefined): boolean {
+  const normalizedLeft = getComparableMediaUrl(left);
+  const normalizedRight = getComparableMediaUrl(right);
+  return Boolean(normalizedLeft && normalizedRight && normalizedLeft === normalizedRight);
+}
+
 function extractTaskResultUrl(task: unknown): string | null {
   if (!task || typeof task !== "object") {
     return null;
@@ -2791,6 +2797,15 @@ export function PresentationArticleGeneratorDialog({
     () => splitTextByLimits(fullAudioNarrationText, AUDIO_TEXT_BYTE_LIMIT, selectedAudioPromptCharacterLimit),
     [fullAudioNarrationText, selectedAudioPromptCharacterLimit],
   );
+  const generatedImageByPage = useMemo(() => {
+    const map = new Map<number, GeneratedImageAsset>();
+    for (const asset of normalizedGeneratedImages.slice().sort((left, right) => left.imageIndex - right.imageIndex)) {
+      if (!map.has(asset.pageNumber)) {
+        map.set(asset.pageNumber, asset);
+      }
+    }
+    return map;
+  }, [normalizedGeneratedImages]);
   const generatedSlotVideoByPage = useMemo(() => {
     const map = new Map<number, GeneratedSlotVideoAsset>();
     for (const asset of generatedSlotVideos) {
@@ -2802,7 +2817,11 @@ export function PresentationArticleGeneratorDialog({
     const assets: PresentationSlotVideoImportAsset[] = [];
     for (const slot of preflightSlotPlans) {
       const videoAsset = generatedSlotVideoByPage.get(slot.pageNumber);
+      const imageAsset = generatedImageByPage.get(slot.pageNumber);
       if (!videoAsset || !isImportableSlotVideoUrl(videoAsset.url, videoAsset.startFrameUrl)) {
+        continue;
+      }
+      if (!imageAsset || !isSameGeneratedMediaUrl(videoAsset.startFrameUrl, imageAsset.url)) {
         continue;
       }
       const audioAsset = generatedSlotAudioByPage.get(slot.pageNumber);
@@ -2821,7 +2840,38 @@ export function PresentationArticleGeneratorDialog({
       });
     }
     return assets;
-  }, [generatedSlotAudioByPage, generatedSlotVideoByPage, preflightSlotPlans, videoDurationSeconds]);
+  }, [generatedImageByPage, generatedSlotAudioByPage, generatedSlotVideoByPage, preflightSlotPlans, videoDurationSeconds]);
+  const slotVideoImportIssueMessage = useMemo(() => {
+    if (preflightSlotPlans.length === 0 || slotVideoImportAssets.length >= preflightSlotPlans.length) {
+      return null;
+    }
+
+    const missingPages: number[] = [];
+    const stalePages: number[] = [];
+    const invalidPages: number[] = [];
+    for (const slot of preflightSlotPlans) {
+      const videoAsset = generatedSlotVideoByPage.get(slot.pageNumber);
+      const imageAsset = generatedImageByPage.get(slot.pageNumber);
+      if (!videoAsset) {
+        missingPages.push(slot.pageNumber);
+        continue;
+      }
+      if (!isImportableSlotVideoUrl(videoAsset.url, videoAsset.startFrameUrl)) {
+        invalidPages.push(slot.pageNumber);
+        continue;
+      }
+      if (!imageAsset || !isSameGeneratedMediaUrl(videoAsset.startFrameUrl, imageAsset.url)) {
+        stalePages.push(slot.pageNumber);
+      }
+    }
+
+    const details = [
+      missingPages.length ? `ยังไม่มีวิดีโอ Page ${missingPages.join(", ")}` : "",
+      stalePages.length ? `วิดีโอไม่ตรงกับ start frame ปัจจุบัน Page ${stalePages.join(", ")}` : "",
+      invalidPages.length ? `URL ไม่ใช่วิดีโอ Page ${invalidPages.join(", ")}` : "",
+    ].filter(Boolean).join(" · ");
+    return `วิดีโอพร้อมนำเข้า ${slotVideoImportAssets.length}/${preflightSlotPlans.length}. ${details}`;
+  }, [generatedImageByPage, generatedSlotVideoByPage, preflightSlotPlans, slotVideoImportAssets.length]);
   const projectAudioImportAssets = useMemo<PresentationSlotVideoImportAudioAsset[]>(
     () => generatedFullAudioAssets.map((asset) => ({
       title: asset.title,
@@ -2833,15 +2883,6 @@ export function PresentationArticleGeneratorDialog({
     })),
     [generatedFullAudioAssets],
   );
-  const generatedImageByPage = useMemo(() => {
-    const map = new Map<number, GeneratedImageAsset>();
-    for (const asset of normalizedGeneratedImages.slice().sort((left, right) => left.imageIndex - right.imageIndex)) {
-      if (!map.has(asset.pageNumber)) {
-        map.set(asset.pageNumber, asset);
-      }
-    }
-    return map;
-  }, [normalizedGeneratedImages]);
   const slotVideoCanvasRatioBlockedHint = SUPPORTED_SLOT_VIDEO_RATIOS.includes(canvasRatio)
     ? null
     : `อัตราส่วน ${canvasRatio} ยังไม่รองรับการสร้างเสียง/วิดีโอใน wizard นี้ กรุณาเลือก 16:9 หรือ 9:16 ก่อน`;
@@ -2903,7 +2944,7 @@ export function PresentationArticleGeneratorDialog({
     if (slotVideoCanvasRatioBlockedHint) {
       return "disabled";
     }
-    if (preflightSlotPlans.length > 0 && generatedSlotVideos.length >= preflightSlotPlans.length) {
+    if (preflightSlotPlans.length > 0 && slotVideoImportAssets.length >= preflightSlotPlans.length) {
       return "done";
     }
     return normalizedGeneratedImages.length > 0 ? "ready" : "idle";
@@ -2911,10 +2952,10 @@ export function PresentationArticleGeneratorDialog({
     bundleNeedsRefreshAfterSkillChange,
     executeSkillMutation.isPending,
     generateVideoAsyncMutation.isPending,
-    generatedSlotVideos.length,
     isGeneratingSlotVideos,
     normalizedGeneratedImages.length,
     preflightSlotPlans.length,
+    slotVideoImportAssets.length,
     slotVideoCanvasRatioBlockedHint,
   ]);
   const bundleRefreshHint = bundleNeedsRefreshAfterSkillChange
@@ -6769,7 +6810,7 @@ export function PresentationArticleGeneratorDialog({
                           </p>
                         </div>
                         <Badge variant="outline">
-                          {generatedSlotVideos.length}/{preflightSlotPlans.length}
+                          {slotVideoImportAssets.length}/{preflightSlotPlans.length}
                         </Badge>
                       </div>
                       <div className="grid gap-3 lg:grid-cols-4">
@@ -7185,6 +7226,11 @@ export function PresentationArticleGeneratorDialog({
                 onClick={() => {
                   if (!onInsertSlotVideos || !canInsertGeneratedSlotVideos) {
                     toast.error(t("dialog.articleBuilder.noSlotVideosToInsert"));
+                    return;
+                  }
+                  if (slotVideoImportIssueMessage) {
+                    setSlotVideoGenerationError(slotVideoImportIssueMessage);
+                    toast.error(slotVideoImportIssueMessage);
                     return;
                   }
                   void onInsertSlotVideos(slotVideoImportAssets, {
