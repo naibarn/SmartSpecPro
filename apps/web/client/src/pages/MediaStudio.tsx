@@ -245,6 +245,7 @@ const HISTORY_GALLERY_PUBLIC_GALLERY_MAX = 100;
 const HISTORY_GALLERY_SHARED_GROUP_MAX = 50;
 const GEMINI_3_1_FLASH_TTS_MODEL_ID = "fal-ai/gemini-3.1-flash-tts";
 const ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID = "elevenlabs/text-to-speech";
+const ELEVENLABS_TEXT_TO_DIALOGUE_MODEL_ID = "elevenlabs/text-to-dialogue";
 const ELEVENLABS_VOICE_CHANGER_MODEL_ID = "elevenlabs/voice-changer";
 const ELEVENLABS_SPEECH_TO_TEXT_MODEL_ID = "elevenlabs/speech-to-text";
 const ELEVENLABS_SOUND_EFFECTS_MODEL_ID = "elevenlabs/sound-effects";
@@ -253,6 +254,7 @@ const WAVESPEED_ELEVENLABS_VOICE_CHANGER_MODEL_ID = "wavespeed-ai/elevenlabs/voi
 const AUDIO_WORKFLOW_MODEL_IDS: Record<AudioWorkflow, Set<string>> = {
   tts: new Set([
     ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID,
+    ELEVENLABS_TEXT_TO_DIALOGUE_MODEL_ID,
     GEMINI_3_1_FLASH_TTS_MODEL_ID,
     "alibaba/qwen3-tts-flash",
     "google/gemini-2.5-flash/text-to-speech",

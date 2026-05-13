@@ -208,9 +208,10 @@ describe("PROVIDER_TEMPLATES — ElevenLabs direct entry", () => {
     expect(elevenLabsTemplate?.baseUrl).toBe("https://api.elevenlabs.io");
     expect(elevenLabsTemplate?.defaultModel).toBe("elevenlabs/text-to-speech");
     expect(elevenLabsTemplate?.providerType).toBe("audio");
-    expect(elevenLabsTemplate?.availableModels).toHaveLength(5);
+    expect(elevenLabsTemplate?.availableModels).toHaveLength(6);
     expect(elevenLabsTemplate?.availableModels).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "elevenlabs/text-to-speech", type: "audio" }),
+      expect.objectContaining({ id: "elevenlabs/text-to-dialogue", type: "audio" }),
       expect.objectContaining({ id: "elevenlabs/voice-changer", type: "audio" }),
       expect.objectContaining({ id: "elevenlabs/speech-to-text", type: "audio" }),
       expect.objectContaining({ id: "elevenlabs/sound-effects", type: "audio" }),

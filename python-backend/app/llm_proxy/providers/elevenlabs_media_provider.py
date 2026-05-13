@@ -73,6 +73,31 @@ class ElevenLabsMediaProvider:
         await self._raise_for_status(response)
         return _binary_result(response, output_format=output_format, capability="text_to_speech")
 
+    async def generate_text_to_dialogue(self, payload: dict[str, Any]) -> ElevenLabsBinaryResult:
+        inputs = _normalize_dialogue_inputs(payload)
+        body = _compact_json_payload(
+            payload,
+            exclude={
+                "text",
+                "voice",
+                "voice_id",
+                "output_format",
+                "stability",
+            },
+        )
+        body["inputs"] = inputs
+        if "settings" not in body and payload.get("stability") is not None:
+            body["settings"] = {"stability": payload["stability"]}
+        output_format = _optional_string(payload.get("output_format"))
+        response = await self.client.post(
+            self._url("/v1/text-to-dialogue"),
+            headers=self._headers(accept="audio/mpeg"),
+            params=_output_format_params(output_format),
+            json=body,
+        )
+        await self._raise_for_status(response)
+        return _binary_result(response, output_format=output_format, capability="text_to_dialogue")
+
     async def generate_sound_effect(self, payload: dict[str, Any]) -> ElevenLabsBinaryResult:
         body = _compact_json_payload(payload, exclude={"output_format"})
         if "text" not in body:
@@ -185,6 +210,30 @@ def _required_string(payload: dict[str, Any], key: str) -> str:
 
 def _optional_string(value: Any) -> Optional[str]:
     return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _normalize_dialogue_inputs(payload: dict[str, Any]) -> list[dict[str, str]]:
+    raw_inputs = payload.get("inputs")
+    if raw_inputs is None:
+        raw_inputs = payload.get("dialogue")
+    if raw_inputs is None:
+        text = _required_string(payload, "text")
+        voice_id = _required_string(payload, "voice_id")
+        raw_inputs = [{"text": text, "voice_id": voice_id}]
+    if not isinstance(raw_inputs, list) or not raw_inputs:
+        raise ElevenLabsMediaError("ElevenLabs field 'inputs' must be a non-empty list")
+
+    normalized: list[dict[str, str]] = []
+    for index, item in enumerate(raw_inputs):
+        if not isinstance(item, dict):
+            raise ElevenLabsMediaError(f"ElevenLabs dialogue input {index + 1} must be an object")
+        text = _required_string(item, "text")
+        voice_id_value = item.get("voice_id")
+        if voice_id_value is None:
+            voice_id_value = item.get("voice")
+        voice_id = _required_string({"voice_id": voice_id_value}, "voice_id")
+        normalized.append({"text": text, "voice_id": voice_id})
+    return normalized
 
 
 def _compact_json_payload(payload: dict[str, Any], *, exclude: set[str]) -> dict[str, Any]:

@@ -2052,6 +2052,8 @@ class LLMGateway:
                 )
                 if capability == "voice_changer":
                     provider_result = await client.convert_voice(payload)
+                elif capability == "text_to_dialogue":
+                    provider_result = await client.generate_text_to_dialogue(payload)
                 elif capability == "speech_to_text":
                     provider_result = await client.transcribe(payload)
                 elif capability == "sound_effects":

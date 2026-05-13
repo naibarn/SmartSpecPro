@@ -23,6 +23,7 @@ import {
   normalizeWaveSpeedBaseUrl,
   sanitizeMediaModelConfigJson,
   ELEVENLABS_PROVIDER,
+  ELEVENLABS_TEXT_TO_DIALOGUE_MODEL_ID,
   ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID,
   ELEVENLABS_SPEECH_TO_TEXT_MODEL_ID,
   ELEVENLABS_SOUND_EFFECTS_MODEL_ID,
@@ -435,11 +436,12 @@ describe("mediaProviderUtils", () => {
     const seeds = buildElevenLabsModelSeeds();
     const providerModels = getElevenLabsProviderAvailableModels();
 
-    expect(seeds).toHaveLength(5);
-    expect(providerModels).toHaveLength(5);
+    expect(seeds).toHaveLength(6);
+    expect(providerModels).toHaveLength(6);
     expect(seeds.map((seed) => seed.modelId)).toEqual([
       ELEVENLABS_VOICE_CHANGER_MODEL_ID,
       ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID,
+      ELEVENLABS_TEXT_TO_DIALOGUE_MODEL_ID,
       ELEVENLABS_SPEECH_TO_TEXT_MODEL_ID,
       ELEVENLABS_SOUND_EFFECTS_MODEL_ID,
       ELEVENLABS_VOICE_ISOLATOR_MODEL_ID,
@@ -447,6 +449,7 @@ describe("mediaProviderUtils", () => {
     expect(seeds.every((seed) => seed.provider === ELEVENLABS_PROVIDER)).toBe(true);
 
     const tts = buildElevenLabsModelConfigJson(ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID);
+    const dialogue = buildElevenLabsModelConfigJson(ELEVENLABS_TEXT_TO_DIALOGUE_MODEL_ID);
     const stt = buildElevenLabsModelConfigJson(ELEVENLABS_SPEECH_TO_TEXT_MODEL_ID);
     const voiceChanger = buildElevenLabsModelConfigJson(ELEVENLABS_VOICE_CHANGER_MODEL_ID);
     const soundEffects = buildElevenLabsModelConfigJson(ELEVENLABS_SOUND_EFFECTS_MODEL_ID);
@@ -462,6 +465,41 @@ describe("mediaProviderUtils", () => {
       pricingUnitMetric: "characters",
       pricingUnitField: "text",
     });
+    expect(dialogue).toMatchObject({
+      elevenlabsCapability: "text_to_dialogue",
+      apiEndpoint: "/v1/text-to-dialogue",
+      requestContentType: "json",
+      responseType: "audio",
+      pricingUnitMetric: "characters",
+      pricingUnitField: "inputs",
+    });
+    expect(dialogue.inputFields).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: "inputs",
+        type: "array",
+        syncWith: "prompt",
+        itemTemplate: {
+          text: "{{item}}",
+          voice_id: "{{fields.voice_id}}",
+        },
+        itemFields: expect.arrayContaining([
+          expect.objectContaining({ key: "text", required: true }),
+          expect.objectContaining({
+            key: "voice_id",
+            required: true,
+            optionsSource: expect.objectContaining({
+              type: "provider_api",
+              valueField: "voice_id",
+            }),
+          }),
+        ]),
+      }),
+      expect.objectContaining({ key: "language_code", type: "text" }),
+      expect.objectContaining({ key: "stability", type: "number" }),
+      expect.objectContaining({ key: "pronunciation_dictionary_locators", type: "array", maxItems: 3 }),
+      expect.objectContaining({ key: "seed", type: "number", min: 0, max: 4294967295 }),
+      expect.objectContaining({ key: "apply_text_normalization", type: "select" }),
+    ]));
     expect(stt).toMatchObject({
       elevenlabsCapability: "speech_to_text",
       apiEndpoint: "/v1/speech-to-text",

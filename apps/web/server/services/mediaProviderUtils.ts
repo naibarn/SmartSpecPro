@@ -39,6 +39,7 @@ export const WAVESPEED_ELEVENLABS_VOICE_CHANGER_MODEL_ID = "wavespeed-ai/elevenl
 export const ELEVENLABS_PROVIDER = "elevenlabs";
 export const ELEVENLABS_BASE_URL = "https://api.elevenlabs.io";
 export const ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID = "elevenlabs/text-to-speech";
+export const ELEVENLABS_TEXT_TO_DIALOGUE_MODEL_ID = "elevenlabs/text-to-dialogue";
 export const ELEVENLABS_VOICE_CHANGER_MODEL_ID = "elevenlabs/voice-changer";
 export const ELEVENLABS_SPEECH_TO_TEXT_MODEL_ID = "elevenlabs/speech-to-text";
 export const ELEVENLABS_SOUND_EFFECTS_MODEL_ID = "elevenlabs/sound-effects";
@@ -136,6 +137,7 @@ type ProviderAvailableModelRecord = {
 };
 type ElevenLabsCapability =
   | "text_to_speech"
+  | "text_to_dialogue"
   | "voice_changer"
   | "speech_to_text"
   | "sound_effects"
@@ -776,10 +778,31 @@ const ELEVENLABS_VOICE_OPTIONS_SOURCE = {
 } as const;
 
 const ELEVENLABS_OUTPUT_FORMAT_OPTIONS = [
+  { value: "mp3_22050_32", label: "MP3 22.05kHz 32kbps" },
+  { value: "mp3_44100_32", label: "MP3 44.1kHz 32kbps" },
+  { value: "mp3_44100_64", label: "MP3 44.1kHz 64kbps" },
+  { value: "mp3_44100_96", label: "MP3 44.1kHz 96kbps" },
   { value: "mp3_44100_128", label: "MP3 44.1kHz 128kbps" },
   { value: "mp3_44100_192", label: "MP3 44.1kHz 192kbps" },
+  { value: "opus_48000_32", label: "Opus 48kHz 32kbps" },
+  { value: "opus_48000_64", label: "Opus 48kHz 64kbps" },
+  { value: "opus_48000_96", label: "Opus 48kHz 96kbps" },
+  { value: "opus_48000_128", label: "Opus 48kHz 128kbps" },
+  { value: "opus_48000_192", label: "Opus 48kHz 192kbps" },
+  { value: "pcm_8000", label: "PCM 8kHz" },
+  { value: "pcm_16000", label: "PCM 16kHz" },
+  { value: "pcm_22050", label: "PCM 22.05kHz" },
+  { value: "pcm_24000", label: "PCM 24kHz" },
   { value: "pcm_44100", label: "PCM 44.1kHz" },
+  { value: "pcm_48000", label: "PCM 48kHz" },
   { value: "ulaw_8000", label: "u-law 8kHz" },
+  { value: "alaw_8000", label: "A-law 8kHz" },
+  { value: "wav_8000", label: "WAV 8kHz" },
+  { value: "wav_16000", label: "WAV 16kHz" },
+  { value: "wav_22050", label: "WAV 22.05kHz" },
+  { value: "wav_24000", label: "WAV 24kHz" },
+  { value: "wav_44100", label: "WAV 44.1kHz" },
+  { value: "wav_48000", label: "WAV 48kHz" },
 ];
 
 const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
@@ -868,6 +891,90 @@ const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
     ],
   },
   {
+    modelId: ELEVENLABS_TEXT_TO_DIALOGUE_MODEL_ID,
+    name: "ElevenLabs Text to Dialogue",
+    description: "Direct ElevenLabs text-to-dialogue conversion for multi-speaker Eleven v3 audio.",
+    aliases: ["elevenlabs text to dialogue", "elevenlabs dialogue", "dialogue", "multi-speaker dialogue"],
+    apiEndpoint: "/v1/text-to-dialogue",
+    capability: "text_to_dialogue",
+    requestContentType: "json",
+    responseType: "audio",
+    pricingFormula: "per_unit",
+    pricingTiers: { default: 70 },
+    pricingUnitMetric: "characters",
+    pricingUnitField: "inputs",
+    pricingUnitSize: 1000,
+    pricingUnitRounding: "ceil",
+    pricingMinUnits: 1,
+    creditCost: 70,
+    priority: 22,
+    sortOrder: 202,
+    inputFields: [
+      {
+        key: "voice_id",
+        label: "Default Voice",
+        type: "select",
+        searchable: true,
+        default: ELEVENLABS_DEFAULT_VOICE_ID,
+        options: ELEVENLABS_VOICE_OPTIONS,
+        optionsSource: ELEVENLABS_VOICE_OPTIONS_SOURCE,
+        description: "Used when prompt text is synchronized into a single dialogue input.",
+      },
+      {
+        key: "inputs",
+        label: "Dialogue Inputs",
+        type: "array",
+        required: true,
+        syncWith: "prompt",
+        maxItems: 100,
+        itemTemplate: {
+          text: "{{item}}",
+          voice_id: "{{fields.voice_id}}",
+        },
+        itemFields: [
+          { key: "text", label: "Text", type: "text", required: true, maxLength: 2000 },
+          {
+            key: "voice_id",
+            label: "Voice",
+            type: "select",
+            required: true,
+            searchable: true,
+            default: ELEVENLABS_DEFAULT_VOICE_ID,
+            options: ELEVENLABS_VOICE_OPTIONS,
+            optionsSource: ELEVENLABS_VOICE_OPTIONS_SOURCE,
+          },
+        ],
+        description: "Each item must contain text and a voice ID. Keep total text near or below 2,000 characters per request for reliable generation.",
+      },
+      { key: "model_id", label: "Model", type: "select", default: "eleven_v3", options: [
+        { value: "eleven_v3", label: "Eleven v3" },
+      ] },
+      { key: "output_format", label: "Output Format", type: "select", default: "mp3_44100_128", options: ELEVENLABS_OUTPUT_FORMAT_OPTIONS },
+      { key: "language_code", label: "Language Code", type: "text", placeholder: "en, th, ja..." },
+      { key: "stability", label: "Dialogue Stability", type: "number", min: 0, max: 1, step: 0.01, description: "Mapped to ElevenLabs settings.stability." },
+      {
+        key: "pronunciation_dictionary_locators",
+        label: "Pronunciation Dictionaries",
+        type: "array",
+        maxItems: 3,
+        itemTemplate: {
+          pronunciation_dictionary_id: "",
+          version_id: "",
+        },
+        itemFields: [
+          { key: "pronunciation_dictionary_id", label: "Dictionary ID", type: "text", required: true },
+          { key: "version_id", label: "Version ID", type: "text", required: true },
+        ],
+      },
+      { key: "seed", label: "Seed", type: "number", min: 0, max: 4294967295, step: 1 },
+      { key: "apply_text_normalization", label: "Text Normalization", type: "select", default: "auto", options: [
+        { value: "auto", label: "Auto" },
+        { value: "on", label: "On" },
+        { value: "off", label: "Off" },
+      ] },
+    ],
+  },
+  {
     modelId: ELEVENLABS_SPEECH_TO_TEXT_MODEL_ID,
     name: "ElevenLabs Speech to Text",
     description: "Direct ElevenLabs Scribe speech-to-text transcription with diarization and timestamps.",
@@ -884,8 +991,8 @@ const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
     pricingUnitRounding: "ceil",
     pricingMinUnits: 1,
     creditCost: 40,
-    priority: 22,
-    sortOrder: 202,
+    priority: 23,
+    sortOrder: 203,
     inputFields: [
       { key: "file", label: "Source Audio or Video", type: "audio_urls", required: true, maxItems: 1, allowedExtensions: "mp3,wav,m4a,ogg,flac,aac,mp4,mov,webm" },
       { key: "model_id", label: "Model", type: "select", required: true, default: "scribe_v2", options: [{ value: "scribe_v2", label: "Scribe v2" }] },
@@ -917,8 +1024,8 @@ const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
     pricingUnitRounding: "ceil",
     pricingMinUnits: 1,
     creditCost: 20,
-    priority: 23,
-    sortOrder: 203,
+    priority: 24,
+    sortOrder: 204,
     inputFields: [
       { key: "text", label: "Prompt", type: "text", required: true, syncWith: "prompt" },
       { key: "duration_seconds", label: "Duration", type: "number", default: 5, min: 0.5, max: 30, affectsPricing: true },
@@ -944,8 +1051,8 @@ const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
     pricingUnitRounding: "ceil",
     pricingMinUnits: 1,
     creditCost: 40,
-    priority: 24,
-    sortOrder: 204,
+    priority: 25,
+    sortOrder: 205,
     inputFields: [
       { key: "audio", label: "Source Audio or Video", type: "audio_urls", required: true, maxItems: 1, allowedExtensions: "mp3,wav,m4a,ogg,flac,aac,mp4,mov,webm" },
       { key: "output_format", label: "Output Format", type: "select", default: "mp3_44100_128", options: ELEVENLABS_OUTPUT_FORMAT_OPTIONS },

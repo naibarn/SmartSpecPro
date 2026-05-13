@@ -50,9 +50,10 @@ describe("seed-media-providers", () => {
       defaultModel: "elevenlabs/text-to-speech",
       isEnabled: false,
     });
-    expect(elevenlabs?.availableModels).toHaveLength(5);
+    expect(elevenlabs?.availableModels).toHaveLength(6);
     expect(elevenlabs?.availableModels).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "elevenlabs/text-to-speech", type: "audio" }),
+      expect.objectContaining({ id: "elevenlabs/text-to-dialogue", type: "audio" }),
       expect.objectContaining({ id: "elevenlabs/voice-changer", type: "audio" }),
       expect.objectContaining({ id: "elevenlabs/speech-to-text", type: "audio" }),
       expect.objectContaining({ id: "elevenlabs/sound-effects", type: "audio" }),
