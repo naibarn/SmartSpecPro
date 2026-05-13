@@ -240,7 +240,7 @@ function parseVoiceOptionsText(raw: string): { value: string; label: string }[] 
 
   for (const line of lines) {
     if (!line) continue;
-    if (/^available voices:?$/i.test(line)) continue;
+    if (/^available voices\b/i.test(line) || line.startsWith("#")) continue;
 
     const idWithLabel = line.match(/^([A-Za-z0-9]{16,})\s*-\s*(.+)$/);
     if (idWithLabel) {

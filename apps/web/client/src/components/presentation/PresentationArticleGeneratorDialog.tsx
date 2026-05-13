@@ -73,6 +73,7 @@ import {
   mergeExtraParams,
   parseModelInputFields,
   pickExtraParamsForModel,
+  type ModelInputField,
   type MediaModelOption,
 } from "@/lib/mediaModelInputs";
 import { trpc } from "@/lib/trpc";
@@ -811,6 +812,37 @@ function getCanvasSizeForRatio(value: SlideCanvasRatio): {
 
 function sleepMs(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function sanitizeSelectExtraParamsForFields(
+  fields: ModelInputField[],
+  extraParams: Record<string, unknown>,
+): Record<string, unknown> {
+  let nextParams = extraParams;
+  for (const field of fields) {
+    if (field.type !== "select" || !field.options?.length) {
+      continue;
+    }
+    const currentValue = nextParams[field.key];
+    if (currentValue === undefined || currentValue === null || currentValue === "") {
+      continue;
+    }
+    const isAllowed = field.options.some((option) => String(option.value) === String(currentValue));
+    if (isAllowed) {
+      continue;
+    }
+    const fallbackValue = field.default !== undefined
+      ? field.default
+      : field.options[0]?.value;
+    if (fallbackValue === undefined) {
+      continue;
+    }
+    if (nextParams === extraParams) {
+      nextParams = { ...extraParams };
+    }
+    nextParams[field.key] = fallbackValue;
+  }
+  return nextParams;
 }
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -3021,16 +3053,19 @@ export function PresentationArticleGeneratorDialog({
   const syncedAudioModelExtraParams = useMemo(
     () => applyModelSyncTargets(
       selectedAudioModelConfig,
-      mergeExtraParams(
-        buildDefaultExtraParamsForModel(selectedAudioModelConfig),
-        pickExtraParamsForModel(selectedAudioModelConfig, audioModelExtraParams),
+      sanitizeSelectExtraParamsForFields(
+        selectedAudioModelFields,
+        mergeExtraParams(
+          buildDefaultExtraParamsForModel(selectedAudioModelConfig),
+          pickExtraParamsForModel(selectedAudioModelConfig, audioModelExtraParams),
+        ) ?? {},
       ),
       {
         prompt: "__auto_prompt__",
         aspectRatio: canvasRatio,
       },
     ) ?? {},
-    [audioModelExtraParams, canvasRatio, selectedAudioModelConfig],
+    [audioModelExtraParams, canvasRatio, selectedAudioModelConfig, selectedAudioModelFields],
   );
   const syncedVideoModelExtraParams = useMemo(
     () => applyModelSyncTargets(
