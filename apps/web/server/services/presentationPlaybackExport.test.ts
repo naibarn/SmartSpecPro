@@ -201,6 +201,52 @@ describe("presentationPlaybackExport", () => {
     expect(payload.slides[0]).not.toHaveProperty("notes");
   });
 
+  it("resolves Cloudflare R2 object URLs into storage keys for play deck audio", async () => {
+    const selectWhere = vi.fn().mockResolvedValue([
+      {
+        id: 91,
+        sourceUrl:
+          "https://f3fb0b6858e186fcc36be105bfa00243.r2.cloudflarestorage.com/smartspec/audio/generated/1/theme.mp3",
+      },
+    ]);
+    const selectFrom = vi.fn(() => ({ where: selectWhere }));
+    const dbMock = {
+      select: vi.fn(() => ({ from: selectFrom })),
+    } as any;
+    vi.mocked(getDb).mockResolvedValue(dbMock);
+    vi.mocked(storagePresignGet).mockResolvedValue({
+      key: "audio/generated/1/theme.mp3",
+      url: "https://signed.example.com/audio/generated/1/theme.mp3",
+    });
+
+    const detail = buildDeckDetail({
+      deck: {
+        ...buildDeckDetail().deck,
+        projectAudioTrack: {
+          libraryItemId: 91,
+          volume: 1,
+          startAtMs: 0,
+          endAtMs: null,
+          loop: false,
+          fadeOutMs: null,
+        },
+      },
+    });
+
+    const payload = await buildPlayDeckPayload(
+      detail as any,
+      {
+        schemaVersion: "presentation_slideshow_v1",
+        deckId: 101,
+        generatedAt: new Date("2026-02-22T10:00:00.000Z"),
+        slides: [],
+      } as any,
+    );
+
+    expect(storagePresignGet).toHaveBeenCalledWith("audio/generated/1/theme.mp3", 3600);
+    expect(payload.projectAudioTrack?.url).toBe("https://signed.example.com/audio/generated/1/theme.mp3");
+  });
+
   it("buildPresentationRenderSpec omits deck and slide notes from export payloads", () => {
     const detail = buildDeckDetail({
       deck: {

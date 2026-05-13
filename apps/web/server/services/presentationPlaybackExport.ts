@@ -350,6 +350,15 @@ function extractStorageKeyFromSourceUrl(sourceUrl: string): string | null {
       if (parsed.pathname.startsWith("/uploads/")) {
         return decodeKey(parsed.pathname.slice("/uploads/".length));
       }
+      if (parsed.hostname.endsWith(".r2.cloudflarestorage.com")) {
+        const pathParts = parsed.pathname
+          .split("/")
+          .map((part) => part.trim())
+          .filter(Boolean);
+        if (pathParts.length >= 2) {
+          return decodeKey(pathParts.slice(1).join("/"));
+        }
+      }
       return null;
     } catch {
       return null;
