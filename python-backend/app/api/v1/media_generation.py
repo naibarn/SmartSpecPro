@@ -33,7 +33,9 @@ from app.services.media_task_service import MediaTaskService
 # Import Celery tasks
 try:
     from app.tasks.media_tasks import (
+        _generate_audio_async,
         _generate_image_async,
+        _generate_video_async,
         generate_audio_task,
         generate_image_task,
         generate_video_task,
@@ -41,7 +43,9 @@ try:
     CELERY_ENABLED = True
 except ImportError:
     CELERY_ENABLED = False
+    _generate_audio_async = None
     _generate_image_async = None
+    _generate_video_async = None
     logger = structlog.get_logger()
     logger.warning("celery_not_available", message="Celery tasks not available, using synchronous processing")
 
@@ -109,6 +113,11 @@ def _has_responsive_celery_worker() -> bool:
         timeout_seconds = 0.5
 
     try:
+        inspect = generate_image_task.app.control.inspect(timeout=timeout_seconds)
+        active_queues = inspect.active_queues() or {}
+        for queues in active_queues.values():
+            if any((queue.get("name") if isinstance(queue, dict) else None) == "media" for queue in queues or []):
+                return True
         replies = generate_image_task.app.control.ping(timeout=timeout_seconds)
         return bool(replies)
     except Exception as exc:
@@ -1800,6 +1809,7 @@ async def generate_image_async(
 @router.post("/async/video", response_model=TaskResponse)
 async def generate_video_async(
     request: VideoGenerationRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1807,7 +1817,7 @@ async def generate_video_async(
     Submit video generation to Celery queue (async processing).
     Returns immediately with task_id for status polling.
     """
-    if not CELERY_ENABLED:
+    if not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Async processing not available. Use /video endpoint instead."
@@ -1822,16 +1832,39 @@ async def generate_video_async(
         request.dict(exclude={'model', 'prompt'})
     )
 
-    try:
-        celery_task = generate_video_task.delay(task.id, current_user.id, request.dict())
-        logger.info("async_video_task_submitted", task_id=task.id, celery_task_id=celery_task.id, user_id=current_user.id)
+    request_payload = request.dict()
+    should_use_celery = CELERY_ENABLED and _has_responsive_celery_worker()
 
-        # Store Celery task ID for tracking/monitoring
-        task.celery_task_id = celery_task.id
+    try:
+        if should_use_celery:
+            celery_task = generate_video_task.delay(task.id, current_user.id, request_payload)
+            task.celery_task_id = celery_task.id
+            logger.info("async_video_task_submitted", task_id=task.id, celery_task_id=celery_task.id, user_id=current_user.id)
+        elif _is_inline_media_fallback_enabled() and _generate_video_async is not None:
+            background_tasks.add_task(_generate_video_async, task.id, current_user.id, request_payload)
+            logger.warning(
+                "async_video_task_inline_fallback_submitted",
+                task_id=task.id,
+                user_id=current_user.id,
+                reason="celery_worker_unavailable",
+            )
+        else:
+            task.status = TaskStatus.FAILED
+            task.error_message = "Async media worker unavailable and inline fallback is disabled."
+            await db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Async media worker unavailable. Start a Celery worker for the media queue."
+            )
         # task_id will be set by the Celery worker after getting response from provider
         # Do NOT overwrite it here with Celery task ID
         await db.commit()
+    except HTTPException:
+        raise
     except Exception as e:
+        task.status = TaskStatus.FAILED
+        task.error_message = f"Failed to submit task to queue: {str(e)}"
+        await db.commit()
         logger.error("celery_task_submission_failed", task_id=task.id, error=str(e), error_type=type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1844,6 +1877,7 @@ async def generate_video_async(
 @router.post("/async/audio", response_model=TaskResponse)
 async def generate_audio_async(
     request: AudioGenerationRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1851,7 +1885,7 @@ async def generate_audio_async(
     Submit audio generation to Celery queue (async processing).
     Returns immediately with task_id for status polling.
     """
-    if not CELERY_ENABLED:
+    if not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Async processing not available. Use /audio endpoint instead."
@@ -1866,13 +1900,44 @@ async def generate_audio_async(
         request.dict(exclude={'model', 'text'})
     )
 
-    celery_task = generate_audio_task.delay(task.id, current_user.id, request.dict())
+    request_payload = request.dict()
+    should_use_celery = CELERY_ENABLED and _has_responsive_celery_worker()
 
-    # Store Celery task ID for tracking/monitoring
-    task.celery_task_id = celery_task.id
-    await db.commit()
+    try:
+        if should_use_celery:
+            celery_task = generate_audio_task.delay(task.id, current_user.id, request_payload)
+            task.celery_task_id = celery_task.id
+            logger.info("async_audio_task_submitted", task_id=task.id, celery_task_id=celery_task.id, user_id=current_user.id)
+        elif _is_inline_media_fallback_enabled() and _generate_audio_async is not None:
+            background_tasks.add_task(_generate_audio_async, task.id, current_user.id, request_payload)
+            logger.warning(
+                "async_audio_task_inline_fallback_submitted",
+                task_id=task.id,
+                user_id=current_user.id,
+                reason="celery_worker_unavailable",
+            )
+        else:
+            task.status = TaskStatus.FAILED
+            task.error_message = "Async media worker unavailable and inline fallback is disabled."
+            await db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Async media worker unavailable. Start a Celery worker for the media queue."
+            )
 
-    logger.info("async_audio_task_submitted", task_id=task.id, celery_task_id=celery_task.id, user_id=current_user.id)
+        await db.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        task.status = TaskStatus.FAILED
+        task.error_message = f"Failed to submit task to queue: {str(e)}"
+        await db.commit()
+        logger.error("celery_audio_task_submission_failed", task_id=task.id, error=str(e), error_type=type(e).__name__)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to submit task to queue: {str(e)}"
+        )
+
     return TaskResponse(**task.to_dict())
 
 

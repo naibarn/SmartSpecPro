@@ -289,8 +289,7 @@ async def _mark_task_retrying_async(task_id: str, error: Exception, retry_after_
             return
 
         task.status = TaskStatus.PENDING
-        task.error_message = None
-        task.started_at = None
+        task.error_message = f"Retry scheduled in {retry_after_seconds}s: {str(error)}"
         task.completed_at = None
         task.result_data = _merge_task_result_data(
             task.result_data,
@@ -298,6 +297,7 @@ async def _mark_task_retrying_async(task_id: str, error: Exception, retry_after_
                 "retry": {
                     "scheduled": True,
                     "retry_after_seconds": retry_after_seconds,
+                    "next_retry_at": (datetime.now(timezone.utc) + timedelta(seconds=retry_after_seconds)).isoformat(),
                     "last_error": str(error),
                     "error_type": type(error).__name__,
                 },
@@ -2994,7 +2994,7 @@ async def _recover_stuck_pending_tasks_async():
 
     async with AsyncSessionLocal() as db:
         try:
-            cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
+            cutoff = datetime.now(timezone.utc) - timedelta(minutes=2)
 
             result = await db.execute(
                 select(MediaTask).filter(
@@ -3025,7 +3025,7 @@ async def _recover_stuck_pending_tasks_async():
                 try:
                     ar = AsyncResult(task.celery_task_id, app=celery_app)
                     celery_state = ar.state  # PENDING, STARTED, RETRY, SUCCESS, FAILURE, REVOKED
-                    if celery_state in ("SUCCESS", "FAILURE"):
+                    if celery_state in ("SUCCESS", "FAILURE", "RETRY"):
                         celery_result_info = ar.result
                 except Exception:
                     pass  # Redis unavailable — fall back to age-based logic
@@ -3052,7 +3052,19 @@ async def _recover_stuck_pending_tasks_async():
                         age_minutes=age_minutes,
                     )
 
-                elif age_minutes >= 30:
+                elif celery_state == "RETRY" and celery_result_info and _is_non_retryable_media_error(Exception(str(celery_result_info))):
+                    task.status = TaskStatus.FAILED
+                    task.error_message = str(celery_result_info)
+                    task.completed_at = now
+                    recovered += 1
+                    logger.warning(
+                        "recover_stuck_pending_non_retryable_retry",
+                        task_id=task.id,
+                        celery_state=celery_state,
+                        age_minutes=age_minutes,
+                    )
+
+                elif age_minutes >= 10:
                     # Very old pending task with non-terminal Celery state — give up
                     task.status = TaskStatus.FAILED
                     task.error_message = (

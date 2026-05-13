@@ -181,7 +181,7 @@ async def test_generate_audio_async_persists_provider_task_id_without_final_url(
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_mark_task_retrying_async_sets_pending_and_clears_failure():
+async def test_mark_task_retrying_async_sets_pending_with_visible_retry_error():
     task = MagicMock()
     task.id = "task-2"
     task.status = TaskStatus.PROCESSING
@@ -199,12 +199,13 @@ async def test_mark_task_retrying_async_sets_pending_and_clears_failure():
         await _mark_task_retrying_async("task-2", RuntimeError("provider failed"), retry_after_seconds=60)
 
     assert task.status == TaskStatus.PENDING
-    assert task.started_at is None
+    assert task.started_at is not None
     assert task.completed_at is None
-    assert task.error_message is None
+    assert task.error_message == "Retry scheduled in 60s: provider failed"
     assert "failure" not in task.result_data
     assert task.result_data["retry"]["scheduled"] is True
     assert task.result_data["retry"]["retry_after_seconds"] == 60
+    assert "next_retry_at" in task.result_data["retry"]
     assert task.result_data["retry"]["last_error"] == "provider failed"
 
 
