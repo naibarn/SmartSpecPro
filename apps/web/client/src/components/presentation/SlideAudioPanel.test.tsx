@@ -425,6 +425,51 @@ describe("SlideAudioPanel", () => {
     });
   });
 
+  it("uses the just-selected library audio details while the refreshed deck only has the item id", async () => {
+    const setDeckAudio = vi.fn();
+    vi.mocked(trpc.presentation.setDeckAudio.useMutation).mockReturnValue(
+      makeMutationMock(setDeckAudio) as any,
+    );
+    vi.mocked(trpc.library.listDocuments.useQuery).mockReturnValue(
+      makeLibraryDocumentsQueryMock([
+        {
+          id: 515,
+          item_type: "audio",
+          title: "เสียงบรรยายล่าสุด",
+          status: "ready",
+          source_url: "https://cdn.example.com/latest-project-audio.mp3",
+          created_at: new Date().toISOString(),
+          metadata: { durationSeconds: 81 },
+        },
+      ]) as any,
+    );
+    vi.mocked(trpc.library.getItem.useQuery).mockReturnValue(
+      { data: null, isLoading: false, isError: false } as any,
+    );
+
+    const { rerender } = render(<SlideAudioPanel {...PROPS_NO_AUDIO} />);
+    fireEvent.click(screen.getByRole("button", { name: /add project audio/i }));
+    fireEvent.click(screen.getByTestId("audio-picker-add-515"));
+
+    await waitFor(() => {
+      expect(setDeckAudio).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectAudioTrack: expect.objectContaining({ libraryItemId: 515 }),
+        }),
+      );
+    });
+
+    rerender(
+      <SlideAudioPanel
+        {...PROPS_NO_AUDIO}
+        deckAudioTrack={{ libraryItemId: 515, volume: 1, startAtMs: 0, endAtMs: null, loop: false }}
+      />,
+    );
+
+    expect(screen.getByText("เสียงบรรยายล่าสุด")).toBeInTheDocument();
+    expect(screen.getByText("Audio: 1:21.0")).toBeInTheDocument();
+  });
+
   it("shows save-note-first CTA when the slide note is dirty", async () => {
     const onSaveSlideNote = vi.fn().mockResolvedValue(true);
     render(

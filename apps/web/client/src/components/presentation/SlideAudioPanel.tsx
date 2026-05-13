@@ -416,7 +416,11 @@ interface AudioPickerDialogProps {
   open: boolean;
   onClose: () => void;
   /** Called when user confirms a selection */
-  onSelect: (libraryItemId: number, title: string) => void;
+  onSelect: (
+    libraryItemId: number,
+    title: string,
+    item?: { sourceUrl?: string; metadata?: Record<string, unknown> },
+  ) => void;
   /** Whether we're picking for the current slide or the whole project */
   target: "slide" | "deck";
 }
@@ -445,6 +449,12 @@ interface AudioLibraryResultItemLike {
   metadata?: Record<string, unknown>;
   model?: string | null;
   prompt?: string | null;
+}
+
+interface SelectedAudioItemCache {
+  title?: string;
+  sourceUrl?: string;
+  metadata?: Record<string, unknown>;
 }
 
 function getAudioPickerItemTime(item: AudioLibraryResultItemLike): number {
@@ -664,7 +674,10 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
       if (!Number.isFinite(libraryItemId) || !libraryItemId) {
         throw new Error("Unable to resolve selected audio library item.");
       }
-      onSelect(libraryItemId, item.title);
+      onSelect(libraryItemId, item.title, {
+        sourceUrl: readLibraryAudioSourceUrl(item),
+        metadata: item.metadata,
+      });
       onClose();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to add this audio.");
@@ -859,6 +872,7 @@ export function SlideAudioPanel({
   const [audioModelId, setAudioModelId] = useState("");
   const [audioExtraParams, setAudioExtraParams] = useState<Record<string, unknown>>({});
   const [isGeneratingSlideAudio, setIsGeneratingSlideAudio] = useState(false);
+  const [selectedAudioItemCache, setSelectedAudioItemCache] = useState<Record<number, SelectedAudioItemCache>>({});
   const audioUploadInputRef = useRef<HTMLInputElement | null>(null);
   const deckVersionRef = useRef<number>(deckVersion);
   const lastDeckIdRef = useRef<number>(deckId);
@@ -906,14 +920,24 @@ export function SlideAudioPanel({
   );
 
   const slideAudioSourceUrl = readLibraryAudioSourceUrl(slideAudioItemQuery.data);
+  const slideAudioCachedItem = slideAudioTrack?.libraryItemId
+    ? selectedAudioItemCache[slideAudioTrack.libraryItemId]
+    : undefined;
+  const deckAudioCachedItem = deckAudioTrack?.libraryItemId
+    ? selectedAudioItemCache[deckAudioTrack.libraryItemId]
+    : undefined;
+  const resolvedSlideAudioSourceUrl = slideAudioSourceUrl || normalizeMediaSourceUrl(slideAudioCachedItem?.sourceUrl);
   const deckAudioSourceUrl = readLibraryAudioSourceUrl(deckAudioItemQuery.data);
+  const resolvedDeckAudioSourceUrl = deckAudioSourceUrl || normalizeMediaSourceUrl(deckAudioCachedItem?.sourceUrl);
   const slideAudioDurationSec = useMediaDurationSeconds(
-    slideAudioSourceUrl,
-    extractDurationSeconds(slideAudioItemQuery.data?.metadata),
+    resolvedSlideAudioSourceUrl,
+    extractDurationSeconds(slideAudioItemQuery.data?.metadata)
+      ?? extractDurationSeconds(slideAudioCachedItem?.metadata),
   );
   const deckAudioDurationSec = useMediaDurationSeconds(
-    deckAudioSourceUrl,
-    extractDurationSeconds(deckAudioItemQuery.data?.metadata),
+    resolvedDeckAudioSourceUrl,
+    extractDurationSeconds(deckAudioItemQuery.data?.metadata)
+      ?? extractDurationSeconds(deckAudioCachedItem?.metadata),
   );
   const audioModelsQuery = trpc.media.getModels.useQuery(
     { type: "audio" },
@@ -1183,8 +1207,28 @@ export function SlideAudioPanel({
   // Handlers — per-slide
   // NOTE: expectedVersion must be deckVersion (not slideVersion) because the
   // backend's updateSlideAudioTrack calls ensureExpectedDeckVersion(deck, ...).
-  function handleSlideAudioSelect(libraryItemId: number, _title: string) {
+  function rememberSelectedAudioItem(
+    libraryItemId: number,
+    title: string,
+    item?: { sourceUrl?: string; metadata?: Record<string, unknown> },
+  ) {
+    setSelectedAudioItemCache((current) => ({
+      ...current,
+      [libraryItemId]: {
+        title,
+        sourceUrl: item?.sourceUrl,
+        metadata: item?.metadata,
+      },
+    }));
+  }
+
+  function handleSlideAudioSelect(
+    libraryItemId: number,
+    title: string,
+    item?: { sourceUrl?: string; metadata?: Record<string, unknown> },
+  ) {
     if (slideId == null) return;
+    rememberSelectedAudioItem(libraryItemId, title, item);
     setSlideAudioMutation.mutate({
       slideId,
       deckId,
@@ -1214,7 +1258,12 @@ export function SlideAudioPanel({
   }
 
   // Handlers — deck
-  function handleDeckAudioSelect(libraryItemId: number, _title: string) {
+  function handleDeckAudioSelect(
+    libraryItemId: number,
+    title: string,
+    item?: { sourceUrl?: string; metadata?: Record<string, unknown> },
+  ) {
+    rememberSelectedAudioItem(libraryItemId, title, item);
     setDeckAudioMutation.mutate({
       deckId,
       projectAudioTrack: buildDeckAudioTrackInput(libraryItemId),
@@ -1320,11 +1369,15 @@ export function SlideAudioPanel({
     setPickerOpen(true);
   }
 
-  function handlePickerSelect(libraryItemId: number, title: string) {
+  function handlePickerSelect(
+    libraryItemId: number,
+    title: string,
+    item?: { sourceUrl?: string; metadata?: Record<string, unknown> },
+  ) {
     if (pickerTarget === "slide") {
-      handleSlideAudioSelect(libraryItemId, title);
+      handleSlideAudioSelect(libraryItemId, title, item);
     } else {
-      handleDeckAudioSelect(libraryItemId, title);
+      handleDeckAudioSelect(libraryItemId, title, item);
     }
   }
 
@@ -1475,6 +1528,7 @@ export function SlideAudioPanel({
               <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="text-sm truncate flex-1">
                 {slideAudioTrack.title
+                  ?? slideAudioCachedItem?.title
                   ?? slideAudioItemQuery.data?.title
                   ?? `Audio #${slideAudioTrack.libraryItemId}`}
               </span>
@@ -1484,7 +1538,7 @@ export function SlideAudioPanel({
                 className="h-6 px-2 text-xs text-muted-foreground"
                 onClick={() => togglePreviewAudio(
                   "slide",
-                  slideAudioSourceUrl,
+                  resolvedSlideAudioSourceUrl,
                   slideStartSec,
                   slidePlayToEnd ? null : Math.max(slideEndSec, slideStartSec),
                   slideVolumePct,
@@ -1639,6 +1693,7 @@ export function SlideAudioPanel({
               <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="text-sm truncate flex-1">
                 {deckAudioTrack.title
+                  ?? deckAudioCachedItem?.title
                   ?? deckAudioItemQuery.data?.title
                   ?? `Audio #${deckAudioTrack.libraryItemId}`}
               </span>
@@ -1648,7 +1703,7 @@ export function SlideAudioPanel({
                 className="h-6 px-2 text-xs text-muted-foreground"
                 onClick={() => togglePreviewAudio(
                   "deck",
-                  deckAudioSourceUrl,
+                  resolvedDeckAudioSourceUrl,
                   deckStartSec,
                   deckPlayToEnd ? null : Math.max(deckEndSec, deckStartSec),
                   deckVolumePct,
