@@ -3019,6 +3019,30 @@ async def _recover_stuck_pending_tasks_async():
                     task_created = task_created.replace(tzinfo=timezone.utc)
                 age_minutes = int((now - task_created).total_seconds() / 60)
 
+                if task.task_id:
+                    task.status = TaskStatus.PROCESSING
+                    task.started_at = task.started_at or now
+                    task.error_message = None
+                    task.result_data = _merge_task_result_data(
+                        task.result_data,
+                        {
+                            "recovery": {
+                                "reason": "pending_task_has_provider_task_id",
+                                "provider_task_id": task.task_id,
+                                "recovered_at": now.isoformat(),
+                            },
+                        },
+                        remove_keys=("failure",),
+                    )
+                    recovered += 1
+                    logger.warning(
+                        "recover_stuck_pending_provider_task_requeued_for_polling",
+                        task_id=task.id,
+                        external_task_id=task.task_id,
+                        age_minutes=age_minutes,
+                    )
+                    continue
+
                 # Check Celery task state to avoid duplicate execution
                 celery_state = "UNKNOWN"
                 celery_result_info = None

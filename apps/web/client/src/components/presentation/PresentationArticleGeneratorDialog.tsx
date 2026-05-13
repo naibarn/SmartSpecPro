@@ -13,6 +13,7 @@ import {
   Loader2,
   Palette,
   PencilLine,
+  RefreshCw,
   Maximize2,
   Music,
   Sparkles,
@@ -205,7 +206,9 @@ type GeneratedSlotVideoAsset = {
   title: string;
   prompt: string;
   startFrameUrl: string;
-  url: string;
+  url?: string;
+  status?: "processing" | "completed" | "failed";
+  errorMessage?: string;
   durationSeconds?: number;
   model?: string;
   promptSkillId?: string;
@@ -942,6 +945,16 @@ function normalizeTaskStatus(task: unknown): string | null {
   return normalized;
 }
 
+class TaskPollingTimeoutError extends Error {
+  taskId: string;
+
+  constructor(message: string, taskId: string) {
+    super(message);
+    this.name = "TaskPollingTimeoutError";
+    this.taskId = taskId;
+  }
+}
+
 function extractTaskFailureMessage(task: unknown): string | null {
   if (!task || typeof task !== "object") {
     return null;
@@ -1286,6 +1299,10 @@ function extractTaskResultUrl(task: unknown): string | null {
       }
     }
   }
+  const taskPayload = record.task;
+  if (taskPayload && typeof taskPayload === "object") {
+    return extractTaskResultUrl(taskPayload);
+  }
   return null;
 }
 
@@ -1352,7 +1369,7 @@ async function pollTaskUntilTerminal(
     await sleepMs(intervalMs);
   }
   const timeoutMinutes = Math.max(1, Math.round((intervalMs * maxAttempts) / 60000));
-  throw new Error(`${mediaLabel} generation is still processing after ${timeoutMinutes} minutes. Task ID: ${taskId}. Please check Media History or try again later.`);
+  throw new TaskPollingTimeoutError(`${mediaLabel} generation is still processing after ${timeoutMinutes} minutes. Task ID: ${taskId}. Please check Media History or try again later.`, taskId);
 }
 
 async function copyText(value: string, successMessage: string, errorMessage: string): Promise<void> {
@@ -1526,14 +1543,14 @@ function splitTextByLimits(text: string, maxBytes: number, maxCharacters?: numbe
   return chunks;
 }
 
-function normalizeSlotMediaAssets<T extends { pageNumber: number; url: string }>(
+function normalizeSlotMediaAssets<T extends { pageNumber: number; url?: string; status?: string }>(
   pages: Array<{ pageNumber: number }>,
   assets: T[],
 ): T[] {
   const pageNumbers = new Set(pages.map((page) => page.pageNumber));
   return assets.filter((asset) => {
     const scope = "audioScope" in asset && asset.audioScope === "full" ? "full" : "slot";
-    return Boolean(asset.url?.trim()) && (scope === "full" || pageNumbers.has(asset.pageNumber));
+    return (Boolean(asset.url?.trim()) || asset.status === "processing") && (scope === "full" || pageNumbers.has(asset.pageNumber));
   });
 }
 
@@ -2273,6 +2290,7 @@ export function PresentationArticleGeneratorDialog({
   const generateImageAsyncMutation = trpc.media.generateImageAsync.useMutation();
   const generateAudioAsyncMutation = trpc.media.generateAudioAsync.useMutation();
   const generateVideoAsyncMutation = trpc.media.generateVideoAsync.useMutation();
+  const fetchTaskResultMutation = trpc.media.fetchTaskResult.useMutation();
   const executeSkillMutation = trpc.chat.executeSkill.useMutation();
   const isGeneratingSlotVideos = activeSlotVideoKeys.length > 0;
   const activeSlotVideoKeySet = useMemo(() => new Set(activeSlotVideoKeys), [activeSlotVideoKeys]);
@@ -2837,7 +2855,8 @@ export function PresentationArticleGeneratorDialog({
     for (const slot of preflightSlotPlans) {
       const videoAsset = generatedSlotVideoByPage.get(slot.pageNumber);
       const imageAsset = generatedImageByPage.get(slot.pageNumber);
-      if (!videoAsset || !isImportableSlotVideoUrl(videoAsset.url, videoAsset.startFrameUrl)) {
+      const videoUrl = videoAsset?.url?.trim();
+      if (!videoAsset || !videoUrl || !isImportableSlotVideoUrl(videoUrl, videoAsset.startFrameUrl)) {
         continue;
       }
       if (!imageAsset || !isSameGeneratedMediaUrl(videoAsset.startFrameUrl, imageAsset.url)) {
@@ -2847,7 +2866,7 @@ export function PresentationArticleGeneratorDialog({
       assets.push({
         pageNumber: slot.pageNumber,
         title: slot.title,
-        videoUrl: getComparableMediaUrl(videoAsset?.url),
+        videoUrl: getComparableMediaUrl(videoUrl),
         videoTaskId: videoAsset.taskId ?? null,
         videoModel: videoAsset.model ?? null,
         videoPrompt: videoAsset.prompt ?? null,
@@ -2875,7 +2894,7 @@ export function PresentationArticleGeneratorDialog({
         missingPages.push(slot.pageNumber);
         continue;
       }
-      if (!isImportableSlotVideoUrl(videoAsset.url, videoAsset.startFrameUrl)) {
+      if (!videoAsset.url?.trim() || !isImportableSlotVideoUrl(videoAsset.url, videoAsset.startFrameUrl)) {
         invalidPages.push(slot.pageNumber);
         continue;
       }
@@ -4520,6 +4539,20 @@ export function PresentationArticleGeneratorDialog({
     ].sort((left, right) => left.pageNumber - right.pageNumber));
   };
 
+  const markExternalSlotVideoActive = (slotId: string) => {
+    const nextKeys = activeSlotVideoKeysRef.current.includes(slotId)
+      ? activeSlotVideoKeysRef.current
+      : [...activeSlotVideoKeysRef.current, slotId];
+    activeSlotVideoKeysRef.current = nextKeys;
+    setActiveSlotVideoKeys(nextKeys);
+  };
+
+  const clearExternalSlotVideoActive = (slotId: string) => {
+    const nextKeys = activeSlotVideoKeysRef.current.filter((candidate) => candidate !== slotId);
+    activeSlotVideoKeysRef.current = nextKeys;
+    setActiveSlotVideoKeys(nextKeys);
+  };
+
   const generateAudioForText = async (input: {
     id: string;
     pageNumber: number;
@@ -4860,17 +4893,39 @@ export function PresentationArticleGeneratorDialog({
       if (!taskId) {
         throw new Error("Video generation started but task ID was not returned.");
       }
-      const terminalTask = await pollTaskUntilTerminal(
-        taskId,
-        async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
-        {
-          mediaLabel: "Video",
-          intervalMs: VIDEO_TASK_POLL_INTERVAL_MS,
-          maxAttempts: VIDEO_TASK_POLL_MAX_ATTEMPTS,
-        },
-      );
-      resultUrl = extractTaskResultUrl(terminalTask);
-      taskId = extractTaskId(terminalTask) ?? taskId;
+      try {
+        const terminalTask = await pollTaskUntilTerminal(
+          taskId,
+          async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
+          {
+            mediaLabel: "Video",
+            intervalMs: VIDEO_TASK_POLL_INTERVAL_MS,
+            maxAttempts: VIDEO_TASK_POLL_MAX_ATTEMPTS,
+          },
+        );
+        resultUrl = extractTaskResultUrl(terminalTask);
+        taskId = extractTaskId(terminalTask) ?? taskId;
+      } catch (error) {
+        if (!(error instanceof TaskPollingTimeoutError)) {
+          throw error;
+        }
+        toast.info(`Page ${slot.pageNumber}: วิดีโอยังประมวลผลอยู่ สามารถกดดึงผลใหม่ภายหลังได้`);
+        return {
+          id: slot.id,
+          taskId: error.taskId,
+          pageNumber: slot.pageNumber,
+          imageSlotKey: getPreparedImageSlotKey(imageAsset),
+          title: slot.title,
+          prompt,
+          startFrameUrl: imageAsset.url,
+          url: "",
+          status: "processing",
+          durationSeconds: videoDurationSeconds,
+          model: selectedVideoModelId || undefined,
+          promptSkillId: videoPromptSkillId.trim() || undefined,
+          updatedAt: new Date().toISOString(),
+        };
+      }
     }
     if (!resultUrl) {
       throw new Error("Video provider returned no URL");
@@ -4887,11 +4942,65 @@ export function PresentationArticleGeneratorDialog({
       prompt,
       startFrameUrl: imageAsset.url,
       url: resultUrl,
+      status: "completed",
       durationSeconds: videoDurationSeconds,
       model: selectedVideoModelId || undefined,
       promptSkillId: videoPromptSkillId.trim() || undefined,
       updatedAt: new Date().toISOString(),
     };
+  };
+
+  const refreshSlotVideoResult = async (asset: GeneratedSlotVideoAsset) => {
+    if (!asset.taskId) {
+      toast.error("ไม่มี task id สำหรับดึงผลวีดีโอ");
+      return;
+    }
+    const imageAsset = generatedImageByPage.get(asset.pageNumber);
+    markExternalSlotVideoActive(asset.id);
+    try {
+      const fetched = await fetchTaskResultMutation.mutateAsync({ taskId: asset.taskId });
+      const taskPayload = (fetched as { task?: unknown } | undefined)?.task ?? fetched;
+      const taskStatus = normalizeTaskStatus(taskPayload);
+      const nextUrl = extractTaskResultUrl(fetched);
+      if (taskStatus === "failed" || taskStatus === "cancelled") {
+        const errorMessage = extractTaskFailureMessage(taskPayload) || "Video provider failed.";
+        upsertGeneratedSlotVideo({
+          ...asset,
+          status: "failed",
+          errorMessage,
+          updatedAt: new Date().toISOString(),
+        });
+        toast.error(`Page ${asset.pageNumber}: ${errorMessage}`);
+        return;
+      }
+      if (nextUrl && isImportableSlotVideoUrl(nextUrl, imageAsset?.url ?? asset.startFrameUrl)) {
+        upsertGeneratedSlotVideo({
+          ...asset,
+          startFrameUrl: imageAsset?.url ?? asset.startFrameUrl,
+          imageSlotKey: imageAsset ? getPreparedImageSlotKey(imageAsset) : asset.imageSlotKey,
+          url: nextUrl,
+          status: "completed",
+          errorMessage: undefined,
+          updatedAt: new Date().toISOString(),
+        });
+        toast.success(`Page ${asset.pageNumber}: ดึงวีดีโอสำเร็จแล้ว`);
+        return;
+      }
+      upsertGeneratedSlotVideo({
+        ...asset,
+        status: "processing",
+        updatedAt: new Date().toISOString(),
+      });
+      const providerState = String((fetched as { kie_state?: unknown; provider_state?: unknown } | undefined)?.kie_state
+        ?? (fetched as { provider_state?: unknown } | undefined)?.provider_state
+        ?? taskStatus
+        ?? "processing");
+      toast.info(`Page ${asset.pageNumber}: วีดีโอยังประมวลผลอยู่ (${providerState})`);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "ดึงผลวีดีโอไม่สำเร็จ"));
+    } finally {
+      clearExternalSlotVideoActive(asset.id);
+    }
   };
 
   const handleGenerateSlotVideos = async (
@@ -4945,6 +5054,7 @@ export function PresentationArticleGeneratorDialog({
     let shouldStopScheduling = false;
     let fatalError: unknown = null;
     const failedSlots: string[] = [];
+    const pendingSlots: number[] = [];
     const markSlotActive = (slotId: string) => {
       const nextKeys = activeSlotVideoKeysRef.current.includes(slotId)
         ? activeSlotVideoKeysRef.current
@@ -4969,6 +5079,9 @@ export function PresentationArticleGeneratorDialog({
         try {
           const nextAsset = await generateVideoForSlot(currentSlot);
           upsertGeneratedSlotVideo(nextAsset);
+          if (nextAsset.status === "processing") {
+            pendingSlots.push(currentSlot.pageNumber);
+          }
         } catch (error) {
           failedSlots.push(`${currentSlot.pageNumber}: ${getErrorMessage(error, t("dialog.articleBuilder.generateSlotVideosError"))}`);
           if (slot || isInsufficientCreditsError(error) || isApiInfrastructureError(error)) {
@@ -4995,6 +5108,10 @@ export function PresentationArticleGeneratorDialog({
         const message = `${t("dialog.articleBuilder.generateSlotVideosError")} (${failedSlots.length}/${slots.length})\n${failedSlots.join("\n")}`;
         setSlotVideoGenerationError(message);
         toast.error(`${t("dialog.articleBuilder.generateSlotVideosError")} (${failedSlots.length}/${slots.length})`);
+      } else if (pendingSlots.length > 0) {
+        const message = `วิดีโอยังประมวลผลอยู่ Page ${pendingSlots.join(", ")} กดดึงผลวีดีโอเมื่อ provider ทำงานเสร็จ`;
+        setSlotVideoGenerationError(message);
+        toast.info(message);
       } else {
         setSlotVideoGenerationError("");
         toast.success(t("dialog.articleBuilder.generateSlotVideosSuccess"));
@@ -7005,6 +7122,15 @@ export function PresentationArticleGeneratorDialog({
                           const videoAsset = generatedSlotVideoByPage.get(slot.pageNumber);
                           const imageAsset = generatedImageByPage.get(slot.pageNumber);
                           const isActive = activeSlotVideoKeySet.has(slot.id);
+                          const videoStatus = isActive
+                            ? "active"
+                            : videoAsset?.status === "processing"
+                              ? "processing"
+                              : videoAsset?.status === "failed"
+                                ? "failed"
+                                : videoAsset?.url
+                                  ? "completed"
+                                  : "missing";
                           const previewRatio = imageAsset?.canvasRatio ?? canvasRatio;
                           const previewAspectRatio = getCanvasRatioCss(previewRatio);
                           const isPortraitPreview = isPortraitCanvasRatio(previewRatio);
@@ -7021,10 +7147,14 @@ export function PresentationArticleGeneratorDialog({
                                     {imageAsset ? t("dialog.articleBuilder.startFrameReady") : t("dialog.articleBuilder.startFrameMissing")}
                                   </div>
                                 </div>
-                                <Badge variant={isActive ? "default" : videoAsset ? "secondary" : "outline"}>
-                                  {isActive
+                                <Badge variant={isActive ? "default" : videoAsset?.url ? "secondary" : "outline"}>
+                                  {videoStatus === "active"
                                     ? t("dialog.articleBuilder.generating")
-                                    : videoAsset
+                                    : videoStatus === "processing"
+                                      ? "กำลังรอผล"
+                                      : videoStatus === "failed"
+                                        ? "ล้มเหลว"
+                                        : videoStatus === "completed"
                                       ? t("dialog.articleBuilder.generatedSlotVideoReady")
                                       : t("dialog.articleBuilder.generatedSlotVideoMissing")}
                                 </Badge>
@@ -7046,7 +7176,7 @@ export function PresentationArticleGeneratorDialog({
                                       />
                                     </div>
                                   ) : null}
-                                  {videoAsset ? (
+                                  {videoAsset?.url ? (
                                     <div className={cn("space-y-3", isPortraitPreview && imageAsset ? "min-w-0" : "")}>
                                       <div className={mediaFrameClassName} style={{ aspectRatio: previewAspectRatio }}>
                                         <video
@@ -7059,6 +7189,13 @@ export function PresentationArticleGeneratorDialog({
                                       <div className="max-h-24 overflow-y-auto rounded-lg border bg-background p-3 text-xs leading-5 text-muted-foreground">
                                         {videoAsset.prompt}
                                       </div>
+                                    </div>
+                                  ) : null}
+                                  {videoAsset && !videoAsset.url ? (
+                                    <div className="rounded-lg border border-dashed bg-background p-3 text-xs text-muted-foreground">
+                                      {videoAsset.status === "failed"
+                                        ? (videoAsset.errorMessage || "วิดีโอล้มเหลว")
+                                        : "วิดีโอยังประมวลผลอยู่ สามารถกดดึงผลใหม่ได้โดยไม่ต้องสร้างซ้ำ"}
                                     </div>
                                   ) : null}
                                 </div>
@@ -7080,7 +7217,23 @@ export function PresentationArticleGeneratorDialog({
                                     ? t("dialog.articleBuilder.regenerateVideoSlot")
                                     : t("dialog.articleBuilder.generateVideoSlot")}
                                 </Button>
-                                {videoAsset ? (
+                                {videoAsset?.status === "processing" ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => void refreshSlotVideoResult(videoAsset)}
+                                    disabled={isActive || fetchTaskResultMutation.isPending}
+                                  >
+                                    {isActive || fetchTaskResultMutation.isPending ? (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <RefreshCw className="mr-2 h-4 w-4" />
+                                    )}
+                                    ดึงผลวีดีโอ
+                                  </Button>
+                                ) : null}
+                                {videoAsset?.url ? (
                                   <>
                                     <a href={videoAsset.url} target="_blank" rel="noopener noreferrer" className="inline-flex">
                                       <Button type="button" size="sm" variant="outline">
