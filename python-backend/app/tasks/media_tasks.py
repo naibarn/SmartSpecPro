@@ -349,6 +349,10 @@ def _is_non_retryable_media_error(error: Exception) -> bool:
         "nsfw",
         "invalid prompt",
         "invalid voice parameter",
+        "insufficient credits",
+        "credits insufficient",
+        "not enough credits",
+        "current balance",
         "sensitive content",
     )
     if any(marker in message for marker in permanent_markers):
@@ -1901,6 +1905,14 @@ def generate_video_task(self, task_id: str, user_id: str, request_data: dict):
 
     except Exception as e:
         logger.error("generate_video_task_exception", task_id=task_id, error=str(e))
+
+        if _is_non_retryable_media_error(e):
+            try:
+                _run_async(_mark_task_failed_async(task_id, e))
+            except Exception as fail_state_error:
+                logger.warning("generate_video_task_non_retryable_state_update_failed", task_id=task_id, error=str(fail_state_error))
+            _run_async(_send_failure_notifications(task_id, user_id, "video", str(e)))
+            return {"status": "failed", "task_id": task_id, "error": str(e), "retryable": False}
 
         if self.request.retries < self.max_retries:
             try:
