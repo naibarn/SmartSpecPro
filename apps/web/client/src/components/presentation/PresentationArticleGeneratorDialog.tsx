@@ -178,6 +178,10 @@ type PendingAudioRegenerationRequest =
   | { mode: "slot"; pageNumber: number }
   | { mode: "slots" };
 
+type PendingVideoRegenerationRequest =
+  | { mode: "slot"; pageNumber: number }
+  | { mode: "slots" };
+
 type GeneratedSlotAudioAsset = {
   id: string;
   taskId?: string | null;
@@ -2113,6 +2117,7 @@ export function PresentationArticleGeneratorDialog({
   const [audioGenerationMode, setAudioGenerationMode] = useState<SlotAudioGenerationMode>("full");
   const [pendingAudioRegeneration, setPendingAudioRegeneration] = useState<PendingAudioRegenerationRequest | null>(null);
   const [generatedSlotVideos, setGeneratedSlotVideos] = useState<GeneratedSlotVideoAsset[]>([]);
+  const [pendingVideoRegeneration, setPendingVideoRegeneration] = useState<PendingVideoRegenerationRequest | null>(null);
   const [imagePromptOverrides, setImagePromptOverrides] = useState<Record<string, string>>({});
   const [editingPromptSlotKey, setEditingPromptSlotKey] = useState<string | null>(null);
   const [promptEditDraft, setPromptEditDraft] = useState("");
@@ -3130,6 +3135,7 @@ export function PresentationArticleGeneratorDialog({
         persistedDraft.preparedBundle?.preflightPages ?? [],
         persistedDraft.generatedSlotVideos ?? [],
       ));
+      setPendingVideoRegeneration(null);
       setAudioModelId(persistedDraft.audioModelId ?? "");
       setAudioModelExtraParams(persistedDraft.audioModelExtraParams ?? {});
       setVideoModelId(persistedDraft.videoModelId ?? "");
@@ -3205,6 +3211,7 @@ export function PresentationArticleGeneratorDialog({
     setAudioGenerationMode("full");
     setPendingAudioRegeneration(null);
     setGeneratedSlotVideos([]);
+    setPendingVideoRegeneration(null);
     setAudioModelId("");
     setAudioModelExtraParams({});
     setVideoModelId("");
@@ -4747,7 +4754,10 @@ export function PresentationArticleGeneratorDialog({
     };
   };
 
-  const handleGenerateSlotVideos = async (slot?: typeof preflightSlotPlans[number]) => {
+  const handleGenerateSlotVideos = async (
+    slot?: typeof preflightSlotPlans[number],
+    options?: { replaceExisting?: boolean },
+  ) => {
     const slots = slot ? [slot] : preflightSlotPlans;
     if (slots.length === 0) {
       const message = slotVideoBlockedHint ?? t("dialog.articleBuilder.generateSlotVideosError");
@@ -4766,6 +4776,15 @@ export function PresentationArticleGeneratorDialog({
       setSlotVideoGenerationError(message);
       toast.error(message);
       return;
+    }
+    if (!options?.replaceExisting) {
+      const existingVideoSlot = slots.find((currentSlot) => generatedSlotVideoByPage.has(currentSlot.pageNumber));
+      if (existingVideoSlot) {
+        setPendingVideoRegeneration(slot
+          ? { mode: "slot", pageNumber: existingVideoSlot.pageNumber }
+          : { mode: "slots" });
+        return;
+      }
     }
     setIsGeneratingSlotVideos(true);
     setSlotVideoGenerationProgress(`0/${slots.length}`);
@@ -4804,6 +4823,24 @@ export function PresentationArticleGeneratorDialog({
       setActiveSlotVideoKey(null);
       setSlotVideoGenerationProgress("");
     }
+  };
+
+  const handleConfirmVideoRegeneration = () => {
+    const pendingRequest = pendingVideoRegeneration;
+    setPendingVideoRegeneration(null);
+    if (!pendingRequest) {
+      return;
+    }
+    if (pendingRequest.mode === "slot") {
+      const targetSlot = preflightSlotPlans.find((candidate) => candidate.pageNumber === pendingRequest.pageNumber);
+      if (!targetSlot) {
+        toast.error(t("dialog.articleBuilder.generateSlotVideosError"));
+        return;
+      }
+      void handleGenerateSlotVideos(targetSlot, { replaceExisting: true });
+      return;
+    }
+    void handleGenerateSlotVideos(undefined, { replaceExisting: true });
   };
 
   const renderSlotPromptPanel = (prompt: PreparedImagePrompt) => {
@@ -7147,6 +7184,32 @@ export function PresentationArticleGeneratorDialog({
           <AlertDialogFooter>
             <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmAudioRegeneration}>
+              สร้างใหม่แทนที่
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(pendingVideoRegeneration)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setPendingVideoRegeneration(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>สร้างวิดีโอชุดใหม่แทนที่ของเดิม?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingVideoRegeneration?.mode === "slot"
+                ? `Page ${pendingVideoRegeneration.pageNumber} มีวิดีโอที่สร้างไว้แล้ว หากยืนยัน ระบบจะสร้างวิดีโอใหม่และแทนที่วิดีโอเดิมของหน้านี้`
+                : "มีวิดีโอบาง slide ที่สร้างไว้แล้ว หากยืนยัน ระบบจะสร้างวิดีโอชุดใหม่และแทนที่วิดีโอเดิมของ slide ที่มีอยู่"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmVideoRegeneration}>
               สร้างใหม่แทนที่
             </AlertDialogAction>
           </AlertDialogFooter>
