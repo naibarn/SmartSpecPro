@@ -4373,6 +4373,22 @@ export function PresentationArticleGeneratorDialog({
     }));
   };
 
+  const removeGeneratedFullAudio = (chunkIndex?: number) => {
+    setGeneratedSlotAudio((previous) => previous.filter((candidate) => (
+      getAudioAssetScope(candidate) !== "full"
+      || (chunkIndex !== undefined && candidate.chunkIndex !== chunkIndex)
+    )));
+    toast.success(chunkIndex === undefined ? "ลบเสียงรวมแล้ว" : "ลบเสียงส่วนนี้แล้ว");
+  };
+
+  const removeGeneratedSlotAudio = (pageNumber?: number) => {
+    setGeneratedSlotAudio((previous) => previous.filter((candidate) => (
+      getAudioAssetScope(candidate) !== "slot"
+      || (pageNumber !== undefined && candidate.pageNumber !== pageNumber)
+    )));
+    toast.success(pageNumber === undefined ? "ลบเสียงแยก slide แล้ว" : `ลบเสียงของ Page ${pageNumber} แล้ว`);
+  };
+
   const upsertGeneratedSlotVideo = (asset: GeneratedSlotVideoAsset) => {
     const nextAsset = {
       ...asset,
@@ -6478,11 +6494,11 @@ export function PresentationArticleGeneratorDialog({
                               : "สร้างเสียงแยกตามข้อความของแต่ละ slide"}
                           </p>
                         </div>
-                        <div className="flex items-end">
+                        <div className="flex flex-wrap items-end gap-2">
                           <Button
                             type="button"
                             variant="outline"
-                            className="w-full"
+                            className="min-w-[12rem] flex-1"
                             onClick={() => void handleGenerateSlotAudio()}
                             disabled={Boolean(slotAudioBlockedHint) || isGeneratingSlotAudio || generateAudioAsyncMutation.isPending}
                           >
@@ -6494,6 +6510,28 @@ export function PresentationArticleGeneratorDialog({
                             {audioGenerationMode === "full" ? "สร้างเสียงรวม" : t("dialog.articleBuilder.generateSlotAudio")}
                             {slotAudioGenerationProgress ? ` ${slotAudioGenerationProgress}` : ""}
                           </Button>
+                          {generatedFullAudioAssets.length > 0 ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => removeGeneratedFullAudio()}
+                              disabled={isGeneratingSlotAudio}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              ลบเสียงรวม
+                            </Button>
+                          ) : null}
+                          {generatedSlotAudioByPage.size > 0 ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => removeGeneratedSlotAudio()}
+                              disabled={isGeneratingSlotAudio}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              ลบเสียงแยก
+                            </Button>
+                          ) : null}
                         </div>
                       </div>
                       {selectedAudioModelFields.length > 0 ? (
@@ -6560,6 +6598,16 @@ export function PresentationArticleGeneratorDialog({
                                         {t("dialog.articleBuilder.openMedia")}
                                       </Button>
                                     </a>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => removeGeneratedFullAudio(chunkNumber)}
+                                      disabled={isGeneratingSlotAudio}
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      ลบเสียง
+                                    </Button>
                                   </div>
                                 ) : null}
                               </div>
@@ -6616,6 +6664,18 @@ export function PresentationArticleGeneratorDialog({
                                       {t("dialog.articleBuilder.openMedia")}
                                     </Button>
                                   </a>
+                                ) : null}
+                                {audioAsset ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => removeGeneratedSlotAudio(slot.pageNumber)}
+                                    disabled={isGeneratingSlotAudio}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    ลบเสียง
+                                  </Button>
                                 ) : null}
                               </div>
                             </div>
