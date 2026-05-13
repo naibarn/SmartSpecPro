@@ -366,6 +366,19 @@ describe("SlideAudioPanel", () => {
   it("includes completed audio from media history and adds it through the library bridge", async () => {
     const addTaskToLibrary = vi.fn().mockResolvedValue({ itemId: 909 });
     const setDeckAudio = vi.fn();
+    vi.mocked(trpc.library.listDocuments.useQuery).mockReturnValue(
+      makeLibraryDocumentsQueryMock([
+        {
+          id: 33,
+          item_type: "audio",
+          title: "Older library audio",
+          status: "ready",
+          source_url: "https://cdn.example.com/older-library.mp3",
+          created_at: "2026-01-01T00:00:00.000Z",
+          metadata: {},
+        },
+      ]) as any,
+    );
     vi.mocked(trpc.media.addTaskToLibrary.useMutation).mockReturnValue(
       makeMutationMock(undefined, addTaskToLibrary) as any,
     );
@@ -391,6 +404,8 @@ describe("SlideAudioPanel", () => {
 
     expect(screen.getByText("History")).toBeInTheDocument();
     expect(screen.getByText("History narration prompt")).toBeInTheDocument();
+    const items = screen.getAllByTestId(/^audio-picker-item-/);
+    expect(items[0]).toHaveTextContent("History narration prompt");
 
     fireEvent.click(screen.getByTestId("audio-picker-add-history:task-audio-1"));
 

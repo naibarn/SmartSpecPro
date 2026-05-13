@@ -435,12 +435,36 @@ interface AudioLibraryResultItemLike {
   resultData?: unknown;
   created_at?: string;
   createdAt?: string;
+  completed_at?: string;
+  completedAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
   owner_user_id?: number | null;
   access_source?: string | null;
   source?: AudioPickerSource;
   metadata?: Record<string, unknown>;
   model?: string | null;
   prompt?: string | null;
+}
+
+function getAudioPickerItemTime(item: AudioLibraryResultItemLike): number {
+  for (const candidate of [
+    item.updated_at,
+    item.updatedAt,
+    item.completed_at,
+    item.completedAt,
+    item.created_at,
+    item.createdAt,
+  ]) {
+    if (typeof candidate !== "string" || !candidate.trim()) {
+      continue;
+    }
+    const time = Date.parse(candidate);
+    if (Number.isFinite(time)) {
+      return time;
+    }
+  }
+  return 0;
 }
 
 function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialogProps) {
@@ -539,6 +563,10 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
           resultData: task.resultData,
           created_at: task.created_at ?? task.createdAt,
           createdAt: task.createdAt ?? task.created_at,
+          completed_at: task.completed_at ?? task.completedAt,
+          completedAt: task.completedAt ?? task.completed_at,
+          updated_at: task.updated_at ?? task.updatedAt,
+          updatedAt: task.updatedAt ?? task.updated_at,
           source: "history" as const,
           metadata: {
             model: task.model,
@@ -573,7 +601,16 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
       seen.add(dedupeKey);
       merged.push(item);
     }
-    return merged;
+    return merged.sort((a, b) => {
+      const timeDiff = getAudioPickerItemTime(b) - getAudioPickerItemTime(a);
+      if (timeDiff !== 0) {
+        return timeDiff;
+      }
+      if (a.source === b.source) {
+        return 0;
+      }
+      return a.source === "history" ? -1 : 1;
+    });
   }, [
     debouncedQuery,
     listQuery.data?.results,
@@ -700,8 +737,8 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
               item.metadata && typeof item.metadata === "object"
                 ? String((item.metadata.model_name ?? item.metadata.model ?? "") || "").trim()
                 : "",
-              item.created_at || item.createdAt
-                ? new Date(String(item.created_at ?? item.createdAt)).toLocaleDateString()
+              getAudioPickerItemTime(item) > 0
+                ? new Date(getAudioPickerItemTime(item)).toLocaleDateString()
                 : "",
             ]
               .filter(Boolean)
