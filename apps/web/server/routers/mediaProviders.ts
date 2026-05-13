@@ -835,46 +835,48 @@ export async function testElevenLabs(
     Accept: "application/json",
   };
 
-  const subscriptionResponse = await fetch(`${normalizedBaseUrl}/v1/user/subscription`, {
+  const voicesResponse = await fetch(`${normalizedBaseUrl}/v2/voices?page_size=1&include_total_count=false`, {
     method: "GET",
     headers,
   });
   const latencyMs = Date.now() - startTime;
 
-  if (subscriptionResponse.ok) {
+  if (voicesResponse.ok) {
     return { success: true, message: "Connection successful", latencyMs };
   }
 
-  if (subscriptionResponse.status === 404 || subscriptionResponse.status === 405) {
-    const voicesResponse = await fetch(`${normalizedBaseUrl}/v1/voices`, {
+  if (voicesResponse.status === 404 || voicesResponse.status === 405) {
+    const subscriptionResponse = await fetch(`${normalizedBaseUrl}/v1/user/subscription`, {
       method: "GET",
       headers,
     });
-    if (voicesResponse.ok) {
+    if (subscriptionResponse.ok) {
       return { success: true, message: "Connection successful", latencyMs: Date.now() - startTime };
     }
-    const fallbackSummary = await summarizeProviderResponse(voicesResponse, apiKey);
+    const fallbackSummary = await summarizeProviderResponse(subscriptionResponse, apiKey);
     return {
-      success: false,
-      message: `ElevenLabs API error (HTTP ${voicesResponse.status}): ${fallbackSummary}`,
+      success: subscriptionResponse.status === 429,
+      message: subscriptionResponse.status === 429
+        ? "ElevenLabs API key valid (rate limited)"
+        : `ElevenLabs API error (HTTP ${subscriptionResponse.status}): ${fallbackSummary}`,
       latencyMs: Date.now() - startTime,
     };
   }
 
-  const responseSummary = await summarizeProviderResponse(subscriptionResponse, apiKey);
-  if (subscriptionResponse.status === 401) {
+  const responseSummary = await summarizeProviderResponse(voicesResponse, apiKey);
+  if (voicesResponse.status === 401) {
     return { success: false, message: `Invalid API key (401 Unauthorized): ${responseSummary}`, latencyMs };
   }
-  if (subscriptionResponse.status === 403) {
+  if (voicesResponse.status === 403) {
     return { success: false, message: `ElevenLabs API key forbidden (403 Forbidden): ${responseSummary}`, latencyMs };
   }
-  if (subscriptionResponse.status === 429) {
+  if (voicesResponse.status === 429) {
     return { success: true, message: "ElevenLabs API key valid (rate limited)", latencyMs };
   }
 
   return {
     success: false,
-    message: `ElevenLabs API error (HTTP ${subscriptionResponse.status}): ${responseSummary}`,
+    message: `ElevenLabs API error (HTTP ${voicesResponse.status}): ${responseSummary}`,
     latencyMs,
   };
 }

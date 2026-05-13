@@ -304,11 +304,11 @@ describe("testElevenLabs", () => {
     vi.restoreAllMocks();
   });
 
-  it("calls GET /v1/user/subscription with xi-api-key auth and no bearer authorization", async () => {
+  it("calls GET /v2/voices with xi-api-key auth and no bearer authorization", async () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ character_count: 123, character_limit: 1000 }),
+      json: async () => ({ voices: [] }),
     });
     vi.stubGlobal("fetch", fetchSpy);
 
@@ -317,13 +317,13 @@ describe("testElevenLabs", () => {
     expect(result.success).toBe(true);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const [url, options] = fetchSpy.mock.calls[0];
-    expect(url).toBe("https://api.elevenlabs.io/v1/user/subscription");
+    expect(url).toBe("https://api.elevenlabs.io/v2/voices?page_size=1&include_total_count=false");
     expect(options.method).toBe("GET");
     expect(options.headers["xi-api-key"]).toBe("eleven-secret");
     expect(options.headers.Authorization).toBeUndefined();
   });
 
-  it("falls back to /v1/voices when subscription probing is unavailable", async () => {
+  it("falls back to /v1/user/subscription when v2 voices probing is unavailable", async () => {
     const fetchSpy = vi.fn()
       .mockResolvedValueOnce({
         ok: false,
@@ -334,7 +334,7 @@ describe("testElevenLabs", () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ voices: [] }),
+        json: async () => ({ character_count: 123, character_limit: 1000 }),
       });
     vi.stubGlobal("fetch", fetchSpy);
 
@@ -342,7 +342,7 @@ describe("testElevenLabs", () => {
 
     expect(result.success).toBe(true);
     expect(fetchSpy).toHaveBeenCalledTimes(2);
-    expect(fetchSpy.mock.calls[1][0]).toBe("https://api.elevenlabs.io/v1/voices");
+    expect(fetchSpy.mock.calls[1][0]).toBe("https://api.elevenlabs.io/v1/user/subscription");
   });
 
   it("returns concise provider errors without leaking API keys", async () => {
