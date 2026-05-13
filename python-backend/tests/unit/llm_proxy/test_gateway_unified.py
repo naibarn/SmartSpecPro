@@ -46,6 +46,29 @@ class TestGatewayInitialization:
         assert ("code_generation", "quality") in MODEL_MATRIX
         assert ("analysis", "cost") in MODEL_MATRIX
 
+    @pytest.mark.asyncio
+    async def test_upload_generated_media_bytes_returns_storage_proxy_url(self):
+        """Generated binary media should use the stable web storage proxy URL."""
+        mock_r2 = MagicMock()
+        mock_r2.upload_bytes = AsyncMock(return_value="https://signed.example.com/generated/audio.mp3?expires=1")
+
+        gateway = LLMGateway.__new__(LLMGateway)
+        gateway.db = AsyncMock()
+
+        with patch("app.llm_proxy.gateway_unified.R2_STORAGE_AVAILABLE", True), \
+             patch("app.llm_proxy.gateway_unified.get_r2_storage_service", return_value=mock_r2):
+            url = await gateway._upload_generated_media_bytes(
+                user_id=12,
+                job_id="job-1",
+                media_type="audio",
+                payload=b"audio",
+                content_type="audio/mpeg",
+                ext="mp3",
+            )
+
+        assert url == "/api/storage/files/audio/generated/12/job-1.mp3"
+        mock_r2.upload_bytes.assert_awaited_once()
+
 
 class TestCostEstimation:
     """Test cost estimation methods"""

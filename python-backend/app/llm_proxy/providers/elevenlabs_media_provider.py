@@ -63,6 +63,7 @@ class ElevenLabsMediaProvider:
         body = _compact_json_payload(payload, exclude={"voice_id", "output_format"})
         if "text" not in body:
             body["text"] = _required_string(payload, "text")
+        _drop_auto_string(body, "language_code")
         output_format = _optional_string(payload.get("output_format"))
         response = await self.client.post(
             self._url(f"/v1/text-to-speech/{quote(voice_id, safe='')}"),
@@ -86,8 +87,12 @@ class ElevenLabsMediaProvider:
             },
         )
         body["inputs"] = inputs
-        if "settings" not in body and payload.get("stability") is not None:
-            body["settings"] = {"stability": payload["stability"]}
+        _drop_auto_string(body, "language_code")
+        _normalize_optional_int(body, "seed", minimum=0, maximum=4294967295)
+        _normalize_optional_stability(body)
+        stability = _optional_float(payload.get("stability"), "stability", minimum=0, maximum=1)
+        if "settings" not in body and stability is not None:
+            body["settings"] = {"stability": stability}
         output_format = _optional_string(payload.get("output_format"))
         response = await self.client.post(
             self._url("/v1/text-to-dialogue"),
@@ -210,6 +215,54 @@ def _required_string(payload: dict[str, Any], key: str) -> str:
 
 def _optional_string(value: Any) -> Optional[str]:
     return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _is_auto_string(value: Any) -> bool:
+    return isinstance(value, str) and value.strip().lower() == "auto"
+
+
+def _drop_auto_string(payload: dict[str, Any], key: str) -> None:
+    if _is_auto_string(payload.get(key)):
+        payload.pop(key, None)
+
+
+def _optional_float(value: Any, key: str, *, minimum: float, maximum: float) -> Optional[float]:
+    if value is None or value == "" or _is_auto_string(value):
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ElevenLabsMediaError(f"ElevenLabs field '{key}' must be a number") from exc
+    if parsed < minimum or parsed > maximum:
+        raise ElevenLabsMediaError(f"ElevenLabs field '{key}' must be between {minimum} and {maximum}")
+    return parsed
+
+
+def _normalize_optional_int(payload: dict[str, Any], key: str, *, minimum: int, maximum: int) -> None:
+    value = payload.get(key)
+    if value is None or value == "" or _is_auto_string(value):
+        payload.pop(key, None)
+        return
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ElevenLabsMediaError(f"ElevenLabs field '{key}' must be an integer") from exc
+    if parsed < minimum or parsed > maximum:
+        raise ElevenLabsMediaError(f"ElevenLabs field '{key}' must be between {minimum} and {maximum}")
+    payload[key] = parsed
+
+
+def _normalize_optional_stability(payload: dict[str, Any]) -> None:
+    settings = payload.get("settings")
+    if not isinstance(settings, dict):
+        return
+    stability = _optional_float(settings.get("stability"), "settings.stability", minimum=0, maximum=1)
+    if stability is None:
+        settings.pop("stability", None)
+    else:
+        settings["stability"] = stability
+    if not settings:
+        payload.pop("settings", None)
 
 
 def _normalize_dialogue_inputs(payload: dict[str, Any]) -> list[dict[str, str]]:

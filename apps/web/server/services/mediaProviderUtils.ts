@@ -805,6 +805,32 @@ const ELEVENLABS_OUTPUT_FORMAT_OPTIONS = [
   { value: "wav_48000", label: "WAV 48kHz" },
 ];
 
+const ELEVENLABS_LANGUAGE_CODE_OPTIONS = [
+  { value: "auto", label: "Auto" },
+  { value: "th", label: "Thai" },
+  { value: "en", label: "English" },
+  { value: "ja", label: "Japanese" },
+  { value: "ko", label: "Korean" },
+  { value: "zh", label: "Chinese" },
+  { value: "id", label: "Indonesian" },
+  { value: "vi", label: "Vietnamese" },
+  { value: "es", label: "Spanish" },
+  { value: "fr", label: "French" },
+  { value: "de", label: "German" },
+  { value: "it", label: "Italian" },
+  { value: "pt", label: "Portuguese" },
+  { value: "hi", label: "Hindi" },
+  { value: "ar", label: "Arabic" },
+];
+
+const ELEVENLABS_STABILITY_OPTIONS = [
+  { value: "auto", label: "Auto" },
+  { value: "0.25", label: "More expressive (0.25)" },
+  { value: "0.5", label: "Balanced (0.5)" },
+  { value: "0.75", label: "Stable (0.75)" },
+  { value: "1", label: "Maximum stability (1.0)" },
+];
+
 const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
   {
     modelId: ELEVENLABS_VOICE_CHANGER_MODEL_ID,
@@ -883,7 +909,14 @@ const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
         { value: "eleven_turbo_v2_5", label: "Eleven Turbo v2.5" },
       ] },
       { key: "output_format", label: "Output Format", type: "select", default: "mp3_44100_128", options: ELEVENLABS_OUTPUT_FORMAT_OPTIONS },
-      { key: "language_code", label: "Language Code", type: "text", placeholder: "en, th, ja..." },
+      {
+        key: "language_code",
+        label: "Language",
+        type: "select",
+        default: "auto",
+        options: ELEVENLABS_LANGUAGE_CODE_OPTIONS,
+        description: "Use Auto unless the model should be forced to a specific language.",
+      },
       { key: "stability", label: "Stability", type: "number", default: 0.5 },
       { key: "similarity_boost", label: "Similarity Boost", type: "number", default: 0.75 },
       { key: "style", label: "Style", type: "number", default: 0 },
@@ -950,8 +983,22 @@ const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
         { value: "eleven_v3", label: "Eleven v3" },
       ] },
       { key: "output_format", label: "Output Format", type: "select", default: "mp3_44100_128", options: ELEVENLABS_OUTPUT_FORMAT_OPTIONS },
-      { key: "language_code", label: "Language Code", type: "text", placeholder: "en, th, ja..." },
-      { key: "stability", label: "Dialogue Stability", type: "number", min: 0, max: 1, step: 0.01, description: "Mapped to ElevenLabs settings.stability." },
+      {
+        key: "language_code",
+        label: "Language",
+        type: "select",
+        default: "auto",
+        options: ELEVENLABS_LANGUAGE_CODE_OPTIONS,
+        description: "Use Auto unless the dialogue should be forced to a specific language.",
+      },
+      {
+        key: "stability",
+        label: "Dialogue Stability",
+        type: "select",
+        default: "auto",
+        options: ELEVENLABS_STABILITY_OPTIONS,
+        description: "Auto lets ElevenLabs choose. Other values map to settings.stability.",
+      },
       {
         key: "pronunciation_dictionary_locators",
         label: "Pronunciation Dictionaries",
@@ -966,7 +1013,14 @@ const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
           { key: "version_id", label: "Version ID", type: "text", required: true },
         ],
       },
-      { key: "seed", label: "Seed", type: "number", min: 0, max: 4294967295, step: 1 },
+      {
+        key: "seed",
+        label: "Seed",
+        type: "text",
+        default: "auto",
+        placeholder: "auto or 0-4294967295",
+        description: "Use Auto for a random seed, or enter a number for reproducible output.",
+      },
       { key: "apply_text_normalization", label: "Text Normalization", type: "select", default: "auto", options: [
         { value: "auto", label: "Auto" },
         { value: "on", label: "On" },
@@ -996,7 +1050,14 @@ const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
     inputFields: [
       { key: "file", label: "Source Audio or Video", type: "audio_urls", required: true, maxItems: 1, allowedExtensions: "mp3,wav,m4a,ogg,flac,aac,mp4,mov,webm" },
       { key: "model_id", label: "Model", type: "select", required: true, default: "scribe_v2", options: [{ value: "scribe_v2", label: "Scribe v2" }] },
-      { key: "language_code", label: "Language Code", type: "text", placeholder: "en, th, ja..." },
+      {
+        key: "language_code",
+        label: "Language",
+        type: "select",
+        default: "auto",
+        options: ELEVENLABS_LANGUAGE_CODE_OPTIONS,
+        description: "Use Auto for language detection.",
+      },
       { key: "diarize", label: "Speaker Diarization", type: "boolean", default: false },
       { key: "timestamps_granularity", label: "Timestamps", type: "select", default: "word", options: [
         { value: "none", label: "None" },

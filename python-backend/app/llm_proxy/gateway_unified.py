@@ -6,6 +6,7 @@ import math
 import mimetypes
 import httpx
 from uuid import uuid4
+from urllib.parse import quote
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
@@ -603,7 +604,8 @@ class LLMGateway:
         else:
             key = StoragePath.image_generated(str(user_id), job_id, ext)
 
-        return await r2_service.upload_bytes(key, payload, content_type, db_session=self.db)
+        await r2_service.upload_bytes(key, payload, content_type, db_session=self.db)
+        return f"/api/storage/files/{quote(key, safe='/')}"
 
     async def _rehost_provider_media_url(
         self,

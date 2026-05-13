@@ -494,10 +494,26 @@ describe("mediaProviderUtils", () => {
           }),
         ]),
       }),
-      expect.objectContaining({ key: "language_code", type: "text" }),
-      expect.objectContaining({ key: "stability", type: "number" }),
+      expect.objectContaining({
+        key: "language_code",
+        type: "select",
+        default: "auto",
+        options: expect.arrayContaining([
+          expect.objectContaining({ value: "auto", label: "Auto" }),
+          expect.objectContaining({ value: "th", label: "Thai" }),
+        ]),
+      }),
+      expect.objectContaining({
+        key: "stability",
+        type: "select",
+        default: "auto",
+        options: expect.arrayContaining([
+          expect.objectContaining({ value: "auto", label: "Auto" }),
+          expect.objectContaining({ value: "0.5" }),
+        ]),
+      }),
       expect.objectContaining({ key: "pronunciation_dictionary_locators", type: "array", maxItems: 3 }),
-      expect.objectContaining({ key: "seed", type: "number", min: 0, max: 4294967295 }),
+      expect.objectContaining({ key: "seed", type: "text", default: "auto" }),
       expect.objectContaining({ key: "apply_text_normalization", type: "select" }),
     ]));
     expect(stt).toMatchObject({

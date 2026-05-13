@@ -84,3 +84,34 @@ async def test_generate_text_to_dialogue_can_build_single_input_from_text_and_vo
         await provider.aclose()
 
     assert result.capability == "text_to_dialogue"
+
+
+@pytest.mark.asyncio
+async def test_generate_text_to_dialogue_omits_auto_values_and_parses_numeric_choices():
+    requests: list[httpx.Request] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, content=b"audio", headers={"content-type": "audio/mpeg"})
+
+    provider = ElevenLabsMediaProvider(api_key="secret-key")
+    await provider.client.aclose()
+    provider.client = _client(handler)
+    try:
+        await provider.generate_text_to_dialogue({
+            "text": "Hello",
+            "voice_id": "voice-1",
+            "language_code": "auto",
+            "stability": "0.75",
+            "seed": "auto",
+            "apply_text_normalization": "auto",
+        })
+    finally:
+        await provider.aclose()
+
+    body = json.loads(requests[0].content.decode("utf-8"))
+    assert body == {
+        "inputs": [{"text": "Hello", "voice_id": "voice-1"}],
+        "settings": {"stability": 0.75},
+        "apply_text_normalization": "auto",
+    }
