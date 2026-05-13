@@ -876,8 +876,11 @@ async function fetchProviderApiFieldOptions(
     if (!connection) return [];
 
     url = new URL(endpointRaw.replace(/^\//, ""), `${connection.baseUrl.replace(/\/$/, "")}/`);
-    if (providerName.trim().toLowerCase() === "magnific") {
+    const normalizedProviderName = providerName.trim().toLowerCase();
+    if (normalizedProviderName === "magnific") {
       headers["x-magnific-api-key"] = connection.apiKey;
+    } else if (normalizedProviderName === "elevenlabs") {
+      headers["xi-api-key"] = connection.apiKey;
     } else {
       headers.Authorization = `Bearer ${connection.apiKey}`;
     }

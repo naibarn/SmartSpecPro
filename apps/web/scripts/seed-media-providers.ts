@@ -18,7 +18,7 @@ import {
   WAVESPEED_LAUNCH_MODEL_ID,
 } from "../server/services/mediaProviderUtils";
 
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://smartspec:smartspec_dev@localhost:5432/smartspec";
+const DATABASE_URL = process.env.DATABASE_URL || "postgresql://smartspec:smartspec123@localhost:5432/smartspec";
 const ENCRYPTION_KEY = process.env.MEDIA_ENCRYPTION_KEY || process.env.LLM_ENCRYPTION_KEY || "smartspec-media-key-32chars!";
 
 function encrypt(text: string): string {
@@ -197,6 +197,20 @@ export async function seedMediaProviders() {
 
     for (const provider of DEFAULT_PROVIDERS) {
       if (existingNames.includes(provider.providerName)) {
+        if (provider.providerName === ELEVENLABS_PROVIDER) {
+          await sql`
+            UPDATE media_providers SET
+              "displayName" = ${provider.displayName},
+              "description" = ${provider.description},
+              "providerType" = ${provider.providerType},
+              "baseUrl" = ${provider.baseUrl},
+              "defaultModel" = ${provider.defaultModel},
+              "availableModels" = ${sql.json(provider.availableModels)},
+              "priority" = ${provider.priority}
+            WHERE "providerName" = ${provider.providerName}
+          `;
+          console.log(`  [UPDATE] ${provider.displayName} metadata`);
+        }
         console.log(`  [SKIP] ${provider.displayName} - already exists`);
         skipped++;
         continue;
@@ -223,7 +237,7 @@ export async function seedMediaProviders() {
           ${provider.providerType},
           ${provider.baseUrl},
           ${provider.defaultModel},
-          ${JSON.stringify(provider.availableModels)},
+          ${sql.json(provider.availableModels)},
           ${provider.isEnabled},
           ${provider.isPrimary},
           ${provider.priority},

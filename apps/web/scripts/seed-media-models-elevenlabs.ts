@@ -45,13 +45,13 @@ export async function seedElevenLabsMediaModels(): Promise<void> {
           ${model.description},
           ${model.modelType},
           ${model.provider},
-          ${JSON.stringify(model.aliases)},
+          ${sql.json(model.aliases)},
           ${model.creditCost},
-          ${JSON.stringify(model.aspectRatios)},
-          ${JSON.stringify(model.durations)},
+          ${sql.json(model.aspectRatios)},
+          ${sql.json(model.durations)},
           ${model.priority},
           ${model.sortOrder},
-          ${JSON.stringify(model.configJson)},
+          ${sql.json(model.configJson)},
           ${model.isEnabled}
         )
         ON CONFLICT ("modelId") DO UPDATE SET

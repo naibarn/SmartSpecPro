@@ -492,7 +492,33 @@ describe("mediaProviderUtils", () => {
     });
     expect(voiceChanger.inputFields).toEqual(expect.arrayContaining([
       expect.objectContaining({ key: "audio", type: "audio_urls", required: true, maxItems: 1 }),
-      expect.objectContaining({ key: "voice_id", required: true }),
+      expect.objectContaining({
+        key: "voice_id",
+        required: true,
+        default: "21m00Tcm4TlvDq8ikWAM",
+        options: expect.arrayContaining([
+          { value: "21m00Tcm4TlvDq8ikWAM", label: "Rachel" },
+          { value: "pNInz6obpgDQGcFmaJgB", label: "Adam" },
+        ]),
+        optionsSource: expect.objectContaining({
+          type: "provider_api",
+          endpoint: "/v2/voices?page_size=100&sort=name&sort_direction=asc&include_total_count=false",
+          itemsPath: "voices",
+          valueField: "voice_id",
+          labelField: "name",
+          queryParam: "search",
+        }),
+      }),
+    ]));
+    expect(tts.inputFields).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        key: "voice_id",
+        default: "21m00Tcm4TlvDq8ikWAM",
+        optionsSource: expect.objectContaining({
+          type: "provider_api",
+          endpoint: "/v2/voices?page_size=100&sort=name&sort_direction=asc&include_total_count=false",
+        }),
+      }),
     ]));
   });
 

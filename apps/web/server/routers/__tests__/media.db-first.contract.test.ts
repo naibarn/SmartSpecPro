@@ -1351,6 +1351,78 @@ describe("media router DB-first model contract", () => {
     expect(fetchInit.headers.Authorization).toBeUndefined();
   });
 
+  it("listModelFieldOptions uses ElevenLabs voice search with xi-api-key auth", async () => {
+    mockDecrypt.mockReturnValue("elevenlabs-test-key");
+    const db = makeDbWithSequentialSelectResults([
+      [{
+        modelType: "audio",
+        provider: "elevenlabs",
+        isEnabled: true,
+        configJson: {
+          inputFields: [
+            {
+              key: "voice_id",
+              options: [
+                { value: "21m00Tcm4TlvDq8ikWAM", label: "Rachel" },
+              ],
+              optionsSource: {
+                type: "provider_api",
+                endpoint: "/v2/voices?page_size=100&sort=name&sort_direction=asc&include_total_count=false",
+                method: "GET",
+                itemsPath: "voices",
+                valueField: "voice_id",
+                labelField: "name",
+                previewField: "preview_url",
+                queryParam: "search",
+              },
+            },
+          ],
+        },
+      }],
+      [{
+        providerName: "elevenlabs",
+        baseUrl: "https://api.elevenlabs.io",
+        apiKeyEncrypted: "encrypted-key",
+      }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        voices: [
+          { voice_id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel", preview_url: "https://cdn.example.com/rachel.mp3" },
+          { voice_id: "pNInz6obpgDQGcFmaJgB", name: "Adam" },
+        ],
+      }),
+    }));
+
+    const fn = mediaRouter.listModelFieldOptions as Function;
+    const result = await fn({
+      input: {
+        modelId: "elevenlabs/text-to-speech",
+        fieldKey: "voice_id",
+        query: "adam",
+        limit: 50,
+      },
+    });
+
+    expect(result.source).toBe("merged");
+    expect(result.options).toEqual([
+      { value: "pNInz6obpgDQGcFmaJgB", label: "Adam" },
+    ]);
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.elevenlabs.io/v2/voices?page_size=100&sort=name&sort_direction=asc&include_total_count=false&search=adam",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          "xi-api-key": "elevenlabs-test-key",
+        }),
+      }),
+    );
+    const [, fetchInit] = (fetch as any).mock.calls[0];
+    expect(fetchInit.headers.Authorization).toBeUndefined();
+  });
+
   it("listModelFieldOptions rejects absolute provider_api endpoint and keeps static options only", async () => {
     const db = makeDbWithSequentialSelectResults([
       [{

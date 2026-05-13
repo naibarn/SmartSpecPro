@@ -389,7 +389,12 @@ async function fetchFieldOptionsFromSource(
     const connection = await resolveProviderConnection(providerName);
     if (!connection) return [];
     url = new URL(endpointRaw.replace(/^\//, ""), `${connection.baseUrl.replace(/\/$/, "")}/`);
-    headers.Authorization = `Bearer ${connection.apiKey}`;
+    const normalizedProviderName = providerName.trim().toLowerCase();
+    if (normalizedProviderName === "elevenlabs") {
+      headers["xi-api-key"] = connection.apiKey;
+    } else {
+      headers.Authorization = `Bearer ${connection.apiKey}`;
+    }
   } else {
     if (!/^https:\/\//i.test(endpointRaw)) return [];
     if (endpointRaw.includes("..")) return [];

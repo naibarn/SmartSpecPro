@@ -749,17 +749,31 @@ const WAVESPEED_AUDIO_MODEL_DEFINITIONS: readonly WaveSpeedAudioModelDefinition[
   },
 ] as const;
 
+const ELEVENLABS_DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
+
 const ELEVENLABS_VOICE_OPTIONS = [
-  { value: "Rachel", label: "Rachel" },
-  { value: "Domi", label: "Domi" },
-  { value: "Bella", label: "Bella" },
-  { value: "Antoni", label: "Antoni" },
-  { value: "Elli", label: "Elli" },
-  { value: "Josh", label: "Josh" },
-  { value: "Arnold", label: "Arnold" },
-  { value: "Adam", label: "Adam" },
-  { value: "Sam", label: "Sam" },
+  { value: ELEVENLABS_DEFAULT_VOICE_ID, label: "Rachel" },
+  { value: "pNInz6obpgDQGcFmaJgB", label: "Adam" },
+  { value: "ErXwobaYiN019PkySvjV", label: "Antoni" },
+  { value: "EXAVITQu4vr4xnSDxMaL", label: "Bella" },
+  { value: "AZnzlk1XvdvUeBnXmlld", label: "Domi" },
+  { value: "MF3mGyEYCl7XYWbV9V6O", label: "Elli" },
+  { value: "TxGEqnHWrfWFTfGW9XjX", label: "Josh" },
+  { value: "VR6AewLTigWG4xSOukaG", label: "Arnold" },
+  { value: "yoZ06aMxZJJ28mfd3POQ", label: "Sam" },
 ];
+
+const ELEVENLABS_VOICE_OPTIONS_SOURCE = {
+  type: "provider_api",
+  endpoint: "/v2/voices?page_size=100&sort=name&sort_direction=asc&include_total_count=false",
+  method: "GET",
+  itemsPath: "voices",
+  valueField: "voice_id",
+  labelField: "name",
+  previewField: "preview_url",
+  queryParam: "search",
+  cacheTtlSeconds: 3600,
+} as const;
 
 const ELEVENLABS_OUTPUT_FORMAT_OPTIONS = [
   { value: "mp3_44100_128", label: "MP3 44.1kHz 128kbps" },
@@ -790,7 +804,16 @@ const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
     sortOrder: 200,
     inputFields: [
       { key: "audio", label: "Source Audio", type: "audio_urls", required: true, maxItems: 1, allowedExtensions: "mp3,wav,m4a,ogg,flac,aac" },
-      { key: "voice_id", label: "Target Voice ID", type: "select", required: true, searchable: true, default: "Rachel", options: ELEVENLABS_VOICE_OPTIONS },
+      {
+        key: "voice_id",
+        label: "Target Voice",
+        type: "select",
+        required: true,
+        searchable: true,
+        default: ELEVENLABS_DEFAULT_VOICE_ID,
+        options: ELEVENLABS_VOICE_OPTIONS,
+        optionsSource: ELEVENLABS_VOICE_OPTIONS_SOURCE,
+      },
       { key: "model_id", label: "Model", type: "select", default: "eleven_multilingual_sts_v2", options: [
         { value: "eleven_multilingual_sts_v2", label: "Eleven Multilingual STS v2" },
         { value: "eleven_english_sts_v2", label: "Eleven English STS v2" },
@@ -820,7 +843,16 @@ const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
     sortOrder: 201,
     inputFields: [
       { key: "text", label: "Text", type: "text", required: true, syncWith: "prompt" },
-      { key: "voice_id", label: "Voice ID", type: "select", required: true, searchable: true, default: "Rachel", options: ELEVENLABS_VOICE_OPTIONS },
+      {
+        key: "voice_id",
+        label: "Voice",
+        type: "select",
+        required: true,
+        searchable: true,
+        default: ELEVENLABS_DEFAULT_VOICE_ID,
+        options: ELEVENLABS_VOICE_OPTIONS,
+        optionsSource: ELEVENLABS_VOICE_OPTIONS_SOURCE,
+      },
       { key: "model_id", label: "Model", type: "select", default: "eleven_multilingual_v2", options: [
         { value: "eleven_multilingual_v2", label: "Eleven Multilingual v2" },
         { value: "eleven_v3", label: "Eleven v3" },
