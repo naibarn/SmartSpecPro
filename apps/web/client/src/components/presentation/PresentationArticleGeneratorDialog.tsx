@@ -327,6 +327,7 @@ const TASK_POLL_INTERVAL_MS = 2000;
 const TASK_POLL_MAX_ATTEMPTS = 120;
 const VIDEO_TASK_POLL_INTERVAL_MS = 5000;
 const VIDEO_TASK_POLL_MAX_ATTEMPTS = 180;
+const SLOT_VIDEO_GENERATION_CONCURRENCY = 3;
 const IMAGE_GENERATION_BATCH_CONCURRENCY = 3;
 const AUDIO_TEXT_BYTE_LIMIT = 8000;
 const DEFAULT_SLIDE_VISUAL_MODE: SlideVisualMode = "full-slide-image";
@@ -2220,13 +2221,13 @@ export function PresentationArticleGeneratorDialog({
   const [slidePayloadEditorDirty, setSlidePayloadEditorDirty] = useState(false);
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [isGeneratingSlotAudio, setIsGeneratingSlotAudio] = useState(false);
-  const [isGeneratingSlotVideos, setIsGeneratingSlotVideos] = useState(false);
+  const [activeSlotVideoKeys, setActiveSlotVideoKeys] = useState<string[]>([]);
   const [imageGenerationProgress, setImageGenerationProgress] = useState<string>("");
   const [slotAudioGenerationProgress, setSlotAudioGenerationProgress] = useState<string>("");
   const [slotVideoGenerationProgress, setSlotVideoGenerationProgress] = useState<string>("");
   const [slotVideoGenerationError, setSlotVideoGenerationError] = useState<string>("");
   const [activeSlotAudioKey, setActiveSlotAudioKey] = useState<string | null>(null);
-  const [activeSlotVideoKey, setActiveSlotVideoKey] = useState<string | null>(null);
+  const activeSlotVideoKeysRef = useRef<string[]>([]);
   const [slotPickerKey, setSlotPickerKey] = useState<string | null>(null);
   const [slotPickerTab, setSlotPickerTab] = useState<"library" | "history">("library");
   const [slotPickerSearchQuery, setSlotPickerSearchQuery] = useState("");
@@ -2273,6 +2274,12 @@ export function PresentationArticleGeneratorDialog({
   const generateAudioAsyncMutation = trpc.media.generateAudioAsync.useMutation();
   const generateVideoAsyncMutation = trpc.media.generateVideoAsync.useMutation();
   const executeSkillMutation = trpc.chat.executeSkill.useMutation();
+  const isGeneratingSlotVideos = activeSlotVideoKeys.length > 0;
+  const activeSlotVideoKeySet = useMemo(() => new Set(activeSlotVideoKeys), [activeSlotVideoKeys]);
+  const isSlotVideoQueueFull = activeSlotVideoKeys.length >= SLOT_VIDEO_GENERATION_CONCURRENCY;
+  useEffect(() => {
+    activeSlotVideoKeysRef.current = activeSlotVideoKeys;
+  }, [activeSlotVideoKeys]);
   const sandboxJobStatusQuery = trpc.sandbox.getJobStatus.useQuery(
     { jobId: generatedSlideDraft?.artifactJobId ?? "" },
     {
@@ -3286,7 +3293,8 @@ export function PresentationArticleGeneratorDialog({
       setSlotVideoGenerationProgress("");
       setSlotVideoGenerationError("");
       setActiveSlotAudioKey(null);
-      setActiveSlotVideoKey(null);
+      activeSlotVideoKeysRef.current = [];
+      setActiveSlotVideoKeys([]);
       setSlotPickerKey(null);
       setSlotPickerSearchQuery("");
       setSlotPickerTab("library");
@@ -3352,7 +3360,8 @@ export function PresentationArticleGeneratorDialog({
     setSlotVideoGenerationProgress("");
     setSlotVideoGenerationError("");
     setActiveSlotAudioKey(null);
-    setActiveSlotVideoKey(null);
+    activeSlotVideoKeysRef.current = [];
+    setActiveSlotVideoKeys([]);
     setSlotPickerKey(null);
     setSlotPickerSearchQuery("");
     setSlotPickerTab("library");
@@ -4890,8 +4899,20 @@ export function PresentationArticleGeneratorDialog({
     options?: { replaceExisting?: boolean },
   ) => {
     const slots = slot ? [slot] : preflightSlotPlans;
+    const activeVideoKeys = activeSlotVideoKeysRef.current;
+    const activeKeySet = new Set(activeVideoKeys);
     if (slots.length === 0) {
       const message = slotVideoBlockedHint ?? t("dialog.articleBuilder.generateSlotVideosError");
+      setSlotVideoGenerationError(message);
+      toast.error(message);
+      return;
+    }
+    if (slots.some((currentSlot) => activeKeySet.has(currentSlot.id))) {
+      toast.info("วิดีโอของ slot นี้กำลังสร้างอยู่แล้ว");
+      return;
+    }
+    if (slot && activeVideoKeys.length >= SLOT_VIDEO_GENERATION_CONCURRENCY) {
+      const message = `มีคิวสร้างวิดีโอครบ ${SLOT_VIDEO_GENERATION_CONCURRENCY} รายการแล้ว กรุณารอให้คิวใดคิวหนึ่งเสร็จก่อน`;
       setSlotVideoGenerationError(message);
       toast.error(message);
       return;
@@ -4917,25 +4938,58 @@ export function PresentationArticleGeneratorDialog({
         return;
       }
     }
-    setIsGeneratingSlotVideos(true);
     setSlotVideoGenerationProgress(`0/${slots.length}`);
     setSlotVideoGenerationError("");
     let completedCount = 0;
+    let nextSlotIndex = 0;
+    let shouldStopScheduling = false;
+    let fatalError: unknown = null;
     const failedSlots: string[] = [];
-    try {
-      for (const currentSlot of slots) {
-        setActiveSlotVideoKey(currentSlot.id);
+    const markSlotActive = (slotId: string) => {
+      const nextKeys = activeSlotVideoKeysRef.current.includes(slotId)
+        ? activeSlotVideoKeysRef.current
+        : [...activeSlotVideoKeysRef.current, slotId];
+      activeSlotVideoKeysRef.current = nextKeys;
+      setActiveSlotVideoKeys(nextKeys);
+    };
+    const clearSlotActive = (slotId: string) => {
+      const nextKeys = activeSlotVideoKeysRef.current.filter((candidate) => candidate !== slotId);
+      activeSlotVideoKeysRef.current = nextKeys;
+      setActiveSlotVideoKeys(nextKeys);
+    };
+    const runNextSlot = async () => {
+      while (!shouldStopScheduling) {
+        const currentIndex = nextSlotIndex;
+        nextSlotIndex += 1;
+        if (currentIndex >= slots.length) {
+          return;
+        }
+        const currentSlot = slots[currentIndex];
+        markSlotActive(currentSlot.id);
         try {
           const nextAsset = await generateVideoForSlot(currentSlot);
           upsertGeneratedSlotVideo(nextAsset);
         } catch (error) {
           failedSlots.push(`${currentSlot.pageNumber}: ${getErrorMessage(error, t("dialog.articleBuilder.generateSlotVideosError"))}`);
           if (slot || isInsufficientCreditsError(error) || isApiInfrastructureError(error)) {
-            throw error;
+            shouldStopScheduling = true;
+            fatalError ??= error;
           }
+        } finally {
+          clearSlotActive(currentSlot.id);
+          completedCount += 1;
+          setSlotVideoGenerationProgress(`${completedCount}/${slots.length}`);
         }
-        completedCount += 1;
-        setSlotVideoGenerationProgress(`${completedCount}/${slots.length}`);
+      }
+    };
+    try {
+      const workerCount = Math.min(
+        Math.max(1, SLOT_VIDEO_GENERATION_CONCURRENCY - activeVideoKeys.length),
+        slots.length,
+      );
+      await Promise.all(Array.from({ length: workerCount }, () => runNextSlot()));
+      if (fatalError) {
+        throw fatalError;
       }
       if (failedSlots.length > 0) {
         const message = `${t("dialog.articleBuilder.generateSlotVideosError")} (${failedSlots.length}/${slots.length})\n${failedSlots.join("\n")}`;
@@ -4950,8 +5004,6 @@ export function PresentationArticleGeneratorDialog({
       setSlotVideoGenerationError(message);
       toast.error(message);
     } finally {
-      setIsGeneratingSlotVideos(false);
-      setActiveSlotVideoKey(null);
       setSlotVideoGenerationProgress("");
     }
   };
@@ -6952,7 +7004,7 @@ export function PresentationArticleGeneratorDialog({
                         {preflightSlotPlans.length > 0 ? preflightSlotPlans.map((slot) => {
                           const videoAsset = generatedSlotVideoByPage.get(slot.pageNumber);
                           const imageAsset = generatedImageByPage.get(slot.pageNumber);
-                          const isActive = activeSlotVideoKey === slot.id;
+                          const isActive = activeSlotVideoKeySet.has(slot.id);
                           const previewRatio = imageAsset?.canvasRatio ?? canvasRatio;
                           const previewAspectRatio = getCanvasRatioCss(previewRatio);
                           const isPortraitPreview = isPortraitCanvasRatio(previewRatio);
@@ -6974,7 +7026,7 @@ export function PresentationArticleGeneratorDialog({
                                     ? t("dialog.articleBuilder.generating")
                                     : videoAsset
                                       ? t("dialog.articleBuilder.generatedSlotVideoReady")
-                                    : t("dialog.articleBuilder.generatedSlotVideoMissing")}
+                                      : t("dialog.articleBuilder.generatedSlotVideoMissing")}
                                 </Badge>
                               </div>
                               {imageAsset || videoAsset ? (
@@ -7017,7 +7069,7 @@ export function PresentationArticleGeneratorDialog({
                                   size="sm"
                                   variant="outline"
                                   onClick={() => void handleGenerateSlotVideos(slot)}
-                                  disabled={Boolean(slotVideoBlockedHint) || isGeneratingSlotVideos || !imageAsset}
+                                  disabled={Boolean(slotVideoBlockedHint) || isActive || isSlotVideoQueueFull || !imageAsset}
                                 >
                                   {isActive ? (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
