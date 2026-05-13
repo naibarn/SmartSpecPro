@@ -325,6 +325,8 @@ const SUPPORTED_OUTPUT_FORMATS: SlideOutputFormat[] = ["json", "md", "pptx", "pd
 const ARTICLE_BUILDER_DRAFT_STORAGE_KEY_PREFIX = "presentation-article-builder-draft";
 const TASK_POLL_INTERVAL_MS = 2000;
 const TASK_POLL_MAX_ATTEMPTS = 120;
+const VIDEO_TASK_POLL_INTERVAL_MS = 5000;
+const VIDEO_TASK_POLL_MAX_ATTEMPTS = 180;
 const IMAGE_GENERATION_BATCH_CONCURRENCY = 3;
 const AUDIO_TEXT_BYTE_LIMIT = 8000;
 const DEFAULT_SLIDE_VISUAL_MODE: SlideVisualMode = "full-slide-image";
@@ -794,6 +796,11 @@ function getSupportedCanvasRatiosForModel(model: MediaModelOption | null | undef
 
 function getCanvasRatioCss(value: SlideCanvasRatio): string {
   return value.replace(":", " / ");
+}
+
+function isPortraitCanvasRatio(value: SlideCanvasRatio): boolean {
+  const [width, height] = value.split(":").map((part) => Number(part));
+  return Number.isFinite(width) && Number.isFinite(height) && width < height;
 }
 
 function getCanvasSizeForRatio(value: SlideCanvasRatio): {
@@ -1324,10 +1331,14 @@ async function pollTaskUntilTerminal(
   fetchTask: (taskId: string) => Promise<unknown>,
   options?: {
     mediaLabel?: string;
+    intervalMs?: number;
+    maxAttempts?: number;
   },
 ): Promise<unknown> {
   const mediaLabel = options?.mediaLabel ?? "Image";
-  for (let attempt = 0; attempt < TASK_POLL_MAX_ATTEMPTS; attempt += 1) {
+  const intervalMs = options?.intervalMs ?? TASK_POLL_INTERVAL_MS;
+  const maxAttempts = options?.maxAttempts ?? TASK_POLL_MAX_ATTEMPTS;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const current = await fetchTask(taskId);
     const status = normalizeTaskStatus(current);
     if (status === "completed") {
@@ -1337,9 +1348,10 @@ async function pollTaskUntilTerminal(
       const errorMessage = extractTaskFailureMessage(current);
       throw new Error(errorMessage || `${mediaLabel} generation ${status}.`);
     }
-    await sleepMs(TASK_POLL_INTERVAL_MS);
+    await sleepMs(intervalMs);
   }
-  throw new Error(`${mediaLabel} generation timeout. Please try again.`);
+  const timeoutMinutes = Math.max(1, Math.round((intervalMs * maxAttempts) / 60000));
+  throw new Error(`${mediaLabel} generation is still processing after ${timeoutMinutes} minutes. Task ID: ${taskId}. Please check Media History or try again later.`);
 }
 
 async function copyText(value: string, successMessage: string, errorMessage: string): Promise<void> {
@@ -4842,7 +4854,11 @@ export function PresentationArticleGeneratorDialog({
       const terminalTask = await pollTaskUntilTerminal(
         taskId,
         async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
-        { mediaLabel: "Video" },
+        {
+          mediaLabel: "Video",
+          intervalMs: VIDEO_TASK_POLL_INTERVAL_MS,
+          maxAttempts: VIDEO_TASK_POLL_MAX_ATTEMPTS,
+        },
       );
       resultUrl = extractTaskResultUrl(terminalTask);
       taskId = extractTaskId(terminalTask) ?? taskId;
@@ -6932,13 +6948,20 @@ export function PresentationArticleGeneratorDialog({
                           {slotVideoGenerationProgress ? ` ${slotVideoGenerationProgress}` : ""}
                         </Button>
                       </div>
-                      <div className="grid gap-3 lg:grid-cols-2">
+                      <div className="grid items-start gap-3 lg:grid-cols-2">
                         {preflightSlotPlans.length > 0 ? preflightSlotPlans.map((slot) => {
                           const videoAsset = generatedSlotVideoByPage.get(slot.pageNumber);
                           const imageAsset = generatedImageByPage.get(slot.pageNumber);
                           const isActive = activeSlotVideoKey === slot.id;
+                          const previewRatio = imageAsset?.canvasRatio ?? canvasRatio;
+                          const previewAspectRatio = getCanvasRatioCss(previewRatio);
+                          const isPortraitPreview = isPortraitCanvasRatio(previewRatio);
+                          const mediaFrameClassName = cn(
+                            "overflow-hidden rounded-lg border bg-background",
+                            isPortraitPreview ? "mx-auto w-full max-w-[240px]" : "w-full",
+                          );
                           return (
-                            <div key={slot.id} className="rounded-lg border bg-muted/20 p-3">
+                            <div key={slot.id} className="self-start rounded-lg border bg-muted/20 p-3">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">
                                   <div className="text-sm font-medium">Page {slot.pageNumber} · {slot.title}</div>
@@ -6951,28 +6974,41 @@ export function PresentationArticleGeneratorDialog({
                                     ? t("dialog.articleBuilder.generating")
                                     : videoAsset
                                       ? t("dialog.articleBuilder.generatedSlotVideoReady")
-                                      : t("dialog.articleBuilder.generatedSlotVideoMissing")}
+                                    : t("dialog.articleBuilder.generatedSlotVideoMissing")}
                                 </Badge>
                               </div>
-                              {imageAsset ? (
-                                <img
-                                  src={imageAsset.url}
-                                  alt={`Page ${slot.pageNumber} start frame`}
-                                  className="mt-3 h-36 w-full rounded-lg border bg-background object-cover"
-                                  loading="lazy"
-                                />
-                              ) : null}
-                              {videoAsset ? (
-                                <div className="mt-3 space-y-3">
-                                  <video
-                                    key={`${videoAsset.pageNumber}:${videoAsset.url}:${videoAsset.updatedAt ?? ""}`}
-                                    controls
-                                    src={videoAsset.url}
-                                    className="max-h-64 w-full rounded-lg border bg-black"
-                                  />
-                                  <div className="max-h-24 overflow-y-auto rounded-lg border bg-background p-3 text-xs leading-5 text-muted-foreground">
-                                    {videoAsset.prompt}
-                                  </div>
+                              {imageAsset || videoAsset ? (
+                                <div className={cn(
+                                  "mt-3",
+                                  isPortraitPreview && imageAsset && videoAsset
+                                    ? "grid items-start gap-3 sm:grid-cols-2"
+                                    : "space-y-3",
+                                )}>
+                                  {imageAsset ? (
+                                    <div className={mediaFrameClassName} style={{ aspectRatio: previewAspectRatio }}>
+                                      <img
+                                        src={imageAsset.url}
+                                        alt={`Page ${slot.pageNumber} start frame`}
+                                        className="h-full w-full object-contain"
+                                        loading="lazy"
+                                      />
+                                    </div>
+                                  ) : null}
+                                  {videoAsset ? (
+                                    <div className={cn("space-y-3", isPortraitPreview && imageAsset ? "min-w-0" : "")}>
+                                      <div className={mediaFrameClassName} style={{ aspectRatio: previewAspectRatio }}>
+                                        <video
+                                          key={`${videoAsset.pageNumber}:${videoAsset.url}:${videoAsset.updatedAt ?? ""}`}
+                                          controls
+                                          src={videoAsset.url}
+                                          className="h-full w-full bg-black object-contain"
+                                        />
+                                      </div>
+                                      <div className="max-h-24 overflow-y-auto rounded-lg border bg-background p-3 text-xs leading-5 text-muted-foreground">
+                                        {videoAsset.prompt}
+                                      </div>
+                                    </div>
+                                  ) : null}
                                 </div>
                               ) : null}
                               <div className="mt-3 flex flex-wrap gap-2">
