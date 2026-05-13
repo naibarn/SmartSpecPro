@@ -6657,6 +6657,7 @@ export default function MediaStudio() {
     if (!trimmed) return "";
     try {
       const parsed = new URL(trimmed, window.location.origin);
+      const isRelativeInput = !/^https?:\/\//i.test(trimmed);
       if (parsed.hostname.endsWith(".r2.cloudflarestorage.com")) {
         const key = decodeURIComponent(parsed.pathname.replace(/^\/+/, "").split("/").slice(1).join("/"));
         if (key) {
@@ -6664,10 +6665,12 @@ export default function MediaStudio() {
         }
       }
       const pathname = decodeURIComponent(parsed.pathname.replace(/^\/+/, ""));
-      for (const marker of ["audio/generated/", "images/generated/", "videos/generated/"]) {
-        const markerIndex = pathname.indexOf(marker);
-        if (markerIndex >= 0) {
-          return `/api/storage/files/${encodeURI(pathname.slice(markerIndex))}`;
+      if (isRelativeInput) {
+        for (const marker of ["audio/generated/", "images/generated/", "videos/generated/"]) {
+          const markerIndex = pathname.indexOf(marker);
+          if (markerIndex >= 0) {
+            return `/api/storage/files/${encodeURI(pathname.slice(markerIndex))}`;
+          }
         }
       }
     } catch {

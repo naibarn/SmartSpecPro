@@ -1259,7 +1259,7 @@ function extractTaskResultUrl(task: unknown): string | null {
   for (const key of ["videoUrl", "audioUrl", "mediaUrl", "resultUrl", "outputUrl", "url", "sourceUrl", "imageUrl"]) {
     const value = typeof record[key] === "string" ? record[key].trim() : "";
     if (value) {
-      return value;
+      return normalizeGeneratedStorageUrl(value);
     }
   }
   const result = record.result;
@@ -1268,7 +1268,7 @@ function extractTaskResultUrl(task: unknown): string | null {
     for (const key of ["videoUrl", "audioUrl", "mediaUrl", "url", "resultUrl", "outputUrl", "sourceUrl", "imageUrl"]) {
       const value = typeof nested[key] === "string" ? nested[key].trim() : "";
       if (value) {
-        return value;
+        return normalizeGeneratedStorageUrl(value);
       }
     }
   }
@@ -1925,17 +1925,51 @@ function normalizeLibraryMediaItems(
   return normalized;
 }
 
-function readFirstHttpUrl(value: unknown, visited = new WeakSet<object>()): string | null {
+function isUsableGeneratedMediaUrl(value: string): boolean {
+  return (
+    /^https?:\/\//i.test(value)
+    || value.startsWith("/api/storage/files/")
+    || value.startsWith("/api/v1/media/files/")
+    || value.startsWith("/uploads/")
+    || value.startsWith("data:")
+    || value.startsWith("blob:")
+  );
+}
+
+function normalizeGeneratedStorageUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.startsWith("/api/storage/files/")) {
+    return trimmed;
+  }
+  try {
+    const parsed = new URL(trimmed, window.location.origin);
+    const isRelativeInput = !/^https?:\/\//i.test(trimmed);
+    const pathname = decodeURIComponent(parsed.pathname.replace(/^\/+/, ""));
+    if (isRelativeInput || parsed.hostname.endsWith(".r2.cloudflarestorage.com")) {
+      for (const marker of ["audio/generated/", "images/generated/", "videos/generated/"]) {
+        const markerIndex = pathname.indexOf(marker);
+        if (markerIndex >= 0) {
+          return `/api/storage/files/${encodeURI(pathname.slice(markerIndex))}`;
+        }
+      }
+    }
+  } catch {
+    // Keep the original source when it is already a usable relative/data/blob URL.
+  }
+  return trimmed;
+}
+
+function readFirstMediaUrl(value: unknown, visited = new WeakSet<object>()): string | null {
   if (!value) {
     return null;
   }
   if (typeof value === "string") {
     const trimmed = value.trim();
-    return /^https?:\/\//i.test(trimmed) ? trimmed : null;
+    return isUsableGeneratedMediaUrl(trimmed) ? normalizeGeneratedStorageUrl(trimmed) : null;
   }
   if (Array.isArray(value)) {
     for (const item of value) {
-      const found = readFirstHttpUrl(item, visited);
+      const found = readFirstMediaUrl(item, visited);
       if (found) {
         return found;
       }
@@ -1951,13 +1985,13 @@ function readFirstHttpUrl(value: unknown, visited = new WeakSet<object>()): stri
   }
   visited.add(record);
   for (const key of ["url", "image_url", "imageUrl", "result_url", "resultUrl", "signed_url", "signedUrl", "src"]) {
-    const found = readFirstHttpUrl(record[key], visited);
+    const found = readFirstMediaUrl(record[key], visited);
     if (found) {
       return found;
     }
   }
   for (const nestedValue of Object.values(record)) {
-    const found = readFirstHttpUrl(nestedValue, visited);
+    const found = readFirstMediaUrl(nestedValue, visited);
     if (found) {
       return found;
     }
@@ -1967,8 +2001,8 @@ function readFirstHttpUrl(value: unknown, visited = new WeakSet<object>()): stri
 
 function extractMediaHistoryResultUrl(task: MediaHistoryTaskLike): string | null {
   const directUrl = String(task.resultUrl || "").trim();
-  if (directUrl && /^https?:\/\//i.test(directUrl)) {
-    return directUrl;
+  if (directUrl && isUsableGeneratedMediaUrl(directUrl)) {
+    return normalizeGeneratedStorageUrl(directUrl);
   }
   const resultData = task.resultData;
   if (!resultData || typeof resultData !== "object") {
@@ -1984,12 +2018,12 @@ function extractMediaHistoryResultUrl(task: MediaHistoryTaskLike): string | null
     })()
     : null;
   return (
-    readFirstHttpUrl(resultData.output)
-    || readFirstHttpUrl(resultData.result)
-    || readFirstHttpUrl(resultData.data)
-    || readFirstHttpUrl(resultData.response)
-    || readFirstHttpUrl(parsedResultJson)
-    || readFirstHttpUrl(resultData)
+    readFirstMediaUrl(resultData.output)
+    || readFirstMediaUrl(resultData.result)
+    || readFirstMediaUrl(resultData.data)
+    || readFirstMediaUrl(resultData.response)
+    || readFirstMediaUrl(parsedResultJson)
+    || readFirstMediaUrl(resultData)
   );
 }
 
@@ -2008,14 +2042,14 @@ function extractMediaHistoryThumbnailUrl(task: MediaHistoryTaskLike): string | n
     })()
     : null;
   return (
-    readFirstHttpUrl(resultData.poster)
-    || readFirstHttpUrl(resultData.poster_url)
-    || readFirstHttpUrl(resultData.posterUrl)
-    || readFirstHttpUrl(resultData.thumbnail)
-    || readFirstHttpUrl(resultData.thumbnail_url)
-    || readFirstHttpUrl(resultData.thumbnailUrl)
-    || readFirstHttpUrl(parsedResultJson?.poster)
-    || readFirstHttpUrl(parsedResultJson?.thumbnail)
+    readFirstMediaUrl(resultData.poster)
+    || readFirstMediaUrl(resultData.poster_url)
+    || readFirstMediaUrl(resultData.posterUrl)
+    || readFirstMediaUrl(resultData.thumbnail)
+    || readFirstMediaUrl(resultData.thumbnail_url)
+    || readFirstMediaUrl(resultData.thumbnailUrl)
+    || readFirstMediaUrl(parsedResultJson?.poster)
+    || readFirstMediaUrl(parsedResultJson?.thumbnail)
     || null
   );
 }

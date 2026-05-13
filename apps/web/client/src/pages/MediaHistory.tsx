@@ -591,11 +591,14 @@ function normalizeGeneratedStorageUrl(value: string): string {
   }
   try {
     const parsed = new URL(trimmed, window.location.origin);
+    const isRelativeInput = !/^https?:\/\//i.test(trimmed);
     const pathname = decodeURIComponent(parsed.pathname.replace(/^\/+/, ""));
-    for (const marker of ["audio/generated/", "images/generated/", "videos/generated/"]) {
-      const markerIndex = pathname.indexOf(marker);
-      if (markerIndex >= 0) {
-        return `/api/storage/files/${encodeURI(pathname.slice(markerIndex))}`;
+    if (isRelativeInput || parsed.hostname.endsWith(".r2.cloudflarestorage.com")) {
+      for (const marker of ["audio/generated/", "images/generated/", "videos/generated/"]) {
+        const markerIndex = pathname.indexOf(marker);
+        if (markerIndex >= 0) {
+          return `/api/storage/files/${encodeURI(pathname.slice(markerIndex))}`;
+        }
       }
     }
   } catch {

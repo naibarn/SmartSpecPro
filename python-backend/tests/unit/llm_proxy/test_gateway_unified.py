@@ -47,10 +47,10 @@ class TestGatewayInitialization:
         assert ("analysis", "cost") in MODEL_MATRIX
 
     @pytest.mark.asyncio
-    async def test_upload_generated_media_bytes_returns_storage_proxy_url(self):
-        """Generated binary media should use the stable web storage proxy URL."""
+    async def test_upload_generated_media_bytes_returns_public_url(self):
+        """Generated binary media should keep the public URL for external download."""
         mock_r2 = MagicMock()
-        mock_r2.upload_bytes = AsyncMock(return_value="https://signed.example.com/generated/audio.mp3?expires=1")
+        mock_r2.upload_bytes = AsyncMock(return_value="https://cdn.example.com/audio/generated/12/job-1.mp3")
 
         gateway = LLMGateway.__new__(LLMGateway)
         gateway.db = AsyncMock()
@@ -66,7 +66,7 @@ class TestGatewayInitialization:
                 ext="mp3",
             )
 
-        assert url == "/api/storage/files/audio/generated/12/job-1.mp3"
+        assert url == "https://cdn.example.com/audio/generated/12/job-1.mp3"
         mock_r2.upload_bytes.assert_awaited_once()
 
 
