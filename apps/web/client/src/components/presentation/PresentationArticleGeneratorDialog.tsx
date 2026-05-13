@@ -26,6 +26,16 @@ import { toast } from "sonner";
 import { AgencyPickerModal } from "@/components/agency/AgencyPickerModal";
 import { ModelInputFieldsPanel } from "@/components/media/ModelInputFieldsPanel";
 import { ImageModelCombobox } from "@/components/presentation/ImageModelCombobox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -162,6 +172,11 @@ type GeneratedImageAsset = PreparedImagePrompt & {
 };
 
 export type SlotAudioGenerationMode = "full" | "slot";
+
+type PendingAudioRegenerationRequest =
+  | { mode: "full" }
+  | { mode: "slot"; pageNumber: number }
+  | { mode: "slots" };
 
 type GeneratedSlotAudioAsset = {
   id: string;
@@ -2096,6 +2111,7 @@ export function PresentationArticleGeneratorDialog({
   const [generatedImages, setGeneratedImages] = useState<GeneratedImageAsset[]>([]);
   const [generatedSlotAudio, setGeneratedSlotAudio] = useState<GeneratedSlotAudioAsset[]>([]);
   const [audioGenerationMode, setAudioGenerationMode] = useState<SlotAudioGenerationMode>("full");
+  const [pendingAudioRegeneration, setPendingAudioRegeneration] = useState<PendingAudioRegenerationRequest | null>(null);
   const [generatedSlotVideos, setGeneratedSlotVideos] = useState<GeneratedSlotVideoAsset[]>([]);
   const [imagePromptOverrides, setImagePromptOverrides] = useState<Record<string, string>>({});
   const [editingPromptSlotKey, setEditingPromptSlotKey] = useState<string | null>(null);
@@ -3109,6 +3125,7 @@ export function PresentationArticleGeneratorDialog({
         persistedDraft.generatedSlotAudio ?? [],
       ));
       setAudioGenerationMode(persistedDraft.audioGenerationMode === "slot" ? "slot" : "full");
+      setPendingAudioRegeneration(null);
       setGeneratedSlotVideos(normalizeSlotMediaAssets(
         persistedDraft.preparedBundle?.preflightPages ?? [],
         persistedDraft.generatedSlotVideos ?? [],
@@ -3186,6 +3203,7 @@ export function PresentationArticleGeneratorDialog({
     setPromptEditDraft("");
     setGeneratedSlotAudio([]);
     setAudioGenerationMode("full");
+    setPendingAudioRegeneration(null);
     setGeneratedSlotVideos([]);
     setAudioModelId("");
     setAudioModelExtraParams({});
@@ -4463,14 +4481,22 @@ export function PresentationArticleGeneratorDialog({
     })
   );
 
-  const handleGenerateSlotAudio = async (slot?: typeof preflightSlotPlans[number]) => {
-    if (!slot && audioGenerationMode === "full") {
+  const handleGenerateSlotAudio = async (
+    slot?: typeof preflightSlotPlans[number],
+    options?: { replaceExisting?: boolean; modeOverride?: SlotAudioGenerationMode },
+  ) => {
+    const effectiveAudioGenerationMode = options?.modeOverride ?? audioGenerationMode;
+    if (!slot && effectiveAudioGenerationMode === "full") {
       if (slotAudioBlockedHint) {
         toast.error(slotAudioBlockedHint);
         return;
       }
       if (fullAudioTextChunks.length === 0) {
         toast.error(slotAudioBlockedHint ?? t("dialog.articleBuilder.generateSlotAudioError"));
+        return;
+      }
+      if (!options?.replaceExisting && generatedFullAudioAssets.length > 0) {
+        setPendingAudioRegeneration({ mode: "full" });
         return;
       }
       setIsGeneratingSlotAudio(true);
@@ -4516,6 +4542,15 @@ export function PresentationArticleGeneratorDialog({
       toast.error(slotAudioBlockedHint);
       return;
     }
+    if (!options?.replaceExisting) {
+      const existingAudioSlot = slots.find((currentSlot) => generatedSlotAudioByPage.has(currentSlot.pageNumber));
+      if (existingAudioSlot) {
+        setPendingAudioRegeneration(slot
+          ? { mode: "slot", pageNumber: existingAudioSlot.pageNumber }
+          : { mode: "slots" });
+        return;
+      }
+    }
     setIsGeneratingSlotAudio(true);
     setSlotAudioGenerationProgress(`0/${slots.length}`);
     let completedCount = 0;
@@ -4535,6 +4570,27 @@ export function PresentationArticleGeneratorDialog({
       setActiveSlotAudioKey(null);
       setSlotAudioGenerationProgress("");
     }
+  };
+
+  const handleConfirmAudioRegeneration = () => {
+    const pendingRequest = pendingAudioRegeneration;
+    setPendingAudioRegeneration(null);
+    if (!pendingRequest) {
+      return;
+    }
+    if (pendingRequest.mode === "slot") {
+      const targetSlot = preflightSlotPlans.find((candidate) => candidate.pageNumber === pendingRequest.pageNumber);
+      if (!targetSlot) {
+        toast.error(t("dialog.articleBuilder.generateSlotAudioError"));
+        return;
+      }
+      void handleGenerateSlotAudio(targetSlot, { replaceExisting: true, modeOverride: "slot" });
+      return;
+    }
+    void handleGenerateSlotAudio(undefined, {
+      replaceExisting: true,
+      modeOverride: pendingRequest.mode === "full" ? "full" : "slot",
+    });
   };
 
   const buildVideoPromptForSlot = async (
@@ -7068,6 +7124,34 @@ export function PresentationArticleGeneratorDialog({
           ) : null}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(pendingAudioRegeneration)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setPendingAudioRegeneration(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>สร้างเสียงชุดใหม่แทนที่ของเดิม?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAudioRegeneration?.mode === "full"
+                ? "มีเสียงบรรยายรวมที่สร้างไว้แล้ว หากยืนยัน ระบบจะสร้างเสียงรวมชุดใหม่และแทนที่เสียงรวมเดิม"
+                : pendingAudioRegeneration?.mode === "slot"
+                  ? `Page ${pendingAudioRegeneration.pageNumber} มีเสียงบรรยายที่สร้างไว้แล้ว หากยืนยัน ระบบจะสร้างเสียงใหม่และแทนที่เสียงเดิมของหน้านี้`
+                  : "มีเสียงบรรยายบาง slide ที่สร้างไว้แล้ว หากยืนยัน ระบบจะสร้างเสียงแยก slide ชุดใหม่และแทนที่เสียงเดิมของ slide ที่มีอยู่"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmAudioRegeneration}>
+              สร้างใหม่แทนที่
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AgencyPickerModal
         open={isAgencyModalOpen}
