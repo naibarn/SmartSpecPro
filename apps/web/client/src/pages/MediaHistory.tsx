@@ -564,7 +564,7 @@ function findFirstNumber(
 }
 
 function extractMediaHistoryResultUrl(task: MediaTask): string | null {
-  return (
+  const resultUrl = (
     (typeof task.resultUrl === "string" && task.resultUrl.trim() ? task.resultUrl.trim() : null) ||
     readFirstHttpUrl(task.resultData?.resultUrl) ||
     readFirstHttpUrl(task.resultData?.result_url) ||
@@ -581,6 +581,27 @@ function extractMediaHistoryResultUrl(task: MediaTask): string | null {
     readFirstHttpUrl(task.resultData?.resultJson) ||
     null
   );
+  return resultUrl ? normalizeGeneratedStorageUrl(resultUrl) : null;
+}
+
+function normalizeGeneratedStorageUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.startsWith("/api/storage/files/")) {
+    return trimmed;
+  }
+  try {
+    const parsed = new URL(trimmed, window.location.origin);
+    const pathname = decodeURIComponent(parsed.pathname.replace(/^\/+/, ""));
+    for (const marker of ["audio/generated/", "images/generated/", "videos/generated/"]) {
+      const markerIndex = pathname.indexOf(marker);
+      if (markerIndex >= 0) {
+        return `/api/storage/files/${encodeURI(pathname.slice(markerIndex))}`;
+      }
+    }
+  } catch {
+    // Keep the original value when URL parsing is not available for this source.
+  }
+  return trimmed;
 }
 
 function extractMediaHistoryExternalTaskId(task: MediaTask): string | null {

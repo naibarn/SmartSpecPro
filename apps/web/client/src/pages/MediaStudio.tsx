@@ -6663,6 +6663,13 @@ export default function MediaStudio() {
           return `/api/storage/files/${encodeURI(key)}`;
         }
       }
+      const pathname = decodeURIComponent(parsed.pathname.replace(/^\/+/, ""));
+      for (const marker of ["audio/generated/", "images/generated/", "videos/generated/"]) {
+        const markerIndex = pathname.indexOf(marker);
+        if (markerIndex >= 0) {
+          return `/api/storage/files/${encodeURI(pathname.slice(markerIndex))}`;
+        }
+      }
     } catch {
       // Keep the original URL if parsing fails; validation happens separately.
     }
