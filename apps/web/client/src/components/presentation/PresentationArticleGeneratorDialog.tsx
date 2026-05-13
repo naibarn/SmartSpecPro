@@ -3250,7 +3250,7 @@ export function PresentationArticleGeneratorDialog({
       setAudioModelExtraParams(persistedDraft.audioModelExtraParams ?? {});
       setVideoModelId(persistedDraft.videoModelId ?? "");
       setVideoModelExtraParams(persistedDraft.videoModelExtraParams ?? {});
-      setVideoPromptSkillId(persistedDraft.videoPromptSkillId ?? "");
+      setVideoPromptSkillId("");
       setVideoDurationSeconds(Number.isFinite(persistedDraft.videoDurationSeconds)
         ? Math.max(1, Math.min(60, Math.round(persistedDraft.videoDurationSeconds ?? 5)))
         : 5);
@@ -3476,17 +3476,6 @@ export function PresentationArticleGeneratorDialog({
       setSlideSkillId(preferredSkill.id);
     }
   }, [artifactCapableSlideSkillOptions, artifactRequiredForSelectedOutput, open, slideSkillId, slideSkillOptions]);
-
-  useEffect(() => {
-    if (!open || videoPromptSkillId || videoPromptSkillOptions.length === 0) {
-      return;
-    }
-    const preferredSkill = videoPromptSkillOptions.find((skill) => skill.id === "start-frame-to-short-video-prompt")
-      ?? videoPromptSkillOptions[0];
-    if (preferredSkill) {
-      setVideoPromptSkillId(preferredSkill.id);
-    }
-  }, [open, videoPromptSkillId, videoPromptSkillOptions]);
 
   useEffect(() => {
     if (!open || !isEditorialLayoutPlannerSelected) {
