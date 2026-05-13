@@ -17,6 +17,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
 import { toast } from "sonner";
 import type { AudioTrackInput, ProjectAudioTrackInput } from "@shared/presentation/contracts";
 import { ImageModelCombobox } from "./ImageModelCombobox";
@@ -84,6 +85,38 @@ function readFileAsDataUrl(file: File): Promise<string> {
     reader.onload = () => resolve(String(reader.result || ""));
     reader.readAsDataURL(file);
   });
+}
+
+function inferAudioUploadMimeType(file: File): string {
+  const declaredType = String(file.type || "").trim().toLowerCase();
+  if (declaredType && declaredType !== "audio/*") {
+    return declaredType;
+  }
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const byExtension: Record<string, string> = {
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    m4a: "audio/mp4",
+    aac: "audio/aac",
+    ogg: "audio/ogg",
+    opus: "audio/ogg",
+    flac: "audio/flac",
+  };
+  return byExtension[ext] ?? "application/octet-stream";
+}
+
+function readLibraryAudioSourceUrl(item: unknown): string {
+  if (!item || typeof item !== "object") {
+    return "";
+  }
+  const record = item as Record<string, unknown>;
+  const source =
+    record.sourceUrl ??
+    record.source_url ??
+    record.fileUrl ??
+    record.file_url ??
+    record.url;
+  return normalizeMediaSourceUrl(typeof source === "string" ? source : "");
 }
 
 const AUDIO_SLIDER_CLASS = [
@@ -296,6 +329,7 @@ interface AudioLibraryResultItemLike {
   id: number;
   title: string;
   status?: string;
+  sourceUrl?: string | null;
   source_url?: string | null;
   created_at?: string;
   owner_user_id?: number | null;
@@ -358,6 +392,11 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
   const isLoading = listQuery.isLoading || searchQuery.isLoading;
 
   function handleTogglePlay(itemId: number, url: string) {
+    const sourceUrl = normalizeMediaSourceUrl(url);
+    if (!sourceUrl) {
+      toast.error("Audio source unavailable for preview.");
+      return;
+    }
     if (playingId === itemId) {
       // Pause currently playing track
       audioRef.current?.pause();
@@ -365,9 +404,10 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
     } else {
       // Stop previous track and start new one
       audioRef.current?.pause();
-      const audio = new Audio(url);
+      const audio = new Audio(sourceUrl);
       audio.play().catch(() => {
         setPlayingId(null);
+        toast.error("Unable to preview this audio.");
       });
       audio.onended = () => setPlayingId(null);
       audioRef.current = audio;
@@ -432,7 +472,8 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
 
           {results.map((item) => {
             const isPlaying = playingId === item.id;
-            const canPreview = !!item.source_url && item.status === "ready";
+            const sourceUrl = readLibraryAudioSourceUrl(item);
+            const canPreview = !!sourceUrl && item.status === "ready";
             const accessSource = String(item.access_source || "").toLowerCase();
             const sourceLabel = accessSource === "shared_group" || accessSource === "shared_direct"
               ? "Shared"
@@ -468,7 +509,7 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
                     !canPreview && "cursor-not-allowed opacity-40",
                   )}
                   disabled={!canPreview}
-                  onClick={() => canPreview && handleTogglePlay(item.id, item.source_url!)}
+                  onClick={() => canPreview && handleTogglePlay(item.id, sourceUrl)}
                   aria-label={isPlaying ? "Pause preview" : "Play preview"}
                   title={canPreview ? (isPlaying ? "Pause" : "Preview") : "Preview unavailable"}
                 >
@@ -600,8 +641,8 @@ export function SlideAudioPanel({
     { enabled: Boolean(deckAudioTrack?.libraryItemId) },
   );
 
-  const slideAudioSourceUrl = slideAudioItemQuery.data?.sourceUrl ?? null;
-  const deckAudioSourceUrl = deckAudioItemQuery.data?.sourceUrl ?? null;
+  const slideAudioSourceUrl = readLibraryAudioSourceUrl(slideAudioItemQuery.data);
+  const deckAudioSourceUrl = readLibraryAudioSourceUrl(deckAudioItemQuery.data);
   const slideAudioDurationSec = useMediaDurationSeconds(
     slideAudioSourceUrl,
     extractDurationSeconds(slideAudioItemQuery.data?.metadata),
@@ -1042,7 +1083,7 @@ export function SlideAudioPanel({
         expectedVersion: uploadExpectedVersion,
         slideId: target === "slide" ? slideId : null,
         fileName: file.name,
-        fileType: file.type || "audio/*",
+        fileType: inferAudioUploadMimeType(file),
         fileBase64,
       });
 

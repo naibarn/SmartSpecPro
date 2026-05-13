@@ -1289,10 +1289,35 @@ async function maybeDispatchLibraryKnowledgeRefreshWorker(input: {
 function resolveProcessingMimeType(
   declaredMimeType: string,
   sniffedMimeType: string | null,
+  extension = "",
 ): string {
   const normalizedDeclared = declaredMimeType.trim().toLowerCase();
   const normalizedSniffed = typeof sniffedMimeType === "string" ? sniffedMimeType.trim().toLowerCase() : "";
-  return normalizedSniffed || normalizedDeclared || "application/octet-stream";
+  if (normalizedSniffed) {
+    return normalizedSniffed;
+  }
+  if (normalizedDeclared && !normalizedDeclared.endsWith("/*")) {
+    return normalizedDeclared;
+  }
+  const normalizedExtension = extension.trim().toLowerCase().replace(/^\./, "");
+  const mimeByExtension: Record<string, string> = {
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    m4a: "audio/mp4",
+    aac: "audio/aac",
+    ogg: "audio/ogg",
+    opus: "audio/ogg",
+    flac: "audio/flac",
+    mp4: "video/mp4",
+    mov: "video/quicktime",
+    webm: "video/webm",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    webp: "image/webp",
+    gif: "image/gif",
+  };
+  return mimeByExtension[normalizedExtension] || normalizedDeclared || "application/octet-stream";
 }
 
 function extractVectorIndexNames(metadata: Record<string, unknown> | null | undefined): string[] {
@@ -2501,7 +2526,7 @@ export async function uploadLibraryFile(
   }
 
   const { sniffedMime } = validateLibraryUploadSignature(fileBuffer, fileType, ext);
-  const effectiveFileType = resolveProcessingMimeType(fileType, sniffedMime);
+  const effectiveFileType = resolveProcessingMimeType(fileType, sniffedMime, ext);
   const checksumSha256 = computeLibraryUploadChecksum(fileBuffer);
   const duplicate = await findDuplicateUploadedLibraryItem(db, {
     tenantId,
@@ -2901,7 +2926,7 @@ export async function replaceLibraryFile(
   }
 
   const { sniffedMime } = validateLibraryUploadSignature(fileBuffer, fileType, ext);
-  const effectiveFileType = resolveProcessingMimeType(fileType, sniffedMime);
+  const effectiveFileType = resolveProcessingMimeType(fileType, sniffedMime, ext);
   const checksumSha256 = computeLibraryUploadChecksum(fileBuffer);
   const duplicate = await findDuplicateUploadedLibraryItem(db, {
     tenantId,
