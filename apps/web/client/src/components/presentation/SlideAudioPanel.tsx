@@ -119,6 +119,102 @@ function readLibraryAudioSourceUrl(item: unknown): string {
   return normalizeMediaSourceUrl(typeof source === "string" ? source : "");
 }
 
+function readFirstAudioMediaUrl(value: unknown, visited = new Set<object>()): string | null {
+  if (!value) {
+    return null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    return normalizeMediaSourceUrl(trimmed);
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = readFirstAudioMediaUrl(item, visited);
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }
+  if (typeof value !== "object") {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  if (visited.has(record)) {
+    return null;
+  }
+  visited.add(record);
+
+  for (const key of [
+    "audioUrl",
+    "audio_url",
+    "resultUrl",
+    "result_url",
+    "url",
+    "sourceUrl",
+    "source_url",
+    "signedUrl",
+    "signed_url",
+    "output",
+    "result",
+    "data",
+    "response",
+  ]) {
+    const found = readFirstAudioMediaUrl(record[key], visited);
+    if (found) {
+      return found;
+    }
+  }
+  for (const nestedValue of Object.values(record)) {
+    const found = readFirstAudioMediaUrl(nestedValue, visited);
+    if (found) {
+      return found;
+    }
+  }
+  return null;
+}
+
+function extractAudioHistoryResultUrl(task: unknown): string | null {
+  if (!task || typeof task !== "object") {
+    return null;
+  }
+  const record = task as Record<string, unknown>;
+  const parsedResultJson = (() => {
+    const raw = (record.resultData as Record<string, unknown> | undefined)?.resultJson;
+    if (typeof raw !== "string" || !raw.trim()) {
+      return null;
+    }
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  })();
+  return (
+    readFirstAudioMediaUrl(record.resultUrl)
+    || readFirstAudioMediaUrl((record.resultData as Record<string, unknown> | undefined)?.audioUrl)
+    || readFirstAudioMediaUrl((record.resultData as Record<string, unknown> | undefined)?.audio_url)
+    || readFirstAudioMediaUrl((record.resultData as Record<string, unknown> | undefined)?.output)
+    || readFirstAudioMediaUrl((record.resultData as Record<string, unknown> | undefined)?.result)
+    || readFirstAudioMediaUrl((record.resultData as Record<string, unknown> | undefined)?.data)
+    || readFirstAudioMediaUrl((record.resultData as Record<string, unknown> | undefined)?.response)
+    || readFirstAudioMediaUrl(parsedResultJson)
+    || readFirstAudioMediaUrl(record.resultData)
+  );
+}
+
+function deriveAudioHistoryTitle(task: Record<string, unknown>): string {
+  const prompt = String(task.prompt ?? "").trim();
+  if (prompt) {
+    return prompt.length > 80 ? `${prompt.slice(0, 77)}...` : prompt;
+  }
+  const model = String(task.model ?? "").trim();
+  return model ? `${model} audio` : "";
+}
+
 const AUDIO_SLIDER_CLASS = [
   "h-6",
   "[&_[data-slot=slider-track]]:h-2",
@@ -325,23 +421,35 @@ interface AudioPickerDialogProps {
   target: "slide" | "deck";
 }
 
+type AudioPickerSource = "library" | "history";
+
 interface AudioLibraryResultItemLike {
-  id: number;
+  id: number | string;
+  libraryItemId?: number;
+  taskId?: string;
   title: string;
   status?: string;
   sourceUrl?: string | null;
   source_url?: string | null;
+  resultUrl?: string | null;
+  resultData?: unknown;
   created_at?: string;
+  createdAt?: string;
   owner_user_id?: number | null;
   access_source?: string | null;
+  source?: AudioPickerSource;
   metadata?: Record<string, unknown>;
+  model?: string | null;
+  prompt?: string | null;
 }
 
 function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialogProps) {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [playingId, setPlayingId] = useState<number | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [addingId, setAddingId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const addTaskToLibraryMutation = trpc.media.addTaskToLibrary.useMutation();
 
   // Stop audio + reset on dialog close
   useEffect(() => {
@@ -380,24 +488,108 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
     },
     { enabled: open && debouncedQuery.length > 0 },
   );
+  const mediaHistoryQuery = trpc.media.listTasks.useQuery(
+    {
+      mediaType: "audio",
+      status: "completed",
+      limit: 100,
+      offset: 0,
+      daysAgo: 365,
+    },
+    {
+      enabled: open,
+      refetchOnWindowFocus: false,
+      staleTime: 20_000,
+    },
+  );
 
-  const results = (
-    debouncedQuery.length > 0
-      ? (searchQuery.data?.results ?? []).map((item: any) => ({
-          ...item,
-          id: item.id ?? item.item_id,
-        }))
-      : (listQuery.data?.results ?? [])
-  ) as AudioLibraryResultItemLike[];
-  const isLoading = listQuery.isLoading || searchQuery.isLoading;
+  const results = useMemo(() => {
+    const libraryResults = (
+      debouncedQuery.length > 0
+        ? (searchQuery.data?.results ?? []).map((item: any) => ({
+            ...item,
+            id: item.id ?? item.item_id,
+          }))
+        : (listQuery.data?.results ?? [])
+    ).map((item: any) => ({
+      ...item,
+      id: item.id ?? item.item_id,
+      libraryItemId: Number(item.id ?? item.item_id),
+      source: "library" as const,
+    })) as AudioLibraryResultItemLike[];
 
-  function handleTogglePlay(itemId: number, url: string) {
+    const normalizedQuery = debouncedQuery.trim().toLowerCase();
+    const historyResults = ((mediaHistoryQuery.data?.tasks ?? []) as any[])
+      .map((task): AudioLibraryResultItemLike | null => {
+        const taskId = String(task.id ?? task.taskId ?? task.celeryTaskId ?? "").trim();
+        const resultUrl = extractAudioHistoryResultUrl(task);
+        if (!taskId || !resultUrl) {
+          return null;
+        }
+        const title = String(task.title ?? task.name ?? "").trim()
+          || deriveAudioHistoryTitle(task)
+          || "Generated audio";
+        return {
+          id: `history:${taskId}`,
+          taskId,
+          title,
+          status: String(task.status ?? "completed"),
+          sourceUrl: resultUrl,
+          resultUrl,
+          resultData: task.resultData,
+          created_at: task.created_at ?? task.createdAt,
+          createdAt: task.createdAt ?? task.created_at,
+          source: "history" as const,
+          metadata: {
+            model: task.model,
+            model_name: task.model,
+          },
+          model: task.model,
+          prompt: task.prompt,
+        } satisfies AudioLibraryResultItemLike;
+      })
+      .filter((item): item is AudioLibraryResultItemLike => item !== null)
+      .filter((item) => {
+        if (!normalizedQuery) {
+          return true;
+        }
+        const searchable = [
+          item.title,
+          item.model,
+          item.prompt,
+          item.taskId,
+        ].filter(Boolean).join(" ").toLowerCase();
+        return searchable.includes(normalizedQuery);
+      });
+
+    const seen = new Set<string>();
+    const merged: AudioLibraryResultItemLike[] = [];
+    for (const item of [...libraryResults, ...historyResults]) {
+      const sourceUrl = readLibraryAudioSourceUrl(item);
+      const dedupeKey = sourceUrl || `${item.source}:${String(item.id)}`;
+      if (seen.has(dedupeKey)) {
+        continue;
+      }
+      seen.add(dedupeKey);
+      merged.push(item);
+    }
+    return merged;
+  }, [
+    debouncedQuery,
+    listQuery.data?.results,
+    mediaHistoryQuery.data?.tasks,
+    searchQuery.data?.results,
+  ]);
+  const isLoading = listQuery.isLoading || searchQuery.isLoading || mediaHistoryQuery.isLoading;
+
+  function handleTogglePlay(itemId: number | string, url: string) {
+    const itemKey = String(itemId);
     const sourceUrl = normalizeMediaSourceUrl(url);
     if (!sourceUrl) {
       toast.error("Audio source unavailable for preview.");
       return;
     }
-    if (playingId === itemId) {
+    if (playingId === itemKey) {
       // Pause currently playing track
       audioRef.current?.pause();
       setPlayingId(null);
@@ -411,16 +603,37 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
       });
       audio.onended = () => setPlayingId(null);
       audioRef.current = audio;
-      setPlayingId(itemId);
+      setPlayingId(itemKey);
     }
   }
 
-  function handleAdd(itemId: number, title: string) {
+  async function handleAdd(item: AudioLibraryResultItemLike) {
     // Stop preview before confirming
     audioRef.current?.pause();
     setPlayingId(null);
-    onSelect(itemId, title);
-    onClose();
+    const itemKey = String(item.id);
+    setAddingId(itemKey);
+    try {
+      let libraryItemId = item.libraryItemId;
+      if (!libraryItemId && item.source === "history" && item.taskId) {
+        const result = await addTaskToLibraryMutation.mutateAsync({
+          taskId: item.taskId,
+          title: item.title,
+          visibility: "private",
+        });
+        const candidate = (result as any)?.itemId ?? (result as any)?.item?.id;
+        libraryItemId = Number(candidate);
+      }
+      if (!Number.isFinite(libraryItemId) || !libraryItemId) {
+        throw new Error("Unable to resolve selected audio library item.");
+      }
+      onSelect(libraryItemId, item.title);
+      onClose();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to add this audio.");
+    } finally {
+      setAddingId(null);
+    }
   }
 
   const dialogTitle = target === "slide" ? "Add Audio to Slide" : "Add Background Audio";
@@ -436,7 +649,7 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
           </DialogDescription>
         </DialogHeader>
         <p className="text-xs text-muted-foreground">
-          Source includes your Library and files shared via Group.
+          Source includes your Library, files shared via Group, and recent Media History.
         </p>
 
         {/* Search input */}
@@ -465,24 +678,31 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
             <div className="flex flex-col items-center justify-center py-10 gap-2">
               <Music className="h-8 w-8 text-muted-foreground/40" />
               <p className="text-sm text-muted-foreground">
-                {query ? "No audio files match your search." : "No audio files in Library or Shared yet."}
+                {query ? "No audio files match your search." : "No audio files in Library, Shared, or Media History yet."}
               </p>
             </div>
           )}
 
           {results.map((item) => {
-            const isPlaying = playingId === item.id;
+            const itemKey = String(item.id);
+            const isPlaying = playingId === itemKey;
+            const isAdding = addingId === itemKey;
             const sourceUrl = readLibraryAudioSourceUrl(item);
-            const canPreview = !!sourceUrl && item.status === "ready";
+            const status = String(item.status ?? "").toLowerCase();
+            const canPreview = !!sourceUrl && (status === "ready" || status === "completed");
             const accessSource = String(item.access_source || "").toLowerCase();
-            const sourceLabel = accessSource === "shared_group" || accessSource === "shared_direct"
+            const sourceLabel = item.source === "history"
+              ? "History"
+              : accessSource === "shared_group" || accessSource === "shared_direct"
               ? "Shared"
               : "Library";
             const subtitle = [
               item.metadata && typeof item.metadata === "object"
                 ? String((item.metadata.model_name ?? item.metadata.model ?? "") || "").trim()
                 : "",
-              item.created_at ? new Date(item.created_at).toLocaleDateString() : "",
+              item.created_at || item.createdAt
+                ? new Date(String(item.created_at ?? item.createdAt)).toLocaleDateString()
+                : "",
             ]
               .filter(Boolean)
               .join(" · ");
@@ -530,6 +750,8 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
                         "h-5 rounded px-1.5 text-[10px] font-medium uppercase tracking-wide",
                         sourceLabel === "Shared"
                           ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                          : sourceLabel === "History"
+                            ? "border-sky-300 bg-sky-50 text-sky-700"
                           : "border-slate-300 bg-slate-100 text-slate-700",
                       )}
                     >
@@ -546,10 +768,15 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
                   size="sm"
                   variant="outline"
                   className="h-7 shrink-0 px-2.5 text-xs"
-                  onClick={() => handleAdd(item.id, item.title)}
-                  data-testid={`audio-picker-add-${item.id}`}
+                  disabled={isAdding}
+                  onClick={() => void handleAdd(item)}
+                  data-testid={`audio-picker-add-${itemKey}`}
                 >
-                  <Plus className="h-3 w-3 mr-1" />
+                  {isAdding ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <Plus className="h-3 w-3 mr-1" />
+                  )}
                   Add
                 </Button>
               </div>

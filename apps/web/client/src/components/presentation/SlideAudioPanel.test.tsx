@@ -23,6 +23,7 @@ vi.mock("@/lib/trpc", () => ({
     media: {
       getModels: { useQuery: vi.fn() },
       listModelFieldOptions: { useQuery: vi.fn() },
+      listTasks: { useQuery: vi.fn() },
       generateAudioAsync: { useMutation: vi.fn() },
       addTaskToLibrary: { useMutation: vi.fn() },
     },
@@ -71,6 +72,14 @@ function makeGetItemQueryMock(overrides?: Partial<{ title: string; sourceUrl: st
       sourceUrl: overrides?.sourceUrl ?? "https://cdn.example.com/test.mp3",
       metadata: overrides?.metadata ?? { durationSeconds: 12.5 },
     },
+    isLoading: false,
+    isError: false,
+  };
+}
+
+function makeMediaTasksQueryMock(tasks: Array<Record<string, unknown>> = []) {
+  return {
+    data: { tasks, total: tasks.length },
     isLoading: false,
     isError: false,
   };
@@ -173,6 +182,9 @@ describe("SlideAudioPanel", () => {
     );
     vi.mocked(trpc.media.listModelFieldOptions.useQuery).mockReturnValue(
       { data: { options: [] }, isLoading: false, error: null } as any,
+    );
+    vi.mocked(trpc.media.listTasks.useQuery).mockReturnValue(
+      makeMediaTasksQueryMock() as any,
     );
     vi.mocked(trpc.media.generateAudioAsync.useMutation).mockReturnValue(
       makeMutationMock(undefined, vi.fn().mockResolvedValue({ id: "audio-task-1" })) as any,
@@ -349,6 +361,53 @@ describe("SlideAudioPanel", () => {
     render(<SlideAudioPanel {...PROPS_NO_AUDIO} />);
     fireEvent.click(screen.getByRole("button", { name: /add audio/i }));
     expect(screen.getByText("Shared")).toBeInTheDocument();
+  });
+
+  it("includes completed audio from media history and adds it through the library bridge", async () => {
+    const addTaskToLibrary = vi.fn().mockResolvedValue({ itemId: 909 });
+    const setDeckAudio = vi.fn();
+    vi.mocked(trpc.media.addTaskToLibrary.useMutation).mockReturnValue(
+      makeMutationMock(undefined, addTaskToLibrary) as any,
+    );
+    vi.mocked(trpc.presentation.setDeckAudio.useMutation).mockReturnValue(
+      makeMutationMock(setDeckAudio) as any,
+    );
+    vi.mocked(trpc.media.listTasks.useQuery).mockReturnValue(
+      makeMediaTasksQueryMock([
+        {
+          id: "task-audio-1",
+          mediaType: "audio",
+          status: "completed",
+          model: "elevenlabs/text-to-dialogue",
+          prompt: "History narration prompt",
+          resultUrl: "https://cdn.example.com/history-narration.mp3",
+          createdAt: new Date().toISOString(),
+        },
+      ]) as any,
+    );
+
+    render(<SlideAudioPanel {...PROPS_NO_AUDIO} />);
+    fireEvent.click(screen.getByRole("button", { name: /add project audio/i }));
+
+    expect(screen.getByText("History")).toBeInTheDocument();
+    expect(screen.getByText("History narration prompt")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("audio-picker-add-history:task-audio-1"));
+
+    await waitFor(() => {
+      expect(addTaskToLibrary).toHaveBeenCalledWith(
+        expect.objectContaining({
+          taskId: "task-audio-1",
+          title: "History narration prompt",
+        }),
+      );
+      expect(setDeckAudio).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deckId: 42,
+          projectAudioTrack: expect.objectContaining({ libraryItemId: 909 }),
+        }),
+      );
+    });
   });
 
   it("shows save-note-first CTA when the slide note is dirty", async () => {
