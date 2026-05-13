@@ -96,4 +96,33 @@ describe("ModelInputFieldsPanel", () => {
     expect(input).toHaveAttribute("max", "360");
     expect(input).toHaveAttribute("step", "1");
   });
+
+  it("uses a persisted searchable option label when provider options have not loaded yet", () => {
+    render(
+      <ModelInputFieldsPanel
+        enabled
+        model={{ id: "elevenlabs/text-to-dialogue", name: "ElevenLabs Text to Dialogue" }}
+        fields={[
+          {
+            key: "voice_id",
+            label: "Default Voice",
+            type: "select",
+            syncWith: "none",
+            searchable: true,
+            options: [{ value: "21m00Tcm4TlvDq8ikWAM", label: "Rachel" }],
+            optionsSource: { type: "provider_api" },
+          },
+        ]}
+        extraParams={{
+          voice_id: "hpp4J3VqNfWAUOOOdIUs",
+          voice_id__label: "Bella - Professional, Bright, Warm",
+        }}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("combobox", { name: "Advanced Default Voice" }))
+      .toHaveTextContent("Bella - Professional, Bright, Warm");
+    expect(screen.queryByText("hpp4J3VqNfWAUOOOdIUs")).not.toBeInTheDocument();
+  });
 });

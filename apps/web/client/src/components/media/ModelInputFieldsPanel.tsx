@@ -70,6 +70,22 @@ function isVoiceSelectionField(field: ModelInputField | null | undefined): boole
   return normalizedKey === "voice" || normalizedKey === "voiceid";
 }
 
+function getStoredOptionLabelKey(fieldKey: string): string {
+  return `${fieldKey}__label`;
+}
+
+function readStoredOptionLabel(
+  extraParams: Record<string, unknown>,
+  fieldKey: string,
+  currentValue: string,
+): string {
+  if (!currentValue) {
+    return "";
+  }
+  const label = extraParams[getStoredOptionLabelKey(fieldKey)];
+  return typeof label === "string" ? label.trim() : "";
+}
+
 function normalizeFieldOptions(raw: unknown): SearchableFieldOption[] {
   if (!Array.isArray(raw)) return [];
   const options: SearchableFieldOption[] = [];
@@ -346,8 +362,11 @@ export function ModelInputFieldsPanel({
               : (cachedOptions.length > 0 ? cachedOptions : staticOptions)
           );
           const currentValue = String(value ?? "");
+          const storedSelectedLabel = readStoredOptionLabel(extraParams, field.key, currentValue);
           const selectedOption = fieldOptions.find((option) => option.value === currentValue)
             ?? staticOptions.find((option) => option.value === currentValue);
+          const selectedLabel = selectedOption?.label
+            ?? (storedSelectedLabel || currentValue);
           const isLoadingOptions = (
             isOpen
             && supportsRefresh
@@ -387,13 +406,11 @@ export function ModelInputFieldsPanel({
                       )}
                     >
                       <span className="truncate text-left">
-                        {selectedOption
-                          ? selectedOption.label
-                          : currentValue
-                            ? currentValue
-                            : isLoadingOptions
-                              ? "Loading options..."
-                              : "Select option"}
+                        {currentValue
+                          ? selectedLabel
+                          : isLoadingOptions
+                            ? "Loading options..."
+                            : "Select option"}
                       </span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
@@ -412,6 +429,7 @@ export function ModelInputFieldsPanel({
                               value={`${option.label} ${option.value}`}
                               onSelect={() => {
                                 onChange(field.key, option.value);
+                                onChange(getStoredOptionLabelKey(field.key), option.label);
                                 setFieldPickerOpenKey(null);
                                 stopVoicePreview();
                               }}
