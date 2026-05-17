@@ -1,6 +1,6 @@
 {
-  "name": "elevenlabs-beauty-dialogue-skill-v18",
-  "version": "18.0.0",
+  "name": "elevenlabs-beauty-dialogue-skill-v22",
+  "version": "22.0.0",
   "output": "plain_text",
   "schemas": [
     "schemas/input.schema.json",
@@ -25,9 +25,9 @@
     "Portuguese",
     "Italian"
   ],
-  "notes": "v18 adds optional drag-and-drop/file-upload product images, max 5 images, with image-aware analysis for visible packaging/label details, product-type confirmation, and conflict/risk detection. Images support the listing text and must not be used to invent claims.",
-  "description": "Plain-text ElevenLabs dialogue skill for beauty, personal care, medical-adjacent, oral-care, textile UV, SET/bundle, dietary supplement, and image-assisted listings with bilingual claim guard.",
-  "updated_at": "2026-05-16T00:00:00Z",
+  "notes": "v22 adds richer ElevenLabs Eleven v3 audio-tag direction for emotional voice prompts, including sparse natural-language tags, emotional arcs, style-to-tag mapping, non-verbal/pause/whisper cues, and guards against visual-only or unsuitable tags. Retains v18 optional image upload support.",
+  "description": "Plain-text ElevenLabs dialogue skill for beauty, personal care, medical-adjacent, oral-care, textile UV, SET/bundle, dietary supplement, image-assisted listings, bilingual claim guard, and expressive Eleven v3 audio tags.",
+  "updated_at": "2026-05-17T00:00:00Z",
   "supports_optional_image_uploads": true,
   "image_upload_max_files": 5
 }

@@ -1,10 +1,10 @@
 {
-  "version": "18.1",
+  "version": "22.0",
   "skillId": "elevenlabs-beauty-dialogue",
   "title": "ElevenLabs Beauty Dialogue",
   "titleTh": "สคริปต์เสียงสินค้า Beauty",
-  "description": "Create safe, ad-ready dialogue for ElevenLabs TTS from product details and optional product images.",
-  "descriptionTh": "สร้างบทพูดโฆษณาสำหรับ ElevenLabs TTS จากรายละเอียดสินค้าและรูปสินค้า",
+  "description": "Create safe, expressive, ad-ready dialogue for ElevenLabs TTS from product details and optional product images.",
+  "descriptionTh": "สร้างบทพูดโฆษณาสำหรับ ElevenLabs TTS ที่ใส่อารมณ์เสียงได้ดีขึ้น จากรายละเอียดสินค้าและรูปสินค้า",
   "sections": [
     {
       "id": "product",

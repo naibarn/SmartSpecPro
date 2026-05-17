@@ -2,7 +2,7 @@
 name: elevenlabs-beauty-dialogue
 description: Imported from shared skill bundle (elevenlabs-beauty-dialogue.zip)
 category: audio_generation
-version: 1.0.0
+version: 1.0.1
 icon: sparkles
 tags:
   - shared-skill
@@ -15,7 +15,7 @@ priority: 50
 execution_mode: media-generate
 strict_provider_pin: false
 ---
-# ElevenLabs Beauty & Personal Care Dialogue Skill v16
+# ElevenLabs Beauty & Personal Care Dialogue Skill v22
 
 Generate **plain-text** ElevenLabs-style dialogue for cosmetics, beauty, personal care, hygiene, oral care, feminine care, sunscreen, hair color, grooming tools, and adjacent household/personal-use products.
 
@@ -27,9 +27,11 @@ Final dialogue formatting rules:
 - Output one spoken turn per line.
 - Do not insert blank lines between dialogue turns.
 - Every spoken line must start with `Speaker 1:` or `Speaker 2:`.
-- Use bracket emotion tags sparingly. Add them only when they materially guide delivery, such as the opening hook, a major reaction, a tonal turn, or the closing call to action.
-- Do not add emotion tags to every line. For most scripts, 2-3 tagged lines total is enough.
-- Emotion tags must be purposeful and performable by ElevenLabs. Prefer strong delivery cues such as `[energetic]`, `[curious]`, `[confident]`, `[playful]`, `[excited]`, `[reassuring]`, or `[intrigued]` over weak or awkward tags.
+- Use ElevenLabs Eleven v3 bracket audio tags sparingly. Add them only when they materially guide delivery, such as the opening hook, a major reaction, a tonal turn, a pause, a breath, a whisper, or the closing call to action.
+- Do not add audio tags to every line. For most scripts, 2-4 tagged lines total is enough; direct-response or dramatic scripts may use one extra non-verbal cue if it improves performance.
+- Audio tags are natural-language instructions inside the spoken text, not fixed enum fields. Prefer clear English tags that describe something audible and performable.
+- Choose tags that create an emotional arc: hook energy, listener reaction, reassurance/proof, and closing confidence. Avoid repeating the same tag unless the repeated delivery is intentional.
+- Keep tags voice-realistic. A calm or soft voice may not perform extreme cues like shouting; use moderate delivery such as `[warmly]`, `[softly]`, `[thoughtful]`, or `[confidently]` when the voice should stay polished.
 - Keep each line compact and conversational so ElevenLabs does not create long, unnatural pauses.
 
 Preferred final output shape:
@@ -40,6 +42,89 @@ Speaker 2: ...
 Speaker 1: [excited] ...
 
 Use natural language in the selected `output_language`. Keep total spoken length under `target_duration_seconds`, default 55 seconds.
+
+## ElevenLabs Eleven v3 Audio Tag Direction v22
+
+ElevenLabs Eleven v3 reads bracket tags such as `[warmly]` or `[sighs]` as natural-language performance instructions placed inside `text`. They are not a separate `mood`, `tone`, or API parameter. Put the tag immediately before the words or turn it should affect.
+
+Good:
+```text
+Speaker 1: [warmly] ผิวแห้งตึงหลังล้างหน้า ฟังทางนี้ก่อน
+Speaker 2: [curious] แล้วสูตรนี้ช่วยให้ฟีลหลังล้างต่างยังไง?
+```
+
+Bad:
+```text
+Speaker 1: [happy] สวัสดี [excited] ครับ [warmly] วันนี้ [curious] เราจะ...
+```
+
+### Tag Selection Principles
+
+- Use English tags even when the spoken dialogue is Thai.
+- Use one tag before a whole turn or a short phrase, not between every word.
+- Use punctuation with tags: `...` for thinking/hesitation, `?` for curiosity, `!` for excitement, and `:` for a clean reveal.
+- Use audible instructions only. Avoid visual or non-audio tags such as `[standing]`, `[grinning]`, `[pacing]`, `[looking away]`, or `[smiling]`.
+- Avoid `[music]` in this dialogue skill. If the user needs background music or sound design, keep the spoken dialogue clean and let the audio tool handle music separately.
+- Prefer subtle, sales-useful tags over theatrical tags unless the requested style is comedic, trailer-like, or character-led.
+
+### High-Value Tag Palette
+
+Use these as a practical palette, not a closed list:
+
+- Warm trust: `[warmly]`, `[calmly]`, `[softly]`, `[gentle]`, `[professional and reassuring]`, `[calm and empathetic]`
+- Sales energy: `[energetic and upbeat]`, `[excited]`, `[excitedly]`, `[cheerfully]`, `[confidently]`, `[delighted]`
+- Curiosity and contrast: `[curious]`, `[curiously]`, `[intrigued]`, `[quizzically]`, `[surprised]`, `[impressed]`
+- Beauty storytelling: `[thoughtful]`, `[low and serious]`, `[dramatically]`, `[mischievously]`, `[playful]`
+- Objection or hesitation: `[slightly nervous]`, `[hesitant]`, `[cautiously]`, `[indecisive]`, `[annoyed]`
+- Close/intimacy: `[whispers]`, `[whispering]`, `[soft and slow]`
+- Timing and emphasis: `[slow]`, `[short pause]`, `[long pause]`, `[jumping in]`
+- Non-verbal reactions: `[laughs]`, `[chuckles]`, `[giggling]`, `[sighs]`, `[frustrated sigh]`, `[happy gasp]`, `[inhales deeply]`, `[exhales]`, `[clears throat]`, `[swallows]`
+
+### Style-to-Tag Mapping
+
+- `energetic_host` or `direct_response`: open with `[energetic]`, `[excited]`, or `[energetic and upbeat]`; close with `[confident]` or `[confidently]`.
+- `friendly`, `soft sell`, or `routine journey`: use `[warmly]`, `[calmly]`, `[softly]`, `[gentle]`, or `[thoughtful]`.
+- `professional` or regulated product mode: use `[professional and reassuring]`, `[calmly]`, `[thoughtful]`, or `[slow]`; avoid exaggerated laughing, shouting, or dramatic tags.
+- `humorous`, `sarcastic-light`, or `roast-but-praise`: use `[playful]`, `[mischievously]`, `[sarcastic]`, `[chuckles]`, or `[laughs]`, but keep the product credible and do not mock the customer.
+- `luxury-polished` or premium trust: use `[softly]`, `[low and serious]`, `[confidently]`, `[warmly]`, or `[slow]`; avoid noisy comedy tags.
+- `complaining-but-helpful`: use `[annoyed]`, `[sighs]`, `[frustrated sigh]`, then shift to `[reassuring]`, `[thoughtful]`, or `[confidently]`.
+
+### Emotional Arc Templates
+
+Customer-service/reassurance:
+```text
+Speaker 1: [calm and empathetic] ผิวช่วงนี้ไวกับอะไรใหม่ ๆ ใช่ไหม?
+Speaker 2: [softly] ใช่ เลยอยากเริ่มแบบไม่เสี่ยงเกินไป
+Speaker 1: [professional and reassuring] เริ่มจากใช้ตามฉลากและทดสอบก่อนใช้ จะช่วยให้รูทีนคุมง่ายขึ้น
+```
+
+Direct-response beauty ad:
+```text
+Speaker 1: [energetic] ล้างหน้าแล้วสะอาด แต่ผิวตึงจนไม่สบายหน้า?
+Speaker 2: [intrigued] อันนี้เจอบ่อย แล้วสูตรนี้ต่างยังไง?
+Speaker 1: [confidently] จุดขายคือคลีนแบบไม่ต้องเอี๊ยด เหมาะกับรูทีนที่อยากให้ผิวรู้สึกสบายหลังล้าง
+```
+
+Soft premium routine:
+```text
+Speaker 1: [softly] บางทีรูทีนที่ดี ไม่ต้องเร่งผิวให้เปลี่ยนในคืนเดียว
+Speaker 2: [thoughtful] แค่ใช้แล้วรู้สึกสบายและดูแลต่อได้ทุกวันก็พอ
+Speaker 1: [warmly] เลือกตามสภาพผิว ใช้ตามฉลาก แล้วให้ผลลัพธ์ค่อย ๆ ไปกับรูทีน
+```
+
+Comedic but credible:
+```text
+Speaker 1: [mischievously] ถ้าผิวพูดได้ หลังล้างหน้าอาจบอกว่าเบาหน่อยก็ได้
+Speaker 2: [chuckles] ขอแบบสะอาด แต่ไม่เอี๊ยดจนหน้าตึง
+Speaker 1: [confident] งั้นโฟกัสสูตรที่ให้ฟีลคลีนและสบายหลังล้างตามรายละเอียดสินค้า
+```
+
+### Tag Safety and Brand Fit
+
+- For regulated, medical-adjacent, intimate-care, dental, diagnostic, scar gel, supplement, or self-sampling scripts, keep tags calm and reassuring. Do not use `[excited]` to hype medical-adjacent decisions.
+- For sensitive skin, intimate care, children, pregnancy, diagnostic kits, or oral products, prefer `[calmly]`, `[thoughtful]`, `[professional and reassuring]`, `[slow]`, and `[softly]`.
+- Use non-verbal tags only when they sound natural in a spoken ad. One `[sighs]`, `[chuckles]`, `[happy gasp]`, or `[clears throat]` can add realism; several non-verbal tags in one short ad can feel gimmicky.
+- Sound-effect tags such as `[applause]`, `[gentle footsteps]`, `[leaves rustling]`, `[gunshot]`, or `[explosion]` are not default for beauty dialogue. Use them only if the user explicitly asks for a scene-style ad and the effect supports the voice prompt.
 
 ## Stop-Scroll Audio Rule v19
 
@@ -66,7 +151,7 @@ Punchy ad-read rules for energetic/direct-response output:
 - Use one idea per line. Split long ingredient/benefit lists into two shorter turns.
 - Speaker 2 should use short reactions: “ใช่”, “แล้วต่างยังไง?”, “ตรงนี้แหละที่อยากรู้”, “โอเค อันนี้น่าสน”.
 - Avoid soft filler: “ฟังดูดี”, “น่าสนใจนะ”, “ต้องลองแล้ว” unless followed by a sharper buying reason.
-- Use only 2-3 strong audio tags total. For sales energy, prefer `[energetic]`, `[intrigued]`, `[confident]`, `[excited]`. Avoid `[playful]` as the opening tag when the user asks for high sales impact unless the hook itself is very strong.
+- Use 2-4 strong audio tags total. For sales energy, prefer `[energetic]`, `[intrigued]`, `[confident]`, `[confidently]`, `[excited]`, or `[energetic and upbeat]`. Avoid `[playful]` as the opening tag when the user asks for high sales impact unless the hook itself is very strong.
 - Do not end with a weak curiosity line. End with a clear action or routine moment.
 
 Do not open with generic presenter lines:
@@ -142,17 +227,17 @@ Key options:
 8. Run the internal final quality review below.
 9. Repair until no banned claim, unsupported medical/brand/institutional endorsement, overclaim, unsafe instruction, compliance explanation, weak hook, awkward tag, or unsuitable wording remains.
 
-## Internal Final Quality Review v20
+## Internal Final Quality Review v22
 
 Before returning the final dialogue, silently review the draft as if a second LLM editor is checking it. Do not output the review, scores, notes, or headings. Output only the repaired final dialogue.
 
 The draft must pass all checks:
 - Hook check: first line is short, concrete, and stop-scroll worthy. It is not a greeting, intro, generic product announcement, empty hype, absurd exaggeration, or joke that weakens trust.
 - Sales-energy check: for `energetic_host`, `direct_response`, or `humor_hook`, the script has momentum, contrast, and a clear reason to keep listening within the first 2 lines.
-- Audio-impact check: lines are short enough to read with energy; there is no long explanatory sentence that makes TTS slow down; the closing line gives a clear action/routine reason.
+- Audio-impact check: lines are short enough to read with energy; there is no long explanatory sentence that makes TTS slow down; pauses, punctuation, and non-verbal tags are useful but not cluttered; the closing line gives a clear action/routine reason.
 - Voice naturalness check: lines sound speakable in real Thai/English, with no stiff presenter wording, no long ingredient dump, and no line likely to create slow unnatural TTS pacing.
 - Speaker-role check: Speaker 1 leads the sales idea; Speaker 2 reacts like a real listener with curiosity, skepticism, or a short objection. Speaker 2 must not become another announcer.
-- Emotion-tag check: tags are sparse, strong, and placed only where they improve delivery. Most scripts should use 2-3 tags total. Remove weak, repetitive, or unnecessary tags.
+- Audio-tag check: tags are sparse, strong, and placed only where they improve delivery. Most scripts should use 2-4 tags total and should form a clear emotional arc. Tags must be audible/performance-based, written in English, and realistic for the voice. Remove weak, repetitive, visual-only, unsafe, or unnecessary tags.
 - Wording suitability check: no insulting, over-sarcastic, creepy, shame-based, medically risky, or culturally awkward line. Humor must support the sale, not make the product sound fake.
 - Claim-safety check: all claims are grounded in user-provided details and category guards. Rewrite treatment-style claims into cosmetic/routine language or omit them.
 - Format check: plain text only, no Markdown fences, no blank lines, every line starts with `Speaker 1:` or `Speaker 2:`.

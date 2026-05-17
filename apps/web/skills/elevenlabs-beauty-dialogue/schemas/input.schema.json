@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.com/elevenlabs-beauty-dialogue-skill/schemas/input.schema.json",
-  "title": "ElevenLabs Beauty & Personal Care Dialogue Skill Input v18",
-  "description": "Generate safe, natural, ad-ready, plain-text ElevenLabs-style dialogue for beauty, cosmetic, personal care, hygiene, oral care, sunscreen, hair color, grooming, feminine care, and adjacent personal-use products. v18 optionally supports direct image uploads for product packaging/label analysis; images are supporting evidence, not a source for new claims.",
+  "title": "ElevenLabs Beauty & Personal Care Dialogue Skill Input v22",
+  "description": "Generate safe, natural, emotionally directed, ad-ready, plain-text ElevenLabs-style dialogue for beauty, cosmetic, personal care, hygiene, oral care, sunscreen, hair color, grooming, feminine care, and adjacent personal-use products. v22 supports expressive Eleven v3 audio-tag prompting and retains optional direct image uploads for product packaging/label analysis; images are supporting evidence, not a source for new claims.",
   "type": "object",
   "additionalProperties": false,
   "required": [
