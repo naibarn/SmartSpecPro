@@ -27,6 +27,21 @@ The extension is not a background crawler. It is a user-assisted capture tool:
 
 This creates a safe product intelligence workflow for research, catalog building, content creation, comparison, and marketplace product briefs while keeping every durable save behind user review.
 
+### 1.1 Security Review Outcome
+
+The safest viable solution is still the hybrid user-assisted capture architecture, with these non-negotiable refinements:
+
+- use one-time extension pairing plus revocable scoped tokens, not permanent API keys
+- treat every marketplace page, DOM block, image URL, and LLM result as untrusted input
+- use exact extension-origin allowlists and bearer-token auth for extension APIs
+- keep screenshots/images out of JSON and validate uploads server-side
+- make remote image fetching optional and SSRF-safe
+- render evidence as escaped text or sandboxed content only
+- require preview/edit/confirm before product persistence
+- retain raw evidence only for a bounded time
+
+This gives the product enough automation to be useful while keeping the security model closer to a user-controlled capture assistant than a crawler or privileged browser scraper.
+
 ---
 
 ## 2. Problem Statement
