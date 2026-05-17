@@ -38,6 +38,33 @@ export interface SkillFormState {
   localExecutionPolicy: ResolvedLocalSkillPolicy | null;
 }
 
+function assignMappedValue(target: Record<string, any>, path: string, value: any): void {
+  if (!path.includes('.')) {
+    target[path] = value;
+    return;
+  }
+
+  const keys = path.split('.').filter(Boolean);
+  let current = target;
+
+  keys.slice(0, -1).forEach((key) => {
+    if (
+      current[key] === undefined
+      || current[key] === null
+      || typeof current[key] !== 'object'
+      || Array.isArray(current[key])
+    ) {
+      current[key] = {};
+    }
+    current = current[key];
+  });
+
+  const finalKey = keys[keys.length - 1];
+  if (finalKey) {
+    current[finalKey] = value;
+  }
+}
+
 export interface UseChatSkillFormReturn {
   // State
   skillFormState: SkillFormState | null;
@@ -225,7 +252,7 @@ export function useChatSkillForm(
     const mappedValues = skillFormState.schema.outputMapping
       ? Object.entries(skillFormState.schema.outputMapping).reduce(
         (acc, [fieldId, apiKey]) => {
-          acc[apiKey] = values[fieldId];
+          assignMappedValue(acc, apiKey, values[fieldId]);
           return acc;
         },
         {} as Record<string, any>

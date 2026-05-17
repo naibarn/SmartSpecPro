@@ -22,7 +22,7 @@ import {
   type ProviderCandidate,
   type ExecuteResult,
 } from "./llmRouter";
-import { loadEnabledLlmModelRows } from "./enabledLlmModels";
+import { isFreeModelIdentifier, loadEnabledLlmModelRows } from "./enabledLlmModels";
 import {
   selectLlmModelCandidates,
   type CapabilityRequirements,
@@ -149,6 +149,7 @@ export async function executeSkillLlmWithFallback(
       maxTokens,
       temperature,
       extraBodyParams,
+      allowFreeModels: executionPolicy.allowFreeModels,
     });
 
     const durationMs = Date.now() - attemptStart;
@@ -262,7 +263,9 @@ export async function executeSkillLlmWithFallback(
       }
 
       // Resolve the full provider info for the caller
-      const providerInfo = await getProviderForModel(modelId);
+      const providerInfo = await getProviderForModel(modelId, {
+        allowFreeModels: executionPolicy.allowFreeModels,
+      });
 
       return {
         success: true,
@@ -366,7 +369,7 @@ async function buildCandidateList(
 ): Promise<string[]> {
   const effectiveMaxAttempts = Math.max(1, Math.min(MAX_MODEL_ATTEMPTS, Math.floor(maxModelAttempts || MAX_MODEL_ATTEMPTS)));
   const rows = (await loadEnabledLlmModelRows()).filter(
-    (row) => policy.allowFreeModels || row.isFree !== true,
+    (row) => policy.allowFreeModels || (row.isFree !== true && !isFreeModelIdentifier(row.modelId, row.providerModelId)),
   );
   if (rows.length === 0) return [];
 

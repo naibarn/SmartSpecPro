@@ -5,6 +5,10 @@ import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
 
 // Mock enabledLlmModels to avoid DB dependency
 vi.mock("./enabledLlmModels", () => ({
+  isFreeModelIdentifier: (value: string | null | undefined) => {
+    const normalized = String(value ?? "").toLowerCase();
+    return normalized.endsWith(":free") || normalized.endsWith("-free");
+  },
   loadEnabledLlmModelRows: vi.fn(),
   resolveEnabledLlmModelIdFromRows: vi.fn(),
 }));

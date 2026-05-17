@@ -3315,6 +3315,7 @@ const SKILL_CATEGORIES = [
   { value: "image_generation", label: "Image Generation" },
   { value: "video_generation", label: "Video Generation" },
   { value: "audio_generation", label: "Audio Generation" },
+  { value: "audio_prompt_generation", label: "Create Prompt for Audio Generation" },
   { value: "chat_assistant", label: "Chat Assistant" },
 ] as const;
 

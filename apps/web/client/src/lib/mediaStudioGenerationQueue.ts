@@ -13,6 +13,21 @@ export interface GenerationQueueIdentityLike {
   taskId?: string | null;
 }
 
+export interface GenerationQueueHistoryTaskLike extends GenerationQueueIdentityLike {
+  createdAt?: Date | number | string | null;
+  startedAt?: Date | number | string | null;
+  updatedAt?: Date | number | string | null;
+}
+
+export interface StoryboardReviewQueueTaskLike extends GenerationQueueIdentityLike {
+  status?: string | null;
+  result?: string | null;
+  url?: string | null;
+  storyboardContext?: {
+    extraParams?: Record<string, unknown> | null;
+  } | null;
+}
+
 export interface MergeableGenerationQueueTask extends GenerationQueueIdentityLike {
   id: string;
   status: GenerationQueueStatus;
@@ -65,14 +80,66 @@ export function isActiveGenerationQueueStatus(status: GenerationQueueStatus): bo
 
 export function shouldIncludeHistoryTaskInGenerationQueue(
   status: GenerationQueueStatus,
-  task: GenerationQueueIdentityLike,
+  task: GenerationQueueHistoryTaskLike,
   trackedTaskIds: ReadonlySet<string>,
+  options?: {
+    nowMs?: number;
+    activeHistoryMaxAgeMs?: number;
+  },
 ): boolean {
-  if (isActiveGenerationQueueStatus(status)) {
+  const isTracked = getGenerationQueueIdentityCandidates(task).some((candidate) => trackedTaskIds.has(candidate));
+  if (isTracked) {
     return true;
   }
 
-  return getGenerationQueueIdentityCandidates(task).some((candidate) => trackedTaskIds.has(candidate));
+  if (!isActiveGenerationQueueStatus(status)) {
+    return false;
+  }
+
+  const maxAgeMs = options?.activeHistoryMaxAgeMs ?? 2 * 60 * 60 * 1000;
+  if (maxAgeMs <= 0) {
+    return true;
+  }
+
+  const nowMs = options?.nowMs ?? Date.now();
+  const timestamp = task.updatedAt ?? task.startedAt ?? task.createdAt;
+  if (timestamp === undefined || timestamp === null || timestamp === "") {
+    return true;
+  }
+  const taskTimeMs = timestamp instanceof Date
+    ? timestamp.getTime()
+    : typeof timestamp === "number"
+      ? timestamp
+      : Date.parse(String(timestamp ?? ""));
+
+  return !Number.isFinite(taskTimeMs) || nowMs - taskTimeMs <= maxAgeMs;
+}
+
+export function isStoryboardReviewOnlyQueuedTask(
+  task: StoryboardReviewQueueTaskLike,
+  storyboardReviewTaskIds: ReadonlySet<string>,
+): boolean {
+  const taskId = normalizeIdentity(task.id);
+  if (!taskId || !storyboardReviewTaskIds.has(taskId)) {
+    return false;
+  }
+
+  if (String(task.status || "").toLowerCase() !== "queued") {
+    return false;
+  }
+
+  if (
+    normalizeIdentity(task.backendTaskId)
+    || normalizeIdentity(task.providerTaskId)
+    || normalizeIdentity(task.taskId)
+    || normalizeIdentity(task.result)
+    || normalizeIdentity(task.url)
+  ) {
+    return false;
+  }
+
+  const generationType = task.storyboardContext?.extraParams?.generationType;
+  return generationType === "FIRST_AND_LAST_FRAMES_2_VIDEO";
 }
 
 export function isGenerationQueueTaskDismissed(

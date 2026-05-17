@@ -9,6 +9,84 @@ import { getDb } from "../db";
 import { mediaStudioStoryboardReviews, videoEditorProjects } from "../../drizzle/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
+export function getReviewDataUpdatedAt(reviewData: unknown): number {
+  if (!reviewData || typeof reviewData !== "object") return 0;
+  const updatedAt = (reviewData as { updatedAt?: unknown }).updatedAt;
+  return typeof updatedAt === "number" && Number.isFinite(updatedAt) ? updatedAt : 0;
+}
+
+function getTaskUpdatedAt(task: unknown): number {
+  if (!task || typeof task !== "object") return 0;
+  const updatedAt = (task as { updatedAt?: unknown }).updatedAt;
+  return typeof updatedAt === "number" && Number.isFinite(updatedAt) ? updatedAt : 0;
+}
+
+function getTaskId(task: unknown): string | null {
+  if (!task || typeof task !== "object") return null;
+  const id = (task as { id?: unknown }).id;
+  return typeof id === "string" && id.trim().length > 0 ? id : null;
+}
+
+function getTaskUrl(task: unknown): string {
+  if (!task || typeof task !== "object") return "";
+  const url = (task as { url?: unknown }).url;
+  return typeof url === "string" ? url : "";
+}
+
+export function mergeFresherExistingReviewTasks(
+  existingReviewData: unknown,
+  incomingReviewData: unknown,
+): unknown {
+  if (!existingReviewData || typeof existingReviewData !== "object") return incomingReviewData;
+  if (!incomingReviewData || typeof incomingReviewData !== "object") return incomingReviewData;
+
+  const existingTasks = (existingReviewData as { tasks?: unknown }).tasks;
+  const incomingTasks = (incomingReviewData as { tasks?: unknown }).tasks;
+  if (!Array.isArray(existingTasks) || !Array.isArray(incomingTasks)) return incomingReviewData;
+
+  const existingTaskById = new Map<string, unknown>();
+  for (const task of existingTasks) {
+    const id = getTaskId(task);
+    if (id) existingTaskById.set(id, task);
+  }
+
+  let changed = false;
+  const mergedTasks = incomingTasks.map((incomingTask) => {
+    const id = getTaskId(incomingTask);
+    if (!id) return incomingTask;
+    const existingTask = existingTaskById.get(id);
+    if (!existingTask) return incomingTask;
+
+    const existingTaskUpdatedAt = getTaskUpdatedAt(existingTask);
+    const incomingTaskUpdatedAt = getTaskUpdatedAt(incomingTask);
+    if (
+      existingTaskUpdatedAt > incomingTaskUpdatedAt
+      && getTaskUrl(existingTask) !== getTaskUrl(incomingTask)
+    ) {
+      changed = true;
+      return existingTask;
+    }
+    return incomingTask;
+  });
+
+  return changed
+    ? { ...(incomingReviewData as Record<string, unknown>), tasks: mergedTasks }
+    : incomingReviewData;
+}
+
+function getReviewThumbnailUrl(reviewData: unknown, fallback: string | null | undefined): string | undefined {
+  if (reviewData && typeof reviewData === "object") {
+    const tasks = (reviewData as { tasks?: unknown }).tasks;
+    if (Array.isArray(tasks)) {
+      for (const task of tasks) {
+        const url = getTaskUrl(task).trim();
+        if (url) return url;
+      }
+    }
+  }
+  return fallback ?? undefined;
+}
+
 export const videoEditorProjectsRouter = router({
   /** List persistent Media Studio storyboard review workspaces */
   listStoryboardReviews: protectedProcedure
@@ -42,6 +120,7 @@ export const videoEditorProjectsRouter = router({
             clipCount: mediaStudioStoryboardReviews.clipCount,
             completedClipCount: mediaStudioStoryboardReviews.completedClipCount,
             thumbnailUrl: mediaStudioStoryboardReviews.thumbnailUrl,
+            reviewData: mediaStudioStoryboardReviews.reviewData,
             videoEditorProjectId: mediaStudioStoryboardReviews.videoEditorProjectId,
             createdAt: mediaStudioStoryboardReviews.createdAt,
             updatedAt: mediaStudioStoryboardReviews.updatedAt,
@@ -101,7 +180,10 @@ export const videoEditorProjectsRouter = router({
       const now = new Date();
       if (input.id) {
         const [existing] = await db
-          .select({ id: mediaStudioStoryboardReviews.id })
+          .select({
+            id: mediaStudioStoryboardReviews.id,
+            reviewData: mediaStudioStoryboardReviews.reviewData,
+          })
           .from(mediaStudioStoryboardReviews)
           .where(
             and(
@@ -111,15 +193,22 @@ export const videoEditorProjectsRouter = router({
           )
           .limit(1);
         if (!existing) throw new Error("Storyboard review not found");
+        const incomingUpdatedAt = getReviewDataUpdatedAt(input.reviewData);
+        const existingUpdatedAt = getReviewDataUpdatedAt(existing.reviewData);
+        if (incomingUpdatedAt > 0 && existingUpdatedAt > incomingUpdatedAt) {
+          return { id: input.id };
+        }
+
+        const reviewData = mergeFresherExistingReviewTasks(existing.reviewData, input.reviewData);
 
         await db
           .update(mediaStudioStoryboardReviews)
           .set({
             name: input.name,
-            reviewData: input.reviewData,
+            reviewData,
             clipCount: input.clipCount,
             completedClipCount: input.completedClipCount,
-            thumbnailUrl: input.thumbnailUrl ?? undefined,
+            thumbnailUrl: getReviewThumbnailUrl(reviewData, input.thumbnailUrl),
             videoEditorProjectId: input.videoEditorProjectId ?? undefined,
             status: "active",
             updatedAt: now,

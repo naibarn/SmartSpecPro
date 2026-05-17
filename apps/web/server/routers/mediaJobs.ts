@@ -215,6 +215,33 @@ function resolveTenantIdForContext(ctx: { tenantId?: unknown; user?: { currentTe
   return ctx.tenantId ?? ctx.user?.currentTenantId ?? null;
 }
 
+function extractFirstArtifactUrl(result: unknown): string | null {
+  if (!result || typeof result !== "object") return null;
+  const artifacts = (result as { artifacts?: unknown }).artifacts;
+  if (!Array.isArray(artifacts)) return null;
+  for (const artifact of artifacts) {
+    if (!artifact || typeof artifact !== "object") continue;
+    const uri = (artifact as { uri?: unknown; url?: unknown }).uri ?? (artifact as { url?: unknown }).url;
+    if (typeof uri === "string" && uri.trim()) return uri.trim();
+  }
+  return null;
+}
+
+function getRenderLibraryTitle(spec: unknown, fallbackJobId: string, explicitTitle?: string): string {
+  const title = explicitTitle?.trim();
+  if (title) return title;
+
+  const outputTarget =
+    spec && typeof spec === "object"
+      ? (spec as { output?: { target?: unknown } }).output?.target
+      : null;
+  if (typeof outputTarget === "string" && outputTarget.trim()) {
+    return `Final video - ${path.basename(outputTarget.trim())}`;
+  }
+
+  return `Final video - ${fallbackJobId}`;
+}
+
 // ========================================
 // Celery dispatch (HTTP bridge to Python backend)
 // ========================================
@@ -782,8 +809,131 @@ export const mediaJobsRouter = router({
         const error = await getJobKey(input.jobId, "error");
         return { ...status, error, jobHandle, pollable };
       }
-
       return { ...status, jobHandle, pollable };
+    }),
+
+  addCompletedRenderToLibrary: protectedProcedure
+    .input(
+      z.object({
+        jobId: z.string().min(1),
+        title: z.string().min(1).max(255).optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const meta = await getJobKey(input.jobId, "meta");
+      if (!meta) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      }
+      if (meta.userId !== String(ctx.user.id) && ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+      }
+
+      const status = await getJobKey(input.jobId, "status");
+      if (!status) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      }
+      if (status.status !== "done") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only completed render jobs can be added to library",
+        });
+      }
+
+      const tenantId = resolveTenantIdForContext(ctx);
+      if (tenantId === null || tenantId === undefined) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Tenant context is required for render library storage",
+        });
+      }
+
+      const { isLibraryEnabledForTenant } = await import("../services/libraryFeatureFlags");
+      if (!isLibraryEnabledForTenant(tenantId)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Library feature is disabled for this tenant",
+        });
+      }
+
+      const result = await getJobKey(input.jobId, "result");
+      const sourceUrl = extractFirstArtifactUrl(result);
+      if (!sourceUrl) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Render result URL is missing",
+        });
+      }
+
+      const spec = await getJobKey(input.jobId, "spec");
+      const jobType = spec && typeof spec === "object"
+        ? (spec as { jobType?: unknown }).jobType
+        : null;
+      const outputTarget = spec && typeof spec === "object"
+        ? (spec as { output?: { target?: unknown } }).output?.target
+        : null;
+      const { getDb } = await import("../db");
+      const {
+        createLibraryItem,
+        safeEnqueueLibraryIndexJob,
+      } = await import("../services/libraryService");
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const created = await createLibraryItem(
+        {
+          itemType: "video",
+          source: "video_editor_render",
+          title: getRenderLibraryTitle(spec, input.jobId, input.title),
+          description: "Rendered final video from Video Editor",
+          status: "indexing",
+          visibility: "private",
+          metadata: {
+            source_type: "video_editor_render",
+            media_job_id: input.jobId,
+            job_type: typeof jobType === "string" ? jobType : null,
+            output_target: typeof outputTarget === "string" ? outputTarget : null,
+            submitted_at: typeof meta.submittedAt === "number" ? meta.submittedAt : null,
+          },
+          sourceUrl,
+          thumbnailUrl: null,
+          sourceLink: {
+            linkType: "media_job",
+            linkId: input.jobId,
+            providerTaskId: null,
+          },
+        },
+        {
+          userId: ctx.user.id,
+          tenantId: tenantId as string | number,
+          role: ctx.user.role,
+        },
+        db,
+      );
+
+      const indexJob = await safeEnqueueLibraryIndexJob(
+        {
+          libraryItemId: created.item.id,
+          tenantId: tenantId as string | number,
+          jobType: "initial_index",
+          domain: "gallery",
+          operation: "index",
+          source: "gallery.video_editor_render",
+          sourceMetadata: {
+            ingestion: "render_to_library",
+            mediaJobId: input.jobId,
+          },
+          allowThrottle: true,
+        },
+        db,
+      );
+
+      return {
+        itemId: created.item.id,
+        created: !created.idempotent,
+        indexJob,
+      };
     }),
 
   cancelJob: protectedProcedure

@@ -13,6 +13,12 @@ describe("skills parser", () => {
     expect(categoryToSkillType("slide_generation")).toBe("chat-assistant");
   });
 
+  it("recognizes audio prompt generation as a prompt-enhancement category", () => {
+    expect(mapCategoryToEnum("audio_prompt_generation")).toBe("audio_prompt_generation");
+    expect(mapCategoryToEnum("audio-prompt-generation")).toBe("audio_prompt_generation");
+    expect(categoryToSkillType("audio_prompt_generation")).toBe("prompt-enhancement");
+  });
+
   it("treats unknown categories as generic chat skills instead of prompt skills", () => {
     expect(categoryToSkillType("other")).toBe("chat-assistant");
     expect(categoryToSkillType("totally-unknown")).toBe("chat-assistant");

@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { ModelInputFieldsPanel } from "./ModelInputFieldsPanel";
 import { trpc } from "@/lib/trpc";
 
@@ -18,6 +18,7 @@ vi.mock("@/lib/trpc", () => ({
 
 describe("ModelInputFieldsPanel", () => {
   beforeEach(() => {
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
     vi.mocked(trpc.media.listModelFieldOptions.useQuery).mockReturnValue({
       data: { options: [] },
       isLoading: false,
@@ -124,5 +125,35 @@ describe("ModelInputFieldsPanel", () => {
     expect(screen.getByRole("combobox", { name: "Advanced Default Voice" }))
       .toHaveTextContent("Bella - Professional, Bright, Warm");
     expect(screen.queryByText("hpp4J3VqNfWAUOOOdIUs")).not.toBeInTheDocument();
+  });
+
+  it("shows voice preview controls for secondary voice fields from option source metadata", () => {
+    render(
+      <ModelInputFieldsPanel
+        enabled
+        model={{ id: "elevenlabs/text-to-dialogue", name: "ElevenLabs Text to Dialogue" }}
+        fields={[
+          {
+            key: "voice_id_2",
+            label: "Speaker 2 Voice",
+            type: "select",
+            syncWith: "none",
+            searchable: true,
+            options: [{ value: "voice-2", label: "Guest Voice", previewUrl: "https://cdn.example.com/guest.mp3" }],
+            optionsSource: {
+              type: "provider_api",
+              valueField: "voice_id",
+              previewField: "preview_url",
+            },
+          },
+        ]}
+        extraParams={{ voice_id_2: "voice-2" }}
+        onChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Advanced Speaker 2 Voice" }));
+
+    expect(screen.getByTitle("Play voice preview")).toBeInTheDocument();
   });
 });

@@ -15,6 +15,11 @@ export interface SplitResult {
   row: number;
   col: number;
   dataUrl: string;
+  width: number;
+  height: number;
+  sourceWidth: number;
+  sourceHeight: number;
+  targetAspectRatio?: string;
 }
 
 export interface CropRatio {
@@ -43,6 +48,13 @@ export interface DetectedGrid {
   cellWidth: number;
   cellHeight: number;
 }
+
+export interface SplitImageOptions {
+  targetAspectRatio?: string;
+  cropOptions?: CropOptions;
+}
+
+const SPLIT_PREVIEW_MAX_EDGE_PX = 1800;
 
 // Common grid patterns used by AI image generators
 export const COMMON_GRIDS: GridDimension[] = [
@@ -173,7 +185,8 @@ export async function splitImage(
   rows: number,
   cols: number,
   outputFormat: "image/png" | "image/jpeg" = "image/jpeg",
-  quality: number = 0.92
+  quality: number = 0.92,
+  options: SplitImageOptions = {}
 ): Promise<SplitResult[]> {
   const img = await loadImage(imageUrl);
   const width = img.naturalWidth;
@@ -185,9 +198,19 @@ export async function splitImage(
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
+      const sourceCellX = col * cellWidth;
+      const sourceCellY = row * cellHeight;
+      const crop = options.targetAspectRatio
+        ? getCropRect(cellWidth, cellHeight, options.targetAspectRatio, {
+            focusX: options.cropOptions?.focusX ?? 0.5,
+            focusY: options.cropOptions?.focusY ?? 0.5,
+            scale: options.cropOptions?.scale ?? 1,
+          })
+        : { x: 0, y: 0, width: Math.round(cellWidth), height: Math.round(cellHeight) };
+
       const canvas = document.createElement("canvas");
-      canvas.width = Math.round(cellWidth);
-      canvas.height = Math.round(cellHeight);
+      canvas.width = crop.width;
+      canvas.height = crop.height;
 
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Failed to get canvas context");
@@ -195,10 +218,10 @@ export async function splitImage(
       // Draw the cropped portion
       ctx.drawImage(
         img,
-        col * cellWidth,
-        row * cellHeight,
-        cellWidth,
-        cellHeight,
+        sourceCellX + crop.x,
+        sourceCellY + crop.y,
+        crop.width,
+        crop.height,
         0,
         0,
         canvas.width,
@@ -223,6 +246,11 @@ export async function splitImage(
         row,
         col,
         dataUrl,
+        width: canvas.width,
+        height: canvas.height,
+        sourceWidth: Math.round(cellWidth),
+        sourceHeight: Math.round(cellHeight),
+        targetAspectRatio: options.targetAspectRatio,
       });
     }
   }
@@ -241,18 +269,23 @@ export async function createSplitPreview(
   const img = await loadImage(imageUrl);
   const width = img.naturalWidth;
   const height = img.naturalHeight;
+  const previewScale = Math.min(1, SPLIT_PREVIEW_MAX_EDGE_PX / Math.max(width, height));
+  const previewWidth = Math.max(1, Math.round(width * previewScale));
+  const previewHeight = Math.max(1, Math.round(height * previewScale));
   const cellWidth = width / cols;
   const cellHeight = height / rows;
+  const previewCellWidth = previewWidth / cols;
+  const previewCellHeight = previewHeight / rows;
 
   const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = previewWidth;
+  canvas.height = previewHeight;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Failed to get canvas context");
 
   // Draw the original image
-  ctx.drawImage(img, 0, 0);
+  ctx.drawImage(img, 0, 0, previewWidth, previewHeight);
 
   // Draw grid lines
   ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
@@ -260,24 +293,24 @@ export async function createSplitPreview(
 
   // Vertical lines
   for (let col = 1; col < cols; col++) {
-    const x = col * cellWidth;
+    const x = col * previewCellWidth;
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
+    ctx.lineTo(x, previewHeight);
     ctx.stroke();
   }
 
   // Horizontal lines
   for (let row = 1; row < rows; row++) {
-    const y = row * cellHeight;
+    const y = row * previewCellHeight;
     ctx.beginPath();
     ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
+    ctx.lineTo(previewWidth, y);
     ctx.stroke();
   }
 
   // Draw cell numbers - larger and more visible
-  const minDimension = Math.min(cellWidth, cellHeight);
+  const minDimension = Math.min(previewCellWidth, previewCellHeight);
   const fontSize = Math.max(minDimension / 2.0, 44); // Very large font for better readability
   const circleRadius = Math.max(minDimension / 3.0, 30); // Larger circle for label clarity
 
@@ -286,8 +319,8 @@ export async function createSplitPreview(
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
-      const x = col * cellWidth + cellWidth / 2;
-      const y = row * cellHeight + cellHeight / 2;
+      const x = col * previewCellWidth + previewCellWidth / 2;
+      const y = row * previewCellHeight + previewCellHeight / 2;
       const num = row * cols + col + 1;
 
       // Draw background circle with border

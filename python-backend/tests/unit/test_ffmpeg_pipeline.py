@@ -2,15 +2,30 @@
 
 Uses mocks for subprocess calls to avoid requiring FFmpeg in CI.
 """
-import json
-import os
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from app.video import pipeline as video_pipeline
-from app.video.pipeline import run_assembly_stage, run_final_render, _clips_are_compatible
+from app.video.pipeline import _clips_are_compatible, run_assembly_stage, run_final_render
 from app.video.render_profiles import PROFILES, get_ffmpeg_output_args
+
+
+def _raw_gray_frame_with_white_borders(
+    *,
+    width=72,
+    height=128,
+    top=0,
+    bottom=0,
+    left=0,
+    right=0,
+):
+    frame = bytearray([96] * width * height)
+    for row in range(height):
+        for col in range(width):
+            if row < top or row >= height - bottom or col < left or col >= width - right:
+                frame[row * width + col] = 250
+    return bytes(frame)
 
 
 @pytest.mark.unit
@@ -19,7 +34,7 @@ class TestAssemblyStage:
 
     def test_stream_copy_when_codecs_match(self):
         """When all V1 clips share the same codec, resolution, and timebase,
-        the assembly stage must use -c copy for near-instant concatenation."""
+        the helper reports them as compatible."""
         clip_infos = [
             {"codec": "h264", "width": 1920, "height": 1080, "r_frame_rate": "30/1"},
             {"codec": "h264", "width": 1920, "height": 1080, "r_frame_rate": "30/1"},
@@ -35,8 +50,8 @@ class TestAssemblyStage:
         ]
         assert _clips_are_compatible(clip_infos) is False
 
-    def test_single_clip_returns_directly(self, tmp_path):
-        """Single V1 clip should be returned directly without processing."""
+    def test_single_clip_is_normalized_before_output(self, tmp_path, monkeypatch):
+        """Single V1 clip should still pass through canvas normalization."""
         # Create a dummy input file
         clip_file = tmp_path / "clip1.mp4"
         clip_file.write_bytes(b"fake video data")
@@ -60,8 +75,39 @@ class TestAssemblyStage:
             },
         }
 
-        result = run_assembly_stage(render_spec, str(tmp_path))
-        assert result == str(clip_file)
+        monkeypatch.setattr(video_pipeline, "_probe_clip", lambda _path, runner=None: {
+            "codec": "h264",
+            "width": 720,
+            "height": 1280,
+            "r_frame_rate": "30/1",
+        })
+        monkeypatch.setattr(
+            video_pipeline,
+            "_detect_letterbox_crop_filter",
+            lambda _path, runner=None: None,
+        )
+        captured = {}
+
+        def fake_run(cmd, **_kwargs):
+            captured["cmd"] = cmd
+            result = MagicMock()
+            result.returncode = 0
+            result.stdout = ""
+            result.stderr = ""
+            return result
+
+        with patch("subprocess.run", side_effect=fake_run):
+            result = run_assembly_stage(render_spec, str(tmp_path))
+
+        assert result == str(tmp_path / "testhash_assembled.mp4")
+        cmd = captured["cmd"]
+        assert "-filter_complex" in cmd
+        fc = cmd[cmd.index("-filter_complex") + 1]
+        assert "crop=trunc(iw*0.988/2)*2:trunc(ih*0.988/2)*2:(iw-ow)/2:(ih-oh)/2" in fc
+        assert "scale=1920:1080:force_original_aspect_ratio=increase" in fc
+        assert "crop=1920:1080:(iw-1920)/2:(ih-1080)/2" in fc
+        assert "crop=1896:1056:12:12,scale=1920:1080" in fc
+        assert str(clip_file) in cmd
 
     def test_no_v1_clips_raises(self, tmp_path):
         """Assembly with no V1 clips should raise ValueError."""
@@ -120,7 +166,11 @@ class TestAssemblyStage:
             "height": 1280,
             "r_frame_rate": "30/1",
         })
-        monkeypatch.setattr(video_pipeline, "_detect_letterbox_crop_filter", lambda _path, runner=None: "crop=iw:1100:0:90")
+        monkeypatch.setattr(
+            video_pipeline,
+            "_detect_letterbox_crop_filter",
+            lambda _path, runner=None: "crop=iw:1100:0:90",
+        )
         captured = {}
 
         def fake_run(cmd, **_kwargs):
@@ -138,8 +188,42 @@ class TestAssemblyStage:
         cmd = captured["cmd"]
         assert "-filter_complex" in cmd
         fc = cmd[cmd.index("-filter_complex") + 1]
-        assert "crop=iw:1100:0:90,fps=30,scale=1080:1920" in fc
+        assert (
+            "crop=iw:1100:0:90,"
+            "crop=trunc(iw*0.988/2)*2:trunc(ih*0.988/2)*2:(iw-ow)/2:(ih-oh)/2,"
+            "fps=30,scale=1080:1920:force_original_aspect_ratio=increase"
+        ) in fc
+        assert "crop=1080:1920:(iw-1080)/2:(ih-1920)/2" in fc
+        assert "crop=1056:1896:12:12,scale=1080:1920" in fc
+        assert "pad=1080:1920" not in fc
+        assert "trim=0:5.000000,setpts=PTS-STARTPTS[v0]" in fc
+        assert "apad,atrim=0:5.000000,asetpts=PTS-STARTPTS[a0]" in fc
         assert "-c" not in cmd[:cmd.index("-filter_complex")]
+
+    def test_detect_letterbox_crop_filter_handles_white_edges_on_both_axes(
+        self,
+        tmp_path,
+        monkeypatch,
+    ):
+        monkeypatch.setattr(video_pipeline, "_probe_clip", lambda _path: {
+            "width": 720,
+            "height": 1280,
+        })
+        raw_frame = _raw_gray_frame_with_white_borders(top=4, left=2, right=3)
+
+        def fake_run(cmd, **_kwargs):
+            with open(cmd[-1], "wb") as fh:
+                fh.write(raw_frame)
+            result = MagicMock()
+            result.returncode = 0
+            return result
+
+        monkeypatch.setattr(video_pipeline.subprocess, "run", fake_run)
+
+        assert (
+            video_pipeline._detect_letterbox_crop_filter(str(tmp_path / "clip.mp4"))
+            == "crop=670:1240:20:40"
+        )
 
 
 @pytest.mark.unit

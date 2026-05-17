@@ -416,6 +416,50 @@ const csrfCheck = (req: any, res: any, next: any) => {
 app.use("/trpc", csrfCheck);
 app.use("/api", csrfCheck);
 
+app.use("/trpc/chat.executeSkill", (req, res, next) => {
+  const skillExecutionTimeoutMs = 600_000;
+  req.socket.setTimeout(skillExecutionTimeoutMs);
+  res.setTimeout(skillExecutionTimeoutMs);
+
+  const startedAt = Date.now();
+  const bodyBytes = (() => {
+    try {
+      return Buffer.byteLength(JSON.stringify(req.body ?? null));
+    } catch {
+      return null;
+    }
+  })();
+  const dynamicParams = (req.body as any)?.json?.dynamicParams;
+  const dynamicParamSummary = dynamicParams && typeof dynamicParams === "object"
+    ? {
+        topKeys: Object.keys(dynamicParams).slice(0, 30),
+        byteLength: Buffer.byteLength(JSON.stringify(dynamicParams)),
+      }
+    : null;
+
+  console.info("[tRPC Debug] chat.executeSkill request", {
+    method: req.method,
+    originalUrl: req.originalUrl,
+    requestId: req.headers["x-request-id"],
+    contentLength: req.headers["content-length"],
+    bodyBytes,
+    skillId: (req.body as any)?.json?.skillId,
+    conversationId: (req.body as any)?.json?.conversationId,
+    dynamicParams: dynamicParamSummary,
+  });
+
+  res.on("finish", () => {
+    console.info("[tRPC Debug] chat.executeSkill response", {
+      method: req.method,
+      originalUrl: req.originalUrl,
+      statusCode: res.statusCode,
+      durationMs: Date.now() - startedAt,
+    });
+  });
+
+  next();
+});
+
 // Always mount local static handler — harmless when S3/R2 is active (no local files to serve)
 const uploadsDir = getUploadsDir();
 app.use("/uploads/auto-team-media", (_req, res) => {

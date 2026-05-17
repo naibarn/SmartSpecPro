@@ -92,6 +92,7 @@ const categoryLabels: Record<string, string> = {
   video_generation: "Video Generation",
   video_prompt_generation: "Create Prompt for Video Generation",
   audio_generation: "Audio Generation",
+  audio_prompt_generation: "Create Prompt for Audio Generation",
   article_generation: "Article Generation",
   prompt_enhancement: "Prompt Enhancement",
   code_assistant: "Code Assistant",

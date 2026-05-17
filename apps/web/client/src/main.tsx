@@ -31,6 +31,85 @@ const CHUNK_ERROR_PATTERNS = [
   /ChunkLoadError/i,
 ];
 
+function summarizeUnknownValue(value: unknown): {
+  topKeys?: string[];
+  totalKeys: number;
+  arrays: number;
+  strings: number;
+  maxStringLength: number;
+  dataUrlStrings: number;
+  approximateBytes: number;
+} {
+  const seen = new WeakSet<object>();
+  let totalKeys = 0;
+  let arrays = 0;
+  let strings = 0;
+  let maxStringLength = 0;
+  let dataUrlStrings = 0;
+
+  const visit = (current: unknown) => {
+    if (typeof current === "string") {
+      strings += 1;
+      maxStringLength = Math.max(maxStringLength, current.length);
+      if (current.startsWith("data:")) dataUrlStrings += 1;
+      return;
+    }
+    if (!current || typeof current !== "object") return;
+    if (seen.has(current)) return;
+    seen.add(current);
+    if (Array.isArray(current)) {
+      arrays += 1;
+      current.forEach(visit);
+      return;
+    }
+    const entries = Object.entries(current as Record<string, unknown>);
+    totalKeys += entries.length;
+    entries.forEach(([, child]) => visit(child));
+  };
+
+  visit(value);
+  return {
+    topKeys: value && typeof value === "object" && !Array.isArray(value)
+      ? Object.keys(value as Record<string, unknown>).slice(0, 30)
+      : undefined,
+    totalKeys,
+    arrays,
+    strings,
+    maxStringLength,
+    dataUrlStrings,
+    approximateBytes: (() => {
+      try {
+        return new Blob([JSON.stringify(value)]).size;
+      } catch {
+        return 0;
+      }
+    })(),
+  };
+}
+
+function summarizeTrpcRequestBody(body: unknown): Record<string, unknown> | undefined {
+  if (typeof body !== "string") {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(body) as { json?: Record<string, unknown> };
+    const json = parsed?.json;
+    if (!json || json.skillId !== "smart-character-creator-pro") {
+      return undefined;
+    }
+    return {
+      skillId: json.skillId,
+      conversationId: json.conversationId,
+      bodyBytes: new Blob([body]).size,
+      promptLength: typeof json.prompt === "string" ? json.prompt.length : null,
+      dynamicParams: summarizeUnknownValue(json.dynamicParams),
+      referenceImageUrls: summarizeUnknownValue(json.referenceImageUrls),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 function shouldDropDuplicateSentryEvent(event: Sentry.Event): boolean {
   const exceptionValue = event.exception?.values?.[0]?.value || "";
   const exceptionType = event.exception?.values?.[0]?.type || "";
@@ -293,7 +372,12 @@ const trpcClient = trpc.createClient({
             : input instanceof URL
               ? input.href
               : input.url;
-        console.log("[tRPC Fetch]", requestUrl, init?.method);
+        console.log("[tRPC Fetch]", {
+          requestUrl,
+          method: init?.method,
+          pageOrigin: globalThis.location?.origin,
+          bodySummary: summarizeTrpcRequestBody(init?.body),
+        });
       try {
         const headers = new Headers(init?.headers || {});
         const privateVaultToken = getPrivateVaultAccessToken();
@@ -306,7 +390,13 @@ const trpcClient = trpc.createClient({
           credentials: "include",
         });
           await assertJsonApiResponse(response, requestUrl);
-          console.log("[tRPC Response]", response.status, response.statusText);
+          console.log("[tRPC Response]", {
+            requestUrl,
+            responseUrl: response.url,
+            status: response.status,
+            statusText: response.statusText,
+            contentType: response.headers.get("content-type"),
+          });
           return response;
         } catch (err) {
           console.error("[tRPC Fetch Error]", err);

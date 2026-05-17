@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,7 @@ import {
   Loader2,
   Check,
   Search,
+  History,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,10 @@ export interface ImageSourcePickerProps {
   required?: boolean;
   /** Language for labels */
   language?: "en" | "th";
+  /** Replace the current image instead of appending to the list */
+  selectionMode?: "append" | "replace";
+  /** Disable picker interactions */
+  disabled?: boolean;
 }
 
 const LIBRARY_SCOPES = [
@@ -64,6 +69,254 @@ const LIBRARY_SCOPES = [
 
 type LibraryScope = (typeof LIBRARY_SCOPES)[number]["value"];
 
+type PickerImageItem = {
+  key: string;
+  url: string;
+  thumbnailUrl?: string | null;
+  title?: string | null;
+};
+
+type RecentUploadRecord = {
+  url: string;
+  title?: string | null;
+  createdAt: number;
+};
+
+type MediaHistoryTaskLike = {
+  id?: string | number | null;
+  taskId?: string | number | null;
+  status?: string | null;
+  mediaType?: string | null;
+  resultUrl?: string | null;
+  result_url?: string | null;
+  resultData?: unknown;
+  result_data?: unknown;
+  prompt?: string | null;
+  model?: string | null;
+  createdAt?: string | null;
+  created_at?: string | null;
+};
+
+const RECENT_UPLOADS_STORAGE_KEY = "smartspec:image-source-picker:recent-uploads";
+const MAX_RECENT_UPLOADS = 60;
+
+function isUsableImageUrl(value: unknown): value is string {
+  if (typeof value !== "string") {
+    return false;
+  }
+  const trimmed = value.trim();
+  return Boolean(
+    trimmed
+      && (
+        trimmed.startsWith("http://")
+        || trimmed.startsWith("https://")
+        || trimmed.startsWith("/uploads/")
+        || trimmed.startsWith("/api/storage/")
+      ),
+  );
+}
+
+function readFirstMediaUrl(value: unknown, visited = new Set<unknown>()): string | null {
+  if (isUsableImageUrl(value)) {
+    return value.trim();
+  }
+  if (!value || typeof value !== "object" || visited.has(value)) {
+    return null;
+  }
+  visited.add(value);
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = readFirstMediaUrl(item, visited);
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of [
+    "url",
+    "result_url",
+    "resultUrl",
+    "image_url",
+    "imageUrl",
+    "output_url",
+    "outputUrl",
+    "source_url",
+    "sourceUrl",
+  ]) {
+    const found = readFirstMediaUrl(record[key], visited);
+    if (found) {
+      return found;
+    }
+  }
+  for (const nestedValue of Object.values(record)) {
+    const found = readFirstMediaUrl(nestedValue, visited);
+    if (found) {
+      return found;
+    }
+  }
+  return null;
+}
+
+function extractMediaHistoryResultUrl(task: MediaHistoryTaskLike): string | null {
+  return (
+    readFirstMediaUrl(task.resultUrl)
+    || readFirstMediaUrl(task.result_url)
+    || readFirstMediaUrl(task.resultData)
+    || readFirstMediaUrl(task.result_data)
+  );
+}
+
+function extractMediaHistoryThumbnailUrl(task: MediaHistoryTaskLike): string | null {
+  const resultData = task.resultData ?? task.result_data;
+  if (!resultData || typeof resultData !== "object") {
+    return null;
+  }
+  const record = resultData as Record<string, unknown>;
+  return (
+    readFirstMediaUrl(record.thumbnail_url)
+    || readFirstMediaUrl(record.thumbnailUrl)
+    || readFirstMediaUrl(record.thumbnail)
+    || readFirstMediaUrl(record.poster_url)
+    || readFirstMediaUrl(record.posterUrl)
+    || readFirstMediaUrl(record.poster)
+  );
+}
+
+export function normalizeMediaHistoryImageItems(
+  tasks: unknown,
+  query = "",
+): PickerImageItem[] {
+  if (!Array.isArray(tasks)) {
+    return [];
+  }
+  const normalizedQuery = query.trim().toLowerCase();
+  const items: PickerImageItem[] = [];
+  const seenUrls = new Set<string>();
+
+  for (const rawTask of tasks) {
+    const task = rawTask as MediaHistoryTaskLike;
+    if (String(task.status || "").toLowerCase() !== "completed") {
+      continue;
+    }
+    if (String(task.mediaType || "").toLowerCase() !== "image") {
+      continue;
+    }
+
+    const url = extractMediaHistoryResultUrl(task);
+    if (!url || seenUrls.has(url)) {
+      continue;
+    }
+
+    const title = String(task.prompt || task.model || task.taskId || task.id || "Generated image").trim();
+    const searchable = `${title} ${task.model || ""} ${task.prompt || ""} ${task.id || ""} ${task.taskId || ""}`.toLowerCase();
+    if (normalizedQuery && !searchable.includes(normalizedQuery)) {
+      continue;
+    }
+
+    seenUrls.add(url);
+    items.push({
+      key: `history-${task.id || task.taskId || url}`,
+      url,
+      thumbnailUrl: extractMediaHistoryThumbnailUrl(task) || url,
+      title,
+    });
+  }
+
+  return items;
+}
+
+function normalizeRecentUploadRecords(records: unknown): RecentUploadRecord[] {
+  if (!Array.isArray(records)) {
+    return [];
+  }
+
+  const seenUrls = new Set<string>();
+  return records.reduce<RecentUploadRecord[]>((acc, rawRecord) => {
+    if (!rawRecord || typeof rawRecord !== "object") {
+      return acc;
+    }
+    const record = rawRecord as Partial<RecentUploadRecord>;
+    const url = String(record.url || "").trim();
+    if (!isUsableImageUrl(url) || seenUrls.has(url)) {
+      return acc;
+    }
+
+    seenUrls.add(url);
+    acc.push({
+      url,
+      title: typeof record.title === "string" && record.title.trim()
+        ? record.title.trim()
+        : url.split("/").pop() || "Uploaded image",
+      createdAt: typeof record.createdAt === "number" && Number.isFinite(record.createdAt)
+        ? record.createdAt
+        : 0,
+    });
+    return acc;
+  }, [])
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, MAX_RECENT_UPLOADS);
+}
+
+function readRecentUploadRecords(): RecentUploadRecord[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+  try {
+    return normalizeRecentUploadRecords(
+      JSON.parse(window.localStorage.getItem(RECENT_UPLOADS_STORAGE_KEY) || "[]"),
+    );
+  } catch {
+    return [];
+  }
+}
+
+function writeRecentUploadRecords(records: RecentUploadRecord[]): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.setItem(
+      RECENT_UPLOADS_STORAGE_KEY,
+      JSON.stringify(normalizeRecentUploadRecords(records)),
+    );
+  } catch {
+    // Ignore storage quota or privacy-mode errors; uploads still work for the active field.
+  }
+}
+
+export function mergeRecentUploadedImages(
+  existingRecords: unknown,
+  urls: string[],
+  now = Date.now(),
+): RecentUploadRecord[] {
+  const existing = normalizeRecentUploadRecords(existingRecords);
+  const uploaded = urls
+    .map((url) => String(url || "").trim())
+    .filter(isUsableImageUrl)
+    .map((url) => ({
+      url,
+      title: url.split("/").pop() || "Uploaded image",
+      createdAt: now,
+    }));
+
+  return normalizeRecentUploadRecords([...uploaded, ...existing]);
+}
+
+export function normalizeRecentUploadedImageItems(
+  records: unknown,
+): PickerImageItem[] {
+  return normalizeRecentUploadRecords(records).map((record) => ({
+    key: `recent-upload-${record.url}`,
+    url: record.url,
+    thumbnailUrl: record.url,
+    title: record.title || "Uploaded image",
+  }));
+}
+
 export function ImageSourcePicker({
   value,
   onChange,
@@ -74,6 +327,8 @@ export function ImageSourcePicker({
   helpText,
   required,
   language = "th",
+  selectionMode = "append",
+  disabled = false,
 }: ImageSourcePickerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -81,6 +336,7 @@ export function ImageSourcePicker({
   const [librarySearch, setLibrarySearch] = useState("");
   const [libraryScope, setLibraryScope] = useState<LibraryScope>("all");
   const [activeTab, setActiveTab] = useState<string>("library");
+  const [recentUploads, setRecentUploads] = useState<PickerImageItem[]>([]);
 
   // Library query
   const libraryQuery = trpc.library.listDocuments.useQuery(
@@ -103,8 +359,19 @@ export function ImageSourcePicker({
     },
     { enabled: popoverOpen && librarySearch.trim().length > 0 },
   );
+  const mediaHistoryQuery = trpc.media.listTasks.useQuery(
+    {
+      mediaType: "image",
+      status: "completed",
+      limit: 50,
+      offset: 0,
+      daysAgo: 30,
+    },
+    { enabled: popoverOpen },
+  );
 
-  const canAddMore = value.length < maxImages;
+  const isReplaceMode = selectionMode === "replace";
+  const canAddMore = !disabled && (isReplaceMode || value.length < maxImages);
   const libraryResults = (
     librarySearch.trim().length > 0
       ? (librarySearchQuery.data?.results ?? [])
@@ -116,6 +383,21 @@ export function ImageSourcePicker({
     title?: string | null;
   }>;
   const libraryLoading = libraryQuery.isLoading || librarySearchQuery.isLoading;
+  const historyResults = useMemo(
+    () => normalizeMediaHistoryImageItems(mediaHistoryQuery.data?.tasks ?? [], librarySearch),
+    [mediaHistoryQuery.data?.tasks, librarySearch],
+  );
+  const historyLoading = mediaHistoryQuery.isLoading || mediaHistoryQuery.isFetching;
+
+  const refreshRecentUploads = useCallback(() => {
+    setRecentUploads(normalizeRecentUploadedImageItems(readRecentUploadRecords()));
+  }, []);
+
+  useEffect(() => {
+    if (popoverOpen) {
+      refreshRecentUploads();
+    }
+  }, [popoverOpen, refreshRecentUploads]);
 
   // Handle file upload
   const handleFileUpload = useCallback(
@@ -126,9 +408,18 @@ export function ImageSourcePicker({
       try {
         const urls = await onUpload(files);
         if (urls.length > 0) {
-          const remaining = maxImages - value.length;
-          const toAdd = urls.slice(0, remaining);
-          onChange([...value, ...toAdd]);
+          const nextRecentUploads = mergeRecentUploadedImages(readRecentUploadRecords(), urls);
+          writeRecentUploadRecords(nextRecentUploads);
+          setRecentUploads(normalizeRecentUploadedImageItems(nextRecentUploads));
+
+          if (isReplaceMode) {
+            onChange(urls.slice(0, 1));
+            setPopoverOpen(false);
+          } else {
+            const remaining = maxImages - value.length;
+            const toAdd = urls.slice(0, remaining);
+            onChange([...value, ...toAdd]);
+          }
         }
       } catch {
         // Error handling done by parent's onUpload
@@ -139,17 +430,20 @@ export function ImageSourcePicker({
         fileInputRef.current.value = "";
       }
     },
-    [onUpload, value, onChange, maxImages],
+    [onUpload, value, onChange, maxImages, isReplaceMode],
   );
 
   // Add from library
   const handleAddFromLibrary = useCallback(
     (url: string) => {
-      if (!value.includes(url) && canAddMore) {
-        onChange([...value, url]);
+      if (canAddMore && (isReplaceMode || !value.includes(url))) {
+        onChange(isReplaceMode ? [url] : [...value, url]);
+        if (isReplaceMode) {
+          setPopoverOpen(false);
+        }
       }
     },
-    [value, onChange, canAddMore],
+    [value, onChange, canAddMore, isReplaceMode],
   );
 
   // Add from URL
@@ -163,18 +457,23 @@ export function ImageSourcePicker({
       trimmed.startsWith("/uploads/");
     if (!isValid) return;
 
-    if (!value.includes(trimmed) && canAddMore) {
-      onChange([...value, trimmed]);
+    if (canAddMore && (isReplaceMode || !value.includes(trimmed))) {
+      onChange(isReplaceMode ? [trimmed] : [...value, trimmed]);
       setUrlInput("");
+      if (isReplaceMode) {
+        setPopoverOpen(false);
+      }
     }
-  }, [urlInput, value, onChange, canAddMore]);
+  }, [urlInput, value, onChange, canAddMore, isReplaceMode]);
 
   // Remove image
   const handleRemove = useCallback(
     (index: number) => {
-      onChange(value.filter((_, i) => i !== index));
+      if (!disabled) {
+        onChange(value.filter((_, i) => i !== index));
+      }
     },
-    [value, onChange],
+    [disabled, value, onChange],
   );
 
   const isTh = language === "th";
@@ -202,6 +501,7 @@ export function ImageSourcePicker({
             <button
               type="button"
               onClick={() => handleRemove(idx)}
+              disabled={disabled}
               className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
             >
               <X className="h-3 w-3" />
@@ -222,7 +522,7 @@ export function ImageSourcePicker({
                 type="button"
                 variant="outline"
                 className="h-16 w-16"
-                disabled={isUploading}
+                disabled={disabled || isUploading}
               >
                 {isUploading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -232,7 +532,7 @@ export function ImageSourcePicker({
               </Button>
             </PopoverTrigger>
             <PopoverContent
-              className="w-80 p-0"
+              className="w-[calc(100vw-2rem)] max-w-[56rem] p-0 sm:w-[34rem] md:w-[44rem] lg:w-[56rem]"
               align="start"
               side="bottom"
             >
@@ -241,7 +541,7 @@ export function ImageSourcePicker({
                 onValueChange={setActiveTab}
                 className="w-full"
               >
-                <TabsList className="w-full grid grid-cols-3 h-9">
+                <TabsList className="w-full grid grid-cols-4 h-9">
                   <TabsTrigger value="upload" className="text-xs gap-1">
                     <Upload className="h-3 w-3" />
                     {isTh ? "อัปโหลด" : "Upload"}
@@ -249,6 +549,10 @@ export function ImageSourcePicker({
                   <TabsTrigger value="library" className="text-xs gap-1">
                     <Library className="h-3 w-3" />
                     {isTh ? "ไลบรารี" : "Library"}
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className="text-xs gap-1">
+                    <History className="h-3 w-3" />
+                    {isTh ? "ประวัติ" : "History"}
                   </TabsTrigger>
                   <TabsTrigger value="url" className="text-xs gap-1">
                     <Link className="h-3 w-3" />
@@ -285,6 +589,63 @@ export function ImageSourcePicker({
                     )}
                     {isTh ? "เลือกไฟล์" : "Choose Files"}
                   </Button>
+
+                  {recentUploads.length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-foreground">
+                          {isTh ? "อัปโหลดล่าสุด" : "Recent uploads"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {isTh ? "เลือกใช้ซ้ำได้" : "Reuse previous uploads"}
+                        </p>
+                      </div>
+                      <div className="grid max-h-[38vh] grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-2 overflow-y-auto pr-1 sm:grid-cols-[repeat(auto-fill,minmax(7rem,1fr))]">
+                        {recentUploads.map((item) => {
+                          const alreadyAdded = value.includes(item.url);
+                          return (
+                            <button
+                              key={item.key}
+                              type="button"
+                              disabled={alreadyAdded || !canAddMore}
+                              className={cn(
+                                "group relative aspect-square overflow-hidden rounded-lg border bg-muted/30 transition-all",
+                                alreadyAdded
+                                  ? "cursor-not-allowed border-primary opacity-60"
+                                  : "cursor-pointer border-transparent hover:border-primary hover:ring-1 hover:ring-primary",
+                              )}
+                              onClick={() => {
+                                if (!alreadyAdded) {
+                                  handleAddFromLibrary(item.url);
+                                }
+                              }}
+                            >
+                              <img
+                                src={item.thumbnailUrl || item.url}
+                                alt={String(item.title || "Uploaded image")}
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                              />
+                              {alreadyAdded && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                  <Check className="h-4 w-4 text-white" />
+                                </div>
+                              )}
+                              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1 py-0.5">
+                                <p className="truncate text-[9px] leading-tight text-white">
+                                  {String(
+                                    item.title ||
+                                      item.url.split("/").pop() ||
+                                      "Image",
+                                  )}
+                                </p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </TabsContent>
 
                 {/* Library tab */}
@@ -321,7 +682,7 @@ export function ImageSourcePicker({
                   </div>
 
                   {/* Image grid */}
-                  <div className="grid max-h-[200px] grid-cols-4 gap-1.5 overflow-y-auto">
+                  <div className="grid max-h-[56vh] grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-2 overflow-y-auto pr-1 sm:grid-cols-[repeat(auto-fill,minmax(7rem,1fr))]">
                     {libraryLoading ? (
                       <div className="col-span-full flex items-center justify-center py-4 text-xs text-muted-foreground">
                         <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -344,7 +705,7 @@ export function ImageSourcePicker({
                             type="button"
                             disabled={alreadyAdded || !canAddMore}
                             className={cn(
-                              "group relative aspect-square overflow-hidden rounded-md border transition-all",
+                              "group relative aspect-square overflow-hidden rounded-lg border bg-muted/30 transition-all",
                               alreadyAdded
                                 ? "cursor-not-allowed border-primary opacity-60"
                                 : "cursor-pointer border-transparent hover:border-primary hover:ring-1 hover:ring-primary",
@@ -371,6 +732,79 @@ export function ImageSourcePicker({
                                 {String(
                                   item.title ||
                                     url.split("/").pop() ||
+                                    "Image",
+                                )}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* Media history tab */}
+                <TabsContent value="history" className="p-3 space-y-2">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder={
+                        isTh ? "ค้นหาประวัติรูปภาพ..." : "Search image history..."
+                      }
+                      value={librarySearch}
+                      onChange={(e) => setLibrarySearch(e.target.value)}
+                      className="h-7 text-xs pl-7"
+                    />
+                  </div>
+
+                  <div className="grid max-h-[56vh] grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-2 overflow-y-auto pr-1 sm:grid-cols-[repeat(auto-fill,minmax(7rem,1fr))]">
+                    {historyLoading ? (
+                      <div className="col-span-full flex items-center justify-center py-4 text-xs text-muted-foreground">
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        {isTh ? "กำลังโหลด..." : "Loading..."}
+                      </div>
+                    ) : historyResults.length === 0 ? (
+                      <p className="col-span-full py-4 text-center text-xs text-muted-foreground">
+                        {isTh
+                          ? "ไม่พบรูปภาพในประวัติ"
+                          : "No image history found."}
+                      </p>
+                    ) : (
+                      historyResults.map((item) => {
+                        const alreadyAdded = value.includes(item.url);
+                        return (
+                          <button
+                            key={item.key}
+                            type="button"
+                            disabled={alreadyAdded || !canAddMore}
+                            className={cn(
+                              "group relative aspect-square overflow-hidden rounded-lg border bg-muted/30 transition-all",
+                              alreadyAdded
+                                ? "cursor-not-allowed border-primary opacity-60"
+                                : "cursor-pointer border-transparent hover:border-primary hover:ring-1 hover:ring-primary",
+                            )}
+                            onClick={() => {
+                              if (!alreadyAdded) {
+                                handleAddFromLibrary(item.url);
+                              }
+                            }}
+                          >
+                            <img
+                              src={item.thumbnailUrl || item.url}
+                              alt={String(item.title || "History image")}
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                            />
+                            {alreadyAdded && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                <Check className="h-4 w-4 text-white" />
+                              </div>
+                            )}
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1 py-0.5">
+                              <p className="truncate text-[9px] leading-tight text-white">
+                                {String(
+                                  item.title ||
+                                    item.url.split("/").pop() ||
                                     "Image",
                                 )}
                               </p>

@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/smart-character-creator-pro/output.schema.json",
+  "title": "Smart Character Creator Pro Output Schema",
+  "description": "Machine-readable contract for the skill result. The user-facing final answer must render prompt_text as ordinary plain text, not as JSON.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "output_format": {
+      "type": "string",
+      "const": "plain_text_descriptive_prompt"
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "th",
+        "en",
+        "zh-Hans",
+        "zh-Hant",
+        "ja",
+        "ko",
+        "es",
+        "fr",
+        "de",
+        "it",
+        "pt",
+        "id",
+        "vi",
+        "ar",
+        "hi"
+      ]
+    },
+    "prompt_text": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The exact user-facing output. Must be normal descriptive plain text, not JSON, not markdown table, not code block, and must not include AI image command suffixes such as --ar 9:16."
+    },
+    "prompts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "shot_type": {
+            "type": "string",
+            "enum": [
+              "CLOSE-UP SHOT",
+              "PORTRAIT SHOT",
+              "MEDIUM SHOT",
+              "FULL BODY SHOT",
+              "CUSTOM SHOT"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Single complete paragraph for one prompt. Must not include AI image command suffixes such as --ar 9:16."
+          }
+        },
+        "required": [
+          "index",
+          "shot_type",
+          "text"
+        ]
+      }
+    },
+    "profile_summary_text": {
+      "type": "string",
+      "description": "Optional normal text profile summary, only shown if user asks for it."
+    },
+    "post_prompt_menu_text": {
+      "type": "string",
+      "description": "Optional normal text edit menu after prompt generation."
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "priority_1_to_10_complete": {
+          "type": "boolean"
+        },
+        "character_details_identical_across_prompts": {
+          "type": "boolean"
+        },
+        "no_shortcut_references": {
+          "type": "boolean"
+        },
+        "plain_text_only": {
+          "type": "boolean"
+        },
+        "concrete_environment": {
+          "type": "boolean"
+        },
+        "camera_and_lighting_present": {
+          "type": "boolean"
+        },
+        "reference_images_respected": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "priority_1_to_10_complete",
+        "character_details_identical_across_prompts",
+        "no_shortcut_references",
+        "plain_text_only",
+        "concrete_environment",
+        "camera_and_lighting_present"
+      ]
+    },
+    "reference_image_usage_summary": {
+      "type": "string",
+      "description": "Optional normal-text summary of how uploaded reference images were used, shown only when useful."
+    }
+  },
+  "required": [
+    "output_format",
+    "language",
+    "prompt_text"
+  ]
+}

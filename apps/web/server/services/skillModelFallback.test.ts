@@ -13,6 +13,10 @@ vi.mock("./llmRouter", () => ({
 }));
 
 vi.mock("./enabledLlmModels", () => ({
+  isFreeModelIdentifier: (value: string | null | undefined) => {
+    const normalized = String(value ?? "").toLowerCase();
+    return normalized.endsWith(":free") || normalized.endsWith("-free");
+  },
   loadEnabledLlmModelRows: vi.fn(),
 }));
 

@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import React from "react";
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/react";
 import PreviewPlayer from "../PreviewPlayer";
 
@@ -21,6 +21,10 @@ function renderPlayer() {
 }
 
 describe("PreviewPlayer render preview mode", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
   it("starts in free preview mode so zoom is adjustable by default", () => {
     const { container, getByRole, getByText } = renderPlayer();
 
@@ -45,5 +49,33 @@ describe("PreviewPlayer render preview mode", () => {
     fireEvent.click(renderToggle);
     expect(zoomSelect.disabled).toBe(true);
     expect(stage?.classList.contains("free-preview")).toBe(false);
+  });
+
+  it("keeps the final render frame guide hidden until toggled", async () => {
+    const rectSpy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 800,
+      height: 600,
+      top: 0,
+      left: 0,
+      right: 800,
+      bottom: 600,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    try {
+      const { container, getByRole, queryByText, findByText } = renderPlayer();
+
+      expect(queryByText(/กรอบเหลือง = FINAL RENDER/)).toBeNull();
+      expect(container.querySelector(".output-frame-guide")).toBeNull();
+
+      fireEvent.click(getByRole("button", { name: "Toggle final render frame guide" }));
+
+      expect(await findByText(/กรอบเหลือง = FINAL RENDER/)).toBeTruthy();
+      expect(container.querySelector(".output-frame-guide")).toBeTruthy();
+    } finally {
+      rectSpy.mockRestore();
+    }
   });
 });

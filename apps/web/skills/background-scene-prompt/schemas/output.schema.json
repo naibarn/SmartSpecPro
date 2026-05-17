@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/background-scene-prompt-skill/schemas/output.schema.json",
+  "title": "Background Scene Prompt Builder Output",
+  "description": "The skill output is plain natural-language prompt text. It must not be JSON.",
+  "type": "string",
+  "minLength": 1,
+  "contentMediaType": "text/plain",
+  "examples": [
+    "Prompt 1:\nA richly detailed cinematic background prompt written as normal prose...\n\nPrompt 2:\nA second prompt for the same exact location from a different camera angle..."
+  ]
+}

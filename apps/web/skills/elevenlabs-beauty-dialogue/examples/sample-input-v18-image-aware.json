@@ -1,0 +1,17 @@
+{
+  "product_details": "Dr. Pong Gentle Balancing Facial Gel Cleanser 100 ml สูตรอ่อนโยน 5 Free มี Ceramides และ pH กรดอ่อน ๆ",
+  "product_images": [
+    "<uploaded-front-packaging.png>",
+    "<uploaded-back-label.png>"
+  ],
+  "image_analysis_mode": "detect_conflicts_and_risks",
+  "image_evidence_policy": "text_primary_image_support",
+  "output_language": "Thai",
+  "speech_style": "humorous",
+  "persuasion_style": "problem_solution",
+  "target_duration_seconds": 55,
+  "speaker_count": 2,
+  "enable_audio_tags": true,
+  "strict_claim_guard": true,
+  "format": "plain_text_dialogue"
+}

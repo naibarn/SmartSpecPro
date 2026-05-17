@@ -29,6 +29,7 @@ export interface ModelInputField {
   required?: boolean;
   syncWith: ModelInputSyncTarget;
   affectsPricing?: boolean;
+  includeInPayload?: boolean;
   searchable?: boolean;
   placeholder?: string;
   description?: string;
@@ -40,9 +41,23 @@ export interface ModelInputField {
   allowedExtensions?: string[];
   itemLabel?: string;
   itemTemplate?: unknown;
+  promptSync?: {
+    strategy?: string;
+    textKey?: string;
+    speakerPattern?: string;
+    speakerVoiceFields?: Record<string, string>;
+    defaultVoiceField?: string;
+  };
   itemFields?: ModelInputField[];
   optionsSource?: {
     type?: string;
+    endpoint?: string;
+    method?: string;
+    itemsPath?: string;
+    valueField?: string;
+    labelField?: string;
+    previewField?: string;
+    queryParam?: string;
   };
 }
 
@@ -87,9 +102,16 @@ function parseModelInputFieldRecords(rawFields: unknown[]): ModelInputField[] {
     key: string,
     type: ModelInputField["type"],
     explicit: ModelInputSyncTarget | null,
+    record?: Record<string, unknown>,
   ): ModelInputSyncTarget => {
     if (explicit) {
       return explicit;
+    }
+    const promptSync = record?.promptSync && typeof record.promptSync === "object" && !Array.isArray(record.promptSync)
+      ? record.promptSync as Record<string, unknown>
+      : null;
+    if (type === "array" && String(promptSync?.strategy ?? "").trim() === "speaker_lines") {
+      return "prompt";
     }
     if (type === "image_urls" || type === "audio_urls") {
       return "reference_images";
@@ -189,8 +211,9 @@ function parseModelInputFieldRecords(rawFields: unknown[]): ModelInputField[] {
       options,
       default: record.default,
       required: Boolean(record.required),
-      syncWith: inferSyncTarget(key, type, explicitSyncWith),
+      syncWith: inferSyncTarget(key, type, explicitSyncWith, record),
       affectsPricing: Boolean(record.affectsPricing),
+      includeInPayload: record.includeInPayload === false ? false : undefined,
       searchable: Boolean(record.searchable),
       placeholder: typeof record.placeholder === "string" ? record.placeholder.trim() : undefined,
       description: typeof record.description === "string" ? record.description.trim() : undefined,
@@ -202,17 +225,62 @@ function parseModelInputFieldRecords(rawFields: unknown[]): ModelInputField[] {
       allowedExtensions: parseAllowedExtensions(record.allowedExtensions),
       itemLabel: typeof record.itemLabel === "string" ? record.itemLabel.trim() : undefined,
       itemTemplate: record.itemTemplate,
+      promptSync: parsePromptSyncConfig(record.promptSync),
       itemFields,
       optionsSource:
         record.optionsSource && typeof record.optionsSource === "object"
-          ? { type: typeof (record.optionsSource as Record<string, unknown>).type === "string"
-            ? String((record.optionsSource as Record<string, unknown>).type)
-            : undefined }
+          ? parseModelInputOptionsSource(record.optionsSource)
           : undefined,
     });
   }
 
   return parsed;
+}
+
+function parseModelInputOptionsSource(value: unknown): ModelInputField["optionsSource"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  const readString = (key: string) => {
+    const fieldValue = record[key];
+    return typeof fieldValue === "string" && fieldValue.trim() ? fieldValue.trim() : undefined;
+  };
+
+  return {
+    type: readString("type"),
+    endpoint: readString("endpoint"),
+    method: readString("method"),
+    itemsPath: readString("itemsPath"),
+    valueField: readString("valueField"),
+    labelField: readString("labelField"),
+    previewField: readString("previewField"),
+    queryParam: readString("queryParam"),
+  };
+}
+
+function parsePromptSyncConfig(value: unknown): ModelInputField["promptSync"] | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const record = value as Record<string, unknown>;
+  const speakerVoiceFields = record.speakerVoiceFields && typeof record.speakerVoiceFields === "object" && !Array.isArray(record.speakerVoiceFields)
+    ? Object.fromEntries(
+        Object.entries(record.speakerVoiceFields as Record<string, unknown>)
+          .filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1].trim().length > 0)
+          .map(([key, fieldKey]) => [key, fieldKey.trim()]),
+      )
+    : undefined;
+
+  return {
+    strategy: typeof record.strategy === "string" ? record.strategy.trim() : undefined,
+    textKey: typeof record.textKey === "string" ? record.textKey.trim() : undefined,
+    speakerPattern: typeof record.speakerPattern === "string" ? record.speakerPattern : undefined,
+    speakerVoiceFields,
+    defaultVoiceField: typeof record.defaultVoiceField === "string" ? record.defaultVoiceField.trim() : undefined,
+  };
 }
 
 export function buildDefaultModelInputValue(
@@ -580,7 +648,8 @@ export function pickExtraParamsForModel(
   if (!model || !current) {
     return undefined;
   }
-  const fieldKeys = new Set(parseModelInputFields(model).map((field) => field.key));
+  const fields = parseModelInputFields(model);
+  const fieldKeys = new Set(fields.map((field) => field.key));
   if (fieldKeys.size === 0) {
     return undefined;
   }
@@ -588,6 +657,11 @@ export function pickExtraParamsForModel(
   for (const [key, value] of Object.entries(current)) {
     if (fieldKeys.has(key)) {
       next[key] = value;
+    }
+  }
+  for (const field of fields) {
+    if (field.includeInPayload === false) {
+      delete next[field.key];
     }
   }
   return Object.keys(next).length > 0 ? next : undefined;
@@ -635,7 +709,79 @@ function interpolateModelInputTemplate(template: unknown, context: Record<string
   return template;
 }
 
+function buildSpeakerLinePromptSyncedArrayValue(
+  field: ModelInputField,
+  prompt: string,
+  fields: Record<string, unknown>,
+): unknown[] | null {
+  if (field.promptSync?.strategy !== "speaker_lines") {
+    return null;
+  }
+
+  const textKey = field.promptSync.textKey || "text";
+  const defaultVoiceField = field.promptSync.defaultVoiceField || "voice_id";
+  const speakerVoiceFields = field.promptSync.speakerVoiceFields || {};
+  const speakerPattern = field.promptSync.speakerPattern || "^\\s*Speaker\\s*(\\d+)\\s*[:：-]\\s*(.*)$";
+  let speakerRegex: RegExp;
+
+  try {
+    speakerRegex = new RegExp(speakerPattern, "i");
+  } catch {
+    speakerRegex = /^\s*Speaker\s*(\d+)\s*[:：-]\s*(.*)$/i;
+  }
+
+  const segments: Array<{ speaker: string; text: string }> = [];
+  let currentSpeaker: string | null = null;
+  let currentLines: string[] = [];
+
+  const flush = () => {
+    const text = currentLines.join("\n").trim();
+    if (currentSpeaker && text) {
+      segments.push({ speaker: currentSpeaker, text });
+    }
+    currentLines = [];
+  };
+
+  for (const rawLine of prompt.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) {
+      continue;
+    }
+
+    const match = line.match(speakerRegex);
+    if (match) {
+      flush();
+      currentSpeaker = String(match[1] || "1");
+      const firstLine = String(match[2] || "").trim();
+      currentLines = firstLine ? [firstLine] : [];
+      continue;
+    }
+
+    if (currentSpeaker) {
+      currentLines.push(line);
+    }
+  }
+  flush();
+
+  if (segments.length === 0) {
+    return null;
+  }
+
+  return segments.map((segment) => {
+    const voiceField = speakerVoiceFields[segment.speaker] || defaultVoiceField;
+    return {
+      [textKey]: segment.text,
+      voice_id: fields[voiceField] ?? fields[defaultVoiceField],
+    };
+  });
+}
+
 function buildPromptSyncedArrayValue(field: ModelInputField, prompt: string, fields: Record<string, unknown>): unknown[] {
+  const speakerLineItems = buildSpeakerLinePromptSyncedArrayValue(field, prompt, fields);
+  if (speakerLineItems) {
+    return speakerLineItems;
+  }
+
   if (!field.itemTemplate) {
     return [prompt];
   }
@@ -694,6 +840,11 @@ export function applyModelSyncTargets(
       next[field.key] = field.maxItems
         ? syncValues.referenceVideoUrls.slice(0, field.maxItems)
         : syncValues.referenceVideoUrls;
+    }
+  }
+  for (const field of fields) {
+    if (field.includeInPayload === false) {
+      delete next[field.key];
     }
   }
   return Object.keys(next).length > 0 ? next : undefined;

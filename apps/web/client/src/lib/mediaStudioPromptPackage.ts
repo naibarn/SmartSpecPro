@@ -7,6 +7,7 @@ export interface MediaStudioPromptPackage {
 }
 
 const PROMPT_MARKER_REGEX = /^(PROMPT|SCENE|SHOT|CLIP)\s+\d+\s*(?:\([^)]+\))?:\s*(.*)$/i;
+const WHOLE_MARKDOWN_FENCE_REGEX = /^\s*```[a-z0-9_-]*\s*\n?([\s\S]*?)\n?```\s*$/i;
 const NOTE_HEADING_LINE_REGEX = /^\s*(Continuity Notes|Reference Notes|Reference Image Notes|Reference Image Bible|Visual Bible|Shared Continuity Preamble|Story Continuity Bible|Continuity Bible|Story Bible|บันทึกภาพอ้างอิง|โน้ตภาพอ้างอิง|ข้อมูลภาพอ้างอิง|ภาพอ้างอิง|บันทึกความต่อเนื่อง|โน้ตความต่อเนื่อง|ข้อมูลความต่อเนื่อง|ความต่อเนื่องของเรื่อง)(?:\s*\([^)]*\))?(?:\s*:\s*(.*)|\s*)$/i;
 const NOTE_BOUNDARY_HEADING_LINE_REGEX = /^\s*(?:VEO(?:\s+3\.1)?\s+SETTINGS|NEWS BEAT PLAN|INPUT CHECK|USER ORDER|VIRAL STRATEGY|STYLE|FULL STORYBOARD|VIDEO PROMPTS?|STORYBOARD)\s*:\s*$/i;
 const REFERENCE_NOTES_ABSENCE_LINE_PATTERNS = [
@@ -27,6 +28,16 @@ function trimText(value: unknown): string {
 
 function normalizeLineBreaks(value: string): string {
   return value.replace(/\r\n/g, "\n").trim();
+}
+
+function unwrapWholeMarkdownFence(value: string): string {
+  let normalized = normalizeLineBreaks(value);
+  for (let index = 0; index < 2; index += 1) {
+    const match = normalized.match(WHOLE_MARKDOWN_FENCE_REGEX);
+    if (!match?.[1]) break;
+    normalized = normalizeLineBreaks(match[1]);
+  }
+  return normalized;
 }
 
 function stripReferenceAbsenceBoilerplate(value: string): string {
@@ -372,7 +383,7 @@ function parseStructuredJsonPromptPackage(text: string): MediaStudioPromptPackag
 }
 
 export function parseMediaStudioPromptPackage(text: string): MediaStudioPromptPackage {
-  const normalized = normalizeLineBreaks(text);
+  const normalized = unwrapWholeMarkdownFence(text);
   if (!normalized) {
     return {
       promptText: "",

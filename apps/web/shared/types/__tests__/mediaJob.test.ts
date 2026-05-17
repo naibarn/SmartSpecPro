@@ -213,6 +213,35 @@ describe("projectToTimeline", () => {
     expect(timeline.height).toBe(1080);
   });
 
+  it("preserves duplicate boundary frame trim values for MP4 rendering", () => {
+    const project = createEmptyProject("Storyboard trim render");
+    project.timeline.tracks[0].clips.push({
+      id: "clip-trimmed",
+      assetId: "asset-trimmed",
+      trackId: "track-v1",
+      startTime: 0,
+      duration: 8 - 1 / 30,
+      trimIn: 0,
+      trimOut: 8 - 1 / 30,
+      volume: 1,
+      speed: 1,
+      effects: [],
+      duplicateBoundaryFrameTrim: {
+        frameCount: 1,
+        seconds: 1 / 30,
+        fps: 30,
+        reason: "matching_first_last_frame_boundary",
+      },
+    });
+
+    const timeline = projectToTimeline(project);
+    const clip = timeline.tracks[0].clips[0];
+
+    expect(clip.durationMs).toBe(7967);
+    expect(clip.outMs).toBe(7967);
+    expect(clip.inMs).toBe(0);
+  });
+
   it("preserves all track and clip data", () => {
     const project = createEmptyProject("Multi");
     const videoTrack = project.timeline.tracks.find((t) => t.id === "track-v1")!;

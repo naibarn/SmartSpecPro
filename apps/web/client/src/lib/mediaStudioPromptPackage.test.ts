@@ -210,6 +210,32 @@ describe("parseMediaStudioPromptPackage", () => {
     });
   });
 
+  it("unwraps plain text prompts wrapped in a markdown code fence", () => {
+    const input = [
+      "```text",
+      "Speaker 1: [enthusiastic] Have you heard about Dr. PONG Gentle Balancing Facial Gel Cleanser?",
+      "",
+      "Speaker 2: [curious] Oh really? What makes it special?",
+      "```",
+    ].join("\n");
+
+    expect(parseMediaStudioPromptPackage(input)).toMatchObject({
+      promptText: [
+        "Speaker 1: [enthusiastic] Have you heard about Dr. PONG Gentle Balancing Facial Gel Cleanser?",
+        "",
+        "Speaker 2: [curious] Oh really? What makes it special?",
+      ].join("\n"),
+      promptSequence: [
+        [
+          "Speaker 1: [enthusiastic] Have you heard about Dr. PONG Gentle Balancing Facial Gel Cleanser?",
+          "",
+          "Speaker 2: [curious] Oh really? What makes it special?",
+        ].join("\n"),
+      ],
+      source: "unknown",
+    });
+  });
+
   it("parses camelCase continuityPackage structured output", () => {
     const input = JSON.stringify({
       continuityPackage: {

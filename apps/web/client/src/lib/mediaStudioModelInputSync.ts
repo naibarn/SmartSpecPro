@@ -9,6 +9,12 @@ export function inferMediaStudioModelInputSyncTarget(field: Record<string, any> 
   }
 
   const type = String(field.type ?? "").trim().toLowerCase();
+  const promptSync = field.promptSync && typeof field.promptSync === "object"
+    ? field.promptSync as Record<string, unknown>
+    : null;
+  if (type === "array" && String(promptSync?.strategy ?? "").trim() === "speaker_lines") {
+    return "prompt";
+  }
   if (type === "image_urls" || type === "audio_urls") {
     return "reference_images";
   }

@@ -1,0 +1,2227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/smart-character-creator-pro/input.schema.json",
+  "title": "Smart Character Creator Pro Input Schema",
+  "description": "Complete input schema with maximum selectable choices, Auto options, multilingual settings, and drag-and-drop image reference uploads. Final generated prompt output remains normal descriptive plain text, not JSON.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "workflow_mode": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "generate_from_profile",
+        "random_prompt",
+        "face_lock",
+        "generate_from_reference_images"
+      ],
+      "default": "generate_from_profile",
+      "description": "Skill operating mode for this standalone app. Only modes that can run from the submitted form are supported."
+    },
+    "ui_language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "th"
+      ],
+      "default": "en",
+      "description": "Language used by the UI. Must default to English."
+    },
+    "output_language": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "th",
+        "en",
+        "zh-Hans",
+        "zh-Hant",
+        "ja",
+        "ko",
+        "es",
+        "fr",
+        "de",
+        "it",
+        "pt",
+        "id",
+        "vi",
+        "ar",
+        "hi"
+      ],
+      "default": "auto",
+      "description": "Language used for final plain-text prompts."
+    },
+    "prompt_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 12,
+      "default": 1
+    },
+    "shot_types": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "close_up",
+        "portrait",
+        "medium",
+        "full_body",
+        "upper_body",
+        "three_quarter",
+        "profile",
+        "over_the_shoulder",
+        "walking",
+        "action",
+        "environmental_portrait",
+        "custom"
+      ],
+      "default": "portrait",
+      "description": "Single shot/framing type for each generated prompt. Choose one; do not combine multiple framings in one image."
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "9:16",
+        "16:9",
+        "1:1",
+        "4:5",
+        "3:4",
+        "2:3",
+        "3:2",
+        "4:3",
+        "21:9",
+        "custom"
+      ],
+      "default": "9:16"
+    },
+    "include_translation": {
+      "type": "boolean",
+      "default": false
+    },
+    "translation_language": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "th",
+        "en",
+        "zh-Hans",
+        "zh-Hant",
+        "ja",
+        "ko",
+        "es",
+        "fr",
+        "de",
+        "it",
+        "pt",
+        "id",
+        "vi",
+        "ar",
+        "hi"
+      ],
+      "default": "th"
+    },
+    "reference_images": {
+      "type": "array",
+      "description": "Optional image files uploaded through the UI by drag-and-drop or add-file button. Do not require or ask the user to type image URLs. Images may show a person, face, clothing, pose, background, environment, lighting, mood, or style reference.",
+      "items": {
+        "$ref": "#/$defs/reference_image"
+      },
+      "maxItems": 20,
+      "default": []
+    },
+    "reference_image_behavior": {
+      "$ref": "#/$defs/reference_image_behavior"
+    },
+    "character_profile": {
+      "$ref": "#/$defs/character_profile"
+    },
+    "generation_preferences": {
+      "$ref": "#/$defs/generation_preferences"
+    }
+  },
+  "required": [
+    "workflow_mode",
+    "ui_language",
+    "output_language"
+  ],
+  "$defs": {
+    "reference_image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string",
+          "contentEncoding": "base64",
+          "contentMediaType": "image/*",
+          "description": "Uploaded image file content supplied by UI file upload or drag-and-drop."
+        },
+        "filename": {
+          "type": "string"
+        },
+        "mime_type": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/heic",
+            "image/heif",
+            "image/gif"
+          ],
+          "default": "auto"
+        },
+        "reference_role": {
+          "type": "string",
+          "enum": [
+            "person_reference",
+            "face_reference",
+            "body_reference",
+            "pose_reference",
+            "clothing_reference",
+            "hair_reference",
+            "makeup_reference",
+            "background_reference",
+            "environment_reference",
+            "lighting_reference",
+            "mood_reference",
+            "style_reference",
+            "composition_reference",
+            "prop_reference"
+          ],
+          "default": "person_reference"
+        },
+        "influence_strength": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "very_low",
+            "low",
+            "medium",
+            "high",
+            "very_high",
+            "strict_reference"
+          ],
+          "default": "medium"
+        },
+        "usage_instruction": {
+          "type": "string",
+          "description": "Optional natural-language instruction for how to use this image reference."
+        }
+      },
+      "required": [
+        "file"
+      ]
+    },
+    "reference_image_behavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allow_reference_images": {
+          "type": "boolean",
+          "default": true
+        },
+        "person_reference_policy": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "auto_merge_with_selected_traits",
+            "preserve_face_identity",
+            "use_as_loose_inspiration",
+            "override_only_unspecified_traits",
+            "ignore_person_reference"
+          ],
+          "default": "auto_merge_with_selected_traits"
+        },
+        "background_reference_policy": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "auto_use_as_environment",
+            "preserve_environment",
+            "use_as_loose_inspiration",
+            "override_environment_only",
+            "ignore_background_reference"
+          ],
+          "default": "auto_use_as_environment"
+        },
+        "conflict_resolution": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "user_choices_override_reference",
+            "reference_overrides_unspecified_only",
+            "ask_when_conflict",
+            "auto_best_consistency"
+          ],
+          "default": "user_choices_override_reference"
+        },
+        "privacy_note_acknowledged": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": [
+        "allow_reference_images",
+        "conflict_resolution"
+      ]
+    },
+    "character_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "gender_identity": {
+          "$ref": "#/$defs/gender_identity"
+        },
+        "age": {
+          "$ref": "#/$defs/age"
+        },
+        "ethnicity_skin": {
+          "$ref": "#/$defs/ethnicity_skin"
+        },
+        "face_structure": {
+          "$ref": "#/$defs/face_structure"
+        },
+        "eyes": {
+          "$ref": "#/$defs/eyes"
+        },
+        "body_proportions": {
+          "$ref": "#/$defs/body_proportions"
+        },
+        "hair": {
+          "$ref": "#/$defs/hair"
+        },
+        "nose": {
+          "$ref": "#/$defs/nose"
+        },
+        "mouth": {
+          "$ref": "#/$defs/mouth"
+        },
+        "personality_posture": {
+          "$ref": "#/$defs/personality_posture"
+        },
+        "skin_details": {
+          "$ref": "#/$defs/skin_details"
+        },
+        "eyebrows": {
+          "$ref": "#/$defs/eyebrows"
+        },
+        "smile_teeth": {
+          "$ref": "#/$defs/smile_teeth"
+        },
+        "ears": {
+          "$ref": "#/$defs/ears"
+        },
+        "facial_hair": {
+          "$ref": "#/$defs/facial_hair"
+        },
+        "eyewear": {
+          "$ref": "#/$defs/eyewear"
+        },
+        "makeup": {
+          "$ref": "#/$defs/makeup"
+        },
+        "additional_features": {
+          "$ref": "#/$defs/additional_features"
+        },
+        "custom_notes": {
+          "type": "string"
+        }
+      }
+    },
+    "gender_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "female",
+            "male",
+            "non_binary",
+            "genderfluid",
+            "agender",
+            "transgender_female",
+            "transgender_male",
+            "two_spirit",
+            "intersex",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "expression": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "feminine",
+            "masculine",
+            "androgynous",
+            "gender_neutral",
+            "fluid_expression",
+            "soft_feminine",
+            "soft_masculine",
+            "elegant_feminine",
+            "rugged_masculine",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "custom_identity": {
+          "type": "string"
+        },
+        "custom_expression": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "identity",
+        "expression"
+      ]
+    },
+    "age": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "range": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "toddler_1_3",
+            "preschool_4_6",
+            "school_age_7_12",
+            "early_teen_13_15",
+            "late_teen_16_19",
+            "young_adult_20_29",
+            "early_adult_30_39",
+            "middle_age_40_59",
+            "mature_adult_60_79",
+            "elderly_80_plus",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "specific_age": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "appearance": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "baby_face",
+            "age_appropriate",
+            "mature_looking",
+            "youthful_appearance",
+            "weathered",
+            "fresh_youthful",
+            "wise_mature",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "range"
+      ]
+    },
+    "ethnicity_skin": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ethnicity": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "east_asian",
+            "southeast_asian",
+            "south_asian",
+            "middle_eastern",
+            "european_caucasian",
+            "african_black",
+            "hispanic_latino",
+            "native_american",
+            "pacific_islander",
+            "mixed_multiracial",
+            "central_asian",
+            "north_african",
+            "caribbean",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "skin_tone": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "porcelain",
+            "fair",
+            "light",
+            "light_medium",
+            "medium",
+            "medium_tan",
+            "tan",
+            "olive",
+            "brown",
+            "dark_brown",
+            "deep",
+            "ebony",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "undertone": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "cool",
+            "warm",
+            "neutral",
+            "golden",
+            "peachy",
+            "pink",
+            "red",
+            "yellow",
+            "olive",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "special_features": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "freckles",
+              "beauty_marks",
+              "vitiligo",
+              "birthmarks",
+              "tanning_lines",
+              "sun_spots",
+              "moles",
+              "clear_skin",
+              "custom"
+            ]
+          },
+          "uniqueItems": true,
+          "default": []
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ethnicity",
+        "skin_tone"
+      ]
+    },
+    "face_structure": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "face_shape": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "oval",
+            "round",
+            "square",
+            "rectangle_oblong",
+            "heart_inverted_triangle",
+            "diamond",
+            "triangle_pear",
+            "long_narrow",
+            "soft_oval",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "forehead": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "high_forehead",
+            "average_forehead",
+            "low_forehead",
+            "broad_forehead",
+            "narrow_forehead",
+            "rounded_forehead",
+            "angular_forehead",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "hairline": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "straight_hairline",
+            "widows_peak",
+            "rounded_hairline",
+            "receding_hairline",
+            "high_hairline",
+            "low_hairline",
+            "soft_hairline",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "cheekbones": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "high_cheekbones",
+            "prominent_cheekbones",
+            "low_cheekbones",
+            "soft_cheekbones",
+            "sharp_cheekbones",
+            "wide_set_cheekbones",
+            "subtle_cheekbones",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "jaw": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "strong_jaw",
+            "soft_jaw",
+            "square_jaw",
+            "rounded_jaw",
+            "narrow_jaw",
+            "wide_jaw",
+            "defined_jawline",
+            "subtle_jawline",
+            "angular_jawline",
+            "curved_jawline",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "chin": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "pointed_chin",
+            "round_chin",
+            "square_chin",
+            "cleft_chin",
+            "weak_chin",
+            "strong_chin",
+            "prominent_chin",
+            "receding_chin",
+            "double_chin",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "face_shape"
+      ]
+    },
+    "eyes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shape": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "almond",
+            "round",
+            "monolid",
+            "double_eyelid",
+            "hooded",
+            "deep_set",
+            "prominent",
+            "upturned",
+            "downturned",
+            "wide_set",
+            "close_set",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "large",
+            "small",
+            "average",
+            "slightly_large",
+            "slightly_small",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "color": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "brown",
+            "dark_brown",
+            "light_brown",
+            "hazel",
+            "green",
+            "blue",
+            "gray",
+            "amber",
+            "black",
+            "heterochromia",
+            "central_heterochromia",
+            "flecked",
+            "rimmed_iris",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "eyelashes": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "long_lashes",
+            "short_lashes",
+            "thick_lashes",
+            "sparse_lashes",
+            "curled_lashes",
+            "straight_lashes",
+            "long_thick_lashes",
+            "natural_lashes",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "under_eyes": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "smooth_under_eyes",
+            "eye_bags",
+            "dark_circles",
+            "puffy_eyes",
+            "fine_lines",
+            "crows_feet",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "distance": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "normal_eye_distance",
+            "wide_set",
+            "close_set",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "depth": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "normal_depth",
+            "deep_set",
+            "prominent",
+            "slightly_deep",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "shape",
+        "color"
+      ]
+    },
+    "body_proportions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "height": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "petite_150_155",
+            "short_155_160",
+            "average_short_160_165",
+            "average_165_170",
+            "average_tall_170_175",
+            "tall_175_185",
+            "very_tall_185_plus",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "body_shape": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "pear_a_shape",
+            "apple_o_shape",
+            "hourglass_x_shape",
+            "rectangle_h_shape",
+            "inverted_triangle_v_shape",
+            "diamond",
+            "ectomorph",
+            "mesomorph",
+            "endomorph",
+            "oval",
+            "athletic_v_shape",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "weight_build": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "underweight",
+            "slim_slender",
+            "lean",
+            "athletic",
+            "average",
+            "curvy",
+            "chubby",
+            "overweight",
+            "plus_size",
+            "stocky",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "muscle_tone": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "no_visible_muscle",
+            "toned",
+            "defined",
+            "muscular",
+            "bodybuilder",
+            "soft_muscle",
+            "lean_muscle",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "posture": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "confident",
+            "relaxed",
+            "slouched",
+            "rigid",
+            "elegant",
+            "casual",
+            "defensive",
+            "open",
+            "graceful",
+            "upright",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "bust_chest": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "relaxed_clothing_fit",
+            "straight_upper_torso_silhouette",
+            "tailored_jacket_fit",
+            "soft_blouse_drape",
+            "athletic_top_fit",
+            "modest_layered_upper_body",
+            "traditional_costume_upper_silhouette",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "waist": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "straight_waist",
+            "defined_waist",
+            "narrow_waist",
+            "wide_waist",
+            "soft_waist",
+            "athletic_waist",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "hips": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "narrow_hips",
+            "average_hips",
+            "wide_hips",
+            "curvy_hips",
+            "straight_hips",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "height",
+        "body_shape"
+      ]
+    },
+    "hair": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "length": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "buzz_cut",
+            "pixie",
+            "short",
+            "bob",
+            "chin_length",
+            "shoulder_length",
+            "medium",
+            "long",
+            "very_long",
+            "waist_length",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "style": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "natural_down",
+            "straight_cut",
+            "bob_cut",
+            "layered",
+            "soft_waves",
+            "romantic_waves",
+            "curly_style",
+            "ponytail",
+            "bun",
+            "braids",
+            "side_part",
+            "middle_part",
+            "bangs",
+            "curtain_bangs",
+            "undercut",
+            "slicked_back",
+            "messy_textured",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "texture": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "straight",
+            "wavy",
+            "curly",
+            "coily",
+            "frizzy",
+            "silky",
+            "thick",
+            "fine",
+            "coarse",
+            "soft",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "color": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "natural_black",
+            "black",
+            "dark_brown",
+            "medium_brown",
+            "light_brown",
+            "blonde",
+            "platinum_blonde",
+            "auburn",
+            "red",
+            "gray",
+            "white",
+            "silver",
+            "pastel_color",
+            "vivid_dye",
+            "ombre",
+            "highlighted",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "volume": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "low_volume",
+            "normal_volume",
+            "high_volume",
+            "very_thick",
+            "thin",
+            "fluffy",
+            "sleek",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "special_styling": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "hair_accessory",
+              "ribbon",
+              "hairpin",
+              "wet_look",
+              "wind_swept",
+              "loose_strands",
+              "face_framing_layers",
+              "custom"
+            ]
+          },
+          "uniqueItems": true,
+          "default": []
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "length",
+        "texture",
+        "color"
+      ]
+    },
+    "nose": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "overall_shape": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "straight_nose",
+            "roman_nose",
+            "greek_nose",
+            "button_nose",
+            "hawk_nose",
+            "snub_nose",
+            "bulbous_nose",
+            "delicate_nose",
+            "prominent_nose",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "bridge": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "high_bridge",
+            "low_bridge",
+            "straight_bridge",
+            "curved_bridge",
+            "wide_bridge",
+            "narrow_bridge",
+            "refined_bridge",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "tip": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "pointed_tip",
+            "round_tip",
+            "bulbous_tip",
+            "upturned_tip",
+            "downturned_tip",
+            "refined_tip",
+            "soft_tip",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "nostrils": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "wide_nostrils",
+            "narrow_nostrils",
+            "flared_nostrils",
+            "small_nostrils",
+            "asymmetrical_nostrils",
+            "balanced_nostrils",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "size": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "large_nose",
+            "small_nose",
+            "proportionate",
+            "prominent",
+            "delicate",
+            "medium",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "overall_shape"
+      ]
+    },
+    "mouth": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lip_shape": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "full_lips",
+            "thin_lips",
+            "medium_lips",
+            "heart_shaped_lips",
+            "bow_shaped_lips",
+            "straight_lips",
+            "downturned_lips",
+            "upturned_lips",
+            "soft_lips",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "cupids_bow": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "defined_cupids_bow",
+            "subtle_cupids_bow",
+            "no_cupids_bow",
+            "peaked_cupids_bow",
+            "soft_cupids_bow",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "symmetry": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "symmetrical_lips",
+            "asymmetrical_lips",
+            "fuller_upper_lip",
+            "fuller_lower_lip",
+            "balanced_lips",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "natural_color": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "pink_lips",
+            "light_pink_lips",
+            "deep_pink_lips",
+            "red_lips",
+            "coral_lips",
+            "pale_lips",
+            "dark_lips",
+            "berry_toned_lips",
+            "nude_lips",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "texture": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "smooth_lips",
+            "lined_lips",
+            "chapped_lips",
+            "glossy_lips",
+            "matte_lips",
+            "soft_texture",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "thickness": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "thin",
+            "medium",
+            "full",
+            "very_full",
+            "delicate",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "lip_shape",
+        "natural_color"
+      ]
+    },
+    "personality_posture": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "general_posture": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "confident",
+            "relaxed",
+            "slouched",
+            "rigid",
+            "elegant",
+            "casual",
+            "defensive",
+            "open",
+            "graceful",
+            "strong_determined",
+            "soft_gentle",
+            "playful",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "walking_style": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "striding",
+            "graceful",
+            "bouncy",
+            "shuffling",
+            "purposeful",
+            "leisurely",
+            "quiet_steps",
+            "energetic_walk",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "hand_gestures": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "expressive_hands",
+            "fidgety",
+            "calm_hands",
+            "precise_gestures",
+            "hands_relaxed",
+            "hands_clasped",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "facial_expression": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "cheerful",
+            "serious",
+            "mysterious",
+            "friendly",
+            "stern",
+            "playful",
+            "melancholic",
+            "intense",
+            "serene",
+            "gentle",
+            "confident_expression",
+            "quiet_confidence",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "energy_level": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "low_energy",
+            "calm_energy",
+            "balanced_energy",
+            "bright_energy",
+            "high_energy",
+            "intense_energy",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "confidence_level": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "shy",
+            "reserved",
+            "balanced",
+            "confident",
+            "very_confident",
+            "commanding",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "general_posture",
+        "facial_expression"
+      ]
+    },
+    "skin_details": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "texture": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "smooth_skin",
+            "rough_skin",
+            "soft_skin",
+            "dry_skin",
+            "oily_skin",
+            "combination_skin",
+            "sensitive_skin",
+            "clear_skin",
+            "even_texture",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "brightness": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "dewy_skin",
+            "matte_skin",
+            "glowing_skin",
+            "dull_skin",
+            "natural_skin_glow",
+            "flawless_finish",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "blemishes": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "clear_skin",
+            "occasional_pimples",
+            "active_acne",
+            "acne_scars",
+            "pitted_scars",
+            "smooth_texture_post_acne",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "freckles": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "no_freckles",
+            "light_freckles",
+            "dense_freckles",
+            "nose_freckles",
+            "cheek_freckles",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "moles": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "no_moles",
+            "beauty_mark",
+            "small_moles",
+            "distinct_mole",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "scars": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "no_visible_scars",
+            "surgical_scars",
+            "accident_scars",
+            "facial_scar",
+            "body_scar",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "pores": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "fine_pores",
+            "visible_pores",
+            "large_pores",
+            "clogged_pores",
+            "clean_pores",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "tan_lines": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "no_tan_lines",
+            "subtle_tan_lines",
+            "visible_tan_lines",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      }
+    },
+    "eyebrows": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "thickness": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "thick_brows",
+            "thin_brows",
+            "medium_brows",
+            "sparse_brows",
+            "full_brows",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "shape": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "straight_brows",
+            "arched_brows",
+            "angular_brows",
+            "rounded_brows",
+            "high_arch",
+            "low_arch",
+            "soft_arch",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "grooming": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "well_groomed",
+            "natural_unplucked",
+            "unkempt",
+            "precisely_shaped",
+            "soft_natural",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "arch": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "high_arch",
+            "low_arch",
+            "medium_arch",
+            "flat_arch",
+            "soft_arch",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "distance": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "normal_distance",
+            "close_to_eyes",
+            "high_above_eyes",
+            "wide_apart",
+            "close_together",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "color": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "black",
+            "dark_brown",
+            "brown",
+            "light_brown",
+            "blonde",
+            "red",
+            "gray",
+            "matching_hair_color",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      }
+    },
+    "smile_teeth": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "smile_type": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "wide_smile",
+            "closed_lip_smile",
+            "toothy_smile",
+            "crooked_smile",
+            "symmetrical_smile",
+            "lopsided_smile",
+            "gummy_smile",
+            "shy_smile",
+            "soft_smile",
+            "no_smile",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "teeth_appearance": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "straight_teeth",
+            "crooked_teeth",
+            "gap_teeth",
+            "overlapping_teeth",
+            "small_teeth",
+            "large_teeth",
+            "sharp_canines",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "teeth_color": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "white_teeth",
+            "natural_white",
+            "yellow_teeth",
+            "stained_teeth",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "dimples": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "no_dimples",
+            "cheek_dimples",
+            "chin_dimple",
+            "one_sided_dimple",
+            "subtle_dimples",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "gum_visibility": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "no_gum_visibility",
+            "subtle_gum_visibility",
+            "gummy_smile",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      }
+    },
+    "ears": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "size": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "large_ears",
+            "small_ears",
+            "average_ears",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "shape": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "pointed_ears",
+            "round_ears",
+            "oval_ears",
+            "delicate_ears",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "position": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "close_to_head",
+            "protruding_ears",
+            "high_set_ears",
+            "low_set_ears",
+            "balanced_position",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "earlobes": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "attached_earlobes",
+            "detached_earlobes",
+            "large_earlobes",
+            "small_earlobes",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "prominence": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "subtle",
+            "noticeable",
+            "prominent",
+            "hidden_by_hair",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      }
+    },
+    "facial_hair": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mustache": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "clean_shaven",
+            "stubble",
+            "pencil_mustache",
+            "handlebar_mustache",
+            "walrus_mustache",
+            "horseshoe_mustache",
+            "no_mustache",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "beard": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "clean_shaven",
+            "full_beard",
+            "goatee",
+            "soul_patch",
+            "circle_beard",
+            "van_dyke",
+            "chinstrap",
+            "five_oclock_shadow",
+            "no_beard",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "thickness": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "thick_facial_hair",
+            "sparse_facial_hair",
+            "patchy",
+            "light",
+            "dense",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "grooming": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "well_groomed",
+            "unkempt",
+            "natural",
+            "precisely_trimmed",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "style": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "clean",
+            "rugged",
+            "formal",
+            "stylized",
+            "natural",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "color": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "black",
+            "dark_brown",
+            "brown",
+            "blonde",
+            "red",
+            "gray",
+            "white",
+            "salt_and_pepper",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      }
+    },
+    "eyewear": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "glasses": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "no_glasses",
+            "round_glasses",
+            "square_glasses",
+            "rectangular_glasses",
+            "oval_glasses",
+            "cat_eye_glasses",
+            "rimless_glasses",
+            "wire_frame_glasses",
+            "thick_frame_glasses",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "sunglasses": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "no_sunglasses",
+            "aviator",
+            "wayfarer",
+            "round_sunglasses",
+            "cat_eye_sunglasses",
+            "oversized_sunglasses",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "contacts": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "no_contacts",
+            "clear_contacts",
+            "colored_contacts",
+            "natural_enhancing_contacts",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "frame_style": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "minimal",
+            "classic",
+            "modern",
+            "vintage",
+            "bold",
+            "delicate",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "frame_color": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "black",
+            "brown",
+            "gold",
+            "silver",
+            "clear",
+            "tortoiseshell",
+            "white",
+            "red",
+            "blue",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "lens_type": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "clear_lens",
+            "tinted_lens",
+            "gradient_lens",
+            "reflective_lens",
+            "anti_glare_lens",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      }
+    },
+    "makeup": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "overall_style": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "no_makeup",
+            "natural_makeup",
+            "clean_girl_makeup",
+            "soft_glam",
+            "full_glam",
+            "editorial_makeup",
+            "k_beauty",
+            "j_beauty",
+            "western_glam",
+            "goth_makeup",
+            "fantasy_makeup",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "foundation": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "none",
+            "natural_finish",
+            "matte_finish",
+            "dewy_finish",
+            "flawless_full_coverage",
+            "light_coverage",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "blush": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "none",
+            "soft_pink",
+            "peach_blush",
+            "coral_blush",
+            "rose_blush",
+            "dramatic_blush",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "eyeshadow": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "none",
+            "neutral_eyeshadow",
+            "brown_smokey",
+            "soft_pink",
+            "gold_shimmer",
+            "colorful",
+            "dark_smokey",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "eyeliner": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "none",
+            "thin_eyeliner",
+            "winged_eyeliner",
+            "soft_smudged",
+            "graphic_eyeliner",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "mascara": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "none",
+            "natural_mascara",
+            "lengthening",
+            "volumizing",
+            "dramatic_lashes",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "lipstick": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "none",
+            "nude_lipstick",
+            "pink_lipstick",
+            "red_lipstick",
+            "coral_lipstick",
+            "berry_lipstick",
+            "gloss",
+            "matte_lipstick",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "highlight": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "none",
+            "subtle_highlight",
+            "dewy_highlight",
+            "strong_highlight",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "intensity": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "none",
+            "very_light",
+            "light",
+            "medium",
+            "strong",
+            "dramatic",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      }
+    },
+    "additional_features": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tattoos": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "no_tattoos",
+            "small_tattoo",
+            "visible_tattoos",
+            "sleeve_tattoo",
+            "minimal_tattoos",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "piercings": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "no_piercings",
+            "ear_piercing",
+            "multiple_ear_piercings",
+            "nose_piercing",
+            "lip_piercing",
+            "eyebrow_piercing",
+            "custom"
+          ],
+          "default": "auto"
+        },
+        "jewelry": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "none",
+              "earrings",
+              "necklace",
+              "bracelet",
+              "ring",
+              "watch",
+              "hair_jewelry",
+              "traditional_jewelry",
+              "minimal_jewelry",
+              "luxury_jewelry",
+              "custom"
+            ]
+          },
+          "uniqueItems": true,
+          "default": []
+        },
+        "unique_traits": {
+          "type": "string"
+        },
+        "accessories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "none",
+              "hat",
+              "scarf",
+              "bag",
+              "gloves",
+              "books",
+              "flowers",
+              "camera",
+              "umbrella",
+              "custom"
+            ]
+          },
+          "uniqueItems": true,
+          "default": []
+        },
+        "custom_description": {
+          "type": "string"
+        }
+      }
+    },
+    "generation_preferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "style_direction": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "professional_studio",
+            "commercial_portrait",
+            "fashion_editorial",
+            "cinematic_realistic",
+            "natural_light",
+            "documentary_realistic",
+            "beauty_photography",
+            "lifestyle_photography",
+            "fantasy_realistic",
+            "anime_inspired_realism",
+            "custom"
+          ],
+          "default": "professional_studio"
+        },
+        "camera_quality": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "ultra_high_resolution",
+            "commercial_photography",
+            "studio_quality",
+            "cinematic_color_grading",
+            "tack_sharp_focus",
+            "phase_one_150mp",
+            "medium_format_quality",
+            "custom"
+          ],
+          "default": "commercial_photography"
+        },
+        "environment_style": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "studio_white",
+            "studio_gray_gradient",
+            "studio_cream",
+            "concrete_custom_environment",
+            "auto_by_character",
+            "reference_image_environment",
+            "bedroom",
+            "office",
+            "cafe",
+            "classroom",
+            "street",
+            "garden",
+            "library",
+            "luxury_interior",
+            "custom"
+          ],
+          "default": "auto_by_character"
+        },
+        "lighting_setup": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "studio_lighting_setup",
+            "key_fill_rim_light",
+            "soft_box_lighting",
+            "ring_light_portrait",
+            "beauty_lighting",
+            "clamshell_lighting",
+            "rembrandt_lighting",
+            "natural_window_light",
+            "cinematic_soft_light",
+            "reference_image_lighting",
+            "custom"
+          ],
+          "default": "studio_lighting_setup"
+        },
+        "camera_system": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "canon_eos_r5_85mm_f12",
+            "sony_a7r_iv_135mm_f18",
+            "fujifilm_gfx100s_medium_format",
+            "phase_one_iq4_150mp",
+            "canon_eos_r5_50mm_f14",
+            "sony_a7r_iv_85mm_f18",
+            "auto_by_shot",
+            "custom"
+          ],
+          "default": "auto_by_shot"
+        },
+        "film_processing": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "kodak_portra_400",
+            "fujicolor_pro_400h",
+            "professional_raw_processing",
+            "color_calibrated_workflow",
+            "cinematic_color_grading",
+            "auto_by_shot",
+            "custom"
+          ],
+          "default": "auto_by_shot"
+        },
+        "negative_rules": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "no_shortcut_references",
+              "no_abstract_environment",
+              "no_markdown_formatting_in_final_prompts",
+              "no_character_inconsistency",
+              "no_age_drift",
+              "no_skin_tone_drift",
+              "no_unrequested_json",
+              "custom"
+            ]
+          },
+          "uniqueItems": true,
+          "default": [
+            "no_shortcut_references",
+            "no_abstract_environment",
+            "no_markdown_formatting_in_final_prompts"
+          ]
+        },
+        "custom_requirements": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

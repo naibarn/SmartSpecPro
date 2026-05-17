@@ -39,7 +39,7 @@ interface ImageProxyOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = Number(process.env.IMAGE_PROXY_TIMEOUT_MS || 8_000);
-const DEFAULT_MAX_BYTES = Number(process.env.IMAGE_PROXY_MAX_BYTES || 10 * 1024 * 1024);
+const DEFAULT_MAX_BYTES = Number(process.env.IMAGE_PROXY_MAX_BYTES || 32 * 1024 * 1024);
 const DEFAULT_MAX_REDIRECTS = Number(process.env.IMAGE_PROXY_MAX_REDIRECTS || 3);
 
 function safetyError(

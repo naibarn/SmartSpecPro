@@ -75,6 +75,7 @@ interface PreviewPlayerProps {
 const ZOOM_PRESETS = [10, 25, 50, 75, 100, 125, 150, 200, 250, 300, 350, 400];
 type TransformResizeHandle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 type PreviewResolutionMode = 'preview' | 'quality';
+const OUTPUT_FRAME_GUIDE_STORAGE_KEY = 'smartSpecPro.videoEditor.showOutputFrameGuide';
 const PREVIEW_TEXT_FONT_WHITELIST = new Set([
   'Noto Sans',
   'Noto Sans Thai',
@@ -260,8 +261,16 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   const [localTransformDraft, setLocalTransformDraft] = useState<Partial<TransformKeyframe> | null>(null);
   const [previewStageSize, setPreviewStageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [renderFramePreviewOnly, setRenderFramePreviewOnly] = useState(false);
+  const [outputFrameGuideEnabled, setOutputFrameGuideEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(OUTPUT_FRAME_GUIDE_STORAGE_KEY) === '1';
+  });
   const [previewResolutionMode, setPreviewResolutionMode] = useState<PreviewResolutionMode>('preview');
   const [mediaNaturalSize, setMediaNaturalSize] = useState<{ width: number; height: number } | null>(null);
+
+  useEffect(() => {
+    window.localStorage.setItem(OUTPUT_FRAME_GUIDE_STORAGE_KEY, outputFrameGuideEnabled ? '1' : '0');
+  }, [outputFrameGuideEnabled]);
 
   // Compute the effective video URL
   const effectiveUrl = activeClip?.videoUrl || previewVideoUrl;
@@ -1170,7 +1179,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
   const activeScalePercent = displayedActiveTransform
     ? Math.round(((displayedActiveTransform.scaleX + displayedActiveTransform.scaleY) / 2) * 100)
     : 100;
-  const showOutputFrameGuide = previewStageSize.width > 0 && previewStageSize.height > 0;
+  const showOutputFrameGuide = outputFrameGuideEnabled && previewStageSize.width > 0 && previewStageSize.height > 0;
   const safeOutputWidth = Number.isFinite(outputWidth || 0) && (outputWidth || 0) > 0 ? outputWidth || 0 : 16;
   const safeOutputHeight = Number.isFinite(outputHeight || 0) && (outputHeight || 0) > 0 ? outputHeight || 0 : 9;
   const outputFrameLabel = `${Math.round(safeOutputWidth)} x ${Math.round(safeOutputHeight)}`;
@@ -1961,7 +1970,6 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
                 <>
                   <div className="transform-edit-guide" style={transformGuideStyle} />
                   <div className="transform-edit-hint">Drag clip to reposition crop · Scroll to zoom</div>
-                  {!showOutputFrameGuide && <div className="output-frame-badge">กรอบเหลือง = FINAL RENDER</div>}
                 </>
               )}
               {showOutputFrameGuide && (
@@ -2066,7 +2074,6 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
                 <>
                   <div className="transform-edit-guide" style={transformGuideStyle} />
                   <div className="transform-edit-hint">Drag clip to reposition crop · Scroll to zoom</div>
-                  {!showOutputFrameGuide && <div className="output-frame-badge">กรอบเหลือง = FINAL RENDER</div>}
                 </>
               )}
               {showOutputFrameGuide && (
@@ -2117,7 +2124,7 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
                   ))
                 )}
               </div>
-              <div className="output-frame-badge">กรอบเหลือง = FINAL RENDER</div>
+              {showOutputFrameGuide && <div className="output-frame-badge">กรอบเหลือง = FINAL RENDER {outputFrameLabel}</div>}
             </div>
           </div>
         ) : (
@@ -2270,6 +2277,16 @@ export const PreviewPlayer: React.FC<PreviewPlayerProps> = ({
               aria-label="Toggle preview lock mode"
             >
               Preview Lock
+            </button>
+            <button
+              className={`control-button text-button ${outputFrameGuideEnabled ? 'primary' : ''}`}
+              onClick={() => setOutputFrameGuideEnabled(prev => !prev)}
+              title={outputFrameGuideEnabled
+                ? 'Hide final render frame guide'
+                : 'Show final render frame guide'}
+              aria-label="Toggle final render frame guide"
+            >
+              Frame Guide
             </button>
             <div className="resolution-toggle" title="Preview display resolution">
               <button

@@ -36,4 +36,19 @@ describe("apiResponseDiagnostics", () => {
       assertJsonApiResponse(response, "https://smartaihub.app/trpc/library.getItem"),
     ).rejects.toThrow(/returned HTML instead of JSON/i);
   });
+
+  it("includes response diagnostics for html api failures", async () => {
+    const response = new Response(
+      "<!DOCTYPE html><html><body>502 Bad Gateway</body></html>",
+      {
+        status: 502,
+        statusText: "Bad Gateway",
+        headers: { "content-type": "text/html" },
+      },
+    );
+
+    await expect(
+      assertJsonApiResponse(response, "/trpc/chat.executeSkill"),
+    ).rejects.toThrow(/status=502 Bad Gateway.*content-type=text\/html.*502 Bad Gateway/i);
+  });
 });

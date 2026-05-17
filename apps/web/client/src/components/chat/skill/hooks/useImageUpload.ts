@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { trpc } from '@/lib/trpc';
 
 // Default upload configuration
 const DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -33,11 +34,21 @@ function validateFileType(file: File, allowedTypes: string[]): boolean {
   });
 }
 
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Failed to read file for upload"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function useImageUpload(): UseImageUploadReturn {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const uploadMutation = trpc.ai.upload.useMutation();
 
   const validateFile = useCallback((file: File, config?: UploadConfig): { valid: boolean; error?: string } => {
     const maxFileSize = config?.maxFileSize ?? DEFAULT_MAX_FILE_SIZE;
@@ -81,60 +92,24 @@ export function useImageUpload(): UseImageUploadReturn {
       for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
           setIsUploading(true);
-          setUploadProgress(0);
+          setUploadProgress(5);
           setError(null);
 
-          const formData = new FormData();
-          formData.append('file', file);
+          const fileBase64 = await readFileAsDataUrl(file);
+          setUploadProgress(35);
 
-          // Create XMLHttpRequest for progress tracking
-          const xhr = new XMLHttpRequest();
-          
-          const uploadPromise = new Promise<string>((resolve, reject) => {
-            xhr.upload.addEventListener('progress', (event) => {
-              if (event.lengthComputable) {
-                const progress = Math.round((event.loaded / event.total) * 100);
-                setUploadProgress(progress);
-              }
-            });
-
-            xhr.addEventListener('load', () => {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                  const data = JSON.parse(xhr.responseText);
-                  if (data.url) {
-                    resolve(data.url);
-                  } else {
-                    reject(new Error('Upload response missing URL'));
-                  }
-                } catch {
-                  reject(new Error('Invalid upload response'));
-                }
-              } else {
-                try {
-                  const errorData = JSON.parse(xhr.responseText);
-                  reject(new Error(errorData.message || `Upload failed: ${xhr.statusText}`));
-                } catch {
-                  reject(new Error(`Upload failed: ${xhr.statusText}`));
-                }
-              }
-            });
-
-            xhr.addEventListener('error', () => {
-              reject(new Error('Network error during upload'));
-            });
-
-            xhr.addEventListener('abort', () => {
-              reject(new Error('Upload aborted'));
-            });
+          const result = await uploadMutation.mutateAsync({
+            fileName: file.name,
+            fileType: file.type || "application/octet-stream",
+            fileBase64,
           });
 
-          xhr.open('POST', '/api/upload');
-          xhr.send(formData);
+          if (!result.url) {
+            throw new Error("Upload response missing URL");
+          }
 
-          const url = await uploadPromise;
           setUploadProgress(100);
-          return url;
+          return result.url;
         } catch (err) {
           const isLastAttempt = attempt === maxRetries - 1;
           
@@ -143,6 +118,8 @@ export function useImageUpload(): UseImageUploadReturn {
             setError(uploadError);
             throw uploadError;
           }
+
+          setRetryCount((count) => count + 1);
 
           // Exponential backoff: 1s, 2s, 4s
           const delay = 1000 * Math.pow(2, attempt);
@@ -154,7 +131,7 @@ export function useImageUpload(): UseImageUploadReturn {
 
       throw new Error('Max retries exceeded');
     },
-    [validateFile]
+    [uploadMutation, validateFile]
   );
 
   const retry = useCallback(() => {

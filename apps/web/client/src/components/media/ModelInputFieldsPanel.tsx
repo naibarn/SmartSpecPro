@@ -63,11 +63,19 @@ function isSearchableModelField(field: ModelInputField | null | undefined): bool
 
 function isVoiceSelectionField(field: ModelInputField | null | undefined): boolean {
   if (!field) return false;
+  const source = field.optionsSource;
+  if (source && typeof source === "object") {
+    const valueField = String(source.valueField ?? "").trim().toLowerCase();
+    const previewField = String(source.previewField ?? "").trim().toLowerCase();
+    if (valueField === "voice_id" || previewField === "preview_url") {
+      return true;
+    }
+  }
   const normalizedKey = String(field.key ?? "")
     .trim()
     .toLowerCase()
     .replace(/[_\-\s]/g, "");
-  return normalizedKey === "voice" || normalizedKey === "voiceid";
+  return normalizedKey === "voice" || normalizedKey === "voiceid" || /^voiceid\d+$/.test(normalizedKey);
 }
 
 function getStoredOptionLabelKey(fieldKey: string): string {
@@ -415,7 +423,15 @@ export function ModelInputFieldsPanel({
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                  <PopoverContent
+                    className={cn(
+                      "p-0",
+                      isVoiceField
+                        ? "w-[min(92vw,760px)]"
+                        : "w-[var(--radix-popover-trigger-width)]",
+                    )}
+                    align="start"
+                  >
                     <Command>
                       <CommandInput placeholder={`Search ${String(field.label || field.key).toLowerCase()}...`} />
                       <CommandList>
@@ -434,23 +450,36 @@ export function ModelInputFieldsPanel({
                                 stopVoicePreview();
                               }}
                             >
-                              <div className="flex w-full items-center gap-2">
+                              <div className={cn(
+                                "flex w-full items-center gap-2",
+                                isVoiceField ? "py-1" : "",
+                              )}
+                              >
                                 <Check
                                   className={cn(
                                     "h-4 w-4",
                                     currentValue === option.value ? "opacity-100" : "opacity-0",
                                   )}
                                 />
-                                <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                                {option.label !== option.value ? (
+                                <div className="min-w-0 flex-1">
                                   <span className={cn(
-                                    "truncate text-xs",
-                                    variant === "dark" ? "text-zinc-500" : "text-muted-foreground",
+                                    "block min-w-0",
+                                    isVoiceField ? "whitespace-normal break-words leading-snug" : "truncate",
                                   )}
                                   >
-                                    {option.value}
+                                    {option.label}
                                   </span>
-                                ) : null}
+                                  {option.label !== option.value ? (
+                                    <span className={cn(
+                                      "block min-w-0 text-xs",
+                                      isVoiceField ? "break-all leading-snug" : "truncate",
+                                      variant === "dark" ? "text-zinc-500" : "text-muted-foreground",
+                                    )}
+                                    >
+                                      {option.value}
+                                    </span>
+                                  ) : null}
+                                </div>
                                 {isVoiceField ? (
                                   <Button
                                     type="button"

@@ -55,6 +55,16 @@ function trimModelId(value: string | null | undefined): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+export function isFreeModelIdentifier(...values: Array<string | null | undefined>): boolean {
+  return values.some((value) => {
+    const normalized = trimModelId(value).toLowerCase();
+    return normalized.endsWith(":free")
+      || normalized.endsWith("-free")
+      || normalized.includes("/:free")
+      || normalized.includes("/free/");
+  });
+}
+
 function addComparableId(
   ids: Set<string>,
   providerName: string,

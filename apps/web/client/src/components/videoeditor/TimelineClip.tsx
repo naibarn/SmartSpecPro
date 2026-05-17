@@ -29,6 +29,11 @@ export const TimelineClip: React.FC<TimelineClipProps> = memo(({
   const clipLeft = clip.startTime * zoom;
   const clipSpeed = Number.isFinite(clip.speed) && clip.speed > 0 ? clip.speed : 1;
   const showSpeedBadge = Math.abs(clipSpeed - 1) > 0.01;
+  const duplicateBoundaryTrim = clip.duplicateBoundaryFrameTrim;
+  const showBoundaryTrimBadge = Boolean(duplicateBoundaryTrim?.frameCount);
+  const boundaryTrimTitle = duplicateBoundaryTrim
+    ? `Removed ${duplicateBoundaryTrim.frameCount} duplicate boundary frame from the end of this clip before MP4 render.`
+    : undefined;
 
   const clipStyle: React.CSSProperties = {
     position: 'absolute',
@@ -102,6 +107,18 @@ export const TimelineClip: React.FC<TimelineClipProps> = memo(({
           line-height: 1.4;
           pointer-events: none;
         }
+
+        .clip-boundary-trim-badge {
+          flex-shrink: 0;
+          margin-left: 6px;
+          padding: 1px 5px;
+          border-radius: 3px;
+          background: rgba(255, 255, 255, 0.92);
+          color: #0f4f65;
+          font-size: 10px;
+          line-height: 1.4;
+          pointer-events: auto;
+        }
       `}</style>
 
       {/* Left resize handle */}
@@ -120,6 +137,11 @@ export const TimelineClip: React.FC<TimelineClipProps> = memo(({
       </div>
       {showSpeedBadge && (
         <div className="clip-speed-badge">{clipSpeed.toFixed(2)}x</div>
+      )}
+      {showBoundaryTrimBadge && (
+        <div className="clip-boundary-trim-badge" title={boundaryTrimTitle}>
+          Trim -{duplicateBoundaryTrim?.frameCount}f
+        </div>
       )}
 
       {/* Right resize handle */}
@@ -141,7 +163,9 @@ export const TimelineClip: React.FC<TimelineClipProps> = memo(({
     prevProps.clip.startTime === nextProps.clip.startTime &&
     prevProps.clip.duration === nextProps.clip.duration &&
     prevProps.clip.trimIn === nextProps.clip.trimIn &&
+    prevProps.clip.trimOut === nextProps.clip.trimOut &&
     prevProps.clip.speed === nextProps.clip.speed &&
+    prevProps.clip.duplicateBoundaryFrameTrim?.frameCount === nextProps.clip.duplicateBoundaryFrameTrim?.frameCount &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.zoom === nextProps.zoom &&
     prevProps.trackHeight === nextProps.trackHeight &&

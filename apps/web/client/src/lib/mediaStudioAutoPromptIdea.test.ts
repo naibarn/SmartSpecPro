@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { buildMediaStudioAutoPromptIdea } from "./mediaStudioAutoPromptIdea";
+import {
+  buildMediaStudioAutoPromptIdea,
+  extractMediaStudioDynamicImageUrls,
+} from "./mediaStudioAutoPromptIdea";
 
 describe("buildMediaStudioAutoPromptIdea", () => {
   it("returns topic directly when topic is the only meaningful advanced form field", () => {
@@ -51,5 +54,32 @@ describe("buildMediaStudioAutoPromptIdea", () => {
         reference_images: ["/uploads/watch.png"],
       },
     })).toBe("product reveal for a silver watch");
+  });
+});
+
+describe("extractMediaStudioDynamicImageUrls", () => {
+  it("extracts selected image URLs from dynamic skill form fields", () => {
+    expect(extractMediaStudioDynamicImageUrls({
+      reference_product_images: [
+        "/uploads/product.png",
+        "https://cdn.example.com/product-2.webp",
+      ],
+      reference_character_images: [
+        { url: "/api/storage/files/images/character.png" },
+      ],
+      topic: "cosmetic product storyboard",
+    })).toEqual([
+      "/uploads/product.png",
+      "https://cdn.example.com/product-2.webp",
+      "/api/storage/files/images/character.png",
+    ]);
+  });
+
+  it("ignores non-image fields and deduplicates URLs", () => {
+    expect(extractMediaStudioDynamicImageUrls({
+      request: "make a premium character",
+      reference_images: ["/uploads/same.png", "/uploads/same.png"],
+      notes: "/uploads/not-an-image-field.png",
+    })).toEqual(["/uploads/same.png"]);
   });
 });

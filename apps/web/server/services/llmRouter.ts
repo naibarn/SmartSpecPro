@@ -8,7 +8,7 @@ import { auditLogger } from "./auditLogger";
 import { decrypt } from "./crypto";
 import { getTraceId } from "./traceContext";
 import { calculateCreditsFromCost, calculateCreditsForLLMDynamic } from "./creditService";
-import { resolveEnabledLlmModelId } from "./enabledLlmModels";
+import { isFreeModelIdentifier, resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import { resolveCatalogBackedPricing } from "./llmProviderCatalog";
 import type { Message } from "../_core/llm";
@@ -70,6 +70,8 @@ export interface ProviderHints {
   preferredProviderId?: number;
   /** If true and preferredProviderId is set, return null when the pinned provider is unavailable */
   strictProviderPin?: boolean;
+  /** If false, free provider mappings are not eligible. */
+  allowFreeModels?: boolean;
 }
 
 /**
@@ -91,14 +93,17 @@ export async function getProviderForModel(
 
   // 1. Try multi-provider routing
   const candidates = await resolveProviders(resolvedModelId);
-  if (candidates.length > 0) {
+  const eligibleCandidates = hints?.allowFreeModels === false
+    ? candidates.filter((candidate) => candidate.isFree !== true && !isFreeModelIdentifier(candidate.providerModelId))
+    : candidates;
+  if (eligibleCandidates.length > 0) {
     // Apply provider pinning hints
     if (hints?.preferredProviderId) {
-      const pinned = candidates.find((c) => c.providerId === hints.preferredProviderId);
+      const pinned = eligibleCandidates.find((c) => c.providerId === hints.preferredProviderId);
       if (pinned) return pinned;
       if (hints.strictProviderPin) return null; // strict pin: no fallback
     }
-    return candidates[0];
+    return eligibleCandidates[0];
   }
 
   // 2. Fall back to legacy: first enabled provider
@@ -675,13 +680,21 @@ export async function executeWithFallback(params: {
   extraBodyParams?: Record<string, unknown>;
   /** When true, only the first resolved provider is attempted. */
   disableProviderFallbacks?: boolean;
+  /** If false, free provider mappings are filtered out before routing. */
+  allowFreeModels?: boolean;
 }): Promise<ExecuteResult> {
   const resolvedModel = await resolveEnabledLlmModelId([params.model]);
   if (!resolvedModel) {
     return { type: "error", error: "No enabled LLM model configured", statusCode: 503 };
   }
 
-  const { candidates, maxFallbacks } = await resolveProvidersWithRule(resolvedModel);
+  const resolvedProviderSet = await resolveProvidersWithRule(resolvedModel);
+  const candidates = params.allowFreeModels === false
+    ? resolvedProviderSet.candidates.filter((candidate) => (
+      candidate.isFree !== true && !isFreeModelIdentifier(candidate.providerModelId)
+    ))
+    : resolvedProviderSet.candidates;
+  const maxFallbacks = resolvedProviderSet.maxFallbacks;
   const failureDetails: AttemptFailureDetail[] = [];
 
   // If preferredProvider, filter to just that one

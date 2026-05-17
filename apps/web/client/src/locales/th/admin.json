@@ -645,6 +645,7 @@
   "admin.skillsPage.categoryLabels.videoPromptGeneration": "สร้างพรอมต์สำหรับวิดีโอ",
   "admin.skillsPage.categoryLabels.imageVideoGeneration": "สร้างภาพ/วิดีโอ",
   "admin.skillsPage.categoryLabels.audioGeneration": "สร้างเสียง",
+  "admin.skillsPage.categoryLabels.audioPromptGeneration": "สร้างพรอมต์สำหรับเสียง",
   "admin.skillsPage.categoryLabels.articleGeneration": "สร้างบทความ",
   "admin.skillsPage.categoryLabels.slideGeneration": "สร้างสไลด์",
   "admin.skillsPage.categoryLabels.productReview": "รีวิวสินค้า",

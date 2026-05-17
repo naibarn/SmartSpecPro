@@ -1,0 +1,344 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/background-scene-prompt-skill/schemas/input.schema.json",
+  "title": "Background Scene Prompt Builder Input",
+  "description": "Input for generating one or more richly detailed, visually consistent background-scene prompts from a rough concept.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "concept"
+  ],
+  "properties": {
+    "concept": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "description": "A rough scene concept, place idea, mood, location name, room type, worldbuilding idea, or short creative brief. For multi-prompt interior scenes, include or expect a locked room design rather than multiple design alternatives."
+    },
+    "prompt_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50,
+      "default": 1,
+      "description": "Number of prompts to generate. If greater than 1, all prompts must show the same exact place from different camera angles only. Furniture, fixtures, layout, materials, and environmental anchors must remain locked."
+    },
+    "language": {
+      "type": "string",
+      "default": "auto",
+      "description": "Output language for the final plain-text prompts.",
+      "oneOf": [
+        {
+          "const": "auto",
+          "title": "Auto detect"
+        },
+        {
+          "const": "th",
+          "title": "Thai"
+        },
+        {
+          "const": "en",
+          "title": "English"
+        },
+        {
+          "const": "ja",
+          "title": "Japanese"
+        },
+        {
+          "const": "ko",
+          "title": "Korean"
+        },
+        {
+          "const": "zh",
+          "title": "Chinese"
+        },
+        {
+          "const": "es",
+          "title": "Spanish"
+        },
+        {
+          "const": "fr",
+          "title": "French"
+        },
+        {
+          "const": "de",
+          "title": "German"
+        },
+        {
+          "const": "it",
+          "title": "Italian"
+        },
+        {
+          "const": "pt",
+          "title": "Portuguese"
+        },
+        {
+          "const": "ru",
+          "title": "Russian"
+        },
+        {
+          "const": "ar",
+          "title": "Arabic"
+        },
+        {
+          "const": "hi",
+          "title": "Hindi"
+        },
+        {
+          "const": "id",
+          "title": "Indonesian"
+        },
+        {
+          "const": "vi",
+          "title": "Vietnamese"
+        },
+        {
+          "const": "ms",
+          "title": "Malay"
+        },
+        {
+          "const": "tl",
+          "title": "Filipino"
+        },
+        {
+          "const": "tr",
+          "title": "Turkish"
+        },
+        {
+          "const": "nl",
+          "title": "Dutch"
+        },
+        {
+          "const": "pl",
+          "title": "Polish"
+        },
+        {
+          "const": "sv",
+          "title": "Swedish"
+        }
+      ]
+    },
+    "location_mode": {
+      "type": "string",
+      "default": "auto",
+      "description": "Whether the place should be real, fictional, or inferred automatically.",
+      "enum": [
+        "auto",
+        "real_world",
+        "fictional",
+        "hybrid"
+      ]
+    },
+    "environment_scope": {
+      "type": "string",
+      "default": "auto",
+      "description": "Overall type of environment.",
+      "enum": [
+        "auto",
+        "interior",
+        "exterior",
+        "interior_exterior_transition",
+        "landscape",
+        "cityscape",
+        "room",
+        "building",
+        "street",
+        "vehicle_or_mobile_space"
+      ]
+    },
+    "style_genre": {
+      "type": "string",
+      "default": "auto",
+      "description": "Visual genre or art direction, such as cinematic realism, anime background, fantasy, cyberpunk, cozy naturalism, horror, historical, or sci-fi."
+    },
+    "time_of_day": {
+      "type": "string",
+      "default": "auto",
+      "description": "Desired time of day. If auto, infer a coherent time from the concept.",
+      "enum": [
+        "auto",
+        "dawn",
+        "morning",
+        "midday",
+        "afternoon",
+        "golden_hour",
+        "sunset",
+        "blue_hour",
+        "night",
+        "midnight",
+        "overcast_day",
+        "custom"
+      ]
+    },
+    "custom_time_of_day": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Custom time-of-day description when time_of_day is custom."
+    },
+    "weather_atmosphere": {
+      "type": "string",
+      "default": "auto",
+      "description": "Weather or atmosphere, such as clear, rainy, misty, dusty, humid, snowy, foggy, neon haze, smoke, or infer automatically."
+    },
+    "lighting": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Lighting requirements. Leave fields as auto to let the model infer a coherent setup.",
+      "properties": {
+        "condition": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "soft",
+            "hard",
+            "high_contrast",
+            "low_key",
+            "high_key",
+            "natural",
+            "dramatic",
+            "moody",
+            "custom"
+          ]
+        },
+        "primary_light_source": {
+          "type": "string",
+          "default": "auto",
+          "description": "Main source of light, such as sun through windows, skylight, lanterns, fluorescent lights, neon signs, moonlight, candles, lava glow, or auto."
+        },
+        "light_direction": {
+          "type": "string",
+          "default": "auto",
+          "description": "Direction of the primary light, such as from camera left, camera right, backlight, overhead, low side light, through rear windows, or auto."
+        },
+        "secondary_light_sources": {
+          "type": "string",
+          "default": "auto",
+          "description": "Supporting practical lights or reflected light sources."
+        }
+      }
+    },
+    "camera": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Camera, lens, composition, and depth-of-field settings.",
+      "properties": {
+        "camera_profile": {
+          "type": "string",
+          "default": "auto",
+          "description": "Camera/look profile, such as cinematic full-frame, medium format, anime background plate, architectural photography, documentary, film still, or auto."
+        },
+        "lens": {
+          "type": "string",
+          "default": "auto",
+          "description": "Lens or focal length preference, such as 24mm, 28mm, 35mm, 50mm, 85mm, anamorphic, tilt-shift, or auto."
+        },
+        "depth_of_field": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "deep_focus",
+            "moderate_depth",
+            "shallow_depth",
+            "tilt_shift",
+            "custom"
+          ]
+        },
+        "composition": {
+          "type": "string",
+          "default": "auto",
+          "description": "Composition preference, such as wide establishing, symmetrical, rule of thirds, low angle, high angle, empty center space, or auto."
+        }
+      }
+    },
+    "color_profile": {
+      "type": "string",
+      "default": "auto",
+      "description": "Color palette or grade, such as warm golden filmic, muted pastel, cool moonlit cyan, earthy naturalism, neon cyberpunk, black-and-gold luxury, or auto."
+    },
+    "consistency_anchors": {
+      "type": "array",
+      "default": [],
+      "description": "Optional fixed objects, furniture designs, object positions, adjacency relationships, door/window designs, built-ins, architectural features, textures, landmarks, props, floor patterns, curtain styles, lighting fixtures, or material details that must appear consistently across all prompts. For interiors, describe furniture with exact style, silhouette, material, upholstery, trim, hardware, placement, wall position, and relationship to nearby objects.",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300
+      },
+      "maxItems": 30
+    },
+    "must_include": {
+      "type": "array",
+      "default": [],
+      "description": "Specific visual elements that must appear in the scene. For multi-prompt interiors, these elements are treated as locked continuity anchors and must keep the same design, material, placement, wall position, adjacency, and relationship across prompts.",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300
+      },
+      "maxItems": 30
+    },
+    "must_avoid": {
+      "type": "array",
+      "default": [],
+      "description": "Visual elements, moods, objects, styles, or subjects that must not appear.",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300
+      },
+      "maxItems": 30
+    },
+    "include_people": {
+      "type": "string",
+      "default": "no_main_characters",
+      "description": "Controls whether people may appear. Since this is a background skill, main characters are excluded by default.",
+      "enum": [
+        "no_people",
+        "no_main_characters",
+        "tiny_background_extras_allowed",
+        "user_specified"
+      ]
+    },
+    "character_placement_space": {
+      "type": "string",
+      "default": "subtle_negative_space",
+      "description": "How much compositional space to leave for adding a character later.",
+      "enum": [
+        "none",
+        "subtle_negative_space",
+        "clear_center_space",
+        "clear_left_space",
+        "clear_right_space",
+        "foreground_empty_area",
+        "custom"
+      ]
+    },
+    "custom_character_placement_space": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Custom negative-space or character-placement requirement when character_placement_space is custom."
+    },
+    "detail_density": {
+      "type": "string",
+      "default": "high",
+      "description": "Amount of visual detail to include.",
+      "enum": [
+        "medium",
+        "high",
+        "very_high",
+        "ultra_dense"
+      ]
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "default": "auto",
+      "description": "Optional aspect ratio or framing, such as 16:9, 4:3, 3:2, 1:1, 9:16, or auto."
+    },
+    "extra_instructions": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "Any additional user instructions."
+    }
+  }
+}

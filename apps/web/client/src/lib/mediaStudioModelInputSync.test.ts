@@ -17,4 +17,12 @@ describe("inferMediaStudioModelInputSyncTarget", () => {
     expect(inferMediaStudioModelInputSyncTarget({ key: "negative_prompt", syncWith: "none" })).toBe("none");
     expect(inferMediaStudioModelInputSyncTarget({ key: "lyrics", syncWith: "prompt" })).toBe("prompt");
   });
+
+  it("treats speaker-line array promptSync fields as prompt-synced", () => {
+    expect(inferMediaStudioModelInputSyncTarget({
+      key: "inputs",
+      type: "array",
+      promptSync: { strategy: "speaker_lines" },
+    })).toBe("prompt");
+  });
 });

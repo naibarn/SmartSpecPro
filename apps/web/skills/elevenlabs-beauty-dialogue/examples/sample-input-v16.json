@@ -1,0 +1,10 @@
+{
+  "product_details": "ตัวอย่างสินค้า beauty/personal care พร้อม claim เสี่ยง ให้ rewrite เป็นบทพูดธรรมชาติ",
+  "output_language": "Thai",
+  "speech_style": "humorous",
+  "persuasion_style": "problem_solution",
+  "target_duration_seconds": 55,
+  "format": "plain_text_dialogue",
+  "no_meta_compliance_dialogue": true,
+  "clinical_number_simplifier": true
+}

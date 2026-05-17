@@ -52,6 +52,38 @@ describe("mediaModelInputs", () => {
     expect(getModelInputField(model, "missing")).toBeUndefined();
   });
 
+  it("preserves dynamic option source voice preview metadata", () => {
+    const model = {
+      id: "elevenlabs-dialogue",
+      name: "ElevenLabs Dialogue",
+      configJson: {
+        inputFields: [
+          {
+            key: "voice_id_2",
+            label: "Speaker 2 Voice",
+            type: "select",
+            optionsSource: {
+              type: "provider_api",
+              endpoint: "/v2/voices",
+              method: "GET",
+              itemsPath: "voices",
+              valueField: "voice_id",
+              labelField: "name",
+              previewField: "preview_url",
+              queryParam: "search",
+            },
+          },
+        ],
+      },
+    };
+
+    expect(parseModelInputFields(model)[0]?.optionsSource).toMatchObject({
+      type: "provider_api",
+      valueField: "voice_id",
+      previewField: "preview_url",
+    });
+  });
+
   it("parses nested array itemFields and resolves them by key", () => {
     const model = {
       id: "test-audio-model",
@@ -126,6 +158,113 @@ describe("mediaModelInputs", () => {
         },
       ],
     });
+  });
+
+  it("syncs speaker-labelled prompt lines into dialogue inputs using model config voice fields", () => {
+    const model = {
+      id: "elevenlabs-dialogue",
+      name: "ElevenLabs Dialogue",
+      configJson: {
+        inputFields: [
+          { key: "voice_id", label: "Speaker 1 Voice", type: "select", default: "voice-1" },
+          { key: "voice_id_2", label: "Speaker 2 Voice", type: "select", default: "voice-2" },
+          {
+            key: "inputs",
+            label: "Dialogue Inputs",
+            type: "array",
+            syncWith: "prompt",
+            itemTemplate: {
+              text: "{{item}}",
+              voice_id: "{{fields.voice_id}}",
+            },
+            promptSync: {
+              strategy: "speaker_lines",
+              textKey: "text",
+              defaultVoiceField: "voice_id",
+              speakerPattern: "^\\s*Speaker\\s*(\\d+)\\s*[:：-]\\s*(.*)$",
+              speakerVoiceFields: {
+                "1": "voice_id",
+                "2": "voice_id_2",
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    const extraParams = applyModelSyncTargets(
+      model,
+      buildDefaultExtraParamsForModel(model),
+      {
+        prompt: [
+          "Speaker 1: [giggling] Knock knock",
+          "Speaker 2: [curious] Who is there?",
+        ].join("\n"),
+      },
+    );
+
+    expect(extraParams).toMatchObject({
+      inputs: [
+        { text: "[giggling] Knock knock", voice_id: "voice-1" },
+        { text: "[curious] Who is there?", voice_id: "voice-2" },
+      ],
+    });
+  });
+
+  it("infers prompt sync for speaker-labelled dialogue arrays even when syncWith is omitted", () => {
+    const model = {
+      id: "elevenlabs-dialogue",
+      name: "ElevenLabs Dialogue",
+      configJson: {
+        inputFields: [
+          { key: "voice_id", label: "Speaker 1 Voice", type: "select", default: "voice-1" },
+          { key: "voice_id_2", label: "Speaker 2 Voice", type: "select", default: "voice-2" },
+          {
+            key: "inputs",
+            label: "Dialogue Inputs",
+            type: "array",
+            itemTemplate: {
+              text: "{{item}}",
+              voice_id: "{{fields.voice_id}}",
+            },
+            promptSync: {
+              strategy: "speaker_lines",
+              textKey: "text",
+              defaultVoiceField: "voice_id",
+              speakerVoiceFields: {
+                "1": "voice_id",
+                "2": "voice_id_2",
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    const fields = parseModelInputFields(model);
+    expect(fields.find((field) => field.key === "inputs")?.syncWith).toBe("prompt");
+
+    const extraParams = applyModelSyncTargets(
+      model,
+      {
+        voice_id: "current-speaker-1",
+        voice_id_2: "current-speaker-2",
+        inputs: [
+          { text: "stale", voice_id: "stale-old-voice" },
+        ],
+      },
+      {
+        prompt: [
+          "Speaker 1: Fresh line",
+          "Speaker 2: Fresh reply",
+        ].join("\n"),
+      },
+    );
+
+    expect(extraParams?.inputs).toEqual([
+      { text: "Fresh line", voice_id: "current-speaker-1" },
+      { text: "Fresh reply", voice_id: "current-speaker-2" },
+    ]);
   });
 
   it("preserves maxItems metadata for synchronized image fields", () => {

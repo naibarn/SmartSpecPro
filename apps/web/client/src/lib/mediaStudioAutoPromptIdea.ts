@@ -13,6 +13,16 @@ export interface BuildMediaStudioAutoPromptIdeaInput {
   skillSchema?: MediaStudioAutoPromptSchemaLike | null;
 }
 
+const IMAGE_FIELD_KEYWORDS = [
+  "image",
+  "images",
+  "referenceimage",
+  "referenceimages",
+  "referenceproductimages",
+  "referencecharacterimages",
+  "referenceenvironmentimages",
+] as const;
+
 const AUTO_PROMPT_TEXT_FIELD_PRIORITIES = [
   "topic",
   "request",
@@ -49,6 +59,69 @@ function humanizeFieldKey(key: string): string {
     .trim()
     .replace(/\s+/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function isUsableImageReferenceUrl(value: string): boolean {
+  const trimmed = value.trim();
+  return Boolean(
+    trimmed
+      && (
+        trimmed.startsWith("http://")
+        || trimmed.startsWith("https://")
+        || trimmed.startsWith("/uploads/")
+        || trimmed.startsWith("/api/storage/")
+      ),
+  );
+}
+
+function collectImageReferenceUrlsFromValue(value: unknown, urls: string[]): void {
+  if (typeof value === "string") {
+    if (isUsableImageReferenceUrl(value)) {
+      urls.push(value.trim());
+    }
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectImageReferenceUrlsFromValue(item, urls));
+    return;
+  }
+
+  if (!value || typeof value !== "object") {
+    return;
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of ["url", "source_url", "sourceUrl", "image_url", "imageUrl"]) {
+    collectImageReferenceUrlsFromValue(record[key], urls);
+  }
+}
+
+export function extractMediaStudioDynamicImageUrls(
+  dynamicFormValues?: Record<string, unknown> | null,
+): string[] {
+  if (!dynamicFormValues) {
+    return [];
+  }
+
+  const urls: string[] = [];
+  for (const [key, value] of Object.entries(dynamicFormValues)) {
+    const normalizedKey = normalizeFieldKey(key);
+    const isImageField = IMAGE_FIELD_KEYWORDS.some((keyword) => normalizedKey.includes(keyword));
+    if (!isImageField) {
+      continue;
+    }
+    collectImageReferenceUrlsFromValue(value, urls);
+  }
+
+  const seen = new Set<string>();
+  return urls.filter((url) => {
+    if (seen.has(url)) {
+      return false;
+    }
+    seen.add(url);
+    return true;
+  });
 }
 
 function getOrderedSchemaFieldIds(

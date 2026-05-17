@@ -95,7 +95,7 @@ type SkillFieldDependency = {
 // Schema Types
 export interface SkillInputField {
   id: string;
-  type: "text" | "textarea" | "select" | "multiselect" | "number" | "slider" | "boolean" | "image" | "images" | "imageUpload" | "file" | "files" | "model-search" | "workflow-selector" | "array";
+  type: "text" | "textarea" | "select" | "multiselect" | "number" | "slider" | "boolean" | "image" | "images" | "imageUpload" | "file" | "files" | "model-search" | "workflow-selector" | "array" | "hidden";
   label: string;
   labelTh?: string;
   placeholder?: string;
@@ -120,6 +120,7 @@ export interface SkillInputField {
   minItems?: number;
   itemLabel?: string;
   itemFields?: SkillInputField[];
+  arrayItemType?: "string" | "object";
   maxImages?: number;
   maxCount?: number;
   multiple?: boolean;
@@ -763,6 +764,9 @@ export default function DynamicSkillForm({
     const description = getText(field.description || field.helpText, field.descriptionTh || field.helpTextTh);
 
     switch (field.type) {
+      case "hidden":
+        return null;
+
       case "text":
         return (
           <div key={field.id} className="space-y-1.5">
@@ -870,6 +874,9 @@ export default function DynamicSkillForm({
                 ))}
               </SelectContent>
             </Select>
+            {description && (
+              <p className="text-xs leading-snug text-muted-foreground">{description}</p>
+            )}
           </div>
         );
 
@@ -1014,6 +1021,8 @@ export default function DynamicSkillForm({
         const items = Array.isArray(value) ? value : [];
         const minItems = field.minItems ?? 0;
         const maxItems = field.maxItems ?? 5;
+        const isStringArray = field.arrayItemType === "string";
+        const stringItemField = field.itemFields?.[0];
 
         return (
           <div key={field.id} className="space-y-3 p-4 border rounded-lg bg-muted/20">
@@ -1027,6 +1036,11 @@ export default function DynamicSkillForm({
                   variant="outline"
                   size="sm"
                   onClick={() => {
+                    if (isStringArray) {
+                      updateValue(field.id, [...items, stringItemField?.default ?? stringItemField?.defaultValue ?? ""]);
+                      return;
+                    }
+
                     const newItem: Record<string, any> = {};
                     field.itemFields?.forEach(f => {
                       newItem[f.id] = f.default ?? f.defaultValue ?? "";
@@ -1068,7 +1082,9 @@ export default function DynamicSkillForm({
                     // Create a sub-updater for this specific array item
                     const updateSubValue = (val: any) => {
                       const newItems = [...items];
-                      newItems[index] = { ...newItems[index], [subField.id]: val };
+                      newItems[index] = isStringArray
+                        ? val
+                        : { ...newItems[index], [subField.id]: val };
                       updateValue(field.id, newItems);
                     };
 
@@ -1126,14 +1142,14 @@ export default function DynamicSkillForm({
                           <Label className="text-sm">{subField.label}</Label>
                           {subField.type === "textarea" ? (
                             <Textarea
-                              value={item[subField.id] || ""}
+                              value={isStringArray ? String(item ?? "") : item[subField.id] || ""}
                               onChange={e => updateSubValue(e.target.value)}
                               readOnly={subField.readOnly as boolean}
                               className={subField.readOnly ? "bg-muted/50" : ""}
                             />
                           ) : (
                             <Input
-                              value={item[subField.id] || ""}
+                              value={isStringArray ? String(item ?? "") : item[subField.id] || ""}
                               onChange={e => updateSubValue(e.target.value)}
                               readOnly={subField.readOnly as boolean}
                               className={subField.readOnly ? "bg-muted/50" : ""}
@@ -1305,6 +1321,7 @@ export default function DynamicSkillForm({
     // Filter visible fields and exclude specified fields
     const visibleFields = section.fields
       .filter(isFieldVisible)
+      .filter((field) => field.type !== "hidden")
       .filter((field) => !excludeFields.includes(field.id));
     if (visibleFields.length === 0) return null;
 

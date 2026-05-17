@@ -95,6 +95,7 @@ _RENDER_FONT_WHITELIST = {
     "Ubuntu": "Ubuntu",
 }
 _DEFAULT_RENDER_FONT = "Noto Sans"
+_EDGE_BLEED_CROP_FILTER = "crop=trunc(iw*0.988/2)*2:trunc(ih*0.988/2)*2:(iw-ow)/2:(ih-oh)/2"
 
 
 def _to_int(val: Any, default: int = 0) -> int:
@@ -859,12 +860,12 @@ def _probe_video_size(uri: str) -> tuple[int, int] | None:
 
 
 def _detect_letterbox_crop_filter(uri: str, runner=None) -> str | None:
-    """Detect embedded horizontal black bars and return an FFmpeg crop filter.
+    """Detect embedded matte borders and return an FFmpeg crop filter.
 
     Provider-generated vertical clips can be 9:16 at the container level while
-    still carrying cinematic matte bars inside the frame. The editor render step
-    should remove those source bars before scale/pad so the final export fills
-    the vertical canvas.
+    still carrying matte bars inside the frame. The editor render step should
+    remove those source bars before scale/pad so the final export fills the
+    vertical canvas.
     """
     if runner is not None:
         # Remote/abstract runners may not support binary rawvideo capture.
@@ -902,30 +903,70 @@ def _detect_letterbox_crop_filter(uri: str, runner=None) -> str | None:
         if len(frame) < sample_w * sample_h:
             return None
 
+        def is_matte_pixel(value: int) -> bool:
+            return value < 24 or value > 232
+
+        def matte_fraction(values) -> float:
+            values_list = list(values)
+            if not values_list:
+                return 0.0
+            return sum(1 for value in values_list if is_matte_pixel(value)) / len(values_list)
+
         rows = [
-            sum(frame[row * sample_w:(row + 1) * sample_w]) / sample_w
+            matte_fraction(frame[row * sample_w:(row + 1) * sample_w])
             for row in range(sample_h)
         ]
-        threshold = 12
+        cols = [
+            matte_fraction(frame[row * sample_w + col] for row in range(sample_h))
+            for col in range(sample_w)
+        ]
+
+        def is_matte_edge(value: float) -> bool:
+            return value >= 0.88
+
         top_rows = 0
-        while top_rows < sample_h and rows[top_rows] < threshold:
+        while top_rows < sample_h and is_matte_edge(rows[top_rows]):
             top_rows += 1
         bottom_rows = 0
-        while bottom_rows < sample_h and rows[sample_h - 1 - bottom_rows] < threshold:
+        while bottom_rows < sample_h and is_matte_edge(rows[sample_h - 1 - bottom_rows]):
             bottom_rows += 1
+        left_cols = 0
+        while left_cols < sample_w and is_matte_edge(cols[left_cols]):
+            left_cols += 1
+        right_cols = 0
+        while right_cols < sample_w and is_matte_edge(cols[sample_w - 1 - right_cols]):
+            right_cols += 1
 
         top_px = int(round((top_rows / sample_h) * height))
         bottom_px = int(round((bottom_rows / sample_h) * height))
+        left_px = int(round((left_cols / sample_w) * width))
+        right_px = int(round((right_cols / sample_w) * width))
         # Keep crop dimensions even for yuv420p compatibility.
         top_px -= top_px % 2
         bottom_px -= bottom_px % 2
+        left_px -= left_px % 2
+        right_px -= right_px % 2
+        if top_px + bottom_px < max(2, int(height * 0.003)):
+            top_px = 0
+            bottom_px = 0
+        if left_px + right_px < max(2, int(width * 0.003)):
+            left_px = 0
+            right_px = 0
+
+        if top_px + bottom_px == 0 and left_px + right_px == 0:
+            return None
+
+        crop_w = width - left_px - right_px
         crop_h = height - top_px - bottom_px
-        if top_px + bottom_px < max(24, int(height * 0.025)):
+        if crop_w <= 0 or crop_w < int(width * 0.65):
             return None
         if crop_h <= 0 or crop_h < int(height * 0.65):
             return None
+        crop_w -= crop_w % 2
         crop_h -= crop_h % 2
-        return f"crop=iw:{crop_h}:0:{top_px}"
+        crop_w_expr = "iw" if left_px == 0 and right_px == 0 else str(crop_w)
+        crop_h_expr = "ih" if top_px == 0 and bottom_px == 0 else str(crop_h)
+        return f"crop={crop_w_expr}:{crop_h_expr}:{left_px}:{top_px}"
     except Exception:
         return None
     finally:
@@ -934,6 +975,32 @@ def _detect_letterbox_crop_filter(uri: str, runner=None) -> str | None:
                 os.unlink(raw_path)
             except OSError:
                 pass
+
+
+def _build_cover_normalize_filter(
+    width: int,
+    height: int,
+    fps: int,
+    source_crop_filter: str | None = None,
+) -> str:
+    """Normalize every source clip to the exact output canvas without padding."""
+    prefix = f"{source_crop_filter}," if source_crop_filter else ""
+    guard_px = max(6, min(16, int(round(min(width, height) * 0.01))))
+    guard_px += guard_px % 2
+    guard_w = max(2, width - (guard_px * 2))
+    guard_h = max(2, height - (guard_px * 2))
+    guard_w -= guard_w % 2
+    guard_h -= guard_h % 2
+    return (
+        prefix
+        + _EDGE_BLEED_CROP_FILTER + ","
+        + f"fps={fps},"
+        + f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+        + f"crop={width}:{height}:(iw-{width})/2:(ih-{height})/2,"
+        + f"crop={guard_w}:{guard_h}:{guard_px}:{guard_px},"
+        + f"scale={width}:{height},"
+        + "setsar=1,format=yuv420p"
+    )
 
 
 def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
@@ -1000,28 +1067,10 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
             video_clips.extend(track.get("clips", []))
         elif track.get("type") == "audio":
             audio_clips.extend(track.get("clips", []))
-    has_clip_transforms = any(_clip_has_non_default_transform(clip) for clip in video_clips)
-    has_clip_trims = any(_to_int(clip.get("inMs")) != 0 or _to_int(clip.get("outMs")) != 0 for clip in video_clips)
-    has_clip_speed_changes = any(abs(_clip_playback_rate(clip) - 1.0) > 1e-3 for clip in video_clips)
-    has_explicit_clip_durations = any(_to_int(clip.get("durationMs")) > 0 for clip in video_clips)
+    if not video_clips:
+        raise ValueError("No video clips found for render")
 
-    if (
-        len(video_clips) <= 1
-        and len(input_files) == 1
-        and not has_clip_transforms
-        and not has_clip_trims
-        and not has_clip_speed_changes
-        and not has_explicit_clip_durations
-        and 0 not in image_inputs
-    ):
-        # Simple case: single input (ignore transitions on single clips)
-        cmd.extend([
-            "-c:v", "libx264", "-profile:v", "high", "-level", "4.0",
-            "-pix_fmt", "yuv420p", "-crf", "18", "-movflags", "+faststart",
-            "-c:a", "aac", "-b:a", "128k", "-ar", "48000",
-            output_target,
-        ])
-    else:
+    if video_clips:
         # Check if any non-first clip has an inTransition
         has_transitions = any(
             clip.get("inTransition") and clip["inTransition"].get("name", "none") != "none"
@@ -1048,37 +1097,40 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
             atempo_chain = _atempo_filter_chain(rate)
             clip_source_dur = _clip_source_duration_seconds(clip, asset_duration_map)
             clip_timeline_dur = _clip_timeline_duration_seconds(clip, asset_duration_map)
+            clip_timeline_dur_s = _safe_float_for_ffmpeg(clip_timeline_dur)
             has_source_trim = in_s > 0 or out_s > 0
             has_source_duration_bound = (
                 _to_int(asset_duration_map.get(clip.get("assetId", ""), 0)) > 0
                 or _to_int(clip.get("durationMs")) > 0
             )
 
-            # Video filter: trim + fps + scale + format
+            # Video filter: trim + fps + cover-normalize + format
             # fps normalizes framerate AND timebase (required for xfade)
-            # scale + pad ensures all clips are exactly proj_w x proj_h
+            # cover-normalize fills the exact canvas so no letterbox/pillarbox is generated.
             source_crop_filter = _detect_letterbox_crop_filter(path, runner=runner)
-            normalize_chain = (
-                f"{source_crop_filter}," if source_crop_filter else ""
-            ) + (
-                f"fps={proj_fps},"
-                f"scale={proj_w}:{proj_h}:force_original_aspect_ratio=decrease,"
-                f"pad={proj_w}:{proj_h}:(ow-iw)/2:(oh-ih)/2:color=black,"
-                f"setsar=1,format=yuv420p"
+            normalize_chain = _build_cover_normalize_filter(
+                proj_w,
+                proj_h,
+                proj_fps,
+                source_crop_filter,
             )
             if has_source_trim:
-                filters.append(f"[{idx}:v]trim=start={in_s}:end={out_s},{timing_setpts},{normalize_chain}[vnorm{i}]")
+                video_chain = f"[{idx}:v]trim=start={in_s}:end={out_s},{timing_setpts}"
             elif has_source_duration_bound:
-                filters.append(f"[{idx}:v]trim=start=0:end={clip_source_dur},{timing_setpts},{normalize_chain}[vnorm{i}]")
+                video_chain = f"[{idx}:v]trim=start=0:end={clip_source_dur},{timing_setpts}"
             else:
-                filters.append(f"[{idx}:v]{timing_setpts},{normalize_chain}[vnorm{i}]")
+                video_chain = f"[{idx}:v]{timing_setpts}"
+            filters.append(
+                f"{video_chain},{normalize_chain},"
+                f"trim=0:{clip_timeline_dur_s},setpts=PTS-STARTPTS[vnorm{i}]"
+            )
 
             # Audio filter — generate silence for muted clips or inputs without audio streams
             volume = _clip_volume(clip)
             if volume <= 1e-6 or idx in silent_inputs:
                 filters.append(
                     f"anullsrc=r=48000:cl=stereo[_sil{i}];"
-                    f"[_sil{i}]atrim=0:{clip_timeline_dur},asetpts=PTS-STARTPTS[a{i}]"
+                    f"[_sil{i}]atrim=0:{clip_timeline_dur_s},asetpts=PTS-STARTPTS[a{i}]"
                 )
             elif has_source_trim:
                 audio_chain = f"[{idx}:a]atrim=start={in_s}:end={out_s},asetpts=PTS-STARTPTS"
@@ -1086,21 +1138,30 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
                     audio_chain += f",{atempo_chain}"
                 if abs(volume - 1.0) > 1e-3:
                     audio_chain += f",volume={_safe_float_for_ffmpeg(volume)}"
-                filters.append(f"{audio_chain}[a{i}]")
+                filters.append(
+                    f"{audio_chain},apad,atrim=0:{clip_timeline_dur_s},"
+                    f"asetpts=PTS-STARTPTS[a{i}]"
+                )
             elif has_source_duration_bound:
                 audio_chain = f"[{idx}:a]atrim=start=0:end={clip_source_dur},asetpts=PTS-STARTPTS"
                 if atempo_chain:
                     audio_chain += f",{atempo_chain}"
                 if abs(volume - 1.0) > 1e-3:
                     audio_chain += f",volume={_safe_float_for_ffmpeg(volume)}"
-                filters.append(f"{audio_chain}[a{i}]")
+                filters.append(
+                    f"{audio_chain},apad,atrim=0:{clip_timeline_dur_s},"
+                    f"asetpts=PTS-STARTPTS[a{i}]"
+                )
             else:
                 audio_chain = f"[{idx}:a]asetpts=PTS-STARTPTS"
                 if atempo_chain:
                     audio_chain += f",{atempo_chain}"
                 if abs(volume - 1.0) > 1e-3:
                     audio_chain += f",volume={_safe_float_for_ffmpeg(volume)}"
-                filters.append(f"{audio_chain}[a{i}]")
+                filters.append(
+                    f"{audio_chain},apad,atrim=0:{clip_timeline_dur_s},"
+                    f"asetpts=PTS-STARTPTS[a{i}]"
+                )
 
             # Clip transform (static pan/zoom per clip)
             # 1) Scale normalized clip by user zoom.
@@ -1118,7 +1179,7 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
                 f"[vbg{i}][vscaled{i}]overlay="
                 f"x=(main_w*{x_s})-(overlay_w/2):"
                 f"y=(main_h*{y_s})-(overlay_h/2):"
-                f"shortest=1,format=yuv420p[v{i}]"
+                f"eof_action=pass,format=yuv420p[v{i}]"
             )
 
         n = len(video_clips)

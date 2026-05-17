@@ -146,6 +146,7 @@ import {
   getGenerationQueueIdentityCandidates,
   isActiveGenerationQueueStatus,
   isGenerationQueueTaskDismissed,
+  isStoryboardReviewOnlyQueuedTask,
   isTerminalGenerationQueueStatus,
   mergeGenerationQueueTasks,
   shouldIncludeHistoryTaskInGenerationQueue,
@@ -157,7 +158,10 @@ import {
   resolveMediaStudioAutoPromptSelection,
   type MediaStudioVisionModelOption,
 } from "@/lib/mediaStudioAutoPromptSelection";
-import { buildMediaStudioAutoPromptIdea } from "@/lib/mediaStudioAutoPromptIdea";
+import {
+  buildMediaStudioAutoPromptIdea,
+  extractMediaStudioDynamicImageUrls,
+} from "@/lib/mediaStudioAutoPromptIdea";
 import { composePromptWithNotes, parseMediaStudioPromptPackage } from "@/lib/mediaStudioPromptPackage";
 import { applyMediaStudioAspectRatioPromptParams } from "@/lib/mediaStudioPromptParams";
 import {
@@ -190,6 +194,10 @@ import {
   DEFAULT_STORYBOARD_CLIP_DURATION_SECONDS,
   resolveStoryboardClipDurationSeconds,
 } from "@/lib/mediaModelStoryboardTiming";
+import {
+  buildFirstLastFrameStoryboardTasks,
+  mergeFresherStoryboardReviewTasks,
+} from "@/lib/storyboardReviewWorkspace";
 import { buildStoryboardVideoProject, type StoryboardCompanionAudioCandidate } from "@/lib/storyboardVideoProject";
 import {
   buildDefaultExtraParamsForModel,
@@ -243,6 +251,8 @@ const HISTORY_GALLERY_PAGE_SIZE = 30;
 const HISTORY_GALLERY_MEDIA_TASK_MAX = 100;
 const HISTORY_GALLERY_PUBLIC_GALLERY_MAX = 100;
 const HISTORY_GALLERY_SHARED_GROUP_MAX = 50;
+const MODEL_INPUT_PREF_STORAGE_PREFIX = "smartspec_model_input_prefs_v1";
+const DEPRECATED_ELEVENLABS_DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
 const GEMINI_3_1_FLASH_TTS_MODEL_ID = "fal-ai/gemini-3.1-flash-tts";
 const ELEVENLABS_TEXT_TO_SPEECH_MODEL_ID = "elevenlabs/text-to-speech";
 const ELEVENLABS_TEXT_TO_DIALOGUE_MODEL_ID = "elevenlabs/text-to-dialogue";
@@ -1030,9 +1040,17 @@ function resolveArrayFieldRuntimeValue(
   rawValue: unknown,
   context: Record<string, unknown>
 ): unknown[] {
+  const syncWith = inferModelInputSyncTarget(field);
+  if (syncWith === "prompt" && field.promptSync?.strategy === "speaker_lines") {
+    const speakerLineItems = buildSpeakerLineArrayRuntimeValue(field, String(rawValue || ""), context);
+    if (speakerLineItems) {
+      return speakerLineItems;
+    }
+  }
+
   // Prompt-synced array fields should default to a single item (full prompt),
   // while user-entered array strings can still use newline splitting.
-  const splitLines = field.syncWith === "prompt" ? false : true;
+  const splitLines = syncWith === "prompt" ? false : true;
   const items = parseArrayFieldValue(rawValue, { splitLines });
   const template = field.itemTemplate;
   if (!template) {
@@ -1060,6 +1078,83 @@ function resolveArrayFieldRuntimeValue(
     }
 
     return resolvedTemplate;
+  });
+}
+
+function buildSpeakerLineArrayRuntimeValue(
+  field: Record<string, any>,
+  promptText: string,
+  context: Record<string, unknown>,
+): unknown[] | null {
+  const promptSync = field.promptSync && typeof field.promptSync === "object"
+    ? field.promptSync as Record<string, unknown>
+    : {};
+  const textKey = typeof promptSync.textKey === "string" && promptSync.textKey.trim()
+    ? promptSync.textKey.trim()
+    : "text";
+  const defaultVoiceField = typeof promptSync.defaultVoiceField === "string" && promptSync.defaultVoiceField.trim()
+    ? promptSync.defaultVoiceField.trim()
+    : "voice_id";
+  const rawSpeakerVoiceFields = promptSync.speakerVoiceFields && typeof promptSync.speakerVoiceFields === "object" && !Array.isArray(promptSync.speakerVoiceFields)
+    ? promptSync.speakerVoiceFields as Record<string, unknown>
+    : {};
+  const speakerVoiceFields = Object.fromEntries(
+    Object.entries(rawSpeakerVoiceFields)
+      .filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1].trim().length > 0)
+      .map(([speaker, voiceField]) => [speaker, voiceField.trim()]),
+  );
+  const speakerPattern = typeof promptSync.speakerPattern === "string" && promptSync.speakerPattern.trim()
+    ? promptSync.speakerPattern
+    : "^\\s*Speaker\\s*(\\d+)\\s*[:：-]\\s*(.*)$";
+
+  let speakerRegex: RegExp;
+  try {
+    speakerRegex = new RegExp(speakerPattern, "i");
+  } catch {
+    speakerRegex = /^\s*Speaker\s*(\d+)\s*[:：-]\s*(.*)$/i;
+  }
+
+  const segments: Array<{ speaker: string; text: string }> = [];
+  let currentSpeaker: string | null = null;
+  let currentLines: string[] = [];
+  const flush = () => {
+    const text = currentLines.join("\n").trim();
+    if (currentSpeaker && text) {
+      segments.push({ speaker: currentSpeaker, text });
+    }
+    currentLines = [];
+  };
+
+  for (const rawLine of promptText.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const match = line.match(speakerRegex);
+    if (match) {
+      flush();
+      currentSpeaker = String(match[1] || "1");
+      const firstLine = String(match[2] || "").trim();
+      currentLines = firstLine ? [firstLine] : [];
+      continue;
+    }
+    if (currentSpeaker) {
+      currentLines.push(line);
+    }
+  }
+  flush();
+
+  if (segments.length === 0) {
+    return null;
+  }
+
+  const fields = context.fields && typeof context.fields === "object"
+    ? context.fields as Record<string, unknown>
+    : {};
+  return segments.map((segment) => {
+    const voiceField = speakerVoiceFields[segment.speaker] || defaultVoiceField;
+    return {
+      [textKey]: segment.text,
+      voice_id: fields[voiceField] ?? fields[defaultVoiceField],
+    };
   });
 }
 
@@ -1105,6 +1200,9 @@ function buildRuntimeExtraParamsFromModelInputs(params: {
     const rawValue = params.inputValues[field.key] ?? field.default;
     const value = resolveFieldValue(rawValue);
     if (field.key === "language_code" && String(value) === "__auto__") {
+      continue;
+    }
+    if (field.includeInPayload === false) {
       continue;
     }
     if (
@@ -1676,6 +1774,22 @@ function normalizeModelFieldOptions(raw: unknown): SearchableFieldOption[] {
   return options;
 }
 
+function getStoredOptionLabelKey(fieldKey: string): string {
+  return `${fieldKey}__label`;
+}
+
+function readStoredOptionLabel(
+  values: Record<string, unknown>,
+  fieldKey: string,
+  currentValue: string,
+): string {
+  if (!currentValue) {
+    return "";
+  }
+  const label = values[getStoredOptionLabelKey(fieldKey)];
+  return typeof label === "string" ? label.trim() : "";
+}
+
 function hasProviderApiOptionsSource(field: Record<string, any> | null | undefined): boolean {
   if (!field || typeof field !== "object") return false;
   const source = field.optionsSource;
@@ -1692,11 +1806,20 @@ function isSearchableModelField(field: Record<string, any> | null | undefined): 
 
 function isVoiceSelectionField(field: Record<string, any> | null | undefined): boolean {
   if (!field || typeof field !== "object") return false;
+  const source = field.optionsSource;
+  if (source && typeof source === "object") {
+    const sourceRecord = source as Record<string, unknown>;
+    const valueField = String(sourceRecord.valueField ?? "").trim().toLowerCase();
+    const previewField = String(sourceRecord.previewField ?? "").trim().toLowerCase();
+    if (valueField === "voice_id" || previewField === "preview_url") {
+      return true;
+    }
+  }
   const normalizedKey = String(field.key ?? "")
     .trim()
     .toLowerCase()
     .replace(/[_\-\s]/g, "");
-  return normalizedKey === "voice" || normalizedKey === "voiceid";
+  return normalizedKey === "voice" || normalizedKey === "voiceid" || /^voiceid\d+$/.test(normalizedKey);
 }
 
 function isUvoiceVoiceSelectionField(
@@ -1704,6 +1827,102 @@ function isUvoiceVoiceSelectionField(
   field: Record<string, any> | null | undefined,
 ): boolean {
   return String(providerName ?? "").trim().toLowerCase() === "uvoice" && isVoiceSelectionField(field);
+}
+
+function getModelInputPreferenceStorageKey(mediaType: MediaType, modelId: string): string {
+  return `${MODEL_INPUT_PREF_STORAGE_PREFIX}:${mediaType}:${encodeURIComponent(modelId)}`;
+}
+
+function isPersistableModelInputField(field: Record<string, any> | null | undefined): boolean {
+  if (!field || typeof field !== "object") return false;
+  const key = String(field.key ?? "").trim();
+  if (!key || inferModelInputSyncTarget(field)) return false;
+  if (isVoiceSelectionField(field)) return true;
+  const type = String(field.type ?? "").trim().toLowerCase();
+  return type === "select" || type === "boolean" || type === "checkbox" || type === "number";
+}
+
+function sanitizePersistedModelInputValue(
+  field: Record<string, any>,
+  value: unknown,
+): unknown {
+  if (isVoiceSelectionField(field) && value === DEPRECATED_ELEVENLABS_DEFAULT_VOICE_ID) {
+    return undefined;
+  }
+  if (Array.isArray(value) || (value && typeof value === "object")) {
+    return undefined;
+  }
+  return value;
+}
+
+function readPersistedModelInputPreferences(
+  mediaType: MediaType,
+  modelId: string,
+  fields: Record<string, any>[],
+): Record<string, any> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(getModelInputPreferenceStorageKey(mediaType, modelId));
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+
+    const fieldMap = new Map(fields.map((field) => [String(field.key ?? ""), field]));
+    const values: Record<string, any> = {};
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      const sourceKey = key.endsWith("__label") ? key.slice(0, -"__label".length) : key;
+      const field = fieldMap.get(sourceKey);
+      if (!field || !isPersistableModelInputField(field)) continue;
+      if (key.endsWith("__label")) {
+        if (typeof value === "string" && value.trim()) values[key] = value.trim();
+        continue;
+      }
+      const sanitizedValue = sanitizePersistedModelInputValue(field, value);
+      if (sanitizedValue !== undefined) values[key] = sanitizedValue;
+    }
+    return values;
+  } catch {
+    return {};
+  }
+}
+
+function pickPersistableModelInputPreferences(
+  fields: Record<string, any>[],
+  values: Record<string, any>,
+): Record<string, any> {
+  const preferences: Record<string, any> = {};
+  for (const field of fields) {
+    if (!isPersistableModelInputField(field)) continue;
+    const key = String(field.key ?? "").trim();
+    const sanitizedValue = sanitizePersistedModelInputValue(field, values[key]);
+    if (sanitizedValue === undefined || sanitizedValue === "") continue;
+    if (
+      field.default !== undefined &&
+      field.default !== null &&
+      String(sanitizedValue) === String(field.default)
+    ) {
+      continue;
+    }
+    preferences[key] = sanitizedValue;
+
+    const labelKey = getStoredOptionLabelKey(key);
+    const label = values[labelKey];
+    if (typeof label === "string" && label.trim()) {
+      preferences[labelKey] = label.trim();
+    }
+  }
+  return preferences;
+}
+
+function hasAnyPersistableModelInputValue(
+  fields: Record<string, any>[],
+  values: Record<string, any>,
+): boolean {
+  return fields.some((field) => {
+    if (!isPersistableModelInputField(field)) return false;
+    const key = String(field.key ?? "").trim();
+    return key ? Object.prototype.hasOwnProperty.call(values, key) : false;
+  });
 }
 
 function getDuplicateGeminiSpeakerIds(extraParams: Record<string, unknown> | undefined): string[] {
@@ -1815,6 +2034,24 @@ function getVeo31InputValidationErrors(params: {
   }
 
   return errors;
+}
+
+function modelSupportsFirstLastFrameGeneration(model: unknown): boolean {
+  const field = getModelInputField(model as any, "generationType");
+  return Boolean(field?.options?.some((option) => String(option.value) === "FIRST_AND_LAST_FRAMES_2_VIDEO"));
+}
+
+function pickDefaultSplitStoryboardVideoModelId(models: any[]): string {
+  const exactVeo31 = models.find((model) => String(model.modelId ?? model.id ?? "") === "veo-3-1");
+  if (exactVeo31?.modelId || exactVeo31?.id) return String(exactVeo31.modelId ?? exactVeo31.id);
+
+  const firstLastModel = models.find(modelSupportsFirstLastFrameGeneration);
+  if (firstLastModel?.modelId || firstLastModel?.id) return String(firstLastModel.modelId ?? firstLastModel.id);
+
+  const veoModel = models.find((model) => isVeoProviderModelId(getVeoProviderModelId(model)));
+  if (veoModel?.modelId || veoModel?.id) return String(veoModel.modelId ?? veoModel.id);
+
+  return String(models[0]?.modelId ?? models[0]?.id ?? "");
 }
 
 const VEO_REFERENCE_IMAGE_ROLE_INSTRUCTION = [
@@ -2793,6 +3030,11 @@ export default function MediaStudio() {
       return next;
     });
   }, []);
+  const visibleGeneratedMedia = useMemo(
+    () => generatedMedia.filter((media) => !expiredUrls.has(media.url)),
+    [expiredUrls, generatedMedia],
+  );
+  const generatedMediaUsesListLayout = visibleGeneratedMedia.some((media) => media.type === "audio");
   const [taskLibraryState, setTaskLibraryState] = useState<Record<string, TaskLibraryUIState>>({});
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
   const [debouncedLibrarySearchQuery, setDebouncedLibrarySearchQuery] = useState("");
@@ -2886,6 +3128,10 @@ export default function MediaStudio() {
   const [splitPreviewUrl, setSplitPreviewUrl] = useState<string | null>(null);
   const [splitResults, setSplitResults] = useState<SplitResult[]>([]);
   const [isSplitting, setIsSplitting] = useState(false);
+  const [splitStoryboardVideoModelId, setSplitStoryboardVideoModelId] = useState("");
+  const [isCreatingSplitStoryboardReview, setIsCreatingSplitStoryboardReview] = useState(false);
+  const [splitFrameAutoCropEnabled, setSplitFrameAutoCropEnabled] = useState(true);
+  const [splitFrameCropAspectRatio, setSplitFrameCropAspectRatio] = useState<"9:16" | "16:9">("9:16");
   const [imageEditorMode, setImageEditorMode] = useState<"split" | "crop">("split");
   const [cropAspectRatio, setCropAspectRatio] = useState("1:1");
   const [cropResult, setCropResult] = useState<CropResult | null>(null);
@@ -2968,6 +3214,7 @@ export default function MediaStudio() {
     }));
   }, [userVisibleSkillsRaw]);
   const { data: mediaModels } = trpc.mediaModels.list.useQuery({ type: activeTab });
+  const { data: videoMediaModels } = trpc.mediaModels.list.useQuery({ type: "video" });
   const { data: audioMediaModels } = trpc.mediaModels.list.useQuery({ type: "audio" });
   const visibleMediaModels = useMemo(() => {
     const models = (mediaModels?.models as any[] | undefined) ?? [];
@@ -2990,6 +3237,17 @@ export default function MediaStudio() {
       ? models
       : models.filter((model) => model.provider !== "omnivoice");
   }, [audioMediaModels?.models, isDesktopPlatform]);
+  const splitStoryboardVideoModels = useMemo(() => {
+    const models = (videoMediaModels?.models as any[] | undefined) ?? [];
+    const visibleModels = isDesktopPlatform
+      ? models
+      : models.filter((model) => model.provider !== "omnivoice");
+    return visibleModels.filter((model) => String(model.modelId ?? model.id ?? "").trim().length > 0);
+  }, [isDesktopPlatform, videoMediaModels?.models]);
+  const defaultSplitStoryboardVideoModelId = useMemo(
+    () => pickDefaultSplitStoryboardVideoModelId(splitStoryboardVideoModels),
+    [splitStoryboardVideoModels],
+  );
   const separateVoiceModels = useMemo(
     () => visibleAudioMediaModels.filter((model) => hasAnyModelIdCandidate(model, SEPARATE_VOICE_MODEL_IDS)),
     [visibleAudioMediaModels],
@@ -3727,6 +3985,24 @@ export default function MediaStudio() {
     }),
     [selectedLlmModel, skillConfig?.defaultModel, supportedVisionModels, t],
   );
+  const dynamicFormReferenceImageUrls = useMemo(
+    () => extractMediaStudioDynamicImageUrls(useAdvancedMode ? dynamicFormValues : null),
+    [dynamicFormValues, useAdvancedMode],
+  );
+  const autoPromptReferenceImageUrls = useMemo(() => {
+    const seen = new Set<string>();
+    return [
+      ...referenceImages.map((image) => image.url),
+      ...dynamicFormReferenceImageUrls,
+    ].filter((url) => {
+      const normalized = String(url || "").trim();
+      if (!normalized || seen.has(normalized)) {
+        return false;
+      }
+      seen.add(normalized);
+      return true;
+    });
+  }, [dynamicFormReferenceImageUrls, referenceImages]);
 
   // Mutations
   const uploadMutation = trpc.ai.upload.useMutation();
@@ -3808,8 +4084,12 @@ export default function MediaStudio() {
       return;
     }
 
-    const draft = buildStoryboardReviewDraft();
-    if (!draft) return;
+    const builtDraft = buildStoryboardReviewDraft();
+    if (!builtDraft) return;
+    const localDraft = readStoryboardReviewDraft();
+    const draft = localDraft?.reviewId === builtDraft.reviewId
+      ? mergeFresherStoryboardReviewTasks(localDraft as any, builtDraft as any) as StoryboardReviewDraft
+      : builtDraft;
 
     writeStoryboardReviewDraft(draft);
 
@@ -4003,6 +4283,13 @@ export default function MediaStudio() {
     }
   }, [isDesktopPlatform, selectedMediaModel?.provider, selectedModel, visibleMediaModels]);
 
+  useEffect(() => {
+    if (splitStoryboardVideoModels.length === 0) return;
+    const selectedExists = splitStoryboardVideoModels.some((model) => (model.modelId ?? model.id) === splitStoryboardVideoModelId);
+    if (selectedExists) return;
+    setSplitStoryboardVideoModelId(defaultSplitStoryboardVideoModelId);
+  }, [defaultSplitStoryboardVideoModelId, splitStoryboardVideoModelId, splitStoryboardVideoModels]);
+
   // Reset dynamic model input values when model changes, populate with defaults + current synced values
   useEffect(() => {
     if (!selectedModel || visibleMediaModels.length === 0) {
@@ -4016,10 +4303,16 @@ export default function MediaStudio() {
       return;
     }
     const defaults: Record<string, any> = {};
-    for (const field of (config.inputFields as any[])) {
+    const inputFields = config.inputFields as any[];
+    for (const field of inputFields) {
       // Seed from static default first
       if (field.default !== undefined) {
         defaults[field.key] = field.default;
+        const defaultOption = normalizeModelFieldOptions(field.options)
+          .find((option) => option.value === String(field.default));
+        if (defaultOption?.label) {
+          defaults[getStoredOptionLabelKey(field.key)] = defaultOption.label;
+        }
       }
       // Synced fields get their initial value from the current runtime state.
       const syncWith = inferModelInputSyncTarget(field);
@@ -4033,7 +4326,8 @@ export default function MediaStudio() {
         defaults[field.key] = aspectRatio;
       }
     }
-    setModelInputValues(defaults);
+    const persistedPreferences = readPersistedModelInputPreferences(activeTab, selectedModel, inputFields);
+    setModelInputValues({ ...defaults, ...persistedPreferences });
 
     // Reset aspect ratio if current value is not supported by the new model
     const arField = config.inputFields.find((f: any) => f.key === "aspect_ratio");
@@ -4074,6 +4368,24 @@ export default function MediaStudio() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prompt, referenceImages, referenceVideos, aspectRatio, selectedModel, visibleMediaModels, selectedMediaModelForInputFields]);
+
+  useEffect(() => {
+    if (!selectedModel || visibleMediaModels.length === 0) return;
+    const model = selectedMediaModelForInputFields ?? visibleMediaModels.find((m) => m.modelId === selectedModel);
+    const config = model?.configJson as any;
+    const inputFields = Array.isArray(config?.inputFields) ? config.inputFields as any[] : [];
+    if (inputFields.length === 0) return;
+
+    const preferences = pickPersistableModelInputPreferences(inputFields, modelInputValues);
+    const storageKey = getModelInputPreferenceStorageKey(activeTab, selectedModel);
+    if (Object.keys(preferences).length === 0) {
+      if (hasAnyPersistableModelInputValue(inputFields, modelInputValues)) {
+        localStorage.removeItem(storageKey);
+      }
+      return;
+    }
+    localStorage.setItem(storageKey, JSON.stringify(preferences));
+  }, [activeTab, modelInputValues, selectedMediaModelForInputFields, selectedModel, visibleMediaModels]);
 
   // Keep Veo 3.1 storyboard skill options and Media Studio's model controls aligned.
   // This bridge is deliberately scoped to the video storyboard skill and Veo models so other models keep their own controls.
@@ -5217,7 +5529,6 @@ export default function MediaStudio() {
       skillSchema: useAdvancedMode ? skillSchema : undefined,
     });
 
-    if (!userIdea && referenceImages.length === 0) return;
     if (!currentSkill) {
       toast.error(t('mediaStudio.noCompatiblePromptSkillSelected'), {
         description: `Choose a prompt skill for the ${activeTab} tab before using Auto Prompt.`,
@@ -5277,6 +5588,10 @@ export default function MediaStudio() {
           });
         }
         applyMediaStudioAspectRatioPromptParams(mappedValues, aspectRatio);
+        const browserLocale = typeof navigator !== "undefined" ? navigator.language : "";
+        mappedValues.ui_locale = locale;
+        mappedValues.browser_locale = browserLocale || locale;
+        mappedValues.app_language = locale.startsWith("th") ? "Thai" : "English";
 
         // Flexible prompt field handling - accepts multiple similar field names
         // Always combines Basic Mode prompt with Advanced Mode field value
@@ -5433,7 +5748,7 @@ export default function MediaStudio() {
           skillId: selectedSkillId,
           userInputs: sanitizedInputs,
           ...(selectedLlmModelSelection.resolvedModelId ? { model: selectedLlmModelSelection.resolvedModelId } : {}),
-          referenceImages: referenceImages.map((r: any) => r.url),
+          referenceImages: autoPromptReferenceImageUrls,
           originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
         });
 
@@ -5546,7 +5861,7 @@ export default function MediaStudio() {
           requestData = {
             skillId: selectedSkillId,
             userInput: userIdea || "Create a prompt based on the reference images",
-            referenceImages: referenceImages.map((r: any) => r.url),
+            referenceImages: autoPromptReferenceImageUrls,
             originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
             // Include selected LLM model for Auto Prompt (from Advanced Mode selector)
             ...(selectedLlmModelSelection.resolvedModelId ? { model: selectedLlmModelSelection.resolvedModelId } : {}),
@@ -5570,7 +5885,7 @@ export default function MediaStudio() {
           requestData = {
             skillId: selectedSkillId,
             userInput: userIdea || "Create a prompt based on the reference images",
-            referenceImages: referenceImages.map((r: any) => r.url),
+            referenceImages: autoPromptReferenceImageUrls,
             originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
             // Include selected LLM model for Auto Prompt (from Advanced Mode selector)
             ...(selectedLlmModelSelection.resolvedModelId ? { model: selectedLlmModelSelection.resolvedModelId } : {}),
@@ -5659,7 +5974,7 @@ export default function MediaStudio() {
     dynamicFormValues: useAdvancedMode ? dynamicFormValues : undefined,
     skillSchema: useAdvancedMode ? skillSchema : undefined,
   }), [dynamicFormValues, prompt, skillSchema, useAdvancedMode]);
-  const canRunAutoPrompt = Boolean(autoPromptIdea.trim()) || referenceImages.length > 0;
+  const canRunAutoPrompt = Boolean(currentSkill);
 
   // Generate media with loop for multiple images
   const handleGenerate = async () => {
@@ -5919,6 +6234,7 @@ export default function MediaStudio() {
         // Unsynchronised field: use user-entered value, skip standard-param duplicates
         if (field.key === "aspect_ratio" || field.key === "aspect.ratio") continue;
         if (field.key === "duration" && activeTab === "video") continue;
+        if (field.includeInPayload === false) continue;
 
         const rawVal = modelInputValues[field.key];
         const val = resolveFieldValue(field, rawVal);
@@ -6848,12 +7164,26 @@ export default function MediaStudio() {
         if (!isActiveGenerationQueueStatus(status)) {
           continue;
         }
-        rememberIds(
-          getGenerationQueueIdentityCandidates({
-            id: rawTask.id,
-            taskId: rawTask.taskId,
-          }),
-        );
+        if (
+          shouldIncludeHistoryTaskInGenerationQueue(
+            status,
+            {
+              id: rawTask.id,
+              taskId: rawTask.taskId,
+              createdAt: rawTask.createdAt,
+              startedAt: rawTask.startedAt,
+              updatedAt: rawTask.updatedAt,
+            },
+            next,
+          )
+        ) {
+          rememberIds(
+            getGenerationQueueIdentityCandidates({
+              id: rawTask.id,
+              taskId: rawTask.taskId,
+            }),
+          );
+        }
       }
 
       return changed ? next : prev;
@@ -6863,6 +7193,7 @@ export default function MediaStudio() {
   const generationQueueTasks = useMemo<QueueGenerationTask[]>(() => {
     const queueCandidates: QueueGenerationTask[] = [];
     const trackedTaskIds = new Set(trackedGenerationQueueTaskIds);
+    const storyboardReviewTaskIdSet = new Set(storyboardReviewTaskIds);
 
     for (const task of generationTasks) {
       for (const candidate of getGenerationQueueIdentityCandidates(task)) {
@@ -6871,6 +7202,10 @@ export default function MediaStudio() {
     }
 
     for (const task of generationTasks) {
+      if (isStoryboardReviewOnlyQueuedTask(task, storyboardReviewTaskIdSet)) {
+        continue;
+      }
+
       const normalizedStatus = task.status === "generating"
         ? "processing"
         : task.status === "queued"
@@ -6907,6 +7242,9 @@ export default function MediaStudio() {
           {
             id: task.id,
             taskId: task.taskId,
+            createdAt: task.createdAt,
+            startedAt: task.startedAt,
+            updatedAt: task.updatedAt,
           },
           trackedTaskIds,
         )
@@ -6946,7 +7284,7 @@ export default function MediaStudio() {
       const bTime = b.updatedAt instanceof Date ? b.updatedAt.getTime() : Date.parse(String(b.updatedAt)) || 0;
       return bTime - aTime;
     });
-  }, [activeTab, extractTaskResultUrl, generationTasks, mediaHistory?.tasks, t, trackedGenerationQueueTaskIds]);
+  }, [activeTab, extractTaskResultUrl, generationTasks, mediaHistory?.tasks, storyboardReviewTaskIds, t, trackedGenerationQueueTaskIds]);
 
   const visibleGenerationQueueTasks = useMemo(
     () => generationQueueTasks.filter((task) => !isGenerationQueueTaskDismissed(task, dismissedGenerationQueueTaskIds)),
@@ -7258,6 +7596,7 @@ export default function MediaStudio() {
 
         if (field.key === "aspect_ratio" || field.key === "aspect.ratio") continue;
         if (field.key === "duration" && targetTab === "video") continue;
+        if (field.includeInPayload === false) continue;
 
         const rawVal = tabState.modelInputValues[field.key];
         const val = resolveFieldValue(field, rawVal);
@@ -8357,7 +8696,18 @@ export default function MediaStudio() {
 
     try {
       const parsed = new URL(imageUrl, window.location.origin);
+      const shouldProxySameOriginStorage = (
+        parsed.origin === window.location.origin
+        && parsed.pathname.startsWith("/api/storage/files/")
+        && parsed.protocol === "https:"
+      );
+      if (shouldProxySameOriginStorage) {
+        return `/api/media/image-proxy?url=${encodeURIComponent(parsed.toString())}`;
+      }
       if (parsed.origin === window.location.origin) {
+        return parsed.toString();
+      }
+      if (parsed.protocol !== "https:") {
         return parsed.toString();
       }
       return `/api/media/image-proxy?url=${encodeURIComponent(parsed.toString())}`;
@@ -8369,10 +8719,13 @@ export default function MediaStudio() {
   // Open image tools dialog with auto-detection
   const openSplitDialog = async (imageUrl: string, mode: "split" | "crop" = "split") => {
     const sourceUrl = toCanvasSafeImageUrl(imageUrl);
+    const defaultFrameCropRatio = tabStates.video.aspectRatio === "16:9" ? "16:9" : "9:16";
     setSplitImageUrl(sourceUrl);
     setSplitResults([]);
     setSplitPreviewUrl(null);
     setImageEditorMode(mode);
+    setSplitFrameAutoCropEnabled(true);
+    setSplitFrameCropAspectRatio(defaultFrameCropRatio);
     setCropAspectRatio("1:1");
     setCropResult(null);
     setCropFocus({ x: 0.5, y: 0.5 });
@@ -8547,9 +8900,22 @@ export default function MediaStudio() {
     if (!splitImageUrl) return;
     setIsSplitting(true);
     try {
-      const results = await splitImage(splitImageUrl, splitGridRows, splitGridCols);
+      const results = await splitImage(
+        splitImageUrl,
+        splitGridRows,
+        splitGridCols,
+        "image/jpeg",
+        0.92,
+        splitFrameAutoCropEnabled
+          ? { targetAspectRatio: splitFrameCropAspectRatio }
+          : {}
+      );
       setSplitResults(results);
-      toast.success(t('mediaStudio.splitIntoImages', { count: results.length }));
+      toast.success(
+        splitFrameAutoCropEnabled
+          ? t('mediaStudio.splitIntoImagesWithCrop', { count: results.length, ratio: splitFrameCropAspectRatio })
+          : t('mediaStudio.splitIntoImages', { count: results.length })
+      );
     } catch (error) {
       console.error("Split failed:", error);
       toast.error(t('mediaStudio.failedToSplitImage'));
@@ -8688,6 +9054,104 @@ export default function MediaStudio() {
     } catch (error) {
       console.error("Failed to upload split images:", error);
       toast.error(t('mediaStudio.failedToAddImagesToVideoReference'));
+    }
+  };
+
+  const createStoryboardReviewFromSplits = async () => {
+    if (splitResults.length < 2) {
+      toast.error(t('mediaStudio.splitStoryboardNeedsTwoFrames'));
+      return;
+    }
+
+    const modelId = splitStoryboardVideoModelId || defaultSplitStoryboardVideoModelId;
+    const selectedVideoModel = splitStoryboardVideoModels.find((model) => (model.modelId ?? model.id) === modelId);
+    if (!modelId || !selectedVideoModel) {
+      toast.error(t('mediaStudio.splitStoryboardSelectModel'));
+      return;
+    }
+
+    setIsCreatingSplitStoryboardReview(true);
+    toast.info(t('mediaStudio.splitStoryboardUploading', { count: splitResults.length }));
+
+    try {
+      const uploadedImages: ReferenceImage[] = [];
+      for (const result of [...splitResults].sort((a, b) => a.index - b.index)) {
+        const uploadResult = await uploadMutation.mutateAsync({
+          fileName: `storyboard-frame-${result.index + 1}.jpg`,
+          fileType: "image/jpeg",
+          fileBase64: result.dataUrl,
+        });
+        uploadedImages.push({ url: uploadResult.url, name: `Frame ${result.index + 1}` });
+      }
+
+      const normalizedModel = {
+        ...selectedVideoModel,
+        id: selectedVideoModel.id ?? selectedVideoModel.modelId,
+        configJson: parseMediaModelConfig(selectedVideoModel.configJson) ?? selectedVideoModel.configJson,
+      };
+      const modelConfig = parseMediaModelConfig(normalizedModel.configJson);
+      const defaultExtraParams = buildDefaultExtraParamsForModel(normalizedModel as any) ?? {};
+      const extraParams: Record<string, any> = {
+        ...defaultExtraParams,
+        generationType: "FIRST_AND_LAST_FRAMES_2_VIDEO",
+      };
+      const durationSeconds = resolveStoryboardClipDurationSeconds({
+        model: normalizedModel,
+        selectedDurationSeconds: undefined,
+        fallbackSeconds: tabStates.video.duration,
+      });
+      const tasks = buildFirstLastFrameStoryboardTasks(uploadedImages, {
+        model: modelId,
+        aspectRatio: splitFrameAutoCropEnabled ? splitFrameCropAspectRatio : (tabStates.video.aspectRatio || "auto"),
+        duration: durationSeconds,
+        extraParams,
+        apiConfig: buildApiConfigFromModelConfig(modelConfig),
+        resolution: typeof extraParams.resolution === "string" ? extraParams.resolution : undefined,
+        statusDetail: t('mediaStudio.splitStoryboardQueuedStatus'),
+      }) as GenerationTask[];
+
+      if (tasks.length === 0) {
+        toast.error(t('mediaStudio.splitStoryboardCreateFailed'));
+        return;
+      }
+
+      const draft: StoryboardReviewDraft = {
+        version: 1,
+        reviewId: null,
+        updatedAt: Date.now(),
+        taskIds: tasks.map((task) => task.id),
+        selectedTaskIds: tasks.map((task) => task.id),
+        tasks,
+        companionAudio: [],
+        compoundStatus: t('mediaStudio.splitStoryboardReadyForReview', { count: tasks.length }),
+        projectLink: null,
+        renderJobId: null,
+      };
+      const savedReview = await saveStoryboardReviewMutation.mutateAsync({
+        name: getStoryboardReviewName(draft),
+        reviewData: draft,
+        clipCount: tasks.length,
+        completedClipCount: 0,
+        thumbnailUrl: uploadedImages[0]?.url ?? null,
+      });
+      const savedDraft = { ...draft, reviewId: savedReview.id, updatedAt: Date.now() };
+      writeStoryboardReviewDraft(savedDraft);
+      setStoryboardReviewId(savedReview.id);
+      setStoryboardReviewTaskIds(savedDraft.taskIds);
+      setSelectedStoryboardTaskIds(new Set(savedDraft.selectedTaskIds));
+      setStoryboardCompanionAudio([]);
+      setStoryboardCompoundStatus(savedDraft.compoundStatus);
+      setStoryboardProjectLink(null);
+      setStoryboardRenderJobId(null);
+      void refetchStoryboardReviewProjects();
+      setShowSplitDialog(false);
+      toast.success(t('mediaStudio.splitStoryboardCreated', { count: tasks.length }));
+      setLocation(`/storyboard-review/${savedReview.id}`);
+    } catch (error) {
+      console.error("Failed to create storyboard review from split images:", error);
+      toast.error(error instanceof Error ? error.message : t('mediaStudio.splitStoryboardCreateFailed'));
+    } finally {
+      setIsCreatingSplitStoryboardReview(false);
     }
   };
 
@@ -8980,124 +9444,6 @@ export default function MediaStudio() {
                   <Badge variant="outline">{getModelCost()} credits</Badge>
                 )}
               />
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant={isPttRecording ? "destructive" : "outline"}
-                          size="sm"
-                          className="w-full sm:w-auto"
-                          onPointerDown={pttStart}
-                          onPointerUp={pttStop}
-                          onPointerLeave={isPttRecording ? pttStop : undefined}
-                          disabled={isPttTranscribing}
-                        >
-                          {isPttTranscribing ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Mic className={cn("h-4 w-4", isPttRecording && "animate-pulse")} />
-                          )}
-                          <span className="ml-1">{isPttRecording ? t('mediaStudio.recording') : t('mediaStudio.mic')}</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{t('mediaStudio.recordHint')}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full sm:w-auto"
-                          onClick={() => {
-                            const text = enhancedPrompt || prompt;
-                            if (!text.trim()) return;
-                            setIsTranslating(true);
-                            setShowTranslation(false);
-                            translateMutation.mutate({ text });
-                          }}
-                          disabled={!(enhancedPrompt || prompt).trim() || isTranslating}
-                        >
-                          {isTranslating ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Languages className="h-4 w-4" />
-                          )}
-                          <span className="ml-1">{t('mediaStudio.translate')}</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{t('mediaStudio.translateHint')}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full sm:w-auto"
-                          onClick={handleAutoPrompt}
-                          disabled={!canRunAutoPrompt || isEnhancing}
-                        >
-                          {isEnhancing ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Wand2 className="h-4 w-4" />
-                          )}
-                          <span className="ml-1">{t('mediaStudio.autoPrompt')}</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{t('mediaStudio.autoPromptHint')}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Works with text, images, or both
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  {/* Clear Prompt Button */}
-                  {(prompt.trim() || enhancedPrompt) && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full text-muted-foreground hover:text-destructive sm:w-auto"
-                            onClick={() => {
-                              setPrompt("");
-                              setEnhancedPrompt("");
-                              setExternalAudioPromptSource("");
-                              setExternalVoiceoverScript("");
-                              setExternalSoundBedBrief("");
-                              setExternalVoiceoverScriptEdited(false);
-                              setExternalSoundBedBriefEdited(false);
-                              setPromptReview(null);
-                              clearPromptSupportNotes();
-                              setImageTabPrompt(null);
-                              setVideoTabPrompt(null);
-                            }}
-                          >
-                            <X className="h-4 w-4" />
-                            <span className="ml-1">{t('common.clear')}</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{t('mediaStudio.clearHint')}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                </div>
-                </div>
-
               {isVoiceChangerMode && (
                 <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -9180,41 +9526,156 @@ export default function MediaStudio() {
                 </div>
               )}
 
-              <div className="space-y-2">
-                <div className="flex justify-end">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start">
+                <div className="order-2 space-y-2 lg:order-1">
+                  <Textarea
+                    ref={promptTextareaRef}
+                    value={enhancedPrompt || prompt}
+                    onChange={(e) => {
+                      if (enhancedPrompt) {
+                        setEnhancedPrompt(e.target.value);
+                      } else {
+                        setPrompt(e.target.value);
+                      }
+                      setPromptReview(null);
+                    }}
+                    placeholder={
+                      isVoiceChangerMode
+                        ? "Optional notes for this conversion..."
+                        : isTextToSpeechMode
+                        ? t('mediaStudio.ttsText.placeholder')
+                        : `Describe the ${activeTab} you want to create...`
+                    }
+                    className={cn("resize-y", isVoiceChangerMode ? "min-h-[84px]" : "min-h-[120px] lg:min-h-[148px]")}
+                  />
+                </div>
+                <div className="order-1 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:order-2 lg:grid-cols-1">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={isPttRecording ? "destructive" : "outline"}
+                          size="sm"
+                          className="h-10 w-full justify-start lg:h-11"
+                          onPointerDown={pttStart}
+                          onPointerUp={pttStop}
+                          onPointerLeave={isPttRecording ? pttStop : undefined}
+                          disabled={isPttTranscribing}
+                        >
+                          {isPttTranscribing ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Mic className={cn("h-4 w-4", isPttRecording && "animate-pulse")} />
+                          )}
+                          <span className="ml-2 truncate">{isPttRecording ? t('mediaStudio.recording') : t('mediaStudio.mic')}</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{t('mediaStudio.recordHint')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-10 w-full justify-start lg:h-11"
+                          onClick={() => {
+                            const text = enhancedPrompt || prompt;
+                            if (!text.trim()) return;
+                            setIsTranslating(true);
+                            setShowTranslation(false);
+                            translateMutation.mutate({ text });
+                          }}
+                          disabled={!(enhancedPrompt || prompt).trim() || isTranslating}
+                        >
+                          {isTranslating ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Languages className="h-4 w-4" />
+                          )}
+                          <span className="ml-2 truncate">{t('mediaStudio.translate')}</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{t('mediaStudio.translateHint')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-10 w-full justify-start border-sky-200 bg-sky-50/70 text-sky-800 hover:bg-sky-100 lg:h-11"
+                          onClick={handleAutoPrompt}
+                          disabled={!canRunAutoPrompt || isEnhancing}
+                        >
+                          {isEnhancing ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Wand2 className="h-4 w-4" />
+                          )}
+                          <span className="ml-2 truncate">{t('mediaStudio.autoPrompt')}</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{t('mediaStudio.autoPromptHint')}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Works with skill fields, text, images, or any combination
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="h-10 w-full justify-start lg:h-11"
                     onClick={() => copyComposerText(
                       promptTextareaRef.current?.value || enhancedPrompt || prompt,
                       t('mediaStudio.copyPromptSuccess'),
                     )}
                   >
-                    <Copy className="mr-1 h-4 w-4" />
-                    {t('mediaStudio.copyPrompt')}
+                    <Copy className="h-4 w-4" />
+                    <span className="ml-2 truncate">{t('mediaStudio.copyPrompt')}</span>
                   </Button>
+                  {(prompt.trim() || enhancedPrompt) && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="col-span-2 h-10 w-full justify-start text-muted-foreground hover:text-destructive sm:col-span-4 lg:col-span-1 lg:h-11"
+                            onClick={() => {
+                              setPrompt("");
+                              setEnhancedPrompt("");
+                              setExternalAudioPromptSource("");
+                              setExternalVoiceoverScript("");
+                              setExternalSoundBedBrief("");
+                              setExternalVoiceoverScriptEdited(false);
+                              setExternalSoundBedBriefEdited(false);
+                              setPromptReview(null);
+                              clearPromptSupportNotes();
+                              setImageTabPrompt(null);
+                              setVideoTabPrompt(null);
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                            <span className="ml-2 truncate">{t('common.clear')}</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t('mediaStudio.clearHint')}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                 </div>
-                <Textarea
-                  ref={promptTextareaRef}
-                  value={enhancedPrompt || prompt}
-                  onChange={(e) => {
-                    if (enhancedPrompt) {
-                      setEnhancedPrompt(e.target.value);
-                    } else {
-                      setPrompt(e.target.value);
-                    }
-                    setPromptReview(null);
-                  }}
-                  placeholder={
-                    isVoiceChangerMode
-                      ? "Optional notes for this conversion..."
-                      : isTextToSpeechMode
-                      ? t('mediaStudio.ttsText.placeholder')
-                      : `Describe the ${activeTab} you want to create...`
-                  }
-                  className={cn("resize-y", isVoiceChangerMode ? "min-h-[84px]" : "min-h-[120px]")}
-                />
               </div>
 
               {isTextToSpeechMode && !isGeminiFlashTtsAudioModel && (
@@ -10201,12 +10662,15 @@ export default function MediaStudio() {
                                 const isUvoiceVoiceField = isUvoiceVoiceSelectionField(selectedMediaModel?.provider, field);
                                 const cachedFieldOptions = fieldOptionsCache[field.key] ?? [];
                                 const fieldOptions = isOpen
-                                  ? activeDynamicFieldOptions
+                                  ? (activeDynamicFieldOptions.length > 0 ? activeDynamicFieldOptions : cachedFieldOptions)
                                   : isUvoiceVoiceField
                                     ? cachedFieldOptions
-                                    : normalizeModelFieldOptions(field.options);
+                                    : (cachedFieldOptions.length > 0 ? cachedFieldOptions : normalizeModelFieldOptions(field.options));
                                 const currentValue = String(modelInputValues[field.key] ?? field.default ?? "");
-                                const selectedOption = fieldOptions.find((opt) => opt.value === currentValue);
+                                const storedSelectedLabel = readStoredOptionLabel(modelInputValues, field.key, currentValue);
+                                const selectedOption = fieldOptions.find((opt) => opt.value === currentValue)
+                                  ?? normalizeModelFieldOptions(field.options).find((opt) => opt.value === currentValue);
+                                const selectedLabel = selectedOption?.label ?? storedSelectedLabel;
                                 const isLoadingOptions = isOpen && shouldLoadDynamicFieldOptions && isDynamicFieldOptionsLoading;
                                 const supportsRefresh = hasProviderApiOptionsSource(field);
                                 const supportsManualInput = field.type !== "select";
@@ -10233,10 +10697,10 @@ export default function MediaStudio() {
                                       className="h-10 w-full justify-between"
                                     >
                                       <span className="truncate text-left">
-                                        {selectedOption
+                                        {selectedLabel
                                           ? isUvoiceVoiceField
-                                            ? selectedOption.label
-                                            : `${selectedOption.label} (${selectedOption.value})`
+                                            ? selectedLabel
+                                            : `${selectedLabel} (${currentValue})`
                                           : currentValue
                                             ? currentValue
                                             : isLoadingOptions
@@ -10259,7 +10723,11 @@ export default function MediaStudio() {
                                               key={opt.value}
                                               value={`${opt.label} ${opt.value}`}
                                               onSelect={() => {
-                                                setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: opt.value }));
+                                                setModelInputValues((prev: Record<string, any>) => ({
+                                                  ...prev,
+                                                  [field.key]: opt.value,
+                                                  [getStoredOptionLabelKey(field.key)]: opt.label,
+                                                }));
                                                 setFieldPickerOpenKey(null);
                                               }}
                                             >
@@ -11226,7 +11694,16 @@ export default function MediaStudio() {
                                 <button
                                   key={skill.id}
                                   onClick={() => {
-                                    setSelectedSkillId(skill.id);
+                                    updateTabStateMultiple({
+                                      selectedSkillId: skill.id,
+                                      dynamicFormValues: {},
+                                      referenceImages: [],
+                                      promptReview: null,
+                                      autoReferenceNotes: "",
+                                      autoContinuityNotes: "",
+                                      referenceNotes: "",
+                                      continuityNotes: "",
+                                    });
                                     setShowSkillDialog(false);
                                   }}
                                   className={cn(
@@ -11420,6 +11897,7 @@ export default function MediaStudio() {
                   </div>
 
                   <DynamicSkillForm
+                    key={selectedSkillId}
                     schema={skillSchema}
                     language={locale.startsWith("th") ? "th" : "en"}
                     values={dynamicFormValues}
@@ -11442,7 +11920,6 @@ export default function MediaStudio() {
                             fileBase64: base64,
                           });
                           urls.push(result.url);
-                          setReferenceImages(prev => [...prev, { url: result.url, name: file.name }]);
                         } catch (error) {
                           console.error("Upload failed:", error);
                         }
@@ -11485,21 +11962,28 @@ export default function MediaStudio() {
             </div>
 
             {/* Generated Media History */}
-            {generatedMedia.filter((m) => !expiredUrls.has(m.url)).length > 0 && (
+            {visibleGeneratedMedia.length > 0 && (
               <div className="bg-white/70 backdrop-blur rounded-xl border p-4 space-y-3 overflow-hidden">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="font-semibold">{t('mediaStudio.generatedMedia')}</h3>
                   <Badge variant="outline">
-                    {t('mediaStudio.items', { count: generatedMedia.filter((m) => !expiredUrls.has(m.url)).length })}
+                    {t('mediaStudio.items', { count: visibleGeneratedMedia.length })}
                   </Badge>
                 </div>
 
-                <ScrollArea className="h-[200px] overflow-hidden">
-                  <div className="grid grid-cols-2 gap-2 pr-2 sm:grid-cols-3 xl:grid-cols-4">
-                    {generatedMedia.filter((m) => !expiredUrls.has(m.url)).map((media) => (
+                <ScrollArea className={cn(generatedMediaUsesListLayout ? "max-h-[280px]" : "h-[200px]", "overflow-hidden")}>
+                  <div className={cn(
+                    generatedMediaUsesListLayout
+                      ? "space-y-2 pr-2"
+                      : "grid grid-cols-2 gap-2 pr-2 sm:grid-cols-3 xl:grid-cols-4",
+                  )}>
+                    {visibleGeneratedMedia.map((media) => (
                       <div
                         key={media.id}
-                        className="relative group cursor-pointer"
+                        className={cn(
+                          "relative group cursor-pointer",
+                          media.type === "audio" && "rounded-lg border bg-white/80 p-3 shadow-sm transition-colors hover:bg-white",
+                        )}
                         onClick={() => openPreview(media.url)}
                       >
                         {media.type === "image" ? (
@@ -11514,13 +11998,33 @@ export default function MediaStudio() {
                             <Video className="h-6 w-6 text-gray-400" />
                           </div>
                         ) : (
-                          <div className="w-full aspect-square bg-gray-100 rounded-lg border flex items-center justify-center">
-                            <Music className="h-6 w-6 text-gray-400" />
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+                              <Music className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0 flex-1 space-y-2">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium text-slate-800">
+                                  {media.prompt || media.model || t('mediaStudio.tabs.audio')}
+                                </p>
+                                {media.model && (
+                                  <p className="truncate text-xs text-muted-foreground">{media.model}</p>
+                                )}
+                              </div>
+                              <audio
+                                src={media.url}
+                                controls
+                                className="h-9 w-full"
+                                onClick={(event) => event.stopPropagation()}
+                                onError={() => markExpired(media.url)}
+                              />
+                            </div>
                           </div>
                         )}
 
                         {/* Hover Actions */}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
+                        {media.type !== "audio" ? (
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
                           {media.type === "image" && referenceImages.length < maxReferenceImages && (
                             <TooltipProvider>
                               <Tooltip>
@@ -11559,7 +12063,21 @@ export default function MediaStudio() {
                               <TooltipContent>{t('mediaStudio.download')}</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                        </div>
+                          </div>
+                        ) : (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="absolute right-2 top-2 h-8 w-8 text-slate-500 hover:text-slate-900"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              downloadMedia(media.url, `generated-audio-${media.id}.mp3`);
+                            }}
+                            title={t('mediaStudio.download')}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -12492,6 +13010,43 @@ export default function MediaStudio() {
                     </div>
                   </div>
 
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-sm font-medium">{t('mediaStudio.splitFrameAutoCrop')}</Label>
+                        <p className="text-xs text-muted-foreground">
+                          {t('mediaStudio.splitFrameAutoCropHelp')}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={splitFrameAutoCropEnabled}
+                        onCheckedChange={(checked) => {
+                          setSplitFrameAutoCropEnabled(checked);
+                          setSplitResults([]);
+                        }}
+                        aria-label={t('mediaStudio.splitFrameAutoCrop')}
+                      />
+                    </div>
+
+                    {splitFrameAutoCropEnabled && (
+                      <div className="grid grid-cols-2 gap-2">
+                        {(["9:16", "16:9"] as const).map((ratio) => (
+                          <Button
+                            key={ratio}
+                            variant={splitFrameCropAspectRatio === ratio ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setSplitFrameCropAspectRatio(ratio);
+                              setSplitResults([]);
+                            }}
+                          >
+                            {ratio === "9:16" ? t('mediaStudio.vertical') : t('mediaStudio.horizontal')} {ratio}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   <div>
                     <label className="text-sm font-medium mb-2 block">{t('mediaStudio.gridSize')}</label>
                     <div className="grid grid-cols-3 gap-1.5">
@@ -12558,17 +13113,72 @@ export default function MediaStudio() {
 
                   {splitResults.length > 0 && (
                     <div className="space-y-3 border-t pt-4">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium">{t('mediaStudio.resultsCount', { count: splitResults.length })}</label>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={addAllSplitsToVideoReference}>
-                            <Video className="h-4 w-4 mr-1" />
-                            {t('mediaStudio.addToVideoReference')}
-                          </Button>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <label className="text-sm font-medium">{t('mediaStudio.resultsCount', { count: splitResults.length })}</label>
+                            {splitResults[0]?.targetAspectRatio && (
+                              <p className="text-xs text-muted-foreground">
+                                {t('mediaStudio.splitFrameAutoCropApplied', {
+                                  ratio: splitResults[0].targetAspectRatio,
+                                  width: splitResults[0].width,
+                                  height: splitResults[0].height,
+                                })}
+                              </p>
+                            )}
+                          </div>
                           <Button variant="outline" size="sm" onClick={handleDownloadAllSplits}>
                             <Download className="h-4 w-4 mr-1" />
                             {t('mediaStudio.downloadAll')}
                           </Button>
+                        </div>
+
+                        <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs font-medium">{t('mediaStudio.splitStoryboardVideoModel')}</Label>
+                            <Select
+                              value={splitStoryboardVideoModelId || defaultSplitStoryboardVideoModelId}
+                              onValueChange={setSplitStoryboardVideoModelId}
+                              disabled={splitStoryboardVideoModels.length === 0 || isCreatingSplitStoryboardReview}
+                            >
+                              <SelectTrigger className="h-9">
+                                <SelectValue placeholder={t('mediaStudio.selectModel')} />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-[320px]">
+                                {splitStoryboardVideoModels.map((model) => {
+                                  const optionModelId = String(model.modelId ?? model.id ?? "");
+                                  const isDefaultModel = optionModelId === defaultSplitStoryboardVideoModelId;
+                                  return (
+                                    <SelectItem key={optionModelId} value={optionModelId}>
+                                      {model.name || optionModelId}{isDefaultModel ? ` (${t('mediaStudio.recommended')})` : ""}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                              {t('mediaStudio.splitStoryboardVideoModelHelp')}
+                            </p>
+                          </div>
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={createStoryboardReviewFromSplits}
+                              disabled={isCreatingSplitStoryboardReview || splitResults.length < 2 || splitStoryboardVideoModels.length === 0}
+                            >
+                              {isCreatingSplitStoryboardReview ? (
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              ) : (
+                                <Video className="h-4 w-4 mr-1" />
+                              )}
+                              {t('mediaStudio.splitStoryboardSendToReview', { count: Math.max(0, splitResults.length - 1) })}
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={addAllSplitsToVideoReference}>
+                              <Video className="h-4 w-4 mr-1" />
+                              {t('mediaStudio.addToVideoReference')}
+                            </Button>
+                          </div>
                         </div>
                       </div>
                       <ScrollArea className="h-[180px]">

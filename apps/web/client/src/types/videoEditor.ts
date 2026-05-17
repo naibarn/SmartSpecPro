@@ -62,6 +62,12 @@ export interface Clip {
   transform?: ClipTransform; // For overlay clips
   textConfig?: TextConfig;   // For text clips
   groupId?: string;          // For compound clip grouping
+  duplicateBoundaryFrameTrim?: {
+    frameCount: number;
+    seconds: number;
+    fps: number;
+    reason: 'matching_first_last_frame_boundary';
+  };
 }
 
 export interface TextConfig {

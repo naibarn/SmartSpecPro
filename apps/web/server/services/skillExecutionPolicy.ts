@@ -8,6 +8,7 @@
 
 import type { SkillDefinition } from "@smartspec/skills";
 import {
+  isFreeModelIdentifier,
   resolveEnabledLlmModelIdFromRows,
   loadEnabledLlmModelRows,
   type EnabledLlmModelRow,
@@ -52,7 +53,7 @@ function filterRowsByFreeModelPolicy(
   if (allowFreeModels) {
     return rows;
   }
-  return rows.filter((row) => row.isFree !== true);
+  return rows.filter((row) => row.isFree !== true && !isFreeModelIdentifier(row.modelId, row.providerModelId));
 }
 
 /**

@@ -482,6 +482,14 @@ describe("mediaProviderUtils", () => {
           text: "{{item}}",
           voice_id: "{{fields.voice_id}}",
         },
+        promptSync: expect.objectContaining({
+          strategy: "speaker_lines",
+          defaultVoiceField: "voice_id",
+          speakerVoiceFields: expect.objectContaining({
+            "1": "voice_id",
+            "2": "voice_id_2",
+          }),
+        }),
         itemFields: expect.arrayContaining([
           expect.objectContaining({ key: "text", required: true }),
           expect.objectContaining({
@@ -492,6 +500,15 @@ describe("mediaProviderUtils", () => {
               valueField: "voice_id",
             }),
           }),
+        ]),
+      }),
+      expect.objectContaining({
+        key: "voice_id_2",
+        label: "Speaker 2 Voice",
+        type: "select",
+        default: "pNInz6obpgDQGcFmaJgB",
+        options: expect.arrayContaining([
+          { value: "pNInz6obpgDQGcFmaJgB", label: "Adam" },
         ]),
       }),
       expect.objectContaining({
@@ -549,9 +566,8 @@ describe("mediaProviderUtils", () => {
       expect.objectContaining({
         key: "voice_id",
         required: true,
-        default: "21m00Tcm4TlvDq8ikWAM",
+        default: "pNInz6obpgDQGcFmaJgB",
         options: expect.arrayContaining([
-          { value: "21m00Tcm4TlvDq8ikWAM", label: "Rachel" },
           { value: "pNInz6obpgDQGcFmaJgB", label: "Adam" },
         ]),
         optionsSource: expect.objectContaining({
@@ -567,7 +583,7 @@ describe("mediaProviderUtils", () => {
     expect(tts.inputFields).toEqual(expect.arrayContaining([
       expect.objectContaining({
         key: "voice_id",
-        default: "21m00Tcm4TlvDq8ikWAM",
+        default: "pNInz6obpgDQGcFmaJgB",
         optionsSource: expect.objectContaining({
           type: "provider_api",
           endpoint: "/v2/voices?page_size=100&sort=name&sort_direction=asc&include_total_count=false",

@@ -50,7 +50,7 @@ import { skillDetectionLimiter, skillExecutionLimiter } from "../services/rateLi
 import { debugLog, debugError } from "../_core/logger";
 import { ENABLE_FUNNEL_TRACKING, trackFirstConversation } from "../services/funnelMilestones";
 import { getDb } from "../db";
-import { skills as skillsTable, userSkillVisibility, conversations } from "../../drizzle/schema";
+import { skills as skillsTable, userSkillVisibility, conversations, skillPermissions, groupMembers } from "../../drizzle/schema";
 import { eq, and, like } from "drizzle-orm";
 import { checkRateLimit } from "../middleware/distributedRateLimit";
 import { auditLogger } from "../services/auditLogger";
@@ -83,6 +83,10 @@ import {
 import { executeChatRuntimeTurn } from "../services/agentRuntime/chatRuntimeOrchestrator";
 import { recordContextEngineMetric } from "../services/monitoringService";
 import { getModelsByTypeAsync, mapToApiModelId } from "../services/modelRegistry";
+import {
+  buildSmartCharacterLlmPrompt,
+  validateSmartCharacterPromptOutput,
+} from "../services/smartCharacterPromptOutput";
 
 const localSkillPlatformSchema = z.enum(["web", "tauri"]).default("web");
 const localSkillOriginSchema = z
@@ -2043,7 +2047,9 @@ export const chatRouter = router({
         });
       }
 
-      // Authorization: verify user has access to restricted skills (visibleByDefault=false)
+      // Authorization: match the chat skill picker visibility rules.
+      // Public skills, owned skills, and private skills shared via active groups are
+      // executable immediately, even before a per-user visibility row exists.
       {
         const db = await getDb();
         if (!db) {
@@ -2054,22 +2060,49 @@ export const chatRouter = router({
         }
         const [accessCheck] = await db
           .select({
-            visibleByDefault: skillsTable.visibleByDefault,
-            hasAccess: userSkillVisibility.id,
+            id: skillsTable.id,
+            visibility: skillsTable.visibility,
+            createdBy: skillsTable.createdBy,
+            explicitVisible: userSkillVisibility.visible,
           })
           .from(skillsTable)
           .leftJoin(
             userSkillVisibility,
             and(
               eq(userSkillVisibility.skillId, skillsTable.id),
-              eq(userSkillVisibility.userId, ctx.user.id),
-              eq(userSkillVisibility.visible, true)
+              eq(userSkillVisibility.userId, ctx.user.id)
             )
           )
           .where(eq(skillsTable.slug, input.skillId))
           .limit(1);
 
-        if (accessCheck && !accessCheck.visibleByDefault && !accessCheck.hasAccess) {
+        const [groupShare] = accessCheck
+          ? await db
+            .select({ id: skillPermissions.id })
+            .from(skillPermissions)
+            .innerJoin(
+              groupMembers,
+              and(
+                eq(groupMembers.groupId, skillPermissions.groupId),
+                eq(groupMembers.userId, ctx.user.id),
+                eq(groupMembers.status, "active"),
+              ),
+            )
+            .where(eq(skillPermissions.skillId, accessCheck.id))
+            .limit(1)
+          : [];
+
+        const hasSkillAccess = Boolean(
+          accessCheck
+          && accessCheck.explicitVisible !== false
+          && (
+            accessCheck.visibility === "public"
+            || accessCheck.createdBy === ctx.user.id
+            || (accessCheck.visibility === "private" && groupShare)
+          ),
+        );
+
+        if (accessCheck && !hasSkillAccess) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: `Skill '${input.skillId}' is not available in your account.`,
@@ -2267,7 +2300,17 @@ export const chatRouter = router({
           const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
           const flags = await getTenantFeatureFlags(tenantId);
 
-          if (flags.unifiedSkillExecution) {
+          const shouldUseUnifiedSkillExecution =
+            flags.unifiedSkillExecution && input.skillId !== "smart-character-creator-pro";
+
+          if (!shouldUseUnifiedSkillExecution && flags.unifiedSkillExecution) {
+            console.info("[executeSkill] Skipping unified skill execution for specialized skill", {
+              skillId: input.skillId,
+              reason: "requires specialized LLM prompt validation",
+            });
+          }
+
+          if (shouldUseUnifiedSkillExecution) {
             const { executeUnified } = await import("../services/unifiedOrchestrator");
 
             // Build attachments from reference images
@@ -2306,6 +2349,35 @@ export const chatRouter = router({
 
             const result = await executeUnified(request);
             handledByUnified = true;
+            const unifiedSucceeded = result.metadata?.success !== false;
+            const unifiedError = typeof result.metadata?.error === "string"
+              ? result.metadata.error
+              : "Unified skill execution failed.";
+            const textContent = result.result.type === "text" ? result.result.content.trim() : "";
+
+            if (!unifiedSucceeded) {
+              return {
+                success: false,
+                skillId: input.skillId,
+                type: "text" as const,
+                error: unifiedError,
+                message: undefined as string | undefined,
+                resultUrl: undefined as string | undefined,
+                resultUrls: undefined as string[] | undefined,
+              };
+            }
+
+            if (result.result.type === "text" && !textContent) {
+              return {
+                success: false,
+                skillId: input.skillId,
+                type: "text" as const,
+                error: "Skill execution returned an empty response.",
+                message: undefined as string | undefined,
+                resultUrl: undefined as string | undefined,
+                resultUrls: undefined as string[] | undefined,
+              };
+            }
 
             // Persist as assistant message (chat owns persistence during rollout)
             if (input.conversationId && result.result.type === "text") {
@@ -2313,7 +2385,7 @@ export const chatRouter = router({
                 await createMessage({
                   conversationId: input.conversationId,
                   role: "assistant",
-                  content: result.result.content,
+                  content: textContent,
                   inputTokens: result.tokens.input,
                   outputTokens: result.tokens.output,
                   creditsUsed: String(result.creditsDeducted ?? 0),
@@ -2329,7 +2401,7 @@ export const chatRouter = router({
               success: true,
               skillId: input.skillId,
               type: "text" as const,
-              message: result.result.type === "text" ? result.result.content : undefined,
+              message: result.result.type === "text" ? textContent : undefined,
               creditsUsed: result.creditsDeducted ?? 0,
               resultUrl: undefined as string | undefined,
               resultUrls: undefined as string[] | undefined,
@@ -2392,6 +2464,17 @@ export const chatRouter = router({
               llmMessages.push({ role: "system", content: skillRow.systemPrompt });
             }
           }
+        } else if (input.skillId === "smart-character-creator-pro") {
+          llmMessages.push({
+            role: "system",
+            content: [
+              "You are Smart Character Creator Pro, a concise creative photography director.",
+              "Generate polished, copy-ready AI image prompts from structured form data.",
+              "Use strong visual language and preserve character consistency.",
+              "Return plain text only. Never output JSON, tables, code blocks, or command suffixes such as --ar 9:16.",
+            ].join("\n"),
+          });
+          userPrompt = buildSmartCharacterLlmPrompt(executionDynamicParams as Record<string, unknown>);
         } else {
           // Generic LLM skill: use DB systemPrompt + knowledgebase
           if (skillRow?.systemPrompt) {
@@ -2450,6 +2533,11 @@ export const chatRouter = router({
             contentParts.push({ type: "image_url", image_url: { url: absoluteUrl } });
           }
           llmMessages.push({ role: "user", content: contentParts });
+        } else if (input.skillId === "smart-character-creator-pro") {
+          // This skill already receives a compact, purpose-built prompt above.
+          // Avoid adding the full skill knowledge/context pack here; it can push
+          // execution beyond Cloudflare's request timeout.
+          llmMessages.push({ role: "user", content: userPrompt || `Use ${skill.name}` });
         } else {
           llmMessages.push({ role: "user", content: userPrompt || `Use ${skill.name}` });
         }
@@ -2653,59 +2741,95 @@ export const chatRouter = router({
         }
 
         debugLog("Chat", `[executeSkill] LLM skill '${input.skillId}' mode='${executionMode}', model=${llmModel}, modelSource=${executionPolicy.modelSource}, refImages=${refImageUrls.length}`);
+        if (input.skillId === "smart-character-creator-pro") {
+          console.info("[executeSkill] smart-character LLM dispatch", {
+            model: executionPolicy.modelId,
+            modelSource: executionPolicy.modelSource,
+            allowFreeModels: executionPolicy.allowFreeModels,
+            messageCount: llmMessages.length,
+            userPromptLength: userPrompt.length,
+            referenceImageCount: refImageUrls.length,
+            maxTokens: 2200,
+          });
+        }
 
         // Execute with intelligent model-level fallback (tries up to 5 models)
         // Enable thinking mode when skill requires it (sends reasoning.effort="high")
         const skillRequiresThinking = parsedPolicy?.requires_thinking === true
           || parsedPolicy?.thinking_level_hint === "high"
           || parsedPolicy?.thinking_level_hint === "medium";
-        const fallbackExecution = await executeChatRuntimeTurn({
-          tenantId: skillTenantId,
-          userId: ctx.user.id,
-          objective: userPrompt || `Use ${skill.name}`,
-          skillSlug: input.skillId,
-          executionPolicy,
-          contextPackRequest: {
-            surface: "chat",
-            request: {
-              channel: "chat",
-              userId: ctx.user.id,
-              tenantId: skillTenantId,
-              userMessage: userPrompt || `Use ${skill.name}`,
-              attachments,
-              dynamicParams: executionDynamicParams as Record<string, unknown>,
-              conversationContext: {
-                conversationId: input.conversationId,
-                conversationModel,
-                activePersonaId,
-                publicUrl: ctx.publicUrl ?? undefined,
-              },
-            },
-            tenantId: skillTenantId,
-            skillSystemPrompt: skillRow?.systemPrompt
-              ? skillRow.systemPrompt.substring(0, 12000)
-              : null,
-            knowledgebase: skillRow?.knowledgebase
-              ? skillRow.knowledgebase.substring(0, 8000)
-              : null,
-            dynamicParams: {
-              ...executionDynamicParams,
-              contextState: fallbackContextState,
-            },
-            label: "chat.executeSkill",
-          },
-          requestLabel: `chat:${input.skillId}`,
-          legacyExecute: async () =>
+        const fallbackResult = input.skillId === "smart-character-creator-pro"
+          ? await Promise.race([
             executeSkillLlmWithFallback({
               messages: llmMessages,
               skillSlug: input.skillId,
               userId: ctx.user.id,
               executionPolicy,
-              enableThinking: skillRequiresThinking || undefined,
-              maxTokens: parsedPolicy?.max_tokens_hint ?? undefined,
+              enableThinking: false,
+              maxModelAttempts: 1,
+              maxTokens: 2200,
+              temperature: 0.35,
             }),
-        });
-        const fallbackResult = fallbackExecution.value;
+            new Promise<Awaited<ReturnType<typeof executeSkillLlmWithFallback>>>((resolve) => {
+              setTimeout(() => {
+                resolve({
+                  success: false,
+                  error: "LLM prompt generation timed out before returning a usable prompt.",
+                  inputTokens: 0,
+                  outputTokens: 0,
+                  attempts: [],
+                  totalDurationMs: 85_000,
+                  rawData: { usage: { cost: 0 }, timedOut: true },
+                });
+              }, 85_000);
+            }),
+          ])
+          : (await executeChatRuntimeTurn({
+            tenantId: skillTenantId,
+            userId: ctx.user.id,
+            objective: userPrompt || `Use ${skill.name}`,
+            skillSlug: input.skillId,
+            executionPolicy,
+            contextPackRequest: {
+              surface: "chat",
+              request: {
+                channel: "chat",
+                userId: ctx.user.id,
+                tenantId: skillTenantId,
+                userMessage: userPrompt || `Use ${skill.name}`,
+                attachments,
+                dynamicParams: executionDynamicParams as Record<string, unknown>,
+                conversationContext: {
+                  conversationId: input.conversationId,
+                  conversationModel,
+                  activePersonaId,
+                  publicUrl: ctx.publicUrl ?? undefined,
+                },
+              },
+              tenantId: skillTenantId,
+              skillSystemPrompt: skillRow?.systemPrompt
+                ? skillRow.systemPrompt.substring(0, 12000)
+                : null,
+              knowledgebase: skillRow?.knowledgebase
+                ? skillRow.knowledgebase.substring(0, 8000)
+                : null,
+              dynamicParams: {
+                ...executionDynamicParams,
+                contextState: fallbackContextState,
+              },
+              label: "chat.executeSkill",
+            },
+            requestLabel: `chat:${input.skillId}`,
+            legacyExecute: async () =>
+              executeSkillLlmWithFallback({
+                messages: llmMessages,
+                skillSlug: input.skillId,
+                userId: ctx.user.id,
+                executionPolicy,
+                enableThinking: skillRequiresThinking || undefined,
+                maxTokens: parsedPolicy?.max_tokens_hint ?? undefined,
+              }),
+          })).value;
 
         if (!fallbackResult.success) {
           // Log attempt history summary
@@ -2726,7 +2850,33 @@ export const chatRouter = router({
         }
 
         // Success — extract results from the successful attempt
-        const content = fallbackResult.content!;
+        const rawContent = fallbackResult.content ?? "";
+        const smartCharacterValidation = input.skillId === "smart-character-creator-pro"
+          ? validateSmartCharacterPromptOutput(rawContent)
+          : null;
+        if (smartCharacterValidation && !smartCharacterValidation.ok) {
+          console.error(
+            `[executeSkill] Smart character skill returned invalid prompt output: ${smartCharacterValidation.reason}`,
+            {
+              modelId: fallbackResult.modelId,
+              providerName: fallbackResult.provider?.providerName,
+              contentLength: rawContent.length,
+              contentPreview: rawContent.slice(0, 240),
+            },
+          );
+
+          return {
+            success: false,
+            skillId: input.skillId,
+            type: "text" as const,
+            error: smartCharacterValidation.reason,
+            message: undefined as string | undefined,
+            resultUrl: undefined as string | undefined,
+            resultUrls: undefined as string[] | undefined,
+          };
+        }
+
+        const content = smartCharacterValidation?.content ?? rawContent;
         const usedModel = fallbackResult.modelId!;
         const provider = fallbackResult.provider!;
         const inputTokens = fallbackResult.inputTokens ?? 0;

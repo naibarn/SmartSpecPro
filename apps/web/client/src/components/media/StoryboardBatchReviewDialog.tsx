@@ -1,10 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, ArrowDown, ArrowUp, Check, ExternalLink, Loader2, Mic2, Minus, Music2, Pencil, RefreshCw, RotateCcw, Trash2, Video, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AlertCircle, ArrowDown, ArrowUp, Check, ExternalLink, ImagePlus, Loader2, Mic2, Minus, Music2, Pencil, Plus, RefreshCw, RotateCcw, Trash2, Upload, Video, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import type { StoryboardCompanionAudioCandidate } from "@/lib/storyboardVideoProject";
+import ImageSourcePicker from "@/components/media/ImageSourcePicker";
+import type { StoryboardCompanionAudioCandidate, StoryboardRenderAspectRatioMode } from "@/lib/storyboardVideoProject";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -40,13 +51,21 @@ interface StoryboardBatchReviewDialogProps {
   onToggleTask: (taskId: string) => void;
   onSelectAll: () => void;
   onSelectNone: () => void;
-  onRegenerateTask: (taskId: string, prompt: string) => void;
+  onRegenerateTask: (taskId: string, prompt: string) => boolean | void | Promise<boolean | void>;
+  onStartGenerationBatch?: () => void;
+  onCancelGeneration?: () => void | Promise<void>;
+  onReplaceReferenceFrame?: (taskId: string, frameIndex: 0 | 1, imageUrl: string) => void | Promise<void>;
+  onUploadReferenceFrame?: (taskId: string, frameIndex: 0 | 1, files: FileList) => Promise<string[]>;
+  replacingReferenceFrameKey?: string | null;
+  onUploadVideoSlot?: (taskId: string, mode: "replace" | "insert-after") => void | Promise<void>;
+  uploadingVideoSlotKey?: string | null;
   onMoveTask?: (taskId: string, direction: "up" | "down") => void;
   onRemoveTask?: (taskId: string) => void;
   onAutoCompound: () => void;
   onCreateProject: () => void;
   isCompounding: boolean;
   isCreatingProject: boolean;
+  isCancellingGeneration?: boolean;
   regeneratingTaskId?: string | null;
   compoundStatus?: string | null;
   projectLink?: string | null;
@@ -56,6 +75,10 @@ interface StoryboardBatchReviewDialogProps {
   onRemoveAudio?: (audioId: string) => void;
   muteVideoPreviewAudio?: boolean;
   renderDurationSeconds?: number | null;
+  renderAspectRatioMode?: StoryboardRenderAspectRatioMode;
+  onRenderAspectRatioModeChange?: (mode: StoryboardRenderAspectRatioMode) => void;
+  renderOutputLabel?: string | null;
+  renderAspectRatioSourceLabel?: string | null;
 }
 
 export interface StoryboardBatchReviewPanelProps extends Omit<StoryboardBatchReviewDialogProps, "open"> {
@@ -65,9 +88,19 @@ export interface StoryboardBatchReviewPanelProps extends Omit<StoryboardBatchRev
   showCloseButton?: boolean;
 }
 
+type StoryboardConfirmAction = "generate" | "render" | "project";
+
 function summarizePrompt(prompt: string): string {
   const normalized = prompt.replace(/\s+/g, " ").trim();
   return normalized.length > 120 ? `${normalized.slice(0, 120)}...` : normalized;
+}
+
+function getFirstLastFrameUrls(task: StoryboardReviewTask): [string, string] | null {
+  const referenceUrls = (task.referenceUrls ?? [])
+    .map((url) => String(url || "").trim())
+    .filter((url) => url.length > 0);
+  if (referenceUrls.length < 2) return null;
+  return [referenceUrls[0]!, referenceUrls[1]!];
 }
 
 export function StoryboardBatchReviewPanel({
@@ -78,12 +111,20 @@ export function StoryboardBatchReviewPanel({
   onSelectAll,
   onSelectNone,
   onRegenerateTask,
+  onStartGenerationBatch,
+  onCancelGeneration,
+  onReplaceReferenceFrame,
+  onUploadReferenceFrame,
+  replacingReferenceFrameKey,
+  onUploadVideoSlot,
+  uploadingVideoSlotKey,
   onMoveTask,
   onRemoveTask,
   onAutoCompound,
   onCreateProject,
   isCompounding,
   isCreatingProject,
+  isCancellingGeneration = false,
   regeneratingTaskId,
   compoundStatus,
   projectLink,
@@ -93,14 +134,22 @@ export function StoryboardBatchReviewPanel({
   onRemoveAudio,
   muteVideoPreviewAudio = false,
   renderDurationSeconds,
+  renderAspectRatioMode = "auto",
+  onRenderAspectRatioModeChange,
+  renderOutputLabel,
+  renderAspectRatioSourceLabel,
   closeLabel = "Close",
   className,
   contentClassName,
   showCloseButton = true,
 }: StoryboardBatchReviewPanelProps) {
-  const { t } = useScopedTranslation(["media", "common"]);
+  const { t, locale } = useScopedTranslation(["media", "common"]);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [draftPrompts, setDraftPrompts] = useState<Record<string, string>>({});
+  const [isGeneratingSelected, setIsGeneratingSelected] = useState(false);
+  const [isCancellingSelected, setIsCancellingSelected] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<StoryboardConfirmAction | null>(null);
+  const showGenerationCancel = Boolean(onCancelGeneration) && (Boolean(regeneratingTaskId) || isGeneratingSelected);
 
   useEffect(() => {
     setDraftPrompts((prev) => {
@@ -117,6 +166,34 @@ export function StoryboardBatchReviewPanel({
     () => tasks.filter((task) => selectedTaskIds.includes(task.id) && task.status === "completed" && task.url),
     [selectedTaskIds, tasks],
   );
+  const generatableSelectedTasks = useMemo(
+    () => tasks.filter((task) =>
+      selectedTaskIds.includes(task.id)
+      && task.canRegenerate !== false
+      && task.status !== "completed"
+      && task.status !== "generating"
+    ),
+    [selectedTaskIds, tasks],
+  );
+  const generationCancelRequestedRef = useRef(false);
+  const handleGenerateSelectedTasks = async () => {
+    if (generatableSelectedTasks.length === 0 || isGeneratingSelected) return;
+    generationCancelRequestedRef.current = false;
+    setIsGeneratingSelected(true);
+    setIsCancellingSelected(false);
+    onStartGenerationBatch?.();
+    try {
+      for (const task of generatableSelectedTasks) {
+        if (generationCancelRequestedRef.current) break;
+        const shouldContinue = await onRegenerateTask(task.id, draftPrompts[task.id] ?? task.prompt);
+        if (shouldContinue === false) break;
+      }
+    } finally {
+      generationCancelRequestedRef.current = false;
+      setIsGeneratingSelected(false);
+      setIsCancellingSelected(false);
+    }
+  };
   const renderDurationLabel = useMemo(() => {
     if (typeof renderDurationSeconds !== "number" || !Number.isFinite(renderDurationSeconds) || renderDurationSeconds <= 0) {
       return null;
@@ -127,7 +204,57 @@ export function StoryboardBatchReviewPanel({
     return minutes > 0
       ? t("mediaStudio.storyboardReviewDurationMinutes", { minutes, seconds: String(seconds).padStart(2, "0") })
       : t("mediaStudio.storyboardReviewDurationSeconds", { seconds });
-  }, [renderDurationSeconds]);
+  }, [renderDurationSeconds, t]);
+  const confirmCopy = useMemo(() => {
+    if (!confirmAction) return null;
+    if (confirmAction === "generate") {
+      return {
+        title: t("mediaStudio.storyboardReviewConfirmGenerateTitle"),
+        description: t("mediaStudio.storyboardReviewConfirmGenerateDesc", { count: generatableSelectedTasks.length }),
+        detail: t("mediaStudio.storyboardReviewGenerateSelectedHelp"),
+        actionLabel: t("mediaStudio.storyboardReviewConfirmGenerateAction"),
+      };
+    }
+    if (confirmAction === "render") {
+      return {
+        title: t("mediaStudio.storyboardReviewConfirmRenderTitle"),
+        description: t("mediaStudio.storyboardReviewConfirmRenderDesc", {
+          count: completedSelectedTasks.length,
+          duration: renderDurationLabel ?? t("mediaStudio.storyboardReviewUnknownDuration"),
+        }),
+        detail: t("mediaStudio.storyboardReviewConfirmRenderDetail", {
+          output: renderOutputLabel ?? t("mediaStudio.storyboardReviewUnknownDuration"),
+          source: renderAspectRatioSourceLabel ?? "",
+        }),
+        actionLabel: t("mediaStudio.storyboardReviewConfirmRenderAction"),
+      };
+    }
+    return {
+      title: t("mediaStudio.storyboardReviewConfirmProjectTitle"),
+      description: t("mediaStudio.storyboardReviewConfirmProjectDesc", { count: completedSelectedTasks.length }),
+      detail: t("mediaStudio.storyboardReviewCreateVideoEditProjectHelp"),
+      actionLabel: t("mediaStudio.storyboardReviewConfirmProjectAction"),
+    };
+  }, [completedSelectedTasks.length, confirmAction, generatableSelectedTasks.length, renderAspectRatioSourceLabel, renderDurationLabel, renderOutputLabel, t]);
+  const handleConfirmAction = () => {
+    const action = confirmAction;
+    setConfirmAction(null);
+    if (action === "generate") {
+      void handleGenerateSelectedTasks();
+    } else if (action === "render") {
+      onAutoCompound();
+    } else if (action === "project") {
+      onCreateProject();
+    }
+  };
+  const handleCancelGeneration = async () => {
+    generationCancelRequestedRef.current = true;
+    setIsCancellingSelected(true);
+    await onCancelGeneration?.();
+    if (!regeneratingTaskId) {
+      setIsCancellingSelected(false);
+    }
+  };
   const taskStatusLabel = (status: StoryboardReviewTask["status"]) => {
     switch (status) {
       case "completed":
@@ -165,6 +292,30 @@ export function StoryboardBatchReviewPanel({
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex">
+            {showGenerationCancel ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleCancelGeneration()}
+                disabled={isCancellingGeneration || isCancellingSelected}
+                className="col-span-2 sm:col-span-1"
+              >
+                {isCancellingGeneration || isCancellingSelected ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
+                {t("mediaStudio.storyboardReviewCancelGeneration")}
+              </Button>
+            ) : (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setConfirmAction("generate")}
+                disabled={generatableSelectedTasks.length === 0 || Boolean(regeneratingTaskId) || isGeneratingSelected}
+                className="col-span-2 sm:col-span-1"
+                title={t("mediaStudio.storyboardReviewGenerateSelectedHelp")}
+              >
+                <Video className="mr-2 h-4 w-4" />
+                {t("mediaStudio.storyboardReviewGenerateSelected")}
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={onSelectAll}>
               {t("mediaStudio.storyboardReviewSelectAll")}
             </Button>
@@ -274,9 +425,11 @@ export function StoryboardBatchReviewPanel({
             {tasks.map((task, taskIndex) => {
               const isSelected = selectedTaskIds.includes(task.id);
               const hasVideo = !!task.url && task.status === "completed";
+              const firstLastFrameUrls = getFirstLastFrameUrls(task);
               const isEditing = editingTaskId === task.id;
               const draftPrompt = draftPrompts[task.id] ?? task.prompt;
               const canRegenerate = task.canRegenerate !== false;
+              const isQueuedForGeneration = task.status === "queued";
               return (
                 <div
                   key={task.id}
@@ -303,7 +456,27 @@ export function StoryboardBatchReviewPanel({
                         />
                       ) : (
                         <div className="flex h-44 items-center justify-center text-muted-foreground sm:h-24">
-                          {task.status === "generating" ? (
+                          {firstLastFrameUrls ? (
+                            <div className="grid h-full w-full grid-cols-2">
+                              {firstLastFrameUrls.map((url, frameIndex) => (
+                                <div key={`${task.id}-frame-${frameIndex}`} className="relative min-w-0 overflow-hidden border-r last:border-r-0">
+                                  <img
+                                    src={url}
+                                    alt={frameIndex === 0
+                                      ? t("mediaStudio.storyboardReviewStartFrame")
+                                      : t("mediaStudio.storyboardReviewEndFrame")}
+                                    className="h-full w-full object-cover"
+                                    loading="lazy"
+                                  />
+                                  <div className="absolute left-1 top-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                                    {frameIndex === 0
+                                      ? t("mediaStudio.storyboardReviewStartFrameShort")
+                                      : t("mediaStudio.storyboardReviewEndFrameShort")}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : task.status === "generating" ? (
                             <Loader2 className="h-6 w-6 animate-spin" />
                           ) : task.status === "error" ? (
                             <AlertCircle className="h-6 w-6 text-destructive" />
@@ -366,6 +539,45 @@ export function StoryboardBatchReviewPanel({
                         <p className="mt-1 text-xs text-destructive">{task.error}</p>
                       ) : null}
 
+                      {firstLastFrameUrls && onReplaceReferenceFrame ? (
+                        <div className="mt-3 rounded-lg border bg-muted/20 p-2">
+                          <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                            <ImagePlus className="h-3.5 w-3.5" />
+                            {t("mediaStudio.storyboardReviewReplaceFrameTitle")}
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {firstLastFrameUrls.map((url, frameIndex) => {
+                              const typedFrameIndex = frameIndex as 0 | 1;
+                              const key = `${task.id}:${typedFrameIndex}`;
+                              const frameLabel = typedFrameIndex === 0
+                                ? t("mediaStudio.storyboardReviewStartFrame")
+                                : t("mediaStudio.storyboardReviewEndFrame");
+                              return (
+                                <ImageSourcePicker
+                                  key={key}
+                                  value={[url]}
+                                  maxImages={1}
+                                  selectionMode="replace"
+                                  disabled={task.status === "generating" || replacingReferenceFrameKey === key}
+                                  isUploading={replacingReferenceFrameKey === key}
+                                  onUpload={onUploadReferenceFrame
+                                    ? (files) => onUploadReferenceFrame(task.id, typedFrameIndex, files)
+                                    : undefined}
+                                  onChange={(urls) => {
+                                    const nextUrl = urls[0]?.trim();
+                                    if (!nextUrl || nextUrl === url) return;
+                                    void onReplaceReferenceFrame(task.id, typedFrameIndex, nextUrl);
+                                  }}
+                                  label={frameLabel}
+                                  helpText={t("mediaStudio.storyboardReviewReplaceFrameHelp")}
+                                  language={locale === "th" ? "th" : "en"}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
+
                       <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                         <Button
                           type="button"
@@ -385,18 +597,61 @@ export function StoryboardBatchReviewPanel({
                         <Button
                           type="button"
                           size="sm"
-                          variant="outline"
-                          disabled={!canRegenerate || regeneratingTaskId === task.id}
-                          onClick={() => onRegenerateTask(task.id, draftPrompt)}
-                          title={canRegenerate ? t("mediaStudio.storyboardReviewRegenerateTitle") : t("mediaStudio.storyboardReviewImportedNoRegenerate")}
+                          variant={isQueuedForGeneration ? "default" : "outline"}
+                          disabled={!canRegenerate || task.status === "generating" || Boolean(regeneratingTaskId)}
+                          onClick={() => {
+                            onStartGenerationBatch?.();
+                            void onRegenerateTask(task.id, draftPrompt);
+                          }}
+                          title={canRegenerate
+                            ? isQueuedForGeneration
+                              ? t("mediaStudio.storyboardReviewGenerateVideoTitle")
+                              : t("mediaStudio.storyboardReviewRegenerateTitle")
+                            : t("mediaStudio.storyboardReviewImportedNoRegenerate")}
                         >
                           {regeneratingTaskId === task.id ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           ) : (
                             <RefreshCw className="mr-2 h-4 w-4" />
                           )}
-                          {t("mediaStudio.storyboardReviewRegenerate")}
+                          {isQueuedForGeneration
+                            ? t("mediaStudio.storyboardReviewGenerateVideo")
+                            : t("mediaStudio.storyboardReviewRegenerate")}
                         </Button>
+                        {onUploadVideoSlot ? (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={task.status === "generating" || Boolean(uploadingVideoSlotKey)}
+                              onClick={() => void onUploadVideoSlot(task.id, "replace")}
+                              title={t("mediaStudio.storyboardReviewReplaceVideoSlotTitle")}
+                            >
+                              {uploadingVideoSlotKey === `${task.id}:replace` ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Upload className="mr-2 h-4 w-4" />
+                              )}
+                              {t("mediaStudio.storyboardReviewReplaceVideoSlot")}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={task.status === "generating" || Boolean(uploadingVideoSlotKey)}
+                              onClick={() => void onUploadVideoSlot(task.id, "insert-after")}
+                              title={t("mediaStudio.storyboardReviewInsertVideoAfterTitle")}
+                            >
+                              {uploadingVideoSlotKey === `${task.id}:insert-after` ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Plus className="mr-2 h-4 w-4" />
+                              )}
+                              {t("mediaStudio.storyboardReviewInsertVideoAfter")}
+                            </Button>
+                          </>
+                        ) : null}
                         {onMoveTask ? (
                           <>
                             <Button
@@ -462,16 +717,42 @@ export function StoryboardBatchReviewPanel({
 
         <div className="shrink-0 space-y-2 border-t bg-background px-3 pb-3 pt-3 sm:px-6 sm:pb-4">
           <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="font-medium">{t("mediaStudio.storyboardReviewRenderEstimate")}</span>
-              <span className="text-sky-800">
+            <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="font-medium">{t("mediaStudio.storyboardReviewWorkflowHintTitle")}</span>
+                <span className="text-sky-800">{t("mediaStudio.storyboardReviewWorkflowHint")}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="font-medium">{t("mediaStudio.storyboardReviewRenderEstimate")}</span>
+                <span className="text-sky-800">
               {renderDurationLabel
                 ? t("mediaStudio.storyboardReviewRenderEstimateReady", {
                   duration: renderDurationLabel,
                   count: completedSelectedTasks.length,
                 })
                 : t("mediaStudio.storyboardReviewRenderEstimateEmpty")}
-              </span>
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">{t("mediaStudio.storyboardReviewFinalVideoSize")}</span>
+                <select
+                  className="h-8 rounded-md border border-sky-300 bg-white px-2 text-sm text-sky-950"
+                  value={renderAspectRatioMode}
+                  onChange={(event) => onRenderAspectRatioModeChange?.(event.target.value as StoryboardRenderAspectRatioMode)}
+                  disabled={!onRenderAspectRatioModeChange || isCompounding}
+                  aria-label={t("mediaStudio.storyboardReviewFinalVideoSize")}
+                >
+                  <option value="auto">{t("mediaStudio.storyboardReviewAspectAuto")}</option>
+                  <option value="9:16">{t("mediaStudio.storyboardReviewAspect916")}</option>
+                  <option value="16:9">{t("mediaStudio.storyboardReviewAspect169")}</option>
+                </select>
+                <span className="text-sky-800">
+                  {renderOutputLabel ?? t("mediaStudio.storyboardReviewRenderEstimateEmpty")}
+                </span>
+                {renderAspectRatioSourceLabel ? (
+                  <span className="text-xs text-sky-700">{renderAspectRatioSourceLabel}</span>
+                ) : null}
+              </div>
             </div>
           </div>
 
@@ -508,26 +789,64 @@ export function StoryboardBatchReviewPanel({
             </div>
           ) : null}
 
-          <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
-              <Button
-                type="button"
-                variant="default"
-                onClick={onAutoCompound}
-                disabled={isCompounding || completedSelectedTasks.length === 0}
-              >
-                {isCompounding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {t("mediaStudio.storyboardReviewRenderVideoAudio")}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={onCreateProject}
-                disabled={isCreatingProject || completedSelectedTasks.length === 0}
-              >
-                {isCreatingProject ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {t("mediaStudio.storyboardReviewCreateVideoEditProject")}
-              </Button>
+          <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-start">
+              <div className="flex w-full flex-col gap-1 sm:w-44 lg:w-48">
+                {showGenerationCancel ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => void handleCancelGeneration()}
+                    disabled={isCancellingGeneration || isCancellingSelected}
+                  >
+                    {isCancellingGeneration || isCancellingSelected ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
+                    {t("mediaStudio.storyboardReviewCancelGeneration")}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setConfirmAction("generate")}
+                    disabled={generatableSelectedTasks.length === 0 || Boolean(regeneratingTaskId) || isGeneratingSelected}
+                    title={t("mediaStudio.storyboardReviewGenerateSelectedHelp")}
+                  >
+                    <Video className="mr-2 h-4 w-4" />
+                    {t("mediaStudio.storyboardReviewGenerateSelected")}
+                  </Button>
+                )}
+              </div>
+              <div className="flex w-full flex-col gap-1 sm:w-44 lg:w-48">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setConfirmAction("render")}
+                  disabled={isCompounding || completedSelectedTasks.length === 0}
+                  title={t("mediaStudio.storyboardReviewRenderVideoAudioHelp")}
+                >
+                  {isCompounding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {t("mediaStudio.storyboardReviewRenderVideoAudio")}
+                </Button>
+              </div>
+              <div className="flex w-full flex-col gap-1 sm:w-44 lg:w-48">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setConfirmAction("project")}
+                  disabled={isCreatingProject || completedSelectedTasks.length === 0}
+                  title={t("mediaStudio.storyboardReviewCreateVideoEditProjectHelp")}
+                >
+                  {isCreatingProject ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {t("mediaStudio.storyboardReviewCreateVideoEditProject")}
+                </Button>
+              </div>
             </div>
             {showCloseButton ? (
               <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
@@ -535,6 +854,23 @@ export function StoryboardBatchReviewPanel({
               </Button>
             ) : null}
           </DialogFooter>
+          <AlertDialog open={confirmAction !== null} onOpenChange={(open) => !open && setConfirmAction(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{confirmCopy?.title}</AlertDialogTitle>
+                <AlertDialogDescription className="space-y-2">
+                  <span className="block">{confirmCopy?.description}</span>
+                  <span className="block font-medium text-foreground">{confirmCopy?.detail}</span>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmAction}>
+                  {confirmCopy?.actionLabel}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
     </div>
   );

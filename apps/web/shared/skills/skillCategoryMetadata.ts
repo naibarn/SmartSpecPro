@@ -22,6 +22,7 @@ const CATEGORY_ALLOWED_EXECUTION_MODES: Partial<Record<string, SkillExecutionMod
   prompt_enhancement: ["llm-only", "enhance-prompt"],
   image_prompt_generation: ["llm-only", "enhance-prompt", "python"],
   video_prompt_generation: ["llm-only", "enhance-prompt"],
+  audio_prompt_generation: ["llm-only", "enhance-prompt"],
   image_generation: ["media-generate"],
   video_generation: ["media-generate"],
   image_video_generation: ["media-generate"],
@@ -78,6 +79,7 @@ export function isPromptGenerationSkillCategory(
   const normalizedCategory = normalize(category);
   return normalizedCategory === "image_prompt_generation"
     || normalizedCategory === "video_prompt_generation"
+    || normalizedCategory === "audio_prompt_generation"
     || normalizedCategory === "prompt_enhancement";
 }
 
@@ -91,6 +93,12 @@ export function isVideoPromptSkillCategory(
   category: string | null | undefined,
 ): boolean {
   return normalize(category) === "video_prompt_generation";
+}
+
+export function isAudioPromptSkillCategory(
+  category: string | null | undefined,
+): boolean {
+  return normalize(category) === "audio_prompt_generation";
 }
 
 export function getMediaModelTypeForSkillCategory(

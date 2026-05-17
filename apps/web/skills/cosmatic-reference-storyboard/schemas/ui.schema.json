@@ -1,0 +1,58 @@
+{
+  "ui:order": [
+    "generation_mode",
+    "reference_character_images",
+    "reference_product_images",
+    "product_label_text",
+    "label_fidelity",
+    "label_readability_mode",
+    "reference_environment_images",
+    "storyboard_layout_preset",
+    "aspect_ratio",
+    "cinematic_style",
+    "scene_descriptions"
+  ],
+  "generation_mode": {
+    "ui:widget": "select",
+    "ui:help": "เลือก auto เพื่อให้ระบบเลือกโหมดที่เหมาะกับรูปและข้อมูลที่ใส่"
+  },
+  "reference_character_images": {
+    "ui:widget": "imageUpload",
+    "ui:help": "ลากรูปตัวละครมาวาง หรือกดเลือกรูปจากเครื่อง"
+  },
+  "reference_product_images": {
+    "ui:widget": "imageUpload",
+    "ui:help": "ลากรูปสินค้ามาวาง หรือกดเลือกรูปจากเครื่อง"
+  },
+  "product_label_text": {
+    "ui:widget": "textarea",
+    "ui:help": "แนะนำให้ใส่เมื่อฉลากต้องครบ เช่น YERPALL™, INTENSIVE ACTIVE, GINSENG HYA NIGHT CREAM, ข้อความเกาหลี, 10 g ใส่หนึ่งบรรทัดต่อหนึ่งบรรทัดบนฉลาก"
+  },
+  "label_fidelity": {
+    "ui:widget": "select",
+    "ui:help": "ถ้าต้องการภาพสินค้า/โฆษณาที่อ่านข้อความบนกระปุกได้ ให้เลือกล็อกฉลากครบทุกบรรทัด"
+  },
+  "label_readability_mode": {
+    "ui:widget": "select",
+    "ui:help": "เลือกล็อกเฟรมสินค้าให้อ่านฉลากได้ เพื่อบังคับให้มีเฟรม close-up/front-facing ที่สินค้าใหญ่พอ ไม่ใช่เป็น prop เล็ก ๆ ใน lifestyle shot"
+  },
+  "reference_environment_images": {
+    "ui:widget": "imageUpload",
+    "ui:help": "ลากรูปฉากหรือสถานที่มาวาง หรือกดเลือกรูปจากเครื่อง"
+  },
+  "storyboard_layout_preset": {
+    "ui:widget": "select",
+    "ui:help": "เลือกเลย์เอาต์ที่สัมพันธ์กับ Aspect Ratio ของภาพใหญ่ เช่น 9:16 ควรใช้ preset 9:16; ตัวเลือก crop-safe จะเว้นพื้นที่เผื่อ crop ภายหลังโดยไม่ตัดสินค้า/ตัวแบบ"
+  },
+  "aspect_ratio": {
+    "ui:widget": "select",
+    "ui:help": "เลือก auto เพื่อให้ระบบเลือกสัดส่วนที่เหมาะสม"
+  },
+  "cinematic_style": {
+    "ui:widget": "select",
+    "ui:help": "เลือก auto เพื่อให้ระบบเลือกสไตล์จาก reference"
+  },
+  "scene_descriptions": {
+    "ui:widget": "textarea"
+  }
+}

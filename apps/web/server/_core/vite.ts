@@ -6,11 +6,23 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 import { injectPublicSeoSnapshot } from "../services/publicSeoPrerender";
+import { isApiRequestPath } from "./apiPathGuard";
 
 const STATIC_ASSET_REQUEST = /\.(ico|svg|png|jpg|jpeg|gif|webp|css|js|mjs|woff2?|ttf|eot|map|json|wasm)(\?.*)?$/i;
 
 function isStaticAssetRequest(url: string): boolean {
   return STATIC_ASSET_REQUEST.test(url);
+}
+
+function sendApiFallbackJson(req: express.Request, res: express.Response): void {
+  res.status(404).json({
+    error: {
+      message:
+        `API route '${req.originalUrl}' was not handled before the web app fallback. ` +
+        "Check that the client is using the SmartSpec web server origin for API requests.",
+      code: "API_ROUTE_NOT_HANDLED",
+    },
+  });
 }
 
 function resolveBaseUrl(req: { protocol?: string; hostname?: string; get?: (header: string) => string | undefined }): string {
@@ -52,6 +64,10 @@ export async function setupVite(app: Express, server: Server) {
   app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
+
+    if (isApiRequestPath(url)) {
+      return sendApiFallbackJson(req, res);
+    }
 
     // Skip static asset requests that Vite didn't serve (return 404 instead of 500)
     if (isStaticAssetRequest(url)) {
@@ -102,6 +118,10 @@ export function serveStatic(app: Express) {
 
   // fall through to index.html if the file doesn't exist
   app.use("*", async (req, res, next) => {
+    if (isApiRequestPath(req.originalUrl)) {
+      return sendApiFallbackJson(req, res);
+    }
+
     if (isStaticAssetRequest(req.originalUrl)) {
       res.setHeader("Cache-Control", "no-store");
       res.type("text/plain");

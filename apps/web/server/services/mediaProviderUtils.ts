@@ -751,11 +751,11 @@ const WAVESPEED_AUDIO_MODEL_DEFINITIONS: readonly WaveSpeedAudioModelDefinition[
   },
 ] as const;
 
-const ELEVENLABS_DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
+const ELEVENLABS_DEFAULT_VOICE_ID = "pNInz6obpgDQGcFmaJgB";
+const ELEVENLABS_DEFAULT_DIALOGUE_SPEAKER_2_VOICE_ID = "pNInz6obpgDQGcFmaJgB";
 
 const ELEVENLABS_VOICE_OPTIONS = [
-  { value: ELEVENLABS_DEFAULT_VOICE_ID, label: "Rachel" },
-  { value: "pNInz6obpgDQGcFmaJgB", label: "Adam" },
+  { value: ELEVENLABS_DEFAULT_VOICE_ID, label: "Adam" },
   { value: "ErXwobaYiN019PkySvjV", label: "Antoni" },
   { value: "EXAVITQu4vr4xnSDxMaL", label: "Bella" },
   { value: "AZnzlk1XvdvUeBnXmlld", label: "Domi" },
@@ -825,7 +825,7 @@ const ELEVENLABS_LANGUAGE_CODE_OPTIONS = [
 
 const ELEVENLABS_STABILITY_OPTIONS = [
   { value: "auto", label: "Auto" },
-  { value: "0.25", label: "More expressive (0.25)" },
+  { value: "0.25", label: "More expressive / ad energy (0.25)" },
   { value: "0.5", label: "Balanced (0.5)" },
   { value: "0.75", label: "Stable (0.75)" },
   { value: "1", label: "Maximum stability (1.0)" },
@@ -859,6 +859,7 @@ const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
         type: "select",
         required: true,
         searchable: true,
+        includeInPayload: false,
         default: ELEVENLABS_DEFAULT_VOICE_ID,
         options: ELEVENLABS_VOICE_OPTIONS,
         optionsSource: ELEVENLABS_VOICE_OPTIONS_SOURCE,
@@ -945,13 +946,24 @@ const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
     inputFields: [
       {
         key: "voice_id",
-        label: "Default Voice",
+        label: "Speaker 1 Voice",
         type: "select",
         searchable: true,
         default: ELEVENLABS_DEFAULT_VOICE_ID,
         options: ELEVENLABS_VOICE_OPTIONS,
         optionsSource: ELEVENLABS_VOICE_OPTIONS_SOURCE,
-        description: "Used when prompt text is synchronized into a single dialogue input.",
+        description: "Used for Speaker 1, and for single-speaker dialogue when no Speaker 2 lines are present.",
+      },
+      {
+        key: "voice_id_2",
+        label: "Speaker 2 Voice",
+        type: "select",
+        searchable: true,
+        includeInPayload: false,
+        default: ELEVENLABS_DEFAULT_DIALOGUE_SPEAKER_2_VOICE_ID,
+        options: ELEVENLABS_VOICE_OPTIONS,
+        optionsSource: ELEVENLABS_VOICE_OPTIONS_SOURCE,
+        description: "Used for Speaker 2 when the generated dialogue contains Speaker 2 lines.",
       },
       {
         key: "inputs",
@@ -963,6 +975,16 @@ const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
         itemTemplate: {
           text: "{{item}}",
           voice_id: "{{fields.voice_id}}",
+        },
+        promptSync: {
+          strategy: "speaker_lines",
+          textKey: "text",
+          defaultVoiceField: "voice_id",
+          speakerPattern: "^\\s*Speaker\\s*(\\d+)\\s*[:：-]\\s*(.*)$",
+          speakerVoiceFields: {
+            "1": "voice_id",
+            "2": "voice_id_2",
+          },
         },
         itemFields: [
           { key: "text", label: "Text", type: "text", required: true, maxLength: 2000 },
@@ -997,7 +1019,7 @@ const ELEVENLABS_MODEL_DEFINITIONS: readonly ElevenLabsModelDefinition[] = [
         type: "select",
         default: "auto",
         options: ELEVENLABS_STABILITY_OPTIONS,
-        description: "Auto lets ElevenLabs choose. Other values map to settings.stability.",
+        description: "Auto is recommended. Use More expressive / ad energy for stronger sales delivery. Maximum stability sounds calmer and can reduce emotional punch.",
       },
       {
         key: "pronunciation_dictionary_locators",

@@ -184,10 +184,28 @@ export async function getUserVisibleSkills(
   // Ensure user has visibility rows (lazy init)
   await ensureUserInitialized(userId);
 
-  const conditions = [
-    eq(userSkillVisibility.userId, userId),
-    eq(userSkillVisibility.visible, true),
+  // Chat should show every skill the user can access immediately, even before
+  // a per-user visibility row exists for newly imported/approved skills.
+  const groupSharedSkillIds = db
+    .select({ skillId: skillPermissions.skillId })
+    .from(skillPermissions)
+    .innerJoin(groupMembers, and(
+      eq(groupMembers.groupId, skillPermissions.groupId),
+      eq(groupMembers.userId, userId),
+      eq(groupMembers.status, "active"),
+    ));
+
+  const conditions: any[] = [
     eq(skillsTable.isEnabled, true),
+    sql`${userSkillVisibility.visible} IS DISTINCT FROM false`,
+    or(
+      eq(skillsTable.visibility, "public"),
+      eq(skillsTable.createdBy, userId),
+      and(
+        eq(skillsTable.visibility, "private"),
+        inArray(skillsTable.id, groupSharedSkillIds),
+      ),
+    )!,
   ];
 
   if (category && category !== "all") {
@@ -225,16 +243,28 @@ export async function getUserVisibleSkills(
         executionMode: skillsTable.executionMode, // Added for endpoint routing
         autoTriggerEnabled: userSkillVisibility.autoTriggerEnabled,
       })
-      .from(userSkillVisibility)
-      .innerJoin(skillsTable, eq(userSkillVisibility.skillId, skillsTable.id))
+      .from(skillsTable)
+      .leftJoin(
+        userSkillVisibility,
+        and(
+          eq(userSkillVisibility.skillId, skillsTable.id),
+          eq(userSkillVisibility.userId, userId)
+        )
+      )
       .where(and(...conditions))
       .orderBy(skillsTable.priority)
       .limit(limit)
       .offset(offset),
     db
       .select({ total: count() })
-      .from(userSkillVisibility)
-      .innerJoin(skillsTable, eq(userSkillVisibility.skillId, skillsTable.id))
+      .from(skillsTable)
+      .leftJoin(
+        userSkillVisibility,
+        and(
+          eq(userSkillVisibility.skillId, skillsTable.id),
+          eq(userSkillVisibility.userId, userId)
+        )
+      )
       .where(and(...conditions)),
   ]);
 
@@ -243,6 +273,7 @@ export async function getUserVisibleSkills(
       ...sanitizeSkillMediaModelConfig(item),
       name: sanitizeBrandText(item.name || ""),
       description: sanitizeBrandText(item.description || ""),
+      autoTriggerEnabled: item.autoTriggerEnabled ?? true,
     })),
     total: totalResult[0]?.total ?? 0,
   };

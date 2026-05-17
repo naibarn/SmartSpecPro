@@ -1,0 +1,319 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/elevenlabs-beauty-dialogue-skill/schemas/input.schema.json",
+  "title": "ElevenLabs Beauty & Personal Care Dialogue Skill Input v18",
+  "description": "Generate safe, natural, ad-ready, plain-text ElevenLabs-style dialogue for beauty, cosmetic, personal care, hygiene, oral care, sunscreen, hair color, grooming, feminine care, and adjacent personal-use products. v18 optionally supports direct image uploads for product packaging/label analysis; images are supporting evidence, not a source for new claims.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "product_details"
+  ],
+  "properties": {
+    "product_details": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Raw product listing/details supplied by the user. May contain Thai, English, mixed language, promotions, shipping text, or risky claims."
+    },
+    "product_images": {
+      "type": "array",
+      "title": "Product images (optional)",
+      "description": "Optional image uploads for product photos, packaging, labels, ingredients, usage instructions, texture, swatches, or warnings. Upload by drag-and-drop or file picker; do not type URLs. Maximum 5 images. Images support product understanding and conflict/risk detection, but must not be used to invent claims.",
+      "minItems": 0,
+      "maxItems": 5,
+      "items": {
+        "type": "string",
+        "format": "binary",
+        "contentMediaType": "image/*",
+        "description": "Uploaded image file. Accepted through UI upload/drag-and-drop, not URL entry."
+      }
+    },
+    "image_analysis_mode": {
+      "type": "string",
+      "title": "Image analysis mode",
+      "default": "auto",
+      "enum": [
+        "auto",
+        "off",
+        "support_text_only",
+        "extract_visible_details",
+        "detect_conflicts_and_risks"
+      ],
+      "description": "Controls how optional uploaded images are used. Default detects visible packaging/label details and conflicts/risks while keeping product_details as the primary source."
+    },
+    "image_evidence_policy": {
+      "type": "string",
+      "title": "Image evidence policy",
+      "default": "auto",
+      "enum": [
+        "auto",
+        "text_primary_image_support",
+        "visible_text_only",
+        "conflict_safe_neutral"
+      ],
+      "description": "Keeps image use conservative: product text remains primary; only visible/readable image details may support the script; conflicts must be handled with safe neutral wording."
+    },
+    "output_language": {
+      "type": "string",
+      "default": "auto",
+      "description": "Spoken dialogue language. When auto, the skill should use ui_locale/browser_locale/app_language as the default language signal, then consider explicit user requests and the product detail language.",
+      "enum": [
+        "auto",
+        "English",
+        "Thai",
+        "Japanese",
+        "Korean",
+        "Chinese",
+        "Vietnamese",
+        "Indonesian",
+        "Malay",
+        "Spanish",
+        "French",
+        "German",
+        "Arabic",
+        "Hindi",
+        "Portuguese",
+        "Italian"
+      ]
+    },
+    "ui_locale": {
+      "type": "string",
+      "description": "Hidden UI locale supplied by Media Studio, e.g. th or en. Used when output_language is auto."
+    },
+    "browser_locale": {
+      "type": "string",
+      "description": "Hidden browser locale supplied by Media Studio, e.g. th-TH or en-US. Used when output_language is auto."
+    },
+    "app_language": {
+      "type": "string",
+      "description": "Hidden app language label supplied by Media Studio, e.g. Thai or English. Used when output_language is auto."
+    },
+    "speech_style": {
+      "type": "string",
+      "default": "auto",
+      "description": "Voice/personality direction. Use energetic_host for short-form sales audio that needs a strong hook and punchy delivery. Use friendly_expert/professional for trust. Use friend_to_friend for natural everyday recommendations.",
+      "enum": [
+        "auto",
+        "professional",
+        "friendly_expert",
+        "friend_to_friend",
+        "humorous",
+        "sarcastic_light",
+        "complaining_but_helpful",
+        "roast_but_praise",
+        "luxury_polished",
+        "soft_caring",
+        "energetic_host"
+      ]
+    },
+    "persuasion_style": {
+      "type": "string",
+      "default": "auto",
+      "description": "Selling logic. Use direct_response for stronger stop-scroll sales energy and a clear next step. Use problem_solution when the product solves a clear pain point. Use benefit_led for safer broad benefit framing. Use premium_trust for calmer credibility.",
+      "enum": [
+        "auto",
+        "benefit_led",
+        "problem_solution",
+        "storytelling",
+        "review_like",
+        "educational",
+        "soft_sell",
+        "direct_response",
+        "humor_hook",
+        "premium_trust",
+        "routine_journey"
+      ]
+    },
+    "target_duration_seconds": {
+      "type": [
+        "integer",
+        "string"
+      ],
+      "description": "Target spoken length. 15-30 seconds should be punchy and hook-led. 45-55 seconds can include ingredients, usage, cautions, and a softer close. Longer scripts from 60-180 seconds can include fuller storytelling, ingredient context, usage steps, and a more complete sales arc.",
+      "minimum": 15,
+      "maximum": 180,
+      "default": "auto",
+      "enum": [
+        "auto",
+        "15",
+        "30",
+        "45",
+        "55",
+        "60",
+        "75",
+        "90",
+        "105",
+        "110",
+        "120",
+        "135",
+        "150",
+        "165",
+        "170",
+        "180",
+        15,
+        30,
+        45,
+        55,
+        60,
+        75,
+        90,
+        105,
+        110,
+        120,
+        135,
+        150,
+        165,
+        170,
+        180
+      ]
+    },
+    "speaker_count": {
+      "type": [
+        "integer",
+        "string"
+      ],
+      "description": "Use 2 for dialogue ads where Speaker 1 sells and Speaker 2 asks like a real listener. Use 1 for short announcer-style clips.",
+      "enum": [
+        "auto",
+        1,
+        2,
+        "1",
+        "2"
+      ],
+      "default": "auto"
+    },
+    "enable_audio_tags": {
+      "type": [
+        "boolean",
+        "string"
+      ],
+      "description": "Emotion/audio tags should be sparse. Use them for the opening hook, a major reaction, or the closing push, not every line.",
+      "default": "auto",
+      "enum": [
+        "auto",
+        "true",
+        "false",
+        true,
+        false
+      ]
+    },
+    "strict_claim_guard": {
+      "type": "boolean",
+      "default": true
+    },
+    "avoid_brand_endorsement": {
+      "type": "boolean",
+      "default": true
+    },
+    "evergreen_mode": {
+      "type": "boolean",
+      "default": true,
+      "description": "When true, ignore short-term promotions, temporary discounts, giveaways, shop logistics, shipping rules, and review/guarantee policy unless requested."
+    },
+    "medical_reference_policy": {
+      "type": "string",
+      "default": "auto",
+      "enum": [
+        "auto",
+        "omit_unverified",
+        "soft_warning_only",
+        "allow_if_user_provides_evidence"
+      ]
+    },
+    "professional_warning_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "format": {
+      "type": "string",
+      "default": "plain_text_dialogue",
+      "const": "plain_text_dialogue"
+    },
+    "regulated_product_mode": {
+      "type": "string",
+      "default": "auto",
+      "enum": [
+        "auto",
+        "cosmetic_only",
+        "medical_adjacent_cautious",
+        "refuse_or_neutral_when_needed"
+      ],
+      "description": "Controls caution level for dental, intimate-care, hygiene, and medical-adjacent personal-use products."
+    },
+    "no_meta_compliance_dialogue": {
+      "type": "boolean",
+      "default": true,
+      "description": "When true, the final spoken dialogue must not mention banned claims, compliance rules, policy checks, or phrases like “ไม่ควรเคลม/ห้ามใช้คำ”. The rewrite must happen silently."
+    },
+    "multi_sku_handling": {
+      "type": "string",
+      "default": "auto",
+      "enum": [
+        "auto",
+        "neutral_choose_one_formula",
+        "focus_selected_item_only",
+        "ask_for_selected_sku_when_required"
+      ],
+      "description": "Controls behavior when listings contain many unrelated SKUs/formulas. Default creates a neutral choose-the-right-formula script instead of merging all claims."
+    },
+    "fragrance_brand_guard": {
+      "type": "boolean",
+      "default": true,
+      "description": "For perfume/fragrance listings, remove famous brand names, dupe implications, and unauthorized comparisons from customer-facing dialogue."
+    },
+    "near_eye_product_caution": {
+      "type": "boolean",
+      "default": true,
+      "description": "For eye masks, brow pencils, eyelash curlers, and eye-area tools, include gentle-use/avoid-eye-contact caution when relevant."
+    },
+    "self_heating_near_eye_caution": {
+      "type": "boolean",
+      "default": true,
+      "description": "For steam/self-heating eye masks, include heat and eye-area cautions."
+    },
+    "intimate_care_external_use_caution": {
+      "type": "boolean",
+      "default": true,
+      "description": "For intimate cleansers, keep claims external-use, pH/free-from focused, and avoid treatment claims."
+    },
+    "heat_appliance_safety_caution": {
+      "type": "boolean",
+      "default": true,
+      "description": "For heated hair tools, include dry-hair, water, unplug, and temperature cautions."
+    },
+    "dermatology_endorsement_guard": {
+      "type": "boolean",
+      "default": true,
+      "description": "Omit unverified dermatologist/doctor recommendations as sales proof; use neutral label facts only."
+    },
+    "simple_accessory_mode": {
+      "type": "boolean",
+      "default": true,
+      "description": "For mirrors, hair patches, simple beauty accessories, focus on stable practical features and omit marketplace noise."
+    },
+    "medical_device_cautious_mode": {
+      "type": "boolean",
+      "default": true,
+      "description": "For scar gels, test kits, and medical-device-like listings, keep copy factual and add professional-use/label cautions."
+    },
+    "supplement_warning_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "When a listing includes dietary supplements, include a balanced-diet/label-reading warning and avoid disease or treatment claims."
+    },
+    "scalp_condition_guard": {
+      "type": "boolean",
+      "default": true,
+      "description": "Softens hair-loss, dandruff, seborrheic, scalp acne, fungal, itch, redness, and inflammation claims."
+    },
+    "textile_uv_guard": {
+      "type": "boolean",
+      "default": true,
+      "description": "For UV apparel and textile protection claims, avoid absolute protection and remind about sunscreen/sun-safe habits for exposed skin."
+    },
+    "clinical_number_simplifier": {
+      "type": "boolean",
+      "default": true,
+      "description": "Do not use clinical percentages, x-times, or trial claims as spoken hooks; rewrite to practical non-guaranteed benefits."
+    }
+  }
+}

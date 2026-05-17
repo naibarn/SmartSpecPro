@@ -42,6 +42,17 @@ export interface BuildStoryboardProjectOptions {
   defaultDurationSeconds?: number;
   companionAudio?: StoryboardCompanionAudioCandidate[];
   muteVideoClipAudio?: boolean;
+  removeDuplicateBoundaryFrames?: boolean;
+  outputAspectRatio?: StoryboardRenderAspectRatioMode;
+}
+
+export type StoryboardRenderAspectRatioMode = "auto" | "9:16" | "16:9";
+
+export interface StoryboardRenderAspectRatioDecision {
+  mode: Exclude<StoryboardRenderAspectRatioMode, "auto">;
+  source: "selected-clips" | "fallback";
+  verticalCount: number;
+  horizontalCount: number;
 }
 
 function inferFormatFromUrl(url: string): string {
@@ -49,31 +60,122 @@ function inferFormatFromUrl(url: string): string {
   return match?.[1]?.toLowerCase() || "mp4";
 }
 
-function applyStoryboardAspectRatio(project: VideoEditorProject, ratio?: string): void {
-  const normalizedRatio = ratio?.trim().toLowerCase();
-  if (!normalizedRatio || normalizedRatio === "auto") {
+export function getStoryboardRenderResolution(ratio: Exclude<StoryboardRenderAspectRatioMode, "auto">): { width: number; height: number } {
+  return ratio === "9:16"
+    ? { width: 1080, height: 1920 }
+    : { width: 1920, height: 1080 };
+}
+
+function applyStoryboardAspectRatio(project: VideoEditorProject, ratio?: StoryboardRenderAspectRatioMode | string): void {
+  const normalizedRatio = normalizeStoryboardOutputAspectRatio(ratio);
+  if (!normalizedRatio) {
     return;
   }
 
-  const match = normalizedRatio.match(/^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/);
-  if (!match) {
-    return;
+  const resolution = getStoryboardRenderResolution(normalizedRatio);
+  project.settings.width = resolution.width;
+  project.settings.height = resolution.height;
+}
+
+function normalizeStoryboardAspectRatio(value: unknown): string | null {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized || normalized === "auto") return null;
+  if (normalized.includes("portrait") || normalized.includes("vertical") || normalized.includes("แนวตั้ง")) {
+    return "9:16";
+  }
+  if (normalized.includes("landscape") || normalized.includes("horizontal") || normalized.includes("แนวนอน")) {
+    return "16:9";
   }
 
+  const dimensionMatch = normalized.match(/(\d{2,5})\s*[x×]\s*(\d{2,5})/);
+  if (dimensionMatch) {
+    const width = Number.parseFloat(dimensionMatch[1] ?? "");
+    const height = Number.parseFloat(dimensionMatch[2] ?? "");
+    if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+      return width <= height ? "9:16" : "16:9";
+    }
+  }
+
+  const ratioMatch = normalized.match(/(\d+(?:\.\d+)?)\s*[:/]\s*(\d+(?:\.\d+)?)/);
+  if (ratioMatch) {
+    return `${ratioMatch[1]}:${ratioMatch[2]}`;
+  }
+  return null;
+}
+
+function normalizeStoryboardOutputAspectRatio(value: unknown): Exclude<StoryboardRenderAspectRatioMode, "auto"> | null {
+  const normalized = normalizeStoryboardAspectRatio(value);
+  if (!normalized) return null;
+  const match = normalized.match(/^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/);
+  if (!match) return null;
   const ratioWidth = Number.parseFloat(match[1] ?? "");
   const ratioHeight = Number.parseFloat(match[2] ?? "");
   if (!Number.isFinite(ratioWidth) || !Number.isFinite(ratioHeight) || ratioWidth <= 0 || ratioHeight <= 0) {
-    return;
+    return null;
+  }
+  return ratioWidth <= ratioHeight ? "9:16" : "16:9";
+}
+
+function inferAspectRatioFromExtraParams(extraParams?: Record<string, unknown>): string | null {
+  if (!extraParams) return null;
+  for (const key of [
+    "aspectRatio",
+    "aspect_ratio",
+    "ratio",
+    "resolution",
+    "size",
+    "imageSize",
+    "image_size",
+    "videoSize",
+    "video_size",
+  ]) {
+    const inferred = normalizeStoryboardAspectRatio(extraParams[key]);
+    if (inferred) return inferred;
+  }
+  return null;
+}
+
+function inferStoryboardProjectAspectRatio(clips: StoryboardClipCandidate[]): string | undefined {
+  for (const clip of clips) {
+    const inferred =
+      normalizeStoryboardAspectRatio(clip.generationAspectRatio)
+      ?? inferAspectRatioFromExtraParams(clip.generationExtraParams)
+      ?? normalizeStoryboardAspectRatio(clip.prompt);
+    if (inferred) return inferred;
+  }
+  return undefined;
+}
+
+export function inferStoryboardRenderAspectRatio(clips: StoryboardClipCandidate[]): StoryboardRenderAspectRatioDecision {
+  let verticalCount = 0;
+  let horizontalCount = 0;
+  let firstInferred: Exclude<StoryboardRenderAspectRatioMode, "auto"> | null = null;
+
+  for (const clip of clips) {
+    const inferred = normalizeStoryboardOutputAspectRatio(clip.generationAspectRatio)
+      ?? normalizeStoryboardOutputAspectRatio(inferAspectRatioFromExtraParams(clip.generationExtraParams))
+      ?? normalizeStoryboardOutputAspectRatio(clip.prompt);
+    if (!inferred) continue;
+    firstInferred ??= inferred;
+    if (inferred === "9:16") {
+      verticalCount += 1;
+    } else {
+      horizontalCount += 1;
+    }
   }
 
-  const longEdge = 1920;
-  if (ratioWidth >= ratioHeight) {
-    project.settings.width = longEdge;
-    project.settings.height = Math.max(1, Math.round((longEdge * ratioHeight) / ratioWidth));
-  } else {
-    project.settings.height = longEdge;
-    project.settings.width = Math.max(1, Math.round((longEdge * ratioWidth) / ratioHeight));
+  if (verticalCount === 0 && horizontalCount === 0) {
+    return { mode: "9:16", source: "fallback", verticalCount, horizontalCount };
   }
+  if (verticalCount === horizontalCount && firstInferred) {
+    return { mode: firstInferred, source: "selected-clips", verticalCount, horizontalCount };
+  }
+  return {
+    mode: verticalCount > horizontalCount ? "9:16" : "16:9",
+    source: "selected-clips",
+    verticalCount,
+    horizontalCount,
+  };
 }
 
 function clampAudioPlaybackRate(value: number): number {
@@ -96,6 +198,20 @@ export function inferStoryboardDurationSeconds(prompt: string, fallbackSeconds: 
   return Math.max(0.25, fallbackSeconds);
 }
 
+function normalizeReferenceUrl(url: unknown): string {
+  return String(url || "").trim();
+}
+
+function hasDuplicateFirstLastFrameBoundary(
+  current: StoryboardClipCandidate,
+  next: StoryboardClipCandidate | undefined,
+): boolean {
+  if (!next) return false;
+  const currentEndFrame = normalizeReferenceUrl(current.referenceUrls?.[1]);
+  const nextStartFrame = normalizeReferenceUrl(next.referenceUrls?.[0]);
+  return currentEndFrame.length > 0 && currentEndFrame === nextStartFrame;
+}
+
 export function buildStoryboardVideoProject(
   clips: StoryboardClipCandidate[],
   options: BuildStoryboardProjectOptions = {},
@@ -108,10 +224,10 @@ export function buildStoryboardVideoProject(
   const project = createEmptyProject(
     options.projectName?.trim() || `Storyboard Edit ${new Date().toLocaleString()}`,
   );
-  applyStoryboardAspectRatio(
-    project,
-    completed.find((clip) => clip.generationAspectRatio?.trim())?.generationAspectRatio,
-  );
+  const outputAspectRatio = options.outputAspectRatio && options.outputAspectRatio !== "auto"
+    ? options.outputAspectRatio
+    : inferStoryboardRenderAspectRatio(completed).mode;
+  applyStoryboardAspectRatio(project, outputAspectRatio ?? inferStoryboardProjectAspectRatio(completed));
   const videoTrack = findTrackByType(project.timeline, "video");
   if (!videoTrack) {
     return null;
@@ -119,13 +235,20 @@ export function buildStoryboardVideoProject(
 
   const groupId = generateId("compound");
   const fallbackDuration = Math.max(0.25, options.defaultDurationSeconds || 5);
+  const shouldRemoveDuplicateBoundaryFrames = options.removeDuplicateBoundaryFrames !== false;
+  const boundaryFrameDuration = project.settings.fps > 0 ? 1 / project.settings.fps : 1 / 30;
   let cursor = 0;
 
   for (let index = 0; index < completed.length; index += 1) {
     const clipSource = completed[index];
+    const nextClipSource = completed[index + 1];
     const duration = typeof clipSource.durationSeconds === "number" && Number.isFinite(clipSource.durationSeconds) && clipSource.durationSeconds > 0
       ? Math.max(0.25, clipSource.durationSeconds)
       : inferStoryboardDurationSeconds(clipSource.prompt, fallbackDuration);
+    const boundaryTrim = shouldRemoveDuplicateBoundaryFrames && hasDuplicateFirstLastFrameBoundary(clipSource, nextClipSource)
+      ? Math.min(boundaryFrameDuration, Math.max(0, duration - 0.25))
+      : 0;
+    const visibleDuration = duration - boundaryTrim;
     const mediaAsset: MediaLibraryAsset = {
       id: `storyboard-${clipSource.id}`,
       type: "video",
@@ -146,12 +269,20 @@ export function buildStoryboardVideoProject(
     const asset = addAssetToProject(project, mediaAsset, clipSource.url);
     const clip = addClipToTrack(videoTrack, asset, cursor);
     clip.groupId = groupId;
-    clip.duration = duration;
-    clip.trimOut = duration;
+    clip.duration = visibleDuration;
+    clip.trimOut = visibleDuration;
+    if (boundaryTrim > 0) {
+      clip.duplicateBoundaryFrameTrim = {
+        frameCount: 1,
+        seconds: boundaryTrim,
+        fps: project.settings.fps || 30,
+        reason: "matching_first_last_frame_boundary",
+      };
+    }
     if (options.muteVideoClipAudio) {
       clip.volume = 0;
     }
-    cursor += duration;
+    cursor += visibleDuration;
   }
 
   const audioTrack = findTrackByType(project.timeline, "audio");

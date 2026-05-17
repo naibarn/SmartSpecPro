@@ -1,11 +1,12 @@
 import fs from "fs";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-const { mockDbSelect, mockResolvePolicy, mockLoadRows, mockGetCachedPublicAppUrl } = vi.hoisted(() => ({
+const { mockDbSelect, mockResolvePolicy, mockLoadRows, mockGetCachedPublicAppUrl, mockSharp } = vi.hoisted(() => ({
   mockDbSelect: vi.fn(),
   mockResolvePolicy: vi.fn(),
   mockLoadRows: vi.fn(),
   mockGetCachedPublicAppUrl: vi.fn(),
+  mockSharp: vi.fn(),
 }));
 
 vi.mock("../db", () => ({
@@ -54,6 +55,10 @@ vi.mock("../services/skillRegistry", () => ({
 
 vi.mock("../services/appRuntimeConfig", () => ({
   getCachedPublicAppUrl: mockGetCachedPublicAppUrl,
+}));
+
+vi.mock("sharp", () => ({
+  default: mockSharp,
 }));
 
 vi.mock("../services/promptEnhancementService", () => ({
@@ -218,6 +223,12 @@ vi.mock("../../drizzle/schema", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockSharp.mockReturnValue({
+    rotate: vi.fn().mockReturnThis(),
+    resize: vi.fn().mockReturnThis(),
+    jpeg: vi.fn().mockReturnThis(),
+    toBuffer: vi.fn().mockResolvedValue(Buffer.from("optimized-image-bytes")),
+  });
 });
 
 afterEach(() => {
@@ -377,9 +388,32 @@ describe("skills.previewModelResolution", () => {
     const { convertImageUrlForLLM } = await import("./skills");
     const converted = await convertImageUrlForLLM("/api/storage/files/chat/uploads/110/sample.jpg");
 
-    expect(converted).toBe("data:image/jpeg;base64," + Buffer.from("fake-image-bytes").toString("base64"));
+    expect(converted).toBe("data:image/jpeg;base64," + Buffer.from("optimized-image-bytes").toString("base64"));
     expect(existsSpy).toHaveBeenCalled();
     expect(readSpy).toHaveBeenCalled();
+    expect(mockSharp).toHaveBeenCalledWith(Buffer.from("fake-image-bytes"), { animated: false });
+    const sharpPipeline = mockSharp.mock.results[0]?.value;
+    expect(sharpPipeline.resize).toHaveBeenCalledWith({
+      width: 2048,
+      height: 2048,
+      fit: "inside",
+      withoutEnlargement: true,
+    });
+    expect(sharpPipeline.jpeg).toHaveBeenCalledWith({
+      quality: 92,
+      mozjpeg: true,
+      chromaSubsampling: "4:4:4",
+    });
+  });
+
+  it("optimizes image data URLs before sending them to the LLM", async () => {
+    const original = "data:image/png;base64," + Buffer.from("large-inline-image").toString("base64");
+
+    const { convertImageUrlForLLM } = await import("./skills");
+    const converted = await convertImageUrlForLLM(original);
+
+    expect(converted).toBe("data:image/jpeg;base64," + Buffer.from("optimized-image-bytes").toString("base64"));
+    expect(mockSharp).toHaveBeenCalledWith(Buffer.from("large-inline-image"), { animated: false });
   });
 
   it("falls back to an absolute public URL when a local api storage image is missing", async () => {
@@ -394,6 +428,41 @@ describe("skills.previewModelResolution", () => {
 
     expect(converted).toBe("https://smartaihub.app/api/storage/files/chat/uploads/110/sample.jpg");
     expect(readSpy).not.toHaveBeenCalled();
+  });
+
+  it("keeps required concept fields in the basic section for JSON Schema skills", async () => {
+    const { convertJsonSchemaToSkillSchema } = await import("./skills");
+    const schema = convertJsonSchemaToSkillSchema({
+      title: "Background Scene Prompt Builder Input",
+      type: "object",
+      required: ["concept"],
+      properties: {
+        concept: {
+          type: "string",
+          minLength: 1,
+          maxLength: 4000,
+          description: "A rough scene concept.",
+        },
+        prompt_count: {
+          type: "integer",
+          minimum: 1,
+          maximum: 50,
+          default: 1,
+        },
+        language: {
+          type: "string",
+          default: "auto",
+          oneOf: [{ const: "auto", title: "Auto" }],
+        },
+      },
+    }, "background-scene-prompt");
+
+    const basicSection = schema.sections.find((section) => section.id === "basic");
+    const optionsSection = schema.sections.find((section) => section.id === "options");
+
+    expect(basicSection?.fields.map((field) => field.id)).toContain("concept");
+    expect(basicSection?.fields.find((field) => field.id === "concept")?.required).toBe(true);
+    expect(optionsSection?.fields.map((field) => field.id)).not.toContain("concept");
   });
 
   it("throws NOT_FOUND when skillId does not exist", async () => {

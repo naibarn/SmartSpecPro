@@ -1,0 +1,5813 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/smart-character-creator-pro/ui.schema.json",
+  "title": "Smart Character Creator Pro",
+  "titleTh": "ตัวสร้างตัวละครอัจฉริยะ Pro",
+  "description": "Thai/English UI metadata. Default UI language is English. Enum fields render as choices with Auto wherever applicable. Reference images use drag-and-drop or file picker upload, not manual URL entry.",
+  "descriptionTh": "แพ็กเกจสร้างโปรไฟล์ตัวละครและพรอมต์ภาพ AI พร้อมตัวเลือกแบบเลือกได้ โหมดอัตโนมัติ การแนบภาพอ้างอิง และผลลัพธ์หลายภาษา",
+  "type": "object",
+  "additionalProperties": true,
+  "x-ui-languages": [
+    "en",
+    "th"
+  ],
+  "x-default-ui-language": "en",
+  "x-language-options": [
+    {
+      "value": "en",
+      "label": {
+        "en": "English",
+        "th": "อังกฤษ"
+      }
+    },
+    {
+      "value": "th",
+      "label": {
+        "en": "Thai",
+        "th": "ไทย"
+      }
+    }
+  ],
+  "x-output-language-options": [
+    {
+      "value": "auto",
+      "label": {
+        "en": "Auto",
+        "th": "อัตโนมัติ"
+      }
+    },
+    {
+      "value": "th",
+      "label": {
+        "en": "Thai",
+        "th": "ไทย"
+      }
+    },
+    {
+      "value": "en",
+      "label": {
+        "en": "English",
+        "th": "อังกฤษ"
+      }
+    },
+    {
+      "value": "zh-Hans",
+      "label": {
+        "en": "Chinese Simplified",
+        "th": "Chinese Simplified"
+      }
+    },
+    {
+      "value": "zh-Hant",
+      "label": {
+        "en": "Chinese Traditional",
+        "th": "Chinese Traditional"
+      }
+    },
+    {
+      "value": "ja",
+      "label": {
+        "en": "Ja",
+        "th": "ja"
+      }
+    },
+    {
+      "value": "ko",
+      "label": {
+        "en": "Ko",
+        "th": "ko"
+      }
+    },
+    {
+      "value": "es",
+      "label": {
+        "en": "Es",
+        "th": "es"
+      }
+    },
+    {
+      "value": "fr",
+      "label": {
+        "en": "Fr",
+        "th": "fr"
+      }
+    },
+    {
+      "value": "de",
+      "label": {
+        "en": "De",
+        "th": "de"
+      }
+    },
+    {
+      "value": "it",
+      "label": {
+        "en": "It",
+        "th": "it"
+      }
+    },
+    {
+      "value": "pt",
+      "label": {
+        "en": "Pt",
+        "th": "pt"
+      }
+    },
+    {
+      "value": "id",
+      "label": {
+        "en": "Id",
+        "th": "id"
+      }
+    },
+    {
+      "value": "vi",
+      "label": {
+        "en": "Vi",
+        "th": "vi"
+      }
+    },
+    {
+      "value": "ar",
+      "label": {
+        "en": "Ar",
+        "th": "ar"
+      }
+    },
+    {
+      "value": "hi",
+      "label": {
+        "en": "Hi",
+        "th": "hi"
+      }
+    }
+  ],
+  "ui:order": [
+    "workflow_mode",
+    "ui_language",
+    "output_language",
+    "reference_images",
+    "reference_image_behavior",
+    "character_profile",
+    "generation_preferences",
+    "prompt_count",
+    "shot_types",
+    "aspect_ratio",
+    "include_translation",
+    "translation_language"
+  ],
+  "workflow_mode": {
+    "ui:widget": "select",
+    "ui:title": {
+      "en": "Workflow Mode",
+      "th": "โหมดการทำงาน"
+    },
+    "ui:enumNames": {
+      "auto": {
+        "en": "Auto",
+        "th": "อัตโนมัติ"
+      },
+      "generate_from_profile": {
+        "en": "Generate prompts from this form",
+        "th": "สร้างพรอมต์จากข้อมูลในฟอร์ม"
+      },
+      "random_prompt": {
+        "en": "Random character prompt",
+        "th": "สุ่มพรอมต์ตัวละคร"
+      },
+      "face_lock": {
+        "en": "Face-lock prompt from reference",
+        "th": "พรอมต์ล็อกใบหน้าจากภาพอ้างอิง"
+      },
+      "generate_from_reference_images": {
+        "en": "Generate from reference images",
+        "th": "สร้างจากภาพอ้างอิง"
+      }
+    }
+  },
+  "ui_language": {
+    "ui:widget": "radio",
+    "ui:title": {
+      "en": "UI Language",
+      "th": "ภาษา UI"
+    },
+    "ui:enumNames": {
+      "en": {
+        "en": "English",
+        "th": "อังกฤษ"
+      },
+      "th": {
+        "en": "Thai",
+        "th": "ไทย"
+      }
+    },
+    "ui:help": {
+      "en": "Default is always English. Switch to Thai if needed.",
+      "th": "ค่าเริ่มต้นเป็นภาษาอังกฤษเสมอ เปลี่ยนเป็นไทยได้"
+    }
+  },
+  "output_language": {
+    "ui:widget": "select",
+    "ui:title": {
+      "en": "Output Language",
+      "th": "ภาษาพรอมต์"
+    },
+    "ui:enumNames": {
+      "auto": {
+        "en": "Auto",
+        "th": "อัตโนมัติ"
+      },
+      "th": {
+        "en": "Thai",
+        "th": "ไทย"
+      },
+      "en": {
+        "en": "English",
+        "th": "อังกฤษ"
+      },
+      "zh-Hans": {
+        "en": "Chinese Simplified",
+        "th": "จีนตัวย่อ"
+      },
+      "zh-Hant": {
+        "en": "Chinese Traditional",
+        "th": "จีนตัวเต็ม"
+      },
+      "ja": {
+        "en": "Japanese",
+        "th": "ญี่ปุ่น"
+      },
+      "ko": {
+        "en": "Korean",
+        "th": "เกาหลี"
+      },
+      "es": {
+        "en": "Spanish",
+        "th": "สเปน"
+      },
+      "fr": {
+        "en": "French",
+        "th": "ฝรั่งเศส"
+      },
+      "de": {
+        "en": "German",
+        "th": "เยอรมัน"
+      },
+      "it": {
+        "en": "Italian",
+        "th": "อิตาลี"
+      },
+      "pt": {
+        "en": "Portuguese",
+        "th": "โปรตุเกส"
+      },
+      "id": {
+        "en": "Indonesian",
+        "th": "อินโดนีเซีย"
+      },
+      "vi": {
+        "en": "Vietnamese",
+        "th": "เวียดนาม"
+      },
+      "ar": {
+        "en": "Arabic",
+        "th": "อาหรับ"
+      },
+      "hi": {
+        "en": "Hindi",
+        "th": "ฮินดี"
+      }
+    },
+    "ui:help": {
+      "en": "Prompt output can be Auto or one of the supported languages.",
+      "th": "เลือกภาษาพรอมต์เป็น Auto หรือภาษาที่รองรับ"
+    }
+  },
+  "prompt_count": {
+    "ui:widget": "updown",
+    "ui:title": {
+      "en": "Prompt Count",
+      "th": "จำนวนพรอมต์"
+    },
+    "ui:help": {
+      "en": "Number of separate prompt variations to generate. Each prompt uses the one selected shot type below.",
+      "th": "จำนวนพรอมต์แยกที่ต้องการสร้าง แต่ละพรอมต์จะใช้ประเภทภาพที่เลือกไว้เพียงแบบเดียว"
+    }
+  },
+  "shot_types": {
+    "ui:widget": "select",
+    "ui:title": {
+      "en": "Shot Type",
+      "th": "ประเภทภาพต่อพรอมต์"
+    },
+    "ui:help": {
+      "en": "Choose one framing style for each generated prompt. This prevents mixing close-up, portrait, medium, and full-body instructions into one image.",
+      "th": "เลือกมุมภาพเพียงข้อเดียวต่อพรอมต์ เพื่อไม่ให้ภาพเดียวมีทั้งระยะใกล้ พอร์ตเทรต ครึ่งตัว และเต็มตัวปนกัน"
+    },
+    "ui:enumNames": {
+      "auto": {
+        "en": "Auto",
+        "th": "อัตโนมัติ"
+      },
+      "close_up": {
+        "en": "Close Up",
+        "th": "ภาพระยะใกล้"
+      },
+      "portrait": {
+        "en": "Portrait",
+        "th": "ภาพพอร์ตเทรต"
+      },
+      "medium": {
+        "en": "Medium",
+        "th": "กลาง"
+      },
+      "full_body": {
+        "en": "Full Body",
+        "th": "ภาพเต็มตัว"
+      },
+      "upper_body": {
+        "en": "Upper Body",
+        "th": "ภาพช่วงบน"
+      },
+      "three_quarter": {
+        "en": "Three Quarter",
+        "th": "ภาพสามส่วนสี่"
+      },
+      "profile": {
+        "en": "Profile",
+        "th": "ภาพด้านข้าง"
+      },
+      "over_the_shoulder": {
+        "en": "Over The Shoulder",
+        "th": "ภาพมองข้ามไหล่"
+      },
+      "walking": {
+        "en": "Walking",
+        "th": "ภาพเดิน"
+      },
+      "action": {
+        "en": "Action",
+        "th": "ภาพแอ็กชัน"
+      },
+      "environmental_portrait": {
+        "en": "Environmental Portrait",
+        "th": "พอร์ตเทรตกับสภาพแวดล้อม"
+      },
+      "custom": {
+        "en": "Custom",
+        "th": "กำหนดเอง"
+      }
+    }
+  },
+  "aspect_ratio": {
+    "ui:widget": "select",
+    "ui:title": {
+      "en": "Aspect Ratio",
+      "th": "อัตราส่วนภาพ"
+    },
+    "ui:enumNames": {
+      "auto": {
+        "en": "Auto",
+        "th": "อัตโนมัติ"
+      },
+      "9:16": {
+        "en": "9:16",
+        "th": "9:16"
+      },
+      "16:9": {
+        "en": "16:9",
+        "th": "16:9"
+      },
+      "1:1": {
+        "en": "1:1",
+        "th": "1:1"
+      },
+      "4:5": {
+        "en": "4:5",
+        "th": "4:5"
+      },
+      "3:4": {
+        "en": "3:4",
+        "th": "3:4"
+      },
+      "2:3": {
+        "en": "2:3",
+        "th": "2:3"
+      },
+      "3:2": {
+        "en": "3:2",
+        "th": "3:2"
+      },
+      "4:3": {
+        "en": "4:3",
+        "th": "4:3"
+      },
+      "21:9": {
+        "en": "21:9",
+        "th": "21:9"
+      },
+      "custom": {
+        "en": "Custom",
+        "th": "กำหนดเอง"
+      }
+    }
+  },
+  "include_translation": {
+    "ui:widget": "checkbox",
+    "ui:title": {
+      "en": "Include Translation",
+      "th": "ใส่คำแปลเพิ่มเติม"
+    },
+    "ui:help": {
+      "en": "Optional. Turn this on only if you want the final prompt to include an extra translated copy in addition to the main output prompt.",
+      "th": "เปิดเฉพาะเมื่อต้องการให้ผลลัพธ์มีคำแปลอีกชุดเพิ่มจากพรอมต์หลัก ไม่ใช่ภาษาหลักของพรอมต์"
+    }
+  },
+  "translation_language": {
+    "ui:widget": "select",
+    "ui:title": {
+      "en": "Additional Translation Language",
+      "th": "ภาษาคำแปลเพิ่มเติม"
+    },
+    "ui:help": {
+      "en": "Used only when Include Translation is enabled. The main prompt language is controlled by Output Language above.",
+      "th": "ใช้เฉพาะเมื่อเปิด ใส่คำแปลเพิ่มเติม เท่านั้น ส่วนภาษาหลักของพรอมต์ให้ตั้งที่ช่อง ภาษาพรอมต์ ด้านบน"
+    },
+    "ui:enumNames": {
+      "auto": {
+        "en": "Auto",
+        "th": "อัตโนมัติ"
+      },
+      "th": {
+        "en": "Thai",
+        "th": "ไทย"
+      },
+      "en": {
+        "en": "English",
+        "th": "อังกฤษ"
+      },
+      "zh-Hans": {
+        "en": "Chinese Simplified",
+        "th": "จีนตัวย่อ"
+      },
+      "zh-Hant": {
+        "en": "Chinese Traditional",
+        "th": "จีนตัวเต็ม"
+      },
+      "ja": {
+        "en": "Japanese",
+        "th": "ญี่ปุ่น"
+      },
+      "ko": {
+        "en": "Korean",
+        "th": "เกาหลี"
+      },
+      "es": {
+        "en": "Spanish",
+        "th": "สเปน"
+      },
+      "fr": {
+        "en": "French",
+        "th": "ฝรั่งเศส"
+      },
+      "de": {
+        "en": "German",
+        "th": "เยอรมัน"
+      },
+      "it": {
+        "en": "Italian",
+        "th": "อิตาลี"
+      },
+      "pt": {
+        "en": "Portuguese",
+        "th": "โปรตุเกส"
+      },
+      "id": {
+        "en": "Indonesian",
+        "th": "อินโดนีเซีย"
+      },
+      "vi": {
+        "en": "Vietnamese",
+        "th": "เวียดนาม"
+      },
+      "ar": {
+        "en": "Arabic",
+        "th": "อาหรับ"
+      },
+      "hi": {
+        "en": "Hindi",
+        "th": "ฮินดี"
+      }
+    }
+  },
+  "reference_images": {
+    "ui:widget": "file",
+    "ui:title": {
+      "en": "Reference images",
+      "th": "รูปภาพอ้างอิง"
+    },
+    "ui:help": {
+      "en": "Optional. Drag images here or click Add image. Do not type image URLs. Use person images for face/body references or background images for scene/environment references.",
+      "th": "ไม่บังคับ ลากรูปมาวางหรือกดเพิ่มรูปภาพ ไม่ต้องพิมพ์ URL ใช้รูปบุคคลเป็นอ้างอิงใบหน้า/รูปร่าง หรือใช้รูปฉากเป็นอ้างอิงฉากหลัง/สภาพแวดล้อม"
+    },
+    "ui:options": {
+      "accept": "image/*",
+      "multiple": true,
+      "dragAndDrop": true,
+      "filePicker": true,
+      "urlInput": false,
+      "maxFiles": 20
+    }
+  },
+  "reference_image_behavior": {
+    "allow_reference_images": {
+      "ui:widget": "checkbox",
+      "ui:title": {
+        "en": "Allow Reference Images",
+        "th": "อนุญาตให้ใช้รูปอ้างอิง"
+      }
+    },
+    "person_reference_policy": {
+      "ui:widget": "select",
+      "ui:title": {
+        "en": "Person Reference Policy",
+        "th": "นโยบายรูปบุคคลอ้างอิง"
+      },
+      "ui:enumNames": {
+        "auto": {
+          "en": "Auto",
+          "th": "อัตโนมัติ"
+        },
+        "auto_merge_with_selected_traits": {
+          "en": "Auto Merge With Selected Traits",
+          "th": "auto merge พร้อม selected traits"
+        },
+        "preserve_face_identity": {
+          "en": "Preserve Face Identity",
+          "th": "preserve ใบหน้า identity"
+        },
+        "use_as_loose_inspiration": {
+          "en": "Use As Loose Inspiration",
+          "th": "use as loose inspiration"
+        },
+        "override_only_unspecified_traits": {
+          "en": "Override Only Unspecified Traits",
+          "th": "override only unspecified traits"
+        },
+        "ignore_person_reference": {
+          "en": "Ignore Person Reference",
+          "th": "ignore person อ้างอิง"
+        }
+      }
+    },
+    "background_reference_policy": {
+      "ui:widget": "select",
+      "ui:title": {
+        "en": "Background Reference Policy",
+        "th": "นโยบายรูปฉากอ้างอิง"
+      },
+      "ui:enumNames": {
+        "auto": {
+          "en": "Auto",
+          "th": "อัตโนมัติ"
+        },
+        "auto_use_as_environment": {
+          "en": "Auto Use As Environment",
+          "th": "auto use as สภาพแวดล้อม"
+        },
+        "preserve_environment": {
+          "en": "Preserve Environment",
+          "th": "preserve สภาพแวดล้อม"
+        },
+        "use_as_loose_inspiration": {
+          "en": "Use As Loose Inspiration",
+          "th": "use as loose inspiration"
+        },
+        "override_environment_only": {
+          "en": "Override Environment Only",
+          "th": "override สภาพแวดล้อม only"
+        },
+        "ignore_background_reference": {
+          "en": "Ignore Background Reference",
+          "th": "ignore ฉากหลัง อ้างอิง"
+        }
+      }
+    },
+    "conflict_resolution": {
+      "ui:widget": "select",
+      "ui:title": {
+        "en": "Conflict Resolution",
+        "th": "การจัดการเมื่อข้อมูลขัดแย้ง"
+      },
+      "ui:enumNames": {
+        "auto": {
+          "en": "Auto",
+          "th": "อัตโนมัติ"
+        },
+        "user_choices_override_reference": {
+          "en": "User Choices Override Reference",
+          "th": "ตัวเลือกผู้ใช้สำคัญกว่ารูปอ้างอิง"
+        },
+        "reference_overrides_unspecified_only": {
+          "en": "Reference Overrides Unspecified Only",
+          "th": "รูปอ้างอิงใช้เฉพาะส่วนที่ยังไม่ระบุ"
+        },
+        "ask_when_conflict": {
+          "en": "Ask When Conflict",
+          "th": "ถามเมื่อข้อมูลขัดแย้ง"
+        },
+        "auto_best_consistency": {
+          "en": "Auto Best Consistency",
+          "th": "เลือกอัตโนมัติเพื่อความสอดคล้อง"
+        }
+      }
+    },
+    "privacy_note_acknowledged": {
+      "ui:widget": "checkbox",
+      "ui:title": {
+        "en": "Privacy Note Acknowledged",
+        "th": "ยืนยันหมายเหตุความเป็นส่วนตัว"
+      }
+    }
+  },
+  "character_profile": {
+    "name": {
+      "ui:widget": "text",
+      "ui:title": {
+        "en": "Name",
+        "th": "ชื่อตัวละคร"
+      }
+    },
+    "gender_identity": {
+      "identity": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Identity",
+          "th": "เพศสภาวะ"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "female": {
+            "en": "Female",
+            "th": "หญิง"
+          },
+          "male": {
+            "en": "Male",
+            "th": "ชาย"
+          },
+          "non_binary": {
+            "en": "Non Binary",
+            "th": "นอนไบนารี"
+          },
+          "genderfluid": {
+            "en": "Genderfluid",
+            "th": "เจนเดอร์ฟลูอิด"
+          },
+          "agender": {
+            "en": "Agender",
+            "th": "ไม่มีเพศสภาวะ"
+          },
+          "transgender_female": {
+            "en": "Transgender Female",
+            "th": "หญิงข้ามเพศ"
+          },
+          "transgender_male": {
+            "en": "Transgender Male",
+            "th": "ชายข้ามเพศ"
+          },
+          "two_spirit": {
+            "en": "Two Spirit",
+            "th": "ทูสปิริต"
+          },
+          "intersex": {
+            "en": "Intersex",
+            "th": "อินเตอร์เซ็กซ์"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "expression": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Expression",
+          "th": "การแสดงออกทางเพศ"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "feminine": {
+            "en": "Feminine",
+            "th": "แสดงออกแบบผู้หญิง"
+          },
+          "masculine": {
+            "en": "Masculine",
+            "th": "แสดงออกแบบผู้ชาย"
+          },
+          "androgynous": {
+            "en": "Androgynous",
+            "th": "กึ่งชายหญิง"
+          },
+          "gender_neutral": {
+            "en": "Gender Neutral",
+            "th": "ไม่เน้นเพศ"
+          },
+          "fluid_expression": {
+            "en": "Fluid Expression",
+            "th": "การแสดงออกลื่นไหล"
+          },
+          "soft_feminine": {
+            "en": "Soft Feminine",
+            "th": "ผู้หญิงนุ่มนวล"
+          },
+          "soft_masculine": {
+            "en": "Soft Masculine",
+            "th": "ผู้ชายนุ่มนวล"
+          },
+          "elegant_feminine": {
+            "en": "Elegant Feminine",
+            "th": "ผู้หญิงสง่างาม"
+          },
+          "rugged_masculine": {
+            "en": "Rugged Masculine",
+            "th": "ผู้ชายลุคเข้ม"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_identity": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Identity",
+          "th": "เพศสภาวะกำหนดเอง"
+        }
+      },
+      "custom_expression": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Expression",
+          "th": "การแสดงออกกำหนดเอง"
+        }
+      }
+    },
+    "age": {
+      "range": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Range",
+          "th": "ช่วงอายุ"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "toddler_1_3": {
+            "en": "Toddler 1 3",
+            "th": "เด็กวัยหัดเดิน 1-3 ปี"
+          },
+          "preschool_4_6": {
+            "en": "Preschool 4 6",
+            "th": "เด็กก่อนเรียน 4-6 ปี"
+          },
+          "school_age_7_12": {
+            "en": "School Age 7 12",
+            "th": "เด็กวัยเรียน 7-12 ปี"
+          },
+          "early_teen_13_15": {
+            "en": "Early Teen 13 15",
+            "th": "วัยรุ่นต้น 13-15 ปี"
+          },
+          "late_teen_16_19": {
+            "en": "Late Teen 16 19",
+            "th": "วัยรุ่นปลาย 16-19 ปี"
+          },
+          "young_adult_20_29": {
+            "en": "Young Adult 20 29",
+            "th": "วัยหนุ่มสาว 20-29 ปี"
+          },
+          "early_adult_30_39": {
+            "en": "Early Adult 30 39",
+            "th": "ผู้ใหญ่ต้น 30-39 ปี"
+          },
+          "middle_age_40_59": {
+            "en": "Middle Age 40 59",
+            "th": "วัยกลางคน 40-59 ปี"
+          },
+          "mature_adult_60_79": {
+            "en": "Mature Adult 60 79",
+            "th": "ผู้ใหญ่ตอนปลาย 60-79 ปี"
+          },
+          "elderly_80_plus": {
+            "en": "Elderly 80 Plus",
+            "th": "สูงอายุ 80+ ปี"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "specific_age": {
+        "ui:widget": "updown",
+        "ui:title": {
+          "en": "Specific Age",
+          "th": "อายุที่แน่นอน"
+        }
+      },
+      "appearance": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Appearance",
+          "th": "ลักษณะตามวัย"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "baby_face": {
+            "en": "Baby Face",
+            "th": "หน้าเด็ก"
+          },
+          "age_appropriate": {
+            "en": "Age Appropriate",
+            "th": "เหมาะสมตามวัย"
+          },
+          "mature_looking": {
+            "en": "Mature Looking",
+            "th": "ดูเป็นผู้ใหญ่กว่าวัย"
+          },
+          "youthful_appearance": {
+            "en": "Youthful Appearance",
+            "th": "ดูอ่อนเยาว์"
+          },
+          "weathered": {
+            "en": "Weathered",
+            "th": "มีร่องรอยแห่งวัย"
+          },
+          "fresh_youthful": {
+            "en": "Fresh Youthful",
+            "th": "fresh youthful"
+          },
+          "wise_mature": {
+            "en": "Wise Mature",
+            "th": "wise mature"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "ethnicity_skin": {
+      "ethnicity": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Ethnicity",
+          "th": "เชื้อชาติ/ภูมิภาค"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "east_asian": {
+            "en": "East Asian",
+            "th": "เอเชียตะวันออก"
+          },
+          "southeast_asian": {
+            "en": "Southeast Asian",
+            "th": "เอเชียตะวันออกเฉียงใต้"
+          },
+          "south_asian": {
+            "en": "South Asian",
+            "th": "เอเชียใต้"
+          },
+          "middle_eastern": {
+            "en": "Middle Eastern",
+            "th": "ตะวันออกกลาง"
+          },
+          "european_caucasian": {
+            "en": "European Caucasian",
+            "th": "ยุโรป/คอเคเซียน"
+          },
+          "african_black": {
+            "en": "African Black",
+            "th": "แอฟริกัน/ผิวดำ"
+          },
+          "hispanic_latino": {
+            "en": "Hispanic Latino",
+            "th": "ฮิสแปนิก/ลาติโน"
+          },
+          "native_american": {
+            "en": "Native American",
+            "th": "ชนพื้นเมืองอเมริกัน"
+          },
+          "pacific_islander": {
+            "en": "Pacific Islander",
+            "th": "ชาวเกาะแปซิฟิก"
+          },
+          "mixed_multiracial": {
+            "en": "Mixed Multiracial",
+            "th": "ลูกครึ่ง/หลายเชื้อชาติ"
+          },
+          "central_asian": {
+            "en": "Central Asian",
+            "th": "เอเชียกลาง"
+          },
+          "north_african": {
+            "en": "North African",
+            "th": "แอฟริกาเหนือ"
+          },
+          "caribbean": {
+            "en": "Caribbean",
+            "th": "แคริบเบียน"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "skin_tone": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Skin Tone",
+          "th": "โทนสีผิว"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "porcelain": {
+            "en": "Porcelain",
+            "th": "ขาวซีด"
+          },
+          "fair": {
+            "en": "Fair",
+            "th": "ขาวนวล"
+          },
+          "light": {
+            "en": "Light",
+            "th": "ขาวสว่าง"
+          },
+          "light_medium": {
+            "en": "Light Medium",
+            "th": "ขาวปานกลาง"
+          },
+          "medium": {
+            "en": "Medium",
+            "th": "กลาง"
+          },
+          "medium_tan": {
+            "en": "Medium Tan",
+            "th": "แทนปานกลาง"
+          },
+          "tan": {
+            "en": "Tan",
+            "th": "ผิวแทน"
+          },
+          "olive": {
+            "en": "Olive",
+            "th": "ผิวโอลีฟ"
+          },
+          "brown": {
+            "en": "Brown",
+            "th": "น้ำตาล"
+          },
+          "dark_brown": {
+            "en": "Dark Brown",
+            "th": "น้ำตาลเข้ม"
+          },
+          "deep": {
+            "en": "Deep",
+            "th": "เข้มมาก"
+          },
+          "ebony": {
+            "en": "Ebony",
+            "th": "ดำเข้ม"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "undertone": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Undertone",
+          "th": "อันเดอร์โทน"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "cool": {
+            "en": "Cool",
+            "th": "เย็น"
+          },
+          "warm": {
+            "en": "Warm",
+            "th": "อบอุ่น"
+          },
+          "neutral": {
+            "en": "Neutral",
+            "th": "กลาง"
+          },
+          "golden": {
+            "en": "Golden",
+            "th": "ทอง"
+          },
+          "peachy": {
+            "en": "Peachy",
+            "th": "พีช"
+          },
+          "pink": {
+            "en": "Pink",
+            "th": "ชมพู"
+          },
+          "red": {
+            "en": "Red",
+            "th": "แดง"
+          },
+          "yellow": {
+            "en": "Yellow",
+            "th": "เหลือง"
+          },
+          "olive": {
+            "en": "Olive",
+            "th": "ผิวโอลีฟ"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "special_features": {
+        "ui:widget": "checkboxes",
+        "ui:title": {
+          "en": "Special Features",
+          "th": "ลักษณะพิเศษ"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "freckles": {
+            "en": "Freckles",
+            "th": "freckles"
+          },
+          "beauty_marks": {
+            "en": "Beauty Marks",
+            "th": "beauty marks"
+          },
+          "vitiligo": {
+            "en": "Vitiligo",
+            "th": "vitiligo"
+          },
+          "birthmarks": {
+            "en": "Birthmarks",
+            "th": "birthmarks"
+          },
+          "tanning_lines": {
+            "en": "Tanning Lines",
+            "th": "tanning lines"
+          },
+          "sun_spots": {
+            "en": "Sun Spots",
+            "th": "sun spots"
+          },
+          "moles": {
+            "en": "Moles",
+            "th": "moles"
+          },
+          "clear_skin": {
+            "en": "Clear Skin",
+            "th": "ใส ผิว"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "face_structure": {
+      "face_shape": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Face Shape",
+          "th": "รูปหน้า"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "oval": {
+            "en": "Oval",
+            "th": "รูปไข่"
+          },
+          "round": {
+            "en": "Round",
+            "th": "กลม"
+          },
+          "square": {
+            "en": "Square",
+            "th": "เหลี่ยม"
+          },
+          "rectangle_oblong": {
+            "en": "Rectangle Oblong",
+            "th": "ยาว/สี่เหลี่ยมผืนผ้า"
+          },
+          "heart_inverted_triangle": {
+            "en": "Heart Inverted Triangle",
+            "th": "รูปหัวใจ/สามเหลี่ยมกลับหัว"
+          },
+          "diamond": {
+            "en": "Diamond",
+            "th": "รูปเพชร"
+          },
+          "triangle_pear": {
+            "en": "Triangle Pear",
+            "th": "สามเหลี่ยม/แพร์"
+          },
+          "long_narrow": {
+            "en": "Long Narrow",
+            "th": "ยาวแคบ"
+          },
+          "soft_oval": {
+            "en": "Soft Oval",
+            "th": "รูปไข่นุ่มนวล"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "forehead": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Forehead",
+          "th": "หน้าผาก"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "high_forehead": {
+            "en": "High Forehead",
+            "th": "สูง forehead"
+          },
+          "average_forehead": {
+            "en": "Average Forehead",
+            "th": "ปกติ forehead"
+          },
+          "low_forehead": {
+            "en": "Low Forehead",
+            "th": "ต่ำ forehead"
+          },
+          "broad_forehead": {
+            "en": "Broad Forehead",
+            "th": "broad forehead"
+          },
+          "narrow_forehead": {
+            "en": "Narrow Forehead",
+            "th": "แคบ forehead"
+          },
+          "rounded_forehead": {
+            "en": "Rounded Forehead",
+            "th": "โค้งมน forehead"
+          },
+          "angular_forehead": {
+            "en": "Angular Forehead",
+            "th": "เหลี่ยม forehead"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "hairline": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Hairline",
+          "th": "แนวไรผม"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "straight_hairline": {
+            "en": "Straight Hairline",
+            "th": "ตรง hairline"
+          },
+          "widows_peak": {
+            "en": "Widows Peak",
+            "th": "widows peak"
+          },
+          "rounded_hairline": {
+            "en": "Rounded Hairline",
+            "th": "โค้งมน hairline"
+          },
+          "receding_hairline": {
+            "en": "Receding Hairline",
+            "th": "receding hairline"
+          },
+          "high_hairline": {
+            "en": "High Hairline",
+            "th": "สูง hairline"
+          },
+          "low_hairline": {
+            "en": "Low Hairline",
+            "th": "ต่ำ hairline"
+          },
+          "soft_hairline": {
+            "en": "Soft Hairline",
+            "th": "นุ่มนวล hairline"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "cheekbones": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Cheekbones",
+          "th": "โหนกแก้ม"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "high_cheekbones": {
+            "en": "High Cheekbones",
+            "th": "สูง cheekbones"
+          },
+          "prominent_cheekbones": {
+            "en": "Prominent Cheekbones",
+            "th": "โดดเด่น cheekbones"
+          },
+          "low_cheekbones": {
+            "en": "Low Cheekbones",
+            "th": "ต่ำ cheekbones"
+          },
+          "soft_cheekbones": {
+            "en": "Soft Cheekbones",
+            "th": "นุ่มนวล cheekbones"
+          },
+          "sharp_cheekbones": {
+            "en": "Sharp Cheekbones",
+            "th": "sharp cheekbones"
+          },
+          "wide_set_cheekbones": {
+            "en": "Wide Set Cheekbones",
+            "th": "กว้าง set cheekbones"
+          },
+          "subtle_cheekbones": {
+            "en": "Subtle Cheekbones",
+            "th": "อ่อน cheekbones"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "jaw": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Jaw",
+          "th": "กราม"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "strong_jaw": {
+            "en": "Strong Jaw",
+            "th": "แข็งแรง jaw"
+          },
+          "soft_jaw": {
+            "en": "Soft Jaw",
+            "th": "นุ่มนวล jaw"
+          },
+          "square_jaw": {
+            "en": "Square Jaw",
+            "th": "square jaw"
+          },
+          "rounded_jaw": {
+            "en": "Rounded Jaw",
+            "th": "โค้งมน jaw"
+          },
+          "narrow_jaw": {
+            "en": "Narrow Jaw",
+            "th": "แคบ jaw"
+          },
+          "wide_jaw": {
+            "en": "Wide Jaw",
+            "th": "กว้าง jaw"
+          },
+          "defined_jawline": {
+            "en": "Defined Jawline",
+            "th": "ชัด jawline"
+          },
+          "subtle_jawline": {
+            "en": "Subtle Jawline",
+            "th": "อ่อน jawline"
+          },
+          "angular_jawline": {
+            "en": "Angular Jawline",
+            "th": "เหลี่ยม jawline"
+          },
+          "curved_jawline": {
+            "en": "Curved Jawline",
+            "th": "curved jawline"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "chin": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Chin",
+          "th": "คาง"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "pointed_chin": {
+            "en": "Pointed Chin",
+            "th": "pointed chin"
+          },
+          "round_chin": {
+            "en": "Round Chin",
+            "th": "round chin"
+          },
+          "square_chin": {
+            "en": "Square Chin",
+            "th": "square chin"
+          },
+          "cleft_chin": {
+            "en": "Cleft Chin",
+            "th": "cleft chin"
+          },
+          "weak_chin": {
+            "en": "Weak Chin",
+            "th": "weak chin"
+          },
+          "strong_chin": {
+            "en": "Strong Chin",
+            "th": "แข็งแรง chin"
+          },
+          "prominent_chin": {
+            "en": "Prominent Chin",
+            "th": "โดดเด่น chin"
+          },
+          "receding_chin": {
+            "en": "Receding Chin",
+            "th": "receding chin"
+          },
+          "double_chin": {
+            "en": "Double Chin",
+            "th": "double chin"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "eyes": {
+      "shape": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Shape",
+          "th": "รูปทรง"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "almond": {
+            "en": "Almond",
+            "th": "ตาอัลมอนด์"
+          },
+          "round": {
+            "en": "Round",
+            "th": "กลม"
+          },
+          "monolid": {
+            "en": "Monolid",
+            "th": "ตาชั้นเดียว"
+          },
+          "double_eyelid": {
+            "en": "Double Eyelid",
+            "th": "ตาสองชั้น"
+          },
+          "hooded": {
+            "en": "Hooded",
+            "th": "ตาหลบใน"
+          },
+          "deep_set": {
+            "en": "Deep Set",
+            "th": "ตาลึก"
+          },
+          "prominent": {
+            "en": "Prominent",
+            "th": "โดดเด่น"
+          },
+          "upturned": {
+            "en": "Upturned",
+            "th": "หางตาเชิด"
+          },
+          "downturned": {
+            "en": "Downturned",
+            "th": "หางตาตก"
+          },
+          "wide_set": {
+            "en": "Wide Set",
+            "th": "ระยะห่างกว้าง"
+          },
+          "close_set": {
+            "en": "Close Set",
+            "th": "ระยะชิด"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "size": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Size",
+          "th": "ขนาด"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "large": {
+            "en": "Large",
+            "th": "ใหญ่"
+          },
+          "small": {
+            "en": "Small",
+            "th": "เล็ก"
+          },
+          "average": {
+            "en": "Average",
+            "th": "ปกติ"
+          },
+          "slightly_large": {
+            "en": "Slightly Large",
+            "th": "slightly large"
+          },
+          "slightly_small": {
+            "en": "Slightly Small",
+            "th": "slightly small"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "color": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Color",
+          "th": "สี"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "brown": {
+            "en": "Brown",
+            "th": "น้ำตาล"
+          },
+          "dark_brown": {
+            "en": "Dark Brown",
+            "th": "น้ำตาลเข้ม"
+          },
+          "light_brown": {
+            "en": "Light Brown",
+            "th": "อ่อน น้ำตาล"
+          },
+          "hazel": {
+            "en": "Hazel",
+            "th": "เฮเซล"
+          },
+          "green": {
+            "en": "Green",
+            "th": "เขียว"
+          },
+          "blue": {
+            "en": "Blue",
+            "th": "ฟ้า"
+          },
+          "gray": {
+            "en": "Gray",
+            "th": "เทา"
+          },
+          "amber": {
+            "en": "Amber",
+            "th": "อำพัน"
+          },
+          "black": {
+            "en": "Black",
+            "th": "ดำ"
+          },
+          "heterochromia": {
+            "en": "Heterochromia",
+            "th": "ตาสองสี"
+          },
+          "central_heterochromia": {
+            "en": "Central Heterochromia",
+            "th": "central heterochromia"
+          },
+          "flecked": {
+            "en": "Flecked",
+            "th": "flecked"
+          },
+          "rimmed_iris": {
+            "en": "Rimmed Iris",
+            "th": "rimmed iris"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "eyelashes": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Eyelashes",
+          "th": "ขนตา"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "long_lashes": {
+            "en": "Long Lashes",
+            "th": "ยาว lashes"
+          },
+          "short_lashes": {
+            "en": "Short Lashes",
+            "th": "สั้น lashes"
+          },
+          "thick_lashes": {
+            "en": "Thick Lashes",
+            "th": "หนา lashes"
+          },
+          "sparse_lashes": {
+            "en": "Sparse Lashes",
+            "th": "sparse lashes"
+          },
+          "curled_lashes": {
+            "en": "Curled Lashes",
+            "th": "curled lashes"
+          },
+          "straight_lashes": {
+            "en": "Straight Lashes",
+            "th": "ตรง lashes"
+          },
+          "long_thick_lashes": {
+            "en": "Long Thick Lashes",
+            "th": "ยาว หนา lashes"
+          },
+          "natural_lashes": {
+            "en": "Natural Lashes",
+            "th": "ธรรมชาติ lashes"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "under_eyes": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Under Eyes",
+          "th": "ใต้ตา"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "smooth_under_eyes": {
+            "en": "Smooth Under Eyes",
+            "th": "เรียบ under ตา"
+          },
+          "eye_bags": {
+            "en": "Eye Bags",
+            "th": "eye bags"
+          },
+          "dark_circles": {
+            "en": "Dark Circles",
+            "th": "เข้ม circles"
+          },
+          "puffy_eyes": {
+            "en": "Puffy Eyes",
+            "th": "puffy ตา"
+          },
+          "fine_lines": {
+            "en": "Fine Lines",
+            "th": "fine lines"
+          },
+          "crows_feet": {
+            "en": "Crows Feet",
+            "th": "crows feet"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "distance": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Distance",
+          "th": "ระยะห่าง"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "normal_eye_distance": {
+            "en": "Normal Eye Distance",
+            "th": "ปกติ eye distance"
+          },
+          "wide_set": {
+            "en": "Wide Set",
+            "th": "ระยะห่างกว้าง"
+          },
+          "close_set": {
+            "en": "Close Set",
+            "th": "ระยะชิด"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "depth": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Depth",
+          "th": "ความลึก"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "normal_depth": {
+            "en": "Normal Depth",
+            "th": "ปกติ depth"
+          },
+          "deep_set": {
+            "en": "Deep Set",
+            "th": "ตาลึก"
+          },
+          "prominent": {
+            "en": "Prominent",
+            "th": "โดดเด่น"
+          },
+          "slightly_deep": {
+            "en": "Slightly Deep",
+            "th": "slightly deep"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "body_proportions": {
+      "height": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Height",
+          "th": "ส่วนสูง"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "petite_150_155": {
+            "en": "Petite 150 155",
+            "th": "petite 150 155"
+          },
+          "short_155_160": {
+            "en": "Short 155 160",
+            "th": "สั้น 155 160"
+          },
+          "average_short_160_165": {
+            "en": "Average Short 160 165",
+            "th": "ปกติ สั้น 160 165"
+          },
+          "average_165_170": {
+            "en": "Average 165 170",
+            "th": "ปกติ 165 170"
+          },
+          "average_tall_170_175": {
+            "en": "Average Tall 170 175",
+            "th": "ปกติ tall 170 175"
+          },
+          "tall_175_185": {
+            "en": "Tall 175 185",
+            "th": "tall 175 185"
+          },
+          "very_tall_185_plus": {
+            "en": "Very Tall 185 Plus",
+            "th": "very tall 185 plus"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "body_shape": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Body Shape",
+          "th": "รูปร่าง"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "pear_a_shape": {
+            "en": "Pear A Shape",
+            "th": "pear a shape"
+          },
+          "apple_o_shape": {
+            "en": "Apple O Shape",
+            "th": "apple o shape"
+          },
+          "hourglass_x_shape": {
+            "en": "Hourglass X Shape",
+            "th": "hourglass x shape"
+          },
+          "rectangle_h_shape": {
+            "en": "Rectangle H Shape",
+            "th": "rectangle h shape"
+          },
+          "inverted_triangle_v_shape": {
+            "en": "Inverted Triangle V Shape",
+            "th": "inverted triangle v shape"
+          },
+          "diamond": {
+            "en": "Diamond",
+            "th": "รูปเพชร"
+          },
+          "ectomorph": {
+            "en": "Ectomorph",
+            "th": "ectomorph"
+          },
+          "mesomorph": {
+            "en": "Mesomorph",
+            "th": "mesomorph"
+          },
+          "endomorph": {
+            "en": "Endomorph",
+            "th": "endomorph"
+          },
+          "oval": {
+            "en": "Oval",
+            "th": "รูปไข่"
+          },
+          "athletic_v_shape": {
+            "en": "Athletic V Shape",
+            "th": "athletic v shape"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "weight_build": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Weight Build",
+          "th": "น้ำหนัก/โครงสร้างร่างกาย"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "underweight": {
+            "en": "Underweight",
+            "th": "underweight"
+          },
+          "slim_slender": {
+            "en": "Slim Slender",
+            "th": "slim slender"
+          },
+          "lean": {
+            "en": "Lean",
+            "th": "lean"
+          },
+          "athletic": {
+            "en": "Athletic",
+            "th": "athletic"
+          },
+          "average": {
+            "en": "Average",
+            "th": "ปกติ"
+          },
+          "curvy": {
+            "en": "Curvy",
+            "th": "curvy"
+          },
+          "chubby": {
+            "en": "Chubby",
+            "th": "chubby"
+          },
+          "overweight": {
+            "en": "Overweight",
+            "th": "overweight"
+          },
+          "plus_size": {
+            "en": "Plus Size",
+            "th": "plus size"
+          },
+          "stocky": {
+            "en": "Stocky",
+            "th": "stocky"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "muscle_tone": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Muscle Tone",
+          "th": "กล้ามเนื้อ"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "no_visible_muscle": {
+            "en": "No Visible Muscle",
+            "th": "ไม่มี visible muscle"
+          },
+          "toned": {
+            "en": "Toned",
+            "th": "toned"
+          },
+          "defined": {
+            "en": "Defined",
+            "th": "ชัด"
+          },
+          "muscular": {
+            "en": "Muscular",
+            "th": "muscular"
+          },
+          "bodybuilder": {
+            "en": "Bodybuilder",
+            "th": "bodybuilder"
+          },
+          "soft_muscle": {
+            "en": "Soft Muscle",
+            "th": "นุ่มนวล muscle"
+          },
+          "lean_muscle": {
+            "en": "Lean Muscle",
+            "th": "lean muscle"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "posture": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Posture",
+          "th": "ท่าทาง"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "confident": {
+            "en": "Confident",
+            "th": "confident"
+          },
+          "relaxed": {
+            "en": "Relaxed",
+            "th": "relaxed"
+          },
+          "slouched": {
+            "en": "Slouched",
+            "th": "slouched"
+          },
+          "rigid": {
+            "en": "Rigid",
+            "th": "rigid"
+          },
+          "elegant": {
+            "en": "Elegant",
+            "th": "elegant"
+          },
+          "casual": {
+            "en": "Casual",
+            "th": "casual"
+          },
+          "defensive": {
+            "en": "Defensive",
+            "th": "defensive"
+          },
+          "open": {
+            "en": "Open",
+            "th": "open"
+          },
+          "graceful": {
+            "en": "Graceful",
+            "th": "graceful"
+          },
+          "upright": {
+            "en": "Upright",
+            "th": "upright"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "bust_chest": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Upper Torso Clothing Fit",
+          "th": "ทรงเสื้อช่วงลำตัวบน"
+        },
+        "ui:help": {
+          "en": "Use clothing fit, tailoring, drape, or upper-torso silhouette instead of direct chest or bust size. This keeps prompts safer for image generators while still controlling the look.",
+          "th": "ใช้คำอธิบายทรงเสื้อ การเข้ารูป การทิ้งตัวของผ้า หรือซิลูเอตช่วงลำตัวบนแทนการระบุขนาดหน้าอกโดยตรง เพื่อให้พรอมต์ปลอดภัยและผ่านระบบสร้างภาพง่ายขึ้น"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "relaxed_clothing_fit": {
+            "en": "Relaxed clothing fit",
+            "th": "เสื้อทรงสบาย ไม่เน้นสัดส่วน"
+          },
+          "straight_upper_torso_silhouette": {
+            "en": "Straight upper-torso silhouette",
+            "th": "ซิลูเอตช่วงลำตัวบนทรงตรง"
+          },
+          "tailored_jacket_fit": {
+            "en": "Tailored jacket fit",
+            "th": "เสื้อหรือแจ็กเก็ตเข้ารูปแบบสุภาพ"
+          },
+          "soft_blouse_drape": {
+            "en": "Soft blouse drape",
+            "th": "ผ้าทิ้งตัวนุ่มแบบเสื้อเบลาส์"
+          },
+          "athletic_top_fit": {
+            "en": "Athletic top fit",
+            "th": "เสื้อทรงสปอร์ตกระชับพอดีตัว"
+          },
+          "modest_layered_upper_body": {
+            "en": "Modest layered upper body",
+            "th": "เลเยอร์เสื้อสุภาพช่วงลำตัวบน"
+          },
+          "traditional_costume_upper_silhouette": {
+            "en": "Traditional costume upper silhouette",
+            "th": "ซิลูเอตช่วงบนแบบชุดประจำชาติหรือชุดพิธี"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "waist": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Waist",
+          "th": "เอว"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "straight_waist": {
+            "en": "Straight Waist",
+            "th": "ตรง waist"
+          },
+          "defined_waist": {
+            "en": "Defined Waist",
+            "th": "ชัด waist"
+          },
+          "narrow_waist": {
+            "en": "Narrow Waist",
+            "th": "แคบ waist"
+          },
+          "wide_waist": {
+            "en": "Wide Waist",
+            "th": "กว้าง waist"
+          },
+          "soft_waist": {
+            "en": "Soft Waist",
+            "th": "นุ่มนวล waist"
+          },
+          "athletic_waist": {
+            "en": "Athletic Waist",
+            "th": "athletic waist"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "hips": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Hips",
+          "th": "สะโพก"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "narrow_hips": {
+            "en": "Narrow Hips",
+            "th": "แคบ hips"
+          },
+          "average_hips": {
+            "en": "Average Hips",
+            "th": "ปกติ hips"
+          },
+          "wide_hips": {
+            "en": "Wide Hips",
+            "th": "กว้าง hips"
+          },
+          "curvy_hips": {
+            "en": "Curvy Hips",
+            "th": "curvy hips"
+          },
+          "straight_hips": {
+            "en": "Straight Hips",
+            "th": "ตรง hips"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "hair": {
+      "length": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Length",
+          "th": "ความยาว"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "buzz_cut": {
+            "en": "Buzz Cut",
+            "th": "buzz cut"
+          },
+          "pixie": {
+            "en": "Pixie",
+            "th": "pixie"
+          },
+          "short": {
+            "en": "Short",
+            "th": "สั้น"
+          },
+          "bob": {
+            "en": "Bob",
+            "th": "bob"
+          },
+          "chin_length": {
+            "en": "Chin Length",
+            "th": "chin length"
+          },
+          "shoulder_length": {
+            "en": "Shoulder Length",
+            "th": "shoulder length"
+          },
+          "medium": {
+            "en": "Medium",
+            "th": "กลาง"
+          },
+          "long": {
+            "en": "Long",
+            "th": "ยาว"
+          },
+          "very_long": {
+            "en": "Very Long",
+            "th": "very ยาว"
+          },
+          "waist_length": {
+            "en": "Waist Length",
+            "th": "waist length"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "style": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Style",
+          "th": "สไตล์"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "natural_down": {
+            "en": "Natural Down",
+            "th": "ธรรมชาติ down"
+          },
+          "straight_cut": {
+            "en": "Straight Cut",
+            "th": "ตรง cut"
+          },
+          "bob_cut": {
+            "en": "Bob Cut",
+            "th": "bob cut"
+          },
+          "layered": {
+            "en": "Layered",
+            "th": "layered"
+          },
+          "soft_waves": {
+            "en": "Soft Waves",
+            "th": "นุ่มนวล waves"
+          },
+          "romantic_waves": {
+            "en": "Romantic Waves",
+            "th": "romantic waves"
+          },
+          "curly_style": {
+            "en": "Curly Style",
+            "th": "curly style"
+          },
+          "ponytail": {
+            "en": "Ponytail",
+            "th": "ponytail"
+          },
+          "bun": {
+            "en": "Bun",
+            "th": "bun"
+          },
+          "braids": {
+            "en": "Braids",
+            "th": "braids"
+          },
+          "side_part": {
+            "en": "Side Part",
+            "th": "side part"
+          },
+          "middle_part": {
+            "en": "Middle Part",
+            "th": "middle part"
+          },
+          "bangs": {
+            "en": "Bangs",
+            "th": "bangs"
+          },
+          "curtain_bangs": {
+            "en": "Curtain Bangs",
+            "th": "curtain bangs"
+          },
+          "undercut": {
+            "en": "Undercut",
+            "th": "undercut"
+          },
+          "slicked_back": {
+            "en": "Slicked Back",
+            "th": "slicked back"
+          },
+          "messy_textured": {
+            "en": "Messy Textured",
+            "th": "messy textured"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "texture": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Texture",
+          "th": "เนื้อสัมผัส"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "straight": {
+            "en": "Straight",
+            "th": "ตรง"
+          },
+          "wavy": {
+            "en": "Wavy",
+            "th": "wavy"
+          },
+          "curly": {
+            "en": "Curly",
+            "th": "curly"
+          },
+          "coily": {
+            "en": "Coily",
+            "th": "coily"
+          },
+          "frizzy": {
+            "en": "Frizzy",
+            "th": "frizzy"
+          },
+          "silky": {
+            "en": "Silky",
+            "th": "silky"
+          },
+          "thick": {
+            "en": "Thick",
+            "th": "หนา"
+          },
+          "fine": {
+            "en": "Fine",
+            "th": "fine"
+          },
+          "coarse": {
+            "en": "Coarse",
+            "th": "coarse"
+          },
+          "soft": {
+            "en": "Soft",
+            "th": "นุ่มนวล"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "color": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Color",
+          "th": "สี"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "natural_black": {
+            "en": "Natural Black",
+            "th": "ธรรมชาติ ดำ"
+          },
+          "black": {
+            "en": "Black",
+            "th": "ดำ"
+          },
+          "dark_brown": {
+            "en": "Dark Brown",
+            "th": "น้ำตาลเข้ม"
+          },
+          "medium_brown": {
+            "en": "Medium Brown",
+            "th": "ปานกลาง น้ำตาล"
+          },
+          "light_brown": {
+            "en": "Light Brown",
+            "th": "อ่อน น้ำตาล"
+          },
+          "blonde": {
+            "en": "Blonde",
+            "th": "blonde"
+          },
+          "platinum_blonde": {
+            "en": "Platinum Blonde",
+            "th": "platinum blonde"
+          },
+          "auburn": {
+            "en": "Auburn",
+            "th": "auburn"
+          },
+          "red": {
+            "en": "Red",
+            "th": "แดง"
+          },
+          "gray": {
+            "en": "Gray",
+            "th": "เทา"
+          },
+          "white": {
+            "en": "White",
+            "th": "ขาว"
+          },
+          "silver": {
+            "en": "Silver",
+            "th": "silver"
+          },
+          "pastel_color": {
+            "en": "Pastel Color",
+            "th": "pastel color"
+          },
+          "vivid_dye": {
+            "en": "Vivid Dye",
+            "th": "vivid dye"
+          },
+          "ombre": {
+            "en": "Ombre",
+            "th": "ombre"
+          },
+          "highlighted": {
+            "en": "Highlighted",
+            "th": "highlighted"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "volume": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Volume",
+          "th": "ปริมาณ/วอลลุ่ม"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "low_volume": {
+            "en": "Low Volume",
+            "th": "ต่ำ volume"
+          },
+          "normal_volume": {
+            "en": "Normal Volume",
+            "th": "ปกติ volume"
+          },
+          "high_volume": {
+            "en": "High Volume",
+            "th": "สูง volume"
+          },
+          "very_thick": {
+            "en": "Very Thick",
+            "th": "very หนา"
+          },
+          "thin": {
+            "en": "Thin",
+            "th": "บาง"
+          },
+          "fluffy": {
+            "en": "Fluffy",
+            "th": "fluffy"
+          },
+          "sleek": {
+            "en": "Sleek",
+            "th": "sleek"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "special_styling": {
+        "ui:widget": "checkboxes",
+        "ui:title": {
+          "en": "Special Styling",
+          "th": "การจัดแต่งพิเศษ"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "hair_accessory": {
+            "en": "Hair Accessory",
+            "th": "hair accessory"
+          },
+          "ribbon": {
+            "en": "Ribbon",
+            "th": "ribbon"
+          },
+          "hairpin": {
+            "en": "Hairpin",
+            "th": "hairpin"
+          },
+          "wet_look": {
+            "en": "Wet Look",
+            "th": "wet look"
+          },
+          "wind_swept": {
+            "en": "Wind Swept",
+            "th": "wind swept"
+          },
+          "loose_strands": {
+            "en": "Loose Strands",
+            "th": "loose strands"
+          },
+          "face_framing_layers": {
+            "en": "Face Framing Layers",
+            "th": "ใบหน้า framing layers"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "nose": {
+      "overall_shape": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Overall Shape",
+          "th": "รูปทรงโดยรวม"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "straight_nose": {
+            "en": "Straight Nose",
+            "th": "ตรง จมูก"
+          },
+          "roman_nose": {
+            "en": "Roman Nose",
+            "th": "roman จมูก"
+          },
+          "greek_nose": {
+            "en": "Greek Nose",
+            "th": "greek จมูก"
+          },
+          "button_nose": {
+            "en": "Button Nose",
+            "th": "button จมูก"
+          },
+          "hawk_nose": {
+            "en": "Hawk Nose",
+            "th": "hawk จมูก"
+          },
+          "snub_nose": {
+            "en": "Snub Nose",
+            "th": "snub จมูก"
+          },
+          "bulbous_nose": {
+            "en": "Bulbous Nose",
+            "th": "bulbous จมูก"
+          },
+          "delicate_nose": {
+            "en": "Delicate Nose",
+            "th": "delicate จมูก"
+          },
+          "prominent_nose": {
+            "en": "Prominent Nose",
+            "th": "โดดเด่น จมูก"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "bridge": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Bridge",
+          "th": "สันจมูก"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "high_bridge": {
+            "en": "High Bridge",
+            "th": "สูง bridge"
+          },
+          "low_bridge": {
+            "en": "Low Bridge",
+            "th": "ต่ำ bridge"
+          },
+          "straight_bridge": {
+            "en": "Straight Bridge",
+            "th": "ตรง bridge"
+          },
+          "curved_bridge": {
+            "en": "Curved Bridge",
+            "th": "curved bridge"
+          },
+          "wide_bridge": {
+            "en": "Wide Bridge",
+            "th": "กว้าง bridge"
+          },
+          "narrow_bridge": {
+            "en": "Narrow Bridge",
+            "th": "แคบ bridge"
+          },
+          "refined_bridge": {
+            "en": "Refined Bridge",
+            "th": "refined bridge"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "tip": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Tip",
+          "th": "ปลายจมูก"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "pointed_tip": {
+            "en": "Pointed Tip",
+            "th": "pointed tip"
+          },
+          "round_tip": {
+            "en": "Round Tip",
+            "th": "round tip"
+          },
+          "bulbous_tip": {
+            "en": "Bulbous Tip",
+            "th": "bulbous tip"
+          },
+          "upturned_tip": {
+            "en": "Upturned Tip",
+            "th": "upturned tip"
+          },
+          "downturned_tip": {
+            "en": "Downturned Tip",
+            "th": "downturned tip"
+          },
+          "refined_tip": {
+            "en": "Refined Tip",
+            "th": "refined tip"
+          },
+          "soft_tip": {
+            "en": "Soft Tip",
+            "th": "นุ่มนวล tip"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "nostrils": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Nostrils",
+          "th": "ปีกจมูก"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "wide_nostrils": {
+            "en": "Wide Nostrils",
+            "th": "กว้าง nostrils"
+          },
+          "narrow_nostrils": {
+            "en": "Narrow Nostrils",
+            "th": "แคบ nostrils"
+          },
+          "flared_nostrils": {
+            "en": "Flared Nostrils",
+            "th": "flared nostrils"
+          },
+          "small_nostrils": {
+            "en": "Small Nostrils",
+            "th": "small nostrils"
+          },
+          "asymmetrical_nostrils": {
+            "en": "Asymmetrical Nostrils",
+            "th": "asymmetrical nostrils"
+          },
+          "balanced_nostrils": {
+            "en": "Balanced Nostrils",
+            "th": "balanced nostrils"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "size": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Size",
+          "th": "ขนาด"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "large_nose": {
+            "en": "Large Nose",
+            "th": "large จมูก"
+          },
+          "small_nose": {
+            "en": "Small Nose",
+            "th": "small จมูก"
+          },
+          "proportionate": {
+            "en": "Proportionate",
+            "th": "proportionate"
+          },
+          "prominent": {
+            "en": "Prominent",
+            "th": "โดดเด่น"
+          },
+          "delicate": {
+            "en": "Delicate",
+            "th": "delicate"
+          },
+          "medium": {
+            "en": "Medium",
+            "th": "กลาง"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "mouth": {
+      "lip_shape": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Lip Shape",
+          "th": "รูปทรงริมฝีปาก"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "full_lips": {
+            "en": "Full Lips",
+            "th": "เต็ม ริมฝีปาก"
+          },
+          "thin_lips": {
+            "en": "Thin Lips",
+            "th": "บาง ริมฝีปาก"
+          },
+          "medium_lips": {
+            "en": "Medium Lips",
+            "th": "ปานกลาง ริมฝีปาก"
+          },
+          "heart_shaped_lips": {
+            "en": "Heart Shaped Lips",
+            "th": "heart shaped ริมฝีปาก"
+          },
+          "bow_shaped_lips": {
+            "en": "Bow Shaped Lips",
+            "th": "bow shaped ริมฝีปาก"
+          },
+          "straight_lips": {
+            "en": "Straight Lips",
+            "th": "ตรง ริมฝีปาก"
+          },
+          "downturned_lips": {
+            "en": "Downturned Lips",
+            "th": "downturned ริมฝีปาก"
+          },
+          "upturned_lips": {
+            "en": "Upturned Lips",
+            "th": "upturned ริมฝีปาก"
+          },
+          "soft_lips": {
+            "en": "Soft Lips",
+            "th": "นุ่มนวล ริมฝีปาก"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "cupids_bow": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Cupids Bow",
+          "th": "Cupid’s bow"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "defined_cupids_bow": {
+            "en": "Defined Cupids Bow",
+            "th": "ชัด cupids bow"
+          },
+          "subtle_cupids_bow": {
+            "en": "Subtle Cupids Bow",
+            "th": "อ่อน cupids bow"
+          },
+          "no_cupids_bow": {
+            "en": "No Cupids Bow",
+            "th": "ไม่มี cupids bow"
+          },
+          "peaked_cupids_bow": {
+            "en": "Peaked Cupids Bow",
+            "th": "peaked cupids bow"
+          },
+          "soft_cupids_bow": {
+            "en": "Soft Cupids Bow",
+            "th": "นุ่มนวล cupids bow"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "symmetry": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Symmetry",
+          "th": "ความสมมาตร"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "symmetrical_lips": {
+            "en": "Symmetrical Lips",
+            "th": "symmetrical ริมฝีปาก"
+          },
+          "asymmetrical_lips": {
+            "en": "Asymmetrical Lips",
+            "th": "asymmetrical ริมฝีปาก"
+          },
+          "fuller_upper_lip": {
+            "en": "Fuller Upper Lip",
+            "th": "fuller upper lip"
+          },
+          "fuller_lower_lip": {
+            "en": "Fuller Lower Lip",
+            "th": "fuller lower lip"
+          },
+          "balanced_lips": {
+            "en": "Balanced Lips",
+            "th": "balanced ริมฝีปาก"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "natural_color": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Natural Color",
+          "th": "สีธรรมชาติ"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "pink_lips": {
+            "en": "Pink Lips",
+            "th": "pink ริมฝีปาก"
+          },
+          "light_pink_lips": {
+            "en": "Light Pink Lips",
+            "th": "อ่อน pink ริมฝีปาก"
+          },
+          "deep_pink_lips": {
+            "en": "Deep Pink Lips",
+            "th": "deep pink ริมฝีปาก"
+          },
+          "red_lips": {
+            "en": "Red Lips",
+            "th": "red ริมฝีปาก"
+          },
+          "coral_lips": {
+            "en": "Coral Lips",
+            "th": "coral ริมฝีปาก"
+          },
+          "pale_lips": {
+            "en": "Pale Lips",
+            "th": "pale ริมฝีปาก"
+          },
+          "dark_lips": {
+            "en": "Dark Lips",
+            "th": "เข้ม ริมฝีปาก"
+          },
+          "berry_toned_lips": {
+            "en": "Berry Toned Lips",
+            "th": "berry toned ริมฝีปาก"
+          },
+          "nude_lips": {
+            "en": "Nude Lips",
+            "th": "nude ริมฝีปาก"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "texture": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Texture",
+          "th": "เนื้อสัมผัส"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "smooth_lips": {
+            "en": "Smooth Lips",
+            "th": "เรียบ ริมฝีปาก"
+          },
+          "lined_lips": {
+            "en": "Lined Lips",
+            "th": "lined ริมฝีปาก"
+          },
+          "chapped_lips": {
+            "en": "Chapped Lips",
+            "th": "chapped ริมฝีปาก"
+          },
+          "glossy_lips": {
+            "en": "Glossy Lips",
+            "th": "glossy ริมฝีปาก"
+          },
+          "matte_lips": {
+            "en": "Matte Lips",
+            "th": "matte ริมฝีปาก"
+          },
+          "soft_texture": {
+            "en": "Soft Texture",
+            "th": "นุ่มนวล texture"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "thickness": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Thickness",
+          "th": "ความหนา"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "thin": {
+            "en": "Thin",
+            "th": "บาง"
+          },
+          "medium": {
+            "en": "Medium",
+            "th": "กลาง"
+          },
+          "full": {
+            "en": "Full",
+            "th": "เต็ม"
+          },
+          "very_full": {
+            "en": "Very Full",
+            "th": "very เต็ม"
+          },
+          "delicate": {
+            "en": "Delicate",
+            "th": "delicate"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "personality_posture": {
+      "general_posture": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "General Posture",
+          "th": "ท่าทางโดยรวม"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "confident": {
+            "en": "Confident",
+            "th": "confident"
+          },
+          "relaxed": {
+            "en": "Relaxed",
+            "th": "relaxed"
+          },
+          "slouched": {
+            "en": "Slouched",
+            "th": "slouched"
+          },
+          "rigid": {
+            "en": "Rigid",
+            "th": "rigid"
+          },
+          "elegant": {
+            "en": "Elegant",
+            "th": "elegant"
+          },
+          "casual": {
+            "en": "Casual",
+            "th": "casual"
+          },
+          "defensive": {
+            "en": "Defensive",
+            "th": "defensive"
+          },
+          "open": {
+            "en": "Open",
+            "th": "open"
+          },
+          "graceful": {
+            "en": "Graceful",
+            "th": "graceful"
+          },
+          "strong_determined": {
+            "en": "Strong Determined",
+            "th": "แข็งแรง determined"
+          },
+          "soft_gentle": {
+            "en": "Soft Gentle",
+            "th": "นุ่มนวล gentle"
+          },
+          "playful": {
+            "en": "Playful",
+            "th": "playful"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "walking_style": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Walking Style",
+          "th": "ลักษณะการเดิน"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "striding": {
+            "en": "Striding",
+            "th": "striding"
+          },
+          "graceful": {
+            "en": "Graceful",
+            "th": "graceful"
+          },
+          "bouncy": {
+            "en": "Bouncy",
+            "th": "bouncy"
+          },
+          "shuffling": {
+            "en": "Shuffling",
+            "th": "shuffling"
+          },
+          "purposeful": {
+            "en": "Purposeful",
+            "th": "purposeful"
+          },
+          "leisurely": {
+            "en": "Leisurely",
+            "th": "leisurely"
+          },
+          "quiet_steps": {
+            "en": "Quiet Steps",
+            "th": "quiet steps"
+          },
+          "energetic_walk": {
+            "en": "Energetic Walk",
+            "th": "energetic walk"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "hand_gestures": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Hand Gestures",
+          "th": "การใช้มือ"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "expressive_hands": {
+            "en": "Expressive Hands",
+            "th": "expressive hands"
+          },
+          "fidgety": {
+            "en": "Fidgety",
+            "th": "fidgety"
+          },
+          "calm_hands": {
+            "en": "Calm Hands",
+            "th": "calm hands"
+          },
+          "precise_gestures": {
+            "en": "Precise Gestures",
+            "th": "precise gestures"
+          },
+          "hands_relaxed": {
+            "en": "Hands Relaxed",
+            "th": "hands relaxed"
+          },
+          "hands_clasped": {
+            "en": "Hands Clasped",
+            "th": "hands clasped"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "facial_expression": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Facial Expression",
+          "th": "สีหน้า"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "cheerful": {
+            "en": "Cheerful",
+            "th": "cheerful"
+          },
+          "serious": {
+            "en": "Serious",
+            "th": "serious"
+          },
+          "mysterious": {
+            "en": "Mysterious",
+            "th": "mysterious"
+          },
+          "friendly": {
+            "en": "Friendly",
+            "th": "friendly"
+          },
+          "stern": {
+            "en": "Stern",
+            "th": "stern"
+          },
+          "playful": {
+            "en": "Playful",
+            "th": "playful"
+          },
+          "melancholic": {
+            "en": "Melancholic",
+            "th": "melancholic"
+          },
+          "intense": {
+            "en": "Intense",
+            "th": "intense"
+          },
+          "serene": {
+            "en": "Serene",
+            "th": "serene"
+          },
+          "gentle": {
+            "en": "Gentle",
+            "th": "gentle"
+          },
+          "confident_expression": {
+            "en": "Confident Expression",
+            "th": "confident expression"
+          },
+          "quiet_confidence": {
+            "en": "Quiet Confidence",
+            "th": "quiet confidence"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "energy_level": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Energy Level",
+          "th": "ระดับพลังงาน"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "low_energy": {
+            "en": "Low Energy",
+            "th": "ต่ำ energy"
+          },
+          "calm_energy": {
+            "en": "Calm Energy",
+            "th": "calm energy"
+          },
+          "balanced_energy": {
+            "en": "Balanced Energy",
+            "th": "balanced energy"
+          },
+          "bright_energy": {
+            "en": "Bright Energy",
+            "th": "bright energy"
+          },
+          "high_energy": {
+            "en": "High Energy",
+            "th": "สูง energy"
+          },
+          "intense_energy": {
+            "en": "Intense Energy",
+            "th": "intense energy"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "confidence_level": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Confidence Level",
+          "th": "ระดับความมั่นใจ"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "shy": {
+            "en": "Shy",
+            "th": "shy"
+          },
+          "reserved": {
+            "en": "Reserved",
+            "th": "reserved"
+          },
+          "balanced": {
+            "en": "Balanced",
+            "th": "balanced"
+          },
+          "confident": {
+            "en": "Confident",
+            "th": "confident"
+          },
+          "very_confident": {
+            "en": "Very Confident",
+            "th": "very confident"
+          },
+          "commanding": {
+            "en": "Commanding",
+            "th": "commanding"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "skin_details": {
+      "texture": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Texture",
+          "th": "เนื้อสัมผัส"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "smooth_skin": {
+            "en": "Smooth Skin",
+            "th": "เรียบ ผิว"
+          },
+          "rough_skin": {
+            "en": "Rough Skin",
+            "th": "rough ผิว"
+          },
+          "soft_skin": {
+            "en": "Soft Skin",
+            "th": "นุ่มนวล ผิว"
+          },
+          "dry_skin": {
+            "en": "Dry Skin",
+            "th": "dry ผิว"
+          },
+          "oily_skin": {
+            "en": "Oily Skin",
+            "th": "oily ผิว"
+          },
+          "combination_skin": {
+            "en": "Combination Skin",
+            "th": "combination ผิว"
+          },
+          "sensitive_skin": {
+            "en": "Sensitive Skin",
+            "th": "sensitive ผิว"
+          },
+          "clear_skin": {
+            "en": "Clear Skin",
+            "th": "ใส ผิว"
+          },
+          "even_texture": {
+            "en": "Even Texture",
+            "th": "even texture"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "brightness": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Brightness",
+          "th": "ความเงางาม"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "dewy_skin": {
+            "en": "Dewy Skin",
+            "th": "dewy ผิว"
+          },
+          "matte_skin": {
+            "en": "Matte Skin",
+            "th": "matte ผิว"
+          },
+          "glowing_skin": {
+            "en": "Glowing Skin",
+            "th": "glowing ผิว"
+          },
+          "dull_skin": {
+            "en": "Dull Skin",
+            "th": "dull ผิว"
+          },
+          "natural_skin_glow": {
+            "en": "Natural Skin Glow",
+            "th": "ธรรมชาติ ผิว glow"
+          },
+          "flawless_finish": {
+            "en": "Flawless Finish",
+            "th": "flawless finish"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "blemishes": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Blemishes",
+          "th": "สิว/ตำหนิ"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "clear_skin": {
+            "en": "Clear Skin",
+            "th": "ใส ผิว"
+          },
+          "occasional_pimples": {
+            "en": "Occasional Pimples",
+            "th": "occasional pimples"
+          },
+          "active_acne": {
+            "en": "Active Acne",
+            "th": "active acne"
+          },
+          "acne_scars": {
+            "en": "Acne Scars",
+            "th": "acne scars"
+          },
+          "pitted_scars": {
+            "en": "Pitted Scars",
+            "th": "pitted scars"
+          },
+          "smooth_texture_post_acne": {
+            "en": "Smooth Texture Post Acne",
+            "th": "เรียบ texture post acne"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "freckles": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Freckles",
+          "th": "กระ"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "no_freckles": {
+            "en": "No Freckles",
+            "th": "ไม่มี freckles"
+          },
+          "light_freckles": {
+            "en": "Light Freckles",
+            "th": "อ่อน freckles"
+          },
+          "dense_freckles": {
+            "en": "Dense Freckles",
+            "th": "dense freckles"
+          },
+          "nose_freckles": {
+            "en": "Nose Freckles",
+            "th": "จมูก freckles"
+          },
+          "cheek_freckles": {
+            "en": "Cheek Freckles",
+            "th": "cheek freckles"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "moles": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Moles",
+          "th": "ไฝ"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "no_moles": {
+            "en": "No Moles",
+            "th": "ไม่มี moles"
+          },
+          "beauty_mark": {
+            "en": "Beauty Mark",
+            "th": "beauty mark"
+          },
+          "small_moles": {
+            "en": "Small Moles",
+            "th": "small moles"
+          },
+          "distinct_mole": {
+            "en": "Distinct Mole",
+            "th": "distinct mole"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "scars": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Scars",
+          "th": "แผลเป็น"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "no_visible_scars": {
+            "en": "No Visible Scars",
+            "th": "ไม่มี visible scars"
+          },
+          "surgical_scars": {
+            "en": "Surgical Scars",
+            "th": "surgical scars"
+          },
+          "accident_scars": {
+            "en": "Accident Scars",
+            "th": "accident scars"
+          },
+          "facial_scar": {
+            "en": "Facial Scar",
+            "th": "facial scar"
+          },
+          "body_scar": {
+            "en": "Body Scar",
+            "th": "ร่างกาย scar"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "pores": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Pores",
+          "th": "รูขุมขน"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "fine_pores": {
+            "en": "Fine Pores",
+            "th": "fine pores"
+          },
+          "visible_pores": {
+            "en": "Visible Pores",
+            "th": "visible pores"
+          },
+          "large_pores": {
+            "en": "Large Pores",
+            "th": "large pores"
+          },
+          "clogged_pores": {
+            "en": "Clogged Pores",
+            "th": "clogged pores"
+          },
+          "clean_pores": {
+            "en": "Clean Pores",
+            "th": "สะอาด pores"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "tan_lines": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Tan Lines",
+          "th": "รอยแทน"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "no_tan_lines": {
+            "en": "No Tan Lines",
+            "th": "ไม่มี tan lines"
+          },
+          "subtle_tan_lines": {
+            "en": "Subtle Tan Lines",
+            "th": "อ่อน tan lines"
+          },
+          "visible_tan_lines": {
+            "en": "Visible Tan Lines",
+            "th": "visible tan lines"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "eyebrows": {
+      "thickness": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Thickness",
+          "th": "ความหนา"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "thick_brows": {
+            "en": "Thick Brows",
+            "th": "หนา brows"
+          },
+          "thin_brows": {
+            "en": "Thin Brows",
+            "th": "บาง brows"
+          },
+          "medium_brows": {
+            "en": "Medium Brows",
+            "th": "ปานกลาง brows"
+          },
+          "sparse_brows": {
+            "en": "Sparse Brows",
+            "th": "sparse brows"
+          },
+          "full_brows": {
+            "en": "Full Brows",
+            "th": "เต็ม brows"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "shape": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Shape",
+          "th": "รูปทรง"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "straight_brows": {
+            "en": "Straight Brows",
+            "th": "ตรง brows"
+          },
+          "arched_brows": {
+            "en": "Arched Brows",
+            "th": "arched brows"
+          },
+          "angular_brows": {
+            "en": "Angular Brows",
+            "th": "เหลี่ยม brows"
+          },
+          "rounded_brows": {
+            "en": "Rounded Brows",
+            "th": "โค้งมน brows"
+          },
+          "high_arch": {
+            "en": "High Arch",
+            "th": "สูง arch"
+          },
+          "low_arch": {
+            "en": "Low Arch",
+            "th": "ต่ำ arch"
+          },
+          "soft_arch": {
+            "en": "Soft Arch",
+            "th": "นุ่มนวล arch"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "grooming": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Grooming",
+          "th": "การดูแล/ความเรียบร้อย"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "well_groomed": {
+            "en": "Well Groomed",
+            "th": "well groomed"
+          },
+          "natural_unplucked": {
+            "en": "Natural Unplucked",
+            "th": "ธรรมชาติ unplucked"
+          },
+          "unkempt": {
+            "en": "Unkempt",
+            "th": "unkempt"
+          },
+          "precisely_shaped": {
+            "en": "Precisely Shaped",
+            "th": "precisely shaped"
+          },
+          "soft_natural": {
+            "en": "Soft Natural",
+            "th": "นุ่มนวล ธรรมชาติ"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "arch": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Arch",
+          "th": "แนวโค้ง"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "high_arch": {
+            "en": "High Arch",
+            "th": "สูง arch"
+          },
+          "low_arch": {
+            "en": "Low Arch",
+            "th": "ต่ำ arch"
+          },
+          "medium_arch": {
+            "en": "Medium Arch",
+            "th": "ปานกลาง arch"
+          },
+          "flat_arch": {
+            "en": "Flat Arch",
+            "th": "flat arch"
+          },
+          "soft_arch": {
+            "en": "Soft Arch",
+            "th": "นุ่มนวล arch"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "distance": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Distance",
+          "th": "ระยะห่าง"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "normal_distance": {
+            "en": "Normal Distance",
+            "th": "ปกติ distance"
+          },
+          "close_to_eyes": {
+            "en": "Close To Eyes",
+            "th": "close to ตา"
+          },
+          "high_above_eyes": {
+            "en": "High Above Eyes",
+            "th": "สูง above ตา"
+          },
+          "wide_apart": {
+            "en": "Wide Apart",
+            "th": "กว้าง apart"
+          },
+          "close_together": {
+            "en": "Close Together",
+            "th": "close together"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "color": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Color",
+          "th": "สี"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "black": {
+            "en": "Black",
+            "th": "ดำ"
+          },
+          "dark_brown": {
+            "en": "Dark Brown",
+            "th": "น้ำตาลเข้ม"
+          },
+          "brown": {
+            "en": "Brown",
+            "th": "น้ำตาล"
+          },
+          "light_brown": {
+            "en": "Light Brown",
+            "th": "อ่อน น้ำตาล"
+          },
+          "blonde": {
+            "en": "Blonde",
+            "th": "blonde"
+          },
+          "red": {
+            "en": "Red",
+            "th": "แดง"
+          },
+          "gray": {
+            "en": "Gray",
+            "th": "เทา"
+          },
+          "matching_hair_color": {
+            "en": "Matching Hair Color",
+            "th": "matching hair color"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "smile_teeth": {
+      "smile_type": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Smile Type",
+          "th": "รูปแบบรอยยิ้ม"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "wide_smile": {
+            "en": "Wide Smile",
+            "th": "กว้าง smile"
+          },
+          "closed_lip_smile": {
+            "en": "Closed Lip Smile",
+            "th": "closed lip smile"
+          },
+          "toothy_smile": {
+            "en": "Toothy Smile",
+            "th": "toothy smile"
+          },
+          "crooked_smile": {
+            "en": "Crooked Smile",
+            "th": "crooked smile"
+          },
+          "symmetrical_smile": {
+            "en": "Symmetrical Smile",
+            "th": "symmetrical smile"
+          },
+          "lopsided_smile": {
+            "en": "Lopsided Smile",
+            "th": "lopsided smile"
+          },
+          "gummy_smile": {
+            "en": "Gummy Smile",
+            "th": "gummy smile"
+          },
+          "shy_smile": {
+            "en": "Shy Smile",
+            "th": "shy smile"
+          },
+          "soft_smile": {
+            "en": "Soft Smile",
+            "th": "นุ่มนวล smile"
+          },
+          "no_smile": {
+            "en": "No Smile",
+            "th": "ไม่มี smile"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "teeth_appearance": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Teeth Appearance",
+          "th": "ลักษณะฟัน"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "straight_teeth": {
+            "en": "Straight Teeth",
+            "th": "ตรง ฟัน"
+          },
+          "crooked_teeth": {
+            "en": "Crooked Teeth",
+            "th": "crooked ฟัน"
+          },
+          "gap_teeth": {
+            "en": "Gap Teeth",
+            "th": "gap ฟัน"
+          },
+          "overlapping_teeth": {
+            "en": "Overlapping Teeth",
+            "th": "overlapping ฟัน"
+          },
+          "small_teeth": {
+            "en": "Small Teeth",
+            "th": "small ฟัน"
+          },
+          "large_teeth": {
+            "en": "Large Teeth",
+            "th": "large ฟัน"
+          },
+          "sharp_canines": {
+            "en": "Sharp Canines",
+            "th": "sharp canines"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "teeth_color": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Teeth Color",
+          "th": "สีฟัน"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "white_teeth": {
+            "en": "White Teeth",
+            "th": "ขาว ฟัน"
+          },
+          "natural_white": {
+            "en": "Natural White",
+            "th": "ธรรมชาติ ขาว"
+          },
+          "yellow_teeth": {
+            "en": "Yellow Teeth",
+            "th": "yellow ฟัน"
+          },
+          "stained_teeth": {
+            "en": "Stained Teeth",
+            "th": "stained ฟัน"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "dimples": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Dimples",
+          "th": "ลักยิ้ม"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "no_dimples": {
+            "en": "No Dimples",
+            "th": "ไม่มี dimples"
+          },
+          "cheek_dimples": {
+            "en": "Cheek Dimples",
+            "th": "cheek dimples"
+          },
+          "chin_dimple": {
+            "en": "Chin Dimple",
+            "th": "chin dimple"
+          },
+          "one_sided_dimple": {
+            "en": "One Sided Dimple",
+            "th": "one sided dimple"
+          },
+          "subtle_dimples": {
+            "en": "Subtle Dimples",
+            "th": "อ่อน dimples"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "gum_visibility": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Gum Visibility",
+          "th": "การเห็นเหงือก"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "no_gum_visibility": {
+            "en": "No Gum Visibility",
+            "th": "ไม่มี gum visibility"
+          },
+          "subtle_gum_visibility": {
+            "en": "Subtle Gum Visibility",
+            "th": "อ่อน gum visibility"
+          },
+          "gummy_smile": {
+            "en": "Gummy Smile",
+            "th": "gummy smile"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "ears": {
+      "size": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Size",
+          "th": "ขนาด"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "large_ears": {
+            "en": "Large Ears",
+            "th": "large ears"
+          },
+          "small_ears": {
+            "en": "Small Ears",
+            "th": "small ears"
+          },
+          "average_ears": {
+            "en": "Average Ears",
+            "th": "ปกติ ears"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "shape": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Shape",
+          "th": "รูปทรง"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "pointed_ears": {
+            "en": "Pointed Ears",
+            "th": "pointed ears"
+          },
+          "round_ears": {
+            "en": "Round Ears",
+            "th": "round ears"
+          },
+          "oval_ears": {
+            "en": "Oval Ears",
+            "th": "oval ears"
+          },
+          "delicate_ears": {
+            "en": "Delicate Ears",
+            "th": "delicate ears"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "position": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Position",
+          "th": "ตำแหน่ง"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "close_to_head": {
+            "en": "Close To Head",
+            "th": "close to head"
+          },
+          "protruding_ears": {
+            "en": "Protruding Ears",
+            "th": "protruding ears"
+          },
+          "high_set_ears": {
+            "en": "High Set Ears",
+            "th": "สูง set ears"
+          },
+          "low_set_ears": {
+            "en": "Low Set Ears",
+            "th": "ต่ำ set ears"
+          },
+          "balanced_position": {
+            "en": "Balanced Position",
+            "th": "balanced position"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "earlobes": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Earlobes",
+          "th": "ติ่งหู"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "attached_earlobes": {
+            "en": "Attached Earlobes",
+            "th": "attached earlobes"
+          },
+          "detached_earlobes": {
+            "en": "Detached Earlobes",
+            "th": "detached earlobes"
+          },
+          "large_earlobes": {
+            "en": "Large Earlobes",
+            "th": "large earlobes"
+          },
+          "small_earlobes": {
+            "en": "Small Earlobes",
+            "th": "small earlobes"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "prominence": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Prominence",
+          "th": "ความโดดเด่น"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "subtle": {
+            "en": "Subtle",
+            "th": "อ่อน"
+          },
+          "noticeable": {
+            "en": "Noticeable",
+            "th": "noticeable"
+          },
+          "prominent": {
+            "en": "Prominent",
+            "th": "โดดเด่น"
+          },
+          "hidden_by_hair": {
+            "en": "Hidden By Hair",
+            "th": "hidden โดย hair"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "facial_hair": {
+      "mustache": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Mustache",
+          "th": "หนวด"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "clean_shaven": {
+            "en": "Clean Shaven",
+            "th": "สะอาด shaven"
+          },
+          "stubble": {
+            "en": "Stubble",
+            "th": "stubble"
+          },
+          "pencil_mustache": {
+            "en": "Pencil Mustache",
+            "th": "pencil หนวด"
+          },
+          "handlebar_mustache": {
+            "en": "Handlebar Mustache",
+            "th": "handlebar หนวด"
+          },
+          "walrus_mustache": {
+            "en": "Walrus Mustache",
+            "th": "walrus หนวด"
+          },
+          "horseshoe_mustache": {
+            "en": "Horseshoe Mustache",
+            "th": "horseshoe หนวด"
+          },
+          "no_mustache": {
+            "en": "No Mustache",
+            "th": "ไม่มี หนวด"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "beard": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Beard",
+          "th": "เครา"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "clean_shaven": {
+            "en": "Clean Shaven",
+            "th": "สะอาด shaven"
+          },
+          "full_beard": {
+            "en": "Full Beard",
+            "th": "เต็ม เครา"
+          },
+          "goatee": {
+            "en": "Goatee",
+            "th": "goatee"
+          },
+          "soul_patch": {
+            "en": "Soul Patch",
+            "th": "soul patch"
+          },
+          "circle_beard": {
+            "en": "Circle Beard",
+            "th": "circle เครา"
+          },
+          "van_dyke": {
+            "en": "Van Dyke",
+            "th": "van dyke"
+          },
+          "chinstrap": {
+            "en": "Chinstrap",
+            "th": "chinstrap"
+          },
+          "five_oclock_shadow": {
+            "en": "Five Oclock Shadow",
+            "th": "five oclock shadow"
+          },
+          "no_beard": {
+            "en": "No Beard",
+            "th": "ไม่มี เครา"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "thickness": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Thickness",
+          "th": "ความหนา"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "thick_facial_hair": {
+            "en": "Thick Facial Hair",
+            "th": "หนา facial hair"
+          },
+          "sparse_facial_hair": {
+            "en": "Sparse Facial Hair",
+            "th": "sparse facial hair"
+          },
+          "patchy": {
+            "en": "Patchy",
+            "th": "patchy"
+          },
+          "light": {
+            "en": "Light",
+            "th": "ขาวสว่าง"
+          },
+          "dense": {
+            "en": "Dense",
+            "th": "dense"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "grooming": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Grooming",
+          "th": "การดูแล/ความเรียบร้อย"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "well_groomed": {
+            "en": "Well Groomed",
+            "th": "well groomed"
+          },
+          "unkempt": {
+            "en": "Unkempt",
+            "th": "unkempt"
+          },
+          "natural": {
+            "en": "Natural",
+            "th": "ธรรมชาติ"
+          },
+          "precisely_trimmed": {
+            "en": "Precisely Trimmed",
+            "th": "precisely trimmed"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "style": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Style",
+          "th": "สไตล์"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "clean": {
+            "en": "Clean",
+            "th": "สะอาด"
+          },
+          "rugged": {
+            "en": "Rugged",
+            "th": "rugged"
+          },
+          "formal": {
+            "en": "Formal",
+            "th": "formal"
+          },
+          "stylized": {
+            "en": "Stylized",
+            "th": "stylized"
+          },
+          "natural": {
+            "en": "Natural",
+            "th": "ธรรมชาติ"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "color": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Color",
+          "th": "สี"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "black": {
+            "en": "Black",
+            "th": "ดำ"
+          },
+          "dark_brown": {
+            "en": "Dark Brown",
+            "th": "น้ำตาลเข้ม"
+          },
+          "brown": {
+            "en": "Brown",
+            "th": "น้ำตาล"
+          },
+          "blonde": {
+            "en": "Blonde",
+            "th": "blonde"
+          },
+          "red": {
+            "en": "Red",
+            "th": "แดง"
+          },
+          "gray": {
+            "en": "Gray",
+            "th": "เทา"
+          },
+          "white": {
+            "en": "White",
+            "th": "ขาว"
+          },
+          "salt_and_pepper": {
+            "en": "Salt And Pepper",
+            "th": "salt and pepper"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "eyewear": {
+      "glasses": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Glasses",
+          "th": "แว่นตา"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "no_glasses": {
+            "en": "No Glasses",
+            "th": "ไม่มี แว่นตา"
+          },
+          "round_glasses": {
+            "en": "Round Glasses",
+            "th": "round แว่นตา"
+          },
+          "square_glasses": {
+            "en": "Square Glasses",
+            "th": "square แว่นตา"
+          },
+          "rectangular_glasses": {
+            "en": "Rectangular Glasses",
+            "th": "rectangular แว่นตา"
+          },
+          "oval_glasses": {
+            "en": "Oval Glasses",
+            "th": "oval แว่นตา"
+          },
+          "cat_eye_glasses": {
+            "en": "Cat Eye Glasses",
+            "th": "cat eye แว่นตา"
+          },
+          "rimless_glasses": {
+            "en": "Rimless Glasses",
+            "th": "rimless แว่นตา"
+          },
+          "wire_frame_glasses": {
+            "en": "Wire Frame Glasses",
+            "th": "wire frame แว่นตา"
+          },
+          "thick_frame_glasses": {
+            "en": "Thick Frame Glasses",
+            "th": "หนา frame แว่นตา"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "sunglasses": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Sunglasses",
+          "th": "แว่นกันแดด"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "no_sunglasses": {
+            "en": "No Sunglasses",
+            "th": "ไม่มี แว่นกันแดด"
+          },
+          "aviator": {
+            "en": "Aviator",
+            "th": "aviator"
+          },
+          "wayfarer": {
+            "en": "Wayfarer",
+            "th": "wayfarer"
+          },
+          "round_sunglasses": {
+            "en": "Round Sunglasses",
+            "th": "round แว่นกันแดด"
+          },
+          "cat_eye_sunglasses": {
+            "en": "Cat Eye Sunglasses",
+            "th": "cat eye แว่นกันแดด"
+          },
+          "oversized_sunglasses": {
+            "en": "Oversized Sunglasses",
+            "th": "oversized แว่นกันแดด"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "contacts": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Contacts",
+          "th": "คอนแทคเลนส์"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "no_contacts": {
+            "en": "No Contacts",
+            "th": "ไม่มี contacts"
+          },
+          "clear_contacts": {
+            "en": "Clear Contacts",
+            "th": "ใส contacts"
+          },
+          "colored_contacts": {
+            "en": "Colored Contacts",
+            "th": "colored contacts"
+          },
+          "natural_enhancing_contacts": {
+            "en": "Natural Enhancing Contacts",
+            "th": "ธรรมชาติ enhancing contacts"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "frame_style": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Frame Style",
+          "th": "สไตล์กรอบแว่น"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "minimal": {
+            "en": "Minimal",
+            "th": "minimal"
+          },
+          "classic": {
+            "en": "Classic",
+            "th": "classic"
+          },
+          "modern": {
+            "en": "Modern",
+            "th": "modern"
+          },
+          "vintage": {
+            "en": "Vintage",
+            "th": "vintage"
+          },
+          "bold": {
+            "en": "Bold",
+            "th": "bold"
+          },
+          "delicate": {
+            "en": "Delicate",
+            "th": "delicate"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "frame_color": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Frame Color",
+          "th": "สีกรอบแว่น"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "black": {
+            "en": "Black",
+            "th": "ดำ"
+          },
+          "brown": {
+            "en": "Brown",
+            "th": "น้ำตาล"
+          },
+          "gold": {
+            "en": "Gold",
+            "th": "gold"
+          },
+          "silver": {
+            "en": "Silver",
+            "th": "silver"
+          },
+          "clear": {
+            "en": "Clear",
+            "th": "ใส"
+          },
+          "tortoiseshell": {
+            "en": "Tortoiseshell",
+            "th": "tortoiseshell"
+          },
+          "white": {
+            "en": "White",
+            "th": "ขาว"
+          },
+          "red": {
+            "en": "Red",
+            "th": "แดง"
+          },
+          "blue": {
+            "en": "Blue",
+            "th": "ฟ้า"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "lens_type": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Lens Type",
+          "th": "ประเภทเลนส์"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "clear_lens": {
+            "en": "Clear Lens",
+            "th": "ใส lens"
+          },
+          "tinted_lens": {
+            "en": "Tinted Lens",
+            "th": "tinted lens"
+          },
+          "gradient_lens": {
+            "en": "Gradient Lens",
+            "th": "gradient lens"
+          },
+          "reflective_lens": {
+            "en": "Reflective Lens",
+            "th": "reflective lens"
+          },
+          "anti_glare_lens": {
+            "en": "Anti Glare Lens",
+            "th": "anti glare lens"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "makeup": {
+      "overall_style": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Overall Style",
+          "th": "สไตล์โดยรวม"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "no_makeup": {
+            "en": "No Makeup",
+            "th": "ไม่มี เมคอัพ"
+          },
+          "natural_makeup": {
+            "en": "Natural Makeup",
+            "th": "ธรรมชาติ เมคอัพ"
+          },
+          "clean_girl_makeup": {
+            "en": "Clean Girl Makeup",
+            "th": "สะอาด girl เมคอัพ"
+          },
+          "soft_glam": {
+            "en": "Soft Glam",
+            "th": "นุ่มนวล glam"
+          },
+          "full_glam": {
+            "en": "Full Glam",
+            "th": "เต็ม glam"
+          },
+          "editorial_makeup": {
+            "en": "Editorial Makeup",
+            "th": "editorial เมคอัพ"
+          },
+          "k_beauty": {
+            "en": "K Beauty",
+            "th": "k beauty"
+          },
+          "j_beauty": {
+            "en": "J Beauty",
+            "th": "j beauty"
+          },
+          "western_glam": {
+            "en": "Western Glam",
+            "th": "western glam"
+          },
+          "goth_makeup": {
+            "en": "Goth Makeup",
+            "th": "goth เมคอัพ"
+          },
+          "fantasy_makeup": {
+            "en": "Fantasy Makeup",
+            "th": "fantasy เมคอัพ"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "foundation": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Foundation",
+          "th": "รองพื้น"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "none": {
+            "en": "None",
+            "th": "ไม่มี"
+          },
+          "natural_finish": {
+            "en": "Natural Finish",
+            "th": "ธรรมชาติ finish"
+          },
+          "matte_finish": {
+            "en": "Matte Finish",
+            "th": "matte finish"
+          },
+          "dewy_finish": {
+            "en": "Dewy Finish",
+            "th": "dewy finish"
+          },
+          "flawless_full_coverage": {
+            "en": "Flawless Full Coverage",
+            "th": "flawless เต็ม coverage"
+          },
+          "light_coverage": {
+            "en": "Light Coverage",
+            "th": "อ่อน coverage"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "blush": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Blush",
+          "th": "บลัช"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "none": {
+            "en": "None",
+            "th": "ไม่มี"
+          },
+          "soft_pink": {
+            "en": "Soft Pink",
+            "th": "นุ่มนวล pink"
+          },
+          "peach_blush": {
+            "en": "Peach Blush",
+            "th": "peach blush"
+          },
+          "coral_blush": {
+            "en": "Coral Blush",
+            "th": "coral blush"
+          },
+          "rose_blush": {
+            "en": "Rose Blush",
+            "th": "rose blush"
+          },
+          "dramatic_blush": {
+            "en": "Dramatic Blush",
+            "th": "dramatic blush"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "eyeshadow": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Eyeshadow",
+          "th": "อายแชโดว์"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "none": {
+            "en": "None",
+            "th": "ไม่มี"
+          },
+          "neutral_eyeshadow": {
+            "en": "Neutral Eyeshadow",
+            "th": "neutral eyeshadow"
+          },
+          "brown_smokey": {
+            "en": "Brown Smokey",
+            "th": "น้ำตาล smokey"
+          },
+          "soft_pink": {
+            "en": "Soft Pink",
+            "th": "นุ่มนวล pink"
+          },
+          "gold_shimmer": {
+            "en": "Gold Shimmer",
+            "th": "gold shimmer"
+          },
+          "colorful": {
+            "en": "Colorful",
+            "th": "colorful"
+          },
+          "dark_smokey": {
+            "en": "Dark Smokey",
+            "th": "เข้ม smokey"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "eyeliner": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Eyeliner",
+          "th": "อายไลเนอร์"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "none": {
+            "en": "None",
+            "th": "ไม่มี"
+          },
+          "thin_eyeliner": {
+            "en": "Thin Eyeliner",
+            "th": "บาง eyeliner"
+          },
+          "winged_eyeliner": {
+            "en": "Winged Eyeliner",
+            "th": "winged eyeliner"
+          },
+          "soft_smudged": {
+            "en": "Soft Smudged",
+            "th": "นุ่มนวล smudged"
+          },
+          "graphic_eyeliner": {
+            "en": "Graphic Eyeliner",
+            "th": "graphic eyeliner"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "mascara": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Mascara",
+          "th": "มาสคาร่า"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "none": {
+            "en": "None",
+            "th": "ไม่มี"
+          },
+          "natural_mascara": {
+            "en": "Natural Mascara",
+            "th": "ธรรมชาติ mascara"
+          },
+          "lengthening": {
+            "en": "Lengthening",
+            "th": "lengthening"
+          },
+          "volumizing": {
+            "en": "Volumizing",
+            "th": "volumizing"
+          },
+          "dramatic_lashes": {
+            "en": "Dramatic Lashes",
+            "th": "dramatic lashes"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "lipstick": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Lipstick",
+          "th": "ลิปสติก"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "none": {
+            "en": "None",
+            "th": "ไม่มี"
+          },
+          "nude_lipstick": {
+            "en": "Nude Lipstick",
+            "th": "nude lipstick"
+          },
+          "pink_lipstick": {
+            "en": "Pink Lipstick",
+            "th": "pink lipstick"
+          },
+          "red_lipstick": {
+            "en": "Red Lipstick",
+            "th": "red lipstick"
+          },
+          "coral_lipstick": {
+            "en": "Coral Lipstick",
+            "th": "coral lipstick"
+          },
+          "berry_lipstick": {
+            "en": "Berry Lipstick",
+            "th": "berry lipstick"
+          },
+          "gloss": {
+            "en": "Gloss",
+            "th": "gloss"
+          },
+          "matte_lipstick": {
+            "en": "Matte Lipstick",
+            "th": "matte lipstick"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "highlight": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Highlight",
+          "th": "ไฮไลต์"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "none": {
+            "en": "None",
+            "th": "ไม่มี"
+          },
+          "subtle_highlight": {
+            "en": "Subtle Highlight",
+            "th": "อ่อน highlight"
+          },
+          "dewy_highlight": {
+            "en": "Dewy Highlight",
+            "th": "dewy highlight"
+          },
+          "strong_highlight": {
+            "en": "Strong Highlight",
+            "th": "แข็งแรง highlight"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "intensity": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Intensity",
+          "th": "ความเข้ม"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "none": {
+            "en": "None",
+            "th": "ไม่มี"
+          },
+          "very_light": {
+            "en": "Very Light",
+            "th": "very อ่อน"
+          },
+          "light": {
+            "en": "Light",
+            "th": "ขาวสว่าง"
+          },
+          "medium": {
+            "en": "Medium",
+            "th": "กลาง"
+          },
+          "strong": {
+            "en": "Strong",
+            "th": "แข็งแรง"
+          },
+          "dramatic": {
+            "en": "Dramatic",
+            "th": "dramatic"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "additional_features": {
+      "tattoos": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Tattoos",
+          "th": "รอยสัก"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "no_tattoos": {
+            "en": "No Tattoos",
+            "th": "ไม่มี tattoos"
+          },
+          "small_tattoo": {
+            "en": "Small Tattoo",
+            "th": "small tattoo"
+          },
+          "visible_tattoos": {
+            "en": "Visible Tattoos",
+            "th": "visible tattoos"
+          },
+          "sleeve_tattoo": {
+            "en": "Sleeve Tattoo",
+            "th": "sleeve tattoo"
+          },
+          "minimal_tattoos": {
+            "en": "Minimal Tattoos",
+            "th": "minimal tattoos"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "piercings": {
+        "ui:widget": "select",
+        "ui:title": {
+          "en": "Piercings",
+          "th": "การเจาะ"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "no_piercings": {
+            "en": "No Piercings",
+            "th": "ไม่มี piercings"
+          },
+          "ear_piercing": {
+            "en": "Ear Piercing",
+            "th": "ear piercing"
+          },
+          "multiple_ear_piercings": {
+            "en": "Multiple Ear Piercings",
+            "th": "multiple ear piercings"
+          },
+          "nose_piercing": {
+            "en": "Nose Piercing",
+            "th": "จมูก piercing"
+          },
+          "lip_piercing": {
+            "en": "Lip Piercing",
+            "th": "lip piercing"
+          },
+          "eyebrow_piercing": {
+            "en": "Eyebrow Piercing",
+            "th": "eyebrow piercing"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "jewelry": {
+        "ui:widget": "checkboxes",
+        "ui:title": {
+          "en": "Jewelry",
+          "th": "เครื่องประดับ"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "none": {
+            "en": "None",
+            "th": "ไม่มี"
+          },
+          "earrings": {
+            "en": "Earrings",
+            "th": "earrings"
+          },
+          "necklace": {
+            "en": "Necklace",
+            "th": "necklace"
+          },
+          "bracelet": {
+            "en": "Bracelet",
+            "th": "bracelet"
+          },
+          "ring": {
+            "en": "Ring",
+            "th": "ring"
+          },
+          "watch": {
+            "en": "Watch",
+            "th": "watch"
+          },
+          "hair_jewelry": {
+            "en": "Hair Jewelry",
+            "th": "hair jewelry"
+          },
+          "traditional_jewelry": {
+            "en": "Traditional Jewelry",
+            "th": "traditional jewelry"
+          },
+          "minimal_jewelry": {
+            "en": "Minimal Jewelry",
+            "th": "minimal jewelry"
+          },
+          "luxury_jewelry": {
+            "en": "Luxury Jewelry",
+            "th": "luxury jewelry"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "unique_traits": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Unique Traits",
+          "th": "ลักษณะเฉพาะ"
+        }
+      },
+      "accessories": {
+        "ui:widget": "checkboxes",
+        "ui:title": {
+          "en": "Accessories",
+          "th": "อุปกรณ์เสริม"
+        },
+        "ui:enumNames": {
+          "auto": {
+            "en": "Auto",
+            "th": "อัตโนมัติ"
+          },
+          "none": {
+            "en": "None",
+            "th": "ไม่มี"
+          },
+          "hat": {
+            "en": "Hat",
+            "th": "hat"
+          },
+          "scarf": {
+            "en": "Scarf",
+            "th": "scarf"
+          },
+          "bag": {
+            "en": "Bag",
+            "th": "bag"
+          },
+          "gloves": {
+            "en": "Gloves",
+            "th": "gloves"
+          },
+          "books": {
+            "en": "Books",
+            "th": "books"
+          },
+          "flowers": {
+            "en": "Flowers",
+            "th": "flowers"
+          },
+          "camera": {
+            "en": "Camera",
+            "th": "camera"
+          },
+          "umbrella": {
+            "en": "Umbrella",
+            "th": "umbrella"
+          },
+          "custom": {
+            "en": "Custom",
+            "th": "กำหนดเอง"
+          }
+        }
+      },
+      "custom_description": {
+        "ui:widget": "text",
+        "ui:title": {
+          "en": "Custom Description",
+          "th": "รายละเอียดกำหนดเอง"
+        }
+      }
+    },
+    "custom_notes": {
+      "ui:widget": "text",
+      "ui:title": {
+        "en": "Custom Notes",
+        "th": "custom notes"
+      }
+    }
+  },
+  "generation_preferences": {
+    "style_direction": {
+      "ui:widget": "select",
+      "ui:title": {
+        "en": "Style Direction",
+        "th": "แนวทางภาพ"
+      },
+      "ui:enumNames": {
+        "auto": {
+          "en": "Auto",
+          "th": "อัตโนมัติ"
+        },
+        "professional_studio": {
+          "en": "Professional Studio",
+          "th": "สตูดิโอมืออาชีพ"
+        },
+        "commercial_portrait": {
+          "en": "Commercial Portrait",
+          "th": "พอร์ตเทรตเชิงพาณิชย์"
+        },
+        "fashion_editorial": {
+          "en": "Fashion Editorial",
+          "th": "แฟชั่นเอดิทอเรียล"
+        },
+        "cinematic_realistic": {
+          "en": "Cinematic Realistic",
+          "th": "สมจริงแบบภาพยนตร์"
+        },
+        "natural_light": {
+          "en": "Natural Light",
+          "th": "แสงธรรมชาติ"
+        },
+        "documentary_realistic": {
+          "en": "Documentary Realistic",
+          "th": "documentary realistic"
+        },
+        "beauty_photography": {
+          "en": "Beauty Photography",
+          "th": "beauty ภาพถ่าย"
+        },
+        "lifestyle_photography": {
+          "en": "Lifestyle Photography",
+          "th": "lifestyle ภาพถ่าย"
+        },
+        "fantasy_realistic": {
+          "en": "Fantasy Realistic",
+          "th": "fantasy realistic"
+        },
+        "anime_inspired_realism": {
+          "en": "Anime Inspired Realism",
+          "th": "anime inspired realism"
+        },
+        "custom": {
+          "en": "Custom",
+          "th": "กำหนดเอง"
+        }
+      }
+    },
+    "camera_quality": {
+      "ui:widget": "select",
+      "ui:title": {
+        "en": "Camera Quality",
+        "th": "คุณภาพกล้อง/ภาพ"
+      },
+      "ui:enumNames": {
+        "auto": {
+          "en": "Auto",
+          "th": "อัตโนมัติ"
+        },
+        "ultra_high_resolution": {
+          "en": "Ultra High Resolution",
+          "th": "ultra สูง resolution"
+        },
+        "commercial_photography": {
+          "en": "Commercial Photography",
+          "th": "เชิงพาณิชย์ ภาพถ่าย"
+        },
+        "studio_quality": {
+          "en": "Studio Quality",
+          "th": "สตูดิโอ คุณภาพ"
+        },
+        "cinematic_color_grading": {
+          "en": "Cinematic Color Grading",
+          "th": "ภาพยนตร์ color grading"
+        },
+        "tack_sharp_focus": {
+          "en": "Tack Sharp Focus",
+          "th": "tack sharp focus"
+        },
+        "phase_one_150mp": {
+          "en": "Phase One 150Mp",
+          "th": "phase one 150mp"
+        },
+        "medium_format_quality": {
+          "en": "Medium Format Quality",
+          "th": "ปานกลาง format คุณภาพ"
+        },
+        "custom": {
+          "en": "Custom",
+          "th": "กำหนดเอง"
+        }
+      }
+    },
+    "environment_style": {
+      "ui:widget": "select",
+      "ui:title": {
+        "en": "Environment Style",
+        "th": "สไตล์ฉาก"
+      },
+      "ui:enumNames": {
+        "auto": {
+          "en": "Auto",
+          "th": "อัตโนมัติ"
+        },
+        "studio_white": {
+          "en": "Studio White",
+          "th": "สตูดิโอฉากขาว"
+        },
+        "studio_gray_gradient": {
+          "en": "Studio Gray Gradient",
+          "th": "สตูดิโอไล่เทา"
+        },
+        "studio_cream": {
+          "en": "Studio Cream",
+          "th": "สตูดิโอสีครีม"
+        },
+        "concrete_custom_environment": {
+          "en": "Concrete Custom Environment",
+          "th": "concrete กำหนดเอง สภาพแวดล้อม"
+        },
+        "auto_by_character": {
+          "en": "Auto By Character",
+          "th": "อัตโนมัติตามตัวละคร"
+        },
+        "reference_image_environment": {
+          "en": "Reference Image Environment",
+          "th": "ฉากจากรูปอ้างอิง"
+        },
+        "bedroom": {
+          "en": "Bedroom",
+          "th": "bedroom"
+        },
+        "office": {
+          "en": "Office",
+          "th": "office"
+        },
+        "cafe": {
+          "en": "Cafe",
+          "th": "cafe"
+        },
+        "classroom": {
+          "en": "Classroom",
+          "th": "classroom"
+        },
+        "street": {
+          "en": "Street",
+          "th": "street"
+        },
+        "garden": {
+          "en": "Garden",
+          "th": "garden"
+        },
+        "library": {
+          "en": "Library",
+          "th": "library"
+        },
+        "luxury_interior": {
+          "en": "Luxury Interior",
+          "th": "luxury interior"
+        },
+        "custom": {
+          "en": "Custom",
+          "th": "กำหนดเอง"
+        }
+      }
+    },
+    "lighting_setup": {
+      "ui:widget": "select",
+      "ui:title": {
+        "en": "Lighting Setup",
+        "th": "การจัดแสง"
+      },
+      "ui:enumNames": {
+        "auto": {
+          "en": "Auto",
+          "th": "อัตโนมัติ"
+        },
+        "studio_lighting_setup": {
+          "en": "Studio Lighting Setup",
+          "th": "สตูดิโอ แสง setup"
+        },
+        "key_fill_rim_light": {
+          "en": "Key Fill Rim Light",
+          "th": "key fill rim อ่อน"
+        },
+        "soft_box_lighting": {
+          "en": "Soft Box Lighting",
+          "th": "นุ่มนวล box แสง"
+        },
+        "ring_light_portrait": {
+          "en": "Ring Light Portrait",
+          "th": "ring อ่อน พอร์ตเทรต"
+        },
+        "beauty_lighting": {
+          "en": "Beauty Lighting",
+          "th": "beauty แสง"
+        },
+        "clamshell_lighting": {
+          "en": "Clamshell Lighting",
+          "th": "clamshell แสง"
+        },
+        "rembrandt_lighting": {
+          "en": "Rembrandt Lighting",
+          "th": "rembrandt แสง"
+        },
+        "natural_window_light": {
+          "en": "Natural Window Light",
+          "th": "ธรรมชาติ window อ่อน"
+        },
+        "cinematic_soft_light": {
+          "en": "Cinematic Soft Light",
+          "th": "ภาพยนตร์ นุ่มนวล อ่อน"
+        },
+        "reference_image_lighting": {
+          "en": "Reference Image Lighting",
+          "th": "แสงจากรูปอ้างอิง"
+        },
+        "custom": {
+          "en": "Custom",
+          "th": "กำหนดเอง"
+        }
+      }
+    },
+    "camera_system": {
+      "ui:widget": "select",
+      "ui:title": {
+        "en": "Camera System",
+        "th": "ระบบกล้อง"
+      },
+      "ui:enumNames": {
+        "auto": {
+          "en": "Auto",
+          "th": "อัตโนมัติ"
+        },
+        "canon_eos_r5_85mm_f12": {
+          "en": "Canon Eos R5 85Mm F12",
+          "th": "canon eos r5 85mm f12"
+        },
+        "sony_a7r_iv_135mm_f18": {
+          "en": "Sony A7R Iv 135Mm F18",
+          "th": "sony a7r iv 135mm f18"
+        },
+        "fujifilm_gfx100s_medium_format": {
+          "en": "Fujifilm Gfx100S Medium Format",
+          "th": "fujifilm gfx100s ปานกลาง format"
+        },
+        "phase_one_iq4_150mp": {
+          "en": "Phase One Iq4 150Mp",
+          "th": "phase one iq4 150mp"
+        },
+        "canon_eos_r5_50mm_f14": {
+          "en": "Canon Eos R5 50Mm F14",
+          "th": "canon eos r5 50mm f14"
+        },
+        "sony_a7r_iv_85mm_f18": {
+          "en": "Sony A7R Iv 85Mm F18",
+          "th": "sony a7r iv 85mm f18"
+        },
+        "auto_by_shot": {
+          "en": "Auto By Shot",
+          "th": "auto โดย ช็อต"
+        },
+        "custom": {
+          "en": "Custom",
+          "th": "กำหนดเอง"
+        }
+      }
+    },
+    "film_processing": {
+      "ui:widget": "select",
+      "ui:title": {
+        "en": "Film Processing",
+        "th": "ฟิล์ม/การประมวลผล"
+      },
+      "ui:enumNames": {
+        "auto": {
+          "en": "Auto",
+          "th": "อัตโนมัติ"
+        },
+        "kodak_portra_400": {
+          "en": "Kodak Portra 400",
+          "th": "kodak portra 400"
+        },
+        "fujicolor_pro_400h": {
+          "en": "Fujicolor Pro 400H",
+          "th": "fujicolor pro 400h"
+        },
+        "professional_raw_processing": {
+          "en": "Professional Raw Processing",
+          "th": "professional raw processing"
+        },
+        "color_calibrated_workflow": {
+          "en": "Color Calibrated Workflow",
+          "th": "color calibrated workflow"
+        },
+        "cinematic_color_grading": {
+          "en": "Cinematic Color Grading",
+          "th": "ภาพยนตร์ color grading"
+        },
+        "auto_by_shot": {
+          "en": "Auto By Shot",
+          "th": "auto โดย ช็อต"
+        },
+        "custom": {
+          "en": "Custom",
+          "th": "กำหนดเอง"
+        }
+      }
+    },
+    "negative_rules": {
+      "ui:widget": "checkboxes",
+      "ui:title": {
+        "en": "Negative Rules",
+        "th": "ข้อห้าม"
+      },
+      "ui:enumNames": {
+        "auto": {
+          "en": "Auto",
+          "th": "อัตโนมัติ"
+        },
+        "no_shortcut_references": {
+          "en": "No Shortcut References",
+          "th": "ไม่มี shortcut references"
+        },
+        "no_abstract_environment": {
+          "en": "No Abstract Environment",
+          "th": "ไม่มี abstract สภาพแวดล้อม"
+        },
+        "no_markdown_formatting_in_final_prompts": {
+          "en": "No Markdown Formatting In Final Prompts",
+          "th": "ไม่มี markdown formatting in final prompts"
+        },
+        "no_character_inconsistency": {
+          "en": "No Character Inconsistency",
+          "th": "ไม่มี character inconsistency"
+        },
+        "no_age_drift": {
+          "en": "No Age Drift",
+          "th": "ไม่มี age drift"
+        },
+        "no_skin_tone_drift": {
+          "en": "No Skin Tone Drift",
+          "th": "ไม่มี ผิว tone drift"
+        },
+        "no_unrequested_json": {
+          "en": "No Unrequested Json",
+          "th": "ไม่มี unrequested json"
+        },
+        "custom": {
+          "en": "Custom",
+          "th": "กำหนดเอง"
+        }
+      }
+    },
+    "custom_requirements": {
+      "ui:widget": "text",
+      "ui:title": {
+        "en": "Custom Requirements",
+        "th": "ข้อกำหนดเพิ่มเติม"
+      }
+    }
+  }
+}

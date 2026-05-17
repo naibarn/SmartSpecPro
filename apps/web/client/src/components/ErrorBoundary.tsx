@@ -12,6 +12,32 @@ interface State {
   error: Error | null;
 }
 
+const CHUNK_RELOAD_MARKER = "__smartspec_chunk_reload_at__";
+const CHUNK_RELOAD_WINDOW_MS = 30_000;
+const CHUNK_ERROR_PATTERNS = [
+  /Failed to fetch dynamically imported module/i,
+  /Importing a module script failed/i,
+  /Loading chunk [\w-]+ failed/i,
+  /ChunkLoadError/i,
+];
+
+function isChunkLoadError(error: Error): boolean {
+  return CHUNK_ERROR_PATTERNS.some((pattern) => pattern.test(error.message));
+}
+
+function reloadForChunkError(): boolean {
+  const lastReloadAtRaw = sessionStorage.getItem(CHUNK_RELOAD_MARKER);
+  const lastReloadAt = lastReloadAtRaw ? Number(lastReloadAtRaw) : 0;
+  const now = Date.now();
+  if (Number.isFinite(lastReloadAt) && now - lastReloadAt < CHUNK_RELOAD_WINDOW_MS) {
+    return false;
+  }
+
+  sessionStorage.setItem(CHUNK_RELOAD_MARKER, String(now));
+  window.location.reload();
+  return true;
+}
+
 class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -19,13 +45,7 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
-    const isChunkError =
-      /Failed to fetch dynamically imported module|Loading chunk \d+ failed/i.test(
-        error.message
-      );
-    if (isChunkError && !sessionStorage.getItem("chunk_reload_attempted")) {
-      sessionStorage.setItem("chunk_reload_attempted", "1");
-      window.location.reload();
+    if (isChunkLoadError(error) && reloadForChunkError()) {
       // Return hasError: false so the blank screen is not shown while reloading
       return { hasError: false, error: null };
     }
@@ -59,7 +79,11 @@ class ErrorBoundary extends Component<Props, State> {
             )}
 
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                sessionStorage.removeItem(CHUNK_RELOAD_MARKER);
+                sessionStorage.removeItem("chunk_reload_attempted");
+                window.location.reload();
+              }}
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-lg",
                 "bg-primary text-primary-foreground",

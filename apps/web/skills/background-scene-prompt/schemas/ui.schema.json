@@ -1,0 +1,404 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/background-scene-prompt-skill/schemas/ui.schema.json",
+  "ui": {
+    "languages": [
+      "en",
+      "th"
+    ],
+    "en": {
+      "title": "Background Scene Prompt Builder",
+      "description": "Generate richly detailed, visually consistent background prompts from a rough concept. Multiple prompts will show the same place from different camera angles.",
+      "submitLabel": "Generate background prompts",
+      "sections": {
+        "basic": "Basic scene idea",
+        "environment": "Place and environment",
+        "visualStyle": "Visual style",
+        "lighting": "Lighting and atmosphere",
+        "camera": "Camera, lens, and composition",
+        "continuity": "Continuity anchors",
+        "constraints": "Inclusions, exclusions, and character-safe background options",
+        "advanced": "Advanced options"
+      },
+      "fields": {
+        "concept": {
+          "label": "Concept",
+          "placeholder": "Example: luxury bedroom with cream tufted headboard, walnut furniture, glass wardrobe, herringbone floor",
+          "help": "Enter a short idea. For multiple prompts, the system expands it into one locked scene shown from different camera angles."
+        },
+        "prompt_count": {
+          "label": "Number of prompts",
+          "help": "All prompts will describe the same place from different camera angles only. Furniture, fixtures, materials, and layout must stay locked."
+        },
+        "language": {
+          "label": "Output language",
+          "help": "Choose the language for the final plain-text prompts."
+        },
+        "location_mode": {
+          "label": "Location mode",
+          "help": "Use real-world cues, fictional worldbuilding, or let the system infer."
+        },
+        "environment_scope": {
+          "label": "Environment type",
+          "help": "Interior, exterior, room, street, landscape, cityscape, or auto."
+        },
+        "style_genre": {
+          "label": "Style / genre",
+          "placeholder": "cinematic realism, anime background, fantasy, cyberpunk, historical...",
+          "help": "Optional art direction or genre."
+        },
+        "time_of_day": {
+          "label": "Time of day",
+          "help": "The same time of day will be preserved across all prompts."
+        },
+        "custom_time_of_day": {
+          "label": "Custom time of day",
+          "placeholder": "Example: late monsoon afternoon just before sunset"
+        },
+        "weather_atmosphere": {
+          "label": "Weather / atmosphere",
+          "placeholder": "misty, humid, rainy, dusty, clear, neon haze..."
+        },
+        "lighting.condition": {
+          "label": "Lighting condition"
+        },
+        "lighting.primary_light_source": {
+          "label": "Primary light source",
+          "placeholder": "sun through arched windows, moonlight, neon signs, candles..."
+        },
+        "lighting.light_direction": {
+          "label": "Light direction",
+          "placeholder": "from camera right, overhead, backlight, through rear windows..."
+        },
+        "lighting.secondary_light_sources": {
+          "label": "Secondary light sources",
+          "placeholder": "reflected water light, small lamps, glowing signage..."
+        },
+        "camera.camera_profile": {
+          "label": "Camera profile",
+          "placeholder": "cinematic full-frame, architectural photography, anime background plate..."
+        },
+        "camera.lens": {
+          "label": "Lens",
+          "placeholder": "24mm, 28mm, 35mm, 50mm, anamorphic, tilt-shift..."
+        },
+        "camera.depth_of_field": {
+          "label": "Depth of field"
+        },
+        "camera.composition": {
+          "label": "Composition",
+          "placeholder": "wide establishing, low angle, symmetrical, empty center space..."
+        },
+        "color_profile": {
+          "label": "Color profile",
+          "placeholder": "warm filmic gold, muted pastel, cool cyan night, earthy naturalism..."
+        },
+        "consistency_anchors": {
+          "label": "Consistency anchors",
+          "placeholder": "dining table fixed at right foreground, sofa facing wood built-in wall, slim black-framed sliding doors, herringbone oak floor...",
+          "help": "Fixed landmarks, furniture designs, object positions, wall positions, door/window designs, materials, hardware, fixtures, floor patterns, curtains, and built-ins that must appear consistently in every prompt."
+        },
+        "must_include": {
+          "label": "Must include",
+          "placeholder": "specific locked furniture, table position, door style, architecture, plants, signage..."
+        },
+        "must_avoid": {
+          "label": "Must avoid",
+          "placeholder": "people, cars, modern objects, text, logos..."
+        },
+        "include_people": {
+          "label": "People in background",
+          "help": "Main characters are excluded by default because this is for reusable background plates."
+        },
+        "character_placement_space": {
+          "label": "Space for later character placement"
+        },
+        "custom_character_placement_space": {
+          "label": "Custom character-placement space",
+          "placeholder": "Example: leave the lower-right foreground open"
+        },
+        "detail_density": {
+          "label": "Detail density"
+        },
+        "aspect_ratio": {
+          "label": "Aspect ratio",
+          "placeholder": "16:9, 4:3, 3:2, 1:1, 9:16..."
+        },
+        "extra_instructions": {
+          "label": "Extra instructions",
+          "placeholder": "Any additional constraints or preferences."
+        }
+      },
+      "options": {
+        "auto": "Auto",
+        "th": "Thai",
+        "en": "English",
+        "ja": "Japanese",
+        "ko": "Korean",
+        "zh": "Chinese",
+        "es": "Spanish",
+        "fr": "French",
+        "de": "German",
+        "it": "Italian",
+        "pt": "Portuguese",
+        "ru": "Russian",
+        "ar": "Arabic",
+        "hi": "Hindi",
+        "id": "Indonesian",
+        "vi": "Vietnamese",
+        "ms": "Malay",
+        "tl": "Filipino",
+        "tr": "Turkish",
+        "nl": "Dutch",
+        "pl": "Polish",
+        "sv": "Swedish",
+        "real_world": "Real-world location",
+        "fictional": "Fictional location",
+        "hybrid": "Hybrid",
+        "interior": "Interior",
+        "exterior": "Exterior",
+        "interior_exterior_transition": "Interior/exterior transition",
+        "landscape": "Landscape",
+        "cityscape": "Cityscape",
+        "room": "Room",
+        "building": "Building",
+        "street": "Street",
+        "vehicle_or_mobile_space": "Vehicle or mobile space",
+        "dawn": "Dawn",
+        "morning": "Morning",
+        "midday": "Midday",
+        "afternoon": "Afternoon",
+        "golden_hour": "Golden hour",
+        "sunset": "Sunset",
+        "blue_hour": "Blue hour",
+        "night": "Night",
+        "midnight": "Midnight",
+        "overcast_day": "Overcast day",
+        "custom": "Custom",
+        "soft": "Soft",
+        "hard": "Hard",
+        "high_contrast": "High contrast",
+        "low_key": "Low key",
+        "high_key": "High key",
+        "natural": "Natural",
+        "dramatic": "Dramatic",
+        "moody": "Moody",
+        "deep_focus": "Deep focus",
+        "moderate_depth": "Moderate depth",
+        "shallow_depth": "Shallow depth",
+        "tilt_shift": "Tilt-shift",
+        "no_people": "No people",
+        "no_main_characters": "No main characters",
+        "tiny_background_extras_allowed": "Tiny background extras allowed",
+        "user_specified": "User specified",
+        "none": "None",
+        "subtle_negative_space": "Subtle negative space",
+        "clear_center_space": "Clear center space",
+        "clear_left_space": "Clear left space",
+        "clear_right_space": "Clear right space",
+        "foreground_empty_area": "Empty foreground area",
+        "medium": "Medium",
+        "high": "High",
+        "very_high": "Very high",
+        "ultra_dense": "Ultra dense"
+      }
+    },
+    "th": {
+      "title": "ตัวสร้างพรอมต์ฉากหลัง",
+      "description": "สร้างพรอมต์ฉากหลังที่ละเอียด แน่น และคุมความต่อเนื่องจากแนวคิดคร่าว ๆ หากสร้างหลายพรอมต์ ทุกพรอมต์จะเป็นสถานที่เดียวกัน แต่มุมกล้องต่างกัน",
+      "submitLabel": "สร้างพรอมต์ฉากหลัง",
+      "sections": {
+        "basic": "แนวคิดหลักของฉาก",
+        "environment": "สถานที่และสภาพแวดล้อม",
+        "visualStyle": "สไตล์ภาพ",
+        "lighting": "แสงและบรรยากาศ",
+        "camera": "กล้อง เลนส์ และองค์ประกอบภาพ",
+        "continuity": "จุดยึดความต่อเนื่องของสถานที่",
+        "constraints": "สิ่งที่ต้องมี สิ่งที่ห้ามมี และตัวเลือกฉากหลังสำหรับใช้กับตัวละคร",
+        "advanced": "ตัวเลือกขั้นสูง"
+      },
+      "fields": {
+        "concept": {
+          "label": "แนวคิด",
+          "placeholder": "ตัวอย่าง: ห้องนอน luxury หัวเตียงครีมบุ่มกระดุม เฟอร์นิเจอร์ walnut ตู้เสื้อผ้ากระจก พื้น herringbone",
+          "help": "ใส่ไอเดียสั้น ๆ หากสร้างหลายพรอมต์ ระบบจะขยายเป็นฉากเดียวที่ล็อกไว้ แล้วเปลี่ยนเฉพาะมุมกล้อง"
+        },
+        "prompt_count": {
+          "label": "จำนวนพรอมต์",
+          "help": "ทุกพรอมต์จะเป็นสถานที่เดียวกันและต่างกันเฉพาะมุมกล้องเท่านั้น เฟอร์นิเจอร์ ฟิกซ์เจอร์ วัสดุ และ layout ต้องล็อกเหมือนเดิม"
+        },
+        "language": {
+          "label": "ภาษาของผลลัพธ์",
+          "help": "เลือกภาษาสำหรับพรอมต์แบบข้อความปกติ"
+        },
+        "location_mode": {
+          "label": "ประเภทสถานที่",
+          "help": "ใช้สถานที่จริง สถานที่สมมุติ ผสมกัน หรือให้ระบบตีความเอง"
+        },
+        "environment_scope": {
+          "label": "ชนิดของสภาพแวดล้อม",
+          "help": "ภายใน ภายนอก ห้อง ถนน ภูมิทัศน์ เมือง หรืออัตโนมัติ"
+        },
+        "style_genre": {
+          "label": "สไตล์ / แนวภาพ",
+          "placeholder": "cinematic realism, anime background, fantasy, cyberpunk, historical...",
+          "help": "กำหนดทิศทางศิลป์หรือแนวภาพเพิ่มเติม"
+        },
+        "time_of_day": {
+          "label": "ช่วงเวลา",
+          "help": "ช่วงเวลาเดียวกันจะถูกคงไว้ในทุกพรอมต์"
+        },
+        "custom_time_of_day": {
+          "label": "ช่วงเวลาแบบกำหนดเอง",
+          "placeholder": "ตัวอย่าง: บ่ายปลายฤดูฝนก่อนพระอาทิตย์ตกเล็กน้อย"
+        },
+        "weather_atmosphere": {
+          "label": "สภาพอากาศ / บรรยากาศ",
+          "placeholder": "หมอกชื้น ฝนตก ฝุ่นลอย ฟ้าใส แสงนีออนในหมอก..."
+        },
+        "lighting.condition": {
+          "label": "ลักษณะแสง"
+        },
+        "lighting.primary_light_source": {
+          "label": "แหล่งกำเนิดแสงหลัก",
+          "placeholder": "แสงอาทิตย์ผ่านหน้าต่างโค้ง แสงจันทร์ ป้ายไฟนีออน เทียน..."
+        },
+        "lighting.light_direction": {
+          "label": "ทิศทางแสง",
+          "placeholder": "จากขวาของกล้อง เหนือศีรษะ ย้อนแสง ผ่านหน้าต่างด้านหลัง..."
+        },
+        "lighting.secondary_light_sources": {
+          "label": "แหล่งกำเนิดแสงรอง",
+          "placeholder": "แสงสะท้อนจากผิวน้ำ โคมไฟเล็ก ๆ ป้ายเรืองแสง..."
+        },
+        "camera.camera_profile": {
+          "label": "โปรไฟล์กล้อง",
+          "placeholder": "cinematic full-frame, architectural photography, anime background plate..."
+        },
+        "camera.lens": {
+          "label": "เลนส์",
+          "placeholder": "24mm, 28mm, 35mm, 50mm, anamorphic, tilt-shift..."
+        },
+        "camera.depth_of_field": {
+          "label": "ความชัดลึก"
+        },
+        "camera.composition": {
+          "label": "องค์ประกอบภาพ",
+          "placeholder": "wide establishing, low angle, symmetrical, เว้นพื้นที่กลางภาพ..."
+        },
+        "color_profile": {
+          "label": "โปรไฟล์สี",
+          "placeholder": "โทนทองแบบฟิล์ม, พาสเทลหม่น, กลางคืนฟ้าเย็น, natural earthy..."
+        },
+        "consistency_anchors": {
+          "label": "จุดยึดความต่อเนื่อง",
+          "placeholder": "โต๊ะกินข้าวอยู่ foreground ขวา, โซฟาหันเข้าผนัง built-in ไม้, ประตูบานเลื่อนกรอบดำ, พื้นไม้ herringbone...",
+          "help": "แลนด์มาร์ก รูปแบบเฟอร์นิเจอร์ ตำแหน่งวัตถุ ตำแหน่งบนผนัง รูปแบบประตู/หน้าต่าง วัสดุ ฮาร์ดแวร์ ฟิกซ์เจอร์ ลายพื้น ผ้าม่าน และ built-in ที่ต้องคงเหมือนกันทุกพรอมต์"
+        },
+        "must_include": {
+          "label": "สิ่งที่ต้องมี",
+          "placeholder": "เฟอร์นิเจอร์ที่ต้องล็อก ตำแหน่งโต๊ะ รูปแบบประตู สถาปัตยกรรม พืช ป้าย..."
+        },
+        "must_avoid": {
+          "label": "สิ่งที่ห้ามมี",
+          "placeholder": "คน รถ วัตถุสมัยใหม่ ตัวอักษร โลโก้..."
+        },
+        "include_people": {
+          "label": "คนในฉากหลัง",
+          "help": "ค่าเริ่มต้นจะไม่ใส่ตัวละครหลัก เพราะฉากนี้ทำไว้ใช้เป็น background plate"
+        },
+        "character_placement_space": {
+          "label": "พื้นที่สำหรับใส่ตัวละครภายหลัง"
+        },
+        "custom_character_placement_space": {
+          "label": "พื้นที่ใส่ตัวละครแบบกำหนดเอง",
+          "placeholder": "ตัวอย่าง: เว้นพื้นที่ foreground ด้านขวาล่างให้โล่ง"
+        },
+        "detail_density": {
+          "label": "ระดับความละเอียด"
+        },
+        "aspect_ratio": {
+          "label": "อัตราส่วนภาพ",
+          "placeholder": "16:9, 4:3, 3:2, 1:1, 9:16..."
+        },
+        "extra_instructions": {
+          "label": "คำสั่งเพิ่มเติม",
+          "placeholder": "ข้อจำกัดหรือความต้องการอื่น ๆ"
+        }
+      },
+      "options": {
+        "auto": "อัตโนมัติ",
+        "th": "ไทย",
+        "en": "อังกฤษ",
+        "ja": "ญี่ปุ่น",
+        "ko": "เกาหลี",
+        "zh": "จีน",
+        "es": "สเปน",
+        "fr": "ฝรั่งเศส",
+        "de": "เยอรมัน",
+        "it": "อิตาลี",
+        "pt": "โปรตุเกส",
+        "ru": "รัสเซีย",
+        "ar": "อาหรับ",
+        "hi": "ฮินดี",
+        "id": "อินโดนีเซีย",
+        "vi": "เวียดนาม",
+        "ms": "มาเลย์",
+        "tl": "ฟิลิปปินส์",
+        "tr": "ตุรกี",
+        "nl": "ดัตช์",
+        "pl": "โปแลนด์",
+        "sv": "สวีเดน",
+        "real_world": "สถานที่จริง",
+        "fictional": "สถานที่สมมุติ",
+        "hybrid": "ผสมจริงและสมมุติ",
+        "interior": "ภายใน",
+        "exterior": "ภายนอก",
+        "interior_exterior_transition": "รอยต่อภายใน/ภายนอก",
+        "landscape": "ภูมิทัศน์",
+        "cityscape": "เมือง",
+        "room": "ห้อง",
+        "building": "อาคาร",
+        "street": "ถนน",
+        "vehicle_or_mobile_space": "ยานพาหนะหรือพื้นที่เคลื่อนที่",
+        "dawn": "รุ่งสาง",
+        "morning": "เช้า",
+        "midday": "กลางวัน",
+        "afternoon": "บ่าย",
+        "golden_hour": "ช่วงแสงทอง",
+        "sunset": "พระอาทิตย์ตก",
+        "blue_hour": "ช่วงแสงน้ำเงิน",
+        "night": "กลางคืน",
+        "midnight": "เที่ยงคืน",
+        "overcast_day": "กลางวันฟ้าครึ้ม",
+        "custom": "กำหนดเอง",
+        "soft": "แสงนุ่ม",
+        "hard": "แสงแข็ง",
+        "high_contrast": "คอนทราสต์สูง",
+        "low_key": "โลว์คีย์",
+        "high_key": "ไฮคีย์",
+        "natural": "ธรรมชาติ",
+        "dramatic": "ดรามาติก",
+        "moody": "หม่น มีอารมณ์",
+        "deep_focus": "ชัดลึก",
+        "moderate_depth": "ชัดลึกปานกลาง",
+        "shallow_depth": "ชัดตื้น",
+        "tilt_shift": "ทิลต์ชิฟต์",
+        "no_people": "ไม่มีคน",
+        "no_main_characters": "ไม่มีตัวละครหลัก",
+        "tiny_background_extras_allowed": "อนุญาตคนตัวเล็กในฉากหลัง",
+        "user_specified": "ตามที่ผู้ใช้กำหนด",
+        "none": "ไม่ต้องเว้น",
+        "subtle_negative_space": "เว้นพื้นที่ว่างเล็กน้อย",
+        "clear_center_space": "เว้นพื้นที่กลางภาพ",
+        "clear_left_space": "เว้นพื้นที่ด้านซ้าย",
+        "clear_right_space": "เว้นพื้นที่ด้านขวา",
+        "foreground_empty_area": "เว้น foreground ให้โล่ง",
+        "medium": "ปานกลาง",
+        "high": "สูง",
+        "very_high": "สูงมาก",
+        "ultra_dense": "แน่นมาก"
+      }
+    }
+  }
+}

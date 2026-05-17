@@ -3,6 +3,7 @@ import {
   collectGenerationQueueTaskIdentityCandidates,
   getGenerationQueueIdentityCandidates,
   isGenerationQueueTaskDismissed,
+  isStoryboardReviewOnlyQueuedTask,
   mergeGenerationQueueTasks,
   shouldIncludeHistoryTaskInGenerationQueue,
 } from "./mediaStudioGenerationQueue";
@@ -76,6 +77,33 @@ describe("mediaStudioGenerationQueue", () => {
     ).toBe(true);
   });
 
+  it("hides stale active history tasks unless they are already tracked", () => {
+    const nowMs = Date.parse("2026-05-16T07:00:00Z");
+    const staleTask = {
+      id: "backend-stale",
+      taskId: "provider-stale",
+      updatedAt: "2026-05-16T03:30:00Z",
+    };
+
+    expect(
+      shouldIncludeHistoryTaskInGenerationQueue(
+        "processing",
+        staleTask,
+        new Set<string>(),
+        { nowMs, activeHistoryMaxAgeMs: 2 * 60 * 60 * 1000 },
+      ),
+    ).toBe(false);
+
+    expect(
+      shouldIncludeHistoryTaskInGenerationQueue(
+        "processing",
+        staleTask,
+        new Set<string>(["provider-stale"]),
+        { nowMs, activeHistoryMaxAgeMs: 2 * 60 * 60 * 1000 },
+      ),
+    ).toBe(true);
+  });
+
   it("treats any known identity as dismissed", () => {
     expect(
       isGenerationQueueTaskDismissed(
@@ -96,5 +124,49 @@ describe("mediaStudioGenerationQueue", () => {
         { id: "local-2", taskId: "provider-2" },
       ]),
     ).toEqual(["local-1", "backend-1", "provider-1", "local-2", "provider-2"]);
+  });
+
+  it("identifies queued storyboard review placeholders before real generation starts", () => {
+    const reviewTaskIds = new Set<string>(["split-storyboard-1"]);
+
+    expect(
+      isStoryboardReviewOnlyQueuedTask(
+        {
+          id: "split-storyboard-1",
+          status: "queued",
+          storyboardContext: {
+            extraParams: { generationType: "FIRST_AND_LAST_FRAMES_2_VIDEO" },
+          },
+        },
+        reviewTaskIds,
+      ),
+    ).toBe(true);
+
+    expect(
+      isStoryboardReviewOnlyQueuedTask(
+        {
+          id: "split-storyboard-1",
+          status: "queued",
+          backendTaskId: "backend-1",
+          storyboardContext: {
+            extraParams: { generationType: "FIRST_AND_LAST_FRAMES_2_VIDEO" },
+          },
+        },
+        reviewTaskIds,
+      ),
+    ).toBe(false);
+
+    expect(
+      isStoryboardReviewOnlyQueuedTask(
+        {
+          id: "split-storyboard-1",
+          status: "generating",
+          storyboardContext: {
+            extraParams: { generationType: "FIRST_AND_LAST_FRAMES_2_VIDEO" },
+          },
+        },
+        reviewTaskIds,
+      ),
+    ).toBe(false);
   });
 });

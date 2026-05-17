@@ -4943,6 +4943,7 @@ exports.skillCategoryEnum = (0, pg_core_1.pgEnum)("skill_category", [
   "video_prompt_generation", // Create prompts for video generation
   "image_video_generation", // Generate both Image and Video
   "audio_generation", // Generate Text To Speech
+  "audio_prompt_generation", // Create prompts for audio generation
   "article_generation", // Generate source articles / presentation drafts
   "product_review", // Product review generation (household, beauty, fashion, etc.)
   "sound_effects", // Generate Sound Effects

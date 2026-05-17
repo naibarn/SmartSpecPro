@@ -1,0 +1,37 @@
+{
+  "name": "smart-character-creator-pro",
+  "version": "1.1.0",
+  "description": "Complete skill package for Smart Character Creator Pro with extensive selectable choices, Auto options, drag-and-drop reference image uploads, multilingual plain-text prompt output, and Thai/English UI schema.",
+  "entry": "SKILL.md",
+  "schemas": {
+    "input": "schemas/input.schema.json",
+    "ui": "schemas/ui.schema.json",
+    "output": "output.schema.json"
+  },
+  "knowledge_dir": "knowledge",
+  "default_ui_language": "en",
+  "supported_output_languages": [
+    "auto",
+    "th",
+    "en",
+    "zh-Hans",
+    "zh-Hant",
+    "ja",
+    "ko",
+    "es",
+    "fr",
+    "de",
+    "it",
+    "pt",
+    "id",
+    "vi",
+    "ar",
+    "hi"
+  ],
+  "output_mode": "plain_text_descriptive_prompt",
+  "supported_ui_languages": [
+    "en",
+    "th"
+  ],
+  "supports_reference_image_uploads": true
+}

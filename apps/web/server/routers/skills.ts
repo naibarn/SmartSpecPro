@@ -51,6 +51,7 @@ import { getCachedPublicAppUrl } from "../services/appRuntimeConfig";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
+import sharp from "sharp";
 import yaml from "js-yaml";
 import AdmZip from "adm-zip";
 import { spawn } from "child_process";
@@ -114,6 +115,10 @@ import {
   extractStructuredPromptBundleTextOutput,
   prepareMediaStudioPythonPromptSkillExecution,
 } from "../services/mediaStudioPromptSkillExecution";
+import {
+  buildElevenLabsBeautyDialogueRepairPrompt,
+  evaluateElevenLabsBeautyDialogueQuality,
+} from "../services/elevenLabsBeautyDialogueQuality";
 import {
   buildAudioFirstStoryboardRepairPrompt,
   buildAudioFirstStoryboardSharedSectionsFallback,
@@ -678,6 +683,8 @@ function mapCategoryToEnum(category?: string): string {
     "video-generation": "video_generation",
     "video_prompt_generation": "video_prompt_generation",
     "video-prompt-generation": "video_prompt_generation",
+    "audio_prompt_generation": "audio_prompt_generation",
+    "audio-prompt-generation": "audio_prompt_generation",
     "image_video_generation": "image_video_generation",
     "image-video-generation": "image_video_generation",
     "audio_generation": "audio_generation",
@@ -710,6 +717,7 @@ function mapCategoryToEnum(category?: string): string {
   // Fuzzy mapping for external skills with free-text categories
   if ((cat.includes("image") || cat.includes("photo") || cat.includes("visual")) && cat.includes("prompt")) return "image_prompt_generation";
   if ((cat.includes("video") || cat.includes("film") || cat.includes("movie")) && cat.includes("prompt")) return "video_prompt_generation";
+  if ((cat.includes("audio") || cat.includes("music") || cat.includes("sound")) && cat.includes("prompt")) return "audio_prompt_generation";
   if (cat.includes("code") || cat.includes("dev") || cat.includes("engineer") || cat.includes("programming")) return "code_assistant";
   if (cat.includes("review") || cat.includes("reviewer") || (cat.includes("product") && !cat.includes("prompt"))) return "product_review";
   if (cat.includes("slide") || cat.includes("deck") || cat.includes("presentation") || cat.includes("storyboard")) return "slide_generation";
@@ -836,6 +844,16 @@ function decryptApiKey(text: string): string {
 // Note: getActiveLlmProvider removed — now uses getProviderForModel from llmRouter
 
 const PROMPT_IMAGE_PREFIXES = ["/uploads/", "/api/storage/files/"] as const;
+const LLM_VISION_MAX_IMAGE_EDGE_PX = 2048;
+const LLM_VISION_JPEG_QUALITY = 92;
+
+const IMAGE_MIME_TYPES_BY_EXTENSION: Record<string, string> = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+};
 
 function buildAbsoluteReferenceUrl(url: string, publicUrl?: string | null): string | null {
   if (!url.startsWith("/")) {
@@ -850,14 +868,70 @@ function buildAbsoluteReferenceUrl(url: string, publicUrl?: string | null): stri
   return `${baseUrl}${url}`;
 }
 
+function parseImageDataUrl(url: string): { mimeType: string; buffer: Buffer } | null {
+  const match = url.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([\s\S]+)$/i);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    mimeType: match[1].toLowerCase(),
+    buffer: Buffer.from(match[2].replace(/\s/g, ""), "base64"),
+  };
+}
+
+async function prepareImageDataUrlForLLM(
+  imageBuffer: Buffer,
+  mimeType: string,
+): Promise<string> {
+  try {
+    const optimizedBuffer = await sharp(imageBuffer, { animated: false })
+      .rotate()
+      .resize({
+        width: LLM_VISION_MAX_IMAGE_EDGE_PX,
+        height: LLM_VISION_MAX_IMAGE_EDGE_PX,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .jpeg({
+        quality: LLM_VISION_JPEG_QUALITY,
+        mozjpeg: true,
+        chromaSubsampling: "4:4:4",
+      })
+      .toBuffer();
+
+    return `data:image/jpeg;base64,${optimizedBuffer.toString("base64")}`;
+  } catch (error) {
+    console.warn("[Skills] Failed to optimize image for LLM; using original payload", error);
+    return `data:${mimeType};base64,${imageBuffer.toString("base64")}`;
+  }
+}
+
+async function fileToImageDataUrlForLLM(filePath: string): Promise<string> {
+  const fileBuffer = fs.readFileSync(filePath);
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeType = IMAGE_MIME_TYPES_BY_EXTENSION[ext] || "image/png";
+  return prepareImageDataUrlForLLM(fileBuffer, mimeType);
+}
+
 /**
  * Convert image URL to a format the LLM can use
- * - Relative URLs (/uploads/... or /api/storage/files/...) are converted to base64 data URLs when possible
+ * - Local image payloads are optimized before being converted to base64 data URLs
+ * - Relative URLs (/uploads/... or /api/storage/files/...) are converted to optimized base64 data URLs when possible
  * - Full URLs are passed through as-is
  */
 export async function convertImageUrlForLLM(url: string, publicUrl?: string | null): Promise<string> {
-  // If it's already a data URL or full HTTP URL, return as-is
-  if (url.startsWith("data:") || url.startsWith("http://") || url.startsWith("https://")) {
+  // If it's already a data URL, normalize it too; direct skill inputs can be very large.
+  if (url.startsWith("data:")) {
+    const parsed = parseImageDataUrl(url);
+    if (!parsed) {
+      return url;
+    }
+    return prepareImageDataUrlForLLM(parsed.buffer, parsed.mimeType);
+  }
+
+  // Full HTTP URLs are passed through so providers can fetch them without inline base64 token cost.
+  if (url.startsWith("http://") || url.startsWith("https://")) {
     return url;
   }
 
@@ -872,38 +946,13 @@ export async function convertImageUrlForLLM(url: string, publicUrl?: string | nu
       const filePath = path.join(uploadsDir, relativePath);
 
       if (fs.existsSync(filePath)) {
-        const fileBuffer = fs.readFileSync(filePath);
-        const base64 = fileBuffer.toString("base64");
-
-        // Detect mime type from extension
-        const ext = path.extname(filePath).toLowerCase();
-        const mimeTypes: Record<string, string> = {
-          ".jpg": "image/jpeg",
-          ".jpeg": "image/jpeg",
-          ".png": "image/png",
-          ".gif": "image/gif",
-          ".webp": "image/webp",
-        };
-        const mimeType = mimeTypes[ext] || "image/png";
-
-        return `data:${mimeType};base64,${base64}`;
+        return fileToImageDataUrlForLLM(filePath);
       } else {
         console.warn(`[Skills] Image file not found: ${filePath}`);
         // Try alternate path (cwd-relative)
         const altPath = path.resolve(process.cwd(), "uploads", relativePath);
         if (fs.existsSync(altPath)) {
-          const fileBuffer = fs.readFileSync(altPath);
-          const base64 = fileBuffer.toString("base64");
-          const ext = path.extname(altPath).toLowerCase();
-          const mimeTypes: Record<string, string> = {
-            ".jpg": "image/jpeg",
-            ".jpeg": "image/jpeg",
-            ".png": "image/png",
-            ".gif": "image/gif",
-            ".webp": "image/webp",
-          };
-          const mimeType = mimeTypes[ext] || "image/png";
-          return `data:${mimeType};base64,${base64}`;
+          return fileToImageDataUrlForLLM(altPath);
         }
         const absoluteUrl = buildAbsoluteReferenceUrl(url, publicUrl);
         if (absoluteUrl) {
@@ -951,7 +1000,7 @@ async function callLLMWithVision(
   // Convert relative URLs to base64 data URLs so LLM can access them
   for (const imageUrl of imageUrls) {
     const convertedUrl = await convertImageUrlForLLM(imageUrl, options?.publicUrl);
-    userContent.push({ type: "image_url", image_url: { url: convertedUrl } });
+    userContent.push({ type: "image_url", image_url: { url: convertedUrl, detail: "high" } });
   }
 
   const finalSystemPrompt = options?.systemPromptSuffix
@@ -1167,20 +1216,32 @@ interface SkillInputSchema {
 interface SchemaSection {
   id: string;
   title: string;
+  titleTh?: string;
   collapsed?: boolean;
   fields: SchemaField[];
 }
 
 interface SchemaField {
   id: string;
-  type: "text" | "textarea" | "select" | "boolean" | "imageUpload" | "number";
+  type: "text" | "textarea" | "select" | "boolean" | "imageUpload" | "number" | "array" | "hidden";
   label: string;
   labelTh?: string;
   placeholder?: string;
   helpText?: string;
+  helpTextTh?: string;
   required?: boolean;
   default?: any;
   rows?: number;
+  min?: number;
+  max?: number;
+  minItems?: number;
+  maxItems?: number;
+  maxImages?: number;
+  multiple?: boolean;
+  accept?: string;
+  itemLabel?: string;
+  itemFields?: SchemaField[];
+  arrayItemType?: "string" | "object";
   options?: SelectOption[];
   optionGroups?: Record<string, SelectOption[]>;
   dependsOn?: {
@@ -1196,37 +1257,175 @@ interface SelectOption {
   labelTh?: string;
 }
 
+function pickLocalizedUiText(value: unknown): { en?: string; th?: string } {
+  if (typeof value === "string") {
+    return { en: value };
+  }
+
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return {
+      en: typeof record.en === "string" ? record.en : undefined,
+      th: typeof record.th === "string" ? record.th : undefined,
+    };
+  }
+
+  return {};
+}
+
+function resolveJsonSchemaRef(jsonSchema: any, schema: any): any {
+  if (!schema?.$ref || typeof schema.$ref !== "string") {
+    return schema;
+  }
+
+  const ref = schema.$ref;
+  if (!ref.startsWith("#/$defs/")) {
+    return schema;
+  }
+
+  const defName = ref.slice("#/$defs/".length);
+  const resolved = jsonSchema.$defs?.[defName];
+  return resolved ? { ...resolved, ...Object.fromEntries(Object.entries(schema).filter(([key]) => key !== "$ref")) } : schema;
+}
+
+function titleFromKey(key: string): string {
+  return key.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase());
+}
+
+function isObjectSchema(schema: any): boolean {
+  return schema?.type === "object" && schema.properties && typeof schema.properties === "object";
+}
+
+const PRIMARY_INPUT_FIELD_HINTS = [
+  "request",
+  "userIdea",
+  "prompt",
+  "input",
+  "text",
+  "description",
+  "concept",
+];
+
+function isFallbackBasicField(field: SchemaField): boolean {
+  const fieldId = field.id.toLowerCase();
+
+  return PRIMARY_INPUT_FIELD_HINTS.some((hint) => fieldId.includes(hint.toLowerCase()));
+}
+
 /**
  * Convert standard JSON Schema to our custom skill input schema format
  */
-function convertJsonSchemaToSkillSchema(jsonSchema: any, skillId: string): SkillInputSchema {
+export function convertJsonSchemaToSkillSchema(jsonSchema: any, skillId: string, uiSchema?: any): SkillInputSchema {
   const title = jsonSchema.title || skillId;
   const description = jsonSchema.description || "";
   const properties = jsonSchema.properties || {};
   const requiredFields = jsonSchema.required || [];
+  const orderedKeys = Array.isArray(uiSchema?.["ui:order"])
+    ? [
+        ...uiSchema["ui:order"].filter((key: unknown) => typeof key === "string" && properties[key as string]),
+        ...Object.keys(properties).filter((key) => !uiSchema["ui:order"].includes(key)),
+      ]
+    : Object.keys(properties);
 
-  // Group fields into sections based on property names or structure
-  const fields: SchemaField[] = [];
+  const sections: SchemaSection[] = [];
+  const outputMapping: Record<string, string> = {};
+  const optionFields: SchemaField[] = [];
 
-  for (const [key, prop] of Object.entries(properties) as [string, any][]) {
-    const field = convertPropertyToField(key, prop, requiredFields.includes(key));
+  const collectFields = (
+    schemaNode: any,
+    uiNode: any,
+    pathPrefix: string,
+    requiredKeys: string[],
+  ): SchemaField[] => {
+    const node = resolveJsonSchemaRef(jsonSchema, schemaNode);
+    const nodeProperties = node?.properties || {};
+    const nodeOrder = Array.isArray(uiNode?.["ui:order"])
+      ? [
+          ...uiNode["ui:order"].filter((key: unknown) => typeof key === "string" && nodeProperties[key as string]),
+          ...Object.keys(nodeProperties).filter((key) => !uiNode["ui:order"].includes(key)),
+        ]
+      : Object.keys(nodeProperties);
+
+    const collected: SchemaField[] = [];
+
+    for (const childKey of nodeOrder) {
+      const childSchema = resolveJsonSchemaRef(jsonSchema, nodeProperties[childKey]);
+      const childUi = uiNode?.[childKey];
+      const fieldId = pathPrefix ? `${pathPrefix}.${childKey}` : childKey;
+
+      if (isObjectSchema(childSchema)) {
+        collected.push(...collectFields(
+          childSchema,
+          childUi,
+          fieldId,
+          childSchema.required || [],
+        ));
+        continue;
+      }
+
+      const field = convertPropertyToField(fieldId, childSchema, requiredKeys.includes(childKey), childUi, childKey);
+      if (field) {
+        collected.push(field);
+        outputMapping[field.id] = field.id;
+      }
+    }
+
+    return collected;
+  };
+
+  for (const key of orderedKeys) {
+    const prop = resolveJsonSchemaRef(jsonSchema, properties[key]);
+    const uiField = uiSchema?.[key];
+
+    if (isObjectSchema(prop)) {
+      const sectionTitle = pickLocalizedUiText(uiField?.["ui:title"]);
+      const sectionFields = collectFields(prop, uiField, key, prop.required || []);
+      if (sectionFields.length > 0) {
+        sections.push({
+          id: key,
+          title: sectionTitle.en || titleFromKey(key),
+          titleTh: sectionTitle.th,
+          collapsed: false,
+          fields: sectionFields,
+        });
+      }
+      continue;
+    }
+
+    const field = convertPropertyToField(key, prop, requiredFields.includes(key), uiField, key);
     if (field) {
-      fields.push(field);
+      optionFields.push(field);
+      outputMapping[field.id] = field.id;
     }
   }
 
-  // Group fields into logical sections
-  const basicFields = fields.filter(f =>
-    ["request", "userIdea", "prompt", "input", "text", "description"].some(k =>
-      f.id.toLowerCase().includes(k)
-    )
-  );
-  const configFields = fields.filter(f => !basicFields.includes(f));
+  if (Array.isArray(uiSchema?.["ui:order"]) && (optionFields.length > 0 || sections.length > 0)) {
+    return {
+      version: "1.0",
+      skillId,
+      title,
+      description,
+      sections: [
+        ...(optionFields.length > 0 ? [{
+          id: "options",
+          title: "Options",
+          collapsed: false,
+          fields: optionFields,
+        }] : []),
+        ...sections,
+      ],
+      outputMapping,
+    };
+  }
 
-  const sections: SchemaSection[] = [];
+  // Group fields into logical sections
+  const basicFields = optionFields.filter(isFallbackBasicField);
+  const configFields = optionFields.filter(f => !basicFields.includes(f));
+
+  const fallbackSections: SchemaSection[] = [];
 
   if (basicFields.length > 0) {
-    sections.push({
+    fallbackSections.push({
       id: "basic",
       title: "Basic Input",
       collapsed: false,
@@ -1235,7 +1434,7 @@ function convertJsonSchemaToSkillSchema(jsonSchema: any, skillId: string): Skill
   }
 
   if (configFields.length > 0) {
-    sections.push({
+    fallbackSections.push({
       id: "options",
       title: "Options",
       collapsed: true,
@@ -1248,22 +1447,44 @@ function convertJsonSchemaToSkillSchema(jsonSchema: any, skillId: string): Skill
     skillId,
     title,
     description,
-    sections,
-    outputMapping: Object.fromEntries(fields.map(f => [f.id, f.id])),
+    sections: [...fallbackSections, ...sections],
+    outputMapping,
   };
 }
 
 /**
  * Convert a JSON Schema property to our field format
  */
-function convertPropertyToField(key: string, prop: any, isRequired: boolean): SchemaField | null {
+function convertPropertyToField(key: string, prop: any, isRequired: boolean, uiField?: any, displayKey = key): SchemaField | null {
+  const uiWidget = typeof uiField?.["ui:widget"] === "string" ? uiField["ui:widget"] : undefined;
+  const enumNames = Array.isArray(prop.enumNames) ? prop.enumNames : undefined;
+  const enumNamesTh = Array.isArray(prop["x-ui-enumNamesTh"]) ? prop["x-ui-enumNamesTh"] : undefined;
+  const uiTitle = pickLocalizedUiText(uiField?.["ui:title"]);
+  const uiHelp = pickLocalizedUiText(uiField?.["ui:help"]);
+  const uiEnumNames = uiField?.["ui:enumNames"] && typeof uiField["ui:enumNames"] === "object"
+    ? uiField["ui:enumNames"] as Record<string, unknown>
+    : undefined;
   const baseField = {
     id: key,
-    label: prop.title || key.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase()),
-    helpText: prop.description,
+    label: uiTitle.en || prop.title || titleFromKey(displayKey),
+    labelTh: uiTitle.th,
+    helpText: uiHelp.en || prop.description,
+    helpTextTh: uiHelp.th,
     required: isRequired,
     default: prop.default,
   };
+
+  if (uiWidget === "imageUpload" || (uiWidget === "file" && displayKey.toLowerCase().includes("image"))) {
+    return {
+      ...baseField,
+      type: "imageUpload",
+      multiple: true,
+      minItems: prop.minItems,
+      maxItems: prop.maxItems || uiField?.["ui:options"]?.maxFiles,
+      maxImages: prop.maxItems || uiField?.["ui:options"]?.maxFiles,
+      accept: prop["x-ui-accept"] || uiField?.["ui:options"]?.accept || prop.items?.contentMediaType || "image/*",
+    };
+  }
 
   // Determine field type based on JSON Schema type and format
   if (prop.oneOf || prop.enum) {
@@ -1279,12 +1500,14 @@ function convertPropertyToField(key: string, prop: any, isRequired: boolean): Sc
         });
       }
     } else if (prop.enum) {
-      for (const val of prop.enum) {
+      prop.enum.forEach((val: string, index: number) => {
+        const uiEnumLabel = pickLocalizedUiText(uiEnumNames?.[val]);
         options.push({
           value: val,
-          label: val.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase()),
+          label: uiEnumLabel.en || enumNames?.[index] || val.replace(/_/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase()),
+          labelTh: uiEnumLabel.th || enumNamesTh?.[index],
         });
-      }
+      });
     }
 
     return {
@@ -1296,7 +1519,7 @@ function convertPropertyToField(key: string, prop: any, isRequired: boolean): Sc
 
   switch (prop.type) {
     case "string":
-      if (prop.format === "uri" || key.toLowerCase().includes("image") || key.toLowerCase().includes("url")) {
+      if (prop.format === "uri" || displayKey.toLowerCase().includes("image") || displayKey.toLowerCase().includes("url")) {
         return null; // Skip image URLs - handled separately
       }
       // Check if long text is expected
@@ -1309,8 +1532,8 @@ function convertPropertyToField(key: string, prop: any, isRequired: boolean): Sc
       }
       return {
         ...baseField,
-        type: key.toLowerCase().includes("prompt") || key.toLowerCase().includes("request") ? "textarea" : "text",
-        rows: key.toLowerCase().includes("prompt") || key.toLowerCase().includes("request") ? 3 : undefined,
+        type: displayKey.toLowerCase().includes("prompt") || displayKey.toLowerCase().includes("request") || displayKey.toLowerCase().includes("notes") ? "textarea" : "text",
+        rows: displayKey.toLowerCase().includes("prompt") || displayKey.toLowerCase().includes("request") || displayKey.toLowerCase().includes("notes") ? 3 : undefined,
       };
 
     case "boolean":
@@ -1324,11 +1547,51 @@ function convertPropertyToField(key: string, prop: any, isRequired: boolean): Sc
       return {
         ...baseField,
         type: "number",
+        min: prop.minimum,
+        max: prop.maximum,
       };
 
-    case "array":
-      // Skip arrays for now - complex handling needed
+    case "array": {
+      const itemSchema = prop.items || {};
+      const isImageArray =
+        uiWidget === "imageUpload" ||
+        (uiWidget === "file" && displayKey.toLowerCase().includes("image")) ||
+        itemSchema.contentMediaType?.startsWith?.("image/") ||
+        displayKey.toLowerCase().includes("image");
+
+      if (isImageArray) {
+        return {
+          ...baseField,
+          type: "imageUpload",
+          multiple: true,
+          minItems: prop.minItems,
+          maxItems: prop.maxItems || uiField?.["ui:options"]?.maxFiles,
+          maxImages: prop.maxItems || uiField?.["ui:options"]?.maxFiles,
+          accept: prop["x-ui-accept"] || uiField?.["ui:options"]?.accept || itemSchema.contentMediaType || "image/*",
+        };
+      }
+
+      if (itemSchema.type === "string") {
+        return {
+          ...baseField,
+          type: "array",
+          minItems: prop.minItems,
+          maxItems: prop.maxItems || 20,
+          itemLabel: baseField.label.replace(/s$/, ""),
+          arrayItemType: "string",
+          itemFields: [
+            {
+              id: "value",
+              type: uiWidget === "textarea" ? "textarea" : "text",
+              label: baseField.label.replace(/s$/, ""),
+              rows: uiWidget === "textarea" ? 3 : undefined,
+            },
+          ],
+        };
+      }
+
       return null;
+    }
 
     case "object":
       // Skip nested objects - complex handling needed
@@ -1882,7 +2145,16 @@ export const skillsRouter = router({
               foundSchema = schema;
               break;
             } else if (schema.properties) {
-              foundSchema = convertJsonSchemaToSkillSchema(schema, input.skillId);
+              let siblingUiSchema: any | undefined;
+              const siblingUiSchemaPath = path.resolve(path.dirname(schemaPath), "ui.schema.json");
+              if (path.basename(schemaPath) !== "ui.schema.json" && fs.existsSync(siblingUiSchemaPath)) {
+                try {
+                  siblingUiSchema = JSON.parse(fs.readFileSync(siblingUiSchemaPath, "utf-8"));
+                } catch {
+                  siblingUiSchema = undefined;
+                }
+              }
+              foundSchema = convertJsonSchemaToSkillSchema(schema, input.skillId, siblingUiSchema);
               break;
             }
           } catch (error) {
@@ -2023,6 +2295,100 @@ export const skillsRouter = router({
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: `Failed to build prompt: ${error instanceof Error ? error.message : "Unknown error"}`,
+        });
+      }
+    }),
+
+  generateStoryboardVideoPrompt: protectedProcedure
+    .input(z.object({
+      currentPrompt: z.string().trim().min(1).max(5000),
+      startFrameUrl: z.string().trim().min(1),
+      endFrameUrl: z.string().trim().min(1),
+      aspectRatio: z.string().trim().max(32).optional(),
+      durationSeconds: z.number().positive().max(60).optional(),
+      model: z.string().trim().max(255).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user?.id;
+      if (!userId) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "User not authenticated" });
+      }
+
+      const hasCredits = await hasEnoughCredits(userId, 1);
+      if (!hasCredits) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient credits" });
+      }
+
+      const visionModel = resolveVisionModelId(await getVisionModelOptions(), null);
+      if (!visionModel) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "No enabled vision model configured",
+        });
+      }
+
+      const systemPrompt = [
+        "You are a senior AI video director for first-frame/last-frame video generation.",
+        "Analyze the two images: Image 1 is the exact start frame, Image 2 is the exact end frame.",
+        "Return one production-ready video prompt only. No markdown, no code fence, no title, no explanation.",
+        "The prompt must preserve product identity, people identity, composition intent, text/logo fidelity, colors, lighting, and the exact start/end frame relationship.",
+        "Describe a natural camera move and subject/product motion that connects Image 1 to Image 2 without inventing unrelated objects, extra people, extra labels, subtitles, UI, or new readable text.",
+        "Keep it concise but specific, suitable for Veo/Kling-style image-to-video generation.",
+      ].join("\n");
+      const userPrompt = [
+        `Current generic prompt: ${input.currentPrompt}`,
+        input.aspectRatio ? `Aspect ratio: ${input.aspectRatio}` : "",
+        input.durationSeconds ? `Target duration: ${input.durationSeconds} seconds` : "",
+        input.model ? `Target model: ${input.model}` : "",
+        "",
+        "Write the improved prompt in English. It must explicitly say:",
+        "- use @Image1 as the exact start frame",
+        "- use @Image2 as the exact end frame",
+        "- preserve all visible product/package/brand details from both frames",
+        "- create only plausible movement between these two frames",
+      ].filter(Boolean).join("\n");
+
+      try {
+        const result = await callLLMWithVision(
+          systemPrompt,
+          userPrompt,
+          userId,
+          [input.startFrameUrl, input.endFrameUrl],
+          visionModel,
+          900,
+          { publicUrl: ctx.publicUrl ?? null },
+        );
+        const prompt = result.content
+          .replace(/^```(?:text|prompt|markdown)?\s*/i, "")
+          .replace(/\s*```$/i, "")
+          .trim();
+
+        const creditsUsed = Math.max(1, calculateCreditsForLLM(
+          result.usage.promptTokens,
+          result.usage.completionTokens,
+          visionModel,
+        ));
+        await deductCredits({
+          userId,
+          amount: creditsUsed,
+          description: "Storyboard video prompt from start/end frames",
+          sourceType: "skill",
+          metadata: {
+            model: visionModel,
+            llmModel: visionModel,
+            runtimeKind: "llm",
+            inputTokens: result.usage.promptTokens,
+            outputTokens: result.usage.completionTokens,
+            referenceImageCount: 2,
+            originSurface: "storyboard_review",
+          },
+        });
+
+        return { prompt: prompt || input.currentPrompt };
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Failed to generate storyboard video prompt",
         });
       }
     }),
@@ -2746,6 +3112,42 @@ export const skillsRouter = router({
             }
           } catch (repairError) {
             console.warn("[Skills] Audio-first storyboard repair failed; keeping original output:", repairError);
+          }
+        }
+
+        const initialBeautyDialogueQuality = evaluateElevenLabsBeautyDialogueQuality(processedContent, input.skillId);
+        let beautyDialogueRepairAttempts = 0;
+        let beautyDialogueQuality = initialBeautyDialogueQuality;
+        while (!beautyDialogueQuality.passed && beautyDialogueRepairAttempts < 2) {
+          beautyDialogueRepairAttempts += 1;
+          try {
+            const repairResult = await callLLMWithVision(
+              [
+                "You are a strict final-quality reviewer and repair editor for ElevenLabs dialogue ads.",
+                "You repair only the provided dialogue according to the user's product inputs and the listed quality issues.",
+                "Return only the corrected dialogue. No markdown fences, no explanations.",
+              ].join("\n"),
+              buildElevenLabsBeautyDialogueRepairPrompt({
+                previousContent: processedContent,
+                issues: beautyDialogueQuality.issues,
+                userInputs: mergedUserInputs,
+              }),
+              userId,
+              input.referenceImages || [],
+              visionModel,
+              1800,
+              {
+                ...webSearchOptions,
+                publicUrl: ctx.publicUrl ?? null,
+              },
+            );
+            const repairedContent = repairResult.content.trim();
+            const repairedQuality = evaluateElevenLabsBeautyDialogueQuality(repairedContent, input.skillId);
+            processedContent = repairedContent;
+            beautyDialogueQuality = repairedQuality;
+          } catch (repairError) {
+            console.warn("[Skills] ElevenLabs beauty dialogue quality repair failed; keeping current output:", repairError);
+            break;
           }
         }
 

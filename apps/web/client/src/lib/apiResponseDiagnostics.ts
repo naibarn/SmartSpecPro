@@ -1,6 +1,9 @@
 type UnexpectedHtmlResponseInfo = {
   requestUrl: string;
+  responseUrl?: string;
   status: number;
+  statusText?: string;
+  contentType?: string;
   bodySnippet?: string;
 };
 
@@ -42,12 +45,21 @@ export function buildUnexpectedHtmlResponseMessage(
   const requestPath = getRequestPath(info.requestUrl);
   const bodySnippet = String(info.bodySnippet ?? "").trim();
   const sessionExpired = isLikelyLoginHtml(info.status, bodySnippet);
+  const details = [
+    `status=${info.status}${info.statusText ? ` ${info.statusText}` : ""}`,
+    info.contentType ? `content-type=${info.contentType}` : null,
+    info.responseUrl && info.responseUrl !== info.requestUrl
+      ? `response-url=${info.responseUrl}`
+      : null,
+    bodySnippet ? `body="${bodySnippet.replace(/\s+/g, " ").slice(0, 160)}"` : null,
+  ].filter(Boolean).join("; ");
+  const suffix = details ? ` (${details})` : "";
 
   if (sessionExpired) {
-    return `The server returned HTML instead of JSON for ${requestPath}. Your session may have expired.`;
+    return `The server returned HTML instead of JSON for ${requestPath}. Your session may have expired.${suffix}`;
   }
 
-  return `The server returned HTML instead of JSON for ${requestPath}. The request may have been routed to the web app shell.`;
+  return `The server returned HTML instead of JSON for ${requestPath}. The request may have been routed to the web app shell.${suffix}`;
 }
 
 export async function assertJsonApiResponse(
@@ -68,7 +80,10 @@ export async function assertJsonApiResponse(
 
   throw new Error(buildUnexpectedHtmlResponseMessage({
     requestUrl,
+    responseUrl: response.url || undefined,
     status: response.status,
+    statusText: response.statusText,
+    contentType,
     bodySnippet,
   }));
 }

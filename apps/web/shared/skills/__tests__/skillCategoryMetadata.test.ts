@@ -3,6 +3,7 @@ import {
   getAllowedExecutionModesForSkillCategory,
   getMediaModelTypeForSkillCategory,
   getRecommendedExecutionModeForSkillCategory,
+  isAudioPromptSkillCategory,
   isExecutionModeCompatibleWithSkillCategory,
   isImagePromptSkillCategory,
   isPromptGenerationSkillCategory,
@@ -14,8 +15,11 @@ describe("skillCategoryMetadata", () => {
     expect(getAllowedExecutionModesForSkillCategory("image_prompt_generation")).toEqual([
       "llm-only",
       "enhance-prompt",
+      "python",
     ]);
     expect(isExecutionModeCompatibleWithSkillCategory("video_prompt_generation", "media-generate")).toBe(false);
+    expect(isExecutionModeCompatibleWithSkillCategory("audio_prompt_generation", "enhance-prompt")).toBe(true);
+    expect(isExecutionModeCompatibleWithSkillCategory("audio_prompt_generation", "media-generate")).toBe(false);
     expect(isExecutionModeCompatibleWithSkillCategory("prompt_enhancement", "enhance-prompt")).toBe(true);
   });
 
@@ -55,8 +59,10 @@ describe("skillCategoryMetadata", () => {
     expect(isPromptGenerationSkillCategory("prompt_enhancement")).toBe(true);
     expect(isPromptGenerationSkillCategory("image_prompt_generation")).toBe(true);
     expect(isPromptGenerationSkillCategory("video_prompt_generation")).toBe(true);
+    expect(isPromptGenerationSkillCategory("audio_prompt_generation")).toBe(true);
     expect(isPromptGenerationSkillCategory("image_generation")).toBe(false);
     expect(isImagePromptSkillCategory("image_prompt_generation")).toBe(true);
     expect(isVideoPromptSkillCategory("video_prompt_generation")).toBe(true);
+    expect(isAudioPromptSkillCategory("audio_prompt_generation")).toBe(true);
   });
 });

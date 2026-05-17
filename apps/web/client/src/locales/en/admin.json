@@ -645,6 +645,7 @@
   "admin.skillsPage.categoryLabels.videoPromptGeneration": "Create Prompt for Video Generation",
   "admin.skillsPage.categoryLabels.imageVideoGeneration": "Image/Video Generation",
   "admin.skillsPage.categoryLabels.audioGeneration": "Audio Generation",
+  "admin.skillsPage.categoryLabels.audioPromptGeneration": "Create Prompt for Audio Generation",
   "admin.skillsPage.categoryLabels.articleGeneration": "Article Generation",
   "admin.skillsPage.categoryLabels.slideGeneration": "Slide Generation",
   "admin.skillsPage.categoryLabels.productReview": "Product Review",
