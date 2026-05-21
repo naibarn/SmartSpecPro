@@ -91,7 +91,7 @@ const DEVICE_ID_KEY = "deviceId";
 const LOCAL_AI_SETTINGS_KEY = "localAISettings";
 const LOCAL_AI_CACHE_KEY = "localAIInsightCache";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.15";
+const EXTENSION_VERSION = "0.1.16";
 const EXTENSION_BUILD_LABEL = "2026-05-19 09:20 +07";
 
 function getLocalAIStatusView(input: {

@@ -1,13 +1,13 @@
 {
   "name": "@smartspec/marketplace-extension",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite build --watch",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "package:web-dashboard": "npm run build && mkdir -p ../web/client/public/extension && python3 -c \"import pathlib, zipfile; src=pathlib.Path('dist'); out=pathlib.Path('../web/client/public/extension/smartspecpro-marketplace-extension.zip'); out.unlink(missing_ok=True); z=zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED); [z.write(p, p.relative_to(src)) for p in src.rglob('*') if p.is_file()]; z.close()\""
+    "package:web-dashboard": "npm run build && mkdir -p ../web/client/public/releases && python3 -c \"import json, pathlib, zipfile; src=pathlib.Path('dist'); version=json.loads(pathlib.Path('package.json').read_text())['version']; out=pathlib.Path(f'../web/client/public/releases/smartaihub-marketplace-capture-extension-{version}.zip'); out.unlink(missing_ok=True); z=zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED); [z.write(p, p.relative_to(src)) for p in src.rglob('*') if p.is_file()]; z.close()\""
   },
   "dependencies": {
     "vite": "^7.1.7",

@@ -148,7 +148,7 @@ describe("marketplace capture parsers", () => {
       evidenceIds: ["title:product"],
     });
     const sync = marketplaceCaptureInsightSyncSchema.parse({
-      extensionVersion: "0.1.15",
+      extensionVersion: "0.1.16",
       idempotencyKey: "idem_12345678",
       schemaVersion: "1.0",
       insightCreatedAt: new Date().toISOString(),
@@ -180,7 +180,7 @@ describe("marketplace capture parsers", () => {
       payloadHash: "payload_hash_12345678",
     });
     const request = marketplaceServerInsightGenerationSchema.parse({
-      extensionVersion: "0.1.15",
+      extensionVersion: "0.1.16",
       insightType: "product_brief",
       languagePreference: "th",
       source,

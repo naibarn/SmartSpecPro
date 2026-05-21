@@ -1,9 +1,15 @@
 {
   "manifest_version": 3,
   "name": "SmartAIHub Marketplace Capture",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "description": "Capture product data from Shopee and TikTok Shop into SmartAIHub.",
-  "permissions": ["activeTab", "scripting", "storage", "tabs", "sidePanel"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "tabs",
+    "sidePanel"
+  ],
   "host_permissions": [
     "https://shopee.co.th/*",
     "https://*.shopee.co.th/*",
@@ -37,7 +43,9 @@
         "https://shop.tiktok.com/*",
         "https://*.tiktokglobalshop.com/*"
       ],
-      "js": ["assets/content.js"],
+      "js": [
+        "assets/content.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     }
