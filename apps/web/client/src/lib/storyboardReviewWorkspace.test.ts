@@ -48,6 +48,39 @@ describe("buildFirstLastFrameStoryboardTasks", () => {
     });
   });
 
+  it("keeps marketplace metadata on sliced frame storyboard tasks", () => {
+    const marketplaceContext = {
+      productId: "product-1",
+      platform: "shopee" as const,
+      productName: "Shelf bracket",
+      shopName: "Fixture Shop",
+      shopId: "shop-123",
+      itemId: "item-456",
+      sourceUrl: "https://shopee.example/item-456",
+    };
+
+    const tasks = buildFirstLastFrameStoryboardTasks(
+      [
+        { url: "https://example.com/1.jpg", name: "Frame 1", marketplaceProduct: marketplaceContext },
+        { url: "https://example.com/2.jpg", name: "Frame 2", marketplaceProduct: marketplaceContext },
+      ],
+      {
+        model: "veo-3-1",
+        aspectRatio: "9:16",
+        marketplaceContext,
+        now: 12345,
+      },
+    );
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.marketplaceProduct).toEqual(marketplaceContext);
+    expect(tasks[0]?.storyboardContext?.referenceImages).toEqual([
+      { url: "https://example.com/1.jpg", name: "Frame 1", marketplaceProduct: marketplaceContext },
+      { url: "https://example.com/2.jpg", name: "Frame 2", marketplaceProduct: marketplaceContext },
+    ]);
+    expect(tasks[0]?.storyboardContext?.extraParams?.marketplaceContext).toEqual(marketplaceContext);
+  });
+
   it("does not create tasks without at least two usable images", () => {
     expect(buildFirstLastFrameStoryboardTasks([{ url: "https://example.com/1.jpg" }], { model: "veo-3-1", aspectRatio: "auto" })).toEqual([]);
     expect(buildFirstLastFrameStoryboardTasks([{ url: "" }, { url: "   " }], { model: "veo-3-1", aspectRatio: "auto" })).toEqual([]);

@@ -411,3 +411,29 @@ async def test_recover_stuck_tasks_repolls_recent_failed_wavespeed_terminal_bug(
     assert result["status"] == "success"
     assert result["recovered_count"] == 1
     poll_mock.assert_awaited_once_with(task.id, schedule_next_poll=True)
+
+
+@pytest.mark.asyncio
+async def test_recover_stuck_tasks_fails_processing_task_without_provider_task_id():
+    task = _make_media_task("task-missing-provider-id")
+    task.status = TaskStatus.PROCESSING
+    task.task_id = None
+    task.started_at = datetime.now(timezone.utc) - timedelta(minutes=15)
+    task.created_at = task.started_at
+
+    processing_result = MagicMock()
+    processing_result.scalars.return_value.all.return_value = [task]
+    failed_result = MagicMock()
+    failed_result.scalars.return_value.all.return_value = []
+
+    session = _make_async_session(processing_result, failed_result)
+
+    with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session):
+        result = await _recover_stuck_tasks_async()
+
+    assert result["status"] == "success"
+    assert result["failed_count"] == 1
+    assert task.status == TaskStatus.FAILED
+    assert "no provider task ID" in task.error_message
+    assert task.completed_at is not None
+    session.commit.assert_awaited_once()

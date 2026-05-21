@@ -97,6 +97,34 @@ function isReferenceAssetStoryboardOrNewsPayload(payload: Record<string, unknown
   );
 }
 
+function parseStoryboardLayoutPreset(value: unknown): {
+  canvasRatio: string;
+  grid: string;
+  totalFrames: number;
+  frameRatio: string | null;
+  cropSafe: boolean;
+} | null {
+  const preset = typeof value === "string" ? value.trim() : "";
+  if (!preset || preset === "auto") return null;
+
+  const match = preset.match(/^canvas_(\d+)_(\d+)_grid_(\d+)x(\d+)(?:_frame_(\d+)_(\d+)_exact|_crop_safe)$/);
+  if (!match) return null;
+
+  const columns = Number(match[3]);
+  const rows = Number(match[4]);
+  if (!Number.isFinite(columns) || !Number.isFinite(rows) || columns <= 0 || rows <= 0) {
+    return null;
+  }
+
+  return {
+    canvasRatio: `${match[1]}:${match[2]}`,
+    grid: `${columns}x${rows}`,
+    totalFrames: columns * rows,
+    frameRatio: match[5] && match[6] ? `${match[5]}:${match[6]}` : null,
+    cropSafe: preset.endsWith("_crop_safe"),
+  };
+}
+
 export function buildCustomSkillPromptInputPayload(
   userInputs: Record<string, unknown>,
   options?: { referenceImageCount?: number },
@@ -112,6 +140,14 @@ export function buildCustomSkillPromptInputPayload(
   }
 
   const referenceImageCount = options?.referenceImageCount ?? 0;
+  const layoutContract = parseStoryboardLayoutPreset(payload.storyboard_layout_preset);
+  if (layoutContract && (!payload.generation_mode || payload.generation_mode === "auto")) {
+    payload.generation_mode = "multi_frame_storyboard";
+  }
+  if (layoutContract && (!payload.aspect_ratio || payload.aspect_ratio === "auto")) {
+    payload.aspect_ratio = layoutContract.canvasRatio;
+  }
+
   if (referenceImageCount > 0) {
     payload.reference_images = Array.from(
       { length: referenceImageCount },
@@ -174,6 +210,22 @@ export function buildCustomSkillUserPrompt(
       `Every prompt header must use the configured clip duration, for example PROMPT N (${clipDurationSeconds} seconds):.`,
       "Do not stop at 10 prompts, do not treat sceneCount or UI defaults as a cap, and do not use ellipses or placeholder continuation lines.",
       "For storyboard mode, distribute the same continuous story, recurring reference-image characters, reactions, B-roll, camera changes, and transitions across every required prompt block.",
+    );
+  }
+
+  const layoutContract = parseStoryboardLayoutPreset(payload.storyboard_layout_preset);
+  if (layoutContract) {
+    parts.push(
+      "STORYBOARD_LAYOUT_CONTRACT:",
+      `The selected storyboard_layout_preset requires one single ${layoutContract.canvasRatio} storyboard image containing exactly ${layoutContract.totalFrames} frames in a ${layoutContract.grid} grid.`,
+      `Do not return fewer than ${layoutContract.totalFrames} scenes or panels. Do not summarize the storyboard into 3 scenes.`,
+      `The final prompt must explicitly say: ${layoutContract.grid} grid, ${layoutContract.totalFrames} total frames, ${layoutContract.canvasRatio} final canvas.`,
+      layoutContract.frameRatio
+        ? `Every frame must use exact ${layoutContract.frameRatio} composition.`
+        : "Every frame must be crop-safe with generous margins around product, person, hands, and key actions.",
+      "Write one distinct scene or panel instruction for every required frame.",
+      "Do not duplicate the same sentence under each scene heading.",
+      "Do not output JSON; write this storyboard as plain prompt text only.",
     );
   }
 

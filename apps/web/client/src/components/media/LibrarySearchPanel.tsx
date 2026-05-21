@@ -2,57 +2,57 @@ import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { cn } from "@/lib/utils";
-import { FileImage, FileText, Film, Loader2, Music, Plus, Search } from "lucide-react";
+import { FileImage, FileText, Film, Loader2, Maximize2, Music, Plus, Search } from "lucide-react";
 
 import type { LibraryItemTypeFilter, LibrarySearchResultItem } from "@/lib/libraryUi";
 import { getLibraryStatusMeta } from "@/lib/libraryUi";
 
-type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
+type MediaLibraryItemTypeFilter = Exclude<LibraryItemTypeFilter, "all">;
 
 interface LibrarySearchPanelProps {
   query: string;
   onQueryChange: (query: string) => void;
-  recentDays: LibraryRecentDaysFilter;
-  onRecentDaysChange: (value: LibraryRecentDaysFilter) => void;
   isLoading: boolean;
+  isFetchingMore?: boolean;
   results: LibrarySearchResultItem[];
   totalResults?: number;
   hasMore?: boolean;
+  loadMoreRef?: React.Ref<HTMLDivElement>;
   errorMessage?: string;
   selectedItemId?: number | null;
-  itemTypeFilter?: LibraryItemTypeFilter;
-  onItemTypeFilterChange?: (value: LibraryItemTypeFilter) => void;
+  itemTypeFilter?: MediaLibraryItemTypeFilter;
+  onItemTypeFilterChange?: (value: MediaLibraryItemTypeFilter) => void;
   addToReferenceLabel?: string;
   canAddToReferenceItem?: (item: LibrarySearchResultItem) => boolean;
   onAddToReference?: (item: LibrarySearchResultItem) => void;
+  onPreview?: (item: LibrarySearchResultItem) => void;
   onSelect: (item: LibrarySearchResultItem) => void;
 }
 
 export default function LibrarySearchPanel({
   query,
   onQueryChange,
-  recentDays,
-  onRecentDaysChange,
   isLoading,
+  isFetchingMore = false,
   results,
   totalResults = 0,
   hasMore = false,
+  loadMoreRef,
   errorMessage,
   selectedItemId,
-  itemTypeFilter = "all",
+  itemTypeFilter = "image",
   onItemTypeFilterChange,
   addToReferenceLabel = "Use as reference",
   canAddToReferenceItem,
   onAddToReference,
+  onPreview,
   onSelect,
 }: LibrarySearchPanelProps) {
   const { t } = useScopedTranslation(["media", "common"]);
   const showItemTypeFilter = typeof onItemTypeFilterChange === "function";
   const showAddToReference = typeof onAddToReference === "function";
-  const hasActiveSearchCriteria = query.trim().length > 0 || recentDays !== "all" || itemTypeFilter !== "all";
 
   const getItemDragUrl = (item: LibrarySearchResultItem): string | null => {
     const itemType = item.item_type.toLowerCase();
@@ -98,6 +98,7 @@ export default function LibrarySearchPanel({
           alt={item.title}
           className="h-full w-full object-cover"
           loading="lazy"
+          draggable={false}
         />
       );
     }
@@ -110,6 +111,7 @@ export default function LibrarySearchPanel({
             alt={item.title}
             className="h-full w-full object-cover"
             loading="lazy"
+            draggable={false}
           />
         );
       }
@@ -121,6 +123,7 @@ export default function LibrarySearchPanel({
             preload="metadata"
             muted
             playsInline
+            draggable={false}
           />
         );
       }
@@ -140,7 +143,7 @@ export default function LibrarySearchPanel({
   };
 
   return (
-    <div className="min-w-0 space-y-2 rounded-lg border bg-white/70 p-2.5 backdrop-blur">
+    <div className="min-h-full min-w-0 space-y-2 rounded-lg border bg-white/70 p-2.5 backdrop-blur">
       <div className="flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <Search className="h-3.5 w-3.5" />
@@ -156,10 +159,9 @@ export default function LibrarySearchPanel({
       />
 
       {showItemTypeFilter && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="grid grid-cols-3 gap-2">
           {(
             [
-              { value: "all", label: t("common.allReadStates"), icon: FileText },
               { value: "image", label: t("mediaStudio.librarySearchImage"), icon: FileImage },
               { value: "video", label: t("mediaStudio.librarySearchVideo"), icon: Film },
               { value: "audio", label: t("mediaStudio.librarySearchAudio"), icon: Music },
@@ -184,29 +186,6 @@ export default function LibrarySearchPanel({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs text-muted-foreground">{t("mediaStudio.librarySearchUpdatedIn")}</span>
-        <select
-          className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-          value={String(recentDays)}
-          onChange={(event) => {
-            const next = event.target.value;
-            if (next === "all") {
-              onRecentDaysChange("all");
-              return;
-            }
-            onRecentDaysChange(Number(next) as Exclude<LibraryRecentDaysFilter, "all">);
-          }}
-        >
-          <option value="1">{t("mediaStudio.librarySearchOneDay")}</option>
-          <option value="3">{t("mediaStudio.librarySearchThreeDays")}</option>
-          <option value="7">{t("mediaStudio.librarySearchSevenDays")}</option>
-          <option value="15">{t("mediaStudio.librarySearchFifteenDays")}</option>
-          <option value="30">{t("mediaStudio.librarySearchOneMonth")}</option>
-          <option value="all">{t("mediaStudio.librarySearchAllTime")}</option>
-        </select>
-      </div>
-
       {isLoading && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -218,85 +197,97 @@ export default function LibrarySearchPanel({
         <p className="text-xs text-red-600">{errorMessage}</p>
       )}
 
-      {!hasActiveSearchCriteria && !isLoading && (
-        <p className="text-xs text-muted-foreground">
-          {t("mediaStudio.librarySearchHint")}
-        </p>
-      )}
-
-      {hasActiveSearchCriteria && !isLoading && !errorMessage && results.length === 0 && (
+      {!isLoading && !errorMessage && results.length === 0 && (
         <p className="text-xs text-muted-foreground">{t("mediaStudio.librarySearchNoMatches")}</p>
       )}
 
-      {hasActiveSearchCriteria && !isLoading && !errorMessage && hasMore && (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800">
-          {t("mediaStudio.librarySearchHasMore", { total: totalResults })}
-        </p>
-      )}
-
       {results.length > 0 && (
-        <ScrollArea className="h-52 pr-2">
-          <div className="space-y-2">
+        <div className="space-y-2">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-2 sm:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] xl:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]">
             {results.map((item) => {
               const status = getLibraryStatusMeta(item.status);
               const isSelected = selectedItemId === item.item_id;
               const dragUrl = getItemDragUrl(item);
               const canDrag = Boolean(dragUrl);
               const canAddToReference = showAddToReference && (canAddToReferenceItem ? canAddToReferenceItem(item) : true);
+              const itemType = item.item_type.toLowerCase();
+              const canPreview = itemType === "image" || itemType === "video";
               return (
                 <div
                   key={item.item_id}
                   className={cn(
-                    "rounded-lg border p-2 space-y-2",
-                    isSelected ? "border-purple-400 bg-purple-50/60" : "border-slate-200",
+                    "group rounded-lg border bg-background p-1.5 transition hover:border-blue-300",
+                    isSelected ? "border-purple-400 bg-purple-50/60 ring-2 ring-purple-100" : "border-slate-200",
                     canDrag && "cursor-grab active:cursor-grabbing",
                     !canDrag && "cursor-default",
                   )}
                   draggable={canDrag}
                   onDragStart={canDrag ? (event) => handleItemDragStart(event, item) : undefined}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex min-w-0 items-start gap-2">
-                      <div className="h-12 w-16 shrink-0 overflow-hidden rounded-md border bg-slate-50 flex items-center justify-center">
-                        {renderItemPreview(item)}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate" title={item.title}>
-                          {item.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {item.item_type} • {item.model_name || item.source}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge className={status.className}>{status.label}</Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    {status.retryable ? (
-                      <span className="text-xs text-red-600">{t("mediaStudio.librarySearchRetryFromHistory")}</span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">{t("mediaStudio.librarySearchReadyToReuse")}</span>
+                  <button
+                    type="button"
+                    className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md border bg-slate-50 text-left"
+                    onClick={() => {
+                      if (canPreview && onPreview) {
+                        onPreview(item);
+                      } else {
+                        onSelect(item);
+                      }
+                    }}
+                    aria-label={`Preview ${item.title}`}
+                  >
+                    {renderItemPreview(item)}
+                    {canPreview && (
+                      <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/25 group-hover:opacity-100">
+                        <span className="rounded-full bg-white/90 p-2 text-slate-800 shadow">
+                          <Maximize2 className="h-4 w-4" />
+                        </span>
+                      </span>
                     )}
+                    <Badge className={cn("absolute left-1.5 top-1.5 shadow-sm", status.className)}>
+                      {status.label}
+                    </Badge>
+                  </button>
+
+                  <div className="mt-2 space-y-2 px-0.5">
+                    <div className="min-w-0">
+                      <p className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-snug" title={item.title}>
+                        {item.title}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {item.item_type} • {item.model_name || item.source}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      {status.retryable ? (
+                        <span className="min-w-0 truncate text-xs text-red-600">{t("mediaStudio.librarySearchRetryFromHistory")}</span>
+                      ) : (
+                        <span className="min-w-0 truncate text-xs text-muted-foreground">{t("mediaStudio.librarySearchReadyToReuse")}</span>
+                      )}
+                    </div>
+
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
                       {showAddToReference && (
                         <Button
                           size="sm"
                           variant="outline"
+                          className="min-w-0 flex-1"
                           onClick={() => onAddToReference?.(item)}
                           disabled={!canAddToReference}
                           title={addToReferenceLabel}
                         >
-                          <Plus className="mr-1 h-4 w-4" />
-                          {addToReferenceLabel}
+                          <Plus className="mr-1 h-4 w-4 shrink-0" />
+                          <span className="truncate">{addToReferenceLabel}</span>
                         </Button>
                       )}
                       <Button
                         size="sm"
                         variant={isSelected ? "secondary" : "outline"}
+                        className="min-w-0 flex-1"
                         onClick={() => onSelect(item)}
                       >
-                        {t("common.select")}
+                        <span className="truncate">{t("common.select")}</span>
                       </Button>
                     </div>
                   </div>
@@ -304,7 +295,25 @@ export default function LibrarySearchPanel({
               );
             })}
           </div>
-        </ScrollArea>
+
+          <div ref={loadMoreRef} className="min-h-8">
+            {hasMore ? (
+              <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                {isFetchingMore ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {t("mediaStudio.librarySearchLoading")}
+                  </>
+                ) : (
+                  t("mediaStudio.historyGalleryShowingCount", {
+                    shown: results.length,
+                    total: totalResults,
+                  })
+                )}
+              </div>
+            ) : null}
+          </div>
+        </div>
       )}
     </div>
   );

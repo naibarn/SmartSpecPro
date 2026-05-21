@@ -187,6 +187,44 @@ describe("MEDIA_MODELS — HappyHorse video entries", () => {
   });
 });
 
+describe("MEDIA_MODELS — Gemini Omni video entry", () => {
+  it("includes Kie Market metadata and multimodal input config", () => {
+    expect(MEDIA_MODELS["gemini-omni-video"]).toMatchObject({
+      id: "gemini-omni-video",
+      provider: "kie.ai",
+      type: "video",
+      creditCost: 450,
+      supportsDurations: [4, 6, 8, 10],
+      supportsAspectRatios: ["16:9", "9:16"],
+      configJson: {
+        apiEndpoint: "/api/v1/jobs/createTask",
+        apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+        apiPayloadFormat: "market",
+        kieModelId: "gemini-omni-video",
+        generateType: "multimodal-video",
+        maxReferenceImages: 7,
+        maxReferenceVideos: 1,
+        maxReferenceAudios: 1,
+        supportedResolutions: ["720p", "1080p", "4K"],
+        apiConfig: {
+          reference_image_input_key: "image_urls",
+          reference_image_input_type: "array",
+          reference_video_input_key: "video_list",
+          reference_video_input_type: "object_array",
+        },
+        pricingTiers: {
+          "1080p-4s-without-video": 450,
+          "1080p-10s-without-video": 900,
+          "4K-4s-without-video": 1050,
+          "4K-10s-without-video": 1500,
+          "1080p-4s-with-video": 1200,
+          "4K-4s-with-video": 1800,
+        },
+      },
+    });
+  });
+});
+
 describe("MEDIA_MODELS — Magnific static fallback entries", () => {
   it("includes Magnific image, sync, and video metadata with provider routing config", () => {
     expect(MEDIA_MODELS["magnific/mystic"]).toMatchObject({

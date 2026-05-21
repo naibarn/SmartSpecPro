@@ -93,7 +93,8 @@ class Orchestrator:
             "You are an expert engineer. Output ONLY valid JSON. "
             "Keys must be file paths relative to the skill root (e.g. 'python/skill.py' "
             "or 'tests/tests.json'), values are the FULL replacement string for that file. "
-            "No markdown, no unified diffs, no explanations."
+            "No markdown, no unified diffs, no explanations. "
+            "Think carefully before answering, but do not reveal chain-of-thought."
         )
         user = f"""skill manifest:
 {manifest}
@@ -131,6 +132,10 @@ Hard requirements:
 - skill code uses stdlib only
 - Make tests pass
 - Implement the user's requested improvement when provided
+- Preserve existing SKILL.md/skill.md frontmatter, headings, prompt contracts, output-format rules, and QA gates unless the user explicitly asked to replace them
+- Prefer additive edits over rewrites for instruction-only skill improvements
+- Before returning JSON, run at least three silent review passes: requested-change coverage, before/after content preservation, and prompt-quality risk
+- Reject your own patch if it removes unrelated rules, shrinks a skill markdown file substantially, changes plain-text prompt output into JSON/object output, or weakens existing prompt constraints
 Return JSON ONLY. Do not use markdown code blocks.
 """
 

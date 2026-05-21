@@ -42,7 +42,7 @@ export function ChatDynamicSkillForm({
     });
   }, [pageLanguage]);
 
-  const handleImageUpload = async (files: FileList): Promise<string[]> => {
+  const handleImageUpload = async (files: FileList | File[]): Promise<string[]> => {
     const urls: string[] = [];
 
     for (const file of Array.from(files)) {

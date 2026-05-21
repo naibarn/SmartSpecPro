@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StoryboardVideoCustomerJourneyPromptInput",
+  "type": "object",
+  "properties": {
+    "product_metadata": {
+      "title": "Product Metadata",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "slots": {
+      "title": "Storyboard Slots",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "index": { "type": "number" },
+          "start_frame_url": { "type": "string" },
+          "end_frame_url": { "type": "string" },
+          "current_prompt": { "type": "string" },
+          "duration_seconds": { "type": "number" },
+          "aspect_ratio": { "type": "string" }
+        },
+        "required": ["id", "index", "start_frame_url", "end_frame_url"]
+      }
+    },
+    "include_voiceover": {
+      "title": "Include Voiceover",
+      "type": "boolean",
+      "default": false
+    },
+    "include_sound": {
+      "title": "Include Sound / Music Brief",
+      "type": "boolean",
+      "default": false
+    },
+    "tone": {
+      "title": "Video Tone",
+      "type": "string",
+      "enum": ["sales", "premium", "demo", "ugc", "cinematic"],
+      "default": "sales"
+    },
+    "language": {
+      "title": "Voiceover Language",
+      "type": "string",
+      "enum": ["auto", "th", "en"],
+      "default": "auto"
+    }
+  },
+  "required": ["slots"]
+}

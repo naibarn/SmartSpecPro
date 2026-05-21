@@ -15,6 +15,7 @@ import {
   storageStreamFile,
 } from "../storage";
 import {
+  compareDesktopReleaseVersions,
   createDesktopReleaseStorageKey,
   deleteDesktopReleaseRecord,
   getDesktopReleaseStorageInfo,
@@ -46,6 +47,7 @@ import {
 
 const TEMP_UPLOAD_DIR = path.join(os.tmpdir(), "smartspec-desktop-releases");
 const MAX_RELEASE_FILE_SIZE_BYTES = 600 * 1024 * 1024;
+const MARKETPLACE_EXTENSION_FILE_PATTERN = /^smartaihub-marketplace-capture-extension-(.+)\.zip$/i;
 
 fs.mkdirSync(TEMP_UPLOAD_DIR, { recursive: true });
 
@@ -174,6 +176,71 @@ function detectPlatformQuery(value: unknown): "windows" | "macos" | "linux" | nu
   return null;
 }
 
+type MarketplaceExtensionRelease = {
+  version: string;
+  fileName: string;
+  filePath: string;
+  fileSizeBytes: number;
+  updatedAt: string;
+  downloadUrl: string;
+};
+
+function getMarketplaceExtensionReleaseDirs(): string[] {
+  const candidates = [
+    path.resolve(process.cwd(), "client/public/releases"),
+    path.resolve(process.cwd(), "dist/public/releases"),
+    path.resolve(process.cwd(), "public/releases"),
+    path.resolve(import.meta.dirname, "../../client/public/releases"),
+    path.resolve(import.meta.dirname, "../../dist/public/releases"),
+    path.resolve(import.meta.dirname, "../../public/releases"),
+  ];
+  return Array.from(new Set(candidates));
+}
+
+function listMarketplaceExtensionReleases(): MarketplaceExtensionRelease[] {
+  const releases: MarketplaceExtensionRelease[] = [];
+
+  for (const releaseDir of getMarketplaceExtensionReleaseDirs()) {
+    if (!fs.existsSync(releaseDir)) {
+      continue;
+    }
+
+    for (const fileName of fs.readdirSync(releaseDir)) {
+      const match = fileName.match(MARKETPLACE_EXTENSION_FILE_PATTERN);
+      if (!match?.[1]) {
+        continue;
+      }
+
+      const filePath = path.join(releaseDir, fileName);
+      const stat = fs.statSync(filePath);
+      if (!stat.isFile()) {
+        continue;
+      }
+
+      releases.push({
+        version: match[1],
+        fileName,
+        filePath,
+        fileSizeBytes: stat.size,
+        updatedAt: stat.mtime.toISOString(),
+        downloadUrl: "/api/desktop-releases/marketplace-extension/download",
+      });
+    }
+  }
+
+  return releases.sort((left, right) => {
+    const versionComparison = compareDesktopReleaseVersions(right.version, left.version);
+    if (versionComparison !== 0) {
+      return versionComparison;
+    }
+    return right.updatedAt.localeCompare(left.updatedAt);
+  });
+}
+
+function getLatestMarketplaceExtensionRelease(): MarketplaceExtensionRelease | null {
+  return listMarketplaceExtensionReleases()[0] ?? null;
+}
+
 export function createDesktopReleaseRouter(): Router {
   const router = Router();
 
@@ -224,6 +291,49 @@ export function createDesktopReleaseRouter(): Router {
     } catch (error) {
       res.status(400).json({
         error: error instanceof Error ? error.message : "failed_to_resolve_latest_desktop_release",
+      });
+    }
+  });
+
+  router.get("/marketplace-extension/latest", (_req, res) => {
+    try {
+      const release = getLatestMarketplaceExtensionRelease();
+      res.setHeader("Cache-Control", "no-store");
+      res.json({
+        generatedAt: new Date().toISOString(),
+        release: release
+          ? {
+            version: release.version,
+            fileName: release.fileName,
+            fileSizeBytes: release.fileSizeBytes,
+            updatedAt: release.updatedAt,
+            downloadUrl: release.downloadUrl,
+          }
+          : null,
+      });
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "failed_to_list_marketplace_extension_release",
+      });
+    }
+  });
+
+  router.get("/marketplace-extension/download", (_req, res) => {
+    try {
+      const release = getLatestMarketplaceExtensionRelease();
+      if (!release) {
+        res.status(404).json({ error: "marketplace_extension_release_not_found" });
+        return;
+      }
+
+      res.setHeader("Content-Disposition", buildDownloadDisposition(release.fileName));
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      fs.createReadStream(release.filePath).pipe(res);
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : "failed_to_download_marketplace_extension_release",
       });
     }
   });

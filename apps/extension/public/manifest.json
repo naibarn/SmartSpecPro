@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "SmartAIHub Marketplace Capture",
+  "version": "0.1.15",
+  "description": "Capture product data from Shopee and TikTok Shop into SmartAIHub.",
+  "permissions": ["activeTab", "scripting", "storage", "tabs", "sidePanel"],
+  "host_permissions": [
+    "https://shopee.co.th/*",
+    "https://*.shopee.co.th/*",
+    "https://www.tiktok.com/*",
+    "https://shop.tiktok.com/*",
+    "https://*.tiktokglobalshop.com/*",
+    "https://smartaihub.app/*",
+    "https://*.smartspec.pro/*",
+    "https://*.smartaihub.app/*"
+  ],
+  "background": {
+    "service_worker": "assets/serviceWorker.js",
+    "type": "module"
+  },
+  "externally_connectable": {
+    "matches": [
+      "https://smartaihub.app/*",
+      "https://*.smartaihub.app/*",
+      "https://*.smartspec.pro/*"
+    ]
+  },
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://shopee.co.th/*",
+        "https://*.shopee.co.th/*",
+        "https://www.tiktok.com/*",
+        "https://shop.tiktok.com/*",
+        "https://*.tiktokglobalshop.com/*"
+      ],
+      "js": ["assets/content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_title": "SmartAIHub Capture"
+  }
+}

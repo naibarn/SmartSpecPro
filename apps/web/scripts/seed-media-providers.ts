@@ -48,6 +48,7 @@ export const DEFAULT_PROVIDERS = [
       // Video models
       { id: "veo-3-fast", name: "Veo 3 Fast", type: "video", description: "Google's fast video generation" },
       { id: "veo-3-quality", name: "Veo 3 Quality", type: "video", description: "Google's high-quality video" },
+      { id: "gemini-omni-video", name: "Gemini Omni Video", type: "video", description: "Google Gemini Omni multimodal video generation and editing" },
       { id: "runway-gen-3-turbo", name: "Runway Gen-3 Turbo", type: "video", description: "Fast video generation" },
       { id: "sora-2-pro", name: "Sora 2 Pro", type: "video", description: "OpenAI's video model" },
       { id: "kling-1.6-standard", name: "Kling 1.6", type: "video", description: "Kuaishou video generation" },

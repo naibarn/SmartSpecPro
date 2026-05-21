@@ -100,3 +100,35 @@ export async function generateImageDescription(
   };
   return data.result.description;
 }
+
+export async function generateImageDescriptionFromBuffer(
+  imageBuffer: Buffer | Uint8Array,
+): Promise<string> {
+  const bytes = imageBuffer instanceof Uint8Array
+    ? imageBuffer
+    : new Uint8Array(imageBuffer);
+
+  const response = await fetch(getWorkersAiUrl(VISION_MODEL), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getApiKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      image: Array.from(bytes),
+      prompt: "Describe this product image in 1-2 sentences for visual search.",
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Workers AI vision failed: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  const data = (await response.json()) as {
+    result: { description: string };
+    success: boolean;
+  };
+  return data.result.description;
+}

@@ -8,7 +8,7 @@ import viteConfig from "../../vite.config";
 import { injectPublicSeoSnapshot } from "../services/publicSeoPrerender";
 import { isApiRequestPath } from "./apiPathGuard";
 
-const STATIC_ASSET_REQUEST = /\.(ico|svg|png|jpg|jpeg|gif|webp|css|js|mjs|woff2?|ttf|eot|map|json|wasm)(\?.*)?$/i;
+const STATIC_ASSET_REQUEST = /\.(ico|svg|png|jpg|jpeg|gif|webp|css|js|mjs|woff2?|ttf|eot|map|json|wasm|zip)(\?.*)?$/i;
 
 function isStaticAssetRequest(url: string): boolean {
   return STATIC_ASSET_REQUEST.test(url);
@@ -111,6 +111,11 @@ export function serveStatic(app: Express) {
       setHeaders: (res, filePath) => {
         if (path.extname(filePath).toLowerCase() === ".html") {
           res.setHeader("Cache-Control", "no-store");
+        }
+        if (path.extname(filePath).toLowerCase() === ".zip") {
+          res.setHeader("Content-Type", "application/zip");
+          res.setHeader("Content-Disposition", `attachment; filename="${path.basename(filePath)}"`);
+          res.setHeader("X-Content-Type-Options", "nosniff");
         }
       },
     })

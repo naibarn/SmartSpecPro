@@ -1,4 +1,6 @@
 import { eq } from "drizzle-orm";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
 import {
   skills,
@@ -14,8 +16,10 @@ import {
   compareSkillContractSnapshots,
   type SkillCompatibilityReport,
 } from "./skillCompatibilityGate";
-import { resolveEnabledLlmModelId } from "./enabledLlmModels";
-import { launchSkillStudioTask } from "./skillStudioService";
+import {
+  launchSkillStudioTask,
+  resolveSkillStudioSystemModel,
+} from "./skillStudioService";
 import {
   hasRelativeSkillManifest,
   resolveSkillDirCandidates,
@@ -25,6 +29,14 @@ import {
 import { refreshSkillCache } from "./skillRegistry";
 
 type DbLike = any;
+
+type SkillMarkdownBaselineFile = {
+  relativePath: "SKILL.md" | "skill.md";
+  absolutePath: string;
+  content: string;
+  frontmatterKeys: string[];
+  headings: string[];
+};
 
 interface ApplySkillUpgradeParams {
   db: DbLike;
@@ -95,6 +107,323 @@ function stringifyList(items: unknown): string {
   return items.map((item) => String(item)).join(", ");
 }
 
+function formatJsonSection(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "none";
+  }
+  if (Array.isArray(value) && value.length === 0) {
+    return "none";
+  }
+  if (typeof value === "object" && !Array.isArray(value) && Object.keys(value as Record<string, unknown>).length === 0) {
+    return "none";
+  }
+  return JSON.stringify(value, null, 2);
+}
+
+function normalizeMarkdownHeading(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function extractFrontmatterKeys(markdown: string): string[] {
+  const lines = markdown.split(/\r?\n/);
+  if (lines[0]?.trim() !== "---") {
+    return [];
+  }
+
+  const keys: string[] = [];
+  for (let index = 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line?.trim() === "---") {
+      break;
+    }
+    const match = line?.match(/^([A-Za-z0-9_-]+):/);
+    if (match?.[1]) {
+      keys.push(match[1]);
+    }
+  }
+  return Array.from(new Set(keys));
+}
+
+function extractMarkdownHeadings(markdown: string): string[] {
+  return Array.from(new Set(
+    markdown
+      .split(/\r?\n/)
+      .map((line) => line.match(/^#{1,3}\s+(.+?)\s*$/)?.[1])
+      .filter((value): value is string => Boolean(value))
+      .map(normalizeMarkdownHeading),
+  ));
+}
+
+function captureSkillMarkdownBaseline(skill: Skill): SkillMarkdownBaselineFile[] {
+  if (!skill.folderPath) {
+    return [];
+  }
+
+  const skillDir = resolveSkillDirCandidates(skill.folderPath)[0];
+  if (!skillDir) {
+    return [];
+  }
+
+  return (["SKILL.md", "skill.md"] as const)
+    .map((relativePath) => {
+      const absolutePath = path.join(skillDir, relativePath);
+      if (!existsSync(absolutePath)) {
+        return null;
+      }
+      const content = readFileSync(absolutePath, "utf8");
+      return {
+        relativePath,
+        absolutePath,
+        content,
+        frontmatterKeys: extractFrontmatterKeys(content),
+        headings: extractMarkdownHeadings(content),
+      };
+    })
+    .filter((value): value is SkillMarkdownBaselineFile => Boolean(value));
+}
+
+function detectSkillMarkdownContentLoss(
+  baselineFiles: SkillMarkdownBaselineFile[],
+): Array<{ file: string; message: string }> {
+  const issues: Array<{ file: string; message: string }> = [];
+
+  for (const baseline of baselineFiles) {
+    if (!existsSync(baseline.absolutePath)) {
+      issues.push({
+        file: baseline.relativePath,
+        message: `${baseline.relativePath} was deleted during maintenance apply.`,
+      });
+      continue;
+    }
+
+    const current = readFileSync(baseline.absolutePath, "utf8");
+    const currentFrontmatterKeys = new Set(extractFrontmatterKeys(current));
+    const currentHeadings = new Set(extractMarkdownHeadings(current));
+    const missingKeys = baseline.frontmatterKeys.filter((key) => !currentFrontmatterKeys.has(key));
+    const missingHeadings = baseline.headings.filter((heading) => !currentHeadings.has(heading));
+    const shrinkRatio = baseline.content.length > 0 ? current.length / baseline.content.length : 1;
+
+    if (missingKeys.length > 0) {
+      issues.push({
+        file: baseline.relativePath,
+        message: `${baseline.relativePath} lost frontmatter keys: ${missingKeys.join(", ")}`,
+      });
+    }
+    if (missingHeadings.length > 0) {
+      issues.push({
+        file: baseline.relativePath,
+        message: `${baseline.relativePath} lost markdown sections: ${missingHeadings.slice(0, 12).join(", ")}${missingHeadings.length > 12 ? ", ..." : ""}`,
+      });
+    }
+    if (shrinkRatio < 0.8) {
+      issues.push({
+        file: baseline.relativePath,
+        message: `${baseline.relativePath} shrank to ${Math.round(shrinkRatio * 100)}% of its previous size.`,
+      });
+    }
+  }
+
+  return issues;
+}
+
+function restoreSkillMarkdownBaseline(baselineFiles: SkillMarkdownBaselineFile[]): void {
+  for (const baseline of baselineFiles) {
+    writeFileSync(baseline.absolutePath, baseline.content, "utf8");
+  }
+}
+
+const SEMANTIC_VERIFICATION_STOP_WORDS = new Set([
+  "about",
+  "above",
+  "after",
+  "again",
+  "against",
+  "also",
+  "because",
+  "before",
+  "below",
+  "change",
+  "changes",
+  "clear",
+  "could",
+  "ensure",
+  "every",
+  "from",
+  "have",
+  "into",
+  "issue",
+  "must",
+  "only",
+  "prompt",
+  "rule",
+  "rules",
+  "should",
+  "skill",
+  "still",
+  "that",
+  "this",
+  "when",
+  "with",
+]);
+
+function normalizeSemanticText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[`*_#[\]{}()"'“”‘’:;,.!?\\|/+-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractSemanticTerms(...values: Array<unknown>): string[] {
+  const text = normalizeSemanticText(
+    values
+      .filter((value) => value !== null && value !== undefined)
+      .map((value) => typeof value === "string" ? value : JSON.stringify(value))
+      .join(" "),
+  );
+  const matches = text.match(/[\p{L}\p{N}][\p{L}\p{N}_-]{2,}/gu) ?? [];
+  return Array.from(new Set(matches.filter((term) => {
+    if (SEMANTIC_VERIFICATION_STOP_WORDS.has(term)) {
+      return false;
+    }
+    if (/^\d+$/.test(term)) {
+      return false;
+    }
+    return term.length >= 3;
+  }))).slice(0, 24);
+}
+
+function countSemanticTerm(text: string, term: string): number {
+  if (!text || !term) {
+    return 0;
+  }
+  let count = 0;
+  let offset = 0;
+  while (offset < text.length) {
+    const index = text.indexOf(term, offset);
+    if (index === -1) {
+      break;
+    }
+    count += 1;
+    offset = index + term.length;
+  }
+  return count;
+}
+
+type MediaStudioAcceptanceItem = {
+  kind: "issue" | "planned_change" | "admin_instruction";
+  label: string;
+  terms: string[];
+};
+
+function buildMediaStudioAcceptanceItems(
+  recommendation: SkillImprovementRecommendation,
+): MediaStudioAcceptanceItem[] {
+  const { recommendationJson } = getRecommendationDetails(recommendation);
+  if (recommendationJson.source !== "media_studio_auto_learning") {
+    return [];
+  }
+
+  const items: MediaStudioAcceptanceItem[] = [];
+  const issues = Array.isArray(recommendationJson.issues)
+    ? recommendationJson.issues as Array<Record<string, unknown>>
+    : [];
+  const proposedChanges = Array.isArray(recommendationJson.proposedChanges)
+    ? recommendationJson.proposedChanges as Array<Record<string, unknown>>
+    : [];
+
+  for (const issue of issues) {
+    const label = String(issue.title || issue.id || "Media Studio issue").trim();
+    const terms = extractSemanticTerms(issue.id, issue.title, issue.recommendation, issue.severity);
+    if (label && terms.length >= 2) {
+      items.push({ kind: "issue", label, terms });
+    }
+  }
+
+  for (const change of proposedChanges) {
+    const label = String(change.title || change.targetSection || "Planned improvement").trim();
+    const terms = extractSemanticTerms(change.title, change.reason, change.targetSection, change.risk);
+    if (label && terms.length >= 2) {
+      items.push({ kind: "planned_change", label, terms });
+    }
+  }
+
+  if (typeof recommendationJson.userAdditionalInstruction === "string" && recommendationJson.userAdditionalInstruction.trim()) {
+    const label = "Additional admin instruction";
+    const terms = extractSemanticTerms(recommendationJson.userAdditionalInstruction);
+    if (terms.length >= 2) {
+      items.push({ kind: "admin_instruction", label, terms });
+    }
+  }
+
+  return items;
+}
+
+function detectMediaStudioSemanticCoverageIssues(
+  recommendation: SkillImprovementRecommendation,
+  baselineFiles: SkillMarkdownBaselineFile[],
+): {
+  status: "skipped" | "passed" | "blocked";
+  issues: Array<{ item: string; kind: string; message: string; terms: string[] }>;
+  checkedItems: number;
+  changedFiles: string[];
+} {
+  const acceptanceItems = buildMediaStudioAcceptanceItems(recommendation);
+  if (acceptanceItems.length === 0 || baselineFiles.length === 0) {
+    return {
+      status: "skipped",
+      issues: [],
+      checkedItems: acceptanceItems.length,
+      changedFiles: [],
+    };
+  }
+
+  const changedFiles = baselineFiles
+    .filter((file) => existsSync(file.absolutePath) && readFileSync(file.absolutePath, "utf8") !== file.content)
+    .map((file) => file.relativePath);
+  if (changedFiles.length === 0) {
+    return {
+      status: "blocked",
+      checkedItems: acceptanceItems.length,
+      changedFiles,
+      issues: [{
+        item: "skill markdown",
+        kind: "markdown_change",
+        message: "No SKILL.md/skill.md changes were detected after the Media Studio improvement ran.",
+        terms: [],
+      }],
+    };
+  }
+
+  const baselineText = normalizeSemanticText(baselineFiles.map((file) => file.content).join("\n"));
+  const currentText = normalizeSemanticText(
+    baselineFiles
+      .map((file) => existsSync(file.absolutePath) ? readFileSync(file.absolutePath, "utf8") : "")
+      .join("\n"),
+  );
+  const issues = acceptanceItems.flatMap((item) => {
+    const strengthenedTerms = item.terms.filter((term) => (
+      countSemanticTerm(currentText, term) > countSemanticTerm(baselineText, term)
+    ));
+    if (strengthenedTerms.length > 0) {
+      return [];
+    }
+    return [{
+      item: item.label,
+      kind: item.kind,
+      message: `No strengthened instruction evidence was found for "${item.label}".`,
+      terms: item.terms.slice(0, 8),
+    }];
+  });
+
+  return {
+    status: issues.length > 0 ? "blocked" : "passed",
+    issues,
+    checkedItems: acceptanceItems.length,
+    changedFiles,
+  };
+}
+
 function getRecommendationDetails(
   recommendation: SkillImprovementRecommendation,
 ): {
@@ -142,9 +471,46 @@ function isBreakingMaintenanceChange(recommendation: SkillImprovementRecommendat
   return runtimeChanged || explicitBreaking || typeSignalsBreaking || topologyWidening;
 }
 
+function isMediaStudioInstructionOnlyRecommendation(recommendation: SkillImprovementRecommendation): boolean {
+  if (recommendation.recommendationType !== "media-studio-auto-learning") {
+    return false;
+  }
+  const { recommendationJson, contractDeltaJson } = getRecommendationDetails(recommendation);
+  if (recommendationJson.source !== "media_studio_auto_learning") {
+    return false;
+  }
+  const proposedChanges = Array.isArray(recommendationJson.proposedChanges)
+    ? recommendationJson.proposedChanges as Array<Record<string, unknown>>
+    : [];
+  const expectedFiles = Array.isArray(contractDeltaJson.expectedFiles)
+    ? contractDeltaJson.expectedFiles
+    : proposedChanges.map((change) => change.targetFile);
+  return expectedFiles.every((file) => {
+    const normalized = String(file || "").trim().toLowerCase();
+    return normalized === "skill.md" || normalized === "skill" || normalized.endsWith(".md");
+  });
+}
+
 function buildUpgradeBrief(skill: Skill, recommendation: SkillImprovementRecommendation): string {
   const { recommendationJson, contractDeltaJson, details } = getRecommendationDetails(recommendation);
   const breakingChange = isBreakingMaintenanceChange(recommendation);
+  const mediaStudioIssues = Array.isArray(recommendationJson.issues) ? recommendationJson.issues : [];
+  const mediaStudioProposedChanges = Array.isArray(recommendationJson.proposedChanges)
+    ? recommendationJson.proposedChanges
+    : [];
+  const mediaStudioEvidence = recommendationJson.evidence && typeof recommendationJson.evidence === "object"
+    ? recommendationJson.evidence
+    : null;
+  const mediaStudioInstruction = typeof recommendationJson.userAdditionalInstruction === "string"
+    ? recommendationJson.userAdditionalInstruction.trim()
+    : "";
+  const affectedFiles = Array.isArray(recommendationJson.affectedFiles) && recommendationJson.affectedFiles.length > 0
+    ? recommendationJson.affectedFiles
+    : Array.isArray(contractDeltaJson.expectedFiles) && contractDeltaJson.expectedFiles.length > 0
+      ? contractDeltaJson.expectedFiles
+      : mediaStudioProposedChanges
+        .map((change) => change && typeof change === "object" ? (change as Record<string, unknown>).targetFile : null)
+        .filter(Boolean);
 
   const lines = [
     `Improve the existing SmartAIHub skill "${skill.name}" (${skill.slug}).`,
@@ -157,6 +523,8 @@ function buildUpgradeBrief(skill: Skill, recommendation: SkillImprovementRecomme
     "- Preserve current input and output behavior for existing callers.",
     "- Do not remove required input fields or required output fields.",
     "- Do not change field types for existing structured inputs/outputs.",
+    "- Treat existing SKILL.md/skill.md content as the baseline source of truth; improve it additively unless the recommendation explicitly names text to replace.",
+    "- Do not delete existing frontmatter keys, major headings, output-format rules, prompt-contract sections, or QA gates that are not directly contradicted by this request.",
     "- Keep existing trigger behavior unless the recommendation explicitly needs an internal runtime upgrade.",
     "- Add or improve tests/fixtures so the contract stays verifiable.",
     "",
@@ -165,25 +533,57 @@ function buildUpgradeBrief(skill: Skill, recommendation: SkillImprovementRecomme
     `- Proposed runtime: ${recommendation.proposedRuntime ?? "unchanged"}`,
     `- Proposed action: ${recommendation.proposedAction ?? "unspecified"}`,
     `- Change classification: ${breakingChange ? "breaking" : "non-breaking"}`,
-    `- Affected files: ${stringifyList(recommendationJson.affectedFiles)}`,
+    `- Affected files: ${stringifyList(affectedFiles)}`,
     `- Input required fields: ${stringifyList(contractDeltaJson.inputRequiredFields)}`,
     `- Output required fields: ${stringifyList(contractDeltaJson.outputRequiredFields)}`,
     "",
     "Implementation guidance:",
     "- Prefer modular, reviewable changes over one large rewrite.",
+    "- First extract the requested changes into an acceptance checklist, then implement each checklist item in the smallest relevant section.",
+    "- Compare before vs after and reject your own patch if it shrinks the skill, removes unrelated rules, switches output format accidentally, or weakens prompt quality.",
+    "- Run 2-3 self-review passes before finalizing: coverage of every requested issue, preservation of existing behavior, prompt-quality impact, and compatibility risk.",
     "- If this is a GenJS migration, create or update skill.manifest.json, package.json, src/index.mjs, pipeline modules, and fixture coverage while preserving the public contract.",
     "- If tools/dependencies are needed, declare them explicitly in package.json and keep the bundle runnable in the existing Node.js sandbox flow.",
     "- If this recommendation touches subagent topology, preserve the existing orchestrator boundary, keep specialist paths under agents/specialists/, and do not widen routing beyond the current manifest.",
     "- Update docs only where they help future maintenance or runtime clarity.",
     "",
+    ...(recommendationJson.source === "media_studio_auto_learning" ? [
+      "Media Studio auto-learning context:",
+      `- Trigger: ${String(recommendationJson.trigger ?? "unknown")}`,
+      `- Quality score: ${String(recommendationJson.score ?? recommendation.qualityScore ?? "unknown")}`,
+      mediaStudioInstruction ? `- Additional admin instruction: ${mediaStudioInstruction}` : "",
+      "",
+      "Detected issues that must be addressed:",
+      formatJsonSection(mediaStudioIssues),
+      "",
+      "Planned improvements to implement:",
+      formatJsonSection(mediaStudioProposedChanges),
+      "",
+      "Evidence from Media Studio:",
+      formatJsonSection(mediaStudioEvidence),
+      "",
+      "Media Studio apply requirements:",
+      "- Address every detected issue above unless it is technically impossible; if impossible, state why in the proposal or result.",
+      "- Do not reduce the issue list to only the implementation bullets; preserve the user's original QA findings as acceptance criteria.",
+      "- For instruction-only updates, edit the relevant skill markdown/rules so the next Auto Prompt run changes behavior.",
+      "- If the skill is expected to output plain text, explicitly prevent JSON/object output unless the skill schema requires JSON.",
+      "- Add narrowly scoped rules that strengthen the skill without replacing or deleting the existing detailed rules.",
+      "- Preserve all existing Media Studio output contracts, storyboard-format rules, product-fidelity rules, prompt-order rules, and negative constraints unless the admin explicitly asked to change them.",
+      "- Before finalizing, verify that each planned improvement is visibly represented in the edited skill markdown and that no unrelated prompt behavior became weaker.",
+      "",
+    ] : []),
     "Recommendation-specific details:",
-    JSON.stringify(details, null, 2),
+    formatJsonSection(details),
   ];
 
   return lines.filter(Boolean).join("\n");
 }
 
 function extractSavedProposalFiles(metadata: Record<string, unknown> | null | undefined): string[] {
+  const isApplicableProposalFile = (value: string): boolean => {
+    const baseName = value.split(/[\\/]/).pop() ?? value;
+    return /^\d{8}T?\d{6}_r\d+\.(?:diff|json)$/.test(baseName);
+  };
   const raw = Array.isArray(metadata?.savedProposals)
     ? metadata.savedProposals
     : Array.isArray(metadata?.saved_proposals)
@@ -192,7 +592,7 @@ function extractSavedProposalFiles(metadata: Record<string, unknown> | null | un
 
   return raw
     .map((value) => String(value || "").trim())
-    .filter((value) => Boolean(value) && !value.endsWith(".meta.json"));
+    .filter((value) => Boolean(value) && isApplicableProposalFile(value));
 }
 
 function getLatestProposalInfo(metadata: Record<string, unknown> | null | undefined): {
@@ -350,10 +750,12 @@ async function insertBaselineSnapshot(params: {
 
 async function finalizeStudioApply(params: {
   db: DbLike;
+  recommendation: SkillImprovementRecommendation;
   recommendationId: number;
   runId: number;
   skillId: number;
   baselineSnapshot: ReturnType<typeof buildSkillContractSnapshot>;
+  markdownBaselineFiles?: SkillMarkdownBaselineFile[];
   requestedBy?: number | null;
   success: boolean;
   resultMessage?: string | null;
@@ -362,10 +764,12 @@ async function finalizeStudioApply(params: {
 }): Promise<void> {
   const {
     db,
+    recommendation,
     recommendationId,
     runId,
     skillId,
     baselineSnapshot,
+    markdownBaselineFiles = [],
     requestedBy = null,
     success,
     resultMessage,
@@ -396,6 +800,90 @@ async function finalizeStudioApply(params: {
         summary: resultMessage || "Generator-backed upgrade failed",
         errorMessage: errorMessage || resultMessage || "Unknown generator-backed apply error",
         logsJson: failureMetadata,
+        endedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(skillImprovementRuns.id, runId));
+    return;
+  }
+
+  const markdownContentLossIssues = detectSkillMarkdownContentLoss(markdownBaselineFiles);
+  if (markdownContentLossIssues.length > 0) {
+    restoreSkillMarkdownBaseline(markdownBaselineFiles);
+    await refreshSkillCache();
+
+    await db
+      .update(skillImprovementRecommendations)
+      .set({
+        status: "blocked",
+        reviewedAt: new Date(),
+        reviewedBy: requestedBy,
+        compatibilityStatus: "blocked",
+        updatedAt: new Date(),
+      })
+      .where(eq(skillImprovementRecommendations.id, recommendationId));
+
+    await db
+      .update(skillImprovementRuns)
+      .set({
+        status: "failed",
+        summary: "Generator-backed upgrade blocked because it removed existing skill content",
+        errorMessage: markdownContentLossIssues.map((issue) => issue.message).join(" "),
+        verificationJson: {
+          status: "blocked",
+          issues: markdownContentLossIssues,
+        },
+        logsJson: {
+          ...(metadata ?? {}),
+          resultMessage,
+          resultError: "Generator-backed upgrade removed existing skill content.",
+          contentPreservationGuard: {
+            restoredFiles: markdownBaselineFiles.map((file) => file.relativePath),
+            issues: markdownContentLossIssues,
+          },
+        },
+        endedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(skillImprovementRuns.id, runId));
+    return;
+  }
+
+  const semanticCoverage = detectMediaStudioSemanticCoverageIssues(recommendation, markdownBaselineFiles);
+  if (semanticCoverage.status === "blocked") {
+    restoreSkillMarkdownBaseline(markdownBaselineFiles);
+    await refreshSkillCache();
+
+    await db
+      .update(skillImprovementRecommendations)
+      .set({
+        status: "blocked",
+        reviewedAt: new Date(),
+        reviewedBy: requestedBy,
+        compatibilityStatus: "blocked",
+        updatedAt: new Date(),
+      })
+      .where(eq(skillImprovementRecommendations.id, recommendationId));
+
+    await db
+      .update(skillImprovementRuns)
+      .set({
+        status: "failed",
+        summary: "Generator-backed upgrade blocked because requested Media Studio improvements were not verified",
+        errorMessage: semanticCoverage.issues.map((issue) => issue.message).join(" "),
+        verificationJson: {
+          status: "blocked",
+          semanticCoverage,
+        },
+        logsJson: {
+          ...(metadata ?? {}),
+          resultMessage,
+          resultError: "Generator-backed upgrade did not verify the requested Media Studio improvements.",
+          semanticCoverageGuard: {
+            restoredFiles: markdownBaselineFiles.map((file) => file.relativePath),
+            ...semanticCoverage,
+          },
+        },
         endedAt: new Date(),
         updatedAt: new Date(),
       })
@@ -537,11 +1025,13 @@ async function finalizeStudioApply(params: {
       verificationJson: {
         status: compatibilityReport.status,
         issues: compatibilityReport.issues,
+        semanticCoverage,
       },
       logsJson: {
         ...(metadata ?? {}),
         resultMessage,
         resultError: errorMessage || null,
+        semanticCoverage,
       },
       endedAt: new Date(),
       updatedAt: new Date(),
@@ -898,10 +1388,16 @@ export async function applySkillUpgradeRecommendation(
   }
 
   const baselineSnapshot = await insertBaselineSnapshot({ db, skill, recommendation, run });
+  const markdownBaselineFiles = captureSkillMarkdownBaseline(skill);
   const brief = buildUpgradeBrief(skill, recommendation);
   const isBreakingChange = isBreakingMaintenanceChange(recommendation);
-  const useProposalFirst = isBreakingChange || !recommendation.isAutoApplySafe;
-  const resolvedLlmModelId = await resolveEnabledLlmModelId();
+  const instructionOnlyAdminApply = isMediaStudioInstructionOnlyRecommendation(recommendation);
+  const useProposalFirst = isBreakingChange || (!recommendation.isAutoApplySafe && !instructionOnlyAdminApply);
+  const studioModelSelection = await resolveSkillStudioSystemModel({
+    mode: "improve",
+    llmGatewayMode: "system",
+  });
+  const resolvedLlmModelId = studioModelSelection?.modelId ?? null;
 
   const [approvedRecommendation] = await db
     .update(skillImprovementRecommendations)
@@ -920,6 +1416,7 @@ export async function applySkillUpgradeRecommendation(
     let launchTaskId: string | null = null;
     const onCompleteMetadataBase = {
       resolvedLlmModelId,
+      modelSelection: studioModelSelection,
       sourceRunId,
       retryReason,
     };
@@ -965,10 +1462,12 @@ export async function applySkillUpgradeRecommendation(
 
           await finalizeStudioApply({
             db,
+            recommendation,
             recommendationId: recommendation.id,
             runId: run.id,
             skillId: skill.id,
             baselineSnapshot,
+            markdownBaselineFiles,
             requestedBy,
             success: Boolean(result.success),
             resultMessage: completionMessage,
@@ -991,7 +1490,9 @@ export async function applySkillUpgradeRecommendation(
           tenantId,
           applyStrategy: useProposalFirst ? "proposal" : "auto-apply",
           maintenanceClassification: isBreakingChange ? "breaking" : "non-breaking",
+          instructionOnlyAdminApply,
           resolvedLlmModelId,
+          modelSelection: studioModelSelection,
           sourceRunId,
           retryReason,
         },

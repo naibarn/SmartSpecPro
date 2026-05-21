@@ -45,6 +45,58 @@ async def test_estimate_cost_uses_flat_pricing_field_value_from_extra_params():
 
 
 @pytest.mark.asyncio
+async def test_estimate_cost_uses_presence_based_matrix_pricing_for_video_input():
+    mock_db = AsyncMock()
+    mock_result = MagicMock()
+    mock_result.fetchone.return_value = (
+        450,
+        {
+            "pricingFormula": "matrix",
+            "pricingTiers": {
+                "default": 600,
+                "1080p-4s-without-video": 450,
+                "1080p-10s-without-video": 900,
+                "4K-4s-without-video": 1050,
+                "4K-10s-without-video": 1500,
+                "1080p-4s-with-video": 1200,
+                "1080p-10s-with-video": 1200,
+                "4K-4s-with-video": 1800,
+                "4K-10s-with-video": 1800,
+            },
+            "inputFields": [
+                {"key": "video_list", "affectsPricing": True, "pricingAliases": ["reference_video_url"], "pricingPresenceLabels": {"present": "with-video", "absent": "without-video"}},
+                {"key": "resolution", "default": "1080p", "affectsPricing": True},
+                {"key": "duration", "default": 4, "affectsPricing": True},
+            ],
+        },
+    )
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    with patch("app.llm_proxy.gateway_unified.LLMProxy"), \
+         patch("app.llm_proxy.gateway_unified.get_unified_client"), \
+         patch("app.llm_proxy.gateway_unified.CreditService"), \
+         patch("app.llm_proxy.gateway_unified.get_gateway_client"):
+        gateway = LLMGateway(mock_db)
+
+    no_video = VideoGenerationRequest(
+        model="gemini-omni-video",
+        prompt="A cinematic product reveal",
+        duration=10,
+        resolution="4K",
+    )
+    with_video = VideoGenerationRequest(
+        model="gemini-omni-video",
+        prompt="Edit this source video",
+        duration=4,
+        resolution="1080p",
+        referenceVideoUrl="https://cdn.example.com/source.mp4",
+    )
+
+    assert await gateway._estimate_cost(no_video, False) == Decimal("1.5")
+    assert await gateway._estimate_cost(with_video, False) == Decimal("1.2")
+
+
+@pytest.mark.asyncio
 async def test_generate_video_skips_duplicate_billing_when_reserved_credits_exist():
     mock_db = AsyncMock()
 

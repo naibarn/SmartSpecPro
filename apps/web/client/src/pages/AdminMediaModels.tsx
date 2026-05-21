@@ -231,6 +231,9 @@ interface InputFieldDraft {
   defaultBoolean: boolean;
   required: boolean;
   affectsPricing: boolean;
+  pricingAliases: string;
+  pricingPresencePresent: string;
+  pricingPresenceAbsent: string;
   searchable: boolean;
   options: InputFieldOptionDraft[];
   optionsSourceType: InputFieldOptionsSourceType;
@@ -494,6 +497,9 @@ function createEmptyInputFieldDraft(): InputFieldDraft {
     defaultBoolean: false,
     required: false,
     affectsPricing: false,
+    pricingAliases: "",
+    pricingPresencePresent: "",
+    pricingPresenceAbsent: "",
     searchable: false,
     options: [],
     optionsSourceType: "none",
@@ -577,6 +583,18 @@ function parseInputFieldDrafts(value: unknown): InputFieldDraft[] {
         : "none";
     const optionsSourceValueTransform: "none" | "before_dash" =
       optionsSourceValueTransformRaw === "before_dash" ? "before_dash" : "none";
+    const pricingAliases = Array.isArray(record.pricingAliases)
+      ? record.pricingAliases
+          .map(alias => String(alias ?? "").trim())
+          .filter(Boolean)
+          .join(", ")
+      : "";
+    const pricingPresenceLabels =
+      record.pricingPresenceLabels &&
+      typeof record.pricingPresenceLabels === "object" &&
+      !Array.isArray(record.pricingPresenceLabels)
+        ? (record.pricingPresenceLabels as Record<string, unknown>)
+        : null;
     return {
       id: createDraftId("field"),
       key: String(record.key ?? ""),
@@ -590,6 +608,15 @@ function parseInputFieldDrafts(value: unknown): InputFieldDraft[] {
       defaultBoolean: Boolean(record.default),
       required: Boolean(record.required),
       affectsPricing: Boolean(record.affectsPricing),
+      pricingAliases,
+      pricingPresencePresent:
+        typeof pricingPresenceLabels?.present === "string"
+          ? pricingPresenceLabels.present
+          : "",
+      pricingPresenceAbsent:
+        typeof pricingPresenceLabels?.absent === "string"
+          ? pricingPresenceLabels.absent
+          : "",
       searchable: Boolean(record.searchable),
       options,
       optionsSourceType,
@@ -699,6 +726,25 @@ function serializeInputFieldDrafts(drafts: InputFieldDraft[]): {
     }
     if (draft.affectsPricing) {
       nextField.affectsPricing = true;
+      const pricingAliases = splitDelimitedTextValues(draft.pricingAliases);
+      if (pricingAliases.length > 0) {
+        nextField.pricingAliases = pricingAliases;
+      }
+
+      const pricingPresencePresent = draft.pricingPresencePresent.trim();
+      const pricingPresenceAbsent = draft.pricingPresenceAbsent.trim();
+      if (pricingPresencePresent || pricingPresenceAbsent) {
+        if (!pricingPresencePresent || !pricingPresenceAbsent) {
+          errors.push(
+            `Field "${key}" pricing presence labels require both present and absent values.`
+          );
+          continue;
+        }
+        nextField.pricingPresenceLabels = {
+          present: pricingPresencePresent,
+          absent: pricingPresenceAbsent,
+        };
+      }
     }
     // Always write syncWith so runtime can distinguish "explicitly none" from "legacy field (undefined)"
     nextField.syncWith = draft.syncWith;
@@ -1058,6 +1104,114 @@ const API_CONFIG_PRESETS: ApiConfigPreset[] = [
     pricingTiers: {
       "10": 75,
       "15": 150,
+    },
+  },
+  {
+    id: "kie_gemini_omni_video",
+    label: "Kie Gemini Omni",
+    description:
+      "Gemini Omni video generation with resolution + duration + video-input pricing branches.",
+    pricingFormula: "matrix",
+    maxPromptLength: 5000,
+    inputFields: [
+      {
+        key: "image_urls",
+        label: "Reference Images",
+        type: "image_urls",
+        syncWith: "reference_images",
+      },
+      {
+        key: "video_list",
+        label: "Source Video",
+        type: "video_urls",
+        syncWith: "reference_videos",
+        affectsPricing: true,
+        pricingAliases: [
+          "referenceVideoUrls",
+          "referenceVideoUrl",
+          "reference_video_urls",
+          "reference_video_url",
+          "video_url",
+        ],
+        pricingPresenceLabels: {
+          present: "with-video",
+          absent: "without-video",
+        },
+      },
+      {
+        key: "resolution",
+        label: "Resolution",
+        type: "select",
+        options: [
+          { value: "720p", label: "720P" },
+          { value: "1080p", label: "1080P" },
+          { value: "4K", label: "4K" },
+        ],
+        default: "720p",
+        affectsPricing: true,
+      },
+      {
+        key: "duration",
+        label: "Duration",
+        type: "select",
+        options: [
+          { value: "4s", label: "4s" },
+          { value: "6s", label: "6s" },
+          { value: "8s", label: "8s" },
+          { value: "10s", label: "10s" },
+        ],
+        default: "6s",
+        affectsPricing: true,
+      },
+      {
+        key: "aspect_ratio",
+        label: "Aspect Ratio",
+        type: "select",
+        options: [
+          { value: "16:9", label: "16:9" },
+          { value: "9:16", label: "9:16" },
+          { value: "1:1", label: "1:1" },
+        ],
+        default: "16:9",
+        syncWith: "aspect_ratio",
+      },
+      {
+        key: "audio_ids",
+        label: "Audio IDs",
+        type: "array",
+      },
+      {
+        key: "seed",
+        label: "Seed",
+        type: "number",
+      },
+    ],
+    pricingTiers: {
+      default: 600,
+      "720p-4s-without-video": 450,
+      "720p-6s-without-video": 600,
+      "720p-8s-without-video": 750,
+      "720p-10s-without-video": 900,
+      "1080p-4s-without-video": 450,
+      "1080p-6s-without-video": 600,
+      "1080p-8s-without-video": 750,
+      "1080p-10s-without-video": 900,
+      "4K-4s-without-video": 1050,
+      "4K-6s-without-video": 1200,
+      "4K-8s-without-video": 1350,
+      "4K-10s-without-video": 1500,
+      "720p-4s-with-video": 1200,
+      "720p-6s-with-video": 1200,
+      "720p-8s-with-video": 1200,
+      "720p-10s-with-video": 1200,
+      "1080p-4s-with-video": 1200,
+      "1080p-6s-with-video": 1200,
+      "1080p-8s-with-video": 1200,
+      "1080p-10s-with-video": 1200,
+      "4K-4s-with-video": 1800,
+      "4K-6s-with-video": 1800,
+      "4K-8s-with-video": 1800,
+      "4K-10s-with-video": 1800,
     },
   },
   {
@@ -4005,6 +4159,64 @@ function ModelForm({
                         />
                       </div>
                     </div>
+
+                    {field.affectsPricing && (
+                      <div className="space-y-2 rounded-md border border-amber-100 bg-amber-50/40 p-3">
+                        <div className="grid gap-1">
+                          <Label className="text-xs text-muted-foreground">
+                            Pricing aliases
+                          </Label>
+                          <Input
+                            value={field.pricingAliases}
+                            onChange={e =>
+                              updateInputFieldDraft(field.id, {
+                                pricingAliases: e.target.value,
+                              })
+                            }
+                            placeholder="referenceVideoUrls, video_url"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Alternative payload keys that should count as this
+                            pricing field.
+                          </p>
+                        </div>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          <div className="grid gap-1">
+                            <Label className="text-xs text-muted-foreground">
+                              Present label
+                            </Label>
+                            <Input
+                              value={field.pricingPresencePresent}
+                              onChange={e =>
+                                updateInputFieldDraft(field.id, {
+                                  pricingPresencePresent: e.target.value,
+                                })
+                              }
+                              placeholder="with-video"
+                            />
+                          </div>
+                          <div className="grid gap-1">
+                            <Label className="text-xs text-muted-foreground">
+                              Absent label
+                            </Label>
+                            <Input
+                              value={field.pricingPresenceAbsent}
+                              onChange={e =>
+                                updateInputFieldDraft(field.id, {
+                                  pricingPresenceAbsent: e.target.value,
+                                })
+                              }
+                              placeholder="without-video"
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Use presence labels for optional inputs such as video:
+                          tier keys become resolution-duration-with-video or
+                          resolution-duration-without-video.
+                        </p>
+                      </div>
+                    )}
 
                     <div className="grid gap-1">
                       <Label className="text-xs text-muted-foreground">

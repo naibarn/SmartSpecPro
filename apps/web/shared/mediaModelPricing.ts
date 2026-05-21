@@ -4,6 +4,11 @@ export interface MediaModelPricingInputField {
   key: string;
   affectsPricing?: boolean;
   default?: string | number | boolean;
+  pricingAliases?: string[];
+  pricingPresenceLabels?: {
+    present: string;
+    absent: string;
+  };
 }
 
 export interface MediaModelPricingConfig {
@@ -56,6 +61,39 @@ function formatDurationTierKey(value: unknown): string | null {
   return str.endsWith("s") ? str : `${str}s`;
 }
 
+function hasPricingPresenceValue(value: unknown): boolean {
+  if (value === null || value === undefined || value === "") {
+    return false;
+  }
+  if (typeof value === "string") {
+    return value.trim().length > 0;
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  if (typeof value === "object") {
+    return Object.keys(value as Record<string, unknown>).length > 0;
+  }
+  return true;
+}
+
+function getPricingFieldValue(
+  field: MediaModelPricingInputField,
+  selections: Record<string, unknown>,
+): unknown {
+  const keys = [
+    field.key,
+    ...(Array.isArray(field.pricingAliases) ? field.pricingAliases : []),
+  ];
+  for (const key of keys) {
+    const value = getSelectionValueByPath(selections, key);
+    if (value !== undefined) {
+      return value;
+    }
+  }
+  return field.default;
+}
+
 export function buildPricingTierKey(
   config: MediaModelPricingConfig,
   selections: Record<string, unknown> = {},
@@ -76,7 +114,15 @@ export function buildPricingTierKey(
   if (formula === "matrix") {
     const parts: string[] = [];
     for (const field of pricingFields) {
-      const value = getSelectionValueByPath(selections, field.key) ?? field.default;
+      const value = getPricingFieldValue(field, selections);
+      if (field.pricingPresenceLabels) {
+        parts.push(
+          hasPricingPresenceValue(value)
+            ? field.pricingPresenceLabels.present
+            : field.pricingPresenceLabels.absent,
+        );
+        continue;
+      }
       if (value === undefined || value === null || value === "") {
         continue;
       }
@@ -95,7 +141,12 @@ export function buildPricingTierKey(
 
   if (pricingFields.length === 1) {
     const field = pricingFields[0];
-    const value = getSelectionValueByPath(selections, field.key) ?? field.default;
+    const value = getPricingFieldValue(field, selections);
+    if (field.pricingPresenceLabels) {
+      return hasPricingPresenceValue(value)
+        ? field.pricingPresenceLabels.present
+        : field.pricingPresenceLabels.absent;
+    }
     if (value === undefined || value === null || value === "") {
       return "default";
     }

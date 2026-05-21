@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StoryboardVideoCustomerJourneyPromptOutput",
+  "type": "object",
+  "properties": {
+    "global_video_strategy": {
+      "type": "object",
+      "properties": {
+        "hook": { "type": "string" },
+        "target_buyer": { "type": "string" },
+        "customer_journey": { "type": "array", "items": { "type": "string" } },
+        "continuity_rules": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "index": { "type": "number" },
+          "journey_stage": { "type": "string" },
+          "video_prompt": { "type": "string" },
+          "voiceover_script": { "type": "string" },
+          "sound_brief": { "type": "string" },
+          "quality_notes": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["id", "index", "video_prompt"]
+      }
+    },
+    "voiceover_full_script": { "type": "string" },
+    "sound_full_brief": { "type": "string" }
+  },
+  "required": ["global_video_strategy", "slots"]
+}

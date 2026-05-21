@@ -33,7 +33,7 @@ export interface ImageSourcePickerProps {
   /** Whether upload is in progress (from parent) */
   isUploading?: boolean;
   /** Upload handler from parent (uses existing upload infrastructure) */
-  onUpload?: (files: FileList) => Promise<string[]>;
+  onUpload?: (files: FileList | File[]) => Promise<string[]>;
   /** Label text */
   label?: string;
   /** Help text below label */
@@ -157,6 +157,29 @@ function readFirstMediaUrl(value: unknown, visited = new Set<unknown>()): string
     if (found) {
       return found;
     }
+  }
+  return null;
+}
+
+function getDraggedImageUrl(dataTransfer: DataTransfer): string | null {
+  const mediaType = (
+    dataTransfer.getData("application/x-smartspec-media-type")
+    || dataTransfer.getData("text/x-smartspec-media-type")
+  ).trim().toLowerCase();
+  const rawUrl = (
+    dataTransfer.getData("text/uri-list")
+    || dataTransfer.getData("text/plain")
+  ).trim();
+  const url = rawUrl
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line && !line.startsWith("#"));
+
+  if (!url || !isUsableImageUrl(url)) {
+    return null;
+  }
+  if (mediaType === "image" || /\.(jpe?g|png|gif|webp|svg|avif|bmp)([?#].*)?$/i.test(url)) {
+    return url;
   }
   return null;
 }
@@ -337,6 +360,7 @@ export function ImageSourcePicker({
   const [libraryScope, setLibraryScope] = useState<LibraryScope>("all");
   const [activeTab, setActiveTab] = useState<string>("library");
   const [recentUploads, setRecentUploads] = useState<PickerImageItem[]>([]);
+  const [isDragActive, setIsDragActive] = useState(false);
 
   // Library query
   const libraryQuery = trpc.library.listDocuments.useQuery(
@@ -399,14 +423,18 @@ export function ImageSourcePicker({
     }
   }, [popoverOpen, refreshRecentUploads]);
 
-  // Handle file upload
-  const handleFileUpload = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-      if (!files || files.length === 0 || !onUpload) return;
+  const handleUploadFiles = useCallback(
+    async (files: FileList | File[] | null) => {
+      if (!files || files.length === 0 || !onUpload || isUploading || !canAddMore) return;
+
+      const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
+      if (imageFiles.length === 0) return;
+
+      const remaining = isReplaceMode ? 1 : maxImages - value.length;
+      if (remaining <= 0) return;
 
       try {
-        const urls = await onUpload(files);
+        const urls = await onUpload(imageFiles.slice(0, remaining));
         if (urls.length > 0) {
           const nextRecentUploads = mergeRecentUploadedImages(readRecentUploadRecords(), urls);
           writeRecentUploadRecords(nextRecentUploads);
@@ -430,7 +458,82 @@ export function ImageSourcePicker({
         fileInputRef.current.value = "";
       }
     },
-    [onUpload, value, onChange, maxImages, isReplaceMode],
+    [canAddMore, isUploading, isReplaceMode, maxImages, onChange, onUpload, value],
+  );
+
+  // Handle file upload
+  const handleFileUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      await handleUploadFiles(e.target.files);
+    },
+    [handleUploadFiles],
+  );
+
+  const hasDroppableImage = useCallback((dataTransfer: DataTransfer) => {
+    const mediaType = (
+      dataTransfer.getData("application/x-smartspec-media-type")
+      || dataTransfer.getData("text/x-smartspec-media-type")
+    ).trim().toLowerCase();
+    if (mediaType && mediaType !== "image") {
+      return false;
+    }
+    return (
+      dataTransfer.files.length > 0
+      || dataTransfer.types.includes("Files")
+      || dataTransfer.types.includes("application/x-smartspec-media-type")
+      || dataTransfer.types.includes("text/x-smartspec-media-type")
+      || dataTransfer.types.includes("text/uri-list")
+      || Boolean(getDraggedImageUrl(dataTransfer))
+    );
+  }, []);
+
+  const handleDragEnter = useCallback(
+    (e: React.DragEvent<HTMLElement>) => {
+      if (isUploading || !canAddMore || !hasDroppableImage(e.dataTransfer)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragActive(true);
+    },
+    [canAddMore, hasDroppableImage, isUploading],
+  );
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent<HTMLElement>) => {
+      if (isUploading || !canAddMore || !hasDroppableImage(e.dataTransfer)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = "copy";
+      setIsDragActive(true);
+    },
+    [canAddMore, hasDroppableImage, isUploading],
+  );
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    async (e: React.DragEvent<HTMLElement>) => {
+      if (isUploading || !canAddMore) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragActive(false);
+      if (e.dataTransfer.files.length > 0) {
+        await handleUploadFiles(e.dataTransfer.files);
+        return;
+      }
+
+      const droppedImageUrl = getDraggedImageUrl(e.dataTransfer);
+      if (droppedImageUrl && (isReplaceMode || !value.includes(droppedImageUrl))) {
+        onChange(isReplaceMode ? [droppedImageUrl] : [...value, droppedImageUrl]);
+        if (isReplaceMode) {
+          setPopoverOpen(false);
+        }
+      }
+    },
+    [canAddMore, handleUploadFiles, isReplaceMode, isUploading, onChange, value],
   );
 
   // Add from library
@@ -521,8 +624,16 @@ export function ImageSourcePicker({
               <Button
                 type="button"
                 variant="outline"
-                className="h-16 w-16"
+                aria-label={isTh ? "เพิ่มรูปภาพ" : "Add image"}
+                className={cn(
+                  "h-16 w-16",
+                  isDragActive && "border-sky-400 bg-sky-50 text-sky-600 ring-2 ring-sky-200",
+                )}
                 disabled={disabled || isUploading}
+                onDragEnter={handleDragEnter}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
               >
                 {isUploading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -572,15 +683,22 @@ export function ImageSourcePicker({
                   />
                   <p className="text-xs text-muted-foreground">
                     {isTh
-                      ? "เลือกรูปภาพจากเครื่องของคุณ (JPG, PNG, WebP)"
-                      : "Select images from your device (JPG, PNG, WebP)"}
+                      ? "เลือกรูปภาพจากเครื่องของคุณ หรือลากรูปมาวางที่นี่ (JPG, PNG, WebP)"
+                      : "Select images from your device or drop them here (JPG, PNG, WebP)"}
                   </p>
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full"
+                    className={cn(
+                      "w-full border-dashed",
+                      isDragActive && "border-sky-400 bg-sky-50 text-sky-600 ring-2 ring-sky-200",
+                    )}
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
+                    onDragEnter={handleDragEnter}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
                   >
                     {isUploading ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

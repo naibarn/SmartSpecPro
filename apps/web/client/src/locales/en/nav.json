@@ -37,6 +37,8 @@
   "sidebar.library": "Library",
   "sidebar.mediaHistory": "Media History",
   "sidebar.mediaStudio": "Media Studio",
+  "sidebar.marketplace-capture": "Marketplace Capture",
+  "sidebar.admin-marketplace-capture": "Marketplace Capture Ops",
   "sidebar.storyboard-review": "Storyboard Review",
   "sidebar.myFeedback": "My Feedback",
   "sidebar.myRequests": "My Requests",

@@ -54,6 +54,7 @@ import {
   Layers,
   Check,
   ChevronsUpDown,
+  ExternalLink,
   LucideIcon,
 } from "lucide-react";
 import {
@@ -161,6 +162,9 @@ export interface SkillInputSchema {
 interface ReferenceImage {
   url: string;
   name: string;
+  marketplaceProduct?: {
+    sourceUrl?: string | null;
+  };
 }
 
 export function resolveSkillUiLanguage(explicitLanguage?: "en" | "th"): "en" | "th" {
@@ -581,7 +585,7 @@ interface DynamicSkillFormProps {
   language?: "en" | "th";
   values: Record<string, any>;
   onChange: (values: Record<string, any>) => void;
-  onImageUpload?: (files: FileList) => Promise<string[]>;
+  onImageUpload?: (files: FileList | File[]) => Promise<string[]>;
   referenceImages?: ReferenceImage[];
   onRemoveImage?: (index: number) => void;
   isUploading?: boolean;
@@ -768,6 +772,7 @@ export default function DynamicSkillForm({
         return null;
 
       case "text":
+        const isProductSourceUrlField = field.id === "product_source_url" && String(value || "").trim();
         return (
           <div key={field.id} className="space-y-1.5">
             <Label htmlFor={field.id} className="flex items-center gap-1.5">
@@ -786,12 +791,26 @@ export default function DynamicSkillForm({
                 </TooltipProvider>
               )}
             </Label>
-            <Input
-              id={field.id}
-              value={value}
-              onChange={(e) => updateValue(field.id, e.target.value)}
-              placeholder={placeholder}
-            />
+            <div className="flex gap-2">
+              <Input
+                id={field.id}
+                value={value}
+                onChange={(e) => updateValue(field.id, e.target.value)}
+                placeholder={placeholder}
+              />
+              {isProductSourceUrlField && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0"
+                  title={language === "th" ? "เปิดหน้าสินค้า" : "Open product page"}
+                  onClick={() => window.open(String(value).trim(), "_blank", "noopener,noreferrer")}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
         );
 
@@ -1226,7 +1245,7 @@ export default function DynamicSkillForm({
       case "images":
       case "imageUpload": {
         const imageUrls: string[] = Array.isArray(value) ? value : [];
-        const maxImages = field.maxImages || field.maxCount || 5;
+        const maxImages = field.maxImages || field.maxCount || field.maxItems || 5;
         return (
           <ImageSourcePicker
             key={field.id}
@@ -1289,6 +1308,19 @@ export default function DynamicSkillForm({
                 alt={img.name}
                 className="h-12 w-12 rounded-lg object-cover border"
               />
+              {img.marketplaceProduct?.sourceUrl && (
+                <button
+                  type="button"
+                  title={language === "th" ? "เปิดหน้าสินค้า" : "Open product page"}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    window.open(img.marketplaceProduct?.sourceUrl || img.url, "_blank", "noopener,noreferrer");
+                  }}
+                  className="absolute -bottom-1 -right-1 rounded-full bg-white p-0.5 text-slate-700 opacity-0 shadow transition-opacity hover:bg-slate-50 group-hover:opacity-100"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </button>
+              )}
               {onRemoveImage && (
                 <button
                   onClick={() => onRemoveImage(idx)}

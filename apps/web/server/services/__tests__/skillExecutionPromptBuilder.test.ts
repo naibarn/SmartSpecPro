@@ -158,6 +158,29 @@ describe("buildCustomSkillUserPrompt", () => {
     expect(prompt).toContain("Do not stop at 10 prompts");
   });
 
+  it("turns non-auto storyboard layout presets into an explicit frame-count contract", () => {
+    const payload = buildCustomSkillPromptInputPayload({
+      topic: "corner shelf bracket storyboard",
+      generation_mode: "auto",
+      storyboard_layout_preset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+      aspect_ratio: "auto",
+    });
+    const prompt = buildCustomSkillUserPrompt({
+      topic: "corner shelf bracket storyboard",
+      generation_mode: "auto",
+      storyboard_layout_preset: "canvas_9_16_grid_3x3_frame_9_16_exact",
+      aspect_ratio: "auto",
+    });
+
+    expect(payload.generation_mode).toBe("multi_frame_storyboard");
+    expect(payload.aspect_ratio).toBe("9:16");
+    expect(prompt).toContain("STORYBOARD_LAYOUT_CONTRACT");
+    expect(prompt).toContain("exactly 9 frames in a 3x3 grid");
+    expect(prompt).toContain("Do not return fewer than 9 scenes or panels");
+    expect(prompt).toContain("\"generation_mode\": \"multi_frame_storyboard\"");
+    expect(prompt).toContain("\"aspect_ratio\": \"9:16\"");
+  });
+
   it("tells text prompt skills to rewrite the source idea instead of returning it unchanged", () => {
     const prompt = buildCustomSkillUserPrompt({
       topic: "ภาพผู้หญิงสูงวัยวัย 18 ปี เดินเล่นริมทะเล",

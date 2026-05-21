@@ -151,6 +151,7 @@ export async function resolveSkillExecutionPolicy(
   const hasReqs = hasNonEmptyRequirements(requirements);
   const allowConvOverride = policy?.allowConversationOverride ?? false;
   const allowFreeModels = policy?.allowFreeModels === true;
+  const fallbackPolicy = policy?.fallbackPolicy;
   const eligibleRows = filterRowsByFreeModelPolicy(rows, allowFreeModels);
   const resolvedBase = {
     ...base,
@@ -180,32 +181,9 @@ export async function resolveSkillExecutionPolicy(
     // fixedModel unavailable: fall through to requirements
   }
 
-  const configuredSkillModel = resolveConfiguredSkillModel({
-    rows: eligibleRows,
-    base: resolvedBase,
-    skillLlmModelId,
-    skillDefaultModel,
-  });
-  if (configuredSkillModel) {
-    return configuredSkillModel;
-  }
-
   // ─── Requirements matching (when applicable) ───
   const shouldTryRequirements =
     mode === "requirements" || mode === "hybrid" || (mode === undefined && hasReqs);
-
-  // mode === "requirements" with empty requirements: use restricted fallback (no defaultModel)
-  if (shouldTryRequirements && !hasReqs && mode === "requirements") {
-    return requirementsFallbackCascade({
-      rows: eligibleRows,
-      base: resolvedBase,
-      skillLlmModelId,
-      skillDefaultModel,
-      convModel,
-      allowConvOverride,
-      mode,
-    });
-  }
 
   if (shouldTryRequirements && hasReqs) {
     const matched = selectBestLlmModel(
@@ -233,6 +211,15 @@ export async function resolveSkillExecutionPolicy(
     }
 
     // Requirements found no match — fall through with requirementsFallback flag
+    if (fallbackPolicy === "error") {
+      return {
+        ...resolvedBase,
+        modelId: null,
+        modelSource: "system_default",
+        requirementsFallback: true,
+      };
+    }
+
     return requirementsFallbackCascade({
       rows: eligibleRows,
       base: resolvedBase,
@@ -242,6 +229,16 @@ export async function resolveSkillExecutionPolicy(
       allowConvOverride,
       mode,
     });
+  }
+
+  const configuredSkillModel = resolveConfiguredSkillModel({
+    rows: eligibleRows,
+    base: resolvedBase,
+    skillLlmModelId,
+    skillDefaultModel,
+  });
+  if (configuredSkillModel) {
+    return configuredSkillModel;
   }
 
   // ─── No requirements: existing cascade ───

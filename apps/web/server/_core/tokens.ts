@@ -31,6 +31,7 @@ export interface TokenClaims {
   scopeProfile?: string;
   registeredByUserId?: number;
   externalReference?: string;
+  deviceIdHash?: string;
   llmRoutingMode?: "auto" | "pinned_provider";
   preferredProviderId?: number;
   preferredProviderName?: string;

@@ -15,7 +15,17 @@ import {
   resolveSkillSlugAlias,
   syncSingleSkillIfChanged,
 } from "./skillRegistry";
-import { resolveEnabledLlmModelId } from "./enabledLlmModels";
+import {
+  loadEnabledLlmModelRows,
+  resolveEnabledLlmModelId,
+  type EnabledLlmModelRow,
+} from "./enabledLlmModels";
+import {
+  describeRequirementsMatch,
+  selectBestLlmModel,
+  type CapabilityRequirements,
+} from "./intelligentModelSelector";
+import { buildModelLookupCandidates } from "./modelLookup";
 import {
   skills,
 } from "../../drizzle/schema";
@@ -28,9 +38,15 @@ const MAX_TEXT_BLOCK_CHARS = 12000;
 const MAX_REFERENCE_SNIPPET_CHARS = 4000;
 const MAX_ZIP_TEXT_CHARS = 14000;
 const MAX_ZIP_FILES = 40;
+const SKILL_STUDIO_IMPROVE_MIN_CONTEXT_TOKENS = 1_000_000;
+const SKILL_STUDIO_IMPROVE_REQUIREMENTS: CapabilityRequirements = {
+  supportsThinking: true,
+  contextLength: SKILL_STUDIO_IMPROVE_MIN_CONTEXT_TOKENS,
+};
 
 type StudioMode = "create" | "improve";
 type DesiredVisibility = "private" | "pending_approval" | "public";
+type SkillStudioThinkingParamStyle = "reasoning" | "thinkingFlag" | "reasoning_effort" | "none";
 
 export interface SkillStudioRequest {
   mode: StudioMode;
@@ -81,6 +97,17 @@ export interface SkillStudioLaunchHooks {
   onCompleted?: (result: SkillExecutionResult) => Promise<void>;
 }
 
+export interface SkillStudioModelSelection {
+  modelId: string;
+  requirements: CapabilityRequirements;
+  matchedCapabilities: string[];
+  missingCapabilities: string[];
+  contextLength: number | null;
+  providerName?: string | null;
+  apiStyle?: EnabledLlmModelRow["apiStyle"] | null;
+  thinkingParamStyle?: SkillStudioThinkingParamStyle;
+}
+
 type AccessibleSkill = {
   id: number;
   slug: string;
@@ -98,6 +125,133 @@ function truncateText(value: string | null | undefined, limit: number): string {
   if (!text) return "";
   if (text.length <= limit) return text;
   return `${text.slice(0, limit)}\n...[truncated]`;
+}
+
+function addComparableModelId(ids: Set<string>, providerName: string, value: string | null | undefined): void {
+  const trimmed = typeof value === "string" ? value.trim() : "";
+  if (!trimmed) {
+    return;
+  }
+
+  ids.add(trimmed);
+  for (const candidate of buildModelLookupCandidates(trimmed)) {
+    ids.add(candidate);
+  }
+  if (providerName) {
+    ids.add(`${providerName}/${trimmed}`);
+  }
+}
+
+function buildComparableModelIds(row: EnabledLlmModelRow): Set<string> {
+  const ids = new Set<string>();
+  const providerName = String(row.providerName || "").trim();
+  for (const value of [row.modelId, row.providerModelId, ...(row.legacyModelAliases ?? [])]) {
+    addComparableModelId(ids, providerName, value);
+  }
+  return ids;
+}
+
+function rowMatchesModelId(row: EnabledLlmModelRow, modelId: string): boolean {
+  const normalized = modelId.trim();
+  if (!normalized) return false;
+  const requestedIds = new Set(buildModelLookupCandidates(normalized));
+  requestedIds.add(normalized);
+  const comparableIds = buildComparableModelIds(row);
+  for (const requestedId of requestedIds) {
+    if (comparableIds.has(requestedId)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function resolveSkillStudioThinkingParamStyle(row: EnabledLlmModelRow | null | undefined): SkillStudioThinkingParamStyle {
+  if (!row?.supportsThinking) {
+    return "none";
+  }
+
+  const providerName = String(row.providerName || "").toLowerCase();
+  const modelText = `${row.modelId || ""} ${row.providerModelId || ""}`.toLowerCase();
+  if (
+    row.apiStyle === "messages"
+    || providerName.includes("anthropic")
+    || providerName.includes("claude")
+    || modelText.includes("claude")
+  ) {
+    return "thinkingFlag";
+  }
+  if (row.apiStyle === "gemini" || providerName.includes("google") || modelText.includes("gemini")) {
+    return "reasoning_effort";
+  }
+  return "reasoning";
+}
+
+function assertSkillStudioImproveModel(input: {
+  row: EnabledLlmModelRow | undefined;
+  requestedModelId?: string;
+}): void {
+  const { row, requestedModelId } = input;
+  const problems: string[] = [];
+  if (!row) {
+    problems.push(requestedModelId ? `selected model '${requestedModelId}' is not enabled` : "no enabled model matched");
+  } else {
+    if (row.supportsThinking !== true) {
+      problems.push("model does not support Thinking Mode");
+    }
+    if ((row.contextLength ?? 0) < SKILL_STUDIO_IMPROVE_MIN_CONTEXT_TOKENS) {
+      problems.push(`context window is ${row.contextLength ?? "unknown"}, below ${SKILL_STUDIO_IMPROVE_MIN_CONTEXT_TOKENS}`);
+    }
+  }
+
+  if (problems.length > 0) {
+    throw new Error(
+      `Skill Studio improve requires an enabled auto-selectable LLM model with Thinking Mode and context >= ${SKILL_STUDIO_IMPROVE_MIN_CONTEXT_TOKENS} tokens. ${problems.join("; ")}.`,
+    );
+  }
+}
+
+export async function resolveSkillStudioSystemModel(
+  input: Pick<SkillStudioRequest, "mode" | "llmGatewayMode" | "llmModelSearch">,
+): Promise<SkillStudioModelSelection | null> {
+  if (input.llmGatewayMode === "custom") {
+    return null;
+  }
+
+  if (input.mode !== "improve") {
+    const modelId = input.llmModelSearch?.trim() || await resolveEnabledLlmModelId();
+    if (!modelId) return null;
+    return {
+      modelId,
+      requirements: {},
+      matchedCapabilities: [],
+      missingCapabilities: [],
+      contextLength: null,
+      providerName: null,
+      apiStyle: null,
+      thinkingParamStyle: "none",
+    };
+  }
+
+  const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
+  const requestedModelId = input.llmModelSearch?.trim();
+  const selectedModelId = requestedModelId || selectBestLlmModel(SKILL_STUDIO_IMPROVE_REQUIREMENTS, rows);
+  const selectedRow = selectedModelId
+    ? rows.find((row) => rowMatchesModelId(row, selectedModelId))
+    : undefined;
+
+  assertSkillStudioImproveModel({ row: selectedRow, requestedModelId });
+
+  const match = describeRequirementsMatch(SKILL_STUDIO_IMPROVE_REQUIREMENTS, selectedRow!);
+  return {
+    modelId: selectedRow!.modelId,
+    requirements: SKILL_STUDIO_IMPROVE_REQUIREMENTS,
+    matchedCapabilities: match.matched,
+    missingCapabilities: match.missing,
+    contextLength: selectedRow!.contextLength ?? null,
+    providerName: selectedRow!.providerName ?? null,
+    apiStyle: selectedRow!.apiStyle ?? null,
+    thinkingParamStyle: resolveSkillStudioThinkingParamStyle(selectedRow),
+  };
 }
 
 function normalizeDesiredVisibility(
@@ -453,6 +607,10 @@ function extractCreatedSkillSlug(result: SkillExecutionResult): string | null {
 }
 
 export function extractSavedProposalFiles(result: SkillExecutionResult): string[] {
+  const isApplicableProposalFile = (value: string): boolean => {
+    const base = path.basename(value);
+    return /^\d{8}T?\d{6}_r\d+\.(?:diff|json)$/.test(base);
+  };
   const fromMetadata = Array.isArray(result.metadata?.savedProposals)
     ? result.metadata?.savedProposals
     : Array.isArray(result.metadata?.saved_proposals)
@@ -461,7 +619,7 @@ export function extractSavedProposalFiles(result: SkillExecutionResult): string[
 
   const cleanedFromMetadata = (fromMetadata || [])
     .map((value) => String(value || "").trim())
-    .filter((value) => Boolean(value) && !value.endsWith(".meta.json"));
+    .filter((value) => Boolean(value) && isApplicableProposalFile(value));
 
   if (cleanedFromMetadata.length > 0) {
     return cleanedFromMetadata;
@@ -470,7 +628,7 @@ export function extractSavedProposalFiles(result: SkillExecutionResult): string[
   const message = result.message || "";
   const matches = Array.from(message.matchAll(/`([^`]+\.(?:diff|json))`/g))
     .map((match) => match[1])
-    .filter((value) => !value.endsWith(".meta.json"));
+    .filter((value) => isApplicableProposalFile(value));
   return matches;
 }
 
@@ -659,10 +817,11 @@ export async function launchSkillStudioTask(
   }
   const targetSkill = await resolveOwnedTargetSkill(input, ctx.userId, isAdmin);
   const desiredVisibility = normalizeDesiredVisibility(input.desiredVisibility, isAdmin);
-  const resolvedSystemModelId =
-    input.llmGatewayMode === "system"
-      ? (input.llmModelSearch?.trim() || await resolveEnabledLlmModelId())
-      : null;
+  const systemModelSelection = await resolveSkillStudioSystemModel(input);
+  const resolvedSystemModelId = systemModelSelection?.modelId ?? null;
+  const thinkingParamStyle = input.mode === "improve"
+    ? systemModelSelection?.thinkingParamStyle ?? "reasoning"
+    : undefined;
   const resolvedCreateSlug = input.mode === "create"
     ? await resolveUniqueCreateSlug(input.newSkillSlug, input.brief)
     : undefined;
@@ -681,6 +840,10 @@ export async function launchSkillStudioTask(
     llm_model: input.llmModel || undefined,
     llm_temperature: input.llmTemperature ?? 0,
     llm_timeout_s: input.llmTimeoutS ?? 180,
+    llm_reasoning_effort: input.mode === "improve" ? "high" : undefined,
+    llm_thinking_enabled: input.mode === "improve" ? true : undefined,
+    llm_thinking_param_style: thinkingParamStyle,
+    llm_model_selection: systemModelSelection ?? undefined,
     llm: input.llmGatewayMode === "custom"
       ? {
           base_url: input.llmBaseUrl || undefined,
@@ -688,6 +851,9 @@ export async function launchSkillStudioTask(
           model: input.llmModel || undefined,
           temperature: input.llmTemperature ?? 0,
           timeout_s: input.llmTimeoutS ?? 180,
+          reasoning_effort: input.mode === "improve" ? "high" : undefined,
+          thinking_enabled: input.mode === "improve" ? true : undefined,
+          thinking_param_style: thinkingParamStyle,
         }
       : undefined,
   };
@@ -891,7 +1057,7 @@ export async function listIscProposalsWithOwners(): Promise<Array<{
     if (!stat?.isDirectory()) continue;
 
     const files = (await fsp.readdir(skillDir))
-      .filter((file) => (file.endsWith(".diff") || file.endsWith(".json")) && !file.endsWith(".meta.json"));
+      .filter((file) => /^(\d{8}T?\d{6})_r(\d+)\.(?:diff|json)$/.test(file));
     for (const file of files) {
       const match = file.match(/^(\d{8}T?\d{6})_r(\d+)\.(?:diff|json)$/);
       proposals.push({

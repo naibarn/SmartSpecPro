@@ -678,9 +678,14 @@ async def recover_stuck(request: Request):
     await ensure_media_tasks_cloud_task_id_column()
 
     try:
-        from app.tasks.media_tasks import _recover_stuck_tasks_async
+        from app.tasks.media_tasks import (
+            _recover_stuck_pending_tasks_async,
+            _recover_stuck_tasks_async,
+        )
 
         result = await _recover_stuck_tasks_async()
+        pending_result = await _recover_stuck_pending_tasks_async()
+        result["pending_recovered"] = pending_result.get("recovered", 0)
         return JSONResponse(status_code=200, content=result)
     except Exception as e:
         logger.error("recover_stuck_handler_error", error=str(e))

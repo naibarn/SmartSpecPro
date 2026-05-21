@@ -179,11 +179,17 @@ def _get_llm_client(inp: dict, context: Any = None):
         override["temperature"] = float(inp["llm_temperature"])
     if inp.get("llm_timeout_s"):
         override["timeout_s"] = int(inp["llm_timeout_s"])
+    if inp.get("llm_reasoning_effort"):
+        override["reasoning_effort"] = inp["llm_reasoning_effort"]
+    if inp.get("llm_thinking_enabled") is not None:
+        override["thinking_enabled"] = bool(inp.get("llm_thinking_enabled"))
+    if inp.get("llm_thinking_param_style"):
+        override["thinking_param_style"] = inp["llm_thinking_param_style"]
 
     # Nested llm object (legacy / CLI)
     llm = inp.get("llm")
     if isinstance(llm, dict):
-        for key in ("base_url", "api_key", "model", "temperature", "timeout_s"):
+        for key in ("base_url", "api_key", "model", "temperature", "timeout_s", "reasoning_effort", "thinking_enabled", "thinking_param_style"):
             if llm.get(key) is not None:
                 override[key] = llm[key]
 
@@ -453,10 +459,28 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
         from isc.llm import load_llm_config_from_env, merge_llm_config
         env_cfg = load_llm_config_from_env()
         override: dict = {}
+        gateway_mode = inp.get("llm_gateway_mode", "system")
+        if gateway_mode == "system":
+            ctx = context if isinstance(context, dict) else {}
+            public_url: str = ctx.get("publicUrl", "").rstrip("/")
+            user_token: str = ctx.get("userToken", "")
+            model_id: str = (inp.get("llm_model_search") or inp.get("llm_model") or "").strip()
+            if public_url and user_token and model_id:
+                override["base_url"] = public_url + "/v1"
+                override["api_key"] = user_token
+                override["model"] = model_id
+            elif model_id:
+                override["model"] = model_id
         if inp.get("llm_base_url"):
             override["base_url"] = inp["llm_base_url"]
         if inp.get("llm_model"):
             override["model"] = inp["llm_model"]
+        if inp.get("llm_reasoning_effort"):
+            override["reasoning_effort"] = inp["llm_reasoning_effort"]
+        if inp.get("llm_thinking_enabled") is not None:
+            override["thinking_enabled"] = bool(inp.get("llm_thinking_enabled"))
+        if inp.get("llm_thinking_param_style"):
+            override["thinking_param_style"] = inp["llm_thinking_param_style"]
         llm = inp.get("llm")
         if isinstance(llm, dict):
             override.update({k: v for k, v in llm.items() if v})
@@ -469,6 +493,9 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
                     "model": cfg.model,
                     "temperature": cfg.temperature,
                     "timeout_s": cfg.timeout_s,
+                    "reasoning_effort": cfg.reasoning_effort,
+                    "thinking_enabled": cfg.thinking_enabled,
+                    "thinking_param_style": cfg.thinking_param_style,
                 }.items() if v not in (None, "")
             }
     except Exception:

@@ -40,6 +40,11 @@ interface InputField {
   default?: string | number | boolean;
   required?: boolean;
   affectsPricing?: boolean;
+  pricingAliases?: string[];
+  pricingPresenceLabels?: {
+    present: string;
+    absent: string;
+  };
   syncWith?: "none" | "reference_images" | "reference_videos" | "prompt" | "aspect_ratio";
   itemTemplate?: Record<string, unknown>;
 }
@@ -166,6 +171,69 @@ const HAPPYHORSE_DURATION_OPTIONS = Array.from({ length: 13 }, (_, index) => {
   const seconds = index + 3;
   return { value: String(seconds), label: `${seconds}s` };
 });
+
+const GEMINI_OMNI_DURATION_OPTIONS = [4, 6, 8, 10].map((seconds) => ({
+  value: String(seconds),
+  label: `${seconds}s`,
+}));
+
+const GEMINI_OMNI_RESOLUTION_OPTIONS = [
+  { value: "720p", label: "720p" },
+  { value: "1080p", label: "1080p" },
+  { value: "4K", label: "4K" },
+];
+
+const GEMINI_OMNI_ASPECT_RATIO_OPTIONS = [
+  { value: "16:9", label: "16:9" },
+  { value: "9:16", label: "9:16" },
+];
+
+const GEMINI_OMNI_PRICING_TIERS = {
+  default: 600,
+  "720p-4s-without-video": 450,
+  "720p-6s-without-video": 600,
+  "720p-8s-without-video": 750,
+  "720p-10s-without-video": 900,
+  "1080p-4s-without-video": 450,
+  "1080p-6s-without-video": 600,
+  "1080p-8s-without-video": 750,
+  "1080p-10s-without-video": 900,
+  "4K-4s-without-video": 1050,
+  "4K-6s-without-video": 1200,
+  "4K-8s-without-video": 1350,
+  "4K-10s-without-video": 1500,
+  "720p-4s-with-video": 1200,
+  "720p-6s-with-video": 1200,
+  "720p-8s-with-video": 1200,
+  "720p-10s-with-video": 1200,
+  "1080p-4s-with-video": 1200,
+  "1080p-6s-with-video": 1200,
+  "1080p-8s-with-video": 1200,
+  "1080p-10s-with-video": 1200,
+  "4K-4s-with-video": 1800,
+  "4K-6s-with-video": 1800,
+  "4K-8s-with-video": 1800,
+  "4K-10s-with-video": 1800,
+};
+
+const GEMINI_OMNI_INPUT_FIELDS: InputField[] = [
+  { key: "image_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images" },
+  {
+    key: "video_list",
+    label: "Source Video",
+    type: "video_urls",
+    required: false,
+    syncWith: "reference_videos",
+    affectsPricing: true,
+    pricingAliases: ["referenceVideoUrls", "referenceVideoUrl", "reference_video_urls", "reference_video_url", "video_url"],
+    pricingPresenceLabels: { present: "with-video", absent: "without-video" },
+  },
+  { key: "resolution", label: "Resolution", type: "select", options: GEMINI_OMNI_RESOLUTION_OPTIONS, default: "1080p", affectsPricing: true },
+  { key: "duration", label: "Duration", type: "select", options: GEMINI_OMNI_DURATION_OPTIONS, default: "4", affectsPricing: true },
+  { key: "aspect_ratio", label: "Aspect Ratio", type: "select", options: GEMINI_OMNI_ASPECT_RATIO_OPTIONS, default: "16:9", syncWith: "aspect_ratio" },
+  { key: "audio_ids", label: "Audio IDs", type: "array", required: false },
+  { key: "seed", label: "Seed", type: "number", required: false },
+];
 
 function buildHappyHorseConfig(
   kieModelId: "happyhorse/text-to-video" | "happyhorse/image-to-video" | "happyhorse/reference-to-video" | "happyhorse/video-edit",
@@ -587,6 +655,46 @@ const VIDEO_MODELS = [
         },
       },
     ),
+  },
+
+  // === Google Gemini Omni ===
+  {
+    modelId: "gemini-omni-video",
+    name: "Gemini Omni Video",
+    description: "Google Gemini Omni Flash multimodal video generation and editing via Kie.ai Market API.",
+    modelType: "video",
+    provider: "kie.ai",
+    aliases: ["gemini omni", "gemini omni video", "gemini omni flash", "gemini-omni", "google gemini omni"],
+    creditCost: 450,
+    priority: 22,
+    sortOrder: 22,
+    durations: [4, 6, 8, 10],
+    aspectRatios: ["16:9", "9:16"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiQueryEndpoint: "/api/v1/jobs/recordInfo",
+      apiPayloadFormat: "market",
+      kieModelId: "gemini-omni-video",
+      generateType: "multimodal-video",
+      hasAudio: true,
+      maxDuration: 10,
+      maxPromptLength: 5000,
+      maxReferenceImages: 7,
+      maxReferenceVideos: 1,
+      maxReferenceAudios: 1,
+      supportedDurations: [4, 6, 8, 10],
+      supportedAspectRatios: ["16:9", "9:16"],
+      supportedResolutions: ["720p", "1080p", "4K"],
+      apiConfig: {
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        reference_video_input_key: "video_list",
+        reference_video_input_type: "object_array",
+      },
+      inputFields: GEMINI_OMNI_INPUT_FIELDS,
+      pricingTiers: GEMINI_OMNI_PRICING_TIERS,
+      pricingFormula: "matrix",
+    } as ModelDefinition,
   },
 
   // === Sora 2 ===

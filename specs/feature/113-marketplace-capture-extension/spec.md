@@ -116,6 +116,7 @@ This feature should use product names and routes such as `Marketplace Capture`, 
 - JWT signing/scopes: `apps/web/server/_core/tokens.ts` supports short-lived bearer JWTs and scope checks.
 - CSRF/origin: `apps/web/server/_core/index.ts` applies CSRF origin checks to `/api` and `/trpc` state-changing requests.
 - Upload precedent: existing routers use `multer` and `storagePut` for file-backed workflows.
+- Remote image safety precedent: `apps/web/server/services/imageProxySafety.ts` already implements redirect-aware image proxy safety with timeout, max bytes, content-type checks, and URL policy validation.
 - DB: `apps/web/drizzle/schema.ts` is the schema source, with SQL migrations in `apps/web/drizzle/`.
 
 ### 5.4 Key Alignment Decisions
@@ -154,17 +155,21 @@ SmartSpecPro Web Server
     React preview/list/detail pages
 
   Services:
+    marketplaceExtensionAuthService
     marketplaceCaptureService
+    marketplaceCaptureStateMachine
     marketplaceExtractionService
     marketplacePromptService
     marketplaceValidationService
     marketplaceImageService
+    marketplaceCaptureRetentionService
 
   Reused platform:
     storage.ts
     LLM gateway/router services
     authz/tokens
     audit/rate-limit services
+    imageProxySafety/url policy helpers
 
 PostgreSQL / Drizzle
   marketplace_capture_sessions
@@ -243,6 +248,8 @@ apps/web/server/services/
   marketplaceValidationService.ts
   marketplaceImageService.ts
   marketplaceUrlSafety.ts
+  marketplaceCaptureStateMachine.ts
+  marketplaceCaptureRetentionService.ts
   marketplaceCandidateScoring.ts
 
 apps/web/client/src/pages/
@@ -320,6 +327,7 @@ Use Chrome Manifest V3.
 Content script:
 
 - detect platform and page type
+- observe user-visible page changes while the side panel is open, using throttled `MutationObserver` plus scroll/resize signals
 - scan visible category/search cards
 - extract product page DOM text and focused HTML blocks
 - collect image URLs and bounding boxes
@@ -338,9 +346,12 @@ Side panel:
 
 - connect/disconnect SmartSpecPro account
 - show current platform and page type
+- show live-detected candidates and newly discovered product details as the user scrolls
 - scan category/search candidates
 - filter/sort recommendations
 - run product capture
+- review and edit the local capture draft before upload
+- choose which images and screenshots should be sent
 - show upload/analyze progress
 - open preview
 
@@ -356,6 +367,8 @@ Required controls:
 - Extension messages must be schema-validated. The service worker must reject unknown message types, unexpected sender tabs, and payloads above configured size limits.
 - The content script must not read cookies, localStorage, sessionStorage, auth headers, or hidden account data from marketplace origins.
 - The service worker must only accept capture requests from the active tab and only when the URL matches an allowed marketplace page type.
+- Capture results must remain local until the user reviews and clicks an explicit upload/send action.
+- Live detection must be read-only: no marketplace clicks, no upload, no SmartSpecPro draft creation, and no durable save until the user explicitly uses the detected data and confirms upload/save.
 - Block capture on URL/path patterns for login, signup, cart, checkout, payment, account settings, messages/chat, seller center, and order history.
 - The SmartSpecPro base URL in extension settings must be allowlisted in production. Development may allow `http://localhost:3000`; production must require HTTPS.
 - `tabs` permission should remain only if queue/open-tab workflow needs it. If MVP can open links through normal page navigation, remove `tabs`.
@@ -702,9 +715,107 @@ Required controls:
   - description
   - rating summary
   - reviews sample, optional later
-- button: `Scan & Preview`
+- button: `Scan Locally`
 
-### 12.5 Capture Progress
+After scan completes, the extension must open a local pre-upload review panel before any backend upload.
+
+### 12.5 Pre-Upload Review Panel
+
+This panel is required for MVP. It is the first data minimization gate.
+
+Purpose:
+
+- let users inspect the data captured from the marketplace page before sending it to SmartSpecPro
+- reduce storage noise from wrong images, related products, ads, sidebars, and repeated thumbnails
+- let users correct obvious title/price/sold/description parsing mistakes before LLM analysis
+- reduce LLM cost by sending cleaner evidence
+- reduce privacy risk by keeping unwanted screenshots/DOM snippets local
+
+Required layout:
+
+```txt
+┌──────────────────────────────────────┐
+│ Review before sending                │
+├──────────────────────────────────────┤
+│ Source: Shopee | Product page        │
+│ URL: ...                             │
+│                                      │
+│ Product fields                       │
+│ Name:        [ editable text ]       │
+│ Brand:       [ editable text ]       │
+│ Price:       [ editable text ]       │
+│ Sold:        [ editable text ]       │
+│ Rating:      [ editable text ]       │
+│ Description: [ editable textarea ]   │
+│                                      │
+│ Evidence to send                     │
+│ [x] DOM product header               │
+│ [x] DOM description                  │
+│ [ ] Raw HTML blocks                  │
+│ [x] Header screenshot                │
+│ [ ] Gallery screenshot               │
+│ [x] Description screenshot           │
+│                                      │
+│ Images                               │
+│ [x] cover  image thumb               │
+│ [x] main   image thumb               │
+│ [ ] related/bundle thumb             │
+│ [ ] duplicate thumb                  │
+│                                      │
+│ [Clear excluded] [Upload selected]   │
+└──────────────────────────────────────┘
+```
+
+Required behavior:
+
+- Nothing is uploaded until the user clicks `Upload selected`.
+- The side panel should live-update candidates/details when user scrolls and marketplace content lazy-loads.
+- Live updates must merge newly detected candidates without erasing ignored/queued state.
+- Live product updates must not overwrite fields the user is editing; show a clear `Use latest detected details` action instead.
+- User can edit title, brand, price text, sold text, rating text, and description text.
+- User can select/unselect every screenshot and image candidate.
+- User can choose a cover image before upload.
+- User can mark an image as `main`, `description`, `related_excluded`, or `discard`.
+- Default selection should be conservative:
+  - selected: product header DOM, description DOM, likely main images, one header screenshot
+  - unselected: duplicate images, related/bundle/recommended images, raw HTML blocks, optional gallery screenshots
+- Show counts before upload:
+  - selected images
+  - selected screenshots
+  - estimated upload size
+  - DOM text character count
+- Warn before sending raw HTML blocks.
+- Warn when selected upload size is above the configured soft limit.
+- Allow `DOM-only upload` when screenshots/images are not needed or fail.
+- Store excluded local candidates only in memory/session storage; excluded items must not be sent in the create draft payload unless the user explicitly chooses `include excluded metadata for audit`.
+- The final payload sent to the backend must include `userEditedFields` and `selectionSummary` so the web preview can show what was edited before LLM analysis.
+
+Local draft shape:
+
+```ts
+interface ExtensionPreUploadDraft {
+  platform: MarketplacePlatform;
+  sourceUrl: string;
+  pageType: PageType;
+  detectedFields: Record<string, unknown>;
+  userEditedFields: Record<string, unknown>;
+  htmlBlocks: Array<HtmlBlock & { selected: boolean }>;
+  screenshots: Array<LocalScreenshotCandidate & { selected: boolean }>;
+  imageCandidates: Array<CapturedImageCandidate & {
+    selected: boolean;
+    userKind: "main" | "description" | "related_excluded" | "discard";
+    isCover?: boolean;
+  }>;
+  selectionSummary: {
+    selectedImageCount: number;
+    selectedScreenshotCount: number;
+    estimatedUploadBytes: number;
+    excludedReasons: Record<string, number>;
+  };
+}
+```
+
+### 12.6 Capture Progress
 
 Progress steps:
 
@@ -716,9 +827,11 @@ Progress steps:
 6. collecting image URLs
 7. scrolling description
 8. capturing description screenshot
-9. uploading evidence
-10. calling LLM extraction
-11. preview ready
+9. showing local review panel
+10. applying user edits/selections
+11. uploading selected evidence
+12. calling LLM extraction
+13. preview ready
 
 ---
 
@@ -862,6 +975,25 @@ MARKETPLACE_CAPTURE_MAX_ASSETS_PER_CAPTURE=50
 MARKETPLACE_CAPTURE_ANALYZE_RATE_LIMIT_PER_HOUR=30
 ```
 
+Full configuration matrix:
+
+| Env var | Default | Purpose | Production rule |
+| --- | --- | --- | --- |
+| `MARKETPLACE_CAPTURE_ENABLED` | `false` | Master kill switch | Must be explicitly `true` |
+| `MARKETPLACE_EXTENSION_ALLOWED_ORIGINS` | empty | Exact extension origins | Required |
+| `MARKETPLACE_CAPTURE_ALLOWED_API_BASE_URLS` | deployment origin | SmartSpecPro API bases the extension may connect to | Required when multiple domains exist |
+| `MARKETPLACE_CAPTURE_MAX_UPLOAD_MB` | `10` | Max single asset size | Required |
+| `MARKETPLACE_CAPTURE_MAX_ASSETS_PER_CAPTURE` | `50` | Max assets per capture | Required |
+| `MARKETPLACE_CAPTURE_MAX_CAPTURE_MB` | `50` | Max total uploaded bytes per capture | Required |
+| `MARKETPLACE_CAPTURE_ANALYZE_RATE_LIMIT_PER_HOUR` | `30` | Analyze limit per user | Required |
+| `MARKETPLACE_CAPTURE_DRAFT_RETENTION_DAYS` | `30` | Unconfirmed draft retention | Required |
+| `MARKETPLACE_CAPTURE_FAILED_RETENTION_DAYS` | `7` | Failed/discarded retention | Required |
+| `MARKETPLACE_CAPTURE_RAW_EVIDENCE_RETENTION_DAYS` | `90` | Confirmed raw evidence retention | Required |
+| `MARKETPLACE_CAPTURE_REMOTE_IMAGE_FETCH_ENABLED` | `false` | Copy marketplace images server-side | Keep `false` until SSRF tests pass |
+| `MARKETPLACE_CAPTURE_REMOTE_IMAGE_ALLOWLIST` | empty | Allowed image CDN hosts | Required if remote fetch enabled |
+| `MARKETPLACE_CAPTURE_LLM_ENABLED` | `false` | Allow LLM analyze | Must follow tenant/provider policy |
+| `MARKETPLACE_CAPTURE_ASYNC_ANALYZE_ENABLED` | `true` | Allow background analyze/status polling | Recommended |
+
 Route hosting requirements:
 
 - Exact origin allowlist only. Do not use suffix matching for `chrome-extension://`.
@@ -892,6 +1024,8 @@ Request:
   "externalShopId": "78910",
   "pageTitle": "...",
   "domText": "...",
+  "clientDraftVersion": 1,
+  "idempotencyKey": "uuid-or-random-client-key",
   "htmlBlocks": [
     {
       "name": "product_header",
@@ -905,9 +1039,26 @@ Request:
       "url": "https://...jpg",
       "kind": "main",
       "source": "dom",
-      "position": 0
+      "position": 0,
+      "selected": true,
+      "userKind": "main",
+      "isCover": true
     }
   ],
+  "userEditedFields": {
+    "productName": "User corrected title",
+    "priceCurrentText": "฿74"
+  },
+  "selectionSummary": {
+    "selectedImageCount": 4,
+    "selectedScreenshotCount": 2,
+    "estimatedUploadBytes": 3200000,
+    "excludedReasons": {
+      "duplicate": 3,
+      "related_or_bundle": 5,
+      "user_discarded": 2
+    }
+  },
   "categoryContext": {
     "categoryUrl": "https://shopee.co.th/...",
     "searchKeyword": "cleanser",
@@ -930,6 +1081,17 @@ Response:
   }
 }
 ```
+
+Server-side validation:
+
+- `idempotencyKey` is required for create draft to prevent duplicate uploads from extension retries.
+- Only selected image candidates should be persisted in `imageCandidatesJson` by default.
+- Excluded candidates should be dropped unless the user explicitly opted into audit metadata.
+- `userEditedFields` must be stored separately from raw detected fields so the preview can show the edit lineage.
+- `selectionSummary` is required for product-page capture drafts.
+- If no image is selected, the draft can still be created as DOM-only.
+- If no DOM section and no screenshot is selected, reject the draft as empty.
+- Reusing the same `idempotencyKey` by the same user/connection must return the original `captureId` and must not create a duplicate draft.
 
 ### 14.4 Upload Assets
 
@@ -970,6 +1132,13 @@ Blocked by default:
 - archives
 - PDFs and office files, unless a future phase adds scanning and preview policy
 
+Asset upload idempotency:
+
+- Each multipart upload should include `assetClientId` and `idempotencyKey`.
+- Retrying the same asset upload should return the existing asset row when byte size, kind, section, and checksum match.
+- If the idempotency key matches but content differs, return `409 idempotency_conflict`.
+- Store a SHA-256 checksum for uploaded assets where feasible.
+
 ### 14.5 Analyze Capture
 
 ```http
@@ -1005,6 +1174,33 @@ Response:
 }
 ```
 
+Analyze should support both synchronous and async execution.
+
+MVP behavior:
+
+- small captures may return `status: "analyzed"` directly
+- large captures should return `status: "analyzing"` and a status URL
+
+Async response:
+
+```json
+{
+  "captureId": "cap_...",
+  "status": "analyzing",
+  "statusUrl": "/api/marketplace-capture/captures/cap_.../status",
+  "previewUrl": "/marketplace-capture/captures/cap_.../preview"
+}
+```
+
+Status endpoint:
+
+```http
+GET /api/marketplace-capture/captures/:captureId/status
+Authorization: Bearer <extension_token>
+```
+
+The extension should poll with exponential backoff and stop when status is `analyzed`, `failed`, `discarded`, or `confirmed`.
+
 ### 14.6 Confirm Capture
 
 ```http
@@ -1034,6 +1230,45 @@ Content-Type: application/json
 ```
 
 Stores the candidate list and returns a SmartSpecPro preview URL.
+
+### 14.8 State Transitions And Idempotency
+
+Capture status transitions must be explicit and enforced by `marketplaceCaptureStateMachine.ts`.
+
+Allowed transitions:
+
+```txt
+captured
+  -> uploading_assets
+  -> captured
+  -> analyzing
+  -> analyzed
+  -> confirmed
+
+captured -> discarded
+uploading_assets -> failed
+analyzing -> failed
+analyzed -> discarded
+failed -> discarded
+failed -> analyzing   (rerun only)
+```
+
+Rules:
+
+- `confirmed` is terminal except for product deletion/tombstone workflows.
+- `discarded` is terminal for capture workflow.
+- Confirm requires `analyzed` or an explicit user override from preview.
+- Confirm must be idempotent for the same capture and product payload hash.
+- State transition attempts must be audited.
+- Invalid transitions return `409 invalid_capture_state`.
+
+Idempotency requirements:
+
+- POST endpoints that can create rows or trigger LLM/storage side effects require `Idempotency-Key` or body `idempotencyKey`.
+- Idempotency scope is `{tenantId}:{userId}:{connectionId}:{route}:{key}`.
+- Use Redis `SET NX EX` lock when available; otherwise use a DB uniqueness fallback.
+- Cache successful idempotent responses for at least 24 hours for create/confirm and 1 hour for upload/analyze.
+- Do not cache 5xx errors.
 
 ---
 
@@ -1081,10 +1316,14 @@ export const marketplaceCaptureSessions = pgTable("marketplace_capture_sessions"
   externalProductId: varchar("external_product_id", { length: 128 }),
   externalShopId: varchar("external_shop_id", { length: 128 }),
   status: marketplaceCaptureStatusEnum("status").notNull().default("captured"),
+  idempotencyKey: varchar("idempotency_key", { length: 160 }),
+  clientDraftVersion: integer("client_draft_version").default(1),
   rawDomText: text("raw_dom_text"),
   rawPayloadJson: jsonb("raw_payload_json"),
   htmlBlocksJson: jsonb("html_blocks_json"),
   imageCandidatesJson: jsonb("image_candidates_json"),
+  userEditedFieldsJson: jsonb("user_edited_fields_json"),
+  selectionSummaryJson: jsonb("selection_summary_json"),
   llmResultJson: jsonb("llm_result_json"),
   normalizedResultJson: jsonb("normalized_result_json"),
   confidenceJson: jsonb("confidence_json"),
@@ -1101,15 +1340,40 @@ Indexes:
 - `(user_id, created_at)`
 - `(tenant_id, created_at)`
 - `(platform, external_product_id)`
+- unique `(user_id, idempotency_key)` where `idempotency_key is not null`
 - optional dedupe index on `(user_id, platform, external_product_id, source_url)` with null-safe handling
 
 Data integrity requirements:
 
 - Add foreign keys where current migration conventions allow it.
 - At minimum, all service writes must enforce `userId` and `tenantId` consistency between sessions, assets, products, images, and price snapshots.
-- Capture/product reads must always filter by authenticated user or tenant-admin authorization.
+- Capture/product reads must always filter by authenticated user, explicit group share, or tenant-admin authorization.
 - Cross-tenant asset references must be rejected at confirm time.
 - Use `createdAt`/`updatedAt` server timestamps only; never trust client timestamps for ownership or ordering.
+- Product dedupe must check both the user's own products and products explicitly shared to the user's active groups with update permission.
+- Shared group update must append a metric snapshot with `capturedByUserId`; it must not create a duplicate product row.
+
+### 15.2.1 Product Sharing And Health Tables
+
+Additional tables are required after the MVP capture tables:
+
+- `marketplace_user_share_settings`: per-user, per-tenant, per-platform default sharing policy. Stores selected group IDs and permission, defaulting to private when no setting exists.
+- `marketplace_product_group_shares`: explicit product-to-group share grants. Members of these groups can see shared products; `read_update` grants allow updating the same product snapshot instead of duplicating it.
+- `marketplace_product_price_snapshots` must store every metric update, not only price:
+  - `capturedByUserId`
+  - `priceCurrent`, `priceOriginal`, `discountText`, `currency`
+  - `soldCountText`, `soldCountNormalized`
+  - `ratingScore`
+  - `reviewCountText`, `reviewCountNormalized`
+  - `capturedAt`
+
+Health signal requirements:
+
+- Flag stale products not checked for configurable periods, initially 30/60 days.
+- Flag products whose sold count is unchanged over repeated snapshots.
+- Flag low rating and rating drops between snapshots.
+- Product list must show health status and latest check date.
+- Product detail must show full update history.
 
 ### 15.3 `marketplace_capture_assets`
 
@@ -1119,6 +1383,9 @@ export const marketplaceCaptureAssets = pgTable("marketplace_capture_assets", {
   captureId: varchar("capture_id", { length: 64 }).notNull(),
   userId: integer("user_id").notNull(),
   tenantId: varchar("tenant_id", { length: 128 }),
+  assetClientId: varchar("asset_client_id", { length: 128 }),
+  idempotencyKey: varchar("idempotency_key", { length: 160 }),
+  checksumSha256: varchar("checksum_sha256", { length: 64 }),
   kind: marketplaceAssetKindEnum("kind").notNull(),
   section: varchar("section", { length: 64 }),
   storageKey: text("storage_key").notNull(),
@@ -1133,6 +1400,13 @@ export const marketplaceCaptureAssets = pgTable("marketplace_capture_assets", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 ```
+
+Indexes:
+
+- `(capture_id, sort_order)`
+- `(user_id, created_at)`
+- unique `(capture_id, asset_client_id)` where `asset_client_id is not null`
+- unique `(user_id, idempotency_key)` where `idempotency_key is not null`
 
 ### 15.4 `marketplace_category_candidate_batches`
 
@@ -1467,6 +1741,16 @@ Before upload, the side panel shows what will be sent:
 - DOM text
 - screenshots of selected sections
 - product image URLs
+- user-edited fields
+- selected/excluded counts and estimated upload size
+
+The pre-upload review panel is mandatory for product capture. It must default to data minimization:
+
+- do not upload unselected images
+- do not upload raw HTML blocks unless selected
+- do not upload duplicate or related/bundle candidates unless selected
+- do not upload hidden local review state
+- do not include excluded candidate metadata unless the user explicitly enables audit metadata
 
 ### 18.5 Preview And Evidence Rendering Safety
 
@@ -1558,6 +1842,91 @@ Audit the following events with request id, user id, tenant id, connection id, p
 
 Do not audit raw DOM text, screenshots, bearer tokens, refresh tokens, or full HTML.
 
+### 18.9 Marketplace Policy And Compliance Guardrails
+
+This feature must stay framed as user-assisted research and catalog capture, not automated marketplace scraping.
+
+Required guardrails:
+
+- Show an onboarding notice that users are responsible for complying with the marketplace terms that apply to their account and use case.
+- Do not advertise the feature as CAPTCHA bypass, automated scraping, price crawling, or stealth monitoring.
+- Keep batch workflow guided and user-visible. The extension may queue products, but each product capture still requires explicit user action in MVP.
+- Do not capture pages behind permissions the user does not have.
+- Do not capture checkout/cart/order/chat/account pages even if the user can access them.
+- Do not simulate marketplace login or store marketplace session data.
+- Do not bypass marketplace rate limits or anti-automation controls.
+- If a platform blocks or degrades capture, surface a user-facing error and stop.
+- Keep platform adapters isolated so a marketplace-specific restriction can disable capture for that platform without affecting others.
+
+Review requirement:
+
+- Before production release, product/legal/security should review the onboarding copy, platform host permissions, and batch workflow wording.
+
+### 18.10 Observability And Operations
+
+The feature needs enough telemetry to detect cost, privacy, and abuse issues early.
+
+Metrics:
+
+- capture drafts created by platform/page type/status
+- assets uploaded per capture and total bytes by tenant/user
+- pre-upload selected vs discarded image counts
+- analyze requests, duration, model/provider, success/failure, repair retry count
+- confirm rate from analyzed captures
+- remote image fetch attempts and blocked reasons
+- rate-limit events by endpoint class
+- invalid origin/token/scope events
+- retention cleanup rows/assets deleted
+- storage growth by `marketplace-captures/` and `marketplace-products/` prefixes
+
+Logs:
+
+- structured logs include request id, user id, tenant id, connection id, capture id, platform, status, and safe reason codes
+- logs exclude raw evidence, screenshots, raw HTML, bearer tokens, refresh tokens, cookies, provider prompts, and provider responses
+
+Admin/ops surfaces:
+
+- admin summary for capture volume, storage growth, analyze failures, and blocked security events
+- per-capture debug view for admins with safe metadata only
+- retention job dry-run report
+- kill switch status visible to admins
+
+Alerts:
+
+- analyze failure rate above threshold
+- storage growth above expected daily budget
+- repeated invalid-origin/token attempts
+- retention cleanup failure
+- remote image fetch blocked spike
+- provider cost anomaly
+
+### 18.11 Migration, Rollback, And Data Recovery
+
+Migration plan:
+
+1. Add new enum values and tables in an additive migration.
+2. Add nullable columns first for idempotency, selection summaries, and user-edited fields.
+3. Add indexes concurrently where supported by the migration environment.
+4. Gate all routes behind `MARKETPLACE_CAPTURE_ENABLED=false` by default.
+5. Deploy backend schema and disabled routes before shipping extension build.
+6. Enable for development tenant, then internal tenant, then limited beta.
+
+Rollback plan:
+
+- Disable all extension routes with `MARKETPLACE_CAPTURE_ENABLED=false`.
+- Revoke marketplace extension connections if token compromise or extension bug is suspected.
+- Stop analyze jobs by disabling `MARKETPLACE_CAPTURE_LLM_ENABLED`.
+- Stop remote image copying with `MARKETPLACE_CAPTURE_REMOTE_IMAGE_FETCH_ENABLED=false`.
+- Keep existing captured data readable for admins/users during rollback unless security requires quarantine.
+- Do not drop tables as an emergency rollback; tombstone or disable access first.
+
+Recovery requirements:
+
+- Storage objects must be traceable from DB rows through `storageKey`.
+- Retention cleanup must be resumable and idempotent.
+- Failed cleanup must leave audit/debug entries with safe metadata.
+- Before production enablement, run a restore drill or at minimum verify that marketplace tables and storage prefixes are covered by existing backup procedures.
+
 ---
 
 ## 19. Error Handling
@@ -1574,6 +1943,28 @@ Normalize REST errors:
   }
 }
 ```
+
+Canonical error codes:
+
+| Code | HTTP | Retryable | Meaning |
+| --- | --- | --- | --- |
+| `feature_disabled` | 403 | false | Marketplace capture is disabled |
+| `invalid_origin` | 403 | false | Origin is not an allowed extension origin |
+| `invalid_extension_token` | 401 | false | Token is missing, expired, revoked, or wrong type |
+| `insufficient_scope` | 403 | false | Token lacks required marketplace scope |
+| `invalid_capture_state` | 409 | false | Requested transition is not allowed |
+| `idempotency_conflict` | 409 | false | Same idempotency key used with different content |
+| `capture_empty_selection` | 400 | false | User selected no usable evidence |
+| `capture_payload_too_large` | 413 | false | Draft JSON exceeds configured limits |
+| `asset_upload_too_large` | 413 | false | Asset or capture upload exceeds limits |
+| `asset_type_not_allowed` | 415 | false | MIME/magic-byte validation failed |
+| `remote_image_blocked` | 400 | false | Remote image URL failed safety policy |
+| `llm_analyze_rate_limited` | 429 | true | Analyze rate limit hit |
+| `llm_analyze_failed` | 502 | true | Provider or extraction failure |
+| `capture_not_found` | 404 | false | Capture missing or not accessible |
+| `product_confirm_failed` | 400 | false | Corrected product payload invalid |
+
+Error responses must not include stack traces, raw DOM text, raw HTML, image bytes, bearer tokens, refresh tokens, or provider prompts.
 
 Extension error UX:
 
@@ -1627,6 +2018,7 @@ Backend:
 - Add REST route placeholder `marketplaceCaptureRoutes.ts`.
 - Add tRPC router placeholder `marketplaceCapture.ts`.
 - Add feature flag/env config.
+- Add observability, retention, and rollback config placeholders.
 - Decide exact web route prefix, recommended `/marketplace-capture`.
 
 Acceptance:
@@ -1635,6 +2027,7 @@ Acceptance:
 - Web app still builds/checks.
 - Empty routes are gated behind `MARKETPLACE_CAPTURE_ENABLED`.
 - Extension routes reject missing/invalid bearer tokens and disallowed origins.
+- Config defaults are deny-by-default in production.
 
 ### Phase 1 - Shopee Category Scanner MVP
 
@@ -1677,6 +2070,7 @@ Acceptance:
 - Add preview page.
 - Render evidence viewer and raw fields.
 - Implement escaped/sandboxed evidence rendering.
+- Add retention cleanup dry-run path.
 
 Acceptance:
 
@@ -1684,6 +2078,7 @@ Acceptance:
 - Screenshots stored via `storagePut`.
 - Preview loads raw data and assets.
 - Captured HTML/DOM/LLM output cannot execute script in preview.
+- Retention dry-run reports stale captures/assets without deleting unexpectedly.
 
 ### Phase 4 - LLM Extraction
 
@@ -1705,16 +2100,23 @@ Acceptance:
 
 - Add confirm endpoint.
 - Create product, image, and price snapshot records.
+- Store metric history for price, sold count, rating, review count, captured user, and captured timestamp on every confirm/update.
 - Associate selected capture assets with product images.
-- Dedupe by platform and external product ID when available.
+- Dedupe by platform and external product ID when available, including products shared to the user's active groups with update permission.
+- Add user share settings by platform so users explicitly choose which groups receive newly saved Shopee/TikTok products.
+- Add product health warnings for stale checks, no sold growth, low rating, and rating drops.
 - Add products list and detail pages.
+- Add product deletion/tombstone behavior and asset cleanup policy.
 
 Acceptance:
 
 - User confirms a product and sees it in the product list.
 - Main images are saved and ordered.
-- Price snapshot is saved.
+- Metric snapshot is saved with price, sold count, rating, review count, captured user, and timestamp.
+- Default product list shows own products plus products shared by groups; user can filter to own products only.
+- Product detail shows update history and health warnings.
 - Capture status becomes `confirmed`.
+- Deleting/tombstoning a product does not leave inaccessible orphan assets without a cleanup path.
 
 ### Phase 6 - TikTok Shop Adapter
 
@@ -1751,12 +2153,20 @@ Backend tests:
 
 - schema validation
 - capture draft create auth success/fail
+- create draft rejects empty selection
+- create draft persists `userEditedFieldsJson` and `selectionSummaryJson`
+- create draft drops unselected image candidates by default
+- create draft idempotency returns the same capture for the same key
 - ownership checks
 - asset upload MIME/size validation
 - asset upload magic-byte validation
+- asset upload idempotency detects same asset retry and conflicting retry
 - active content upload rejection or attachment-only handling
 - analyze stores result/warnings
+- analyze supports async `analyzing` status and polling
+- invalid capture state transitions return `409 invalid_capture_state`
 - confirm creates product/images/price snapshot
+- confirm idempotency does not create duplicate products
 - dedupe behavior
 - SSRF image URL validation
 - redirect-to-private-IP SSRF rejection
@@ -1773,6 +2183,15 @@ Security regression tests:
 - disallowed marketplace paths such as cart, checkout, login, messages, and account pages cannot be captured
 - remote image fetch rejects non-image content types, oversize responses, timeouts, private IPv4/IPv6, and unsafe redirect chains
 - audit logs contain safe metadata only and never include bearer tokens, refresh tokens, screenshots, raw DOM text, or raw HTML
+- policy/compliance guardrail tests or manual checks verify no hidden auto-crawl path exists in MVP
+
+Operational tests:
+
+- retention dry-run reports expected stale captures without deleting active records
+- retention execution deletes/tombstones DB rows and storage assets idempotently
+- kill switch rejects extension routes while leaving existing preview/product read paths in a safe state
+- metrics/log hooks emit safe metadata for create, upload, analyze, confirm, discard, and retention events
+- migration rollback drill confirms disabling feature flags stops new writes without corrupting existing data
 
 ### 22.2 Extension Integration Tests
 
@@ -1801,6 +2220,15 @@ TikTok Shop later:
 - product page with video
 - product page with variants
 - shop listing page
+
+Manual security/compliance QA:
+
+- verify onboarding copy appears before first capture
+- verify capture is blocked on login, cart, checkout, order, account, seller center, and chat pages
+- verify extension does not upload until `Upload selected`
+- verify unselected images are absent from network requests
+- verify production build uses only explicit host permissions
+- verify extension cannot connect to an arbitrary non-allowlisted SmartSpecPro base URL in production mode
 
 Recommended commands after implementation:
 
@@ -1838,6 +2266,10 @@ npm --prefix apps/extension run build
 - System collects main product images by clicking thumbnails.
 - System captures description text/images.
 - System excludes sidebar/related/bundle images from main images where possible.
+- Extension shows a pre-upload review panel before sending data to SmartSpecPro.
+- User can edit captured product fields before upload.
+- User can choose only the images/screenshots/evidence sections to upload.
+- Unselected images and screenshots are not uploaded or persisted by default.
 - Draft is created in SmartSpecPro.
 - Preview opens successfully.
 
@@ -1868,6 +2300,35 @@ npm --prefix apps/extension run build
 - Analyze cannot mutate confirmed product data.
 - Retention/deletion jobs remove stale raw evidence and assets.
 - Audit logs are complete enough for incident review without storing sensitive raw evidence.
+
+### 23.6 Release Gates
+
+MVP cannot ship to production until these gates pass:
+
+- Security tests pass for extension auth, CORS, upload validation, SSRF, preview XSS, prompt injection, tenant isolation, and idempotency.
+- Operational tests pass for retention, kill switch, observability, and migration rollback.
+- Manual QA confirms no capture is allowed on login, cart, checkout, account, order, seller-center, or chat/message pages.
+- Storage lifecycle/retention job is enabled for stale unconfirmed captures.
+- Extension host permissions are narrowed to explicit marketplace and SmartSpecPro hosts.
+- Production extension id is added to `MARKETPLACE_EXTENSION_ALLOWED_ORIGINS`.
+- Onboarding copy clearly states user-assisted capture and marketplace terms responsibility.
+- A rollback switch exists through `MARKETPLACE_CAPTURE_ENABLED=false`.
+- Observability dashboards or logs can answer: captures created, assets uploaded, analyze failures, confirm rate, storage growth, rate-limit events, and rejected security events.
+
+### 23.7 Readiness Checklist For Implementation Planning
+
+Before converting this spec into sectionized implementation plans, confirm:
+
+- MVP route prefix remains `/api/marketplace-capture` and `/marketplace-capture`.
+- Shopee is the only required MVP platform; TikTok Shop remains adapter-ready but later.
+- Pre-upload review is mandatory and blocks upload until user clicks `Upload selected`.
+- Remote image server-side fetch starts disabled unless SSRF tests and allowlist are implemented in the same phase.
+- LLM analyze starts behind `MARKETPLACE_CAPTURE_LLM_ENABLED`.
+- Confirm/save requires user review in SmartSpecPro web, even if extension fields were edited.
+- Raw HTML is optional evidence and disabled by default.
+- Retention defaults are acceptable for product/legal/security.
+- Production extension id and SmartSpecPro production base URL are known before production rollout.
+- Any marketplace-specific legal/terms guidance is handled outside code and reflected in onboarding copy.
 
 ---
 
@@ -1937,6 +2398,8 @@ MVP is done when:
 - Extension can connect to SmartSpecPro with a short-lived token.
 - Extension scans Shopee category/search pages and recommends products.
 - User can open a Shopee product and run capture.
+- Extension shows a local review/edit/select panel before upload.
+- User can select the cover/main images and discard unwanted images before upload.
 - Draft is sent to SmartSpecPro.
 - Screenshots/assets upload through backend storage.
 - LLM extraction runs through SmartSpecPro server-side LLM infrastructure.
@@ -1944,6 +2407,9 @@ MVP is done when:
 - Confirm creates a product with images and a price snapshot.
 - Product list/detail pages show saved capture products.
 - Parser/scoring/schema tests exist.
+- Security/idempotency/state-machine tests exist.
+- Retention cleanup for stale raw evidence is implemented or explicitly disabled behind a non-production-only gate.
+- Production release gates are documented and passed.
 - Dev install and MVP usage documentation exists.
 
 ---
@@ -1955,6 +2421,9 @@ Backend:
 - add Drizzle tables and migration
 - implement `marketplaceExtensionAuthService`
 - implement `marketplaceCaptureService`
+- implement `marketplaceCaptureStateMachine`
+- implement idempotency handling for create/upload/analyze/confirm
+- implement `marketplaceCaptureRetentionService`
 - implement REST route file
 - implement multipart upload handling
 - implement scoped extension auth/connect flow
@@ -1963,6 +2432,8 @@ Backend:
 - implement LLM extraction service
 - implement confirm/save service
 - implement preview/product read APIs
+- implement metrics/log hooks and admin-safe summaries
+- implement product deletion/tombstone and asset cleanup behavior
 
 Extension:
 
@@ -1973,6 +2444,7 @@ Extension:
 - implement Shopee category scanner
 - implement scoring and filters
 - implement Shopee product scanner
+- implement pre-upload review/edit/select panel
 - implement thumbnail collection
 - implement screenshot capture flow
 - implement API client upload/analyze/open preview
@@ -1992,8 +2464,11 @@ QA/docs:
 - add parser/scoring tests
 - add backend route tests
 - add security regression tests for auth, CORS, upload, SSRF, preview XSS, prompt injection, tenant isolation
+- add release-gate checklist for marketplace policy, extension permissions, retention, and rollback
+- add operational tests for retention, kill switch, observability, and migration rollback
 - add manual QA checklist
 - add dev extension install guide
+- add first-run user-facing compliance/onboarding copy
 
 ---
 
@@ -2006,6 +2481,8 @@ Category Scanner
   -> Product Recommendation
   -> User Opens Product
   -> Hybrid Capture
+  -> Extension Review/Edit/Select
+  -> Upload Selected Evidence
   -> Server LLM Extract
   -> Preview/Edit
   -> Confirm Save

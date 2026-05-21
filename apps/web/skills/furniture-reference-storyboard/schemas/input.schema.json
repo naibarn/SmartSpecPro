@@ -1,0 +1,336 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StoryboardSkillInput",
+  "type": "object",
+  "properties": {
+    "generation_mode": {
+      "title": "Generation Mode",
+      "description": "Choose how the storyboard prompt package should be generated. Use auto when you want the system to infer the best mode.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "single_frame",
+        "multi_frame_storyboard",
+        "separate_prompt_per_frame"
+      ],
+      "enumNames": [
+        "Auto",
+        "Single Frame",
+        "Multi-Frame Storyboard",
+        "Separate Prompt Per Frame"
+      ],
+      "x-ui-enumNamesTh": [
+        "Auto",
+        "ภาพเดี่ยว",
+        "สตอรี่บอร์ดหลายเฟรม",
+        "พรอมต์แยกต่อเฟรม"
+      ],
+      "default": "auto"
+    },
+    "reference_character_images": {
+      "title": "Reference Character Images",
+      "description": "Upload character reference images as identity-critical anchors. Generated people must preserve the same face likeness, facial proportions, age impression, skin tone, hairline, hair length, hair part, hair volume/style, distinctive marks, wardrobe, and styling continuity rather than using a generic model face. When identity cannot be preserved confidently, prefer product-only, hands-only, over-shoulder, back-of-head, partial-face crop, or detail shots instead of inventing a different face.",
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "string",
+        "contentEncoding": "base64",
+        "contentMediaType": "image/*"
+      },
+      "x-ui-file-mode": "drag-and-drop",
+      "x-ui-accept": "image/*"
+    },
+    "reference_product_images": {
+      "title": "Reference Product Images",
+      "description": "Upload furniture/product reference images. These are the highest-priority truth source and scale-critical anchors. The generated storyboard must preserve the exact furniture category, silhouette, dimensions, height-width-depth ratio, compact or full-size scale, cushion/tier/shelf/drawer/door count, leg/caster/support geometry, material, upholstery/wood/plastic/metal finish, hardware, visible tags/marks, and construction details. Cinematic style, room mood, warm lighting, or environment references must not recolor, resize, redesign, or replace the referenced product.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "type": "string",
+        "contentEncoding": "base64",
+        "contentMediaType": "image/*"
+      },
+      "x-ui-file-mode": "drag-and-drop",
+      "x-ui-accept": "image/*"
+    },
+    "product_label_text": {
+      "title": "Visible Marking / Dimension Text",
+      "description": "Optional. Use this for exact visible product markings or important product facts that must be preserved, one line per item. For furniture this may include brand tags, maker marks, SKU stickers, care labels, assembly labels, or dimensions such as 110 cm long x 50 cm wide x 12 cm thick. Do not force large readable text onto furniture unless it is physically present or explicitly requested.",
+      "type": "string",
+      "default": "",
+      "examples": [
+        "Brand tag on right side seam\nSKU sticker under seat\nDimensions: 110 cm long x 50 cm wide x 12 cm thick"
+      ]
+    },
+    "product_shop_id": {
+      "title": "Marketplace Shop ID",
+      "description": "Optional. Auto-filled when product references are dragged or added from Media Studio Marketplace. Preserve this as metadata for downstream storyboard/video planning, but do not render it as visible text in the generated image.",
+      "type": "string",
+      "default": ""
+    },
+    "product_item_id": {
+      "title": "Marketplace Item ID",
+      "description": "Optional. Auto-filled when product references are dragged or added from Media Studio Marketplace. Use this to identify the exact ecommerce item for downstream video planning, but do not render it as visible text in the generated image.",
+      "type": "string",
+      "default": ""
+    },
+    "product_source_url": {
+      "title": "Product Page URL",
+      "description": "Optional. Auto-filled from Media Studio Marketplace and used as the source link for the product. Keep it as metadata/context only; do not render the URL in the image.",
+      "type": "string",
+      "format": "uri",
+      "default": ""
+    },
+    "marketplace_platform": {
+      "title": "Marketplace Platform",
+      "description": "Optional. Marketplace platform for the source product, such as shopee or tiktok_shop. Use as metadata/context only.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "shopee",
+        "tiktok_shop"
+      ],
+      "enumNames": [
+        "Auto / not supplied",
+        "Shopee",
+        "TikTok Shop"
+      ],
+      "x-ui-enumNamesTh": [
+        "Auto / ไม่ได้ระบุ",
+        "Shopee",
+        "TikTok Shop"
+      ],
+      "default": "auto"
+    },
+    "product_shop_name": {
+      "title": "Shop Name",
+      "description": "Optional shop name from the marketplace source. Use as planning metadata only; do not render as visible text unless the user explicitly asks for a marketplace ad layout.",
+      "type": "string",
+      "default": ""
+    },
+    "product_title": {
+      "title": "Marketplace Product Title",
+      "description": "Optional product title from the marketplace source. Use it to understand product category and use case when helpful, but product reference images remain the source of truth for visual appearance.",
+      "type": "string",
+      "default": ""
+    },
+    "label_fidelity": {
+      "title": "Marking Fidelity",
+      "description": "Controls how aggressively the prompt protects visible furniture markings. Use Full label lock only when brand tags, maker marks, SKU stickers, care labels, assembly labels, or supplied dimensions/markings must remain accurate in product detail, hero, marketplace, or ad frames.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "full_label_lock",
+        "brand_and_key_lines",
+        "layout_only_when_tiny"
+      ],
+      "enumNames": [
+        "Auto",
+        "Full marking lock",
+        "Brand/tag + key lines",
+        "Layout only when tiny"
+      ],
+      "x-ui-enumNamesTh": [
+        "Auto",
+        "ล็อกมาร์กกิ้ง/แท็กครบ",
+        "แบรนด์/แท็ก + บรรทัดสำคัญ",
+        "ล็อกเลย์เอาต์เมื่อเล็กมาก"
+      ],
+      "default": "full_label_lock"
+    },
+    "label_readability_mode": {
+      "title": "Marking Readability Mode",
+      "description": "Controls composition rules for visible markings and product-detail frames. Product-detail lock adds large clear hero/detail views and avoids tiny lifestyle-only product placement. For furniture without readable markings, use this to prioritize construction details such as seams, tiers, casters, handles, cushion grid, material texture, or dimensions.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "product_detail_lock",
+        "balanced_storyboard",
+        "lifestyle_priority"
+      ],
+      "enumNames": [
+        "Auto",
+        "Product/detail lock",
+        "Balanced storyboard",
+        "Lifestyle priority"
+      ],
+      "x-ui-enumNamesTh": [
+        "Auto",
+        "ล็อกเฟรมสินค้า/รายละเอียด",
+        "สมดุลระหว่างสินค้าและไลฟ์สไตล์",
+        "เน้นไลฟ์สไตล์"
+      ],
+      "default": "product_detail_lock"
+    },
+    "reference_environment_images": {
+      "title": "Reference Environment Images",
+      "description": "Upload environment or location images to guide room type, architecture, floor/wall materials, lighting, color palette, and mood. Environment images are scene references only; they must not override the referenced product geometry, dimensions, colorway, material, or character identity.",
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "string",
+        "contentEncoding": "base64",
+        "contentMediaType": "image/*"
+      },
+      "x-ui-file-mode": "drag-and-drop",
+      "x-ui-accept": "image/*"
+    },
+    "storyboard_layout_preset": {
+      "title": "Storyboard Layout Preset",
+      "description": "Choose a storyboard grid that matches the main image aspect ratio. Exact presets keep every frame at 1:1, 16:9, or 9:16. Crop-safe presets reserve extra margin so each frame can be cropped later without cutting off the product or subject.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "canvas_1_1_grid_1x1_frame_1_1_exact",
+        "canvas_1_1_grid_2x2_frame_1_1_exact",
+        "canvas_1_1_grid_3x3_frame_1_1_exact",
+        "canvas_16_9_grid_1x1_frame_16_9_exact",
+        "canvas_16_9_grid_2x2_frame_16_9_exact",
+        "canvas_16_9_grid_3x3_frame_16_9_exact",
+        "canvas_16_9_grid_2x1_crop_safe",
+        "canvas_16_9_grid_3x2_crop_safe",
+        "canvas_9_16_grid_1x1_frame_9_16_exact",
+        "canvas_9_16_grid_2x2_frame_9_16_exact",
+        "canvas_9_16_grid_3x3_frame_9_16_exact",
+        "canvas_9_16_grid_1x2_crop_safe",
+        "canvas_9_16_grid_2x3_crop_safe",
+        "canvas_4_3_grid_4x3_frame_1_1_exact",
+        "canvas_3_4_grid_3x4_frame_1_1_exact"
+      ],
+      "enumNames": [
+        "Auto - match selected aspect ratio",
+        "1:1 canvas / 1x1 / 1 square frame",
+        "1:1 canvas / 2x2 / 4 square frames",
+        "1:1 canvas / 3x3 / 9 square frames",
+        "16:9 canvas / 1x1 / 1 wide frame",
+        "16:9 canvas / 2x2 / 4 wide frames",
+        "16:9 canvas / 3x3 / 9 wide frames",
+        "16:9 canvas / 2x1 / 2 crop-safe frames",
+        "16:9 canvas / 3x2 / 6 crop-safe frames",
+        "9:16 canvas / 1x1 / 1 vertical frame",
+        "9:16 canvas / 2x2 / 4 vertical frames",
+        "9:16 canvas / 3x3 / 9 vertical frames",
+        "9:16 canvas / 1x2 / 2 crop-safe frames",
+        "9:16 canvas / 2x3 / 6 crop-safe frames",
+        "4:3 canvas / 4x3 / 12 square frames",
+        "3:4 canvas / 3x4 / 12 square frames"
+      ],
+      "x-ui-enumNamesTh": [
+        "Auto - ให้สัมพันธ์กับอัตราส่วนภาพที่เลือก",
+        "ภาพใหญ่ 1:1 / 1x1 / 1 เฟรมจัตุรัส",
+        "ภาพใหญ่ 1:1 / 2x2 / 4 เฟรมจัตุรัส",
+        "ภาพใหญ่ 1:1 / 3x3 / 9 เฟรมจัตุรัส",
+        "ภาพใหญ่ 16:9 / 1x1 / 1 เฟรมแนวนอน",
+        "ภาพใหญ่ 16:9 / 2x2 / 4 เฟรมแนวนอน",
+        "ภาพใหญ่ 16:9 / 3x3 / 9 เฟรมแนวนอน",
+        "ภาพใหญ่ 16:9 / 2x1 / 2 เฟรม เผื่อ crop",
+        "ภาพใหญ่ 16:9 / 3x2 / 6 เฟรม เผื่อ crop",
+        "ภาพใหญ่ 9:16 / 1x1 / 1 เฟรมแนวตั้ง",
+        "ภาพใหญ่ 9:16 / 2x2 / 4 เฟรมแนวตั้ง",
+        "ภาพใหญ่ 9:16 / 3x3 / 9 เฟรมแนวตั้ง",
+        "ภาพใหญ่ 9:16 / 1x2 / 2 เฟรม เผื่อ crop",
+        "ภาพใหญ่ 9:16 / 2x3 / 6 เฟรม เผื่อ crop",
+        "ภาพใหญ่ 4:3 / 4x3 / 12 เฟรมจัตุรัส",
+        "ภาพใหญ่ 3:4 / 3x4 / 12 เฟรมจัตุรัส"
+      ],
+      "default": "auto"
+    },
+    "aspect_ratio": {
+      "title": "Aspect Ratio",
+      "description": "Choose the target image or video aspect ratio. Use auto when you want the system to infer it from the uploaded references.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "9:16",
+        "16:9",
+        "1:1",
+        "4:3",
+        "4:5",
+        "3:4",
+        "2:3",
+        "21:9"
+      ],
+      "enumNames": [
+        "Auto",
+        "9:16 Vertical",
+        "16:9 Wide",
+        "1:1 Square",
+        "4:3 Landscape",
+        "4:5 Portrait",
+        "3:4 Portrait",
+        "2:3 Portrait",
+        "21:9 Cinematic Wide"
+      ],
+      "x-ui-enumNamesTh": [
+        "Auto",
+        "9:16 แนวตั้ง",
+        "16:9 แนวนอน",
+        "1:1 จัตุรัส",
+        "4:3 แนวนอน",
+        "4:5 ภาพบุคคล",
+        "3:4 ภาพบุคคล",
+        "2:3 ภาพบุคคล",
+        "21:9 ภาพยนตร์กว้าง"
+      ],
+      "default": "auto"
+    },
+    "cinematic_style": {
+      "title": "Cinematic Style",
+      "description": "Choose the visual style for the storyboard. Style affects scene, lighting, camera, and mood only; it must not change the referenced furniture scale, dimensions, product colorway, upholstery/wood/plastic/metal material, hardware, visible markings, or construction details. Warm or luxury styles may affect the room ambience but must not tint, recolor, resize, or redesign the product.",
+      "type": "string",
+      "enum": [
+        "auto",
+        "premium_commercial",
+        "cinematic_realism",
+        "luxury_beauty",
+        "minimal_studio",
+        "lifestyle_editorial",
+        "dramatic_low_key",
+        "bright_soft_light",
+        "documentary_natural",
+        "fashion_film",
+        "macro_product_detail"
+      ],
+      "enumNames": [
+        "Auto",
+        "Premium Commercial",
+        "Cinematic Realism",
+        "Luxury Beauty",
+        "Minimal Studio",
+        "Lifestyle Editorial",
+        "Dramatic Low Key",
+        "Bright Soft Light",
+        "Documentary Natural",
+        "Fashion Film",
+        "Macro Product Detail"
+      ],
+      "x-ui-enumNamesTh": [
+        "Auto",
+        "โฆษณาพรีเมียม",
+        "สมจริงแบบภาพยนตร์",
+        "ลักชัวรีบิวตี้",
+        "สตูดิโอมินิมอล",
+        "ไลฟ์สไตล์เอดิทอเรียล",
+        "ดราม่า Low Key",
+        "แสงนุ่มสว่าง",
+        "ธรรมชาติแบบสารคดี",
+        "แฟชั่นฟิล์ม",
+        "มาโครรายละเอียดสินค้า"
+      ],
+      "default": "auto"
+    },
+    "scene_descriptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Scene Descriptions",
+      "description": "Describe the desired scenes, actions, dimensions, and output needs. Include exact furniture dimensions here when known, such as “floor chair dimensions: 110 cm long x 50 cm wide x 12 cm thick”, and specify whether visible measurement annotations should or should not appear. By default, prompts should not create captions, arrows, callouts, or measurement text in the image."
+    }
+  },
+  "required": [
+    "generation_mode",
+    "reference_product_images"
+  ]
+}

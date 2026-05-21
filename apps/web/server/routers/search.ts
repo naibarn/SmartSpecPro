@@ -45,6 +45,7 @@ export const searchRouter = router({
       z.object({
         query: z.string(),
         limit: z.number().min(1).max(50).default(10),
+        scope: z.enum(["all", "library", "marketplace"]).optional().default("all"),
       }),
     )
     .query(async ({ input, ctx }) => {

@@ -168,9 +168,17 @@ type PreparedSlideBundle = {
 };
 
 type GeneratedImageAsset = PreparedImagePrompt & {
-  url: string;
+  taskId?: string | null;
+  url?: string;
+  status?: "processing" | "completed" | "failed";
+  errorMessage?: string;
   canvasRatio?: SlideCanvasRatio;
+  model?: string;
   updatedAt?: string;
+};
+
+type ImportableGeneratedImageAsset = PreparedImagePrompt & {
+  url: string;
 };
 
 export type SlotAudioGenerationMode = "full" | "slot";
@@ -235,8 +243,11 @@ type MediaHistoryTaskLike = {
   status?: string;
   model?: string | null;
   prompt?: string | null;
+  parameters?: Record<string, unknown> | null;
   resultUrl?: string | null;
   resultData?: Record<string, unknown> | null;
+  createdAt?: string | null;
+  completedAt?: string | null;
 };
 
 type PickerAsset = {
@@ -327,7 +338,7 @@ const SUPPORTED_SLOT_VIDEO_RATIOS: SlideCanvasRatio[] = ["16:9", "9:16"];
 const SUPPORTED_OUTPUT_FORMATS: SlideOutputFormat[] = ["json", "md", "pptx", "pdf"];
 const ARTICLE_BUILDER_DRAFT_STORAGE_KEY_PREFIX = "presentation-article-builder-draft";
 const TASK_POLL_INTERVAL_MS = 2000;
-const TASK_POLL_MAX_ATTEMPTS = 120;
+const TASK_POLL_MAX_ATTEMPTS = 900;
 const VIDEO_TASK_POLL_INTERVAL_MS = 5000;
 const VIDEO_TASK_POLL_MAX_ATTEMPTS = 180;
 const SLOT_VIDEO_GENERATION_CONCURRENCY = 3;
@@ -1679,11 +1690,36 @@ function normalizeGeneratedImagesForPrompts(
     if (!matchedAsset) {
       return [];
     }
+    const matchedUrl = matchedAsset.url?.trim();
+    if (!matchedUrl) {
+      return [];
+    }
     return [{
       ...prompt,
-      url: matchedAsset.url,
+      taskId: matchedAsset.taskId,
+      url: matchedUrl,
+      status: "completed" as const,
       canvasRatio: matchedAsset.canvasRatio,
+      model: matchedAsset.model,
       updatedAt: matchedAsset.updatedAt,
+    }];
+  });
+}
+
+function toImportableGeneratedImageAssets(assets: GeneratedImageAsset[]): ImportableGeneratedImageAsset[] {
+  return assets.flatMap((asset) => {
+    const url = asset.url?.trim();
+    if (!url) {
+      return [];
+    }
+    return [{
+      id: asset.id,
+      pageNumber: asset.pageNumber,
+      imageIndex: asset.imageIndex,
+      placementRole: asset.placementRole,
+      shortLabel: asset.shortLabel,
+      prompt: asset.prompt,
+      url,
     }];
   });
 }
@@ -2063,6 +2099,182 @@ function extractMediaHistoryResultUrl(task: MediaHistoryTaskLike): string | null
   );
 }
 
+function readMediaTaskAspectRatio(task: MediaHistoryTaskLike): string | null {
+  const parameters = task.parameters;
+  if (!parameters || typeof parameters !== "object") {
+    return null;
+  }
+  const extraParams = parameters.extra_params && typeof parameters.extra_params === "object"
+    ? parameters.extra_params as Record<string, unknown>
+    : parameters.extraParams && typeof parameters.extraParams === "object"
+      ? parameters.extraParams as Record<string, unknown>
+      : null;
+  const rawRatio = parameters.aspect_ratio
+    ?? parameters.aspectRatio
+    ?? extraParams?.aspect_ratio
+    ?? extraParams?.aspectRatio;
+  return typeof rawRatio === "string" && rawRatio.trim() ? rawRatio.trim() : null;
+}
+
+function getMediaTaskTime(task: MediaHistoryTaskLike): number {
+  const completedAt = typeof task.completedAt === "string" ? Date.parse(task.completedAt) : NaN;
+  if (Number.isFinite(completedAt)) {
+    return completedAt;
+  }
+  const createdAt = typeof task.createdAt === "string" ? Date.parse(task.createdAt) : NaN;
+  return Number.isFinite(createdAt) ? createdAt : 0;
+}
+
+function isHistoryTaskPromptMatch(task: MediaHistoryTaskLike, prompt: PreparedImagePrompt): boolean {
+  return String(task.prompt || "").trim() === prompt.prompt.trim();
+}
+
+function isHistoryTaskModelMatch(task: MediaHistoryTaskLike, model: string): boolean {
+  const normalizedModel = model.trim();
+  if (!normalizedModel) {
+    return true;
+  }
+  return String(task.model || "").trim() === normalizedModel;
+}
+
+function isHistoryTaskRatioMatch(task: MediaHistoryTaskLike, canvasRatio: SlideCanvasRatio): boolean {
+  const taskRatio = readMediaTaskAspectRatio(task);
+  return !taskRatio || taskRatio === canvasRatio;
+}
+
+function findCompletedHistoryImageForPrompt(options: {
+  prompt: PreparedImagePrompt;
+  tasks: unknown;
+  imageModel: string;
+  canvasRatio: SlideCanvasRatio;
+  preferredTaskId?: string | null;
+  usedUrls: Set<string>;
+}): { task: MediaHistoryTaskLike; url: string } | null {
+  if (!Array.isArray(options.tasks)) {
+    return null;
+  }
+  const preferredTaskId = String(options.preferredTaskId || "").trim();
+  const candidates = options.tasks
+    .map((rawTask) => rawTask as MediaHistoryTaskLike)
+    .filter((task) => String(task.status || "").toLowerCase() === "completed")
+    .filter((task) => String(task.mediaType || "").toLowerCase() === "image")
+    .map((task) => ({ task, url: extractMediaHistoryResultUrl(task) }))
+    .filter((candidate): candidate is { task: MediaHistoryTaskLike; url: string } => {
+      if (!candidate.url) {
+        return false;
+      }
+      return !options.usedUrls.has(normalizeMediaSourceUrl(candidate.url) || candidate.url);
+    });
+
+  const byTaskId = preferredTaskId
+    ? candidates.find(({ task }) => task.id === preferredTaskId || task.taskId === preferredTaskId)
+    : null;
+  if (byTaskId) {
+    return byTaskId;
+  }
+
+  return candidates
+    .filter(({ task }) => isHistoryTaskPromptMatch(task, options.prompt))
+    .filter(({ task }) => isHistoryTaskModelMatch(task, options.imageModel))
+    .filter(({ task }) => isHistoryTaskRatioMatch(task, options.canvasRatio))
+    .sort((left, right) => getMediaTaskTime(right.task) - getMediaTaskTime(left.task))[0]
+    ?? null;
+}
+
+export function mergeCompletedHistoryImagesIntoGeneratedImages(options: {
+  prompts: PreparedImagePrompt[];
+  generatedImages: GeneratedImageAsset[];
+  historyTasks: unknown;
+  imageModel: string;
+  canvasRatio: SlideCanvasRatio;
+  now?: string;
+}): GeneratedImageAsset[] {
+  if (options.prompts.length === 0) {
+    return options.generatedImages;
+  }
+  const currentBySlot = new Map(options.generatedImages.map((asset) => [getPreparedImageSlotKey(asset), asset] as const));
+  const usedUrls = new Set(
+    options.generatedImages
+      .map((asset) => normalizeMediaSourceUrl(asset.url || ""))
+      .filter(Boolean),
+  );
+  let changed = false;
+  const updatedAt = options.now ?? new Date().toISOString();
+
+  for (const prompt of options.prompts) {
+    const slotKey = getPreparedImageSlotKey(prompt);
+    const existing = currentBySlot.get(slotKey);
+    if (existing?.url && existing.status !== "processing" && existing.canvasRatio === options.canvasRatio) {
+      continue;
+    }
+    const matched = findCompletedHistoryImageForPrompt({
+      prompt,
+      tasks: options.historyTasks,
+      imageModel: options.imageModel,
+      canvasRatio: options.canvasRatio,
+      preferredTaskId: existing?.taskId,
+      usedUrls,
+    });
+    if (!matched) {
+      continue;
+    }
+    const normalizedUrl = normalizeMediaSourceUrl(matched.url);
+    if (!normalizedUrl) {
+      continue;
+    }
+    usedUrls.add(normalizedUrl);
+    currentBySlot.set(slotKey, {
+      ...prompt,
+      taskId: matched.task.id || matched.task.taskId || existing?.taskId,
+      url: normalizedUrl,
+      status: "completed",
+      errorMessage: undefined,
+      canvasRatio: options.canvasRatio,
+      model: String(matched.task.model || options.imageModel || existing?.model || "").trim() || undefined,
+      updatedAt,
+    });
+    changed = true;
+  }
+
+  if (!changed) {
+    return options.generatedImages;
+  }
+  return Array.from(currentBySlot.values())
+    .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
+}
+
+export function getRecoverableProcessingImageAssets(options: {
+  prompts: PreparedImagePrompt[];
+  generatedImages: GeneratedImageAsset[];
+  canvasRatio: SlideCanvasRatio;
+}): GeneratedImageAsset[] {
+  if (options.prompts.length === 0 || options.generatedImages.length === 0) {
+    return [];
+  }
+  const activeSlots = new Set(options.prompts.map((prompt) => getPreparedImageSlotKey(prompt)));
+  const latestByTaskId = new Map<string, GeneratedImageAsset>();
+  for (const asset of options.generatedImages) {
+    const taskId = String(asset.taskId || "").trim();
+    if (!taskId || asset.url?.trim() || asset.status !== "processing") {
+      continue;
+    }
+    if (asset.canvasRatio !== options.canvasRatio) {
+      continue;
+    }
+    if (!activeSlots.has(getPreparedImageSlotKey(asset))) {
+      continue;
+    }
+    const previous = latestByTaskId.get(taskId);
+    const previousTime = previous?.updatedAt ? Date.parse(previous.updatedAt) : 0;
+    const assetTime = asset.updatedAt ? Date.parse(asset.updatedAt) : 0;
+    if (!previous || assetTime >= previousTime) {
+      latestByTaskId.set(taskId, asset);
+    }
+  }
+  return Array.from(latestByTaskId.values())
+    .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
+}
+
 function extractMediaHistoryThumbnailUrl(task: MediaHistoryTaskLike): string | null {
   const resultData = task.resultData;
   if (!resultData || typeof resultData !== "object") {
@@ -2179,6 +2391,7 @@ export function PresentationArticleGeneratorDialog({
   const { user } = useAuth();
   const trpcUtils = trpc.useUtils();
   const wasOpenRef = useRef(false);
+  const autoFetchedImageTaskIdsRef = useRef<Set<string>>(new Set());
   const workflowStepRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const workflowPrimaryActionRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const insertSlidesButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -3073,12 +3286,22 @@ export function PresentationArticleGeneratorDialog({
   }, [guidedWorkflowStep, open]);
   const generatedImageCards = useMemo(() => {
     const assetBySlot = new Map(normalizedGeneratedImages.map((asset) => [getPreparedImageSlotKey(asset), asset] as const));
+    const pendingAssetBySlot = new Map<string, GeneratedImageAsset>();
     const fallbackAssetBySlot = new Map<string, GeneratedImageAsset>();
     for (const asset of generatedImages) {
+      const slotKey = getPreparedImageSlotKey(asset);
+      if (!asset.url && (asset.status === "processing" || asset.status === "failed")) {
+        const previous = pendingAssetBySlot.get(slotKey);
+        const previousTime = previous?.updatedAt ? Date.parse(previous.updatedAt) : 0;
+        const assetTime = asset.updatedAt ? Date.parse(asset.updatedAt) : 0;
+        if (!previous || assetTime >= previousTime) {
+          pendingAssetBySlot.set(slotKey, asset);
+        }
+        continue;
+      }
       if (!asset.url) {
         continue;
       }
-      const slotKey = getPreparedImageSlotKey(asset);
       if (assetBySlot.has(slotKey)) {
         continue;
       }
@@ -3096,6 +3319,7 @@ export function PresentationArticleGeneratorDialog({
         return {
           prompt,
           asset: assetBySlot.get(slotKey) ?? null,
+          pendingAsset: pendingAssetBySlot.get(slotKey) ?? null,
           fallbackAsset: fallbackAssetBySlot.get(slotKey) ?? null,
         };
       });
@@ -3103,6 +3327,7 @@ export function PresentationArticleGeneratorDialog({
     return normalizedGeneratedImages.map((asset) => ({
       prompt: asset,
       asset,
+      pendingAsset: null,
       fallbackAsset: null,
     }));
   }, [activeImagePrompts, generatedImages, normalizedGeneratedImages]);
@@ -3127,6 +3352,109 @@ export function PresentationArticleGeneratorDialog({
     () => normalizeMediaHistoryItems(mediaHistoryImageQuery.data?.tasks ?? [], slotPickerSearchQuery),
     [mediaHistoryImageQuery.data?.tasks, slotPickerSearchQuery],
   );
+  useEffect(() => {
+    if (!open || !preparedBundle || activeImagePrompts.length === 0) {
+      return;
+    }
+    setGeneratedImages((previous) => mergeCompletedHistoryImagesIntoGeneratedImages({
+      prompts: activeImagePrompts,
+      generatedImages: previous,
+      historyTasks: mediaHistoryImageQuery.data?.tasks ?? [],
+      imageModel,
+      canvasRatio,
+    }));
+  }, [
+    activeImagePrompts,
+    canvasRatio,
+    imageModel,
+    mediaHistoryImageQuery.data?.tasks,
+    open,
+    preparedBundle,
+  ]);
+  useEffect(() => {
+    if (!open) {
+      autoFetchedImageTaskIdsRef.current.clear();
+      return;
+    }
+    if (!preparedBundle || activeImagePrompts.length === 0) {
+      return;
+    }
+    const recoverableAssets = getRecoverableProcessingImageAssets({
+      prompts: activeImagePrompts,
+      generatedImages,
+      canvasRatio,
+    }).filter((asset) => {
+      const taskId = String(asset.taskId || "").trim();
+      return taskId && !autoFetchedImageTaskIdsRef.current.has(taskId);
+    });
+    if (recoverableAssets.length === 0) {
+      return;
+    }
+    let cancelled = false;
+    for (const asset of recoverableAssets) {
+      const taskId = String(asset.taskId || "").trim();
+      autoFetchedImageTaskIdsRef.current.add(taskId);
+      void fetchTaskResultMutation.mutateAsync({ taskId })
+        .then((fetched) => {
+          if (cancelled) {
+            return;
+          }
+          const taskPayload = (fetched as { task?: unknown } | undefined)?.task ?? fetched;
+          const taskStatus = normalizeTaskStatus(taskPayload);
+          const nextUrl = extractTaskResultUrl(fetched);
+          if (taskStatus === "failed" || taskStatus === "cancelled") {
+            const errorMessage = extractTaskFailureMessage(taskPayload) || "Image provider failed.";
+            setGeneratedImages((previous) => {
+              const nextAsset: GeneratedImageAsset = {
+                ...asset,
+                status: "failed",
+                errorMessage,
+                updatedAt: new Date().toISOString(),
+              };
+              const withoutCurrentSlot = previous.filter((candidate) => !isSamePreparedImageSlot(candidate, asset));
+              return [...withoutCurrentSlot, nextAsset]
+                .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
+            });
+            return;
+          }
+          if (!nextUrl) {
+            return;
+          }
+          const normalizedUrl = normalizeMediaSourceUrl(nextUrl);
+          if (!normalizedUrl) {
+            return;
+          }
+          const updatedAt = new Date().toISOString();
+          setGeneratedImages((previous) => {
+            const nextAsset: GeneratedImageAsset = {
+              ...asset,
+              url: normalizedUrl,
+              status: "completed",
+              errorMessage: undefined,
+              updatedAt,
+            };
+            const withoutCurrentSlot = previous.filter((candidate) => !isSamePreparedImageSlot(candidate, asset));
+            return [...withoutCurrentSlot, nextAsset]
+              .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
+          });
+          setGeneratedSlideDraft(null);
+          setGeneratedSlideDraftSkillId("");
+        })
+        .catch(() => {
+          autoFetchedImageTaskIdsRef.current.delete(taskId);
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeImagePrompts,
+    canvasRatio,
+    fetchTaskResultMutation,
+    generatedImages,
+    open,
+    preparedBundle,
+  ]);
   const pickerAssets = useMemo(
     () => mergePickerAssets(
       slotPickerTab === "history" ? historyPickerAssets : libraryPickerAssets,
@@ -3787,7 +4115,7 @@ export function PresentationArticleGeneratorDialog({
         imagePromptContext: imagePromptContext.trim() || null,
         editorialPlannerOptions,
         existingImageAssets: options?.preserveExistingImages && generatedImages.length > 0
-          ? generatedImages
+          ? toImportableGeneratedImageAssets(generatedImages)
           : undefined,
       });
       const nextGeneratedImages = options?.preserveExistingImages
@@ -3840,7 +4168,14 @@ export function PresentationArticleGeneratorDialog({
     }
     const updatedAt = new Date().toISOString();
     setGeneratedImages((previous) => {
-      const nextAsset: GeneratedImageAsset = { ...prompt, url: normalizedUrl, canvasRatio, updatedAt };
+      const nextAsset: GeneratedImageAsset = {
+        ...prompt,
+        url: normalizedUrl,
+        status: "completed",
+        canvasRatio,
+        model: imageModel.trim() || undefined,
+        updatedAt,
+      };
       const withoutCurrentSlot = previous.filter((candidate) => !isSamePreparedImageSlot(candidate, prompt));
       return [...withoutCurrentSlot, nextAsset]
         .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
@@ -3850,6 +4185,25 @@ export function PresentationArticleGeneratorDialog({
         ? { ...prompt, url: normalizedUrl, canvasRatio, updatedAt }
         : current
     ));
+    setGeneratedSlideDraft(null);
+    setGeneratedSlideDraftSkillId("");
+  };
+
+  const upsertProcessingImageForPrompt = (prompt: PreparedImagePrompt, taskId: string) => {
+    const updatedAt = new Date().toISOString();
+    setGeneratedImages((previous) => {
+      const nextAsset: GeneratedImageAsset = {
+        ...prompt,
+        taskId,
+        status: "processing",
+        canvasRatio,
+        model: imageModel.trim() || undefined,
+        updatedAt,
+      };
+      const withoutCurrentSlot = previous.filter((candidate) => !isSamePreparedImageSlot(candidate, prompt));
+      return [...withoutCurrentSlot, nextAsset]
+        .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
+    });
     setGeneratedSlideDraft(null);
     setGeneratedSlideDraftSkillId("");
   };
@@ -3999,17 +4353,27 @@ export function PresentationArticleGeneratorDialog({
         taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
       }
       let resultUrl = extractTaskResultUrl(taskResult);
+      let taskId = extractTaskId(taskResult);
       if (!resultUrl) {
-        const taskId = extractTaskId(taskResult);
         if (!taskId) {
           throw new Error("Image generation started but task ID was not returned.");
         }
-        const terminalTask = await pollTaskUntilTerminal(
-          taskId,
-          async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
-          { mediaLabel: "Image" },
-        );
-        resultUrl = extractTaskResultUrl(terminalTask);
+        try {
+          const terminalTask = await pollTaskUntilTerminal(
+            taskId,
+            async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
+            { mediaLabel: "Image" },
+          );
+          resultUrl = extractTaskResultUrl(terminalTask);
+          taskId = extractTaskId(terminalTask) ?? taskId;
+        } catch (error) {
+          if (!(error instanceof TaskPollingTimeoutError)) {
+            throw error;
+          }
+          upsertProcessingImageForPrompt(prompt, error.taskId);
+          toast.info(`Page ${prompt.pageNumber}: รูปภาพยังประมวลผลอยู่ สามารถกดดึงผลใหม่ภายหลังได้`);
+          return;
+        }
       }
       if (!resultUrl) {
         throw new Error("Image provider returned no URL");
@@ -4218,7 +4582,7 @@ export function PresentationArticleGeneratorDialog({
         editorialPlannerOptions,
         pageImagePlanOverrides,
         slidePayloadOverrideJson: trimmedPayloadOverrideJson || null,
-        imageAssets,
+        imageAssets: toImportableGeneratedImageAssets(imageAssets),
       });
       const nextDraft = {
         slideJson: result.slideJson,
@@ -4430,25 +4794,44 @@ export function PresentationArticleGeneratorDialog({
           taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
         }
         let resultUrl = extractTaskResultUrl(taskResult);
+        let taskId = extractTaskId(taskResult);
         if (!resultUrl) {
-          const taskId = extractTaskId(taskResult);
           if (!taskId) {
             throw new Error("Image generation started but task ID was not returned.");
           }
-          const terminalTask = await pollTaskUntilTerminal(
-            taskId,
-            async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
-            { mediaLabel: "Image" },
-          );
-          resultUrl = extractTaskResultUrl(terminalTask);
+          try {
+            const terminalTask = await pollTaskUntilTerminal(
+              taskId,
+              async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
+              { mediaLabel: "Image" },
+            );
+            resultUrl = extractTaskResultUrl(terminalTask);
+            taskId = extractTaskId(terminalTask) ?? taskId;
+          } catch (error) {
+            if (!(error instanceof TaskPollingTimeoutError)) {
+              throw error;
+            }
+            toast.info(`Page ${promptPlan.pageNumber}: รูปภาพยังประมวลผลอยู่ สามารถกดดึงผลใหม่ภายหลังได้`);
+            return {
+              ...promptPlan,
+              taskId: error.taskId,
+              status: "processing",
+              canvasRatio,
+              model: imageModel.trim() || undefined,
+              updatedAt: new Date().toISOString(),
+            };
+          }
         }
         if (!resultUrl) {
           throw new Error("Image provider returned no URL");
         }
         const nextAsset: GeneratedImageAsset = {
           ...promptPlan,
+          taskId,
           url: resultUrl,
+          status: "completed",
           canvasRatio,
+          model: imageModel.trim() || undefined,
           updatedAt: new Date().toISOString(),
         };
         return nextAsset;
@@ -4476,10 +4859,16 @@ export function PresentationArticleGeneratorDialog({
       ));
       setImageGenerationProgress("");
       toast.success(t("dialog.articleBuilder.generateImagesSuccess"));
-      await handleGenerateSlideDraft({
-        imageAssetsOverride: nextAssets,
-        successMessage: t("dialog.articleBuilder.generateSlideJsonSuccess"),
-      });
+      const completedImageCount = normalizeGeneratedImagesForPrompts(promptsForGeneration, nextAssets, canvasRatio).length;
+      if (completedImageCount >= promptsForGeneration.length) {
+        await handleGenerateSlideDraft({
+          imageAssetsOverride: nextAssets,
+          successMessage: t("dialog.articleBuilder.generateSlideJsonSuccess"),
+        });
+      } else {
+        toast.info(`รูปภาพบางรายการยังประมวลผลอยู่ (${completedImageCount}/${promptsForGeneration.length}) กดดึงผลรูปภาพเมื่อ provider ทำงานเสร็จ`);
+        setGuidedWorkflowStep(3);
+      }
     } catch (error) {
       toast.error(getErrorMessage(error, t("dialog.articleBuilder.generateImagesError")));
     } finally {
@@ -4537,6 +4926,79 @@ export function PresentationArticleGeneratorDialog({
       ...previous.filter((candidate) => candidate.pageNumber !== nextAsset.pageNumber),
       nextAsset,
     ].sort((left, right) => left.pageNumber - right.pageNumber));
+  };
+
+  const refreshGeneratedImageResult = async (asset: GeneratedImageAsset) => {
+    if (!asset.taskId) {
+      toast.error("ไม่มี task id สำหรับดึงผลรูปภาพ");
+      return;
+    }
+    const slotKey = getPreparedImageSlotKey(asset);
+    setRegeneratingSlotKey(slotKey);
+    try {
+      const fetched = await fetchTaskResultMutation.mutateAsync({ taskId: asset.taskId });
+      const taskPayload = (fetched as { task?: unknown } | undefined)?.task ?? fetched;
+      const taskStatus = normalizeTaskStatus(taskPayload);
+      const nextUrl = extractTaskResultUrl(fetched);
+      if (taskStatus === "failed" || taskStatus === "cancelled") {
+        const errorMessage = extractTaskFailureMessage(taskPayload) || "Image provider failed.";
+        setGeneratedImages((previous) => {
+          const nextAsset: GeneratedImageAsset = {
+            ...asset,
+            status: "failed",
+            errorMessage,
+            updatedAt: new Date().toISOString(),
+          };
+          const withoutCurrentSlot = previous.filter((candidate) => !isSamePreparedImageSlot(candidate, asset));
+          return [...withoutCurrentSlot, nextAsset]
+            .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
+        });
+        toast.error(`Page ${asset.pageNumber}: ${errorMessage}`);
+        return;
+      }
+      if (nextUrl) {
+        const normalizedUrl = normalizeMediaSourceUrl(nextUrl);
+        if (!normalizedUrl) {
+          throw new Error("Image provider returned an invalid URL");
+        }
+        const updatedAt = new Date().toISOString();
+        setGeneratedImages((previous) => {
+          const nextAsset: GeneratedImageAsset = {
+            ...asset,
+            url: normalizedUrl,
+            status: "completed",
+            errorMessage: undefined,
+            updatedAt,
+          };
+          const withoutCurrentSlot = previous.filter((candidate) => !isSamePreparedImageSlot(candidate, asset));
+          return [...withoutCurrentSlot, nextAsset]
+            .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
+        });
+        setGeneratedSlideDraft(null);
+        setGeneratedSlideDraftSkillId("");
+        toast.success(`Page ${asset.pageNumber}: ดึงรูปภาพสำเร็จแล้ว`);
+        return;
+      }
+      setGeneratedImages((previous) => {
+        const nextAsset: GeneratedImageAsset = {
+          ...asset,
+          status: "processing",
+          updatedAt: new Date().toISOString(),
+        };
+        const withoutCurrentSlot = previous.filter((candidate) => !isSamePreparedImageSlot(candidate, asset));
+        return [...withoutCurrentSlot, nextAsset]
+          .sort((left, right) => left.pageNumber - right.pageNumber || left.imageIndex - right.imageIndex);
+      });
+      const providerState = String((fetched as { kie_state?: unknown; provider_state?: unknown } | undefined)?.kie_state
+        ?? (fetched as { provider_state?: unknown } | undefined)?.provider_state
+        ?? taskStatus
+        ?? "processing");
+      toast.info(`Page ${asset.pageNumber}: รูปภาพยังประมวลผลอยู่ (${providerState})`);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "ดึงผลรูปภาพไม่สำเร็จ"));
+    } finally {
+      setRegeneratingSlotKey((current) => current === slotKey ? null : current);
+    }
   };
 
   const markExternalSlotVideoActive = (slotId: string) => {
@@ -6353,17 +6815,31 @@ export function PresentationArticleGeneratorDialog({
                         {t("dialog.articleBuilder.generatedImagesHint")}
                       </p>
                       <div className="grid min-h-[220px] gap-3 sm:grid-cols-2">
-                        {generatedImageCards.length > 0 ? generatedImageCards.map(({ prompt, asset, fallbackAsset }) => {
+                        {generatedImageCards.length > 0 ? generatedImageCards.map(({ prompt, asset, pendingAsset, fallbackAsset }) => {
                           const imageLabel = `Page ${prompt.pageNumber} · ${prompt.shortLabel}`;
                           const slotKey = getPreparedImageSlotKey(prompt);
                           const isSlotRegenerating = regeneratingSlotKey === slotKey;
                           const isPickerOpen = slotPickerKey === slotKey;
                           const previewAspectRatio = isFullSlideImageMode ? getCanvasRatioCss(canvasRatio) : undefined;
                           const displayAsset = asset ?? fallbackAsset;
+                          const displayUrl = displayAsset?.url?.trim() ?? "";
                           const isFallbackAsset = !asset && Boolean(fallbackAsset);
+                          const isImageProcessing = pendingAsset?.status === "processing";
+                          const isImageFailed = pendingAsset?.status === "failed";
                           const isPageLeadSlot = (preparedBundle?.imagePrompts ?? [])
                             .filter((candidate) => candidate.pageNumber === prompt.pageNumber)
                             .sort((left, right) => left.imageIndex - right.imageIndex)[0]?.id === prompt.id;
+                          const imageBadgeLabel = isSlotRegenerating
+                            ? t("dialog.articleBuilder.generating")
+                            : isImageProcessing
+                              ? "กำลังประมวลผล"
+                              : isImageFailed
+                                ? "ล้มเหลว"
+                                : asset
+                                  ? t("dialog.articleBuilder.generatedImageReady")
+                                  : isFallbackAsset
+                                    ? t("dialog.articleBuilder.generatedImageOldSize")
+                                    : t("dialog.articleBuilder.generatedImageMissing");
                           return (
                             <div key={slotKey} className="rounded-xl border bg-muted/20 p-3">
                               <div className="flex items-start justify-between gap-2">
@@ -6373,17 +6849,11 @@ export function PresentationArticleGeneratorDialog({
                                     {prompt.placementRole} · #{prompt.imageIndex}
                                   </div>
                                 </div>
-                                <Badge variant={isSlotRegenerating ? "default" : asset ? "secondary" : "outline"}>
-                                  {isSlotRegenerating
-                                    ? t("dialog.articleBuilder.generating")
-                                    : asset
-                                      ? t("dialog.articleBuilder.generatedImageReady")
-                                      : isFallbackAsset
-                                        ? t("dialog.articleBuilder.generatedImageOldSize")
-                                        : t("dialog.articleBuilder.generatedImageMissing")}
+                                <Badge variant={isSlotRegenerating || isImageProcessing ? "default" : asset ? "secondary" : "outline"}>
+                                  {imageBadgeLabel}
                                 </Badge>
                               </div>
-                              {displayAsset ? (
+                              {displayAsset && displayUrl ? (
                                 <div className="mt-3 space-y-3">
                                   <button
                                     type="button"
@@ -6393,7 +6863,7 @@ export function PresentationArticleGeneratorDialog({
                                     aria-label={`${t("dialog.articleBuilder.previewImage")} ${imageLabel}`}
                                   >
                                     <img
-                                      src={displayAsset.url}
+                                      src={displayUrl}
                                       alt={imageLabel}
                                       className={cn(
                                         "h-full w-full transition-transform duration-200 group-hover:scale-[1.02]",
@@ -6431,7 +6901,7 @@ export function PresentationArticleGeneratorDialog({
                                       {t("dialog.articleBuilder.previewImage")}
                                     </Button>
                                     <a
-                                      href={displayAsset.url}
+                                      href={displayUrl}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="inline-flex"
@@ -6446,7 +6916,7 @@ export function PresentationArticleGeneratorDialog({
                                       variant="outline"
                                       size="sm"
                                       onClick={() => void copyText(
-                                        displayAsset.url,
+                                        displayUrl,
                                         t("dialog.articleBuilder.copyImageUrlSuccess"),
                                         t("dialog.articleBuilder.copyImageUrlEmpty"),
                                       )}
@@ -6517,7 +6987,33 @@ export function PresentationArticleGeneratorDialog({
                                 </div>
                               ) : (
                                 <div className="mt-3 space-y-3">
+                                  {pendingAsset ? (
+                                    <div className={cn(
+                                      "rounded-lg border border-dashed bg-background p-3 text-xs",
+                                      isImageFailed ? "border-rose-200 text-rose-700" : "text-muted-foreground",
+                                    )}>
+                                      {isImageFailed
+                                        ? (pendingAsset.errorMessage || "รูปภาพล้มเหลว")
+                                        : "รูปภาพยังประมวลผลอยู่ สามารถกดดึงผลใหม่ได้โดยไม่ต้องสร้างซ้ำ"}
+                                    </div>
+                                  ) : null}
                                   {renderSlotPromptPanel(prompt)}
+                                  {pendingAsset?.status === "processing" ? (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => void refreshGeneratedImageResult(pendingAsset)}
+                                      disabled={isSlotRegenerating || fetchTaskResultMutation.isPending}
+                                    >
+                                      {isSlotRegenerating || fetchTaskResultMutation.isPending ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <RefreshCw className="mr-2 h-4 w-4" />
+                                      )}
+                                      ดึงผลรูปภาพ
+                                    </Button>
+                                  ) : null}
                                   <Button
                                     type="button"
                                     variant="outline"
@@ -7077,11 +7573,12 @@ export function PresentationArticleGeneratorDialog({
                           }}
                           promptPreview="Auto from video prompt skill"
                           aspectRatioPreview={canvasRatio}
-                          referenceImageUrls={preflightSlotPlans[0]
-                            ? generatedImageByPage.get(preflightSlotPlans[0].pageNumber)?.url
-                              ? [generatedImageByPage.get(preflightSlotPlans[0].pageNumber)!.url]
-                              : []
-                            : []}
+                          referenceImageUrls={(() => {
+                            const startFrameUrl = preflightSlotPlans[0]
+                              ? generatedImageByPage.get(preflightSlotPlans[0].pageNumber)?.url?.trim()
+                              : "";
+                            return startFrameUrl ? [startFrameUrl] : [];
+                          })()}
                           titlePrefix={t("dialog.articleBuilder.videoModelInputsLabel")}
                           panelTestId="article-builder-video-model-inputs"
                           emptyTestId="article-builder-video-model-inputs-empty"

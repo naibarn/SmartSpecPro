@@ -1,0 +1,1181 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { CategoryProductCandidate, ImageCandidate, PageDetection, ProductCapturePayload } from "../shared/types";
+
+declare const chrome: any;
+
+interface Settings {
+  baseUrl: string;
+  token: string;
+  tokenExpiresAt?: string;
+  deviceId: string;
+}
+
+interface CandidateFilters {
+  keyword: string;
+  minScore: string;
+  minSold: string;
+  minRating: string;
+  priceMax: string;
+  discountMin: string;
+  mallOnly: boolean;
+  freeShippingOnly: boolean;
+  excludeSponsored: boolean;
+}
+
+interface EditableProduct {
+  productName: string;
+  brand: string;
+  shopName: string;
+  priceCurrentText: string;
+  soldCountText: string;
+  ratingScoreText: string;
+  reviewCountText: string;
+  categoryText: string;
+  stockText: string;
+  variantsText: string;
+  sellerLocationText: string;
+  descriptionText: string;
+}
+
+interface EvidenceSelection {
+  domHeader: boolean;
+  domDescription: boolean;
+  rawHtmlBlocks: boolean;
+  headerScreenshot: boolean;
+  descriptionScreenshot: boolean;
+}
+
+interface ProgressStep {
+  label: string;
+  status: "pending" | "active" | "done" | "error";
+}
+
+interface MarketplaceLiveSnapshot {
+  page: PageDetection;
+  candidates: CategoryProductCandidate[];
+  product: ProductCapturePayload | null;
+  observedAt: string;
+  reason: string;
+}
+
+const CAPTURE_STEPS = [
+  "Detecting page",
+  "Collecting DOM text",
+  "Showing local review",
+  "Applying edits/selections",
+  "Uploading selected evidence",
+  "Calling LLM extraction",
+  "Preview ready",
+];
+const DEFAULT_SMARTSPEC_BASE_URL = "https://smartaihub.app";
+const DEVICE_ID_KEY = "deviceId";
+const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
+const EXTENSION_VERSION = "0.1.15";
+const EXTENSION_BUILD_LABEL = "2026-05-19 09:20 +07";
+
+function normalizeServerBaseUrl(raw: string | null | undefined): string {
+  const value = (raw || "").trim();
+  if (!value) return DEFAULT_SMARTSPEC_BASE_URL;
+
+  try {
+    const parsed = new URL(value);
+    const hostname = parsed.hostname.toLowerCase();
+    const isIpv4 = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname);
+    const isIpv6 = hostname.includes(":");
+    const isLocalhost = hostname === "localhost" || hostname.endsWith(".localhost");
+
+    if (parsed.protocol !== "https:" || isIpv4 || isIpv6 || isLocalhost) {
+      return DEFAULT_SMARTSPEC_BASE_URL;
+    }
+
+    parsed.hash = "";
+    parsed.search = "";
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return DEFAULT_SMARTSPEC_BASE_URL;
+  }
+}
+
+function dataUrlToBlob(dataUrl: string) {
+  const [header, base64] = dataUrl.split(",");
+  const mime = header.match(/data:(.*?);base64/)?.[1] || "image/png";
+  const bytes = atob(base64);
+  const array = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i += 1) array[i] = bytes.charCodeAt(i);
+  return new Blob([array], { type: mime });
+}
+
+function resolveServerUrl(baseUrl: string, pathOrUrl: string): string {
+  try {
+    return new URL(pathOrUrl, baseUrl).toString();
+  } catch {
+    return `${baseUrl}${pathOrUrl.startsWith("/") ? "" : "/"}${pathOrUrl}`;
+  }
+}
+
+function parseNumber(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  const m = raw.replace(/,/g, "").match(/\d+(?:\.\d+)?/);
+  return m ? Number(m[0]) : null;
+}
+
+function parsePercent(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  const m = raw.match(/-(\d+)%/);
+  return m ? Number(m[1]) : null;
+}
+
+function parseSold(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  const text = raw.toLowerCase().replace(/,/g, "").replace(/\s+/g, "");
+  const m = text.match(/\d+(?:\.\d+)?/);
+  if (!m) return null;
+  const n = Number(m[0]);
+  if (/m|ล้าน/.test(text)) return Math.round(n * 1_000_000);
+  if (/k|พัน/.test(text)) return Math.round(n * 1_000);
+  if (/หมื่น/.test(text)) return Math.round(n * 10_000);
+  return Math.round(n);
+}
+
+function formatFullNumber(value: number): string {
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
+}
+
+function appendNormalizedCount(raw: string | null | undefined): string {
+  const value = raw?.trim();
+  if (!value) return "";
+  if (/\(\s*[\d,]+\s*\)/.test(value)) return value;
+  const normalized = parseSold(value);
+  if (normalized == null) return value;
+  const rawNumber = value.replace(/,/g, "").match(/\d+(?:\.\d+)?/)?.[0];
+  const rawPlainNumber = rawNumber ? Number(rawNumber) : null;
+  if (rawPlainNumber != null && Number.isFinite(rawPlainNumber) && Math.round(rawPlainNumber) === normalized && !/[kKmM]|พัน|หมื่น|ล้าน/i.test(value)) {
+    return value;
+  }
+  return `${value} (${formatFullNumber(normalized)})`;
+}
+
+function parseRating(raw: string | null | undefined): number | null {
+  if (!raw) return null;
+  const m = raw.match(/[1-5](?:\.\d+)?/);
+  return m ? Number(m[0]) : null;
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function randomHex(bytes: number) {
+  const array = new Uint8Array(bytes);
+  crypto.getRandomValues(array);
+  return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function getOrCreateDeviceId(): Promise<string> {
+  const result = await chrome.storage.local.get([DEVICE_ID_KEY]);
+  const existing = String(result[DEVICE_ID_KEY] || "");
+  if (/^mdev_[a-f0-9]{64}$/.test(existing)) return existing;
+  const next = `mdev_${randomHex(32)}`;
+  await chrome.storage.local.set({ [DEVICE_ID_KEY]: next });
+  return next;
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const data = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const [, payload] = token.split(".");
+  if (!payload) return null;
+  try {
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+}
+
+function decodeJwtExpiresAt(token: string): string | null {
+  const decoded = decodeJwtPayload(token);
+  return typeof decoded?.exp === "number" ? new Date(decoded.exp * 1000).toISOString() : null;
+}
+
+async function assertTokenMatchesDevice(token: string, deviceId: string) {
+  const payload = decodeJwtPayload(token);
+  const tokenDeviceHash = typeof payload?.deviceIdHash === "string" ? payload.deviceIdHash : "";
+  if (!tokenDeviceHash) {
+    throw new Error("Token นี้ยังไม่ได้ผูกกับเครื่อง กรุณากด Connect และ generate token ใหม่จาก extension บนเครื่องนี้");
+  }
+  const localHash = await sha256Hex(deviceId);
+  if (tokenDeviceHash !== localHash) {
+    throw new Error("Token นี้ผูกกับเครื่องอื่น กรุณา generate token ใหม่บนเครื่องนี้");
+  }
+}
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "-";
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return "-";
+  return new Date(time).toLocaleString();
+}
+
+function tokenExpiryStatus(expiresAt: string | null | undefined) {
+  if (!expiresAt) return { label: "ไม่พบวันหมดอายุ กรุณาขอ token ใหม่", warning: true };
+  const remainingMs = new Date(expiresAt).getTime() - Date.now();
+  if (!Number.isFinite(remainingMs) || remainingMs <= 0) return { label: "Token หมดอายุแล้ว กรุณาขอ token ใหม่", warning: true };
+  if (remainingMs <= TOKEN_RENEWAL_WARNING_MS) return { label: "Token ใกล้หมดอายุใน 1 วัน กรุณาขอ token ใหม่", warning: true };
+  const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+  return { label: `Token ใช้งานได้อีกประมาณ ${remainingDays} วัน`, warning: false };
+}
+
+function toEditableProduct(product: ProductCapturePayload): EditableProduct {
+  return {
+    productName: product.productName || "",
+    brand: "",
+    shopName: product.shopName || "",
+    priceCurrentText: product.priceCurrentText || "",
+    soldCountText: appendNormalizedCount(product.soldCountText),
+    ratingScoreText: product.ratingScoreText || "",
+    reviewCountText: appendNormalizedCount(product.reviewCountText),
+    categoryText: product.categoryText || "",
+    stockText: product.stockText || "",
+    variantsText: product.variantsText || "",
+    sellerLocationText: product.sellerLocationText || "",
+    descriptionText: product.descriptionText || "",
+  };
+}
+
+function selectedImagesFromProduct(product: ProductCapturePayload) {
+  return Object.fromEntries(product.imageCandidates.map((img) => [img.url, img.kind === "main" && img.selected !== false]));
+}
+
+function mergeImageCandidates(existing: ImageCandidate[], incoming: ImageCandidate[]) {
+  const byUrl = new Map<string, ImageCandidate>();
+  const merged: ImageCandidate[] = [];
+  for (const image of existing) {
+    byUrl.set(image.url, image);
+    merged.push(image);
+  }
+  for (const image of incoming) {
+    const previous = byUrl.get(image.url);
+    if (!previous) {
+      const nextImage = { ...image, selected: false };
+      byUrl.set(image.url, nextImage);
+      merged.push(nextImage);
+      continue;
+    }
+    const incomingHasSpecificZone = image.kind !== "main" && image.kind !== "unknown";
+    const previousWasGeneric = previous.kind === "main" || previous.kind === "unknown";
+    const updated = {
+      ...previous,
+      ...image,
+      kind: incomingHasSpecificZone && previousWasGeneric ? image.kind : previous.kind,
+      selected: previous.selected,
+      metadata: { ...(previous.metadata ?? {}), ...(image.metadata ?? {}) },
+    };
+    byUrl.set(image.url, updated);
+    const index = merged.findIndex((candidate) => candidate.url === image.url);
+    if (index >= 0) merged[index] = updated;
+  }
+  return merged;
+}
+
+function mergeCandidates(existing: CategoryProductCandidate[], incoming: CategoryProductCandidate[]) {
+  const byUrl = new Map<string, CategoryProductCandidate>();
+  for (const candidate of existing) byUrl.set(candidate.url, candidate);
+  for (const candidate of incoming) {
+    const previous = byUrl.get(candidate.url);
+    byUrl.set(candidate.url, previous ? { ...previous, ...candidate, score: Math.max(previous.score, candidate.score) } : candidate);
+  }
+  return Array.from(byUrl.values()).sort((a, b) => b.score - a.score);
+}
+
+async function getActiveTab(): Promise<{ id: number; url: string }> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) throw new Error("ไม่พบ active tab");
+  return { id: tab.id, url: tab.url || "" };
+}
+
+async function getActiveTabId(): Promise<number> {
+  return (await getActiveTab()).id;
+}
+
+async function getActiveTabUrl(): Promise<string> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return tab?.url || "";
+}
+
+async function sendToContent<T>(type: string, payload: Record<string, unknown> = {}): Promise<T> {
+  const tab = await getActiveTab();
+  let response: any;
+  try {
+    await chrome.tabs.sendMessage(tab.id, { type: "PING_MARKETPLACE_CONTENT" });
+    response = await chrome.tabs.sendMessage(tab.id, { type, ...payload });
+  } catch (error: any) {
+    if (!/^https:\/\/(shopee\.co\.th|[^/]+\.shopee\.co\.th|www\.tiktok\.com|shop\.tiktok\.com|[^/]+\.tiktokglobalshop\.com)\//i.test(tab.url)) {
+      throw new Error("กรุณาเปิดหน้า Shopee หรือ TikTok Shop ก่อนใช้งาน Detect");
+    }
+    try {
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["assets/content.js"] });
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      response = await chrome.tabs.sendMessage(tab.id, { type, ...payload });
+    } catch (retryError: any) {
+      throw new Error(retryError?.message || error?.message || "content script failed");
+    }
+  }
+  if (!response?.ok) throw new Error(response?.error || "content script failed");
+  return response;
+}
+
+async function loadSettings(): Promise<Settings> {
+  const deviceId = await getOrCreateDeviceId();
+  const result = await chrome.storage.local.get(["baseUrl", "token", "tokenExpiresAt", "queuedCandidates"]);
+  const token = result.token || "";
+  return {
+    baseUrl: normalizeServerBaseUrl(result.baseUrl),
+    token,
+    tokenExpiresAt: result.tokenExpiresAt || decodeJwtExpiresAt(token) || undefined,
+    deviceId,
+  };
+}
+
+async function saveSettings(settings: Settings) {
+  const deviceId = settings.deviceId || await getOrCreateDeviceId();
+  await chrome.storage.local.set({
+    baseUrl: normalizeServerBaseUrl(settings.baseUrl),
+    token: settings.token,
+    tokenExpiresAt: settings.tokenExpiresAt || "",
+    [DEVICE_ID_KEY]: deviceId,
+  });
+}
+
+async function saveQueue(queue: CategoryProductCandidate[]) {
+  await chrome.storage.local.set({ queuedCandidates: queue });
+}
+
+async function loadQueue(): Promise<CategoryProductCandidate[]> {
+  const result = await chrome.storage.local.get(["queuedCandidates"]);
+  return Array.isArray(result.queuedCandidates) ? result.queuedCandidates : [];
+}
+
+const TIKTOK_START_URLS = [
+  { label: "TikTok Shop TH", url: "https://www.tiktok.com/shop/th?source=ecommerce_shoppingguide" },
+  { label: "TikTok Home Supplies", url: "https://www.tiktok.com/shop/th/c/home-supplies/600001" },
+];
+
+const SHOPEE_START_URLS = [
+  { label: "Shopee Home", url: "https://shopee.co.th/" },
+  { label: "Shopee Mall", url: "https://shopee.co.th/mall" },
+];
+
+export default function App() {
+  const [settings, setSettings] = useState<Settings>({ baseUrl: DEFAULT_SMARTSPEC_BASE_URL, token: "", deviceId: "" });
+  const [tokenInput, setTokenInput] = useState("");
+  const [tokenEditorOpen, setTokenEditorOpen] = useState(true);
+  const [connectFlowStarted, setConnectFlowStarted] = useState(false);
+  const [page, setPage] = useState<PageDetection | null>(null);
+  const [candidates, setCandidates] = useState<CategoryProductCandidate[]>([]);
+  const [ignoredUrls, setIgnoredUrls] = useState<Set<string>>(new Set());
+  const [queue, setQueue] = useState<CategoryProductCandidate[]>([]);
+  const [filters, setFilters] = useState<CandidateFilters>({
+    keyword: "",
+    minScore: "50",
+    minSold: "",
+    minRating: "",
+    priceMax: "",
+    discountMin: "",
+    mallOnly: false,
+    freeShippingOnly: false,
+    excludeSponsored: true,
+  });
+  const [starterKeyword, setStarterKeyword] = useState("");
+  const [product, setProduct] = useState<ProductCapturePayload | null>(null);
+  const [liveProduct, setLiveProduct] = useState<ProductCapturePayload | null>(null);
+  const [autoDetectEnabled, setAutoDetectEnabled] = useState(true);
+  const [lastObservedAt, setLastObservedAt] = useState("");
+  const [lastObserveReason, setLastObserveReason] = useState("");
+  const [editable, setEditable] = useState<EditableProduct>({ productName: "", brand: "", shopName: "", priceCurrentText: "", soldCountText: "", ratingScoreText: "", reviewCountText: "", categoryText: "", stockText: "", variantsText: "", sellerLocationText: "", descriptionText: "" });
+  const [evidence, setEvidence] = useState<EvidenceSelection>({
+    domHeader: true,
+    domDescription: true,
+    rawHtmlBlocks: false,
+    headerScreenshot: true,
+    descriptionScreenshot: true,
+  });
+  const [selectedImages, setSelectedImages] = useState<Record<string, boolean>>({});
+  const [progress, setProgress] = useState<ProgressStep[]>(CAPTURE_STEPS.map((label) => ({ label, status: "pending" })));
+  const [status, setStatus] = useState("Ready");
+  const [error, setError] = useState("");
+  const productSourceRef = useRef<string | null>(null);
+  const pageUrlRef = useRef<string | null>(null);
+  const serverBaseUrl = useMemo(() => normalizeServerBaseUrl(settings.baseUrl), [settings.baseUrl]);
+  const tokenExpiresAt = useMemo(() => settings.tokenExpiresAt || decodeJwtExpiresAt(settings.token), [settings.token, settings.tokenExpiresAt]);
+  const tokenStatus = useMemo(() => tokenExpiryStatus(tokenExpiresAt), [tokenExpiresAt]);
+  const tokenInputExpiresAt = useMemo(() => decodeJwtExpiresAt(tokenInput.trim()), [tokenInput]);
+  const canSaveConnection = tokenEditorOpen ? Boolean(tokenInputExpiresAt) : Boolean(settings.token);
+
+  useEffect(() => {
+    loadSettings()
+      .then((loaded) => {
+        setSettings(loaded);
+        setTokenEditorOpen(!loaded.token);
+        setConnectFlowStarted(false);
+        setTokenInput("");
+      })
+      .catch(() => undefined);
+    loadQueue().then(setQueue).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    const handler = (changes: Record<string, any>, areaName: string) => {
+      if (areaName !== "local") return;
+      if (!changes.token && !changes.baseUrl && !changes.tokenExpiresAt) return;
+      loadSettings()
+        .then((loaded) => {
+          setSettings(loaded);
+          if (loaded.token) {
+            setTokenInput("");
+            setTokenEditorOpen(false);
+            setConnectFlowStarted(false);
+            setStatus("Connection saved");
+          }
+        })
+        .catch(() => undefined);
+    };
+    chrome.storage.onChanged.addListener(handler);
+    return () => chrome.storage.onChanged.removeListener(handler);
+  }, []);
+
+  function applyProductForReview(nextProduct: ProductCapturePayload) {
+    productSourceRef.current = nextProduct.sourceUrl;
+    setProduct(nextProduct);
+    setLiveProduct(nextProduct);
+    setEditable(toEditableProduct(nextProduct));
+    setSelectedImages(selectedImagesFromProduct(nextProduct));
+    updateProgress("Showing local review", ["Detecting page", "Collecting DOM text"]);
+  }
+
+  function mergeProductImagesForReview(nextProduct: ProductCapturePayload) {
+    productSourceRef.current = productSourceRef.current || nextProduct.sourceUrl;
+    const mergeInto = (current: ProductCapturePayload | null) => {
+      if (!current || current.sourceUrl !== nextProduct.sourceUrl) return nextProduct;
+      return {
+        ...current,
+        imageCandidates: mergeImageCandidates(current.imageCandidates, nextProduct.imageCandidates),
+      };
+    };
+    setProduct((current) => mergeInto(current));
+    setLiveProduct((current) => mergeInto(current));
+    setSelectedImages((current) => {
+      const next = { ...current };
+      for (const image of nextProduct.imageCandidates) {
+        if (next[image.url] == null) next[image.url] = false;
+      }
+      return next;
+    });
+  }
+
+  function clearDetectedState() {
+    productSourceRef.current = null;
+    pageUrlRef.current = null;
+    setCandidates([]);
+    setIgnoredUrls(new Set());
+    setProduct(null);
+    setLiveProduct(null);
+    setSelectedImages({});
+    setEditable({ productName: "", brand: "", shopName: "", priceCurrentText: "", soldCountText: "", ratingScoreText: "", reviewCountText: "", categoryText: "", stockText: "", variantsText: "", sellerLocationText: "", descriptionText: "" });
+  }
+
+  function applyLiveSnapshot(snapshot: MarketplaceLiveSnapshot, options: { replace?: boolean } = {}) {
+    const pageChanged = Boolean(pageUrlRef.current && pageUrlRef.current !== snapshot.page.url);
+    const shouldReplaceList = Boolean(options.replace || pageChanged || snapshot.reason === "url_change");
+    pageUrlRef.current = snapshot.page.url;
+    setPage(snapshot.page);
+    if (shouldReplaceList) {
+      setCandidates(snapshot.candidates);
+      setIgnoredUrls(new Set());
+    } else if (snapshot.candidates.length > 0) {
+      setCandidates((current) => mergeCandidates(current, snapshot.candidates));
+    }
+    if (snapshot.product) {
+      const currentSource = productSourceRef.current;
+      const shouldReplaceProduct = shouldReplaceList || !currentSource || currentSource !== snapshot.product.sourceUrl;
+      if (shouldReplaceProduct) {
+        applyProductForReview(snapshot.product);
+      } else {
+        mergeProductImagesForReview(snapshot.product);
+      }
+    } else if (shouldReplaceList) {
+      setProduct(null);
+      setLiveProduct(null);
+      setSelectedImages({});
+      productSourceRef.current = null;
+    }
+    setLastObservedAt(snapshot.observedAt);
+    setLastObserveReason(snapshot.reason);
+    const candidateText = snapshot.candidates.length > 0
+      ? `${snapshot.candidates.length} products`
+      : snapshot.product
+        ? `${snapshot.product.imageCandidates.length} product images`
+        : "no product cards";
+    setStatus(`Live detected ${candidateText}`);
+  }
+
+  useEffect(() => {
+    if (product || !liveProduct || liveProduct.imageCandidates.length === 0) return;
+    applyProductForReview(liveProduct);
+    setStatus("Review latest detected images before upload");
+  }, [liveProduct, product]);
+
+  useEffect(() => {
+    const handler = (message: any) => {
+      if (message?.type !== "MARKETPLACE_PAGE_SNAPSHOT" || !message.page) return;
+      applyLiveSnapshot({
+        page: message.page,
+        candidates: Array.isArray(message.candidates) ? message.candidates : [],
+        product: message.product ?? null,
+        observedAt: message.observedAt || new Date().toISOString(),
+        reason: message.reason || "update",
+      });
+    };
+    chrome.runtime.onMessage.addListener(handler);
+    return () => chrome.runtime.onMessage.removeListener(handler);
+  }, []);
+
+  useEffect(() => {
+    if (!autoDetectEnabled) {
+      sendToContent("STOP_MARKETPLACE_OBSERVER").catch(() => undefined);
+      return;
+    }
+    sendToContent("START_MARKETPLACE_OBSERVER").catch(() => undefined);
+    const restartObserver = (reason: string) => {
+      window.setTimeout(() => {
+        clearDetectedState();
+        sendToContent("START_MARKETPLACE_OBSERVER")
+          .then(() => sendToContent<MarketplaceLiveSnapshot>("GET_MARKETPLACE_SNAPSHOT"))
+          .then((snapshot) => applyLiveSnapshot(snapshot, { replace: true }))
+          .catch(() => undefined);
+      }, reason === "tab_complete" ? 900 : 250);
+    };
+    const handleTabUpdated = (tabId: number, changeInfo: any) => {
+      if (changeInfo.status !== "complete") return;
+      getActiveTabId()
+        .then((activeTabId) => {
+          if (activeTabId === tabId) restartObserver("tab_complete");
+        })
+        .catch(() => undefined);
+    };
+    const handleActivated = () => restartObserver("tab_activated");
+    chrome.tabs.onUpdated?.addListener(handleTabUpdated);
+    chrome.tabs.onActivated?.addListener(handleActivated);
+    return () => {
+      chrome.tabs.onUpdated?.removeListener(handleTabUpdated);
+      chrome.tabs.onActivated?.removeListener(handleActivated);
+      sendToContent("STOP_MARKETPLACE_OBSERVER").catch(() => undefined);
+    };
+  }, [autoDetectEnabled]);
+
+  const filteredCandidates = useMemo(() => {
+    const keyword = filters.keyword.trim().toLowerCase();
+    const minScore = Number(filters.minScore) || 0;
+    const minSold = Number(filters.minSold) || 0;
+    const minRating = Number(filters.minRating) || 0;
+    const priceMax = Number(filters.priceMax) || 0;
+    const discountMin = Number(filters.discountMin) || 0;
+    return candidates
+      .filter((item) => !ignoredUrls.has(item.url))
+      .filter((item) => item.score >= minScore)
+      .filter((item) => !keyword || item.title.toLowerCase().includes(keyword))
+      .filter((item) => !filters.mallOnly || item.badges.some((badge) => /mall|official/i.test(badge)))
+      .filter((item) => !filters.freeShippingOnly || item.badges.some((badge) => /free[_\s-]?shipping|ส่งฟรี/i.test(badge)))
+      .filter((item) => !filters.excludeSponsored || !item.badges.some((badge) => /sponsored/i.test(badge)))
+      .filter((item) => !minSold || (parseSold(item.soldCountText) ?? 0) >= minSold)
+      .filter((item) => !minRating || (parseRating(item.ratingText) ?? 0) >= minRating)
+      .filter((item) => !priceMax || (parseNumber(item.priceText) ?? Number.POSITIVE_INFINITY) <= priceMax)
+      .filter((item) => !discountMin || (parsePercent(item.discountText) ?? 0) >= discountMin)
+      .sort((a, b) => b.score - a.score);
+  }, [candidates, filters, ignoredUrls]);
+
+  const selectedImageCount = useMemo(() => Object.values(selectedImages).filter(Boolean).length, [selectedImages]);
+  const selectedEvidenceCount = [
+    evidence.domHeader,
+    evidence.domDescription,
+    evidence.rawHtmlBlocks,
+    evidence.headerScreenshot,
+    evidence.descriptionScreenshot,
+  ].filter(Boolean).length;
+  const queuedCurrentProduct = useMemo(() => {
+    if (!product) return null;
+    return queue.find((item) => item.url === product.sourceUrl || item.externalProductId === product.externalProductId) ?? null;
+  }, [product, queue]);
+
+  function updateProgress(activeLabel: string, doneLabels: string[] = []) {
+    setProgress(CAPTURE_STEPS.map((label) => ({
+      label,
+      status: doneLabels.includes(label) ? "done" : label === activeLabel ? "active" : "pending",
+    })));
+  }
+
+  function markProgressDone() {
+    setProgress(CAPTURE_STEPS.map((label) => ({ label, status: "done" })));
+  }
+
+  async function openConnectPage() {
+    const origin = `chrome-extension://${chrome.runtime.id}`;
+    const deviceId = settings.deviceId || await getOrCreateDeviceId();
+    if (!settings.deviceId) setSettings((current) => ({ ...current, deviceId }));
+    setTokenEditorOpen(true);
+    setConnectFlowStarted(true);
+    chrome.tabs.create({ url: `${serverBaseUrl}/marketplace-capture/connect?origin=${encodeURIComponent(origin)}&deviceId=${encodeURIComponent(deviceId)}` });
+  }
+
+  function openStarterUrl(url: string) {
+    chrome.tabs.update({ url });
+  }
+
+  function openShopeeSearch() {
+    const keyword = starterKeyword.trim();
+    openStarterUrl(keyword ? `https://shopee.co.th/search?keyword=${encodeURIComponent(keyword)}` : "https://shopee.co.th/");
+  }
+
+  function openTikTokSearch() {
+    const keyword = starterKeyword.trim();
+    openStarterUrl(keyword ? `https://www.tiktok.com/shop/th/search?q=${encodeURIComponent(keyword)}` : "https://www.tiktok.com/shop/th?source=ecommerce_shoppingguide");
+  }
+
+  async function clearConnection() {
+    const next = { ...settings, token: "", tokenExpiresAt: undefined };
+    setSettings(next);
+    setTokenInput("");
+    setTokenEditorOpen(true);
+    setConnectFlowStarted(false);
+    await saveSettings(next);
+  }
+
+  async function saveConnection() {
+    const nextToken = tokenEditorOpen ? tokenInput.trim() : settings.token.trim();
+    if (!nextToken) throw new Error("กรุณาใส่ extension token ก่อน");
+    const nextExpiresAt = decodeJwtExpiresAt(nextToken);
+    if (!nextExpiresAt) throw new Error("Token ไม่ถูกต้อง หรือไม่พบวันหมดอายุ");
+    const deviceId = settings.deviceId || await getOrCreateDeviceId();
+    await assertTokenMatchesDevice(nextToken, deviceId);
+    const next = { ...settings, baseUrl: serverBaseUrl, token: nextToken, tokenExpiresAt: nextExpiresAt, deviceId };
+    setSettings(next);
+    setTokenInput("");
+    setTokenEditorOpen(false);
+    setConnectFlowStarted(false);
+    await saveSettings(next);
+    setStatus("Connection saved");
+  }
+
+  function extensionAuthHeaders(contentType?: string) {
+    if (!settings.deviceId) throw new Error("ไม่พบ device binding กรุณากด Connect SmartAIHub ใหม่");
+    return {
+      ...(contentType ? { "Content-Type": contentType } : {}),
+      Authorization: `Bearer ${settings.token}`,
+      "X-Marketplace-Device-Id": settings.deviceId,
+    };
+  }
+
+  async function detect() {
+    setError("");
+    setStatus("Detecting page");
+    clearDetectedState();
+    updateProgress("Detecting page");
+    const snapshot = await sendToContent<MarketplaceLiveSnapshot>("GET_MARKETPLACE_SNAPSHOT");
+    applyLiveSnapshot(snapshot, { replace: true });
+    setStatus(snapshot.product ? "Review latest detected details before upload" : `Detected ${snapshot.candidates.length} candidates`);
+  }
+
+  async function scanCategory() {
+    setError("");
+    setStatus("Scanning visible products");
+    const response = await sendToContent<{ candidates: CategoryProductCandidate[] }>("SCAN_CATEGORY", { limit: 100 });
+    setCandidates(response.candidates);
+    setStatus(`Found ${response.candidates.length} candidates`);
+  }
+
+  async function scrollScanCategory() {
+    setError("");
+    setStatus("Scrolling and scanning");
+    const response = await sendToContent<{ candidates: CategoryProductCandidate[] }>("SCROLL_AND_SCAN_CATEGORY", { steps: 5, limit: 100 });
+    setCandidates(response.candidates);
+    setStatus(`Found ${response.candidates.length} candidates`);
+  }
+
+  async function refreshLiveSnapshot() {
+    const snapshot = await sendToContent<MarketplaceLiveSnapshot>("GET_MARKETPLACE_SNAPSHOT");
+    applyLiveSnapshot(snapshot, { replace: true });
+  }
+
+  async function mergeVisibleProductImages() {
+    setError("");
+    setStatus("Detecting visible product images");
+    const before = product?.imageCandidates.length ?? liveProduct?.imageCandidates.length ?? 0;
+    const response = await sendToContent<{ product: ProductCapturePayload }>("MERGE_VISIBLE_PRODUCT_IMAGES");
+    if (!product) {
+      applyProductForReview(response.product);
+      setStatus(`Detected ${response.product.imageCandidates.length} product images`);
+      return;
+    }
+    mergeProductImagesForReview(response.product);
+    const merged = mergeImageCandidates(product?.imageCandidates ?? liveProduct?.imageCandidates ?? [], response.product.imageCandidates);
+    const added = Math.max(0, merged.length - before);
+    setStatus(added > 0 ? `Merged ${added} new images from current view` : "No new images found in current view");
+  }
+
+  async function sendCandidatesToSmartSpec() {
+    if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
+    const sourceUrl = page?.url || filteredCandidates[0]?.sourceUrl || await getActiveTabUrl();
+    if (!sourceUrl) throw new Error("ไม่พบ URL ของหน้า marketplace");
+    const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/category-candidates`, {
+      method: "POST",
+      headers: extensionAuthHeaders("application/json"),
+      body: JSON.stringify({
+        platform: filteredCandidates[0]?.platform || page?.platform || "shopee",
+        sourceUrl,
+        filters,
+        candidates: filteredCandidates.slice(0, 100),
+      }),
+    });
+    if (!response.ok) throw new Error(await response.text());
+    setStatus(`Sent ${filteredCandidates.length} candidates`);
+  }
+
+  function addQueue(candidate: CategoryProductCandidate) {
+    const next = [...queue.filter((item) => item.url !== candidate.url), candidate];
+    setQueue(next);
+    saveQueue(next).catch(() => undefined);
+  }
+
+  function removeQueue(url: string) {
+    const next = queue.filter((item) => item.url !== url);
+    setQueue(next);
+    saveQueue(next).catch(() => undefined);
+  }
+
+  async function scanProduct() {
+    setError("");
+    setStatus("Scanning product page");
+    updateProgress("Collecting DOM text", ["Detecting page"]);
+    const response = await sendToContent<{ product: ProductCapturePayload }>("SCAN_PRODUCT");
+    applyProductForReview(response.product);
+    setStatus("Review before upload");
+  }
+
+  function useLiveProductForReview() {
+    if (!liveProduct) return;
+    applyProductForReview(liveProduct);
+    setStatus("Review latest detected details before upload");
+  }
+
+  async function uploadAndAnalyze() {
+    if (!product) return;
+    if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
+    const selected = product.imageCandidates.filter((img) => selectedImages[img.url]).map((img, position) => ({ ...img, position, selected: true }));
+    const confirmed = window.confirm([
+      "ยืนยัน upload รายการสินค้านี้หรือไม่?",
+      "",
+      `สินค้า: ${editable.productName || product.productName || "Untitled product"}`,
+      `URL: ${product.sourceUrl}`,
+      `จำนวนภาพที่จะ upload: ${selected.length}`,
+    ].join("\n"));
+    if (!confirmed) {
+      setStatus("Upload cancelled");
+      return;
+    }
+    setStatus("Creating capture draft");
+    updateProgress("Applying edits/selections", ["Detecting page", "Collecting DOM text", "Showing local review"]);
+    const domText = [
+      evidence.domHeader ? product.rawDomText.slice(0, 30_000) : "",
+      evidence.domDescription ? editable.descriptionText : "",
+    ].filter(Boolean).join("\n\n");
+    const htmlBlocks = evidence.rawHtmlBlocks ? product.htmlBlocks : product.htmlBlocks.map((block) => ({ ...block, outerHTML: undefined }));
+    const draft = await fetch(`${serverBaseUrl}/api/marketplace-captures/captures`, {
+      method: "POST",
+      headers: extensionAuthHeaders("application/json"),
+      body: JSON.stringify({
+        platform: product.platform,
+        sourceUrl: product.sourceUrl,
+        originalSourceUrl: product.originalSourceUrl,
+        cleanSourceUrl: product.cleanSourceUrl,
+        canonicalSourceUrl: product.canonicalSourceUrl,
+        sourceUrlFormat: product.sourceUrlFormat,
+        pageType: product.pageType,
+        externalProductId: product.externalProductId,
+        externalShopId: product.externalShopId,
+        pageTitle: product.pageTitle,
+        domText,
+        htmlBlocks,
+        imageCandidates: selected,
+        rawPayload: {
+          ...product,
+          imageCandidates: selected,
+          productName: editable.productName,
+          brand: editable.brand,
+          shopName: editable.shopName,
+          priceCurrentText: editable.priceCurrentText,
+          soldCountText: editable.soldCountText,
+          ratingScoreText: editable.ratingScoreText,
+          reviewCountText: editable.reviewCountText,
+          categoryText: editable.categoryText,
+          stockText: editable.stockText,
+          variantsText: editable.variantsText,
+          sellerLocationText: editable.sellerLocationText,
+          descriptionText: editable.descriptionText,
+        },
+      }),
+    });
+    if (!draft.ok) throw new Error(await draft.text());
+    const draftJson = await draft.json();
+    updateProgress("Uploading selected evidence", ["Detecting page", "Collecting DOM text", "Showing local review", "Applying edits/selections"]);
+
+    async function uploadScreenshot(section: "product_header" | "description", fileName: string, sortOrder: number) {
+      if (section === "product_header") {
+        await sendToContent("SCROLL_PRODUCT_HEADER").catch(() => undefined);
+        await delay(600);
+      }
+      if (section === "description") {
+        await sendToContent("SCROLL_PRODUCT_DESCRIPTION").catch(() => undefined);
+        await delay(800);
+      }
+      const screenshot = await chrome.runtime.sendMessage({ type: "CAPTURE_VISIBLE_TAB" });
+      if (screenshot?.ok) {
+        const form = new FormData();
+        form.set("file", dataUrlToBlob(screenshot.dataUrl), fileName);
+        form.set("kind", "screenshot");
+        form.set("section", section);
+        form.set("metadata", JSON.stringify({ source: "visible_tab", sortOrder }));
+        const upload = await fetch(`${serverBaseUrl}${draftJson.next.uploadAssets}`, {
+          method: "POST",
+          headers: extensionAuthHeaders(),
+          body: form,
+        });
+        if (!upload.ok) throw new Error(await upload.text());
+      }
+    }
+    if (evidence.headerScreenshot) {
+      setStatus("Capturing header screenshot");
+      await uploadScreenshot("product_header", "product_header.png", 0);
+    }
+    if (evidence.descriptionScreenshot) {
+      setStatus("Capturing description screenshot");
+      await uploadScreenshot("description", "description.png", 1);
+    }
+
+    setStatus("Analyzing capture");
+    updateProgress("Calling LLM extraction", ["Detecting page", "Collecting DOM text", "Showing local review", "Applying edits/selections", "Uploading selected evidence"]);
+    const analyze = await fetch(`${serverBaseUrl}${draftJson.next.analyze}`, {
+      method: "POST",
+      headers: extensionAuthHeaders("application/json"),
+      body: JSON.stringify({ forceRerun: false, language: "th" }),
+    });
+    if (!analyze.ok) throw new Error(await analyze.text());
+    const analyzeJson = await analyze.json();
+    setStatus("Preview ready");
+    markProgressDone();
+    if (queuedCurrentProduct) removeQueue(queuedCurrentProduct.url);
+    chrome.tabs.create({
+      url: resolveServerUrl(serverBaseUrl, analyzeJson.previewUrl),
+      active: false,
+    });
+  }
+
+  async function run(action: () => Promise<void>) {
+    try {
+      await action();
+    } catch (err: any) {
+      setError(err?.message || "Unexpected error");
+      setStatus("Error");
+      setProgress((current) => current.map((step) => step.status === "active" ? { ...step, status: "error" } : step));
+    }
+  }
+
+  const updateFilter = (key: keyof CandidateFilters, value: string | boolean) => setFilters((current) => ({ ...current, [key]: value }));
+  const updateEditable = (key: keyof EditableProduct, value: string) => setEditable((current) => ({ ...current, [key]: value }));
+  const updateEvidence = (key: keyof EvidenceSelection, value: boolean) => setEvidence((current) => ({ ...current, [key]: value }));
+
+  return (
+    <div className="app">
+      <div className="row">
+        <div>
+          <strong>SmartAIHub Capture</strong>
+          <div className="muted">{status}</div>
+          <div className="muted">Extension v{EXTENSION_VERSION} | build {EXTENSION_BUILD_LABEL}</div>
+        </div>
+        <button className="button" onClick={() => run(detect)}>Detect</button>
+      </div>
+
+      <div className="section">
+        <label className="muted">Base URL</label>
+        <input className="input" value={settings.baseUrl} onChange={(e) => setSettings({ ...settings, baseUrl: e.target.value })} />
+        {settings.token && !tokenEditorOpen ? (
+          <div className="connection-summary">
+            <strong>Extension connected</strong>
+            <div className="muted">หมดอายุ: {formatDateTime(tokenExpiresAt)}</div>
+            <div className={tokenStatus.warning ? "warning" : "muted"}>{tokenStatus.label}</div>
+          </div>
+        ) : (
+          <>
+            <label className="muted">Extension token</label>
+            <textarea
+              className="textarea"
+              placeholder="Paste extension token"
+              value={tokenInput}
+              onChange={(e) => {
+                setTokenInput(e.target.value);
+                if (decodeJwtExpiresAt(e.target.value.trim())) setConnectFlowStarted(true);
+              }}
+            />
+            <div className={connectFlowStarted ? "muted" : "warning"}>
+              {connectFlowStarted
+                ? tokenInputExpiresAt
+                  ? `Token นี้หมดอายุ: ${formatDateTime(tokenInputExpiresAt)}`
+                  : "วาง token ที่สร้างจากหน้า Connect เพื่อเปิดปุ่ม Save"
+                : "กด Connect SmartAIHub ก่อน แล้วค่อยวาง token ที่สร้างได้"}
+            </div>
+          </>
+        )}
+        <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+          <button className="button primary" onClick={() => run(openConnectPage)}>Connect SmartAIHub</button>
+          <button className="button" disabled={!canSaveConnection} onClick={() => run(saveConnection)}>Save connection</button>
+          {settings.token && !tokenEditorOpen ? (
+            <button className="button" onClick={() => {
+              setTokenInput("");
+              setConnectFlowStarted(false);
+              setTokenEditorOpen(true);
+            }}>Replace token</button>
+          ) : null}
+          <button className="button" disabled={!settings.token} onClick={() => run(clearConnection)}>Clear token</button>
+        </div>
+        <div className="muted">Origin: chrome-extension://{chrome.runtime.id}</div>
+      </div>
+
+      {error ? <div className="section error">{error}</div> : null}
+
+      <div className="section">
+        <strong>Open marketplace</strong>
+        <div className="muted">เริ่มจากหน้า marketplace ที่เหมาะกับการสแกน แล้วใช้ตัวกรองเลือกสินค้าที่ขายดี/rating สูง</div>
+        <input className="input" placeholder="Keyword เช่น cleanser, ของใช้ในบ้าน" value={starterKeyword} onChange={(e) => setStarterKeyword(e.target.value)} />
+        <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 8 }}>
+          <button className="button" onClick={openShopeeSearch}>Shopee search</button>
+          <button className="button" onClick={openTikTokSearch}>TikTok Shop search</button>
+          {SHOPEE_START_URLS.map((item) => <button className="button" key={item.url} onClick={() => openStarterUrl(item.url)}>{item.label}</button>)}
+          {TIKTOK_START_URLS.map((item) => <button className="button" key={item.url} onClick={() => openStarterUrl(item.url)}>{item.label}</button>)}
+        </div>
+      </div>
+
+      <div className="section">
+        <div className="muted">Platform: {page?.platform ?? "unknown"} | Page: {page?.pageType ?? "unknown"}</div>
+        <div className="section" style={{ marginTop: 8 }}>
+          <label className="muted">
+            <input
+              type="checkbox"
+              checked={autoDetectEnabled}
+              onChange={(e) => setAutoDetectEnabled(e.target.checked)}
+            /> Live detect while scrolling
+          </label>
+          <div className="muted">
+            {lastObservedAt
+              ? `Last update: ${new Date(lastObservedAt).toLocaleTimeString()} (${lastObserveReason})`
+              : "Panel จะค่อย ๆ ตรวจสินค้าหรือรายละเอียดที่โหลดเพิ่มเมื่อ user scroll"}
+          </div>
+          <div className="muted">Live candidates: {candidates.length}</div>
+          <button className="button" onClick={() => run(refreshLiveSnapshot)}>Refresh live snapshot</button>
+          {page?.pageType === "product" ? (
+            <button className="button" onClick={() => run(mergeVisibleProductImages)}>Merge visible images</button>
+          ) : null}
+        </div>
+        {page?.pageType === "category" || page?.pageType === "shop" ? (
+          <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+            <button className="button primary" onClick={() => run(scanCategory)}>Scan visible products</button>
+            <button className="button" onClick={() => run(scrollScanCategory)}>Scroll & scan more</button>
+            <button className="button" disabled={filteredCandidates.length === 0} onClick={() => run(sendCandidatesToSmartSpec)}>Send candidates</button>
+          </div>
+        ) : null}
+        {page?.pageType === "product" ? (
+          <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+            <button className="button primary" onClick={() => run(scanProduct)}>Scan & Review</button>
+            {page.platform === "tiktok_shop" ? (
+              <>
+                <button className="button" onClick={() => run(scanCategory)}>Scan related products</button>
+                <button className="button" onClick={() => run(scrollScanCategory)}>Scroll related & scan</button>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      {liveProduct && !product ? (
+        <div className="section">
+          <strong>Live product details</strong>
+          <div className="muted">ระบบตรวจเจอข้อมูลล่าสุดจากหน้าที่ user กำลังดูอยู่ ยังไม่ upload หรือ save จนกว่าจะกดใช้งานและยืนยันเอง</div>
+          <div>{liveProduct.productName || "Untitled product"}</div>
+          <div className="muted">
+            {liveProduct.priceCurrentText || "-"} | {liveProduct.ratingScoreText ? `rating ${liveProduct.ratingScoreText} | ` : ""}
+            {appendNormalizedCount(liveProduct.soldCountText) || "-"}
+          </div>
+          <div className="muted">
+            Images {liveProduct.imageCandidates.length}
+            {" | "}Review images {liveProduct.imageCandidates.filter((img) => img.kind === "review").length}
+            {" | "}Variants {liveProduct.variantsText ? "found" : "not found"}
+          </div>
+          <button className="button primary" onClick={useLiveProductForReview}>Use latest detected details</button>
+        </div>
+      ) : null}
+
+      <div className="section">
+        <strong>Capture Progress</strong>
+        {progress.map((step) => (
+          <div className={`progress ${step.status}`} key={step.label}>
+            <span>{step.status === "done" ? "✓" : step.status === "active" ? "…" : step.status === "error" ? "!" : "○"}</span>
+            <span>{step.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {candidates.length > 0 ? (
+        <div className="section">
+          <strong>Filters</strong>
+          <div className="grid">
+            <input className="input" placeholder="Keyword include" value={filters.keyword} onChange={(e) => updateFilter("keyword", e.target.value)} />
+            <input className="input" placeholder="Min score" value={filters.minScore} onChange={(e) => updateFilter("minScore", e.target.value)} />
+            <input className="input" placeholder="Min sold" value={filters.minSold} onChange={(e) => updateFilter("minSold", e.target.value)} />
+            <input className="input" placeholder="Min rating" value={filters.minRating} onChange={(e) => updateFilter("minRating", e.target.value)} />
+            <input className="input" placeholder="Max price" value={filters.priceMax} onChange={(e) => updateFilter("priceMax", e.target.value)} />
+            <input className="input" placeholder="Min discount %" value={filters.discountMin} onChange={(e) => updateFilter("discountMin", e.target.value)} />
+            <label className="muted"><input type="checkbox" checked={filters.mallOnly} onChange={(e) => updateFilter("mallOnly", e.target.checked)} /> Mall / official</label>
+            <label className="muted"><input type="checkbox" checked={filters.freeShippingOnly} onChange={(e) => updateFilter("freeShippingOnly", e.target.checked)} /> Free shipping</label>
+            <label className="muted"><input type="checkbox" checked={filters.excludeSponsored} onChange={(e) => updateFilter("excludeSponsored", e.target.checked)} /> Exclude sponsored</label>
+          </div>
+        </div>
+      ) : null}
+
+      {filteredCandidates.length > 0 ? (
+        <div className="section">
+          <strong>Recommended Products</strong>
+          {filteredCandidates.slice(0, 30).map((candidate) => (
+            <div className="candidate" key={candidate.url}>
+              <div className="row">
+                {candidate.imageUrl ? <img className="thumb" src={candidate.imageUrl} alt="" /> : <div className="thumb" />}
+                <div style={{ flex: 1 }}>
+                  <div>{candidate.title}</div>
+                  <div className="muted">
+                    {candidate.priceText ?? "-"} | {candidate.ratingText ? `rating ${candidate.ratingText} | ` : ""}{appendNormalizedCount(candidate.soldCountText) || "-"} | score {candidate.score}
+                  </div>
+                </div>
+              </div>
+              <div className="muted">{candidate.scoreReasons.join(", ")}</div>
+              <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+                <button className="button" onClick={() => chrome.tabs.update({ url: candidate.url })}>Open</button>
+                <button className="button" onClick={() => chrome.tabs.create({ url: candidate.url })}>New tab</button>
+                <button className="button" onClick={() => addQueue(candidate)}>Queue</button>
+                <button className="button" onClick={() => setIgnoredUrls(new Set([...ignoredUrls, candidate.url]))}>Ignore</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {queue.length > 0 ? (
+        <div className="section">
+          <strong>Queue ({queue.length})</strong>
+          {queue.map((item) => (
+            <div className="row candidate" key={item.url}>
+              <span className="muted" style={{ flex: 1 }}>{item.title}</span>
+              <button className="button" onClick={() => chrome.tabs.create({ url: item.url })}>Open</button>
+              <button className="button" onClick={() => removeQueue(item.url)}>Remove</button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {product ? (
+        <div className="section">
+          <strong>Review before sending</strong>
+          {liveProduct && liveProduct !== product ? (
+            <div className="section">
+              <strong>New live details detected</strong>
+              <div className="muted">
+                เจอข้อมูล/รูป/รีวิวเพิ่มเติมหลังจาก scroll แล้ว ยังไม่ทับฟอร์มที่ user กำลังแก้ไขจนกว่าจะกดใช้ข้อมูลล่าสุด
+              </div>
+              <div className="muted">
+                Images {liveProduct.imageCandidates.length}
+                {" | "}Review images {liveProduct.imageCandidates.filter((img) => img.kind === "review").length}
+                {" | "}Description {liveProduct.descriptionText?.length ?? 0} chars
+              </div>
+              <button className="button" onClick={useLiveProductForReview}>Replace review with latest detected</button>
+              <button className="button" onClick={() => run(mergeVisibleProductImages)}>Merge images only</button>
+            </div>
+          ) : null}
+          {queuedCurrentProduct ? <div className="section muted">Queued product matched: {queuedCurrentProduct.title}</div> : null}
+          <label className="muted">Name</label>
+          <input className="input" value={editable.productName} onChange={(e) => updateEditable("productName", e.target.value)} />
+          <label className="muted">Brand</label>
+          <input className="input" value={editable.brand} onChange={(e) => updateEditable("brand", e.target.value)} />
+          <label className="muted">Shop</label>
+          <input className="input" value={editable.shopName} onChange={(e) => updateEditable("shopName", e.target.value)} />
+          <label className="muted">Price</label>
+          <input className="input" value={editable.priceCurrentText} onChange={(e) => updateEditable("priceCurrentText", e.target.value)} />
+          <label className="muted">Sold</label>
+          <input className="input" value={editable.soldCountText} onChange={(e) => updateEditable("soldCountText", e.target.value)} />
+          <label className="muted">Rating</label>
+          <input className="input" value={editable.ratingScoreText} onChange={(e) => updateEditable("ratingScoreText", e.target.value)} />
+          <label className="muted">Review count</label>
+          <input className="input" value={editable.reviewCountText} onChange={(e) => updateEditable("reviewCountText", e.target.value)} />
+          <label className="muted">Category</label>
+          <input className="input" value={editable.categoryText} onChange={(e) => updateEditable("categoryText", e.target.value)} />
+          <label className="muted">Stock</label>
+          <input className="input" value={editable.stockText} onChange={(e) => updateEditable("stockText", e.target.value)} />
+          <label className="muted">Seller location</label>
+          <input className="input" value={editable.sellerLocationText} onChange={(e) => updateEditable("sellerLocationText", e.target.value)} />
+          <label className="muted">Variants</label>
+          <textarea className="textarea" value={editable.variantsText} onChange={(e) => updateEditable("variantsText", e.target.value)} />
+          <label className="muted">Description</label>
+          <textarea className="textarea" value={editable.descriptionText} onChange={(e) => updateEditable("descriptionText", e.target.value)} />
+
+          <strong>Evidence to send</strong>
+          <label className="muted"><input type="checkbox" checked={evidence.domHeader} onChange={(e) => updateEvidence("domHeader", e.target.checked)} /> DOM product header</label>
+          <label className="muted"><input type="checkbox" checked={evidence.domDescription} onChange={(e) => updateEvidence("domDescription", e.target.checked)} /> DOM description</label>
+          <label className="muted"><input type="checkbox" checked={evidence.rawHtmlBlocks} onChange={(e) => updateEvidence("rawHtmlBlocks", e.target.checked)} /> Raw HTML blocks</label>
+          <label className="muted"><input type="checkbox" checked={evidence.headerScreenshot} onChange={(e) => updateEvidence("headerScreenshot", e.target.checked)} /> Header screenshot</label>
+          <label className="muted"><input type="checkbox" checked={evidence.descriptionScreenshot} onChange={(e) => updateEvidence("descriptionScreenshot", e.target.checked)} /> Description screenshot</label>
+
+          <div className="section">
+            <strong>Privacy summary</strong>
+            <div className="muted">Source URL: {product.sourceUrl}</div>
+            <div className="muted">DOM text: {evidence.domHeader || evidence.domDescription ? "selected" : "not selected"}</div>
+            <div className="muted">Raw HTML blocks: {evidence.rawHtmlBlocks ? "selected" : "not selected"}</div>
+            <div className="muted">Header screenshot: {evidence.headerScreenshot ? "selected" : "not selected"}</div>
+            <div className="muted">Description screenshot: {evidence.descriptionScreenshot ? "selected" : "not selected"}</div>
+            <div className="muted">Images: {selectedImageCount} selected</div>
+            <div className="muted">Evidence groups: {selectedEvidenceCount}</div>
+          </div>
+
+          <div className="image-toolbar">
+            <div className="muted">Selected images: {selectedImageCount} / {product.imageCandidates.length}</div>
+            <button className="button" onClick={() => run(mergeVisibleProductImages)}>Merge visible images</button>
+          </div>
+          <div className="image-picker-grid">
+            {product.imageCandidates.slice(0, 80).map((img) => (
+              <label className={`image-option ${selectedImages[img.url] ? "selected" : ""}`} key={img.url}>
+                <input className="image-checkbox" type="checkbox" checked={Boolean(selectedImages[img.url])} onChange={(e) => setSelectedImages((current) => ({ ...current, [img.url]: e.target.checked }))} />
+                <img className="image-thumb" src={img.url} alt="" loading="lazy" />
+                <span className="image-kind">{img.kind}</span>
+              </label>
+            ))}
+          </div>
+          <div className="row" style={{ justifyContent: "flex-start" }}>
+            <button className="button" onClick={() => setSelectedImages({})}>Select none</button>
+            <button className="button primary" disabled={!editable.productName} onClick={() => run(uploadAndAnalyze)}>
+              Upload selected
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}

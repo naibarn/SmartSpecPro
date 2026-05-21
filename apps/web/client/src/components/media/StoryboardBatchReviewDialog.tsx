@@ -37,10 +37,26 @@ export interface StoryboardReviewTask {
   referenceUrls?: string[];
   generationAspectRatio?: string;
   generationExtraParams?: Record<string, unknown>;
+  marketplaceProduct?: {
+    productId?: string | null;
+    platform?: "shopee" | "tiktok_shop" | null;
+    productName?: string | null;
+    shopName?: string | null;
+    shopId?: string | null;
+    itemId?: string | null;
+    sourceUrl?: string | null;
+  } | null;
   canRegenerate?: boolean;
   isImported?: boolean;
   status: "queued" | "generating" | "completed" | "error";
   error?: string;
+}
+
+export interface StoryboardPromptPlannerOptions {
+  includeVoiceover: boolean;
+  includeSound: boolean;
+  tone: "sales" | "premium" | "demo" | "ugc" | "cinematic";
+  language: "auto" | "th" | "en";
 }
 
 interface StoryboardBatchReviewDialogProps {
@@ -52,10 +68,13 @@ interface StoryboardBatchReviewDialogProps {
   onSelectAll: () => void;
   onSelectNone: () => void;
   onRegenerateTask: (taskId: string, prompt: string) => boolean | void | Promise<boolean | void>;
+  onUpdateTaskPrompt?: (taskId: string, prompt: string) => void | Promise<void>;
+  onPlanScenePrompts?: (options: StoryboardPromptPlannerOptions) => void | Promise<void>;
+  isPlanningScenePrompts?: boolean;
   onStartGenerationBatch?: () => void;
   onCancelGeneration?: () => void | Promise<void>;
   onReplaceReferenceFrame?: (taskId: string, frameIndex: 0 | 1, imageUrl: string) => void | Promise<void>;
-  onUploadReferenceFrame?: (taskId: string, frameIndex: 0 | 1, files: FileList) => Promise<string[]>;
+  onUploadReferenceFrame?: (taskId: string, frameIndex: 0 | 1, files: FileList | File[]) => Promise<string[]>;
   replacingReferenceFrameKey?: string | null;
   onUploadVideoSlot?: (taskId: string, mode: "replace" | "insert-after") => void | Promise<void>;
   uploadingVideoSlotKey?: string | null;
@@ -111,6 +130,9 @@ export function StoryboardBatchReviewPanel({
   onSelectAll,
   onSelectNone,
   onRegenerateTask,
+  onUpdateTaskPrompt,
+  onPlanScenePrompts,
+  isPlanningScenePrompts = false,
   onStartGenerationBatch,
   onCancelGeneration,
   onReplaceReferenceFrame,
@@ -148,6 +170,11 @@ export function StoryboardBatchReviewPanel({
   const [draftPrompts, setDraftPrompts] = useState<Record<string, string>>({});
   const [isGeneratingSelected, setIsGeneratingSelected] = useState(false);
   const [isCancellingSelected, setIsCancellingSelected] = useState(false);
+  const [expandedMetadataTaskId, setExpandedMetadataTaskId] = useState<string | null>(null);
+  const [plannerIncludeVoiceover, setPlannerIncludeVoiceover] = useState(true);
+  const [plannerIncludeSound, setPlannerIncludeSound] = useState(true);
+  const [plannerTone, setPlannerTone] = useState<StoryboardPromptPlannerOptions["tone"]>("sales");
+  const [plannerLanguage, setPlannerLanguage] = useState<StoryboardPromptPlannerOptions["language"]>(locale === "th" ? "th" : "auto");
   const [confirmAction, setConfirmAction] = useState<StoryboardConfirmAction | null>(null);
   const showGenerationCancel = Boolean(onCancelGeneration) && (Boolean(regeneratingTaskId) || isGeneratingSelected);
 
@@ -155,11 +182,13 @@ export function StoryboardBatchReviewPanel({
     setDraftPrompts((prev) => {
       const next: Record<string, string> = {};
       for (const task of tasks) {
-        next[task.id] = prev[task.id] ?? task.prompt;
+        next[task.id] = task.id === editingTaskId
+          ? (prev[task.id] ?? task.prompt)
+          : task.prompt;
       }
       return next;
     });
-  }, [tasks]);
+  }, [editingTaskId, tasks]);
 
   const selectedCount = selectedTaskIds.length;
   const completedSelectedTasks = useMemo(
@@ -205,6 +234,78 @@ export function StoryboardBatchReviewPanel({
       ? t("mediaStudio.storyboardReviewDurationMinutes", { minutes, seconds: String(seconds).padStart(2, "0") })
       : t("mediaStudio.storyboardReviewDurationSeconds", { seconds });
   }, [renderDurationSeconds, t]);
+  const renderMarketplaceMetadataPanel = (task: StoryboardReviewTask) => {
+    const metadata = task.marketplaceProduct
+      ?? (task.generationExtraParams?.marketplaceContext && typeof task.generationExtraParams.marketplaceContext === "object"
+        ? task.generationExtraParams.marketplaceContext as NonNullable<StoryboardReviewTask["marketplaceProduct"]>
+        : null);
+    if (!metadata) return null;
+    const productDetailUrl = metadata.productId
+      ? `/marketplace-capture/products/${encodeURIComponent(metadata.productId)}`
+      : null;
+    return (
+      <div className="mt-3 rounded-lg border border-sky-100 bg-sky-50/70 p-3 text-xs text-sky-950">
+        <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="font-medium">
+              {locale === "th" ? "ข้อมูลสินค้า Marketplace" : "Marketplace Product Metadata"}
+            </div>
+            {metadata.productName ? (
+              <div className="mt-0.5 line-clamp-2 text-sky-900/80">{metadata.productName}</div>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            {productDetailUrl ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1 border-sky-200 bg-white/80 text-sky-900 hover:bg-sky-100"
+                onClick={() => window.open(productDetailUrl, "_blank", "noopener,noreferrer")}
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                {locale === "th" ? "รายละเอียดสินค้า" : "Product detail"}
+              </Button>
+            ) : null}
+            {metadata.sourceUrl ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1 border-sky-200 bg-white/80 text-sky-900 hover:bg-sky-100"
+                onClick={() => window.open(metadata.sourceUrl || "", "_blank", "noopener,noreferrer")}
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                {locale === "th" ? "หน้าสินค้า" : "Product URL"}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <span className="text-sky-800/70">platform</span>
+            <div className="font-medium">{metadata.platform || "-"}</div>
+          </div>
+          <div>
+            <span className="text-sky-800/70">shop id</span>
+            <div className="font-medium">{metadata.shopId || "-"}</div>
+          </div>
+          <div>
+            <span className="text-sky-800/70">item id</span>
+            <div className="font-medium">{metadata.itemId || "-"}</div>
+          </div>
+          <div>
+            <span className="text-sky-800/70">shop name</span>
+            <div className="font-medium">{metadata.shopName || "-"}</div>
+          </div>
+          <div className="sm:col-span-2">
+            <span className="text-sky-800/70">product page URL</span>
+            <div className="truncate font-medium">{metadata.sourceUrl || "-"}</div>
+          </div>
+        </div>
+      </div>
+    );
+  };
   const confirmCopy = useMemo(() => {
     if (!confirmAction) return null;
     if (confirmAction === "generate") {
@@ -290,6 +391,63 @@ export function StoryboardBatchReviewPanel({
             <span className="text-muted-foreground">
               {t("mediaStudio.storyboardReviewReadyForExport", { count: completedSelectedTasks.length })}
             </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {onPlanScenePrompts ? (
+              <>
+                <label className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs">
+                  <Checkbox
+                    checked={plannerIncludeVoiceover}
+                    onCheckedChange={(checked) => setPlannerIncludeVoiceover(Boolean(checked))}
+                    className="h-3.5 w-3.5"
+                  />
+                  {locale === "th" ? "บทพูด" : "Voiceover"}
+                </label>
+                <label className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs">
+                  <Checkbox
+                    checked={plannerIncludeSound}
+                    onCheckedChange={(checked) => setPlannerIncludeSound(Boolean(checked))}
+                    className="h-3.5 w-3.5"
+                  />
+                  {locale === "th" ? "เสียงประกอบ" : "Sound"}
+                </label>
+                <select
+                  value={plannerTone}
+                  onChange={(event) => setPlannerTone(event.target.value as StoryboardPromptPlannerOptions["tone"])}
+                  className="h-8 rounded-md border bg-background px-2 text-xs"
+                >
+                  <option value="sales">{locale === "th" ? "ขายชัด" : "Sales"}</option>
+                  <option value="premium">{locale === "th" ? "พรีเมียม" : "Premium"}</option>
+                  <option value="demo">{locale === "th" ? "สาธิตสินค้า" : "Demo"}</option>
+                  <option value="ugc">UGC</option>
+                  <option value="cinematic">{locale === "th" ? "ซีนีเมติก" : "Cinematic"}</option>
+                </select>
+                <select
+                  value={plannerLanguage}
+                  onChange={(event) => setPlannerLanguage(event.target.value as StoryboardPromptPlannerOptions["language"])}
+                  className="h-8 rounded-md border bg-background px-2 text-xs"
+                >
+                  <option value="auto">Auto</option>
+                  <option value="th">TH</option>
+                  <option value="en">EN</option>
+                </select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void onPlanScenePrompts({
+                    includeVoiceover: plannerIncludeVoiceover,
+                    includeSound: plannerIncludeSound,
+                    tone: plannerTone,
+                    language: plannerLanguage,
+                  })}
+                  disabled={tasks.length === 0 || isPlanningScenePrompts || Boolean(regeneratingTaskId) || isGeneratingSelected}
+                  title={locale === "th" ? "สร้าง prompt พร้อม customer journey สำหรับทุกฉาก" : "Plan scene prompts with customer journey"}
+                >
+                  {isPlanningScenePrompts ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mic2 className="mr-2 h-4 w-4" />}
+                  {locale === "th" ? "สร้าง Prompt ทุกฉาก" : "Plan prompts"}
+                </Button>
+              </>
+            ) : null}
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex">
             {showGenerationCancel ? (
@@ -497,11 +655,25 @@ export function StoryboardBatchReviewPanel({
                         </Badge>
                         {task.model ? <Badge variant="secondary">{task.model}</Badge> : null}
                         {task.isImported ? <Badge variant="outline">{t("mediaStudio.storyboardReviewImported")}</Badge> : null}
+                        {task.marketplaceProduct || task.generationExtraParams?.marketplaceContext ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1 px-2 text-xs"
+                            onClick={() => setExpandedMetadataTaskId((current) => current === task.id ? null : task.id)}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            {locale === "th" ? "Metadata" : "Metadata"}
+                          </Button>
+                        ) : null}
                       </div>
 
                       <p className="mt-2 text-sm font-medium leading-6">
                         {isEditing ? t("mediaStudio.storyboardReviewEditPromptLead") : summarizePrompt(task.prompt)}
                       </p>
+
+                      {expandedMetadataTaskId === task.id ? renderMarketplaceMetadataPanel(task) : null}
 
                       {isEditing ? (
                         <div className="mt-3 space-y-2">
@@ -519,7 +691,10 @@ export function StoryboardBatchReviewPanel({
                               type="button"
                               size="sm"
                               variant="outline"
-                              onClick={() => setEditingTaskId(null)}
+                              onClick={() => {
+                                void onUpdateTaskPrompt?.(task.id, draftPrompt);
+                                setEditingTaskId(null);
+                              }}
                             >
                               <X className="mr-2 h-4 w-4" />
                               {t("mediaStudio.storyboardReviewDoneEditing")}
@@ -585,9 +760,11 @@ export function StoryboardBatchReviewPanel({
                           variant="outline"
                           onClick={() => {
                             if (isEditing) {
+                              void onUpdateTaskPrompt?.(task.id, draftPrompt);
                               setEditingTaskId(null);
                               return;
                             }
+                            setDraftPrompts((prev) => ({ ...prev, [task.id]: task.prompt }));
                             setEditingTaskId(task.id);
                           }}
                         >

@@ -8,6 +8,7 @@ import {
   generateEmbedding,
   chunkDocument,
   generateImageDescription,
+  generateImageDescriptionFromBuffer,
 } from "./vectorize";
 import {
   dispatchVectorOperation,
@@ -28,6 +29,7 @@ interface VectorMetadata {
   title: string;
   sourceUrl: string;
   description?: string;
+  [key: string]: string | number | boolean | undefined;
 }
 
 interface VectorEntry {
@@ -85,9 +87,60 @@ export async function indexImage(params: {
   imageUrl: string;
   tenantId: string;
   filename: string;
+  type?: string;
+  metadata?: Record<string, string | number | boolean | undefined>;
 }) {
   const description = await generateImageDescription(params.imageUrl);
-  const embedding = await generateEmbedding(description);
+  await indexImageDescription({
+    id: params.id,
+    description,
+    imageUrl: params.imageUrl,
+    tenantId: params.tenantId,
+    filename: params.filename,
+    type: params.type,
+    metadata: params.metadata,
+  });
+}
+
+export async function indexImageBuffer(params: {
+  id: string;
+  imageBuffer: Buffer | Uint8Array;
+  imageUrl: string;
+  tenantId: string;
+  filename: string;
+  type?: string;
+  metadata?: Record<string, string | number | boolean | undefined>;
+}) {
+  const description = await generateImageDescriptionFromBuffer(params.imageBuffer);
+  await indexImageDescription({
+    id: params.id,
+    description,
+    imageUrl: params.imageUrl,
+    tenantId: params.tenantId,
+    filename: params.filename,
+    type: params.type,
+    metadata: params.metadata,
+  });
+}
+
+async function indexImageDescription(params: {
+  id: string;
+  description: string;
+  imageUrl: string;
+  tenantId: string;
+  filename: string;
+  type?: string;
+  metadata?: Record<string, string | number | boolean | undefined>;
+}) {
+  const searchableText = [
+    params.filename,
+    params.description,
+    params.metadata?.productName,
+    params.metadata?.productDescription,
+    params.metadata?.platform,
+    params.metadata?.imageKind,
+  ].filter(Boolean).join("\n");
+  const embedding = await generateEmbedding(searchableText);
   const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: params.tenantId });
 
   await dispatchVectorOperation({
@@ -98,12 +151,13 @@ export async function indexImage(params: {
         id: params.id,
         values: embedding,
         metadata: {
+          ...params.metadata,
           tenantId: params.tenantId,
-          type: "image",
+          type: params.type ?? "image",
           createdAt: Date.now(),
           title: params.filename,
           sourceUrl: params.imageUrl,
-          description,
+          description: params.description,
         },
       },
     ],

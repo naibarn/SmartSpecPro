@@ -276,7 +276,12 @@ export default function AdminCommandCenter() {
   const [refreshInterval, setRefreshInterval] = useState<number | null>(30_000);
   const incidentRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const desktopHostEnabled = useTenantFeatureFlag("desktopHostEnabled");
-  const desktopGovernanceStatus = useDesktopHostStatus(desktopHostEnabled, "tenant");
+  const desktopGovernanceStatus = useDesktopHostStatus(
+    desktopHostEnabled
+      && Boolean(user?.currentTenantId)
+      && (user?.role === "admin" || user?.role === "domain_admin"),
+    "tenant",
+  );
   const desktopGovernancePath =
     user?.role === "admin"
       ? "/admin/desktop-host/governance"

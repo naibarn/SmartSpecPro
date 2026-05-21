@@ -1997,6 +1997,8 @@ export const mediaRouter = router({
         ...(input.extraParams ?? {}),
         duration: input.duration,
         resolution: input.resolution,
+        referenceVideoUrls: input.referenceVideoUrls,
+        referenceVideoUrl: input.referenceVideoUrl,
       });
 
       // Check credits
@@ -2622,6 +2624,8 @@ export const mediaRouter = router({
         ...(input.extraParams ?? {}),
         duration,
         resolution: input.resolution,
+        referenceVideoUrls: input.referenceVideoUrls,
+        referenceVideoUrl: input.referenceVideoUrl,
       });
 
       // Check and deduct credits upfront to prevent race condition

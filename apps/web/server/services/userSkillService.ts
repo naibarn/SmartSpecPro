@@ -239,6 +239,7 @@ export async function getUserVisibleSkills(
         llmModelId: skillsTable.llmModelId,
         preferredProviderId: skillsTable.preferredProviderId,
         strictProviderPin: skillsTable.strictProviderPin,
+        configJson: skillsTable.configJson,
         enabledByDefault: skillsTable.enabledByDefault,
         executionMode: skillsTable.executionMode, // Added for endpoint routing
         autoTriggerEnabled: userSkillVisibility.autoTriggerEnabled,

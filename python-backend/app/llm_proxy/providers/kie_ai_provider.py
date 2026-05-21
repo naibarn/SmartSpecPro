@@ -62,6 +62,9 @@ FALLBACK_MODEL_NAME_MAP = {
     "happyhorse/image-to-video": "happyhorse/image-to-video",
     "happyhorse/reference-to-video": "happyhorse/reference-to-video",
     "happyhorse/video-edit": "happyhorse/video-edit",
+    "gemini-omni": "gemini-omni-video",
+    "gemini-omni-video": "gemini-omni-video",
+    "gemini_omni_video": "gemini-omni-video",
     # Audio/Music models
     "suno-v4.5-plus": "suno-v4.5-plus",
     "suno-v4.5": "suno-v4.5",
@@ -129,9 +132,48 @@ def _normalize_reference_image_input_type(raw_type: Optional[str]) -> Optional[s
     normalized = raw_type.strip().lower()
     if normalized in {"array", "image_urls", "video_urls", "audio_urls"}:
         return "array"
+    if normalized in {"object_array", "object-array", "video_list", "video-list"}:
+        return "object_array"
     if normalized in {"url", "text", "string"}:
         return "url"
     return None
+
+
+def _normalize_reference_video_object_list(value: Any) -> list[Dict[str, Any]]:
+    if value is None:
+        return []
+
+    raw_items = value if isinstance(value, list) else [value]
+    normalized: list[Dict[str, Any]] = []
+    for item in raw_items:
+        if isinstance(item, str):
+            url = item.strip()
+            if url:
+                normalized.append({"url": url})
+            continue
+
+        if not isinstance(item, dict):
+            continue
+
+        url_value = item.get("url") or item.get("video_url") or item.get("videoUrl")
+        if not isinstance(url_value, str) or not url_value.strip():
+            continue
+
+        entry: Dict[str, Any] = {"url": url_value.strip()}
+        for source_key, target_key in (
+            ("start", "start"),
+            ("starts", "start"),
+            ("start_time", "start"),
+            ("startTime", "start"),
+            ("end", "ends"),
+            ("ends", "ends"),
+            ("end_time", "ends"),
+            ("endTime", "ends"),
+        ):
+            if source_key in item and item[source_key] is not None:
+                entry[target_key] = item[source_key]
+        normalized.append(entry)
+    return normalized
 
 
 def _resolve_reference_image_input_config(
@@ -1403,6 +1445,8 @@ class KieAIProvider:
             )
             if reference_video_input_type == "url":
                 input_params[reference_video_input_key] = ref_video_urls[0]
+            elif reference_video_input_type == "object_array":
+                input_params[reference_video_input_key] = _normalize_reference_video_object_list(ref_video_urls)
             else:
                 input_params[reference_video_input_key] = ref_video_urls
 
@@ -1411,7 +1455,13 @@ class KieAIProvider:
             default_key="video_urls",
         )
         existing_video_value = input_params.get(reference_video_input_key)
-        if reference_video_input_type == "url" and isinstance(existing_video_value, list):
+        if reference_video_input_type == "object_array":
+            normalized_video_list = _normalize_reference_video_object_list(existing_video_value)
+            if normalized_video_list:
+                input_params[reference_video_input_key] = normalized_video_list
+            else:
+                input_params.pop(reference_video_input_key, None)
+        elif reference_video_input_type == "url" and isinstance(existing_video_value, list):
             first_video = next(
                 (str(url).strip() for url in existing_video_value if isinstance(url, str) and str(url).strip()),
                 None,

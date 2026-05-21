@@ -75,6 +75,13 @@ function shouldBackfillBuiltInCategory(
   currentCategory: string | null | undefined,
   nextCategory: string,
 ): boolean {
+  if (
+    slug === "furniture-reference-storyboard"
+    && currentCategory === "automation"
+    && nextCategory === "image_prompt_generation"
+  ) {
+    return true;
+  }
   if (slug === "image_prompt_engineer") {
     return currentCategory === "image_generation" && nextCategory === "image_prompt_generation";
   }
@@ -536,7 +543,10 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
   try {
     // Get current hash from database
     const [dbSkill] = await db
-      .select({ contentHash: skillsTable.contentHash })
+      .select({
+        contentHash: skillsTable.contentHash,
+        category: skillsTable.category,
+      })
       .from(skillsTable)
       .where(eq(skillsTable.slug, slug))
       .limit(1);
@@ -568,6 +578,11 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
         ? { ...(baseExecutionPolicy ?? {}), requirements: routingConfig.modelRequirements } as SkillExecutionPolicyConfig
         : baseExecutionPolicy;
 
+    const normalizedCategory = mapCategoryToEnum(metadata.category);
+    const shouldUpdateCategory = dbSkill
+      ? shouldBackfillBuiltInCategory(slug, dbSkill.category, normalizedCategory)
+      : Boolean(metadata.category);
+
     const updateData = {
       skillContent: parsed.content,
       systemPrompt: parsed.content,
@@ -575,8 +590,7 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
       version: metadata.version || undefined,
       executionMode: metadata.executionMode ?? metadata.execution_mode ?? undefined,
       configJson: metadata.config,
-      // Include category to allow category changes via skill.md
-      ...(metadata.category ? { category: mapCategoryToEnum(metadata.category) as any } : {}),
+      ...(shouldUpdateCategory ? { category: normalizedCategory as any } : {}),
       ...(metadata.defaultModel ?? metadata.default_model ? { defaultModel: metadata.defaultModel ?? metadata.default_model } : {}),
       ...(routingConfig.llmModelId !== undefined ? { llmModelId: routingConfig.llmModelId } : {}),
       ...(routingConfig.preferredProviderId !== undefined ? { preferredProviderId: routingConfig.preferredProviderId } : {}),

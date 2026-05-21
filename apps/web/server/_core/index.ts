@@ -75,6 +75,8 @@ import { registerServicesRoutes } from "../routers/services";
 import { registerTenantRoutes } from "../routers/tenant";
 import { registerBlogRoutes } from "../routers/blog";
 import { registerAdminTenantsRoutes } from "../routers/adminTenants";
+import { registerMarketplaceCaptureRoutes } from "../routes/marketplaceCapture";
+import { isAllowedMarketplaceOrigin } from "../services/marketplaceCaptureConfig";
 import { tenantMiddleware } from "./tenant";
 import { ENV } from "./env";
 import { debugError } from "./logger";
@@ -210,11 +212,13 @@ function isAllowedOrigin(origin: string | undefined): boolean {
 // CORS for cross-domain access (Docker Status, etc.)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (isAllowedOrigin(origin)) {
+  const isMarketplaceCaptureRequest = req.originalUrl.startsWith("/api/marketplace-captures");
+  const allowOrigin = isAllowedOrigin(origin) || (isMarketplaceCaptureRequest && isAllowedMarketplaceOrigin(origin));
+  if (allowOrigin) {
     res.setHeader('Access-Control-Allow-Origin', origin!);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-private-vault-token');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-private-vault-token, X-Marketplace-Device-Id');
   }
 
   // Handle preflight requests
@@ -388,6 +392,7 @@ const csrfCheck = (req: any, res: any, next: any) => {
   }
 
   const origin = req.headers.origin;
+  const isMarketplaceCaptureRequest = req.originalUrl.startsWith("/api/marketplace-captures");
 
   // Requests with no Origin header: allow if using Bearer token (server-to-server),
   // reject if using cookie auth (browser CSRF risk in production)
@@ -403,6 +408,13 @@ const csrfCheck = (req: any, res: any, next: any) => {
       return;
     }
     return next();
+  }
+
+  if (isMarketplaceCaptureRequest && isAllowedMarketplaceOrigin(origin)) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ") && authHeader.length > 7) {
+      return next();
+    }
   }
 
   if (!isAllowedOrigin(origin)) {
@@ -1274,6 +1286,9 @@ registerAdminTenantsRoutes(app);
 
 // Blog routes
 registerBlogRoutes(app);
+
+// Marketplace capture extension REST API
+registerMarketplaceCaptureRoutes(app);
 
 // Reverse proxy: forward unhandled /api/v1/ requests to Python backend.
 // Express routes registered above (e.g. /api/v1/llm/...) are matched first.

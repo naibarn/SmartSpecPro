@@ -668,6 +668,77 @@ function parseSkillFile(content: string): { metadata: SkillMetadata; content: st
   return { metadata: {} as SkillMetadata, content };
 }
 
+function parseLlmJsonObject(content: string): Record<string, unknown> {
+  const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
+  const raw = (fenced || content).trim();
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    if (start < 0 || end <= start) {
+      throw new Error("invalid_llm_json");
+    }
+    return JSON.parse(raw.slice(start, end + 1)) as Record<string, unknown>;
+  }
+}
+
+function buildStoryboardPlannerPrompt(input: {
+  productMetadata: Record<string, unknown> | null;
+  options: Record<string, unknown>;
+  slots: Array<Record<string, unknown>>;
+}): string {
+  const imageMap = input.slots.map((slot, index) => {
+    const startImage = index * 2 + 1;
+    const endImage = index * 2 + 2;
+    return {
+      id: slot.id,
+      index: slot.index,
+      startFrameAlias: `@Image${startImage}`,
+      endFrameAlias: `@Image${endImage}`,
+      currentPrompt: slot.currentPrompt ?? "",
+      durationSeconds: slot.durationSeconds ?? null,
+      aspectRatio: slot.aspectRatio ?? null,
+      model: slot.model ?? null,
+    };
+  });
+
+  return [
+    "Create a complete ecommerce storyboard video prompt plan.",
+    "Use the ordered image aliases below. Each slot has an exact start frame and exact end frame.",
+    "",
+    "Product metadata:",
+    JSON.stringify(input.productMetadata ?? {}, null, 2),
+    "",
+    "Options:",
+    JSON.stringify(input.options, null, 2),
+    "",
+    "Storyboard slots:",
+    JSON.stringify(imageMap, null, 2),
+    "",
+    "Important output alias rule:",
+    "- The aliases above are only for your planning call, because all slot images are sent together.",
+    "- In each returned slot.video_prompt, write local slot aliases only: @Image1 is that slot's start frame and @Image2 is that slot's end frame.",
+    "- Never output @Image3, @Image4, @Image5, or any higher image alias in slot.video_prompt, voiceover_script, or sound_brief.",
+    "",
+    `Return exactly ${imageMap.length} slot object(s), one for every input slot id.`,
+    "Return valid JSON only following the output schema described in the skill instructions.",
+  ].join("\n");
+}
+
+function normalizeStoryboardSlotLocalImageAliases(content: string, slotPosition: number): string {
+  if (!content) return content;
+  const startAlias = slotPosition * 2 + 1;
+  const endAlias = slotPosition * 2 + 2;
+  return content.replace(/@Image(\d+)/gi, (match, imageNumberText: string) => {
+    const imageNumber = Number(imageNumberText);
+    if (imageNumber === startAlias) return "@Image1";
+    if (imageNumber === endAlias) return "@Image2";
+    if (imageNumber === 1 || imageNumber === 2) return match;
+    return match;
+  });
+}
+
 /**
  * Map category string to enum value
  */
@@ -741,6 +812,89 @@ function determineCmsFormat(category: string): "cms_article" | "cms_review" | "m
   if (category === "product_review") return "cms_review";
   if (category === "article_generation") return "cms_article";
   return "markdown";
+}
+
+function buildMediaStudioImprovementDedupeKey(input: {
+  trigger: "prompt_qa" | "image_qa" | "manual";
+  issues: Array<{ id: string }>;
+  proposedChanges: Array<{ title: string; targetFile: string; targetSection?: string }>;
+}): string {
+  const issueIds = input.issues.map((issue) => issue.id).sort();
+  const changeKeys = input.proposedChanges
+    .map((change) => `${change.title}|${change.targetFile}|${change.targetSection ?? ""}`.toLowerCase())
+    .sort();
+  return JSON.stringify({
+    trigger: input.trigger,
+    issueIds,
+    changeKeys,
+  });
+}
+
+async function findExistingMediaStudioImprovementRecommendation(
+  dbInstance: Awaited<ReturnType<typeof getDb>>,
+  skillId: number,
+  input: {
+    trigger: "prompt_qa" | "image_qa" | "manual";
+    issues: Array<{ id: string }>;
+    proposedChanges: Array<{ title: string; targetFile: string; targetSection?: string }>;
+  },
+) {
+  if (!dbInstance) return null;
+  const dedupeKey = buildMediaStudioImprovementDedupeKey(input);
+  const existingRows = await dbInstance
+    .select()
+    .from(skillImprovementRecommendations)
+    .where(and(
+      eq(skillImprovementRecommendations.skillId, skillId),
+      eq(skillImprovementRecommendations.recommendationType, "media-studio-auto-learning"),
+      inArray(skillImprovementRecommendations.status, ["pending_review", "approved", "applied"]),
+    ))
+    .orderBy(desc(skillImprovementRecommendations.updatedAt))
+    .limit(30);
+  const latestRuns = existingRows.length > 0
+    ? await dbInstance
+      .select({
+        recommendationId: skillImprovementRuns.recommendationId,
+        runType: skillImprovementRuns.runType,
+        status: skillImprovementRuns.status,
+        summary: skillImprovementRuns.summary,
+        logsJson: skillImprovementRuns.logsJson,
+        createdAt: skillImprovementRuns.createdAt,
+      })
+      .from(skillImprovementRuns)
+      .where(inArray(skillImprovementRuns.recommendationId, existingRows.map((row) => row.id)))
+      .orderBy(desc(skillImprovementRuns.createdAt))
+    : [];
+  const latestApplyRunByRecommendationId = new Map<number, (typeof latestRuns)[number]>();
+  for (const run of latestRuns) {
+    if (run.recommendationId == null || run.runType !== "apply") {
+      continue;
+    }
+    if (!latestApplyRunByRecommendationId.has(run.recommendationId)) {
+      latestApplyRunByRecommendationId.set(run.recommendationId, run);
+    }
+  }
+
+  return existingRows.find((row) => {
+    const latestApplyRun = latestApplyRunByRecommendationId.get(row.id);
+    const applyStrategy = latestApplyRun?.logsJson && typeof latestApplyRun.logsJson === "object"
+      ? (latestApplyRun.logsJson as Record<string, unknown>).applyStrategy
+      : null;
+    const proposalOnlyCompleted = latestApplyRun?.status === "completed"
+      && (applyStrategy === "proposal" || String(latestApplyRun.summary || "").toLowerCase().includes("proposal generated"));
+    if (row.status === "approved" && proposalOnlyCompleted) {
+      return false;
+    }
+    const recommendationJson = row.recommendationJson as Record<string, any> | null;
+    if (!recommendationJson || recommendationJson.source !== "media_studio_auto_learning") {
+      return false;
+    }
+    return buildMediaStudioImprovementDedupeKey({
+      trigger: recommendationJson.trigger,
+      issues: Array.isArray(recommendationJson.issues) ? recommendationJson.issues : [],
+      proposedChanges: Array.isArray(recommendationJson.proposedChanges) ? recommendationJson.proposedChanges : [],
+    }) === dedupeKey;
+  }) ?? null;
 }
 
 type VisionModelOption = {
@@ -2307,6 +2461,15 @@ export const skillsRouter = router({
       aspectRatio: z.string().trim().max(32).optional(),
       durationSeconds: z.number().positive().max(60).optional(),
       model: z.string().trim().max(255).optional(),
+      marketplaceContext: z.object({
+        productId: z.string().trim().max(255).nullable().optional(),
+        platform: z.enum(["shopee", "tiktok_shop"]).optional(),
+        productName: z.string().trim().max(1000).nullable().optional(),
+        shopName: z.string().trim().max(500).nullable().optional(),
+        shopId: z.string().trim().max(255).nullable().optional(),
+        itemId: z.string().trim().max(255).nullable().optional(),
+        sourceUrl: z.string().trim().max(2048).nullable().optional(),
+      }).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.user?.id;
@@ -2340,6 +2503,16 @@ export const skillsRouter = router({
         input.aspectRatio ? `Aspect ratio: ${input.aspectRatio}` : "",
         input.durationSeconds ? `Target duration: ${input.durationSeconds} seconds` : "",
         input.model ? `Target model: ${input.model}` : "",
+        input.marketplaceContext ? [
+          "",
+          "Marketplace product metadata for the sliced storyboard frames:",
+          input.marketplaceContext.productName ? `- Product title: ${input.marketplaceContext.productName}` : "",
+          input.marketplaceContext.platform ? `- Platform: ${input.marketplaceContext.platform}` : "",
+          input.marketplaceContext.shopName ? `- Shop name: ${input.marketplaceContext.shopName}` : "",
+          input.marketplaceContext.shopId ? `- Shop ID: ${input.marketplaceContext.shopId}` : "",
+          input.marketplaceContext.itemId ? `- Item ID: ${input.marketplaceContext.itemId}` : "",
+          input.marketplaceContext.sourceUrl ? `- Product page URL: ${input.marketplaceContext.sourceUrl}` : "",
+        ].filter(Boolean).join("\n") : "",
         "",
         "Write the improved prompt in English. It must explicitly say:",
         "- use @Image1 as the exact start frame",
@@ -2389,6 +2562,199 @@ export const skillsRouter = router({
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: error instanceof Error ? error.message : "Failed to generate storyboard video prompt",
+        });
+      }
+    }),
+
+  planStoryboardVideoPrompts: protectedProcedure
+    .input(z.object({
+      productMetadata: z.record(z.unknown()).nullable().optional(),
+      includeVoiceover: z.boolean().default(false),
+      includeSound: z.boolean().default(false),
+      tone: z.enum(["sales", "premium", "demo", "ugc", "cinematic"]).default("sales"),
+      language: z.enum(["auto", "th", "en"]).default("auto"),
+      slots: z.array(z.object({
+        id: z.string().trim().min(1).max(255),
+        index: z.number().int().min(0),
+        currentPrompt: z.string().max(8000).optional(),
+        startFrameUrl: z.string().trim().min(1),
+        endFrameUrl: z.string().trim().min(1),
+        aspectRatio: z.string().trim().max(32).optional(),
+        durationSeconds: z.number().positive().max(60).optional(),
+        model: z.string().trim().max(255).optional(),
+      })).min(1).max(12),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user?.id;
+      if (!userId) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "User not authenticated" });
+      }
+
+      const hasCredits = await hasEnoughCredits(userId, 1);
+      if (!hasCredits) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient credits" });
+      }
+
+      const skillSlug = "storyboard-video-customer-journey-prompt";
+      await syncSingleSkillIfChanged(skillSlug).catch((error) => {
+        console.warn("[Skills] Failed to auto-sync storyboard planner skill:", error);
+      });
+
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const [skill] = await dbInstance
+        .select({
+          slug: skills.slug,
+          name: skills.name,
+          skillContent: skills.skillContent,
+          systemPrompt: skills.systemPrompt,
+          folderPath: skills.folderPath,
+          defaultModel: skills.defaultModel,
+          llmModelId: skills.llmModelId,
+        })
+        .from(skills)
+        .where(eq(skills.slug, skillSlug))
+        .limit(1);
+
+      let systemPrompt = skill?.skillContent || skill?.systemPrompt || "";
+      if (!systemPrompt) {
+        const fallbackPath = path.resolve(process.cwd(), "skills", skillSlug, "skill.md");
+        const appFallbackPath = path.resolve(process.cwd(), "apps/web/skills", skillSlug, "skill.md");
+        const sourcePath = fs.existsSync(fallbackPath) ? fallbackPath : appFallbackPath;
+        if (fs.existsSync(sourcePath)) {
+          systemPrompt = parseSkillFile(fs.readFileSync(sourcePath, "utf-8")).content;
+        }
+      }
+      if (!systemPrompt) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Skill '${skillSlug}' not found` });
+      }
+
+      const visionModel = resolveVisionModelId(
+        await getVisionModelOptions(),
+        skill?.llmModelId || skill?.defaultModel || null,
+      );
+      if (!visionModel) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "No enabled vision model configured",
+        });
+      }
+
+      const orderedSlots = [...input.slots].sort((a, b) => a.index - b.index);
+      const referenceImages = orderedSlots.flatMap((slot) => [slot.startFrameUrl, slot.endFrameUrl]);
+      const userPrompt = buildStoryboardPlannerPrompt({
+        productMetadata: input.productMetadata ?? null,
+        options: {
+          includeVoiceover: input.includeVoiceover,
+          includeSound: input.includeSound,
+          tone: input.tone,
+          language: input.language,
+        },
+        slots: orderedSlots.map((slot) => ({
+          id: slot.id,
+          index: slot.index,
+          currentPrompt: slot.currentPrompt ?? "",
+          durationSeconds: slot.durationSeconds ?? null,
+          aspectRatio: slot.aspectRatio ?? null,
+          model: slot.model ?? null,
+        })),
+      });
+
+      try {
+        const result = await callLLMWithVision(
+          systemPrompt,
+          userPrompt,
+          userId,
+          referenceImages,
+          visionModel,
+          7000,
+          { publicUrl: ctx.publicUrl ?? null },
+        );
+        const parsed = parseLlmJsonObject(result.content);
+        const slotPositionById = new Map(orderedSlots.map((slot, position) => [slot.id, position]));
+        const slots = Array.isArray(parsed.slots)
+          ? parsed.slots
+            .filter((slot): slot is Record<string, unknown> => Boolean(slot) && typeof slot === "object")
+            .map((slot) => {
+              const id = String(slot.id ?? "");
+              const slotPosition = slotPositionById.get(id) ?? 0;
+              return {
+                id,
+                index: Number.isFinite(Number(slot.index)) ? Number(slot.index) : 0,
+                journeyStage: String(slot.journey_stage ?? slot.journeyStage ?? ""),
+                videoPrompt: normalizeStoryboardSlotLocalImageAliases(
+                  String(slot.video_prompt ?? slot.videoPrompt ?? ""),
+                  slotPosition,
+                ),
+                voiceoverScript: normalizeStoryboardSlotLocalImageAliases(
+                  String(slot.voiceover_script ?? slot.voiceoverScript ?? ""),
+                  slotPosition,
+                ),
+                soundBrief: normalizeStoryboardSlotLocalImageAliases(
+                  String(slot.sound_brief ?? slot.soundBrief ?? ""),
+                  slotPosition,
+                ),
+                qualityNotes: Array.isArray(slot.quality_notes)
+                  ? slot.quality_notes.map((note) => String(note)).filter(Boolean)
+                  : [],
+              };
+            })
+          : [];
+        const inputSlotIds = new Set(orderedSlots.map((slot) => slot.id));
+        const returnedSlotIds = new Set(slots.map((slot) => slot.id).filter(Boolean));
+        const missingSlotIds = [...inputSlotIds].filter((id) => !returnedSlotIds.has(id));
+        const emptyPromptSlotIds = slots
+          .filter((slot) => inputSlotIds.has(slot.id) && !slot.videoPrompt.trim())
+          .map((slot) => slot.id);
+        if (slots.length !== orderedSlots.length || missingSlotIds.length > 0 || emptyPromptSlotIds.length > 0) {
+          throw new Error([
+            "Planner returned incomplete slots",
+            missingSlotIds.length > 0 ? `missing=${missingSlotIds.join(",")}` : "",
+            emptyPromptSlotIds.length > 0 ? `emptyPrompt=${emptyPromptSlotIds.join(",")}` : "",
+          ].filter(Boolean).join(" "));
+        }
+
+        const creditsUsed = Math.max(1, calculateCreditsForLLM(
+          result.usage.promptTokens,
+          result.usage.completionTokens,
+          visionModel,
+        ));
+        await deductCredits({
+          userId,
+          amount: creditsUsed,
+          description: "Storyboard customer journey video prompt plan",
+          skillSlug,
+          sourceType: "skill",
+          metadata: {
+            model: visionModel,
+            llmModel: visionModel,
+            skill: skillSlug,
+            runtimeKind: "llm",
+            inputTokens: result.usage.promptTokens,
+            outputTokens: result.usage.completionTokens,
+            referenceImageCount: referenceImages.length,
+            slotCount: orderedSlots.length,
+            originSurface: "storyboard_review",
+          },
+        });
+
+        return {
+          success: true,
+          skillId: skillSlug,
+          model: visionModel,
+          creditsUsed,
+          globalVideoStrategy: parsed.global_video_strategy ?? parsed.globalVideoStrategy ?? {},
+          slots,
+          voiceoverFullScript: String(parsed.voiceover_full_script ?? parsed.voiceoverFullScript ?? ""),
+          soundFullBrief: String(parsed.sound_full_brief ?? parsed.soundFullBrief ?? ""),
+        };
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Failed to plan storyboard video prompts",
         });
       }
     }),
@@ -2684,7 +3050,10 @@ export const skillsRouter = router({
           systemPrompt: skills.systemPrompt,
           folderPath: skills.folderPath,
           category: skills.category,
+          llmModelId: skills.llmModelId,
           defaultModel: skills.defaultModel,
+          preferredProviderId: skills.preferredProviderId,
+          strictProviderPin: skills.strictProviderPin,
           executionMode: skills.executionMode,
           executionPolicyJson: skills.executionPolicyJson,
         })
@@ -2769,7 +3138,12 @@ export const skillsRouter = router({
         const structuredPromptExtraction = preparedPromptSkillExecution.extractStructuredPrompt
           ? extractStructuredPromptBundleTextOutput(rawPythonContent, preparedPromptSkillExecution.textPromptField)
           : null;
-        let processedContent = structuredPromptExtraction?.promptText || rawPythonContent;
+        const fallbackStructuredPromptExtraction = structuredPromptExtraction?.promptText
+          ? null
+          : extractStructuredPromptBundleTextOutput(rawPythonContent, preparedPromptSkillExecution.textPromptField);
+        let processedContent = structuredPromptExtraction?.promptText
+          || fallbackStructuredPromptExtraction?.promptText
+          || rawPythonContent;
         let wasTruncated = false;
         if (promptLengthPlan) {
           const truncated = truncateToPromptLength(processedContent, promptLengthPlan.maxPromptLength);
@@ -2850,10 +3224,52 @@ export const skillsRouter = router({
         const requestedModel = typeof input.model === "string" && !input.model.startsWith("__auto")
           ? input.model
           : null;
-        const visionModel = resolveVisionModelId(
-          await getVisionModelOptions(),
-          requestedModel || skill.defaultModel || null,
-        );
+        let visionModel: string | null = null;
+        const executionPolicy = skill.executionPolicyJson && typeof skill.executionPolicyJson === "object"
+          ? skill.executionPolicyJson as Record<string, unknown>
+          : null;
+        const requiresPolicyMatchedModel = executionPolicy?.mode === "requirements"
+          && executionPolicy?.fallbackPolicy === "error";
+        try {
+          const policy = await resolveSkillExecutionPolicy({
+            skill: {
+              id: skill.slug,
+              name: skill.name,
+              description: "",
+              icon: "sparkles",
+              type: "chat-assistant",
+              triggers: [],
+              requiresExplicit: false,
+              creditMultiplier: 1,
+              enabledByDefault: true,
+              priority: 50,
+              llmModelId: skill.llmModelId ?? undefined,
+              defaultModel: skill.defaultModel ?? undefined,
+              preferredProviderId: skill.preferredProviderId ?? undefined,
+              strictProviderPin: skill.strictProviderPin ?? undefined,
+              executionPolicy: skill.executionPolicyJson ?? undefined,
+            } as SkillDefinition,
+            conversationModel: requestedModel,
+          });
+          visionModel = policy.modelId;
+          if (!visionModel && requiresPolicyMatchedModel) {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: `No enabled LLM model satisfies the execution policy for skill '${input.skillId}'`,
+            });
+          }
+        } catch (policyError) {
+          if (policyError instanceof TRPCError) {
+            throw policyError;
+          }
+          console.warn("[Skills] Skill execution policy resolution failed; falling back to vision model resolver:", policyError);
+        }
+        if (!visionModel) {
+          visionModel = resolveVisionModelId(
+            await getVisionModelOptions(),
+            requestedModel || skill.defaultModel || null,
+          );
+        }
         if (!visionModel) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
@@ -2976,6 +3392,7 @@ export const skillsRouter = router({
         const responseMode = mergedUserInputs.response_mode as string | undefined;
         let processedContent = result.rawContent;
         let qualityReport: Record<string, unknown> | undefined;
+        let promptReview: Record<string, unknown> | undefined;
 
         if (responseMode === "cms_json" && skill.category) {
           try {
@@ -3040,6 +3457,19 @@ export const skillsRouter = router({
             }
           } catch (processingError) {
             console.warn("[Skills] CMS post-processing failed, returning raw content:", processingError);
+          }
+        }
+
+        if (input.originSurface === "media_studio" && responseMode !== "cms_json") {
+          const structuredPromptExtraction = extractStructuredPromptBundleTextOutput(
+            processedContent,
+            typeof mergedUserInputs.text_prompt_field === "string" ? mergedUserInputs.text_prompt_field : "detailed",
+          );
+          if (structuredPromptExtraction.promptText) {
+            processedContent = structuredPromptExtraction.promptText;
+          }
+          if (structuredPromptExtraction.reviewSummary) {
+            promptReview = structuredPromptExtraction.reviewSummary as unknown as Record<string, unknown>;
           }
         }
 
@@ -3172,6 +3602,7 @@ export const skillsRouter = router({
           usage: result.usage,
           wasTruncated,
           ...(qualityReport ? { qualityReport } : {}),
+          ...(promptReview ? { promptReview } : {}),
           runtime: execution.runtime,
         };
       } catch (error) {
@@ -4403,6 +4834,7 @@ export const skillsRouter = router({
               llm_model_id: updateData.llmModelId,
               preferred_provider_id: updateData.preferredProviderId,
               strict_provider_pin: updateData.strictProviderPin,
+              config: updateData.configJson === undefined ? undefined : updateData.configJson,
             },
             updateData.skillContent,
           );
@@ -5979,6 +6411,320 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
       }
 
       return updated;
+    }),
+
+  createMediaStudioSkillImprovementRecommendation: adminProcedure
+    .input(z.object({
+      skillSlug: z.string().min(1).max(100),
+      trigger: z.enum(["prompt_qa", "image_qa", "manual"]),
+      score: z.number().int().min(0).max(100).optional(),
+      issues: z.array(z.object({
+        id: z.string().min(1).max(100),
+        severity: z.enum(["low", "medium", "high"]),
+        title: z.string().min(1).max(255),
+        evidence: z.string().max(2000).optional(),
+        recommendation: z.string().min(1).max(2000),
+        affectedSection: z.string().max(255).optional(),
+      })).min(1).max(20),
+      proposedChanges: z.array(z.object({
+        title: z.string().min(1).max(255),
+        reason: z.string().min(1).max(2000),
+        targetFile: z.string().min(1).max(255),
+        targetSection: z.string().max(255).optional(),
+        risk: z.enum(["low", "medium", "high"]),
+      })).min(1).max(20),
+      userAdditionalInstruction: z.string().max(4000).optional(),
+      evidence: z.object({
+        promptPreview: z.string().max(4000).optional(),
+        activeTab: z.enum(["image", "video", "audio"]).optional(),
+        source: z.string().max(100).optional(),
+        skillName: z.string().max(255).optional(),
+        skillSlug: z.string().max(100).optional(),
+      }).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const [skill] = await dbInstance
+        .select()
+        .from(skills)
+        .where(eq(skills.slug, input.skillSlug))
+        .limit(1);
+
+      if (!skill) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Skill '${input.skillSlug}' not found` });
+      }
+
+      const highCount = input.issues.filter((issue) => issue.severity === "high").length;
+      const mediumCount = input.issues.filter((issue) => issue.severity === "medium").length;
+      const riskLevel = highCount > 0 ? "high" : mediumCount > 0 ? "medium" : "low";
+      const score = input.score ?? Math.max(0, 100 - highCount * 18 - mediumCount * 10 - (input.issues.length - highCount - mediumCount) * 4);
+      const now = new Date();
+      const adminInstruction = input.userAdditionalInstruction?.trim() || "";
+      const affectedFiles = Array.from(new Set(input.proposedChanges.map((change) => change.targetFile)));
+
+      const recommendationJson = {
+        source: "media_studio_auto_learning",
+        trigger: input.trigger,
+        score,
+        adminOnly: true,
+        affectedFiles,
+        issues: input.issues,
+        proposedChanges: input.proposedChanges,
+        userAdditionalInstruction: adminInstruction,
+        details: {
+          source: "media_studio_auto_learning",
+          issues: input.issues,
+          proposedChanges: input.proposedChanges,
+          userAdditionalInstruction: adminInstruction,
+          evidence: input.evidence ?? {},
+        },
+        skill: {
+          id: skill.id,
+          slug: skill.slug,
+          name: skill.name,
+          executionMode: skill.executionMode,
+        },
+        evidence: input.evidence ?? {},
+      };
+
+      const existingRecommendation = await findExistingMediaStudioImprovementRecommendation(
+        dbInstance,
+        skill.id,
+        input,
+      );
+      if (existingRecommendation) {
+        return { recommendation: existingRecommendation, duplicate: true as const };
+      }
+
+      const [recommendation] = await dbInstance
+        .insert(skillImprovementRecommendations)
+        .values({
+          skillId: skill.id,
+          tenantId: ctx.tenantId ?? null,
+          recommendationType: "media-studio-auto-learning",
+          title: `Media Studio improvement proposal: ${skill.name}`,
+          summary: input.issues.map((issue) => issue.title).join("; ").slice(0, 1000),
+          rationale: [
+            `Generated from Media Studio ${input.trigger.replace("_", " ")} review.`,
+            adminInstruction ? `Admin instruction: ${adminInstruction}` : "",
+          ].filter(Boolean).join("\n\n"),
+          status: "pending_review",
+          riskLevel,
+          compatibilityStatus: "unknown",
+          qualityScore: score,
+          confidenceScore: 70,
+          currentRuntime: skill.executionMode ?? null,
+          proposedRuntime: skill.executionMode ?? null,
+          proposedAction: "review-and-patch-skill-instructions",
+          isAutoApplySafe: true,
+          recommendationJson,
+          contractDeltaJson: {
+            expectedFiles: affectedFiles,
+            contractImpact: "instruction-only proposal; admin confirmation applies through maintenance runner and compatibility verification",
+          },
+          analyzedAt: now,
+          reviewedAt: now,
+          reviewedBy: ctx.user?.id ?? null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+      await dbInstance.insert(skillImprovementRuns).values({
+        skillId: skill.id,
+        tenantId: ctx.tenantId ?? null,
+        recommendationId: recommendation.id,
+        runType: "analysis",
+        status: "completed",
+        triggerSource: "media_studio",
+        requestedBy: ctx.user?.id ?? null,
+        summary: `Created Media Studio improvement proposal with ${input.issues.length} issue(s).`,
+        scopeJson: {
+          skillSlug: input.skillSlug,
+          trigger: input.trigger,
+          activeTab: input.evidence?.activeTab ?? null,
+        },
+        logsJson: recommendationJson,
+        metricsJson: { score, issueCount: input.issues.length },
+        verificationJson: {
+          status: "pending_admin_review",
+          requiresAdminApproval: true,
+        },
+        startedAt: now,
+        endedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      return { recommendation, duplicate: false as const };
+    }),
+
+  createMediaStudioSkillAutoLearningSignal: protectedProcedure
+    .input(z.object({
+      skillSlug: z.string().min(1).max(100),
+      trigger: z.enum(["prompt_qa", "image_qa", "manual"]),
+      score: z.number().int().min(0).max(100).optional(),
+      issues: z.array(z.object({
+        id: z.string().min(1).max(100),
+        severity: z.enum(["low", "medium", "high"]),
+        title: z.string().min(1).max(255),
+        evidence: z.string().max(2000).optional(),
+        recommendation: z.string().min(1).max(2000),
+        affectedSection: z.string().max(255).optional(),
+      })).min(1).max(20),
+      proposedChanges: z.array(z.object({
+        title: z.string().min(1).max(255),
+        reason: z.string().min(1).max(2000),
+        targetFile: z.string().min(1).max(255),
+        targetSection: z.string().max(255).optional(),
+        risk: z.enum(["low", "medium", "high"]),
+      })).min(1).max(20),
+      evidence: z.object({
+        promptPreview: z.string().max(4000).optional(),
+        activeTab: z.enum(["image", "video", "audio"]).optional(),
+        source: z.string().max(100).optional(),
+        skillName: z.string().max(255).optional(),
+        skillSlug: z.string().max(100).optional(),
+      }).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+
+      const [skill] = await dbInstance
+        .select()
+        .from(skills)
+        .where(eq(skills.slug, input.skillSlug))
+        .limit(1);
+
+      if (!skill) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Skill '${input.skillSlug}' not found` });
+      }
+
+      const configJson = (skill.configJson && typeof skill.configJson === "object")
+        ? skill.configJson as Record<string, any>
+        : {};
+      const autoLearning = configJson.media_studio?.auto_learning;
+      if (!autoLearning || autoLearning.enabled !== true) {
+        return { skipped: true as const, reason: "auto_learning_disabled" as const };
+      }
+      if (input.trigger === "prompt_qa" && autoLearning.prompt_qa_after_auto_prompt === false) {
+        return { skipped: true as const, reason: "prompt_qa_disabled" as const };
+      }
+      if (input.trigger === "image_qa" && autoLearning.image_qa_after_generation === false) {
+        return { skipped: true as const, reason: "image_qa_disabled" as const };
+      }
+
+      const highCount = input.issues.filter((issue) => issue.severity === "high").length;
+      const mediumCount = input.issues.filter((issue) => issue.severity === "medium").length;
+      const riskLevel = highCount > 0 ? "high" : mediumCount > 0 ? "medium" : "low";
+      const score = input.score ?? Math.max(0, 100 - highCount * 18 - mediumCount * 10 - (input.issues.length - highCount - mediumCount) * 4);
+      const now = new Date();
+      const affectedFiles = Array.from(new Set(input.proposedChanges.map((change) => change.targetFile)));
+      const recommendationJson = {
+        source: "media_studio_auto_learning",
+        trigger: input.trigger,
+        score,
+        adminOnly: true,
+        silentUserSignal: true,
+        affectedFiles,
+        issues: input.issues,
+        proposedChanges: input.proposedChanges,
+        details: {
+          source: "media_studio_auto_learning",
+          issues: input.issues,
+          proposedChanges: input.proposedChanges,
+          evidence: input.evidence ?? {},
+          silentUserSignal: true,
+        },
+        skill: {
+          id: skill.id,
+          slug: skill.slug,
+          name: skill.name,
+          executionMode: skill.executionMode,
+        },
+        evidence: {
+          ...(input.evidence ?? {}),
+          reportedByUserId: ctx.user?.id ?? null,
+        },
+      };
+
+      const existingRecommendation = await findExistingMediaStudioImprovementRecommendation(
+        dbInstance,
+        skill.id,
+        input,
+      );
+      if (existingRecommendation) {
+        return {
+          skipped: true as const,
+          reason: "duplicate_existing_recommendation" as const,
+          recommendationId: existingRecommendation.id,
+        };
+      }
+
+      const [recommendation] = await dbInstance
+        .insert(skillImprovementRecommendations)
+        .values({
+          skillId: skill.id,
+          tenantId: ctx.tenantId ?? null,
+          recommendationType: "media-studio-auto-learning",
+          title: `Media Studio auto-learning signal: ${skill.name}`,
+          summary: input.issues.map((issue) => issue.title).join("; ").slice(0, 1000),
+          rationale: `Generated silently from Media Studio ${input.trigger.replace("_", " ")} review by a skill user.`,
+          status: "pending_review",
+          riskLevel,
+          compatibilityStatus: "unknown",
+          qualityScore: score,
+          confidenceScore: 65,
+          currentRuntime: skill.executionMode ?? null,
+          proposedRuntime: skill.executionMode ?? null,
+          proposedAction: "review-and-patch-skill-instructions",
+          isAutoApplySafe: true,
+          recommendationJson,
+          contractDeltaJson: {
+            expectedFiles: affectedFiles,
+            contractImpact: "instruction-only auto-learning signal; admin confirmation applies through maintenance runner and compatibility verification",
+          },
+          analyzedAt: now,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+      await dbInstance.insert(skillImprovementRuns).values({
+        skillId: skill.id,
+        tenantId: ctx.tenantId ?? null,
+        recommendationId: recommendation.id,
+        runType: "analysis",
+        status: "completed",
+        triggerSource: "media_studio",
+        requestedBy: ctx.user?.id ?? null,
+        summary: `Captured silent Media Studio auto-learning signal with ${input.issues.length} issue(s).`,
+        scopeJson: {
+          skillSlug: input.skillSlug,
+          trigger: input.trigger,
+          activeTab: input.evidence?.activeTab ?? null,
+          silentUserSignal: true,
+        },
+        logsJson: recommendationJson,
+        metricsJson: { score, issueCount: input.issues.length },
+        verificationJson: {
+          status: "pending_admin_review",
+          requiresAdminApproval: true,
+        },
+        startedAt: now,
+        endedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      return { skipped: false as const, recommendationId: recommendation.id };
     }),
 
   applyUpgradeRecommendation: adminProcedure

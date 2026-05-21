@@ -14,32 +14,20 @@ vi.mock("@/components/ui/badge", () => ({
   Badge: (props: Record<string, unknown>) => React.createElement("span", props),
 }));
 
-vi.mock("@/components/ui/scroll-area", () => ({
-  ScrollArea: (props: Record<string, unknown>) => React.createElement("div", props),
-}));
-
 vi.mock("@/i18n/useScopedTranslation", () => ({
   useScopedTranslation: () => ({
     t: (key: string, params?: Record<string, string | number>) => {
       const messages: Record<string, string> = {
-        "common.allReadStates": "All",
         "common.select": "Select",
         "mediaStudio.librarySearchTitle": "Search Library",
         "mediaStudio.librarySearchPlaceholder": "Search reusable assets...",
         "mediaStudio.librarySearchImage": "Image",
         "mediaStudio.librarySearchVideo": "Video",
         "mediaStudio.librarySearchAudio": "Audio",
-        "mediaStudio.librarySearchUpdatedIn": "Updated in:",
-        "mediaStudio.librarySearchOneDay": "1 day",
-        "mediaStudio.librarySearchThreeDays": "3 days",
-        "mediaStudio.librarySearchSevenDays": "7 days",
-        "mediaStudio.librarySearchFifteenDays": "15 days",
-        "mediaStudio.librarySearchOneMonth": "1 month",
-        "mediaStudio.librarySearchAllTime": "All time",
         "mediaStudio.librarySearchLoading": "Searching library...",
         "mediaStudio.librarySearchHint": "Pick a timeframe, type, or media kind to search indexed library items for reuse.",
         "mediaStudio.librarySearchNoMatches": "No matching library items.",
-        "mediaStudio.librarySearchHasMore": `Showing up to 50 results. There may be more items (${params?.total ?? 0}+). Add more filters or keywords.`,
+        "mediaStudio.historyGalleryShowingCount": `Showing ${params?.shown ?? 0} of ${params?.total ?? 0}`,
         "mediaStudio.librarySearchRetryFromHistory": "Retry from Media History",
         "mediaStudio.librarySearchReadyToReuse": "Ready to reuse",
       };
@@ -56,8 +44,6 @@ describe("LibrarySearchPanel", () => {
       React.createElement(LibrarySearchPanel, {
         query: "",
         onQueryChange: vi.fn(),
-        recentDays: 7,
-        onRecentDaysChange: vi.fn(),
         isLoading: false,
         results: [],
         onSelect: vi.fn(),
@@ -65,7 +51,7 @@ describe("LibrarySearchPanel", () => {
     );
 
     expect(html).toContain("Search Library");
-    expect(html).toContain("Updated in:");
+    expect(html).not.toContain("Updated in:");
   });
 
   it("renders item type filter controls and treats the selected type as an active search", () => {
@@ -73,8 +59,6 @@ describe("LibrarySearchPanel", () => {
       React.createElement(LibrarySearchPanel, {
         query: "",
         onQueryChange: vi.fn(),
-        recentDays: "all",
-        onRecentDaysChange: vi.fn(),
         isLoading: false,
         itemTypeFilter: "video",
         onItemTypeFilterChange: vi.fn(),
@@ -83,9 +67,10 @@ describe("LibrarySearchPanel", () => {
       }),
     );
 
-    expect(html).toContain("All");
+    expect(html).not.toContain("All");
     expect(html).toContain("Image");
     expect(html).toContain("Video");
+    expect(html).toContain("Audio");
     expect(html).toContain("No matching library items.");
     expect(html).not.toContain("Pick a timeframe, type, or media kind");
   });
@@ -95,8 +80,6 @@ describe("LibrarySearchPanel", () => {
       React.createElement(LibrarySearchPanel, {
         query: "hero",
         onQueryChange: vi.fn(),
-        recentDays: 7,
-        onRecentDaysChange: vi.fn(),
         isLoading: false,
         selectedItemId: 2,
         onSelect: vi.fn(),
@@ -139,8 +122,6 @@ describe("LibrarySearchPanel", () => {
       React.createElement(LibrarySearchPanel, {
         query: "lion",
         onQueryChange: vi.fn(),
-        recentDays: 7,
-        onRecentDaysChange: vi.fn(),
         isLoading: false,
         selectedItemId: null,
         onSelect: vi.fn(),
@@ -181,8 +162,6 @@ describe("LibrarySearchPanel", () => {
       React.createElement(LibrarySearchPanel, {
         query: "mix",
         onQueryChange: vi.fn(),
-        recentDays: 7,
-        onRecentDaysChange: vi.fn(),
         isLoading: false,
         selectedItemId: null,
         onSelect: vi.fn(),
@@ -217,13 +196,41 @@ describe("LibrarySearchPanel", () => {
     expect(html).toContain("cursor-grab");
   });
 
+  it("renders results as a responsive image grid with large previews", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(LibrarySearchPanel, {
+        query: "room",
+        onQueryChange: vi.fn(),
+        isLoading: false,
+        selectedItemId: null,
+        onPreview: vi.fn(),
+        onSelect: vi.fn(),
+        results: [
+          {
+            item_id: 24,
+            item_type: "image",
+            title: "Room reference",
+            source_url: "https://cdn.example.com/room.png",
+            thumbnail_url: null,
+            status: "ready",
+            source: "media_task",
+            provider_name: "kie.ai",
+            model_name: "z-image",
+          },
+        ],
+      }),
+    );
+
+    expect(html).toContain("grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))]");
+    expect(html).toContain("aspect-square");
+    expect(html).toContain("Preview Room reference");
+  });
+
   it("renders an add to reference action when provided", () => {
     const html = renderToStaticMarkup(
       React.createElement(LibrarySearchPanel, {
         query: "mix",
         onQueryChange: vi.fn(),
-        recentDays: 7,
-        onRecentDaysChange: vi.fn(),
         isLoading: false,
         selectedItemId: null,
         onAddToReference: vi.fn(),

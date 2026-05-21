@@ -2505,7 +2505,6 @@ async def _recover_stuck_tasks_async():
                 select(MediaTask).filter(
                     MediaTask.status == TaskStatus.PROCESSING,
                     MediaTask.started_at < cutoff_time,
-                    MediaTask.task_id.isnot(None)  # Must have external task_id
                 ).limit(20)
             )
             stuck_tasks = list(result.scalars().all())
@@ -2552,6 +2551,37 @@ async def _recover_stuck_tasks_async():
 
             for task in stuck_tasks:
                 try:
+                    # If a task reached processing but never recorded a provider
+                    # task id, there is nothing to poll. Fail it after a short
+                    # grace period so Media Studio cannot show it forever.
+                    if not task.task_id:
+                        now = datetime.now(timezone.utc)
+                        task_started = task.started_at or task.created_at
+                        if task_started and task_started.tzinfo is None:
+                            task_started = task_started.replace(tzinfo=timezone.utc)
+                        age_minutes = int((now - task_started).total_seconds() / 60) if task_started else 0
+                        if age_minutes < 10:
+                            logger.info(
+                                "recover_stuck_task_waiting_for_provider_task_id",
+                                task_id=task.id,
+                                age_minutes=age_minutes,
+                            )
+                            continue
+
+                        task.status = TaskStatus.FAILED
+                        task.error_message = (
+                            f"Task was processing for {age_minutes} minutes but no provider task ID "
+                            "was recorded. Likely lost before provider submission."
+                        )
+                        task.completed_at = now
+                        failed_count += 1
+                        logger.warning(
+                            "recover_stuck_task_missing_provider_task_id",
+                            task_id=task.id,
+                            age_minutes=age_minutes,
+                        )
+                        continue
+
                     raw_task_model = str(task.model or "").strip().lower()
                     task_model_name = raw_task_model.split("/", 1)[-1]
                     normalized_task_model = re.sub(r"[^a-z0-9]+", "-", task_model_name).strip("-")

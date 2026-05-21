@@ -97,3 +97,43 @@
 [2026-05-09T14:52:47+07:00] DECISION: Use a segmented button control for slide visual mode instead of a select.
   Context: Adding a select would introduce another `combobox` role and risk breaking existing PresentationEditor tests that target older combobox indices.
   Alternatives considered: Keep the select; rejected because segmented mode buttons match the UI pattern for mutually exclusive modes and avoid disturbing existing combobox ordering.
+
+[2026-05-17T14:40:38Z] DECISION: Patch the Marketplace Capture Extension plan with completeness additions rather than only reporting gaps.
+  Context: The user asked to inspect completeness and points to add; editing the plan makes the review actionable for implementation.
+  Alternatives considered: Provide a read-only report only.
+
+[2026-05-17T15:05:00Z] DECISION: Run a second completeness pass focused on operational, provenance, packaging, accessibility, and legal/product readiness.
+  Context: The user repeated the completeness review request, so the second pass looked beyond core feature/security requirements into production readiness gaps.
+  Alternatives considered: Return the prior review unchanged; rejected because additional operational gaps were still useful to capture before implementation.
+
+[2026-05-17T15:14:00Z] DECISION: Ship Marketplace Capture as a user-reviewed MVP with deterministic extraction fallback before full LLM provider wiring.
+  Context: The feature needs an end-to-end path now, but relying on live provider credentials during implementation would make local verification brittle.
+  Alternatives considered: Block implementation on a vision LLM integration; rejected because the secure capture, evidence, preview, edit, and confirm-save contracts can be validated independently and the fallback still stores confidence/warnings for later LLM replacement.
+
+[2026-05-17T15:14:00Z] DECISION: Keep remote marketplace image URLs as selected candidates unless the user uploads/captures assets explicitly.
+  Context: Automatically fetching marketplace image URLs from the backend creates SSRF and data-retention risk.
+  Alternatives considered: Mirror every detected remote image during draft creation; rejected until host allowlists, per-domain quotas, and user-selected image groups are enforced deeper in the storage pipeline.
+
+[2026-05-17T16:39:00Z] DECISION: Harden Marketplace Capture migration with DB-level enums and constraints instead of relying only on application validation.
+  Context: The user asked to make the migration complete; DB-level constraints prevent invalid platform/status/type/score/rating/negative numeric data from persisting if an API or script bypasses shared Zod schemas.
+  Alternatives considered: Keep varchar columns and validate only in services; rejected because schema drift and future batch/import paths would be easier to break silently.
+
+[2026-05-18T05:25:00+07:00] DECISION: Make the extension panel the pre-upload review boundary for Marketplace Capture.
+  Context: The user asked to let users inspect, edit details, and choose only wanted images before sending data back to SmartSpecPro.
+  Alternatives considered: Upload all captured DOM/images and rely on the web preview to clean it later; rejected because it increases privacy, storage, LLM cost, and data-trash risk before user intent is confirmed.
+
+[2026-05-18T05:25:00+07:00] DECISION: Keep LLM extraction optional with deterministic fallback and robust JSON repair parsing.
+  Context: Local and dev environments may not have live gateway credentials, but the product still needs a verifiable capture-to-preview-to-confirm workflow.
+  Alternatives considered: Require live vision LLM for every analysis; rejected because it would make implementation, tests, and offline development brittle while weakening the user-reviewed fallback path.
+
+[2026-05-18T06:55:00+07:00] DECISION: Complete the remaining Marketplace Capture gaps as incremental production hardening instead of replacing the MVP.
+  Context: The user asked to finish every listed UI and extension gap without waiting for more confirmation.
+  Alternatives considered: Rebuild the extension panel and web preview from scratch; rejected because the existing MVP already passed end-to-end verification and focused additions reduced regression risk.
+
+[2026-05-18T06:55:00+07:00] DECISION: Use explicit page guards and source URL validation for sensitive marketplace pages.
+  Context: The extension must remain user-assisted and avoid account/cart/checkout/chat/order surfaces.
+  Alternatives considered: Only warn in the panel; rejected because backend validation should enforce the same privacy boundary even if a client bug sends a forbidden URL.
+
+[2026-05-18T07:20:00+07:00] DECISION: Normalize Shopee product references to canonical `/product/{shopId}/{itemId}` URLs while preserving original URLs in raw payload metadata.
+  Context: Shopee exposes the same product through SEO URLs and canonical product URLs, and duplicate detection needs stable ids rather than path text.
+  Alternatives considered: Store only the browser URL as `sourceUrl`; rejected because query/hash/SEO variations can make one product appear as different captures or candidate items.

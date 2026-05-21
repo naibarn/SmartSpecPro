@@ -17,6 +17,10 @@ export type AuthResult =
       tenantId?: string;
       userId?: number;
       apiKeyId?: string;
+      tokenUse?: string;
+      externalReference?: string;
+      jti?: string;
+      deviceIdHash?: string;
     }
   | {
       ok: true;
@@ -194,6 +198,15 @@ export async function authorizeRequest(
         const apiKeyId = typeof (claims as any).apiKeyId === "string"
           ? (claims as any).apiKeyId.trim()
           : "";
+        const tokenUse = typeof (claims as any).tokenUse === "string"
+          ? (claims as any).tokenUse.trim()
+          : "";
+        const externalReference = typeof (claims as any).externalReference === "string"
+          ? (claims as any).externalReference.trim()
+          : "";
+        const deviceIdHash = typeof (claims as any).deviceIdHash === "string"
+          ? (claims as any).deviceIdHash.trim()
+          : "";
         return {
           ok: true,
           mode: "bearer",
@@ -202,6 +215,10 @@ export async function authorizeRequest(
           ...(tenantId ? { tenantId } : {}),
           ...(userId ? { userId } : {}),
           ...(apiKeyId ? { apiKeyId } : {}),
+          ...(tokenUse ? { tokenUse } : {}),
+          ...(externalReference ? { externalReference } : {}),
+          ...(jti ? { jti } : {}),
+          ...(deviceIdHash ? { deviceIdHash } : {}),
         };
       } catch (e: any) {
         return { ok: false, error: e?.message || "Invalid token" };

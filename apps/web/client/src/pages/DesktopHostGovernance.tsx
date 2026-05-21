@@ -40,7 +40,12 @@ export default function DesktopHostGovernance() {
   const desktopPackageSyncEnabled = useTenantFeatureFlag("desktopPackageSync");
   const desktopAgencyRuntimeEnabled = useTenantFeatureFlag("desktopAgencyRuntime");
   const desktopWorkerProjectionEnabled = useTenantFeatureFlag("desktopWorkerProjection");
-  const tenantStatus = useDesktopHostStatus(desktopHostEnabled, "tenant");
+  const tenantStatus = useDesktopHostStatus(
+    desktopHostEnabled
+      && Boolean(user?.currentTenantId)
+      && (user?.role === "admin" || user?.role === "domain_admin"),
+    "tenant",
+  );
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [disableDeviceId, setDisableDeviceId] = useState<string | null>(null);
   const [rootActionKey, setRootActionKey] = useState<string | null>(null);

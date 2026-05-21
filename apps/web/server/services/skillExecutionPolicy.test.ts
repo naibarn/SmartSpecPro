@@ -235,11 +235,12 @@ describe("resolveSkillExecutionPolicy — requirements mode", () => {
     );
   });
 
-  it("uses llmModelId before requirements matching when a skill model is configured", async () => {
+  it("uses requirements before llmModelId when requirements are configured", async () => {
     mockResolveFromRows.mockImplementation(({ preferredModelIds }) => {
       if ((preferredModelIds ?? []).includes("gpt-4o")) return "gpt-4o";
       return null;
     });
+    mockSelectBestLlmModel.mockReturnValue("requirements-model");
 
     const result = await resolveSkillExecutionPolicy({
       skill: makeSkill({
@@ -250,10 +251,13 @@ describe("resolveSkillExecutionPolicy — requirements mode", () => {
       }),
     });
 
-    expect(result.modelId).toBe("gpt-4o");
-    expect(result.modelSource).toBe("skill_llmModelId");
-    expect(result.requirementsFallback).toBeUndefined();
-    expect(mockSelectBestLlmModel).not.toHaveBeenCalled();
+    expect(result.modelId).toBe("requirements-model");
+    expect(result.modelSource).toBe("requirements_match");
+    expect(result.requirementsFallback).toBe(false);
+    expect(mockSelectBestLlmModel).toHaveBeenCalledWith(
+      { supportsFunctionTools: true },
+      fakeRows,
+    );
   });
 
   it("falls back to system default when requirements fail and no llmModelId", async () => {
@@ -428,11 +432,12 @@ describe("resolveSkillExecutionPolicy — requirements mode", () => {
     expect(result.modelSource).toBe("conversation");
   });
 
-  it("requirements mode: honors configured defaultModel before requirements matching", async () => {
+  it("requirements mode: uses requirements before configured defaultModel", async () => {
     mockResolveFromRows.mockImplementation(({ preferredModelIds }) => {
       if ((preferredModelIds ?? []).includes("default-model")) return "default-model";
       return null;
     });
+    mockSelectBestLlmModel.mockReturnValue("requirements-model");
 
     const result = await resolveSkillExecutionPolicy({
       skill: makeSkill({
@@ -444,10 +449,10 @@ describe("resolveSkillExecutionPolicy — requirements mode", () => {
       }),
     });
 
-    expect(result.modelId).toBe("default-model");
-    expect(result.modelSource).toBe("skill_defaultModel");
-    expect(result.requirementsFallback).toBeUndefined();
-    expect(mockSelectBestLlmModel).not.toHaveBeenCalled();
+    expect(result.modelId).toBe("requirements-model");
+    expect(result.modelSource).toBe("requirements_match");
+    expect(result.requirementsFallback).toBe(false);
+    expect(mockSelectBestLlmModel).toHaveBeenCalled();
   });
 
   it("requirements mode with empty requirements still honors configured defaultModel", async () => {
@@ -472,11 +477,12 @@ describe("resolveSkillExecutionPolicy — requirements mode", () => {
     expect(mockSelectBestLlmModel).not.toHaveBeenCalled();
   });
 
-  it("auto-detect: configured llmModelId takes precedence over requirements", async () => {
+  it("auto-detect: requirements take precedence over configured llmModelId", async () => {
     mockResolveFromRows.mockImplementation(({ preferredModelIds }) => {
       if ((preferredModelIds ?? []).includes("gpt-4o")) return "gpt-4o";
       return null;
     });
+    mockSelectBestLlmModel.mockReturnValue("requirements-model");
 
     const result = await resolveSkillExecutionPolicy({
       skill: makeSkill({
@@ -487,9 +493,28 @@ describe("resolveSkillExecutionPolicy — requirements mode", () => {
       }),
     });
 
-    expect(result.modelId).toBe("gpt-4o");
-    expect(result.modelSource).toBe("skill_llmModelId");
-    expect(mockSelectBestLlmModel).not.toHaveBeenCalled();
+    expect(result.modelId).toBe("requirements-model");
+    expect(result.modelSource).toBe("requirements_match");
+    expect(mockSelectBestLlmModel).toHaveBeenCalled();
+  });
+
+  it("fallbackPolicy=error returns no model when requirements have no match", async () => {
+    mockSelectBestLlmModel.mockReturnValue(null);
+    mockResolveFromRows.mockReturnValue("system-default");
+
+    const result = await resolveSkillExecutionPolicy({
+      skill: makeSkill({
+        executionPolicy: {
+          mode: "requirements",
+          requirements: { contextLength: 1_000_000, supportsVision: true },
+          fallbackPolicy: "error",
+        },
+      }),
+    });
+
+    expect(result.modelId).toBeNull();
+    expect(result.requirementsFallback).toBe(true);
+    expect(mockResolveFromRows).not.toHaveBeenCalled();
   });
 
   it("filters free models out of requirements matching by default", async () => {

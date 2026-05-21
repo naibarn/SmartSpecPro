@@ -23,6 +23,7 @@ import { trpc } from "@/lib/trpc";
 import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import { JobCard } from "@/components/chat/JobCard";
 import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
 import {
@@ -200,6 +201,51 @@ type DashboardShortcut = {
   color: string;
 };
 
+type SkillMaintenanceRecommendation = {
+  id: number;
+  skillId: number;
+  recommendationType: string;
+  title: string;
+  summary: string | null;
+  status: "pending_review" | "approved" | "dismissed" | "applied" | "blocked" | "failed";
+  riskLevel: "low" | "medium" | "high" | "critical";
+  compatibilityStatus: "unknown" | "compatible" | "warning" | "blocked";
+  qualityScore: number | null;
+  isAutoApplySafe: boolean;
+  analyzedAt: Date | string;
+  updatedAt: Date | string;
+  latestRun?: {
+    status: string;
+    summary?: string | null;
+    logsJson: Record<string, unknown> | null;
+  } | null;
+  skill?: {
+    id: number;
+    slug: string;
+    name: string;
+    category: string;
+    executionMode: string | null;
+  } | null;
+};
+
+function isSkillMaintenanceActionable(item: SkillMaintenanceRecommendation): boolean {
+  if (item.status === "applied" || item.status === "dismissed") {
+    return false;
+  }
+  if (item.latestRun?.status === "running" || item.latestRun?.status === "queued") {
+    return false;
+  }
+  const applyStrategy = item.latestRun?.logsJson && typeof item.latestRun.logsJson === "object"
+    ? item.latestRun.logsJson.applyStrategy
+    : null;
+  const proposalOnlyCompleted = item.latestRun?.status === "completed"
+    && (applyStrategy === "proposal" || String(item.latestRun.summary || "").toLowerCase().includes("proposal generated"));
+  if (proposalOnlyCompleted) {
+    return false;
+  }
+  return true;
+}
+
 const consolidatedAdminOpsIds = new Set([
   "admin-overview",
   "admin-ops",
@@ -224,6 +270,8 @@ export default function Dashboard() {
   useScopedTranslation("nav");
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const { tenant, isLoading: tenantLoading } = useTenant();
+  const { toast } = useToast();
+  const utils = trpc.useUtils();
   const [, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedReviewAgencyId, setSelectedReviewAgencyId] =
@@ -289,7 +337,7 @@ export default function Dashboard() {
   const isAdminLike = user?.role === "admin" || user?.role === "domain_admin";
   const analyticsEnabled = isAuthenticated && isAdminLike;
   const desktopGovernanceEnabled =
-    isAuthenticated && tenantFlags.desktopHostEnabled && isAdminLike;
+    isAuthenticated && tenantFlags.desktopHostEnabled && isAdminLike && Boolean(user?.currentTenantId);
   const desktopGovernanceStatus = useDesktopHostStatus(
     desktopGovernanceEnabled,
     "tenant"
@@ -310,6 +358,41 @@ export default function Dashboard() {
     { state: "all", limit: 100 },
     { enabled: analyticsEnabled && user?.role === "admin" },
   );
+  const { data: skillMaintenanceRecommendationsData, isLoading: isSkillMaintenanceLoading } =
+    trpc.skills.getUpgradeRecommendations.useQuery(
+      {
+        includeDismissed: false,
+        limit: 200,
+      },
+      {
+        enabled: analyticsEnabled && user?.role === "admin",
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
+      },
+    );
+  const applySkillMaintenanceRecommendationsMutation =
+    trpc.skills.applyMaintenanceRecommendations.useMutation({
+      onSuccess: (result) => {
+        utils.skills.getUpgradeRecommendations.invalidate();
+        utils.skills.getLegacyUpgradeApplyRuns.invalidate();
+        utils.skills.getLegacyUpgradeQueueSummary.invalidate();
+        utils.skills.listFromDb.invalidate();
+        toast({
+          title: t("dashboard:admin.skillMaintenanceApplyStartedTitle"),
+          description: t("dashboard:admin.skillMaintenanceApplyStartedDescription", {
+            appliedCount: result.appliedCount,
+            failedCount: result.failedCount,
+          }),
+        });
+      },
+      onError: (error) => {
+        toast({
+          title: t("dashboard:admin.skillMaintenanceApplyFailedTitle"),
+          description: error.message || t("dashboard:admin.skillMaintenanceApplyFailedDescription"),
+          variant: "destructive",
+        });
+      },
+    });
 
   const { data: agencyReviewDashboardRaw } =
     trpc.agency.reviewDashboard.useQuery(undefined, {
@@ -557,6 +640,37 @@ export default function Dashboard() {
     canceled: 0,
   };
   const latestLegacyUpgradeRunId = legacyUpgradeApplyRuns?.items?.[0]?.id ?? null;
+  const skillMaintenanceRecommendations =
+    (skillMaintenanceRecommendationsData ?? []) as SkillMaintenanceRecommendation[];
+  const skillMaintenanceActionableRecommendations = skillMaintenanceRecommendations
+    .filter(isSkillMaintenanceActionable)
+    .sort((left, right) => {
+      const riskRank: Record<SkillMaintenanceRecommendation["riskLevel"], number> = {
+        low: 1,
+        medium: 2,
+        high: 3,
+        critical: 4,
+      };
+      const statusRank: Record<SkillMaintenanceRecommendation["compatibilityStatus"], number> = {
+        compatible: 1,
+        unknown: 2,
+        warning: 3,
+        blocked: 4,
+      };
+      const riskDelta = riskRank[right.riskLevel] - riskRank[left.riskLevel];
+      if (riskDelta !== 0) return riskDelta;
+      const statusDelta = statusRank[right.compatibilityStatus] - statusRank[left.compatibilityStatus];
+      if (statusDelta !== 0) return statusDelta;
+      return new Date(right.analyzedAt).getTime() - new Date(left.analyzedAt).getTime();
+    });
+  const skillMaintenanceActionableIds = skillMaintenanceActionableRecommendations.map(
+    item => item.id
+  );
+  const skillMaintenanceActionableCount = skillMaintenanceActionableIds.length;
+  const skillMaintenanceSkillCount = new Set(
+    skillMaintenanceActionableRecommendations.map(item => item.skillId)
+  ).size;
+  const skillMaintenancePreviewItems = skillMaintenanceActionableRecommendations.slice(0, 6);
   const selectedReviewAgency =
     selectedReviewAgencyId === "all"
       ? null
@@ -744,13 +858,17 @@ export default function Dashboard() {
       });
     }
 
-    if (user.role === "admin" && legacyUpgradeCount > 0) {
+    if (user.role === "admin" && skillMaintenanceActionableCount > 0) {
       notices.push({
-        key: "legacy-upgrades",
-        title: `Legacy skill upgrades pending (${legacyUpgradeCount})`,
-        detail: "Open the maintenance queue to review and batch legacy migrations.",
+        key: "skill-maintenance",
+        title: t("dashboard:notices.skillMaintenancePending", {
+          count: skillMaintenanceActionableCount,
+        }),
+        detail: t("dashboard:notices.skillMaintenancePendingDetail", {
+          skillCount: skillMaintenanceSkillCount,
+        }),
         tone: "warning",
-        ctaLabel: "Open maintenance queue",
+        ctaLabel: t("dashboard:notices.openSkillMaintenance"),
         ctaHref: adminSkillMaintenancePath,
       });
     }
@@ -781,7 +899,8 @@ export default function Dashboard() {
     adminSkillMaintenancePath,
     pendingApprovals?.requests?.length,
     recentTaskStats.failed,
-    legacyUpgradeCount,
+    skillMaintenanceActionableCount,
+    skillMaintenanceSkillCount,
     reviewOverview,
     user.credits,
   ]);
@@ -827,10 +946,14 @@ export default function Dashboard() {
 
     if (user.role === "admin") {
       actions.push({
-        label: legacyUpgradeCount > 0 ? `Skill maintenance (${legacyUpgradeCount})` : "Skill maintenance",
+        label: skillMaintenanceActionableCount > 0
+          ? t("dashboard:nextBestActions.skillMaintenanceWithCount", {
+              count: skillMaintenanceActionableCount,
+            })
+          : t("dashboard:nextBestActions.skillMaintenance"),
         href: adminSkillMaintenancePath,
         icon: ClipboardCheck,
-        description: "Review legacy upgrades and open the maintenance queue.",
+        description: t("dashboard:nextBestActions.skillMaintenanceDetail"),
         color: "from-slate-700 to-emerald-700",
       });
     }
@@ -920,7 +1043,7 @@ export default function Dashboard() {
     activeWorkflows?.workflows?.length,
     analyticsSummary?.usage.total_requests,
     chatData?.conversations?.length,
-    legacyUpgradeCount,
+    skillMaintenanceActionableCount,
     pendingApprovals?.requests?.length,
     recentTaskStats.failed,
     reviewOverview,
@@ -1080,6 +1203,16 @@ export default function Dashboard() {
       return;
     }
     setLocation(target);
+  };
+  const startSkillMaintenanceApply = (recommendationIds: number[]) => {
+    if (recommendationIds.length === 0) {
+      toast({
+        title: t("dashboard:admin.skillMaintenanceNoActionTitle"),
+        description: t("dashboard:admin.skillMaintenanceNoActionDescription"),
+      });
+      return;
+    }
+    applySkillMaintenanceRecommendationsMutation.mutate({ recommendationIds });
   };
 
   const quickActions = [
@@ -1770,10 +1903,10 @@ export default function Dashboard() {
                     onClick={() => navigateTo(adminSkillMaintenancePath)}
                   >
                     <ClipboardCheck className="h-4 w-4" />
-                    <span>Maintenance</span>
-                    {legacyUpgradeCount > 0 && (
+                    <span>{t("dashboard:admin.skillMaintenanceHeaderButton")}</span>
+                    {skillMaintenanceActionableCount > 0 && (
                       <Badge variant="secondary" className="h-5 rounded-full px-2 text-[11px]">
-                        {legacyUpgradeCount}
+                        {skillMaintenanceActionableCount}
                       </Badge>
                     )}
                   </Button>
@@ -2073,20 +2206,36 @@ export default function Dashboard() {
               <div className="relative overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/90 p-5 shadow-[0_24px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl">
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-600 via-sky-500 to-slate-400" />
                 <DashboardSectionHeader
-                  eyebrow="Managed skills"
-                  title="Skill maintenance"
-                  description="Open the maintenance queue to review legacy upgrades, safe bundles, and scheduled skill work."
+                  eyebrow={t("dashboard:admin.skillMaintenanceEyebrow")}
+                  title={t("dashboard:admin.skillMaintenanceTitle")}
+                  description={t("dashboard:admin.skillMaintenanceDescription")}
                 trailing={
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
                       size="sm"
+                      onClick={() => startSkillMaintenanceApply(skillMaintenanceActionableIds)}
+                      disabled={
+                        skillMaintenanceActionableIds.length === 0 ||
+                        applySkillMaintenanceRecommendationsMutation.isPending
+                      }
+                    >
+                      {applySkillMaintenanceRecommendationsMutation.isPending && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      {t("dashboard:admin.skillMaintenanceStartAll", {
+                        count: skillMaintenanceActionableIds.length,
+                      })}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => navigateTo(adminSkillMaintenancePath)}
                     >
                       <span className="flex items-center gap-2">
-                        Open maintenance queue
-                        {legacyUpgradeCount > 0 && (
+                        {t("dashboard:admin.skillMaintenanceOpenQueue")}
+                        {skillMaintenanceActionableCount > 0 && (
                           <Badge variant="secondary" className="h-5 rounded-full px-2 text-[11px]">
-                            {legacyUpgradeCount}
+                            {skillMaintenanceActionableCount}
                           </Badge>
                         )}
                       </span>
@@ -2126,18 +2275,28 @@ export default function Dashboard() {
                 <div className="mt-4 grid gap-3 md:grid-cols-3">
                   <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                      Legacy upgrades
+                      {t("dashboard:admin.skillMaintenancePendingLabel")}
                     </p>
+                    <div className="mt-2 flex items-end gap-2">
+                      <span className="text-2xl font-semibold text-slate-900">
+                        {isSkillMaintenanceLoading ? "…" : skillMaintenanceActionableCount}
+                      </span>
+                      <span className="pb-1 text-xs text-slate-500">
+                        {t("dashboard:admin.skillMaintenanceAcrossSkills", {
+                          count: skillMaintenanceSkillCount,
+                        })}
+                      </span>
+                    </div>
                     <p className={`mt-2 ${dashboardCardBodyClass}`}>
-                      Review upgrade recommendations that are ready to be migrated to the native bundle contract.
+                      {t("dashboard:admin.skillMaintenancePendingDescription")}
                     </p>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                      Maintenance queue
+                      {t("dashboard:admin.skillMaintenanceQueueLabel")}
                     </p>
                     <p className={`mt-2 ${dashboardCardBodyClass}`}>
-                      Open the admin maintenance tab and sort by priority, compatibility, and runtime.
+                      {t("dashboard:admin.skillMaintenanceQueueDescription")}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Badge
@@ -2168,12 +2327,83 @@ export default function Dashboard() {
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                      Safe rollout
+                      {t("dashboard:admin.skillMaintenanceSafeRolloutLabel")}
                     </p>
                     <p className={`mt-2 ${dashboardCardBodyClass}`}>
-                      Keep legacy skills online while the newer bundle contract is rolled out in parallel.
+                      {t("dashboard:admin.skillMaintenanceSafeRolloutDescription")}
                     </p>
                   </div>
+                </div>
+
+                <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white/95">
+                  {skillMaintenancePreviewItems.length > 0 ? (
+                    <div className="divide-y divide-slate-100">
+                      {skillMaintenancePreviewItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between"
+                        >
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="truncate text-sm font-semibold text-slate-900">
+                                {item.skill?.name || item.skill?.slug || t("dashboard:admin.skillMaintenanceUnknownSkill")}
+                              </p>
+                              <Badge variant="outline" className="h-6 rounded-full px-2 text-[11px]">
+                                {item.riskLevel}
+                              </Badge>
+                              <Badge
+                                variant={item.compatibilityStatus === "blocked" ? "destructive" : "secondary"}
+                                className="h-6 rounded-full px-2 text-[11px]"
+                              >
+                                {item.compatibilityStatus}
+                              </Badge>
+                            </div>
+                            <p className="mt-1 line-clamp-1 text-sm text-slate-700">
+                              {item.title}
+                            </p>
+                            <p className="mt-1 line-clamp-1 text-xs text-slate-500">
+                              {item.summary || item.recommendationType}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 md:flex-nowrap">
+                            {item.qualityScore != null && (
+                              <Badge variant="secondary" className="h-6 rounded-full px-2 text-[11px]">
+                                {t("dashboard:admin.skillMaintenanceScore", {
+                                  score: item.qualityScore,
+                                })}
+                              </Badge>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => startSkillMaintenanceApply([item.id])}
+                              disabled={applySkillMaintenanceRecommendationsMutation.isPending}
+                            >
+                              {t("dashboard:admin.skillMaintenanceStartOne")}
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-4 py-5 text-sm text-slate-500">
+                      {isSkillMaintenanceLoading
+                        ? t("dashboard:admin.skillMaintenanceLoading")
+                        : t("dashboard:admin.skillMaintenanceEmpty")}
+                    </div>
+                  )}
+                  {skillMaintenanceActionableCount > skillMaintenancePreviewItems.length && (
+                    <button
+                      type="button"
+                      onClick={() => navigateTo(adminSkillMaintenancePath)}
+                      className="flex w-full items-center justify-center gap-2 border-t border-slate-100 px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    >
+                      {t("dashboard:admin.skillMaintenanceMore", {
+                        count: skillMaintenanceActionableCount - skillMaintenancePreviewItems.length,
+                      })}
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.section>

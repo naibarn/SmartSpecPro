@@ -109,6 +109,40 @@ class TestCleanupExpiredHandler:
 
 
 @pytest.mark.unit
+class TestRecoverStuckHandler:
+    """Tests for POST /tasks/recover-stuck."""
+
+    @pytest.mark.asyncio
+    async def test_runs_processing_and_pending_recovery(self):
+        app = create_test_app()
+        transport = ASGITransport(app=app)
+
+        with (
+            patch(
+                "app.api.v1.task_handlers.ensure_media_tasks_cloud_task_id_column",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "app.tasks.media_tasks._recover_stuck_tasks_async",
+                new_callable=AsyncMock,
+                return_value={"status": "success", "recovered_count": 1, "failed_count": 0},
+            ) as processing_recovery,
+            patch(
+                "app.tasks.media_tasks._recover_stuck_pending_tasks_async",
+                new_callable=AsyncMock,
+                return_value={"status": "success", "recovered": 2},
+            ) as pending_recovery,
+        ):
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post("/tasks/recover-stuck", json={})
+
+        assert response.status_code == 200
+        assert response.json()["pending_recovered"] == 2
+        processing_recovery.assert_awaited_once()
+        pending_recovery.assert_awaited_once()
+
+
+@pytest.mark.unit
 class TestAllTaskEndpoints:
     """Cross-cutting tests for all /tasks/* endpoints."""
 

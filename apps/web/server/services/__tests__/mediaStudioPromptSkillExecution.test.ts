@@ -257,4 +257,43 @@ describe("mediaStudioPromptSkillExecution", () => {
       field_names: ["aspect_ratio", "topic"],
     });
   });
+
+  it("extracts plain text from Media Studio wrapper JSON output", () => {
+    const extracted = extractStructuredPromptBundleTextOutput(JSON.stringify({
+      success: true,
+      output: {
+        prompt: "PRODUCT REFERENCE LOCK:\nKeep the shelf bracket geometry exact.\n\nSTORYBOARD PROMPT:\nScene 1: Hero product view.",
+        metadata: {
+          ignored: true,
+        },
+      },
+      warnings: [],
+    }), "detailed");
+
+    expect(extracted.promptText).toBe(
+      "PRODUCT REFERENCE LOCK:\nKeep the shelf bracket geometry exact.\n\nSTORYBOARD PROMPT:\nScene 1: Hero product view.",
+    );
+  });
+
+  it("extracts readable storyboard text from scene_descriptions JSON", () => {
+    const extracted = extractStructuredPromptBundleTextOutput(JSON.stringify({
+      scene_descriptions: [
+        {
+          scene_description: "A modern living room scene preserving the exact white shelf bracket scale.",
+          reference_image: "@Image1",
+          role: "product/brand/object",
+        },
+        {
+          scene_description: "A close detail frame showing the black bracket finish and screw holes.",
+          reference_image: "@Image2",
+          role: "product/brand/object",
+        },
+      ],
+    }), "detailed");
+
+    expect(extracted.promptText).toBe([
+      "Scene 1: A modern living room scene preserving the exact white shelf bracket scale.\nReference: @Image1 | Role: product/brand/object",
+      "Scene 2: A close detail frame showing the black bracket finish and screw holes.\nReference: @Image2 | Role: product/brand/object",
+    ].join("\n\n"));
+  });
 });

@@ -39,6 +39,16 @@ def test_resolve_api_model_maps_happyhorse_alias_to_kie_model():
     assert stats["fallback_alias_map"] == 1
 
 
+def test_resolve_api_model_maps_gemini_omni_alias_to_kie_model():
+    reset_model_resolution_stats()
+
+    assert resolve_api_model("gemini-omni") == "gemini-omni-video"
+    assert resolve_api_model("gemini_omni_video") == "gemini-omni-video"
+
+    stats = get_model_resolution_stats()
+    assert stats["fallback_alias_map"] == 2
+
+
 @pytest.mark.asyncio
 async def test_generate_image_uses_db_model_id_and_endpoint_aliases():
     reset_model_resolution_stats()
@@ -333,6 +343,74 @@ async def test_generate_video_can_omit_default_duration_and_aspect_ratio_from_ma
     args, _ = provider.create_task.await_args
     assert "duration" not in args[1]
     assert "aspect_ratio" not in args[1]
+
+
+@pytest.mark.asyncio
+async def test_generate_video_builds_gemini_omni_video_list_objects():
+    provider = KieAIProvider(api_key="test-key")
+    provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-gemini-omni"}})
+
+    await provider.generate_video(
+        model="gemini-omni-video",
+        prompt="Transform this product clip into a cinematic launch video.",
+        wait_for_completion=False,
+        duration=6,
+        aspect_ratio="9:16",
+        reference_image_urls=["https://cdn.example.com/ref.png"],
+        reference_video_urls=["https://cdn.example.com/source.mp4"],
+        api_config={
+            "kie_model_id": "gemini-omni-video",
+            "reference_image_input_key": "image_urls",
+            "reference_image_input_type": "array",
+            "reference_video_input_key": "video_list",
+            "reference_video_input_type": "object_array",
+        },
+        extra_params={
+            "audio_ids": ["audio_01hx8p0demo"],
+            "seed": 123,
+        },
+    )
+
+    provider.create_task.assert_awaited_once()
+    args, kwargs = provider.create_task.await_args
+    assert kwargs == {}
+    assert args[0] == "gemini-omni-video"
+    assert args[1]["image_urls"] == ["https://cdn.example.com/ref.png"]
+    assert args[1]["video_list"] == [{"url": "https://cdn.example.com/source.mp4"}]
+    assert args[1]["audio_ids"] == ["audio_01hx8p0demo"]
+    assert args[1]["duration"] == 6
+    assert args[1]["aspect_ratio"] == "9:16"
+
+
+@pytest.mark.asyncio
+async def test_generate_video_preserves_gemini_omni_video_list_trim_fields():
+    provider = KieAIProvider(api_key="test-key")
+    provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-gemini-omni"}})
+
+    await provider.generate_video(
+        model="gemini-omni-video",
+        prompt="Use only the opening movement.",
+        wait_for_completion=False,
+        api_config={
+            "kie_model_id": "gemini-omni-video",
+            "reference_video_input_key": "video_list",
+            "reference_video_input_type": "object_array",
+        },
+        extra_params={
+            "video_list": [
+                {
+                    "video_url": "https://cdn.example.com/source.mp4",
+                    "start": 1,
+                    "end": 7,
+                },
+            ],
+        },
+    )
+
+    args, _ = provider.create_task.await_args
+    assert args[1]["video_list"] == [
+        {"url": "https://cdn.example.com/source.mp4", "start": 1, "ends": 7}
+    ]
 
 
 @pytest.mark.asyncio

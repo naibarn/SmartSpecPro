@@ -47,6 +47,12 @@ const Privacy = lazy(() => import("./pages/Privacy"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const Gallery = lazy(() => import("./pages/Gallery"));
 const Marketplace = lazy(() => import("./pages/Marketplace"));
+const MarketplaceCaptureConnect = lazy(() => import("./pages/MarketplaceCaptureConnect"));
+const MarketplaceCapturePreview = lazy(() => import("./pages/MarketplaceCapturePreview"));
+const MarketplaceCaptureProducts = lazy(() => import("./pages/MarketplaceCaptureProducts"));
+const MarketplaceCaptureProductDetail = lazy(() => import("./pages/MarketplaceCaptureProductDetail"));
+const MarketplaceCaptureCandidateBatch = lazy(() => import("./pages/MarketplaceCaptureCandidateBatch"));
+const AdminMarketplaceCapture = lazy(() => import("./pages/AdminMarketplaceCapture"));
 const DeviceAuth = lazy(() => import("./pages/DeviceAuth"));
 const AdminAgencies = lazy(() => import("./pages/AdminAgencies"));
 const AdminApprovals = lazy(() => import("./pages/AdminApprovals"));
@@ -255,6 +261,11 @@ function Router() {
         <Route path="/blog/:slug" component={BlogPost} />
         <Route path="/marketplace" component={Marketplace} />
         <Route path="/marketplace/:slug" component={Marketplace} />
+        <Route path="/marketplace-capture/connect"><RequireAuth><MarketplaceCaptureConnect /></RequireAuth></Route>
+        <Route path="/marketplace-capture/captures/:captureId/preview"><RequireAuth><MarketplaceCapturePreview /></RequireAuth></Route>
+        <Route path="/marketplace-capture/candidates/:batchId"><RequireAuth><MarketplaceCaptureCandidateBatch /></RequireAuth></Route>
+        <Route path="/marketplace-capture/products/:productId"><RequireAuth><MarketplaceCaptureProductDetail /></RequireAuth></Route>
+        <Route path="/marketplace-capture"><RequireAuth><MarketplaceCaptureProducts /></RequireAuth></Route>
         <Route path="/gallery" component={Gallery} />
         <Route path="/admin/gallery">
           <RequireAdmin><AdminGallery /></RequireAdmin>
@@ -351,6 +362,9 @@ function Router() {
         </Route>
         <Route path="/admin/ops">
           <RequireAdmin><AdminOpsDashboard /></RequireAdmin>
+        </Route>
+        <Route path="/admin/marketplace-capture">
+          <RequireAdmin><AdminMarketplaceCapture /></RequireAdmin>
         </Route>
         <Route path="/admin/dashboard">
           <RequireAdmin><AdminCommandCenter /></RequireAdmin>

@@ -18,6 +18,7 @@ export interface VectorMetadata {
   title: string;
   sourceUrl: string;
   description?: string;
+  [key: string]: string | number | boolean | undefined;
 }
 
 export interface VectorEntry {
@@ -432,7 +433,7 @@ function toNumberArray(raw: unknown): number[] {
 
 function toVectorMetadata(raw: unknown): VectorMetadata {
   const metadata = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
-  return {
+  const normalized: VectorMetadata = {
     tenantId: String(metadata.tenantId || ""),
     type: String(metadata.type || ""),
     createdAt: Number(metadata.createdAt || 0),
@@ -440,6 +441,13 @@ function toVectorMetadata(raw: unknown): VectorMetadata {
     sourceUrl: String(metadata.sourceUrl || ""),
     description: metadata.description ? String(metadata.description) : undefined,
   };
+  for (const [key, value] of Object.entries(metadata)) {
+    if (key in normalized) continue;
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      normalized[key] = value;
+    }
+  }
+  return normalized;
 }
 
 function metadataMatchesFilter(metadata: VectorMetadata, filter?: VectorFilter): boolean {
@@ -447,17 +455,8 @@ function metadataMatchesFilter(metadata: VectorMetadata, filter?: VectorFilter):
     return true;
   }
 
-  const metadataLookup: Record<string, unknown> = {
-    tenantId: metadata.tenantId,
-    type: metadata.type,
-    createdAt: metadata.createdAt,
-    title: metadata.title,
-    sourceUrl: metadata.sourceUrl,
-    description: metadata.description,
-  };
-
   for (const [key, expected] of Object.entries(filter)) {
-    const actual = metadataLookup[key];
+    const actual = metadata[key];
     if (actual === undefined || actual === null) {
       return false;
     }

@@ -86,6 +86,7 @@ export async function searchImages(params: {
   query: string;
   tenantId: string;
   limit: number;
+  scope?: "all" | "library" | "marketplace";
 }): Promise<ImageSearchResult[]> {
   if (!params.query) return [];
 
@@ -93,12 +94,16 @@ export async function searchImages(params: {
     const queryEmbedding = await generateEmbedding(params.query);
     const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: params.tenantId });
 
+    const filter: Record<string, string> = { tenantId: params.tenantId };
+    if (params.scope === "marketplace") filter.type = "marketplace_image";
+    if (params.scope === "library") filter.type = "image";
+
     const result = await dispatchVectorOperation({
       operation: "search",
       indexName: IMAGES_INDEX,
       vector: queryEmbedding,
       topK: params.limit,
-      filter: { tenantId: params.tenantId },
+      filter,
       providerConfig,
     });
     const matches = (result as { matches: VectorSearchMatch[] }).matches;

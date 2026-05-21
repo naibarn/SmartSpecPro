@@ -8,6 +8,7 @@ import {
   Trash2,
   Upload,
   ChevronRight,
+  Puzzle,
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -63,6 +64,87 @@ type DesktopReleaseBuildSessionState = {
 
 const DESKTOP_RELEASE_BUILD_SESSION_STORAGE_KEY = "smartaihub.desktop-release.build-session.v1";
 const DESKTOP_RELEASE_BUILD_STALE_AFTER_MS = 30 * 60 * 1000;
+const CHROME_EXTENSION_FALLBACK_DOWNLOAD_URL = "/api/desktop-releases/marketplace-extension/download";
+
+type MarketplaceExtensionRelease = {
+  version: string;
+  fileName: string;
+  fileSizeBytes: number;
+  updatedAt: string;
+  downloadUrl: string;
+};
+
+type MarketplaceExtensionReleaseState = {
+  release: MarketplaceExtensionRelease | null;
+  isLoading: boolean;
+  error: string | null;
+  refresh: () => void;
+};
+
+function useMarketplaceExtensionRelease(enabled: boolean): MarketplaceExtensionReleaseState {
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [state, setState] = useState<Omit<MarketplaceExtensionReleaseState, "refresh">>({
+    release: null,
+    isLoading: enabled,
+    error: null,
+  });
+
+  useEffect(() => {
+    if (!enabled) {
+      setState({ release: null, isLoading: false, error: null });
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+    setState((previous) => ({
+      release: previous.release,
+      isLoading: true,
+      error: null,
+    }));
+
+    void fetch("/api/desktop-releases/marketplace-extension/latest", {
+      credentials: "include",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(
+            typeof payload?.error === "string"
+              ? payload.error
+              : "marketplace_extension_release_unavailable",
+          );
+        }
+        return payload?.release ?? null;
+      })
+      .then((release) => {
+        if (!cancelled) {
+          setState({ release, isLoading: false, error: null });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setState((previous) => ({
+            release: previous.release,
+            isLoading: false,
+            error: error instanceof Error ? error.message : "marketplace_extension_release_unavailable",
+          }));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [enabled, refreshNonce]);
+
+  return {
+    ...state,
+    refresh: () => setRefreshNonce((value) => value + 1),
+  };
+}
 
 function formatBytes(value: number): string {
   if (value >= 1_073_741_824) {
@@ -575,6 +657,12 @@ export function DesktopReleasePanel(props: {
     refresh: refreshBuildHistory,
     attempt: buildHistoryAttempt,
   } = useDesktopReleaseBuildHistory(variant === "admin" && enabled);
+  const {
+    release: marketplaceExtensionRelease,
+    isLoading: marketplaceExtensionLoading,
+    error: marketplaceExtensionError,
+    refresh: refreshMarketplaceExtensionRelease,
+  } = useMarketplaceExtensionRelease(variant === "dashboard" && enabled);
   const [uploading, setUploading] = useState(false);
   const [actionInFlightId, setActionInFlightId] = useState<number | null>(null);
   const [buildSubmitting, setBuildSubmitting] = useState(false);
@@ -657,6 +745,7 @@ export function DesktopReleasePanel(props: {
   const handleRefreshAll = () => {
     triggerCatalogRefresh(true);
     triggerBuildHistoryRefresh(true);
+    refreshMarketplaceExtensionRelease();
   };
 
   const buildProgressPhase = useMemo<DesktopReleaseBuildProgressPhase>(() => {
@@ -1477,6 +1566,77 @@ export function DesktopReleasePanel(props: {
             {t("dashboard:desktopReleases.empty")}
           </div>
         )}
+
+        <div className="mt-4 rounded-2xl border border-emerald-100 bg-white/95 p-4 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700">
+                <Puzzle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className={dashboardCardTitleClass}>
+                    {t("dashboard:desktopReleases.chromeExtension.title")}
+                  </p>
+                  {marketplaceExtensionRelease ? (
+                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                      {t("dashboard:desktopReleases.version", { version: marketplaceExtensionRelease.version })}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                      {marketplaceExtensionLoading
+                        ? t("dashboard:desktopReleases.loading")
+                        : t("dashboard:desktopReleases.noRelease")}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                    ZIP
+                  </Badge>
+                </div>
+                <p className={`mt-1 ${dashboardCardDescriptionClass}`}>
+                  {t("dashboard:desktopReleases.chromeExtension.description")}
+                </p>
+                {marketplaceExtensionRelease ? (
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    {marketplaceExtensionRelease.fileName} · {formatBytes(marketplaceExtensionRelease.fileSizeBytes)}
+                  </p>
+                ) : marketplaceExtensionError ? (
+                  <p className="mt-1 text-xs leading-5 text-amber-700">
+                    {marketplaceExtensionError}
+                  </p>
+                ) : null}
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  {t("dashboard:desktopReleases.chromeExtension.installHint")}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {marketplaceExtensionRelease ? (
+                <Button asChild className="bg-emerald-700 text-white hover:bg-emerald-800">
+                  <a href={marketplaceExtensionRelease.downloadUrl || CHROME_EXTENSION_FALLBACK_DOWNLOAD_URL} download>
+                    <Download className="mr-2 h-4 w-4" />
+                    {t("dashboard:desktopReleases.chromeExtension.download")}
+                  </a>
+                </Button>
+              ) : (
+                <Button disabled className="bg-slate-200 text-slate-500 hover:bg-slate-200">
+                  {marketplaceExtensionLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  {t("dashboard:desktopReleases.chromeExtension.download")}
+                </Button>
+              )}
+              <Button asChild variant="outline" className="border-slate-200 bg-white text-slate-700">
+                <a href="/marketplace-capture">
+                  {t("dashboard:desktopReleases.chromeExtension.openCapture")}
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </a>
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

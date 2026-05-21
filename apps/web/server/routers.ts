@@ -43,6 +43,7 @@ import { followsRouter } from "./routers/follows";
 import { accountSecurityRouter } from "./routers/accountSecurity";
 import { translationRouter } from "./routers/translation";
 import { marketplaceRouter } from "./routers/marketplace";
+import { marketplaceCaptureRouter } from "./routers/marketplaceCapture";
 import { skillRepositoriesRouter } from "./routers/skillRepositories";
 import { sttProvidersRouter } from "./routers/sttProviders";
 import { multiProviderRouter } from "./routers/multiProvider";
@@ -1668,6 +1669,7 @@ export const appRouter = router({
   accountSecurity: accountSecurityRouter,
   translation: translationRouter,
   marketplace: marketplaceRouter,
+  marketplaceCapture: marketplaceCaptureRouter,
   skillRepositories: skillRepositoriesRouter,
 
   // Speech-to-Text provider management (admin)

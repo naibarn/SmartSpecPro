@@ -1,0 +1,823 @@
+import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { getDb } from "../db";
+import {
+  groupMembers,
+  marketplaceCaptureAssets,
+  marketplaceCaptureSessions,
+  marketplaceProductGroupShares,
+  marketplaceProductImages,
+  marketplaceProductPriceSnapshots,
+  marketplaceProducts,
+  marketplaceUserShareSettings,
+  userGroups,
+} from "../../drizzle/schema";
+import { marketplaceConfirmProductSchema, parseReviewCount, parseSoldCount, type MarketplacePlatform } from "@shared/marketplaceCapture";
+import { createMarketplaceId, getMarketplaceCaptureForUser } from "./marketplaceCaptureService";
+import { searchImages } from "./vectorize-search";
+
+function money(value: number | null | undefined): string | null {
+  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : null;
+}
+
+function countText(value: number | null | undefined, fallback: string | null | undefined): string | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
+  }
+  return fallback ?? null;
+}
+
+function daysBetween(a: Date, b: Date) {
+  return Math.max(0, Math.floor((a.getTime() - b.getTime()) / 86_400_000));
+}
+
+function buildProductHealth(product: any, snapshots: any[]) {
+  const ordered = [...snapshots].sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime());
+  const latest = ordered[0];
+  const previous = ordered.find((snapshot) => snapshot.id !== latest?.id);
+  const oldest = ordered[ordered.length - 1];
+  const lastCheckedAt = latest?.capturedAt ?? product.updatedAt ?? product.createdAt;
+  const daysSinceUpdate = lastCheckedAt ? daysBetween(new Date(), new Date(lastCheckedAt)) : null;
+  const warnings: Array<{ code: string; severity: "info" | "warning" | "critical"; message: string }> = [];
+
+  if (daysSinceUpdate != null && daysSinceUpdate >= 30) {
+    warnings.push({
+      code: "stale_update",
+      severity: daysSinceUpdate >= 60 ? "critical" : "warning",
+      message: `ไม่ได้ตรวจสอบข้อมูลสินค้า ${daysSinceUpdate} วัน`,
+    });
+  }
+
+  const rating = latest?.ratingScore ?? product.ratingScore;
+  const ratingNumber = rating == null ? null : Number(rating);
+  if (ratingNumber != null && Number.isFinite(ratingNumber) && ratingNumber < 3.8) {
+    warnings.push({
+      code: "low_rating",
+      severity: ratingNumber < 3.5 ? "critical" : "warning",
+      message: `rating ต่ำกว่าปกติ (${ratingNumber.toFixed(2)})`,
+    });
+  }
+
+  if (latest && previous) {
+    const latestSold = latest.soldCountNormalized ?? product.soldCountNormalized;
+    const previousSold = previous.soldCountNormalized;
+    const latestRating = latest.ratingScore == null ? null : Number(latest.ratingScore);
+    const previousRating = previous.ratingScore == null ? null : Number(previous.ratingScore);
+    const latestDate = new Date(latest.capturedAt);
+    const previousDate = new Date(previous.capturedAt);
+    const days = daysBetween(latestDate, previousDate);
+    if (latestSold != null && previousSold != null && days >= 7 && latestSold <= previousSold) {
+      warnings.push({
+        code: "sold_not_growing",
+        severity: days >= 21 ? "warning" : "info",
+        message: `ยอดขายไม่เพิ่มจาก snapshot ก่อนหน้า ${days} วัน`,
+      });
+    }
+    if (latestRating != null && previousRating != null && previousRating - latestRating >= 0.3) {
+      warnings.push({
+        code: "rating_drop",
+        severity: previousRating - latestRating >= 0.6 ? "critical" : "warning",
+        message: `rating ลดลง ${(previousRating - latestRating).toFixed(2)} จากครั้งก่อน`,
+      });
+    }
+  }
+
+  if (latest && oldest && ordered.length >= 3) {
+    const latestSold = latest.soldCountNormalized ?? product.soldCountNormalized;
+    const oldestSold = oldest.soldCountNormalized;
+    const days = daysBetween(new Date(latest.capturedAt), new Date(oldest.capturedAt));
+    if (latestSold != null && oldestSold != null && days >= 14 && latestSold - oldestSold <= Math.max(2, oldestSold * 0.01)) {
+      warnings.push({
+        code: "low_sold_velocity",
+        severity: "warning",
+        message: `ยอดขายแทบไม่เปลี่ยนในช่วง ${days} วัน`,
+      });
+    }
+  }
+
+  return {
+    status: warnings.some((w) => w.severity === "critical") ? "critical" : warnings.some((w) => w.severity === "warning") ? "warning" : "ok",
+    warnings,
+    lastCheckedAt,
+    snapshotCount: ordered.length,
+  };
+}
+
+async function getActiveGroupIds(auth: { userId: number; tenantId?: string }) {
+  const db = getDb();
+  const rows = await db.select({ groupId: groupMembers.groupId, tenantId: userGroups.tenantId })
+    .from(groupMembers)
+    .innerJoin(userGroups, eq(userGroups.id, groupMembers.groupId))
+    .where(and(
+      eq(groupMembers.userId, auth.userId),
+      eq(groupMembers.status, "active"),
+      sql`${userGroups.deletedAt} IS NULL`,
+    ));
+  const tenantRows = auth.tenantId ? rows.filter((row) => row.tenantId === auth.tenantId) : rows;
+  return (tenantRows.length > 0 ? tenantRows : rows).map((row) => row.groupId);
+}
+
+function productIdentityWhere(capture: { platform: MarketplacePlatform; externalProductId: string | null; externalShopId: string | null }) {
+  if (!capture.externalProductId) return undefined;
+  return capture.externalShopId
+    ? and(
+      eq(marketplaceProducts.platform, capture.platform),
+      eq(marketplaceProducts.externalShopId, capture.externalShopId),
+      eq(marketplaceProducts.externalProductId, capture.externalProductId),
+    )
+    : and(
+      eq(marketplaceProducts.platform, capture.platform),
+      eq(marketplaceProducts.externalProductId, capture.externalProductId),
+    );
+}
+
+async function findAccessibleDuplicate(capture: { platform: MarketplacePlatform; externalProductId: string | null; externalShopId: string | null }, auth: { userId: number; tenantId?: string }) {
+  const identityWhere = productIdentityWhere(capture);
+  if (!identityWhere) return null;
+  const db = getDb();
+  const [own] = await db.select().from(marketplaceProducts)
+    .where(and(eq(marketplaceProducts.userId, auth.userId), identityWhere))
+    .limit(1);
+  if (own) return { product: own, accessType: "owner" as const };
+
+  const groupIds = await getActiveGroupIds(auth);
+  if (!auth.tenantId || groupIds.length === 0) return null;
+  const [shared] = await db.select({ product: marketplaceProducts, permission: marketplaceProductGroupShares.permission })
+    .from(marketplaceProductGroupShares)
+    .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductGroupShares.productId))
+    .where(and(
+      eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
+      inArray(marketplaceProductGroupShares.groupId, groupIds),
+      eq(marketplaceProductGroupShares.permission, "read_update"),
+      identityWhere,
+    ))
+    .limit(1);
+  return shared ? { product: shared.product, accessType: "group" as const, permission: shared.permission } : null;
+}
+
+async function getShareSetting(platform: MarketplacePlatform, auth: { userId: number; tenantId?: string }) {
+  if (!auth.tenantId) return null;
+  const db = getDb();
+  const [setting] = await db.select().from(marketplaceUserShareSettings)
+    .where(and(
+      eq(marketplaceUserShareSettings.userId, auth.userId),
+      eq(marketplaceUserShareSettings.tenantId, auth.tenantId),
+      eq(marketplaceUserShareSettings.platform, platform),
+    ))
+    .limit(1);
+  return setting ?? null;
+}
+
+async function applyConfiguredShares(productId: string, platform: MarketplacePlatform, auth: { userId: number; tenantId?: string }) {
+  const setting = await getShareSetting(platform, auth);
+  const groupIds = setting?.enabled ? (setting.groupIdsJson ?? []).filter((id) => Number.isInteger(id)) : [];
+  if (!auth.tenantId || groupIds.length === 0) return [];
+  const activeGroupIds = new Set(await getActiveGroupIds(auth));
+  const allowedGroupIds = groupIds.filter((groupId) => activeGroupIds.has(groupId));
+  if (allowedGroupIds.length === 0) return [];
+  const db = getDb();
+  const now = new Date();
+  await db.insert(marketplaceProductGroupShares).values(allowedGroupIds.map((groupId) => ({
+    id: createMarketplaceId("mpgs"),
+    productId,
+    tenantId: auth.tenantId!,
+    groupId,
+    sharedByUserId: auth.userId,
+    platform,
+    permission: setting?.permission ?? "read_update",
+    createdAt: now,
+    updatedAt: now,
+  }))).onConflictDoUpdate({
+    target: [marketplaceProductGroupShares.productId, marketplaceProductGroupShares.groupId],
+    set: { permission: setting?.permission ?? "read_update", updatedAt: now },
+  });
+  return allowedGroupIds;
+}
+
+async function insertMetricSnapshot(productId: string, captureId: string, product: any, auth: { userId: number }) {
+  const rawSoldCountText = product.rating.soldCountText ?? null;
+  const soldCountNormalized = parseSoldCount(rawSoldCountText);
+  const soldCountText = countText(soldCountNormalized, rawSoldCountText);
+  const rawReviewCountText = product.rating.reviewCountText ?? null;
+  const reviewCountNormalized = parseReviewCount(rawReviewCountText);
+  const reviewCountText = countText(reviewCountNormalized, rawReviewCountText);
+  const db = getDb();
+  await db.insert(marketplaceProductPriceSnapshots).values({
+    id: createMarketplaceId("mpps"),
+    productId,
+    captureId,
+    capturedByUserId: auth.userId,
+    priceCurrent: money(product.price.current),
+    priceOriginal: money(product.price.original),
+    currency: product.price.currency ?? "THB",
+    discountText: product.price.discountText ?? null,
+    ratingScore: money(product.rating.score),
+    reviewCountText,
+    reviewCountNormalized,
+    soldCountText,
+    soldCountNormalized,
+    capturedAt: new Date(),
+  });
+}
+
+export async function confirmMarketplaceCapture(captureId: string, input: unknown, auth: { userId: number; tenantId?: string }) {
+  const parsed = marketplaceConfirmProductSchema.parse(input);
+  const { capture } = await getMarketplaceCaptureForUser(captureId, auth);
+  const db = getDb();
+  const productId = createMarketplaceId("mp");
+  const product = parsed.product;
+  const rawSoldCountText = product.rating.soldCountText ?? null;
+  const soldCountNormalized = parseSoldCount(rawSoldCountText);
+  const soldCountText = countText(soldCountNormalized, rawSoldCountText);
+  const rawReviewCountText = product.rating.reviewCountText ?? null;
+  const reviewCountNormalized = parseReviewCount(rawReviewCountText);
+  const reviewCountText = countText(reviewCountNormalized, rawReviewCountText);
+  if (capture.externalProductId) {
+    const duplicate = await findAccessibleDuplicate(capture, auth);
+    if (duplicate) {
+      const existing = duplicate.product;
+      await db.update(marketplaceProducts)
+        .set({
+          priceCurrent: money(product.price.current),
+          priceOriginal: money(product.price.original),
+          currency: product.price.currency ?? existing.currency ?? "THB",
+          discountText: product.price.discountText ?? existing.discountText,
+          sourceUrl: capture.sourceUrl,
+          captureId,
+          ratingScore: money(product.rating.score),
+          reviewCountText: reviewCountText ?? existing.reviewCountText,
+          soldCountText: soldCountText ?? existing.soldCountText,
+          soldCountNormalized: soldCountNormalized ?? existing.soldCountNormalized,
+          platformRawJson: {
+            ...(existing.platformRawJson as Record<string, unknown> ?? {}),
+            latestCaptureId: captureId,
+            latestCapturedAt: new Date().toISOString(),
+            latestCapturedByUserId: auth.userId,
+            duplicateAccessType: duplicate.accessType,
+            latestProductDraft: product.platformRawJson,
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(marketplaceProducts.id, existing.id));
+
+      await insertMetricSnapshot(existing.id, captureId, product, auth);
+      await db.update(marketplaceCaptureSessions)
+        .set({ status: "confirmed", updatedAt: new Date() })
+        .where(eq(marketplaceCaptureSessions.id, captureId));
+      return {
+        productId: existing.id,
+        status: duplicate.accessType === "owner" ? "duplicate_existing_product" : "updated_group_shared_product",
+        productUrl: `/marketplace-capture/products/${existing.id}`,
+      };
+    }
+  }
+  const assetIds = [...product.images.main, ...product.images.description, ...product.images.review, ...product.images.relatedExcluded];
+  const assetRows = assetIds.length > 0
+    ? await db.select().from(marketplaceCaptureAssets)
+      .where(and(eq(marketplaceCaptureAssets.captureId, captureId), eq(marketplaceCaptureAssets.userId, auth.userId)))
+    : [];
+  const assetById = new Map(assetRows.map((asset) => [asset.id, asset]));
+  const coverImageAssetId = product.images.coverAssetId && assetById.has(product.images.coverAssetId)
+    ? product.images.coverAssetId
+    : null;
+
+  await db.insert(marketplaceProducts).values({
+    id: productId,
+    captureId,
+    userId: auth.userId,
+    tenantId: auth.tenantId ?? capture.tenantId ?? null,
+    platform: capture.platform,
+    sourceUrl: capture.sourceUrl,
+    externalProductId: capture.externalProductId,
+    externalShopId: capture.externalShopId,
+    productName: product.productName,
+    brand: product.brand ?? null,
+    shopName: product.shopName ?? null,
+    isMall: product.isMall ?? null,
+    priceCurrent: money(product.price.current),
+    priceOriginal: money(product.price.original),
+    currency: product.price.currency ?? "THB",
+    discountText: product.price.discountText ?? null,
+    ratingScore: money(product.rating.score),
+    reviewCountText,
+    soldCountText,
+    soldCountNormalized,
+    descriptionText: product.description.rawText ?? "",
+    descriptionJson: {
+      ingredients: product.description.ingredients,
+      claims: product.description.claims,
+    },
+    specsJson: product.description.specs,
+    platformRawJson: product.platformRawJson,
+    coverImageAssetId,
+    status: "active",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  const rows = [
+    ...product.images.main.map((assetId, index) => ({ assetId, type: "main" as const, sortOrder: index })),
+    ...product.images.description.map((assetId, index) => ({ assetId, type: "description" as const, sortOrder: index })),
+    ...product.images.review.map((assetId, index) => ({ assetId, type: "review" as const, sortOrder: index })),
+    ...product.images.relatedExcluded.map((assetId, index) => ({ assetId, type: "related_excluded" as const, sortOrder: index })),
+  ].flatMap((item) => {
+    const asset = assetById.get(item.assetId);
+    if (!asset) return [];
+    return {
+      id: createMarketplaceId("mpi"),
+      productId,
+      captureAssetId: asset.id,
+      type: item.type,
+      url: asset.url,
+      storageKey: asset.storageKey,
+      originalSourceUrl: asset.sourceUrl ?? null,
+      sortOrder: item.sortOrder,
+      width: asset.width ?? null,
+      height: asset.height ?? null,
+      metadataJson: asset.metadataJson ?? {},
+    };
+  });
+  if (rows.length > 0) {
+    await db.insert(marketplaceProductImages).values(rows);
+  }
+
+  await insertMetricSnapshot(productId, captureId, product, auth);
+  const sharedGroupIds = await applyConfiguredShares(productId, capture.platform, auth);
+
+  await db.update(marketplaceCaptureSessions)
+    .set({ status: "confirmed", updatedAt: new Date() })
+    .where(eq(marketplaceCaptureSessions.id, captureId));
+
+  return {
+    productId,
+    status: sharedGroupIds.length > 0 ? "saved_and_shared" : "saved",
+    productUrl: `/marketplace-capture/products/${productId}`,
+    sharedGroupIds,
+  };
+}
+
+export async function getMarketplaceShareSettings(auth: { userId: number; tenantId?: string }) {
+  const db = getDb();
+  const tenantRows = auth.tenantId
+    ? await db.select().from(marketplaceUserShareSettings)
+      .where(and(eq(marketplaceUserShareSettings.userId, auth.userId), eq(marketplaceUserShareSettings.tenantId, auth.tenantId)))
+    : [];
+  const rows = tenantRows.length > 0
+    ? tenantRows
+    : await db.select().from(marketplaceUserShareSettings)
+      .where(eq(marketplaceUserShareSettings.userId, auth.userId))
+      .orderBy(desc(marketplaceUserShareSettings.updatedAt));
+  return { settings: rows, tenantRequired: false };
+}
+
+export async function saveMarketplaceShareSetting(input: {
+  platform: MarketplacePlatform;
+  enabled: boolean;
+  groupIds: number[];
+  permission?: "read" | "read_update";
+}, auth: { userId: number; tenantId?: string }) {
+  const db = getDb();
+  const requestedGroupIds = Array.from(new Set(input.groupIds));
+  const activeGroupRows = requestedGroupIds.length > 0
+    ? await db.select({ groupId: groupMembers.groupId, tenantId: userGroups.tenantId })
+      .from(groupMembers)
+      .innerJoin(userGroups, eq(userGroups.id, groupMembers.groupId))
+      .where(and(
+        eq(groupMembers.userId, auth.userId),
+        eq(groupMembers.status, "active"),
+        inArray(groupMembers.groupId, requestedGroupIds),
+        sql`${userGroups.deletedAt} IS NULL`,
+      ))
+    : [];
+  const preferredTenantRows = auth.tenantId ? activeGroupRows.filter((row) => row.tenantId === auth.tenantId) : activeGroupRows;
+  const selectedGroupRows = preferredTenantRows.length > 0 ? preferredTenantRows : activeGroupRows;
+  const groupIds = selectedGroupRows.map((row) => row.groupId);
+
+  let tenantId: string | null = selectedGroupRows[0]?.tenantId ?? auth.tenantId ?? null;
+  if (!tenantId) {
+    const [existing] = await db.select({ tenantId: marketplaceUserShareSettings.tenantId })
+      .from(marketplaceUserShareSettings)
+      .where(and(
+        eq(marketplaceUserShareSettings.userId, auth.userId),
+        eq(marketplaceUserShareSettings.platform, input.platform),
+      ))
+      .orderBy(desc(marketplaceUserShareSettings.updatedAt))
+      .limit(1);
+    tenantId = existing?.tenantId ?? selectedGroupRows[0]?.tenantId ?? null;
+  }
+  if (!tenantId) throw new Error("Tenant context is required for marketplace sharing settings");
+  const now = new Date();
+  const row = {
+    id: createMarketplaceId("mpss"),
+    userId: auth.userId,
+    tenantId,
+    platform: input.platform,
+    enabled: input.enabled,
+    groupIdsJson: groupIds,
+    permission: input.permission ?? "read_update",
+    createdAt: now,
+    updatedAt: now,
+  };
+  await db.insert(marketplaceUserShareSettings).values(row).onConflictDoUpdate({
+    target: [marketplaceUserShareSettings.userId, marketplaceUserShareSettings.tenantId, marketplaceUserShareSettings.platform],
+    set: {
+      enabled: row.enabled,
+      groupIdsJson: row.groupIdsJson,
+      permission: row.permission,
+      updatedAt: now,
+    },
+  });
+  return { saved: true, setting: row };
+}
+
+async function snapshotsForProductIds(productIds: string[]) {
+  if (productIds.length === 0) return new Map<string, any[]>();
+  const db = getDb();
+  const rows = await db.select().from(marketplaceProductPriceSnapshots)
+    .where(inArray(marketplaceProductPriceSnapshots.productId, productIds))
+    .orderBy(desc(marketplaceProductPriceSnapshots.capturedAt));
+  const grouped = new Map<string, any[]>();
+  for (const row of rows) {
+    grouped.set(row.productId, [...(grouped.get(row.productId) ?? []), row]);
+  }
+  return grouped;
+}
+
+export async function listMarketplaceProductsWithAccess(
+  auth: { userId: number; tenantId?: string },
+  options: {
+    limit?: number;
+    ownerOnly?: boolean;
+    platform?: MarketplacePlatform | "all";
+    query?: string;
+  } = {},
+) {
+  const db = getDb();
+  const limit = Math.min(Math.max(options.limit ?? 30, 1), 100);
+  const platform = options.platform && options.platform !== "all" ? options.platform : null;
+  const query = options.query?.trim();
+  const platformWhere = platform ? eq(marketplaceProducts.platform, platform) : undefined;
+  const searchWhere = query
+    ? or(
+      ilike(marketplaceProducts.productName, `%${query}%`),
+      ilike(marketplaceProducts.sourceUrl, `%${query}%`),
+      ilike(marketplaceProducts.brand, `%${query}%`),
+      ilike(marketplaceProducts.shopName, `%${query}%`),
+      ilike(marketplaceProducts.externalProductId, `%${query}%`),
+      ilike(marketplaceProducts.externalShopId, `%${query}%`),
+    )
+    : undefined;
+  const ownRows = await db.select().from(marketplaceProducts)
+    .where(and(eq(marketplaceProducts.userId, auth.userId), platformWhere, searchWhere))
+    .orderBy(desc(marketplaceProducts.updatedAt))
+    .limit(limit);
+  const results: any[] = ownRows.map((product) => ({ ...product, accessType: "owner", sharedByUserId: product.userId, groupId: null }));
+
+  if (!options.ownerOnly && auth.tenantId) {
+    const groupIds = await getActiveGroupIds(auth);
+    if (groupIds.length > 0) {
+      const sharedRows = await db.select({
+        product: marketplaceProducts,
+        groupId: marketplaceProductGroupShares.groupId,
+        sharedByUserId: marketplaceProductGroupShares.sharedByUserId,
+        permission: marketplaceProductGroupShares.permission,
+      })
+        .from(marketplaceProductGroupShares)
+        .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductGroupShares.productId))
+        .where(and(
+          eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
+          inArray(marketplaceProductGroupShares.groupId, groupIds),
+          or(eq(marketplaceProductGroupShares.permission, "read"), eq(marketplaceProductGroupShares.permission, "read_update")),
+          platformWhere,
+          searchWhere,
+        ))
+        .orderBy(desc(marketplaceProducts.updatedAt))
+        .limit(limit);
+      const seen = new Set(results.map((row) => row.id));
+      for (const row of sharedRows) {
+        if (seen.has(row.product.id)) continue;
+        seen.add(row.product.id);
+        results.push({ ...row.product, accessType: "group", sharedByUserId: row.sharedByUserId, groupId: row.groupId, permission: row.permission });
+      }
+    }
+  }
+
+  const trimmed = results.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, limit);
+  const snapshots = await snapshotsForProductIds(trimmed.map((product) => product.id));
+  return trimmed.map((product) => ({
+    ...product,
+    health: buildProductHealth(product, snapshots.get(product.id) ?? []),
+    latestSnapshot: snapshots.get(product.id)?.[0] ?? null,
+  }));
+}
+
+export async function listMarketplaceProductImagesForMediaStudio(
+  auth: { userId: number; tenantId?: string },
+  options: {
+    limit?: number;
+    cursor?: string | null;
+    ownerOnly?: boolean;
+    platform?: MarketplacePlatform | "all";
+    query?: string;
+    productId?: string | null;
+  } = {},
+) {
+  const db = getDb();
+  const limit = Math.min(Math.max(options.limit ?? 30, 1), 30);
+  const offset = Math.max(Number.parseInt(String(options.cursor ?? "0"), 10) || 0, 0);
+  const platform = options.platform && options.platform !== "all" ? options.platform : null;
+  const query = options.query?.trim();
+  const searchWhere = query
+    ? or(
+      ilike(marketplaceProducts.productName, `%${query}%`),
+      ilike(marketplaceProducts.externalProductId, `%${query}%`),
+      ilike(marketplaceProducts.externalShopId, `%${query}%`),
+      ilike(marketplaceProducts.sourceUrl, `%${query}%`),
+      ilike(marketplaceProducts.brand, `%${query}%`),
+      ilike(marketplaceProducts.shopName, `%${query}%`),
+    )
+    : undefined;
+  const platformWhere = platform ? eq(marketplaceProducts.platform, platform) : undefined;
+  const productWhere = options.productId ? eq(marketplaceProductImages.productId, options.productId) : undefined;
+
+  type ProductImageRow = {
+    image: typeof marketplaceProductImages.$inferSelect;
+    product: typeof marketplaceProducts.$inferSelect;
+    accessType: "owner" | "group";
+    sharedByUserId: number | null;
+    groupId: number | null;
+    permission?: string | null;
+  };
+
+  async function rowsByCaptureAssetIds(assetIds: string[]): Promise<ProductImageRow[]> {
+    if (assetIds.length === 0) return [];
+    const own = await db.select({
+      image: marketplaceProductImages,
+      product: marketplaceProducts,
+    })
+      .from(marketplaceProductImages)
+      .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductImages.productId))
+      .where(and(
+        eq(marketplaceProducts.userId, auth.userId),
+        inArray(marketplaceProductImages.captureAssetId, assetIds),
+        platformWhere,
+        productWhere,
+      ));
+    const rows: ProductImageRow[] = own.map((row) => ({
+      ...row,
+      accessType: "owner",
+      sharedByUserId: row.product.userId,
+      groupId: null,
+      permission: null,
+    }));
+    if (!options.ownerOnly && auth.tenantId) {
+      const groupIds = await getActiveGroupIds(auth);
+      if (groupIds.length > 0) {
+        const shared = await db.select({
+          image: marketplaceProductImages,
+          product: marketplaceProducts,
+          groupId: marketplaceProductGroupShares.groupId,
+          sharedByUserId: marketplaceProductGroupShares.sharedByUserId,
+          permission: marketplaceProductGroupShares.permission,
+        })
+          .from(marketplaceProductImages)
+          .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductImages.productId))
+          .innerJoin(marketplaceProductGroupShares, eq(marketplaceProductGroupShares.productId, marketplaceProducts.id))
+          .where(and(
+            eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
+            inArray(marketplaceProductGroupShares.groupId, groupIds),
+            inArray(marketplaceProductImages.captureAssetId, assetIds),
+            or(eq(marketplaceProductGroupShares.permission, "read"), eq(marketplaceProductGroupShares.permission, "read_update")),
+            platformWhere,
+            productWhere,
+          ));
+        for (const row of shared) {
+          rows.push({
+            image: row.image,
+            product: row.product,
+            accessType: "group",
+            sharedByUserId: row.sharedByUserId,
+            groupId: row.groupId,
+            permission: row.permission,
+          });
+        }
+      }
+    }
+    return rows;
+  }
+
+  let rows: ProductImageRow[] = [];
+  let hasMore = false;
+  let orderByVectorRank = false;
+
+  if (query) {
+    const vectorMatches = await searchImages({
+      query,
+      tenantId: auth.tenantId ?? `user:${auth.userId}`,
+      limit: Math.min(Math.max(offset + limit + 20, limit), 100),
+      scope: "marketplace",
+    });
+    const assetIds = vectorMatches
+      .map((match) => match.id.replace(/^marketplace-/, ""))
+      .filter(Boolean);
+    const vectorRank = new Map(assetIds.map((id, index) => [id, index]));
+    rows = await rowsByCaptureAssetIds(assetIds);
+    rows = rows.sort((a, b) => {
+      const left = a.image.captureAssetId ? vectorRank.get(a.image.captureAssetId) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+      const right = b.image.captureAssetId ? vectorRank.get(b.image.captureAssetId) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+      return left - right;
+    });
+    orderByVectorRank = rows.length > 0;
+    if (rows.length === 0 && searchWhere) {
+      rows = [];
+    }
+  }
+
+  if (!query || rows.length === 0) {
+    const fetchLimit = offset + limit + 1;
+    const ownRows = await db.select({
+      image: marketplaceProductImages,
+      product: marketplaceProducts,
+    })
+      .from(marketplaceProductImages)
+      .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductImages.productId))
+      .where(and(
+        eq(marketplaceProducts.userId, auth.userId),
+        platformWhere,
+        searchWhere,
+        productWhere,
+      ))
+      .orderBy(desc(marketplaceProductImages.createdAt))
+      .limit(fetchLimit);
+
+    rows = ownRows.map((row) => ({
+      ...row,
+      accessType: "owner",
+      sharedByUserId: row.product.userId,
+      groupId: null,
+      permission: null,
+    }));
+
+    if (!options.ownerOnly && auth.tenantId) {
+      const groupIds = await getActiveGroupIds(auth);
+      if (groupIds.length > 0) {
+        const sharedRows = await db.select({
+          image: marketplaceProductImages,
+          product: marketplaceProducts,
+          groupId: marketplaceProductGroupShares.groupId,
+          sharedByUserId: marketplaceProductGroupShares.sharedByUserId,
+          permission: marketplaceProductGroupShares.permission,
+        })
+          .from(marketplaceProductImages)
+          .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductImages.productId))
+          .innerJoin(marketplaceProductGroupShares, eq(marketplaceProductGroupShares.productId, marketplaceProducts.id))
+          .where(and(
+            eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
+            inArray(marketplaceProductGroupShares.groupId, groupIds),
+            or(eq(marketplaceProductGroupShares.permission, "read"), eq(marketplaceProductGroupShares.permission, "read_update")),
+            platformWhere,
+            searchWhere,
+            productWhere,
+          ))
+          .orderBy(desc(marketplaceProductImages.createdAt))
+          .limit(fetchLimit);
+        for (const row of sharedRows) {
+          rows.push({
+            image: row.image,
+            product: row.product,
+            accessType: "group",
+            sharedByUserId: row.sharedByUserId,
+            groupId: row.groupId,
+            permission: row.permission,
+          });
+        }
+      }
+    }
+  }
+
+  const seen = new Set<string>();
+  const images = rows
+    .sort((a, b) => orderByVectorRank ? 0 : new Date(b.image.createdAt).getTime() - new Date(a.image.createdAt).getTime())
+    .filter((row) => {
+      if (seen.has(row.image.id)) return false;
+      seen.add(row.image.id);
+      return true;
+    })
+    .slice(offset, offset + limit + 1);
+  hasMore = images.length > limit;
+  const page = images
+    .slice(0, limit)
+    .map((row) => ({
+      id: row.image.id,
+      productId: row.product.id,
+      productName: row.product.productName,
+      platform: row.product.platform,
+      brand: row.product.brand,
+      shopName: row.product.shopName,
+      externalProductId: row.product.externalProductId,
+      externalShopId: row.product.externalShopId,
+      sourceUrl: row.product.sourceUrl,
+      imageType: row.image.type,
+      url: row.image.url,
+      storageKey: row.image.storageKey,
+      originalSourceUrl: row.image.originalSourceUrl,
+      sortOrder: row.image.sortOrder,
+      width: row.image.width,
+      height: row.image.height,
+      metadataJson: row.image.metadataJson,
+      createdAt: row.image.createdAt,
+      accessType: row.accessType,
+      sharedByUserId: row.sharedByUserId,
+      groupId: row.groupId,
+      permission: row.permission ?? null,
+    }));
+
+  return {
+    images: page,
+    total: offset + page.length + (hasMore ? 1 : 0),
+    nextCursor: hasMore ? String(offset + limit) : null,
+  };
+}
+
+export async function getMarketplaceProductWithAccess(productId: string, auth: { userId: number; tenantId?: string }) {
+  const db = getDb();
+  let accessType: "owner" | "group" = "owner";
+  let groupShare: { groupId: number; sharedByUserId: number; permission: string } | null = null;
+  let [product] = await db.select().from(marketplaceProducts)
+    .where(and(eq(marketplaceProducts.id, productId), eq(marketplaceProducts.userId, auth.userId)))
+    .limit(1);
+
+  if (!product && auth.tenantId) {
+    const groupIds = await getActiveGroupIds(auth);
+    if (groupIds.length > 0) {
+      const [shared] = await db.select({
+        product: marketplaceProducts,
+        groupId: marketplaceProductGroupShares.groupId,
+        sharedByUserId: marketplaceProductGroupShares.sharedByUserId,
+        permission: marketplaceProductGroupShares.permission,
+      })
+        .from(marketplaceProductGroupShares)
+        .innerJoin(marketplaceProducts, eq(marketplaceProducts.id, marketplaceProductGroupShares.productId))
+        .where(and(
+          eq(marketplaceProducts.id, productId),
+          eq(marketplaceProductGroupShares.tenantId, auth.tenantId),
+          inArray(marketplaceProductGroupShares.groupId, groupIds),
+          or(eq(marketplaceProductGroupShares.permission, "read"), eq(marketplaceProductGroupShares.permission, "read_update")),
+        ))
+        .limit(1);
+      if (shared) {
+        product = shared.product;
+        accessType = "group";
+        groupShare = { groupId: shared.groupId, sharedByUserId: shared.sharedByUserId, permission: shared.permission };
+      }
+    }
+  }
+
+  if (!product) throw new Error("Product not found");
+  const [images, history, shares] = await Promise.all([
+    db.select().from(marketplaceProductImages)
+      .where(eq(marketplaceProductImages.productId, productId))
+      .orderBy(marketplaceProductImages.sortOrder, marketplaceProductImages.createdAt),
+    db.select().from(marketplaceProductPriceSnapshots)
+      .where(eq(marketplaceProductPriceSnapshots.productId, productId))
+      .orderBy(desc(marketplaceProductPriceSnapshots.capturedAt))
+      .limit(100),
+    db.select({
+      groupId: marketplaceProductGroupShares.groupId,
+      sharedByUserId: marketplaceProductGroupShares.sharedByUserId,
+      permission: marketplaceProductGroupShares.permission,
+      createdAt: marketplaceProductGroupShares.createdAt,
+    }).from(marketplaceProductGroupShares)
+      .where(eq(marketplaceProductGroupShares.productId, productId)),
+  ]);
+  return {
+    product: { ...product, accessType, groupShare },
+    images,
+    history,
+    shares,
+    health: buildProductHealth(product, history),
+  };
+}
+
+export async function deleteMarketplaceProduct(productId: string, auth: { userId: number }) {
+  const db = getDb();
+  const [product] = await db.select({
+    id: marketplaceProducts.id,
+    productName: marketplaceProducts.productName,
+    userId: marketplaceProducts.userId,
+  }).from(marketplaceProducts)
+    .where(and(eq(marketplaceProducts.id, productId), eq(marketplaceProducts.userId, auth.userId)))
+    .limit(1);
+
+  if (!product) {
+    throw new Error("Product not found or cannot be deleted by this user");
+  }
+
+  await db.delete(marketplaceProducts)
+    .where(and(eq(marketplaceProducts.id, productId), eq(marketplaceProducts.userId, auth.userId)));
+
+  return {
+    productId,
+    productName: product.productName,
+    deleted: true,
+  };
+}

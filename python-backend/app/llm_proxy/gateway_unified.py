@@ -257,6 +257,33 @@ class LLMGateway:
         return current
 
     @classmethod
+    def _get_media_pricing_field_value(cls, source: Dict[str, Any], field: Dict[str, Any]) -> Any:
+        keys = [str(field.get("key") or "").strip()]
+        raw_aliases = field.get("pricingAliases")
+        if isinstance(raw_aliases, list):
+            keys.extend(str(alias).strip() for alias in raw_aliases if str(alias).strip())
+
+        for key in keys:
+            if not key:
+                continue
+            value = cls._get_pricing_value_by_path(source, key)
+            if value is not None:
+                return value
+        return field.get("default")
+
+    @staticmethod
+    def _has_media_pricing_presence_value(value: Any) -> bool:
+        if value in (None, ""):
+            return False
+        if isinstance(value, str):
+            return bool(value.strip())
+        if isinstance(value, list):
+            return len(value) > 0
+        if isinstance(value, dict):
+            return len(value) > 0
+        return True
+
+    @classmethod
     def _build_media_pricing_tier_key(cls, config: Dict[str, Any], request_payload: Dict[str, Any]) -> str:
         formula = str(config.get("pricingFormula", "flat") or "flat")
         pricing_tiers = config.get("pricingTiers")
@@ -299,9 +326,13 @@ class LLMGateway:
                 field_key = str(field.get("key") or "").strip()
                 if not field_key:
                     continue
-                value = cls._get_pricing_value_by_path(request_payload, field_key)
-                if value is None:
-                    value = field.get("default")
+                value = cls._get_media_pricing_field_value(request_payload, field)
+                presence_labels = field.get("pricingPresenceLabels")
+                if isinstance(presence_labels, dict):
+                    present_label = str(presence_labels.get("present") or "present")
+                    absent_label = str(presence_labels.get("absent") or "absent")
+                    parts.append(present_label if cls._has_media_pricing_presence_value(value) else absent_label)
+                    continue
                 if value in (None, ""):
                     continue
                 value_str = str(value)
@@ -313,9 +344,12 @@ class LLMGateway:
         if len(indexed_pricing_fields) == 1:
             field = indexed_pricing_fields[0][1]
             field_key = str(field.get("key") or "").strip()
-            value = cls._get_pricing_value_by_path(request_payload, field_key)
-            if value is None:
-                value = field.get("default")
+            value = cls._get_media_pricing_field_value(request_payload, field)
+            presence_labels = field.get("pricingPresenceLabels")
+            if isinstance(presence_labels, dict):
+                present_label = str(presence_labels.get("present") or "present")
+                absent_label = str(presence_labels.get("absent") or "absent")
+                return present_label if cls._has_media_pricing_presence_value(value) else absent_label
             if value in (None, ""):
                 return "default"
             value_str = str(value)

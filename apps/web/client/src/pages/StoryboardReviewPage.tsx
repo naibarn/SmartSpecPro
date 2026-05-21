@@ -6,7 +6,7 @@ import { sanitizeProjectName } from "@smartspec/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LocaleToggle } from "@/components/LocaleToggle";
-import { StoryboardBatchReviewPanel } from "@/components/media/StoryboardBatchReviewDialog";
+import { StoryboardBatchReviewPanel, type StoryboardPromptPlannerOptions } from "@/components/media/StoryboardBatchReviewDialog";
 import { RenderProgressDialog } from "@/components/videoeditor/RenderProgressDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
@@ -46,7 +46,6 @@ const VEO_REFERENCE_IMAGE_ROLE_INSTRUCTION = [
 ].join(" ");
 
 type StoryboardMediaPickerKind = "video" | "audio";
-type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
 
 function isProbablyVideoUrl(value: string): boolean {
   const normalized = value.split("?", 1)[0]?.toLowerCase() ?? "";
@@ -347,7 +346,6 @@ export default function StoryboardReviewPage() {
   const [renderJobId, setRenderJobId] = useState<string | null>(null);
   const [mediaPickerKind, setMediaPickerKind] = useState<StoryboardMediaPickerKind>("video");
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
-  const [libraryRecentDays, setLibraryRecentDays] = useState<LibraryRecentDaysFilter>(7);
   const [selectedLibraryItemId, setSelectedLibraryItemId] = useState<number | null>(null);
   const [replacingReferenceFrameKey, setReplacingReferenceFrameKey] = useState<string | null>(null);
   const [uploadingVideoSlotKey, setUploadingVideoSlotKey] = useState<string | null>(null);
@@ -371,6 +369,7 @@ export default function StoryboardReviewPage() {
   const cancelMediaTaskMutation = trpc.media.cancelTask.useMutation();
   const addRenderToLibraryMutation = trpc.mediaJobs.addCompletedRenderToLibrary.useMutation();
   const generateStoryboardVideoPromptMutation = trpc.skills.generateStoryboardVideoPrompt.useMutation();
+  const planStoryboardVideoPromptsMutation = trpc.skills.planStoryboardVideoPrompts.useMutation();
   const {
     data: librarySearchData,
     isLoading: isLibrarySearchLoading,
@@ -378,9 +377,8 @@ export default function StoryboardReviewPage() {
   } = trpc.library.search.useQuery(
     {
       query: librarySearchQuery.trim() || undefined,
-      limit: 20,
+      limit: 30,
       filters: {
-        ...(libraryRecentDays === "all" ? {} : { recentDays: libraryRecentDays }),
         itemType: mediaPickerKind,
       },
     },
@@ -584,7 +582,7 @@ export default function StoryboardReviewPage() {
     }
   }, [cropReferenceFrameToShotAspect, draft?.tasks, setAndSaveDraft, t]);
 
-  const uploadReferenceFrameFiles = useCallback(async (taskId: string, frameIndex: 0 | 1, files: FileList): Promise<string[]> => {
+  const uploadReferenceFrameFiles = useCallback(async (taskId: string, frameIndex: 0 | 1, files: FileList | File[]): Promise<string[]> => {
     const file = Array.from(files).find((candidate) => candidate.type.startsWith("image/"));
     if (!file) {
       toast.error(t("mediaStudio.storyboardReviewFrameUploadImageOnly"));
@@ -936,6 +934,132 @@ export default function StoryboardReviewPage() {
     }
   }, [buildSelectedProject, draft, saveProjectMutation, setAndSaveDraft]);
 
+  const planScenePrompts = useCallback(async (options: StoryboardPromptPlannerOptions) => {
+    if (!draft) return;
+    const reviewTasks = storyboardDraftToReviewTasks(draft);
+    const selectedIds = draft.selectedTaskIds.length > 0 ? new Set(draft.selectedTaskIds) : new Set(draft.taskIds);
+    const candidateTasks = reviewTasks.filter((task) => {
+      const refs = task.referenceUrls?.map((url) => String(url || "").trim()).filter(Boolean) ?? [];
+      return selectedIds.has(task.id) && refs.length >= 2 && task.canRegenerate !== false;
+    });
+    if (candidateTasks.length === 0) {
+      toast.error(t("mediaStudio.storyboardReviewClipContextMissing"));
+      return;
+    }
+
+    const productMetadata = draft.marketplaceContext
+      ?? candidateTasks.find((task) => task.marketplaceProduct)?.marketplaceProduct
+      ?? candidateTasks
+        .map((task) => task.generationExtraParams?.marketplaceContext)
+        .find((value): value is Record<string, unknown> => Boolean(value) && typeof value === "object")
+      ?? null;
+
+    const planningStatus = locale === "th" ? "กำลังสร้าง prompt ทุกฉาก..." : "Planning prompts for every scene...";
+    const plannedStatusLabel = locale === "th" ? "สร้าง prompt ทุกฉากแล้ว" : "Scene prompts planned";
+
+    setAndSaveDraft((current) => ({
+      ...current,
+      compoundStatus: planningStatus,
+    }));
+
+    try {
+      const result = await planStoryboardVideoPromptsMutation.mutateAsync({
+        productMetadata: productMetadata as Record<string, unknown> | null,
+        includeVoiceover: options.includeVoiceover,
+        includeSound: options.includeSound,
+        tone: options.tone,
+        language: options.language,
+        slots: candidateTasks.map((task) => ({
+          id: task.id,
+          index: task.index,
+          currentPrompt: task.prompt,
+          startFrameUrl: task.referenceUrls?.[0] || "",
+          endFrameUrl: task.referenceUrls?.[1] || "",
+          aspectRatio: task.generationAspectRatio,
+          durationSeconds: task.durationSeconds,
+          model: task.generationModelId || task.model,
+        })),
+      });
+      const plannedById = new Map(result.slots.map((slot) => [slot.id, slot]));
+      const nextStatus = `${plannedStatusLabel} ${result.slots.length}/${candidateTasks.length}`;
+      setAndSaveDraft((current) => ({
+        ...current,
+        updatedAt: Date.now(),
+        compoundStatus: nextStatus,
+        tasks: current.tasks.map((task) => {
+          const planned = plannedById.get(task.id);
+          if (!planned) return task;
+          const voiceoverSection = options.includeVoiceover && planned.voiceoverScript
+            ? `\n\nVOICEOVER SCRIPT:\n${planned.voiceoverScript}`
+            : "";
+          const soundSection = options.includeSound && planned.soundBrief
+            ? `\n\nSOUND / MUSIC BRIEF:\n${planned.soundBrief}`
+            : "";
+          const prompt = `${planned.videoPrompt || task.prompt}${voiceoverSection}${soundSection}`.trim();
+          return {
+            ...task,
+            prompt,
+            status: task.status === "completed" ? "queued" : task.status,
+            url: task.status === "completed" ? undefined : task.url,
+            error: undefined,
+            backendTaskId: undefined,
+            providerTaskId: undefined,
+            statusDetail: planned.journeyStage
+              ? `Prompt planned: ${planned.journeyStage}`
+              : plannedStatusLabel,
+            updatedAt: Date.now(),
+            storyboardContext: task.storyboardContext
+              ? {
+                  ...task.storyboardContext,
+                  extraParams: {
+                    ...(task.storyboardContext.extraParams ?? {}),
+                    storyboardPromptPlanner: {
+                      skillId: "storyboard-video-customer-journey-prompt",
+                      journeyStage: planned.journeyStage,
+                      voiceoverScript: planned.voiceoverScript,
+                      soundBrief: planned.soundBrief,
+                      qualityNotes: planned.qualityNotes,
+                      globalVideoStrategy: result.globalVideoStrategy,
+                      voiceoverFullScript: result.voiceoverFullScript,
+                      soundFullBrief: result.soundFullBrief,
+                    },
+                  },
+                }
+              : task.storyboardContext,
+          };
+        }),
+      }));
+      toast.success(nextStatus);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t("mediaStudio.storyboardReviewRegenerateFailed");
+      setAndSaveDraft((current) => ({ ...current, compoundStatus: null }));
+      toast.error(message);
+    }
+  }, [draft, locale, planStoryboardVideoPromptsMutation, setAndSaveDraft, t]);
+
+  const updateTaskPrompt = useCallback((taskId: string, prompt: string) => {
+    const normalizedPrompt = prompt.trim();
+    if (!normalizedPrompt) return;
+    setAndSaveDraft((current) => ({
+      ...current,
+      updatedAt: Date.now(),
+      tasks: current.tasks.map((task) => task.id === taskId
+        ? {
+            ...task,
+            prompt: normalizedPrompt,
+            status: task.status === "completed" ? "queued" : task.status,
+            url: task.status === "completed" ? undefined : task.url,
+            error: undefined,
+            backendTaskId: undefined,
+            providerTaskId: undefined,
+            statusDetail: locale === "th" ? "แก้ไข prompt แล้ว" : "Prompt edited",
+            updatedAt: Date.now(),
+          }
+        : task),
+      compoundStatus: null,
+    }));
+  }, [locale, setAndSaveDraft]);
+
   const autoCompound = useCallback(async () => {
     const project = buildSelectedProject();
     if (!project || !draft) {
@@ -1037,6 +1161,7 @@ export default function StoryboardReviewPage() {
           aspectRatio: context.aspectRatio,
           durationSeconds: context.duration ?? task.durationSeconds,
           model: context.model,
+          marketplaceContext: (context.extraParams?.marketplaceContext ?? task.marketplaceProduct ?? draft.marketplaceContext) as any,
         })).prompt)
         : normalizedPrompt;
       if (generationPrompt !== normalizedPrompt) {
@@ -1201,6 +1326,9 @@ export default function StoryboardReviewPage() {
               onSelectAll={() => setAndSaveDraft((current) => ({ ...current, updatedAt: Date.now(), selectedTaskIds: current.taskIds }))}
               onSelectNone={() => setAndSaveDraft((current) => ({ ...current, updatedAt: Date.now(), selectedTaskIds: [] }))}
               onRegenerateTask={regenerateTask}
+              onUpdateTaskPrompt={updateTaskPrompt}
+              onPlanScenePrompts={planScenePrompts}
+              isPlanningScenePrompts={planStoryboardVideoPromptsMutation.isPending}
               onStartGenerationBatch={startStoryboardGenerationBatch}
               onCancelGeneration={cancelStoryboardGeneration}
               onReplaceReferenceFrame={replaceReferenceFrame}
@@ -1274,8 +1402,6 @@ export default function StoryboardReviewPage() {
               <LibrarySearchPanel
                 query={librarySearchQuery}
                 onQueryChange={setLibrarySearchQuery}
-                recentDays={libraryRecentDays}
-                onRecentDaysChange={setLibraryRecentDays}
                 isLoading={isLibrarySearchLoading}
                 results={librarySearchResults}
                 totalResults={librarySearchData?.total ?? 0}

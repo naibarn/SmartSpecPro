@@ -880,6 +880,7 @@ export interface SkillManifestMetadataUpdate {
   llm_model_id?: string | null;
   preferred_provider_id?: number | null;
   strict_provider_pin?: boolean | null;
+  config?: Record<string, unknown> | null;
 }
 
 function splitManifest(rawContent: string): { metadata: Record<string, unknown>; body: string } {
@@ -943,6 +944,13 @@ export function buildUpdatedSkillManifest(
   assignManifestValue(nextMetadata, "llm_model_id", metadataUpdates.llm_model_id);
   assignManifestValue(nextMetadata, "preferred_provider_id", metadataUpdates.preferred_provider_id);
   assignManifestValue(nextMetadata, "strict_provider_pin", metadataUpdates.strict_provider_pin);
+  if (metadataUpdates.config !== undefined) {
+    if (metadataUpdates.config === null) {
+      delete nextMetadata.config;
+    } else {
+      nextMetadata.config = metadataUpdates.config;
+    }
+  }
 
   const serializedMetadata = yaml.dump(nextMetadata, {
     schema: yaml.JSON_SCHEMA,

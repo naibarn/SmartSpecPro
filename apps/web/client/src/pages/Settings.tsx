@@ -64,6 +64,7 @@ import {
   UserCog,
   Cpu,
   MonitorPlay,
+  Store,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { GoogleDrivePanel } from '@/components/settings/GoogleDrivePanel';
@@ -88,9 +89,113 @@ import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 import { useTenantFeatureFlag } from '@/hooks/useTenantFeatureFlag';
 import { useTenant } from '@/contexts/TenantContext';
 
-type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'preferences' | 'localAi' | 'desktopHost' | 'notifications' | 'automation' | 'workers' | 'api' | 'billing' | 'integrations' | 'personas';
+type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'preferences' | 'marketplaceSharing' | 'localAi' | 'desktopHost' | 'notifications' | 'automation' | 'workers' | 'api' | 'billing' | 'integrations' | 'personas';
 
 type TwoFAStep = 'idle' | 'setup' | 'verify' | 'done' | 'disable' | 'regen';
+
+function MarketplaceSharingSettingsPanel() {
+  const utils = trpc.useUtils();
+  const language = typeof window !== 'undefined' ? window.localStorage.getItem(LOCALE_STORAGE_KEY) || navigator.language || 'en' : 'en';
+  const th = language.startsWith('th');
+  const groups = trpc.groups.list.useQuery({ scope: 'all' });
+  const shareSettings = trpc.marketplaceCapture.getShareSettings.useQuery();
+  const saveShareSetting = trpc.marketplaceCapture.saveShareSetting.useMutation({
+    onSuccess: async () => {
+      toast.success(th ? 'บันทึกการตั้งค่าแชร์แล้ว' : 'Marketplace sharing settings saved');
+      await utils.marketplaceCapture.getShareSettings.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  function settingFor(platform: 'shopee' | 'tiktok_shop') {
+    return (shareSettings.data?.settings ?? []).find((setting: any) => setting.platform === platform);
+  }
+
+  function toggleGroup(platform: 'shopee' | 'tiktok_shop', groupId: number, checked: boolean) {
+    const current = settingFor(platform);
+    const ids = new Set<number>(current?.groupIdsJson ?? []);
+    if (checked) ids.add(groupId);
+    else ids.delete(groupId);
+    saveShareSetting.mutate({
+      platform,
+      enabled: ids.size > 0,
+      groupIds: Array.from(ids),
+      permission: 'read_update',
+    });
+  }
+
+  function setPrivate(platform: 'shopee' | 'tiktok_shop') {
+    saveShareSetting.mutate({
+      platform,
+      enabled: false,
+      groupIds: [],
+      permission: 'read_update',
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      <DashboardSectionHeader
+        eyebrow={th ? 'Marketplace' : 'Marketplace'}
+        title={th ? 'การแชร์สินค้า Marketplace' : 'Marketplace product sharing'}
+        description={th
+          ? 'เลือกเองว่าสินค้า Shopee/TikTok ที่คุณเพิ่มจะเป็นส่วนตัว หรือแชร์ให้ group ที่คุณเป็นสมาชิก เพื่อให้ทุกคน update สินค้าเดียวกันและลดรายการซ้ำ'
+          : 'Choose whether newly captured Shopee/TikTok products stay private or are shared with groups you belong to, so updates land on the same product instead of creating duplicates.'}
+      />
+
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        {th
+          ? 'ค่าเริ่มต้นคือ Private หากไม่เลือก group ระบบจะไม่แชร์สินค้าใหม่ของคุณให้ใครเห็น'
+          : 'Default is private. If no group is selected, your newly saved products are not shared.'}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {(['shopee', 'tiktok_shop'] as const).map((platform) => {
+          const setting = settingFor(platform);
+          const selected = new Set<number>(setting?.enabled ? setting.groupIdsJson ?? [] : []);
+          return (
+            <div key={platform} className="rounded-2xl border border-gray-200 bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-gray-950">{platform === 'shopee' ? 'Shopee' : 'TikTok Shop'}</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {selected.size === 0
+                      ? th ? 'โหมดส่วนตัว' : 'Private mode'
+                      : th ? `แชร์ให้ ${selected.size} group` : `Shared with ${selected.size} group(s)`}
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setPrivate(platform)} disabled={saveShareSetting.isPending || selected.size === 0}>
+                  {th ? 'Private' : 'Private'}
+                </Button>
+              </div>
+              <div className="mt-4 space-y-2">
+                {(groups.data ?? []).map((group: any) => (
+                  <label key={group.id} className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm">
+                    <span>
+                      <span className="font-medium text-gray-900">{group.name}</span>
+                      <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">{group.role}</span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(group.id)}
+                      disabled={saveShareSetting.isPending}
+                      onChange={(event) => toggleGroup(platform, group.id, event.target.checked)}
+                    />
+                  </label>
+                ))}
+                {(groups.data ?? []).length === 0 ? (
+                  <p className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-gray-500">
+                    {th ? 'ยังไม่พบ group ที่คุณเป็นสมาชิก' : 'No groups available yet'}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function TwoFactorSection() {
   const { t } = useScopedTranslation('settings');
@@ -466,7 +571,9 @@ export default function Settings() {
   const desktopPackageSyncEnabled = useTenantFeatureFlag("desktopPackageSync");
   const desktopAgencyRuntimeEnabled = useTenantFeatureFlag("desktopAgencyRuntime");
   const desktopWorkerProjectionEnabled = useTenantFeatureFlag("desktopWorkerProjection");
-  const desktopHostStatus = useDesktopHostStatus(desktopHostEnabled && activeTab === 'desktopHost');
+  const desktopHostStatus = useDesktopHostStatus(
+    desktopHostEnabled && activeTab === 'desktopHost' && Boolean(user?.currentTenantId),
+  );
   const [selectedDesktopDeviceId, setSelectedDesktopDeviceId] = useState<string | null>(null);
   const [desktopDisableDeviceId, setDesktopDisableDeviceId] = useState<string | null>(null);
   const [desktopRootActionKey, setDesktopRootActionKey] = useState<string | null>(null);
@@ -871,6 +978,7 @@ export default function Settings() {
     { id: 'security', label: t('settings.tabs.security'), icon: Shield },
     { id: 'privateVault', label: t('settings.tabs.privateVault'), icon: Lock },
     { id: 'preferences', label: t('settings.tabs.preferences'), icon: Palette },
+    { id: 'marketplaceSharing', label: currentUiLanguage === 'th' ? 'แชร์ Marketplace' : 'Marketplace Sharing', icon: Store },
     ...(localClientLlmModeEnabled
       ? [{ id: 'localAi' as const, label: t('settings.tabs.localAi'), icon: Cpu }]
       : []),
@@ -1872,6 +1980,8 @@ export default function Settings() {
                   </Button>
                 </div>
               )}
+
+              {activeTab === 'marketplaceSharing' && <MarketplaceSharingSettingsPanel />}
 
               {activeTab === 'localAi' && localClientLlmModeEnabled && (
                 <div className="space-y-6">

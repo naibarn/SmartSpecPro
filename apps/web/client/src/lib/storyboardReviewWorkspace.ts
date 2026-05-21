@@ -5,6 +5,7 @@ import { normalizeStoryboardMediaUrl } from "@/lib/storyboardReviewMedia";
 export interface StoryboardReferenceImage {
   url: string;
   name?: string;
+  marketplaceProduct?: MarketplaceProductReferenceContext | null;
 }
 
 export interface StoryboardReferenceVideo {
@@ -42,6 +43,17 @@ export interface StoryboardGenerationTask {
   source?: "generated" | "imported";
   aspectRatio?: string;
   storyboardContext?: StoryboardVideoGenerationContext;
+  marketplaceProduct?: MarketplaceProductReferenceContext | null;
+}
+
+export interface MarketplaceProductReferenceContext {
+  productId?: string | null;
+  platform: "shopee" | "tiktok_shop";
+  productName?: string | null;
+  shopName?: string | null;
+  shopId?: string | null;
+  itemId?: string | null;
+  sourceUrl?: string | null;
 }
 
 export interface StoryboardReviewDraft {
@@ -55,11 +67,14 @@ export interface StoryboardReviewDraft {
   compoundStatus: string | null;
   projectLink: string | null;
   renderJobId: string | null;
+  /** Marketplace product context attached to this storyboard for story/script generation */
+  marketplaceContext?: MarketplaceProductReferenceContext | null;
 }
 
 export interface FirstLastFrameStoryboardImage {
   url: string;
   name?: string;
+  marketplaceProduct?: MarketplaceProductReferenceContext | null;
 }
 
 export interface ReplaceStoryboardReferenceFrameInput {
@@ -82,6 +97,7 @@ export interface BuildFirstLastFrameStoryboardTasksOptions {
   aspectRatio: string;
   duration?: number;
   extraParams?: Record<string, any>;
+  marketplaceContext?: MarketplaceProductReferenceContext | null;
   apiConfig?: Record<string, string>;
   resolution?: string;
   now?: number;
@@ -116,6 +132,7 @@ export function normalizeStoryboardReviewDraft(parsed: Partial<StoryboardReviewD
     compoundStatus: typeof parsed.compoundStatus === "string" ? parsed.compoundStatus : null,
     projectLink: typeof parsed.projectLink === "string" ? parsed.projectLink : null,
     renderJobId: typeof parsed.renderJobId === "string" ? parsed.renderJobId : null,
+    marketplaceContext: parsed.marketplaceContext ?? null,
   };
 }
 
@@ -228,11 +245,16 @@ export function buildFirstLastFrameStoryboardTasks(
   const extraParams = {
     ...(options.extraParams ?? {}),
     generationType: "FIRST_AND_LAST_FRAMES_2_VIDEO",
+    ...(options.marketplaceContext ? { marketplaceContext: options.marketplaceContext } : {}),
   };
 
   return usableImages.slice(0, -1).map((startImage, index) => {
     const endImage = usableImages[index + 1]!;
     const taskIndex = index;
+    const marketplaceProduct = startImage.marketplaceProduct
+      ?? endImage.marketplaceProduct
+      ?? options.marketplaceContext
+      ?? null;
     return {
       id: `${idPrefix}-${now}-${taskIndex + 1}`,
       index: taskIndex,
@@ -248,13 +270,22 @@ export function buildFirstLastFrameStoryboardTasks(
       createdAt: now,
       updatedAt: now,
       statusDetail: options.statusDetail ?? "Queued for storyboard review. Confirm and regenerate when ready.",
+      marketplaceProduct,
       storyboardContext: {
         aspectRatio,
         duration: options.duration,
         model: options.model,
         referenceImages: [
-          { url: startImage.url, name: startImage.name ?? `Frame ${taskIndex + 1}` },
-          { url: endImage.url, name: endImage.name ?? `Frame ${taskIndex + 2}` },
+          {
+            url: startImage.url,
+            name: startImage.name ?? `Frame ${taskIndex + 1}`,
+            marketplaceProduct: startImage.marketplaceProduct ?? marketplaceProduct,
+          },
+          {
+            url: endImage.url,
+            name: endImage.name ?? `Frame ${taskIndex + 2}`,
+            marketplaceProduct: endImage.marketplaceProduct ?? marketplaceProduct,
+          },
         ],
         referenceVideos: [],
         extraParams,
@@ -321,6 +352,7 @@ export function replaceStoryboardReferenceFrame(
         referenceImages[frame] = {
           url: replacementUrl,
           name: input.image.name ?? referenceImages[frame]?.name ?? (frame === 0 ? "Start frame" : "End frame"),
+          marketplaceProduct: input.image.marketplaceProduct ?? referenceImages[frame]?.marketplaceProduct ?? task.marketplaceProduct ?? draft.marketplaceContext ?? null,
         };
       }
       return {
@@ -403,6 +435,9 @@ export function storyboardDraftToReviewTasks(draft: StoryboardReviewDraft | null
         ? {
             ...(context.extraParams ?? {}),
             ...(context.resolution ? { resolution: context.resolution } : {}),
+            ...(!context.extraParams?.marketplaceContext && (task.marketplaceProduct ?? draft.marketplaceContext)
+              ? { marketplaceContext: task.marketplaceProduct ?? draft.marketplaceContext }
+              : {}),
           }
         : {};
       return {
@@ -416,6 +451,7 @@ export function storyboardDraftToReviewTasks(draft: StoryboardReviewDraft | null
         referenceUrls: context?.referenceImages?.map((image) => image.url).filter(Boolean),
         generationAspectRatio: context?.aspectRatio ?? task.aspectRatio,
         generationExtraParams: Object.keys(extraParams).length > 0 ? extraParams : undefined,
+        marketplaceProduct: task.marketplaceProduct ?? draft.marketplaceContext ?? null,
         canRegenerate: Boolean(context),
         isImported: task.source === "imported" || !context,
         status: task.status,

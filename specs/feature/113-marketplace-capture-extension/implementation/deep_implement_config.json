@@ -1,0 +1,32 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/113-marketplace-capture-extension/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/113-marketplace-capture-extension/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-database-contracts",
+    "section-02-backend-foundation",
+    "section-03-extension-auth-cors",
+    "section-04-captures-assets-candidates",
+    "section-05-llm-extraction",
+    "section-06-confirm-retention-audit",
+    "section-07-web-preview-products",
+    "section-08-extension-workspace",
+    "section-09-shopee-category",
+    "section-10-shopee-product-review",
+    "section-11-security-qa-release"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-05-17T14:51:44.390681+00:00"
+}

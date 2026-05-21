@@ -1,19 +1,37 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   launchSkillStudioTaskMock,
+  resolveSkillStudioSystemModelMock,
   buildSkillContractSnapshotMock,
   compareSkillContractSnapshotsMock,
   refreshSkillCacheMock,
+  hasRelativeSkillManifestMock,
+  resolveSkillDirCandidatesMock,
+  resolveSkillManifestPathMock,
+  updateSkillManifestFilesMock,
 } = vi.hoisted(() => ({
   launchSkillStudioTaskMock: vi.fn(),
+  resolveSkillStudioSystemModelMock: vi.fn(),
   buildSkillContractSnapshotMock: vi.fn(),
   compareSkillContractSnapshotsMock: vi.fn(),
   refreshSkillCacheMock: vi.fn(),
+  hasRelativeSkillManifestMock: vi.fn(),
+  resolveSkillDirCandidatesMock: vi.fn(),
+  resolveSkillManifestPathMock: vi.fn(),
+  updateSkillManifestFilesMock: vi.fn(),
 }));
 
 vi.mock("../skillStudioService", () => ({
   launchSkillStudioTask: launchSkillStudioTaskMock,
+  resolveSkillStudioSystemModel: resolveSkillStudioSystemModelMock,
+}));
+
+vi.mock("../skillRegistry", () => ({
+  refreshSkillCache: refreshSkillCacheMock,
 }));
 
 vi.mock("../skillCompatibilityGate", () => ({
@@ -21,22 +39,22 @@ vi.mock("../skillCompatibilityGate", () => ({
   compareSkillContractSnapshots: compareSkillContractSnapshotsMock,
 }));
 
-vi.mock("../skillRegistry", () => ({
-  refreshSkillCache: refreshSkillCacheMock,
-}));
-
-vi.mock("../enabledLlmModels", () => ({
-  resolveEnabledLlmModelId: vi.fn().mockResolvedValue("test-default-llm"),
-}));
-
 vi.mock("../skillFiles", () => ({
-  hasRelativeSkillManifest: vi.fn().mockReturnValue(false),
-  resolveSkillDirCandidates: vi.fn().mockReturnValue([]),
-  resolveSkillManifestPath: vi.fn().mockReturnValue(null),
-  updateSkillManifestFiles: vi.fn(),
+  hasRelativeSkillManifest: hasRelativeSkillManifestMock,
+  resolveSkillDirCandidates: resolveSkillDirCandidatesMock,
+  resolveSkillManifestPath: resolveSkillManifestPathMock,
+  updateSkillManifestFiles: updateSkillManifestFilesMock,
 }));
 
 import { applySkillUpgradeRecommendation } from "../skillUpgradeApplier";
+
+const tempDirs: string[] = [];
+
+function makeTempSkillDir() {
+  const dir = mkdtempSync(path.join(tmpdir(), "skill-upgrade-applier-"));
+  tempDirs.push(dir);
+  return dir;
+}
 
 function createMockDb(options: {
   selectResults: any[][];
@@ -78,6 +96,33 @@ function createMockDb(options: {
 describe("skillUpgradeApplier", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    launchSkillStudioTaskMock.mockReset();
+    buildSkillContractSnapshotMock.mockReset();
+    compareSkillContractSnapshotsMock.mockReset();
+    refreshSkillCacheMock.mockReset();
+    hasRelativeSkillManifestMock.mockReset();
+    resolveSkillDirCandidatesMock.mockReset();
+    resolveSkillManifestPathMock.mockReset();
+    updateSkillManifestFilesMock.mockReset();
+    hasRelativeSkillManifestMock.mockReturnValue(false);
+    resolveSkillDirCandidatesMock.mockReturnValue([]);
+    resolveSkillManifestPathMock.mockReturnValue(null);
+    resolveSkillStudioSystemModelMock.mockResolvedValue({
+      modelId: "test-thinking-1m-model",
+      requirements: { supportsThinking: true, contextLength: 1_000_000 },
+      matchedCapabilities: ["supportsThinking", "contextLength"],
+      missingCapabilities: [],
+      contextLength: 1_048_576,
+    });
+  });
+
+  afterEach(() => {
+    while (tempDirs.length > 0) {
+      const dir = tempDirs.pop();
+      if (dir && existsSync(dir)) {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    }
   });
 
   it("queues auto-safe generator-backed upgrades and finalizes compatibility after studio completion", async () => {
@@ -331,6 +376,504 @@ describe("skillUpgradeApplier", () => {
     }));
   });
 
+  it("auto-applies Media Studio instruction-only recommendations and includes all QA details in the brief", async () => {
+    const recommendation = {
+      id: 105,
+      skillId: 11,
+      scheduleId: null,
+      recommendationType: "media-studio-auto-learning",
+      title: "Media Studio improvement proposal: Furniture Storyboard",
+      summary: "Prompt still lacks material lock; storyboard grid is weak",
+      rationale: "Generated from Media Studio prompt qa review.",
+      currentRuntime: "llm-only",
+      proposedRuntime: "llm-only",
+      proposedAction: "review-and-patch-skill-instructions",
+      recommendationJson: {
+        source: "media_studio_auto_learning",
+        trigger: "prompt_qa",
+        score: 72,
+        affectedFiles: ["skill.md"],
+        issues: [
+          {
+            id: "material_lock",
+            severity: "high",
+            title: "Prompt still lacks furniture material lock",
+            recommendation: "Add stronger material and geometry fidelity rules.",
+          },
+          {
+            id: "storyboard_grid",
+            severity: "medium",
+            title: "Storyboard grid rule is unclear",
+            recommendation: "Require equal panels and controlled storyboard layout.",
+          },
+        ],
+        proposedChanges: [
+          {
+            title: "Add furniture geometry/material lock",
+            reason: "Prevent source product drift.",
+            targetFile: "skill.md",
+            targetSection: "Product fidelity rules",
+            risk: "medium",
+          },
+          {
+            title: "Add storyboard grid consistency rule",
+            reason: "Prevent collage output.",
+            targetFile: "skill.md",
+            targetSection: "Storyboard format rules",
+            risk: "low",
+          },
+        ],
+        userAdditionalInstruction: "Do not output JSON; return plain text prompt only.",
+        evidence: {
+          activeTab: "image",
+          promptPreview: "{\"prompt\":\"bad\"}",
+        },
+      },
+      contractDeltaJson: {
+        expectedFiles: ["skill.md"],
+        contractImpact: "instruction-only proposal",
+      },
+      status: "pending_review",
+      isAutoApplySafe: false,
+    };
+
+    const skill = {
+      id: 11,
+      tenantId: "tenant-1",
+      slug: "furniture-reference-storyboard",
+      name: "Furniture Storyboard",
+      description: "Furniture prompt skill",
+      folderPath: "/skills/furniture-reference-storyboard",
+      executionMode: "llm-only",
+      configJson: {},
+      sandboxProfileSlug: null,
+      requiresNetwork: false,
+      requiresBrowser: false,
+      visibility: "public",
+    };
+
+    const run = { id: 505, skillId: 11, recommendationId: 105, status: "running" };
+    const approvedRecommendation = { ...recommendation, status: "approved" };
+    const queuedRun = { ...run, status: "running" };
+    const appliedRecommendation = { ...recommendation, status: "applied", compatibilityStatus: "compatible" };
+    const completedRun = { ...run, status: "completed" };
+
+    const db = createMockDb({
+      selectResults: [
+        [recommendation],
+        [skill],
+        [],
+        [skill],
+      ],
+      insertReturningResults: [
+        [run],
+      ],
+      updateReturningResults: [
+        [approvedRecommendation],
+        [queuedRun],
+        [appliedRecommendation],
+        [completedRun],
+      ],
+    });
+
+    const baselineSnapshot = {
+      executionMode: "llm-only",
+      runtimeProfile: "markdown",
+      manifestPath: "/skills/furniture-reference-storyboard/skill.md",
+      lockPath: null,
+      nativeBundleReady: false,
+      nativeBundleFiles: [],
+      manifestHash: "baseline-manifest",
+      inputSchemaHash: "baseline-input",
+      outputSchemaHash: "baseline-output",
+      fixtureHash: "baseline-fixture",
+      testsHash: "baseline-tests",
+      contractHash: "baseline-contract",
+      schemaSummary: {
+        input: { present: true, requiredFields: [], propertyTypes: {}, propertyCount: 0 },
+        output: { present: false, requiredFields: [], propertyTypes: {}, propertyCount: 0 },
+        uiPresent: true,
+      },
+      fileInventory: ["skill.md"],
+    };
+
+    buildSkillContractSnapshotMock
+      .mockReturnValueOnce(baselineSnapshot)
+      .mockReturnValueOnce({ ...baselineSnapshot, manifestHash: "candidate-manifest" });
+    compareSkillContractSnapshotsMock.mockReturnValue({
+      status: "compatible",
+      issues: [],
+    });
+
+    let completionHook: ((result: any) => Promise<void>) | null = null;
+    launchSkillStudioTaskMock.mockImplementation(async (_ctx, _input, hooks) => {
+      completionHook = hooks?.onCompleted ?? null;
+      return {
+        taskId: "studio-task-3",
+        mode: "improve",
+        summary: "queued",
+      };
+    });
+
+    const result = await applySkillUpgradeRecommendation({
+      db,
+      recommendationId: 105,
+      requestedBy: 11,
+      userRole: "admin",
+      userToken: "user-token",
+      publicUrl: "https://tenant.example.com",
+    });
+
+    const launchInput = launchSkillStudioTaskMock.mock.calls[0]?.[1];
+    expect(result.applyStrategy).toBe("auto-apply");
+    expect(launchInput).toEqual(expect.objectContaining({
+      autoApplyProposal: true,
+    }));
+    expect(launchInput.brief).toContain("Detected issues that must be addressed");
+    expect(launchInput.brief).toContain("Prompt still lacks furniture material lock");
+    expect(launchInput.brief).toContain("Add storyboard grid consistency rule");
+    expect(launchInput.brief).toContain("Do not output JSON; return plain text prompt only.");
+
+    await completionHook?.({
+      success: true,
+      message: "Applied",
+      metadata: {
+        appliedProposal: "round-3.diff",
+      },
+    });
+
+    expect(compareSkillContractSnapshotsMock).toHaveBeenCalledWith(
+      baselineSnapshot,
+      expect.objectContaining({ manifestHash: "candidate-manifest" }),
+    );
+  });
+
+  it("blocks and restores generator-backed apply when existing skill markdown content is removed", async () => {
+    const skillDir = makeTempSkillDir();
+    const baselineSkillMarkdown = [
+      "---",
+      "name: furniture-reference-storyboard",
+      "icon: sofa",
+      "tags:",
+      "  - furniture",
+      "execution_mode: llm-only",
+      "---",
+      "# Prompt Logic",
+      "",
+      "## Media Studio Output Contract",
+      "Return plain prompt text only.",
+      "",
+      "## Multi-Frame Storyboard Visual Rule",
+      "Preserve the requested storyboard grid.",
+      "",
+      "## Furniture Product Fidelity Rule",
+      "Preserve geometry and material.",
+    ].join("\n");
+    writeFileSync(path.join(skillDir, "SKILL.md"), baselineSkillMarkdown, "utf8");
+    writeFileSync(path.join(skillDir, "skill.md"), baselineSkillMarkdown, "utf8");
+    resolveSkillDirCandidatesMock.mockReturnValue([skillDir]);
+
+    const recommendation = {
+      id: 205,
+      skillId: 21,
+      scheduleId: null,
+      recommendationType: "media-studio-auto-learning",
+      title: "Media Studio improvement proposal: Furniture Storyboard",
+      summary: "Prompt needs stronger storyboard rules",
+      rationale: "Generated from Media Studio prompt qa review.",
+      currentRuntime: "llm-only",
+      proposedRuntime: "llm-only",
+      proposedAction: "review-and-patch-skill-instructions",
+      recommendationJson: {
+        source: "media_studio_auto_learning",
+        trigger: "prompt_qa",
+        affectedFiles: ["skill.md"],
+        issues: [{ id: "grid", severity: "medium", title: "Grid weak", recommendation: "Keep grid rules." }],
+        proposedChanges: [{ title: "Improve grid", reason: "Prevent drift.", targetFile: "skill.md", risk: "low" }],
+      },
+      contractDeltaJson: {
+        expectedFiles: ["skill.md"],
+        contractImpact: "instruction-only proposal",
+      },
+      status: "pending_review",
+      isAutoApplySafe: false,
+    };
+
+    const skill = {
+      id: 21,
+      tenantId: "tenant-1",
+      slug: "furniture-reference-storyboard",
+      name: "Furniture Storyboard",
+      description: "Furniture prompt skill",
+      folderPath: skillDir,
+      executionMode: "llm-only",
+      configJson: {},
+      sandboxProfileSlug: null,
+      requiresNetwork: false,
+      requiresBrowser: false,
+      visibility: "public",
+    };
+
+    const run = { id: 705, skillId: 21, recommendationId: 205, status: "running" };
+    const approvedRecommendation = { ...recommendation, status: "approved" };
+    const queuedRun = { ...run, status: "running" };
+
+    const db = createMockDb({
+      selectResults: [
+        [recommendation],
+        [skill],
+        [],
+      ],
+      insertReturningResults: [
+        [run],
+      ],
+      updateReturningResults: [
+        [approvedRecommendation],
+        [queuedRun],
+      ],
+    });
+
+    const baselineSnapshot = {
+      executionMode: "llm-only",
+      runtimeProfile: "markdown",
+      manifestPath: path.join(skillDir, "skill.md"),
+      lockPath: null,
+      nativeBundleReady: false,
+      nativeBundleFiles: [],
+      manifestHash: "baseline-manifest",
+      inputSchemaHash: "baseline-input",
+      outputSchemaHash: "baseline-output",
+      fixtureHash: "baseline-fixture",
+      testsHash: "baseline-tests",
+      contractHash: "baseline-contract",
+      schemaSummary: {
+        input: { present: true, requiredFields: [], propertyTypes: {}, propertyCount: 0 },
+        output: { present: false, requiredFields: [], propertyTypes: {}, propertyCount: 0 },
+        uiPresent: true,
+      },
+      fileInventory: ["skill.md"],
+    };
+
+    buildSkillContractSnapshotMock.mockReturnValueOnce(baselineSnapshot);
+    compareSkillContractSnapshotsMock.mockReturnValue({
+      status: "compatible",
+      issues: [],
+    });
+
+    let completionHook: ((result: any) => Promise<void>) | null = null;
+    launchSkillStudioTaskMock.mockImplementation(async (_ctx, _input, hooks) => {
+      completionHook = hooks?.onCompleted ?? null;
+      return {
+        taskId: "studio-task-content-loss",
+        mode: "improve",
+        summary: "queued",
+      };
+    });
+
+    await applySkillUpgradeRecommendation({
+      db,
+      recommendationId: 205,
+      requestedBy: 11,
+      userRole: "admin",
+      userToken: "user-token",
+      publicUrl: "https://tenant.example.com",
+    });
+
+    const damagedMarkdown = [
+      "---",
+      "name: furniture-reference-storyboard",
+      "---",
+      "# Prompt Logic",
+      "A tiny replacement.",
+    ].join("\n");
+    writeFileSync(path.join(skillDir, "SKILL.md"), damagedMarkdown, "utf8");
+    writeFileSync(path.join(skillDir, "skill.md"), damagedMarkdown, "utf8");
+
+    await completionHook?.({
+      success: true,
+      message: "Applied",
+      metadata: {
+        appliedProposal: "bad.diff",
+      },
+    });
+
+    expect(readFileSync(path.join(skillDir, "SKILL.md"), "utf8")).toBe(baselineSkillMarkdown);
+    expect(readFileSync(path.join(skillDir, "skill.md"), "utf8")).toBe(baselineSkillMarkdown);
+    expect(compareSkillContractSnapshotsMock).not.toHaveBeenCalled();
+    expect(db.updateSetCalls).toEqual(expect.arrayContaining([
+      expect.objectContaining({ status: "blocked", compatibilityStatus: "blocked" }),
+      expect.objectContaining({
+        status: "failed",
+        summary: "Generator-backed upgrade blocked because it removed existing skill content",
+      }),
+    ]));
+    expect(refreshSkillCacheMock).toHaveBeenCalled();
+  });
+
+  it("blocks and restores Media Studio apply when requested improvements are not semantically covered", async () => {
+    const skillDir = makeTempSkillDir();
+    const baselineSkillMarkdown = [
+      "---",
+      "name: furniture-reference-storyboard",
+      "category: image_prompt_generation",
+      "execution_mode: llm-only",
+      "---",
+      "# Prompt Logic",
+      "",
+      "## Media Studio Output Contract",
+      "Return clean prompt text.",
+      "",
+      "## Product Fidelity",
+      "Preserve the current product instructions.",
+      "",
+      "## Storyboard Format",
+      "Keep the current storyboard instructions.",
+    ].join("\n");
+    writeFileSync(path.join(skillDir, "SKILL.md"), baselineSkillMarkdown, "utf8");
+    writeFileSync(path.join(skillDir, "skill.md"), baselineSkillMarkdown, "utf8");
+    resolveSkillDirCandidatesMock.mockReturnValue([skillDir]);
+
+    const recommendation = {
+      id: 206,
+      skillId: 22,
+      scheduleId: null,
+      recommendationType: "media-studio-auto-learning",
+      title: "Media Studio improvement proposal: Furniture Storyboard",
+      summary: "Prompt needs stronger furniture fidelity and grid rules",
+      rationale: "Generated from Media Studio prompt qa review.",
+      currentRuntime: "llm-only",
+      proposedRuntime: "llm-only",
+      proposedAction: "review-and-patch-skill-instructions",
+      recommendationJson: {
+        source: "media_studio_auto_learning",
+        trigger: "prompt_qa",
+        affectedFiles: ["skill.md"],
+        issues: [
+          {
+            id: "geometry_material",
+            severity: "high",
+            title: "Prompt still lacks geometry/material lock",
+            recommendation: "Add explicit furniture geometry and material lock.",
+          },
+        ],
+        proposedChanges: [
+          {
+            title: "Add furniture geometry/material lock",
+            reason: "Prevent product drift.",
+            targetFile: "skill.md",
+            targetSection: "Product fidelity rules",
+            risk: "medium",
+          },
+        ],
+      },
+      contractDeltaJson: {
+        expectedFiles: ["skill.md"],
+        contractImpact: "instruction-only proposal",
+      },
+      status: "pending_review",
+      isAutoApplySafe: false,
+    };
+
+    const skill = {
+      id: 22,
+      tenantId: "tenant-1",
+      slug: "furniture-reference-storyboard",
+      name: "Furniture Storyboard",
+      description: "Furniture prompt skill",
+      folderPath: skillDir,
+      executionMode: "llm-only",
+      configJson: {},
+      sandboxProfileSlug: null,
+      requiresNetwork: false,
+      requiresBrowser: false,
+      visibility: "public",
+    };
+
+    const run = { id: 706, skillId: 22, recommendationId: 206, status: "running" };
+    const db = createMockDb({
+      selectResults: [
+        [recommendation],
+        [skill],
+        [],
+      ],
+      insertReturningResults: [
+        [run],
+      ],
+      updateReturningResults: [
+        [{ ...recommendation, status: "approved" }],
+        [{ ...run, status: "running" }],
+      ],
+    });
+
+    buildSkillContractSnapshotMock.mockReturnValueOnce({
+      executionMode: "llm-only",
+      runtimeProfile: "markdown",
+      manifestPath: path.join(skillDir, "skill.md"),
+      lockPath: null,
+      nativeBundleReady: false,
+      nativeBundleFiles: [],
+      manifestHash: "baseline-manifest",
+      inputSchemaHash: "baseline-input",
+      outputSchemaHash: "baseline-output",
+      fixtureHash: "baseline-fixture",
+      testsHash: "baseline-tests",
+      contractHash: "baseline-contract",
+      schemaSummary: {
+        input: { present: true, requiredFields: [], propertyTypes: {}, propertyCount: 0 },
+        output: { present: false, requiredFields: [], propertyTypes: {}, propertyCount: 0 },
+        uiPresent: true,
+      },
+      fileInventory: ["skill.md"],
+    });
+
+    let completionHook: ((result: any) => Promise<void>) | null = null;
+    launchSkillStudioTaskMock.mockImplementation(async (_ctx, _input, hooks) => {
+      completionHook = hooks?.onCompleted ?? null;
+      return {
+        taskId: "studio-task-semantic-gap",
+        mode: "improve",
+        summary: "queued",
+      };
+    });
+
+    await applySkillUpgradeRecommendation({
+      db,
+      recommendationId: 206,
+      requestedBy: 11,
+      userRole: "admin",
+      userToken: "user-token",
+      publicUrl: "https://tenant.example.com",
+    });
+
+    const unrelatedMarkdown = [
+      baselineSkillMarkdown,
+      "",
+      "## Editorial Tone",
+      "Keep copy concise and polished for admin review.",
+      "Prefer readable English wording for generated prompt drafts.",
+    ].join("\n");
+    writeFileSync(path.join(skillDir, "SKILL.md"), unrelatedMarkdown, "utf8");
+    writeFileSync(path.join(skillDir, "skill.md"), unrelatedMarkdown, "utf8");
+
+    await completionHook?.({
+      success: true,
+      message: "Applied",
+      metadata: {
+        appliedProposal: "weak.diff",
+      },
+    });
+
+    expect(readFileSync(path.join(skillDir, "SKILL.md"), "utf8")).toBe(baselineSkillMarkdown);
+    expect(compareSkillContractSnapshotsMock).not.toHaveBeenCalled();
+    expect(db.updateSetCalls).toEqual(expect.arrayContaining([
+      expect.objectContaining({ status: "blocked", compatibilityStatus: "blocked" }),
+      expect.objectContaining({
+        status: "failed",
+        summary: "Generator-backed upgrade blocked because requested Media Studio improvements were not verified",
+      }),
+    ]));
+  });
+
   it("uses proposal-first flow for non-safe recommendations", async () => {
     const recommendation = {
       id: 102,
@@ -441,7 +984,7 @@ describe("skillUpgradeApplier", () => {
       success: true,
       message: "Proposal ready",
       metadata: {
-        savedProposals: ["runs/proposals/deck-builder/round-2.diff"],
+        savedProposals: ["runs/proposals/deck-builder/20260520T143000_r2.diff"],
       },
     });
 

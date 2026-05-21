@@ -93,6 +93,7 @@ import {
   Bot,
   History,
   Layers,
+  Move,
   User,
   ScanFace,
   Maximize2,
@@ -100,6 +101,7 @@ import {
   CheckCircle,
   Pencil,
   Search,
+  ShoppingBag,
   Languages,
   Mic,
   Grid2X2,
@@ -241,16 +243,110 @@ import {
 
 type MediaType = "image" | "video" | "audio";
 type AudioWorkflow = "tts" | "voice_changer" | "speech_to_text" | "sound_effects" | "voice_isolator";
-type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
-type StudioSidebarTab = "history" | "library";
+type MarketplaceStudioPlatformFilter = "all" | "shopee" | "tiktok_shop";
+type MarketplaceStudioMode = "images" | "products";
+type LibraryMediaItemTypeFilter = Exclude<LibraryItemTypeFilter, "all">;
+type StudioSidebarTab = "history" | "library" | "marketplace";
 type HistoryGalleryTab = "image" | "video" | "audio";
 type VideoAudioWorkflow = "native" | "separate_voice" | "separate_music" | "separate_voice_music";
 type StoryboardAudioPrepMode = "off" | "generate_voice" | "existing_voice";
+type MarketplaceStudioImage = {
+  id: string;
+  productId: string;
+  productName: string;
+  platform: "shopee" | "tiktok_shop";
+  brand?: string | null;
+  shopName?: string | null;
+  externalProductId?: string | null;
+  externalShopId?: string | null;
+  sourceUrl: string;
+  imageType: string;
+  url: string;
+  width?: number | null;
+  height?: number | null;
+  createdAt?: string | Date | null;
+  accessType: "owner" | "group";
+  groupId?: number | null;
+  metadataJson?: any;
+};
+type MarketplaceStudioProduct = {
+  id: string;
+  productName: string;
+  platform: "shopee" | "tiktok_shop";
+  brand?: string | null;
+  shopName?: string | null;
+  sourceUrl?: string | null;
+  externalProductId?: string | null;
+  externalShopId?: string | null;
+  categoryText?: string | null;
+  soldCountText?: string | null;
+  ratingScore?: string | number | null;
+  reviewCountText?: string | null;
+  updatedAt?: string | Date | null;
+  accessType?: "owner" | "group";
+};
+type MarketplaceProductReferenceContext = {
+  productId?: string | null;
+  platform: "shopee" | "tiktok_shop";
+  productName?: string | null;
+  shopName?: string | null;
+  shopId?: string | null;
+  itemId?: string | null;
+  sourceUrl?: string | null;
+};
+type MediaStudioQueueGenerationTask = QueueGenerationTask & {
+  marketplaceProduct?: MarketplaceProductReferenceContext | null;
+};
+type LibrarySearchPage = {
+  results?: LibrarySearchResultItem[];
+  total?: number;
+  has_more?: boolean;
+};
+type FloatingPreviewFrame = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
 const MEDIA_STUDIO_CREDIT_ORIGIN = "media_studio" as const;
 const HISTORY_GALLERY_PAGE_SIZE = 30;
+const LIBRARY_SEARCH_PAGE_SIZE = 30;
+const MARKETPLACE_IMAGE_PAGE_SIZE = 30;
 const HISTORY_GALLERY_MEDIA_TASK_MAX = 100;
 const HISTORY_GALLERY_PUBLIC_GALLERY_MAX = 100;
 const HISTORY_GALLERY_SHARED_GROUP_MAX = 50;
+
+function getDefaultFloatingPreviewFrame(): FloatingPreviewFrame {
+  if (typeof window === "undefined") {
+    return { x: 80, y: 80, width: 560, height: 560 };
+  }
+
+  const width = Math.min(720, Math.max(360, Math.round(window.innerWidth * 0.44)));
+  const height = Math.min(720, Math.max(360, Math.round(window.innerHeight * 0.7)));
+  return {
+    x: Math.max(16, window.innerWidth - width - 32),
+    y: 96,
+    width,
+    height,
+  };
+}
+
+function clampFloatingPreviewFrame(frame: FloatingPreviewFrame): FloatingPreviewFrame {
+  if (typeof window === "undefined") {
+    return frame;
+  }
+
+  const minWidth = 320;
+  const minHeight = 260;
+  const maxWidth = Math.max(minWidth, window.innerWidth - 24);
+  const maxHeight = Math.max(minHeight, window.innerHeight - 24);
+  const width = Math.min(Math.max(frame.width, minWidth), maxWidth);
+  const height = Math.min(Math.max(frame.height, minHeight), maxHeight);
+  const x = Math.min(Math.max(frame.x, 12), Math.max(12, window.innerWidth - width - 12));
+  const y = Math.min(Math.max(frame.y, 12), Math.max(12, window.innerHeight - height - 12));
+
+  return { x, y, width, height };
+}
 const MODEL_INPUT_PREF_STORAGE_PREFIX = "smartspec_model_input_prefs_v1";
 const DEPRECATED_ELEVENLABS_DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
 const GEMINI_3_1_FLASH_TTS_MODEL_ID = "fal-ai/gemini-3.1-flash-tts";
@@ -366,6 +462,7 @@ const QWEN3_TTS_VOICE_FIELD_OPTIONS = [
 interface ReferenceImage {
   url: string;
   name: string;
+  marketplaceProduct?: MarketplaceProductReferenceContext;
 }
 
 interface ReferenceVideo {
@@ -382,6 +479,7 @@ interface GeneratedMedia {
   model: string;
   createdAt: string;
   creditsUsed?: number;
+  marketplaceProduct?: MarketplaceProductReferenceContext | null;
 }
 
 interface StoryboardPreparedAudioTiming {
@@ -423,6 +521,7 @@ interface GenerationTask {
   providerTaskId?: string;
   statusDetail?: string;
   storyboardContext?: StoryboardVideoGenerationContext;
+  marketplaceProduct?: MarketplaceProductReferenceContext | null;
 }
 
 interface StoryboardReviewDraft {
@@ -524,6 +623,105 @@ interface PromptReviewSummary {
   lockedUserParams: Record<string, unknown> | null;
   referenceSearchQueries: string[];
   referenceNextAction: string | null;
+}
+
+type SkillImprovementIssue = {
+  id: string;
+  severity: "low" | "medium" | "high";
+  title: string;
+  evidence?: string;
+  recommendation: string;
+  affectedSection?: string;
+};
+
+type SkillImprovementProposedChange = {
+  title: string;
+  reason: string;
+  targetFile: string;
+  targetSection?: string;
+  risk: "low" | "medium" | "high";
+};
+
+type MediaStudioSkillImprovementProposal = {
+  trigger: "prompt_qa" | "image_qa" | "manual";
+  score: number;
+  issues: SkillImprovementIssue[];
+  proposedChanges: SkillImprovementProposedChange[];
+};
+
+type MediaStudioMaintenanceRecommendation = {
+  id: number;
+  status: "pending_review" | "approved" | "dismissed" | "applied" | "blocked" | "failed";
+  recommendationType: string;
+  recommendationJson?: Record<string, any> | null;
+};
+
+const MEDIA_STUDIO_AUTO_LEARNING_SKILLS = new Set([
+  "cosmatic-reference-storyboard",
+  "cosmetic-reference-storyboard",
+  "furniture-reference-storyboard",
+]);
+
+function getMediaStudioAutoLearningConfig(configJson: unknown) {
+  const root = configJson && typeof configJson === "object" && !Array.isArray(configJson)
+    ? configJson as Record<string, any>
+    : {};
+  const autoLearning = root.media_studio?.auto_learning;
+  if (!autoLearning || typeof autoLearning !== "object") {
+    return {
+      enabled: false,
+      promptQaAfterAutoPrompt: true,
+      imageQaAfterGeneration: true,
+    };
+  }
+
+  return {
+    enabled: autoLearning.enabled === true,
+    promptQaAfterAutoPrompt: autoLearning.prompt_qa_after_auto_prompt !== false,
+    imageQaAfterGeneration: autoLearning.image_qa_after_generation !== false,
+  };
+}
+
+function buildSkillImprovementProposalKey(input: {
+  skillId: string;
+  activeTab: MediaType;
+  proposal: MediaStudioSkillImprovementProposal;
+}): string {
+  return JSON.stringify({
+    skillId: input.skillId,
+    activeTab: input.activeTab,
+    trigger: input.proposal.trigger,
+    issueIds: input.proposal.issues.map((issue) => issue.id).sort(),
+    changes: input.proposal.proposedChanges
+      .map((change) => `${change.title}|${change.targetFile}|${change.targetSection ?? ""}`)
+      .sort(),
+  });
+}
+
+function buildSkillImprovementRecommendationKey(input: {
+  skillId: string;
+  activeTab: MediaType;
+  recommendation: MediaStudioMaintenanceRecommendation;
+}): string | null {
+  const payload = input.recommendation.recommendationJson;
+  if (!payload || payload.source !== "media_studio_auto_learning") return null;
+  if (!Array.isArray(payload.issues) || !Array.isArray(payload.proposedChanges)) return null;
+  const evidence = payload.evidence && typeof payload.evidence === "object"
+    ? payload.evidence as Record<string, unknown>
+    : null;
+  const recommendationActiveTab = evidence?.activeTab === "image" || evidence?.activeTab === "video" || evidence?.activeTab === "audio"
+    ? evidence.activeTab
+    : input.activeTab;
+  return buildSkillImprovementProposalKey({
+    skillId: input.skillId,
+    activeTab: recommendationActiveTab as MediaType,
+    proposal: {
+      trigger: payload.trigger,
+      score: typeof payload.score === "number" ? payload.score : 0,
+      issues: payload.issues,
+      proposedChanges: payload.proposedChanges,
+    },
+  });
 }
 
 const promptReviewStringArray = (value: unknown): string[] => {
@@ -822,6 +1020,256 @@ const normalizePromptReviewSummary = (value: unknown): PromptReviewSummary | nul
   };
 };
 
+function buildSkillImprovementProposalFromPromptReview(input: {
+  promptReview: PromptReviewSummary | null;
+  promptText: string;
+  skillId: string;
+  activeTab: MediaType;
+  dynamicFormValues: Record<string, any>;
+  referenceImageCount: number;
+  locale: PromptReviewLocale;
+}): MediaStudioSkillImprovementProposal | null {
+  if (!MEDIA_STUDIO_AUTO_LEARNING_SKILLS.has(input.skillId)) {
+    return null;
+  }
+
+  const issues: SkillImprovementIssue[] = [];
+  const proposedChanges: SkillImprovementProposedChange[] = [];
+  const promptText = input.promptText.trim();
+  const lowerPrompt = promptText.toLowerCase();
+  const isThai = input.locale === "th";
+  const targetFile = "skill.md";
+
+  const addIssue = (
+    issue: SkillImprovementIssue,
+    change: SkillImprovementProposedChange,
+  ) => {
+    if (!issues.some((item) => item.id === issue.id)) {
+      issues.push(issue);
+      proposedChanges.push(change);
+    }
+  };
+
+  for (const failedCheck of input.promptReview?.failedChecks ?? []) {
+    addIssue(
+      {
+        id: `prompt_review_${failedCheck}`,
+        severity: failedCheck.includes("safety") ? "high" : failedCheck.includes("quality") ? "medium" : "high",
+        title: isThai
+          ? `Prompt QA พบปัญหา: ${formatPromptReviewLookup(failedCheck, input.locale, PROMPT_REVIEW_CHECK_LABELS)}`
+          : `Prompt QA issue: ${formatPromptReviewLookup(failedCheck, input.locale, PROMPT_REVIEW_CHECK_LABELS)}`,
+        evidence: failedCheck,
+        recommendation: isThai
+          ? "เพิ่มกฎใน skill ให้ล็อกข้อกำกับนี้ชัดขึ้น และให้ QA loop ตรวจซ้ำก่อนส่ง prompt"
+          : "Strengthen this rule in the skill and make the QA loop check it before returning a prompt.",
+        affectedSection: "Prompt QA / final review rules",
+      },
+      {
+        title: isThai
+          ? `เพิ่ม rule สำหรับ ${formatPromptReviewLookup(failedCheck, input.locale, PROMPT_REVIEW_CHECK_LABELS)}`
+          : `Add rule for ${formatPromptReviewLookup(failedCheck, input.locale, PROMPT_REVIEW_CHECK_LABELS)}`,
+        reason: isThai
+          ? "ผลตรวจ Prompt QA ระบุว่าพรอมต์ยังขาดข้อกำกับนี้"
+          : "Prompt QA reported that this guard is missing or weak.",
+        targetFile,
+        targetSection: "Quality gates",
+        risk: "medium",
+      },
+    );
+  }
+
+  for (const missingInput of input.promptReview?.missingInputs ?? []) {
+    addIssue(
+      {
+        id: `missing_input_${missingInput}`,
+        severity: "medium",
+        title: isThai
+          ? `ข้อมูลที่ skill ควรถามเพิ่ม: ${formatPromptReviewLookup(missingInput, input.locale, PROMPT_REVIEW_FIELD_LABELS)}`
+          : `Skill should ask for: ${formatPromptReviewLookup(missingInput, input.locale, PROMPT_REVIEW_FIELD_LABELS)}`,
+        evidence: missingInput,
+        recommendation: isThai
+          ? "เพิ่มคำถาม/required hint ใน skill เมื่อข้อมูลนี้จำเป็นต่อ fidelity"
+          : "Add a clarifying question or required hint when this input is needed for fidelity.",
+        affectedSection: "Input requirements",
+      },
+      {
+        title: isThai ? "เพิ่ม missing-input guidance" : "Add missing-input guidance",
+        reason: isThai
+          ? "ลดโอกาสที่ Auto Prompt สร้างพรอมต์ไม่ครบเพราะข้อมูลตั้งต้นไม่พอ"
+          : "Reduce incomplete Auto Prompt output when required source details are missing.",
+        targetFile,
+        targetSection: "Input preflight",
+        risk: "low",
+      },
+    );
+  }
+
+  if (/^```?json\b/i.test(promptText) || /^[\[{]/.test(promptText)) {
+    addIssue(
+      {
+        id: "json_output_leak",
+        severity: "high",
+        title: isThai ? "ผลลัพธ์ Auto Prompt ยังมีรูปแบบ JSON หลุดมา" : "Auto Prompt output leaked JSON",
+        evidence: promptText.slice(0, 240),
+        recommendation: isThai
+          ? "เพิ่ม output contract ให้ส่งกลับเฉพาะ prompt text ปกติ และห้าม markdown/json wrapper"
+          : "Add an output contract requiring plain prompt text only, with no markdown or JSON wrapper.",
+        affectedSection: "Output format",
+      },
+      {
+        title: isThai ? "ล็อก output เป็น plain text เท่านั้น" : "Lock output to plain text only",
+        reason: isThai
+          ? "ผู้ใช้ต้องนำ prompt ไป generate ต่อทันที ไม่ควรต้องลบ JSON เอง"
+          : "Users should be able to generate directly without manually removing JSON.",
+        targetFile,
+        targetSection: "Output contract",
+        risk: "low",
+      },
+    );
+  }
+
+  if (input.referenceImageCount > 0 && !/(reference|อ้างอิง|product|สินค้า|fidelity|lock)/i.test(promptText)) {
+    addIssue(
+      {
+        id: "weak_reference_fidelity_lock",
+        severity: "high",
+        title: isThai ? "พรอมต์ยังล็อกความเหมือนภาพอ้างอิงไม่ชัด" : "Reference fidelity lock is weak",
+        recommendation: isThai
+          ? "เพิ่มกฎให้ prompt ต้องระบุ product/character reference lock ทุกครั้งที่มีรูปอ้างอิง"
+          : "Require product/character reference lock language whenever reference images are attached.",
+        affectedSection: "Reference fidelity",
+      },
+      {
+        title: isThai ? "เพิ่ม reference fidelity guard" : "Add reference fidelity guard",
+        reason: isThai
+          ? "ช่วยลดการเปลี่ยนรูปทรง สี วัสดุ ตัวละคร หรือสินค้าเมื่อ generate ภาพ"
+          : "Reduces shape, material, color, product, and character drift during generation.",
+        targetFile,
+        targetSection: "Reference fidelity rules",
+        risk: "medium",
+      },
+    );
+  }
+
+  if (
+    input.skillId.includes("furniture") &&
+    !/(drawer|shelf|leg|caster|handle|material|finish|texture|ลิ้นชัก|ชั้น|ขา|ล้อ|มือจับ|วัสดุ)/i.test(promptText)
+  ) {
+    addIssue(
+      {
+        id: "weak_furniture_geometry_material_lock",
+        severity: "high",
+        title: isThai ? "พรอมต์ยังไม่ล็อก geometry/material ของเฟอร์นิเจอร์พอ" : "Furniture geometry/material lock is weak",
+        recommendation: isThai
+          ? "เพิ่ม rule ให้ระบุจำนวนชิ้นส่วน วัสดุ สี ผิวสัมผัส และโครงสร้างที่มองเห็นได้จาก reference"
+          : "Add rules to preserve visible part counts, material, color, texture, and structure from references.",
+        affectedSection: "Furniture product fidelity",
+      },
+      {
+        title: isThai ? "เพิ่ม furniture geometry/material lock" : "Add furniture geometry/material lock",
+        reason: isThai
+          ? "ป้องกันสินค้าเฟอร์นิเจอร์กลายเป็นรุ่นอื่นหรือเปลี่ยนชิ้นส่วนสำคัญ"
+          : "Prevents furniture from becoming a different SKU or losing critical product parts.",
+        targetFile,
+        targetSection: "Product fidelity rules",
+        risk: "medium",
+      },
+    );
+  }
+
+  if (
+    input.skillId.includes("cosmatic") &&
+    !/(label|logo|packaging|bottle|tube|jar|shade|ฉลาก|โลโก้|บรรจุภัณฑ์|ขวด|หลอด|กระปุก)/i.test(promptText)
+  ) {
+    addIssue(
+      {
+        id: "weak_cosmetic_packaging_lock",
+        severity: "high",
+        title: isThai ? "พรอมต์ยังไม่ล็อกบรรจุภัณฑ์/ฉลากของสินค้าเครื่องสำอางพอ" : "Cosmetic packaging/label lock is weak",
+        recommendation: isThai
+          ? "เพิ่ม rule ให้รักษารูปทรงบรรจุภัณฑ์ สี ฉลาก โลโก้ และ shade/product variant"
+          : "Add rules to preserve package shape, color, label, logo, and shade/product variant.",
+        affectedSection: "Cosmetic product fidelity",
+      },
+      {
+        title: isThai ? "เพิ่ม cosmetic packaging fidelity lock" : "Add cosmetic packaging fidelity lock",
+        reason: isThai
+          ? "ลดปัญหา label/logo/สีรุ่นสินค้าเพี้ยนจากภาพต้นฉบับ"
+          : "Reduces label, logo, color, and variant drift from the source product.",
+        targetFile,
+        targetSection: "Product fidelity rules",
+        risk: "medium",
+      },
+    );
+  }
+
+  const requestedStoryboard = String(input.dynamicFormValues.generation_mode || "").includes("storyboard")
+    || String(input.dynamicFormValues.storyboard_layout_preset || "").trim() !== "";
+  if (requestedStoryboard && !/(equal|grid|panel|storyboard|same size|ช่อง|กริด|เท่ากัน|สตอรี่บอร์ด)/i.test(promptText)) {
+    addIssue(
+      {
+        id: "weak_storyboard_grid_contract",
+        severity: "medium",
+        title: isThai ? "พรอมต์ยังไม่ย้ำ storyboard grid/equal frame ชัดพอ" : "Storyboard grid contract is weak",
+        recommendation: isThai
+          ? "เพิ่ม rule ให้ทุก panel มีขนาดเท่ากัน ไม่มีกรอบ/ช่องว่างผิดรูป และตรง layout preset"
+          : "Add rules requiring equal-sized panels, clean layout, and adherence to the selected preset.",
+        affectedSection: "Storyboard layout",
+      },
+      {
+        title: isThai ? "เพิ่ม storyboard grid consistency rule" : "Add storyboard grid consistency rule",
+        reason: isThai
+          ? "ลดปัญหาภาพออกมาเป็น collage/mosaic แทน storyboard ที่ควบคุมได้"
+          : "Reduces collage/mosaic outputs when a controlled storyboard is requested.",
+        targetFile,
+        targetSection: "Storyboard format rules",
+        risk: "low",
+      },
+    );
+  }
+
+  if (promptText.length > 0 && promptText.length < 600) {
+    addIssue(
+      {
+        id: "prompt_too_short_for_reference_storyboard",
+        severity: "medium",
+        title: isThai ? "พรอมต์สั้นเกินไปสำหรับงาน reference storyboard" : "Prompt is short for a reference storyboard task",
+        evidence: `${promptText.length} chars`,
+        recommendation: isThai
+          ? "เพิ่ม minimum completeness checklist ก่อน output เช่น subject, reference locks, scene beats, negative constraints"
+          : "Add a minimum completeness checklist before output: subject, reference locks, scene beats, and negative constraints.",
+        affectedSection: "Final output QA",
+      },
+      {
+        title: isThai ? "เพิ่ม completeness checklist ก่อนส่ง prompt" : "Add final completeness checklist",
+        reason: isThai
+          ? "ช่วยให้ Auto Prompt มีรายละเอียดพอสำหรับ image model"
+          : "Ensures Auto Prompt has enough detail for downstream image generation.",
+        targetFile,
+        targetSection: "Final QA loop",
+        risk: "low",
+      },
+    );
+  }
+
+  if (issues.length === 0) {
+    return null;
+  }
+
+  const score = Math.max(0, 100 - issues.reduce((sum, issue) => {
+    if (issue.severity === "high") return sum + 18;
+    if (issue.severity === "medium") return sum + 10;
+    return sum + 4;
+  }, 0));
+
+  return {
+    trigger: "prompt_qa",
+    score,
+    issues,
+    proposedChanges,
+  };
+}
+
 // Per-tab state structure - each tab has independent controls
 interface TabState {
   prompt: string;
@@ -874,7 +1322,7 @@ const createDefaultTabState = (mediaType: MediaType): TabState => ({
   referenceImages: [],
   referenceVideos: [],
   selectedSkillId: "",
-  useAdvancedMode: false,
+  useAdvancedMode: true,
   dynamicFormValues: {},
   selectedStyleCategory: "",
   selectedStyle: "",
@@ -958,6 +1406,65 @@ function parseSkillOutputForBothMode(content: string): { imagePrompt: string; vi
   const videoPrompt = `${header}\n\n${videoSection}`;
 
   return { imagePrompt, videoPrompt };
+}
+
+function stripJsonMarkdownFence(content: string): string {
+  const trimmed = content.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return fenced?.[1]?.trim() || trimmed;
+}
+
+function extractPromptTextFromStructuredSkillOutput(value: unknown): string | null {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((item) => extractPromptTextFromStructuredSkillOutput(item))
+      .filter((item): item is string => Boolean(item));
+    return parts.length > 0 ? parts.join("\n\n") : null;
+  }
+
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const directKeys = ["prompt", "promptText", "text", "content", "result"];
+  for (const key of directKeys) {
+    const extracted = extractPromptTextFromStructuredSkillOutput(record[key]);
+    if (extracted) return extracted;
+  }
+
+  const nestedKeys = ["output", "data"];
+  for (const key of nestedKeys) {
+    const extracted = extractPromptTextFromStructuredSkillOutput(record[key]);
+    if (extracted) return extracted;
+  }
+
+  const prompts = extractPromptTextFromStructuredSkillOutput(record.prompts);
+  if (prompts) return prompts;
+
+  return null;
+}
+
+function normalizeCustomSkillPromptContent(content: string): string {
+  const trimmed = content.trim();
+  if (!trimmed) return content;
+
+  const jsonCandidate = stripJsonMarkdownFence(trimmed);
+  if (!/^[\[{]/.test(jsonCandidate)) {
+    return content;
+  }
+
+  try {
+    const parsed = JSON.parse(jsonCandidate);
+    return extractPromptTextFromStructuredSkillOutput(parsed) || content;
+  } catch {
+    return content;
+  }
 }
 
 function parseArrayFieldValue(
@@ -2990,7 +3497,10 @@ export default function MediaStudio() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedMedia, setGeneratedMedia] = useState<GeneratedMedia[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(true);
+  const [previewMarketplaceContext, setPreviewMarketplaceContext] = useState<MarketplaceProductReferenceContext | null>(null);
+  const [isFloatingPreviewOpen, setIsFloatingPreviewOpen] = useState(false);
+  const [isFloatingPreviewMaximized, setIsFloatingPreviewMaximized] = useState(false);
+  const [floatingPreviewFrame, setFloatingPreviewFrame] = useState<FloatingPreviewFrame>(() => getDefaultFloatingPreviewFrame());
   // Track multiple generation tasks for progressive preview (when count > 1)
   const [generationTasks, setGenerationTasks] = useState<GenerationTask[]>([]);
   const [dismissedGenerationQueueTaskIds, setDismissedGenerationQueueTaskIds] = useState<Set<string>>(() => new Set());
@@ -3038,9 +3548,21 @@ export default function MediaStudio() {
   const [taskLibraryState, setTaskLibraryState] = useState<Record<string, TaskLibraryUIState>>({});
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
   const [debouncedLibrarySearchQuery, setDebouncedLibrarySearchQuery] = useState("");
-  const [libraryRecentDays, setLibraryRecentDays] = useState<LibraryRecentDaysFilter>(7);
-  const [libraryItemTypeFilter, setLibraryItemTypeFilter] = useState<LibraryItemTypeFilter>("all");
+  const [libraryItemTypeFilter, setLibraryItemTypeFilter] = useState<LibraryMediaItemTypeFilter>("image");
   const [selectedLibraryItemId, setSelectedLibraryItemId] = useState<number | null>(null);
+  const [librarySearchExtraPages, setLibrarySearchExtraPages] = useState<LibrarySearchPage[]>([]);
+  const [isLibrarySearchFetchingMore, setIsLibrarySearchFetchingMore] = useState(false);
+  const librarySearchLoadMoreRef = useRef<HTMLDivElement | null>(null);
+  const [marketplaceSearchQuery, setMarketplaceSearchQuery] = useState("");
+  const [debouncedMarketplaceSearchQuery, setDebouncedMarketplaceSearchQuery] = useState("");
+  const [marketplaceProductSearchQuery, setMarketplaceProductSearchQuery] = useState("");
+  const [debouncedMarketplaceProductSearchQuery, setDebouncedMarketplaceProductSearchQuery] = useState("");
+  const [marketplaceMode, setMarketplaceMode] = useState<MarketplaceStudioMode>("images");
+  const [marketplacePlatformFilter, setMarketplacePlatformFilter] = useState<MarketplaceStudioPlatformFilter>("all");
+  const [selectedMarketplaceImageId, setSelectedMarketplaceImageId] = useState<string | null>(null);
+  const [selectedMarketplaceProductId, setSelectedMarketplaceProductId] = useState<string | null>(null);
+  const marketplaceImagesLoadMoreRef = useRef<HTMLDivElement | null>(null);
+  const marketplaceScrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [activeSidebarTab, setActiveSidebarTab] = useState<StudioSidebarTab>("history");
   const [historyGalleryTab, setHistoryGalleryTab] = useState<HistoryGalleryTab>("image");
   const [historyGalleryVisibleLimits, setHistoryGalleryVisibleLimits] = useState<Record<HistoryGalleryTab, number>>({
@@ -3060,12 +3582,76 @@ export default function MediaStudio() {
   });
   const historyGalleryLoadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const openPreview = useCallback((url: string | null | undefined, contextTab: MediaType | null = activeTab) => {
+  const openPreview = useCallback((
+    url: string | null | undefined,
+    contextTab: MediaType | null = activeTab,
+    marketplaceProduct?: MarketplaceProductReferenceContext | null,
+  ) => {
     if (!url) return;
+    setExpiredUrls((prev) => {
+      if (!prev.has(url)) return prev;
+      const next = new Set(prev);
+      next.delete(url);
+      return next;
+    });
     setPreviewUrl(url);
+    setPreviewMarketplaceContext(marketplaceProduct ?? null);
     setPreviewContextTab(contextTab);
-    setIsPreviewCollapsed(false);
+    setIsFloatingPreviewOpen(true);
   }, [activeTab]);
+
+  const beginFloatingPreviewDrag = useCallback((event: React.MouseEvent<HTMLElement>) => {
+    if (isFloatingPreviewMaximized) {
+      return;
+    }
+    event.preventDefault();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startFrame = floatingPreviewFrame;
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      setFloatingPreviewFrame(clampFloatingPreviewFrame({
+        ...startFrame,
+        x: startFrame.x + moveEvent.clientX - startX,
+        y: startFrame.y + moveEvent.clientY - startY,
+      }));
+    };
+
+    const handleUp = () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+    };
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+  }, [floatingPreviewFrame, isFloatingPreviewMaximized]);
+
+  const beginFloatingPreviewResize = useCallback((event: React.MouseEvent<HTMLElement>) => {
+    if (isFloatingPreviewMaximized) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startFrame = floatingPreviewFrame;
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      setFloatingPreviewFrame(clampFloatingPreviewFrame({
+        ...startFrame,
+        width: startFrame.width + moveEvent.clientX - startX,
+        height: startFrame.height + moveEvent.clientY - startY,
+      }));
+    };
+
+    const handleUp = () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+    };
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+  }, [floatingPreviewFrame, isFloatingPreviewMaximized]);
 
   // Dialog states (global)
   const [showStyleDialog, setShowStyleDialog] = useState(false);
@@ -3117,8 +3703,11 @@ export default function MediaStudio() {
     prompt: string;
     model?: string;
     createdAt?: string;
+    marketplaceProduct?: MarketplaceProductReferenceContext | null;
   } | null>(null);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+  // Track marketplace context of the most recently generated image for preview-panel split buttons
+  const [lastGeneratedMarketplaceContext, setLastGeneratedMarketplaceContext] = useState<MarketplaceProductReferenceContext | null>(null);
 
   // Grid split state
   const [showSplitDialog, setShowSplitDialog] = useState(false);
@@ -3133,6 +3722,8 @@ export default function MediaStudio() {
   const [splitFrameAutoCropEnabled, setSplitFrameAutoCropEnabled] = useState(true);
   const [splitFrameCropAspectRatio, setSplitFrameCropAspectRatio] = useState<"9:16" | "16:9">("9:16");
   const [imageEditorMode, setImageEditorMode] = useState<"split" | "crop">("split");
+  // Marketplace context carried through the split → storyboard pipeline
+  const [splitMarketplaceContext, setSplitMarketplaceContext] = useState<MarketplaceProductReferenceContext | null>(null);
   const [cropAspectRatio, setCropAspectRatio] = useState("1:1");
   const [cropResult, setCropResult] = useState<CropResult | null>(null);
   const [isCropping, setIsCropping] = useState(false);
@@ -3201,9 +3792,11 @@ export default function MediaStudio() {
       icon: s.icon || "sparkles",
       // Map DB category (underscored) to type (hyphenated) for compatibility
       type: (s.category || "other").replace(/_/g, "-"),
+      dbId: s.id,
       creditMultiplier: Number(s.creditMultiplier) || 1,
       enabledByDefault: s.enabledByDefault ?? true,
       priority: s.priority ?? 50,
+      configJson: (s as any).configJson ?? null,
       hasSkillFile: false,
       nativeBundleReady: Boolean((s as any).nativeBundleReady),
       nativeBundleFiles: Array.isArray((s as any).nativeBundleFiles) ? (s as any).nativeBundleFiles : [],
@@ -3667,20 +4260,178 @@ export default function MediaStudio() {
   } = trpc.library.search.useQuery(
     {
       query: debouncedLibrarySearchQuery || undefined,
-      limit: 50,
+      limit: LIBRARY_SEARCH_PAGE_SIZE,
+      offset: 0,
       filters: {
-        ...(libraryRecentDays === "all" ? {} : { recentDays: libraryRecentDays }),
-        ...(libraryItemTypeFilter === "all" ? {} : { itemType: libraryItemTypeFilter }),
+        itemType: libraryItemTypeFilter,
       },
     },
     {
-      enabled:
-        debouncedLibrarySearchQuery.trim().length > 0 ||
-        libraryRecentDays !== "all" ||
-        libraryItemTypeFilter !== "all",
+      enabled: isAuthenticated && !isLoading,
     },
   );
-  const librarySearchResults = (librarySearchData?.results || []) as LibrarySearchResultItem[];
+  const librarySearchResults = useMemo(() => {
+    const seen = new Set<number>();
+    const pages = [librarySearchData as LibrarySearchPage | undefined, ...librarySearchExtraPages];
+    return pages.flatMap((page) => page?.results ?? []).filter((item) => {
+      if (seen.has(item.item_id)) return false;
+      seen.add(item.item_id);
+      return true;
+    }) as LibrarySearchResultItem[];
+  }, [librarySearchData, librarySearchExtraPages]);
+  const librarySearchLastPage = librarySearchExtraPages.at(-1) ?? (librarySearchData as LibrarySearchPage | undefined);
+  const librarySearchHasMore = Boolean(librarySearchLastPage?.has_more);
+  const librarySearchTotal = librarySearchLastPage?.total ?? librarySearchData?.total ?? librarySearchResults.length;
+  const marketplaceImagesQuery = trpc.marketplaceCapture.listProductImages.useInfiniteQuery(
+    {
+      limit: MARKETPLACE_IMAGE_PAGE_SIZE,
+      platform: marketplacePlatformFilter,
+      query: marketplaceMode === "images" ? debouncedMarketplaceSearchQuery || undefined : undefined,
+      productId: marketplaceMode === "products" ? selectedMarketplaceProductId : undefined,
+      ownerOnly: false,
+    },
+    {
+      initialCursor: null,
+      enabled: isAuthenticated && !isLoading && activeSidebarTab === "marketplace" && (marketplaceMode === "images" || Boolean(selectedMarketplaceProductId)),
+      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
+    },
+  );
+  const marketplaceProductsQuery = trpc.marketplaceCapture.listProducts.useQuery(
+    {
+      limit: 60,
+      ownerOnly: false,
+      platform: marketplacePlatformFilter,
+      query: debouncedMarketplaceProductSearchQuery || undefined,
+    },
+    {
+      enabled: isAuthenticated && !isLoading && activeSidebarTab === "marketplace" && marketplaceMode === "products",
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
+    },
+  );
+  const marketplaceImages = (marketplaceImagesQuery.data?.pages.flatMap((page) => page.images) ?? []) as MarketplaceStudioImage[];
+  const marketplaceProducts = (marketplaceProductsQuery.data ?? []) as MarketplaceStudioProduct[];
+  const selectedMarketplaceProduct = marketplaceProducts.find((product) => product.id === selectedMarketplaceProductId) ?? null;
+  const buildMarketplaceProductContext = useCallback((item: MarketplaceStudioImage | MarketplaceStudioProduct): MarketplaceProductReferenceContext => {
+    const meta = "metadataJson" in item && item.metadataJson ? (item.metadataJson as Record<string, any>) : null;
+    return {
+      productId: "productId" in item ? item.productId : item.id,
+      platform: item.platform,
+      productName: ("productName" in item ? item.productName : null) || meta?.productName || null,
+      shopName: item.shopName || meta?.shopName || null,
+      shopId: item.externalShopId || meta?.externalShopId || null,
+      itemId: item.externalProductId || meta?.externalProductId || null,
+      sourceUrl: ("sourceUrl" in item ? item.sourceUrl : null) || meta?.sourceProductUrl || null,
+    };
+  }, []);
+	  const syncMarketplaceProductContextToSkillFields = useCallback((context: MarketplaceProductReferenceContext | null | undefined) => {
+	    if (!context) return;
+	    const patch: Record<string, string> = {};
+
+	    // Marketplace Shop ID Aliases
+	    if (context.shopId) {
+	      patch.product_shop_id = context.shopId;
+	      patch.marketplace_shop_id = context.shopId;
+	      patch.shop_id = context.shopId;
+	    }
+
+	    // Marketplace Item ID Aliases
+	    if (context.itemId) {
+      patch.product_item_id = context.itemId;
+      patch.marketplace_item_id = context.itemId;
+      patch.item_id = context.itemId;
+      patch.product_id = context.itemId;
+    }
+
+    // Marketplace Capture Product ID aliases for internal detail-page linking
+	    if (context.productId) {
+	      patch.marketplace_capture_product_id = context.productId;
+	      patch.capture_product_id = context.productId;
+	    }
+
+	    // Product Page URL Aliases
+	    if (context.sourceUrl) {
+      patch.product_source_url = context.sourceUrl;
+      patch.marketplace_source_url = context.sourceUrl;
+      patch.source_url = context.sourceUrl;
+	      patch.product_url = context.sourceUrl;
+	      patch.url = context.sourceUrl;
+	    }
+
+	    // Marketplace Platform Aliases
+	    if (context.platform) {
+	      patch.marketplace_platform = context.platform;
+	      patch.platform = context.platform;
+	    }
+
+	    // Shop Name Aliases
+	    if (context.shopName) {
+	      patch.product_shop_name = context.shopName;
+	      patch.shop_name = context.shopName;
+	      patch.marketplace_shop_name = context.shopName;
+	    }
+
+	    // Marketplace Product Title Aliases
+    if (context.productName) {
+      patch.product_title = context.productName;
+      patch.product_name = context.productName;
+      patch.marketplace_product_title = context.productName;
+      patch.title = context.productName;
+    }
+
+    if (Object.keys(patch).length === 0) return;
+    setDynamicFormValues((prev: Record<string, any>) => ({ ...prev, ...patch }));
+  }, [setDynamicFormValues]);
+  const getMarketplaceContextFromFields = useCallback((values: Record<string, any>): MarketplaceProductReferenceContext | null => {
+    const shopId = String(values.product_shop_id ?? values.marketplace_shop_id ?? values.shop_id ?? "").trim();
+    const itemId = String(values.product_item_id ?? values.marketplace_item_id ?? values.item_id ?? values.product_id ?? "").trim();
+    const sourceUrl = String(values.product_source_url ?? values.marketplace_source_url ?? values.source_url ?? values.product_url ?? values.url ?? "").trim();
+    const rawPlatform = String(values.marketplace_platform ?? values.platform ?? "").trim();
+    const shopName = String(values.product_shop_name ?? values.shop_name ?? values.marketplace_shop_name ?? "").trim();
+    const productName = String(values.product_title ?? values.product_name ?? values.marketplace_product_title ?? values.title ?? "").trim();
+    const productId = String(values.marketplace_capture_product_id ?? values.capture_product_id ?? "").trim();
+    const platform = rawPlatform === "tiktok_shop" || rawPlatform === "shopee" ? rawPlatform : "shopee";
+    if (!shopId && !itemId && !sourceUrl && !shopName && !productName && !productId) return null;
+    return {
+      productId: productId || null,
+      platform,
+      shopId: shopId || null,
+      itemId: itemId || null,
+      sourceUrl: sourceUrl || null,
+      shopName: shopName || null,
+      productName: productName || null,
+    };
+  }, []);
+  const getMarketplaceContextFromReferenceImages = useCallback((images: ReferenceImage[]): MarketplaceProductReferenceContext | null => (
+    images.find((image) => image.marketplaceProduct)?.marketplaceProduct ?? null
+  ), []);
+  const getMarketplaceContextFromTaskParameters = useCallback((parameters: unknown): MarketplaceProductReferenceContext | null => {
+    const params = parameters && typeof parameters === "object"
+      ? parameters as Record<string, any>
+      : null;
+    const context = params?.marketplaceContext
+      ?? params?.extraParams?.marketplaceContext
+      ?? params?.input?.marketplaceContext
+      ?? params?.input?.extraParams?.marketplaceContext
+      ?? null;
+    if (!context || typeof context !== "object") return null;
+    const platform = context.platform === "tiktok_shop" || context.platform === "shopee" ? context.platform : "shopee";
+    return {
+      productId: typeof context.productId === "string" ? context.productId : null,
+      platform,
+      productName: typeof context.productName === "string" ? context.productName : null,
+      shopName: typeof context.shopName === "string" ? context.shopName : null,
+      shopId: typeof context.shopId === "string" ? context.shopId : null,
+      itemId: typeof context.itemId === "string" ? context.itemId : null,
+      sourceUrl: typeof context.sourceUrl === "string" ? context.sourceUrl : null,
+    };
+  }, []);
+  const isMarketplaceImagesLoading = marketplaceImagesQuery.isLoading;
+  const isMarketplaceImagesFetchingNextPage = marketplaceImagesQuery.isFetchingNextPage;
+  const marketplaceImagesError = marketplaceImagesQuery.error;
+  const marketplaceImagesHasMore = Boolean(marketplaceImagesQuery.hasNextPage);
 
   const historyGallerySourceTasks = useMemo(() => {
     const tasks = (historyGalleryHistory?.tasks ?? []) as MediaHistoryTaskLite[];
@@ -3943,6 +4694,98 @@ export default function MediaStudio() {
     return () => window.clearTimeout(timer);
   }, [librarySearchQuery]);
 
+  useEffect(() => {
+    setLibrarySearchExtraPages([]);
+  }, [debouncedLibrarySearchQuery, libraryItemTypeFilter]);
+
+  useEffect(() => {
+    setLibraryItemTypeFilter(activeTab);
+    setSelectedLibraryItemId(null);
+  }, [activeTab]);
+
+  useEffect(() => {
+    const target = librarySearchLoadMoreRef.current;
+    if (
+      !target
+      || activeSidebarTab !== "library"
+      || !librarySearchHasMore
+      || isLibrarySearchFetchingMore
+      || isLibrarySearchLoading
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      const isVisible = entries.some((entry) => entry.isIntersecting);
+      if (!isVisible) return;
+
+      setIsLibrarySearchFetchingMore(true);
+      trpcUtils.library.search.fetch({
+        query: debouncedLibrarySearchQuery || undefined,
+        limit: LIBRARY_SEARCH_PAGE_SIZE,
+        offset: librarySearchResults.length,
+        filters: {
+          itemType: libraryItemTypeFilter,
+        },
+      })
+        .then((page) => {
+          setLibrarySearchExtraPages((prev) => [...prev, page as LibrarySearchPage]);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          setIsLibrarySearchFetchingMore(false);
+        });
+    }, { rootMargin: "260px 0px" });
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [
+    activeSidebarTab,
+    debouncedLibrarySearchQuery,
+    isLibrarySearchFetchingMore,
+    isLibrarySearchLoading,
+    libraryItemTypeFilter,
+    librarySearchHasMore,
+    librarySearchResults.length,
+    trpcUtils.library.search,
+  ]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedMarketplaceSearchQuery(marketplaceSearchQuery.trim());
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [marketplaceSearchQuery]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedMarketplaceProductSearchQuery(marketplaceProductSearchQuery.trim());
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [marketplaceProductSearchQuery]);
+
+  useEffect(() => {
+    const target = marketplaceImagesLoadMoreRef.current;
+    if (
+      !target
+      || activeSidebarTab !== "marketplace"
+      || (marketplaceMode === "products" && !selectedMarketplaceProductId)
+      || !marketplaceImagesHasMore
+      || isMarketplaceImagesFetchingNextPage
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      const isVisible = entries.some((entry) => entry.isIntersecting);
+      if (!isVisible) return;
+      marketplaceImagesQuery.fetchNextPage().catch(() => undefined);
+    }, { rootMargin: "260px 0px" });
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [activeSidebarTab, isMarketplaceImagesFetchingNextPage, marketplaceImagesHasMore, marketplaceImagesQuery, marketplaceMode, selectedMarketplaceProductId]);
+
   // Query for skill input schema (for dynamic form)
   const { data: skillSchemaData } = trpc.skills.getInputSchema.useQuery(
     { skillId: selectedSkillId },
@@ -4012,6 +4855,8 @@ export default function MediaStudio() {
   const generateAudioAsyncMutation = trpc.media.generateAudioAsync.useMutation();
   const enhancePromptMutation = trpc.skills.enhancePrompt.useMutation();
   const executeCustomSkillMutation = trpc.skills.executeCustomSkill.useMutation();
+  const createSkillImprovementRecommendationMutation = trpc.skills.createMediaStudioSkillImprovementRecommendation.useMutation();
+  const createSkillAutoLearningSignalMutation = trpc.skills.createMediaStudioSkillAutoLearningSignal.useMutation();
 
   useEffect(() => {
     if (storyboardReviewDraftRestoredRef.current) return;
@@ -4149,7 +4994,8 @@ export default function MediaStudio() {
     });
 
   const handleAttachCurrentMediaToContent = async () => {
-    if (!attachTarget || !previewUrl || previewContextTab !== activeTab || activeTab === "audio") {
+    const mediaType = previewContextTab ?? activeTab;
+    if (!attachTarget || !previewUrl || mediaType === "audio") {
       return;
     }
 
@@ -4161,7 +5007,7 @@ export default function MediaStudio() {
       }
 
       const blob = await response.blob();
-      const mimeType = blob.type || (activeTab === "video" ? "video/mp4" : "image/png");
+      const mimeType = blob.type || (mediaType === "video" ? "video/mp4" : "image/png");
       const extension = mimeType.startsWith("video")
         ? (mimeType.includes("webm") ? "webm" : mimeType.includes("quicktime") ? "mov" : "mp4")
         : mimeType.includes("jpeg")
@@ -4190,7 +5036,7 @@ export default function MediaStudio() {
         credentials: "include",
         body: JSON.stringify({
           mediaUrl: uploadResult.url,
-          mediaType: activeTab,
+          mediaType,
         }),
       });
 
@@ -4648,8 +5494,8 @@ export default function MediaStudio() {
   // Reset dynamic form values when skill changes (per-tab)
   useEffect(() => {
     setDynamicFormValues({});
-    // Advanced Mode is OFF by default - user must enable it manually
-  }, [selectedSkillId, setDynamicFormValues]);
+    setUseAdvancedMode(true);
+  }, [selectedSkillId, setDynamicFormValues, setUseAdvancedMode]);
 
   // Keep a max prompt length field aligned with the selected media model limit.
   // This field is used by prompt-creation skills that can overflow the model's prompt cap.
@@ -5002,7 +5848,9 @@ export default function MediaStudio() {
     setSelectedLibraryItemId(item.item_id);
     const previewSource = item.thumbnail_url || item.source_url;
     if (previewSource) {
-      openPreview(previewSource);
+      const itemType = item.item_type.toLowerCase();
+      const previewType: MediaType = itemType === "video" ? "video" : itemType === "audio" ? "audio" : "image";
+      openPreview(previewSource, previewType);
     }
     if (item.status.toLowerCase() !== "ready") {
       toast.info(t('mediaStudio.selectedItemInfo', { title: item.title, status: item.status }));
@@ -5010,6 +5858,20 @@ export default function MediaStudio() {
     }
     toast.success(t('mediaStudio.selectedItemFromLibrary', { title: item.title }));
   }, [openPreview, t]);
+
+  const handleLibraryResultPreview = (item: LibrarySearchResultItem) => {
+    setSelectedLibraryItemId(item.item_id);
+    const itemType = item.item_type.toLowerCase();
+    const previewSource = item.source_url?.trim() || item.thumbnail_url?.trim();
+    if (!previewSource) {
+      return;
+    }
+    if (itemType === "image") {
+      openLightbox(previewSource, item.title, item.model_name || item.source, undefined);
+      return;
+    }
+    openPreview(previewSource, itemType === "video" ? "video" : itemType === "audio" ? "audio" : "image");
+  };
 
   const handleLibraryResultAddToReference = useCallback((item: LibrarySearchResultItem) => {
     const itemType = item.item_type.toLowerCase();
@@ -5061,6 +5923,37 @@ export default function MediaStudio() {
     t,
   ]);
 
+  const handleMarketplaceImageAddToReference = useCallback((item: MarketplaceStudioImage) => {
+    const referenceUrl = item.url?.trim();
+    if (!referenceUrl) {
+      toast.error(t('mediaStudio.failedToAddAsReference'));
+      return;
+    }
+    if (!selectedMediaModelReferenceSupport.imageUrls) {
+      toast.error("The selected model does not accept image references.");
+      return;
+    }
+    if (referenceImages.length >= maxReferenceImages) {
+      toast.error(t('mediaStudio.maxReferenceImagesError', { max: maxReferenceImages }));
+      return;
+    }
+    const marketplaceProduct = buildMarketplaceProductContext(item);
+    syncMarketplaceProductContextToSkillFields(marketplaceProduct);
+    setReferenceImages((prev) => [...prev, {
+      url: referenceUrl,
+      name: `marketplace-${item.platform}-${item.externalProductId || item.id}`,
+      marketplaceProduct,
+    }]);
+    toast.success(t('mediaStudio.useAsReference'));
+  }, [
+    buildMarketplaceProductContext,
+    maxReferenceImages,
+    referenceImages.length,
+    selectedMediaModelReferenceSupport.imageUrls,
+    syncMarketplaceProductContextToSkillFields,
+    t,
+  ]);
+
   useEffect(() => {
     const tracking = Object.entries(taskLibraryState).filter(
       ([, state]) => state.action === "added" && state.itemId && state.status === "indexing",
@@ -5096,6 +5989,26 @@ export default function MediaStudio() {
   const getDraggedMediaUrl = (dataTransfer: DataTransfer) => {
     return dataTransfer.getData("text/uri-list") || dataTransfer.getData("text/plain");
   };
+  const getDraggedMarketplaceProductContext = (dataTransfer: DataTransfer): MarketplaceProductReferenceContext | null => {
+    const raw = dataTransfer.getData("application/x-smartspec-marketplace-product")
+      || dataTransfer.getData("text/x-smartspec-marketplace-product");
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as Partial<MarketplaceProductReferenceContext>;
+      const platform = parsed.platform === "shopee" || parsed.platform === "tiktok_shop" ? parsed.platform : null;
+      if (!platform) return null;
+      return {
+        platform,
+        productName: typeof parsed.productName === "string" ? parsed.productName : null,
+        shopName: typeof parsed.shopName === "string" ? parsed.shopName : null,
+        shopId: typeof parsed.shopId === "string" ? parsed.shopId : null,
+        itemId: typeof parsed.itemId === "string" ? parsed.itemId : null,
+        sourceUrl: typeof parsed.sourceUrl === "string" ? parsed.sourceUrl : null,
+      };
+    } catch {
+      return null;
+    }
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -5106,6 +6019,7 @@ export default function MediaStudio() {
       return;
     }
     if (draggedMediaType === "image" || isImageMediaUrl(url)) {
+      e.dataTransfer.dropEffect = "copy";
       setIsDraggingOver(true);
       return;
     }
@@ -5125,7 +6039,13 @@ export default function MediaStudio() {
     const draggedMediaType = getDraggedMediaType(e.dataTransfer);
     if (url && referenceImages.length < maxReferenceImages) {
       if (draggedMediaType === "image" || isImageMediaUrl(url)) {
-        setReferenceImages(prev => [...prev, { url, name: `dropped-${Date.now()}` }]);
+        const marketplaceProduct = getDraggedMarketplaceProductContext(e.dataTransfer);
+        syncMarketplaceProductContextToSkillFields(marketplaceProduct);
+        setReferenceImages(prev => [...prev, {
+          url,
+          name: marketplaceProduct?.itemId ? `marketplace-${marketplaceProduct.platform}-${marketplaceProduct.itemId}` : `dropped-${Date.now()}`,
+          ...(marketplaceProduct ? { marketplaceProduct } : {}),
+        }]);
       }
     }
   };
@@ -5139,6 +6059,7 @@ export default function MediaStudio() {
       return;
     }
     if (draggedMediaType === "video" || isVideoMediaUrl(url)) {
+      e.dataTransfer.dropEffect = "copy";
       setIsVideoDraggingOver(true);
       return;
     }
@@ -5178,12 +6099,22 @@ export default function MediaStudio() {
   };
 
   // Handle drag start for history media
-  const handleHistoryDragStart = (e: React.DragEvent, url: string, mediaType: MediaType | null | undefined) => {
+  const handleHistoryDragStart = (
+    e: React.DragEvent,
+    url: string,
+    mediaType: MediaType | null | undefined,
+    marketplaceProduct?: MarketplaceProductReferenceContext | null,
+  ) => {
     e.dataTransfer.setData("text/uri-list", url);
     e.dataTransfer.setData("text/plain", url);
     if (mediaType) {
       e.dataTransfer.setData("application/x-smartspec-media-type", mediaType);
       e.dataTransfer.setData("text/x-smartspec-media-type", mediaType);
+    }
+    if (marketplaceProduct) {
+      const serialized = JSON.stringify(marketplaceProduct);
+      e.dataTransfer.setData("application/x-smartspec-marketplace-product", serialized);
+      e.dataTransfer.setData("text/x-smartspec-marketplace-product", serialized);
     }
     e.dataTransfer.effectAllowed = "copy";
   };
@@ -5587,6 +6518,20 @@ export default function MediaStudio() {
             });
           });
         }
+        [
+          "product_shop_id",
+          "product_item_id",
+          "product_source_url",
+          "marketplace_platform",
+          "product_shop_name",
+          "product_title",
+        ].forEach((fieldName) => {
+          const mappedKey = outputMapping[fieldName] || fieldName;
+          const value = dynamicFormValues[fieldName];
+          if (hasUsableSkillValue(value)) {
+            mappedValues[mappedKey] = value;
+          }
+        });
         applyMediaStudioAspectRatioPromptParams(mappedValues, aspectRatio);
         const browserLocale = typeof navigator !== "undefined" ? navigator.language : "";
         mappedValues.ui_locale = locale;
@@ -5753,6 +6698,7 @@ export default function MediaStudio() {
         });
 
         if (result.success && result.content) {
+          const normalizedSkillContent = normalizeCustomSkillPromptContent(result.content);
           const nextPromptReview = normalizePromptReviewSummary(
             (result as { promptReview?: unknown }).promptReview,
           );
@@ -5761,7 +6707,7 @@ export default function MediaStudio() {
             && selectedSkillId === VEO_STORYBOARD_SKILL_ID
           );
           const skillPromptCount = isVeoStoryboardSkillOutput
-            ? countMultiVideoPromptBlocks(result.content)
+            ? countMultiVideoPromptBlocks(normalizedSkillContent)
             : 0;
           if (isVeoStoryboardSkillOutput && skillPromptCount > 1 && videoOutputType !== "multi-video") {
             setVideoOutputType("multi-video");
@@ -5774,14 +6720,16 @@ export default function MediaStudio() {
               )
             : `Credits used: ${result.creditsUsed}`;
           // Check if outputType="both" - try to parse and split prompts for Image/Video tabs
-          // Note: outputType may be undefined if user didn't change from default (especially in Basic Mode)
           const outputType = dynamicFormValues?.outputType as string | undefined;
-          // Default to "both" if not explicitly set (matches ui.schema.json default for viral-talking-objects)
-          const effectiveOutputType = outputType ?? "both";
+          const outputTypeDefault = skillSchema?.sections
+            ?.flatMap((section: any) => section.fields || [])
+            ?.find((field: any) => field?.id === "outputType")
+            ?.default as string | undefined;
+          const effectiveOutputType = outputType ?? outputTypeDefault;
 
           if (effectiveOutputType === "both") {
             // Try to parse and split the content for image and video tabs
-            const parsed = parseSkillOutputForBothMode(result.content);
+            const parsed = parseSkillOutputForBothMode(normalizedSkillContent);
 
             if (parsed) {
               // Store split prompts for each tab
@@ -5799,7 +6747,7 @@ export default function MediaStudio() {
                   buildExternalAudioPromptDisplayOptions(parsed.videoPrompt),
                 );
               } else {
-                applyPromptPackageToCurrentTab(result.content, "enhancedPrompt");
+                applyPromptPackageToCurrentTab(normalizedSkillContent, "enhancedPrompt");
               }
 
               toast.success(t('mediaStudio.skillExecutedSuccessfully', { skillName: result.skillName }), {
@@ -5810,9 +6758,9 @@ export default function MediaStudio() {
             } else {
               // Parsing failed (no image/video sections found), use full content
               applyPromptPackageToCurrentTab(
-                result.content,
+                normalizedSkillContent,
                 "enhancedPrompt",
-                buildExternalAudioPromptDisplayOptions(result.content),
+                buildExternalAudioPromptDisplayOptions(normalizedSkillContent),
               );
               setPromptReview(nextPromptReview);
               setImageTabPrompt(null);
@@ -5824,9 +6772,9 @@ export default function MediaStudio() {
           } else {
             // Use the skill's generated content as the prompt (normal mode)
             applyPromptPackageToCurrentTab(
-              result.content,
+              normalizedSkillContent,
               "enhancedPrompt",
-              buildExternalAudioPromptDisplayOptions(result.content),
+              buildExternalAudioPromptDisplayOptions(normalizedSkillContent),
             );
             setPromptReview(nextPromptReview);
             setImageTabPrompt(null);
@@ -5968,13 +6916,190 @@ export default function MediaStudio() {
 
   // Get current skill info
   const currentSkill = skillsList?.find(s => s.id === selectedSkillId);
+  const isAdminUser = user?.role === "admin";
+  const [skillImprovementInstruction, setSkillImprovementInstruction] = useState("");
+  const [lastSkillImprovementRecommendationId, setLastSkillImprovementRecommendationId] = useState<number | null>(null);
+  const [isSkillImprovementProposalOpen, setIsSkillImprovementProposalOpen] = useState(true);
+  const [submittedSkillImprovementKeys, setSubmittedSkillImprovementKeys] = useState<Record<string, number>>({});
+  const lastSilentAutoLearningSignalKeyRef = useRef<string | null>(null);
+  const skillImprovementSkillLabel = currentSkill
+    ? `${currentSkill.name || currentSkill.id} (${currentSkill.id})`
+    : selectedSkillId;
+  const currentSkillAutoLearningConfig = useMemo(
+    () => getMediaStudioAutoLearningConfig((currentSkill as any)?.configJson),
+    [currentSkill],
+  );
   const autoPromptIdea = useMemo(() => buildMediaStudioAutoPromptIdea({
     mainPrompt: prompt.trim(),
     advancedRequest: useAdvancedMode ? (dynamicFormValues.request as string || "") : "",
     dynamicFormValues: useAdvancedMode ? dynamicFormValues : undefined,
     skillSchema: useAdvancedMode ? skillSchema : undefined,
   }), [dynamicFormValues, prompt, skillSchema, useAdvancedMode]);
+  const skillImprovementProposal = useMemo(() => buildSkillImprovementProposalFromPromptReview({
+    promptReview,
+    promptText: enhancedPrompt || prompt,
+    skillId: selectedSkillId,
+    activeTab,
+    dynamicFormValues,
+    referenceImageCount: autoPromptReferenceImageUrls.length,
+    locale: promptReviewLocale,
+  }), [
+    activeTab,
+    autoPromptReferenceImageUrls.length,
+    dynamicFormValues,
+    enhancedPrompt,
+    prompt,
+    promptReview,
+    promptReviewLocale,
+    selectedSkillId,
+  ]);
+  const skillImprovementProposalKey = useMemo(() => (
+    currentSkill && skillImprovementProposal
+      ? buildSkillImprovementProposalKey({
+        skillId: currentSkill.id,
+        activeTab,
+        proposal: skillImprovementProposal,
+      })
+      : null
+  ), [activeTab, currentSkill, skillImprovementProposal]);
+  const { data: existingSkillImprovementRecommendations } = trpc.skills.getUpgradeRecommendations.useQuery(
+    {
+      skillId: currentSkill?.dbId ?? undefined,
+      recommendationType: "media-studio-auto-learning",
+      includeDismissed: false,
+      limit: 30,
+    },
+    {
+      enabled: !!isAdminUser && !!currentSkill?.dbId && !!skillImprovementProposalKey,
+      refetchInterval: isSkillImprovementProposalOpen ? 10_000 : false,
+      refetchIntervalInBackground: false,
+    },
+  );
+  const existingSkillImprovementRecommendation = useMemo(() => {
+    if (!currentSkill || !skillImprovementProposalKey) return null;
+    return ((existingSkillImprovementRecommendations || []) as MediaStudioMaintenanceRecommendation[])
+      .find((recommendation) => buildSkillImprovementRecommendationKey({
+        skillId: currentSkill.id,
+        activeTab,
+        recommendation,
+      }) === skillImprovementProposalKey) ?? null;
+  }, [activeTab, currentSkill, existingSkillImprovementRecommendations, skillImprovementProposalKey]);
+  const submittedSkillImprovementRecommendationId = skillImprovementProposalKey
+    ? submittedSkillImprovementKeys[skillImprovementProposalKey] ?? null
+    : null;
+  const visibleSkillImprovementRecommendationId = existingSkillImprovementRecommendation?.id
+    ?? submittedSkillImprovementRecommendationId;
+  const visibleSkillImprovementRecommendationStatus = existingSkillImprovementRecommendation?.status
+    ?? (submittedSkillImprovementRecommendationId ? "pending_review" : null);
+  const visibleSkillImprovementStatusLabel = visibleSkillImprovementRecommendationStatus
+    ? ({
+      pending_review: isThaiLocale ? "รอ Admin review" : "Pending Admin review",
+      approved: isThaiLocale ? "อนุมัติแล้ว รอ apply/ตรวจสอบต่อ" : "Approved, waiting for apply/verification",
+      applied: isThaiLocale ? "Applied แล้ว" : "Applied",
+      blocked: isThaiLocale ? "ถูกบล็อกโดย compatibility gate" : "Blocked by compatibility gate",
+      failed: isThaiLocale ? "Apply/ตรวจสอบไม่สำเร็จ" : "Apply/verification failed",
+      dismissed: isThaiLocale ? "ถูก dismiss แล้ว" : "Dismissed",
+    } as Record<string, string>)[visibleSkillImprovementRecommendationStatus] ?? visibleSkillImprovementRecommendationStatus
+    : null;
+  const openSkillImprovementSkillPage = useCallback(() => {
+    if (!currentSkill?.dbId) return;
+    setLocation(`/admin/skills?tab=skills&skillId=${encodeURIComponent(String(currentSkill.dbId))}`);
+  }, [currentSkill?.dbId, setLocation]);
   const canRunAutoPrompt = Boolean(currentSkill);
+
+  useEffect(() => {
+    if (!currentSkill || !skillImprovementProposal) return;
+    if (isAdminUser) return;
+    if (!currentSkillAutoLearningConfig.enabled) return;
+    if (skillImprovementProposal.trigger === "prompt_qa" && !currentSkillAutoLearningConfig.promptQaAfterAutoPrompt) return;
+    if (skillImprovementProposal.trigger === "image_qa" && !currentSkillAutoLearningConfig.imageQaAfterGeneration) return;
+
+    const promptPreview = (enhancedPrompt || prompt).slice(0, 4000);
+    const signalKey = JSON.stringify({
+      skill: currentSkill.id,
+      trigger: skillImprovementProposal.trigger,
+      score: skillImprovementProposal.score,
+      issueIds: skillImprovementProposal.issues.map((issue) => issue.id),
+      promptPreview,
+      activeTab,
+    });
+    if (lastSilentAutoLearningSignalKeyRef.current === signalKey) return;
+    lastSilentAutoLearningSignalKeyRef.current = signalKey;
+
+    createSkillAutoLearningSignalMutation.mutate({
+      skillSlug: currentSkill.id,
+      trigger: skillImprovementProposal.trigger,
+      score: skillImprovementProposal.score,
+      issues: skillImprovementProposal.issues,
+      proposedChanges: skillImprovementProposal.proposedChanges,
+      evidence: {
+        promptPreview,
+        activeTab,
+        source: "media_studio_auto_prompt",
+        skillName: currentSkill.name,
+        skillSlug: currentSkill.id,
+      },
+    });
+  }, [
+    activeTab,
+    createSkillAutoLearningSignalMutation,
+    currentSkill,
+    currentSkillAutoLearningConfig.enabled,
+    currentSkillAutoLearningConfig.imageQaAfterGeneration,
+    currentSkillAutoLearningConfig.promptQaAfterAutoPrompt,
+    enhancedPrompt,
+    isAdminUser,
+    prompt,
+    skillImprovementProposal,
+  ]);
+
+  const handleCreateSkillImprovementRecommendation = async () => {
+    if (!currentSkill || !skillImprovementProposal || !skillImprovementProposalKey || !isAdminUser) return;
+
+    try {
+      const result = await createSkillImprovementRecommendationMutation.mutateAsync({
+        skillSlug: currentSkill.id,
+        trigger: skillImprovementProposal.trigger,
+        score: skillImprovementProposal.score,
+        issues: skillImprovementProposal.issues,
+        proposedChanges: skillImprovementProposal.proposedChanges,
+        userAdditionalInstruction: skillImprovementInstruction.trim() || undefined,
+        evidence: {
+          promptPreview: (enhancedPrompt || prompt).slice(0, 4000),
+          activeTab,
+          source: "media_studio_auto_prompt",
+          skillName: currentSkill.name,
+          skillSlug: currentSkill.id,
+        },
+      });
+      setLastSkillImprovementRecommendationId(result.recommendation.id);
+      setSubmittedSkillImprovementKeys((prev) => ({
+        ...prev,
+        [skillImprovementProposalKey]: result.recommendation.id,
+      }));
+      setSkillImprovementInstruction("");
+      setIsSkillImprovementProposalOpen(false);
+      toast.success(
+        isThaiLocale
+          ? result.duplicate ? "ข้อเสนอนี้อยู่ในคิวแล้ว" : "ส่งข้อเสนอปรับปรุงเข้า Queue แล้ว"
+          : result.duplicate ? "This proposal is already queued" : "Skill improvement proposal queued",
+        {
+          description: isThaiLocale
+            ? "รายการจะไม่แสดงซ้ำจนกว่าจะมีผลตรวจใหม่"
+            : "This item will stay hidden unless a new review finds a different issue.",
+        },
+      );
+    } catch (error) {
+      toast.error(
+        isThaiLocale
+          ? "สร้างข้อเสนอปรับปรุงไม่สำเร็จ"
+          : "Could not create improvement proposal",
+        {
+          description: error instanceof Error ? error.message : String(error),
+        },
+      );
+    }
+  };
 
   // Generate media with loop for multiple images
   const handleGenerate = async () => {
@@ -6256,6 +7381,14 @@ export default function MediaStudio() {
       ...extraParams,
       ...omnivoiceExtraParams,
     };
+    // Attach current marketplace context so it persists in task.parameters
+    const activeMarketplaceCtx =
+      getMarketplaceContextFromFields(dynamicFormValues)
+      ?? getMarketplaceContextFromFields(modelInputValues)
+      ?? getMarketplaceContextFromReferenceImages(referenceImages);
+    if (activeMarketplaceCtx) {
+      mergedExtraParams.marketplaceContext = activeMarketplaceCtx;
+    }
     if (isSourceAudioWorkflow && voiceChangerSourceAudio) {
       if (isSpeechToTextMode) {
         mergedExtraParams.file = voiceChangerSourceAudio;
@@ -6332,6 +7465,7 @@ export default function MediaStudio() {
       createdAt: nowMs,
       updatedAt: nowMs,
       ...(storyboardGenerationContext ? { storyboardContext: storyboardGenerationContext } : {}),
+      ...(activeMarketplaceCtx ? { marketplaceProduct: activeMarketplaceCtx } : {}),
     }));
     setGenerationTasks(initialTasks);
     setIsGenerationQueueHidden(false);
@@ -6462,12 +7596,17 @@ export default function MediaStudio() {
             model: selectedModel,
             createdAt: new Date().toISOString(),
             creditsUsed,
+            marketplaceProduct: activeMarketplaceCtx,
           };
           setGeneratedMedia(prev => [newMedia, ...prev]);
+          // Track marketplace context of this generation for the preview-panel split buttons
+          if (activeMarketplaceCtx) {
+            setLastGeneratedMarketplaceContext(activeMarketplaceCtx);
+          }
 
           // Set first completed image as preview
           if (successCount === 0) {
-            openPreview(resultUrl);
+            openPreview(resultUrl, activeTab, activeMarketplaceCtx);
           }
           successCount++;
 
@@ -6481,7 +7620,7 @@ export default function MediaStudio() {
                     duration: 5000,
                     action: {
                       label: "Open Tools",
-                      onClick: () => openSplitDialog(resultUrl),
+                      onClick: () => openSplitDialog(resultUrl, "split", activeMarketplaceCtx),
                     },
                   }
                 );
@@ -6891,8 +8030,14 @@ export default function MediaStudio() {
   };
 
   // Open image in lightbox
-  const openLightbox = (url: string, prompt: string, model?: string, createdAt?: string) => {
-    setLightboxImage({ url, prompt, model, createdAt });
+  const openLightbox = (
+    url: string,
+    prompt: string,
+    model?: string,
+    createdAt?: string,
+    marketplaceProduct?: MarketplaceProductReferenceContext | null,
+  ) => {
+    setLightboxImage({ url, prompt, model, createdAt, marketplaceProduct });
     setLightboxOpen(true);
     setCopiedPrompt(false);
   };
@@ -7190,8 +8335,8 @@ export default function MediaStudio() {
     });
   }, [generationTasks, mediaHistory?.tasks]);
 
-  const generationQueueTasks = useMemo<QueueGenerationTask[]>(() => {
-    const queueCandidates: QueueGenerationTask[] = [];
+  const generationQueueTasks = useMemo<MediaStudioQueueGenerationTask[]>(() => {
+    const queueCandidates: MediaStudioQueueGenerationTask[] = [];
     const trackedTaskIds = new Set(trackedGenerationQueueTaskIds);
     const storyboardReviewTaskIdSet = new Set(storyboardReviewTaskIds);
 
@@ -7214,7 +8359,7 @@ export default function MediaStudio() {
             ? "completed"
             : "failed";
 
-      const queueTask: QueueGenerationTask = {
+      const queueTask: MediaStudioQueueGenerationTask = {
         id: task.id,
         type: task.type,
         prompt: task.prompt,
@@ -7228,6 +8373,7 @@ export default function MediaStudio() {
         backendTaskId: task.backendTaskId,
         providerTaskId: task.providerTaskId,
         statusDetail: task.statusDetail,
+        marketplaceProduct: (task as any).marketplaceProduct ?? null,
       };
       queueCandidates.push(queueTask);
     }
@@ -7254,7 +8400,8 @@ export default function MediaStudio() {
 
       const resultUrl = task.resultUrl || extractTaskResultUrl(task as any) || undefined;
       const isDeferredRetryTask = Boolean(task.parameters?.deferredRetry || task.resultData?.deferredRetry);
-      const queueTask: QueueGenerationTask = {
+      const historyMarketplaceContext = getMarketplaceContextFromTaskParameters(task.parameters);
+      const queueTask: MediaStudioQueueGenerationTask = {
         id: task.taskId || task.id,
         type: taskType,
         prompt: task.prompt || "",
@@ -7274,6 +8421,7 @@ export default function MediaStudio() {
           status === "failed" ? (task.errorMessage || t('mediaStudio.generationStatus.failed')) :
           status === "cancelled" ? t('mediaStudio.generationStatus.cancelled') :
           t('mediaStudio.generationStatus.queued'),
+        ...(historyMarketplaceContext ? { marketplaceProduct: historyMarketplaceContext } as any : {}),
       };
 
       queueCandidates.push(queueTask);
@@ -7284,7 +8432,7 @@ export default function MediaStudio() {
       const bTime = b.updatedAt instanceof Date ? b.updatedAt.getTime() : Date.parse(String(b.updatedAt)) || 0;
       return bTime - aTime;
     });
-  }, [activeTab, extractTaskResultUrl, generationTasks, mediaHistory?.tasks, storyboardReviewTaskIds, t, trackedGenerationQueueTaskIds]);
+  }, [activeTab, extractTaskResultUrl, generationTasks, getMarketplaceContextFromTaskParameters, mediaHistory?.tasks, storyboardReviewTaskIds, t, trackedGenerationQueueTaskIds]);
 
   const visibleGenerationQueueTasks = useMemo(
     () => generationQueueTasks.filter((task) => !isGenerationQueueTaskDismissed(task, dismissedGenerationQueueTaskIds)),
@@ -7470,16 +8618,20 @@ export default function MediaStudio() {
             return item;
           }
           const resultUrl = matchingTask.resultUrl || extractTaskResultUrl(matchingTask as any) || undefined;
-          if (!resultUrl || resultUrl === item.url) {
+          const marketplaceProduct = (matchingTask as any).marketplaceProduct
+            ?? getMarketplaceContextFromTaskParameters((matchingTask as any).parameters)
+            ?? item.marketplaceProduct
+            ?? null;
+          if (!resultUrl || (resultUrl === item.url && marketplaceProduct === item.marketplaceProduct)) {
             return item;
           }
           changed = true;
-          return { ...item, url: resultUrl };
+          return { ...item, url: resultUrl, marketplaceProduct };
         });
         return changed ? next : prev;
       });
     }
-  }, [extractTaskResultUrl, generationTasks, mediaHistory?.tasks]);
+  }, [extractTaskResultUrl, generationTasks, getMarketplaceContextFromTaskParameters, mediaHistory?.tasks]);
 
   const retryGenerationTask = useCallback(async (task: QueueGenerationTask) => {
     const targetTab = task.type === "image" || task.type === "video" || task.type === "audio"
@@ -7536,6 +8688,10 @@ export default function MediaStudio() {
           ? tabState.dynamicFormValues.aspectRatio
           : tabState.aspectRatio
       );
+    const retryMarketplaceContext = (task as MediaStudioQueueGenerationTask).marketplaceProduct
+      ?? getMarketplaceContextFromFields(tabState.dynamicFormValues)
+      ?? getMarketplaceContextFromFields(tabState.modelInputValues)
+      ?? getMarketplaceContextFromReferenceImages(tabState.referenceImages);
     const retryStoryboardContext = (task as any).storyboardContext as StoryboardVideoGenerationContext | undefined;
     const retryVideoDuration = targetTab === "video"
       ? (
@@ -7617,6 +8773,9 @@ export default function MediaStudio() {
       ...extraParams,
       ...omnivoiceExtraParams,
     };
+    if (retryMarketplaceContext) {
+      mergedExtraParams.marketplaceContext = retryMarketplaceContext;
+    }
     if (targetTab === "audio") {
       applyTtsLanguageDefaultsForPrompt(retryModelForInputFields, retryPrompt, mergedExtraParams);
     }
@@ -7690,6 +8849,7 @@ export default function MediaStudio() {
         createdAt: nowMs,
         updatedAt: nowMs,
         statusDetail: t('mediaStudio.generationStatus.queuedForRetry'),
+        marketplaceProduct: retryMarketplaceContext,
       },
       ...prev,
     ]);
@@ -7765,10 +8925,11 @@ export default function MediaStudio() {
             model: retryModel,
             createdAt: new Date().toISOString(),
             creditsUsed,
+            marketplaceProduct: retryMarketplaceContext,
           },
           ...prev,
         ]);
-        openPreview(resultUrl);
+        openPreview(resultUrl, targetTab, retryMarketplaceContext);
         void refetchMediaHistory();
       } else if (startedAsyncTask) {
         const asyncTaskIsDeferredRetry = Boolean(asyncTask?.parameters?.deferredRetry || asyncTask?.resultData?.deferredRetry);
@@ -7823,6 +8984,8 @@ export default function MediaStudio() {
     generateAudioMutation,
     generateImageAsyncMutation,
     generateVideoAsyncMutation,
+    getMarketplaceContextFromFields,
+    getMarketplaceContextFromReferenceImages,
     visibleMediaModels,
     refetchMediaHistory,
     resolveArrayFieldRuntimeValue,
@@ -8001,6 +9164,9 @@ export default function MediaStudio() {
           ? {
               ...(context.extraParams ?? {}),
               ...(context.resolution ? { resolution: context.resolution } : {}),
+              ...(!context.extraParams?.marketplaceContext && (task.marketplaceProduct ?? getMarketplaceContextFromReferenceImages(context.referenceImages))
+                ? { marketplaceContext: task.marketplaceProduct ?? getMarketplaceContextFromReferenceImages(context.referenceImages) }
+                : {}),
             }
           : {};
         return {
@@ -8013,11 +9179,12 @@ export default function MediaStudio() {
           referenceUrls: context?.referenceImages.map((image) => image.url),
           generationAspectRatio: context?.aspectRatio,
           generationExtraParams: Object.keys(extraParams).length > 0 ? extraParams : undefined,
+          marketplaceProduct: task.marketplaceProduct ?? getMarketplaceContextFromReferenceImages(context?.referenceImages ?? []) ?? null,
           status: task.status,
           error: task.error,
         };
       }),
-    [generationTasks, storyboardReviewTaskIds],
+    [generationTasks, getMarketplaceContextFromReferenceImages, storyboardReviewTaskIds],
   );
   const shouldMuteStoryboardNativeAudio = useMemo(
     () => videoAudioWorkflow !== "native"
@@ -8056,6 +9223,7 @@ export default function MediaStudio() {
     prompt: string,
     model: string,
     creditsUsed?: number,
+    marketplaceProduct?: MarketplaceProductReferenceContext | null,
   ) => {
     setGeneratedMedia((prev) => {
       const nextItem: GeneratedMedia = {
@@ -8067,6 +9235,7 @@ export default function MediaStudio() {
         model,
         createdAt: new Date().toISOString(),
         creditsUsed,
+        marketplaceProduct: marketplaceProduct ?? null,
       };
 
       const existingIndex = prev.findIndex((item) => item.taskId === taskId);
@@ -8341,8 +9510,11 @@ export default function MediaStudio() {
           providerTaskId,
           statusDetail: t('mediaStudio.generationStatus.completed'),
         });
-        upsertGeneratedMediaForTask(taskId, resultUrl, normalizedPrompt, task.model || selectedModel, taskResult.creditsUsed);
-        openPreview(resultUrl, "video");
+        const clipMarketplaceContext = task.marketplaceProduct
+          ?? getMarketplaceContextFromReferenceImages(task.storyboardContext.referenceImages)
+          ?? getMarketplaceContextFromFields(task.storyboardContext.extraParams ?? {});
+        upsertGeneratedMediaForTask(taskId, resultUrl, normalizedPrompt, task.model || selectedModel, taskResult.creditsUsed, clipMarketplaceContext);
+        openPreview(resultUrl, "video", clipMarketplaceContext);
         setStoryboardCompoundStatus(`Clip ${task.index + 1} regenerated.`);
         void refetchMediaHistory();
         return;
@@ -8383,8 +9555,11 @@ export default function MediaStudio() {
           providerTaskId,
           statusDetail: t('mediaStudio.generationStatus.completed'),
         });
-        upsertGeneratedMediaForTask(taskId, completedUrl, normalizedPrompt, task.model || selectedModel, taskResult.creditsUsed);
-        openPreview(completedUrl, "video");
+        const clipMarketplaceContext = task.marketplaceProduct
+          ?? getMarketplaceContextFromReferenceImages(task.storyboardContext.referenceImages)
+          ?? getMarketplaceContextFromFields(task.storyboardContext.extraParams ?? {});
+        upsertGeneratedMediaForTask(taskId, completedUrl, normalizedPrompt, task.model || selectedModel, taskResult.creditsUsed, clipMarketplaceContext);
+        openPreview(completedUrl, "video", clipMarketplaceContext);
         setStoryboardCompoundStatus(`Clip ${task.index + 1} regenerated.`);
         void refetchMediaHistory();
         return;
@@ -8408,6 +9583,8 @@ export default function MediaStudio() {
     deleteDeferredTaskIds,
     extractTaskResultUrl,
     generationTasks,
+    getMarketplaceContextFromFields,
+    getMarketplaceContextFromReferenceImages,
     generateVideoAsyncMutation,
     openPreview,
     refetchMediaHistory,
@@ -8625,9 +9802,12 @@ export default function MediaStudio() {
 
   const handleGenerationQueueTaskClick = useCallback((task: QueueGenerationTask) => {
     if (task.result) {
-      openPreview(task.result);
+      const taskType = task.type === "image" || task.type === "video" || task.type === "audio"
+        ? task.type
+        : activeTab;
+      openPreview(task.result, taskType, (task as any).marketplaceProduct ?? null);
     }
-  }, [openPreview]);
+  }, [activeTab, openPreview]);
 
   const getTaskTimestampMs = (task: any): number => {
     const candidates = [task?.completedAt, task?.updatedAt, task?.startedAt, task?.createdAt];
@@ -8672,17 +9852,13 @@ export default function MediaStudio() {
       (a, b) => b.timestampMs - a.timestampMs
     )[0];
     if (latestEntry?.url) {
-      openPreview(latestEntry.url);
+      openPreview(
+        latestEntry.url,
+        latestEntry.task.mediaType || activeTab,
+        getMarketplaceContextFromTaskParameters(latestEntry.task.parameters),
+      );
     }
-  }, [mediaHistory?.tasks, openPreview]);
-
-  useEffect(() => {
-    if (previewUrl && previewContextTab === activeTab) {
-      setIsPreviewCollapsed(false);
-      return;
-    }
-    setIsPreviewCollapsed(true);
-  }, [activeTab, previewContextTab, previewUrl]);
+  }, [activeTab, getMarketplaceContextFromTaskParameters, mediaHistory?.tasks, openPreview]);
 
   const toCanvasSafeImageUrl = (imageUrl: string): string => {
     if (!imageUrl) return imageUrl;
@@ -8717,7 +9893,8 @@ export default function MediaStudio() {
   };
 
   // Open image tools dialog with auto-detection
-  const openSplitDialog = async (imageUrl: string, mode: "split" | "crop" = "split") => {
+  const openSplitDialog = async (imageUrl: string, mode: "split" | "crop" = "split", marketplaceCtx?: MarketplaceProductReferenceContext | null) => {
+    setSplitMarketplaceContext(marketplaceCtx ?? null);
     const sourceUrl = toCanvasSafeImageUrl(imageUrl);
     const defaultFrameCropRatio = tabStates.video.aspectRatio === "16:9" ? "16:9" : "9:16";
     setSplitImageUrl(sourceUrl);
@@ -8979,7 +10156,11 @@ export default function MediaStudio() {
       });
       setReferenceImages((prev) => [
         ...prev,
-        { url: uploadResult.url, name: `Split ${result.index + 1}` },
+        {
+          url: uploadResult.url,
+          name: `Split ${result.index + 1}`,
+          ...(splitMarketplaceContext ? { marketplaceProduct: splitMarketplaceContext } : {}),
+        },
       ]);
       toast.success(t('mediaStudio.addedAsReferenceImage'));
     } catch (error) {
@@ -9003,7 +10184,11 @@ export default function MediaStudio() {
       });
       setReferenceImages((prev) => [
         ...prev,
-        { url: uploadResult.url, name: `Crop ${cropAspectRatio}` },
+        {
+          url: uploadResult.url,
+          name: `Crop ${cropAspectRatio}`,
+          ...(splitMarketplaceContext ? { marketplaceProduct: splitMarketplaceContext } : {}),
+        },
       ]);
       toast.success(t('mediaStudio.addedCroppedImageAsReference'));
     } catch (error) {
@@ -9038,7 +10223,11 @@ export default function MediaStudio() {
           fileType: "image/jpeg",
           fileBase64: result.dataUrl,
         });
-        uploadedImages.push({ url: uploadResult.url, name: `Split ${result.index + 1}` });
+        uploadedImages.push({
+          url: uploadResult.url,
+          name: `Split ${result.index + 1}`,
+          ...(splitMarketplaceContext ? { marketplaceProduct: splitMarketplaceContext } : {}),
+        });
       }
 
       // Update video tab's reference images directly
@@ -9081,7 +10270,11 @@ export default function MediaStudio() {
           fileType: "image/jpeg",
           fileBase64: result.dataUrl,
         });
-        uploadedImages.push({ url: uploadResult.url, name: `Frame ${result.index + 1}` });
+        uploadedImages.push({
+          url: uploadResult.url,
+          name: `Frame ${result.index + 1}`,
+          ...(splitMarketplaceContext ? { marketplaceProduct: splitMarketplaceContext } : {}),
+        });
       }
 
       const normalizedModel = {
@@ -9094,6 +10287,7 @@ export default function MediaStudio() {
       const extraParams: Record<string, any> = {
         ...defaultExtraParams,
         generationType: "FIRST_AND_LAST_FRAMES_2_VIDEO",
+        ...(splitMarketplaceContext ? { marketplaceContext: splitMarketplaceContext } : {}),
       };
       const durationSeconds = resolveStoryboardClipDurationSeconds({
         model: normalizedModel,
@@ -9105,6 +10299,7 @@ export default function MediaStudio() {
         aspectRatio: splitFrameAutoCropEnabled ? splitFrameCropAspectRatio : (tabStates.video.aspectRatio || "auto"),
         duration: durationSeconds,
         extraParams,
+        marketplaceContext: splitMarketplaceContext ?? undefined,
         apiConfig: buildApiConfigFromModelConfig(modelConfig),
         resolution: typeof extraParams.resolution === "string" ? extraParams.resolution : undefined,
         statusDetail: t('mediaStudio.splitStoryboardQueuedStatus'),
@@ -9126,6 +10321,7 @@ export default function MediaStudio() {
         compoundStatus: t('mediaStudio.splitStoryboardReadyForReview', { count: tasks.length }),
         projectLink: null,
         renderJobId: null,
+        ...(splitMarketplaceContext ? { marketplaceContext: splitMarketplaceContext } : {}),
       };
       const savedReview = await saveStoryboardReviewMutation.mutateAsync({
         name: getStoryboardReviewName(draft),
@@ -9238,6 +10434,94 @@ export default function MediaStudio() {
     return null;
   }
 
+  const floatingPreviewType = previewContextTab ?? activeTab;
+  const hasFloatingPreviewContent = Boolean(previewUrl || isGenerating || generationTasks.length > 0);
+  const showFloatingProgressGrid = generationTasks.length > 1 && (
+    isGenerating || generationTasks.some((task) => task.status !== "queued")
+  );
+  const floatingPreviewStyle = isFloatingPreviewMaximized
+    ? {
+        left: 16,
+        top: 80,
+        width: "calc(100vw - 32px)",
+        height: "calc(100vh - 96px)",
+      }
+    : {
+        left: floatingPreviewFrame.x,
+        top: floatingPreviewFrame.y,
+        width: floatingPreviewFrame.width,
+        height: floatingPreviewFrame.height,
+      };
+  const renderMarketplaceProductMetadataPanel = (
+    context: MarketplaceProductReferenceContext | null | undefined,
+  ) => {
+    if (!context) return null;
+    return (
+      <div className="rounded-lg border border-sky-100 bg-sky-50/70 p-3 text-sm">
+        <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <div className="font-medium text-sky-950">
+              {isThaiLocale ? "ข้อมูลสินค้า Marketplace" : "Marketplace Product Metadata"}
+            </div>
+            {context.productName && (
+              <div className="mt-0.5 line-clamp-2 text-xs text-sky-900/80">
+                {context.productName}
+              </div>
+            )}
+          </div>
+          {context.productId && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 shrink-0 gap-1 border-sky-200 bg-white/80 text-sky-900 hover:bg-sky-100"
+              onClick={() => window.open(`/marketplace-capture/products/${encodeURIComponent(context.productId || "")}`, "_blank", "noopener,noreferrer")}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              {isThaiLocale ? "รายละเอียดสินค้า" : "Product detail"}
+            </Button>
+          )}
+        </div>
+        <div className="grid gap-2 text-xs text-sky-950 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <span className="text-sky-800/70">platform</span>
+            <div className="font-medium">{context.platform}</div>
+          </div>
+          <div>
+            <span className="text-sky-800/70">shop id</span>
+            <div className="font-medium">{context.shopId || "-"}</div>
+          </div>
+          <div>
+            <span className="text-sky-800/70">item id</span>
+            <div className="font-medium">{context.itemId || "-"}</div>
+          </div>
+          <div>
+            <span className="text-sky-800/70">shop name</span>
+            <div className="font-medium">{context.shopName || "-"}</div>
+          </div>
+          <div className="sm:col-span-2">
+            <span className="text-sky-800/70">product page URL</span>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="truncate font-medium">{context.sourceUrl || "-"}</span>
+              {context.sourceUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 shrink-0 text-sky-900"
+                  title={isThaiLocale ? "เปิดหน้าสินค้า Marketplace" : "Open marketplace product page"}
+                  onClick={() => window.open(context.sourceUrl || "", "_blank", "noopener,noreferrer")}
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
       {/* Header */}
@@ -9295,7 +10579,7 @@ export default function MediaStudio() {
       </header>
 
       <main className="px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
           {/* Left Panel - Controls */}
           <div className="lg:col-span-2 space-y-4">
             {/* Media Type Tabs */}
@@ -9773,6 +11057,213 @@ export default function MediaStudio() {
                 </div>
               )}
 
+              {isAdminUser && currentSkill && skillImprovementProposal && visibleSkillImprovementRecommendationId && (
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50/80 p-3 text-sm text-emerald-950 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-emerald-700" />
+                    <div>
+                      <div className="font-medium">
+                        {isThaiLocale
+                          ? `ข้อเสนอนี้มีอยู่ใน Maintenance แล้ว #${visibleSkillImprovementRecommendationId}`
+                          : `This proposal already exists in Maintenance #${visibleSkillImprovementRecommendationId}`}
+                      </div>
+                      {visibleSkillImprovementStatusLabel && (
+                        <div className="text-xs text-emerald-800/80">
+                          {isThaiLocale ? "สถานะ" : "Status"}: {visibleSkillImprovementStatusLabel}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="border-emerald-200 bg-white/80 text-emerald-800 hover:bg-emerald-100"
+                    onClick={openSkillImprovementSkillPage}
+                  >
+                    {isThaiLocale ? "เปิดหน้า Skill" : "Open Skill"}
+                  </Button>
+                </div>
+              )}
+
+              {isAdminUser && currentSkill && skillImprovementProposal && !visibleSkillImprovementRecommendationId && (
+                <Collapsible
+                  open={isSkillImprovementProposalOpen}
+                  onOpenChange={setIsSkillImprovementProposalOpen}
+                >
+                <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/80 p-3 text-sm text-sky-950 shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Settings className="h-4 w-4 text-sky-700" />
+                      <span>
+                        {isThaiLocale
+                          ? "ข้อเสนอปรับปรุง Skill สำหรับ Admin"
+                          : "Admin Skill Improvement Proposal"}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className="bg-white/80">
+                        {isThaiLocale ? "คะแนน" : "Score"}: {skillImprovementProposal.score}/100
+                      </Badge>
+                      <Badge variant="outline" className="bg-white/80">
+                        Admin only
+                      </Badge>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 px-2 text-sky-800 hover:bg-sky-100"
+                        aria-expanded={isSkillImprovementProposalOpen}
+                        onClick={() => setIsSkillImprovementProposalOpen((value) => !value)}
+                      >
+                        {isSkillImprovementProposalOpen
+                          ? (isThaiLocale ? "ยุบ" : "Collapse")
+                          : (isThaiLocale ? "ขยาย" : "Expand")}
+                        <ChevronDown
+                          className={cn(
+                            "h-4 w-4 transition-transform",
+                            isSkillImprovementProposalOpen && "rotate-180",
+                          )}
+                        />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <CollapsibleContent className="space-y-3 pt-3">
+                  <p className="text-xs leading-5 text-sky-900/80">
+                    {isThaiLocale
+                      ? "ระบบจะยังไม่แก้ skill ทันที รายการด้านล่างจะถูกบันทึกเป็นข้อเสนอให้ Admin review, เพิ่มรายละเอียด, แล้วค่อย apply ผ่าน maintenance queue"
+                      : "This will not edit the skill immediately. The items below are saved as an admin-reviewed maintenance proposal before apply."}
+                  </p>
+
+                  <div className="grid gap-2 rounded-md border border-sky-200 bg-white/80 p-2 text-xs sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sky-900">
+                        {isThaiLocale ? "มาจาก Skill ชุดนี้" : "Source Skill"}
+                      </div>
+                      <div className="mt-0.5 truncate text-sm font-medium text-slate-800" title={skillImprovementSkillLabel}>
+                        {skillImprovementSkillLabel}
+                      </div>
+                      {currentSkill.description && (
+                        <div className="mt-0.5 line-clamp-2 text-slate-500">
+                          {currentSkill.description}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
+                      <Badge variant="outline" className="bg-white">
+                        {isThaiLocale ? "แท็บ" : "Tab"}: {t(`mediaStudio.tabs.${activeTab}`)}
+                      </Badge>
+                      <Badge variant="outline" className="bg-white">
+                        {currentSkill.type.replace(/-/g, " ")}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-sky-800">
+                      {isThaiLocale ? "สิ่งที่ตรวจพบ" : "Detected Issues"}
+                    </div>
+                    <div className="space-y-2">
+                      {skillImprovementProposal.issues.map((issue) => (
+                        <div key={issue.id} className="rounded-md border border-sky-200 bg-white/80 p-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "bg-white",
+                                issue.severity === "high" && "border-red-200 text-red-700",
+                                issue.severity === "medium" && "border-amber-200 text-amber-700",
+                                issue.severity === "low" && "border-slate-200 text-slate-700",
+                              )}
+                            >
+                              {issue.severity}
+                            </Badge>
+                            <span className="font-medium">{issue.title}</span>
+                          </div>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                            {issue.recommendation}
+                          </p>
+                          {issue.evidence && (
+                            <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-500">
+                              {isThaiLocale ? "หลักฐาน" : "Evidence"}: {issue.evidence}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-sky-800">
+                      {isThaiLocale ? "รายการที่จะปรับปรุง" : "Planned Improvements"}
+                    </div>
+                    <div className="space-y-2">
+                      {skillImprovementProposal.proposedChanges.map((change, index) => (
+                        <div key={`${change.title}-${index}`} className="rounded-md border border-sky-200 bg-white/80 p-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline" className="bg-white">
+                              {change.risk} risk
+                            </Badge>
+                            <span className="font-medium">{change.title}</span>
+                          </div>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                            {change.reason}
+                          </p>
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            {change.targetFile}{change.targetSection ? ` / ${change.targetSection}` : ""}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium text-sky-900">
+                      {isThaiLocale
+                        ? "รายละเอียดเพิ่มเติมจาก Admin"
+                        : "Additional Admin Instructions"}
+                    </Label>
+                    <Textarea
+                      value={skillImprovementInstruction}
+                      onChange={(event) => setSkillImprovementInstruction(event.target.value)}
+                      className="min-h-[90px] bg-white/90"
+                      placeholder={isThaiLocale
+                        ? "เช่น เน้นให้สินค้าเหมือนภาพต้นฉบับมากกว่า mood ของห้อง, ห้ามเพิ่มข้อความไทยในภาพ, ถ้า character ไม่ชัดให้ใช้ hands-only"
+                        : "Example: prioritize product fidelity over room mood, prohibit extra text, use hands-only if character identity is unclear"}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs text-sky-900/75">
+                      {lastSkillImprovementRecommendationId
+                        ? (isThaiLocale
+                          ? `สร้างข้อเสนอแล้ว #${lastSkillImprovementRecommendationId}`
+                          : `Proposal created #${lastSkillImprovementRecommendationId}`)
+                        : (isThaiLocale
+                          ? "เมื่อกดยืนยัน ข้อเสนอนี้จะเข้า Admin Skills maintenance queue"
+                          : "Confirming sends this to the Admin Skills maintenance queue.")}
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="bg-sky-600 text-white hover:bg-sky-700"
+                      onClick={handleCreateSkillImprovementRecommendation}
+                      disabled={createSkillImprovementRecommendationMutation.isPending}
+                    >
+                      {createSkillImprovementRecommendationMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Settings className="mr-2 h-4 w-4" />
+                      )}
+                      {isThaiLocale ? "ส่งข้อเสนอให้ Admin Queue" : "Send to Admin Queue"}
+                    </Button>
+                  </div>
+                  </CollapsibleContent>
+                </div>
+                </Collapsible>
+              )}
+
               {hasPromptSupportNotes && (
                 <div className="space-y-3">
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 shadow-sm">
@@ -10194,6 +11685,19 @@ export default function MediaStudio() {
                               alt={img.name}
                               className="h-16 w-16 rounded-lg object-cover border"
                             />
+                            {img.marketplaceProduct?.sourceUrl && (
+                              <button
+                                type="button"
+                                title={isThaiLocale ? "เปิดหน้าสินค้า" : "Open product page"}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  window.open(img.marketplaceProduct?.sourceUrl || img.url, "_blank", "noopener,noreferrer");
+                                }}
+                                className="absolute -bottom-1 -right-1 rounded-full bg-white p-1 text-slate-700 opacity-0 shadow transition-opacity hover:bg-slate-50 group-hover:opacity-100"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                              </button>
+                            )}
                             <button
                               onClick={() => removeReferenceImage(idx)}
                               className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -11984,7 +13488,7 @@ export default function MediaStudio() {
                           "relative group cursor-pointer",
                           media.type === "audio" && "rounded-lg border bg-white/80 p-3 shadow-sm transition-colors hover:bg-white",
                         )}
-                        onClick={() => openPreview(media.url)}
+                        onClick={() => openPreview(media.url, media.type, media.marketplaceProduct ?? null)}
                       >
                         {media.type === "image" ? (
                           <img
@@ -12086,262 +13590,14 @@ export default function MediaStudio() {
             )}
           </div>
 
-          {/* Right Panel - Preview */}
-          <div className="space-y-4">
-            <div className={cn(
-              "isolate overflow-hidden rounded-xl border bg-white/70 backdrop-blur z-20 lg:sticky lg:top-24",
-              isPreviewCollapsed ? "p-3" : "p-4",
-            )}>
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <h3 className="font-semibold flex items-center gap-2">
-                  {t('mediaStudio.preview')}
-                  {isGenerating && generationTasks.length > 1 && !isPreviewCollapsed && (
-                    <Badge variant="secondary" className="text-xs">
-                      {generationTasks.filter(t => t.status === 'completed').length}/{generationTasks.length}
-                    </Badge>
-                  )}
-                </h3>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full"
-                  onClick={() => setIsPreviewCollapsed((prev) => !prev)}
-                  title={isPreviewCollapsed ? t('mediaStudio.expandPreview') : t('mediaStudio.collapsePreview')}
-                >
-                  {isPreviewCollapsed ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronUp className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-
-              {isPreviewCollapsed ? (
-                <p className="text-xs text-muted-foreground">
-                  {previewUrl && previewContextTab === activeTab
-                    ? t('mediaStudio.previewCollapsed')
-                    : t('mediaStudio.previewEmptyForTab')}
-                </p>
-              ) : (
-                <>
-
-              {/* Progressive Grid Preview for multiple images */}
-              {generationTasks.length > 1 && (isGenerating || generationTasks.some(t => t.status !== 'queued')) ? (
-                <div className={cn(
-                  "grid gap-2 mb-4",
-                  generationTasks.length === 2 && "grid-cols-2",
-                  generationTasks.length === 3 && "grid-cols-2 sm:grid-cols-3",
-                  generationTasks.length === 4 && "grid-cols-2",
-                )}>
-                  {generationTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-50 rounded-lg overflow-hidden group"
-                    >
-                      {task.status === 'queued' && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
-                          <div className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center mb-1">
-                            <span className="text-xs font-medium">{task.index + 1}</span>
-                          </div>
-                          <span className="text-xs">{t('mediaStudio.queued')}</span>
-                        </div>
-                      )}
-                      {task.status === 'generating' && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-1" />
-                          <span className="text-xs text-muted-foreground">{t('mediaStudio.generatingTask', { index: task.index + 1 })}</span>
-                        </div>
-                      )}
-                      {task.status === 'completed' && task.url && !expiredUrls.has(task.url) && (
-                        <>
-                          <img
-                            src={task.url}
-                            alt={`Generated ${task.index + 1}`}
-                            className="w-full h-full object-cover cursor-pointer"
-                            onError={() => markExpired(task.url!)}
-                            onClick={() => {
-                              const media = generatedMedia.find((m: any) => m.url === task.url);
-                              openLightbox(task.url!, media?.prompt || prompt || "", media?.model || selectedModel, media?.createdAt);
-                            }}
-                          />
-                          {/* Hover overlay */}
-                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-white hover:bg-white/20"
-                              onClick={() => {
-                                const media = generatedMedia.find((m: any) => m.url === task.url);
-                                openLightbox(task.url!, media?.prompt || prompt || "", media?.model || selectedModel, media?.createdAt);
-                              }}
-                            >
-                              <Maximize2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-white hover:bg-white/20"
-                              onClick={() => downloadMedia(task.url!, `generated-${task.index + 1}.png`)}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          {/* Success indicator */}
-                          <div className="absolute top-1 right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                            <Check className="h-3 w-3 text-white" />
-                          </div>
-                        </>
-                      )}
-                      {task.status === 'error' && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-destructive">
-                          <AlertCircle className="h-8 w-8 mb-1" />
-                          <span className="text-xs">{t('mediaStudio.error')}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                /* Single Image Preview (original behavior) */
-                <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-50 rounded-xl flex items-center justify-center overflow-hidden relative group">
-                  {isGenerating ? (
-                    <div className="text-center">
-                      <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
-                      <p className="text-sm text-muted-foreground">{t('mediaStudio.creatingYour', { tab: t(`mediaStudio.tabs.${activeTab}`) })}</p>
-                    </div>
-                  ) : previewUrl && previewContextTab === activeTab && !expiredUrls.has(previewUrl) ? (
-                    activeTab === "image" ? (
-                      <>
-                        <img
-                          src={previewUrl}
-                          alt="Preview"
-                          className="w-full h-full object-contain cursor-pointer"
-                          onError={() => markExpired(previewUrl)}
-                          onClick={() => {
-                            // Find the matching generated media for prompt info
-                            const media = generatedMedia.find((m: any) => m.url === previewUrl);
-                            openLightbox(previewUrl, media?.prompt || prompt || "", media?.model || selectedModel, media?.createdAt);
-                          }}
-                        />
-                        {/* Expand button overlay */}
-                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-12 w-12 text-white hover:bg-white/20"
-                            onClick={() => {
-                              const media = generatedMedia.find((m: any) => m.url === previewUrl);
-                              openLightbox(previewUrl, media?.prompt || prompt || "", media?.model || selectedModel, media?.createdAt);
-                            }}
-                          >
-                            <Maximize2 className="h-6 w-6" />
-                          </Button>
-                        </div>
-                      </>
-                    ) : activeTab === "video" ? (
-                      <video
-                        src={previewUrl}
-                        controls
-                        className="w-full h-full object-contain"
-                        onError={() => markExpired(previewUrl)}
-                      />
-                    ) : (
-                      <audio src={previewUrl} controls className="w-full" />
-                    )
-                  ) : (
-                    <div className="text-center text-muted-foreground">
-                      <Sparkles className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">{t('mediaStudio.noContent')}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {previewUrl && previewContextTab === activeTab && !isGenerating && (
-                <div className="space-y-3 mt-4">
-                  {attachTarget && (
-                    <div className="rounded-lg border border-cyan-100 bg-cyan-50/70 px-4 py-3 text-sm text-cyan-900">
-                      {t('mediaStudio.attachTarget')}{" "}
-                      <span className="font-semibold">
-                        {attachTarget.kind === "blog" ? t('mediaStudio.blog') : t('mediaStudio.page')}
-                      </span>{" "}
-                      {attachTarget.id}
-                    </div>
-                  )}
-                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                  <Button
-                    variant="outline"
-                    className="w-full sm:flex-1 sm:min-w-[160px]"
-                    onClick={() => downloadMedia(previewUrl, `generated-${activeTab}.${activeTab === "image" ? "png" : activeTab === "video" ? "mp4" : "mp3"}`)}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    {t('mediaStudio.download')}
-                  </Button>
-                  {attachTarget && activeTab !== "audio" && (
-                    <Button
-                      variant="outline"
-                      className="w-full border-cyan-200 text-cyan-700 hover:bg-cyan-50 sm:w-auto sm:min-w-[220px]"
-                      onClick={handleAttachCurrentMediaToContent}
-                      disabled={isAttachingContent}
-                    >
-                      {isAttachingContent ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Upload className="h-4 w-4 mr-2" />
-                      )}
-                      {t('mediaStudio.uploadToLibraryAndAttach')}
-                    </Button>
-                  )}
-                  {activeTab === "image" && (
-                    <>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="outline"
-                              onClick={() => openSplitDialog(previewUrl, "split")}
-                            >
-                              <Grid2X2 className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{t('mediaStudio.splitGrid')}</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="outline"
-                              onClick={() => openSplitDialog(previewUrl, "crop")}
-                            >
-                              <Crop className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{t('mediaStudio.cropByRatio')}</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </>
-                  )}
-                  <Button
-                    variant="outline"
-                    onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                  </div>
-                </div>
-              )}
-                </>
-              )}
-            </div>
-
+          {/* Right Panel - Media sources */}
+          <div className="space-y-4 lg:sticky lg:top-24 lg:flex lg:h-[calc(100vh-7rem)] lg:min-h-0 lg:flex-col lg:gap-4 lg:space-y-0">
             <Tabs
               value={activeSidebarTab}
               onValueChange={(value) => setActiveSidebarTab(value as StudioSidebarTab)}
-              className="relative z-0"
+              className="relative z-0 lg:min-h-0 lg:flex-1 lg:overflow-hidden"
             >
-              <TabsList className="grid h-auto w-full grid-cols-2 bg-muted/50 p-1">
+              <TabsList className="grid h-auto w-full grid-cols-3 bg-muted/50 p-1">
                 <TabsTrigger value="history" className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm">
                   <History className="h-4 w-4" />
                   <span className="truncate">{t('mediaStudio.historyGallery')}</span>
@@ -12350,9 +13606,13 @@ export default function MediaStudio() {
                   <Search className="h-4 w-4" />
                   <span className="truncate">{t('mediaStudio.searchLibrary')}</span>
                 </TabsTrigger>
+                <TabsTrigger value="marketplace" className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm">
+                  <ShoppingBag className="h-4 w-4" />
+                  <span className="truncate">{t('mediaStudio.marketplaceImages')}</span>
+                </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="history" className="mt-4">
+              <TabsContent value="history" className="mt-4 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
                 <div className="pr-0 sm:pr-3">
                     <Tabs value={historyGalleryTab} onValueChange={(value) => setHistoryGalleryTab(value as HistoryGalleryTab)}>
                         <TabsList className="grid h-auto w-full grid-cols-3 bg-muted/50 p-1">
@@ -12412,7 +13672,11 @@ export default function MediaStudio() {
                                       ? (e) => handleHistoryDragStart(e, resultUrl, task.mediaType)
                                       : undefined
                                   }
-                                  onClick={() => openPreview(resultUrl)}
+                                  onClick={() => openPreview(
+                                    resultUrl,
+                                    task.mediaType || historyGalleryTab,
+                                    getMarketplaceContextFromTaskParameters(task.parameters),
+                                  )}
                                 >
                                   {canAddToLibrary && (
                                     <TooltipProvider>
@@ -12475,6 +13739,7 @@ export default function MediaStudio() {
                                           alt={task.prompt?.slice(0, 30)}
                                           className="h-full w-full object-cover"
                                           loading="lazy"
+                                          draggable={false}
                                           onError={(event) => {
                                             if (event.currentTarget.dataset.fallbackApplied === "true") return;
                                             event.currentTarget.dataset.fallbackApplied = "true";
@@ -12521,6 +13786,7 @@ export default function MediaStudio() {
                                       alt={task.prompt?.slice(0, 30)}
                                       className="w-full aspect-square object-cover rounded-lg border hover:border-blue-400 transition-colors"
                                       loading="lazy"
+                                      draggable={false}
                                       onError={(event) => {
                                         if (displayUrl !== resultUrl) {
                                           if (event.currentTarget.dataset.fallbackApplied === "true") return;
@@ -12583,7 +13849,8 @@ export default function MediaStudio() {
                                               className="h-9 w-9 rounded-lg"
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                openSplitDialog(resultUrl);
+                                                const historyMarketplaceCtx = getMarketplaceContextFromTaskParameters(task.parameters);
+                                                openSplitDialog(resultUrl, "split", historyMarketplaceCtx ?? null);
                                               }}
                                             >
                                               <Grid2X2 className="h-5 w-5" />
@@ -12603,7 +13870,8 @@ export default function MediaStudio() {
                                               className="h-9 w-9 rounded-lg"
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                openSplitDialog(resultUrl, "crop");
+                                                const historyMarketplaceCtx = task.parameters?.marketplaceContext as MarketplaceProductReferenceContext | undefined;
+                                                openSplitDialog(resultUrl, "crop", historyMarketplaceCtx ?? null);
                                               }}
                                             >
                                               <Crop className="h-5 w-5" />
@@ -12732,16 +14000,16 @@ export default function MediaStudio() {
                     </div>
                   </TabsContent>
 
-              <TabsContent value="library" className="mt-4">
+              <TabsContent value="library" className="mt-4 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
                 <LibrarySearchPanel
                   query={librarySearchQuery}
                   onQueryChange={setLibrarySearchQuery}
-                  recentDays={libraryRecentDays}
-                  onRecentDaysChange={setLibraryRecentDays}
                   isLoading={isLibrarySearchLoading}
+                  isFetchingMore={isLibrarySearchFetchingMore}
                   results={librarySearchResults}
-                  totalResults={librarySearchData?.total ?? 0}
-                  hasMore={librarySearchData?.has_more ?? false}
+                  totalResults={librarySearchTotal}
+                  hasMore={librarySearchHasMore}
+                  loadMoreRef={librarySearchLoadMoreRef}
                   errorMessage={librarySearchError?.message}
                   selectedItemId={selectedLibraryItemId}
                   itemTypeFilter={libraryItemTypeFilter}
@@ -12758,13 +14026,568 @@ export default function MediaStudio() {
                     return false;
                   }}
                   onAddToReference={handleLibraryResultAddToReference}
+                  onPreview={handleLibraryResultPreview}
                   onSelect={handleLibraryResultSelect}
                 />
+              </TabsContent>
+
+              <TabsContent
+                ref={marketplaceScrollContainerRef}
+                value="marketplace"
+                className="mt-4 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1"
+              >
+                <div className="space-y-3 pr-0 sm:pr-3">
+                  <div className="sticky top-0 z-10 space-y-2 bg-background/95 pb-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+                    <div className="grid grid-cols-2 gap-1 rounded-lg border bg-muted/40 p-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={marketplaceMode === "images" ? "default" : "ghost"}
+                        className="h-8 rounded-md text-xs"
+                        onClick={() => {
+                          setMarketplaceMode("images");
+                          setSelectedMarketplaceProductId(null);
+                          requestAnimationFrame(() => marketplaceScrollContainerRef.current?.scrollTo({ top: 0 }));
+                        }}
+                      >
+                        {t('mediaStudio.marketplaceImageSearch')}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={marketplaceMode === "products" ? "default" : "ghost"}
+                        className="h-8 rounded-md text-xs"
+                        onClick={() => {
+                          setMarketplaceMode("products");
+                          requestAnimationFrame(() => marketplaceScrollContainerRef.current?.scrollTo({ top: 0 }));
+                        }}
+                      >
+                        {t('mediaStudio.marketplaceProductList')}
+                      </Button>
+                    </div>
+                    {marketplaceMode === "products" && selectedMarketplaceProduct ? (
+                      <div className="rounded-lg border bg-white/90 p-2 shadow-sm">
+                        <div className="flex items-start gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="shrink-0 gap-1"
+                            onClick={() => {
+                              setSelectedMarketplaceProductId(null);
+                              setSelectedMarketplaceImageId(null);
+                              requestAnimationFrame(() => marketplaceScrollContainerRef.current?.scrollTo({ top: 0 }));
+                            }}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                            {t('mediaStudio.backToMarketplaceProducts')}
+                          </Button>
+                          <div className="min-w-0 flex-1">
+                            <p className="line-clamp-2 text-sm font-medium leading-snug text-foreground">
+                              {selectedMarketplaceProduct.productName}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {t('mediaStudio.showingImagesForSelectedProduct')}
+                            </p>
+                          </div>
+                          {selectedMarketplaceProduct.sourceUrl && (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 shrink-0"
+                              title={isThaiLocale ? "เปิดหน้าสินค้า" : "Open product page"}
+                              onClick={() => window.open(selectedMarketplaceProduct.sourceUrl || "", "_blank", "noopener,noreferrer")}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <div className="relative flex-1">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              value={marketplaceMode === "images" ? marketplaceSearchQuery : marketplaceProductSearchQuery}
+                              onChange={(event) => {
+                                if (marketplaceMode === "images") {
+                                  setMarketplaceSearchQuery(event.target.value);
+                                } else {
+                                  setMarketplaceProductSearchQuery(event.target.value);
+                                }
+                              }}
+                              placeholder={marketplaceMode === "images" ? t('mediaStudio.marketplaceSearchPlaceholder') : t('mediaStudio.marketplaceProductSearchPlaceholder')}
+                              className="pl-9"
+                            />
+                          </div>
+                          <Select
+                            value={marketplacePlatformFilter}
+                            onValueChange={(value) => {
+                              setMarketplacePlatformFilter(value as MarketplaceStudioPlatformFilter);
+                              setSelectedMarketplaceProductId(null);
+                            }}
+                          >
+                            <SelectTrigger className="w-full sm:w-[150px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">{t('mediaStudio.marketplaceAllPlatforms')}</SelectItem>
+                              <SelectItem value="shopee">Shopee</SelectItem>
+                              <SelectItem value="tiktok_shop">TikTok Shop</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {marketplaceMode === "images"
+                            ? t('mediaStudio.marketplaceAccessNote')
+                            : t('mediaStudio.marketplaceProductModeNote')}
+                        </p>
+                      </>
+                    )}
+                  </div>
+
+                  {marketplaceMode === "products" && !selectedMarketplaceProductId && (
+                    <div className="space-y-2">
+                      {marketplaceProductsQuery.error && (
+                        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                          {marketplaceProductsQuery.error.message}
+                        </div>
+                      )}
+                      {marketplaceProductsQuery.isLoading ? (
+                        <div className="flex items-center justify-center rounded-lg border border-dashed py-4 text-sm text-muted-foreground">
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          {t('mediaStudio.loadingMarketplaceProducts')}
+                        </div>
+                      ) : marketplaceProducts.length === 0 ? (
+                        <div className="rounded-lg border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">
+                          {t('mediaStudio.noMarketplaceProducts')}
+                        </div>
+                      ) : (
+                        <div className="grid gap-2">
+                          {marketplaceProducts.map((product) => {
+                            const platformLabel = product.platform === "tiktok_shop" ? "TikTok" : "Shopee";
+                            const ratingText = product.ratingScore == null ? null : String(product.ratingScore);
+                            return (
+                              <div
+                                key={product.id}
+                                role="button"
+                                tabIndex={0}
+                                className={cn(
+                                  "rounded-lg border bg-background p-3 text-left transition hover:border-blue-300 hover:bg-blue-50/40",
+                                  selectedMarketplaceProductId === product.id && "border-blue-400 bg-blue-50 ring-2 ring-blue-100",
+                                )}
+                                onClick={() => {
+                                  setSelectedMarketplaceProductId(product.id);
+                                  setSelectedMarketplaceImageId(null);
+                                  requestAnimationFrame(() => marketplaceScrollContainerRef.current?.scrollTo({ top: 0 }));
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key !== "Enter" && event.key !== " ") return;
+                                  event.preventDefault();
+                                  setSelectedMarketplaceProductId(product.id);
+                                  setSelectedMarketplaceImageId(null);
+                                  requestAnimationFrame(() => marketplaceScrollContainerRef.current?.scrollTo({ top: 0 }));
+                                }}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="line-clamp-2 text-sm font-medium leading-snug">{product.productName}</p>
+                                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                                      {product.shopName || product.externalShopId || product.sourceUrl || "-"}
+                                    </p>
+                                  </div>
+                                  <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[10px]">
+                                    {platformLabel}
+                                  </Badge>
+                                </div>
+                                <div className="mt-2 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+                                  {product.externalShopId && <span className="rounded bg-muted px-1.5 py-0.5">shop {product.externalShopId}</span>}
+                                  {product.externalProductId && <span className="rounded bg-muted px-1.5 py-0.5">item {product.externalProductId}</span>}
+                                  {product.soldCountText && <span className="rounded bg-muted px-1.5 py-0.5">{product.soldCountText}</span>}
+                                  {ratingText && <span className="rounded bg-muted px-1.5 py-0.5">{t('mediaStudio.marketplaceRating', { rating: ratingText })}</span>}
+                                  {product.accessType === "group" && <span className="rounded bg-cyan-50 px-1.5 py-0.5 text-cyan-700">{t('mediaStudio.marketplaceSharedGroup')}</span>}
+                                  {product.sourceUrl && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      className="ml-auto h-6 gap-1 px-2 text-[11px]"
+                                      title={isThaiLocale ? "เปิดหน้าสินค้า" : "Open product page"}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        window.open(product.sourceUrl || "", "_blank", "noopener,noreferrer");
+                                      }}
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                      {isThaiLocale ? "สินค้า" : "Product"}
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {marketplaceImagesError && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                      {marketplaceImagesError.message}
+                    </div>
+                  )}
+
+                  {marketplaceMode === "products" && !selectedMarketplaceProductId ? (
+                    <div className="rounded-lg border border-dashed px-3 py-8 text-center text-sm text-muted-foreground">
+                      {t('mediaStudio.selectMarketplaceProductFirst')}
+                    </div>
+                  ) : isMarketplaceImagesLoading ? (
+                    <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t('mediaStudio.loadingMarketplaceImages')}
+                    </div>
+                  ) : marketplaceImages.length === 0 ? (
+                    <div className="rounded-lg border border-dashed px-3 py-8 text-center text-sm text-muted-foreground">
+                      {t('mediaStudio.noMarketplaceImages')}
+                    </div>
+                  ) : (
+                    <>
+                    <div className="grid grid-cols-2 gap-2 pb-2 sm:grid-cols-3">
+                      {marketplaceImages.map((item) => {
+                        const productLabel = item.productName || item.externalProductId || item.id;
+                        const platformLabel = item.platform === "tiktok_shop" ? "TikTok" : "Shopee";
+                        const marketplaceProduct = buildMarketplaceProductContext(item);
+                        return (
+                          <div
+                            key={item.id}
+                            className={cn(
+                              "group relative cursor-grab rounded-lg border bg-background p-1 active:cursor-grabbing",
+                              selectedMarketplaceImageId === item.id && "border-blue-400 ring-2 ring-blue-100",
+                            )}
+                            draggable
+                            onDragStart={(event) => handleHistoryDragStart(event, item.url, "image", marketplaceProduct)}
+                            onClick={() => {
+                              setSelectedMarketplaceImageId(item.id);
+                              openPreview(item.url, "image", marketplaceProduct);
+                            }}
+                          >
+                            <div className="relative aspect-square overflow-hidden rounded-md bg-muted">
+                              <img
+                                src={item.url}
+                                alt={productLabel}
+                                className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                                loading="lazy"
+                                draggable={false}
+                                onError={() => markExpired(item.url)}
+                              />
+                              <div className="absolute left-1 top-1 flex flex-wrap gap-1">
+                                <Badge variant="secondary" className="bg-white/90 px-1.5 py-0 text-[10px]">
+                                  {platformLabel}
+                                </Badge>
+                                <Badge variant="secondary" className="bg-white/90 px-1.5 py-0 text-[10px]">
+                                  {item.imageType}
+                                </Badge>
+                              </div>
+                              {item.accessType === "group" && (
+                                <Badge className="absolute right-1 top-1 bg-cyan-600 px-1.5 py-0 text-[10px]">
+                                  {t('mediaStudio.marketplaceSharedGroup')}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="mt-1 min-h-[56px] space-y-0.5 px-1">
+                              <p className="line-clamp-2 text-xs font-medium leading-snug">
+                                {productLabel}
+                              </p>
+                              <p className="truncate text-[11px] text-muted-foreground">
+                                {item.externalShopId ? t('mediaStudio.marketplaceShopId', { id: item.externalShopId }) : item.shopName || "-"}
+                              </p>
+                              {item.externalProductId && (
+                                <p className="truncate text-[11px] text-muted-foreground">
+                                  {t('mediaStudio.marketplaceItemId', { id: item.externalProductId })}
+                                </p>
+                              )}
+                            </div>
+                            <div className="mt-1 flex items-center justify-center gap-1 rounded-md border bg-white/90 px-1 py-1 shadow-sm">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 rounded-lg"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        openLightbox(item.url, productLabel, item.platform, item.createdAt ? String(item.createdAt) : undefined, marketplaceProduct);
+                                      }}
+                                    >
+                                      <Maximize2 className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{t('viewCopyPrompt')}</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                              {referenceImages.length < maxReferenceImages && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8 rounded-lg"
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          handleMarketplaceImageAddToReference(item);
+                                        }}
+                                      >
+                                        <ImagePlus className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>{t('mediaStudio.useAsReference')}</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 rounded-lg"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        window.open(item.sourceUrl || item.url, "_blank", "noopener,noreferrer");
+                                      }}
+                                    >
+                                      <ExternalLink className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{t('mediaStudio.openSourceProduct')}</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div ref={marketplaceImagesLoadMoreRef} className="min-h-8 pb-2">
+                      {marketplaceImagesHasMore ? (
+                        <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+                          {isMarketplaceImagesFetchingNextPage ? (
+                            <>
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              {t('mediaStudio.loadingMarketplaceImages')}
+                            </>
+                          ) : (
+                            t('mediaStudio.historyGalleryShowingCount', {
+                              shown: marketplaceImages.length,
+                              total: marketplaceImages.length + MARKETPLACE_IMAGE_PAGE_SIZE,
+                            })
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                    </>
+                  )}
+                </div>
               </TabsContent>
             </Tabs>
           </div>
         </div>
       </main>
+
+      {isFloatingPreviewOpen && hasFloatingPreviewContent && (
+        <div
+          className="fixed z-50 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          style={floatingPreviewStyle}
+        >
+          <div
+            className="flex cursor-move items-center justify-between gap-3 border-b bg-white/95 px-3 py-2"
+            onMouseDown={beginFloatingPreviewDrag}
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <Move className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-foreground">{t('mediaStudio.preview')}</div>
+                {showFloatingProgressGrid && (
+                  <div className="text-xs text-muted-foreground">
+                    {generationTasks.filter((task) => task.status === "completed").length}/{generationTasks.length}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={() => setIsFloatingPreviewMaximized((value) => !value)}
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={() => setIsFloatingPreviewOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-auto bg-slate-50/70 p-3">
+            {showFloatingProgressGrid ? (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {generationTasks.map((task) => (
+                  <button
+                    key={task.id}
+                    type="button"
+                    className={cn(
+                      "relative aspect-square overflow-hidden rounded-xl border bg-white text-left shadow-sm transition hover:border-blue-300",
+                      task.url && previewUrl === task.url && "border-blue-400 ring-2 ring-blue-100",
+                    )}
+                    onClick={() => task.url && openPreview(task.url, task.type, task.marketplaceProduct ?? null)}
+                  >
+                    {task.url && !expiredUrls.has(task.url) ? (
+                      task.type === "image" ? (
+                        <img
+                          src={task.url}
+                          alt={`Preview ${task.index + 1}`}
+                          className="h-full w-full object-cover"
+                          onError={() => markExpired(task.url!)}
+                        />
+                      ) : task.type === "video" ? (
+                        <video src={task.url} className="h-full w-full object-cover" muted playsInline />
+                      ) : (
+                        <div className="flex h-full flex-col items-center justify-center gap-2 p-3 text-center text-muted-foreground">
+                          <Music className="h-7 w-7" />
+                          <span className="text-xs">{t('mediaStudio.tabs.audio')}</span>
+                        </div>
+                      )
+                    ) : (
+                      <div className="flex h-full flex-col items-center justify-center gap-2 p-3 text-center text-xs text-muted-foreground">
+                        {task.status === "generating" ? (
+                          <Loader2 className="h-7 w-7 animate-spin text-blue-500" />
+                        ) : task.status === "completed" ? (
+                          <CheckCircle className="h-7 w-7 text-emerald-500" />
+                        ) : task.status === "error" ? (
+                          <AlertCircle className="h-7 w-7 text-red-500" />
+                        ) : (
+                          <Clock className="h-7 w-7" />
+                        )}
+                        <span className="line-clamp-2">{task.error || task.statusDetail || task.status}</span>
+                      </div>
+                    )}
+                    <Badge className="absolute left-2 top-2 bg-white/90 text-slate-700 hover:bg-white">
+                      {task.index + 1}
+                    </Badge>
+                  </button>
+                ))}
+              </div>
+            ) : isGenerating ? (
+              <div className="flex h-full min-h-[260px] flex-col items-center justify-center gap-3 text-muted-foreground">
+                <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+                <span>{t('mediaStudio.creatingYour', { tab: t(`mediaStudio.tabs.${floatingPreviewType}`) })}</span>
+              </div>
+            ) : previewUrl && !expiredUrls.has(previewUrl) ? (
+              <div className="flex h-full min-h-[260px] items-center justify-center">
+                {floatingPreviewType === "image" ? (
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    className="max-h-full max-w-full rounded-lg object-contain"
+                    onError={() => markExpired(previewUrl)}
+                  />
+                ) : floatingPreviewType === "video" ? (
+                  <video
+                    src={previewUrl}
+                    controls
+                    className="max-h-full max-w-full rounded-lg bg-black"
+                    onError={() => markExpired(previewUrl)}
+                  />
+                ) : (
+                  <div className="w-full max-w-md rounded-xl border bg-white p-5">
+                    <audio src={previewUrl} controls className="w-full" onError={() => markExpired(previewUrl)} />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex h-full min-h-[260px] items-center justify-center text-sm text-muted-foreground">
+                {previewUrl ? t('mediaStudio.mediaUnavailable') : t('mediaStudio.previewEmptyForTab')}
+              </div>
+            )}
+          </div>
+
+          {previewMarketplaceContext && (
+            <div className="border-t bg-white px-3 py-2">
+              {renderMarketplaceProductMetadataPanel(previewMarketplaceContext)}
+            </div>
+          )}
+
+          {previewUrl && !isGenerating && !expiredUrls.has(previewUrl) && (
+            <div className="flex flex-wrap items-center gap-2 border-t bg-white px-3 py-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-w-0 flex-1 gap-2"
+                onClick={() => downloadMedia(previewUrl, `generated-${floatingPreviewType}-${Date.now()}.${floatingPreviewType === "image" ? "png" : floatingPreviewType === "video" ? "mp4" : "mp3"}`)}
+              >
+                <Download className="h-4 w-4" />
+                <span className="truncate">{t('mediaStudio.download')}</span>
+              </Button>
+              {attachTarget && floatingPreviewType !== "audio" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleAttachCurrentMediaToContent}
+                  disabled={isAttachingContent}
+                >
+                  {isAttachingContent ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  <span className="hidden sm:inline">{t('mediaStudio.attachToContent')}</span>
+                </Button>
+              )}
+              {floatingPreviewType === "image" && (
+                <>
+                  <Button variant="outline" size="icon" onClick={() => openSplitDialog(previewUrl, "split", previewMarketplaceContext ?? lastGeneratedMarketplaceContext)}>
+                    <Grid2X2 className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" onClick={() => openSplitDialog(previewUrl, "crop", previewMarketplaceContext ?? lastGeneratedMarketplaceContext)}>
+                    <Crop className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  if (floatingPreviewType === "image") {
+                    openLightbox(previewUrl, prompt, selectedModel || undefined, new Date().toISOString(), previewMarketplaceContext);
+                  } else {
+                    window.open(previewUrl, "_blank", "noopener,noreferrer");
+                  }
+                }}
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
+          {!isFloatingPreviewMaximized && (
+            <div
+              className="absolute bottom-0 right-0 h-5 w-5 cursor-nwse-resize rounded-tl-lg border-l border-t bg-white"
+              onMouseDown={beginFloatingPreviewResize}
+              aria-hidden="true"
+            />
+          )}
+        </div>
+      )}
 
       {/* Image Lightbox Dialog */}
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
@@ -12793,7 +14616,7 @@ export default function MediaStudio() {
             </div>
 
             {/* Info Panel */}
-            <div className="bg-white p-4 space-y-3">
+            <div className="max-h-[35vh] overflow-y-auto bg-white p-4 space-y-3">
               {/* Model & Date */}
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
@@ -12807,6 +14630,8 @@ export default function MediaStudio() {
                   </div>
                 )}
               </div>
+
+              {renderMarketplaceProductMetadataPanel(lightboxImage?.marketplaceProduct)}
 
               {/* Prompt */}
               <div className="space-y-2">

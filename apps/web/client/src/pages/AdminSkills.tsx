@@ -333,6 +333,8 @@ interface RecommendationApplyTarget {
   id: number;
   title: string | null;
   isAutoApplySafe: boolean;
+  recommendationType?: string;
+  recommendationJson?: Record<string, any>;
   skill?: {
     slug: string;
   } | null;
@@ -732,6 +734,41 @@ function getOrchestrationConfig(configJson: Record<string, unknown> | null | und
   };
 }
 
+const DEFAULT_AUTO_LEARNING_CONFIG = {
+  enabled: false,
+  promptQaAfterAutoPrompt: true,
+  imageQaAfterGeneration: true,
+  requireAdminApproval: true,
+  minPromptScoreToPass: 85,
+  minImageFidelityScoreToPass: 80,
+};
+
+function getAutoLearningConfig(configJson: Record<string, unknown> | null | undefined) {
+  const mediaStudio = configJson && typeof configJson === "object"
+    ? (configJson as Record<string, any>).media_studio
+    : null;
+  const autoLearning = mediaStudio && typeof mediaStudio === "object"
+    ? mediaStudio.auto_learning
+    : null;
+
+  if (!autoLearning || typeof autoLearning !== "object") {
+    return DEFAULT_AUTO_LEARNING_CONFIG;
+  }
+
+  return {
+    enabled: autoLearning.enabled === true,
+    promptQaAfterAutoPrompt: autoLearning.prompt_qa_after_auto_prompt !== false,
+    imageQaAfterGeneration: autoLearning.image_qa_after_generation !== false,
+    requireAdminApproval: autoLearning.require_admin_approval !== false,
+    minPromptScoreToPass: Number.isFinite(Number(autoLearning.min_prompt_score_to_pass))
+      ? Number(autoLearning.min_prompt_score_to_pass)
+      : DEFAULT_AUTO_LEARNING_CONFIG.minPromptScoreToPass,
+    minImageFidelityScoreToPass: Number.isFinite(Number(autoLearning.min_image_fidelity_score_to_pass))
+      ? Number(autoLearning.min_image_fidelity_score_to_pass)
+      : DEFAULT_AUTO_LEARNING_CONFIG.minImageFidelityScoreToPass,
+  };
+}
+
 function buildScheduleScopeJson(draft: {
   scopeCategory: string;
   scopeExecutionMode: string;
@@ -897,6 +934,22 @@ export default function AdminSkills() {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
   }, [search]);
+  const maintenanceStatusFilterFromQuery = useMemo(() => {
+    const params = new URLSearchParams(search);
+    const value = params.get("maintenanceStatus");
+    if (
+      value === "pending_review"
+      || value === "approved"
+      || value === "applied"
+      || value === "blocked"
+      || value === "failed"
+      || value === "dismissed"
+      || value === "all"
+    ) {
+      return value;
+    }
+    return null;
+  }, [search]);
   const legacyUpgradeQueueFilterFromQuery = useMemo<"all" | "critical" | "high" | "parallel" | "eligible" | null>(() => {
     const params = new URLSearchParams(search);
     const value = params.get("legacyQueueFilter");
@@ -971,7 +1024,16 @@ export default function AdminSkills() {
     const found = skills.find((skill: any) => skill.id === openSkillIdFromQuery);
     if (found) {
       openedSkillIdFromQueryRef.current = openSkillIdFromQuery;
-      setEditingSkill(found as unknown as Skill);
+      const autoLearning = getAutoLearningConfig((found as any).configJson ?? null);
+      setEditingSkill({
+        ...(found as any),
+        _autoLearningEnabled: autoLearning.enabled,
+        _autoLearningPromptQa: autoLearning.promptQaAfterAutoPrompt,
+        _autoLearningImageQa: autoLearning.imageQaAfterGeneration,
+        _autoLearningRequireAdminApproval: autoLearning.requireAdminApproval,
+        _autoLearningMinPromptScore: autoLearning.minPromptScoreToPass,
+        _autoLearningMinImageScore: autoLearning.minImageFidelityScoreToPass,
+      } as unknown as Skill);
     }
   }, [editingSkill, openSkillIdFromQuery, skills]);
 
@@ -1050,6 +1112,12 @@ export default function AdminSkills() {
       setActiveTab(openTabFromQuery);
     }
   }, [openTabFromQuery]);
+
+  useEffect(() => {
+    if (maintenanceStatusFilterFromQuery) {
+      setMaintenanceStatusFilter(maintenanceStatusFilterFromQuery);
+    }
+  }, [maintenanceStatusFilterFromQuery]);
 
   useEffect(() => {
     if (!legacyUpgradeQueueFilterFromQuery && !legacyUpgradeQueueFilterFromStorage) {
@@ -1472,7 +1540,7 @@ export default function AdminSkills() {
   const maintenanceEligibleRecommendationIds = useMemo(
     () => maintenanceRecommendationGroups.flatMap((group) => (
       group.recommendations
-        .filter((item) => item.isAutoApplySafe && item.status !== "applied" && item.status !== "dismissed")
+        .filter((item) => isMaintenanceRecommendationEffectiveAutoApplySafe(item) && isMaintenanceRecommendationActionable(item))
         .map((item) => item.id)
     )),
     [maintenanceRecommendationGroups],
@@ -1814,6 +1882,60 @@ export default function AdminSkills() {
       return false;
     }
     return true;
+  }
+
+  function isMaintenanceRecommendationActionable(item: MaintenanceRecommendation): boolean {
+    if (item.status === "applied" || item.status === "dismissed") {
+      return false;
+    }
+    if (item.latestRun?.status === "running" || item.latestRun?.status === "queued") {
+      return false;
+    }
+    const applyStrategy = item.latestRun?.logsJson && typeof item.latestRun.logsJson === "object"
+      ? (item.latestRun.logsJson as Record<string, unknown>).applyStrategy
+      : null;
+    const proposalOnlyCompleted = item.latestRun?.status === "completed"
+      && (applyStrategy === "proposal" || String(item.latestRun.summary || "").toLowerCase().includes("proposal generated"));
+    if (proposalOnlyCompleted) {
+      return false;
+    }
+    return true;
+  }
+
+  function isMediaStudioInstructionOnlyRecommendation(item: {
+    recommendationType?: string | null;
+    recommendationJson?: Record<string, any> | null;
+  }): boolean {
+    if (item.recommendationType !== "media-studio-auto-learning") {
+      return false;
+    }
+    const payload = item.recommendationJson ?? {};
+    if (payload.source !== "media_studio_auto_learning") {
+      return false;
+    }
+    const proposedChanges = Array.isArray(payload.proposedChanges) ? payload.proposedChanges : [];
+    const targetFiles = proposedChanges
+      .map((change) => String(change?.targetFile || "").trim().toLowerCase())
+      .filter(Boolean);
+    return targetFiles.length > 0 && targetFiles.every((file) => file === "skill.md" || file.endsWith(".md"));
+  }
+
+  function isMaintenanceRecommendationEffectiveAutoApplySafe(
+    item: {
+      isAutoApplySafe?: boolean | null;
+      recommendationType?: string | null;
+      recommendationJson?: Record<string, any> | null;
+    },
+  ): boolean {
+    return item.isAutoApplySafe || isMediaStudioInstructionOnlyRecommendation(item);
+  }
+
+  function getMediaStudioRecommendationIssues(item: Pick<MaintenanceRecommendation, "recommendationJson">) {
+    return Array.isArray(item.recommendationJson?.issues) ? item.recommendationJson.issues : [];
+  }
+
+  function getMediaStudioRecommendationChanges(item: Pick<MaintenanceRecommendation, "recommendationJson">) {
+    return Array.isArray(item.recommendationJson?.proposedChanges) ? item.recommendationJson.proposedChanges : [];
   }
 
   function getLegacyUpgradeNextAction(item: LegacyUpgradeQueueItem): LegacyUpgradeNextAction {
@@ -2266,8 +2388,9 @@ export default function AdminSkills() {
     const proposalReady = Boolean(
       recommendation.skill?.slug && latestProposalBySkillName.has(recommendation.skill.slug),
     );
+    const effectiveAutoApplySafe = isMaintenanceRecommendationEffectiveAutoApplySafe(recommendation);
 
-    if (recommendation.isAutoApplySafe) {
+    if (effectiveAutoApplySafe) {
       applyUpgradeMutation.mutate({ recommendationId: recommendation.id });
       return;
     }
@@ -2276,7 +2399,7 @@ export default function AdminSkills() {
         recommendationId: recommendation.id,
         skillName,
         recommendationTitle: recommendation.title || skillName,
-        isAutoApplySafe: false,
+        isAutoApplySafe: effectiveAutoApplySafe,
         hasProposalReady: proposalReady,
       });
   }
@@ -2287,16 +2410,20 @@ export default function AdminSkills() {
   }
 
   function requestMaintenanceGroupApply(group: MaintenanceRecommendationGroup) {
-    applyMaintenanceRecommendationsMutation.mutate({
-      recommendationIds: group.recommendations.map((item) => item.id),
-    });
-  }
+    const actionableRecommendationIds = group.recommendations
+      .filter(isMaintenanceRecommendationActionable)
+      .map((item) => item.id);
 
-  function requestEligibleMaintenanceGroupApply(group: MaintenanceRecommendationGroup) {
+    if (actionableRecommendationIds.length === 0) {
+      toast({
+        title: t("admin.skillsPage.maintenance.noActionableTitle"),
+        description: t("admin.skillsPage.maintenance.noActionableDescription"),
+      });
+      return;
+    }
+
     applyMaintenanceRecommendationsMutation.mutate({
-      recommendationIds: group.recommendations
-        .filter((item) => item.isAutoApplySafe && item.status !== "applied" && item.status !== "dismissed")
-        .map((item) => item.id),
+      recommendationIds: actionableRecommendationIds,
     });
   }
 
@@ -2652,8 +2779,11 @@ export default function AdminSkills() {
       utils.skills.listIscProposals.invalidate();
       setExpandedMaintenanceSkillIds([]);
       toast({
-        title: "Maintenance Recommendations Queued",
-        description: `${result.appliedCount} recommendation(s) queued, ${result.failedCount} failed.`,
+        title: t("admin.skillsPage.maintenance.startSuccessTitle"),
+        description: t("admin.skillsPage.maintenance.startSuccessDescription", {
+          appliedCount: result.appliedCount,
+          failedCount: result.failedCount,
+        }),
       });
     },
     onError: (error) => {
@@ -2878,8 +3008,28 @@ export default function AdminSkills() {
 
   const handleUpdateSkill = () => {
     if (!editingSkill) return;
+    const existingConfigJson = editingSkill.configJson || {};
+    const existingMediaStudioConfig = (
+      existingConfigJson.media_studio
+      && typeof existingConfigJson.media_studio === "object"
+      && !Array.isArray(existingConfigJson.media_studio)
+    )
+      ? existingConfigJson.media_studio as Record<string, unknown>
+      : {};
     const nextConfigJson = {
-      ...(editingSkill.configJson || {}),
+      ...existingConfigJson,
+      media_studio: {
+        ...existingMediaStudioConfig,
+        auto_learning: {
+          enabled: (editingSkill as any)._autoLearningEnabled ?? false,
+          prompt_qa_after_auto_prompt: (editingSkill as any)._autoLearningPromptQa ?? true,
+          image_qa_after_generation: (editingSkill as any)._autoLearningImageQa ?? true,
+          require_admin_approval: (editingSkill as any)._autoLearningRequireAdminApproval ?? true,
+          min_prompt_score_to_pass: (editingSkill as any)._autoLearningMinPromptScore ?? 85,
+          min_image_fidelity_score_to_pass: (editingSkill as any)._autoLearningMinImageScore ?? 80,
+          max_auto_patch_risk: "medium",
+        },
+      },
       orchestration: {
         mode: (editingSkill as any)._orchestrationMode || "local",
         endpoint: ((editingSkill as any)._orchestrationEndpoint || "").trim() || null,
@@ -3401,6 +3551,7 @@ export default function AdminSkills() {
                                         ? ((skill as any).executionMode ?? "llm-only")
                                         : (getRecommendedExecutionModeForSkillCategory(skill.category) || "llm-only");
                                       const ep = (skill as any).executionPolicyJson ?? {};
+                                      const autoLearning = getAutoLearningConfig((skill as any).configJson ?? null);
                                       const orchestration = getOrchestrationConfig((skill as any).configJson ?? null);
                                       return applySandboxDefaults({
                                         ...(skill as any),
@@ -3431,6 +3582,12 @@ export default function AdminSkills() {
                                         _reqBackground: ep.requirements?.supportsBackground ?? false,
                                         _reqResponses: ep.requirements?.supportsResponses ?? false,
                                         _reqContextLength: ep.requirements?.contextLength ?? null,
+                                        _autoLearningEnabled: autoLearning.enabled,
+                                        _autoLearningPromptQa: autoLearning.promptQaAfterAutoPrompt,
+                                        _autoLearningImageQa: autoLearning.imageQaAfterGeneration,
+                                        _autoLearningRequireAdminApproval: autoLearning.requireAdminApproval,
+                                        _autoLearningMinPromptScore: autoLearning.minPromptScoreToPass,
+                                        _autoLearningMinImageScore: autoLearning.minImageFidelityScoreToPass,
                                         _orchestrationMode: orchestration.mode,
                                         _orchestrationEndpoint: orchestration.endpoint,
                                         _orchestrationSkillTargets: orchestration.skillTargets,
@@ -3707,6 +3864,7 @@ export default function AdminSkills() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="pending_review">{t("admin.skillsPage.maintenance.status.pendingReview")}</SelectItem>
+                      <SelectItem value="approved">{t("admin.skillsPage.maintenance.status.approved")}</SelectItem>
                       <SelectItem value="applied">{t("admin.skillsPage.maintenance.status.applied")}</SelectItem>
                       <SelectItem value="blocked">{t("admin.skillsPage.maintenance.status.blocked")}</SelectItem>
                       <SelectItem value="failed">{t("admin.skillsPage.maintenance.status.failed")}</SelectItem>
@@ -3809,6 +3967,9 @@ export default function AdminSkills() {
                     maintenanceRecommendationGroups.map((group) => {
                       const isExpanded = maintenanceExpandedSkillIdSet.has(group.skillId);
                       const recommendationCount = group.recommendations.length;
+                      const actionableRecommendationCount = group.recommendations
+                        .filter(isMaintenanceRecommendationActionable)
+                        .length;
                       const statusBadges = getMaintenanceGroupStatusBadges(group);
 
                       return (
@@ -3922,20 +4083,9 @@ export default function AdminSkills() {
                                 <Button
                                   size="sm"
                                   onClick={() => requestMaintenanceGroupApply(group)}
-                                  disabled={applyMaintenanceRecommendationsMutation.isPending}
+                                  disabled={applyMaintenanceRecommendationsMutation.isPending || actionableRecommendationCount === 0}
                                 >
-                                  {t("admin.skillsPage.maintenance.applyAll", { count: recommendationCount })}
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => requestEligibleMaintenanceGroupApply(group)}
-                                  disabled={
-                                    applyMaintenanceRecommendationsMutation.isPending
-                                    || group.recommendations.filter((item) => item.isAutoApplySafe && item.status !== "applied" && item.status !== "dismissed").length === 0
-                                  }
-                                >
-                                  {t("admin.skillsPage.maintenance.applyEligible", { count: group.recommendations.filter((item) => item.isAutoApplySafe && item.status !== "applied" && item.status !== "dismissed").length })}
+                                  {t("admin.skillsPage.maintenance.applyAll", { count: actionableRecommendationCount })}
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -3970,6 +4120,20 @@ export default function AdminSkills() {
                                             <div className="text-xs text-muted-foreground">
                                               {item.recommendationType} · {t(`admin.skillsPage.maintenance.status.${item.status}`) || item.status}
                                             </div>
+                                            {item.recommendationType === "media-studio-auto-learning" && (
+                                              <div className="flex flex-wrap gap-2 pt-1 text-xs text-muted-foreground">
+                                                <Badge variant="secondary" className="rounded-full">
+                                                  {t("admin.skillsPage.maintenance.mediaStudioIssueCount", {
+                                                    count: getMediaStudioRecommendationIssues(item).length,
+                                                  })}
+                                                </Badge>
+                                                <Badge variant="outline" className="rounded-full">
+                                                  {t("admin.skillsPage.maintenance.mediaStudioChangeCount", {
+                                                    count: getMediaStudioRecommendationChanges(item).length,
+                                                  })}
+                                                </Badge>
+                                              </div>
+                                            )}
                                           </div>
                                           <div className="flex flex-wrap items-center gap-2">
                                             <Badge
@@ -4006,7 +4170,7 @@ export default function AdminSkills() {
                                               onClick={() => requestRecommendationApply(item, group.skill?.name || `Skill #${group.skillId}`)}
                                               disabled={item.status === "applied" || applyUpgradeMutation.isPending}
                                             >
-                                              {item.isAutoApplySafe ? t("admin.skillsPage.maintenance.applyUpgrade") : t("admin.skillsPage.maintenance.generateProposal")}
+                                              {isMaintenanceRecommendationEffectiveAutoApplySafe(item) ? t("admin.skillsPage.maintenance.applyUpgrade") : t("admin.skillsPage.maintenance.generateProposal")}
                                             </Button>
                                             <Button
                                               variant="ghost"
@@ -5635,6 +5799,54 @@ export default function AdminSkills() {
                 </div>
               </div>
 
+              {selectedRecommendationDetail.recommendation.recommendationType === "media-studio-auto-learning" && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>
+                      {t("admin.skillsPage.maintenance.mediaStudioIssues")}
+                    </Label>
+                    <div className="space-y-2 rounded-lg border bg-sky-50/40 p-3">
+                      {getMediaStudioRecommendationIssues(selectedRecommendationDetail.recommendation as MaintenanceRecommendation).map((issue: any, index: number) => (
+                        <div key={issue?.id || index} className="rounded-md border bg-white p-2 text-sm">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline">{issue?.severity || "-"}</Badge>
+                            <span className="font-medium">{issue?.title || "-"}</span>
+                          </div>
+                          {issue?.recommendation && (
+                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                              {issue.recommendation}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>
+                      {t("admin.skillsPage.maintenance.mediaStudioChanges")}
+                    </Label>
+                    <div className="space-y-2 rounded-lg border bg-emerald-50/40 p-3">
+                      {getMediaStudioRecommendationChanges(selectedRecommendationDetail.recommendation as MaintenanceRecommendation).map((change: any, index: number) => (
+                        <div key={`${change?.title || "change"}-${index}`} className="rounded-md border bg-white p-2 text-sm">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline">{change?.risk || "-"}</Badge>
+                            <span className="font-medium">{change?.title || "-"}</span>
+                          </div>
+                          {change?.reason && (
+                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                              {change.reason}
+                            </p>
+                          )}
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            {change?.targetFile || "-"}{change?.targetSection ? ` / ${change.targetSection}` : ""}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label>{t("admin.skillsPage.advice.snapshotVerification")}</Label>
                 <Textarea
@@ -5669,7 +5881,7 @@ export default function AdminSkills() {
                   )}
                   disabled={selectedRecommendationDetail.recommendation.status === "applied" || applyUpgradeMutation.isPending}
                 >
-                  {selectedRecommendationDetail.recommendation.isAutoApplySafe ? t("admin.skillsPage.maintenanceApply.applyUpgrade") : t("admin.skillsPage.maintenanceApply.generateProposal")}
+                  {isMaintenanceRecommendationEffectiveAutoApplySafe(selectedRecommendationDetail.recommendation as MaintenanceRecommendation) ? t("admin.skillsPage.maintenanceApply.applyUpgrade") : t("admin.skillsPage.maintenanceApply.generateProposal")}
                 </Button>
               </>
             )}
@@ -6852,6 +7064,107 @@ export default function AdminSkills() {
                   <div>
                     <Label className={`text-sm font-medium ${!editingSkill.visibleByDefault ? "text-muted-foreground" : ""}`}>{t("admin.skillsPage.createDialog.enabledByDefault")}</Label>
                     <p className="text-xs text-muted-foreground">{t("admin.skillsPage.createDialog.enabledByDefaultShortHelp")}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-sky-200 bg-sky-50/40 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="mt-0.5 h-4 w-4 text-sky-700" />
+                    <div>
+                      <Label className="text-sm font-semibold text-sky-900">
+                        {t("admin.skillsPage.autoLearning.title")}
+                      </Label>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {t("admin.skillsPage.autoLearning.description")}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={(editingSkill as any)._autoLearningEnabled ?? false}
+                    onCheckedChange={(checked) =>
+                      setEditingSkill({ ...editingSkill, _autoLearningEnabled: checked } as any)
+                    }
+                  />
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      checked={(editingSkill as any)._autoLearningPromptQa ?? true}
+                      onCheckedChange={(checked) =>
+                        setEditingSkill({ ...editingSkill, _autoLearningPromptQa: checked } as any)
+                      }
+                      disabled={!((editingSkill as any)._autoLearningEnabled ?? false)}
+                    />
+                    <div>
+                      <Label className="text-xs font-medium">{t("admin.skillsPage.autoLearning.promptQa")}</Label>
+                      <p className="text-[10px] text-muted-foreground">{t("admin.skillsPage.autoLearning.promptQaHelp")}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      checked={(editingSkill as any)._autoLearningImageQa ?? true}
+                      onCheckedChange={(checked) =>
+                        setEditingSkill({ ...editingSkill, _autoLearningImageQa: checked } as any)
+                      }
+                      disabled={!((editingSkill as any)._autoLearningEnabled ?? false)}
+                    />
+                    <div>
+                      <Label className="text-xs font-medium">{t("admin.skillsPage.autoLearning.imageQa")}</Label>
+                      <p className="text-[10px] text-muted-foreground">{t("admin.skillsPage.autoLearning.imageQaHelp")}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      checked={(editingSkill as any)._autoLearningRequireAdminApproval ?? true}
+                      onCheckedChange={(checked) =>
+                        setEditingSkill({ ...editingSkill, _autoLearningRequireAdminApproval: checked } as any)
+                      }
+                      disabled={!((editingSkill as any)._autoLearningEnabled ?? false)}
+                    />
+                    <div>
+                      <Label className="text-xs font-medium">{t("admin.skillsPage.autoLearning.adminApproval")}</Label>
+                      <p className="text-[10px] text-muted-foreground">{t("admin.skillsPage.autoLearning.adminApprovalHelp")}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">{t("admin.skillsPage.autoLearning.promptScore")}</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={(editingSkill as any)._autoLearningMinPromptScore ?? 85}
+                        onChange={(event) =>
+                          setEditingSkill({
+                            ...editingSkill,
+                            _autoLearningMinPromptScore: Math.max(0, Math.min(100, Number(event.target.value) || 0)),
+                          } as any)
+                        }
+                        disabled={!((editingSkill as any)._autoLearningEnabled ?? false)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">{t("admin.skillsPage.autoLearning.imageScore")}</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={(editingSkill as any)._autoLearningMinImageScore ?? 80}
+                        onChange={(event) =>
+                          setEditingSkill({
+                            ...editingSkill,
+                            _autoLearningMinImageScore: Math.max(0, Math.min(100, Number(event.target.value) || 0)),
+                          } as any)
+                        }
+                        disabled={!((editingSkill as any)._autoLearningEnabled ?? false)}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

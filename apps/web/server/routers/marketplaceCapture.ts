@@ -1,0 +1,131 @@
+import { z } from "zod";
+import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
+import { issueMarketplaceExtensionToken } from "../services/marketplaceExtensionAuthService";
+import {
+  getMarketplaceCaptureForUser,
+  getMarketplaceCandidateBatchForUser,
+  listMarketplaceCandidateBatchesForUser,
+  listMarketplaceCapturesForUser,
+  saveMarketplaceCaptureDraftEdits,
+  discardMarketplaceCapture,
+  getMarketplaceCaptureAdminOverview,
+} from "../services/marketplaceCaptureService";
+import { analyzeMarketplaceCapture } from "../services/marketplaceExtractionService";
+import {
+  confirmMarketplaceCapture,
+  deleteMarketplaceProduct,
+  getMarketplaceProductWithAccess,
+  getMarketplaceShareSettings,
+  listMarketplaceProductImagesForMediaStudio,
+  listMarketplaceProductsWithAccess,
+  saveMarketplaceShareSetting,
+} from "../services/marketplaceProductService";
+import { resolveTenantIdVarchar } from "../services/tenantContext";
+import { analyzeMarketplaceCaptureSchema, marketplaceConfirmProductSchema } from "@shared/marketplaceCapture";
+
+function authFromCtx(ctx: any) {
+  const userId = Number(ctx.user?.id);
+  const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) ?? undefined;
+  return { userId, tenantId };
+}
+
+export const marketplaceCaptureRouter = router({
+  adminOverview: adminProcedure
+    .query(async () => getMarketplaceCaptureAdminOverview()),
+
+  issueExtensionToken: protectedProcedure
+    .input(z.object({
+      origin: z.string().max(300).optional(),
+      extensionId: z.string().max(160).optional(),
+      deviceId: z.string().max(80).optional(),
+    }).optional().default({}))
+    .mutation(async ({ input, ctx }) => {
+      return issueMarketplaceExtensionToken({
+        ...authFromCtx(ctx),
+        origin: input.origin ?? null,
+        extensionId: input.extensionId ?? null,
+        deviceId: input.deviceId ?? null,
+      });
+    }),
+
+  listCaptures: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(100).optional().default(30) }).optional().default({}))
+    .query(async ({ input, ctx }) => listMarketplaceCapturesForUser(authFromCtx(ctx), input.limit)),
+
+  getCapture: protectedProcedure
+    .input(z.object({ captureId: z.string().min(1).max(64) }))
+    .query(async ({ input, ctx }) => getMarketplaceCaptureForUser(input.captureId, authFromCtx(ctx))),
+
+  analyzeCapture: protectedProcedure
+    .input(z.object({
+      captureId: z.string().min(1).max(64),
+      analyze: analyzeMarketplaceCaptureSchema.optional().default({}),
+    }))
+    .mutation(async ({ input, ctx }) => analyzeMarketplaceCapture(input.captureId, input.analyze, authFromCtx(ctx))),
+
+  confirmCapture: protectedProcedure
+    .input(z.object({
+      captureId: z.string().min(1).max(64),
+      data: marketplaceConfirmProductSchema,
+    }))
+    .mutation(async ({ input, ctx }) => confirmMarketplaceCapture(input.captureId, input.data, authFromCtx(ctx))),
+
+  saveDraftEdits: protectedProcedure
+    .input(z.object({
+      captureId: z.string().min(1).max(64),
+      data: marketplaceConfirmProductSchema,
+    }))
+    .mutation(async ({ input, ctx }) => saveMarketplaceCaptureDraftEdits(input.captureId, input.data, authFromCtx(ctx))),
+
+  discardCapture: protectedProcedure
+    .input(z.object({ captureId: z.string().min(1).max(64) }))
+    .mutation(async ({ input, ctx }) => discardMarketplaceCapture(input.captureId, authFromCtx(ctx))),
+
+  listProducts: protectedProcedure
+    .input(z.object({
+      limit: z.number().int().min(1).max(100).optional().default(30),
+      ownerOnly: z.boolean().optional().default(false),
+      platform: z.enum(["all", "shopee", "tiktok_shop"]).optional().default("all"),
+      query: z.string().trim().max(160).optional(),
+    }).optional().default({}))
+    .query(async ({ input, ctx }) => listMarketplaceProductsWithAccess(authFromCtx(ctx), input)),
+
+  listProductImages: protectedProcedure
+    .input(z.object({
+      limit: z.number().int().min(1).max(30).optional().default(30),
+      cursor: z.string().optional().nullable(),
+      ownerOnly: z.boolean().optional().default(false),
+      platform: z.enum(["all", "shopee", "tiktok_shop"]).optional().default("all"),
+      query: z.string().trim().max(160).optional(),
+      productId: z.string().min(1).max(64).optional().nullable(),
+    }).optional().default({}))
+    .query(async ({ input, ctx }) => listMarketplaceProductImagesForMediaStudio(authFromCtx(ctx), input)),
+
+  getShareSettings: protectedProcedure
+    .query(async ({ ctx }) => getMarketplaceShareSettings(authFromCtx(ctx))),
+
+  saveShareSetting: protectedProcedure
+    .input(z.object({
+      platform: z.enum(["shopee", "tiktok_shop"]),
+      enabled: z.boolean().default(true),
+      groupIds: z.array(z.number().int().positive()).max(20).default([]),
+      permission: z.enum(["read", "read_update"]).default("read_update"),
+    }))
+    .mutation(async ({ input, ctx }) => saveMarketplaceShareSetting(input, authFromCtx(ctx))),
+
+  listCandidateBatches: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(100).optional().default(30) }).optional().default({}))
+    .query(async ({ input, ctx }) => listMarketplaceCandidateBatchesForUser(authFromCtx(ctx), input.limit)),
+
+  getCandidateBatch: protectedProcedure
+    .input(z.object({ batchId: z.string().min(1).max(64) }))
+    .query(async ({ input, ctx }) => getMarketplaceCandidateBatchForUser(input.batchId, authFromCtx(ctx))),
+
+  getProduct: protectedProcedure
+    .input(z.object({ productId: z.string().min(1).max(64) }))
+    .query(async ({ input, ctx }) => getMarketplaceProductWithAccess(input.productId, authFromCtx(ctx))),
+
+  deleteProduct: protectedProcedure
+    .input(z.object({ productId: z.string().min(1).max(64) }))
+    .mutation(async ({ input, ctx }) => deleteMarketplaceProduct(input.productId, authFromCtx(ctx))),
+});

@@ -355,6 +355,83 @@ function selectPromptText(prompts: JsonObject, field: string): string | null {
   return text || detailed || null;
 }
 
+function nonEmptyString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  return text || null;
+}
+
+function stringifyScenePrompt(value: unknown, index?: number): string | null {
+  if (typeof value === "string") {
+    return nonEmptyString(value);
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as JsonObject;
+  const text = nonEmptyString(record.prompt)
+    || nonEmptyString(record.promptText)
+    || nonEmptyString(record.image_prompt)
+    || nonEmptyString(record.video_prompt)
+    || nonEmptyString(record.scene_prompt)
+    || nonEmptyString(record.scene_description)
+    || nonEmptyString(record.description)
+    || nonEmptyString(record.text)
+    || nonEmptyString(record.content);
+  if (!text) return null;
+
+  const reference = nonEmptyString(record.reference_image);
+  const role = nonEmptyString(record.role);
+  const prefix = typeof index === "number" ? `Scene ${index + 1}: ` : "";
+  const suffixParts = [
+    reference ? `Reference: ${reference}` : "",
+    role ? `Role: ${role}` : "",
+  ].filter(Boolean);
+  return suffixParts.length > 0
+    ? `${prefix}${text}\n${suffixParts.join(" | ")}`
+    : `${prefix}${text}`;
+}
+
+function selectPromptTextFromStructuredOutput(value: unknown, field: string): string | null {
+  const directText = nonEmptyString(value);
+  if (directText) return directText;
+
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((item, index) => stringifyScenePrompt(item, index) || selectPromptTextFromStructuredOutput(item, field))
+      .filter((item): item is string => Boolean(item));
+    return parts.length > 0 ? parts.join("\n\n") : null;
+  }
+
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as JsonObject;
+  for (const key of ["prompt", "promptText", "final_prompt", "finalPrompt", "generated_prompt", "text", "content", "result"]) {
+    const extracted = selectPromptTextFromStructuredOutput(record[key], field);
+    if (extracted) return extracted;
+  }
+
+  for (const key of ["output", "data"]) {
+    const extracted = selectPromptTextFromStructuredOutput(record[key], field);
+    if (extracted) return extracted;
+  }
+
+  if (record.prompts && typeof record.prompts === "object" && !Array.isArray(record.prompts)) {
+    const selected = selectPromptText(record.prompts as JsonObject, field);
+    if (selected) return selected;
+  }
+
+  for (const key of ["prompts", "scene_descriptions", "scenes", "frames", "panels", "storyboard"]) {
+    const extracted = selectPromptTextFromStructuredOutput(record[key], field);
+    if (extracted) return extracted;
+  }
+
+  return stringifyScenePrompt(record);
+}
+
 function summarizeStructuredPromptReview(bundle: JsonObject): StructuredPromptReviewSummary {
   const finalReview = bundle.final_review && typeof bundle.final_review === "object"
     ? bundle.final_review as JsonObject
@@ -402,13 +479,12 @@ export function extractStructuredPromptBundleTextOutput(
   textPromptField: string = "detailed",
 ): StructuredPromptExtraction {
   try {
-    const bundle = JSON.parse(rawOutput) as JsonObject;
-    const prompts = bundle.prompts && typeof bundle.prompts === "object"
-      ? bundle.prompts as JsonObject
-      : {};
+    const bundle = JSON.parse(rawOutput) as unknown;
     return {
-      promptText: selectPromptText(prompts, textPromptField),
-      reviewSummary: summarizeStructuredPromptReview(bundle),
+      promptText: selectPromptTextFromStructuredOutput(bundle, textPromptField),
+      reviewSummary: bundle && typeof bundle === "object" && !Array.isArray(bundle)
+        ? summarizeStructuredPromptReview(bundle as JsonObject)
+        : null,
     };
   } catch (error) {
     return {
