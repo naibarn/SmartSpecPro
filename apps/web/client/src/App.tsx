@@ -52,6 +52,7 @@ const MarketplaceCapturePreview = lazy(() => import("./pages/MarketplaceCaptureP
 const MarketplaceCaptureProducts = lazy(() => import("./pages/MarketplaceCaptureProducts"));
 const MarketplaceCaptureProductDetail = lazy(() => import("./pages/MarketplaceCaptureProductDetail"));
 const MarketplaceCaptureCandidateBatch = lazy(() => import("./pages/MarketplaceCaptureCandidateBatch"));
+const MarketplaceCaptureInsight = lazy(() => import("./pages/MarketplaceCaptureInsight"));
 const AdminMarketplaceCapture = lazy(() => import("./pages/AdminMarketplaceCapture"));
 const DeviceAuth = lazy(() => import("./pages/DeviceAuth"));
 const AdminAgencies = lazy(() => import("./pages/AdminAgencies"));
@@ -106,6 +107,7 @@ const RoleRoutineScheduler = lazy(() => import("./pages/RoleRoutineScheduler"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Generate = lazy(() => import("./pages/Generate"));
 const MediaStudio = lazy(() => import("./pages/MediaStudio"));
+const ContentComposer = lazy(() => import("./pages/ContentComposer"));
 const StoryboardReviewPage = lazy(() => import("./pages/StoryboardReviewPage"));
 const Credits = lazy(() => import("./pages/Credits"));
 const BillingCenter = lazy(() => import("./pages/BillingCenter"));
@@ -262,6 +264,7 @@ function Router() {
         <Route path="/marketplace" component={Marketplace} />
         <Route path="/marketplace/:slug" component={Marketplace} />
         <Route path="/marketplace-capture/connect"><RequireAuth><MarketplaceCaptureConnect /></RequireAuth></Route>
+        <Route path="/marketplace-capture/insights/:insightId"><RequireAuth><MarketplaceCaptureInsight /></RequireAuth></Route>
         <Route path="/marketplace-capture/captures/:captureId/preview"><RequireAuth><MarketplaceCapturePreview /></RequireAuth></Route>
         <Route path="/marketplace-capture/candidates/:batchId"><RequireAuth><MarketplaceCaptureCandidateBatch /></RequireAuth></Route>
         <Route path="/marketplace-capture/products/:productId"><RequireAuth><MarketplaceCaptureProductDetail /></RequireAuth></Route>
@@ -477,6 +480,7 @@ function Router() {
         <Route path="/notifications"><RequireAuth><Notifications /></RequireAuth></Route>
         <Route path="/generate/:type?"><RequireAuth><Generate /></RequireAuth></Route>
         <Route path="/media-studio"><RequireAuth><MediaStudio /></RequireAuth></Route>
+        <Route path="/content-composer"><RequireAuth><ContentComposer /></RequireAuth></Route>
         <Route path="/storyboard-review"><RequireAuth><StoryboardReviewPage /></RequireAuth></Route>
         <Route path="/storyboard-review/:reviewId"><RequireAuth><StoryboardReviewPage /></RequireAuth></Route>
         <Route path="/credits"><RequireAuth><Credits /></RequireAuth></Route>

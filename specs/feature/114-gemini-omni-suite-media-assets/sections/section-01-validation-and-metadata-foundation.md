@@ -21,6 +21,8 @@ Create the shared contract that lets Gemini Omni express suite-managed provider 
 - Validate upload/source constraints before provider calls, including character reference image max 20 MB and supported media types.
 - Preserve provider payload spelling for `video_list[].ends` while allowing UI/internal labels to use "end".
 - Validate provider-fetchable media URLs with existing SSRF-safe public URL rules before any server-side fetch or provider submission.
+- Define typed Gemini Omni API schemas shared by UI/server services before provider calls.
+- Define state transition helpers for provider assets, clips, and storyboard runs.
 
 ## Files Likely Touched
 
@@ -38,6 +40,8 @@ Create the shared contract that lets Gemini Omni express suite-managed provider 
 - validation rejects invalid upload size/type before provider calls
 - validation rejects private, loopback, link-local, metadata-service, local/internal, and unsafe redirect media URLs
 - pricing tier key includes source-video presence correctly
+- API schemas reject invalid Gemini Omni request shapes before service/provider calls
+- state transition helpers reject invalid transitions with stable reason codes
 
 ## Completion Criteria
 
@@ -45,3 +49,4 @@ Create the shared contract that lets Gemini Omni express suite-managed provider 
 - No UI has to inspect raw provider field names to validate quota.
 - Existing non-Gemini model input tests still pass.
 - Provider payload normalization is explicit and covered by tests, including `video_list` trim fields.
+- Later sections can import one canonical validation/schema/state-machine contract.

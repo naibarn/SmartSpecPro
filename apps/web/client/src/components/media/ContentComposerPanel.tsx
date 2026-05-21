@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { AlertCircle, BookOpen, Loader2, Plus, RefreshCcw, Send, Sparkles, Trash2 } from "lucide-react";
+import { AlertCircle, BookOpen, Clock, Image, Library, Loader2, Plus, RefreshCcw, Send, Sparkles, Trash2, Users, Video } from "lucide-react";
 import { toast } from "sonner";
 
 import { trpc } from "@/lib/trpc";
@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/button";
 import { DashboardCard } from "@/components/dashboard";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { SafeHtml } from "@/components/ui/SafeHtml";
 import { SkillAgencySelector } from "@/components/media/composer/SkillAgencySelector";
 import { ContentTargetPicker } from "@/components/media/composer/ContentTargetPicker";
@@ -20,6 +22,9 @@ import { composerReducer, initialComposerState } from "@/components/media/compos
 import type { SocialPublishingPageOption } from "@/types/social";
 
 import { generateArticleDraftHtml, makeComposerStateFromDraft, makeSaveDraftInput } from "./contentComposerPanelHelpers";
+
+type AttachmentSource = "history" | "library" | "shared_groups";
+type AttachmentMediaType = "image" | "video";
 
 function parseComposerSseBlock(block: string): { event: string; data: string } | null {
   const lines = block.split("\n");
@@ -47,10 +52,14 @@ export interface ContentComposerPanelProps {
 
 export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
   const { user } = useAuth();
+  const { t } = useScopedTranslation(["media", "common"]);
   const utils = trpc.useUtils();
   const [state, dispatch] = useReducer(composerReducer, initialComposerState);
   const [draftSearch, setDraftSearch] = useState("");
   const [attachmentSearch, setAttachmentSearch] = useState("");
+  const [attachmentSource, setAttachmentSource] = useState<AttachmentSource>("library");
+  const [attachmentMediaType, setAttachmentMediaType] = useState<AttachmentMediaType>("image");
+  const [attachmentLabels, setAttachmentLabels] = useState<Record<number, string>>({});
   const hydrateGuard = useRef<string | null>(null);
   const prevSocialTargetIdRef = useRef<number | null>(null);
 
@@ -60,8 +69,28 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
     { enabled: Boolean(state.activeDraftId) },
   );
   const librarySearchQuery = trpc.library.search.useQuery(
-    { query: attachmentSearch.trim() || undefined, limit: 20 },
-    { enabled: attachmentSearch.trim().length > 0 },
+    {
+      query: attachmentSearch.trim() || undefined,
+      limit: 20,
+      scope: attachmentSource === "shared_groups" ? "shared_groups" : "all",
+      filters: {
+        itemType: attachmentMediaType,
+        status: "ready",
+      },
+    },
+    { enabled: attachmentSource !== "history" },
+  );
+  const mediaHistoryQuery = trpc.media.listTasks.useQuery(
+    {
+      mediaType: attachmentMediaType,
+      status: "completed",
+      limit: 20,
+      daysAgo: 12,
+    },
+    {
+      enabled: attachmentSource === "history",
+      refetchOnWindowFocus: false,
+    },
   );
   const socialPagesQuery = trpc.socialPublishing.listPages.useQuery(undefined, {
     enabled: state.destinationKind === "social" && state.socialPlatform !== "upload_post",
@@ -76,6 +105,11 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
     enabled: Boolean(user && (user.role === "admin" || user.role === "domain_admin") && state.destinationKind === "blog"),
   });
   const generateCaptionMutation = trpc.contentComposer.generateSocialCaption.useMutation();
+  const addTaskToLibraryMutation = trpc.media.addTaskToLibrary.useMutation({
+    onSuccess: async () => {
+      await utils.library.search.invalidate();
+    },
+  });
   const publishMutation = trpc.contentComposer.publish.useMutation({
     onSuccess: async () => {
       dispatch({ type: "PUBLISH_COMPLETE" });
@@ -83,11 +117,11 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
         utils.contentComposer.listDrafts.invalidate(),
         state.activeDraftId ? utils.contentComposer.getDraft.invalidate({ id: state.activeDraftId }) : Promise.resolve(),
       ]);
-      toast.success("Content published");
+      toast.success(t("contentComposer.toasts.published"));
     },
     onError: (error) => {
-      dispatch({ type: "PUBLISH_ERROR", payload: error.message || "Failed to publish draft" });
-      toast.error(error.message || "Failed to publish draft");
+      dispatch({ type: "PUBLISH_ERROR", payload: error.message || t("contentComposer.errors.publishFailed") });
+      toast.error(error.message || t("contentComposer.errors.publishFailed"));
     },
   });
   const canUsePrivilegedDestinations = user?.role === "admin" || user?.role === "domain_admin";
@@ -116,17 +150,17 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
     },
     onError: (error) => {
       dispatch({ type: "SAVE_ERROR" });
-      toast.error(error.message || "Failed to save draft");
+      toast.error(error.message || t("contentComposer.errors.saveFailed"));
     },
   });
 
   const deleteDraftMutation = trpc.contentComposer.deleteDraft.useMutation({
     onSuccess: async () => {
       await utils.contentComposer.listDrafts.invalidate();
-      toast.success("Draft deleted");
+      toast.success(t("contentComposer.toasts.draftDeleted"));
       dispatch({ type: "START_NEW_DRAFT" });
     },
-    onError: (error) => toast.error(error.message || "Failed to delete draft"),
+    onError: (error) => toast.error(error.message || t("contentComposer.errors.deleteFailed")),
   });
 
   useEffect(() => {
@@ -170,14 +204,37 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
     });
   }, [librarySearchQuery.data?.results]);
 
-  const selectedAttachments = useMemo(() => {
+  const selectedAttachmentBadges = useMemo(() => {
     const map = new Map<number, (typeof attachmentResults)[number]>();
     for (const item of attachmentResults) {
       const id = Number(item.item_id);
       map.set(id, item);
     }
-    return state.attachmentIds.map((id) => map.get(id)).filter(Boolean) as (typeof attachmentResults)[number][];
-  }, [state.attachmentIds, attachmentResults]);
+    return state.attachmentIds.map((id) => ({
+      id,
+      title: String(map.get(id)?.title ?? attachmentLabels[id] ?? id),
+    }));
+  }, [attachmentLabels, state.attachmentIds, attachmentResults]);
+
+  const handleAttachHistoryTask = async (task: { id: string; prompt?: string | null; model?: string | null }) => {
+    try {
+      const result = await addTaskToLibraryMutation.mutateAsync({
+        taskId: task.id,
+        title: task.prompt?.trim() || task.model?.trim() || t("contentComposer.attachments.historyAsset"),
+      });
+      const itemId = Number(result.itemId);
+      if (Number.isFinite(itemId) && !state.attachmentIds.includes(itemId)) {
+        setAttachmentLabels((prev) => ({
+          ...prev,
+          [itemId]: task.prompt?.trim() || task.model?.trim() || t("contentComposer.attachments.historyAsset"),
+        }));
+        dispatch({ type: "TOGGLE_ATTACHMENT", payload: itemId });
+      }
+      toast.success(t("contentComposer.toasts.historyAttached"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("contentComposer.errors.attachHistoryFailed"));
+    }
+  };
 
   const nativePages = (socialPagesQuery.data ?? []) as SocialPublishingPageOption[];
   const socialAccountItems = useMemo<SocialAccountPickerItem[]>(() => {
@@ -228,7 +285,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
       onSuccess: (result) => {
         dispatch({ type: "CAPTION_GENERATION_COMPLETE", payload: result.caption });
       },
-      onError: (error) => toast.error(error.message || "Failed to generate caption"),
+      onError: (error) => toast.error(error.message || t("contentComposer.errors.captionFailed")),
     });
   }, [
     state.articleBody,
@@ -258,7 +315,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
 
   const handleGenerateArticle = () => {
     if (!state.topic.trim()) {
-      toast.error("Please enter a topic first");
+      toast.error(t("contentComposer.errors.topicRequired"));
       return;
     }
 
@@ -292,8 +349,8 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
         });
 
         if (!resp.ok || !resp.body) {
-          const message = await resp.text().catch(() => "Failed to generate article");
-          throw new Error(message || "Failed to generate article");
+          const message = await resp.text().catch(() => t("contentComposer.errors.generateFailed"));
+          throw new Error(message || t("contentComposer.errors.generateFailed"));
         }
 
         const reader = resp.body.getReader();
@@ -313,7 +370,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
             const parsed = parseComposerSseBlock(block);
             if (!parsed) continue;
             if (parsed.event === "error") {
-              let message = "Failed to generate article";
+              let message = t("contentComposer.errors.generateFailed");
               try {
                 const payload = JSON.parse(parsed.data) as { message?: string };
                 if (typeof payload.message === "string" && payload.message.trim()) {
@@ -369,7 +426,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
           dispatch({ type: "SET_ARTICLE_BODY", payload: trimmedArticle });
         } else if (!sawChunk && startingArticle) {
           dispatch({ type: "SET_ARTICLE_BODY", payload: startingArticle });
-          throw new Error("No article content was generated");
+          throw new Error(t("contentComposer.errors.noGeneratedArticle"));
         }
 
         if (shouldHydrateCaption && generatedCaption.trim()) {
@@ -378,12 +435,12 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
 
         dispatch({ type: "GENERATION_COMPLETE" });
         dispatch({ type: "GO_TO_STEP", payload: 2 });
-        toast.success("Article generated");
+        toast.success(t("contentComposer.toasts.articleGenerated"));
       } catch (error) {
         if (!sawChunk && startingArticle) {
           dispatch({ type: "SET_ARTICLE_BODY", payload: startingArticle });
         }
-        const message = error instanceof Error ? error.message : "Failed to generate article";
+        const message = error instanceof Error ? error.message : t("contentComposer.errors.generateFailed");
         dispatch({ type: "GENERATION_ERROR", payload: message });
         toast.error(message);
       }
@@ -394,7 +451,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
 
   const handlePublish = async () => {
       if (!canPublish) {
-      toast.error("Complete the required fields before publishing");
+      toast.error(t("contentComposer.errors.completeRequired"));
       return;
     }
 
@@ -406,7 +463,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
       }
       await publishMutation.mutateAsync({ id: saved.id });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to publish draft";
+      const message = error instanceof Error ? error.message : t("contentComposer.errors.publishFailed");
       dispatch({ type: "PUBLISH_ERROR", payload: message });
       toast.error(message);
     }
@@ -414,11 +471,11 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
 
   return (
     <div className={cn("space-y-6", className)} data-content-composer-panel="true">
-      <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
-        <DashboardCard className="h-fit">
+      <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)_380px] lg:items-start">
+        <DashboardCard className="h-fit lg:sticky lg:top-24">
           <div className="space-y-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <h3 className="text-base">Drafts</h3>
+              <h3 className="text-base">{t("contentComposer.drafts.title")}</h3>
               <Button
                 size="sm"
                 variant="outline"
@@ -426,16 +483,16 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                 onClick={() => dispatch({ type: "START_NEW_DRAFT" })}
               >
                 <Plus className="mr-2 h-4 w-4" />
-                New Article
+                {t("contentComposer.drafts.newArticle")}
               </Button>
             </div>
-            <Input value={draftSearch} onChange={(event) => setDraftSearch(event.target.value)} placeholder="Search drafts..." />
+            <Input value={draftSearch} onChange={(event) => setDraftSearch(event.target.value)} placeholder={t("contentComposer.drafts.searchPlaceholder")} />
           </div>
           <div>
             <ScrollArea className="h-[320px] pr-3 sm:h-[460px]">
               <div className="space-y-2">
                 {filteredDraftItems.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No drafts yet.</p>
+                  <p className="text-sm text-muted-foreground">{t("contentComposer.drafts.empty")}</p>
                 ) : (
                   filteredDraftItems.map((draft) => (
                     <div
@@ -455,7 +512,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                       }}
                     >
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <p className="min-w-0 truncate text-sm font-medium">{draft.topic || "Untitled draft"}</p>
+                        <p className="min-w-0 truncate text-sm font-medium">{draft.topic || t("contentComposer.drafts.untitled")}</p>
                         <div className="flex flex-wrap items-center gap-1 sm:justify-end">
                           <Badge variant="outline" className="text-[10px]">
                             {draft.status}
@@ -474,10 +531,10 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                         </div>
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Updated {new Date(draft.updatedAt).toLocaleString()}
+                        {t("contentComposer.drafts.updated", { date: new Date(draft.updatedAt).toLocaleString() })}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {draft.destinationKind ?? "No destination"} • {draft.attachmentCount} attachments
+                        {draft.destinationKind ?? t("contentComposer.drafts.noDestination")} • {t("contentComposer.drafts.attachmentCount", { count: draft.attachmentCount })}
                       </p>
                     </div>
                   ))
@@ -487,20 +544,20 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
           </div>
         </DashboardCard>
 
-        <div className="min-w-0 space-y-6">
-          <DashboardCard>
+        <div className="min-w-0 space-y-6 lg:contents">
+          <DashboardCard className="lg:col-start-2 lg:row-start-1">
             <div>
-              <h3 className="text-base">Article Composer</h3>
-              <p className="text-sm text-muted-foreground">Draft an article, attach library assets, and route it to the right destination.</p>
+              <h3 className="text-base">{t("contentComposer.editor.title")}</h3>
+              <p className="text-sm text-muted-foreground">{t("contentComposer.editor.description")}</p>
             </div>
             <div className="space-y-6">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium">Topic</label>
+                  <label className="text-sm font-medium">{t("contentComposer.editor.topic")}</label>
                   <Textarea
                     value={state.topic}
                     onChange={(event) => dispatch({ type: "SET_TOPIC", payload: event.target.value })}
-                    placeholder="Describe the article topic..."
+                    placeholder={t("contentComposer.editor.topicPlaceholder")}
                     className="min-h-[120px]"
                   />
                 </div>
@@ -520,7 +577,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                       checked={state.requiresWebSearch}
                       onChange={() => dispatch({ type: "TOGGLE_WEB_SEARCH" })}
                     />
-                    Web search
+                    {t("contentComposer.editor.webSearch")}
                   </label>
                   <label className="flex items-center gap-2 text-sm">
                     <input
@@ -528,7 +585,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                       checked={state.requiresThinking}
                       onChange={() => dispatch({ type: "TOGGLE_THINKING" })}
                     />
-                    Thinking
+                    {t("contentComposer.editor.thinking")}
                   </label>
                 </div>
                 <div className="flex flex-col gap-2 md:col-span-2 sm:flex-row sm:flex-wrap">
@@ -542,7 +599,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                     }
                   >
                     {state.isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                    Generate Article
+                    {t("contentComposer.editor.generateArticle")}
                   </Button>
                   <Button
                     variant="outline"
@@ -551,55 +608,93 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                     disabled={!state.topic.trim()}
                   >
                     <RefreshCcw className="mr-2 h-4 w-4" />
-                    Regenerate Preview
+                    {t("contentComposer.editor.regeneratePreview")}
                   </Button>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <h3 className="text-sm font-medium">Article HTML</h3>
-                  <Badge variant="outline">{state.articleBody.length.toLocaleString()} chars</Badge>
+                  <h3 className="text-sm font-medium">{t("contentComposer.editor.articleHtml")}</h3>
+                  <Badge variant="outline">{t("contentComposer.editor.charCount", { count: state.articleBody.length.toLocaleString() })}</Badge>
                 </div>
                 <Textarea
                   value={state.articleBody}
                   onChange={(event) => dispatch({ type: "SET_ARTICLE_BODY", payload: event.target.value })}
-                  placeholder="Generated article HTML will appear here..."
+                  placeholder={t("contentComposer.editor.articlePlaceholder")}
                   className="min-h-[220px] font-mono text-sm"
                 />
                 <div className="rounded-2xl border bg-muted/20 p-4">
                   <div className="mb-2 flex items-center gap-2 text-sm font-medium">
                     <BookOpen className="h-4 w-4 text-cyan-600" />
-                    Preview
+                    {t("contentComposer.editor.preview")}
                   </div>
                   {state.articleBody.trim() ? (
                     <SafeHtml html={state.articleBody} profile="article" className="prose max-w-none" />
                   ) : (
-                    <p className="text-sm text-muted-foreground">Generate or paste article HTML to preview it here.</p>
+                    <p className="text-sm text-muted-foreground">{t("contentComposer.editor.previewEmpty")}</p>
                   )}
                 </div>
               </div>
             </div>
           </DashboardCard>
 
-          <DashboardCard>
+          <DashboardCard className="lg:sticky lg:top-24 lg:col-start-3 lg:row-span-2 lg:row-start-1 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
             <div>
-              <h3 className="text-base">Attachments</h3>
+              <h3 className="text-base">{t("contentComposer.attachments.title")}</h3>
             </div>
             <div className="space-y-4">
-              <Input value={attachmentSearch} onChange={(event) => setAttachmentSearch(event.target.value)} placeholder="Search library assets..." />
+              <Tabs value={attachmentMediaType} onValueChange={(value) => setAttachmentMediaType(value as AttachmentMediaType)}>
+                <TabsList className="grid h-auto w-full grid-cols-2 bg-muted/50 p-1">
+                  <TabsTrigger value="image" className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm">
+                    <Image className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{t("tabs.image")}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="video" className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm">
+                    <Video className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{t("tabs.video")}</span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <Tabs value={attachmentSource} onValueChange={(value) => setAttachmentSource(value as AttachmentSource)}>
+                <TabsList className="grid h-auto w-full grid-cols-3 bg-muted/50 p-1">
+                  <TabsTrigger value="history" className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm">
+                    <Clock className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{t("contentComposer.attachments.mediaHistory")}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="library" className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm">
+                    <Library className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{t("contentComposer.attachments.library")}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="shared_groups" className="min-w-0 gap-1 px-2 py-2 text-xs sm:gap-2 sm:text-sm">
+                    <Users className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{t("contentComposer.attachments.sharedGroups")}</span>
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="history" className="mt-4 space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    {t("contentComposer.attachments.historyHint", { type: t(`tabs.${attachmentMediaType}`) })}
+                  </p>
+                </TabsContent>
+                <TabsContent value="library" className="mt-4 space-y-3">
+                  <Input value={attachmentSearch} onChange={(event) => setAttachmentSearch(event.target.value)} placeholder={t("contentComposer.attachments.searchLibrary", { type: t(`tabs.${attachmentMediaType}`) })} />
+                </TabsContent>
+                <TabsContent value="shared_groups" className="mt-4 space-y-3">
+                  <Input value={attachmentSearch} onChange={(event) => setAttachmentSearch(event.target.value)} placeholder={t("contentComposer.attachments.searchShared", { type: t(`tabs.${attachmentMediaType}`) })} />
+                </TabsContent>
+              </Tabs>
               <div className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                <p>Select 1 to 6 ready assets from the library.</p>
-                <Badge variant="outline">{state.attachmentIds.length}/6 selected</Badge>
+                <p>{t("contentComposer.attachments.hint")}</p>
+                <Badge variant="outline">{t("contentComposer.attachments.selectedCount", { count: state.attachmentIds.length })}</Badge>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {selectedAttachments.map((item) => (
-                  <Badge key={String(item.item_id)} variant="secondary" className="max-w-full gap-1">
-                    <span className="truncate">{String(item.title ?? item.item_id)}</span>
+                {selectedAttachmentBadges.map((item) => (
+                  <Badge key={String(item.id)} variant="secondary" className="max-w-full gap-1">
+                    <span className="truncate">{item.title}</span>
                     <button
                       type="button"
-                      onClick={() => dispatch({ type: "TOGGLE_ATTACHMENT", payload: Number(item.item_id) })}
+                      onClick={() => dispatch({ type: "TOGGLE_ATTACHMENT", payload: item.id })}
                       className="ml-1 rounded-full"
                     >
                       <Trash2 className="h-3 w-3" />
@@ -608,12 +703,50 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                 ))}
               </div>
 
-              {attachmentSearch.trim().length > 0 && (
+              {attachmentSource === "history" && (
+                <div className="space-y-2">
+                  {mediaHistoryQuery.isLoading && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {t("contentComposer.attachments.loadingHistory")}
+                    </div>
+                  )}
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {((mediaHistoryQuery.data?.tasks ?? []) as Array<{ id: string; prompt?: string | null; model?: string | null; resultUrl?: string | null }>).map((task) => (
+                      <button
+                        key={task.id}
+                        type="button"
+                        className="rounded-xl border p-3 text-left transition-colors hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={() => void handleAttachHistoryTask(task)}
+                        disabled={addTaskToLibraryMutation.isPending || !task.resultUrl}
+                      >
+                        {task.resultUrl && (
+                          attachmentMediaType === "video" ? (
+                            <video src={task.resultUrl} className="mb-2 aspect-video w-full rounded-lg object-cover" muted controls />
+                          ) : (
+                            <img src={task.resultUrl} alt={task.prompt || t("contentComposer.attachments.historyAsset")} className="mb-2 aspect-video w-full rounded-lg object-cover" />
+                          )
+                        )}
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium">{task.prompt || task.model || t("contentComposer.attachments.historyAsset")}</span>
+                          <Badge variant="outline" className="text-[10px]">{t("contentComposer.attachments.historyBadge")}</Badge>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">{t("contentComposer.attachments.saveAndAdd")}</p>
+                      </button>
+                    ))}
+                  </div>
+                  {!mediaHistoryQuery.isLoading && (mediaHistoryQuery.data?.tasks ?? []).length === 0 && (
+                    <p className="text-sm text-muted-foreground">{t("contentComposer.attachments.noHistory")}</p>
+                  )}
+                </div>
+              )}
+
+              {attachmentSource !== "history" && (
                 <div className="space-y-2">
                   {librarySearchQuery.isLoading && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Searching library...
+                      {t("contentComposer.attachments.searchingLibrary")}
                     </div>
                   )}
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -628,8 +761,25 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                             "rounded-xl border p-3 text-left transition-colors hover:bg-muted/60",
                             selected && "border-cyan-400 bg-cyan-50/60",
                           )}
-                          onClick={() => dispatch({ type: "TOGGLE_ATTACHMENT", payload: itemId })}
+                          onClick={() => {
+                            setAttachmentLabels((prev) => ({
+                              ...prev,
+                              [itemId]: String(item.title ?? itemId),
+                            }));
+                            dispatch({ type: "TOGGLE_ATTACHMENT", payload: itemId });
+                          }}
                         >
+                          {item.thumbnail_url || item.source_url ? (
+                            attachmentMediaType === "video" ? (
+                              <video src={item.source_url || item.thumbnail_url || ""} className="mb-2 aspect-video w-full rounded-lg object-cover" muted controls />
+                            ) : (
+                              <img
+                                src={item.thumbnail_url || item.source_url || ""}
+                                alt={String(item.title ?? itemId)}
+                                className="mb-2 aspect-video w-full rounded-lg object-cover"
+                              />
+                            )
+                          ) : null}
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <span className="min-w-0 flex-1 truncate text-sm font-medium">{String(item.title ?? itemId)}</span>
                             <Badge variant="outline" className="text-[10px]">
@@ -637,20 +787,23 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                             </Badge>
                           </div>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {selected ? "Remove from article" : "Add to article"}
+                            {selected ? t("contentComposer.attachments.remove") : t("contentComposer.attachments.add")}
                           </p>
                         </button>
                       );
                     })}
                   </div>
+                  {!librarySearchQuery.isLoading && attachmentResults.length === 0 && (
+                    <p className="text-sm text-muted-foreground">{t("contentComposer.attachments.noReadyAssets")}</p>
+                  )}
                 </div>
               )}
             </div>
           </DashboardCard>
 
-          <DashboardCard>
+          <DashboardCard className="lg:col-start-2 lg:row-start-2">
             <div>
-              <h3 className="text-base">Destination</h3>
+              <h3 className="text-base">{t("contentComposer.destination.title")}</h3>
             </div>
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
@@ -670,11 +823,11 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
               {state.destinationKind === "docs" && (
                 <div className="space-y-4 rounded-2xl border bg-slate-50/60 p-4">
                   <div className="space-y-2">
-                    <div className="text-sm font-medium">Docs target type</div>
+                    <div className="text-sm font-medium">{t("contentComposer.destination.docsTargetType")}</div>
                     <div className="flex flex-wrap gap-2">
                       {[
-                        { value: "doc_page" as const, label: "Doc page" },
-                        { value: "cms_page" as const, label: "CMS page" },
+                        { value: "doc_page" as const, label: t("contentComposer.destination.docPage") },
+                        { value: "cms_page" as const, label: t("contentComposer.destination.cmsPage") },
                       ].map((option) => (
                         <Button
                           key={option.value}
@@ -691,7 +844,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                   </div>
 
                   <ContentTargetPicker
-                    title="Docs target"
+                    title={t("contentComposer.destination.docsTarget")}
                     items={docsTargetItems.map((item) => ({
                       id: item.id,
                       label: item.label,
@@ -701,7 +854,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                     }))}
                     selectedId={state.docsTargetId}
                     onSelect={(id) => dispatch({ type: "SET_DOCS_TARGET_ID", payload: id })}
-                    emptyMessage="No docs pages available for this target type."
+                    emptyMessage={t("contentComposer.destination.noDocsTargets")}
                   />
                 </div>
               )}
@@ -709,17 +862,17 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
               {state.destinationKind === "blog" && (
                 <div className="space-y-4 rounded-2xl border bg-slate-50/60 p-4">
                   <ContentTargetPicker
-                    title="Blog target"
+                    title={t("contentComposer.destination.blogTarget")}
                     items={blogTargetItems.map((item) => ({
                       id: item.id,
                       label: item.label,
-                      providerLabel: item.isPublished ? "published" : "draft",
+                      providerLabel: item.isPublished ? t("contentComposer.status.published") : t("contentComposer.status.draft"),
                       ready: Boolean(item.isPublished),
                       detail: item.path,
                     }))}
                     selectedId={state.blogTargetId}
                     onSelect={(id) => dispatch({ type: "SET_BLOG_TARGET_ID", payload: id })}
-                    emptyMessage="No blog posts available for this tenant."
+                    emptyMessage={t("contentComposer.destination.noBlogTargets")}
                   />
                 </div>
               )}
@@ -738,12 +891,12 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                     items={socialAccountItems}
                     selectedId={state.socialTargetId}
                     onSelect={(id) => dispatch({ type: "SET_SOCIAL_TARGET_ID", payload: id })}
-                    emptyMessage={state.socialPlatform === "upload_post" ? "No Upload-Post profiles connected." : "No social pages connected for this platform."}
+                    emptyMessage={state.socialPlatform === "upload_post" ? t("contentComposer.destination.noUploadPostProfiles") : t("contentComposer.destination.noSocialPages")}
                   />
 
                   <div className="space-y-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <h4 className="text-sm font-medium">Social Caption</h4>
+                      <h4 className="text-sm font-medium">{t("contentComposer.destination.socialCaption")}</h4>
                       <Button
                         type="button"
                         variant="outline"
@@ -764,20 +917,20 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                                 dispatch({ type: "SET_SOCIAL_CAPTION", payload: result.caption });
                                 dispatch({ type: "SET_CAPTION_MANUALLY_EDITED", payload: false });
                               },
-                              onError: (error) => toast.error(error.message || "Failed to generate caption"),
+                              onError: (error) => toast.error(error.message || t("contentComposer.errors.captionFailed")),
                             },
                           );
                         }}
                         disabled={generateCaptionMutation.isPending}
                       >
                         {generateCaptionMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                        Generate Caption
+                        {t("contentComposer.destination.generateCaption")}
                       </Button>
                     </div>
                     <Textarea
                       value={state.socialCaption}
                       onChange={(event) => dispatch({ type: "SET_SOCIAL_CAPTION", payload: event.target.value })}
-                      placeholder="Caption for the social post..."
+                      placeholder={t("contentComposer.destination.captionPlaceholder")}
                       className="min-h-[110px]"
                     />
                   </div>
@@ -789,7 +942,7 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                   className="w-full sm:w-auto"
                   onClick={() => {
                     if (!state.topic.trim() && !state.articleBody.trim() && state.attachmentIds.length === 0 && !state.destinationKind && !state.socialTargetId && !state.blogTargetId && !state.docsTargetId) {
-                      toast.error("Add some content before saving the draft");
+                      toast.error(t("contentComposer.errors.addContentBeforeSave"));
                       return;
                     }
                     saveDraftMutation.mutate(makeSaveDraftInput(state));
@@ -797,11 +950,11 @@ export function ContentComposerPanel({ className }: ContentComposerPanelProps) {
                   variant="outline"
                   disabled={state.isSaving || state.isGenerating}
                 >
-                  Save Draft
+                  {t("contentComposer.destination.saveDraft")}
                 </Button>
                 <Button className="w-full sm:w-auto" onClick={handlePublish} disabled={!canPublish || state.isPublishing || publishMutation.isPending}>
                   {state.isPublishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                  Publish
+                  {t("contentComposer.destination.publish")}
                 </Button>
               </div>
 

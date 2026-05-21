@@ -6,6 +6,12 @@ import {
   parseTikTokShopUrl,
   parseSoldCount,
   parseThaiPrice,
+  marketplaceCaptureInsightSyncSchema,
+  marketplaceServerInsightGenerationSchema,
+  marketplaceServerInsightGenerationResponseSchema,
+  marketplaceStorytellingHandoffSchema,
+  productBriefSchema,
+  sanitizedLocalAIInputSchema,
   scoreCandidate,
 } from "./marketplaceCapture";
 
@@ -96,5 +102,133 @@ describe("marketplace capture parsers", () => {
     });
     expect(result.score).toBeGreaterThanOrEqual(80);
     expect(result.reasons.join(" ")).toContain("ยอดขายสูง");
+  });
+
+  it("validates local AI sanitized input and rejects raw tiktok platform", () => {
+    expect(sanitizedLocalAIInputSchema.parse({
+      schemaVersion: "1.0",
+      platform: "tiktok_shop",
+      sourceUrl: "https://www.tiktok.com/shop/th/pdp/1735105127894976061",
+      capturedAt: new Date().toISOString(),
+      product: { title: "Demo", selectedImageUrls: [] },
+      reviews: [],
+      comments: [],
+      evidence: [{ id: "title:product", type: "title", text: "Demo" }],
+      payloadHash: "hash_12345678",
+    }).platform).toBe("tiktok_shop");
+
+    expect(() => sanitizedLocalAIInputSchema.parse({
+      schemaVersion: "1.0",
+      platform: "tiktok",
+      sourceUrl: "https://www.tiktok.com/shop/th",
+      capturedAt: new Date().toISOString(),
+      product: { selectedImageUrls: [] },
+      reviews: [],
+      comments: [],
+      evidence: [],
+      payloadHash: "hash_12345678",
+    })).toThrow();
+  });
+
+  it("validates product brief and insight sync payloads", () => {
+    const brief = productBriefSchema.parse({
+      schemaVersion: "1.0",
+      source: { platform: "shopee", captureId: "cap_1", url: "https://shopee.co.th/product/1/2" },
+      productName: "Demo product",
+      shortSummary: "Short summary",
+      keySellingPoints: ["point"],
+      targetAudiences: [],
+      buyerPainPoints: [],
+      buyerObjections: [],
+      trustSignals: [],
+      contentAngles: [],
+      suggestedHooks: [],
+      suggestedCTAs: [],
+      confidence: 0.8,
+      evidenceIds: ["title:product"],
+    });
+    const sync = marketplaceCaptureInsightSyncSchema.parse({
+      extensionVersion: "0.1.15",
+      idempotencyKey: "idem_12345678",
+      schemaVersion: "1.0",
+      insightCreatedAt: new Date().toISOString(),
+      payloadHash: "payload_hash_12345678",
+      source: {
+        platform: "shopee",
+        url: "https://shopee.co.th/product/1/2",
+        capturedAt: new Date().toISOString(),
+        captureId: "cap_1",
+      },
+      insightType: "product_brief",
+      provider: "chrome_prompt_api",
+      payload: brief,
+      rawCaptureIncluded: false,
+    });
+    expect(sync.insightType).toBe("product_brief");
+  });
+
+  it("validates server AI generation request and response contracts", () => {
+    const source = sanitizedLocalAIInputSchema.parse({
+      schemaVersion: "1.0",
+      platform: "shopee",
+      sourceUrl: "https://shopee.co.th/product/1/2",
+      capturedAt: new Date().toISOString(),
+      product: { title: "Demo", selectedImageUrls: [] },
+      reviews: [],
+      comments: [],
+      evidence: [{ id: "title:product", type: "title", text: "Demo" }],
+      payloadHash: "payload_hash_12345678",
+    });
+    const request = marketplaceServerInsightGenerationSchema.parse({
+      extensionVersion: "0.1.15",
+      insightType: "product_brief",
+      languagePreference: "th",
+      source,
+    });
+    const payload = productBriefSchema.parse({
+      schemaVersion: "1.0",
+      source: { platform: "shopee", url: "https://shopee.co.th/product/1/2" },
+      productName: "Demo",
+      shortSummary: "สินค้า demo",
+      keySellingPoints: ["ราคาอ่านได้"],
+      targetAudiences: [],
+      buyerPainPoints: [],
+      buyerObjections: [],
+      trustSignals: [],
+      contentAngles: [],
+      suggestedHooks: [],
+      suggestedCTAs: [],
+      confidence: 0.7,
+      evidenceIds: ["title:product"],
+    });
+    const response = marketplaceServerInsightGenerationResponseSchema.parse({
+      ok: true,
+      provider: "server_ai",
+      insightType: "product_brief",
+      fallbackMode: "deterministic_fallback",
+      payload,
+    });
+    expect(request.source.platform).toBe("shopee");
+    expect(response.payload?.productName).toBe("Demo");
+  });
+
+  it("validates storytelling handoff readiness gates", () => {
+    const handoff = marketplaceStorytellingHandoffSchema.parse({
+      schemaVersion: "1.0",
+      sourceCaptureIds: ["cap_1"],
+      insightIds: ["ins_1"],
+      productName: "Demo product",
+      sourceUrl: "https://shopee.co.th/product/1/2",
+      platform: "shopee",
+      storyFormat: "sales_demo",
+      readiness: "needs_user_review",
+      blockers: ["unsupported_claims_need_review"],
+      customerJourneyStages: ["awareness", "consideration", "conversion_cta"],
+      claims: [{ id: "claim:1", text: "Claim", evidenceIds: [], status: "needs_review", confidence: 0.4 }],
+      selectedImages: [{ url: "https://img.example/demo.jpg", role: "hero", fidelity: "likely_product" }],
+      evidenceIds: [],
+      confidence: 0.4,
+    });
+    expect(handoff.readiness).toBe("needs_user_review");
   });
 });

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite build --watch",
     "build": "tsc --noEmit && vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "package:web-dashboard": "npm run build && mkdir -p ../web/client/public/extension && python3 -c \"import pathlib, zipfile; src=pathlib.Path('dist'); out=pathlib.Path('../web/client/public/extension/smartspecpro-marketplace-extension.zip'); out.unlink(missing_ok=True); z=zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED); [z.write(p, p.relative_to(src)) for p in src.rglob('*') if p.is_file()]; z.close()\""
   },
   "dependencies": {
     "vite": "^7.1.7",

@@ -1,0 +1,32 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/114-gemini-omni-suite-media-assets/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/114-gemini-omni-suite-media-assets/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-validation-and-metadata-foundation",
+    "section-02-provider-assets-data-and-api",
+    "section-03-kie-provider-asset-contract",
+    "section-04-gemini-omni-skill-packages",
+    "section-05-admin-presets-seeds-and-pricing",
+    "section-06-media-studio-gemini-omni-ux",
+    "section-07-generation-qa-learning-orchestration",
+    "section-09-media-studio-production-director",
+    "section-10-cross-modal-asset-orchestration",
+    "section-11-production-quality-loop-and-final-render",
+    "section-08-rollout-verification-and-regression"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-05-21T14:38:02.955503+00:00"
+}

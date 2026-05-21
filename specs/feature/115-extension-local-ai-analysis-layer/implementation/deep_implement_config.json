@@ -1,0 +1,58 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/115-extension-local-ai-analysis-layer/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/115-extension-local-ai-analysis-layer/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contracts-capability-sanitizer",
+    "section-02-extension-provider-and-side-panel",
+    "section-03-output-validation-and-local-cache",
+    "section-04-insight-sync-and-preview",
+    "section-05-ai-video-studio-bridge-qa",
+    "section-06-storytelling-customer-journey-handoff"
+  ],
+  "sections_state": {
+    "section-01-contracts-capability-sanitizer": {
+      "status": "completed",
+      "completed_at": "2026-05-21T13:55:00.000Z",
+      "verification": "extension typecheck, web check, shared marketplaceCapture tests"
+    },
+    "section-02-extension-provider-and-side-panel": {
+      "status": "completed",
+      "completed_at": "2026-05-21T13:55:00.000Z",
+      "verification": "extension typecheck and build"
+    },
+    "section-03-output-validation-and-local-cache": {
+      "status": "completed",
+      "completed_at": "2026-05-21T13:55:00.000Z",
+      "verification": "extension typecheck and shared schema tests"
+    },
+    "section-04-insight-sync-and-preview": {
+      "status": "completed",
+      "completed_at": "2026-05-21T13:55:00.000Z",
+      "verification": "web check and shared schema tests"
+    },
+    "section-05-ai-video-studio-bridge-qa": {
+      "status": "completed",
+      "completed_at": "2026-05-21T13:55:00.000Z",
+      "verification": "extension build and web check"
+    },
+    "section-06-storytelling-customer-journey-handoff": {
+      "status": "completed",
+      "completed_at": "2026-05-21T13:55:00.000Z",
+      "verification": "web check and shared schema tests"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-05-21T13:37:51.666291+00:00"
+}

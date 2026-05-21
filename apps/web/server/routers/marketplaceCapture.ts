@@ -20,8 +20,17 @@ import {
   listMarketplaceProductsWithAccess,
   saveMarketplaceShareSetting,
 } from "../services/marketplaceProductService";
+import {
+  applyMarketplaceClaimResolution,
+  buildBasicStorytellingHandoffFromCapture,
+  generateMarketplaceServerInsight,
+  getMarketplaceInsightForUser,
+  listMarketplaceInsightsByCapture,
+  listMarketplaceInsightsByProduct,
+  syncMarketplaceInsight,
+} from "../services/marketplaceInsightService";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
-import { analyzeMarketplaceCaptureSchema, marketplaceConfirmProductSchema } from "@shared/marketplaceCapture";
+import { analyzeMarketplaceCaptureSchema, marketplaceCaptureInsightSyncSchema, marketplaceClaimResolutionSchema, marketplaceConfirmProductSchema, marketplaceServerInsightGenerationSchema } from "@shared/marketplaceCapture";
 
 function authFromCtx(ctx: any) {
   const userId = Number(ctx.user?.id);
@@ -55,6 +64,39 @@ export const marketplaceCaptureRouter = router({
   getCapture: protectedProcedure
     .input(z.object({ captureId: z.string().min(1).max(64) }))
     .query(async ({ input, ctx }) => getMarketplaceCaptureForUser(input.captureId, authFromCtx(ctx))),
+
+  listInsightsByCapture: protectedProcedure
+    .input(z.object({ captureId: z.string().min(1).max(64) }))
+    .query(async ({ input, ctx }) => listMarketplaceInsightsByCapture(input.captureId, authFromCtx(ctx))),
+
+  listInsightsByProduct: protectedProcedure
+    .input(z.object({ productId: z.string().min(1).max(64) }))
+    .query(async ({ input, ctx }) => listMarketplaceInsightsByProduct(input.productId, authFromCtx(ctx))),
+
+  getInsight: protectedProcedure
+    .input(z.object({ insightId: z.string().min(1).max(64) }))
+    .query(async ({ input, ctx }) => getMarketplaceInsightForUser(input.insightId, authFromCtx(ctx))),
+
+  syncInsight: protectedProcedure
+    .input(marketplaceCaptureInsightSyncSchema)
+    .mutation(async ({ input, ctx }) => syncMarketplaceInsight(input, authFromCtx(ctx))),
+
+  generateServerInsight: protectedProcedure
+    .input(marketplaceServerInsightGenerationSchema)
+    .mutation(async ({ input, ctx }) => generateMarketplaceServerInsight(input, authFromCtx(ctx))),
+
+  resolveInsightClaim: protectedProcedure
+    .input(marketplaceClaimResolutionSchema)
+    .mutation(async ({ input, ctx }) => applyMarketplaceClaimResolution(input, authFromCtx(ctx))),
+
+  getStorytellingHandoff: protectedProcedure
+    .input(z.object({ captureId: z.string().min(1).max(64) }))
+    .query(async ({ input, ctx }) => {
+      const auth = authFromCtx(ctx);
+      const insights = await listMarketplaceInsightsByCapture(input.captureId, auth);
+      const syncedHandoff = insights.find((insight) => insight.insightType === "storytelling_handoff");
+      return syncedHandoff?.payloadJson ?? buildBasicStorytellingHandoffFromCapture(input.captureId, auth);
+    }),
 
   analyzeCapture: protectedProcedure
     .input(z.object({

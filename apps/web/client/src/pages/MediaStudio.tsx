@@ -119,7 +119,6 @@ import { clearTenantPageCache } from "@/hooks/useTenantPage";
 import ModelSelectorDialog, { formatMediaProviderDisplayName } from "@/components/media/ModelSelectorDialog";
 import { OmniVoiceCloneDialog } from "@/components/media/OmniVoiceCloneDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
-import { ContentComposerPanel } from "@/components/media/ContentComposerPanel";
 import { RenderProgressDialog } from "@/components/videoeditor/RenderProgressDialog";
 import { usePushToTalk } from "@/hooks/usePushToTalk";
 import { AUTO_MODEL } from "@/lib/chatModelSelection";
@@ -218,6 +217,7 @@ import { inferMediaStudioModelInputSyncTarget } from "@/lib/mediaStudioModelInpu
 import { buildPricingTierKey } from "@shared/mediaModelPricing";
 import { videoEditorRenderService } from "@/services/videoEditorService";
 import { sanitizeProjectName } from "@smartspec/shared";
+import type { MarketplaceStorytellingHandoff } from "@shared/marketplaceCapture";
 
 import DynamicSkillForm, { type SkillInputSchema, type StyleAction } from "@/components/media/DynamicSkillForm";
 import { ModelInputFieldsPanel } from "@/components/media/ModelInputFieldsPanel";
@@ -294,6 +294,10 @@ type MarketplaceProductReferenceContext = {
   itemId?: string | null;
   sourceUrl?: string | null;
 };
+type MarketplaceStorytellingImportState = {
+  insightId: string | null;
+  handoff: MarketplaceStorytellingHandoff | null;
+};
 type MediaStudioQueueGenerationTask = QueueGenerationTask & {
   marketplaceProduct?: MarketplaceProductReferenceContext | null;
 };
@@ -346,6 +350,57 @@ function clampFloatingPreviewFrame(frame: FloatingPreviewFrame): FloatingPreview
   const y = Math.min(Math.max(frame.y, 12), Math.max(12, window.innerHeight - height - 12));
 
   return { x, y, width, height };
+}
+
+function isMarketplaceStorytellingHandoff(value: unknown): value is MarketplaceStorytellingHandoff {
+  const payload = value && typeof value === "object" ? value as Record<string, any> : null;
+  return Boolean(
+    payload
+      && payload.schemaVersion === "1.0"
+      && typeof payload.productName === "string"
+      && typeof payload.sourceUrl === "string"
+      && Array.isArray(payload.customerJourneyStages)
+      && Array.isArray(payload.selectedImages)
+      && Array.isArray(payload.claims),
+  );
+}
+
+function buildMarketplaceStorytellingPrompt(handoff: MarketplaceStorytellingHandoff): string {
+  const videoBrief = handoff.videoBrief;
+  const scenes = videoBrief?.scenes
+    ?.map((scene) => `${scene.order}. ${scene.sceneGoal}: ${scene.visualSuggestion} | Text: ${scene.onScreenText}`)
+    .join("\n") || "";
+  const supportedClaims = handoff.claims
+    .filter((claim) => claim.status === "supported" || claim.status === "user_approved")
+    .map((claim) => `- ${claim.text}`)
+    .join("\n");
+  return [
+    `Marketplace Product Storytelling Draft: ${handoff.productName}`,
+    `Source: ${handoff.sourceUrl}`,
+    `Format: ${handoff.storyFormat}`,
+    `Readiness: ${handoff.readiness}`,
+    `Customer journey: ${handoff.customerJourneyStages.join(" -> ")}`,
+    supportedClaims ? `Evidence-backed claims:\n${supportedClaims}` : "",
+    videoBrief?.hook ? `Hook: ${videoBrief.hook}` : "",
+    scenes ? `Scene plan:\n${scenes}` : "",
+    videoBrief?.cta ? `CTA: ${videoBrief.cta}` : "",
+    "Create a draft only. Keep product identity faithful to the reference images and do not invent unsupported product claims.",
+  ].filter(Boolean).join("\n\n");
+}
+
+function buildMarketplaceStorytellingReferenceImages(handoff: MarketplaceStorytellingHandoff): ReferenceImage[] {
+  return handoff.selectedImages
+    .filter((image) => image.url && image.fidelity !== "mismatch_risk")
+    .slice(0, 8)
+    .map((image, index) => ({
+      url: image.url,
+      name: `Marketplace ${image.role || "reference"} ${index + 1}`,
+      marketplaceProduct: {
+        platform: handoff.platform,
+        productName: handoff.productName,
+        sourceUrl: handoff.sourceUrl,
+      },
+    }));
 }
 const MODEL_INPUT_PREF_STORAGE_PREFIX = "smartspec_model_input_prefs_v1";
 const DEPRECATED_ELEVENLABS_DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM";
@@ -2744,7 +2799,7 @@ function getQueueProgress(status: QueueGenerationTask["status"]): number {
 export default function MediaStudio() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const { t: tNs, locale } = useScopedTranslation(["media", "common", "billing"]);
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const t = (key: string, params?: Record<string, string | number>) => {
     if (key.startsWith("mediaStudio.")) {
       return tNs(key.slice("mediaStudio.".length), params);
@@ -2807,11 +2862,25 @@ export default function MediaStudio() {
 
   // Active tab state
   const [activeTab, setActiveTab] = useState<MediaType>("image");
-  const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [attachTarget, setAttachTarget] = useState<{ kind: "blog" | "page"; id: string } | null>(null);
   const [isAttachingContent, setIsAttachingContent] = useState(false);
   const autoGenerateRequestRef = useRef<{ tab: MediaType; prompt: string; model?: string } | null>(null);
   const autoGenerateTriggeredRef = useRef(false);
+  const marketplaceStorytellingAppliedRef = useRef<string | null>(null);
+  const marketplaceStorytellingParams = useMemo(() => new URLSearchParams(typeof window === "undefined" ? "" : window.location.search), [location]);
+  const marketplaceStorytellingRequested = marketplaceStorytellingParams.get("marketplaceStorytelling") === "1";
+  const marketplaceStorytellingInsightId = marketplaceStorytellingParams.get("marketplaceInsightId") || marketplaceStorytellingParams.get("insightId") || "";
+  const marketplaceStorytellingInsightQuery = trpc.marketplaceCapture.getInsight.useQuery(
+    { insightId: marketplaceStorytellingInsightId },
+    { enabled: marketplaceStorytellingRequested && Boolean(marketplaceStorytellingInsightId) && isAuthenticated && !isLoading },
+  );
+  const marketplaceStorytellingImport = useMemo<MarketplaceStorytellingImportState>(() => {
+    const payload = (marketplaceStorytellingInsightQuery.data as any)?.payloadJson;
+    return {
+      insightId: marketplaceStorytellingInsightId || null,
+      handoff: isMarketplaceStorytellingHandoff(payload) ? payload : null,
+    };
+  }, [marketplaceStorytellingInsightId, marketplaceStorytellingInsightQuery.data]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -3215,6 +3284,38 @@ export default function MediaStudio() {
       }
     }));
   }, [activeTab]);
+
+  useEffect(() => {
+    const handoff = marketplaceStorytellingImport.handoff;
+    const importKey = marketplaceStorytellingImport.insightId || handoff?.sourceUrl || "";
+    if (!handoff || !importKey || marketplaceStorytellingAppliedRef.current === importKey) return;
+    marketplaceStorytellingAppliedRef.current = importKey;
+    const referenceImages = buildMarketplaceStorytellingReferenceImages(handoff);
+    const prompt = buildMarketplaceStorytellingPrompt(handoff);
+    setActiveTab("video");
+    setTabStates((prev) => ({
+      ...prev,
+      video: {
+        ...prev.video,
+        prompt,
+        enhancedPrompt: "",
+        referenceImages,
+        aspectRatio: handoff.videoBrief?.aspectRatio || prev.video.aspectRatio,
+        duration: handoff.videoBrief?.durationSec || prev.video.duration,
+        modelInputValues: {
+          ...prev.video.modelInputValues,
+          marketplaceStorytellingHandoff: handoff,
+          marketplaceInsightId: marketplaceStorytellingImport.insightId,
+          marketplaceContext: {
+            platform: handoff.platform,
+            productName: handoff.productName,
+            sourceUrl: handoff.sourceUrl,
+          },
+        },
+      },
+    }));
+    toast.success(isThaiLocale ? "นำเข้า storytelling brief จาก Marketplace แล้ว" : "Marketplace storytelling brief imported");
+  }, [isThaiLocale, marketplaceStorytellingImport]);
 
   const setSelectedSkillId = useCallback((value: string) => updateTabState('selectedSkillId', value), [updateTabState]);
   const setUseAdvancedMode = useCallback((value: boolean) => updateTabState('useAdvancedMode', value), [updateTabState]);
@@ -10579,6 +10680,30 @@ export default function MediaStudio() {
       </header>
 
       <main className="px-4 sm:px-6 lg:px-8 py-6">
+        {marketplaceStorytellingRequested && (
+          <div className="mb-4 rounded-lg border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-cyan-950 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-semibold">
+                  {isThaiLocale ? "Marketplace Storytelling" : "Marketplace Storytelling"}
+                  {marketplaceStorytellingImport.handoff ? `: ${marketplaceStorytellingImport.handoff.productName}` : ""}
+                </p>
+                <p className="text-xs text-cyan-800">
+                  {marketplaceStorytellingInsightQuery.isLoading
+                    ? (isThaiLocale ? "กำลังโหลด handoff..." : "Loading handoff...")
+                    : marketplaceStorytellingImport.handoff
+                      ? (isThaiLocale ? "สร้าง draft ในแท็บ Video แล้ว ยังไม่เริ่ม render จนกว่าคุณจะยืนยัน" : "A Video draft is ready. Rendering will not start until you confirm.")
+                      : (isThaiLocale ? "ยังไม่พบ typed handoff สำหรับ insight นี้" : "No typed handoff was found for this insight.")}
+                </p>
+              </div>
+              {marketplaceStorytellingImport.handoff?.readiness && (
+                <Badge variant="outline" className="bg-white">
+                  {marketplaceStorytellingImport.handoff.readiness}
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
           {/* Left Panel - Controls */}
           <div className="lg:col-span-2 space-y-4">
@@ -10650,73 +10775,6 @@ export default function MediaStudio() {
                 </TabsList>
               </Tabs>
             )}
-
-            <DashboardCard
-              className="overflow-hidden border-cyan-200/70 bg-gradient-to-br from-white via-white to-cyan-50/60 shadow-[0_18px_50px_rgba(14,165,233,0.08)]"
-              bodyClassName="p-4"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <DashboardSectionHeader
-                  eyebrow="Content Composer"
-                  title="Article and social draft workspace"
-                  description="Draft content, attach library assets, and prepare blog or social delivery from one place."
-                />
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                  <Badge variant="outline" className="w-fit border-cyan-200 bg-cyan-50 text-cyan-800">
-                    Draft workspace
-                  </Badge>
-                  <Button
-                    variant={isComposerOpen ? "outline" : "default"}
-                    className={cn(
-                      "w-full sm:w-auto",
-                      isComposerOpen
-                        ? "border-cyan-200 text-cyan-900"
-                        : "bg-cyan-600 text-white hover:bg-cyan-700",
-                    )}
-                    aria-controls="content-composer-panel"
-                    aria-expanded={isComposerOpen}
-                    onClick={() => setIsComposerOpen((value) => !value)}
-                  >
-                    {isComposerOpen ? "Collapse composer" : "Open composer"}
-                    <ChevronDown className={cn("ml-2 h-4 w-4 transition-transform", isComposerOpen && "rotate-180")} />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <Collapsible open={isComposerOpen} onOpenChange={setIsComposerOpen}>
-                  <CollapsibleContent id="content-composer-panel" className="space-y-4">
-                    <ContentComposerPanel className="mt-2" />
-                  </CollapsibleContent>
-                  <div className={cn(
-                    "rounded-2xl border border-cyan-200/70 bg-white/90 px-4 py-3 shadow-sm transition-all",
-                    isComposerOpen && "hidden",
-                  )}>
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-3 text-left"
-                      onClick={() => {
-                        setIsComposerOpen(true);
-                        window.setTimeout(() => {
-                          const el = document.querySelector('[data-content-composer-panel="true"]');
-                          if (el instanceof HTMLElement) {
-                            el.scrollIntoView({ behavior: "smooth", block: "start" });
-                          }
-                        }, 0);
-                      }}
-                    >
-                      <p className="min-w-0 flex-1 truncate text-sm text-slate-600">
-                        Composer is collapsed by default. Open it when you need to draft, route content, or generate social captions.
-                      </p>
-                      <span className="hidden shrink-0 text-sm font-medium text-cyan-700 sm:inline">
-                        Open composer
-                      </span>
-                      <ChevronDown className="h-4 w-4 shrink-0 text-cyan-700" />
-                    </button>
-                  </div>
-                </Collapsible>
-              </div>
-            </DashboardCard>
 
             {/* Prompt Input */}
             <DashboardCard className="space-y-4" bodyClassName="p-4">

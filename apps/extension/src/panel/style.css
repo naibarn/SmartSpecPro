@@ -97,6 +97,143 @@ button, input, textarea, select {
   font-size: 12px;
 }
 
+.local-ai-card {
+  margin-top: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 10px;
+}
+
+.local-ai-card.success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.local-ai-card.info {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.local-ai-card.warning {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.local-ai-card.fallback {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+}
+
+.local-ai-card.danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.local-ai-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.local-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  background: #0f172a;
+  color: white;
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.local-ai-card.success .local-ai-badge {
+  background: #047857;
+}
+
+.local-ai-card.info .local-ai-badge {
+  background: #1d4ed8;
+}
+
+.local-ai-card.warning .local-ai-badge {
+  background: #b45309;
+}
+
+.local-ai-card.fallback .local-ai-badge {
+  background: #0369a1;
+}
+
+.local-ai-card.danger .local-ai-badge {
+  background: #b91c1c;
+}
+
+.local-ai-provider {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.local-ai-title {
+  margin-top: 8px;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.local-ai-copy,
+.local-ai-next {
+  margin-top: 4px;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.local-ai-next {
+  color: #334155;
+  font-weight: 600;
+}
+
+.local-ai-progress {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  margin-top: 8px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: white;
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.local-ai-progress-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #93c5fd;
+}
+
+.local-ai-progress span {
+  position: relative;
+  z-index: 1;
+}
+
+.local-ai-debug {
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.local-ai-debug summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
 .image-toolbar {
   position: sticky;
   top: 0;

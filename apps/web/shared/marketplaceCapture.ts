@@ -54,7 +54,298 @@ export const MARKETPLACE_CAPTURE_LIMITS = {
   maxHtmlBlockChars: 20_000,
   maxUploadBytes: 10 * 1024 * 1024,
   maxCaptureBytes: 50 * 1024 * 1024,
+  localAIProductTitleChars: 300,
+  localAIDescriptionChars: 4_000,
+  localAIReviewCount: 30,
+  localAIReviewChars: 500,
+  localAICommentCount: 30,
+  localAICommentChars: 300,
+  localAIEvidenceCount: 80,
+  localAIPromptPayloadChars: 25_000,
 } as const;
+
+export const localInsightTypes = [
+  "product_brief",
+  "review_insight",
+  "tiktok_shop_trend",
+  "video_brief",
+  "combined_opportunity",
+  "storytelling_handoff",
+] as const;
+
+export const localAIProviders = ["chrome_prompt_api", "server_ai", "noop", "manual"] as const;
+export const promptAPIAvailabilities = ["available", "downloadable", "downloading", "unavailable", "unknown"] as const;
+export const marketplaceInsightStatuses = ["draft", "ready", "needs_review", "synced", "stale", "failed"] as const;
+export const storytellingReadinessStates = ["ready_for_storytelling", "ready_with_warnings", "needs_user_review", "insufficient_evidence"] as const;
+export const customerJourneyStages = [
+  "awareness",
+  "problem_recognition",
+  "consideration",
+  "proof_review_demo",
+  "objection_handling",
+  "trust_building",
+  "conversion_cta",
+  "retention_brand_recall",
+] as const;
+
+export const evidenceItemSchema = z.object({
+  id: z.string().min(1).max(120),
+  type: z.enum(["title", "description", "price", "rating", "review", "comment", "hashtag", "caption", "metric", "image_alt", "seller_info", "specification", "image"]),
+  text: z.string().max(1200),
+  sourceSelector: z.string().max(300).optional(),
+  confidence: z.number().min(0).max(1).optional(),
+});
+
+export const sanitizedLocalAIInputSchema = z.object({
+  schemaVersion: z.literal("1.0"),
+  captureId: z.string().max(64).optional(),
+  platform: z.enum(marketplacePlatforms),
+  sourceUrl: z.string().url(),
+  capturedAt: z.string().max(80),
+  pageTitle: z.string().max(500).optional(),
+  locale: z.string().max(16).optional(),
+  product: z.object({
+    title: z.string().max(MARKETPLACE_CAPTURE_LIMITS.localAIProductTitleChars).optional(),
+    price: z.string().max(128).optional(),
+    originalPrice: z.string().max(128).optional(),
+    discount: z.string().max(64).optional(),
+    rating: z.string().max(64).optional(),
+    soldCount: z.string().max(128).optional(),
+    description: z.string().max(MARKETPLACE_CAPTURE_LIMITS.localAIDescriptionChars).optional(),
+    category: z.string().max(300).optional(),
+    variants: z.string().max(1000).optional(),
+    stock: z.string().max(300).optional(),
+    selectedImageUrls: z.array(z.string().max(4096)).max(30).default([]),
+  }).default({}),
+  shop: z.object({
+    name: z.string().max(300).optional(),
+    location: z.string().max(300).optional(),
+    isMall: z.boolean().nullable().optional(),
+  }).optional(),
+  reviews: z.array(z.object({
+    id: z.string().max(120),
+    rating: z.number().min(0).max(5).optional(),
+    text: z.string().max(MARKETPLACE_CAPTURE_LIMITS.localAIReviewChars),
+    variant: z.string().max(200).optional(),
+    createdAtText: z.string().max(120).optional(),
+  })).max(MARKETPLACE_CAPTURE_LIMITS.localAIReviewCount).default([]),
+  tiktok: z.object({
+    caption: z.string().max(1000).optional(),
+    author: z.string().max(200).optional(),
+    hashtags: z.array(z.string().max(120)).max(40).default([]),
+    likeCount: z.string().max(80).optional(),
+    commentCount: z.string().max(80).optional(),
+    shareCount: z.string().max(80).optional(),
+    saveCount: z.string().max(80).optional(),
+    musicTitle: z.string().max(300).optional(),
+  }).optional(),
+  comments: z.array(z.object({
+    id: z.string().max(120),
+    author: z.string().max(200).optional(),
+    text: z.string().max(MARKETPLACE_CAPTURE_LIMITS.localAICommentChars),
+    likeCount: z.string().max(80).optional(),
+  })).max(MARKETPLACE_CAPTURE_LIMITS.localAICommentCount).default([]),
+  evidence: z.array(evidenceItemSchema).max(MARKETPLACE_CAPTURE_LIMITS.localAIEvidenceCount).default([]),
+  payloadHash: z.string().max(128),
+});
+
+const sourceRefSchema = z.object({
+  platform: z.enum(marketplacePlatforms),
+  captureId: z.string().max(64).optional(),
+  url: z.string().url(),
+});
+
+const boundedStringArray = (maxItems = 12, maxChars = 220) => z.array(z.string().max(maxChars)).max(maxItems).default([]);
+
+export const productBriefSchema = z.object({
+  schemaVersion: z.literal("1.0"),
+  source: sourceRefSchema,
+  productName: z.string().min(1).max(300),
+  category: z.string().max(200).optional(),
+  shortSummary: z.string().max(800),
+  keySellingPoints: boundedStringArray(),
+  targetAudiences: boundedStringArray(),
+  buyerPainPoints: boundedStringArray(),
+  buyerObjections: boundedStringArray(),
+  trustSignals: boundedStringArray(),
+  contentAngles: boundedStringArray(),
+  suggestedHooks: boundedStringArray(),
+  suggestedCTAs: boundedStringArray(),
+  confidence: z.number().min(0).max(1),
+  evidenceIds: z.array(z.string().max(120)).max(80).default([]),
+}).strict();
+
+export const reviewInsightSchema = z.object({
+  schemaVersion: z.literal("1.0"),
+  source: sourceRefSchema,
+  positiveThemes: boundedStringArray(),
+  negativeThemes: boundedStringArray(),
+  repeatedPhrases: boundedStringArray(20, 160),
+  commonBuyerQuestions: boundedStringArray(),
+  objectionsToAddress: boundedStringArray(),
+  recommendedFAQ: z.array(z.object({
+    question: z.string().max(240),
+    answerDraft: z.string().max(500),
+  })).max(12).default([]),
+  contentRecommendations: boundedStringArray(),
+  confidence: z.number().min(0).max(1),
+  evidenceIds: z.array(z.string().max(120)).max(80).default([]),
+}).strict();
+
+export const tiktokShopTrendBriefSchema = z.object({
+  schemaVersion: z.literal("1.0"),
+  source: sourceRefSchema,
+  contentType: z.enum(["product_review", "demo", "before_after", "storytelling", "trend", "educational", "unknown"]),
+  hookPattern: z.string().max(300),
+  structure: boundedStringArray(12, 220),
+  hashtags: z.array(z.string().max(120)).max(40).default([]),
+  audience: boundedStringArray(),
+  engagementDrivers: boundedStringArray(),
+  replicableIdeas: boundedStringArray(),
+  risks: boundedStringArray(),
+  confidence: z.number().min(0).max(1),
+  evidenceIds: z.array(z.string().max(120)).max(80).default([]),
+}).strict();
+
+export const videoBriefSceneSchema = z.object({
+  order: z.number().int().min(1).max(30),
+  startSec: z.number().min(0).max(120),
+  endSec: z.number().min(0).max(120),
+  sceneGoal: z.string().max(300),
+  visualSuggestion: z.string().max(500),
+  onScreenText: z.string().max(220),
+  voiceover: z.string().max(500).optional(),
+  assetRole: z.enum(["product_image", "demo_video", "screenshot", "ugc_clip", "text_only"]).optional(),
+}).refine((scene) => scene.endSec > scene.startSec, "Scene endSec must be after startSec");
+
+export const videoBriefSchema = z.object({
+  schemaVersion: z.literal("1.0"),
+  sourceCaptureIds: z.array(z.string().max(64)).max(10).default([]),
+  targetFormat: z.enum(["tiktok_short", "reels_short", "shopee_video", "generic_social"]),
+  durationSec: z.union([z.literal(15), z.literal(30), z.literal(45), z.literal(60)]),
+  aspectRatio: z.enum(["9:16", "1:1", "16:9"]),
+  language: z.enum(["th", "en", "mixed"]),
+  title: z.string().max(240),
+  hook: z.string().max(300),
+  scenes: z.array(videoBriefSceneSchema).min(1).max(20),
+  captions: boundedStringArray(20, 220),
+  cta: z.string().max(220),
+  assetsNeeded: boundedStringArray(20, 160),
+  hyperframesHint: z.object({
+    visualStyle: z.string().max(160),
+    transitionStyle: z.string().max(160),
+    textOverlayStyle: z.string().max(160),
+    pacing: z.enum(["slow", "medium", "fast"]),
+  }).optional(),
+  confidence: z.number().min(0).max(1),
+}).strict();
+
+export const combinedOpportunityBriefSchema = z.object({
+  schemaVersion: z.literal("1.0"),
+  shopeeCaptureId: z.string().max(64).optional(),
+  tiktokCaptureId: z.string().max(64).optional(),
+  opportunitySummary: z.string().max(800),
+  productTrendFitScore: z.number().min(0).max(100),
+  recommendedContentFormat: z.string().max(200),
+  suggestedPositioning: z.string().max(500),
+  risks: boundedStringArray(),
+  nextActions: z.array(z.enum(["create_video_brief", "send_to_ai_video_studio", "save_to_product_library", "create_ad_copy"])).max(8).default([]),
+}).strict();
+
+export const evidenceBackedClaimSchema = z.object({
+  id: z.string().min(1).max(120),
+  text: z.string().max(300),
+  evidenceIds: z.array(z.string().max(120)).max(20).default([]),
+  status: z.enum(["supported", "needs_review", "user_approved", "removed"]).default("needs_review"),
+  confidence: z.number().min(0).max(1).default(0),
+});
+
+export const marketplaceStorytellingHandoffSchema = z.object({
+  schemaVersion: z.literal("1.0"),
+  sourceCaptureIds: z.array(z.string().max(64)).max(10).default([]),
+  insightIds: z.array(z.string().max(64)).max(20).default([]),
+  productName: z.string().max(300),
+  sourceUrl: z.string().url(),
+  platform: z.enum(marketplacePlatforms),
+  storyFormat: z.enum(["product_review", "sales_demo", "brand_awareness", "before_after", "customer_journey", "tiktok_shop_trend", "shopee_support", "ugc_review", "cinematic_brand_story"]),
+  readiness: z.enum(storytellingReadinessStates),
+  blockers: boundedStringArray(20, 240),
+  customerJourneyStages: z.array(z.enum(customerJourneyStages)).min(1).max(20),
+  claims: z.array(evidenceBackedClaimSchema).max(80).default([]),
+  selectedImages: z.array(z.object({
+    url: z.string().max(4096),
+    role: z.enum(["hero", "detail", "review", "proof", "background"]).default("hero"),
+    fidelity: z.enum(["confirmed_product", "likely_product", "unknown", "mismatch_risk"]).default("unknown"),
+  })).max(30).default([]),
+  videoBrief: videoBriefSchema.optional(),
+  evidenceIds: z.array(z.string().max(120)).max(120).default([]),
+  confidence: z.number().min(0).max(1).default(0),
+}).strict();
+
+export const localInsightPayloadSchemas = {
+  product_brief: productBriefSchema,
+  review_insight: reviewInsightSchema,
+  tiktok_shop_trend: tiktokShopTrendBriefSchema,
+  video_brief: videoBriefSchema,
+  combined_opportunity: combinedOpportunityBriefSchema,
+  storytelling_handoff: marketplaceStorytellingHandoffSchema,
+} as const;
+
+export const marketplaceCaptureInsightSyncSchema = z.object({
+  extensionVersion: z.string().max(80),
+  idempotencyKey: z.string().min(8).max(160),
+  schemaVersion: z.literal("1.0"),
+  insightCreatedAt: z.string().max(80),
+  payloadHash: z.string().min(8).max(128),
+  source: z.object({
+    platform: z.enum(marketplacePlatforms),
+    url: z.string().url(),
+    capturedAt: z.string().max(80),
+    captureId: z.string().max(64).optional(),
+    marketplaceProductId: z.string().max(64).optional(),
+  }),
+  insightType: z.enum(localInsightTypes),
+  provider: z.enum(localAIProviders),
+  status: z.enum(marketplaceInsightStatuses).optional().default("ready"),
+  parentInsightIds: z.array(z.string().max(64)).max(20).optional().default([]),
+  payload: z.unknown(),
+  rawCaptureIncluded: z.boolean().default(false),
+  rawCapture: z.unknown().optional(),
+}).superRefine((value, ctx) => {
+  const schema = localInsightPayloadSchemas[value.insightType];
+  const parsed = schema.safeParse(value.payload);
+  if (!parsed.success) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Invalid ${value.insightType} payload` });
+  }
+});
+
+export const marketplaceServerInsightGenerationSchema = z.object({
+  extensionVersion: z.string().max(80),
+  insightType: z.literal("product_brief"),
+  languagePreference: z.enum(["auto", "th", "en", "mixed"]).optional().default("auto"),
+  source: sanitizedLocalAIInputSchema,
+}).strict();
+
+export const marketplaceServerInsightGenerationResponseSchema = z.object({
+  ok: z.boolean(),
+  provider: z.literal("server_ai"),
+  insightType: z.literal("product_brief"),
+  payload: productBriefSchema.optional(),
+  fallbackMode: z.enum(["llm_gateway", "deterministic_fallback"]).optional(),
+  error: z.object({
+    code: z.string().max(80),
+    message: z.string().max(500),
+    recoverable: z.boolean(),
+  }).optional(),
+}).strict();
+
+export const marketplaceClaimResolutionSchema = z.object({
+  insightId: z.string().min(1).max(64),
+  claimId: z.string().min(1).max(120),
+  decision: z.enum(["approve", "edit", "remove", "request_more_evidence", "mark_unresolved"]),
+  editedText: z.string().max(300).optional(),
+  reason: z.string().max(500).optional(),
+});
 
 export const domRectLikeSchema = z.object({
   x: z.number().optional(),
@@ -187,12 +478,30 @@ export type MarketplacePageType = typeof marketplacePageTypes[number];
 export type MarketplaceCaptureStatus = typeof marketplaceCaptureStatuses[number];
 export type MarketplaceAssetKind = typeof marketplaceAssetKinds[number];
 export type MarketplaceUrlFormat = typeof marketplaceUrlFormats[number];
+export type LocalInsightType = typeof localInsightTypes[number];
+export type LocalAIProviderId = typeof localAIProviders[number];
+export type PromptAPIAvailability = typeof promptAPIAvailabilities[number];
+export type MarketplaceInsightStatus = typeof marketplaceInsightStatuses[number];
+export type StorytellingReadinessState = typeof storytellingReadinessStates[number];
+export type CustomerJourneyStage = typeof customerJourneyStages[number];
 export type HtmlBlock = z.infer<typeof htmlBlockSchema>;
 export type ImageCandidate = z.infer<typeof imageCandidateSchema>;
 export type CategoryCandidate = z.infer<typeof categoryCandidateSchema>;
 export type CreateMarketplaceCaptureDraftInput = z.infer<typeof createMarketplaceCaptureDraftSchema>;
 export type AnalyzeMarketplaceCaptureInput = z.infer<typeof analyzeMarketplaceCaptureSchema>;
 export type MarketplaceConfirmProductInput = z.infer<typeof marketplaceConfirmProductSchema>;
+export type EvidenceItem = z.infer<typeof evidenceItemSchema>;
+export type SanitizedLocalAIInput = z.infer<typeof sanitizedLocalAIInputSchema>;
+export type ProductBrief = z.infer<typeof productBriefSchema>;
+export type ReviewInsight = z.infer<typeof reviewInsightSchema>;
+export type TikTokShopTrendBrief = z.infer<typeof tiktokShopTrendBriefSchema>;
+export type VideoBrief = z.infer<typeof videoBriefSchema>;
+export type CombinedOpportunityBrief = z.infer<typeof combinedOpportunityBriefSchema>;
+export type MarketplaceStorytellingHandoff = z.infer<typeof marketplaceStorytellingHandoffSchema>;
+export type MarketplaceCaptureInsightSyncInput = z.infer<typeof marketplaceCaptureInsightSyncSchema>;
+export type MarketplaceServerInsightGenerationInput = z.infer<typeof marketplaceServerInsightGenerationSchema>;
+export type MarketplaceServerInsightGenerationResponse = z.infer<typeof marketplaceServerInsightGenerationResponseSchema>;
+export type MarketplaceClaimResolutionInput = z.infer<typeof marketplaceClaimResolutionSchema>;
 
 export type ShopeeUrlFormat = "seo_url" | "product_url" | "not_found";
 

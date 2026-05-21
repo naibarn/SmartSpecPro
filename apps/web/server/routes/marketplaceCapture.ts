@@ -6,6 +6,15 @@ import { createMarketplaceCaptureDraft, getMarketplaceCaptureForUser, getMarketp
 import { uploadMarketplaceCaptureAsset } from "../services/marketplaceAssetService";
 import { analyzeMarketplaceCapture } from "../services/marketplaceExtractionService";
 import { confirmMarketplaceCapture } from "../services/marketplaceProductService";
+import {
+  applyMarketplaceClaimResolution,
+  buildBasicStorytellingHandoffFromCapture,
+  generateMarketplaceServerInsight,
+  getMarketplaceInsightForUser,
+  listMarketplaceInsightsByCapture,
+  listMarketplaceInsightsByProduct,
+  syncMarketplaceInsight,
+} from "../services/marketplaceInsightService";
 import { getMarketplaceCaptureConfig, isAllowedMarketplaceOrigin } from "../services/marketplaceCaptureConfig";
 import { requireMarketplaceAuth } from "../services/marketplaceExtensionAuthService";
 
@@ -84,6 +93,71 @@ export function registerMarketplaceCaptureRoutes(app: Express) {
         errorMessage: capture.errorMessage,
         previewUrl: `/marketplace-capture/captures/${capture.id}/preview`,
       });
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.post("/insights", async (req, res) => {
+    try {
+      const auth = await requireMarketplaceAuth(req, "marketplace:capture");
+      res.status(201).json(await syncMarketplaceInsight(req.body, auth));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.post("/insights/server-generate", async (req, res) => {
+    try {
+      const auth = await requireMarketplaceAuth(req, "marketplace:capture");
+      res.json(await generateMarketplaceServerInsight(req.body, auth));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.get("/insights/:insightId", async (req, res) => {
+    try {
+      const auth = await requireMarketplaceAuth(req, "marketplace:read");
+      res.json(await getMarketplaceInsightForUser(req.params.insightId, auth));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.post("/insights/:insightId/claim-resolution", async (req, res) => {
+    try {
+      const auth = await requireMarketplaceAuth(req, "marketplace:write");
+      res.json(await applyMarketplaceClaimResolution({ ...req.body, insightId: req.params.insightId }, auth));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.get("/captures/:captureId/insights", async (req, res) => {
+    try {
+      const auth = await requireMarketplaceAuth(req, "marketplace:read");
+      res.json(await listMarketplaceInsightsByCapture(req.params.captureId, auth));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.get("/captures/:captureId/storytelling-handoff", async (req, res) => {
+    try {
+      const auth = await requireMarketplaceAuth(req, "marketplace:read");
+      const insights = await listMarketplaceInsightsByCapture(req.params.captureId, auth);
+      const syncedHandoff = insights.find((insight) => insight.insightType === "storytelling_handoff");
+      res.json(syncedHandoff?.payloadJson ?? await buildBasicStorytellingHandoffFromCapture(req.params.captureId, auth));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.get("/products/:productId/insights", async (req, res) => {
+    try {
+      const auth = await requireMarketplaceAuth(req, "marketplace:read");
+      res.json(await listMarketplaceInsightsByProduct(req.params.productId, auth));
     } catch (error) {
       sendError(res, error);
     }

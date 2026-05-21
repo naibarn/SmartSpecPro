@@ -67,6 +67,30 @@ export default function MarketplaceCaptureConnect() {
           </p>
         </header>
 
+        <section className="rounded-lg border border-sky-200 bg-sky-50 p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Chrome Extension</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                ดาวน์โหลด build ล่าสุด แล้วติดตั้งแบบ Load unpacked ใน Chrome Extensions
+              </p>
+              <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-600">
+                <li>ดาวน์โหลดไฟล์ zip และแตกไฟล์ในเครื่อง</li>
+                <li>เปิด <span className="font-mono text-xs">chrome://extensions</span></li>
+                <li>เปิด Developer mode แล้วเลือก Load unpacked</li>
+                <li>เลือกโฟลเดอร์ที่แตกไฟล์ไว้ แล้วกลับมากด Generate extension token</li>
+              </ol>
+            </div>
+            <a
+              className="inline-flex shrink-0 items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              href="/extension/smartspecpro-marketplace-extension.zip"
+              download
+            >
+              Download extension
+            </a>
+          </div>
+        </section>
+
         <section className="rounded-lg border bg-white p-5 shadow-sm">
           <label className="block text-sm font-medium text-slate-700">Extension origin</label>
           <input

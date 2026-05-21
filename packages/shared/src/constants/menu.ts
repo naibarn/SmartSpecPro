@@ -34,6 +34,7 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'finance',       label: 'Finance',        labelTh: 'การเงิน',       icon: 'Wallet',          path: '/finance',        platforms: ['web', 'desktop'], group: 'main', sortOrder: 1.1 },
   { id: 'finance-reports', label: 'Finance Reports', labelTh: 'รายงานการเงิน', icon: 'BarChart3', path: '/finance/reports', platforms: ['web', 'desktop'], group: 'main', sortOrder: 1.2 },
   { id: 'media',         label: 'Media Studio',   labelTh: 'สตูดิโอ',       icon: 'Sparkles',        path: '/media-studio',   platforms: ['web', 'desktop'], group: 'main', sortOrder: 2 },
+  { id: 'content-composer', label: 'Content Composer', labelTh: 'เขียนคอนเทนต์', icon: 'FileText', path: '/content-composer', platforms: ['web', 'desktop'], group: 'main', sortOrder: 2.05 },
   { id: 'storyboard-review', label: 'Storyboard Review', labelTh: 'ตรวจสตอรี่บอร์ด', icon: 'Film', path: '/storyboard-review', platforms: ['web', 'desktop'], group: 'main', sortOrder: 2.1 },
   { id: 'skills',        label: 'Skills',         labelTh: 'ทักษะ',         icon: 'Sparkles',        path: '/settings/skills', platforms: ['web', 'desktop'], group: 'main', sortOrder: 3 },
   { id: 'workflows',     label: 'Workflows',      labelTh: 'เวิร์กโฟลว์',    icon: 'GitBranch',       path: '/workflows',      platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.5 },

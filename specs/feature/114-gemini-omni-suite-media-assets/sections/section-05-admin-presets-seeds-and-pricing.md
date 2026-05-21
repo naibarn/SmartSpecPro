@@ -13,6 +13,7 @@ Make static registry, seed data, admin config, and pricing consistent with the G
 - Ensure pricing tiers exactly match the user-provided matrix.
 - Add configurable pricing for Character/Audio asset creation, or keep normal-user asset creation disabled until pricing is confirmed.
 - Add migration/backfill behavior for existing `gemini-omni-video` DB rows with raw provider fields.
+- Add readiness diagnostics for Kie provider config, callback config, storage/public URL config, pricing, skill package contract versions, and seed/backfill state.
 
 ## Files Likely Touched
 
@@ -31,9 +32,13 @@ Make static registry, seed data, admin config, and pricing consistent with the G
 - admin preset includes hidden/managed fields and labels
 - raw audio/character ID fields are not normal visible user inputs
 - existing seeded DB rows can be safely updated without clobbering unrelated admin edits
+- readiness diagnostics show missing config without leaking secrets
+- seed/backfill can run twice idempotently
+- provider contract fixtures detect Kie response drift
 
 ## Completion Criteria
 
 - Fresh installs and seeded DB installs get equivalent Gemini Omni behavior.
 - Admin UI communicates suite-managed fields clearly enough to avoid operator confusion.
 - Existing Gemini Omni configs no longer leave normal users with raw `audio_ids`/`character_ids` controls.
+- Operators can tell whether Gemini Omni is ready before enabling it for users.

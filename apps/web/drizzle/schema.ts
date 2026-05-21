@@ -11713,6 +11713,38 @@ export const marketplaceProductGroupShares = pgTable("marketplace_product_group_
   index("idx_marketplace_product_group_shares_product").on(t.productId),
 ]);
 
+export const marketplaceCaptureInsights = pgTable("marketplace_capture_insights", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "set null" }),
+  captureId: varchar("captureId", { length: 64 }).references(() => marketplaceCaptureSessions.id, { onDelete: "cascade" }),
+  productId: varchar("productId", { length: 64 }).references(() => marketplaceProducts.id, { onDelete: "set null" }),
+  platform: marketplacePlatformEnum("platform").notNull(),
+  sourceUrl: text("sourceUrl").notNull(),
+  insightType: varchar("insightType", { length: 64 }).notNull(),
+  provider: varchar("provider", { length: 64 }).notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("ready"),
+  schemaVersion: varchar("schemaVersion", { length: 16 }).notNull().default("1.0"),
+  payloadHash: varchar("payloadHash", { length: 128 }).notNull(),
+  idempotencyKey: varchar("idempotencyKey", { length: 160 }).notNull(),
+  parentInsightIdsJson: jsonb("parentInsightIdsJson").$type<string[]>().notNull().default([]),
+  payloadJson: jsonb("payloadJson").$type<Record<string, unknown>>().notNull(),
+  rawCaptureJson: jsonb("rawCaptureJson").$type<Record<string, unknown>>(),
+  rawCaptureIncluded: boolean("rawCaptureIncluded").notNull().default(false),
+  storytellingReadiness: varchar("storytellingReadiness", { length: 64 }),
+  claimResolutionsJson: jsonb("claimResolutionsJson").$type<unknown[]>().notNull().default([]),
+  extensionVersion: varchar("extensionVersion", { length: 80 }),
+  insightCreatedAt: timestamp("insightCreatedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("idx_marketplace_capture_insights_idempotency").on(t.userId, t.tenantId, t.idempotencyKey),
+  index("idx_marketplace_capture_insights_capture").on(t.captureId, t.createdAt),
+  index("idx_marketplace_capture_insights_product").on(t.productId, t.createdAt),
+  index("idx_marketplace_capture_insights_user").on(t.userId, t.createdAt),
+  index("idx_marketplace_capture_insights_readiness").on(t.userId, t.storytellingReadiness),
+]);
+
 export const marketplaceUserShareSettings = pgTable("marketplace_user_share_settings", {
   id: varchar("id", { length: 64 }).primaryKey(),
   userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -11740,5 +11772,7 @@ export type MarketplaceProductImage = typeof marketplaceProductImages.$inferSele
 export type InsertMarketplaceProductImage = typeof marketplaceProductImages.$inferInsert;
 export type MarketplaceProductGroupShare = typeof marketplaceProductGroupShares.$inferSelect;
 export type InsertMarketplaceProductGroupShare = typeof marketplaceProductGroupShares.$inferInsert;
+export type MarketplaceCaptureInsight = typeof marketplaceCaptureInsights.$inferSelect;
+export type InsertMarketplaceCaptureInsight = typeof marketplaceCaptureInsights.$inferInsert;
 export type MarketplaceUserShareSetting = typeof marketplaceUserShareSettings.$inferSelect;
 export type InsertMarketplaceUserShareSetting = typeof marketplaceUserShareSettings.$inferInsert;

@@ -1235,6 +1235,12 @@ export default function Dashboard() {
       color: "from-slate-700 to-slate-900",
     },
     {
+      label: "Chrome Extension",
+      icon: Download,
+      href: "/marketplace-capture/connect",
+      color: "from-slate-700 to-sky-700",
+    },
+    {
       label: "Storyboard Review",
       icon: Video,
       href: "/storyboard-review",

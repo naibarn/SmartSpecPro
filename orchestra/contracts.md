@@ -1,3 +1,3 @@
-# Orchestra Contracts
+# Contracts
 
-No parallel implementation contracts are required. This is a read-only installed-skill audit.
+Planning-only task. Contracts are the Feature 115 spec, section files, and canonical deep-plan artifacts.

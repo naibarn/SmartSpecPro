@@ -50,6 +50,12 @@ Current provider contract from docs:
 - Enforce provider limits before credit reservation or provider submission.
 - Keep pricing accurate across Node reserve path and Python gateway fallback path.
 - Preserve existing Media Studio behavior for non-Gemini models.
+- Add a centralized Media Studio Production/Director workflow for goal-driven cinematic storytelling and product campaigns.
+- Add a plan/storyboard approval step after goal definition so users can review and revise the LLM-generated production plan before batch execution.
+- Let Production/Director use all supported Media Studio systems for image, video, audio, TTS, sound, character, product, and reference asset preparation.
+- Treat Gemini Omni Video, Seedance 2, and future qualified video models as final production-grade provider candidates selected by fit, not as hard-coded workflow assumptions.
+- Build and verify required production assets before expensive final video generation.
+- Loop planning, asset preparation, prompts, QA, and targeted revisions until the output is aligned with the production goal or the system reaches budget/policy/human-review limits.
 
 ## Non-goals
 
@@ -60,6 +66,9 @@ Current provider contract from docs:
 - Replacing existing separate voice/music workflows.
 - Replacing the existing general-purpose video prompt skills. Gemini Omni needs its own asset-aware skill because its planning constraints differ from generic video models.
 - Building a separate skill self-learning system that duplicates Feature 112's QA/skill improvement architecture.
+- Removing existing Image, Video, or Audio tabs from Media Studio. The Production/Director workflow coordinates them; it does not replace them.
+- Guaranteeing every provider can satisfy every production-grade cinematic requirement. Provider selection must degrade or block based on actual capability.
+- Auto-spending final render credits while required assets, product truth, quality gates, budget, or provider fit are unresolved.
 
 ## User Experience Requirements
 
@@ -95,6 +104,188 @@ Required new UI components:
 - `GeminiOmniAssetPicker`: multi-select picker for provider assets, filtered by asset type and tenant access.
 
 These components should be Gemini-specific first. Do not generalize into a full provider-asset framework until at least one more provider needs the same abstraction.
+
+### Media Studio Production Director
+
+Media Studio should add a higher-level `Production` or `Director` tab for users who want an end-to-end cinematic/storytelling workflow instead of starting from a specific model tab.
+
+This tab should collect a `ProductionGoal`:
+
+- what kind of film, video, ad, product review, brand story, tutorial, customer journey, or campaign the user wants
+- target audience, platform, language, duration, aspect ratio, and delivery constraints
+- product or marketplace context when relevant
+- character/cast requirements
+- voice, narration, dialogue, sound, music, or silence strategy
+- cinematic style, pacing, lighting, camera language, and continuity rules
+- budget and quality target
+
+ProductionGoal must be easy to read and adjust. It should be presented as a visual goal canvas, not a long technical form.
+
+Recommended UI structure:
+
+- Goal Summary Card: one short plain-language sentence describing the desired output.
+- Output Type Cards: film, product review, ad, brand story, tutorial, UGC, customer journey, or custom.
+- Audience/Platform Chips: audience segment, language, platform, aspect ratio, duration.
+- Product/Brand Card: product, shop, brand voice, CTA, evidence readiness.
+- Character/Voice Cards: cast, narrator, dialogue/voiceover strategy, reusable assets.
+- Visual Style Board: selectable style cards, reference thumbnails, mood/lens/lighting tags.
+- Story Arc Mini Timeline: hook, setup, proof/demo/escalation, payoff, CTA.
+- Constraints and Avoid Chips: things to avoid, claim limits, policy limits, budget guardrails.
+- Readiness Strip: missing inputs, estimated complexity, likely providers, and next action.
+
+The canvas should summarize complex structured data into scannable cards, badges, thumbnails, and short labels. Advanced fields should stay collapsed until needed. Users should be able to edit the goal by clicking the relevant card instead of hunting through one large form.
+
+Add starter templates so users do not start from a blank canvas:
+
+- product review short
+- TikTok Shop trend short
+- Shopee product support video
+- cinematic brand story
+- UGC ad
+- tutorial/demo
+- customer journey campaign
+- character dialogue scene
+
+Templates should fill sensible defaults but remain editable. Applying a template should show what changed and should not overwrite imported product evidence or selected assets without confirmation.
+
+Add an AI clarify step for incomplete goals. If the goal is too vague, Media Studio should ask for only the few missing decisions that materially affect the plan, such as audience, product, duration, platform, voice strategy, or CTA. The user should still be able to continue with reasonable defaults when policy allows it.
+
+Recommended component map:
+
+- `ProductionGoalCanvas`
+- `GoalSummaryCard`
+- `OutputTypeSelector`
+- `AudiencePlatformChips`
+- `ProductBrandContextCard`
+- `CharacterVoiceCards`
+- `VisualStyleBoard`
+- `StoryArcMiniTimeline`
+- `ConstraintsChips`
+- `GoalReadinessStrip`
+- `ProductionGoalTemplatePicker`
+- `ProductionGoalRevisionDrawer`
+
+Every graphic element must support the user's understanding or decision-making. Avoid decorative-only graphics that make the goal harder to scan. Reference thumbnails, style cards, icons, timelines, and badges must have text labels and accessible names.
+
+The underlying data should still remain structured and complete for skills, QA, provider selection, and audit. The visual canvas is a presentation/editing layer, not a lossy simplification of `ProductionGoal`.
+
+ProductionGoal edits should be versioned enough to support review and rollback:
+
+- current goal version
+- previous goal version
+- template applied, if any
+- changed cards/fields
+- user or AI actor
+- timestamp
+- optional reason
+
+When the planner revises the storyboard because the goal changed, the UI should show a concise diff of affected scenes/assets/provider assumptions before the user approves the new plan.
+
+After the goal is saved, the system should run a dedicated planning skill under `apps/web/skills`:
+
+`apps/web/skills/media-production-storyboard-planner`
+
+This skill should use LLM reasoning to create a reviewable plan package before batch execution:
+
+- production goal interpretation
+- production bible draft
+- creative strategy
+- storyboard outline
+- scene timeline
+- shot plan
+- asset requirements
+- provider candidate plan
+- batch execution plan
+- credit/time estimate
+- risks and assumptions
+- approval checklist
+
+The user must be able to inspect the generated plan/storyboard before any asset-generation batch, provider video generation, final render, or export work starts.
+
+The user can:
+
+- approve and start the batch
+- revise the entire plan
+- revise only a scene
+- revise only a shot
+- revise dialogue/voiceover
+- revise product claims
+- revise asset requirements
+- revise provider selection
+- revise batch order
+- lock approved scenes/assets and revise only selected targets
+
+The approved plan becomes the input for provider-specific Director skills. For example, Gemini Omni Video Director should convert the approved storyboard and asset plan into Gemini Omni-ready prompts, reference plans, and provider payload decisions.
+
+After the planner produces or revises the plan, the system should run a second bounded LLM verification skill:
+
+`apps/web/skills/media-production-plan-verifier`
+
+This verifier checks whether the plan is likely to achieve the goal before the user approves batch execution. It should verify goal alignment, story completeness, audience/platform fit, asset requirements, provider feasibility, product truth, budget risk, batch order, missing decisions, and downstream readiness for Storyboard Review and Video Edit.
+
+The verifier should return structured verdicts:
+
+- `pass`
+- `warning`
+- `revise`
+- `human_review`
+- `block`
+
+If the verifier requests revision, the planner should revise only the targeted parts where possible. Default maximum verifier-guided revisions: 2. The user sees the verified plan and any warnings before approving.
+
+The system should convert the approved plan into a `ProductionBible`, `ProductionAssetPlan`, storyboard/scene plan, provider plan, quality gate, and final render plan.
+
+### Orchestration Runtime Decision
+
+The production workflow should avoid turning the MVP into a large autonomous-agent platform.
+
+Default approach:
+
+- use `media-production-storyboard-planner` for plan/storyboard creation
+- use `media-production-plan-verifier` for LLM verification
+- use deterministic state transitions in the web app/server for approval gates, credit gates, asset readiness, provider submission, and output routing
+
+Agency Swarm:
+
+- optional for high-risk or high-value productions as a reviewer pack
+- useful when multiple specialist personas should challenge the plan, such as Product Truth, Cinematic Direction, Cost Risk, or Marketplace Journey
+- not required for normal ProductionGoal planning in MVP
+- must be behind feature flag/tenant policy because it adds latency, cost, and operational complexity
+
+LangGraph:
+
+- useful for long-running, checkpointed batch execution when the production workflow becomes too large for ordinary durable job/state-machine handling
+- not required for initial plan approval or simple batch execution if the existing media task/state system can express the states safely
+- should be introduced only behind a runtime adapter if checkpoint/resume/branching needs exceed the existing implementation
+
+OpenAI Agents Python:
+
+- may power planner/verifier execution only through the existing Python adapter/shared skill-runtime boundary when that runtime is enabled
+- should not be imported directly into Node or Media Studio frontend
+- should not expand the legacy `agency_swarm_adapter.py` for this feature
+
+This keeps the solution production-grade without making the first implementation unnecessarily large.
+
+Production output must support two downstream routes:
+
+- Storyboard Review: for narrative/storyboard review, approvals, revision requests, and final storyboard render.
+- Video Edit: for user-controlled editing, trimming, ordering, overlays, captions, audio mixing, and manual export.
+
+These routes receive projections of the production output. They must not become the source of truth for provider submission, credit reservation, provider asset snapshots, QA/learning state, or historical generation metadata.
+
+Image, Video, and Audio tabs remain standalone. Production mode uses them as execution surfaces for preparing assets when needed. For example, it may route the user to:
+
+- an image model for product keyframes or mood frames
+- Gemini Omni Character for reusable character assets
+- Gemini Omni Audio or another audio/TTS system for voice assets
+- existing video models for draft/reference clips
+- Gemini Omni Video, Seedance 2, or another qualified provider for final render
+
+Provider-specific fields must stay behind readiness summaries and advanced/debug views. The default user should see creative intent, asset readiness, cost, quality status, and next actions.
+
+Planning and asset readiness checks must not reserve final provider credits. Credit reservation is allowed only after the production quality gate and provider preflight pass, or after an authorized human override that does not bypass hard policy, Feature 115 hard blocks, budget, or tenant restrictions.
+
+Batch asset generation and provider submission must also wait for plan/storyboard approval. Approval bypass should be disabled for normal users and allowed only through an audited internal/admin policy.
 
 ### Gemini Omni Suite Entry
 
@@ -206,6 +397,92 @@ The UI should show this as one generation, not as multiple queued videos.
 
 The UI should make clear that credits are charged per generated clip.
 
+Storyboard review should reuse the existing Storyboard Review workspace as a downstream review surface through a Gemini Omni handoff adapter. The Gemini Omni run remains authoritative for provider submission, credit reservation/refund, callback/polling recovery, QA, learning, and provider asset snapshots.
+
+The handoff adapter should create or update review-task projections with:
+
+- `storyboardRunId`
+- `clipId`
+- clip order
+- prompt and shot list
+- model, duration, aspect ratio, and resolution
+- selected reference asset snapshot
+- backend/provider task identifiers when available
+- generated platform media URL when available
+- Prompt QA and Video QA summaries
+- review status and source surface `gemini_omni_video`
+
+Review-only placeholders created before actual generation must not submit provider jobs or reserve credits. Storyboard Review comments, approvals, and revision requests should return to Gemini Omni as review feedback or a new revision attempt, not as direct edits to provider assets, credit records, or historical task metadata.
+
+Video Edit should also be available as a downstream output target. The Video Edit handoff should create or update an editable project with:
+
+- production run ID / storyboard run ID
+- scene and clip order
+- generated clip media
+- prompt and shot metadata
+- selected reference asset snapshots
+- voiceover/dialogue text
+- audio/music/sound references where available
+- captions/subtitle drafts when available
+- product evidence and claim warnings when relevant
+- QA badges and known issues
+- provider/model metadata
+- edit-safe provenance IDs
+
+Implementation should reuse the existing Video Editor project contract where possible, especially `VideoEditorProject` and the storyboard-to-editor helper pattern used by `buildStoryboardVideoProject`. Do not invent a second timeline/project format for Gemini Omni or Production Director unless the existing contract is proven insufficient.
+
+If the production output has reviewable prompts but not completed media yet, the Video Edit handoff may create a draft project with non-renderable placeholders only when the existing editor can represent them safely. Otherwise `Open in Video Edit` should remain disabled until at least one usable media clip exists, with a clear reason.
+
+Video Edit changes are edit-layer changes. Trims, splits, reorders, overlays, caption edits, audio mixes, manual clip replacements, and exported media must not mutate the original provider submission payload, credit ledger, provider asset records, generated media metadata, or QA/learning evidence. If the platform later wants to learn from edited outputs, that must be a separate explicit learning action with consent/policy handling.
+
+Media Studio should show two separate actions when output is ready:
+
+- `Review Storyboard`
+- `Open in Video Edit`
+
+Both actions can be used on the same production output without duplicating provider jobs or charging final provider credits again.
+
+Storyboard Review render and Video Edit export may still have their own render/export cost or queue behavior if the existing video pipeline charges or schedules those operations separately. That cost must be shown as composition/export cost, not confused with provider generation credits.
+
+#### Flow F: Cinematic Storyboard Production
+
+Gemini Omni should support a higher-level production mode for story-driven videos, not only isolated clip generation. This mode lives in Media Studio but must stay connected to Storyboard Review.
+
+The user should be able to define:
+
+- story premise / campaign objective
+- target audience and platform
+- narrative arc: hook, setup, escalation, payoff, call-to-action
+- cinematic style: genre, lens/camera language, lighting, pacing, color, transition style
+- cast/characters from Gemini Omni Character assets
+- voice strategy:
+  - no voice
+  - voiceover narration using Gemini Omni Audio assets
+  - character dialogue/lipsync using character + audio assets when provider capability supports it
+  - mixed narration + dialogue
+- sound/music direction
+- per-scene duration and emotional beat
+
+Media Studio should present this as a `Cinematic Storyboard` layer above clip settings:
+
+1. Story Bible: global premise, characters, voice/audio, cinematic style, continuity rules.
+2. Scene/Beat Timeline: ordered scenes, per-scene intent, shot beats, dialogue/voiceover, references, duration.
+3. Gemini Omni Clip Plan: provider-ready clip prompts with selected image/video/character/audio refs and quota usage.
+4. Storyboard Review: downstream review for continuity, timing, QA, clip approval, revisions, and storyboard render.
+5. Video Edit: downstream manual editing workspace for trimming, ordering, overlays, captions, audio mix, and user-controlled export.
+
+Storyboard Review should show the generated clips as a coherent story timeline, not only independent task cards. It should surface:
+
+- scene number and narrative beat
+- continuity notes from the Director skill
+- character/voice/audio assets used per clip
+- voiceover/dialogue text attached to the clip
+- lipsync/dialogue intent when applicable
+- cinematic QA badges for continuity, framing, motion, lighting, pacing, and audio alignment
+- global story quality score and per-clip issue markers
+
+If Gemini Omni or Kie only supports audio-driven output through `audio_ids` but not a dedicated lipsync flag, the UI must describe the mode as `character dialogue/audio-guided performance` rather than guaranteeing lipsync. The plan should still preserve lipsync intent in the prompt/QA metadata so future provider support can be enabled without changing the user workflow.
+
 ### UI State Requirements
 
 Gemini Omni UI must define these states explicitly:
@@ -310,20 +587,48 @@ Add rollout controls so the suite can ship safely:
 - `GEMINI_OMNI_PROMPT_QA_ENABLED`
 - `GEMINI_OMNI_VIDEO_QA_ENABLED`
 - `GEMINI_OMNI_AUTO_LEARNING_ENABLED`
+- `MEDIA_PRODUCTION_DIRECTOR_ENABLED`
+- `MEDIA_PRODUCTION_GOAL_CANVAS_ENABLED`
+- `MEDIA_PRODUCTION_STORYBOARD_PLANNER_ENABLED`
+- `MEDIA_PRODUCTION_PLAN_VERIFIER_ENABLED`
+- `MEDIA_PRODUCTION_DUAL_OUTPUT_ENABLED`
+- `MEDIA_PRODUCTION_AGENCY_REVIEWERS_ENABLED`
+- `MEDIA_PRODUCTION_LANGGRAPH_BATCH_ENABLED`
 
 Safe default:
 
 - suite enabled only when Kie.ai provider is configured and model is enabled
 - asset creation enabled only for internal/admin rollout first
 - prompt QA enabled before video QA
+- Production Director disabled until persistence, planner, verifier, and approval gates are ready
+- goal canvas can be enabled for planning-only preview before batch execution is enabled
+- plan verifier required before normal-user batch start when Production Director is enabled
+- dual output enabled only after Storyboard Review and Video Edit projection mappings are durable and idempotent
+- Agency reviewer packs and LangGraph batch runtime disabled by default
 - auto-learning records can be collected before recommendations are surfaced
 - auto skill patching remains disabled
+
+Delivery must be slice-gated. Each slice should be independently releasable, testable, and rollbackable, and later slices must not be enabled unless earlier data contracts, migrations, flags, and tests have passed:
+
+1. Foundation and persistence: additive metadata, pricing, provider asset records, production run/version records, feature flags, and diagnostics only.
+2. Gemini Omni base video: prompt/image/video references and corrected credit calculation, without saved character/audio asset creation for broad users.
+3. Goal canvas planning preview: visual `ProductionGoal` editing and saved goal versions, with no provider submission.
+4. Planner/verifier approval: skills produce and verify a reviewable plan/storyboard package, but batch execution remains disabled until approval records persist.
+5. Provider asset creation/selection: Gemini Omni Character and Audio assets can be created, stored, selected, audited, and rolled back without affecting non-Gemini flows.
+6. Cross-modal asset readiness: ProductionAssetPlan can prepare or request required assets through existing Image, Video, and Audio tabs without final render submission.
+7. Internal batch execution: gated asset/video generation and quality loop for internal/admin tenants only.
+8. Dual output projections: idempotent Storyboard Review and Video Edit handoffs after projection mappings and stale-write checks are proven.
+9. Marketplace/Feature 115 storytelling: product truth, claim map, image fidelity, and customer journey checks enabled for product campaigns.
+10. Optional advanced runtimes: Agency reviewer packs and LangGraph batch runtime only after default deterministic workflow is stable.
 
 When a flag is disabled, the UI should degrade gracefully:
 
 - asset creation disabled: picker still shows existing assets if available; create buttons show disabled reason
 - prompt QA disabled: generation still works with a small "QA disabled" debug note only in admin/debug context
 - video QA disabled: completed task cards do not show QA state
+- Production Director disabled: Image, Video, Audio, Gemini Omni, Storyboard Review, and Video Edit remain usable through existing flows
+- planner/verifier disabled: batch execution disabled for normal users; internal/admin manual test paths require audited override
+- dual output disabled: completed production media remains accessible, but handoff buttons show disabled reason
 
 ### Gemini Omni Director Skill UX
 
@@ -678,6 +983,147 @@ Add skill verification that checks:
 - no normal UI field requires manual `character_ids` or `audio_ids`
 - `ui.schema.json` uses the section format expected by the app
 - quota warnings appear in over-limit fixture output
+- cinematic storyboard fixture validates story bible, cast map, voice map, scene timeline, continuity graph, and provider plan
+- learning recommendation fixture validates issue categories and evidence shape
+- schema snapshots fail if required Media Studio handoff fields are removed
+- `scripts/verify.sh` validates schemas, fixtures, and contract snapshots without calling live providers
+
+### Skill Package Completeness Checklist
+
+Each Gemini Omni skill package must follow the app's existing skill conventions and include:
+
+- `SKILL.md` for runtime instructions
+- `skill.md` manifest/frontmatter with stable `name`, `description`, `category`, `version`, `icon`, `tags`, `auto_trigger`, `enabled_by_default`, `credit_multiplier`, `priority`, and `execution_mode`
+- `schemas/input.schema.json`
+- `schemas/output.schema.json`
+- `schemas/ui.schema.json`
+- `references/input_contract.md`
+- `references/output_contract.md`
+- `references/maintenance.md`
+- `fixtures/` with passing and failing examples
+- `tests/tests.json` or equivalent structured fixture assertions used by existing skill verification
+- `scripts/verify.sh`
+- optional `skill.lock.json` or version snapshot when the existing registry expects lock metadata
+
+All three skills must use structured JSON outputs. Free-form prose may appear only inside fields such as `final_prompt`, `comments`, or `revision_instructions`.
+
+The Director output schema must include these top-level fields:
+
+- `skill_name`
+- `skill_version`
+- `contract_version`
+- `delivery_mode`
+- `generation_readiness`
+- `story_bible`
+- `narrative_arc`
+- `cast_map`
+- `voice_map`
+- `audio_map`
+- `scene_timeline`
+- `continuity_graph`
+- `prompt_sequence`
+- `reference_plan`
+- `provider_plan`
+- `pricing_hint`
+- `qa_handoff`
+- `warnings`
+- `learning_context`
+
+For non-cinematic single-shot requests, story-level fields may be minimal but must still exist as empty or defaulted structures so Media Studio can consume one contract shape.
+
+The Prompt QA and Video QA output schemas must include:
+
+- stable issue categories
+- severity
+- target level: `story`, `scene`, `clip`, `shot`, `voice_line`, `asset`, `provider_quota`, `pricing`, or `policy`
+- revisability
+- recommended action
+- revision instructions
+- learning signal candidates
+- contract version
+
+Fixture matrix:
+
+- single-shot no assets
+- single-shot with image references
+- source-video branch
+- character + audio references
+- over-quota failure
+- missing character asset
+- missing audio asset
+- multi-shot single video
+- storyboard multi-video
+- cinematic storyboard with voiceover
+- cinematic storyboard with audio-guided character dialogue
+- metadata-only video QA
+- visual/video-inspection video QA placeholder
+- QA failure producing learning recommendation candidate
+- invalid output missing required handoff fields
+
+Skill maintenance rules:
+
+- instruction changes must not remove schema fields
+- learning recommendations default to pending human review
+- auto-apply is disabled unless tenant policy explicitly enables it
+- every recommendation includes evidence count, issue category, affected contract version, proposed patch, risk level, and rollback note
+
+### Production-Grade Skill Verification Loop
+
+Gemini Omni skills must support a verification loop before any expensive video provider call. The loop exists to reduce wasted credits from weak prompts, wrong assets, broken continuity, unsupported audio/lipsync expectations, and over-quota provider payloads.
+
+The pre-generation loop should be:
+
+```text
+User brief + selected assets
+  -> Director produces structured plan
+  -> Script validators check schema, quota, pricing, references, and provider contract
+  -> Reviewer subagents inspect specialized dimensions
+  -> Prompt QA aggregates reviewer verdicts
+  -> If blocked/revisable: Director revises with reviewer feedback
+  -> Repeat until pass, max attempts, budget limit, or human review
+  -> Only then reserve credits and submit Gemini Omni Video
+```
+
+Required reviewer subagent roles:
+
+- Story Continuity Reviewer: narrative arc, scene order, emotional beats, continuity graph.
+- Gemini Omni Provider Constraint Reviewer: 7-unit reference quota, source video limit, character cap, audio/character ID validity, duration/resolution support, provider-safe lipsync wording.
+- Cinematic Direction Reviewer: camera language, framing, lighting, motion, pacing, transitions, production value.
+- Character & Identity Reviewer: character asset consistency, role continuity, wardrobe/pose/motion changes, product/brand identity.
+- Voice & Audio Reviewer: voiceover/dialogue fit, audio asset assignment, timing, audio-guided performance intent.
+- Cost & Risk Reviewer: per-clip and total credits, skill/QA costs, retry budget, probability of wasted generation, missing inputs.
+- Safety/Policy Reviewer: claims, visible text/logo risks, private media handling, consent/policy requirements.
+
+These reviewers may be implemented as internal skill calls, subagent-like orchestration roles, deterministic scripts, or a hybrid. The user experience should show one concise quality gate result, not seven separate noisy reports.
+
+Allowed helper scripts:
+
+- Python or JavaScript scripts may be added under the skill package, for example `scripts/validate_contract.py`, `scripts/score_story_plan.js`, `scripts/check_quota.py`, or `scripts/fixture_eval.py`.
+- Scripts must run offline against JSON fixtures and local schemas by default.
+- Scripts must not call live Kie/provider endpoints unless a separate explicit live-smoke flag is set.
+- Script output must be machine-readable so CI and Media Studio can distinguish pass, warning, revisable, blocked, and contract-drift states.
+
+Quality gate outputs must include:
+
+- `gate_status`: `pass`, `warning`, `revise`, `human_review`, or `block`
+- `confidence_score`
+- `credit_risk_score`
+- `expected_quality_score`
+- `blocking_issues`
+- `revision_instructions`
+- `reviewer_verdicts`
+- `max_attempts_reached`
+- `allowed_next_actions`
+
+Default loop limits:
+
+- max Director revision attempts before generation: 3
+- max reviewer aggregation passes per revision: 1
+- max total pre-generation loop attempts: 4
+- stop early when credit risk remains high after two revisions
+- require human review when reviewers disagree on a high-risk issue
+
+Media Studio must not reserve provider generation credits while this pre-generation quality gate is `revise`, `human_review`, or `block`.
 
 ## Gemini Omni QA and Learning Loop
 
@@ -849,6 +1295,24 @@ Every Gemini Omni skill run and QA result should store enough data to support la
 - final outcome: accepted, regenerated, revised, rejected, or manually overridden
 
 Do not store raw private media content in learning records. Store asset IDs, summaries, hashes, URLs already allowed by existing task/library policy, and redacted provider metadata.
+
+### Planner, Verifier, And Evidence Security
+
+Production planner and verifier inputs can include untrusted evidence from marketplace pages, Feature 115 handoffs, user-provided briefs, reference media metadata, OCR/DOM text, comments, and prior AI output.
+
+Security rules:
+
+- Treat marketplace DOM/OCR/review text, product descriptions, comments, filenames, captions, and prior model output as untrusted evidence.
+- Put untrusted evidence in clearly labeled evidence blocks, never inside system instructions.
+- Do not allow untrusted evidence to redefine the production goal, policy, tool permissions, provider choice, budget, approval state, or output routing.
+- Prefer normalized product/insight records and evidence IDs over raw HTML, raw OCR, or long free-form marketplace text.
+- Cap evidence size and summarize before planner/verifier calls.
+- Strip or neutralize prompt-control text, script tags, hidden page text, tracking URLs, signed URL query strings, and account/contact/header noise.
+- Validate planner/verifier JSON output against schema and reject tool/action instructions that are not part of the contract.
+- Persist redacted prompts, summaries, hashes, IDs, and contract versions; avoid storing raw marketplace DOM, raw private media content, or unbounded planner/verifier transcripts by default.
+- Apply tenant retention policy to ProductionGoal versions, plan versions, verifier results, and approval records.
+
+Planner/verifier cost and token usage should be tracked separately from provider generation credits. Users should see planning/verification cost policy when it is not included by tenant plan.
 
 ### Skill Improvement Recommendations
 
@@ -1182,13 +1646,18 @@ Admin separation:
 
 Rollout sequence:
 
-1. Ship metadata, validation, and pricing fixes with Gemini Omni Suite UI hidden behind flag.
-2. Enable Gemini Omni Video with prompt/image/video references only.
+1. Ship foundation and persistence changes with all new Gemini Omni/Production UI hidden behind flags.
+2. Enable Gemini Omni Video with prompt/image/video references and corrected pricing only.
 3. Enable Gemini Omni Video Director skill and Prompt QA.
-4. Enable provider asset creation for internal/admin users.
-5. Enable Character/Audio asset selection for broader users.
-6. Enable Video QA summaries.
-7. Enable learning recommendation surfacing after enough QA data exists.
+4. Enable visual ProductionGoal canvas as planning-only preview; provider submission remains disabled.
+5. Enable Production Storyboard Planner and Plan Verifier with approval records, still without batch execution for normal users.
+6. Enable provider asset creation for internal/admin users, then Character/Audio asset selection for broader users.
+7. Enable cross-modal ProductionAssetPlan readiness and routing to existing Image, Video, and Audio tabs.
+8. Enable internal/admin batch execution with quality gate, budget/concurrency preflight, and post-generation QA.
+9. Enable idempotent Storyboard Review and Video Edit output projections.
+10. Enable marketplace/Feature 115 product storytelling checks after product evidence contracts are verified.
+11. Enable Video QA summaries and learning recommendation surfacing after enough QA data exists.
+12. Consider optional Agency reviewer packs or LangGraph batch runtime only after default deterministic workflow is stable.
 
 Rollback:
 
