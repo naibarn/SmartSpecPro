@@ -18,6 +18,14 @@ Before dispatching any Task Packet, verify all of the following:
 - [ ] **CONTRACT** is filled in for parallel agents, or explicitly `N/A` for solo agents
 - [ ] **OUTPUT** names the specific file to modify or the report format to return
 - [ ] **QUALITY GATE** contains exact shell commands, not descriptions
+- [ ] **CONTEXT BUDGET** is explicit for non-trivial packets:
+      `packet_target_tokens`, `report_target_words`, `large_evidence_policy`,
+      and `split_if_exceeded`
+- [ ] **DISPATCH METADATA** is present for every wave packet:
+      `dispatch_mode`, `same_wave_peers`, `ownership_map`, `dependency_edges`, and
+      `sequential_reason` when applicable
+- [ ] **MODEL ROUTING** is present for every dispatched sub-agent:
+      `model_preference` and `model_reason` follow `model-routing.md`
 - [ ] **IMPACT PREFLIGHT** is reflected in FILES/CONTEXT/CONSTRAINTS:
       SocratiCode or targeted-shell discovery identified downstream files, tests,
       routes, symbols, and shared contracts that may be affected
@@ -42,24 +50,26 @@ Write the task as though it is a Git commit message subject line: imperative, sp
 
 ### DOMAIN
 
-Match the domain to the registered agent name or inline role you will use:
+Match the domain to the portable role and, in Claude Code mode, to the generated `ssp-*`
+native agent name you will use:
 
-| DOMAIN | Agent role | Edits files in |
-|--------|---------------|----------------|
-| CMD-0 Product UX | `Plan` | Read-only product/UX brief |
-| CMD-1 Frontend | `frontend` | `apps/web/client/src/`, `packages/ui/` |
-| CMD-2 Backend | `backend` | `apps/web/server/`, `packages/shared/` |
-| CMD-3 Python | `python` | `python-backend/app/` |
-| CMD-4 Database | `database` | `apps/web/drizzle/`, `packages/db/` |
-| CMD-5 Infra | `infrastructure` | `docker/`, `nginx/`, `docker-compose*.yml` |
-| CMD-6 Security | `security` | Audit only or targeted fixes |
-| CMD-7 Debug | `debugger` or `error-detective` | Targeted fix or read-only investigation |
-| CMD-8 QA | `test-qa` or `reviewer` | Tests/review reports |
-| CMD-8E E2E | `e2e-playwright` | Playwright/browser tests and minimal selectors |
-| CMD-9 Performance | `performance` | Performance-sensitive source/config after baseline |
-| CMD-10 CI Release | `ci-release` | `.github/workflows/`, workflow scripts, release docs |
-| CMD-11 Supply Chain | `dependency-supply-chain` | Manifests, lockfiles, Dockerfiles, workflow versions |
-| CMD-12 Visual UI | visual UI roles from `sub-agents/agents/` | UI requirement briefs, visual direction, Tailwind/shadcn UI patches, UX/a11y/responsive review |
+| DOMAIN | Portable role(s) | Claude native agent(s) | Edits files in |
+|--------|------------------|------------------------|----------------|
+| CMD-0 Product UX | `product-ux` | `ssp-product-ux` | Read-only product/UX brief |
+| CMD-DESIGN Architecture | `architect` | `ssp-architect` | Read-only architecture and contracts |
+| CMD-1 Frontend | `frontend` | `ssp-frontend` | `apps/web/client/src/`, `packages/ui/` |
+| CMD-2 Backend | `backend` | `ssp-backend` | `apps/web/server/`, `packages/shared/` |
+| CMD-3 Python | `python` | `ssp-python` | `python-backend/app/` |
+| CMD-4 Database | `database` | `ssp-database` | `apps/web/drizzle/`, `packages/db/` |
+| CMD-5 Infra | `infrastructure` | `ssp-infrastructure` | `docker/`, `nginx/`, `docker-compose*.yml` |
+| CMD-6 Security | security roles | `ssp-security*` | Audit only or targeted fixes |
+| CMD-7 Debug | `debugger`, `error-detective` | `ssp-debugger`, `ssp-error-detective` | Targeted fix or read-only investigation |
+| CMD-8 QA | `test-qa`, `reviewer` | `ssp-test-qa`, `ssp-reviewer` | Tests/review reports |
+| CMD-8E E2E | `e2e-playwright` | `ssp-e2e-playwright` | Playwright/browser tests and minimal selectors |
+| CMD-9 Performance | `performance` | `ssp-performance` | Performance-sensitive source/config after baseline |
+| CMD-10 CI Release | `ci-release`, `docs-release` | `ssp-ci-release`, `ssp-docs-release` | `.github/workflows/`, workflow scripts, release docs |
+| CMD-11 Supply Chain | `dependency-supply-chain` | `ssp-dependency-supply-chain` | Manifests, lockfiles, Dockerfiles, workflow versions |
+| CMD-12 Visual UI | visual UI roles from `sub-agents/agents/` | `ssp-visual-*`, `ssp-ui-builder`, reviewer agents | UI requirement briefs, visual direction, Tailwind/shadcn UI patches, UX/a11y/responsive review |
 
 ---
 
@@ -88,7 +98,11 @@ is used, summarize the reason and only pass the relevant file paths to agents.
 
 ### CONTEXT
 
-**Construction rule:** Copy-paste the actual error message, not a summary. If you are dispatching a bug-fix agent, include:
+**Construction rule:** Give the exact evidence needed to act, but keep it bounded. If the
+error/log/test output is short, paste it exactly. If it is long, include the failing lines,
+a short first/last excerpt (max 80 lines or 12 KB), and the command, exit code, artifact
+path, log path, or trace ID needed to retrieve the full evidence. If you are dispatching a
+bug-fix agent, include:
 1. The exact error text (stack trace, message)
 2. The file:line where it originated
 3. What was already tried and why it failed
@@ -111,6 +125,45 @@ Impact preflight:
 If SocratiCode is unavailable, write `SocratiCode: unavailable — targeted shell fallback`
 and summarize the exact narrowed shell search used.
 
+**Context budget requirement:** For every non-trivial packet, include this block in
+CONTEXT:
+
+```
+Context budget:
+  packet_target_tokens: 6000
+  report_target_words: 1500
+  large_evidence_policy: short exact excerpts + paths/commands/trace IDs only
+  split_if_exceeded: true
+```
+
+The conductor should split the packet instead of sending broad directories, full prior
+reports, full diffs, full command transcripts, or raw conversation history. For prior wave
+handoff, pass a result capsule: status, changed files, top findings, blockers, stale gates,
+and open contract notes.
+
+**Dispatch metadata requirement:** For any packet launched by a wave, include:
+
+```
+Dispatch metadata:
+  model_preference: gpt-5.3-codex-spark | inherited-default | explicit:<model>
+  model_reason: lightweight-default | explicit-user-request | high-complexity | high-risk | performance-critical | deep-route | retry-escalation | unavailable
+  dispatch_mode: parallel_batch | parallel_with_worktree | single_agent | sequential_exception
+  same_wave_peers: [ssp-backend]
+  ownership_map:
+    ssp-frontend: [<absolute-repo-root>/apps/web/client/src/pages/Dashboard.tsx]
+    ssp-backend: [<absolute-repo-root>/apps/web/server/routers/dashboard.ts]
+  dependency_edges: [wave-1-shared-schema -> wave-2-frontend-backend]
+  sequential_reason: N/A
+```
+
+If `same_wave_peers` is non-empty and `dispatch_mode` is not parallel, write a concrete
+`sequential_reason`. Do not omit peers just to make a sequential plan look simpler.
+
+**Model routing requirement:** Read `model-routing.md` before dispatch. Use
+`gpt-5.3-codex-spark` for lightweight-default sub-agent tasks unless an explicit override,
+deep-* route, high complexity/risk, performance-critical analysis, retry escalation, or
+model-tool limitation requires `inherited-default` or `explicit:<model>`.
+
 ---
 
 ### CONSTRAINTS
@@ -128,6 +181,10 @@ most important scope rule is: if the agent discovers it must touch a file outsid
 packet's Write list or change a shared/exported contract not already approved, it must
 return a blocker/options report instead of silently expanding scope.
 
+Also include the context discipline rule: no full file/log/diff/test-output dumps in the
+Result Report. Agents should cite paths, line numbers, trace IDs, commands, and artifacts
+so details can be retrieved just in time.
+
 ---
 
 ### CONTRACT
@@ -139,7 +196,9 @@ return a blocker/options report instead of silently expanding scope.
 - The exact tRPC procedure name and route
 - Which agent "owns" the contract (the one that cannot change it once set)
 
-**When to write N/A:** Solo agents (single dispatch, no parallel counterparts) always get `CONTRACT: N/A`.
+**When to write N/A:** Solo agents (single dispatch, no parallel counterparts) always get
+`CONTRACT: N/A`. Same-wave agents that interoperate must never use `N/A`; create the
+smallest safe contract plus ownership boundaries before dispatch.
 
 **Conductor note:** If you set a contract and then one agent changes the shared type, you must re-dispatch the other agent with updated CONTEXT explaining the contract change. Never let agents silently drift from the contract.
 
@@ -156,6 +215,10 @@ OUTPUT:
     - Apply .input(createSkillInput) to the create procedure
   Return a Result Report per result-report.schema.md with status success or partial.
 ```
+
+For reports, explicitly request a compact Result Report: top findings first, decisive
+evidence excerpts only, and no raw full logs/diffs/test transcripts inline. If full output
+is required for auditability, the agent should record the command or artifact path.
 
 ---
 
@@ -191,7 +254,7 @@ Standard dispatch via the Task tool:
 
 ```
 Task(
-  agent="backend",
+  agent="ssp-backend",
   prompt="
     TASK: Add Zod validation to createSkill procedure
     DOMAIN: CMD-2 Backend
@@ -205,7 +268,7 @@ Task(
 )
 ```
 
-Use the registered agent name or inline role that matches the DOMAIN (see domain table above).
+Use the native `ssp-*` agent name or inline role that matches the DOMAIN (see domain table above).
 
 ---
 
@@ -229,7 +292,10 @@ Task(
 )
 ```
 
-**Scope cap warning:** Standard mode agents have a smaller context window. If the injected identity + packet exceeds 8,000 tokens, split the packet into two dispatches (reduce FILES and CONSTRAINTS per dispatch). If the environment does not expose a sub-agent tool, run the role inline instead of forcing a fake Task call.
+**Scope cap warning:** Standard mode agents have a smaller context window. If the injected
+identity + packet exceeds about 6,000 tokens, split the packet into two dispatches (reduce
+FILES, prior-wave context, and constraints per dispatch). If the environment does not
+expose a sub-agent tool, run the role inline instead of forcing a fake Task call.
 
 ---
 
@@ -275,6 +341,11 @@ CONTEXT:
   id (uuid, PK), tenantId (uuid, FK), name (text), category (text), createdAt (timestamp).
   The skills router currently only has the `create` procedure. This wave adds `list`.
   Auth middleware sets ctx.tenantId from the JWT session cookie.
+  Impact preflight:
+    - Direct change: apps/web/server/routers/skills.ts
+    - Dependent consumers: SkillCard frontend wave and skills router tests
+    - Risk-sensitive surfaces: tenant isolation and authenticated tRPC query
+    - Escalate if response shape, auth base procedure, or schema changes are needed
 
 CONSTRAINTS:
   - Do NOT modify the database schema (migration 0030 is already applied)
@@ -326,6 +397,11 @@ CONTEXT:
   SkillsPage.tsx renders a hardcoded list. After this wave, it should use TanStack Query
   to call trpc.skills.list and render a SkillCard per result.
   Backend contract (SkillSummary type) is defined in the CONTRACT field below.
+  Impact preflight:
+    - Direct changes: SkillCard.tsx and SkillsPage.tsx
+    - Dependent consumers: route-level UI, loading/error/empty states, TypeScript imports
+    - Risk-sensitive surfaces: browser-visible async data flow and primary action reachability
+    - Escalate if backend contract is unavailable or state/browser gates cannot be satisfied
 
 CONSTRAINTS:
   - Do NOT modify any files in apps/web/server/
@@ -380,6 +456,11 @@ CONTEXT:
   The skills table currently has: id, tenantId, name, category, createdAt.
   Product request: add a status field so skills can be deactivated without deletion.
   No previous migration for this column. This is the first time status is added.
+  Impact preflight:
+    - Direct changes: schema and migration
+    - Dependent consumers: tRPC queries, seed scripts, admin UI, tests
+    - Risk-sensitive surfaces: existing row preservation and deploy rollback
+    - Escalate if backup or row-count verification cannot run
 
 CONSTRAINTS:
   - MANDATORY: Follow the CLAUDE.md Database Safety Protocol before running ANY migration:

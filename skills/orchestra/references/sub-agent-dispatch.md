@@ -1,6 +1,6 @@
 # Sub-Agent Dispatch
 
-Tells the conductor exactly how to dispatch each of the 29 agent roles — which
+Tells the conductor exactly how to dispatch each of the 35 agent roles — which
 registered agent name or fallback role to use per platform, how to inject wave context and contracts into Task
 Packets, and when the pre-merge security gate triggers automatically.
 
@@ -8,6 +8,7 @@ For the Task Packet format definition, see:
 - `../../sub-agents/contracts/task-packet.schema.md`
 - `task-packet-format.md`
 - `../../sub-agents/references/shared-operational-discipline.md`
+- `model-routing.md`
 
 For wave grouping and contract format, see:
 - `wave-planning.md`
@@ -16,47 +17,61 @@ For wave grouping and contract format, see:
 
 ## 1. Agent Type Mapping Table
 
-For each of the 29 agent roles, the registered name for Claude Code mode and the fallback
-behavior for Standard/open-code are shown below. Agent identity files live in
-`../../sub-agents/agents/NAME.md`.
+For each of the 35 agent roles, Claude Code mode uses the generated native agent name
+from `.claude/agents/ssp-*.md`. Standard/open-code modes use the portable role name and
+inject identity/constraints from `../../sub-agents/agents/NAME.md`.
 
-| Agent Role | Claude Code registered name | Standard Fallback | Open-Code Mode |
-|-----------|---------------------------|----------------|----------------|
-| product-ux | `Plan` | `general-purpose` + injected template | Inline |
-| research | `Explore` | `general-purpose` + injected template | Inline (conductor adopts role) |
-| architect | `Plan` | `general-purpose` + injected template | Inline |
-| frontend | `general-purpose` | `general-purpose` + injected template | Inline |
-| backend | `backend` | `general-purpose` + injected template | Inline |
-| python | `python` | `general-purpose` + injected template | Inline |
-| database | `general-purpose` | `general-purpose` + injected template | Inline (sequential only) |
-| test-qa | `general-purpose` | `general-purpose` + injected template | Inline |
-| e2e-playwright | `general-purpose` | `general-purpose` + injected template | Inline |
-| reviewer | `Explore` | `general-purpose` + injected template | Inline |
-| security | `security` | `general-purpose` + injected template | Inline |
-| debugger | `debugger` | `general-purpose` + injected template | Inline (sequential) |
-| error-detective | `error-detective` | `general-purpose` + injected template | Inline |
-| infrastructure | `Explore` (analysis) or `general-purpose` (write) | `general-purpose` + injected template | Inline |
-| performance | `general-purpose` | `general-purpose` + injected template | Inline |
-| ci-release | `general-purpose` | `general-purpose` + injected template | Inline (sequential only) |
-| dependency-supply-chain | `general-purpose` | `general-purpose` + injected template | Inline |
-| docs-release | `general-purpose` | `general-purpose` + injected template | Inline |
-| security-review | `Explore` | `general-purpose` + injected template | Inline |
-| security-trpc | `security` | `general-purpose` + injected template | Inline |
-| security-fastapi | `security` | `general-purpose` + injected template | Inline |
-| security-frontend | `security` | `general-purpose` + injected template | Inline |
-| visual-ui-requirement-analyzer | `Plan` | `general-purpose` + injected template | Inline |
-| visual-ui-direction | `Plan` | `general-purpose` + injected template | Inline |
-| ui-builder | `general-purpose` | `general-purpose` + injected template | Inline |
-| visual-ux-reviewer | `Explore` | `general-purpose` + injected template | Inline |
-| accessibility-reviewer | `Explore` | `general-purpose` + injected template | Inline |
-| responsive-reviewer | `Explore` | `general-purpose` + injected template | Inline |
-| visual-final-refactor | `general-purpose` | `general-purpose` + injected template | Inline |
+| Agent Role | Claude Code native agent | Standard Fallback | Open-Code Mode |
+|-----------|--------------------------|-------------------|----------------|
+| product-ux | `ssp-product-ux` | `default`/`explorer` + injected template | Inline |
+| research | `ssp-research` | `explorer` + injected template | Inline (conductor adopts role) |
+| architect | `ssp-architect` | `default`/`explorer` + injected template | Inline |
+| api-contract-reviewer | `ssp-api-contract-reviewer` | `explorer` + injected template | Inline |
+| frontend | `ssp-frontend` | `worker` + injected template | Inline |
+| backend | `ssp-backend` | `worker` + injected template | Inline |
+| python | `ssp-python` | `worker` + injected template | Inline |
+| database | `ssp-database` | `worker` + injected template | Inline (sequential only) |
+| test-qa | `ssp-test-qa` | `worker`/`explorer` + injected template | Inline |
+| e2e-playwright | `ssp-e2e-playwright` | `worker` + injected template | Inline |
+| reviewer | `ssp-reviewer` | `explorer` + injected template | Inline |
+| security | `ssp-security` | `worker`/`explorer` + injected template | Inline |
+| tenant-data-isolation-reviewer | `ssp-tenant-data-isolation-reviewer` | `explorer` + injected template | Inline |
+| browser-automation-sandbox-reviewer | `ssp-browser-automation-sandbox-reviewer` | `explorer` + injected template | Inline |
+| debugger | `ssp-debugger` | `worker` + injected template | Inline (sequential) |
+| error-detective | `ssp-error-detective` | `explorer` + injected template | Inline |
+| infrastructure | `ssp-infrastructure` | `worker`/`explorer` + injected template | Inline |
+| performance | `ssp-performance` | `worker`/`explorer` + injected template | Inline |
+| llm-runtime-cost-auditor | `ssp-llm-runtime-cost-auditor` | `explorer` + injected template | Inline |
+| ci-release | `ssp-ci-release` | `worker` + injected template | Inline (sequential only) |
+| dependency-supply-chain | `ssp-dependency-supply-chain` | `explorer` + injected template | Inline |
+| docs-release | `ssp-docs-release` | `worker` + injected template | Inline |
+| i18n-content-reviewer | `ssp-i18n-content-reviewer` | `explorer` + injected template | Inline |
+| observability-audit-agent | `ssp-observability-audit-agent` | `explorer` + injected template | Inline |
+| security-review | `ssp-security-review` | `explorer` + injected template | Inline |
+| security-trpc | `ssp-security-trpc` | `explorer` + injected template | Inline |
+| security-fastapi | `ssp-security-fastapi` | `explorer` + injected template | Inline |
+| security-frontend | `ssp-security-frontend` | `explorer` + injected template | Inline |
+| visual-ui-requirement-analyzer | `ssp-visual-ui-requirement-analyzer` | `explorer` + injected template | Inline |
+| visual-ui-direction | `ssp-visual-ui-direction` | `explorer` + injected template | Inline |
+| ui-builder | `ssp-ui-builder` | `worker` + injected template | Inline |
+| visual-ux-reviewer | `ssp-visual-ux-reviewer` | `explorer` + injected template | Inline |
+| accessibility-reviewer | `ssp-accessibility-reviewer` | `explorer` + injected template | Inline |
+| responsive-reviewer | `ssp-responsive-reviewer` | `explorer` + injected template | Inline |
+| visual-final-refactor | `ssp-visual-final-refactor` | `worker` + injected template | Inline |
 
-**25 general agents** (section-07): product-ux, research, architect, frontend, backend,
+**Invariant:** The Claude Code native agent column must match the `name:` field in
+`.claude/agents/ssp-*.md`. Do not dispatch built-in names such as `Plan`, `Explore`,
+`backend`, or `security` when a generated `ssp-*` native agent exists; doing so bypasses
+the repo-specific role prompt and can silently reduce parallel execution quality.
+
+**31 general/domain agents** (section-07 + vNext reviewers): product-ux, research, architect,
+api-contract-reviewer, frontend, backend,
 python, database, test-qa, e2e-playwright, reviewer, security, debugger, error-detective,
 infrastructure, performance, ci-release, dependency-supply-chain, docs-release,
 visual-ui-requirement-analyzer, visual-ui-direction, ui-builder, visual-ux-reviewer,
-accessibility-reviewer, responsive-reviewer, visual-final-refactor
+accessibility-reviewer, responsive-reviewer, visual-final-refactor,
+tenant-data-isolation-reviewer, llm-runtime-cost-auditor,
+browser-automation-sandbox-reviewer, i18n-content-reviewer, observability-audit-agent
 
 **4 security specialists** (section-08): security-review, security-trpc, security-fastapi,
 security-frontend
@@ -65,18 +80,76 @@ security-frontend
 
 ## 2. Parallel Dispatch Rule
 
-> **If the active platform exposes a Task/sub-agent tool, launch all independent agents in the same wave in one dispatch batch. If it does not, preserve the same wave plan and execute them sequentially inline.**
+> **Default:** If the active platform exposes a Task/sub-agent/spawn-agent tool, launch all
+> independent agents in the same wave in one dispatch batch. If it does not, preserve the
+> same wave plan and execute them sequentially inline as a platform fallback.
+
+This is an execution requirement, not an optimization. Direct conductor work or inline role
+execution is allowed for non-trivial tasks only after agent-tool capability detection fails
+or an attempted dispatch fails and the fallback is recorded in `orchestra/progress.md`.
 
 ```
 WRONG (sequential — do not do this):
-  Message 1: Task(frontend agent) → wait for result
-  Message 2: Task(backend agent) → wait for result
+  Message 1: Task(ssp-frontend) → wait for result
+  Message 2: Task(ssp-backend) → wait for result
 
 CORRECT (parallel — one message, all wave agents):
-  Message 1: Task(frontend agent) + Task(backend agent) → wait for both results
+  Message 1: Task(ssp-frontend) + Task(ssp-backend) → wait for both results
 ```
 
-On platforms with a Task/sub-agent tool, the conductor's single dispatch batch causes all agents to start concurrently. On platforms without that tool, the conductor executes the same wave sequentially and records each result before proceeding.
+On platforms with a Task/sub-agent tool, the conductor's single dispatch batch causes all
+agents to start concurrently. On platforms without that tool, the conductor executes the
+same wave sequentially and records each result before proceeding.
+
+Read-only reviewers and specialists that do not depend on each other's output must batch
+together by default. Examples:
+- `visual-ux-reviewer` + `accessibility-reviewer` + `responsive-reviewer`
+- `security-trpc` + `security-fastapi` + `security-frontend`
+- independent `research` / `api-contract-reviewer` / `observability-audit-agent`
+  questions whose answers feed a later implementation wave
+
+### Model Routing Rule
+
+Before dispatching any sub-agent, read `model-routing.md` and choose a model preference.
+The default for bounded, routine, non-deep sub-agent work is
+`gpt-5.3-codex-spark`. Preserve explicit user or Task Packet model overrides. Escalate to
+the inherited current/default model for deep-* routes, high-complexity/high-risk work,
+performance-critical analysis, failed or blocked Spark attempts, and repeated gate fixes.
+
+If the active Task/sub-agent tool exposes a model override field, pass
+`gpt-5.3-codex-spark` for lightweight-default packets. If the tool does not support model
+overrides, keep the metadata in the Task Packet and proceed normally.
+
+### Dispatch Metadata
+
+Every wave plan must include dispatch metadata before launch:
+
+```text
+agent: ssp-frontend
+portable_role: frontend
+model_preference: gpt-5.3-codex-spark | inherited-default | explicit:<model>
+model_reason: lightweight-default | explicit-user-request | high-complexity | high-risk | performance-critical | deep-route | retry-escalation | unavailable
+writes_files: true
+background: false
+isolation: worktree | none
+ownership: [/absolute/path/to/file.tsx]
+dispatch_mode: parallel_batch | parallel_with_worktree | single_agent | sequential_exception
+same_wave_peers: [ssp-backend]
+depends_on: [wave-1-backend-contract]
+sequential_reason: N/A
+```
+
+Guidance:
+
+- `background: true` is only for read-only or non-blocking analysis whose result will be
+  collected before it is needed.
+- File-editing agents use `background: false` because later waves depend on their files.
+- If two file-editing agents run in the same wave, either use worktree isolation or prove
+  their write sets are disjoint in `orchestra/contracts.md`.
+- If the platform cannot enforce isolation and two writers might touch the same file, split
+  them into sequential sub-waves.
+- If `same_wave_peers` is non-empty and `dispatch_mode` is not parallel, `sequential_reason`
+  is mandatory.
 
 ---
 
@@ -100,8 +173,17 @@ dispatch mechanics only.
    - stay within FILES and CONTRACT
    - report blockers/options for unapproved shared contract or out-of-scope file changes
    - choose the least-impact contract-compliant implementation when options are equivalent
-6. Include the conductor's impact preflight summary and escalation criteria. A sub-agent
+6. Include context and token discipline:
+   - `packet_target_tokens`, `report_target_words`, `large_evidence_policy`, and
+     `split_if_exceeded`
+   - no full prior Result Reports, raw transcripts, full diffs, full logs, full stack
+     traces, or full command output in CONTEXT
+   - prior wave handoff uses a compact result capsule: status, changed files, top
+     findings, blockers, stale gates, and open contract notes
+7. Include the conductor's impact preflight summary and escalation criteria. A sub-agent
    should know exactly which downstream files/tests are in scope and when to stop.
+8. Include model routing metadata from `model-routing.md`, and pass the model override to
+   the sub-agent tool when supported.
 
 ---
 
@@ -126,6 +208,7 @@ Do not inject the full file — it inflates prompt size beyond what Standard mod
 - Identity paragraph (who the agent is, what stack it specializes in)
 - Constraints section (what it must NOT do)
 - Shared operational discipline summary (SocratiCode/impact/scope/least-impact rules)
+- Context discipline summary (bounded reads, compact Result Report, no raw dumps)
 
 **Skip:**
 - Workflow steps
@@ -140,6 +223,8 @@ Wouter routing, Radix UI + CVA component patterns, and TanStack Query for server
 
 Constraints: Do not modify backend files. Do not modify database schema. Do not modify
 Python backend files. Do not commit directly — stage only.
+Context discipline: keep report under 1,500 words; cite file:line evidence; do not paste
+full files, diffs, logs, or test output.
 
 ---
 
@@ -154,17 +239,19 @@ DOMAIN: CMD-1 Frontend
 
 After the final wave completes (all tasks done, no more waves pending), check whether the
 security gate must run before reporting completion. Read
-`security-review-protocol.md` for the full trigger
-condition list. This check runs in **SKILL.md Step 5** (result integration), not Step 6.
+`security-review-protocol.md` for the full trigger condition list.
+
+**Phase split:** Step 5 performs the trigger check only and sets
+`security_gate_required = true` when needed. Step 6 executes the security gate.
 
 **If any trigger condition matches, the conductor:**
 
-1. Builds 3 Task Packets — one per specialist agent: `security-trpc`, `security-fastapi`,
-   `security-frontend`
+1. Builds up to 3 Task Packets — one per specialist portable role:
+   `security-trpc`, `security-fastapi`, `security-frontend`
 2. Dispatches all 3 in a single message (parallel)
 3. Collects their Result Reports
 4. Dispatches `security-review` as aggregator with the collected findings in its CONTEXT
-5. `security-review` returns a `PASS` / `CONDITIONAL` / `FAIL` verdict
+5. `security-review` returns `status` plus `security_verdict: PASS | CONDITIONAL | FAIL`
 6. Only then proceeds to Step 7 (progress update)
 
 **Critical constraint:** `security-review` is an aggregator — it receives pre-collected
@@ -175,12 +262,12 @@ the orchestra conductor dispatches agents.
 
 ```
 CORRECT (orchestra dispatches 3 specialists in parallel):
-  Message 1: Task(security-trpc) + Task(security-fastapi) + Task(security-frontend)
+  Message 1: Task(ssp-security-trpc) + Task(ssp-security-fastapi) + Task(ssp-security-frontend)
   [wait for all three]
-  Message 2: Task(security-review) with findings in context
+  Message 2: Task(ssp-security-review) with findings in context
 
 WRONG (security-review dispatching):
-  security-review calls Task(security-trpc) — NEVER do this
+  ssp-security-review calls Task(ssp-security-trpc) — NEVER do this
 ```
 
 ---

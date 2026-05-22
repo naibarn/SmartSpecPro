@@ -30,8 +30,26 @@ TASK: Add Zod input validation to the `createSkill` tRPC procedure in
 **What it must contain:** The Commander designation that identifies which agent family handles this packet.
 
 **Format constraints:**
-- One of exactly: `CMD-1` (Frontend), `CMD-2` (Backend), `CMD-3` (Python), `CMD-4` (Database), `CMD-5` (Infrastructure), `CMD-6` (Security)
-- Optionally append a label: `CMD-2 Backend`
+- One of the active command domains below. Optionally append a label after the
+  code, for example `CMD-2 Backend`.
+
+| Domain | Agent family |
+|---|---|
+| `CMD-0 Product UX` | product UX discovery and acceptance criteria |
+| `CMD-DESIGN Architecture` | architecture and interface design |
+| `CMD-1 Frontend` | React client, routing, hooks, client state |
+| `CMD-2 Backend` | tRPC, Express, Drizzle services |
+| `CMD-3 Python` | FastAPI, Celery, Python LLM gateway |
+| `CMD-4 Database` | schema, migrations, seed/data safety |
+| `CMD-5 Infrastructure` | Docker, Nginx, deployment config |
+| `CMD-6 Security` | general and specialist security review |
+| `CMD-7 Debug` | bug investigation, runtime/error-log diagnosis |
+| `CMD-8 QA` | tests, code review, quality reporting |
+| `CMD-8E E2E` | browser workflow and Playwright verification |
+| `CMD-9 Performance` | latency, queries, bundles, load testing |
+| `CMD-10 CI Release` | CI, release, changelog, deployment readiness |
+| `CMD-11 Supply Chain` | dependencies, lockfiles, licenses, package integrity |
+| `CMD-12 Visual UI` | UI requirement, direction, builder, UX/a11y/responsive review |
 
 **Example:**
 ```
@@ -67,12 +85,28 @@ FILES:
 **What it must contain:** Prior events, relevant error messages, trace IDs, and what was already attempted. This section allows an agent to pick up mid-stream without reading conversation history.
 
 **Format constraints:**
-- Must be specific — include actual error output, not summaries
+- Must be specific — include the actual error excerpt when it is short; for long output include
+  a bounded exact excerpt (max 80 lines or 12 KB) plus the command, exit code, artifact
+  path, trace ID, or log path needed to retrieve the full evidence
 - Include traceId from audit logs if available: `grep '"traceId":"abc123"' apps/web/logs/audit/audit-*.jsonl`
 - State what was already tried and why it failed
 - For implementation, feature, refactor, and bug-fix packets, include an `Impact preflight`
   block showing SocratiCode status, direct targets, downstream affected files/tests/symbols,
   chosen least-impact approach, and escalation criteria
+- Include a `Context budget` block for every non-trivial packet:
+  - `packet_target_tokens`: default 6000 in Standard/Open-Code; use a lower number for small tasks
+  - `report_target_words`: default 1500
+  - `large_evidence_policy`: summarize with file paths, trace IDs, commands, and short excerpts
+  - `split_if_exceeded`: true when the agent should return `partial` instead of expanding scope
+- For packets that belong to a wave, include a `Dispatch metadata` block:
+  - `model_preference`: `gpt-5.3-codex-spark`, `inherited-default`, or `explicit:<model>`
+  - `model_reason`: `lightweight-default`, `explicit-user-request`, `high-complexity`,
+    `high-risk`, `performance-critical`, `deep-route`, `retry-escalation`, or `unavailable`
+  - `dispatch_mode`: `parallel_batch`, `parallel_with_worktree`, `single_agent`, or `sequential_exception`
+  - `same_wave_peers`: peer agent names in this wave, or `[]`
+  - `ownership_map`: files owned by this agent and peer agents
+  - `dependency_edges`: wave/task dependencies that affect ordering
+  - `sequential_reason`: required when 2+ candidate agents are not dispatched in parallel
 
 **Example:**
 ```
@@ -81,6 +115,11 @@ CONTEXT:
   Drizzle ORM crash when `name` is empty (TypeError: NOT NULL constraint failed:
   skills.name). Wave 1 added the database column migration. This is wave 2.
   No previous fix attempt. Audit traceId: n/a (not an LLM call).
+  Context budget:
+    packet_target_tokens: 6000
+    report_target_words: 1500
+    large_evidence_policy: short exact excerpts + paths/commands only
+    split_if_exceeded: true
 ```
 
 ---
@@ -95,6 +134,8 @@ CONTEXT:
 - Include the shared operational discipline: SocratiCode-first when tools are available,
   targeted shell fallback when they are not, stay within FILES/CONTRACT, and return
   blocker/options instead of expanding scope into unapproved shared contracts
+- Include context discipline: no full file/log/diff/test-output dumps in Result Reports;
+  provide compact evidence with durable references instead
 
 **Example:**
 ```
@@ -114,6 +155,8 @@ CONSTRAINTS:
 
 **Format constraints:**
 - For parallel agents: document the shared API endpoint shape, request/response schema, and any shared TypeScript type names
+- For parallel agents that interoperate with same-wave peers, `CONTRACT` must never be
+  `N/A`; use a minimal contract plus ownership map even when the interface is simple
 - For solo agents: write `N/A`
 
 **Example (parallel dispatch):**
@@ -141,6 +184,8 @@ CONTRACT: N/A — solo agent dispatch
 - Must be specific: name the file to modify, the function to add, the report format to return
 - Never vague: "implement it" or "do the work" are not valid
 - If the output is a structured report, reference `result-report.schema.md`
+- If a report may be large, require a compact summary plus a durable artifact/path/command
+  for full reproduction rather than inline bulk output
 
 **Example:**
 ```
@@ -245,6 +290,11 @@ CONTEXT:
   The skills table was added in migration 0030. The skills router file exists
   but only has the `create` procedure (added in wave 1). This wave adds `list`.
   Tenant isolation is enforced via ctx.tenantId (set by auth middleware).
+  Impact preflight:
+    - Direct change: apps/web/server/routers/skills.ts
+    - Dependent consumers: frontend skill list UI and router tests
+    - Risk-sensitive surfaces: tenant isolation and authenticated tRPC query
+    - Escalate if response shape or auth base procedure must change
 
 CONSTRAINTS:
   - Do NOT modify the database schema
@@ -277,15 +327,17 @@ QUALITY GATE:
 ### Example 3 — Security Audit Packet (Read-only, no CONTRACT)
 
 ```
-TASK: Audit all tRPC procedures in
-      <absolute-repo-root>/apps/web/server/routers/
+TASK: Audit the changed tRPC procedures in
+      <absolute-repo-root>/apps/web/server/routers/skills.ts and
+      <absolute-repo-root>/apps/web/server/routers/media.ts
       for missing tenant isolation, missing auth middleware, and Zod validation gaps.
 
 DOMAIN: CMD-6 Security
 
 FILES:
   Read:
-    - <absolute-repo-root>/apps/web/server/routers/ (all files)
+    - <absolute-repo-root>/apps/web/server/routers/skills.ts
+    - <absolute-repo-root>/apps/web/server/routers/media.ts
     - <absolute-repo-root>/apps/web/server/middleware/auth.ts
     - <absolute-repo-root>/apps/web/server/trpc.ts
 
@@ -293,6 +345,11 @@ CONTEXT:
   Pre-merge security gate triggered after wave 3 implementation.
   No specific vulnerability was reported — this is a routine sweep.
   Stack: tRPC 11, Zod, Drizzle ORM, JWT auth via ctx.userId + ctx.tenantId.
+  Impact preflight:
+    - Direct change: N/A (read-only audit)
+    - Dependent surfaces: all changed tRPC routers from the completed wave
+    - Risk-sensitive surfaces: auth, tenant isolation, input validation, secrets
+    - Escalate if any file cannot be read or auth intent is undocumented
 
 CONSTRAINTS:
   - READ ONLY — do not modify any files
@@ -305,7 +362,9 @@ OUTPUT:
   Return a Result Report per result-report.schema.md with:
     - status: success (audit complete, no blockers)
     - findings: all issues with severity HIGH/MEDIUM/LOW, file:line references
+    - blockers: unreadable files or incomplete auth intent
     - next_steps: recommended fixes for each HIGH finding
+    - quality_gate_results: read-only checklist pass/fail/skipped entries
 
 QUALITY GATE:
   - No code changes — gate is not applicable. Mark as: skipped (read-only audit)

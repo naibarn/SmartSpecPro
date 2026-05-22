@@ -1,26 +1,29 @@
-# Decisions
+# Orchestra Decisions
 
-[2026-05-21T13:19:28Z] DECISION: Auto-run deep-plan for Feature 115 without confirmation.
-  Context: User explicitly requested orchestra deep-plan and no further confirmation.
-  Alternatives considered: Wait for deep-plan invocation; rejected per user instruction.
+[2026-05-22T08:23:53Z] DECISION: Run Feature 116 completeness review as read-only multi-agent audit.
+  Context: User explicitly requested subagents to inspect completeness of the plan.
+  Alternatives considered: Single-conductor review; rejected because the plan spans product, codebase integration, and QA/TDD concerns.
 
-[2026-05-21T13:32:00Z] DECISION: Use side panel as the v1 local AI analysis and review workspace.
-  Context: Prompt API status, model download, cancellation, insight preview, evidence review, and storytelling readiness need more room than a popup.
-  Alternatives considered: Popup-only UX; rejected because it would make review and fallback states cramped.
+[2026-05-22T08:27:32Z] DECISION: Mark Feature 116 plan as not ready for deep-implement without targeted planning patches.
+  Context: Two of three read-only subagents returned `not_ready` due to implementation ambiguity in scheduler integration, handoff architecture, rollout flags, security tests, MVP scope, and migration tests.
+  Alternatives considered: Proceed with watchpoints only; rejected because deep-implement would need to guess codebase integration and security/TDD details.
 
-[2026-05-21T13:33:00Z] DECISION: Treat Prompt API as optional and runtime-detected.
-  Context: Feature must work on machines that support and do not support Chrome Prompt API.
-  Alternatives considered: Version-gated or required Prompt API; rejected because existing capture must remain intact.
+[2026-05-22T08:39:57Z] DECISION: Patch planning artifacts instead of production code.
+  Context: User requested completing all audit findings; all findings were planning gaps, not runtime bugs.
+  Alternatives considered: Start implementation immediately; rejected because the audited blockers were meant to be closed before deep-implement.
 
-[2026-05-21T13:34:00Z] DECISION: Use MarketplaceStorytellingHandoff as the typed bridge into Feature 114.
-  Context: User requested a complete journey that feeds the upcoming storytelling system.
-  Alternatives considered: Free-form insight text handoff; rejected because Feature 114 needs evidence-backed structured data.
+[2026-05-22T08:41:33Z] DECISION: Mark Feature 116 planning package ready with implementation watchpoints.
+  Context: Read-only reviewer verified all prior blockers were addressed and returned no blockers.
+  Alternatives considered: Add another planning review round; rejected because gates passed and remaining notes are implementation-facing watchpoints.
 
-[2026-05-21T13:55:00Z] AUTO-APPROVED: Implement Feature 115 on the current main branch with dirty worktree.
-Reason: user explicitly requested complete deep-implement without further confirmation; operation is non-destructive and preserves unrelated changes.
-Risk: MEDIUM
-Files affected: apps/extension/src, apps/web/shared/marketplaceCapture.ts, apps/web/server marketplaceCapture routes/services/router, apps/web/drizzle schema/migration, apps/web/client marketplace capture insight route, specs/feature/115 implementation docs.
+[2026-05-22T08:47:09Z] DECISION: Run deeper UI/UX and end-to-end journey audit before implementation.
+  Context: User explicitly requested subagents to verify system-wide consistency, UI, UX, and whether the plan can take a user to completed work clearly.
+  Alternatives considered: Reuse prior ready_with_notes verdict; rejected because the new request adds stronger UI/UX and end-to-end workflow criteria.
 
-[2026-05-21T13:56:00Z] DECISION: Use a dedicated marketplace_capture_insights table.
-Context: Insight lifecycle, idempotency, typed reads, claim resolution, and Feature 114 handoff queries need durable queryable records.
-Alternatives considered: embed versioned JSON in capture sessions; rejected because it would make read/query/claim lifecycle brittle.
+[2026-05-22T08:50:48Z] DECISION: Mark Feature 116 plan not ready for deep-implement until UI/UX gates are patched.
+  Context: Visual/UI and QA/TDD agents found blocking gaps in UI/UX contracts, browser evidence, responsive matrix, accessibility gates, and canonical E2E journey proof.
+  Alternatives considered: Treat findings as implementation-time watchpoints; rejected because the user explicitly asked for confidence that the plan produces a clear, high-quality end-to-end user experience.
+
+[2026-05-22T09:07:01Z] DECISION: Patch all seven Wave 5 UI/UX blockers as planning release gates.
+  Context: User asked to complete all seven findings. The correct scope is planning artifacts, not production code, because the gaps were missing contracts and gates for deep-implement.
+  Alternatives considered: Leave items in backlog for implementation; rejected because deep-implement would still need to guess browser evidence, responsive, accessibility, copy, and token acceptance criteria.

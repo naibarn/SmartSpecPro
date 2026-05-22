@@ -46,13 +46,20 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | `references/sub-agent-dispatch.md` | Only for `medium` scope and above — Step 4 |
 | `references/task-packet-format.md` | Only for `medium` scope and above — Step 4 |
 | `references/platform-compat.md` | Only for `medium` scope and above — Step 4 |
+| `references/model-routing.md` | Always before dispatching a sub-agent, building Task Packets, or selecting inline fallback model behavior |
 | `references/result-integration.md` | Only for `medium` scope and above — Step 5 |
 | `references/quality-gates.md` | Always — Step 6 |
+| `references/ui-ux-planning-contract.md` | When UI/UX, visual polish, responsive, accessibility, or user-facing workflow work is in scope |
+| `references/ui-browser-verification.md` | When browser-visible UI, route-level workflow, visual regression, responsive, or accessibility evidence is required |
+| `references/design-token-extraction.md` | Before changing existing visual systems or matching product UI vocabulary |
+| `references/ui-review-report-template.md` | When producing UI/UX/a11y/responsive review reports |
+| `references/visual-regression-policy.md` | When visual-diff, screenshot comparison, or before/after UI evidence is required |
 | `../sub-agents/references/shared-operational-discipline.md` | Always before dispatching or inline-executing any sub-agent role |
 | `references/meta-activation.md` | Always — before Step 1 skill/route classification |
 | `references/worktree-discipline.md` | When scope is `large`/`project`, risk is `high`/`critical`, or unrelated dirty files overlap planned edits |
 | `references/tdd-discipline.md` | When changing routing, gates, security behavior, orchestration behavior, or bug fixes with reproducible failures |
 | `references/verification-before-completion.md` | Always before final summary and after every implementation wave |
+| `references/review-convergence.md` | Before final summary for medium+ scope/risk, after any review findings, or after any fix caused by review/gate feedback |
 | `references/branch-finishing.md` | When the user asks to commit, push, open PR, keep, discard, or finish a branch |
 | `references/skill-behavior-tests.md` | When adding/changing skills, sub-agents, routing triggers, or quality gates |
 | `references/security-review-protocol.md` | Only when `security_gate_required = true` — Step 5/6 |
@@ -282,16 +289,40 @@ If both commands return empty output, skip this check silently and proceed.
 Read `references/meta-activation.md`.
 Read `references/task-analysis.md`.
 
+### Sub-Agent-First Default
+
+For every non-trivial task, Orchestra must first look for useful sub-agent work before
+choosing direct conductor execution.
+
+Default behavior:
+- Use direct conductor edits only for `trivial` scope or emergency integration fixes after
+  a failed agent wave.
+- Use at least one sub-agent for `small` implementation/review work when a Task/sub-agent
+  tool is available.
+- Promote the task to `medium` when two or more independent workstreams can run safely in
+  parallel, even if the estimated file count is small.
+- Prefer parallel read-only analysis/review agents whenever their findings can be collected
+  before the next implementation step.
+- If a Task/sub-agent tool is unavailable, preserve the same agent plan and execute inline
+  only as a platform fallback; record the fallback in `orchestra/progress.md`.
+
 Apply classification in this order:
 
 1. **Bug sub-tree first** — if the task is a bug or error report, route through the bug sub-tree before applying the scope table. The bug sub-tree determines whether this needs security handling, error-detective investigation, Python-only debugging, or general debugging.
-2. **Scope classification** — apply the 5-level scope table (first match wins):
+2. **Parallel opportunity scan** — identify independent workstreams before scope is final:
+   - domain slices: frontend, backend, Python, database, infra, docs, tests, UI review, security review
+   - independent read-only questions that can be answered by explorer/reviewer agents
+   - disjoint writer scopes that can safely run in the same wave
+   - required gates/reviewers that can run in parallel after an implementation wave
+   If the scan finds 2+ safe independent workstreams, set `parallel_default = true` and
+   classify at least `medium`.
+3. **Scope classification** — apply the 5-level scope table (first match wins):
    - `trivial` — single file edit, no API changes, no new dependencies
-   - `small` — 2–5 files, single domain, clear implementation
+   - `small` — 2–5 files, single domain, clear implementation, no safe parallel split
    - `medium` — 6+ files, multiple domains, or requires parallel agents
    - `large` — new feature requiring structured planning (deep-plan chain)
    - `project` — multiple independent features or system decomposition
-3. **Risk classification** — apply the 4-level risk table independently:
+4. **Risk classification** — apply the 4-level risk table independently:
    - `low` — read-only changes, docs, tests, UI copy
    - `medium` — new endpoints, schema changes, config changes
    - `high` — auth changes, RBAC changes, encryption changes, new integrations
@@ -313,6 +344,9 @@ Write classification result to `orchestra/plan.md`:
 - chosen_route: [see Step 2]
 - task_summary: [one-sentence description of the task]
 - bug_route: [if applicable — bug sub-tree classification]
+- parallel_default: [true | false]
+- planned_agents: [portable role names, or [] for trivial direct-edit]
+- dispatch_preference: [parallel | single-agent | inline-fallback | direct-edit]
 ```
 
 Print the classification summary to the user before proceeding.
@@ -328,6 +362,8 @@ For implementation, feature, refactor, and bug-fix tasks, perform impact preflig
    - directly changed files
    - dependent files/tests that may need updates
    - risk-sensitive surfaces (auth, tenant isolation, DB, security, public API, UI workflow)
+   - parallelizable workstreams and their candidate agents
+   - workstreams that must stay sequential and why
    - confidence level and unknowns
 5. Choose the least-impact option that satisfies the user's goal and preserves existing contracts. If multiple valid options have materially different product, security, data, performance, or API tradeoffs, ask the user the smallest direct decision question before implementation.
 
@@ -347,11 +383,25 @@ Read `references/routing-decision.md`.
 
 | Scope | Route | Next Action |
 |-------|-------|-------------|
-| `trivial` | Direct edit | Conductor edits file directly. No sub-agents. Skip to Step 7. |
-| `small` | Single agent or quick-plan-chain | If implementation is obvious, build one Task Packet. If the task is under-specified or benefits from a written plan, auto-run `deep-plan-quick`. |
-| `medium` | Multi-agent waves or quick-plan-chain | Use waves when the task is implementation-ready. Use `deep-plan-quick` when a compact written plan is still needed. |
+| `trivial` | Direct edit | Conductor edits file directly only when the parallel opportunity scan found no useful agent work. No sub-agents. Skip to Step 7. |
+| `small` | Single-agent or quick-plan-chain | If implementation is obvious, build one Task Packet and dispatch the best-matching sub-agent when tooling exists. If the task is under-specified or benefits from a written plan, auto-run `deep-plan-quick`. |
+| `medium` | Multi-agent waves or quick-plan-chain | Default to multi-agent waves when implementation-ready. Use `deep-plan-quick` only when a compact written plan is still needed before dispatch. |
 | `large` | deep-plan chain | Read `references/skill-pack-integration.md`. Create or refresh `spec.md`, auto-run `deep-plan`, verify artifacts, then continue directly into `deep-implement`. |
 | `project` | full-pipeline | Read `references/skill-pack-integration.md`. Create or refresh `requirements.md`, auto-run `deep-project`, then auto-run `deep-plan` and `deep-implement` per split. |
+
+**Sub-agent default enforcement:**
+- If `parallel_default = true`, the chosen route must be `multi-agent-waves`,
+  `visual-ui-flow`, `security-gate`, or a deep-* chain that later produces waves. Do not
+  collapse the work into direct conductor implementation.
+- If a non-trivial task routes to `single-agent`, still dispatch one sub-agent through the
+  active platform's agent tool when available. Inline execution is allowed only when the
+  platform truly lacks agent tooling.
+- Record the selected route and planned agents in `orchestra/plan.md` before execution.
+
+If the task touches auth, RBAC, tenant isolation, secrets, encryption, browser automation
+sandboxing, uploads/deserialization, CORS/CSP, or security-sensitive dependencies, overlay
+the `security-gate` route from `references/routing-decision.md` on top of the normal scope
+route and run the pre-merge security gate before final completion.
 
 > **Automatic chaining rule:** Orchestra owns the end-to-end lifecycle. It may create planning artifacts, read sibling deep-* skill files, execute those workflows inline, verify their outputs, and continue automatically. Do not wait for the user to type `/deep-plan`, `/deep-plan-quick`, `/deep-project`, or `/deep-implement` unless the user explicitly asks to take over that step manually.
 
@@ -361,11 +411,18 @@ Read `references/routing-decision.md`.
 
 ---
 
-## Step 3: Contract and Wave Planning (Medium+ Scope Only)
+## Step 3: Contract and Wave Planning (Parallel / Medium+ Scope)
 
-**Skip this step for `trivial` and `small` scope.**
+**Skip this step only for `trivial` and true `single-agent` small scope.** If the
+parallel opportunity scan found 2+ independent workstreams, the task is not treated as
+small for execution purposes; plan waves here.
 
 Read `references/wave-planning.md`.
+
+**Parallel-first wave rule:** Build the widest safe first wave from the parallel opportunity
+scan. If two workstreams have disjoint ownership and no dependency edge, they must be placed
+in the same wave up to the concurrency limits. Sequential waves require an explicit reason
+in `orchestra/plan.md`.
 
 **Contract definition (before any dispatch):**
 
@@ -389,7 +446,8 @@ For every pair of agents that will run in parallel, define and write to `orchest
 
 ## Step 4: Dispatch
 
-Read `references/sub-agent-dispatch.md` and `references/platform-compat.md`.
+Read `references/sub-agent-dispatch.md`, `references/platform-compat.md`, and
+`references/model-routing.md`.
 
 **Platform detection (REQUIRED before any Task call):**
 
@@ -401,14 +459,21 @@ Check whether `orchestra/platform.md` exists. If missing:
 
 **Build Task Packets:** For each agent in the current wave, construct a Task Packet following `references/sub-agent-dispatch.md`. See `references/task-packet-format.md` for the construction guide. The packet must include all 8 required sections: TASK, DOMAIN, FILES, CONTEXT, CONSTRAINTS, CONTRACT, OUTPUT, QUALITY GATE.
 
+By default, lightweight sub-agent work that does not require deep reasoning or maximum
+capability MUST use `gpt-5.3-codex-spark`. Do not use Spark when the user or Task Packet
+explicitly names another model, the task is high-risk/high-complexity or
+performance-critical, a quality gate has failed repeatedly, or a previous Spark attempt
+could not complete the work; in those cases use the inherited current/default model unless
+a stronger explicit override is required.
+
 Before dispatching, read `../sub-agents/references/shared-operational-discipline.md` and include its rules in every Task Packet's CONTEXT/CONSTRAINTS. In Standard or Open-Code mode, also inject those rules with the agent identity.
 
 **Wave N context injection (for wave 2+):** Prepend prior wave results to each Task Packet's CONTEXT section:
 
 ```
 ### Results from Wave N
-- [domain] Description of change: /absolute/path/to/file.ext — SUCCESS
-- [domain] Description: /absolute/path/to/file.ext — SUCCESS
+- [domain] Description of change: /absolute/path/to/file.ext — success
+- [domain] Description: /absolute/path/to/file.ext — success
 - Open contract note: {what next-wave agents must know}
 ```
 
@@ -419,8 +484,14 @@ Do NOT dump raw conversation history. Include only file paths, change descriptio
 | Platform | Method |
 |----------|--------|
 | `claude-code` | Task tool with registered agent names from `sub-agents/agents/*.md`. All wave agents dispatched in a **single message** where supported. Max 4 concurrent agents. |
-| `standard` | Prefer default/worker/explorer-style agents only when this environment exposes them. Inject a condensed agent identity template. If no agent tool is available, execute the role inline while preserving the same Task Packet and Result Report contracts. |
+| `standard` | Actively use default/worker/explorer-style agents when this environment exposes them. Inject a condensed agent identity template. If no agent tool is available, execute the role inline while preserving the same Task Packet and Result Report contracts. |
 | `open-code` | No Task tool. Conductor executes each agent role sequentially. For medium+ scope: warn "This task requires parallel agents. Consider switching to Claude Code or Standard mode. Proceeding sequentially." |
+
+**Agent-tool availability check:** Before inline fallback, check the active tool list and
+deferred tool discovery for Task/sub-agent/spawn-agent capability. If any such tool exists,
+use it for `single-agent` and `multi-agent-waves`. Inline fallback while an agent tool is
+available is a policy violation unless the tool call fails and the failure is recorded in
+`orchestra/progress.md`.
 
 **Parallelism hard constraints:**
 - Maximum 4 concurrent agents
@@ -428,6 +499,9 @@ Do NOT dump raw conversation history. Include only file paths, change descriptio
 - Only 1 DB agent at a time
 - Only 1 git agent at a time
 - Parallel dispatch requires a written contract — no contract = sequential execution
+- When a wave has 2+ independent agents and an agent tool exists, dispatch them in one
+  batch/message. Waiting for one independent agent before launching the next is a policy
+  violation.
 
 ---
 
@@ -446,6 +520,8 @@ Read `references/result-integration.md`.
    - If SocratiCode is active, re-run `codebase_impact` or graph/symbol checks for any changed shared module, route, schema, service, exported symbol/type, auth/RBAC surface, DB model/migration, or public API shape.
    - Verify every newly affected file/test is either already handled, added to a later wave, covered by a quality gate, or recorded as an explicit backlog item with rationale.
    - If the wave introduced an unplanned required change, add it to the current flow and continue; do not silently finish with a broken dependent path.
+   - Write an impact hypothesis: what could this wave have broken next, which gates/reviewers
+     cover that risk, and which previously passed checks are now stale.
 5. Update `orchestra/progress.md` with wave status: `COMPLETE`, `PARTIAL`, or `FAILED`.
 6. Append all auto-resolution decisions to `orchestra/decisions.md` with ISO timestamp.
 
@@ -487,8 +563,9 @@ Read `references/verification-before-completion.md` before reporting any wave or
 | Dependency/supply-chain gate | Dispatch `dependency-supply-chain.md`; run available audit/tree commands | Dependency manifests, lockfiles, Docker images, or Actions versions changed | Yes for HIGH/CRITICAL |
 | Security review (general) | Dispatch `security.md` agent | Risk = HIGH | Blocking for CRITICAL findings |
 | Full test suite | All relevant repo test suites | Risk = CRITICAL | Always blocking |
-| Pre-merge security gate | 3-specialist parallel audit (see below) | `security_gate_required = true` | CRITICAL findings block |
+| Pre-merge security gate | 3-specialist audit: parallel `ssp-*` dispatch when Task tooling exists, sequential inline fallback otherwise (see below) | `security_gate_required = true` | CRITICAL findings block |
 | Visual UI gates | Visual polish, accessibility, responsive, component states, dark/light, screenshot/E2E | UI visual polish, responsive, accessibility, route-level UI changes | Blocking for MEDIUM+ user workflows when primary action, accessibility, or responsive usability fails |
+| Review Convergence Gate | Apply `references/review-convergence.md` | Medium+ scope/risk, any review finding, or any fix after review/gate feedback | Blocking until convergence criteria pass or a stop condition is reached |
 
 **Blocking policy:**
 - LOW/MEDIUM risk tasks: gate failures are warnings (log and continue)
@@ -496,21 +573,33 @@ Read `references/verification-before-completion.md` before reporting any wave or
 
 **Gate failure retry protocol:**
 1. Identify which agent caused the failure
-2. Build a new Task Packet for that agent with full error output as CONTEXT
-3. Re-dispatch the same agent type
-4. Maximum 3 retry attempts
-5. If 3 attempts fail → STOP (see STOP Conditions section above)
+2. Build a new Task Packet for that agent with bounded failure evidence as CONTEXT:
+   command, exit code, decisive error lines, a short first/last excerpt, and the path to
+   the full captured output when available. Do not paste full logs, stack traces, or test
+   transcripts into the packet.
+3. Re-dispatch the same agent type. If the failed attempt used
+   `gpt-5.3-codex-spark`, escalate the retry packet to
+   `model_preference: inherited-default` per `references/model-routing.md`
+4. After each fix, mark all gates covering changed files/contracts/runtime paths as stale
+5. Re-run stale gates and impact closure before continuing
+6. Maximum 3 retry attempts per blocking gate
+7. If 3 attempts fail → STOP (see STOP Conditions section above)
 
 **Pre-merge security gate (when `security_gate_required = true`):**
 
 Read `references/security-review-protocol.md`.
 
-Orchestra dispatches 3 specialists in a **single message** (parallel):
-1. Task Packet → `security-trpc` agent — covering changed tRPC routers (`apps/web/server/routers/`)
-2. Task Packet → `security-fastapi` agent — covering changed FastAPI endpoints (`python-backend/app/api/`)
-3. Task Packet → `security-frontend` agent — covering changed React components (`apps/web/client/src/`)
+Orchestra dispatches 3 specialists in a **single message** when the active platform exposes
+Task/sub-agent tooling:
+1. Task Packet → `ssp-security-trpc` (portable role: `security-trpc`) — covering changed tRPC routers (`apps/web/server/routers/`)
+2. Task Packet → `ssp-security-fastapi` (portable role: `security-fastapi`) — covering changed FastAPI endpoints (`python-backend/app/api/`)
+3. Task Packet → `ssp-security-frontend` (portable role: `security-frontend`) — covering changed React components (`apps/web/client/src/`)
 
-After all 3 complete, orchestra dispatches `security-review` as aggregator with the collected findings in its CONTEXT. The `security-review` aggregator writes results to `orchestra/risk_register.md` and returns a verdict.
+When no Task/sub-agent tool is available, execute those specialist roles sequentially inline,
+but collect every applicable specialist Result Report before dispatching or inline-running the
+`ssp-security-review` aggregator.
+
+After all 3 complete, orchestra dispatches `ssp-security-review` as aggregator with the collected findings in its CONTEXT. The `ssp-security-review` aggregator writes results to `orchestra/risk_register.md` and returns a verdict.
 
 **Critical constraint:** The `security-review` aggregator is read-only — it never dispatches Task calls. Sub-agents cannot spawn sub-agents. Orchestra always owns dispatch depth.
 
@@ -519,7 +608,7 @@ After all 3 complete, orchestra dispatches `security-review` as aggregator with 
 | Verdict | Condition | Action |
 |---------|-----------|--------|
 | PASS (green) | 0 CRITICAL + 0 HIGH | Continue |
-| CONDITIONAL PASS | 0 CRITICAL + N HIGH | Require user approval UNLESS decision-mode is `auto_by_default`. If auto-approved: display "⚠️ AUTO-APPROVED HIGH SECURITY FINDINGS" header in final summary AND log to `orchestra/decisions.md` with timestamp |
+| CONDITIONAL | 0 CRITICAL + N HIGH | Require user approval UNLESS decision-mode is `auto_by_default`. If auto-approved: display "⚠️ AUTO-APPROVED HIGH SECURITY FINDINGS" header in final summary AND log to `orchestra/decisions.md` with timestamp |
 | FAIL | N CRITICAL | Blocked. User must resolve each or explicitly mark as accepted risk. STOP. |
 
 ---
@@ -607,15 +696,23 @@ All paths in `key_files` must be **absolute paths**. See `references/compaction-
 **Repeat or finalize:**
 
 - If more waves remain → return to Step 4 for the next wave.
-- If all waves complete → run the **Post-Completion Review** (see below), then print final summary.
+- If all waves complete → run the **Post-Completion Review and Convergence Loop** (see
+  below), then print final summary only after convergence criteria pass or a stop condition
+  is reached.
 
 ---
 
-## Post-Completion Review
+## Post-Completion Review and Convergence Loop
 
-**Trigger:** Run when ALL waves complete AND scope is `medium` (risk ≥ medium), `large`, or `project`. Skip for `trivial`, `small`, and `medium` with `low` risk.
+Read `references/review-convergence.md`.
 
-**Purpose:** Catch gaps, security issues, missing features, and quality concerns before the session closes — then let the user decide what to address next.
+**Trigger:** Run when ALL waves complete AND scope is `medium` (risk >= medium), `large`,
+or `project`, or when any review/gate produced findings. Skip only for `trivial`, clean
+`small`, and `medium` with `low` risk and no findings.
+
+**Purpose:** Catch gaps, security issues, missing features, second-order regressions, and
+quality concerns before the session closes. The default is to fix and re-check, not to ask
+the user how many review rounds to run.
 
 ### Review Process
 
@@ -626,7 +723,7 @@ Read the following files to gather signals (do NOT re-scan all source files):
 - `orchestra/decisions.md` — decisions made, especially any deferred ones
 - `orchestra/contracts.md` — interfaces and boundaries defined
 
-Evaluate across **5 dimensions**:
+Evaluate across **7 dimensions**:
 
 | Dimension | What to check |
 |-----------|--------------|
@@ -635,6 +732,21 @@ Evaluate across **5 dimensions**:
 | **Quality** | Tests written for new code? Edge cases handled (empty inputs, null, concurrent access)? Error messages exposed to clients? |
 | **Standards** | For this type of feature, what do similar systems typically include that we haven't built? (e.g., audit logging for auth changes, rate limiting for new APIs, pagination for list endpoints) |
 | **Technical debt** | TODOs left in code? Hardcoded values? Commented-out code? Migration left pending? |
+| **Impact ripple** | Could fixes or new contracts have broken callers, tests, routes, UI states, schemas, migrations, docs, or deploy/runtime config? |
+| **Review coverage** | Were the right reviewers/gates run for every changed domain, and are any previously passing gates stale after later changes? |
+
+### Convergence Behavior
+
+For every post-completion finding:
+- Auto-fix all CRITICAL, HIGH, and in-scope MEDIUM findings that are safe and 80%+
+  confident.
+- Dispatch the owning sub-agent for fixes when a Task/sub-agent tool is available.
+- After each fix, rerun impact closure and all stale gates.
+- Run another review round until `review-convergence.md` stop rules are satisfied.
+- Defer only LOW/optional or genuinely out-of-scope improvements, with rationale in
+  `orchestra/backlog.md`.
+- Do not finalize after a single clean-looking pass when medium+ work had fixes; require the
+  minimum consecutive clean rounds from `review-convergence.md`.
 
 ### Report Format
 
@@ -663,6 +775,12 @@ FINDINGS:
 
 (If a dimension has no findings, write: ✅ No issues found)
 
+CONVERGENCE:
+  Rounds run: [N]
+  Clean rounds: [N]
+  Stop reason: [criteria passed | blocked | max rounds reached]
+  Stale gates rerun after last change: [list]
+
 RECOMMENDED NEXT STEPS:
   1. [highest priority action]
   2. [second priority action]
@@ -673,8 +791,14 @@ RECOMMENDED NEXT STEPS:
 ### Follow-up Handling
 
 After the report:
-- If ALL 5 dimensions return clean (no findings), go directly to the final summary. Print: `"✅ Post-completion review: no gaps, security issues, or missing features found."`
-- If findings remain and `decision-mode` is `auto_by_default` or `smart_auto`, write actionable follow-ups to `orchestra/backlog.md`, log the decision, and proceed directly to the final summary without waiting.
+- If ALL 7 dimensions return clean (no findings) and the required clean-round count is met,
+  go directly to the final summary. Print: `"✅ Post-completion convergence: no gaps,
+  security issues, missing features, stale gates, or impact-ripple risks found."`
+- If material findings remain and are safe/in-scope, fix them and re-run the convergence
+  loop instead of finalizing.
+- If only LOW/optional findings remain and `decision-mode` is `auto_by_default` or
+  `smart_auto`, write actionable follow-ups to `orchestra/backlog.md`, log the decision,
+  and proceed directly to the final summary after convergence criteria pass.
 - Ask the user what to do next only if `decision-mode` is `ask_every_choice` or if a remaining item requires destructive/irreversible acceptance.
 
 ### Final Summary (after review)
@@ -687,6 +811,7 @@ Print the final summary:
 - Files created and modified (with absolute paths)
 - Quality gate results
 - Security gate verdict (if triggered)
+- Review convergence rounds run and stop reason
 - Auto-approved decisions (with "⚠️ AUTO-APPROVED HIGH SECURITY FINDINGS" header if any HIGH findings were auto-approved)
 - Post-completion review verdict (CLEAN or summary of findings addressed/deferred)
 - Remaining items in `orchestra/backlog.md` (if any)
@@ -701,8 +826,11 @@ Print the final summary:
 
 1. Check `orchestra/snapshot.json` — parse the `checkpoint` object to restore session state.
 2. Read `orchestra/snapshot.md` — the human-readable summary restores understanding of the task.
-3. Read all files listed in `checkpoint.key_files` (absolute paths).
-4. Read `orchestra/contracts.md` in full — restores contract awareness.
+3. Read `checkpoint.key_files` digest-first: verify existence and inspect only recorded
+   line/section hints or compact summaries first. Read full files only when they are small,
+   changed since the snapshot, or the digest is insufficient to resume safely.
+4. Read `orchestra/contracts.md` as a digest first. Read the full file only when active
+   contracts are missing from the digest or a pending wave depends on exact contract text.
 5. Continue from `checkpoint.phase` — **never re-execute waves in `completed_waves`** unless a key file from that wave is missing.
 6. If `checkpoint.in_progress` is set, that step is where work resumes.
 7. Print a resume banner listing: task, completed waves, in-progress step, pending waves, any blockers.
@@ -712,7 +840,7 @@ This is the R4 algorithm from `references/session-resume.md`. On resume, read th
 **Key files to read on resume (in order):**
 - `orchestra/snapshot.json` — structured state
 - `orchestra/snapshot.md` — human summary
-- `orchestra/contracts.md` — interface contracts (always)
-- `orchestra/plan.md` — full task and wave plan
-- `orchestra/decisions.md` — past decisions (most recent first)
-- Files listed in `checkpoint.key_files`
+- `orchestra/contracts.md` — active contract digest first, exact sections when needed
+- `orchestra/plan.md` — current phase/wave sections first
+- `orchestra/decisions.md` — most recent relevant decisions first
+- Files listed in `checkpoint.key_files` — line/section hints first, full file only when needed
