@@ -301,6 +301,8 @@ See [implementation-review-loop.md](references/implementation-review-loop.md) �
    - Every feature/function in plan → has code?
    - Every test stub in TDD plan → has test?
    - Every error handler described → implemented?
+   - Every UI/UX Contract state/responsive/accessibility/browser-evidence requirement
+     in a UI section → implemented or explicitly skipped with a blocker?
    - No TODO/placeholder code remaining?
 3. List gaps as [MUST_FIX] or [NICE_TO_HAVE]
 4. Fix all [MUST_FIX] items immediately
@@ -445,18 +447,24 @@ See [implementation-review-loop.md](references/implementation-review-loop.md) �
 
 **Procedure (run automatically):**
 1. Run full test suite (`{test_command}`) — note failures
-2. Read all section files, compare against implementation
+2. Read section summaries/index plus changed and dependent section files first; compare
+   against implementation. Read all section files only when the dependency map or failing
+   tests indicate unresolved cross-section risk.
 3. Check cross-section interfaces: exports match imports, API paths match consumers, types consistent
-4. Fix any gaps found
-5. Re-run full test suite
-6. Repeat until clean (max 3 rounds)
-7. Collect [NICE_TO_HAVE] suggestions
+4. For UI-affecting sections, verify browser evidence from
+   `skills/orchestra/references/ui-browser-verification.md`
+5. Fix any gaps found
+6. Re-run full test suite
+7. Repeat until clean (max 3 rounds)
+8. Collect [NICE_TO_HAVE] suggestions
 
 ### Final Quality Pass & Output
 
 See [finalization.md](references/finalization.md):
 
-1. **Final quality sweep** — re-read all section plans vs implementation, run full test suite
+1. **Final quality sweep** — run full test suite and compare implementation against
+   section/index digests plus changed/dependent section plans; full all-section re-read is
+   reserved for unresolved consistency risk
 2. **[AUTO-FIX]** anything 80%+ confidence (missing error handling, dead code, missing tests) → fix and commit
 3. **[SUGGEST]** only genuinely optional items → collect for output summary
 4. Generate `{state_dir}/usage.md` with usage guide

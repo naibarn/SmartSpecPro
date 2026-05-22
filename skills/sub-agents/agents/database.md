@@ -72,7 +72,8 @@ Returns a standard **Result Report** with:
 - `findings`: data integrity issues discovered; any columns with unexpected NULL values post-migration
 - `blockers`: any migration requiring user approval before proceeding (DROP, TRUNCATE, risky data transform)
 - `next_steps`: notify backend/python agents that schema is ready with new table/column names
-- `quality_gate_results`: before/after row count comparison table; `pnpm db:push` output; backup file locations
+- `quality_gate_results`: before/after row count comparison table; `pnpm db:push` exit
+  code and decisive excerpt; backup file locations; artifact path for full migration output
 
 ---
 
@@ -85,7 +86,8 @@ Returns a standard **Result Report** with:
 5. Run migration: `cd apps/web && pnpm db:push` (or `alembic upgrade head`)
 6. Verify row counts match baseline (for data-preserving migrations)
 7. Update `drizzle/meta/_journal.json` if new migration files were generated
-8. Return Result Report with full audit trail
+8. Return Result Report with compact audit trail: affected tables, backup paths, row-count
+   summary, command status, and artifact paths for full output
 
 ---
 

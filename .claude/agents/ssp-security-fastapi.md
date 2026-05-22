@@ -165,7 +165,9 @@ Accepts a Task Packet (see `contracts/task-packet.schema.md`):
 | FILES | Changed FastAPI router files and Celery task files in `python-backend/app/` |
 | CONTEXT | List of new or modified endpoints and their intended auth requirements; known prior findings |
 | CONSTRAINTS | Which vulnerability classes to prioritize; endpoints explicitly marked as public/unauthenticated |
+| CONTRACT | `N/A` for solo read-only audit, or the exact security scope/acceptance criteria from orchestra |
 | OUTPUT | Security findings table in Result Report |
+| QUALITY GATE | Read-only audit checklist; every file in FILES must be reviewed or listed as a blocker |
 
 ---
 
@@ -176,6 +178,9 @@ Returns a **Result Report** (see `contracts/result-report.schema.md`) with:
 - `status`: success / partial / failed
 - `files_changed`: [] (always empty — read-only)
 - `findings`: security finding entries with severity, file:line, description, and recommended fix
+- `blockers`: files, endpoints, or tasks that could not be audited, or missing auth intent needed for a reliable verdict
+- `next_steps`: recommended fix owner or follow-up security gate action
+- `quality_gate_results`: pass/fail/skipped entries for every checklist item supplied in QUALITY GATE
 
 **Security finding format:**
 
@@ -190,7 +195,7 @@ Returns a **Result Report** (see `contracts/result-report.schema.md`) with:
 
 ## 7. Workflow
 
-1. Read all FastAPI router files and Celery task files listed in Task Packet FILES
+1. Read packet-scoped FastAPI router files and Celery task files listed in Task Packet FILES
 2. For each endpoint: check all 6 anti-patterns (AP-F01 through AP-F06) in order
 3. Check imports for SQLAlchemy `text()` usage — flag all occurrences for manual review
 4. Search for `print(` in changed files — review every occurrence

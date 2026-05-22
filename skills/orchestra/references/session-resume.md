@@ -20,11 +20,16 @@ If the user explicitly requests a fresh start (e.g., with an argument like `new`
 
 ### Step 1: Read
 
-Parse all available state from the filesystem:
+Parse all available state from the filesystem using digest-first loading:
 
 1. Parse `orchestra/snapshot.json` → extract all 9 fields from the `checkpoint` object.
 2. Read `orchestra/snapshot.md` → load the human-readable summary for additional context that may not be captured structurally in the JSON.
-3. Read every file listed in `checkpoint.key_files` (absolute paths) → these are the critical reference files that define what was built and what decisions were made.
+3. Inspect every file listed in `checkpoint.key_files` (absolute paths) for existence and
+   freshness. Read only the recorded line/section hints, digest, or first relevant window
+   first. Read the full file only when it is small, changed since the snapshot, or the
+   digest does not contain enough information to resume safely.
+4. If more than 8 key files need full reads, pause full rehydration and narrow by current
+   phase/pending wave before opening more files.
 
 **If `orchestra/snapshot.json` is corrupt or unparseable:** Fall back to reading `orchestra/snapshot.md` only. Reconstruct state from the human-readable summary. Note the parse failure in the resume banner.
 
@@ -33,8 +38,10 @@ Parse all available state from the filesystem:
 Re-establish the complete in-context mental model:
 
 - **What is being built:** From `checkpoint.task_description` — understand the full original task scope.
-- **What decisions were made:** From `checkpoint.decisions` and the full `orchestra/decisions.md` — understand all past conductor choices.
-- **What contracts are active:** Read `orchestra/contracts.md` in full — these define the interfaces all sub-agents are working against.
+- **What decisions were made:** From `checkpoint.decisions` and recent relevant sections of
+  `orchestra/decisions.md` — understand conductor choices needed for the current phase.
+- **What contracts are active:** Read active contract digests from `orchestra/contracts.md`;
+  read exact full contract sections only for pending or in-progress waves.
 - **Which waves are done:** From `checkpoint.completed_waves` — understand what has been delivered and integrated.
 - **What is in-progress:** From `checkpoint.in_progress` — understand where work was interrupted.
 - **What is pending:** From `checkpoint.pending_waves` — understand the remaining work plan.
@@ -45,7 +52,10 @@ Verify that actual filesystem state matches the snapshot's recorded state:
 
 1. For each file in `checkpoint.key_files`:
    - Check that the file **exists**. If missing: add it to the blockers list; do not auto-recreate.
-   - Check the file's **modification time** against `checkpoint.timestamp`. If a file is **newer** than the snapshot: read the current file content and update the in-memory state to reflect the newer version (the file is authoritative over the snapshot).
+   - Check the file's **modification time** against `checkpoint.timestamp`. If a file is
+     **newer** than the snapshot: read the relevant changed section first and update the
+     in-memory state to reflect the newer version (the file is authoritative over the
+     snapshot). Read the full file only when the changed section cannot be isolated.
 2. For each wave in `checkpoint.completed_waves`:
    - Verify that the output artifacts for that wave exist. If a wave's output file is missing, flag that wave's status as `NEEDS_VERIFICATION` before resuming.
 3. If any blockers were identified: list them in the resume banner, then continue automatically from the earliest safe incomplete stage. Ask the user only if resolving the blocker would require destructive reset/archive, accepted-risk security bypass, or a product-direction decision.

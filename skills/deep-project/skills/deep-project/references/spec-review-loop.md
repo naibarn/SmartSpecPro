@@ -40,7 +40,7 @@ For EACH spec.md, verify ALL of these:
 ## Review Loop Procedure
 
 ```
-Round 1: Read ALL spec files + manifest + interview transcript
+Round 1: Read spec files + manifest + interview summary/relevant transcript windows
          Score each spec against checklist (PASS/FAIL per item)
 
          If ALL specs PASS all items → DONE, proceed to Step 7

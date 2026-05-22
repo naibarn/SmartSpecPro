@@ -306,15 +306,19 @@ See [spec-review-loop.md](references/spec-review-loop.md) for the full review ch
 
 **Goal:** Iteratively review and fix ALL spec.md files before declaring completion. This prevents gaps from cascading into broken plans during /deep-plan.
 
-**Context to read (every round):**
+**Context to read:**
 - `{initial_file}` - The original requirements
-- `{planning_dir}/deep_project_interview.md` - Interview transcript
+- `{planning_dir}/deep_project_interview.md` - Interview transcript summary or relevant
+  sections first; read the full transcript only when fidelity cannot be checked from the
+  summary/window
 - `{planning_dir}/project-manifest.md` - Split structure and dependencies
-- ALL `spec.md` files in split directories
+- Round 1: ALL `spec.md` files in split directories
+- Round 2+: ONLY modified specs plus specs that depend on modified specs, using
+  `project-manifest.md` dependency relationships
 
 **Procedure:**
 
-1. Read ALL spec files + manifest + interview transcript
+1. Round 1: read all spec files + manifest + interview summary/relevant transcript windows
 2. Score each spec against the review checklist (Completeness, Self-Containment, Cross-Reference, Interview Fidelity)
 3. Print the review scorecard table
 4. If ALL specs PASS all items → proceed to Step 7
@@ -322,7 +326,8 @@ See [spec-review-loop.md](references/spec-review-loop.md) for the full review ch
    - Fix the failing specs
    - Check if fixes cascade to other specs (renamed outputs, changed interfaces)
    - Update `project-manifest.md` if dependency relationships changed
-   - Go to next round
+   - Go to next round and read only modified/dependent specs unless a manifest-wide
+     inconsistency requires a full sweep
 6. Max 5 rounds — after 5, [AUTO-FIX] anything 80%+ confident, [SUGGEST] the rest in completion summary
 
 **Cascade rule:** When fixing a spec, ALWAYS re-check specs that depend on the fixed spec. A fix in 01-auth may break 03-frontend's assumptions.
@@ -336,7 +341,9 @@ See [spec-review-loop.md](references/spec-review-loop.md) for the full review ch
 **Procedure:**
 
 1. Verify `splits_needing_specs` is empty and `project-manifest.md` exists
-2. Re-read ALL spec files + manifest one final time
+2. Run a digest-first final pass: read `project-manifest.md`, changed specs, dependent
+   specs, and per-spec summaries. Re-read all spec files only when the project is small or
+   the digest/checker indicates unresolved cross-spec risk.
 3. For each improvement opportunity:
    - **[AUTO-FIX]** (80%+ confident it should be done) → fix immediately:
      - Missing edge cases that are clearly needed

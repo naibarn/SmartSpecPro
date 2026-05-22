@@ -34,6 +34,28 @@ for a wide audit.
 - When adding or fixing code, update directly affected tests or return the exact missing
   test path/command as a blocker if tests are outside the packet's scope.
 
+## Context and Token Discipline
+
+- Treat the Task Packet as the active context budget. If it does not name a budget, assume
+  the packet plus injected role prompt should stay under about 6,000 tokens and the Result
+  Report should stay under about 1,500 words.
+- Prefer evidence capsules over raw dumps: path, line number, command, status, and the
+  smallest excerpt needed to prove the claim.
+- Do not paste full files, full diffs, full logs, full stack traces, full test output, full
+  prior Result Reports, or raw conversation transcripts into findings or next-wave context.
+- For long command output, include the failing/error lines plus short first/last excerpts
+  and point to the artifact, log path, trace ID, or command that can reproduce the full
+  output.
+- For large file reads, use line windows around the relevant symbol or evidence. If broader
+  context is required, explain why and summarize the additional evidence instead of copying
+  it verbatim.
+- If the assigned scope cannot fit the context budget, return `status: partial` with a
+  blocker asking the conductor to split the packet. Do not silently expand context to keep
+  working.
+- Preserve capability by retaining durable references: absolute file paths, symbol names,
+  trace IDs, test names, migration IDs, and commands. These references let the conductor or
+  later agents retrieve details just in time without carrying them in every prompt.
+
 ## Cross-Project Portability
 
 - Treat paths, frameworks, commands, and examples inside role files as project-profile
@@ -69,3 +91,5 @@ Every Result Report must state:
 - what impact assumptions were verified
 - any affected files/tests intentionally deferred
 - any scope expansion that was needed but not performed
+- whether any evidence was summarized or truncated for context budget reasons, with the
+  path/command/trace ID needed to retrieve the full detail

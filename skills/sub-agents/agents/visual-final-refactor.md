@@ -66,7 +66,8 @@ Return a Result Report with:
 
 ## 6. Workflow
 
-1. Read all review findings and implementation notes
+1. Read compact review summaries and implementation notes first. Read full review artifacts
+   only for findings that remain actionable or ambiguous.
 2. Deduplicate and prioritize fixes
 3. Apply only high-confidence UI refinements
 4. Run TypeScript check when applicable
@@ -90,4 +91,3 @@ Return a Result Report with:
 - If findings conflict, choose the option that preserves usability and accessibility
 - If TypeScript fails after three attempts, return `status: partial` with exact errors
 - If a requested refactor becomes broad, stop and recommend a new planned wave
-

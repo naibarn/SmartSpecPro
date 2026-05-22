@@ -13,13 +13,43 @@ After every wave completes, the conductor follows these steps in order:
 
 ### Step 1: Collect Outputs
 
-Read each agent's Result Report. Parse the 6 fields:
-- `status`: completed / partial / failed
+Read each agent's Result Report. Parse the 6 fields without carrying raw report prose
+forward into later wave packets:
+- `status`: success / partial / failed
 - `files_changed`: list of absolute paths modified or created
 - `findings`: observations, warnings, or unexpected behavior
 - `blockers`: issues preventing the agent from completing
 - `next_steps`: what the agent recommends for the next wave
 - `quality_gate_results`: pass/fail status of any gates the agent self-ran
+
+Normalize legacy status spellings before making decisions:
+
+| Incoming value | Canonical status |
+|---|---|
+| `completed`, `success`, `SUCCESS` | `success` |
+| `partial`, `PARTIAL` | `partial` |
+| `failed`, `FAILED`, `blocked` | `failed` |
+
+Extension fields such as `security_verdict`, `review_verdict`, and `ux_verdict` are
+allowed only in addition to the canonical `status`; they never replace it.
+
+Create an **Agent Result Capsule** for each report:
+
+```
+agent: ssp-backend
+status: success
+files_changed: [/absolute/path.ts - one-line summary]
+top_findings: [severity + one-line summary + file:line]
+blockers: []
+stale_gates: [TypeScript check]
+open_contract_notes: [response shape unchanged]
+evidence_refs: [commands, artifact paths, trace IDs]
+```
+
+Use these capsules for wave N+1 context injection and convergence review. Do not paste full
+Result Reports, full diffs, full logs, full test output, or raw timelines into future
+Task Packets. If a report is too large to capsule safely, mark integration `partial`, ask
+the source agent for a compact report, or split the next wave.
 
 ### Step 2: Detect File Conflicts
 
@@ -70,20 +100,43 @@ Before marking a wave complete, close the blast radius:
    - or record it in `orchestra/backlog.md` with a rationale if it is intentionally deferred
 4. If the impact closure finds a required fix that is on the current path, create the next
    Task Packet and continue. Do not finish the session while a known dependent path is broken.
+5. Write an impact hypothesis to `orchestra/progress.md`:
+   - likely second-order breakages caused by the wave
+   - reviewers/gates that cover each hypothesis
+   - previously passed gates that became stale because this wave changed their covered
+     files/contracts/runtime paths
+   Keep this as a capsule. Record evidence references instead of raw gate output.
+6. If any stale gate exists, carry it into the next quality-gate step. A stale pass is not
+   completion evidence.
 
 ### Step 6: Update Progress
 
 Write wave status to `orchestra/progress.md`:
-- Wave number and completion status (completed / partial / blocked)
+- Wave number and completion status (`success` / `partial` / `failed`)
 - Files changed (list of absolute paths)
 - Gate results (which gates passed/failed)
 - Any blockers to carry into the next wave
+
+Progress entries should be durable but compact: one-line file summaries, top findings,
+gate statuses, and artifact/command references. Do not append raw agent transcripts,
+complete command output, or full logs to `orchestra/progress.md`.
 
 ### Step 7: Check Pre-Merge Security Gate
 
 After the **final wave only**, evaluate whether trigger conditions in
 `security-review-protocol.md` apply to the full session's changed files. If any condition
 matches, run the pre-merge security gate before reporting completion.
+
+### Step 8: Feed Review Convergence
+
+Before final summary, feed the integration output into `review-convergence.md`:
+- changed files and shared surfaces
+- findings and blockers by agent
+- impact hypotheses
+- stale gates
+- deferred backlog items
+
+If the convergence loop applies, do not finalize until the loop reaches its stop rules.
 
 ---
 

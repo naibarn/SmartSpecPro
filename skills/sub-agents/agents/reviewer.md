@@ -18,6 +18,8 @@ description: "Reviewer Agent (CMD-8) — Read-only code reviewer for the active 
 - Audit TypeScript and Python code for correctness, consistency, and security
 - Verify contract compliance (did each implementing agent deliver what was promised in the wave contract?)
 - Check for repository convention violations: missing Zod validation, absent auth guards, tenant isolation gaps, VITE_ leakage, `print()` logging
+- Check second-order impact: callers, tests, route wiring, UI states, migrations, docs, and
+  stale gates that may have been affected by the reviewed changes
 - Assign severity ratings (HIGH, MEDIUM, LOW) to each finding with specific file:line references
 - Produce a structured Review Report with a clear, unambiguous verdict
 
@@ -70,6 +72,12 @@ Returns a **Review Report** containing the following, plus a standard **Result R
 - [ ] Types match across boundary: YES / NO — [explain if NO]
 - [ ] Python agent delivered: [expected FastAPI endpoints from CONTRACT]
 
+### Impact Ripple Checklist
+- [ ] Callers/importers checked or listed as not applicable
+- [ ] Relevant tests/gates checked or marked stale
+- [ ] UI states/routes checked when browser-visible code changed
+- [ ] Docs/config/migrations checked when touched by the change
+
 ### Verdict
 APPROVE | APPROVE_WITH_FIXES | REQUEST_CHANGES
 
@@ -82,19 +90,22 @@ APPROVE | APPROVE_WITH_FIXES | REQUEST_CHANGES
 - `findings`: severity table entries as structured data
 - `blockers`: if any HIGH finding cannot be resolved without architecture changes
 - `next_steps`: which agents to re-dispatch to fix HIGH/MEDIUM findings
-- `quality_gate_results`: confirmation that all FILES were reviewed
+- `quality_gate_results`: confirmation that packet-scoped FILES were reviewed
+- `review_verdict`: APPROVE / APPROVE_WITH_FIXES / REQUEST_CHANGES
 
 ---
 
 ## 6. Workflow
 
-1. Read all FILES listed in the Task Packet
+1. Read packet-scoped FILES listed in the Task Packet using narrow line windows where possible
 2. Check each file against its wave contract (was the promised API delivered?)
 3. Scan for: missing Zod validation, absent auth guards, missing tenant isolation, VITE_ leakage, `print()` logging
-4. Assign severity to each finding: HIGH (blocks merge), MEDIUM (must fix before release), LOW (improvement suggestion)
-5. Build severity table with file:line references
-6. Complete the contract compliance checklist
-7. Issue a single unambiguous verdict
+4. Check impact ripple: callers/importers, relevant tests, route registration, UI states,
+   migrations, config, docs, and stale gates
+5. Assign severity to each finding: HIGH (blocks merge), MEDIUM (must fix before release), LOW (improvement suggestion)
+6. Build severity table with file:line references
+7. Complete the contract compliance and impact ripple checklists
+8. Issue a single unambiguous verdict
 
 **Verdict rules:**
 - Any HIGH finding → `REQUEST_CHANGES` (not negotiable)
@@ -108,6 +119,7 @@ APPROVE | APPROVE_WITH_FIXES | REQUEST_CHANGES
 - [ ] Every HIGH finding has a specific `file:line` reference (not just a file name)
 - [ ] Verdict matches findings (no HIGH findings present when verdict is APPROVE)
 - [ ] Contract compliance checklist has a status for each expected deliverable
+- [ ] Impact ripple checklist identifies stale gates or confirms none are stale
 - [ ] No fabricated findings — every issue backed by a file read
 
 ---

@@ -59,9 +59,9 @@ Accepts a standard Task Packet with these fields (see `contracts/task-packet.sch
 
 | Field | Usage |
 |-------|-------|
-| TASK | Audit scope (specific files or "full audit") |
+| TASK | Audit scope (specific files or explicitly approved bounded wide audit) |
 | DOMAIN | CMD-6 Security |
-| FILES | Code to audit; may include adjacent files agent discovers are relevant |
+| FILES | Code to audit; adjacent files require narrow justification and must stay within context budget |
 | CONTEXT | Known vulnerability reports or risk register entries from prior waves |
 | CONSTRAINTS | Which vulnerability classes to prioritize; what is explicitly out of scope |
 | CONTRACT | Security standards this review must verify (e.g., "all new tRPC procedures") |
@@ -79,7 +79,7 @@ Returns a standard **Result Report** with:
 - `findings`: risk register entries (see format below)
 - `blockers`: CRITICAL findings that cannot be fixed without architecture changes; findings requiring user decision
 - `next_steps`: re-run TypeScript check; re-dispatch reviewer agent if significant changes were made
-- `quality_gate_results`: TypeScript check output after all fixes applied
+- `quality_gate_results`: TypeScript check command, exit code, decisive excerpt, and artifact path for long output
 
 **Risk register entry format:**
 ```
@@ -94,13 +94,16 @@ Returns a standard **Result Report** with:
 
 ## 6. Workflow
 
-1. Read all FILES listed in the Task Packet
+1. Read packet-scoped FILES listed in the Task Packet using line windows where possible. If the file
+   set exceeds the packet budget, return `status: partial` and ask orchestra to split by
+   router/domain.
 2. Check each OWASP Top 10 category systematically (document coverage even when clean)
 3. Check tenant isolation on every DB query in scope
 4. Check secrets handling patterns (encrypted columns, response sanitization, log safety)
 5. Apply fixes for CRITICAL and HIGH findings immediately
 6. Run TypeScript check after applying fixes: `cd apps/web && pnpm check`
-7. Return Result Report with full risk register
+7. Return Result Report with compact risk-register summary and write/reference a full
+   risk-register artifact path when needed
 
 ---
 

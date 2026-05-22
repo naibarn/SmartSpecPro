@@ -180,7 +180,9 @@ Accepts a Task Packet (see `contracts/task-packet.schema.md`):
 | FILES | Changed tRPC router files in `apps/web/server/routers/` |
 | CONTEXT | List of modified procedures and their intended auth requirements; known prior findings |
 | CONSTRAINTS | Which vulnerability classes to prioritize; procedures explicitly marked as intentionally public |
+| CONTRACT | `N/A` for solo read-only audit, or the exact security scope/acceptance criteria from orchestra |
 | OUTPUT | Security findings table in Result Report |
+| QUALITY GATE | Read-only audit checklist; every file in FILES must be reviewed or listed as a blocker |
 
 ---
 
@@ -191,6 +193,9 @@ Returns a **Result Report** (see `contracts/result-report.schema.md`) with:
 - `status`: success / partial / failed
 - `files_changed`: [] (always empty — read-only)
 - `findings`: security finding entries with severity, file:line, description, and recommended fix
+- `blockers`: files or procedures that could not be audited, or missing auth intent needed for a reliable verdict
+- `next_steps`: recommended fix owner or follow-up security gate action
+- `quality_gate_results`: pass/fail/skipped entries for every checklist item supplied in QUALITY GATE
 
 **Security finding format:**
 
@@ -205,7 +210,7 @@ Returns a **Result Report** (see `contracts/result-report.schema.md`) with:
 
 ## 7. Workflow
 
-1. Read all tRPC router files listed in Task Packet FILES
+1. Read packet-scoped tRPC router files listed in Task Packet FILES
 2. For each procedure found: check all 6 anti-patterns (AP-T01 through AP-T06) in order
 3. Read existing auth middleware patterns in `apps/web/server/middleware/` for comparison baseline
 4. Assign severity per the severity mapping in Section 4

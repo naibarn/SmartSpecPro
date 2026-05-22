@@ -87,7 +87,8 @@ All tests should pass.
 
 #### Attempt 1: Read and Fix (Simple Cases)
 
-1. Read the FULL error message and stack trace
+1. Read the decisive error excerpt and top stack frames. If output is large, save or
+   reference the full artifact path and avoid pasting the entire transcript into context.
 2. If the cause is obvious (typo, wrong variable, missing import) → fix it
 3. Re-run tests
 

@@ -14,31 +14,21 @@ default and should not ask the user unless runtime evidence is genuinely contrad
    → Yes: read it, use the stored platform name, skip to dispatch
    → No: proceed to step 2
 
-2. Detect dispatch capability before deciding whether inline fallback is allowed:
-   a) native Task/sub-agent tool
-   b) default/worker/explorer/spawn-agent style tool
-   c) no agent tool
+2. If the current skill pack/runtime is standard-oriented, default to `standard`
+   immediately and continue.
 
-   If the tool exposes a model override field, record `model-overrides-supported` in the
-   capability note and apply `model-routing.md` during dispatch.
-
-3. If the current skill pack/runtime is standard-oriented, default to `standard`
-   immediately and continue, but preserve the detected dispatch capability.
-
-4. If runtime evidence clearly points to another platform, use that platform name:
+3. If runtime evidence clearly points to another platform, use that platform name:
    a) claude-code  — Full features (native Task tool, parallel agents, worktree isolation)
    b) standard     — If a general-purpose sub-agent tool is available, inject agent
                      identity templates; otherwise execute the same role inline
    c) open-code    — No sub-agent tool; conductor executes all roles sequentially inline
 
-5. Ask the user only if the runtime evidence is contradictory and the dispatch strategy
+4. Ask the user only if the runtime evidence is contradictory and the dispatch strategy
    would materially change.
 
-6. Write the resolved platform to `orchestra/platform.md` (one line: the platform name)
-   and write `orchestra/dispatch-capability.md` with one of:
-   `parallel-agent-tool`, `single-agent-tool`, or `inline-only`.
+5. Write the resolved platform to `orchestra/platform.md` (one line: the platform name)
 
-7. Never ask again for this session (or future sessions) until platform.md is deleted
+6. Never ask again for this session (or future sessions) until platform.md is deleted
 ```
 
 **Platform names are case-sensitive:** Use exactly `claude-code`, `standard`, or `open-code`.
@@ -47,11 +37,9 @@ default and should not ask the user unless runtime evidence is genuinely contrad
 
 ## 2. Claude Code Mode
 
-Full feature set available. Use exact `ssp-*` native agent names from the agent mapping
-table in `sub-agent-dispatch.md`. Parallel waves dispatch all independent agents in a
-single message. Use `isolation: worktree` for file-editing agents running in parallel when
-the platform supports worktree isolation; otherwise split writers into sequential
-sub-waves.
+Full feature set available. Use exact registered agent names from the agent mapping table
+in `sub-agent-dispatch.md`. Parallel waves dispatch all agents in a single message. Use
+`isolation: worktree` for writing agents running in parallel.
 
 **Dispatch example for a frontend + backend wave (claude-code):**
 
@@ -59,9 +47,8 @@ sub-waves.
 Dispatch (single message, both Task calls simultaneously):
 
   Task #1:
-    agent: "ssp-frontend"
-    background: false
-    isolation: worktree
+    agent: "frontend"
+    background: true
     prompt: |
       TASK: Add the UserDashboard React page component
       DOMAIN: CMD-1 Frontend
@@ -75,9 +62,8 @@ Dispatch (single message, both Task calls simultaneously):
       QUALITY GATE: cd apps/web && pnpm check && pnpm test
 
   Task #2:
-    agent: "ssp-backend"
-    background: false
-    isolation: worktree
+    agent: "backend"
+    background: true
     prompt: |
       TASK: Implement trpc.dashboard.getSummary procedure
       DOMAIN: CMD-2 Backend
@@ -95,21 +81,7 @@ Dispatch (single message, both Task calls simultaneously):
 
 ## 3. Standard Mode
 
-If this environment exposes default/worker/explorer/spawn-agent-style agents, use the
-closest safe role and preserve specialization by injecting the identity + constraints
-section from `../../sub-agents/agents/NAME.md` at the top of each Task Packet prompt. When
-2+ independent agents are ready, dispatch them as one batch. If no agent tool is available,
-follow the open-code inline procedure while preserving the same Task Packet and Result
-Report contracts.
-
-For lightweight-default sub-agent work, pass `gpt-5.3-codex-spark` when the tool supports a
-model override. Use the inherited current/default model for explicit overrides,
-deep-* routes, high-complexity/high-risk work, performance-critical analysis, retry
-escalations, or unsupported override paths. See `model-routing.md`.
-
-Inline execution in Standard mode is a last resort. Before using it, the conductor must
-record in `orchestra/progress.md` that agent-tool detection failed or that a dispatch
-attempt failed.
+If this environment exposes default/worker/explorer-style agents, use the closest safe role and preserve specialization by injecting the identity + constraints section from `../../sub-agents/agents/NAME.md` at the top of each Task Packet prompt. If no agent tool is available, follow the open-code inline procedure while preserving the same Task Packet and Result Report contracts.
 
 See `sub-agent-dispatch.md` Section 4 for the full template injection procedure.
 
@@ -134,7 +106,7 @@ Task #1:
       - <absolute-repo-root>/apps/web/client/src/components/StatsCard.tsx
     CONTEXT:
       ### Results from Wave N
-      - [backend] Added getSummary procedure: <absolute-repo-root>/apps/web/server/routers/dashboard.ts — success
+      - [backend] Added getSummary procedure: <absolute-repo-root>/apps/web/server/routers/dashboard.ts — SUCCESS
     CONSTRAINTS: [...]
     CONTRACT: See orchestra/contracts.md — frontend ↔ backend — UserDashboard
     OUTPUT: Dashboard.tsx and StatsCard.tsx created with passing tests
@@ -188,7 +160,7 @@ Following: React 19, Wouter, Radix UI + CVA, TanStack Query. Not modifying backe
 [Runs: cd apps/web && pnpm check && pnpm test]
 
 --- [Returning to Orchestra Conductor role] ---
-Wave 1 result: [frontend] Added Dashboard.tsx — success
+Wave 1 result: [frontend] Added Dashboard.tsx — SUCCESS
 Next: adopt backend agent role for getSummary procedure.
 ```
 

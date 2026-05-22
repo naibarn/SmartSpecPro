@@ -1,6 +1,9 @@
 # Quality Gates
 
-Defines all 17 gate types that the orchestra conductor runs after each wave of agent work. Read by SKILL.md Step 6. Risk level terminology follows `task-analysis.md`. Commands below are repository example defaults. If the active plan or repository docs define explicit `typecheck`, `lint`, or `test` commands, those discovered commands override the defaults.
+Defines all 18 gate types that the orchestra conductor runs after each wave of agent work.
+Read by SKILL.md Step 6. Risk level terminology follows `task-analysis.md`. Commands below
+are repository example defaults. If the active plan or repository docs define explicit
+`typecheck`, `lint`, or `test` commands, those discovered commands override the defaults.
 
 ---
 
@@ -17,7 +20,7 @@ Defines all 17 gate types that the orchestra conductor runs after each wave of a
 | 7 | Dependency/Supply-Chain Gate | Dispatch `dependency-supply-chain.md`; run available audit/tree commands | Dependency manifests, lockfiles, Docker images, or Actions versions changed | HIGH/CRITICAL: blocking; MEDIUM: warning | 3 |
 | 8 | Security Review (General) | Dispatch `security.md` agent (spot check only — not the full pre-merge gate) | Task risk level is HIGH | CRITICAL findings: blocking; HIGH findings: warning unless task is CRITICAL | 3 |
 | 9 | Full Test Suite | `cd apps/web && pnpm test` AND `cd python-backend && pytest` | CRITICAL risk tasks | Always blocking | 3 |
-| 10 | Pre-Merge Security Gate | Dispatch security-trpc + security-fastapi + security-frontend specialists in parallel, then route findings to security-review aggregator (see `security-review-protocol.md`) | Trigger conditions defined in `security-review-protocol.md` | Always blocking until verdict returned | 3 per specialist (managed by security-review-protocol.md) |
+| 10 | Pre-Merge Security Gate | Dispatch `ssp-security-trpc` + `ssp-security-fastapi` + `ssp-security-frontend` in parallel when Task tooling exists; otherwise run the same specialist roles sequentially inline, then route findings to `ssp-security-review` aggregator (see `security-review-protocol.md`) | Trigger conditions defined in `security-review-protocol.md` | Always blocking until verdict returned | 3 per specialist (managed by security-review-protocol.md) |
 | 11 | Visual Polish Gate | Apply `visual-ui-enhancement/references/visual-polish-checklist.md`; dispatch `visual-ux-reviewer` when needed | UI visual polish, premium/modern UI, or major page/component layout changed | Warning for LOW/MEDIUM; blocking for HIGH/CRITICAL user-facing launch surfaces | 2 |
 | 12 | Accessibility Gate | Apply `visual-ui-enhancement/references/accessibility-qa.md`; dispatch `accessibility-reviewer` | Interactive UI, forms, navigation, icon-only buttons, focus or keyboard behavior changed | Blocking for user-facing interactive changes; warning for read-only visual copy | 2 |
 | 13 | Responsive Gate | Apply `visual-ui-enhancement/references/responsive-qa.md`; dispatch `responsive-reviewer` | Layout, grids, tables, forms, navigation, or dashboard surfaces changed | Blocking when mobile/tablet route is primary; otherwise warning | 2 |
@@ -25,6 +28,7 @@ Defines all 17 gate types that the orchestra conductor runs after each wave of a
 | 15 | Dark/Light Mode Gate | Inspect semantic tokens and dark-mode classes | UI surface uses color/surfaces or theme-aware components | Warning; blocking when contrast/readability fails on primary workflow | 2 |
 | 16 | UI Screenshot/E2E Gate | Dispatch `e2e-playwright.md` or run discovered Playwright screenshot command | Browser-visible workflow, responsive behavior, or route-level UI changed | HIGH/CRITICAL blocking; MEDIUM warning unless explicitly requested | 2 |
 | 17 | Installed Skill Gate | Run the matching skill from `installed-skill-routing.md` | SEO, security, launch, deploy, release, content, analytics, generator, health, or docs tasks | Follows the selected skill's safety policy; CRITICAL security and deploy/release side effects block | 2 |
+| 18 | Review Convergence Gate | Apply `review-convergence.md`; dispatch relevant reviewers and rerun stale gates | Medium+ scope/risk, any review finding, or any fix after review/gate feedback | Blocking until convergence criteria pass or a stop condition is reached | 5/8/10 by scope |
 
 ---
 
@@ -120,14 +124,15 @@ outcome — if either suite fails, the conductor must fix and retry before proce
 ### Gate 10: Pre-Merge Security Gate
 
 See `security-review-protocol.md` for complete protocol. Summary:
-1. Orchestra dispatches security-trpc, security-fastapi, and/or security-frontend agents
-   in parallel (single message)
+1. Orchestra dispatches `ssp-security-trpc`, `ssp-security-fastapi`, and/or
+   `ssp-security-frontend` agents in parallel (single message) when Task tooling exists, or
+   executes those roles sequentially inline when it does not
 2. Collects findings from all specialists
-3. Dispatches security-review aggregator with collected findings
+3. Dispatches `ssp-security-review` aggregator with collected findings
 4. Aggregator returns PASS / CONDITIONAL / FAIL verdict
 5. Conductor applies verdict per `security-review-protocol.md` threshold policy
 
-This gate is always blocking — no workflow-level bypass. Only the security-review aggregator
+This gate is always blocking — no workflow-level bypass. Only the `ssp-security-review` aggregator
 can unblock it by returning a PASS or CONDITIONAL verdict.
 
 ### Gate 11: Visual Polish Gate
@@ -155,6 +160,9 @@ Use `skills/visual-ui-enhancement/references/component-states.md`. Any async, fo
 action-oriented UI should cover loading, empty, error, disabled, success, hover, active,
 selected, and focus states as applicable.
 
+Frontend behavior/data-fetching work is still subject to this gate even when the writer is
+`frontend` instead of `ui-builder`. Routing and writer ownership do not remove state coverage.
+
 ### Gate 15: Dark/Light Mode Gate
 
 Prefer semantic tokens over raw colors. Verify foreground/background pairing, muted text,
@@ -163,8 +171,20 @@ borders, focus rings, destructive states, and status colors remain readable in b
 ### Gate 16: UI Screenshot/E2E Gate
 
 Use `e2e-playwright.md` or a discovered Playwright command for route-level UI changes,
-responsive work, or when visual correctness cannot be inferred from code. Include viewport
-coverage in the result.
+async/data-fetching UI, responsive work, or when visual correctness cannot be inferred from
+code. Include viewport coverage in the result.
+
+Also apply `ui-browser-verification.md`. The gate result must include either:
+- screenshot/Playwright evidence for required mobile, tablet, and desktop viewports, plus
+  extended viewports when risk requires them, or
+- explicit skipped entries with blockers and manual inspection notes.
+
+When comparing before/after screenshots or using `visual-diff`, apply
+`visual-regression-policy.md` for artifact naming, viewport coverage, and pass/fail
+criteria.
+
+Do not mark missing browser tooling, missing dev server access, or unavailable screenshots
+as pass.
 
 ### Gate 17: Installed Skill Gate
 
@@ -202,15 +222,49 @@ When a gate fails:
 
 1. **Identify the source** — read the error output to determine which agent's change caused
    the failure. Check file paths in the error against the wave's ownership boundaries.
-2. **Construct a fix Task Packet** — include: exact error message, gate that failed, file
-   paths involved, wave number, and the original task.
-3. **Re-dispatch the same agent type** that produced the failing code.
-4. **Increment the retry counter** for this (gate, wave) pair.
-5. **If retry counter reaches 3** — STOP. Report to user with full error context and all 3
-   attempts' error outputs. Do NOT attempt a 4th dispatch.
+2. **Capture bounded evidence** — if output is longer than about 80 lines or 12 KB, save
+   the full output to an artifact path such as `orchestra/logs/<gate>-wave-<N>-attempt-<N>.log`
+   and redact secrets before sharing excerpts.
+3. **Construct a fix Task Packet** — include: command, exit code, decisive error lines,
+   a short first/last excerpt, artifact/log path for full output, file paths involved,
+   wave number, and the original task. Do not paste full logs, stack traces, or test
+   transcripts into CONTEXT.
+4. **Re-dispatch the same agent type** that produced the failing code.
+5. **Increment the retry counter** for this (gate, wave) pair.
+6. **If retry counter reaches 3** — STOP. Report to user with command, exit code,
+   decisive error excerpts, artifact paths, and compact summaries of all 3 attempts. Do
+   NOT attempt a 4th dispatch.
 
 The retry counter resets per wave, per gate. A gate that fails in wave 2 and succeeds on
 retry 1 starts fresh in wave 3.
+
+## Stale Gate Protocol
+
+A passing gate becomes stale when a later fix changes any file, contract, runtime path, UI
+surface, schema, route, dependency, or config that the gate covered.
+
+After every review/gate-driven fix:
+
+1. Identify which earlier gates covered the changed surface.
+2. Mark those gates as stale in `orchestra/progress.md`.
+3. Rerun stale gates before the next review round or final summary.
+4. If a gate cannot run, record it as skipped with a blocker and residual risk. Do not count
+   it as a clean convergence signal.
+
+## Gate 18: Review Convergence Gate
+
+Read `review-convergence.md`. This gate prevents Orchestra from completing after only one
+post-completion review when fixes may have created second-order issues.
+
+The gate must prove:
+- required review rounds ran for the task's scope/risk
+- no material findings remain
+- all stale gates were rerun after the last relevant change
+- impact closure found no new required work
+- optional deferred items are documented with rationale
+
+If the gate finds new material issues, dispatch the owning sub-agent or fix wave, rerun
+stale gates, and repeat until the stop rules in `review-convergence.md` are satisfied.
 
 ---
 

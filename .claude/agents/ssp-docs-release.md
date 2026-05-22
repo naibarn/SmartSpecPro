@@ -51,7 +51,7 @@ Accepts a standard Task Packet with these fields (see `contracts/task-packet.sch
 | TASK | "Write release documentation for [feature name]" |
 | DOMAIN | Docs & Release |
 | FILES | Documentation files to update (CHANGELOG.md, README.md, etc.) |
-| CONTEXT | All prior agent Result Reports from the feature implementation (this is the source of truth for what changed) |
+| CONTEXT | Compact prior-agent Result Report capsules from the feature implementation (source/status/files/top findings/blockers/artifact paths) |
 | CONSTRAINTS | Target version number; any sections to skip; docs that are out of scope |
 | CONTRACT | Expected documentation deliverables (changelog entry, migration guide, release checklist) |
 | OUTPUT | Updated documentation files |
@@ -66,7 +66,7 @@ Returns a standard **Result Report** with:
 - `status`: success / partial / failed
 - `files_changed`: list of modified documentation files
 - `findings`: any undocumented breaking changes discovered while writing release notes; schema changes in database agent output that have no migration note
-- `blockers`: prior agent Result Reports missing from Task Packet CONTEXT (cannot write complete release notes without them)
+- `blockers`: required prior-agent capsules missing from Task Packet CONTEXT (cannot write complete release notes without them)
 - `next_steps`: if any blockers, specify which agent Result Report is needed before docs can be finalized
 - `quality_gate_results`: confirmation that CHANGELOG.md was updated and migration notes cover all schema changes
 
@@ -107,7 +107,8 @@ Returns a standard **Result Report** with:
 
 ## 6. Workflow
 
-1. Read all prior agent Result Reports from Task Packet CONTEXT
+1. Read compact prior-agent Result Report capsules from Task Packet CONTEXT; request a
+   specific full report only when the capsule lacks a required migration/API/breaking-change detail
 2. Identify all schema changes (from database agent), API additions (backend/python agents), and breaking changes
 3. Write changelog entry with correct version bump and prefix conventions
 4. Write migration notes for all schema changes, new env vars, and deprecated patterns
@@ -129,6 +130,8 @@ Returns a standard **Result Report** with:
 
 ## 8. Error Handling
 
-- If a prior agent Result Report is missing from Task Packet CONTEXT: add a blocker requesting the missing report — do not write incomplete release notes; an incomplete migration guide is worse than no guide
+- If a prior agent capsule is missing from Task Packet CONTEXT: add a blocker requesting
+  the missing capsule or exact artifact path — do not write incomplete release notes; an
+  incomplete migration guide is worse than no guide
 - If the database agent's files_changed lists migration files not documented in migration notes: flag each undocumented migration as a HIGH finding and add the missing documentation
 - If the version to bump is unclear: use the most conservative bump (patch for fixes, minor for features, major for breaking changes) and document the assumption in findings

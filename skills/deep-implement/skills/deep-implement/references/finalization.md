@@ -26,9 +26,16 @@ Run `git diff main...HEAD --name-only` to get changed files. If ANY of these pat
 
 Before generating output, do one final sweep:
 
-1. Re-read all section plans and compare against actual implementation
+1. Compare implementation against section/index digests plus changed/dependent section
+   plans. Re-read all section plans only when the digest, tests, or dependency map show
+   unresolved cross-section risk.
 2. Run full test suite (`{test_command}`)
-3. For each improvement opportunity:
+3. For UI-affecting sections, verify browser evidence from
+   `skills/orchestra/references/ui-browser-verification.md` exists or is explicitly
+   marked skipped with blockers. Missing evidence for a MEDIUM+ user workflow is
+   [AUTO-FIX] when tooling is available; otherwise it is a documented residual risk.
+   Also verify the UI/UX Copy Contract is implemented or explicitly skipped with a reason.
+4. For each improvement opportunity:
    - **[AUTO-FIX]** (80%+ confident it should be done) → fix and commit immediately:
      - Missing error handling that's clearly needed
      - Incomplete input validation at system boundaries
@@ -42,9 +49,9 @@ Before generating output, do one final sweep:
      - Documentation enhancements
      - Refactoring opportunities that aren't blocking
 
-4. Apply all [AUTO-FIX] items
-5. Re-run tests to verify
-6. If fixes needed a new commit:
+5. Apply all [AUTO-FIX] items
+6. Re-run tests to verify
+7. If fixes needed a new commit:
    ```bash
    git add -u && git commit -m "fix: final quality pass — auto-improvements"
    ```

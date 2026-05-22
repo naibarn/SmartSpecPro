@@ -4,7 +4,9 @@ Generate content for section `{SECTION_NAME}` (filename: `{SECTION_FILENAME}`).
 
 ## Context Files
 
-Read these files first to understand the full implementation plan:
+Read these files first to understand the implementation plan. Prefer the relevant
+section slices over full-document re-reading when a per-section brief or manifest entry is
+available:
 
 1. `{PLANNING_DIR}/claude-plan.md` - Full implementation plan
 2. `{PLANNING_DIR}/claude-plan-tdd.md` - Test stubs for each section
@@ -52,5 +54,7 @@ The section content must be **completely self-contained**. An implementer should
 
 - Extract ONLY the content relevant to your assigned section
 - The section should be implementable in isolation (given its dependencies are met)
-- Be thorough - better to include too much context than too little
+- Be thorough with bounded relevant context. Do not duplicate shared plan material, large
+  unrelated requirements, or other sections. Prefer concise summaries plus exact file paths,
+  API names, test names, and dependency references.
 - Preserve code formatting and indentation exactly as shown in the source files

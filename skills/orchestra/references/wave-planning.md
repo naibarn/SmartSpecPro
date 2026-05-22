@@ -46,6 +46,9 @@ When SocratiCode is active, derive this boundary from `codebase_impact`,
 If SocratiCode is unavailable, use targeted shell search and record the fallback.
 
 > **Rule:** Parallel dispatch requires a contract — no contract = sequential execution.
+> For parallelizable work, the conductor must first create the minimal safe contract and
+> ownership map. Falling back to sequential because no contract was written is a planning
+> failure; sequential is allowed only with a recorded `sequential_reason`.
 
 ### Example Contract Stub
 
@@ -82,6 +85,27 @@ If SocratiCode is unavailable, use targeted shell search and record the fallback
 
 **Core principle:** Tasks in the same wave have no file-level dependencies on each other.
 A task belongs to wave N+1 if and only if it requires the output of a wave N task.
+
+**Default:** Build parallel waves first. Sequential execution is the exception, not the
+baseline. If two tasks are independent by file ownership and dependency graph, the conductor
+must group them into the same wave until a hard constraint is reached.
+
+### Parallelization Preflight Checklist
+
+Before accepting a sequential plan, answer and record these fields in
+`orchestra/plan.md`:
+
+| Field | Required answer |
+|---|---|
+| `candidate_agents` | Which sub-agents could perform bounded parts of the task? |
+| `same_wave_candidates` | Which agents can run before seeing each other's output? |
+| `ownership_map` | Exact write/read files for each writer or reviewer |
+| `dependency_edges` | Which tasks depend on another task's output? |
+| `dispatch_mode` | `parallel_batch`, `parallel_with_worktree`, `single_agent`, or `sequential_exception` |
+| `sequential_reason` | Required only when not using parallel for 2+ candidate agents |
+
+If 2+ safe same-wave candidates exist, use `parallel_batch` or
+`parallel_with_worktree`. Do not choose sequential merely because it is simpler to execute.
 
 **Grouping guidelines:**
 
@@ -122,6 +146,56 @@ These limits are non-negotiable. The conductor must enforce them when building t
 separate git worktree and the conductor merges afterward. Do not use worktree isolation if
 agents share no files — it adds merge overhead with no benefit.
 
+### Writer Isolation and Merge Protocol
+
+For every wave containing file-editing agents, write this dispatch metadata into
+`orchestra/contracts.md` before launch:
+
+| Field | Meaning |
+|---|---|
+| `writer_count` | Number of agents allowed to write files in this wave |
+| `dispatch_mode` | `parallel`, `parallel-with-worktree`, or `sequential` |
+| `ownership_map` | Exact files each writer may modify |
+| `merge_owner` | Conductor responsible for final integration. A named agent may only review/report; it must not perform the final merge decision. |
+| `verification_owner` | Agent/gate responsible for proving the merged output works |
+
+Rules:
+
+- Use `parallel` only when writers have disjoint write sets and no shared generated files.
+- Use `parallel-with-worktree` when two writers can run safely but may need merge review.
+- Use `sequential` when two writers need the same file, when more than two writers would edit
+  files, or when the platform cannot enforce worktree isolation.
+- Read-only reviewers may run in parallel with each other, but not against unmerged writer
+  work unless they are explicitly reviewing the previous wave only.
+- The conductor, not a sub-agent, owns merge decisions and final conflict resolution.
+
+### Worktree Merge Protocol
+
+Use this exact protocol when `dispatch_mode: parallel-with-worktree`:
+
+1. Name worktrees predictably:
+   - `<repo>/.worktrees/orchestra-wave-<N>-<portable-role>`
+   - branch `orchestra/wave-<N>/<portable-role>`
+2. Give each writer a disjoint `ownership_map`. If a writer needs a file outside its map,
+   it must stop and return a blocker instead of editing.
+3. After writers finish, the conductor collects each worktree result as:
+   - changed file list
+   - `git diff --stat`
+   - Result Report
+   - verification output
+4. Merge order is conductor-owned and contract-driven:
+   - generated/shared contracts first
+   - backend/schema before frontend consumers
+   - UI polish after behavior wiring
+5. Prefer patch application or `git merge --no-commit` from the worktree branch into the
+   main workspace. Record the command or method used in `orchestra/decisions.md`.
+6. If a conflict occurs:
+   - keep the contract-compliant side
+   - reapply non-conflicting changes from the other side manually
+   - re-dispatch the losing writer only when its intent cannot be preserved safely
+7. Delete temporary worktrees only after verification passes and the conductor has recorded
+   the merge decision.
+
 ---
 
 ## 4. Wave N Context Injection Format
@@ -131,15 +205,21 @@ Do **not** dump raw conversation history.
 
 ```
 ### Results from Wave N
-- [frontend] Added StatsCard component: <absolute-repo-root>/apps/web/client/src/components/StatsCard.tsx — SUCCESS
-- [backend] Added getSummary tRPC procedure: <absolute-repo-root>/apps/web/server/routers/dashboard.ts — SUCCESS
+- [frontend] Added StatsCard component: <absolute-repo-root>/apps/web/client/src/components/StatsCard.tsx — success
+- [backend] Added getSummary tRPC procedure: <absolute-repo-root>/apps/web/server/routers/dashboard.ts — success
 - Open contract note: Backend returns `stats.activeUsers` as `number`, not `string`. Frontend must not call `parseInt()`.
 ```
 
 **Context injection rules:**
-- **Include:** Absolute file paths, one-line change descriptions, status (`SUCCESS` / `PARTIAL` / `FAILED`), cross-agent contract notes
-- **Exclude:** Raw conversation transcripts, full file contents, internal agent reasoning, intermediate debugging output
+- **Include:** Absolute file paths, one-line change descriptions, canonical status
+  (`success` / `partial` / `failed`), cross-agent contract notes
+- **Exclude:** Raw conversation transcripts, full Result Reports, full file contents,
+  internal agent reasoning, full diffs, raw logs, full command/test output, intermediate
+  debugging output
 - **Placement:** Prepend this block at the top of every wave N+1 Task Packet CONTEXT section
+- **Budget:** keep this block to a compact capsule. Include only status, changed files,
+  top findings/blockers, stale gates, and open contract notes. Use artifact paths,
+  commands, trace IDs, and file:line references for details.
 
 All paths must be absolute (prefixed with `<absolute-repo-root>/`). Never use
 relative paths (`./`, `../`) in context injection blocks.

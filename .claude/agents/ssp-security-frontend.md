@@ -162,7 +162,9 @@ Accepts a Task Packet (see `contracts/task-packet.schema.md`):
 | FILES | Changed React component files, page files, and routing files in `apps/web/client/src/` |
 | CONTEXT | List of new or modified components and their intended auth requirements; known prior findings |
 | CONSTRAINTS | Which vulnerability classes to prioritize; pages explicitly marked as public/unauthenticated |
+| CONTRACT | `N/A` for solo read-only audit, or the exact security scope/acceptance criteria from orchestra |
 | OUTPUT | Security findings table in Result Report |
+| QUALITY GATE | Read-only audit checklist; every file in FILES must be reviewed or listed as a blocker |
 
 ---
 
@@ -173,6 +175,9 @@ Returns a **Result Report** (see `contracts/result-report.schema.md`) with:
 - `status`: success / partial / failed
 - `files_changed`: [] (always empty — read-only)
 - `findings`: security finding entries with severity, file:line, description, and recommended fix
+- `blockers`: files, routes, or components that could not be audited, or missing auth intent needed for a reliable verdict
+- `next_steps`: recommended fix owner or follow-up security gate action
+- `quality_gate_results`: pass/fail/skipped entries for every checklist item supplied in QUALITY GATE
 
 **Security finding format:**
 
@@ -187,7 +192,7 @@ Returns a **Result Report** (see `contracts/result-report.schema.md`) with:
 
 ## 7. Workflow
 
-1. Read all React component, page, and routing files listed in Task Packet FILES
+1. Read packet-scoped React component, page, and routing files listed in Task Packet FILES
 2. For each component: check all 6 anti-patterns (AP-FE01 through AP-FE06) in order
 3. Search for `dangerouslySetInnerHTML` in changed files — inspect every occurrence
 4. Search for `localStorage.setItem`, `localStorage.getItem`, and `sessionStorage` in changed files — inspect auth/token-related calls

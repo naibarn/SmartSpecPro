@@ -274,6 +274,8 @@ Create detailed plan → `<planning_dir>/claude-plan.md`
 **CRITICAL CONSTRAINTS** (from plan-writing.md):
 - Plans are **prose documents**, not code
 - **ZERO full function implementations** - that's deep-implement's job
+- UI-affecting plans must include the UI/UX contract fields from
+  `skills/orchestra/references/ui-ux-planning-contract.md`
 
 Write for an unfamiliar reader. The plan must be fully self-contained - an engineer or LLM with no prior context should understand *what* we're building, *why*, and *how* just from reading this document. But it does not need to see full code implementations
 
@@ -430,10 +432,12 @@ Compare count to expected sections. If any files are missing:
 
 Read `{plugin_root}/references/plan-review-loop.md` — **Phase C**.
 
-**Goal:** After ALL section files are written by subagents, review them as a whole for cross-section consistency. Subagents write independently and cannot see each other's output.
+**Goal:** After section files are written by subagents, review them as a whole for cross-section consistency. Subagents write independently and cannot see each other's output.
 
 **Procedure:**
-1. Read ALL section files sequentially
+1. Build a section digest from `sections/index.md`, section summaries, and changed/dependent
+   sections first. Read every section file sequentially only when the section set is small
+   or the digest/checker shows unresolved cross-section risk.
 2. Build a dependency map: what each section imports/exports (types, functions, files, APIs)
 3. Check for:
    - **Interface mismatches** — section-02 imports `UserService` but section-01 exports `UserManager`
@@ -441,6 +445,8 @@ Read `{plugin_root}/references/plan-review-loop.md` — **Phase C**.
    - **Overlaps** — two sections create the same file or define the same function
    - **Dependency order violations** — section imports from a later section
    - **Self-containment** — each section has enough context to implement alone
+   - **UI evidence gaps** — UI sections missing state matrix, responsive matrix,
+     accessibility acceptance, or browser evidence requirements
 4. Fix issues directly in section files
 5. If fixes changed interfaces → re-check dependent sections (max 3 rounds)
 6. Print cross-consistency scorecard
@@ -452,7 +458,8 @@ Read `{plugin_root}/references/plan-review-loop.md` — **Phase C**.
 Before declaring completion, do a final quality sweep across ALL output files:
 
 1. Run `check-sections.py` — confirm state is "complete"
-2. Re-read claude-plan.md + all section files one final time
+2. Re-read `claude-plan.md`, `sections/index.md`, changed sections, and dependent sections
+   digest-first. Re-read all section files only when needed for unresolved consistency risk.
 3. For each improvement opportunity found, classify:
    - **[AUTO-FIX]** — Genuinely beneficial and low-risk → **fix it immediately** without asking
      - Missing edge case coverage that's clearly needed

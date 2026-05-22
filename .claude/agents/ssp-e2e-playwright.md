@@ -51,7 +51,7 @@ Accepts a standard Task Packet with these fields (see `contracts/task-packet.sch
 | TASK | Browser workflow or flaky E2E issue to cover |
 | DOMAIN | CMD-8E E2E |
 | FILES | Pages, routes, existing Playwright tests, fixtures |
-| CONTEXT | User journey, acceptance criteria, failure logs, screenshots |
+| CONTEXT | User journey, acceptance criteria, sanitized failure excerpts, and screenshot/trace artifact paths |
 | CONSTRAINTS | Browsers/viewports, auth role, external calls to mock |
 | CONTRACT | Workflow steps and expected UI states |
 | OUTPUT | Playwright tests + E2E report |
@@ -68,7 +68,7 @@ Returns a standard **Result Report** with:
 - `findings`: workflow coverage, flake risks, UX issues observed in browser
 - `blockers`: missing test runner config, unavailable services, unstable auth setup
 - `next_steps`: backend/frontend fixes if E2E reveals product bugs
-- `quality_gate_results`: exact browser test command and result
+- `quality_gate_results`: exact browser test command, exit code, decisive excerpt, and artifact paths
 
 Include an E2E plan:
 
@@ -90,7 +90,8 @@ Artifacts: [screenshots/traces if produced]
 2. Identify deterministic setup and selectors
 3. Write or update Playwright tests
 4. Run the narrow E2E command first
-5. Diagnose failures with trace/screenshot/log output when available
+5. Diagnose failures with trace/screenshot/log artifacts when available; inline only the
+   decisive excerpt, never full traces, screenshots, or browser logs
 6. Return test report and blockers
 
 ---

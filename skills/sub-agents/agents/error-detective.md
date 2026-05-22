@@ -19,7 +19,7 @@ description: "Error Detective Agent (CMD-7 support) — Read-only audit log inve
 - Trace events by `traceId` across all log entries within a time window
 - Correlate `provider_usage_log` database records with audit events for cost and token validation
 - Identify cost discrepancies, latency spikes, missing events, and error patterns
-- Reconstruct the full request lifecycle for a given `traceId`
+- Reconstruct the request lifecycle for a given `traceId` as a bounded timeline capsule
 - Expand search to ±1 day if traceId is not found on the expected date
 
 **Known repository audit log schema:**
@@ -40,7 +40,8 @@ Key event types: `skill_detect`, `skill_execute`, `llm_request`, `llm_response`,
 Query patterns:
 ```bash
 # All events for a traceId
-grep '"traceId":"TRACE_ID"' apps/web/logs/audit/audit-YYYY-MM-DD.jsonl | jq .
+grep '"traceId":"TRACE_ID"' apps/web/logs/audit/audit-YYYY-MM-DD.jsonl \
+  | jq '{timestamp,eventType,traceId,status,modelUsed,costUsd,timing,errorMessage}'
 
 # All errors today
 grep '"eventType":"error"' apps/web/logs/audit/audit-$(date +%Y-%m-%d).jsonl | jq .
@@ -66,6 +67,8 @@ WHERE "traceId" = 'TRACE_ID';
 - Must use actual grep/jq patterns on JSONL files (not hypothetical queries)
 - Must check BOTH the JSONL audit log AND the `provider_usage_log` DB table for any LLM/media issue
 - Must sort event timeline chronologically before reporting
+- Must keep timeline output bounded: show the decisive events, collapse repetitive middle
+  sections, and include the log path/traceId so the complete timeline can be reproduced
 
 ---
 
@@ -81,7 +84,7 @@ Accepts a standard Task Packet with these fields (see `contracts/task-packet.sch
 | CONTEXT | The `traceId` or time window to investigate; the reported symptom |
 | CONSTRAINTS | Which event types to focus on; time range |
 | CONTRACT | N/A for investigation |
-| OUTPUT | Full event timeline + anomalies flagged |
+| OUTPUT | Bounded event timeline capsule + anomalies flagged |
 | QUALITY GATE | Every finding cites a specific log line or DB record |
 
 ---
@@ -92,13 +95,15 @@ Returns a standard **Result Report** with:
 
 - `status`: success / partial / failed
 - `files_changed`: [] (always empty — read-only agent)
-- `findings`: full timeline of events for the trace (see format below); anomalies flagged with severity
+- `findings`: bounded timeline capsule for the trace (see format below); anomalies flagged with severity
 - `blockers`: audit log file missing for date; traceId not found after ±1 day expansion; DB connection unavailable
 - `next_steps`: recommend dispatch of debugger agent if root cause identified; recommend code fix location
 - `quality_gate_results`: confirmation that both JSONL log and DB were queried
 
-**Audit event timeline format (in findings):**
+**Audit event timeline capsule format (in findings):**
 ```
+traceId: abc123
+source: apps/web/logs/audit/audit-2026-02-22.jsonl
 [2026-02-22T14:23:01Z] eventType: skill_detect — skill: image-gen, confidence: 0.91
 [2026-02-22T14:23:02Z] eventType: skill_execute — skillId: image-gen, userId: u123
 [2026-02-22T14:23:03Z] eventType: llm_request — model: gpt-4o, provider: openai, tokens_requested: 500
@@ -108,6 +113,11 @@ Returns a standard **Result Report** with:
 ANOMALY [HIGH]: Gap of 8s between llm_response and next event — expected <1s
 ANOMALY [MEDIUM]: audit log costUsd (0.0213) does not match provider_usage_log costUsd (0.0198)
 ```
+
+If a trace has many events, inspect at most 50 projected events per report. Include the
+first 5, last 5, and anomalous events. Summarize collapsed sections as counts by eventType
+instead of pasting every JSONL entry. Never include payloads, prompts, user content, raw
+request bodies, credentials, or full JSON entries.
 
 ---
 
@@ -120,7 +130,7 @@ ANOMALY [MEDIUM]: audit log costUsd (0.0213) does not match provider_usage_log c
 5. Correlate: does audit log `costUsd` match DB `costUsd`? Flag discrepancies
 6. Identify gaps in the event timeline (missing expected events)
 7. Flag anomalies (latency spikes, cost mismatches, error events, unexpected `status` codes)
-8. Return Result Report with full timeline and anomalies
+8. Return Result Report with bounded timeline capsule and anomalies
 
 ---
 

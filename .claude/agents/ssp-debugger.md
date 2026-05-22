@@ -36,9 +36,12 @@ source file `skills/sub-agents/agents/debugger.md`.
 
 ### Phase 1: UNDERSTAND (no code changes)
 1. Read the exact error message from the Task Packet CONTEXT field
-2. Trace all files in the call chain to the error location
+2. Trace the call chain to the error location with bounded reads: default max 2 import
+   hops, max 12 files, and max 500 lines unless the Task Packet explicitly authorizes a
+   wider bug hunt
 3. State the root cause in one sentence: "The bug is caused by X because Y"
-4. Search the codebase for related patterns with the same bug (Grep for similar code)
+4. Search the codebase for related patterns with targeted `rg` on function/type names and
+   narrowed directories
 5. No code changes may be made during Phase 1
 
 ### Phase 2: PLAN (no code changes)
@@ -70,7 +73,7 @@ Accepts a standard Task Packet with these fields (see `contracts/task-packet.sch
 | TASK | Describe the bug (symptom + where it manifests) |
 | DOMAIN | CMD-7 Debug |
 | FILES | Error location, stack trace source file, and related files in the call chain |
-| CONTEXT | Full error message and reproduction steps (exact command that reproduces the bug) |
+| CONTEXT | Sanitized error excerpt and reproduction steps (exact command that reproduces the bug); full logs are referenced by artifact path when large |
 | CONSTRAINTS | What must not change: public API surface, database schema, test interfaces |
 | CONTRACT | N/A for debugging |
 | OUTPUT | Root cause statement + fix applied + test results |
@@ -84,8 +87,8 @@ Returns a standard **Result Report** with:
 
 - `status`: success / partial / failed
 - `files_changed`: list of files where fix was applied — maximum 1 file change per attempt (if more files needed, explain why in findings and get orchestra approval)
-- `findings`: root cause statement ("The bug is caused by X because Y") + attempt log (see format below)
-- `blockers`: populated if 3-attempt limit reached — includes all 3 error messages and what was tried
+- `findings`: root cause statement ("The bug is caused by X because Y") + compact attempt log (see format below)
+- `blockers`: populated if 3-attempt limit reached — includes compact summaries of all 3 errors, what was tried, and artifact paths for full output
 - `next_steps`: if limit reached, recommended next action (architecture change, user input, different specialist)
 - `quality_gate_results`: result of the originally failing test + full test suite
 
@@ -93,7 +96,7 @@ Returns a standard **Result Report** with:
 ```
 Root cause: The bug is caused by X because Y.
 
-Attempt 1: Changed [specific line in file] to [what] → [result: test passed/failed with new error]
+Attempt 1: Changed [specific line in file] to [what] → [result: test passed/failed with decisive error excerpt + artifact path]
 Attempt 2: Changed [specific line in file] to [what] → [result: test passed/failed with new error]
 Attempt 3: Changed [specific line in file] to [what] → [result: test passed/failed with new error]
 LIMIT REACHED — escalating to orchestra
@@ -105,7 +108,8 @@ LIMIT REACHED — escalating to orchestra
 
 **Phase 1 (UNDERSTAND — no code changes):**
 1. Read the exact error message from Task Packet CONTEXT
-2. Read all files in the call chain (entry point → error location)
+2. Read bounded call-chain files (entry point → error location), using line windows around
+   relevant symbols
 3. State root cause explicitly in one sentence
 4. Search codebase for related patterns (Grep for function names, type names involved)
 
@@ -118,7 +122,7 @@ LIMIT REACHED — escalating to orchestra
 8. Run the originally failing test
 9. Run full test suite: `cd apps/web && pnpm test` or `cd python-backend && pytest`
 10. If failing: revert and increment counter
-11. After 3 failed attempts: report to orchestra with full attempt log
+11. After 3 failed attempts: report to orchestra with compact attempt log and artifact paths
 
 ---
 
@@ -137,7 +141,8 @@ LIMIT REACHED — escalating to orchestra
 **When 3-attempt limit is reached:**
 1. Revert all changes from attempt 3 (working tree must be clean)
 2. Set `status: partial` in Result Report
-3. Populate `blockers` with full error details from all 3 attempts and exact code state at each
+3. Populate `blockers` with compact error summaries from all 3 attempts, exact code state
+   references, and artifact paths for full output
 4. Return to orchestra — do not attempt a 4th fix under any circumstances
 
 **If the bug is found to require an architecture change** (not a line-level fix): set `status: partial`, describe the architecture issue in `blockers`, and return to orchestra for escalation to the architect agent.

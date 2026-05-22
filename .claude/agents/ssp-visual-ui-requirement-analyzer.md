@@ -58,16 +58,21 @@ Accepts a standard Task Packet with:
 
 ## 5. Output Contract
 
-Return a UI Enhancement Brief:
+Return a standard **Result Report** with a compact UI Enhancement Brief in `findings`
+(target <= 600 words unless the Task Packet requests a larger artifact):
 
-- product/interface type
-- primary user task and success criteria
-- target files/components/routes
-- existing framework and design system constraints
-- required component states
-- responsive breakpoints and mobile risks
-- accessibility risks
-- implementation risk level and recommended next agents
+- `status`: success / partial / failed
+- `files_changed`: [] (always empty — read-only)
+- `findings`: UI Enhancement Brief entries covering product/interface type, primary
+  user task and success criteria, target files/components/routes, existing framework
+  and design-system constraints, required component states, responsive breakpoints,
+  accessibility risks, implementation risk level, and recommended next agents
+- `blockers`: missing target files, ambiguous product intent, or unsupported UI scope
+- `next_steps`: recommended downstream agents and required gates
+- `quality_gate_results`: read-only inspection checklist results from QUALITY GATE
+
+Keep the brief bounded: max 6 open findings, changed target files only, and state matrices
+only for affected components. Put longer notes in an artifact/doc path if needed.
 
 ---
 

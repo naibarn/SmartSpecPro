@@ -93,7 +93,8 @@ Returns a standard **Result Report** with:
 - `findings`: misconfigurations or security issues found in adjacent config files during audit
 - `blockers`: validation failures that could not be resolved; permissions required that agent doesn't have
 - `next_steps`: systemctl commands orchestra should run; services that need restart
-- `quality_gate_results`: full output of `./scripts/validate-all-configs.sh`
+- `quality_gate_results`: `./scripts/validate-all-configs.sh` command, exit code,
+  decisive excerpt, and artifact path for full output when long
 
 ---
 
@@ -121,6 +122,8 @@ Returns a standard **Result Report** with:
 
 ## 8. Error Handling
 
-- If `./scripts/validate-all-configs.sh` fails: revert the config change immediately and add the full validation output as a blocker — do not leave invalid configs in place
+- If `./scripts/validate-all-configs.sh` fails: revert the config change immediately and
+  add the decisive validation excerpt plus artifact path as a blocker — do not leave
+  invalid configs in place
 - If a systemd service restart is needed but the agent cannot execute it (sudo required): document the exact command in `next_steps` for orchestra/user to run
 - If the requested change would expose an internal port directly: refuse the change, explain why in `findings`, and suggest the correct Nginx proxy approach instead

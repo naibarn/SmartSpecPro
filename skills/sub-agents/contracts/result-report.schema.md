@@ -2,7 +2,27 @@
 
 The Result Report is the structured response that every sub-agent returns to the `/orchestra` conductor after completing its assigned Task Packet. The conductor's result integration step (SKILL.md Step 5) parses this format to detect conflicts, assess quality gate status, and plan the next wave.
 
-Every field is **mandatory**. If a field has no content, use an explicit empty list `[]` — never omit the field.
+Every standard field is **mandatory**. If a field has no content, use an explicit empty
+list `[]` — never omit the field. Role-specific extension fields are allowed when the
+Task Packet OUTPUT requests them, but they must never replace the six standard fields.
+
+## Output Budget Rules
+
+Result Reports must be compact enough to carry between waves without causing context
+growth:
+
+- Target <= 1,500 words unless the Task Packet explicitly requests a longer artifact.
+- List at most the top 15 findings by severity and impact. If more exist, summarize the remainder
+  as counts by category and add the file path, trace ID, command, or artifact where the
+  full evidence can be retrieved.
+- Never paste full diffs, full source files, full logs, full stack traces, full prior
+  Result Reports, raw JSONL timelines, or complete command transcripts.
+- For command output, include only the relevant failing/error lines plus at most a short
+  first/last excerpt. Point to the command or saved artifact for full reproduction.
+- For read-only audits, prefer a finding table with `severity`, `file:line`, `evidence`,
+  and `recommended_action` over prose paragraphs.
+- If truncation affects confidence, record that in `blockers` or `next_steps`; otherwise
+  note the truncation in `quality_gate_results`.
 
 ---
 
@@ -22,6 +42,17 @@ Every field is **mandatory**. If a field has no content, use an explicit empty l
 ```
 status: success
 ```
+
+**Compatibility rule:** Older reports may use `completed` or uppercase wave labels
+(`SUCCESS`, `PARTIAL`, `FAILED`). The conductor must normalize them before integration:
+
+| Incoming value | Canonical status |
+|---|---|
+| `completed`, `success`, `SUCCESS` | `success` |
+| `partial`, `PARTIAL` | `partial` |
+| `failed`, `FAILED`, `blocked` | `failed` |
+
+New agents must emit only the canonical lowercase values.
 
 ---
 
@@ -65,6 +96,10 @@ findings:
 
 **If no findings:** `findings: []`
 
+**Budget rule:** Findings should be one line each unless the evidence cannot be understood
+without a short excerpt. Use `file:line`, trace IDs, test names, or artifact paths instead
+of copying large evidence blocks.
+
 ---
 
 ### blockers
@@ -96,6 +131,9 @@ next_steps:
 
 **If no next steps:** `next_steps: []`
 
+**Budget rule:** keep `next_steps` to the top 8 actionable items. Group duplicates and
+defer optional ideas to a backlog artifact/path instead of expanding the report.
+
 ---
 
 ### quality_gate_results
@@ -118,6 +156,29 @@ quality_gate_results:
 - List every gate from the QUALITY GATE section — do not omit any
 - If a gate was not in the original packet but was run anyway, include it with a note
 - `skipped` is only valid when the gate genuinely does not apply (e.g., no TS files changed, read-only audit)
+- Keep each gate result to status plus the decisive excerpt. For failures, include the
+  command, exit code, and last relevant 40 lines or an artifact path. Do not include full
+  test, lint, build, migration, or validation output inline.
+
+---
+
+### Role-Specific Extension Fields
+
+Some agents produce a domain verdict in addition to the canonical `status`. Extension
+fields are parsed only by the conductor logic that requested them.
+
+| Agent | Extension field | Allowed values | Notes |
+|---|---|---|---|
+| `security-review` | `security_verdict` | `PASS`, `CONDITIONAL`, `FAIL` | Pre-merge gate verdict. Does not replace `status`. |
+| `reviewer` | `review_verdict` | `APPROVE`, `APPROVE_WITH_FIXES`, `REQUEST_CHANGES` | Code-review verdict; blocking policy is decided by orchestra. |
+| `visual-ux-reviewer`, `accessibility-reviewer`, `responsive-reviewer` | `ux_verdict` | `PASS`, `FIXES_REQUIRED`, `BLOCKED` | UI/UX/a11y/responsive verdict for visual UI gates. |
+
+**Security-review example header:**
+
+```
+status: success
+security_verdict: CONDITIONAL
+```
 
 ---
 

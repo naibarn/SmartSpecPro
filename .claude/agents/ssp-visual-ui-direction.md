@@ -58,16 +58,20 @@ Accepts a standard Task Packet with:
 
 ## 5. Output Contract
 
-Return:
+Return a standard **Result Report** with a compact Visual Direction Brief in `findings`
+(target <= 600 words unless the Task Packet requests a larger artifact):
 
-1. chosen direction and rationale
-2. typography approach
-3. color/token strategy
-4. surface and elevation strategy
-5. layout rhythm
-6. signature visual element
-7. anti-patterns to avoid
-8. implementation constraints for downstream agents
+- `status`: success / partial / failed
+- `files_changed`: [] (always empty — read-only)
+- `findings`: chosen direction and rationale, typography approach, color/token
+  strategy, surface/elevation strategy, layout rhythm, signature visual element,
+  anti-patterns to avoid, and implementation constraints for downstream agents
+- `blockers`: missing UI brief, conflicting product/accessibility constraints, or unknown token system
+- `next_steps`: implementation owner and gates required for the selected direction
+- `quality_gate_results`: direction checklist results from QUALITY GATE
+
+Keep downstream context lean: one chosen direction, token strategy, top implementation
+constraints, max 6 anti-patterns, and artifact/path references for longer design notes.
 
 ---
 

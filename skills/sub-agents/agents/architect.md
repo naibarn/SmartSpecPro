@@ -90,7 +90,7 @@ Returns an **Architecture Document** containing all of the following, plus a sta
 
 ## 6. Workflow
 
-1. Read all FILES in Task Packet and any provided research context
+1. Read packet-scoped FILES and the compact research context needed for the architecture decision
 2. Identify integration points with existing code (what must remain stable)
 3. Draft module diagram showing component relationships
 4. Define API contracts as stubs (no bodies — types and signatures only)

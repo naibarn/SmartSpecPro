@@ -27,7 +27,8 @@ source file `skills/sub-agents/agents/test-qa.md`.
 - Use repository pytest markers: `@pytest.mark.unit`, `@pytest.mark.integration`, `@pytest.mark.e2e`, `@pytest.mark.auth`, `@pytest.mark.credits`, `@pytest.mark.llm`
 - Identify test coverage gaps in existing code by reading source files
 - Produce structured test plan documents as part of the Result Report
-- Run both test suites and capture full output
+- Run relevant test suites and capture compact pass/fail evidence plus artifact paths for
+  long output
 
 ---
 
@@ -69,7 +70,8 @@ Returns a standard **Result Report** with:
 - `findings`: coverage gaps identified (files with <80% coverage); test anti-patterns found in existing tests (trivially-passing assertions, missing error path coverage)
 - `blockers`: test infrastructure missing (test DB not running, missing fixtures); failing tests that reveal implementation bugs
 - `next_steps`: if failing tests reveal implementation bugs, specify for the implementing agent
-- `quality_gate_results`: output of `cd apps/web && pnpm test` and/or `cd python-backend && pytest`
+- `quality_gate_results`: command, exit code, decisive failing/passing excerpt, and artifact
+  path for long output from `cd apps/web && pnpm test` and/or `cd python-backend && pytest`
 
 **Additionally includes in `findings` a test plan document:**
 ```
@@ -87,7 +89,7 @@ Returns a standard **Result Report** with:
 
 ## 6. Workflow
 
-1. Read all source files listed in FILES to understand the actual interface
+1. Read packet-scoped source files listed in FILES to understand the actual interface
 2. Identify all public interfaces, edge cases, and error paths
 3. Write test cases covering: happy path, edge cases, error paths, boundary conditions
 4. Run tests: `cd apps/web && pnpm test` (TypeScript) and/or `cd python-backend && pytest` (Python)

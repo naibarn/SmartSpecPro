@@ -36,6 +36,15 @@ For each implemented section, verify:
 - [ ] Tests actually assert meaningful behavior (not just "doesn't crash")
 - [ ] All tests pass (`{test_command}`)
 
+#### 4. UI/UX Evidence (UI sections only)
+- [ ] UI/UX Contract fields from the section are implemented or explicitly skipped
+- [ ] Loading, empty, error, success, disabled, hover, focus, and selected states are covered as applicable
+- [ ] Copy Contract labels, validation/error copy, empty/loading/success copy, and localization/fallback notes are implemented or explicitly skipped
+- [ ] Responsive behavior is verified for required mobile 390x844, tablet 768x1024,
+  and desktop 1440x900 viewports, with extended viewports when risk requires them
+- [ ] Keyboard path, focus visibility, labels, semantics, contrast, and reduced motion are verified
+- [ ] Browser evidence is recorded using `skills/orchestra/references/ui-browser-verification.md`
+
 ### Procedure
 
 ```
@@ -61,6 +70,7 @@ IMPLEMENTATION REVIEW — Section {NN} — Round {N}
 ═══════════════════════════════════════════════════════════════
 Plan Coverage:  {N}/{M} items implemented
 Test Coverage:  {N}/{M} test stubs have tests
+UI Evidence:    {PASS | N issues | N/A}
 Code Quality:   {PASS | N issues}
 
 AUTO-FIX:
@@ -103,7 +113,8 @@ After ALL sections are implemented, verify they work together correctly.
 
 ```
 1. Run full test suite — if all pass, proceed to checklist
-2. Read all section files and compare against implementation
+2. Read section/index digests plus changed and dependent section files; read all section
+   files only when unresolved cross-section risk remains
 3. Check cross-section interfaces
 4. Classify gaps:
    - [AUTO-FIX] — 80%+ confident → fix immediately

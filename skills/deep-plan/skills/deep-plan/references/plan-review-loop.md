@@ -124,7 +124,7 @@ This is typically 1-2 rounds. If more than 3 rounds needed, the integration was 
 
 ## Phase C: Section Cross-Consistency Review (After Step 20, Before Step 21)
 
-After ALL section files are written by subagents, review them as a whole for cross-section consistency.
+After section files are written by subagents, review them as a whole for cross-section consistency.
 
 ### Why Subagent-Written Sections Need This
 
@@ -163,7 +163,9 @@ Each section is written by an independent subagent that:
 ### Procedure
 
 ```
-1. Read ALL section files sequentially
+1. Build a digest from `sections/index.md`, changed sections, and dependent sections.
+   Read every section file sequentially only when the section set is small or digest/checker
+   evidence indicates unresolved cross-section risk.
 2. Build a dependency map: what each section imports/exports
 3. Check for mismatches, gaps, overlaps
 4. Fix issues directly in section files
