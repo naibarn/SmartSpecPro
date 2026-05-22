@@ -9,6 +9,14 @@ export interface MediaModelPricingInputField {
     present: string;
     absent: string;
   };
+  hidden?: boolean;
+  advancedOnly?: boolean;
+  managedBySuite?: boolean;
+  assetType?: string;
+  assetCapability?: string;
+  referenceUnitWeight?: number;
+  maxItems?: number;
+  providerPayloadKey?: string;
 }
 
 export interface MediaModelPricingConfig {

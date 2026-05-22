@@ -23,6 +23,10 @@ import {
   type AspectRatio
 } from "./db";
 import { storagePut } from "./storage";
+import {
+  GEMINI_OMNI_MAX_IMAGE_UPLOAD_BYTES,
+  GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES,
+} from "../shared/geminiOmni";
 import { nanoid } from "nanoid";
 import { creditsRouter } from "./routers/credits";
 import { usersRouter } from "./routers/users";
@@ -33,6 +37,8 @@ import { financeRouter } from "./routers/finance";
 import { memoryRouter } from "./routers/memory";
 import { mediaRouter } from "./routers/media";
 import { mediaProvidersRouter } from "./routers/mediaProviders";
+import { mediaProviderAssetsRouter } from "./routers/mediaProviderAssets";
+import { mediaProductionRouter } from "./routers/mediaProduction";
 import { mediaModelsRouter } from "./routers/mediaModels";
 import { voiceAgentsRouter } from "./routers/voiceAgents";
 import { skillsRouter } from "./routers/skills";
@@ -1589,6 +1595,8 @@ export const appRouter = router({
 
   // Media Provider management (admin) - Kie AI, fal.ai, etc.
   mediaProviders: mediaProvidersRouter,
+  mediaProviderAssets: mediaProviderAssetsRouter,
+  mediaProduction: mediaProductionRouter,
 
   // Media Models management (admin) - AI models for image/video/audio generation
   mediaModels: mediaModelsRouter,
@@ -1730,8 +1738,12 @@ export const appRouter = router({
         const parts = input.fileBase64.split(",", 2);
         const b64 = parts.length === 2 ? parts[1] : input.fileBase64;
         const buf = Buffer.from(b64, "base64");
-        const max = 15 * 1024 * 1024;
-        if (buf.length > max) throw new Error("File too large (max 15MB)");
+        const isVideoUpload = input.fileType.startsWith("video/");
+        const max = isVideoUpload ? GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES : GEMINI_OMNI_MAX_IMAGE_UPLOAD_BYTES;
+        if (buf.length > max) {
+          const maxMb = Math.round(max / 1024 / 1024);
+          throw new Error(`File too large (max ${maxMb}MB)`);
+        }
 
         // Whitelist allowed extensions
         const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp", "svg", "mp4", "webm", "mov", "avi"]);

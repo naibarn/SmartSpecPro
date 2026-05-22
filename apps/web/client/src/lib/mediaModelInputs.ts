@@ -23,7 +23,7 @@ export interface ModelInputFieldOption {
 export interface ModelInputField {
   key: string;
   label: string;
-  type: "select" | "text" | "number" | "boolean" | "image_urls" | "video_urls" | "audio_urls" | "library_file" | "array";
+  type: "select" | "text" | "number" | "boolean" | "image_urls" | "video_urls" | "audio_urls" | "library_file" | "array" | "provider_asset_picker";
   options?: ModelInputFieldOption[];
   default?: unknown;
   required?: boolean;
@@ -31,6 +31,13 @@ export interface ModelInputField {
   affectsPricing?: boolean;
   includeInPayload?: boolean;
   searchable?: boolean;
+  hidden?: boolean;
+  advancedOnly?: boolean;
+  managedBySuite?: boolean;
+  assetType?: string;
+  assetCapability?: string;
+  referenceUnitWeight?: number;
+  providerPayloadKey?: string;
   placeholder?: string;
   description?: string;
   maxLength?: number;
@@ -167,6 +174,7 @@ function parseModelInputFieldRecords(rawFields: unknown[]): ModelInputField[] {
       || rawType === "audio_urls"
       || rawType === "library_file"
       || rawType === "array"
+      || rawType === "provider_asset_picker"
     )
       ? rawType
       : "text";
@@ -215,6 +223,13 @@ function parseModelInputFieldRecords(rawFields: unknown[]): ModelInputField[] {
       affectsPricing: Boolean(record.affectsPricing),
       includeInPayload: record.includeInPayload === false ? false : undefined,
       searchable: Boolean(record.searchable),
+      hidden: Boolean(record.hidden),
+      advancedOnly: Boolean(record.advancedOnly),
+      managedBySuite: Boolean(record.managedBySuite),
+      assetType: typeof record.assetType === "string" ? record.assetType.trim() : undefined,
+      assetCapability: typeof record.assetCapability === "string" ? record.assetCapability.trim() : undefined,
+      referenceUnitWeight: parsePositiveInteger(record.referenceUnitWeight),
+      providerPayloadKey: typeof record.providerPayloadKey === "string" ? record.providerPayloadKey.trim() : undefined,
       placeholder: typeof record.placeholder === "string" ? record.placeholder.trim() : undefined,
       description: typeof record.description === "string" ? record.description.trim() : undefined,
       maxLength: parsePositiveInteger(record.maxLength) ?? undefined,

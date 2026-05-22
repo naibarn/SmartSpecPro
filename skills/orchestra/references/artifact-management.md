@@ -17,6 +17,7 @@ The `orchestra/` working directory is the single source of truth for an orchestr
 | `backlog.md` | Step 2 (when any planning/implementation chain is needed) | When items are resolved | Never | Pending items, expected artifact paths from automatic deep-* chains |
 | `decisions.md` | First auto-decision | Every auto-decision (append-only) | Never | Timestamped log of all conductor decisions |
 | `contracts.md` | Step 3 (contract definition) | Never after Wave 1 | Never | Agent interface contracts (frozen after Wave 1) |
+| `review-findings.md` | First review convergence round | Every convergence round | Never | Review rounds, material findings, stale gates, fixes, and stop reason |
 | `platform.md` | First platform detection | Never (permanent) | User deletes it | Detected platform (claude-code / standard / open-code) |
 | `decision-mode.md` | First mode selection | Never (permanent) | Never | Decision mode (ask_every_choice / smart_auto / auto_by_default); user may edit the value but the file is never removed |
 | `risk_register.md` | When security gate triggers | Each security gate run | Never | All security findings regardless of verdict |
@@ -61,6 +62,14 @@ This append-only constraint provides a full audit trail across compaction events
 ### `risk_register.md` — Security Gate Output (Append-Only)
 
 `risk_register.md` accumulates all security findings from every security gate run. Like `decisions.md`, it is **append-only** — no finding is ever deleted or overwritten. Findings that are resolved are noted with a `[RESOLVED]` annotation appended after the original entry, not by editing the original.
+
+### `review-findings.md` — Review Convergence Trail
+
+`review-findings.md` records every post-completion convergence round. It should include:
+round number, changed files reviewed, reviewers/gates run, findings discovered, fixes
+applied, stale gates rerun, deferred optional items, and the final stop reason. Do not
+delete earlier rounds; append new rounds so resume and compaction can reconstruct why the
+conductor stopped.
 
 ### `snapshot.json` and `snapshot.md` — Checkpoint Files
 

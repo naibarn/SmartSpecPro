@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["production_goal", "plan_package"],
+  "properties": {
+    "production_goal": { "type": "object", "additionalProperties": true },
+    "plan_package": { "type": "object", "additionalProperties": true },
+    "accepted_warnings": { "type": "array", "items": { "type": "string" }, "default": [] }
+  },
+  "additionalProperties": true
+}

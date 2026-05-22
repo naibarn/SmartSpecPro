@@ -242,6 +242,19 @@ Each section should define:
 - acceptance checks
 - known risks or coordination points
 
+For UI-affecting sections, also include a `UI/UX Contract` block compatible with
+`skills/orchestra/references/ui-ux-planning-contract.md`:
+- target user / job-to-be-done
+- surface inventory
+- component map
+- state matrix
+- responsive matrix
+- accessibility acceptance
+- design token extraction when matching an existing visual system
+- copy contract covering tone, Thai/English language requirements, labels,
+  validation/error copy, empty/loading/success copy, and localization fallback notes
+- browser evidence required by `skills/orchestra/references/ui-browser-verification.md`
+
 When parallel drafting is helpful:
 - in Codex, prefer one `worker` sub-agent per section
 - each sub-agent owns exactly one section file
@@ -258,6 +271,7 @@ Check:
 - dependency-order mistakes
 - naming drift
 - security or permission blind spots spread across sections
+- missing UI state, responsive, accessibility, copy/localization, or browser-evidence coverage for UI sections
 
 Fix section files directly.
 
@@ -271,6 +285,9 @@ Verify:
 - section count matches the manifest
 - the plan is implementable without reopening major unanswered technical choices
 - the quick-plan still genuinely fits quick-plan scope
+- UI-affecting sections include state/responsive/accessibility/copy/browser evidence criteria
+- if the full deep-plan checker is available, UI-affecting sections pass
+  `uv run scripts/checks/check-ui-contracts.py --planning-dir <planning_dir>`
 
 If the task no longer fits, promote it to full `deep-plan` before handing off.
 

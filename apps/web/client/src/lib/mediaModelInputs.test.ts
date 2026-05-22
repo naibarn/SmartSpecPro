@@ -52,6 +52,42 @@ describe("mediaModelInputs", () => {
     expect(getModelInputField(model, "missing")).toBeUndefined();
   });
 
+  it("preserves Gemini Omni suite-managed provider asset metadata", () => {
+    const model = {
+      id: "gemini-omni-video",
+      name: "Gemini Omni Video",
+      configJson: {
+        inputFields: [
+          {
+            key: "character_ids",
+            label: "Character References",
+            type: "provider_asset_picker",
+            hidden: true,
+            advancedOnly: true,
+            managedBySuite: true,
+            assetType: "provider_asset",
+            assetCapability: "gemini_omni_character",
+            referenceUnitWeight: 1,
+            maxItems: 3,
+            providerPayloadKey: "character_ids",
+          },
+        ],
+      },
+    };
+
+    expect(parseModelInputFields(model)[0]).toMatchObject({
+      key: "character_ids",
+      type: "provider_asset_picker",
+      hidden: true,
+      advancedOnly: true,
+      managedBySuite: true,
+      assetCapability: "gemini_omni_character",
+      referenceUnitWeight: 1,
+      maxItems: 3,
+      providerPayloadKey: "character_ids",
+    });
+  });
+
   it("preserves dynamic option source voice preview metadata", () => {
     const model = {
       id: "elevenlabs-dialogue",

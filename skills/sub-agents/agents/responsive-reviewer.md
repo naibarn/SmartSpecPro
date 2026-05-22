@@ -52,13 +52,17 @@ Accepts a standard Task Packet with:
 
 ## 5. Output Contract
 
-Return:
+Return a standard **Result Report** plus `ux_verdict`:
 
-- verdict: PASS / PASS_WITH_FIXES / FAIL
-- breakpoint-specific findings
-- overflow and clipping risks
-- touch-target risks
-- recommended viewport checks
+- `status`: success / partial / failed
+- `files_changed`: [] (always empty — read-only)
+- `findings`: breakpoint-specific findings, overflow/clipping risks, touch-target
+  risks, and recommended viewport checks
+- `blockers`: missing viewport evidence, primary action unavailable on a required
+  viewport, or layout behavior that cannot be assessed from provided files/evidence
+- `next_steps`: recommended fix owner and screenshot/browser checks required
+- `quality_gate_results`: responsive checklist results from QUALITY GATE
+- `ux_verdict`: PASS / FIXES_REQUIRED / BLOCKED
 
 ---
 
@@ -88,4 +92,3 @@ Return:
 - If layout depends on runtime data, list data-shape assumptions
 - If browser screenshots are needed, request e2e-playwright follow-up
 - If a table cannot be made responsive within scope, recommend safe horizontal scroll and priority columns
-

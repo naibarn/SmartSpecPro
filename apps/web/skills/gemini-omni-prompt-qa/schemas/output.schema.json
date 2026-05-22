@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["skill_name", "skill_version", "contract_version", "verdict", "issues", "recommended_action", "revision_instructions", "learning_signal_candidates"],
+  "properties": {
+    "skill_name": { "const": "gemini-omni-prompt-qa" },
+    "skill_version": { "type": "string" },
+    "contract_version": { "type": "string" },
+    "verdict": { "type": "string", "enum": ["approve", "revise", "create_missing_asset", "human_review", "block"] },
+    "issues": { "type": "array", "items": { "$ref": "#/$defs/issue" } },
+    "recommended_action": { "type": "string" },
+    "revision_instructions": { "type": "array", "items": { "type": "string" } },
+    "learning_signal_candidates": { "type": "array", "items": { "type": "object" } }
+  },
+  "$defs": {
+    "issue": {
+      "type": "object",
+      "required": ["category", "severity", "target_level", "revisability", "message"],
+      "properties": {
+        "category": { "type": "string" },
+        "severity": { "type": "string", "enum": ["info", "warning", "error", "blocker"] },
+        "target_level": { "type": "string", "enum": ["story", "scene", "clip", "shot", "voice_line", "asset", "provider_quota", "pricing", "policy"] },
+        "revisability": { "type": "string", "enum": ["auto", "targeted", "manual", "blocked"] },
+        "message": { "type": "string" }
+      }
+    }
+  },
+  "additionalProperties": false
+}

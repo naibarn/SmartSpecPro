@@ -137,6 +137,13 @@ Each section file must be self-contained. An implementer should be able to read
 only that section file and start implementation without having to reconstruct
 missing context from other planning documents.
 
+For UI-affecting sections, include the `UI/UX Contract` block from
+`skills/orchestra/references/ui-ux-planning-contract.md`. The section must specify the
+state matrix, responsive matrix, accessibility acceptance, and browser evidence expected
+from implementation. If the plan routes both behavior and visual polish through separate
+agents, split them into ordered sections or waves so `frontend` and `ui-builder` do not
+write the same file in parallel.
+
 ## Debugging
 
 If sections are not being written:

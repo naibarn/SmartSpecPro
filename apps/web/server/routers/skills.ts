@@ -815,7 +815,7 @@ function determineCmsFormat(category: string): "cms_article" | "cms_review" | "m
 }
 
 function buildMediaStudioImprovementDedupeKey(input: {
-  trigger: "prompt_qa" | "image_qa" | "manual";
+  trigger: "prompt_qa" | "image_qa" | "video_qa" | "manual";
   issues: Array<{ id: string }>;
   proposedChanges: Array<{ title: string; targetFile: string; targetSection?: string }>;
 }): string {
@@ -834,7 +834,7 @@ async function findExistingMediaStudioImprovementRecommendation(
   dbInstance: Awaited<ReturnType<typeof getDb>>,
   skillId: number,
   input: {
-    trigger: "prompt_qa" | "image_qa" | "manual";
+    trigger: "prompt_qa" | "image_qa" | "video_qa" | "manual";
     issues: Array<{ id: string }>;
     proposedChanges: Array<{ title: string; targetFile: string; targetSection?: string }>;
   },
@@ -6416,7 +6416,7 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
   createMediaStudioSkillImprovementRecommendation: adminProcedure
     .input(z.object({
       skillSlug: z.string().min(1).max(100),
-      trigger: z.enum(["prompt_qa", "image_qa", "manual"]),
+      trigger: z.enum(["prompt_qa", "image_qa", "video_qa", "manual"]),
       score: z.number().int().min(0).max(100).optional(),
       issues: z.array(z.object({
         id: z.string().min(1).max(100),
@@ -6566,7 +6566,7 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
   createMediaStudioSkillAutoLearningSignal: protectedProcedure
     .input(z.object({
       skillSlug: z.string().min(1).max(100),
-      trigger: z.enum(["prompt_qa", "image_qa", "manual"]),
+      trigger: z.enum(["prompt_qa", "image_qa", "video_qa", "manual"]),
       score: z.number().int().min(0).max(100).optional(),
       issues: z.array(z.object({
         id: z.string().min(1).max(100),
@@ -6611,14 +6611,19 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
         ? skill.configJson as Record<string, any>
         : {};
       const autoLearning = configJson.media_studio?.auto_learning;
-      if (!autoLearning || autoLearning.enabled !== true) {
+      const isGeminiOmniVideoQaSignal =
+        input.trigger === "video_qa" && skill.slug === "gemini-omni-video-director";
+      if ((!autoLearning || autoLearning.enabled !== true) && !isGeminiOmniVideoQaSignal) {
         return { skipped: true as const, reason: "auto_learning_disabled" as const };
       }
-      if (input.trigger === "prompt_qa" && autoLearning.prompt_qa_after_auto_prompt === false) {
+      if (input.trigger === "prompt_qa" && autoLearning?.prompt_qa_after_auto_prompt === false) {
         return { skipped: true as const, reason: "prompt_qa_disabled" as const };
       }
-      if (input.trigger === "image_qa" && autoLearning.image_qa_after_generation === false) {
+      if (input.trigger === "image_qa" && autoLearning?.image_qa_after_generation === false) {
         return { skipped: true as const, reason: "image_qa_disabled" as const };
+      }
+      if (input.trigger === "video_qa" && autoLearning?.video_qa_after_generation === false) {
+        return { skipped: true as const, reason: "video_qa_disabled" as const };
       }
 
       const highCount = input.issues.filter((issue) => issue.severity === "high").length;

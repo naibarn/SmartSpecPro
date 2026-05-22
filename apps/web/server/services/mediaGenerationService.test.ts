@@ -193,7 +193,7 @@ describe("MEDIA_MODELS — Gemini Omni video entry", () => {
       id: "gemini-omni-video",
       provider: "kie.ai",
       type: "video",
-      creditCost: 450,
+      creditCost: 90,
       supportsDurations: [4, 6, 8, 10],
       supportsAspectRatios: ["16:9", "9:16"],
       configJson: {
@@ -213,12 +213,12 @@ describe("MEDIA_MODELS — Gemini Omni video entry", () => {
           reference_video_input_type: "object_array",
         },
         pricingTiers: {
-          "1080p-4s-without-video": 450,
-          "1080p-10s-without-video": 900,
-          "4K-4s-without-video": 1050,
-          "4K-10s-without-video": 1500,
-          "1080p-4s-with-video": 1200,
-          "4K-4s-with-video": 1800,
+          "1080p-4s-without-video": 90,
+          "1080p-10s-without-video": 180,
+          "4K-4s-without-video": 210,
+          "4K-10s-without-video": 300,
+          "1080p-4s-with-video": 240,
+          "4K-4s-with-video": 360,
         },
       },
     });
@@ -507,6 +507,35 @@ describe("MediaGenerationService retry behavior", () => {
     expect(payload.extra_params).toMatchObject({
       source_task_id: "veo_task_abcdef123456",
     });
+  });
+
+  it("resolves Gemini Omni video_list object URLs before sending payload to Python", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(taskPayload), { status: 200 }),
+    );
+
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateVideoAsync(
+      {
+        prompt: "Use the source movement.",
+        model: "gemini-omni-video",
+        publicUrl: "https://tenant.example.com",
+        apiConfig: {
+          provider: "kie.ai",
+          reference_video_input_key: "video_list",
+          reference_video_input_type: "object_array",
+        },
+        extraParams: {
+          video_list: [{ url: "/api/storage/files/chat/uploads/source.mp4", start: 1, ends: 7 }],
+        },
+      },
+      "test-token",
+    );
+
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(payload.extra_params.video_list).toEqual([
+      { url: "https://tenant.example.com/api/storage/files/chat/uploads/source.mp4", start: 1, ends: 7 },
+    ]);
   });
 
   it("preserves structured Gemini TTS speaker rows in extraParams", async () => {

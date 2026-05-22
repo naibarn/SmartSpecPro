@@ -119,6 +119,9 @@ After v0 is approved, write full components, add states, and implement motion. F
 ### Step 6: Verification
 
 Walk through the "Pre-delivery Checklist" item by item.
+When this skill is invoked through Orchestra for a repo-local UI artifact, record browser
+evidence using `skills/orchestra/references/ui-browser-verification.md` or explicitly mark
+unavailable checks as skipped with the blocker.
 
 ---
 

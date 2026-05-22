@@ -161,19 +161,19 @@ describe("calculateCreditCost", () => {
 
   it("supports presence-based matrix pricing for optional video input", () => {
     const model = {
-      creditCost: 450,
+      creditCost: 90,
       configJson: {
         pricingFormula: "matrix" as const,
         pricingTiers: {
-          default: 600,
-          "1080p-4s-without-video": 450,
-          "1080p-10s-without-video": 900,
-          "4K-4s-without-video": 1050,
-          "4K-10s-without-video": 1500,
-          "1080p-4s-with-video": 1200,
-          "1080p-10s-with-video": 1200,
-          "4K-4s-with-video": 1800,
-          "4K-10s-with-video": 1800,
+          default: 120,
+          "1080p-4s-without-video": 90,
+          "1080p-10s-without-video": 180,
+          "4K-4s-without-video": 210,
+          "4K-10s-without-video": 300,
+          "1080p-4s-with-video": 240,
+          "1080p-10s-with-video": 240,
+          "4K-4s-with-video": 360,
+          "4K-10s-with-video": 360,
         },
         inputFields: [
           { key: "video_list", affectsPricing: true, pricingPresenceLabels: { present: "with-video", absent: "without-video" } },
@@ -183,9 +183,9 @@ describe("calculateCreditCost", () => {
       },
     };
 
-    expect(calculateCreditCost(model, { resolution: "1080p", duration: 4 })).toBe(450);
-    expect(calculateCreditCost(model, { resolution: "4K", duration: 10 })).toBe(1500);
-    expect(calculateCreditCost(model, { resolution: "1080p", duration: 10, video_list: ["https://cdn.example.com/in.mp4"] })).toBe(1200);
-    expect(calculateCreditCost(model, { resolution: "4K", duration: 4, video_list: [{ url: "https://cdn.example.com/in.mp4" }] })).toBe(1800);
+    expect(calculateCreditCost(model, { resolution: "1080p", duration: 4 })).toBe(90);
+    expect(calculateCreditCost(model, { resolution: "4K", duration: 10 })).toBe(300);
+    expect(calculateCreditCost(model, { resolution: "1080p", duration: 10, video_list: ["https://cdn.example.com/in.mp4"] })).toBe(240);
+    expect(calculateCreditCost(model, { resolution: "4K", duration: 4, video_list: [{ url: "https://cdn.example.com/in.mp4" }] })).toBe(360);
   });
 });

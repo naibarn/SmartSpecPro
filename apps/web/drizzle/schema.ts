@@ -5776,6 +5776,162 @@ export const mediaStudioStoryboardReviews = pgTable("media_studio_storyboard_rev
 export type MediaStudioStoryboardReview = typeof mediaStudioStoryboardReviews.$inferSelect;
 export type InsertMediaStudioStoryboardReview = typeof mediaStudioStoryboardReviews.$inferInsert;
 
+// Media Studio Production Director — durable planning and output state.
+export const mediaProductionRuns = pgTable("media_production_runs", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  productionRunId: varchar("productionRunId", { length: 128 }).notNull(),
+  status: varchar("status", { length: 40 }).default("goal_draft").notNull(),
+  goalVersion: integer("goalVersion").default(1).notNull(),
+  planVersion: integer("planVersion").default(0).notNull(),
+  goal: jsonb("goal").$type<Record<string, any>>().default({}).notNull(),
+  productionBible: jsonb("productionBible").$type<Record<string, any>>().default({}).notNull(),
+  assetPlan: jsonb("assetPlan").$type<Record<string, any>>().default({}).notNull(),
+  qualityGateSummary: jsonb("qualityGateSummary").$type<Record<string, any>>().default({}).notNull(),
+  budgetSummary: jsonb("budgetSummary").$type<Record<string, any>>().default({}).notNull(),
+  contractVersion: varchar("contractVersion", { length: 32 }).default("1.0.0").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("media_production_runs_identity_unique").on(t.tenantId, t.productionRunId),
+  index("media_production_runs_user_status_idx").on(t.userId, t.status, t.updatedAt),
+]);
+
+export type MediaProductionRun = typeof mediaProductionRuns.$inferSelect;
+export type InsertMediaProductionRun = typeof mediaProductionRuns.$inferInsert;
+
+export const mediaProductionGoalVersions = pgTable("media_production_goal_versions", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  productionRunId: varchar("productionRunId", { length: 128 }).notNull(),
+  version: integer("version").notNull(),
+  goal: jsonb("goal").$type<Record<string, any>>().default({}).notNull(),
+  changedFields: jsonb("changedFields").$type<string[]>().default([]).notNull(),
+  inputHash: varchar("inputHash", { length: 128 }),
+  status: varchar("status", { length: 32 }).default("active").notNull(),
+  contractVersion: varchar("contractVersion", { length: 32 }).default("1.0.0").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("media_production_goal_versions_unique").on(t.tenantId, t.productionRunId, t.version),
+  index("media_production_goal_versions_run_idx").on(t.tenantId, t.productionRunId, t.createdAt),
+]);
+
+export type MediaProductionGoalVersion = typeof mediaProductionGoalVersions.$inferSelect;
+export type InsertMediaProductionGoalVersion = typeof mediaProductionGoalVersions.$inferInsert;
+
+export const mediaProductionPlanVersions = pgTable("media_production_plan_versions", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  productionRunId: varchar("productionRunId", { length: 128 }).notNull(),
+  goalVersion: integer("goalVersion").default(1).notNull(),
+  version: integer("version").notNull(),
+  plannerSkillId: varchar("plannerSkillId", { length: 128 }).default("media-production-storyboard-planner").notNull(),
+  plannerSkillVersion: varchar("plannerSkillVersion", { length: 32 }),
+  plan: jsonb("plan").$type<Record<string, any>>().default({}).notNull(),
+  inputHash: varchar("inputHash", { length: 128 }),
+  outputHash: varchar("outputHash", { length: 128 }),
+  status: varchar("status", { length: 32 }).default("draft").notNull(),
+  contractVersion: varchar("contractVersion", { length: 32 }).default("1.0.0").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("media_production_plan_versions_unique").on(t.tenantId, t.productionRunId, t.version),
+  index("media_production_plan_versions_run_idx").on(t.tenantId, t.productionRunId, t.createdAt),
+]);
+
+export type MediaProductionPlanVersion = typeof mediaProductionPlanVersions.$inferSelect;
+export type InsertMediaProductionPlanVersion = typeof mediaProductionPlanVersions.$inferInsert;
+
+export const mediaProductionPlanVerifications = pgTable("media_production_plan_verifications", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  productionRunId: varchar("productionRunId", { length: 128 }).notNull(),
+  planVersion: integer("planVersion").notNull(),
+  verifierSkillId: varchar("verifierSkillId", { length: 128 }).default("media-production-plan-verifier").notNull(),
+  verifierSkillVersion: varchar("verifierSkillVersion", { length: 32 }),
+  verdict: varchar("verdict", { length: 32 }).notNull(),
+  score: integer("score").default(0).notNull(),
+  verification: jsonb("verification").$type<Record<string, any>>().default({}).notNull(),
+  blockingIssues: jsonb("blockingIssues").$type<Array<Record<string, any>>>().default([]).notNull(),
+  warnings: jsonb("warnings").$type<Array<Record<string, any>>>().default([]).notNull(),
+  missingDecisions: jsonb("missingDecisions").$type<string[]>().default([]).notNull(),
+  recommendedRevisions: jsonb("recommendedRevisions").$type<Array<Record<string, any>>>().default([]).notNull(),
+  status: varchar("status", { length: 32 }).default("active").notNull(),
+  contractVersion: varchar("contractVersion", { length: 32 }).default("1.0.0").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("media_production_plan_verifications_run_idx").on(t.tenantId, t.productionRunId, t.planVersion, t.createdAt),
+]);
+
+export type MediaProductionPlanVerification = typeof mediaProductionPlanVerifications.$inferSelect;
+export type InsertMediaProductionPlanVerification = typeof mediaProductionPlanVerifications.$inferInsert;
+
+export const mediaProductionAssetPlans = pgTable("media_production_asset_plans", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  productionRunId: varchar("productionRunId", { length: 128 }).notNull(),
+  planVersion: integer("planVersion").notNull(),
+  assetPlan: jsonb("assetPlan").$type<Record<string, any>>().default({}).notNull(),
+  readiness: jsonb("readiness").$type<Record<string, any>>().default({}).notNull(),
+  status: varchar("status", { length: 32 }).default("planned").notNull(),
+  contractVersion: varchar("contractVersion", { length: 32 }).default("1.0.0").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("media_production_asset_plans_unique").on(t.tenantId, t.productionRunId, t.planVersion),
+]);
+
+export type MediaProductionAssetPlan = typeof mediaProductionAssetPlans.$inferSelect;
+export type InsertMediaProductionAssetPlan = typeof mediaProductionAssetPlans.$inferInsert;
+
+export const mediaProductionApprovals = pgTable("media_production_approvals", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  productionRunId: varchar("productionRunId", { length: 128 }).notNull(),
+  planVersion: integer("planVersion").notNull(),
+  approvalType: varchar("approvalType", { length: 40 }).default("plan").notNull(),
+  status: varchar("status", { length: 32 }).default("approved").notNull(),
+  acceptedWarnings: jsonb("acceptedWarnings").$type<string[]>().default([]).notNull(),
+  lockedTargets: jsonb("lockedTargets").$type<string[]>().default([]).notNull(),
+  notes: text("notes"),
+  policySnapshot: jsonb("policySnapshot").$type<Record<string, any>>().default({}).notNull(),
+  budgetSnapshot: jsonb("budgetSnapshot").$type<Record<string, any>>().default({}).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("media_production_approvals_run_idx").on(t.tenantId, t.productionRunId, t.planVersion, t.createdAt),
+]);
+
+export type MediaProductionApproval = typeof mediaProductionApprovals.$inferSelect;
+export type InsertMediaProductionApproval = typeof mediaProductionApprovals.$inferInsert;
+
+export const mediaProductionOutputProjections = pgTable("media_production_output_projections", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  productionRunId: varchar("productionRunId", { length: 128 }).notNull(),
+  storyboardRunId: varchar("storyboardRunId", { length: 128 }),
+  surface: varchar("surface", { length: 40 }).notNull(),
+  surfaceRecordId: varchar("surfaceRecordId", { length: 128 }),
+  projectionVersion: integer("projectionVersion").default(1).notNull(),
+  sourceOutputHash: varchar("sourceOutputHash", { length: 128 }).notNull(),
+  status: varchar("status", { length: 32 }).default("active").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, any>>().default({}).notNull(),
+  lastSyncedAt: timestamp("lastSyncedAt", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("media_production_output_projection_unique").on(t.tenantId, t.productionRunId, t.surface, t.sourceOutputHash),
+]);
+
+export type MediaProductionOutputProjection = typeof mediaProductionOutputProjections.$inferSelect;
+export type InsertMediaProductionOutputProjection = typeof mediaProductionOutputProjections.$inferInsert;
+
 // Email verification tokens for signup flow
 export const emailVerificationTokens = pgTable("email_verification_tokens", {
   id: serial("id").primaryKey(),
@@ -8668,6 +8824,42 @@ export const mediaAssets = pgTable("media_assets", {
 
 export type MediaAsset = typeof mediaAssets.$inferSelect;
 export type InsertMediaAsset = typeof mediaAssets.$inferInsert;
+
+/**
+ * media_provider_assets — reusable provider-side assets such as Gemini Omni
+ * character IDs and audio IDs. These IDs are not media task IDs.
+ */
+export const mediaProviderAssets = pgTable("media_provider_assets", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 64 }).notNull(),
+  capability: varchar("capability", { length: 80 }).notNull(),
+  assetType: varchar("assetType", { length: 40 }).notNull(),
+  providerAssetId: varchar("providerAssetId", { length: 256 }).notNull(),
+  displayName: varchar("displayName", { length: 256 }).notNull(),
+  status: varchar("status", { length: 32 }).default("active").notNull(),
+  clientRequestId: varchar("clientRequestId", { length: 128 }),
+  sourceMediaAssetId: bigint("sourceMediaAssetId", { mode: "number" }).references(() => mediaAssets.id, { onDelete: "set null" }),
+  metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
+  assetSnapshot: jsonb("assetSnapshot").$type<Record<string, any>>().default({}),
+  lastUsedAt: timestamp("lastUsedAt", { withTimezone: true }),
+  deletedAt: timestamp("deletedAt", { withTimezone: true }),
+  purgeAfter: timestamp("purgeAfter", { withTimezone: true }),
+  reconciliationStatus: varchar("reconciliationStatus", { length: 32 }),
+  reconciliationReason: varchar("reconciliationReason", { length: 128 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("media_provider_assets_tenant_user_idx").on(t.tenantId, t.userId),
+  index("media_provider_assets_capability_status_idx").on(t.capability, t.status),
+  index("media_provider_assets_provider_asset_idx").on(t.provider, t.providerAssetId),
+  uniqueIndex("media_provider_assets_provider_unique").on(t.tenantId, t.provider, t.capability, t.providerAssetId),
+  uniqueIndex("media_provider_assets_request_unique").on(t.tenantId, t.provider, t.capability, t.clientRequestId),
+]);
+
+export type MediaProviderAsset = typeof mediaProviderAssets.$inferSelect;
+export type InsertMediaProviderAsset = typeof mediaProviderAssets.$inferInsert;
 
 /**
  * media_asset_analysis — vision enrichment results from Gemini Flash structured output.

@@ -19,7 +19,19 @@
     "section-11-production-quality-loop-and-final-render",
     "section-08-rollout-verification-and-regression"
   ],
-  "sections_state": {},
+  "sections_state": {
+    "section-01-validation-and-metadata-foundation": "implemented",
+    "section-02-provider-assets-data-and-api": "implemented",
+    "section-03-kie-provider-asset-contract": "implemented",
+    "section-04-gemini-omni-skill-packages": "implemented",
+    "section-05-admin-presets-seeds-and-pricing": "implemented",
+    "section-06-media-studio-gemini-omni-ux": "foundation_implemented",
+    "section-07-generation-qa-learning-orchestration": "foundation_implemented",
+    "section-08-rollout-verification-and-regression": "implemented",
+    "section-09-media-studio-production-director": "foundation_implemented",
+    "section-10-cross-modal-asset-orchestration": "foundation_implemented",
+    "section-11-production-quality-loop-and-final-render": "foundation_implemented"
+  },
   "pre_commit": {
     "present": false,
     "type": "none",

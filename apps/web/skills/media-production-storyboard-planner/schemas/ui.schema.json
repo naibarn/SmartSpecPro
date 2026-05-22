@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "skillId": "media-production-storyboard-planner",
+  "title": "Production Storyboard Planner",
+  "titleTh": "ตัววางแผน Storyboard การผลิต",
+  "sections": [{ "id": "goal", "title": "Production Goal", "fields": [{ "id": "production_goal", "type": "object" }] }],
+  "outputMapping": { "plan": "storyboard_outline", "approval": "approval_checklist" }
+}

@@ -337,31 +337,31 @@ const GEMINI_OMNI_DURATIONS = [4, 6, 8, 10];
 const GEMINI_OMNI_RESOLUTIONS = ["720p", "1080p", "4K"];
 const GEMINI_OMNI_ASPECT_RATIOS = ["16:9", "9:16"];
 const GEMINI_OMNI_PRICING_TIERS = {
-  default: 600,
-  "720p-4s-without-video": 450,
-  "720p-6s-without-video": 600,
-  "720p-8s-without-video": 750,
-  "720p-10s-without-video": 900,
-  "1080p-4s-without-video": 450,
-  "1080p-6s-without-video": 600,
-  "1080p-8s-without-video": 750,
-  "1080p-10s-without-video": 900,
-  "4K-4s-without-video": 1050,
-  "4K-6s-without-video": 1200,
-  "4K-8s-without-video": 1350,
-  "4K-10s-without-video": 1500,
-  "720p-4s-with-video": 1200,
-  "720p-6s-with-video": 1200,
-  "720p-8s-with-video": 1200,
-  "720p-10s-with-video": 1200,
-  "1080p-4s-with-video": 1200,
-  "1080p-6s-with-video": 1200,
-  "1080p-8s-with-video": 1200,
-  "1080p-10s-with-video": 1200,
-  "4K-4s-with-video": 1800,
-  "4K-6s-with-video": 1800,
-  "4K-8s-with-video": 1800,
-  "4K-10s-with-video": 1800,
+  default: 120,
+  "720p-4s-without-video": 90,
+  "720p-6s-without-video": 120,
+  "720p-8s-without-video": 150,
+  "720p-10s-without-video": 180,
+  "1080p-4s-without-video": 90,
+  "1080p-6s-without-video": 120,
+  "1080p-8s-without-video": 150,
+  "1080p-10s-without-video": 180,
+  "4K-4s-without-video": 210,
+  "4K-6s-without-video": 240,
+  "4K-8s-without-video": 270,
+  "4K-10s-without-video": 300,
+  "720p-4s-with-video": 240,
+  "720p-6s-with-video": 240,
+  "720p-8s-with-video": 240,
+  "720p-10s-with-video": 240,
+  "1080p-4s-with-video": 240,
+  "1080p-6s-with-video": 240,
+  "1080p-8s-with-video": 240,
+  "1080p-10s-with-video": 240,
+  "4K-4s-with-video": 360,
+  "4K-6s-with-video": 360,
+  "4K-8s-with-video": 360,
+  "4K-10s-with-video": 360,
 };
 const GEMINI_OMNI_INPUT_FIELDS = [
   {
@@ -370,6 +370,11 @@ const GEMINI_OMNI_INPUT_FIELDS = [
     type: "image_urls",
     required: false,
     syncWith: "reference_images",
+    hidden: true,
+    managedBySuite: true,
+    providerPayloadKey: "image_urls",
+    referenceUnitWeight: 1,
+    maxItems: 7,
   },
   {
     key: "video_list",
@@ -377,12 +382,44 @@ const GEMINI_OMNI_INPUT_FIELDS = [
     type: "video_urls",
     required: false,
     syncWith: "reference_videos",
+    hidden: true,
+    managedBySuite: true,
+    providerPayloadKey: "video_list",
+    referenceUnitWeight: 2,
+    maxItems: 1,
     affectsPricing: true,
     pricingAliases: ["referenceVideoUrls", "referenceVideoUrl", "reference_video_urls", "reference_video_url", "video_url"],
     pricingPresenceLabels: {
       present: "with-video",
       absent: "without-video",
     },
+  },
+  {
+    key: "character_ids",
+    label: "Character References",
+    type: "provider_asset_picker",
+    required: false,
+    hidden: true,
+    advancedOnly: true,
+    managedBySuite: true,
+    assetType: "provider_asset",
+    assetCapability: "gemini_omni_character",
+    providerPayloadKey: "character_ids",
+    referenceUnitWeight: 1,
+    maxItems: 3,
+  },
+  {
+    key: "audio_ids",
+    label: "Voice / Audio References",
+    type: "provider_asset_picker",
+    required: false,
+    hidden: true,
+    advancedOnly: true,
+    managedBySuite: true,
+    assetType: "provider_asset",
+    assetCapability: "gemini_omni_audio",
+    providerPayloadKey: "audio_ids",
+    maxItems: 7,
   },
   {
     key: "resolution",
@@ -408,8 +445,7 @@ const GEMINI_OMNI_INPUT_FIELDS = [
     default: "16:9",
     syncWith: "aspect_ratio",
   },
-  { key: "audio_ids", label: "Audio IDs", type: "array", required: false },
-  { key: "seed", label: "Seed", type: "number", required: false },
+  { key: "seed", label: "Seed", type: "number", required: false, advancedOnly: true },
 ];
 
 // Model registry with metadata
@@ -706,7 +742,7 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     description: "Google Gemini Omni Flash multimodal video generation and editing via Kie.ai",
     supportsDurations: GEMINI_OMNI_DURATIONS,
     supportsAspectRatios: GEMINI_OMNI_ASPECT_RATIOS,
-    creditCost: 450,
+    creditCost: 90,
     configJson: {
       apiEndpoint: "/api/v1/jobs/createTask",
       apiQueryEndpoint: "/api/v1/jobs/recordInfo",
@@ -1118,6 +1154,7 @@ function isLikelyUrlLikeExtraParamKey(key: string): boolean {
     || normalizedKey.includes("imageurl")
     || normalizedKey.includes("videourl")
     || normalizedKey.includes("audiourl")
+    || normalizedKey === "videolist"
     || normalizedKey.includes("imageinput")
     || normalizedKey.includes("videoinput")
     || normalizedKey.includes("audioinput")
@@ -1136,6 +1173,21 @@ function isLikelyUrlLikeExtraParamKey(key: string): boolean {
  */
 function resolveExtraParamsUrls(extraParams: Record<string, any>, publicUrl?: string | null): Record<string, any> {
   const resolved = { ...extraParams };
+  const resolveUrlLikeNestedValue = (entry: unknown): unknown => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      return entry;
+    }
+    const next: Record<string, unknown> = { ...(entry as Record<string, unknown>) };
+    for (const [nestedKey, nestedValue] of Object.entries(next)) {
+      if (!isLikelyUrlLikeExtraParamKey(nestedKey)) {
+        continue;
+      }
+      if (typeof nestedValue === "string" && nestedValue.startsWith("/") && !nestedValue.startsWith("//")) {
+        next[nestedKey] = resolveReferenceUrl(nestedValue, publicUrl);
+      }
+    }
+    return next;
+  };
   for (const [key, value] of Object.entries(resolved)) {
     if (!isLikelyUrlLikeExtraParamKey(key)) {
       continue;
@@ -1147,6 +1199,11 @@ function resolveExtraParamsUrls(extraParams: Record<string, any>, publicUrl?: st
       if (firstVal.startsWith("/") && !firstVal.startsWith("//")) {
         resolved[key] = value.map((url: string) => resolveReferenceUrl(url, publicUrl));
       }
+      continue;
+    }
+
+    if (Array.isArray(value) && value.length > 0 && value.some((entry) => entry && typeof entry === "object")) {
+      resolved[key] = value.map((entry) => resolveUrlLikeNestedValue(entry));
       continue;
     }
 

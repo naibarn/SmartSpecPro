@@ -74,25 +74,32 @@ Each Task Packet must include:
   - Frontend agent: `testing-for-xss-vulnerabilities.md`, `performing-csrf-attack-simulation.md`, `testing-jwt-token-security.md`
   - Full protocol: `skills/cybersecurity/SECURITY-AUDIT-PROTOCOL.md`
 
-### Step C: Dispatch All Specialists in a Single Message (Parallel)
+### Step C: Dispatch Specialists
+
+When the active platform exposes a Task/sub-agent tool, dispatch all eligible specialists in
+one message so they run in parallel. In Claude Code, use the generated native `ssp-*` names;
+portable role names stay in metadata only.
 
 ```
 Single message, all specialists simultaneously:
 
-  Task #1: security-trpc agent
+  Task #1: ssp-security-trpc
     Prompt: [Task Packet for tRPC bucket files]
     background: true
 
-  Task #2: security-fastapi agent
+  Task #2: ssp-security-fastapi
     Prompt: [Task Packet for FastAPI bucket files]
     background: true
 
-  Task #3: security-frontend agent
+  Task #3: ssp-security-frontend
     Prompt: [Task Packet for frontend bucket files]
     background: true
 ```
 
-Never dispatch the 3 specialists sequentially. All must run in a single message.
+When the active platform does **not** expose a Task/sub-agent tool, preserve the same Task
+Packets and execute each specialist role sequentially inline. The invariant is not
+"parallel at any cost"; the invariant is: collect every applicable specialist Result Report
+before the `security-review` aggregator runs. Never let `security-review` spawn specialists.
 
 ### Step D: Collect Findings
 
@@ -107,19 +114,20 @@ this Task Packet must contain all collected findings from all specialists, forma
 ```
 ### Pre-Collected Security Findings
 
-#### From security-trpc:
+#### From ssp-security-trpc (portable role: security-trpc):
 - SEVERITY: HIGH | CATEGORY: IDOR | FILE: <absolute-repo-root>/apps/web/server/routers/user.ts:42 | getUserById missing tenantId filter
 - SEVERITY: MEDIUM | CATEGORY: Missing Zod | FILE: <absolute-repo-root>/apps/web/server/routers/billing.ts:88 | createSubscription input not validated
 
-#### From security-fastapi:
+#### From ssp-security-fastapi (portable role: security-fastapi):
 - SEVERITY: CRITICAL | CATEGORY: Auth bypass | FILE: <absolute-repo-root>/python-backend/app/api/v1/llm.py:31 | /generate endpoint missing auth Depends
 
-#### From security-frontend:
+#### From ssp-security-frontend (portable role: security-frontend):
 (none)
 ```
 
 The aggregator's job: deduplicate cross-domain findings, count by severity, apply threshold
-policy, write `orchestra/risk_register.md`, and return the verdict.
+policy, write `orchestra/risk_register.md`, and return a standard Result Report with the
+`security_verdict` extension field set to `PASS`, `CONDITIONAL`, or `FAIL`.
 
 ### Step F: Apply Verdict
 
@@ -204,7 +212,7 @@ All pre-merge gate findings are written to `orchestra/risk_register.md`:
 # Risk Register
 Last updated: [ISO timestamp]
 Session: [task description]
-Verdict: [PASS / CONDITIONAL PASS / FAIL]
+Verdict: [PASS / CONDITIONAL / FAIL]
 
 ## Findings
 

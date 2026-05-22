@@ -43,3 +43,4 @@ Last updated: 2026-04-21
 - **102-fal-ai-gemini-3-1-flash-tts**: fal.ai Gemini 3.1 Flash TTS model integration with multi-speaker Media Studio authoring
 - **103-obsidian-inspired-md-knowledge-vault**: Obsidian-inspired Markdown vault foundation with properties, links, backlinks, saved views, context packs, and canvas persistence
 - **104-md-knowledge-vault-production-readiness**: production-ready vault hardening for agent memory, context-pack approvals, citations, observability, rollout controls, snapshots, and end-to-end adoption flows
+- **116-production-director-node-canvas**: Media Studio Production Director as a goal-first, asset-aware, skill-driven React Flow planning workspace with editable nodes/edges before any generation credits are spent

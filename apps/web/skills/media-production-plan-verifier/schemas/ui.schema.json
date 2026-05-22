@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "skillId": "media-production-plan-verifier",
+  "title": "Production Plan Verifier",
+  "titleTh": "ตัวตรวจแผนการผลิต",
+  "sections": [{ "id": "verification", "title": "Verification", "fields": [{ "id": "verification_status", "type": "badge" }] }],
+  "outputMapping": { "status": "verification_status", "issues": "blocking_issues" }
+}

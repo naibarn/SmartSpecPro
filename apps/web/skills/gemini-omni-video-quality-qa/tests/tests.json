@@ -1,0 +1,1 @@
+{ "tests": [{ "id": "basic", "input": "fixtures/pass.basic.input.json", "output": "fixtures/pass.basic.output.json", "expected_success": true }] }

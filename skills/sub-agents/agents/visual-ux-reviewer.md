@@ -50,13 +50,17 @@ Accepts a standard Task Packet with:
 
 ## 5. Output Contract
 
-Return:
+Return a standard **Result Report** plus `ux_verdict`:
 
-- verdict: APPROVE / APPROVE_WITH_FIXES / REQUEST_CHANGES
-- severity-ranked findings
-- concrete fixes
-- missing state coverage
-- unresolved product questions
+- `status`: success / partial / failed
+- `files_changed`: [] (always empty — read-only)
+- `findings`: severity-ranked UX findings, concrete fixes, missing state coverage,
+  and unresolved product questions
+- `blockers`: missing acceptance criteria, unavailable UI evidence, or product decisions
+  required before a reliable verdict
+- `next_steps`: recommended fix owner and whether `visual-final-refactor` should run
+- `quality_gate_results`: UX review checklist results from QUALITY GATE
+- `ux_verdict`: PASS / FIXES_REQUIRED / BLOCKED
 
 ---
 
@@ -84,5 +88,4 @@ Return:
 
 - If UI files cannot be rendered or inspected, review code structure and report the limitation
 - If the task lacks acceptance criteria, infer low-risk criteria and mark assumptions
-- If findings are only subjective, return APPROVE with optional notes
-
+- If findings are only subjective, return `ux_verdict: PASS` with optional notes

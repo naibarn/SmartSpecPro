@@ -31,6 +31,8 @@ description: "UI Builder Agent (CMD-12) — Tailwind/shadcn visual implementatio
 - Prefer existing components and `cn()` helpers before adding new abstractions
 - Do not add new libraries unless explicitly approved
 - Do not use raw API calls for server state; coordinate with frontend/backend agents
+- Do not run as a parallel writer with `frontend` on the same file. If behavior wiring is
+  still incomplete, return a blocker for `frontend` instead of implementing data flow.
 - Validate with `cd apps/web && pnpm check` when TypeScript UI files change
 
 ---
@@ -94,4 +96,3 @@ Return a Result Report with:
 - If TypeScript fails after three attempts, return `status: partial` with exact errors
 - If a required shared component is missing, use the closest existing primitive and document the limitation
 - If implementation needs backend changes, stop and return a blocker for orchestra
-

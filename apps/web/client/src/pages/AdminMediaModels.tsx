@@ -192,7 +192,8 @@ type InputFieldType =
   | "video_urls"
   | "audio_urls"
   | "array"
-  | "library_file";
+  | "library_file"
+  | "provider_asset_picker";
 type SyncTarget =
   | "none"
   | "reference_images"
@@ -231,10 +232,18 @@ interface InputFieldDraft {
   defaultBoolean: boolean;
   required: boolean;
   affectsPricing: boolean;
+  hidden: boolean;
+  advancedOnly: boolean;
+  managedBySuite: boolean;
   pricingAliases: string;
   pricingPresencePresent: string;
   pricingPresenceAbsent: string;
   searchable: boolean;
+  assetType: string;
+  assetCapability: string;
+  providerPayloadKey: string;
+  referenceUnitWeight: string;
+  maxItems: string;
   options: InputFieldOptionDraft[];
   optionsSourceType: InputFieldOptionsSourceType;
   optionsSourceEndpoint: string;
@@ -310,6 +319,7 @@ const INPUT_FIELD_TYPE_OPTIONS: Array<{
   { value: "boolean", label: "Boolean" },
   { value: "array", label: "Array (string[])" },
   { value: "library_file", label: "Library File (picker)" },
+  { value: "provider_asset_picker", label: "Provider Asset Picker" },
   { value: "image_urls", label: "Image URLs" },
   { value: "video_urls", label: "Video URLs" },
   { value: "audio_urls", label: "Audio URLs" },
@@ -497,10 +507,18 @@ function createEmptyInputFieldDraft(): InputFieldDraft {
     defaultBoolean: false,
     required: false,
     affectsPricing: false,
+    hidden: false,
+    advancedOnly: false,
+    managedBySuite: false,
     pricingAliases: "",
     pricingPresencePresent: "",
     pricingPresenceAbsent: "",
     searchable: false,
+    assetType: "",
+    assetCapability: "",
+    providerPayloadKey: "",
+    referenceUnitWeight: "",
+    maxItems: "",
     options: [],
     optionsSourceType: "none",
     optionsSourceEndpoint: "",
@@ -608,6 +626,9 @@ function parseInputFieldDrafts(value: unknown): InputFieldDraft[] {
       defaultBoolean: Boolean(record.default),
       required: Boolean(record.required),
       affectsPricing: Boolean(record.affectsPricing),
+      hidden: Boolean(record.hidden),
+      advancedOnly: Boolean(record.advancedOnly),
+      managedBySuite: Boolean(record.managedBySuite),
       pricingAliases,
       pricingPresencePresent:
         typeof pricingPresenceLabels?.present === "string"
@@ -618,6 +639,15 @@ function parseInputFieldDrafts(value: unknown): InputFieldDraft[] {
           ? pricingPresenceLabels.absent
           : "",
       searchable: Boolean(record.searchable),
+      assetType: typeof record.assetType === "string" ? record.assetType : "",
+      assetCapability: typeof record.assetCapability === "string" ? record.assetCapability : "",
+      providerPayloadKey: typeof record.providerPayloadKey === "string" ? record.providerPayloadKey : "",
+      referenceUnitWeight: record.referenceUnitWeight !== undefined && record.referenceUnitWeight !== null
+        ? String(record.referenceUnitWeight)
+        : "",
+      maxItems: record.maxItems !== undefined && record.maxItems !== null
+        ? String(record.maxItems)
+        : "",
       options,
       optionsSourceType,
       optionsSourceEndpoint:
@@ -751,6 +781,45 @@ function serializeInputFieldDrafts(drafts: InputFieldDraft[]): {
 
     if (draft.searchable) {
       nextField.searchable = true;
+    }
+    if (draft.hidden) {
+      nextField.hidden = true;
+    }
+    if (draft.advancedOnly) {
+      nextField.advancedOnly = true;
+    }
+    if (draft.managedBySuite) {
+      nextField.managedBySuite = true;
+    }
+    const assetType = draft.assetType.trim();
+    if (assetType) {
+      nextField.assetType = assetType;
+    }
+    const assetCapability = draft.assetCapability.trim();
+    if (assetCapability) {
+      nextField.assetCapability = assetCapability;
+    }
+    const providerPayloadKey = draft.providerPayloadKey.trim();
+    if (providerPayloadKey) {
+      nextField.providerPayloadKey = providerPayloadKey;
+    }
+    const referenceUnitWeightRaw = draft.referenceUnitWeight.trim();
+    if (referenceUnitWeightRaw) {
+      const referenceUnitWeight = Number(referenceUnitWeightRaw);
+      if (!Number.isFinite(referenceUnitWeight) || referenceUnitWeight <= 0) {
+        errors.push(`Field "${key}" has invalid reference unit weight.`);
+        continue;
+      }
+      nextField.referenceUnitWeight = Math.floor(referenceUnitWeight);
+    }
+    const maxItemsRaw = draft.maxItems.trim();
+    if (maxItemsRaw) {
+      const maxItems = Number(maxItemsRaw);
+      if (!Number.isFinite(maxItems) || maxItems <= 0) {
+        errors.push(`Field "${key}" has invalid max items.`);
+        continue;
+      }
+      nextField.maxItems = Math.floor(maxItems);
     }
 
     const options = draft.options
@@ -1119,12 +1188,22 @@ const API_CONFIG_PRESETS: ApiConfigPreset[] = [
         label: "Reference Images",
         type: "image_urls",
         syncWith: "reference_images",
+        hidden: true,
+        managedBySuite: true,
+        providerPayloadKey: "image_urls",
+        referenceUnitWeight: 1,
+        maxItems: 7,
       },
       {
         key: "video_list",
         label: "Source Video",
         type: "video_urls",
         syncWith: "reference_videos",
+        hidden: true,
+        managedBySuite: true,
+        providerPayloadKey: "video_list",
+        referenceUnitWeight: 2,
+        maxItems: 1,
         affectsPricing: true,
         pricingAliases: [
           "referenceVideoUrls",
@@ -1137,6 +1216,19 @@ const API_CONFIG_PRESETS: ApiConfigPreset[] = [
           present: "with-video",
           absent: "without-video",
         },
+      },
+      {
+        key: "character_ids",
+        label: "Character References",
+        type: "provider_asset_picker",
+        hidden: true,
+        advancedOnly: true,
+        managedBySuite: true,
+        assetType: "provider_asset",
+        assetCapability: "gemini_omni_character",
+        providerPayloadKey: "character_ids",
+        referenceUnitWeight: 1,
+        maxItems: 3,
       },
       {
         key: "resolution",
@@ -1177,8 +1269,15 @@ const API_CONFIG_PRESETS: ApiConfigPreset[] = [
       },
       {
         key: "audio_ids",
-        label: "Audio IDs",
-        type: "array",
+        label: "Voice / Audio References",
+        type: "provider_asset_picker",
+        hidden: true,
+        advancedOnly: true,
+        managedBySuite: true,
+        assetType: "provider_asset",
+        assetCapability: "gemini_omni_audio",
+        providerPayloadKey: "audio_ids",
+        maxItems: 7,
       },
       {
         key: "seed",
@@ -1187,31 +1286,31 @@ const API_CONFIG_PRESETS: ApiConfigPreset[] = [
       },
     ],
     pricingTiers: {
-      default: 600,
-      "720p-4s-without-video": 450,
-      "720p-6s-without-video": 600,
-      "720p-8s-without-video": 750,
-      "720p-10s-without-video": 900,
-      "1080p-4s-without-video": 450,
-      "1080p-6s-without-video": 600,
-      "1080p-8s-without-video": 750,
-      "1080p-10s-without-video": 900,
-      "4K-4s-without-video": 1050,
-      "4K-6s-without-video": 1200,
-      "4K-8s-without-video": 1350,
-      "4K-10s-without-video": 1500,
-      "720p-4s-with-video": 1200,
-      "720p-6s-with-video": 1200,
-      "720p-8s-with-video": 1200,
-      "720p-10s-with-video": 1200,
-      "1080p-4s-with-video": 1200,
-      "1080p-6s-with-video": 1200,
-      "1080p-8s-with-video": 1200,
-      "1080p-10s-with-video": 1200,
-      "4K-4s-with-video": 1800,
-      "4K-6s-with-video": 1800,
-      "4K-8s-with-video": 1800,
-      "4K-10s-with-video": 1800,
+      default: 120,
+      "720p-4s-without-video": 90,
+      "720p-6s-without-video": 120,
+      "720p-8s-without-video": 150,
+      "720p-10s-without-video": 180,
+      "1080p-4s-without-video": 90,
+      "1080p-6s-without-video": 120,
+      "1080p-8s-without-video": 150,
+      "1080p-10s-without-video": 180,
+      "4K-4s-without-video": 210,
+      "4K-6s-without-video": 240,
+      "4K-8s-without-video": 270,
+      "4K-10s-without-video": 300,
+      "720p-4s-with-video": 240,
+      "720p-6s-with-video": 240,
+      "720p-8s-with-video": 240,
+      "720p-10s-with-video": 240,
+      "1080p-4s-with-video": 240,
+      "1080p-6s-with-video": 240,
+      "1080p-8s-with-video": 240,
+      "1080p-10s-with-video": 240,
+      "4K-4s-with-video": 360,
+      "4K-6s-with-video": 360,
+      "4K-8s-with-video": 360,
+      "4K-10s-with-video": 360,
     },
   },
   {
@@ -4218,9 +4317,9 @@ function ModelForm({
                       </div>
                     )}
 
-                    <div className="grid gap-1">
-                      <Label className="text-xs text-muted-foreground">
-                        Sync with (auto-fill at runtime)
+	                    <div className="grid gap-1">
+	                      <Label className="text-xs text-muted-foreground">
+	                        Sync with (auto-fill at runtime)
                       </Label>
                       <Select
                         value={field.syncWith}
@@ -4240,10 +4339,79 @@ function ModelForm({
                             </SelectItem>
                           ))}
                         </SelectContent>
-                      </Select>
+	                      </Select>
+	                    </div>
+
+                    <div className="space-y-2 rounded-md border border-sky-100 bg-sky-50/40 p-3">
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                        <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+                          <span className="text-sm">Hidden</span>
+                          <Switch
+                            checked={field.hidden}
+                            onCheckedChange={checked =>
+                              updateInputFieldDraft(field.id, { hidden: checked })
+                            }
+                          />
+                        </div>
+                        <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+                          <span className="text-sm">Advanced</span>
+                          <Switch
+                            checked={field.advancedOnly}
+                            onCheckedChange={checked =>
+                              updateInputFieldDraft(field.id, { advancedOnly: checked })
+                            }
+                          />
+                        </div>
+                        <div className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+                          <span className="text-sm">Suite Managed</span>
+                          <Switch
+                            checked={field.managedBySuite}
+                            onCheckedChange={checked =>
+                              updateInputFieldDraft(field.id, { managedBySuite: checked })
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
+                        <Input
+                          value={field.providerPayloadKey}
+                          onChange={e =>
+                            updateInputFieldDraft(field.id, { providerPayloadKey: e.target.value })
+                          }
+                          placeholder="provider key"
+                        />
+                        <Input
+                          value={field.maxItems}
+                          onChange={e =>
+                            updateInputFieldDraft(field.id, { maxItems: e.target.value })
+                          }
+                          placeholder="max items"
+                        />
+                        <Input
+                          value={field.referenceUnitWeight}
+                          onChange={e =>
+                            updateInputFieldDraft(field.id, { referenceUnitWeight: e.target.value })
+                          }
+                          placeholder="unit weight"
+                        />
+                        <Input
+                          value={field.assetType}
+                          onChange={e =>
+                            updateInputFieldDraft(field.id, { assetType: e.target.value })
+                          }
+                          placeholder="asset type"
+                        />
+                        <Input
+                          value={field.assetCapability}
+                          onChange={e =>
+                            updateInputFieldDraft(field.id, { assetCapability: e.target.value })
+                          }
+                          placeholder="asset capability"
+                        />
+                      </div>
                     </div>
 
-                    <div className="space-y-2 rounded-md border border-slate-100 p-2">
+	                    <div className="space-y-2 rounded-md border border-slate-100 p-2">
                       <div className="grid gap-1">
                         <Label className="text-xs text-muted-foreground">
                           Options Source
@@ -4490,6 +4658,10 @@ function ModelForm({
                           default needed.
                         </p>
                       </div>
+                    ) : field.type === "provider_asset_picker" ? (
+                      <p className="text-xs text-muted-foreground italic">
+                        Provider asset values are selected by the runtime suite UI and saved as provider IDs.
+                      </p>
                     ) : field.type === "select" ||
                       field.searchable ||
                       field.optionsSourceType !== "none" ? (

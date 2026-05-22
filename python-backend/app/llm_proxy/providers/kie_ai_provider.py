@@ -1,11 +1,12 @@
-import os
-import httpx
-import json
 import asyncio
+import json
+import os
 import time
-import structlog
-from typing import Dict, Any, Optional
+from typing import Any
 from urllib.parse import urlparse, urlunparse
+
+import httpx
+import structlog
 
 logger = structlog.get_logger()
 
@@ -84,7 +85,7 @@ _MODEL_RESOLUTION_STATS = {
 }
 
 
-def get_model_resolution_stats() -> Dict[str, int]:
+def get_model_resolution_stats() -> dict[str, int]:
     """Expose model-resolution counters for observability/tests."""
     return dict(_MODEL_RESOLUTION_STATS)
 
@@ -95,7 +96,7 @@ def reset_model_resolution_stats() -> None:
         _MODEL_RESOLUTION_STATS[key] = 0
 
 
-def _get_api_config_value(api_config: Optional[Dict[str, Any]], *keys: str) -> Optional[str]:
+def _get_api_config_value(api_config: dict[str, Any] | None, *keys: str) -> str | None:
     """Read a string value from api_config supporting snake_case and camelCase keys."""
     if not isinstance(api_config, dict):
         return None
@@ -107,7 +108,7 @@ def _get_api_config_value(api_config: Optional[Dict[str, Any]], *keys: str) -> O
     return None
 
 
-def _get_api_config_bool(api_config: Optional[Dict[str, Any]], *keys: str) -> bool:
+def _get_api_config_bool(api_config: dict[str, Any] | None, *keys: str) -> bool:
     if not isinstance(api_config, dict):
         return False
     for key in keys:
@@ -125,7 +126,7 @@ def _get_api_config_bool(api_config: Optional[Dict[str, Any]], *keys: str) -> bo
     return False
 
 
-def _normalize_reference_image_input_type(raw_type: Optional[str]) -> Optional[str]:
+def _normalize_reference_image_input_type(raw_type: str | None) -> str | None:
     if not raw_type:
         return None
 
@@ -139,12 +140,12 @@ def _normalize_reference_image_input_type(raw_type: Optional[str]) -> Optional[s
     return None
 
 
-def _normalize_reference_video_object_list(value: Any) -> list[Dict[str, Any]]:
+def _normalize_reference_video_object_list(value: Any) -> list[dict[str, Any]]:
     if value is None:
         return []
 
     raw_items = value if isinstance(value, list) else [value]
-    normalized: list[Dict[str, Any]] = []
+    normalized: list[dict[str, Any]] = []
     for item in raw_items:
         if isinstance(item, str):
             url = item.strip()
@@ -159,7 +160,7 @@ def _normalize_reference_video_object_list(value: Any) -> list[Dict[str, Any]]:
         if not isinstance(url_value, str) or not url_value.strip():
             continue
 
-        entry: Dict[str, Any] = {"url": url_value.strip()}
+        entry: dict[str, Any] = {"url": url_value.strip()}
         for source_key, target_key in (
             ("start", "start"),
             ("starts", "start"),
@@ -177,7 +178,7 @@ def _normalize_reference_video_object_list(value: Any) -> list[Dict[str, Any]]:
 
 
 def _resolve_reference_image_input_config(
-    api_config: Optional[Dict[str, Any]],
+    api_config: dict[str, Any] | None,
     *,
     default_key: str,
 ) -> tuple[str, str]:
@@ -201,7 +202,7 @@ def _resolve_reference_image_input_config(
 
 
 def _resolve_reference_video_input_config(
-    api_config: Optional[Dict[str, Any]],
+    api_config: dict[str, Any] | None,
     *,
     default_key: str,
 ) -> tuple[str, str]:
@@ -231,19 +232,41 @@ def _is_4k_resolution(value: Any) -> bool:
     return normalized in {"4k", "2160p", "uhd", "ultrahd"}
 
 
-def _is_veo_endpoint(endpoint: Optional[str]) -> bool:
+def _is_success_code(value: Any) -> bool:
+    if value in (0, 200):
+        return True
+    if isinstance(value, str) and value.strip() in {"0", "200"}:
+        return True
+    return False
+
+
+def _extract_kie_data_or_drift(response: dict[str, Any], *, operation: str) -> dict[str, Any]:
+    if not isinstance(response, dict):
+        raise Exception(f"Kie.ai provider_contract_drift: {operation} returned non-object response")
+
+    code = response.get("code")
+    has_success_code = _is_success_code(code) or code is None
+    data = response.get("data")
+    if has_success_code and isinstance(data, dict):
+        return data
+
+    message = response.get("message") or response.get("msg") or response.get("error") or "unexpected response shape"
+    raise Exception(f"Kie.ai provider_contract_drift: {operation} failed closed ({message})")
+
+
+def _is_veo_endpoint(endpoint: str | None) -> bool:
     return bool(endpoint and "veo" in str(endpoint).strip().lower())
 
 
-def _is_veo_extend_endpoint(endpoint: Optional[str]) -> bool:
+def _is_veo_extend_endpoint(endpoint: str | None) -> bool:
     normalized = str(endpoint or "").strip().lower()
     return "veo/extend" in normalized
 
 
 def _is_veo_extend_request(
-    api_endpoint: Optional[str],
-    api_config: Optional[Dict[str, Any]],
-    input_params: Optional[Dict[str, Any]] = None,
+    api_endpoint: str | None,
+    api_config: dict[str, Any] | None,
+    input_params: dict[str, Any] | None = None,
 ) -> bool:
     generate_type = _get_api_config_value(
         api_config,
@@ -277,7 +300,7 @@ def _is_veo_extend_request(
     return False
 
 
-def _pop_first_non_empty(input_params: Dict[str, Any], keys: tuple[str, ...]) -> Optional[Any]:
+def _pop_first_non_empty(input_params: dict[str, Any], keys: tuple[str, ...]) -> Any | None:
     for key in keys:
         value = input_params.pop(key, None)
         if value is None:
@@ -289,7 +312,7 @@ def _pop_first_non_empty(input_params: Dict[str, Any], keys: tuple[str, ...]) ->
     return None
 
 
-def _resolve_veo_extend_model(api_model: Optional[str], api_config: Optional[Dict[str, Any]]) -> str:
+def _resolve_veo_extend_model(api_model: str | None, api_config: dict[str, Any] | None) -> str:
     configured = _get_api_config_value(
         api_config,
         "extend_model",
@@ -310,11 +333,11 @@ def _resolve_veo_extend_model(api_model: Optional[str], api_config: Optional[Dic
 def _build_veo_extend_payload(
     *,
     prompt: str,
-    input_params: Dict[str, Any],
-    api_model: Optional[str],
-    api_config: Optional[Dict[str, Any]],
-    callback_url: Optional[str],
-) -> Dict[str, Any]:
+    input_params: dict[str, Any],
+    api_model: str | None,
+    api_config: dict[str, Any] | None,
+    callback_url: str | None,
+) -> dict[str, Any]:
     task_id = _pop_first_non_empty(input_params, (
         "taskId",
         "task_id",
@@ -334,7 +357,7 @@ def _build_veo_extend_payload(
     seeds = _pop_first_non_empty(input_params, ("seeds", "seed"))
     watermark = _pop_first_non_empty(input_params, ("watermark",))
 
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "taskId": str(task_id),
         "prompt": prompt,
         "model": _resolve_veo_extend_model(api_model, api_config),
@@ -348,7 +371,7 @@ def _build_veo_extend_payload(
     return payload
 
 
-def _normalize_veo_aspect_ratio_for_payload(value: Any, generation_type: Any = None) -> Optional[str]:
+def _normalize_veo_aspect_ratio_for_payload(value: Any, generation_type: Any = None) -> str | None:
     """Normalize SmartSpec's internal Veo aspect ratio values to Kie.ai's API enum."""
     if value is None:
         return None
@@ -368,7 +391,7 @@ def _normalize_veo_aspect_ratio_for_payload(value: Any, generation_type: Any = N
     return cleaned
 
 
-def _normalize_veo_generation_payload(input_params: Dict[str, Any]) -> None:
+def _normalize_veo_generation_payload(input_params: dict[str, Any]) -> None:
     """Apply Veo-specific payload normalization in-place before submitting to Kie.ai."""
     generation_type = input_params.get("generationType")
     raw_aspect_ratio = input_params.get("aspect_ratio")
@@ -399,7 +422,7 @@ def _normalize_veo_generation_payload(input_params: Dict[str, Any]) -> None:
             input_params.pop("imageUrls", None)
 
 
-def resolve_api_model(model: str, api_config: Optional[Dict[str, Any]] = None) -> str:
+def resolve_api_model(model: str, api_config: dict[str, Any] | None = None) -> str:
     """
     Resolve Kie model ID from api_config first, then fallback alias mapping.
     """
@@ -445,7 +468,7 @@ class KieAIProvider:
     BASE_URL = "https://api.kie.ai/api/v1"
 
     @classmethod
-    def normalize_base_url(cls, base_url: Optional[str]) -> str:
+    def normalize_base_url(cls, base_url: str | None) -> str:
         """
         Normalize Kie API base URL to a valid API host/path.
 
@@ -510,7 +533,7 @@ class KieAIProvider:
             logger.info("kie_ai_callback_configured", callback_url=callback_url)
 
     @staticmethod
-    def _extract_task_id(result: Dict[str, Any], *, include_record_id: bool = False) -> Optional[str]:
+    def _extract_task_id(result: dict[str, Any], *, include_record_id: bool = False) -> str | None:
         """Extract a task identifier from common Kie submission responses."""
         if not isinstance(result, dict):
             return None
@@ -532,7 +555,7 @@ class KieAIProvider:
         return task_id or None
 
     @staticmethod
-    def _extract_submission_error_message(result: Dict[str, Any]) -> Optional[str]:
+    def _extract_submission_error_message(result: dict[str, Any]) -> str | None:
         """Extract a readable provider-side error from submission responses."""
         if not isinstance(result, dict):
             return None
@@ -559,7 +582,7 @@ class KieAIProvider:
         return None
 
     @classmethod
-    def _is_retryable_submission_response(cls, result: Dict[str, Any]) -> bool:
+    def _is_retryable_submission_response(cls, result: dict[str, Any]) -> bool:
         """Detect transient provider failures returned in a JSON body with HTTP 200."""
         if not isinstance(result, dict):
             return False
@@ -660,9 +683,9 @@ class KieAIProvider:
         operation: str,
         include_record_id: bool = False,
         max_attempts: int = 3,
-    ) -> tuple[Dict[str, Any], str]:
+    ) -> tuple[dict[str, Any], str]:
         """Submit a task request and retry transient JSON-level provider errors."""
-        last_result: Optional[Dict[str, Any]] = None
+        last_result: dict[str, Any] | None = None
 
         for attempt in range(1, max_attempts + 1):
             try:
@@ -731,7 +754,7 @@ class KieAIProvider:
 
         raise Exception(f"Kie.ai did not return a task ID: {last_result}")
 
-    async def _make_request(self, method: str, endpoint: str, data: Optional[Dict] = None) -> Dict:
+    async def _make_request(self, method: str, endpoint: str, data: dict | None = None) -> dict:
         """Make HTTP request to Kie.ai API"""
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -764,9 +787,9 @@ class KieAIProvider:
     async def create_task(
         self,
         model: str,
-        input_params: Dict[str, Any],
+        input_params: dict[str, Any],
         callback_url: str | None = None,
-    ) -> Dict:
+    ) -> dict:
         """
         Create a generation task
 
@@ -789,14 +812,101 @@ class KieAIProvider:
         logger.info("kie_ai_create_task", model=model, input_keys=list(input_params.keys()))
         return await self._make_request("POST", "jobs/createTask", data=payload)
 
+    async def create_omni_character_asset(
+        self,
+        *,
+        character_name: str,
+        description: str,
+        image_urls: list[str],
+        audio_ids: list[str] | None = None,
+        client_request_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a reusable Gemini Omni Character asset.
+
+        This is provider asset creation, not a video media task.
+        """
+        payload: dict[str, Any] = {
+            "model": "gemini-omni-character",
+            "input": {
+                "character_name": character_name,
+                "description": description,
+                "image_urls": image_urls[:1],
+            },
+        }
+        if audio_ids:
+            payload["input"]["audio_ids"] = audio_ids
+        if client_request_id:
+            payload["clientRequestId"] = client_request_id
+
+        response = await self._make_request("POST", "omni/character/create", data=payload)
+        data = _extract_kie_data_or_drift(response, operation="gemini_omni_character_create")
+        character_id = data.get("characterId")
+        if not isinstance(character_id, str) or not character_id.strip():
+            raise Exception("Kie.ai provider_contract_drift: missing data.characterId")
+        return {
+            "provider": "kie.ai",
+            "capability": "gemini_omni_character",
+            "assetType": "character",
+            "providerAssetId": character_id.strip(),
+            "displayName": data.get("characterName") or character_name,
+            "contractVersion": "1.0.0",
+            "raw": {
+                "characterName": data.get("characterName"),
+                "imageUrl": data.get("imageUrl"),
+            },
+        }
+
+    async def create_omni_audio_asset(
+        self,
+        *,
+        display_name: str,
+        voice_description: str | None = None,
+        example_dialogue: str | None = None,
+        audio_id: str | None = None,
+        client_request_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a reusable Gemini Omni Audio asset."""
+        input_payload: dict[str, Any] = {"display_name": display_name}
+        if voice_description:
+            input_payload["voice_description"] = voice_description
+        if example_dialogue:
+            input_payload["example_dialogue"] = example_dialogue
+        if audio_id:
+            input_payload["audio_id"] = audio_id
+
+        payload: dict[str, Any] = {
+            "model": "gemini-omni-audio",
+            "input": input_payload,
+        }
+        if client_request_id:
+            payload["clientRequestId"] = client_request_id
+
+        response = await self._make_request("POST", "omni/audio/create", data=payload)
+        data = _extract_kie_data_or_drift(response, operation="gemini_omni_audio_create")
+        kie_audio_id = data.get("kieAudioId")
+        if not isinstance(kie_audio_id, str) or not kie_audio_id.strip():
+            raise Exception("Kie.ai provider_contract_drift: missing data.kieAudioId")
+        return {
+            "provider": "kie.ai",
+            "capability": "gemini_omni_audio",
+            "assetType": "audio",
+            "providerAssetId": kie_audio_id.strip(),
+            "displayName": data.get("displayName") or display_name,
+            "contractVersion": "1.0.0",
+            "raw": {
+                "kieAudioId": kie_audio_id.strip(),
+                "displayName": data.get("displayName"),
+            },
+        }
+
     async def submit_veo_4k_upgrade(
         self,
         task_id: str,
         *,
         index: int = 0,
         callback_url: str | None = None,
-        api_config: Optional[Dict[str, Any]] = None,
-    ) -> tuple[Dict[str, Any], str]:
+        api_config: dict[str, Any] | None = None,
+    ) -> tuple[dict[str, Any], str]:
         """Submit Kie Veo 4K post-processing for an already completed Veo task."""
         endpoint = _get_api_config_value(
             api_config,
@@ -807,7 +917,7 @@ class KieAIProvider:
             "veo4KUpgradeEndpoint",
         ) or "/api/v1/veo/get-4k-video"
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "taskId": task_id,
             "index": max(0, int(index)),
         }
@@ -831,9 +941,9 @@ class KieAIProvider:
     async def get_task_status(
         self,
         task_id: str,
-        preferred_status_endpoint: Optional[str] = None,
-        extra_status_endpoints: Optional[list[str]] = None,
-    ) -> Dict:
+        preferred_status_endpoint: str | None = None,
+        extra_status_endpoints: list[str] | None = None,
+    ) -> dict:
         """
         Get the status of a task using Kie.ai endpoints
 
@@ -849,7 +959,7 @@ class KieAIProvider:
         Returns:
             Task status response with 'state' or 'status' field
         """
-        def _normalize_status_endpoint(raw_endpoint: str) -> Optional[str]:
+        def _normalize_status_endpoint(raw_endpoint: str) -> str | None:
             """Normalize custom status endpoint into a base_url-relative path."""
             if not raw_endpoint:
                 return None
@@ -900,7 +1010,7 @@ class KieAIProvider:
 
             return endpoint
 
-        def _has_useful_data(resp: Dict) -> bool:
+        def _has_useful_data(resp: dict) -> bool:
             if not isinstance(resp, dict):
                 return False
             data = resp.get("data")
@@ -947,8 +1057,8 @@ class KieAIProvider:
             deduped.append((label, endpoint))
         endpoints = deduped
 
-        last_response: Optional[Dict] = None
-        last_error: Optional[Exception] = None
+        last_response: dict | None = None
+        last_error: Exception | None = None
 
         for label, endpoint in endpoints:
             try:
@@ -1007,7 +1117,7 @@ class KieAIProvider:
         logger.error("kie_ai_status_failed", task_id=task_id, error=str(last_error) if last_error else "unknown")
         raise last_error or RuntimeError("Failed to fetch task status from all endpoints")
 
-    async def wait_for_task(self, task_id: str, poll_interval: float = 2.0, max_wait: float = 300.0) -> Dict:
+    async def wait_for_task(self, task_id: str, poll_interval: float = 2.0, max_wait: float = 300.0) -> dict:
         """
         Wait for a task to complete by polling
 
@@ -1062,7 +1172,7 @@ class KieAIProvider:
 
         raise TimeoutError(f"Task {task_id} did not complete within {max_wait} seconds")
 
-    def _normalize_response(self, task_id: str, kie_response: Dict) -> Dict:
+    def _normalize_response(self, task_id: str, kie_response: dict) -> dict:
         """
         Transform Kie.ai response to SmartSpecPro expected format
 
@@ -1164,7 +1274,7 @@ class KieAIProvider:
                     data.append({"url": output["audio_url"]})
                 else:
                     # Try to find any URL-like field
-                    for key, value in output.items():
+                    for _key, value in output.items():
                         if isinstance(value, str) and value.startswith("http"):
                             data.append({"url": value})
                             break
@@ -1235,7 +1345,7 @@ class KieAIProvider:
             "raw_response": kie_response  # Keep original for debugging
         }
 
-    async def generate_image(self, model: str, prompt: str, **kwargs) -> Dict:
+    async def generate_image(self, model: str, prompt: str, **kwargs) -> dict:
         """
         Generate an image using Kie.ai
 
@@ -1323,7 +1433,7 @@ class KieAIProvider:
         # Determine endpoint — use api_config endpoint or default to create_task
         api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
 
-        async def submit_request() -> Dict[str, Any]:
+        async def submit_request() -> dict[str, Any]:
             if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
                 payload = {"prompt": prompt, **input_params}
                 if api_model:
@@ -1355,7 +1465,7 @@ class KieAIProvider:
             "message": "Task created. Result will be delivered via callback URL."
         }
 
-    async def generate_video(self, model: str, prompt: str, **kwargs) -> Dict:
+    async def generate_video(self, model: str, prompt: str, **kwargs) -> dict:
         """
         Generate a video using Kie.ai
 
@@ -1482,7 +1592,7 @@ class KieAIProvider:
         if callback_url == "":  # Empty string means explicitly disable callback
             callback_url = None
 
-        async def submit_request() -> Dict[str, Any]:
+        async def submit_request() -> dict[str, Any]:
             if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
                 if _is_veo_extend_request(api_endpoint, api_config, input_params):
                     payload = _build_veo_extend_payload(
@@ -1563,7 +1673,7 @@ class KieAIProvider:
             **({"requested_resolution": "4K", "requires_veo_4k_postprocess": True} if requires_veo_4k_postprocess else {}),
         }
 
-    async def generate_audio(self, model: str, text: str, **kwargs) -> Dict:
+    async def generate_audio(self, model: str, text: str, **kwargs) -> dict:
         """
         Generate audio using Kie.ai (TTS, sound effects)
 
@@ -1622,7 +1732,7 @@ class KieAIProvider:
         # Determine endpoint — use api_config endpoint or default to create_task
         api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
 
-        async def submit_request() -> Dict[str, Any]:
+        async def submit_request() -> dict[str, Any]:
             if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
                 payload = dict(input_params)
                 if api_model:
@@ -1652,7 +1762,7 @@ class KieAIProvider:
             "message": "Audio task created. Result will be delivered via callback URL."
         }
 
-    async def upload_reference_image(self, file_path: str) -> Dict:
+    async def upload_reference_image(self, file_path: str) -> dict:
         """Upload a reference image for image-to-image generation"""
         headers = {"Authorization": f"Bearer {self.api_key}"}
         url = f"{self.base_url}/files/upload"

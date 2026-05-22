@@ -41,6 +41,8 @@ source file `skills/sub-agents/agents/frontend.md`.
 - **Must use path alias `@/`** for all internal imports from `apps/web/client/src/`
 - **Must NOT modify** any files in `apps/web/server/` or `python-backend/` — those are other agents' domains
 - **Must NOT modify tRPC router files** — consume existing procedures; coordinate with backend agent if new procedures are needed
+- Must not run as a parallel writer with `ui-builder` on the same file. If visual polish is
+  required after behavior wiring, return a next-step for `ui-builder` in a later wave.
 - Must follow Prettier conventions: 80 char line width, semicolons, trailing commas
 - Must run TypeScript check before marking task complete: `cd apps/web && pnpm check`
 

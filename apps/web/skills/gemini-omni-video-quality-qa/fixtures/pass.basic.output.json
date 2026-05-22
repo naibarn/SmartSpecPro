@@ -1,0 +1,1 @@
+{ "skill_name": "gemini-omni-video-quality-qa", "skill_version": "1.0.0", "contract_version": "1.0.0", "verdict": "pass", "quality_scores": {}, "issues": [], "recommended_action": "accept", "revision_instructions": [], "learning_signal_candidates": [] }

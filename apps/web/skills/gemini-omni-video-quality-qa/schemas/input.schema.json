@@ -1,0 +1,1 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object", "required": ["video_artifact", "approved_plan"], "properties": { "video_artifact": { "type": "object" }, "approved_plan": { "type": "object" }, "asset_snapshot": { "type": "object" } }, "additionalProperties": true }

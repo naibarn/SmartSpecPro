@@ -1,0 +1,21 @@
+{
+  "skill_name": "gemini-omni-video-director",
+  "skill_version": "1.0.0",
+  "contract_version": "1.0.0",
+  "delivery_mode": "single_shot",
+  "generation_readiness": { "status": "ready" },
+  "story_bible": {},
+  "narrative_arc": {},
+  "cast_map": [],
+  "voice_map": [],
+  "audio_map": [],
+  "scene_timeline": [],
+  "continuity_graph": {},
+  "prompt_sequence": [{ "clip_id": "clip-1", "final_prompt": "Cinematic product demo." }],
+  "reference_plan": {},
+  "provider_plan": {},
+  "pricing_hint": {},
+  "qa_handoff": {},
+  "warnings": [],
+  "learning_context": {}
+}

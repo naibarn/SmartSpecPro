@@ -1,0 +1,1 @@
+{ "version": "1.0.0", "skillId": "gemini-omni-prompt-qa", "title": "Gemini Omni Prompt QA", "titleTh": "ตรวจ Prompt Gemini Omni", "sections": [{ "id": "qa", "title": "QA", "fields": [{ "id": "verdict", "type": "badge" }] }], "outputMapping": { "status": "verdict", "issues": "issues" } }

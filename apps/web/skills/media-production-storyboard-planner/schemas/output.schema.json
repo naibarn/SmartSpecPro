@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["skill_name", "skill_version", "contract_version", "production_goal_summary", "production_bible", "creative_strategy", "storyboard_outline", "scene_timeline", "shot_plan", "asset_requirements", "provider_candidate_plan", "batch_execution_plan", "credit_time_estimate", "risks", "assumptions", "approval_checklist", "revision_targets", "next_actions"],
+  "properties": {
+    "skill_name": { "const": "media-production-storyboard-planner" },
+    "skill_version": { "type": "string" },
+    "contract_version": { "type": "string" },
+    "production_goal_summary": { "type": "object" },
+    "production_bible": { "type": "object" },
+    "creative_strategy": { "type": "object" },
+    "storyboard_outline": { "type": "array", "items": { "type": "object" } },
+    "scene_timeline": { "type": "array", "items": { "type": "object" } },
+    "shot_plan": { "type": "array", "items": { "type": "object" } },
+    "asset_requirements": { "type": "array", "items": { "type": "object" } },
+    "provider_candidate_plan": { "type": "array", "items": { "type": "object" } },
+    "batch_execution_plan": { "type": "object" },
+    "credit_time_estimate": { "type": "object" },
+    "risks": { "type": "array", "items": { "type": "object" } },
+    "assumptions": { "type": "array", "items": { "type": "string" } },
+    "approval_checklist": { "type": "array", "items": { "type": "object" } },
+    "revision_targets": { "type": "array", "items": { "type": "object" } },
+    "next_actions": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

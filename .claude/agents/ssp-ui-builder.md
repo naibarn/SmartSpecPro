@@ -38,6 +38,8 @@ source file `skills/sub-agents/agents/ui-builder.md`.
 - Prefer existing components and `cn()` helpers before adding new abstractions
 - Do not add new libraries unless explicitly approved
 - Do not use raw API calls for server state; coordinate with frontend/backend agents
+- Do not run as a parallel writer with `frontend` on the same file. If behavior wiring is
+  still incomplete, return a blocker for `frontend` instead of implementing data flow.
 - Validate with `cd apps/web && pnpm check` when TypeScript UI files change
 
 ---

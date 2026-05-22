@@ -7,12 +7,13 @@ This reference defines when orchestra should stay in its normal wave model and w
 | Scope / Situation | Route | Behavior |
 |---|---|---|
 | `trivial` | `direct-edit` | Edit directly; no planning chain |
-| `small` and implementation-ready | `single-agent` | Direct implementation |
-| `medium` and implementation-ready | `multi-agent-waves` | Wave-based implementation |
+| `small` and implementation-ready with no safe parallel split | `single-agent` | Dispatch one sub-agent when tooling exists; direct conductor implementation only for `trivial` |
+| `medium` or any task with 2+ safe independent workstreams | `multi-agent-waves` | Wave-based implementation with parallel batches by default |
 | `small` or `medium` but under-specified / plan-beneficial | `quick-plan-chain` | Auto-run `deep-plan-quick`, then `deep-implement` |
 | idea/product direction unclear before planning | `brainstorming-prelude` | Use `brainstorming` to clarify intent/options, then route to quick plan, deep plan, or full pipeline |
 | explicit installed skill/slash tool or specialized scan/generator | `installed-skill-flow` | Read `installed-skill-routing.md`, run the smallest matching skill, and wrap with Orchestra state/gates when multi-step |
 | product help/tutorial/demo generated from code | `code-aware-help-flow` | Discover real behavior from code, generate help/script/outline, add GPT Image 2 visuals, and optionally build a web-video companion |
+| security-sensitive implementation or review | `security-gate` | Use normal implementation routing plus mandatory security specialists and pre-merge security gate |
 | user-facing behavior unclear | `product-ux-preflight` | Dispatch `product-ux`, then route to architecture/planning |
 | visual polish / responsive / accessibility UI work | `visual-ui-flow` | Dispatch visual UI requirement/direction agents, then builder/review/refactor waves |
 | `large` | `deep-plan-chain` | Auto-run full `deep-plan`, then `deep-implement` |
@@ -21,6 +22,10 @@ This reference defines when orchestra should stay in its normal wave model and w
 ## General Rule
 
 Do not stop merely to ask the user to run another skill.
+
+Do not collapse non-trivial work into conductor-only implementation when a sub-agent tool is
+available. Before selecting `single-agent`, run the parallelization preflight from
+`wave-planning.md`; if it finds two or more safe workstreams, select `multi-agent-waves`.
 
 If orchestra determines that a deep-* skill is needed, it should:
 1. create the required input artifact(s)
@@ -112,6 +117,30 @@ Execution:
    explicit confirmation immediately before the side effect.
 8. Run the relevant installed skill and UI quality gates before final delivery.
 
+## Route: `security-gate`
+
+Use this route when:
+- the request modifies or audits auth, RBAC, tenant isolation, secrets, encryption,
+  CORS/CSP, uploads/deserialization, infrastructure security, or security-related
+  dependency changes
+- the user explicitly asks for a security gate, secure implementation, pre-merge
+  security review, or authorization/permission hardening
+- normal implementation routing would otherwise run, but the risk-sensitive surface
+  requires security specialists before completion
+
+Execution:
+1. Choose the normal implementation route by scope (`single-agent`,
+   `multi-agent-waves`, `quick-plan-chain`, or `deep-plan-chain`).
+2. Mark `security_gate_required = true` before final quality gates.
+3. Read `security-review-protocol.md`.
+4. Dispatch `ssp-security-trpc`, `ssp-security-fastapi`, and/or
+   `ssp-security-frontend` when their buckets apply. Use sequential inline execution
+   only when the active platform has no Task/sub-agent tool.
+5. Run `ssp-security-review` as the aggregator after all applicable specialist Result
+   Reports are collected.
+6. Block on `FAIL`, auto-log/continue on `CONDITIONAL` only under `auto_by_default`,
+   and include the verdict in the final summary.
+
 ## Route: `quick-plan-chain`
 
 Use this route when:
@@ -149,12 +178,29 @@ Use this route when:
 
 Execution:
 1. Read `../visual-ui-enhancement/SKILL.md` and relevant references lazily.
-2. Dispatch or inline `visual-ui-requirement-analyzer` to produce a UI Enhancement Brief.
-3. Dispatch or inline `visual-ui-direction` to choose one coherent direction.
-4. Dispatch `ui-builder` or `frontend` for implementation, depending on whether the task is primarily visual polish or broader frontend behavior.
-5. Run read-only review wave: `visual-ux-reviewer`, `accessibility-reviewer`, and `responsive-reviewer`.
-6. Dispatch `visual-final-refactor` only when review findings require code changes.
-7. Run visual UI quality gates from `quality-gates.md`.
+2. Read `ui-ux-planning-contract.md` and `design-token-extraction.md`; require the UI
+   Enhancement Brief to cover existing token/component vocabulary plus
+   target user/JTBD, surface inventory, component map, state matrix, responsive matrix,
+   accessibility acceptance, and browser evidence requirements.
+3. Dispatch `visual-ui-requirement-analyzer` to produce a UI Enhancement Brief. Inline only
+   when no Task/sub-agent tool is available and record the fallback.
+4. Dispatch `visual-ui-direction` to choose one coherent direction. Inline only when no
+   Task/sub-agent tool is available and record the fallback.
+5. Dispatch `frontend` when the primary work is routing, hooks, tRPC consumers, auth-aware
+   client behavior, or behavior tests. Dispatch `ui-builder` when the primary work is
+   visual hierarchy, Tailwind/shadcn composition, tokens, states, or responsive polish.
+   Do not dispatch both as parallel writers for the same file; split into sequential waves
+   if both are needed.
+   Writer routing and gate routing are separate: browser-visible async/data-fetching UI
+   implemented by `frontend` still requires Component State Gate and UI Screenshot/E2E Gate
+   when loading, empty, error, success, disabled, focus, or primary action reachability can
+   regress.
+6. Run read-only review wave: dispatch `visual-ux-reviewer`, `accessibility-reviewer`, and
+   `responsive-reviewer` together when all apply. Use `ui-review-report-template.md` for
+   report shape.
+7. Dispatch `visual-final-refactor` only when review findings require code changes.
+8. Run visual UI quality gates from `quality-gates.md` and browser evidence checks from
+   `ui-browser-verification.md`.
 
 ## Route: `deep-plan-chain`
 

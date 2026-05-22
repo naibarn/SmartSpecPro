@@ -415,3 +415,6 @@ Before delivery, confirm:
 - [ ] Tailwind classes are maintainable.
 - [ ] The result feels polished, not overdecorated.
 - [ ] Verification commands or manual QA steps are listed.
+- [ ] For browser-visible route/workflow changes, evidence follows
+      `skills/orchestra/references/ui-browser-verification.md` when this skill is used
+      inside this orchestra/deep-* workflow.

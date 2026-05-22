@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["skill_name", "skill_version", "contract_version", "verification_status", "score", "blocking_issues", "warnings", "missing_decisions", "recommended_revisions", "targeted_revision_map", "credit_risk_summary", "approval_readiness", "reviewer_notes", "allowed_next_actions"],
+  "properties": {
+    "skill_name": { "const": "media-production-plan-verifier" },
+    "skill_version": { "type": "string" },
+    "contract_version": { "type": "string" },
+    "verification_status": { "type": "string", "enum": ["pass", "warning", "revise", "human_review", "block"] },
+    "score": { "type": "number" },
+    "blocking_issues": { "type": "array", "items": { "type": "object" } },
+    "warnings": { "type": "array", "items": { "type": "object" } },
+    "missing_decisions": { "type": "array", "items": { "type": "string" } },
+    "recommended_revisions": { "type": "array", "items": { "type": "object" } },
+    "targeted_revision_map": { "type": "object" },
+    "credit_risk_summary": { "type": "object" },
+    "approval_readiness": { "type": "object" },
+    "reviewer_notes": { "type": "array", "items": { "type": "string" } },
+    "allowed_next_actions": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

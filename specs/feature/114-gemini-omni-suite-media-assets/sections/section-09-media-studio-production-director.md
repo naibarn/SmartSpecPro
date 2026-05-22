@@ -1,5 +1,7 @@
 # Section 09: Media Studio Production Director
 
+> Update: Feature 116 (`specs/feature/116-production-director-node-canvas`) refines this section after implementation feedback. Production Director should be an exclusive goal-first planning canvas, not a panel that renders Image/Video/Audio prompt UI underneath it. Use Feature 116 as the authoritative UX direction for the final Production workspace.
+
 ## Goal
 
 Add a centralized Media Studio Production/Director workspace that lets users define the real creative objective before choosing individual image, video, audio, or provider execution details.

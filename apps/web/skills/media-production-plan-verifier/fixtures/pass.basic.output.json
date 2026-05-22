@@ -1,0 +1,16 @@
+{
+  "skill_name": "media-production-plan-verifier",
+  "skill_version": "1.0.0",
+  "contract_version": "1.0.0",
+  "verification_status": "pass",
+  "score": 0.9,
+  "blocking_issues": [],
+  "warnings": [],
+  "missing_decisions": [],
+  "recommended_revisions": [],
+  "targeted_revision_map": {},
+  "credit_risk_summary": {},
+  "approval_readiness": {},
+  "reviewer_notes": [],
+  "allowed_next_actions": ["approve_plan"]
+}

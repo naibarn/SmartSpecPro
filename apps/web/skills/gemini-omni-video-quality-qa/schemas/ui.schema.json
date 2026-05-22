@@ -1,0 +1,1 @@
+{ "version": "1.0.0", "skillId": "gemini-omni-video-quality-qa", "title": "Gemini Omni Video QA", "titleTh": "ตรวจคุณภาพวิดีโอ Gemini Omni", "sections": [{ "id": "qa", "title": "Video QA", "fields": [{ "id": "verdict", "type": "badge" }] }], "outputMapping": { "status": "verdict", "issues": "issues" } }

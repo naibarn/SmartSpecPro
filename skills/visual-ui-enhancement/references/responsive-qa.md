@@ -1,13 +1,19 @@
 # Responsive QA
 
-Check at minimum:
+Use the canonical viewport policy shared with Orchestra UI gates.
 
-- 360px mobile
-- 390px mobile
-- 768px tablet
-- 1024px laptop
-- 1280px desktop
-- 1440px wide desktop
+Required for route-level, async, responsive, accessibility, and visual-polish work:
+
+- 390x844 mobile
+- 768x1024 tablet
+- 1440x900 desktop
+
+Extended checks when the layout is dense, table-heavy, sidebar-heavy, canvas-based, or near a
+breakpoint boundary:
+
+- 360x800 small mobile
+- 1024x768 laptop boundary
+- 1280x800 wide desktop
 
 ## Patterns
 

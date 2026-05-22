@@ -23,7 +23,7 @@ const DATABASE_URL = process.env.DATABASE_URL || "postgresql://smartspec:smartsp
 interface InputField {
   key: string;
   label: string;
-  type: "select" | "text" | "number" | "boolean" | "image_urls" | "video_urls" | "audio_urls" | "array";
+  type: "select" | "text" | "number" | "boolean" | "image_urls" | "video_urls" | "audio_urls" | "array" | "provider_asset_picker";
   options?: { value: string; label: string }[];
   searchable?: boolean;
   optionsSource?: {
@@ -47,6 +47,14 @@ interface InputField {
   };
   syncWith?: "none" | "reference_images" | "reference_videos" | "prompt" | "aspect_ratio";
   itemTemplate?: Record<string, unknown>;
+  hidden?: boolean;
+  advancedOnly?: boolean;
+  managedBySuite?: boolean;
+  assetType?: string;
+  assetCapability?: string;
+  referenceUnitWeight?: number;
+  maxItems?: number;
+  providerPayloadKey?: string;
 }
 
 interface ModelDefinition {
@@ -189,50 +197,56 @@ const GEMINI_OMNI_ASPECT_RATIO_OPTIONS = [
 ];
 
 const GEMINI_OMNI_PRICING_TIERS = {
-  default: 600,
-  "720p-4s-without-video": 450,
-  "720p-6s-without-video": 600,
-  "720p-8s-without-video": 750,
-  "720p-10s-without-video": 900,
-  "1080p-4s-without-video": 450,
-  "1080p-6s-without-video": 600,
-  "1080p-8s-without-video": 750,
-  "1080p-10s-without-video": 900,
-  "4K-4s-without-video": 1050,
-  "4K-6s-without-video": 1200,
-  "4K-8s-without-video": 1350,
-  "4K-10s-without-video": 1500,
-  "720p-4s-with-video": 1200,
-  "720p-6s-with-video": 1200,
-  "720p-8s-with-video": 1200,
-  "720p-10s-with-video": 1200,
-  "1080p-4s-with-video": 1200,
-  "1080p-6s-with-video": 1200,
-  "1080p-8s-with-video": 1200,
-  "1080p-10s-with-video": 1200,
-  "4K-4s-with-video": 1800,
-  "4K-6s-with-video": 1800,
-  "4K-8s-with-video": 1800,
-  "4K-10s-with-video": 1800,
+  default: 120,
+  "720p-4s-without-video": 90,
+  "720p-6s-without-video": 120,
+  "720p-8s-without-video": 150,
+  "720p-10s-without-video": 180,
+  "1080p-4s-without-video": 90,
+  "1080p-6s-without-video": 120,
+  "1080p-8s-without-video": 150,
+  "1080p-10s-without-video": 180,
+  "4K-4s-without-video": 210,
+  "4K-6s-without-video": 240,
+  "4K-8s-without-video": 270,
+  "4K-10s-without-video": 300,
+  "720p-4s-with-video": 240,
+  "720p-6s-with-video": 240,
+  "720p-8s-with-video": 240,
+  "720p-10s-with-video": 240,
+  "1080p-4s-with-video": 240,
+  "1080p-6s-with-video": 240,
+  "1080p-8s-with-video": 240,
+  "1080p-10s-with-video": 240,
+  "4K-4s-with-video": 360,
+  "4K-6s-with-video": 360,
+  "4K-8s-with-video": 360,
+  "4K-10s-with-video": 360,
 };
 
 const GEMINI_OMNI_INPUT_FIELDS: InputField[] = [
-  { key: "image_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images" },
+  { key: "image_urls", label: "Reference Images", type: "image_urls", required: false, syncWith: "reference_images", hidden: true, managedBySuite: true, providerPayloadKey: "image_urls", referenceUnitWeight: 1, maxItems: 7 },
   {
     key: "video_list",
     label: "Source Video",
     type: "video_urls",
     required: false,
     syncWith: "reference_videos",
+    hidden: true,
+    managedBySuite: true,
+    providerPayloadKey: "video_list",
+    referenceUnitWeight: 2,
+    maxItems: 1,
     affectsPricing: true,
     pricingAliases: ["referenceVideoUrls", "referenceVideoUrl", "reference_video_urls", "reference_video_url", "video_url"],
     pricingPresenceLabels: { present: "with-video", absent: "without-video" },
   },
+  { key: "character_ids", label: "Character References", type: "provider_asset_picker", required: false, hidden: true, advancedOnly: true, managedBySuite: true, assetType: "provider_asset", assetCapability: "gemini_omni_character", providerPayloadKey: "character_ids", referenceUnitWeight: 1, maxItems: 3 },
+  { key: "audio_ids", label: "Voice / Audio References", type: "provider_asset_picker", required: false, hidden: true, advancedOnly: true, managedBySuite: true, assetType: "provider_asset", assetCapability: "gemini_omni_audio", providerPayloadKey: "audio_ids", maxItems: 7 },
   { key: "resolution", label: "Resolution", type: "select", options: GEMINI_OMNI_RESOLUTION_OPTIONS, default: "1080p", affectsPricing: true },
   { key: "duration", label: "Duration", type: "select", options: GEMINI_OMNI_DURATION_OPTIONS, default: "4", affectsPricing: true },
   { key: "aspect_ratio", label: "Aspect Ratio", type: "select", options: GEMINI_OMNI_ASPECT_RATIO_OPTIONS, default: "16:9", syncWith: "aspect_ratio" },
-  { key: "audio_ids", label: "Audio IDs", type: "array", required: false },
-  { key: "seed", label: "Seed", type: "number", required: false },
+  { key: "seed", label: "Seed", type: "number", required: false, advancedOnly: true },
 ];
 
 function buildHappyHorseConfig(
@@ -665,7 +679,7 @@ const VIDEO_MODELS = [
     modelType: "video",
     provider: "kie.ai",
     aliases: ["gemini omni", "gemini omni video", "gemini omni flash", "gemini-omni", "google gemini omni"],
-    creditCost: 450,
+    creditCost: 90,
     priority: 22,
     sortOrder: 22,
     durations: [4, 6, 8, 10],

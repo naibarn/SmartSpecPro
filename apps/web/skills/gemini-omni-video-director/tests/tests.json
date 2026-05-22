@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "id": "single_shot_no_assets",
+      "input": "fixtures/pass.single-shot-no-assets.input.json",
+      "output": "fixtures/pass.single-shot-no-assets.output.json",
+      "expected_success": true,
+      "expected_json_paths": {
+        "skill_name": "gemini-omni-video-director",
+        "contract_version": "1.0.0"
+      }
+    }
+  ]
+}

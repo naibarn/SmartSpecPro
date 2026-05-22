@@ -84,6 +84,18 @@ export interface TenantFeatureFlags {
   openAiAgentsRuntimeSkillActive: boolean; // F76 — Shared skill active runtime via OpenAI Agents adapter
   openAiAgentsRuntimeForceRollback: boolean; // F77 — Force new runtime selections back to legacy
   voiceAgents: boolean; // F78 — ElevenLabs ElevenAgents Chat runtime and admin surface
+  geminiOmniSuiteEnabled: boolean; // F79 — Gemini Omni suite UX and validation
+  geminiOmniAssetCreationEnabled: boolean; // F80 — Gemini Omni Character/Audio provider asset creation
+  geminiOmniPromptQaEnabled: boolean; // F81 — Gemini Omni pre-generation prompt QA
+  geminiOmniVideoQaEnabled: boolean; // F82 — Gemini Omni post-generation video QA
+  geminiOmniAutoLearningEnabled: boolean; // F83 — Gemini Omni QA learning recommendations
+  mediaProductionDirectorEnabled: boolean; // F84 — Media Studio Production/Director command center
+  mediaProductionGoalCanvasEnabled: boolean; // F85 — Visual ProductionGoal planning canvas
+  mediaProductionStoryboardPlannerEnabled: boolean; // F86 — Production Storyboard Planner skill gate
+  mediaProductionPlanVerifierEnabled: boolean; // F87 — Production Plan Verifier skill gate
+  mediaProductionDualOutputEnabled: boolean; // F88 — Storyboard Review and Video Edit output projections
+  mediaProductionAgencyReviewersEnabled: boolean; // F89 — Optional Agency reviewer packs
+  mediaProductionLangGraphBatchEnabled: boolean; // F90 — Optional LangGraph checkpointed batch runtime
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -171,6 +183,18 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "openAiAgentsRuntimeSkillActive",
   "openAiAgentsRuntimeForceRollback",
   "voiceAgents",
+  "geminiOmniSuiteEnabled",
+  "geminiOmniAssetCreationEnabled",
+  "geminiOmniPromptQaEnabled",
+  "geminiOmniVideoQaEnabled",
+  "geminiOmniAutoLearningEnabled",
+  "mediaProductionDirectorEnabled",
+  "mediaProductionGoalCanvasEnabled",
+  "mediaProductionStoryboardPlannerEnabled",
+  "mediaProductionPlanVerifierEnabled",
+  "mediaProductionDualOutputEnabled",
+  "mediaProductionAgencyReviewersEnabled",
+  "mediaProductionLangGraphBatchEnabled",
 ]);
 
 /**
@@ -257,6 +281,18 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   openAiAgentsRuntimeSkillActive: false, // Shared skill active stays off until typed caller contracts are proven
   openAiAgentsRuntimeForceRollback: false, // Rollback remains available but disabled by default
   voiceAgents: false, // ElevenAgents runtime stays tenant-gated until security and rollout evidence passes
+  geminiOmniSuiteEnabled: false, // Feature 114 ships behind explicit tenant rollout
+  geminiOmniAssetCreationEnabled: false, // Provider asset creation stays internal/admin gated first
+  geminiOmniPromptQaEnabled: false, // Enable after skill contract verification
+  geminiOmniVideoQaEnabled: false, // Enable after post-generation QA loop is wired
+  geminiOmniAutoLearningEnabled: false, // Recommendations stay off until sample thresholds exist
+  mediaProductionDirectorEnabled: false, // Director stays off until persistence/planner/verifier gates pass
+  mediaProductionGoalCanvasEnabled: false, // Planning preview can be enabled separately
+  mediaProductionStoryboardPlannerEnabled: false,
+  mediaProductionPlanVerifierEnabled: false,
+  mediaProductionDualOutputEnabled: false,
+  mediaProductionAgencyReviewersEnabled: false,
+  mediaProductionLangGraphBatchEnabled: false,
 };
 
 export type HermesRolloutSurface =

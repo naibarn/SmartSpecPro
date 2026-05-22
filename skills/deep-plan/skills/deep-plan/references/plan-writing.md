@@ -138,3 +138,29 @@ Your job is to transform the inputs into a coherent plan:
 
 **Resolve conflicts:** If inputs disagree, use your judgment and document the decision.
 
+---
+
+## UI/UX Planning Requirements
+
+When the feature changes browser-visible UI, user workflows, visual polish, responsive
+behavior, accessibility, component states, onboarding/help UI, or design-system usage,
+the plan must include a UI/UX contract. Use
+`skills/orchestra/references/ui-ux-planning-contract.md` as the canonical schema.
+
+At minimum, include:
+
+- target user / job-to-be-done
+- route or surface inventory
+- component map and ownership boundaries
+- state matrix for loading, empty, error, success, disabled, hover, focus, selected
+- responsive matrix for mobile, tablet, laptop, and desktop
+- accessibility acceptance for keyboard, focus, labels, semantics, contrast, reduced motion
+- visual direction and token strategy from
+  `skills/orchestra/references/design-token-extraction.md`
+- copy contract covering tone, Thai/English language requirements, labels,
+  validation/error copy, empty/loading/success copy, and localization fallback notes
+- browser evidence required by `skills/orchestra/references/ui-browser-verification.md`
+
+If a field is not applicable, mark it `N/A` with a reason. Do not omit it.
+For sectionized plans, validate UI section coverage with:
+`uv run scripts/checks/check-ui-contracts.py --planning-dir <planning_dir>`.

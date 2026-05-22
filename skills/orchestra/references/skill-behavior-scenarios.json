@@ -2,12 +2,57 @@
   "version": 1,
   "scenarios": [
     {
+      "id": "MODEL-001",
+      "user_message": "ใช้ sub-agent ตรวจไฟล์ docs แบบเร็ว ๆ ว่ามีหัวข้อไหนตกหล่น",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "reviewer"
+      ],
+      "expected_model_preference": "gpt-5.3-codex-spark",
+      "expected_gates": [
+        "Verification Before Completion"
+      ],
+      "why": "Bounded read-only sub-agent review should prefer the Spark model for speed and cost unless overridden."
+    },
+    {
+      "id": "MODEL-002",
+      "user_message": "ใช้ sub-agent รุ่น gpt-5.4 ตรวจ architecture decision นี้",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "architect"
+      ],
+      "expected_model_preference": "explicit:gpt-5.4",
+      "expected_gates": [
+        "Verification Before Completion"
+      ],
+      "why": "Explicit user model requests must take precedence over the Spark lightweight default."
+    },
+    {
+      "id": "MODEL-003",
+      "user_message": "แก้ปัญหา auth/RBAC ที่ Spark agent แก้ไม่ผ่าน gate ซ้ำแล้ว",
+      "expected_owner": "orchestra",
+      "expected_route": "security-gate",
+      "expected_agents": [
+        "security"
+      ],
+      "expected_model_preference": "inherited-default",
+      "expected_gates": [
+        "Pre-Merge Security Gate",
+        "Verification Before Completion"
+      ],
+      "why": "High-risk security work and retry escalation after a failed Spark attempt should use the inherited/default model."
+    },
+    {
       "id": "META-001",
       "user_message": "ช่วยวางแผนแล้วทำต่อให้จบ",
       "expected_owner": "orchestra",
       "expected_route": "quick-plan-chain",
       "expected_agents": [],
-      "expected_gates": ["Verification Before Completion"],
+      "expected_gates": [
+        "Verification Before Completion"
+      ],
       "why": "Explicit planning plus execution delegation should activate orchestra and require verification before completion."
     },
     {
@@ -29,16 +74,116 @@
         "Responsive Gate",
         "Component State Gate"
       ],
-      "why": "Premium/responsive/accessibility UI work should route through the visual UI workflow and UI quality gates."
+      "why": "Premium/responsive/accessibility UI work should route through the visual UI workflow and UI quality gates.",
+      "expected_dispatch_mode": "mixed_parallel_waves",
+      "expected_waves": [
+        [
+          "visual-ui-requirement-analyzer"
+        ],
+        [
+          "visual-ui-direction"
+        ],
+        [
+          "ui-builder"
+        ],
+        [
+          "visual-ux-reviewer",
+          "accessibility-reviewer",
+          "responsive-reviewer"
+        ]
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool"
+      ]
+    },
+    {
+      "id": "VISUAL-002",
+      "user_message": "เพิ่ม data-fetching behavior ให้หน้า dashboard ใช้ tRPC hook และคง design เดิม",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "frontend"
+      ],
+      "expected_gates": [
+        "TypeScript Check",
+        "Unit Tests",
+        "Component State Gate",
+        "UI Screenshot/E2E Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Behavior/data-flow frontend work should use frontend, not ui-builder, while still requiring async state and browser evidence gates."
+    },
+    {
+      "id": "VISUAL-003",
+      "user_message": "ปรับ layout หน้า settings ให้ responsive polish พร้อม screenshot หลักฐานทุก viewport",
+      "expected_owner": "visual-ui-enhancement",
+      "expected_route": "visual-ui-flow",
+      "expected_agents": [
+        "visual-ui-requirement-analyzer",
+        "visual-ui-direction",
+        "ui-builder",
+        "responsive-reviewer"
+      ],
+      "expected_gates": [
+        "Responsive Gate",
+        "UI Screenshot/E2E Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Responsive visual polish with screenshot evidence should use ui-builder and browser verification gates.",
+      "expected_dispatch_mode": "mixed_parallel_waves",
+      "expected_waves": [
+        [
+          "visual-ui-requirement-analyzer"
+        ],
+        [
+          "visual-ui-direction"
+        ],
+        [
+          "ui-builder"
+        ],
+        [
+          "responsive-reviewer"
+        ]
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool"
+      ]
     },
     {
       "id": "SECURITY-001",
       "user_message": "แก้ auth middleware และ role permission ให้ปลอดภัย",
       "expected_owner": "orchestra",
       "expected_route": "security-gate",
-      "expected_agents": ["security", "security-trpc", "security-frontend", "security-review"],
-      "expected_gates": ["Pre-Merge Security Gate", "Verification Before Completion"],
-      "why": "Auth and permission work is high risk and must route through security gates."
+      "expected_agents": [
+        "security",
+        "security-trpc",
+        "security-frontend",
+        "security-review"
+      ],
+      "expected_gates": [
+        "Pre-Merge Security Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Auth and permission work is high risk and must route through security gates.",
+      "expected_dispatch_mode": "mixed_parallel_waves",
+      "expected_waves": [
+        [
+          "security"
+        ],
+        [
+          "security-trpc",
+          "security-frontend"
+        ],
+        [
+          "security-review"
+        ]
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool"
+      ]
     },
     {
       "id": "TRIVIAL-001",
@@ -46,7 +191,9 @@
       "expected_owner": "direct-edit",
       "expected_route": "direct-edit",
       "expected_agents": [],
-      "expected_gates": ["Verification Before Completion"],
+      "expected_gates": [
+        "Verification Before Completion"
+      ],
       "why": "Obvious tiny edits should not trigger heavyweight orchestration."
     },
     {
@@ -55,7 +202,10 @@
       "expected_owner": "orchestra",
       "expected_route": "multi-agent-waves",
       "expected_agents": [],
-      "expected_gates": ["Skill Behavior Tests", "Verification Before Completion"],
+      "expected_gates": [
+        "Skill Behavior Tests",
+        "Verification Before Completion"
+      ],
       "why": "Routing behavior changes should be test-backed and verified through skill behavior scenarios."
     },
     {
@@ -64,7 +214,10 @@
       "expected_owner": "gpt-image-2",
       "expected_route": "installed-skill-flow",
       "expected_agents": [],
-      "expected_gates": ["Installed Skill Gate", "Verification Before Completion"],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Verification Before Completion"
+      ],
       "why": "Image generation should route through gpt-image-2 first, then use Codex-native image execution when available."
     },
     {
@@ -73,7 +226,10 @@
       "expected_owner": "kb-retriever",
       "expected_route": "installed-skill-flow",
       "expected_agents": [],
-      "expected_gates": ["Installed Skill Gate", "Verification Before Completion"],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Verification Before Completion"
+      ],
       "why": "Local knowledge-base retrieval should use bounded local search with file citations."
     },
     {
@@ -82,7 +238,10 @@
       "expected_owner": "web-video-presentation",
       "expected_route": "installed-skill-flow",
       "expected_agents": [],
-      "expected_gates": ["Installed Skill Gate", "Verification Before Completion"],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Verification Before Completion"
+      ],
       "why": "Screen-recordable narrated web presentations should use the web-video-presentation skill with side-effect confirmations."
     },
     {
@@ -106,7 +265,10 @@
       "expected_owner": "orchestra",
       "expected_route": "brainstorming-prelude",
       "expected_agents": [],
-      "expected_gates": ["Installed Skill Gate", "Verification Before Completion"],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Verification Before Completion"
+      ],
       "why": "Open-ended product direction should use brainstorming first, then continue to deep-project only after a direction is chosen."
     },
     {
@@ -115,8 +277,638 @@
       "expected_owner": "orchestra",
       "expected_route": "full-pipeline",
       "expected_agents": [],
-      "expected_gates": ["Verification Before Completion"],
+      "expected_gates": [
+        "Verification Before Completion"
+      ],
       "why": "A concrete project-scale module should skip brainstorming and start with deep-project decomposition."
+    },
+    {
+      "id": "LAUNCH-001",
+      "user_message": "ตรวจ ship readiness ก่อน launch: security, bundle, migration, api smoke, health และ browser checks",
+      "expected_owner": "ship",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Security Review (General)",
+        "Dependency/Supply-Chain Gate",
+        "Migration Checker",
+        "API Smoke Test",
+        "Health Check",
+        "Verification Before Completion"
+      ],
+      "why": "Launch readiness should route to the ship skill and compose the launch gate family."
+    },
+    {
+      "id": "DEPLOY-001",
+      "user_message": "deploy production หลัง run migration-checker และ health-check ให้ครบ",
+      "expected_owner": "deploy",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Migration Checker",
+        "Health Check",
+        "CI/Release Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Deployment is an installed deploy workflow with confirmation before external side effects."
+    },
+    {
+      "id": "RELEASE-001",
+      "user_message": "ทำ release notes, bump version, GitHub release และ npm publish checklist",
+      "expected_owner": "release",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [
+        "docs-release",
+        "ci-release"
+      ],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "CI/Release Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Release workflow should use release handling plus docs and CI/release checks.",
+      "expected_dispatch_mode": "parallel_batch",
+      "expected_waves": [
+        [
+          "docs-release",
+          "ci-release"
+        ]
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool"
+      ]
+    },
+    {
+      "id": "SECURITY-AUDIT-001",
+      "user_message": "run security-audit แบบ OWASP, headers, dependency vulnerabilities และ hardening",
+      "expected_owner": "security-audit",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [
+        "security"
+      ],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Security Review (General)",
+        "Dependency/Supply-Chain Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Broad hardening should route to security-audit and security gates."
+    },
+    {
+      "id": "SECRET-001",
+      "user_message": "scan secrets ใน repo และบอก remediation โดยไม่ print full secret",
+      "expected_owner": "secret-scanner",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Secret scanning should use the dedicated secret-scanner skill and redact secrets."
+    },
+    {
+      "id": "PENTEST-001",
+      "user_message": "ทำ pentest web/API แบบ authorized หา auth bypass และ IDOR",
+      "expected_owner": "pentest",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [
+        "security",
+        "tenant-data-isolation-reviewer"
+      ],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Pre-Merge Security Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Authorized pentesting should use pentest and security specialists.",
+      "expected_dispatch_mode": "parallel_batch",
+      "expected_waves": [
+        [
+          "security",
+          "tenant-data-isolation-reviewer"
+        ]
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool"
+      ]
+    },
+    {
+      "id": "MIGRATION-001",
+      "user_message": "ตรวจ migration state ก่อน deploy และดู rollback/no-data-loss",
+      "expected_owner": "migration-checker",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [
+        "database"
+      ],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Migration state checks should route to migration-checker with database safety awareness."
+    },
+    {
+      "id": "API-HEALTH-001",
+      "user_message": "run api-smoke-test แล้ว health-check URL production พร้อม CORS และ headers",
+      "expected_owner": "api-smoke-test",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "API Smoke Test",
+        "Health Check",
+        "Verification Before Completion"
+      ],
+      "why": "API smoke and URL health checks should use installed operational skills."
+    },
+    {
+      "id": "PERF-001",
+      "user_message": "ตรวจ bundle size และ profile backend code performance anti-patterns",
+      "expected_owner": "bundle-tracker",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [
+        "performance"
+      ],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Performance Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Bundle and backend profiling should use bundle-tracker/code-profiler with performance gate coverage."
+    },
+    {
+      "id": "SEO-001",
+      "user_message": "ทำ seo-audit รวม content score, OG, sitemap, robots, llms.txt และ structured data",
+      "expected_owner": "seo-audit",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Verification Before Completion"
+      ],
+      "why": "SEO/GEO/AEO bundle should route to seo-audit and related installed generators."
+    },
+    {
+      "id": "GA4-001",
+      "user_message": "query GA4 traffic ของ landing page แล้วสรุป metric จริง",
+      "expected_owner": "ga4-client",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Analytics queries should use ga4-client and never invent metrics."
+    },
+    {
+      "id": "RESCUE-001",
+      "user_message": "production incident site down errors spiking ช่วย diagnose และ recover",
+      "expected_owner": "rescue",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [
+        "observability-audit-agent",
+        "error-detective"
+      ],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Health Check",
+        "Verification Before Completion"
+      ],
+      "why": "Production incidents should route to rescue with observability/error investigation.",
+      "expected_dispatch_mode": "parallel_batch",
+      "expected_waves": [
+        [
+          "observability-audit-agent",
+          "error-detective"
+        ]
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool"
+      ]
+    },
+    {
+      "id": "CLAUDE-001",
+      "user_message": "audit และปรับ CLAUDE.md maintenance ให้ project memory ดีขึ้น",
+      "expected_owner": "revise-claude-md",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Verification Before Completion"
+      ],
+      "why": "CLAUDE.md maintenance should use the dedicated revise-claude-md skill."
+    },
+    {
+      "id": "SKILL-SYNC-001",
+      "user_message": "ตรวจ skill publish/sync drift และ generated ssp agents ให้ตรงกับ sub-agents",
+      "expected_owner": "orchestra",
+      "expected_route": "installed-skill-flow",
+      "expected_agents": [],
+      "expected_gates": [
+        "Installed Skill Gate",
+        "Skill Behavior Tests",
+        "Verification Before Completion"
+      ],
+      "why": "Skill-system maintenance should use orchestra plus installed sub-agents support pack checks."
+    },
+    {
+      "id": "CONTRACT-001",
+      "user_message": "ตรวจ tRPC/FastAPI/shared schema contract drift ระหว่าง client server และ tests",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "api-contract-reviewer"
+      ],
+      "expected_gates": [
+        "Skill Behavior Tests",
+        "Verification Before Completion"
+      ],
+      "why": "API contract drift should dispatch the api-contract-reviewer."
+    },
+    {
+      "id": "TENANT-001",
+      "user_message": "ตรวจ tenantId, RBAC, user ownership, private vault และ billing credit isolation",
+      "expected_owner": "orchestra",
+      "expected_route": "security-gate",
+      "expected_agents": [
+        "tenant-data-isolation-reviewer",
+        "security-review"
+      ],
+      "expected_gates": [
+        "Pre-Merge Security Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Tenant and ownership boundaries are security-sensitive and need the dedicated isolation reviewer.",
+      "expected_dispatch_mode": "mixed_parallel_waves",
+      "expected_waves": [
+        [
+          "tenant-data-isolation-reviewer"
+        ],
+        [
+          "security-review"
+        ]
+      ],
+      "sequential_reason": "security-review aggregates collected reviewer findings after the specialist report exists",
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool"
+      ]
+    },
+    {
+      "id": "LLM-COST-001",
+      "user_message": "audit LLM provider routing, cost budget, audit logs, retry fallback และ prompt injection cost risk",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "llm-runtime-cost-auditor",
+        "performance"
+      ],
+      "expected_gates": [
+        "Performance Gate",
+        "Security Review (General)",
+        "Verification Before Completion"
+      ],
+      "why": "LLM runtime and cost controls need the dedicated cost auditor plus performance/security gates.",
+      "expected_dispatch_mode": "parallel_batch",
+      "expected_waves": [
+        [
+          "llm-runtime-cost-auditor",
+          "performance"
+        ]
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool"
+      ]
+    },
+    {
+      "id": "BROWSER-SANDBOX-001",
+      "user_message": "review browser automation sandbox, webhook, SSRF, file upload/download และ network permission",
+      "expected_owner": "orchestra",
+      "expected_route": "security-gate",
+      "expected_agents": [
+        "browser-automation-sandbox-reviewer",
+        "security-review"
+      ],
+      "expected_gates": [
+        "Pre-Merge Security Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Browser automation and webhook sandbox surfaces are security-sensitive.",
+      "expected_dispatch_mode": "mixed_parallel_waves",
+      "expected_waves": [
+        [
+          "browser-automation-sandbox-reviewer"
+        ],
+        [
+          "security-review"
+        ]
+      ],
+      "sequential_reason": "security-review aggregates collected sandbox findings after the specialist report exists",
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool"
+      ]
+    },
+    {
+      "id": "I18N-001",
+      "user_message": "review Thai/English copy, i18n namespaces, fallback, validation errors และ help docs consistency",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "i18n-content-reviewer"
+      ],
+      "expected_gates": [
+        "Verification Before Completion"
+      ],
+      "why": "Copy/i18n review should dispatch the i18n-content-reviewer."
+    },
+    {
+      "id": "OBS-001",
+      "user_message": "audit logs traces metrics audit events error budget และ incident evidence",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "observability-audit-agent"
+      ],
+      "expected_gates": [
+        "Verification Before Completion"
+      ],
+      "why": "Observability readiness should dispatch the observability audit agent."
+    },
+    {
+      "id": "PARALLEL-DEFAULT-001",
+      "user_message": "เพิ่ม dashboard summary แบบ end-to-end ให้มี tRPC backend, React frontend และ tests ให้ครบ",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "backend",
+        "frontend",
+        "test-qa"
+      ],
+      "expected_dispatch_mode": "mixed_parallel_waves",
+      "expected_waves": [
+        [
+          "backend",
+          "frontend"
+        ],
+        [
+          "test-qa"
+        ]
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool"
+      ],
+      "expected_gates": [
+        "TypeScript Check",
+        "Unit Tests",
+        "Verification Before Completion"
+      ],
+      "why": "End-to-end frontend/backend work has independent writer scopes and should default to a parallel implementation wave, then tests."
+    },
+    {
+      "id": "SECURITY-PARALLEL-001",
+      "user_message": "run pre-merge security gate for changed tRPC, FastAPI, and frontend auth surfaces",
+      "expected_owner": "orchestra",
+      "expected_route": "security-gate",
+      "expected_agents": [
+        "security-trpc",
+        "security-fastapi",
+        "security-frontend",
+        "security-review"
+      ],
+      "expected_dispatch_mode": "mixed_parallel_waves",
+      "expected_waves": [
+        [
+          "security-trpc",
+          "security-fastapi",
+          "security-frontend"
+        ],
+        [
+          "security-review"
+        ]
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool"
+      ],
+      "expected_gates": [
+        "Pre-Merge Security Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Applicable security specialists are independent read-only reviewers and must batch before the aggregator."
+    },
+    {
+      "id": "UI-REVIEW-PARALLEL-001",
+      "user_message": "หลังปรับ UI แล้วให้ review UX accessibility responsive พร้อมกันและสรุปหลักฐาน browser",
+      "expected_owner": "visual-ui-enhancement",
+      "expected_route": "visual-ui-flow",
+      "expected_agents": [
+        "ui-builder",
+        "visual-ux-reviewer",
+        "accessibility-reviewer",
+        "responsive-reviewer"
+      ],
+      "expected_dispatch_mode": "mixed_parallel_waves",
+      "expected_waves": [
+        [
+          "ui-builder"
+        ],
+        [
+          "visual-ux-reviewer",
+          "accessibility-reviewer",
+          "responsive-reviewer"
+        ]
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool"
+      ],
+      "expected_gates": [
+        "Visual Polish Gate",
+        "Accessibility Gate",
+        "Responsive Gate",
+        "UI Screenshot/E2E Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Read-only UI reviewers should run together after the UI builder wave."
+    },
+    {
+      "id": "INLINE-FORBIDDEN-001",
+      "user_message": "แก้หลายไฟล์ frontend กับ backend ให้ทำงานร่วมกัน ถ้ามี subagent tool ให้แตก agent ทำพร้อมกัน",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "frontend",
+        "backend"
+      ],
+      "expected_dispatch_mode": "parallel_batch",
+      "expected_waves": [
+        [
+          "frontend",
+          "backend"
+        ]
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool"
+      ],
+      "expected_gates": [
+        "TypeScript Check",
+        "Unit Tests",
+        "Verification Before Completion"
+      ],
+      "why": "When an agent tool is available, conductor inline implementation is forbidden for parallelizable non-trivial work."
+    },
+    {
+      "id": "SEQUENTIAL-EXCEPTION-001",
+      "user_message": "เพิ่ม database migration แล้วค่อยทำ git release checklist ให้ปลอดภัย",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "database",
+        "ci-release"
+      ],
+      "expected_dispatch_mode": "sequential_exception",
+      "expected_waves": [
+        [
+          "database"
+        ],
+        [
+          "ci-release"
+        ]
+      ],
+      "sequential_reason": "database migrations and git/release operations are single-agent constraints and must run after the prior state is verified",
+      "forbidden_execution": [
+        "direct-edit"
+      ],
+      "expected_gates": [
+        "Migration Checker",
+        "CI/Release Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Sequential execution is allowed only for explicit hard constraints such as database and git/release state."
+    },
+    {
+      "id": "WORKTREE-001",
+      "user_message": "แตก subagents สองตัวแก้ไฟล์คนละชุดแบบ parallel-with-worktree แล้ว merge ให้ปลอดภัย",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [],
+      "expected_gates": [
+        "Verification Before Completion"
+      ],
+      "why": "Parallel writer work should require explicit ownership, isolation, and conductor-owned merge protocol.",
+      "expected_dispatch_mode": "parallel_with_worktree",
+      "expected_waves": [
+        [
+          "worker-a",
+          "worker-b"
+        ]
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool"
+      ]
+    },
+    {
+      "id": "REVIEW-CONVERGENCE-001",
+      "user_message": "งานเสร็จแล้วให้ตรวจซ้ำจนมั่นใจว่าไม่มี material findings เหลือ และไม่ต้องถามว่าควรตรวจกี่รอบ",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "reviewer",
+        "api-contract-reviewer"
+      ],
+      "expected_dispatch_mode": "mixed_parallel_waves",
+      "expected_waves": [
+        [
+          "reviewer",
+          "api-contract-reviewer"
+        ]
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool",
+        "single-review-only"
+      ],
+      "expected_gates": [
+        "Review Convergence Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Medium+ completed work should run convergence review rounds until clean criteria pass, not stop after a single review."
+    },
+    {
+      "id": "IMPACT-RIPPLE-001",
+      "user_message": "หลังแก้ contract backend แล้วให้คาดการณ์ผลกระทบตามมา impact ripple ไปถึง frontend tests docs และ rerun ที่จำเป็น",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "api-contract-reviewer",
+        "frontend",
+        "test-qa",
+        "reviewer"
+      ],
+      "expected_dispatch_mode": "mixed_parallel_waves",
+      "expected_waves": [
+        [
+          "api-contract-reviewer"
+        ],
+        [
+          "frontend",
+          "test-qa"
+        ],
+        [
+          "reviewer"
+        ]
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool",
+        "skip-impact-closure"
+      ],
+      "expected_gates": [
+        "TypeScript Check",
+        "Unit Tests",
+        "Review Convergence Gate",
+        "Verification Before Completion"
+      ],
+      "why": "Fixes to shared contracts must trigger second-order impact closure and stale gate reruns before completion."
+    },
+    {
+      "id": "STALE-GATE-001",
+      "user_message": "after review fixes, rerun stale gates and do not count old passing tests as completion evidence",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [
+        "reviewer",
+        "test-qa"
+      ],
+      "expected_dispatch_mode": "mixed_parallel_waves",
+      "expected_waves": [
+        [
+          "reviewer"
+        ],
+        [
+          "test-qa"
+        ]
+      ],
+      "forbidden_execution": [
+        "direct-edit",
+        "inline-with-agent-tool",
+        "stale-gate-pass"
+      ],
+      "expected_gates": [
+        "Unit Tests",
+        "Review Convergence Gate",
+        "Verification Before Completion"
+      ],
+      "why": "A gate that passed before later fixes is stale and must be rerun before final summary."
     }
   ]
 }

@@ -17,6 +17,13 @@ import {
 } from "../services/mediaGenerationService";
 import { deductCredits, hasEnoughCredits, refundCredits } from "../services/creditService";
 import { calculateCreditCost, type UserSelections } from "../services/pricingCalculator";
+import {
+  GEMINI_OMNI_AUDIO_CAPABILITY,
+  GEMINI_OMNI_CHARACTER_CAPABILITY,
+  GEMINI_OMNI_VIDEO_MODEL_ID,
+  buildGeminiOmniProviderExtraParams,
+  validateGeminiOmniVideoInput,
+} from "../../shared/geminiOmni";
 import { signBearerToken } from "../_core/tokens";
 import { mediaGenerationLimiter, isLuxTtsModel, checkLuxTtsRateLimit } from "../services/rateLimiter";
 import { auditLogger } from "../services/auditLogger";
@@ -69,6 +76,7 @@ import {
   listDeferredMediaTasks,
   scheduleDeferredVideoRetry,
 } from "../services/deferredMediaRetryService";
+import { assertMediaProviderAssetsUsable } from "../services/mediaProviderAssetService";
 
 const extraParamsSchema = z
   .record(z.any())
@@ -81,6 +89,79 @@ const extraParamsSchema = z
   });
 
 const creditOriginSurfaceSchema = z.enum(["media_studio"]).optional();
+
+function getGeminiOmniIds(extraParams: Record<string, any> | undefined, key: "character_ids" | "audio_ids"): string[] {
+  const value = extraParams?.[key];
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item ?? "").trim()).filter(Boolean);
+}
+
+async function preflightGeminiOmniVideoRequest(params: {
+  model: string;
+  ctx: { tenantId: unknown; user: { id: number; currentTenantId?: unknown } };
+  prompt: string;
+  duration?: number;
+  resolution?: string;
+  referenceImageUrls?: string[];
+  referenceVideoUrls?: string[];
+  referenceVideoUrl?: string;
+  extraParams?: Record<string, any>;
+}): Promise<Record<string, unknown> | null> {
+  if (params.model !== GEMINI_OMNI_VIDEO_MODEL_ID) {
+    return null;
+  }
+
+  const characterIds = getGeminiOmniIds(params.extraParams, "character_ids");
+  const audioIds = getGeminiOmniIds(params.extraParams, "audio_ids");
+  const validation = validateGeminiOmniVideoInput({
+    prompt: params.prompt,
+    imageUrls: params.referenceImageUrls ?? params.extraParams?.image_urls,
+    videoList: params.extraParams?.video_list,
+    referenceVideoUrls: params.referenceVideoUrls,
+    referenceVideoUrl: params.referenceVideoUrl,
+    characterIds,
+    audioIds,
+    duration: params.duration,
+    resolution: params.resolution,
+  });
+
+  if (!validation.ok) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Gemini Omni validation failed: ${validation.issues.map((issue) => issue.message).join("; ")}`,
+    });
+  }
+
+  const tenantId = resolveTenantIdVarchar(params.ctx.tenantId, params.ctx.user.currentTenantId);
+  if (!tenantId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required for Gemini Omni assets" });
+  }
+
+  await assertMediaProviderAssetsUsable({
+    tenantId,
+    userId: params.ctx.user.id,
+    capability: GEMINI_OMNI_CHARACTER_CAPABILITY,
+    providerAssetIds: characterIds,
+  });
+  await assertMediaProviderAssetsUsable({
+    tenantId,
+    userId: params.ctx.user.id,
+    capability: GEMINI_OMNI_AUDIO_CAPABILITY,
+    providerAssetIds: audioIds,
+  });
+
+  return buildGeminiOmniProviderExtraParams({
+    prompt: params.prompt,
+    imageUrls: params.referenceImageUrls,
+    referenceVideoUrls: params.referenceVideoUrls,
+    referenceVideoUrl: params.referenceVideoUrl,
+    videoList: params.extraParams?.video_list,
+    characterIds,
+    audioIds,
+    duration: params.duration,
+    resolution: params.resolution,
+  });
+}
 
 const DESKTOP_MEDIA_ORIGINS = new Set([
   "tauri://localhost",
@@ -1980,6 +2061,20 @@ export const mediaRouter = router({
         configJson: dbModel.configJson,
         fieldLabel: "Prompt",
       });
+      const geminiOmniExtraParams = await preflightGeminiOmniVideoRequest({
+        model,
+        ctx,
+        prompt: input.prompt,
+        duration: input.duration,
+        resolution: input.resolution,
+        referenceImageUrls: input.referenceImageUrls,
+        referenceVideoUrls: input.referenceVideoUrls,
+        referenceVideoUrl: input.referenceVideoUrl,
+        extraParams: input.extraParams,
+      });
+      const normalizedExtraParams = geminiOmniExtraParams
+        ? { ...input.extraParams, ...geminiOmniExtraParams }
+        : input.extraParams;
       assertModelAwareVideoRequest({
         modelId: model,
         configJson: dbModel.configJson,
@@ -1991,14 +2086,15 @@ export const mediaRouter = router({
         referenceImageUrls: input.referenceImageUrls,
         referenceVideoUrls: input.referenceVideoUrls,
         referenceVideoUrl: input.referenceVideoUrl,
-        extraParams: input.extraParams,
+        extraParams: normalizedExtraParams,
       });
       const creditCost = calculateCreditCost(dbModel, {
-        ...(input.extraParams ?? {}),
+        ...(normalizedExtraParams ?? {}),
         duration: input.duration,
         resolution: input.resolution,
         referenceVideoUrls: input.referenceVideoUrls,
         referenceVideoUrl: input.referenceVideoUrl,
+        video_list: normalizedExtraParams?.video_list,
       });
 
       // Check credits
@@ -2031,7 +2127,7 @@ export const mediaRouter = router({
             referenceVideoUrls: input.referenceVideoUrls,
             referenceVideoUrl: input.referenceVideoUrl,
             apiConfig: apiConfigWithProvider,
-            extraParams: input.extraParams,
+            extraParams: normalizedExtraParams,
             publicUrl: ctx.publicUrl ?? undefined,
             auditContext: {
               userId: ctx.user.id,
@@ -2607,6 +2703,20 @@ export const mediaRouter = router({
         fieldLabel: "Prompt",
       });
       const duration = input.duration || 5;
+      const geminiOmniExtraParams = await preflightGeminiOmniVideoRequest({
+        model,
+        ctx,
+        prompt: input.prompt,
+        duration,
+        resolution: input.resolution,
+        referenceImageUrls: input.referenceImageUrls,
+        referenceVideoUrls: input.referenceVideoUrls,
+        referenceVideoUrl: input.referenceVideoUrl,
+        extraParams: input.extraParams,
+      });
+      const normalizedExtraParams = geminiOmniExtraParams
+        ? { ...input.extraParams, ...geminiOmniExtraParams }
+        : input.extraParams;
       assertModelAwareVideoRequest({
         modelId: model,
         configJson: dbModel.configJson,
@@ -2618,14 +2728,15 @@ export const mediaRouter = router({
         referenceImageUrls: input.referenceImageUrls,
         referenceVideoUrls: input.referenceVideoUrls,
         referenceVideoUrl: input.referenceVideoUrl,
-        extraParams: input.extraParams,
+        extraParams: normalizedExtraParams,
       });
       const creditCost = calculateCreditCost(dbModel, {
-        ...(input.extraParams ?? {}),
+        ...(normalizedExtraParams ?? {}),
         duration,
         resolution: input.resolution,
         referenceVideoUrls: input.referenceVideoUrls,
         referenceVideoUrl: input.referenceVideoUrl,
+        video_list: normalizedExtraParams?.video_list,
       });
 
       // Check and deduct credits upfront to prevent race condition
@@ -2677,7 +2788,7 @@ export const mediaRouter = router({
             referenceVideoUrl: input.referenceVideoUrl,
             apiConfig: apiConfigWithProvider,
             extraParams: {
-              ...input.extraParams,
+              ...normalizedExtraParams,
               __reserved_credits: creditCost,
               __reserved_resolution: input.resolution,
               __reserved_duration: duration,
@@ -2721,7 +2832,7 @@ export const mediaRouter = router({
               referenceVideoUrl: input.referenceVideoUrl,
               apiConfig: apiConfigWithProvider,
               extraParams: {
-                ...input.extraParams,
+                ...normalizedExtraParams,
                 __reserved_credits: creditCost,
                 __reserved_resolution: input.resolution,
                 __reserved_duration: duration,
@@ -3275,6 +3386,8 @@ export const mediaRouter = router({
         duration: z.number().optional(),
         resolution: z.string().optional(),
         text: z.string().optional(),
+        referenceVideoUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
+        referenceVideoUrl: referenceMediaUrlSchema.optional(),
         extraParams: z.record(z.any()).optional(),
       })
     )
@@ -3290,7 +3403,10 @@ export const mediaRouter = router({
         duration: input.duration,
         resolution: input.resolution,
         text: input.text,
+        referenceVideoUrls: input.referenceVideoUrls,
+        referenceVideoUrl: input.referenceVideoUrl,
         ...(input.extraParams ?? {}),
+        video_list: input.extraParams?.video_list ?? input.referenceVideoUrls ?? (input.referenceVideoUrl ? [input.referenceVideoUrl] : undefined),
       });
 
       return {

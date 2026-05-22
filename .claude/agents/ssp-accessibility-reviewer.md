@@ -59,13 +59,17 @@ Accepts a standard Task Packet with:
 
 ## 5. Output Contract
 
-Return:
+Return a standard **Result Report** plus `ux_verdict`:
 
-- verdict: PASS / PASS_WITH_FIXES / FAIL
-- severity-ranked findings
-- exact component/control affected
-- concrete fix recommendation
-- checks not possible and why
+- `status`: success / partial / failed
+- `files_changed`: [] (always empty — read-only)
+- `findings`: severity-ranked accessibility findings, exact component/control
+  affected, concrete fix recommendation, and checks not possible with reasons
+- `blockers`: missing markup evidence, inaccessible runtime-only behavior, or critical
+  a11y issue that prevents approval
+- `next_steps`: recommended fix owner and browser/manual checks required
+- `quality_gate_results`: accessibility checklist results from QUALITY GATE
+- `ux_verdict`: PASS / FIXES_REQUIRED / BLOCKED
 
 ---
 
@@ -94,4 +98,4 @@ Return:
 
 - If contrast cannot be measured, report likely token-level risks
 - If runtime behavior is required, request Playwright/manual verification
-- If code lacks enough context, return `PASS_WITH_FIXES` or `FAIL` based on severity
+- If code lacks enough context, return `FIXES_REQUIRED` or `BLOCKED` based on severity

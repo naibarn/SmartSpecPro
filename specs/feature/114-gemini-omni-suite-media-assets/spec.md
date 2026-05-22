@@ -33,6 +33,8 @@ Current provider contract from docs:
   - each character ID in `character_ids` consumes 1 unit
   - maximum 1 video per request
   - maximum 3 character IDs per request
+- Source-video entries use provider spelling `{ url, start?, ends? }`.
+- Source-video validation should accept tenant upload URLs (`/uploads/...` and `/api/storage/files/...`) before resolving them to public/provider-fetchable URLs.
 - Character creation accepts only 1 image, max 20 MB.
 - `audio_ids` used by Video and Character must come from Gemini Omni Audio.
 
@@ -1456,7 +1458,7 @@ Payload shape:
   "input": {
     "prompt": "Create a cinematic product video.",
     "image_urls": ["https://.../image.png"],
-    "video_list": [{ "url": "https://.../source.mp4" }],
+    "video_list": [{ "url": "https://.../source.mp4", "start": 0, "ends": 8 }],
     "character_ids": ["character_id"],
     "audio_ids": ["kie_audio_id"],
     "duration": "4"
@@ -1713,7 +1715,7 @@ Rollback:
 - Node generation flow stores skill run and QA learning records with redacted references.
 - Python provider builds Gemini Omni Video payload with:
   - `image_urls`
-  - `video_list: [{ url }]`
+  - `video_list: [{ url, start?, ends? }]`
   - `character_ids`
   - `audio_ids`
   - `duration`

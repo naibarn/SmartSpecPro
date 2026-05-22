@@ -854,6 +854,69 @@ describe("media router DB-first model contract", () => {
     ).resolves.toMatchObject({ success: true });
   });
 
+  it("generateVideoAsync accepts Gemini Omni tenant upload references and forwards video_list", async () => {
+    const geminiConfig = {
+      apiPayloadFormat: "market",
+      kieModelId: "gemini-omni-video",
+      supportedDurations: [4, 6, 8, 10],
+      supportedResolutions: ["720p", "1080p", "4K"],
+      maxReferenceImages: 7,
+      maxReferenceVideos: 1,
+      apiConfig: {
+        reference_image_input_key: "image_urls",
+        reference_image_input_type: "array",
+        reference_video_input_key: "video_list",
+        reference_video_input_type: "object_array",
+      },
+      inputFields: [
+        { key: "image_urls", type: "image_urls", syncWith: "reference_images", maxItems: 7 },
+        { key: "video_list", type: "video_urls", syncWith: "reference_videos", maxItems: 1, affectsPricing: true },
+        { key: "resolution", type: "select", options: [{ value: "1080p", label: "1080p" }] },
+        { key: "duration", type: "select", options: [{ value: "4", label: "4s" }] },
+      ],
+      pricingTiers: { default: 90, "1080p-4s-with-video": 240 },
+      pricingFormula: "matrix",
+    };
+    const fn = mediaRouter.generateVideoAsync as Function;
+    mockGetDb.mockResolvedValue(makeDbWithSequentialSelectResults([
+      [{ name: "Gemini Omni Video", modelType: "video", provider: "kie.ai", isEnabled: true }],
+      [{ creditCost: 90, configJson: geminiConfig }],
+    ]) as any);
+    mockCalculateCreditCost.mockReturnValue(240);
+
+    await expect(
+      fn({
+        ctx: makeCtx(),
+        input: {
+          prompt: "cinematic edit",
+          model: "gemini-omni-video",
+          duration: 4,
+          resolution: "1080p",
+          referenceImageUrls: ["/uploads/ref.png"],
+          referenceVideoUrls: ["/api/storage/files/chat/uploads/source.mp4"],
+        },
+      }),
+    ).resolves.toMatchObject({ success: true });
+
+    expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "gemini-omni-video",
+        referenceVideoUrls: ["/api/storage/files/chat/uploads/source.mp4"],
+        extraParams: expect.objectContaining({
+          image_urls: ["/uploads/ref.png"],
+          video_list: [{ url: "/api/storage/files/chat/uploads/source.mp4" }],
+        }),
+      }),
+      "user-token",
+    );
+    expect(mockCalculateCreditCost).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        video_list: [{ url: "/api/storage/files/chat/uploads/source.mp4" }],
+      }),
+    );
+  });
+
   it("prefers a configured provider when resolving the DB default model", async () => {
     const db = makeDbWithSequentialSelectResults([
       [

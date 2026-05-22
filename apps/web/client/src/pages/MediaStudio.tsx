@@ -110,6 +110,7 @@ import {
   AlertCircle,
   Library,
   Lock,
+  Save,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -215,6 +216,16 @@ import {
 import { buildMediaStudioCommonPayload } from "@/lib/mediaStudioPayload";
 import { inferMediaStudioModelInputSyncTarget } from "@/lib/mediaStudioModelInputSync";
 import { buildPricingTierKey } from "@shared/mediaModelPricing";
+import {
+  GEMINI_OMNI_AUDIO_CAPABILITY,
+  GEMINI_OMNI_CHARACTER_CAPABILITY,
+  GEMINI_OMNI_MAX_SOURCE_VIDEO_SECONDS,
+  GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES,
+  GEMINI_OMNI_VIDEO_MODEL_ID,
+  GEMINI_OMNI_VOICE_PRESETS,
+  validateGeminiOmniVideoInput,
+} from "@shared/geminiOmni";
+import type { ProductionGoal } from "@shared/mediaProduction";
 import { videoEditorRenderService } from "@/services/videoEditorService";
 import { sanitizeProjectName } from "@smartspec/shared";
 import type { MarketplaceStorytellingHandoff } from "@shared/marketplaceCapture";
@@ -247,9 +258,13 @@ type MarketplaceStudioPlatformFilter = "all" | "shopee" | "tiktok_shop";
 type MarketplaceStudioMode = "images" | "products";
 type LibraryMediaItemTypeFilter = Exclude<LibraryItemTypeFilter, "all">;
 type StudioSidebarTab = "history" | "library" | "marketplace";
+type StudioWorkspaceTab = "production" | MediaType;
 type HistoryGalleryTab = "image" | "video" | "audio";
 type VideoAudioWorkflow = "native" | "separate_voice" | "separate_music" | "separate_voice_music";
 type StoryboardAudioPrepMode = "off" | "generate_voice" | "existing_voice";
+const MEDIA_PRODUCTION_STORYBOARD_PLANNER_SKILL_ID = "media-production-storyboard-planner";
+const MEDIA_PRODUCTION_PLAN_VERIFIER_SKILL_ID = "media-production-plan-verifier";
+const GEMINI_OMNI_VIDEO_DIRECTOR_SKILL_ID = "gemini-omni-video-director";
 type MarketplaceStudioImage = {
   id: string;
   productId: string;
@@ -523,6 +538,7 @@ interface ReferenceImage {
 interface ReferenceVideo {
   url: string;
   name: string;
+  durationSeconds?: number;
 }
 
 interface GeneratedMedia {
@@ -560,6 +576,81 @@ interface StoryboardVideoGenerationContext {
   useReferenceVideoUrlFallback?: boolean;
 }
 
+type GeminiOmniDeliveryMode = "single_shot" | "multi_shot_single_video" | "storyboard_multi_video";
+
+type ProductionDirectorStatus =
+  | "idle"
+  | "saving_goal"
+  | "planning"
+  | "plan_ready"
+  | "verifying"
+  | "needs_revision"
+  | "approved"
+  | "exporting"
+  | "error";
+
+interface ProductionDirectorState {
+  enabled: boolean;
+  productionRunId: string;
+  title: string;
+  goalSummary: string;
+  audience: string;
+  platform: string;
+  productTruthNotes: string;
+  creativeDirection: string;
+  voiceStrategy: string;
+  revisionInstructions: string;
+  targetDurationSeconds: string;
+  status: ProductionDirectorStatus;
+  goalVersion?: number;
+  planVersion?: number;
+  plan: Record<string, any> | null;
+  verification: Record<string, any> | null;
+  approved: boolean;
+  lastError?: string;
+}
+
+interface GeminiOmniSuiteState {
+  deliveryMode: GeminiOmniDeliveryMode;
+  selectedCharacterIds: string[];
+  selectedAudioIds: string[];
+  characterDraftName: string;
+  characterDraftDescription: string;
+  characterDraftImageUrl: string;
+  characterDraftImageName: string;
+  characterDraftAudioIds: string[];
+  audioDraftId: string;
+  audioDraftName: string;
+  audioDraftDescription: string;
+  audioDraftDialogue: string;
+  productionDirector: ProductionDirectorState;
+}
+
+function isGeminiOmniVideoMediaModel(model: any, selectedModelId: string): boolean {
+  const config = parseMediaModelConfig(model?.configJson);
+  const aliases = Array.isArray(config?.aliases) ? config.aliases : Array.isArray(model?.aliases) ? model.aliases : [];
+  const candidates = [
+    selectedModelId,
+    model?.id,
+    model?.modelId,
+    model?.name,
+    model?.displayName,
+    model?.provider,
+    config?.modelId,
+    config?.kieModelId,
+    config?.apiModel,
+    ...aliases,
+  ]
+    .map((value) => String(value ?? "").trim().toLowerCase())
+    .filter(Boolean);
+  return candidates.some((value) =>
+    value === GEMINI_OMNI_VIDEO_MODEL_ID
+    || value === "gemini-omni"
+    || value.includes("gemini omni")
+    || value.includes("gemini-omni"),
+  );
+}
+
 // Track individual image generation tasks for progressive preview
 interface GenerationTask {
   id: string;
@@ -575,6 +666,9 @@ interface GenerationTask {
   backendTaskId?: string;
   providerTaskId?: string;
   statusDetail?: string;
+  videoQaStatus?: "pending" | "running" | "pass" | "warning" | "revise" | "human_review" | "block" | "unavailable";
+  videoQaSummary?: string;
+  videoQaResult?: Record<string, any>;
   storyboardContext?: StoryboardVideoGenerationContext;
   marketplaceProduct?: MarketplaceProductReferenceContext | null;
 }
@@ -698,7 +792,7 @@ type SkillImprovementProposedChange = {
 };
 
 type MediaStudioSkillImprovementProposal = {
-  trigger: "prompt_qa" | "image_qa" | "manual";
+  trigger: "prompt_qa" | "image_qa" | "video_qa" | "manual";
   score: number;
   issues: SkillImprovementIssue[];
   proposedChanges: SkillImprovementProposedChange[];
@@ -727,6 +821,7 @@ function getMediaStudioAutoLearningConfig(configJson: unknown) {
       enabled: false,
       promptQaAfterAutoPrompt: true,
       imageQaAfterGeneration: true,
+      videoQaAfterGeneration: true,
     };
   }
 
@@ -734,6 +829,7 @@ function getMediaStudioAutoLearningConfig(configJson: unknown) {
     enabled: autoLearning.enabled === true,
     promptQaAfterAutoPrompt: autoLearning.prompt_qa_after_auto_prompt !== false,
     imageQaAfterGeneration: autoLearning.image_qa_after_generation !== false,
+    videoQaAfterGeneration: autoLearning.video_qa_after_generation !== false,
   };
 }
 
@@ -1341,6 +1437,7 @@ interface TabState {
   autoContinuityNotes: string;
   referenceImages: ReferenceImage[];
   referenceVideos: ReferenceVideo[];
+  geminiOmni: GeminiOmniSuiteState;
   selectedSkillId: string;
   useAdvancedMode: boolean;
   dynamicFormValues: Record<string, any>;
@@ -1376,6 +1473,37 @@ const createDefaultTabState = (mediaType: MediaType): TabState => ({
   autoContinuityNotes: "",
   referenceImages: [],
   referenceVideos: [],
+  geminiOmni: {
+    deliveryMode: "single_shot",
+    selectedCharacterIds: [],
+    selectedAudioIds: [],
+    characterDraftName: "",
+    characterDraftDescription: "",
+    characterDraftImageUrl: "",
+    characterDraftImageName: "",
+    characterDraftAudioIds: [],
+    audioDraftId: "",
+    audioDraftName: "",
+    audioDraftDescription: "",
+    audioDraftDialogue: "",
+    productionDirector: {
+      enabled: true,
+      productionRunId: "",
+      title: "",
+      goalSummary: "",
+      audience: "",
+      platform: "",
+      productTruthNotes: "",
+      creativeDirection: "",
+      voiceStrategy: "",
+      revisionInstructions: "",
+      targetDurationSeconds: "",
+      status: "idle",
+      plan: null,
+      verification: null,
+      approved: false,
+    },
+  },
   selectedSkillId: "",
   useAdvancedMode: true,
   dynamicFormValues: {},
@@ -1520,6 +1648,213 @@ function normalizeCustomSkillPromptContent(content: string): string {
   } catch {
     return content;
   }
+}
+
+function parseJsonSkillContent(content: string): Record<string, any> | null {
+  const trimmed = stripJsonMarkdownFence(content.trim());
+  if (!trimmed || !/^[\[{]/.test(trimmed)) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, any>;
+    }
+    return { items: parsed };
+  } catch {
+    return null;
+  }
+}
+
+function buildProductionRunId(): string {
+  const randomPart = Math.random().toString(36).slice(2, 10);
+  return `prod-${Date.now().toString(36)}-${randomPart}`;
+}
+
+function getProductionPlanScenes(plan: Record<string, any> | null | undefined): any[] {
+  if (!plan) return [];
+  const candidates = [
+    plan.storyboard_outline,
+    plan.storyboardOutline,
+    plan.scene_timeline,
+    plan.sceneTimeline,
+    plan.shot_plan,
+    plan.shotPlan,
+    plan.prompt_sequence,
+  ];
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
+  }
+  return [];
+}
+
+function getProductionPlanSummary(plan: Record<string, any> | null | undefined): string {
+  if (!plan) return "";
+  const summary = plan.production_goal_summary ?? plan.goal_summary ?? plan.summary;
+  if (typeof summary === "string") return summary;
+  const strategy = plan.creative_strategy ?? plan.creativeStrategy;
+  if (typeof strategy === "string") return strategy;
+  if (strategy && typeof strategy === "object") {
+    return Object.values(strategy).filter((value) => typeof value === "string").slice(0, 2).join(" ");
+  }
+  return "";
+}
+
+function buildGenericProductionPromptFromPlan(plan: Record<string, any>, targetModelName: string): string {
+  const scenes = getProductionPlanScenes(plan).slice(0, 12);
+  const summary = getProductionPlanSummary(plan);
+  const strategy = plan.creative_strategy ?? plan.creativeStrategy ?? {};
+  const strategyText = typeof strategy === "string"
+    ? strategy
+    : strategy && typeof strategy === "object"
+      ? Object.values(strategy).filter((value) => typeof value === "string").slice(0, 4).join("\n")
+      : "";
+  const sceneText = scenes.map((scene, index) => {
+    const title = String((scene as any)?.title ?? (scene as any)?.scene_title ?? (scene as any)?.shot_title ?? `Scene ${index + 1}`);
+    const prompt = String(
+      (scene as any)?.prompt
+      ?? (scene as any)?.video_prompt
+      ?? (scene as any)?.description
+      ?? (scene as any)?.summary
+      ?? "",
+    );
+    return `${index + 1}. ${title}${prompt ? `: ${prompt}` : ""}`;
+  }).join("\n");
+  return [
+    `Target video model: ${targetModelName || "selected video model"}`,
+    summary ? `Production goal: ${summary}` : "",
+    strategyText ? `Creative direction:\n${strategyText}` : "",
+    sceneText ? `Storyboard / shot plan:\n${sceneText}` : "",
+    "Generate a cinematic, coherent video prompt from this approved production plan. Preserve product truth, character continuity, pacing, and platform intent.",
+  ].filter(Boolean).join("\n\n");
+}
+
+function buildProductionTabSnapshot(tabState: TabState) {
+  return {
+    prompt: tabState.prompt,
+    enhancedPrompt: tabState.enhancedPrompt,
+    selectedModel: tabState.selectedModel,
+    aspectRatio: tabState.aspectRatio,
+    duration: tabState.duration,
+    numImages: tabState.numImages,
+    modelInputValues: tabState.modelInputValues,
+    referenceImages: tabState.referenceImages,
+    referenceVideos: tabState.referenceVideos,
+    selectedSkillId: tabState.selectedSkillId,
+    useAdvancedMode: tabState.useAdvancedMode,
+    dynamicFormValues: tabState.dynamicFormValues,
+    geminiOmni: tabState.geminiOmni,
+  };
+}
+
+function applyProductionTabSnapshotsToState(
+  prev: Record<MediaType, TabState>,
+  snapshots: Record<string, any> | null | undefined,
+): Record<MediaType, TabState> {
+  if (!snapshots || typeof snapshots !== "object") return prev;
+  const next = { ...prev };
+  (["image", "video", "audio"] as MediaType[]).forEach((tab) => {
+    const snapshot = snapshots[tab];
+    if (!snapshot || typeof snapshot !== "object") return;
+    next[tab] = {
+      ...next[tab],
+      prompt: typeof snapshot.prompt === "string" ? snapshot.prompt : next[tab].prompt,
+      enhancedPrompt: typeof snapshot.enhancedPrompt === "string" ? snapshot.enhancedPrompt : next[tab].enhancedPrompt,
+      selectedModel: typeof snapshot.selectedModel === "string" ? snapshot.selectedModel : next[tab].selectedModel,
+      aspectRatio: typeof snapshot.aspectRatio === "string" ? snapshot.aspectRatio : next[tab].aspectRatio,
+      duration: typeof snapshot.duration === "number" ? snapshot.duration : next[tab].duration,
+      numImages: typeof snapshot.numImages === "number" ? snapshot.numImages : next[tab].numImages,
+      modelInputValues: snapshot.modelInputValues && typeof snapshot.modelInputValues === "object" ? snapshot.modelInputValues : next[tab].modelInputValues,
+      referenceImages: Array.isArray(snapshot.referenceImages) ? snapshot.referenceImages : next[tab].referenceImages,
+      referenceVideos: Array.isArray(snapshot.referenceVideos) ? snapshot.referenceVideos : next[tab].referenceVideos,
+      selectedSkillId: typeof snapshot.selectedSkillId === "string" ? snapshot.selectedSkillId : next[tab].selectedSkillId,
+      useAdvancedMode: typeof snapshot.useAdvancedMode === "boolean" ? snapshot.useAdvancedMode : next[tab].useAdvancedMode,
+      dynamicFormValues: snapshot.dynamicFormValues && typeof snapshot.dynamicFormValues === "object" ? snapshot.dynamicFormValues : next[tab].dynamicFormValues,
+      geminiOmni: snapshot.geminiOmni && typeof snapshot.geminiOmni === "object"
+        ? { ...next[tab].geminiOmni, ...snapshot.geminiOmni }
+        : next[tab].geminiOmni,
+    };
+  });
+  return next;
+}
+
+function normalizeGeminiOmniVideoQaResult(value: Record<string, any> | null | undefined): {
+  status: NonNullable<GenerationTask["videoQaStatus"]>;
+  score: number;
+  issues: SkillImprovementIssue[];
+  proposedChanges: SkillImprovementProposedChange[];
+  summary: string;
+} {
+  const record = value ?? {};
+  const verdict = String(record.verdict ?? record.status ?? record.recommended_action ?? "human_review").toLowerCase();
+  const status: NonNullable<GenerationTask["videoQaStatus"]> =
+    verdict === "pass" || verdict === "accept" || verdict === "approve"
+      ? "pass"
+      : verdict === "warning"
+        ? "warning"
+        : verdict === "revise" || verdict === "regenerate_same_prompt" || verdict === "revise_video_prompt"
+          ? "revise"
+          : verdict === "block"
+            ? "block"
+            : "human_review";
+  const score = Math.max(0, Math.min(100, Number(
+    record.score
+      ?? record.quality_score
+      ?? record.qualityScores?.overall
+      ?? record.quality_scores?.overall
+      ?? (status === "pass" ? 90 : status === "warning" ? 75 : 55),
+  ) || 0));
+  const rawIssues = Array.isArray(record.issues)
+    ? record.issues
+    : Array.isArray(record.blocking_issues)
+      ? record.blocking_issues
+      : [];
+  const issues = rawIssues.slice(0, 8).map((issue: any, index: number): SkillImprovementIssue => ({
+    id: String(issue.id ?? issue.code ?? issue.category ?? `video_qa_issue_${index + 1}`).slice(0, 100),
+    severity: issue.severity === "high" || issue.severity === "medium" || issue.severity === "low"
+      ? issue.severity
+      : status === "block" || status === "revise"
+        ? "high"
+        : "medium",
+    title: String(issue.title ?? issue.message ?? issue.category ?? `Video QA issue ${index + 1}`).slice(0, 255),
+    evidence: typeof issue.evidence === "string" ? issue.evidence.slice(0, 2000) : undefined,
+    recommendation: String(issue.recommendation ?? issue.recommended_action ?? issue.fix ?? "Improve Gemini Omni prompt/director instructions for this issue.").slice(0, 2000),
+    affectedSection: String(issue.affected_section ?? issue.affectedSection ?? "Gemini Omni video quality").slice(0, 255),
+  }));
+  const rawLearningSignals = Array.isArray(record.learning_signal_candidates)
+    ? record.learning_signal_candidates
+    : Array.isArray(record.learningSignals)
+      ? record.learningSignals
+      : [];
+  const signalIssues = rawLearningSignals.slice(0, 6).map((signal: any, index: number): SkillImprovementIssue => ({
+    id: String(signal.id ?? signal.issue_category ?? signal.category ?? `video_qa_learning_${index + 1}`).slice(0, 100),
+    severity: signal.severity === "high" || signal.severity === "medium" || signal.severity === "low" ? signal.severity : "medium",
+    title: String(signal.title ?? signal.issue_category ?? signal.category ?? `Video QA learning signal ${index + 1}`).slice(0, 255),
+    evidence: typeof signal.evidence === "string" ? signal.evidence.slice(0, 2000) : undefined,
+    recommendation: String(signal.recommendation ?? signal.suggested_change ?? "Review Gemini Omni director guidance for recurring video quality failures.").slice(0, 2000),
+    affectedSection: String(signal.affected_section ?? "Video QA learning").slice(0, 255),
+  }));
+  const mergedIssues = issues.length > 0 ? issues : signalIssues;
+  const revisionInstructions = Array.isArray(record.revision_instructions)
+    ? record.revision_instructions
+    : Array.isArray(record.revisionInstructions)
+      ? record.revisionInstructions
+      : [];
+  const proposedChanges: SkillImprovementProposedChange[] = mergedIssues.length > 0
+    ? [{
+      title: "Improve Gemini Omni video director QA recovery guidance",
+      reason: revisionInstructions.map(String).join(" ").slice(0, 2000)
+        || "Video QA found recurring issues that should inform prompt/director instructions.",
+      targetFile: "apps/web/skills/gemini-omni-video-director/SKILL.md",
+      targetSection: "Quality recovery and revision guidance",
+      risk: mergedIssues.some((issue) => issue.severity === "high") ? "medium" : "low",
+    }]
+    : [];
+  const summary = String(
+    record.summary
+      ?? record.reviewer_notes
+      ?? record.reviewerNotes
+      ?? `${status} (${score}/100)`,
+  ).slice(0, 500);
+  return { status, score, issues: mergedIssues, proposedChanges, summary };
 }
 
 function parseArrayFieldValue(
@@ -2286,10 +2621,10 @@ function formatMediaDuration(seconds: number | null | undefined): string {
   return `${minutes}:${String(remaining).padStart(2, "0")}`;
 }
 
-async function probeMediaDurationSeconds(url: string, fallbackSeconds: number): Promise<number> {
+async function probeMediaDurationSeconds(url: string, fallbackSeconds: number, mediaKind: "audio" | "video" = "audio"): Promise<number> {
   if (typeof window === "undefined") return fallbackSeconds;
   return new Promise((resolve) => {
-    const media = document.createElement("audio");
+    const media = document.createElement(mediaKind) as HTMLMediaElement;
     let settled = false;
     const finish = (value: number) => {
       if (settled) return;
@@ -2862,6 +3197,9 @@ export default function MediaStudio() {
 
   // Active tab state
   const [activeTab, setActiveTab] = useState<MediaType>("image");
+  const [studioWorkspaceTab, setStudioWorkspaceTab] = useState<StudioWorkspaceTab>("production");
+  const [productionProjectSearch, setProductionProjectSearch] = useState("");
+  const [productionProjectPickerOpen, setProductionProjectPickerOpen] = useState(false);
   const [attachTarget, setAttachTarget] = useState<{ kind: "blog" | "page"; id: string } | null>(null);
   const [isAttachingContent, setIsAttachingContent] = useState(false);
   const autoGenerateRequestRef = useRef<{ tab: MediaType; prompt: string; model?: string } | null>(null);
@@ -2918,6 +3256,7 @@ export default function MediaStudio() {
 
     if (resolvedTab) {
       setActiveTab(resolvedTab);
+      setStudioWorkspaceTab(resolvedTab);
     }
 
     if (requestedPrompt || requestedModel) {
@@ -3136,6 +3475,7 @@ export default function MediaStudio() {
   const autoContinuityNotes = currentTabState.autoContinuityNotes;
   const referenceImages = currentTabState.referenceImages;
   const referenceVideos = currentTabState.referenceVideos;
+  const geminiOmni = currentTabState.geminiOmni;
   const selectedSkillId = currentTabState.selectedSkillId;
   const useAdvancedMode = currentTabState.useAdvancedMode;
   const dynamicFormValues = currentTabState.dynamicFormValues;
@@ -3284,6 +3624,21 @@ export default function MediaStudio() {
       }
     }));
   }, [activeTab]);
+  const setGeminiOmniState = useCallback((value: Partial<GeminiOmniSuiteState> | ((prev: GeminiOmniSuiteState) => Partial<GeminiOmniSuiteState>)) => {
+    setTabStates(prev => {
+      const patch = typeof value === "function" ? value(prev[activeTab].geminiOmni) : value;
+      return {
+        ...prev,
+        [activeTab]: {
+          ...prev[activeTab],
+          geminiOmni: {
+            ...prev[activeTab].geminiOmni,
+            ...patch,
+          },
+        },
+      };
+    });
+  }, [activeTab]);
 
   useEffect(() => {
     const handoff = marketplaceStorytellingImport.handoff;
@@ -3302,18 +3657,36 @@ export default function MediaStudio() {
         referenceImages,
         aspectRatio: handoff.videoBrief?.aspectRatio || prev.video.aspectRatio,
         duration: handoff.videoBrief?.durationSec || prev.video.duration,
-        modelInputValues: {
-          ...prev.video.modelInputValues,
-          marketplaceStorytellingHandoff: handoff,
+	        modelInputValues: {
+	          ...prev.video.modelInputValues,
+	          marketplaceStorytellingHandoff: handoff,
           marketplaceInsightId: marketplaceStorytellingImport.insightId,
           marketplaceContext: {
             platform: handoff.platform,
             productName: handoff.productName,
-            sourceUrl: handoff.sourceUrl,
-          },
-        },
-      },
-    }));
+	            sourceUrl: handoff.sourceUrl,
+	          },
+	        },
+	        geminiOmni: {
+	          ...prev.video.geminiOmni,
+	          productionDirector: {
+	            ...prev.video.geminiOmni.productionDirector,
+	            enabled: true,
+	            title: prev.video.geminiOmni.productionDirector.title || `${handoff.productName} Storytelling`,
+	            goalSummary: prev.video.geminiOmni.productionDirector.goalSummary || prompt,
+	            platform: prev.video.geminiOmni.productionDirector.platform || handoff.platform,
+	            productTruthNotes: prev.video.geminiOmni.productionDirector.productTruthNotes || [
+	              `Product: ${handoff.productName}`,
+	              `Source: ${handoff.sourceUrl}`,
+	              `Readiness: ${handoff.readiness}`,
+	              `Supported claims: ${handoff.claims.filter((claim) => claim.status === "supported" || claim.status === "user_approved").map((claim) => claim.text).join("; ") || "none"}`,
+	            ].join("\n"),
+	            creativeDirection: prev.video.geminiOmni.productionDirector.creativeDirection || handoff.storyFormat,
+	            targetDurationSeconds: prev.video.geminiOmni.productionDirector.targetDurationSeconds || String(handoff.videoBrief?.durationSec || ""),
+	          },
+	        },
+	      },
+	    }));
     toast.success(isThaiLocale ? "นำเข้า storytelling brief จาก Marketplace แล้ว" : "Marketplace storytelling brief imported");
   }, [isThaiLocale, marketplaceStorytellingImport]);
 
@@ -3587,6 +3960,7 @@ export default function MediaStudio() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoFileInputRef = useRef<HTMLInputElement>(null);
+  const geminiOmniCharacterImageInputRef = useRef<HTMLInputElement>(null);
   const storyboardAudioFileInputRef = useRef<HTMLInputElement>(null);
 
   // Ref to track current prompt textarea value (for reliable history storage)
@@ -3993,6 +4367,65 @@ export default function MediaStudio() {
     () => visibleMediaModels.find((m) => m.modelId === selectedModel),
     [selectedModel, visibleMediaModels],
   );
+  const isGeminiOmniVideoSelected = activeTab === "video" && isGeminiOmniVideoMediaModel(selectedMediaModel, selectedModel);
+  const geminiOmniCharacterAssetsQuery = trpc.mediaProviderAssets.list.useQuery(
+    { capability: GEMINI_OMNI_CHARACTER_CAPABILITY, limit: 100 },
+    { enabled: isGeminiOmniVideoSelected },
+  );
+  const geminiOmniAudioAssetsQuery = trpc.mediaProviderAssets.list.useQuery(
+    { capability: GEMINI_OMNI_AUDIO_CAPABILITY, limit: 100 },
+    { enabled: isGeminiOmniVideoSelected },
+  );
+  const productionRunsQuery = trpc.mediaProduction.listRuns.useQuery(
+    { query: productionProjectSearch, limit: 12 },
+    { enabled: isAuthenticated && !isLoading, refetchOnWindowFocus: false },
+  );
+  const createGeminiOmniCharacterMutation = trpc.mediaProviderAssets.createGeminiOmniCharacter.useMutation({
+    onSuccess: (asset) => {
+      void geminiOmniCharacterAssetsQuery.refetch();
+      const providerAssetId = String((asset as any)?.providerAssetId ?? "").trim();
+      if (providerAssetId) {
+        setGeminiOmniState((prev) => ({
+          selectedCharacterIds: Array.from(new Set([...prev.selectedCharacterIds, providerAssetId])).slice(0, 3),
+          characterDraftName: "",
+          characterDraftDescription: "",
+          characterDraftImageUrl: "",
+          characterDraftImageName: "",
+          characterDraftAudioIds: [],
+        }));
+      }
+      toast.success(isThaiLocale ? "สร้าง Character Reference แล้ว" : "Character reference created");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const createGeminiOmniAudioMutation = trpc.mediaProviderAssets.createGeminiOmniAudio.useMutation({
+    onSuccess: (asset) => {
+      void geminiOmniAudioAssetsQuery.refetch();
+      const providerAssetId = String((asset as any)?.providerAssetId ?? "").trim();
+      if (providerAssetId) {
+        setGeminiOmniState((prev) => ({
+          selectedAudioIds: Array.from(new Set([...prev.selectedAudioIds, providerAssetId])),
+          characterDraftAudioIds: Array.from(new Set([...prev.characterDraftAudioIds, providerAssetId])),
+          audioDraftId: "",
+          audioDraftName: "",
+          audioDraftDescription: "",
+          audioDraftDialogue: "",
+        }));
+      }
+      toast.success(isThaiLocale ? "สร้าง Voice / Audio Reference แล้ว" : "Voice / audio reference created");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  useEffect(() => {
+    if (activeTab !== "video" || geminiOmni.productionDirector.enabled) return;
+    setGeminiOmniState((prev) => ({
+      productionDirector: {
+        ...prev.productionDirector,
+        enabled: true,
+      },
+    }));
+  }, [activeTab, geminiOmni.productionDirector.enabled, setGeminiOmniState]);
   const handleSelectMediaModel = useCallback((modelId: string) => {
     setSelectedModel(modelId);
 
@@ -4956,6 +5389,11 @@ export default function MediaStudio() {
   const generateAudioAsyncMutation = trpc.media.generateAudioAsync.useMutation();
   const enhancePromptMutation = trpc.skills.enhancePrompt.useMutation();
   const executeCustomSkillMutation = trpc.skills.executeCustomSkill.useMutation();
+  const saveProductionGoalMutation = trpc.mediaProduction.saveGoalVersion.useMutation();
+  const saveProductionPlanMutation = trpc.mediaProduction.savePlanVersion.useMutation();
+  const saveProductionVerificationMutation = trpc.mediaProduction.savePlanVerification.useMutation();
+  const approveProductionPlanMutation = trpc.mediaProduction.approvePlan.useMutation();
+  const projectProductionOutputMutation = trpc.mediaProduction.projectOutput.useMutation();
   const createSkillImprovementRecommendationMutation = trpc.skills.createMediaStudioSkillImprovementRecommendation.useMutation();
   const createSkillAutoLearningSignalMutation = trpc.skills.createMediaStudioSkillAutoLearningSignal.useMutation();
 
@@ -5093,6 +5531,16 @@ export default function MediaStudio() {
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
+
+  const buildSafeUploadFileName = (baseName: string, file: File) => {
+    const ext = (file.name.split(".").pop() || "png").replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "png";
+    const safeBase = (baseName || file.name.replace(/\.[^.]+$/, "") || "upload")
+      .trim()
+      .replace(/[^a-zA-Z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "upload";
+    return `${safeBase}.${ext}`;
+  };
 
   const handleAttachCurrentMediaToContent = async () => {
     const mediaType = previewContextTab ?? activeTab;
@@ -5663,7 +6111,12 @@ export default function MediaStudio() {
       ? tabLimit
       : Math.min(tabLimit, selectedMediaModelReferenceImageLimit);
   }, [activeTab, selectedMediaModelReferenceImageLimit]);
-  const maxReferenceVideos = activeTab === "video" ? 5 : 0;
+  const maxReferenceVideos = useMemo(() => {
+    if (activeTab !== "video") return 0;
+    const videoField = selectedMediaModelParsedInputFields.find((field) => field.syncWith === "reference_videos" || field.key === "video_list");
+    const fieldMax = Number(videoField?.maxItems);
+    return Number.isFinite(fieldMax) && fieldMax > 0 ? Math.min(5, fieldMax) : 5;
+  }, [activeTab, selectedMediaModelParsedInputFields]);
 
   useEffect(() => {
     const clamped = clampReferenceImagesToModelLimit(
@@ -5723,6 +6176,40 @@ export default function MediaStudio() {
     }
   };
 
+  const uploadGeminiOmniCharacterImageFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error(isThaiLocale ? "เลือกไฟล์รูปภาพสำหรับ Character เท่านั้น" : "Choose an image file for the character.");
+      return;
+    }
+    try {
+      const fileBase64 = await blobToBase64(file);
+      const uploadName = buildSafeUploadFileName(geminiOmni.characterDraftName || "gemini-omni-character", file);
+      const result = await uploadMutation.mutateAsync({
+        fileName: uploadName,
+        fileType: file.type,
+        fileBase64,
+      });
+      setGeminiOmniState({
+        characterDraftImageUrl: result.url,
+        characterDraftImageName: uploadName,
+      });
+      toast.success(isThaiLocale ? "อัปโหลดรูป Character เป็น public URL แล้ว" : "Character image uploaded as a public URL.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : (isThaiLocale ? "อัปโหลดรูป Character ไม่สำเร็จ" : "Character image upload failed");
+      toast.error(message);
+    } finally {
+      if (geminiOmniCharacterImageInputRef.current) {
+        geminiOmniCharacterImageInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleGeminiOmniCharacterImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadGeminiOmniCharacterImageFile(file);
+  };
+
   // Handle file upload for reference videos
   const handleVideoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -5742,6 +6229,31 @@ export default function MediaStudio() {
       if (!file.type.startsWith("video/")) {
         continue;
       }
+      if (file.size > GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES) {
+        toast.error(isThaiLocale
+          ? `ไฟล์วิดีโอใหญ่เกินไป ต้องไม่เกิน ${Math.round(GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES / 1024 / 1024)}MB`
+          : `Video file is too large. Maximum is ${Math.round(GEMINI_OMNI_MAX_VIDEO_UPLOAD_BYTES / 1024 / 1024)}MB.`);
+        continue;
+      }
+
+      let durationSeconds: number | undefined;
+      if (isGeminiOmniVideoSelected) {
+        const objectUrl = URL.createObjectURL(file);
+        try {
+          const probedDuration = await probeMediaDurationSeconds(objectUrl, 0, "video");
+          if (Number.isFinite(probedDuration) && probedDuration > 0) {
+            durationSeconds = probedDuration;
+          }
+        } finally {
+          URL.revokeObjectURL(objectUrl);
+        }
+        if (durationSeconds && durationSeconds > GEMINI_OMNI_MAX_SOURCE_VIDEO_SECONDS) {
+          toast.error(isThaiLocale
+            ? `Gemini Omni รองรับวิดีโออ้างอิงยาวไม่เกิน ${GEMINI_OMNI_MAX_SOURCE_VIDEO_SECONDS} วินาที`
+            : `Gemini Omni source video must be ${GEMINI_OMNI_MAX_SOURCE_VIDEO_SECONDS} seconds or shorter.`);
+          continue;
+        }
+      }
 
       try {
         const base64 = await new Promise<string>((resolve, reject) => {
@@ -5757,7 +6269,7 @@ export default function MediaStudio() {
           fileBase64: base64,
         });
 
-        setReferenceVideos((prev) => [...prev, { url: result.url, name: file.name }]);
+        setReferenceVideos((prev) => [...prev, { url: result.url, name: file.name, durationSeconds }]);
       } catch (error) {
         console.error("Video upload failed:", error);
       }
@@ -6148,6 +6660,31 @@ export default function MediaStudio() {
           ...(marketplaceProduct ? { marketplaceProduct } : {}),
         }]);
       }
+    }
+  };
+
+  const handleGeminiOmniCharacterImageDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    const url = getDraggedMediaUrl(e.dataTransfer);
+    if ((file && file.type.startsWith("image/")) || isImageMediaUrl(url)) {
+      e.dataTransfer.dropEffect = "copy";
+    }
+  };
+
+  const handleGeminiOmniCharacterImageDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await uploadGeminiOmniCharacterImageFile(file);
+      return;
+    }
+    const url = getDraggedMediaUrl(e.dataTransfer);
+    if (url && isImageMediaUrl(url)) {
+      setGeminiOmniState({
+        characterDraftImageUrl: url,
+        characterDraftImageName: `dropped-character-${Date.now()}`,
+      });
     }
   };
 
@@ -7023,6 +7560,7 @@ export default function MediaStudio() {
   const [isSkillImprovementProposalOpen, setIsSkillImprovementProposalOpen] = useState(true);
   const [submittedSkillImprovementKeys, setSubmittedSkillImprovementKeys] = useState<Record<string, number>>({});
   const lastSilentAutoLearningSignalKeyRef = useRef<string | null>(null);
+  const processedGeminiOmniVideoQaKeysRef = useRef<Set<string>>(new Set());
   const skillImprovementSkillLabel = currentSkill
     ? `${currentSkill.name || currentSkill.id} (${currentSkill.id})`
     : selectedSkillId;
@@ -7513,6 +8051,24 @@ export default function MediaStudio() {
     const effectiveReferenceVideos = selectedMediaModelReferenceSupport.videoUrls
       ? referenceVideos
       : [];
+    if (isGeminiOmniVideoSelected) {
+      mergedExtraParams.character_ids = geminiOmni.selectedCharacterIds;
+      mergedExtraParams.audio_ids = geminiOmni.selectedAudioIds;
+      mergedExtraParams.delivery_mode = geminiOmni.deliveryMode;
+      const geminiValidation = validateGeminiOmniVideoInput({
+        prompt: finalPrompt,
+        imageUrls: effectiveReferenceImages.map((item) => item.url),
+        videoList: effectiveReferenceVideos.map((item) => ({ url: item.url, durationSeconds: item.durationSeconds })),
+        characterIds: geminiOmni.selectedCharacterIds,
+        audioIds: geminiOmni.selectedAudioIds,
+        duration: effectiveSelectedVideoDuration ?? modelInputValues.duration,
+        resolution: modelInputValues.resolution || "1080p",
+      });
+      if (!geminiValidation.ok) {
+        toast.error(geminiValidation.issues.map((issue) => issue.message).join(" "));
+        return;
+      }
+    }
     const modelInputValidationErrors = getMediaStudioModelInputValidationErrors({
       modelId: selectedMediaModel?.modelId,
       fields: selectedMediaModelParsedInputFields,
@@ -8893,6 +9449,24 @@ export default function MediaStudio() {
     const effectiveReferenceVideos = retryModelReferenceSupport.videoUrls
       ? tabState.referenceVideos
       : [];
+    if (targetTab === "video" && retryModel === GEMINI_OMNI_VIDEO_MODEL_ID) {
+      mergedExtraParams.character_ids = tabState.geminiOmni.selectedCharacterIds;
+      mergedExtraParams.audio_ids = tabState.geminiOmni.selectedAudioIds;
+      mergedExtraParams.delivery_mode = tabState.geminiOmni.deliveryMode;
+      const geminiValidation = validateGeminiOmniVideoInput({
+        prompt: retryPrompt,
+        imageUrls: effectiveReferenceImages.map((item) => item.url),
+        videoList: effectiveReferenceVideos.map((item) => ({ url: item.url, durationSeconds: item.durationSeconds })),
+        characterIds: tabState.geminiOmni.selectedCharacterIds,
+        audioIds: tabState.geminiOmni.selectedAudioIds,
+        duration: retryVideoDuration ?? tabState.modelInputValues.duration,
+        resolution: tabState.modelInputValues.resolution || "1080p",
+      });
+      if (!geminiValidation.ok) {
+        toast.error(geminiValidation.issues.map((issue) => issue.message).join(" "));
+        return;
+      }
+    }
     const retryModelInputFields = parseModelInputFields(retryModelForInputFields);
     const modelInputValidationErrors = getMediaStudioModelInputValidationErrors({
       modelId: retryModel,
@@ -10523,18 +11097,6 @@ export default function MediaStudio() {
     return tierCost * multiplier;
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
-
   const floatingPreviewType = previewContextTab ?? activeTab;
   const hasFloatingPreviewContent = Boolean(previewUrl || isGenerating || generationTasks.length > 0);
   const showFloatingProgressGrid = generationTasks.length > 1 && (
@@ -10622,6 +11184,794 @@ export default function MediaStudio() {
       </div>
     );
   };
+  const geminiOmniReferenceUnits = referenceImages.length + (referenceVideos.length * 2) + geminiOmni.selectedCharacterIds.length;
+  const geminiOmniReferenceStatus = validateGeminiOmniVideoInput({
+    prompt: (enhancedPrompt || prompt || "draft").trim(),
+    imageUrls: referenceImages.map((item) => item.url),
+    videoList: referenceVideos.map((item) => ({ url: item.url, durationSeconds: item.durationSeconds })),
+    characterIds: geminiOmni.selectedCharacterIds,
+    audioIds: geminiOmni.selectedAudioIds,
+    duration: selectedVideoDuration ?? modelInputValues.duration,
+    resolution: modelInputValues.resolution || "1080p",
+  });
+  const geminiOmniSelectedResolution = String(modelInputValues.resolution || "1080p");
+  const geminiOmniWithVideoPricing = referenceVideos.length > 0;
+  const geminiOmniPricingNote = isThaiLocale
+    ? `${geminiOmniSelectedResolution}${geminiOmniWithVideoPricing ? " + source video" : ""}`
+    : `${geminiOmniSelectedResolution}${geminiOmniWithVideoPricing ? " + source video" : ""}`;
+  const geminiOmniCharacterAssets = (geminiOmniCharacterAssetsQuery.data as any[] | undefined) ?? [];
+  const geminiOmniAudioAssets = (geminiOmniAudioAssetsQuery.data as any[] | undefined) ?? [];
+  const productionDirector = geminiOmni.productionDirector;
+  const productionRunQuery = trpc.mediaProduction.getRun.useQuery(
+    { productionRunId: productionDirector.productionRunId },
+    {
+      enabled: productionDirector.productionRunId.trim().length > 0,
+      refetchOnWindowFocus: false,
+    },
+  );
+  const productionPlanScenes = getProductionPlanScenes(productionDirector.plan);
+  const productionPlanSummary = getProductionPlanSummary(productionDirector.plan);
+  const productionVerificationVerdict = String(
+    productionDirector.verification?.verdict
+      ?? productionDirector.verification?.status
+      ?? "",
+  );
+  const productionVerificationScore = Number(
+    productionDirector.verification?.score
+      ?? productionDirector.verification?.approval_score
+      ?? 0,
+  );
+  const productionRuns = (productionRunsQuery.data as any)?.runs ?? [];
+  const activeProductionProjectTitle =
+    productionDirector.title
+    || productionDirector.goalSummary
+    || productionRuns.find((run: any) => run.productionRunId === productionDirector.productionRunId)?.title
+    || (isThaiLocale ? "ยังไม่ได้เลือกโปรเจกต์" : "No project selected");
+  const updateProductionDirector = useCallback((
+    value: Partial<ProductionDirectorState> | ((prev: ProductionDirectorState) => Partial<ProductionDirectorState>),
+  ) => {
+    setGeminiOmniState((prev) => {
+      const patch = typeof value === "function"
+        ? value(prev.productionDirector)
+        : value;
+      return {
+        productionDirector: {
+          ...prev.productionDirector,
+          ...patch,
+        },
+      };
+    });
+  }, [setGeminiOmniState]);
+
+  useEffect(() => {
+    const data = productionRunQuery.data as any;
+    if (!data?.run || !productionDirector.productionRunId) return;
+    const latestPlan = data.latestPlan?.plan ?? null;
+    const latestVerification = data.latestVerification?.verification ?? null;
+    const status = data.latestApproval
+      ? "approved"
+      : latestVerification
+        ? "plan_ready"
+        : latestPlan
+          ? "plan_ready"
+          : "idle";
+    updateProductionDirector({
+      enabled: true,
+      goalVersion: Number(data.run.goalVersion ?? productionDirector.goalVersion ?? 1),
+      planVersion: Number(data.latestPlan?.version ?? data.run.planVersion ?? productionDirector.planVersion ?? 0) || undefined,
+      title: productionDirector.title || String(data.run.goal?.title ?? data.run.goal?.projectTitle ?? ""),
+      goalSummary: productionDirector.goalSummary || String(data.run.goal?.summary ?? ""),
+      audience: productionDirector.audience || String(data.run.goal?.audience ?? ""),
+      platform: productionDirector.platform || String(data.run.goal?.platform ?? ""),
+      productTruthNotes: productionDirector.productTruthNotes || String(data.run.goal?.productContext?.productTruthNotes ?? ""),
+      creativeDirection: productionDirector.creativeDirection || String(data.run.goal?.visualStyle?.creativeDirection ?? ""),
+      voiceStrategy: productionDirector.voiceStrategy || String(data.run.goal?.voiceAudioStrategy?.voiceStrategy ?? ""),
+      revisionInstructions: productionDirector.revisionInstructions || String(data.run.goal?.constraints?.revisionInstructions ?? ""),
+      targetDurationSeconds: productionDirector.targetDurationSeconds || String(data.run.goal?.durationSeconds ?? ""),
+      plan: latestPlan,
+      verification: latestVerification,
+      approved: Boolean(data.latestApproval),
+      status,
+    });
+    const tabSnapshots = data.run.goal?.tabSnapshots;
+    if (tabSnapshots && typeof tabSnapshots === "object") {
+      setTabStates((prev) => applyProductionTabSnapshotsToState(prev, tabSnapshots));
+    }
+  }, [
+    productionDirector.audience,
+    productionDirector.creativeDirection,
+    productionDirector.goalSummary,
+    productionDirector.goalVersion,
+    productionDirector.planVersion,
+    productionDirector.platform,
+    productionDirector.productTruthNotes,
+    productionDirector.revisionInstructions,
+    productionDirector.productionRunId,
+    productionDirector.targetDurationSeconds,
+    productionDirector.title,
+    productionDirector.voiceStrategy,
+    productionRunQuery.data,
+    updateProductionDirector,
+  ]);
+
+  const buildCurrentProductionGoal = useCallback((): ProductionGoal => {
+    const marketplaceProducts = referenceImages
+      .map((image) => image.marketplaceProduct)
+      .filter(Boolean);
+    const marketplaceHandoff = marketplaceStorytellingImport.handoff;
+    const supportedMarketplaceClaims = marketplaceHandoff?.claims
+      ?.filter((claim) => claim.status === "supported" || claim.status === "user_approved")
+      ?.map((claim) => ({
+        text: claim.text,
+        status: claim.status,
+        evidenceIds: (claim as any).evidenceIds ?? [],
+      })) ?? [];
+    const marketplaceReadiness = String(marketplaceHandoff?.readiness ?? "");
+    return {
+      title: productionDirector.title.trim() || undefined,
+      summary: productionDirector.goalSummary.trim() || enhancedPrompt.trim() || prompt.trim(),
+      goalType: geminiOmni.deliveryMode,
+      audience: productionDirector.audience.trim(),
+      platform: productionDirector.platform.trim(),
+      durationSeconds: Number(productionDirector.targetDurationSeconds || duration || 0) || undefined,
+      productContext: {
+        marketplaceProducts,
+        marketplaceHandoff: marketplaceHandoff ? {
+          insightId: marketplaceStorytellingImport.insightId,
+          productName: marketplaceHandoff.productName,
+          platform: marketplaceHandoff.platform,
+          sourceUrl: marketplaceHandoff.sourceUrl,
+          readiness: marketplaceHandoff.readiness,
+          storyFormat: marketplaceHandoff.storyFormat,
+          customerJourneyStages: marketplaceHandoff.customerJourneyStages,
+          supportedClaims: supportedMarketplaceClaims,
+          selectedImageCount: marketplaceHandoff.selectedImages.length,
+          mismatchRiskCount: marketplaceHandoff.selectedImages.filter((image) => image.fidelity === "mismatch_risk").length,
+        } : null,
+        evidenceGate: marketplaceHandoff ? {
+          status: supportedMarketplaceClaims.length > 0 && marketplaceReadiness !== "blocked"
+            ? "ready"
+            : "needs_claim_review",
+          supportedClaimCount: supportedMarketplaceClaims.length,
+          readiness: marketplaceHandoff.readiness,
+        } : null,
+        productTruthNotes: productionDirector.productTruthNotes.trim(),
+      },
+      tabSnapshots: {
+        image: buildProductionTabSnapshot(tabStates.image),
+        video: buildProductionTabSnapshot(tabStates.video),
+        audio: buildProductionTabSnapshot(tabStates.audio),
+        generatedMedia: generatedMedia.slice(0, 24),
+        selectedModels: {
+          image: tabStates.image.selectedModel,
+          video: tabStates.video.selectedModel,
+          audio: tabStates.audio.selectedModel,
+        },
+      },
+      characterContext: {
+        characterIds: geminiOmni.selectedCharacterIds,
+        referenceImageCount: referenceImages.length,
+      },
+      voiceAudioStrategy: {
+        audioIds: geminiOmni.selectedAudioIds,
+        voiceStrategy: productionDirector.voiceStrategy.trim(),
+      },
+      visualStyle: {
+        aspectRatio,
+        resolution: geminiOmniSelectedResolution,
+        creativeDirection: productionDirector.creativeDirection.trim(),
+      },
+      constraints: {
+        deliveryMode: geminiOmni.deliveryMode,
+        sourceVideoCount: referenceVideos.length,
+        referenceBudgetUnits: geminiOmniReferenceUnits,
+        revisionInstructions: productionDirector.revisionInstructions.trim(),
+        selectedModel,
+      },
+      contractVersion: "1.0.0",
+    };
+  }, [
+    aspectRatio,
+    duration,
+    enhancedPrompt,
+    generatedMedia,
+    geminiOmni.deliveryMode,
+    geminiOmni.selectedAudioIds,
+    geminiOmni.selectedCharacterIds,
+    geminiOmniReferenceUnits,
+    geminiOmniSelectedResolution,
+    productionDirector,
+    prompt,
+    referenceImages,
+    referenceVideos.length,
+    marketplaceStorytellingImport.handoff,
+    marketplaceStorytellingImport.insightId,
+    selectedModel,
+    tabStates,
+  ]);
+
+  const saveProductionProjectDraft = useCallback(async () => {
+    const currentGoal = buildCurrentProductionGoal();
+    const title = productionDirector.title.trim();
+    const summary = currentGoal.summary.trim() || title || (isThaiLocale ? "โปรเจกต์ Production ใหม่" : "Untitled production project");
+    const goal: ProductionGoal = {
+      ...currentGoal,
+      title: title || undefined,
+      summary,
+    };
+    const productionRunId = productionDirector.productionRunId || buildProductionRunId();
+    updateProductionDirector({
+      enabled: true,
+      productionRunId,
+      status: "saving_goal",
+      lastError: undefined,
+    });
+
+    try {
+      const goalVersion = await saveProductionGoalMutation.mutateAsync({
+        productionRunId,
+        goal,
+        changedFields: [
+          "title",
+          "summary",
+          "audience",
+          "platform",
+          "productContext",
+          "characterContext",
+          "voiceAudioStrategy",
+          "visualStyle",
+          "constraints",
+          "tabSnapshots",
+        ],
+        status: "goal_draft",
+      });
+      updateProductionDirector({
+        goalVersion: Number((goalVersion as any)?.version ?? productionDirector.goalVersion ?? 1),
+        goalSummary: summary,
+        status: productionDirector.plan ? productionDirector.status : "idle",
+        lastError: undefined,
+      });
+      await productionRunsQuery.refetch();
+      toast.success(isThaiLocale ? "บันทึกโปรเจกต์แล้ว" : "Project saved.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      updateProductionDirector({ status: "error", lastError: message });
+      toast.error(message);
+    }
+  }, [
+    buildCurrentProductionGoal,
+    isThaiLocale,
+    productionDirector.goalVersion,
+    productionDirector.plan,
+    productionDirector.productionRunId,
+    productionDirector.status,
+    productionDirector.title,
+    productionRunsQuery,
+    saveProductionGoalMutation,
+    updateProductionDirector,
+  ]);
+
+  const runProductionPlanAndVerify = useCallback(async () => {
+    const goal = buildCurrentProductionGoal();
+    if (!goal.summary.trim()) {
+      toast.error(isThaiLocale ? "กรุณาระบุเป้าหมายหรือ prompt ก่อนสร้างแผน" : "Add a goal or prompt before planning.");
+      return;
+    }
+    const marketplaceHandoff = marketplaceStorytellingImport.handoff;
+    const supportedMarketplaceClaimCount = marketplaceHandoff?.claims.filter((claim) =>
+      claim.status === "supported" || claim.status === "user_approved"
+    ).length ?? 0;
+    if (marketplaceHandoff && (String(marketplaceHandoff.readiness) === "blocked" || supportedMarketplaceClaimCount === 0)) {
+      toast.error(
+        isThaiLocale
+          ? "ยังไม่พร้อมสร้างแผนจาก Marketplace: ต้องมี claim ที่ตรวจแล้วอย่างน้อย 1 รายการ"
+          : "Marketplace evidence is not ready: at least one verified product claim is required.",
+      );
+      updateProductionDirector({
+        enabled: true,
+        status: "needs_revision",
+        lastError: "marketplace_product_truth_evidence_required",
+      });
+      return;
+    }
+    const productionRunId = productionDirector.productionRunId || buildProductionRunId();
+    updateProductionDirector({
+      enabled: true,
+      productionRunId,
+      status: "saving_goal",
+      lastError: undefined,
+      approved: false,
+    });
+
+    try {
+      const goalVersion = await saveProductionGoalMutation.mutateAsync({
+        productionRunId,
+        goal,
+        changedFields: ["summary", "audience", "platform", "productContext", "characterContext", "voiceAudioStrategy"],
+        status: "goal_ready",
+      });
+      updateProductionDirector({ goalVersion: Number((goalVersion as any)?.version ?? 1), status: "planning" });
+
+      const plannerResult = await executeCustomSkillMutation.mutateAsync({
+        skillId: MEDIA_PRODUCTION_STORYBOARD_PLANNER_SKILL_ID,
+        userInputs: {
+          production_goal: goal,
+          delivery_mode: geminiOmni.deliveryMode,
+          provider_candidates: [
+            selectedModel || GEMINI_OMNI_VIDEO_MODEL_ID,
+            "seedance-2",
+          ],
+          reference_images: referenceImages.map((image) => ({ url: image.url, name: image.name })),
+          reference_videos: referenceVideos.map((video) => ({ url: video.url, name: video.name })),
+          character_ids: geminiOmni.selectedCharacterIds,
+          audio_ids: geminiOmni.selectedAudioIds,
+          revision_instructions: productionDirector.revisionInstructions.trim() || undefined,
+          require_review_before_batch: true,
+        },
+        ...(selectedLlmModelSelection.resolvedModelId ? { model: selectedLlmModelSelection.resolvedModelId } : {}),
+        referenceImages: referenceImages.map((image) => image.url).slice(0, 5),
+        originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+      });
+      const parsedPlan = parseJsonSkillContent(plannerResult.content || "") ?? {
+        production_goal_summary: goal.summary,
+        creative_strategy: plannerResult.content || "",
+        storyboard_outline: [],
+        approval_checklist: [
+          "Review story continuity",
+          "Review product truth",
+          "Review provider and budget fit",
+        ],
+      };
+      const savedPlan = await saveProductionPlanMutation.mutateAsync({
+        productionRunId,
+        goalVersion: Number((goalVersion as any)?.version ?? 1),
+        plan: parsedPlan,
+        plannerSkillId: MEDIA_PRODUCTION_STORYBOARD_PLANNER_SKILL_ID,
+        plannerSkillVersion: String(parsedPlan.skill_version ?? "1.0.0"),
+        status: "plan_ready_for_review",
+      });
+      const planVersion = Number((savedPlan as any)?.planVersion?.version ?? (savedPlan as any)?.planVersion ?? 1);
+      updateProductionDirector({
+        plan: parsedPlan,
+        planVersion,
+        status: "verifying",
+      });
+
+      const verifierResult = await executeCustomSkillMutation.mutateAsync({
+        skillId: MEDIA_PRODUCTION_PLAN_VERIFIER_SKILL_ID,
+        userInputs: {
+          production_goal: goal,
+          plan_package: parsedPlan,
+          asset_plan: (savedPlan as any)?.assetPlan ?? {},
+          readiness: (savedPlan as any)?.readiness ?? {},
+          downstream_targets: ["storyboard_review", "video_edit"],
+          require_human_approval: true,
+        },
+        ...(selectedLlmModelSelection.resolvedModelId ? { model: selectedLlmModelSelection.resolvedModelId } : {}),
+        referenceImages: referenceImages.map((image) => image.url).slice(0, 5),
+        originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+      });
+      const parsedVerification = parseJsonSkillContent(verifierResult.content || "") ?? {
+        verdict: "human_review",
+        score: 0,
+        warnings: [{ message: verifierResult.content || "Verifier returned non-JSON output." }],
+      };
+      await saveProductionVerificationMutation.mutateAsync({
+        productionRunId,
+        planVersion,
+        verification: parsedVerification,
+        verifierSkillId: MEDIA_PRODUCTION_PLAN_VERIFIER_SKILL_ID,
+        verifierSkillVersion: String(parsedVerification.skill_version ?? "1.0.0"),
+      });
+      const verdict = String(parsedVerification.verdict ?? parsedVerification.status ?? "human_review").toLowerCase();
+      updateProductionDirector({
+        verification: parsedVerification,
+        status: verdict === "revise" || verdict === "block" ? "needs_revision" : "plan_ready",
+      });
+      toast.success(isThaiLocale ? "สร้างแผนและตรวจสอบเบื้องต้นแล้ว" : "Plan created and verified.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      updateProductionDirector({ status: "error", lastError: message });
+      toast.error(message);
+    }
+  }, [
+    buildCurrentProductionGoal,
+    executeCustomSkillMutation,
+    geminiOmni.deliveryMode,
+    geminiOmni.selectedAudioIds,
+    geminiOmni.selectedCharacterIds,
+    isThaiLocale,
+    marketplaceStorytellingImport.handoff,
+    productionDirector.productionRunId,
+    productionDirector.revisionInstructions,
+    referenceImages,
+    referenceVideos,
+    saveProductionGoalMutation,
+    saveProductionPlanMutation,
+    saveProductionVerificationMutation,
+    selectedLlmModelSelection.resolvedModelId,
+    selectedModel,
+    updateProductionDirector,
+  ]);
+
+  const approveProductionPlan = useCallback(async () => {
+    if (!productionDirector.productionRunId || !productionDirector.planVersion) return;
+    try {
+      await approveProductionPlanMutation.mutateAsync({
+        productionRunId: productionDirector.productionRunId,
+        planVersion: productionDirector.planVersion,
+        acceptedWarnings: ((productionDirector.verification?.warnings ?? []) as any[]).map((warning, index) =>
+          String((warning as any)?.id ?? (warning as any)?.code ?? `warning-${index + 1}`),
+        ),
+        lockedTargets: productionPlanScenes.slice(0, 20).map((scene, index) =>
+          String((scene as any)?.id ?? (scene as any)?.scene_id ?? `scene-${index + 1}`),
+        ),
+        notes: "Approved from Media Studio Production Director.",
+        budgetSnapshot: (productionDirector.plan?.credit_and_time_estimate ?? productionDirector.plan?.budgetSummary ?? {}) as Record<string, any>,
+      });
+      updateProductionDirector({ approved: true, status: "approved" });
+      toast.success(isThaiLocale ? "อนุมัติแผน Production แล้ว" : "Production plan approved.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+  }, [
+    approveProductionPlanMutation,
+    isThaiLocale,
+    productionDirector.plan,
+    productionDirector.planVersion,
+    productionDirector.productionRunId,
+    productionDirector.verification,
+    productionPlanScenes,
+    updateProductionDirector,
+  ]);
+
+  const applyProductionPlanToPrompt = useCallback(async () => {
+    if (!productionDirector.plan) return;
+    if (!isGeminiOmniVideoSelected) {
+      const promptText = buildGenericProductionPromptFromPlan(
+        productionDirector.plan,
+        selectedMediaModel?.name || selectedModel,
+      );
+      setEnhancedPrompt(promptText.trim());
+      toast.success(isThaiLocale ? "นำแผน Production ไปใช้กับ prompt ของโมเดลที่เลือกแล้ว" : "Applied the production plan to the selected model prompt.");
+      return;
+    }
+    const directorResult = await executeCustomSkillMutation.mutateAsync({
+      skillId: GEMINI_OMNI_VIDEO_DIRECTOR_SKILL_ID,
+      userInputs: {
+        approved_plan: productionDirector.plan,
+        delivery_mode: geminiOmni.deliveryMode,
+        character_ids: geminiOmni.selectedCharacterIds,
+        audio_ids: geminiOmni.selectedAudioIds,
+        source_video_count: referenceVideos.length,
+        reference_image_count: referenceImages.length,
+        target_model: selectedModel || GEMINI_OMNI_VIDEO_MODEL_ID,
+      },
+      ...(selectedLlmModelSelection.resolvedModelId ? { model: selectedLlmModelSelection.resolvedModelId } : {}),
+      referenceImages: referenceImages.map((image) => image.url).slice(0, 5),
+      originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+    });
+    const parsedDirector = parseJsonSkillContent(directorResult.content || "");
+    const promptText = normalizeCustomSkillPromptContent(directorResult.content || "")
+      || String(parsedDirector?.prompt ?? parsedDirector?.final_prompt ?? "");
+    if (promptText.trim()) {
+      setEnhancedPrompt(promptText.trim());
+      toast.success(isThaiLocale ? "นำแผนไปสร้าง prompt สำหรับ Gemini Omni แล้ว" : "Applied the plan to the Gemini Omni prompt.");
+    }
+  }, [
+    executeCustomSkillMutation,
+    geminiOmni.deliveryMode,
+    geminiOmni.selectedAudioIds,
+    geminiOmni.selectedCharacterIds,
+    isGeminiOmniVideoSelected,
+    isThaiLocale,
+    productionDirector.plan,
+    referenceImages,
+    referenceVideos.length,
+    selectedMediaModel?.name,
+    selectedLlmModelSelection.resolvedModelId,
+    selectedModel,
+    setEnhancedPrompt,
+  ]);
+
+  const projectProductionOutput = useCallback(async (surface: "storyboard_review" | "video_edit") => {
+    if (!productionDirector.productionRunId || !productionDirector.plan) return;
+    updateProductionDirector({ status: "exporting" });
+    try {
+      const output = {
+        title: productionDirector.title || productionDirector.goalSummary || "Media Production",
+        production_goal: buildCurrentProductionGoal(),
+        delivery_mode: geminiOmni.deliveryMode,
+        storyboard_outline: productionDirector.plan.storyboard_outline ?? productionDirector.plan.storyboardOutline ?? [],
+        scene_timeline: productionDirector.plan.scene_timeline ?? productionDirector.plan.sceneTimeline ?? [],
+        shot_plan: productionDirector.plan.shot_plan ?? productionDirector.plan.shotPlan ?? [],
+        asset_requirements: productionDirector.plan.asset_requirements ?? productionDirector.plan.assetRequirements ?? [],
+        prompt_sequence: productionDirector.plan.prompt_sequence ?? productionDirector.plan.promptSequence ?? [],
+        verification: productionDirector.verification ?? {},
+        resolution: geminiOmniSelectedResolution,
+        durationSeconds: Number(productionDirector.targetDurationSeconds || duration || 0) || undefined,
+      };
+      const result = await projectProductionOutputMutation.mutateAsync({
+        productionRunId: productionDirector.productionRunId,
+        surface,
+        output,
+        name: productionDirector.title || productionDirector.goalSummary || undefined,
+      });
+      updateProductionDirector({ status: productionDirector.approved ? "approved" : "plan_ready" });
+      const path = surface === "storyboard_review"
+        ? `/storyboard-review/${(result as any).surfaceRecordId}`
+        : `/video-editor?projectId=${(result as any).surfaceRecordId}`;
+      toast.success(surface === "storyboard_review"
+        ? (isThaiLocale ? "ส่งไป Storyboard Review แล้ว" : "Sent to Storyboard Review.")
+        : (isThaiLocale ? "ส่งไป Video Edit แล้ว" : "Sent to Video Edit."));
+      setLocation(path);
+    } catch (error) {
+      updateProductionDirector({ status: "error", lastError: error instanceof Error ? error.message : String(error) });
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+  }, [
+    buildCurrentProductionGoal,
+    duration,
+    geminiOmni.deliveryMode,
+    geminiOmniSelectedResolution,
+    isThaiLocale,
+    productionDirector,
+    projectProductionOutputMutation,
+    setLocation,
+    updateProductionDirector,
+  ]);
+
+  const runGeminiOmniVideoQaForTask = useCallback(async (task: GenerationTask) => {
+    const resultUrl = task.url;
+    if (!resultUrl || task.type !== "video") return;
+    const context = task.storyboardContext;
+    const extraParams = context?.extraParams ?? {};
+    const isGeminiTask =
+      task.model === GEMINI_OMNI_VIDEO_MODEL_ID
+      || context?.model === GEMINI_OMNI_VIDEO_MODEL_ID
+      || typeof extraParams.delivery_mode === "string"
+      || Array.isArray(extraParams.character_ids)
+      || Array.isArray(extraParams.audio_ids);
+    if (!isGeminiTask) return;
+
+    const taskKey = [
+      task.backendTaskId || task.providerTaskId || task.id,
+      resultUrl,
+      productionDirector.planVersion ?? "no-plan",
+    ].join(":");
+    if (processedGeminiOmniVideoQaKeysRef.current.has(taskKey)) return;
+    processedGeminiOmniVideoQaKeysRef.current.add(taskKey);
+
+    setGenerationTasks((prev) => prev.map((item) => (
+      item.id === task.id
+        ? {
+          ...item,
+          videoQaStatus: "running",
+          statusDetail: isThaiLocale ? "กำลังตรวจคุณภาพ Gemini Omni..." : "Checking Gemini Omni quality...",
+        }
+        : item
+    )));
+
+    try {
+      const qaResult = await executeCustomSkillMutation.mutateAsync({
+        skillId: "gemini-omni-video-quality-qa",
+        userInputs: {
+          generated_video: {
+            url: resultUrl,
+            task_id: task.backendTaskId || task.id,
+            provider_task_id: task.providerTaskId,
+            model: task.model,
+          },
+          prompt: task.prompt,
+          approved_plan: productionDirector.plan ?? {},
+          plan_verification: productionDirector.verification ?? {},
+          delivery_mode: extraParams.delivery_mode ?? geminiOmni.deliveryMode,
+          character_ids: extraParams.character_ids ?? geminiOmni.selectedCharacterIds,
+          audio_ids: extraParams.audio_ids ?? geminiOmni.selectedAudioIds,
+          product_context: task.marketplaceProduct ?? buildCurrentProductionGoal().productContext ?? {},
+          inspection_mode: "metadata_only",
+          require_learning_signals: true,
+        },
+        ...(selectedLlmModelSelection.resolvedModelId ? { model: selectedLlmModelSelection.resolvedModelId } : {}),
+        referenceImages: (context?.referenceImages ?? referenceImages).map((image) => image.url).slice(0, 5),
+        originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+      });
+      const parsedQa = parseJsonSkillContent(qaResult.content || "") ?? {
+        verdict: "human_review",
+        score: 0,
+        reviewer_notes: qaResult.content || "Video QA returned non-JSON output.",
+        issues: [{
+          id: "video_qa_non_json",
+          severity: "medium",
+          title: "Video QA returned non-JSON output",
+          recommendation: "Tighten the video QA skill output contract.",
+        }],
+      };
+      const normalizedQa = normalizeGeminiOmniVideoQaResult(parsedQa);
+
+      setGenerationTasks((prev) => prev.map((item) => (
+        item.id === task.id
+          ? {
+            ...item,
+            videoQaStatus: normalizedQa.status,
+            videoQaSummary: normalizedQa.summary,
+            videoQaResult: parsedQa,
+            statusDetail: normalizedQa.status === "pass"
+              ? (isThaiLocale ? "ผ่าน Video QA" : "Video QA passed")
+              : `${isThaiLocale ? "Video QA" : "Video QA"}: ${normalizedQa.summary}`,
+          }
+          : item
+      )));
+
+      if (normalizedQa.issues.length > 0 && normalizedQa.proposedChanges.length > 0) {
+        const promptPreview = task.prompt.slice(0, 4000);
+        createSkillAutoLearningSignalMutation.mutate({
+          skillSlug: GEMINI_OMNI_VIDEO_DIRECTOR_SKILL_ID,
+          trigger: "video_qa",
+          score: normalizedQa.score,
+          issues: normalizedQa.issues,
+          proposedChanges: normalizedQa.proposedChanges,
+          evidence: {
+            promptPreview,
+            activeTab: "video",
+            source: "gemini_omni_video_qa",
+            skillName: "Gemini Omni Video Director",
+            skillSlug: GEMINI_OMNI_VIDEO_DIRECTOR_SKILL_ID,
+          },
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setGenerationTasks((prev) => prev.map((item) => (
+        item.id === task.id
+          ? {
+            ...item,
+            videoQaStatus: "unavailable",
+            videoQaSummary: message,
+            statusDetail: isThaiLocale ? "สร้างเสร็จแล้ว แต่ Video QA ไม่พร้อมใช้งาน" : "Generated, but Video QA is unavailable.",
+          }
+          : item
+      )));
+    }
+  }, [
+    buildCurrentProductionGoal,
+    createSkillAutoLearningSignalMutation,
+    executeCustomSkillMutation,
+    geminiOmni.deliveryMode,
+    geminiOmni.selectedAudioIds,
+    geminiOmni.selectedCharacterIds,
+    isThaiLocale,
+    productionDirector.plan,
+    productionDirector.planVersion,
+    productionDirector.verification,
+    referenceImages,
+    selectedLlmModelSelection.resolvedModelId,
+  ]);
+
+  useEffect(() => {
+    for (const task of generationTasks) {
+      if (task.status === "completed" && task.url && task.videoQaStatus !== "running") {
+        void runGeminiOmniVideoQaForTask(task);
+      }
+    }
+  }, [generationTasks, runGeminiOmniVideoQaForTask]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  const toggleGeminiOmniCharacter = (providerAssetId: string) => {
+    setGeminiOmniState((prev) => {
+      const exists = prev.selectedCharacterIds.includes(providerAssetId);
+      const selectedCharacterIds = exists
+        ? prev.selectedCharacterIds.filter((id) => id !== providerAssetId)
+        : [...prev.selectedCharacterIds, providerAssetId].slice(0, 3);
+      return { selectedCharacterIds };
+    });
+  };
+  const toggleGeminiOmniAudio = (providerAssetId: string) => {
+    setGeminiOmniState((prev) => {
+      const exists = prev.selectedAudioIds.includes(providerAssetId);
+      const selectedAudioIds = exists
+        ? prev.selectedAudioIds.filter((id) => id !== providerAssetId)
+        : [...prev.selectedAudioIds, providerAssetId];
+      return { selectedAudioIds };
+    });
+  };
+  const toggleGeminiOmniCharacterDraftAudio = (providerAssetId: string) => {
+    setGeminiOmniState((prev) => {
+      const exists = prev.characterDraftAudioIds.includes(providerAssetId);
+      return {
+        characterDraftAudioIds: exists
+          ? prev.characterDraftAudioIds.filter((id) => id !== providerAssetId)
+          : Array.from(new Set([...prev.characterDraftAudioIds, providerAssetId])),
+      };
+    });
+  };
+  const selectGeminiOmniVoicePreset = (audioId: string) => {
+    const preset = GEMINI_OMNI_VOICE_PRESETS.find((item) => item.id === audioId);
+    if (!preset) return;
+    setGeminiOmniState((prev) => ({
+      audioDraftId: preset.id,
+      audioDraftName: prev.audioDraftName.trim()
+        ? prev.audioDraftName
+        : `${preset.id} ${preset.gender} ${preset.tone}`,
+      audioDraftDescription: preset.description,
+    }));
+  };
+  const submitGeminiOmniCharacterAsset = () => {
+    const imageUrl = geminiOmni.characterDraftImageUrl;
+    if (!imageUrl) {
+      toast.error(isThaiLocale ? "ลากหรืออัปโหลดรูป Character ก่อนสร้าง Character Reference" : "Drag or upload a character image before creating a character reference.");
+      return;
+    }
+    if (!geminiOmni.characterDraftName.trim() || geminiOmni.characterDraftDescription.trim().length < 12) {
+      toast.error(isThaiLocale ? "ใส่ชื่อและคำอธิบายตัวละครให้ครบก่อน" : "Add a character name and a clear description first.");
+      return;
+    }
+    if (geminiOmni.characterDraftAudioIds.length === 0) {
+      toast.error(isThaiLocale ? "เลือกหรือสร้าง Voice/Audio อย่างน้อย 1 รายการก่อนสร้าง Character" : "Choose or create at least one Voice/Audio before creating the character.");
+      return;
+    }
+    createGeminiOmniCharacterMutation.mutate({
+      characterName: geminiOmni.characterDraftName.trim(),
+      description: geminiOmni.characterDraftDescription.trim(),
+      imageUrl,
+      audioIds: geminiOmni.characterDraftAudioIds,
+      clientRequestId: `gomni-char-${Date.now()}`,
+    });
+  };
+  const submitGeminiOmniAudioAsset = () => {
+    const selectedPreset = GEMINI_OMNI_VOICE_PRESETS.find((preset) => preset.id === geminiOmni.audioDraftId.trim());
+    if (!selectedPreset || !geminiOmni.audioDraftName.trim() || geminiOmni.audioDraftDescription.trim().length < 12 || !geminiOmni.audioDraftDialogue.trim()) {
+      toast.error(isThaiLocale ? "กรอก Audio ID, ชื่อ, คำอธิบายเสียง และตัวอย่างบทพูดให้ครบ" : "Fill audio id, name, voice description, and example dialogue.");
+      return;
+    }
+    createGeminiOmniAudioMutation.mutate({
+      audioId: geminiOmni.audioDraftId.trim(),
+      name: geminiOmni.audioDraftName.trim(),
+      voiceDescription: geminiOmni.audioDraftDescription.trim(),
+      exampleDialogue: geminiOmni.audioDraftDialogue.trim(),
+      clientRequestId: `gomni-audio-${Date.now()}`,
+    });
+  };
+  const handleWorkspaceTabChange = (value: string) => {
+    const next = value as StudioWorkspaceTab;
+    setStudioWorkspaceTab(next);
+    if (next === "image" || next === "video" || next === "audio") {
+      setActiveTab(next);
+    }
+  };
+  const openProductionRun = (productionRunId: string) => {
+    setGeminiOmniState(() => ({
+      productionDirector: {
+        ...createDefaultTabState("video").geminiOmni.productionDirector,
+        enabled: true,
+        productionRunId,
+      },
+    }));
+    setStudioWorkspaceTab("production");
+    setProductionProjectPickerOpen(false);
+  };
+  const createNewProductionRun = () => {
+    setGeminiOmniState((prev) => ({
+      productionDirector: {
+        ...createDefaultTabState("video").geminiOmni.productionDirector,
+        enabled: true,
+        productionRunId: buildProductionRunId(),
+      },
+    }));
+    setStudioWorkspaceTab("production");
+    setProductionProjectPickerOpen(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
@@ -10704,12 +12054,109 @@ export default function MediaStudio() {
             </div>
           </div>
         )}
+        <div className="mb-4 rounded-xl border border-sky-200 bg-white/85 p-4 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Bot className="h-4 w-4 text-sky-600" />
+                <span className="text-sm font-semibold text-slate-950">Production Director</span>
+                <Badge variant="outline" className="bg-white">
+                  {productionDirector.status}
+                </Badge>
+                {productionDirector.productionRunId && (
+                  <Badge variant="outline" className="max-w-full truncate bg-white">
+                    {productionDirector.productionRunId}
+                  </Badge>
+                )}
+              </div>
+              <div className="mt-1 truncate text-lg font-semibold text-slate-900">
+                {activeProductionProjectTitle}
+              </div>
+              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                {productionDirector.goalSummary || (isThaiLocale
+                  ? "กำหนดเป้าหมายกลางของโปรเจกต์ แล้วส่งงานต่อไปยัง Image, Video, Audio, Storyboard Review หรือ Video Edit"
+                  : "Set the central production goal, then route work to Image, Video, Audio, Storyboard Review, or Video Edit.")}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row lg:w-[520px]">
+              <Input
+                value={productionProjectSearch}
+                onChange={(event) => {
+                  setProductionProjectSearch(event.target.value);
+                  setProductionProjectPickerOpen(true);
+                }}
+                onFocus={() => setProductionProjectPickerOpen(true)}
+                placeholder={isThaiLocale ? "ค้นหาโปรเจกต์เดิม..." : "Search existing projects..."}
+                className="bg-white"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={saveProductionProjectDraft}
+                disabled={saveProductionGoalMutation.isPending}
+              >
+                {saveProductionGoalMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {isThaiLocale ? "บันทึก" : "Save"}
+              </Button>
+              <Button type="button" variant="outline" onClick={createNewProductionRun}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                {isThaiLocale ? "โปรเจกต์ใหม่" : "New Project"}
+              </Button>
+            </div>
+          </div>
+          {productionProjectPickerOpen && (
+            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {productionRunsQuery.isFetching && (
+                <div className="rounded-md border bg-slate-50 p-3 text-sm text-muted-foreground">
+                  <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+                  {isThaiLocale ? "กำลังค้นหาโปรเจกต์..." : "Searching projects..."}
+                </div>
+              )}
+              {!productionRunsQuery.isFetching && productionRuns.length === 0 && (
+                <div className="rounded-md border bg-slate-50 p-3 text-sm text-muted-foreground">
+                  {isThaiLocale ? "ยังไม่พบโปรเจกต์เดิม" : "No existing projects found."}
+                </div>
+              )}
+              {productionRuns.map((run: any) => (
+                <button
+                  key={run.productionRunId}
+                  type="button"
+                  className="flex min-w-0 gap-3 rounded-md border bg-white p-2 text-left shadow-sm transition hover:border-sky-300 hover:bg-sky-50"
+                  onClick={() => openProductionRun(run.productionRunId)}
+                >
+                  <div className="flex h-16 w-20 shrink-0 items-center justify-center overflow-hidden rounded border bg-slate-100">
+                    {run.thumbnailUrl ? (
+                      <img src={run.thumbnailUrl} alt={run.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <Layers className="h-5 w-5 text-slate-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium text-slate-900">{run.title}</div>
+                    <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{run.summary || run.productionRunId}</div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <Badge variant="outline" className="bg-white text-[10px]">{run.status}</Badge>
+                      {run.platform && <Badge variant="outline" className="bg-white text-[10px]">{run.platform}</Badge>}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
           {/* Left Panel - Controls */}
           <div className="lg:col-span-2 space-y-4">
             {/* Media Type Tabs */}
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MediaType)}>
-              <TabsList className="grid h-auto w-full grid-cols-3 bg-muted/50 p-1">
+            <Tabs value={studioWorkspaceTab} onValueChange={handleWorkspaceTabChange}>
+              <TabsList className="grid h-auto w-full grid-cols-4 bg-muted/50 p-1">
+                <TabsTrigger
+                  value="production"
+                  className="min-w-0 gap-1 px-2 py-2 text-xs transition-all data-[state=active]:bg-sky-600 data-[state=active]:text-white data-[state=active]:shadow-md sm:gap-2 sm:px-3 sm:text-sm"
+                >
+                  <Bot className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Production</span>
+                </TabsTrigger>
                 <TabsTrigger
                   value="image"
                   className="min-w-0 gap-1 px-2 py-2 text-xs transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-md sm:gap-2 sm:px-3 sm:text-sm"
@@ -10774,6 +12221,132 @@ export default function MediaStudio() {
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
+            )}
+
+            {studioWorkspaceTab === "production" && (
+              <DashboardCard className="border-sky-200 bg-sky-50/60" bodyClassName="space-y-3 p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+                      <Bot className="h-4 w-4 text-sky-600" />
+                      Production Director
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {isThaiLocale
+                        ? "ศูนย์กลางโปรเจกต์สำหรับวาง Goal, สร้าง storyboard plan, ตรวจสอบก่อนใช้เครดิต และส่งงานต่อไป Image / Video / Audio / Review / Edit"
+                        : "The project command center for goals, storyboard plans, quality gates, and handoff to Image / Video / Audio / Review / Edit."}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={productionDirector.enabled}
+                    onCheckedChange={(checked) => updateProductionDirector({ enabled: checked })}
+                    aria-label="Toggle Production Director"
+                  />
+                </div>
+
+                {productionDirector.enabled && (
+                  <>
+                    <div className="grid gap-2 rounded-md border border-slate-200 bg-white/80 p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-medium text-slate-700">
+                          {isThaiLocale ? "Production Run ID สำหรับกลับมาทำต่อ" : "Production Run ID for resume"}
+                        </Label>
+                        <Input
+                          value={productionDirector.productionRunId}
+                          onChange={(event) => updateProductionDirector({ productionRunId: event.target.value.trim() })}
+                          placeholder={isThaiLocale ? "วาง Run ID เพื่อโหลดแผนเดิม" : "Paste a run ID to restore an existing plan"}
+                          className="bg-white"
+                        />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {productionRunQuery.isFetching && (
+                          <Badge variant="outline" className="bg-white">
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            {isThaiLocale ? "กำลังโหลด" : "Loading"}
+                          </Badge>
+                        )}
+                        {productionDirector.productionRunId && !productionRunQuery.isFetching && (
+                          <Badge variant="outline" className="bg-white">
+                            {productionDirector.status}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid gap-2 lg:grid-cols-3">
+                      <Input value={productionDirector.title} onChange={(event) => updateProductionDirector({ title: event.target.value })} placeholder={isThaiLocale ? "ชื่อโปรเจกต์" : "Project title"} className="bg-white" />
+                      <Input value={productionDirector.audience} onChange={(event) => updateProductionDirector({ audience: event.target.value })} placeholder={isThaiLocale ? "กลุ่มเป้าหมาย" : "Audience"} className="bg-white" />
+                      <Input value={productionDirector.platform} onChange={(event) => updateProductionDirector({ platform: event.target.value })} placeholder={isThaiLocale ? "แพลตฟอร์ม เช่น TikTok/Shopee" : "Platform, e.g. TikTok/Shopee"} className="bg-white" />
+                      <Textarea value={productionDirector.goalSummary} onChange={(event) => updateProductionDirector({ goalSummary: event.target.value })} placeholder={isThaiLocale ? "เป้าหมายของหนัง/วิดีโอ ต้องการเล่าอะไร ให้คนดูรู้สึกหรือทำอะไร" : "Production goal: what to say, make viewers feel, or make viewers do"} className="min-h-[84px] bg-white lg:col-span-3" />
+                      <Textarea value={productionDirector.productTruthNotes} onChange={(event) => updateProductionDirector({ productTruthNotes: event.target.value })} placeholder={isThaiLocale ? "ข้อเท็จจริงสินค้า/ข้อห้าม claim/จุดขายที่ต้องไม่ผิดจากข้อมูลจริง" : "Product truth, claim limits, and must-not-change selling points"} className="min-h-[76px] bg-white" />
+                      <Textarea value={productionDirector.creativeDirection} onChange={(event) => updateProductionDirector({ creativeDirection: event.target.value })} placeholder={isThaiLocale ? "แนว cinematic, mood, visual style, pacing" : "Cinematic direction, mood, visual style, pacing"} className="min-h-[76px] bg-white" />
+                      <Textarea value={productionDirector.voiceStrategy} onChange={(event) => updateProductionDirector({ voiceStrategy: event.target.value })} placeholder={isThaiLocale ? "Voice over, lip sync, dialogue, sound strategy" : "Voiceover, lip sync, dialogue, and sound strategy"} className="min-h-[76px] bg-white" />
+                      <Textarea value={productionDirector.revisionInstructions} onChange={(event) => updateProductionDirector({ revisionInstructions: event.target.value, approved: false })} placeholder={isThaiLocale ? "คำสั่งแก้ไขแผน เช่น เปลี่ยน hook, ลดจำนวนฉาก, เน้น proof/review, ห้าม claim เกินข้อมูลสินค้า" : "Revision instructions, e.g. change hook, reduce scenes, emphasize proof/review, avoid unsupported claims"} className="min-h-[76px] bg-white lg:col-span-3" />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input value={productionDirector.targetDurationSeconds} onChange={(event) => updateProductionDirector({ targetDurationSeconds: event.target.value })} placeholder={isThaiLocale ? "ความยาวรวม วินาที" : "Total seconds"} className="h-9 w-36 bg-white" />
+                      <Button type="button" variant="outline" onClick={saveProductionProjectDraft} disabled={saveProductionGoalMutation.isPending}>
+                        {saveProductionGoalMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        {isThaiLocale ? "บันทึกโปรเจกต์" : "Save Project"}
+                      </Button>
+                      <Button type="button" variant="outline" onClick={runProductionPlanAndVerify} disabled={saveProductionGoalMutation.isPending || saveProductionPlanMutation.isPending || saveProductionVerificationMutation.isPending || executeCustomSkillMutation.isPending}>
+                        {productionDirector.status === "planning" || productionDirector.status === "verifying" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                        {isThaiLocale ? "สร้าง Plan + Verify" : "Plan + Verify"}
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => updateProductionDirector({ status: "needs_revision", approved: false, lastError: undefined })} disabled={!productionDirector.plan}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        {isThaiLocale ? "ส่งกลับไปแก้แผน" : "Mark for Revision"}
+                      </Button>
+                      <Button type="button" variant="outline" onClick={approveProductionPlan} disabled={!productionDirector.planVersion || productionDirector.status === "needs_revision" || approveProductionPlanMutation.isPending}>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        {isThaiLocale ? "อนุมัติแผน" : "Approve Plan"}
+                      </Button>
+                      <Button type="button" variant="outline" onClick={applyProductionPlanToPrompt} disabled={!productionDirector.plan || executeCustomSkillMutation.isPending}>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        {isThaiLocale ? "ใช้กับ Prompt" : "Use With Prompt"}
+                      </Button>
+                    </div>
+                    {(productionDirector.plan || productionDirector.verification || productionDirector.lastError) && (
+                      <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
+                        <div className="rounded-md border bg-white/90 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-sm font-medium text-slate-950">Storyboard Plan Preview</div>
+                            <Badge variant="outline">{productionPlanScenes.length} {isThaiLocale ? "ฉาก/ช็อต" : "scenes/shots"}</Badge>
+                          </div>
+                          {productionPlanSummary && <p className="mt-2 text-xs leading-5 text-muted-foreground">{productionPlanSummary}</p>}
+                          {productionPlanScenes.length > 0 && (
+                            <div className="mt-3 grid gap-2">
+                              {productionPlanScenes.slice(0, 4).map((scene, index) => (
+                                <div key={`${String((scene as any)?.id ?? index)}`} className="rounded border bg-white px-3 py-2">
+                                  <div className="text-xs font-medium text-slate-900">{String((scene as any)?.title ?? (scene as any)?.scene_title ?? (scene as any)?.shot_title ?? `Scene ${index + 1}`)}</div>
+                                  <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">{String((scene as any)?.summary ?? (scene as any)?.description ?? (scene as any)?.prompt ?? "")}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="rounded-md border bg-white/90 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-sm font-medium text-slate-950">Verification Gate</div>
+                            <Badge variant={productionDirector.status === "needs_revision" ? "destructive" : "outline"}>{productionVerificationVerdict || productionDirector.status}</Badge>
+                          </div>
+                          <div className="mt-2 text-xs text-muted-foreground">{isThaiLocale ? "คะแนน" : "Score"}: {Number.isFinite(productionVerificationScore) ? productionVerificationScore : 0}/100</div>
+                          {productionDirector.lastError && <p className="mt-2 text-xs leading-5 text-red-600">{productionDirector.lastError}</p>}
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button type="button" variant="outline" size="sm" onClick={() => projectProductionOutput("storyboard_review")} disabled={!productionDirector.plan || !productionDirector.approved || projectProductionOutputMutation.isPending}>
+                              <Layers className="mr-2 h-4 w-4" />
+                              {isThaiLocale ? "ส่ง Storyboard Review" : "Review Storyboard"}
+                            </Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => projectProductionOutput("video_edit")} disabled={!productionDirector.plan || !productionDirector.approved || projectProductionOutputMutation.isPending}>
+                              <Scissors className="mr-2 h-4 w-4" />
+                              {isThaiLocale ? "เปิดใน Video Edit" : "Open in Video Edit"}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </DashboardCard>
             )}
 
             {/* Prompt Input */}
@@ -11884,6 +13457,551 @@ export default function MediaStudio() {
                 </div>
               )}
 
+              {activeTab === "video" && (
+                <div className="space-y-4 rounded-lg border border-sky-200 bg-sky-50/70 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Bot className="h-4 w-4 text-sky-600" />
+                        <h3 className="text-sm font-semibold text-sky-950">
+                          {isThaiLocale ? "Production Director" : "Production Director"}
+                        </h3>
+                        {selectedMediaModel?.name && (
+                          <Badge variant="outline" className="border-sky-300 bg-white text-sky-700">
+                            {selectedMediaModel.name}
+                          </Badge>
+                        )}
+                        {isGeminiOmniVideoSelected && (
+                          <>
+                        <Badge variant="outline" className="border-sky-300 bg-white text-sky-700">
+                          {geminiOmniReferenceUnits}/7 refs
+                        </Badge>
+                        <Badge variant="outline" className="border-sky-300 bg-white text-sky-700">
+                          {geminiOmniPricingNote}
+                        </Badge>
+                          </>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-sky-900/75">
+                        {isThaiLocale
+                          ? "ใช้ LLM วาง Goal, storyboard, cinematic direction, QA gate และส่งต่อไป Storyboard Review หรือ Video Edit ได้กับทุกโมเดลวิดีโอ"
+                          : "Use LLM planning for goals, storyboard, cinematic direction, QA gates, and Storyboard Review / Video Edit handoff across video models."}
+                      </p>
+                    </div>
+                    <Select
+                      value={geminiOmni.deliveryMode}
+                      onValueChange={(value) => setGeminiOmniState({ deliveryMode: value as GeminiOmniDeliveryMode })}
+                    >
+                      <SelectTrigger className="w-full bg-white sm:w-64">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="single_shot">{isThaiLocale ? "วิดีโอเดียว / shot เดียว" : "Single-shot video"}</SelectItem>
+                        <SelectItem value="multi_shot_single_video">{isThaiLocale ? "วิดีโอเดียว / multi-shot" : "One video, multi-shot"}</SelectItem>
+                        <SelectItem value="storyboard_multi_video">{isThaiLocale ? "Storyboard หลายวิดีโอ" : "Storyboard, multiple videos"}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {isGeminiOmniVideoSelected && !geminiOmniReferenceStatus.ok && (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+                      {geminiOmniReferenceStatus.issues.map((issue) => issue.message).join(" ")}
+                    </div>
+                  )}
+
+	                  {isGeminiOmniVideoSelected && (
+	                  <div className="grid gap-3 lg:grid-cols-2">
+                    <div className="space-y-3 rounded-md border border-sky-100 bg-white/80 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <div className="text-sm font-medium text-slate-900">
+                            {isThaiLocale ? "Step 2: Character Wizard" : "Step 2: Character Wizard"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {isThaiLocale
+                              ? `เลือกใช้แล้ว ${geminiOmni.selectedCharacterIds.length}/3 ตัวละคร`
+                              : `${geminiOmni.selectedCharacterIds.length}/3 saved characters selected`}
+                          </div>
+                        </div>
+                        {geminiOmniCharacterAssetsQuery.isLoading && <Loader2 className="h-4 w-4 animate-spin text-sky-600" />}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {geminiOmniCharacterAssets.length === 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            {isThaiLocale ? "ยังไม่มี character asset ที่บันทึกไว้" : "No saved character assets yet."}
+                          </span>
+                        )}
+                        {geminiOmniCharacterAssets.map((asset) => {
+                          const providerAssetId = String(asset.providerAssetId ?? "");
+                          const selected = geminiOmni.selectedCharacterIds.includes(providerAssetId);
+                          return (
+                            <Button
+                              key={asset.id ?? providerAssetId}
+                              type="button"
+                              variant={selected ? "default" : "outline"}
+                              size="sm"
+                              className="max-w-full"
+                              onClick={() => toggleGeminiOmniCharacter(providerAssetId)}
+                              disabled={!selected && geminiOmni.selectedCharacterIds.length >= 3}
+                              title={`${asset.displayName || providerAssetId} / ${providerAssetId}`}
+                            >
+                              <ScanFace className="mr-1 h-3.5 w-3.5" />
+                              <span className="truncate">{asset.displayName || providerAssetId}</span>
+                              {Array.isArray((asset.metadata as any)?.audioIds) && (asset.metadata as any).audioIds.length > 0 && (
+                                <Badge variant="outline" className="ml-1 bg-white text-[10px]">
+                                  {(asset.metadata as any).audioIds.length} voice
+                                </Badge>
+                              )}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      <div className="rounded-md border border-sky-100 bg-sky-50/70 p-2 sm:col-span-2">
+                        <div className="mb-2 text-xs font-medium text-sky-950">
+                          {isThaiLocale ? "Step 1 ที่ผูกกับ Character ใหม่: เลือกหรือสร้าง Voice ก่อน" : "Step 1 linked to the new character: choose or create Voice first"}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {geminiOmniAudioAssets.length === 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              {isThaiLocale ? "ยังไม่มี Voice ให้ผูก กดสร้าง Voice ทางขวาก่อน" : "No saved Voice yet. Create one on the right first."}
+                            </span>
+                          )}
+                          {geminiOmniAudioAssets.map((asset) => {
+                            const providerAssetId = String(asset.providerAssetId ?? "");
+                            const selected = geminiOmni.characterDraftAudioIds.includes(providerAssetId);
+                            return (
+                              <Button
+                                key={`draft-audio-${asset.id ?? providerAssetId}`}
+                                type="button"
+                                variant={selected ? "default" : "outline"}
+                                size="sm"
+                                className="max-w-full"
+                                onClick={() => toggleGeminiOmniCharacterDraftAudio(providerAssetId)}
+                                title={`${asset.displayName || providerAssetId} / ${providerAssetId}`}
+                              >
+                                <Mic className="mr-1 h-3.5 w-3.5" />
+                                <span className="truncate">{asset.displayName || providerAssetId}</span>
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <input
+                          ref={geminiOmniCharacterImageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleGeminiOmniCharacterImageUpload}
+                        />
+                        <Input
+                          value={geminiOmni.characterDraftName}
+                          onChange={(event) => setGeminiOmniState({ characterDraftName: event.target.value })}
+                          placeholder={isThaiLocale ? "ชื่อตัวละคร" : "Character name"}
+                          className="bg-white"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => geminiOmniCharacterImageInputRef.current?.click()}
+                          disabled={uploadMutation.isPending}
+                        >
+                          {uploadMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImagePlus className="mr-2 h-4 w-4" />}
+                          {isThaiLocale ? "อัปโหลดรูป Character" : "Upload Character Image"}
+                        </Button>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          className={cn(
+                            "flex min-h-[120px] items-center justify-center rounded-md border-2 border-dashed bg-slate-50 p-3 text-center text-xs text-muted-foreground sm:col-span-2",
+                            geminiOmni.characterDraftImageUrl ? "border-sky-200 bg-sky-50/60" : "border-slate-200 hover:border-sky-300",
+                          )}
+                          onClick={() => geminiOmniCharacterImageInputRef.current?.click()}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              geminiOmniCharacterImageInputRef.current?.click();
+                            }
+                          }}
+                          onDragOver={handleGeminiOmniCharacterImageDragOver}
+                          onDrop={handleGeminiOmniCharacterImageDrop}
+                        >
+                          {geminiOmni.characterDraftImageUrl ? (
+                            <div className="flex w-full items-center gap-3 text-left">
+                              <img
+                                src={geminiOmni.characterDraftImageUrl}
+                                alt={geminiOmni.characterDraftImageName || "Character reference"}
+                                className="h-20 w-20 rounded-md border bg-white object-cover"
+                              />
+                              <div className="min-w-0">
+                                <div className="truncate font-medium text-slate-900">
+                                  {geminiOmni.characterDraftImageName || "Character image"}
+                                </div>
+                                <div className="mt-1 line-clamp-2 break-all text-[11px] text-muted-foreground">
+                                  {geminiOmni.characterDraftImageUrl}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <ImagePlus className="mx-auto mb-2 h-6 w-6 text-sky-500" />
+                              {isThaiLocale
+                                ? "ลากรูป Character มาวาง หรือคลิกเพื่ออัปโหลด ระบบจะส่งขึ้น R2 และใช้ public URL ก่อนเรียก Kie.ai"
+                                : "Drop a character image here or click to upload. The image is stored first and Kie.ai receives the public URL."}
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={submitGeminiOmniCharacterAsset}
+                          disabled={createGeminiOmniCharacterMutation.isPending || !geminiOmni.characterDraftImageUrl || geminiOmni.characterDraftAudioIds.length === 0}
+                        >
+                          {createGeminiOmniCharacterMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ScanFace className="mr-2 h-4 w-4" />}
+                          {isThaiLocale ? "สร้าง Character" : "Create Character"}
+                        </Button>
+                        <Textarea
+                          value={geminiOmni.characterDraftDescription}
+                          onChange={(event) => setGeminiOmniState({ characterDraftDescription: event.target.value })}
+                          placeholder={isThaiLocale ? "อธิบายตัวละคร บุคลิก ลุค และสิ่งที่ต้องคงไว้" : "Describe identity, personality, look, and continuity rules"}
+                          className="min-h-[76px] bg-white sm:col-span-2"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 rounded-md border border-sky-100 bg-white/80 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <div className="text-sm font-medium text-slate-900">
+                            {isThaiLocale ? "Step 1: Voice / Audio" : "Step 1: Voice / Audio"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {isThaiLocale
+                              ? `${geminiOmni.selectedAudioIds.length} เสียงเลือกใช้กับวิดีโอ`
+                              : `${geminiOmni.selectedAudioIds.length} voices selected for video`}
+                          </div>
+                        </div>
+                        {geminiOmniAudioAssetsQuery.isLoading && <Loader2 className="h-4 w-4 animate-spin text-sky-600" />}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {geminiOmniAudioAssets.length === 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            {isThaiLocale ? "ยังไม่มี voice/audio asset ที่บันทึกไว้" : "No saved voice/audio assets yet."}
+                          </span>
+                        )}
+                        {geminiOmniAudioAssets.map((asset) => {
+                          const providerAssetId = String(asset.providerAssetId ?? "");
+                          const selected = geminiOmni.selectedAudioIds.includes(providerAssetId);
+                          return (
+                            <Button
+                              key={asset.id ?? providerAssetId}
+                              type="button"
+                              variant={selected ? "default" : "outline"}
+                              size="sm"
+                              className="max-w-full"
+                              onClick={() => toggleGeminiOmniAudio(providerAssetId)}
+                              title={`${asset.displayName || providerAssetId} / ${providerAssetId}`}
+                            >
+                              <Mic className="mr-1 h-3.5 w-3.5" />
+                              <span className="truncate">{asset.displayName || providerAssetId}</span>
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <Select
+                          value={geminiOmni.audioDraftId}
+                          onValueChange={selectGeminiOmniVoicePreset}
+                        >
+                          <SelectTrigger className="bg-white">
+                            <SelectValue placeholder={isThaiLocale ? "เลือก preset voice" : "Select preset voice"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {GEMINI_OMNI_VOICE_PRESETS.map((preset) => (
+                              <SelectItem key={preset.id} value={preset.id}>
+                                {preset.id} - {preset.gender}, {preset.tone}, {preset.pitch}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          value={geminiOmni.audioDraftName}
+                          onChange={(event) => setGeminiOmniState({ audioDraftName: event.target.value })}
+                          placeholder={isThaiLocale ? "ชื่อเสียง" : "Voice name"}
+                          className="bg-white"
+                        />
+                        {geminiOmni.audioDraftId && (
+                          <div className="rounded-md border border-sky-100 bg-sky-50/70 p-2 text-xs leading-5 text-sky-900 sm:col-span-2">
+                            {(() => {
+                              const preset = GEMINI_OMNI_VOICE_PRESETS.find((item) => item.id === geminiOmni.audioDraftId);
+                              if (!preset) return null;
+                              return (
+                                <>
+                                  <div className="font-medium">
+                                    {preset.id}: {preset.gender}, {preset.tone}, {preset.pitch}
+                                  </div>
+                                  <div className="mt-0.5">
+                                    {preset.recommendedUseCases.join(" / ")}
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
+                        <Textarea
+                          value={geminiOmni.audioDraftDescription}
+                          onChange={(event) => setGeminiOmniState({ audioDraftDescription: event.target.value })}
+                          placeholder={isThaiLocale ? "Voice characteristic: timbre, style, speaking rate, emotion" : "Voice characteristic: timbre, style, speaking rate, emotion"}
+                          className="min-h-[76px] bg-white sm:col-span-2"
+                        />
+                        <Textarea
+                          value={geminiOmni.audioDraftDialogue}
+                          onChange={(event) => setGeminiOmniState({ audioDraftDialogue: event.target.value })}
+                          placeholder={isThaiLocale ? "ตัวอย่างบทพูดสำหรับเสียงนี้" : "Example dialogue for this voice"}
+                          className="min-h-[76px] bg-white sm:col-span-2"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="sm:col-span-2"
+                          onClick={submitGeminiOmniAudioAsset}
+                          disabled={createGeminiOmniAudioMutation.isPending}
+                        >
+                          {createGeminiOmniAudioMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mic className="mr-2 h-4 w-4" />}
+                          {isThaiLocale ? "สร้าง Voice แล้วผูกกับ Character Draft" : "Create Voice and Attach to Character Draft"}
+                        </Button>
+                      </div>
+	                    </div>
+	                  </div>
+	                  )}
+
+	                  <div className="space-y-3 rounded-md border border-sky-100 bg-white/85 p-3">
+	                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+	                      <div>
+	                        <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+	                          <Bot className="h-4 w-4 text-sky-600" />
+	                          {isThaiLocale ? "Production Director" : "Production Director"}
+	                        </div>
+	                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+	                          {isThaiLocale
+	                            ? "วาง Goal, สร้าง storyboard plan, ตรวจสอบก่อนใช้เครดิต batch และส่งต่อไป Review/Edit"
+	                            : "Plan the goal, storyboard, QA gate, and handoff before expensive batch generation."}
+	                        </p>
+	                      </div>
+	                      <Switch
+	                        checked={productionDirector.enabled}
+	                        onCheckedChange={(checked) => updateProductionDirector({ enabled: checked })}
+	                        aria-label="Toggle Production Director"
+	                      />
+	                    </div>
+
+	                    {productionDirector.enabled && (
+	                      <div className="space-y-3">
+	                        <div className="grid gap-2 rounded-md border border-slate-200 bg-slate-50/70 p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+	                          <div className="space-y-1">
+	                            <Label className="text-xs font-medium text-slate-700">
+	                              {isThaiLocale ? "Production Run ID สำหรับกลับมาทำต่อ" : "Production Run ID for resume"}
+	                            </Label>
+	                            <Input
+	                              value={productionDirector.productionRunId}
+	                              onChange={(event) => updateProductionDirector({ productionRunId: event.target.value.trim() })}
+	                              placeholder={isThaiLocale ? "วาง Run ID เพื่อโหลดแผนเดิม" : "Paste a run ID to restore an existing plan"}
+	                              className="bg-white"
+	                            />
+	                          </div>
+	                          <div className="flex flex-wrap items-center gap-2">
+	                            {productionRunQuery.isFetching && (
+	                              <Badge variant="outline" className="bg-white">
+	                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+	                                {isThaiLocale ? "กำลังโหลด" : "Loading"}
+	                              </Badge>
+	                            )}
+	                            {productionDirector.productionRunId && !productionRunQuery.isFetching && (
+	                              <Badge variant="outline" className="bg-white">
+	                                {productionDirector.status}
+	                              </Badge>
+	                            )}
+	                          </div>
+	                        </div>
+	                        <div className="grid gap-2 lg:grid-cols-3">
+	                          <Input
+	                            value={productionDirector.title}
+	                            onChange={(event) => updateProductionDirector({ title: event.target.value })}
+	                            placeholder={isThaiLocale ? "ชื่อโปรเจกต์" : "Project title"}
+	                            className="bg-white"
+	                          />
+	                          <Input
+	                            value={productionDirector.audience}
+	                            onChange={(event) => updateProductionDirector({ audience: event.target.value })}
+	                            placeholder={isThaiLocale ? "กลุ่มเป้าหมาย" : "Audience"}
+	                            className="bg-white"
+	                          />
+	                          <Input
+	                            value={productionDirector.platform}
+	                            onChange={(event) => updateProductionDirector({ platform: event.target.value })}
+	                            placeholder={isThaiLocale ? "แพลตฟอร์ม เช่น TikTok/Shopee" : "Platform, e.g. TikTok/Shopee"}
+	                            className="bg-white"
+	                          />
+	                          <Textarea
+	                            value={productionDirector.goalSummary}
+	                            onChange={(event) => updateProductionDirector({ goalSummary: event.target.value })}
+	                            placeholder={isThaiLocale ? "เป้าหมายของหนัง/วิดีโอ ต้องการเล่าอะไร ให้คนดูรู้สึกหรือทำอะไร" : "Production goal: what to say, make viewers feel, or make viewers do"}
+	                            className="min-h-[84px] bg-white lg:col-span-3"
+	                          />
+	                          <Textarea
+	                            value={productionDirector.productTruthNotes}
+	                            onChange={(event) => updateProductionDirector({ productTruthNotes: event.target.value })}
+	                            placeholder={isThaiLocale ? "ข้อเท็จจริงสินค้า/ข้อห้าม claim/จุดขายที่ต้องไม่ผิดจากข้อมูลจริง" : "Product truth, claim limits, and must-not-change selling points"}
+	                            className="min-h-[76px] bg-white"
+	                          />
+	                          <Textarea
+	                            value={productionDirector.creativeDirection}
+	                            onChange={(event) => updateProductionDirector({ creativeDirection: event.target.value })}
+	                            placeholder={isThaiLocale ? "แนว cinematic, mood, visual style, pacing" : "Cinematic direction, mood, visual style, pacing"}
+	                            className="min-h-[76px] bg-white"
+	                          />
+	                          <Textarea
+	                            value={productionDirector.voiceStrategy}
+	                            onChange={(event) => updateProductionDirector({ voiceStrategy: event.target.value })}
+	                            placeholder={isThaiLocale ? "Voice over, lip sync, dialogue, sound strategy" : "Voiceover, lip sync, dialogue, and sound strategy"}
+	                            className="min-h-[76px] bg-white"
+	                          />
+	                          <Textarea
+	                            value={productionDirector.revisionInstructions}
+	                            onChange={(event) => updateProductionDirector({ revisionInstructions: event.target.value, approved: false })}
+	                            placeholder={isThaiLocale ? "คำสั่งแก้ไขแผน เช่น เปลี่ยน hook, ลดจำนวนฉาก, เน้น proof/review, ห้าม claim เกินข้อมูลสินค้า" : "Revision instructions, e.g. change hook, reduce scenes, emphasize proof/review, avoid unsupported claims"}
+	                            className="min-h-[76px] bg-white lg:col-span-3"
+	                          />
+	                        </div>
+	                        <div className="flex flex-wrap items-center gap-2">
+	                          <Input
+	                            value={productionDirector.targetDurationSeconds}
+	                            onChange={(event) => updateProductionDirector({ targetDurationSeconds: event.target.value })}
+	                            placeholder={isThaiLocale ? "ความยาวรวม วินาที" : "Total seconds"}
+	                            className="h-9 w-36 bg-white"
+	                          />
+	                          <Button
+	                            type="button"
+	                            variant="outline"
+	                            onClick={runProductionPlanAndVerify}
+	                            disabled={
+	                              saveProductionGoalMutation.isPending ||
+	                              saveProductionPlanMutation.isPending ||
+	                              saveProductionVerificationMutation.isPending ||
+	                              executeCustomSkillMutation.isPending
+	                            }
+	                          >
+	                            {productionDirector.status === "planning" || productionDirector.status === "verifying"
+	                              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+	                              : <Wand2 className="mr-2 h-4 w-4" />}
+	                            {isThaiLocale ? "สร้าง Plan + Verify" : "Plan + Verify"}
+	                          </Button>
+	                          <Button
+	                            type="button"
+	                            variant="outline"
+	                            onClick={() => updateProductionDirector({ status: "needs_revision", approved: false, lastError: undefined })}
+	                            disabled={!productionDirector.plan}
+	                          >
+	                            <Pencil className="mr-2 h-4 w-4" />
+	                            {isThaiLocale ? "ส่งกลับไปแก้แผน" : "Mark for Revision"}
+	                          </Button>
+	                          <Button
+	                            type="button"
+	                            variant="outline"
+	                            onClick={approveProductionPlan}
+	                            disabled={!productionDirector.planVersion || productionDirector.status === "needs_revision" || approveProductionPlanMutation.isPending}
+	                          >
+	                            <CheckCircle className="mr-2 h-4 w-4" />
+	                            {isThaiLocale ? "อนุมัติแผน" : "Approve Plan"}
+	                          </Button>
+	                          <Button
+	                            type="button"
+	                            variant="outline"
+	                            onClick={applyProductionPlanToPrompt}
+	                            disabled={!productionDirector.plan || executeCustomSkillMutation.isPending}
+	                          >
+	                            <Sparkles className="mr-2 h-4 w-4" />
+	                            {isThaiLocale ? "ใช้กับ Prompt" : "Use With Prompt"}
+	                          </Button>
+	                        </div>
+
+	                        {(productionDirector.plan || productionDirector.verification || productionDirector.lastError) && (
+	                          <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
+	                            <div className="rounded-md border bg-slate-50 p-3">
+	                              <div className="flex items-center justify-between gap-2">
+	                                <div className="text-sm font-medium text-slate-950">
+	                                  {isThaiLocale ? "Storyboard Plan Preview" : "Storyboard Plan Preview"}
+	                                </div>
+	                                <Badge variant="outline">
+	                                  {productionPlanScenes.length} {isThaiLocale ? "ฉาก/ช็อต" : "scenes/shots"}
+	                                </Badge>
+	                              </div>
+	                              {productionPlanSummary && (
+	                                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+	                                  {productionPlanSummary}
+	                                </p>
+	                              )}
+	                              {productionPlanScenes.length > 0 && (
+	                                <div className="mt-3 grid gap-2">
+	                                  {productionPlanScenes.slice(0, 4).map((scene, index) => (
+	                                    <div key={`${String((scene as any)?.id ?? index)}`} className="rounded border bg-white px-3 py-2">
+	                                      <div className="text-xs font-medium text-slate-900">
+	                                        {String((scene as any)?.title ?? (scene as any)?.scene_title ?? (scene as any)?.shot_title ?? `Scene ${index + 1}`)}
+	                                      </div>
+	                                      <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+	                                        {String((scene as any)?.summary ?? (scene as any)?.description ?? (scene as any)?.prompt ?? "")}
+	                                      </div>
+	                                    </div>
+	                                  ))}
+	                                </div>
+	                              )}
+	                            </div>
+	                            <div className="rounded-md border bg-slate-50 p-3">
+	                              <div className="flex items-center justify-between gap-2">
+	                                <div className="text-sm font-medium text-slate-950">
+	                                  {isThaiLocale ? "Verification Gate" : "Verification Gate"}
+	                                </div>
+	                                <Badge variant={productionDirector.status === "needs_revision" ? "destructive" : "outline"}>
+	                                  {productionVerificationVerdict || productionDirector.status}
+	                                </Badge>
+	                              </div>
+	                              <div className="mt-2 text-xs text-muted-foreground">
+	                                {isThaiLocale ? "คะแนน" : "Score"}: {Number.isFinite(productionVerificationScore) ? productionVerificationScore : 0}/100
+	                              </div>
+	                              {productionDirector.lastError && (
+	                                <p className="mt-2 text-xs leading-5 text-red-600">{productionDirector.lastError}</p>
+	                              )}
+	                              <div className="mt-3 flex flex-wrap gap-2">
+	                                <Button
+	                                  type="button"
+	                                  variant="outline"
+	                                  size="sm"
+	                                  onClick={() => projectProductionOutput("storyboard_review")}
+	                                  disabled={!productionDirector.plan || !productionDirector.approved || projectProductionOutputMutation.isPending}
+	                                >
+	                                  <Layers className="mr-2 h-4 w-4" />
+	                                  {isThaiLocale ? "ส่ง Storyboard Review" : "Review Storyboard"}
+	                                </Button>
+	                                <Button
+	                                  type="button"
+	                                  variant="outline"
+	                                  size="sm"
+	                                  onClick={() => projectProductionOutput("video_edit")}
+	                                  disabled={!productionDirector.plan || !productionDirector.approved || projectProductionOutputMutation.isPending}
+	                                >
+	                                  <Scissors className="mr-2 h-4 w-4" />
+	                                  {isThaiLocale ? "เปิดใน Video Edit" : "Open in Video Edit"}
+	                                </Button>
+	                              </div>
+	                            </div>
+	                          </div>
+	                        )}
+	                      </div>
+	                    )}
+	                  </div>
+	                </div>
+	              )}
+
               {/* Generate Button - Primary location under Prompt */}
               <Button
                 onClick={handleGenerate}
@@ -12151,12 +14269,14 @@ export default function MediaStudio() {
 
                   // Synced fields: ONLY those with an explicit syncWith target (never guess from type).
                   const syncedFields = allFields.filter((f) => {
+                    if (f.managedBySuite) return false;
                     const sw: string = inferModelInputSyncTarget(f);
                     return sw !== "none";
                   });
 
                   // Editable fields: unsynced model-specific inputs.
                   const editableFields = allFields.filter((f) => {
+                    if (f.hidden && f.managedBySuite) return false;
                     const sw: string = inferModelInputSyncTarget(f);
                     if (sw !== "none") return false;
                     if (f.key === "aspect_ratio" || f.key === "aspect.ratio") return false;
@@ -14545,6 +16665,20 @@ export default function MediaStudio() {
                     <Badge className="absolute left-2 top-2 bg-white/90 text-slate-700 hover:bg-white">
                       {task.index + 1}
                     </Badge>
+                    {task.videoQaStatus && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "absolute bottom-2 left-2 max-w-[calc(100%-1rem)] truncate bg-white/90 text-[10px]",
+                          task.videoQaStatus === "pass" && "border-emerald-200 text-emerald-700",
+                          (task.videoQaStatus === "warning" || task.videoQaStatus === "human_review") && "border-amber-200 text-amber-700",
+                          (task.videoQaStatus === "revise" || task.videoQaStatus === "block" || task.videoQaStatus === "unavailable") && "border-red-200 text-red-700",
+                        )}
+                        title={task.videoQaSummary}
+                      >
+                        Video QA: {task.videoQaStatus}
+                      </Badge>
+                    )}
                   </button>
                 ))}
               </div>

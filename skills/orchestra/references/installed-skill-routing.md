@@ -94,6 +94,7 @@ or professional learning material from an existing page, feature, or flow.
 | `migration-checker` | `/migration`, ORM migration state | Run before deploy/release or DB changes. | Destructive migrations require backup-first discipline. |
 | `og-validator` | `/og-validator`, Open Graph, social preview | Validate OG tags and image accessibility. | Network target must be authorized. |
 | `orchestra` | conductor, multi-step work, end-to-end | Own routing, dispatch, integration, gates, and state. | Maintain `orchestra/` artifacts. |
+| `sub-agents` | sub-agent registry, agent prompts, generated `ssp-*` agents, dispatch roles | Treat as a support/reference pack used by Orchestra; update it when adding or changing agent roles. | Run `bash skills/generate-claude-agents.sh`, `bash skills/audit-skills.sh`, and installed sync verification after changes. |
 | `pentest` | `/pentest`, authorized hack test, API/web security verification | Run scanner and authorized verification matrix. | No unauthorized or destructive testing; proof required. |
 | `programming-advisor` | build vs buy, should we code this, app/tool idea | Use before building new tools/apps when discovery of existing solutions matters. | Browse current options when recommendations affect spend/time. |
 | `redirect-checker` | `/redirect`, redirect chains, HTTPS loops | Check redirect chains and mixed HTTP/HTTPS. | Target must be authorized. |
@@ -109,9 +110,9 @@ or professional learning material from an existing page, feature, or flow.
 | `sitemap-generator` | `/sitemap`, sitemap.xml | Generate sitemap from project routes/metadata. | Confirm overwrite if needed. |
 | `structured-data-generator` | `/structured-data`, JSON-LD schema | Generate JSON-LD snippets for common schema types. | Validate JSON output. |
 | `visual-diff` | visual regression, screenshots before/after | Run screenshot comparison/browser verification where available. | Mark browser tooling absence as skipped, not passed. |
-| `web-design-engineer` | standalone visual web artifact, prototype, HTML deck, animation, data visualization | Use for standalone visual artifacts; prefer `visual-ui-enhancement` for existing product UI changes. | Global Codex frontend rules override this skill on conflicts. |
+| `web-design-engineer` | standalone visual web artifact, prototype, HTML deck, animation, data visualization | Use for standalone visual artifacts; prefer `visual-ui-enhancement` for existing product UI changes. | Global Codex frontend rules override this skill on conflicts; record browser evidence with `ui-browser-verification.md` when routed through orchestra. |
 | `web-video-presentation` | web video presentation, dynamic deck, screen-recordable explainer, narrated web talk | Build click-driven 16:9 React/Vite presentations with chapter/step narration and optional audio. | Confirm before scaffolding, npm installs, TTS, mmx, or external side effects; no sub-agent requirement. |
-| `visual-ui-enhancement` | premium UI, responsive, accessibility, shadcn/Tailwind | Use visual UI workflow and its optional agents. | Run visual/accessibility/responsive gates. |
+| `visual-ui-enhancement` | premium UI, responsive, accessibility, shadcn/Tailwind | Use visual UI workflow and its optional agents. | Run visual/accessibility/responsive gates and `ui-browser-verification.md` for browser-visible workflows. |
 
 ## System Skills Awareness
 

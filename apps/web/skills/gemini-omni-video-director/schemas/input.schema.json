@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["prompt", "delivery_mode"],
+  "properties": {
+    "prompt": { "type": "string", "minLength": 1 },
+    "delivery_mode": {
+      "type": "string",
+      "enum": ["single_shot", "multi_shot_single_video", "storyboard_multi_video"]
+    },
+    "reference_images": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "source_video": { "type": ["string", "null"], "default": null },
+    "character_ids": { "type": "array", "items": { "type": "string" }, "maxItems": 3, "default": [] },
+    "audio_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "duration": { "type": "string", "enum": ["4", "6", "8", "10"], "default": "4" },
+    "resolution": { "type": "string", "enum": ["720p", "1080p", "4K"], "default": "1080p" },
+    "aspect_ratio": { "type": "string", "default": "16:9" },
+    "production_goal": { "type": "object", "additionalProperties": true },
+    "marketplace_context": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": true
+}

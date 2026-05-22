@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "skillId": "gemini-omni-video-director",
+  "title": "Gemini Omni Video Director",
+  "titleTh": "ผู้กำกับวิดีโอ Gemini Omni",
+  "sections": [
+    {
+      "id": "brief",
+      "title": "Brief",
+      "fields": [
+        { "id": "delivery_mode", "type": "select" },
+        { "id": "duration", "type": "select" },
+        { "id": "resolution", "type": "select" }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "prompt": "prompt_sequence.0.final_prompt",
+    "qa": "qa_handoff"
+  }
+}
