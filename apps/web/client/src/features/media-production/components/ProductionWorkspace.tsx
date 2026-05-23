@@ -137,6 +137,44 @@ function formatProductionStatus(status: string, isThai: boolean): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (value) => value.toUpperCase());
 }
 
+const goalTypeOptions = [
+  { value: "single_shot", en: "Single shot", th: "วิดีโอเดียว / ช็อตเดียว" },
+  { value: "multi_shot_single_video", en: "Multi-shot single video", th: "วิดีโอเดียว / หลายช็อต" },
+  { value: "storyboard_multi_video", en: "Storyboard multiple videos", th: "Storyboard หลายวิดีโอ" },
+  { value: "product_demo", en: "Product demo", th: "เดโมสินค้า" },
+  { value: "ugc_review", en: "UGC review", th: "รีวิว UGC" },
+  { value: "social_ad", en: "Social ad", th: "โฆษณาโซเชียล" },
+];
+
+const audienceOptions = [
+  { value: "general_consumers", en: "General consumers", th: "ผู้บริโภคทั่วไป" },
+  { value: "new_parents", en: "New parents", th: "พ่อแม่มือใหม่" },
+  { value: "home_living_buyers", en: "Home & living buyers", th: "คนแต่งบ้าน / ของใช้ในบ้าน" },
+  { value: "beauty_shoppers", en: "Beauty shoppers", th: "ผู้ซื้อสินค้า beauty" },
+  { value: "small_business_owners", en: "Small business owners", th: "เจ้าของธุรกิจขนาดเล็ก" },
+  { value: "existing_customers", en: "Existing customers", th: "ลูกค้าเดิม" },
+];
+
+const platformOptions = [
+  { value: "TikTok", en: "TikTok", th: "TikTok" },
+  { value: "Instagram Reels", en: "Instagram Reels", th: "Instagram Reels" },
+  { value: "YouTube Shorts", en: "YouTube Shorts", th: "YouTube Shorts" },
+  { value: "Facebook", en: "Facebook", th: "Facebook" },
+  { value: "Shopee", en: "Shopee", th: "Shopee" },
+  { value: "Lazada", en: "Lazada", th: "Lazada" },
+  { value: "Website", en: "Website", th: "เว็บไซต์" },
+];
+
+const durationOptions = [6, 10, 15, 20, 30, 40, 45, 60, 90, 120];
+const aspectRatioOptions = ["9:16", "16:9", "1:1", "4:5", "3:4", "21:9"];
+const languageOptions = [
+  { value: "th", en: "Thai", th: "ไทย" },
+  { value: "en", en: "English", th: "อังกฤษ" },
+  { value: "ja", en: "Japanese", th: "ญี่ปุ่น" },
+  { value: "ko", en: "Korean", th: "เกาหลี" },
+  { value: "zh", en: "Chinese", th: "จีน" },
+];
+
 export function ProductionWorkspace(props: ProductionWorkspaceProps) {
   const isThai = props.locale === "th";
   const space = props.space ?? fallbackSpace;
@@ -175,6 +213,12 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
   const planningModelMode = props.planningModelMode ?? planningSelection?.modelMode ?? "auto";
   const selectedPlanningModel = props.selectedPlanningModel ?? planningSelection?.selectedModel ?? "";
   const formattedStatus = formatProductionStatus(props.status, isThai);
+  const labelForOption = (option: { en: string; th: string }) => isThai ? option.th : option.en;
+  const currentDuration = brief.durationSeconds ? String(brief.durationSeconds) : "";
+  const hasCustomDuration = currentDuration && !durationOptions.map(String).includes(currentDuration);
+  const hasCustomAspectRatio = brief.aspectRatio && !aspectRatioOptions.includes(brief.aspectRatio);
+  const hasCustomLanguage = brief.language && !languageOptions.some((option) => option.value === brief.language);
+  const hasCustomGoalType = brief.goalType && !goalTypeOptions.some((option) => option.value === brief.goalType);
   const lifecycleDisabled = props.isLifecycleActionDisabled || !props.productionRunId;
   const hasProjectSeed = Boolean(props.productionRunId?.trim() || brief.title?.trim() || brief.summary?.trim());
   const isEmptyProduction = !hasProjectSeed && space.shots.length === 0 && space.contextAssets.length === 0 && space.flowNodes.length <= 1;
@@ -564,44 +608,78 @@ export function ProductionWorkspace(props: ProductionWorkspaceProps) {
           ))}
         </ol>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <Input
+          <select
             value={brief.goalType ?? ""}
-            onChange={(event) => patchBrief({ goalType: event.target.value })}
-            placeholder={isThai ? "ประเภทเป้าหมาย" : "Goal type"}
+            onChange={(event) => patchBrief({ goalType: event.target.value || undefined })}
             aria-label={isThai ? "ประเภทเป้าหมาย" : "Goal type"}
-          />
+            className="h-11 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          >
+            <option value="">{isThai ? "เลือกประเภทเป้าหมาย" : "Select goal type"}</option>
+            {hasCustomGoalType ? <option value={brief.goalType}>{brief.goalType}</option> : null}
+            {goalTypeOptions.map((option) => (
+              <option key={option.value} value={option.value}>{labelForOption(option)}</option>
+            ))}
+          </select>
           <Input
+            list="production-audience-options"
             value={brief.audience ?? ""}
             onChange={(event) => patchBrief({ audience: event.target.value })}
             placeholder={isThai ? "กลุ่มเป้าหมาย" : "Audience"}
             aria-label={isThai ? "กลุ่มเป้าหมาย" : "Audience"}
           />
+          <datalist id="production-audience-options">
+            {audienceOptions.map((option) => (
+              <option key={option.value} value={labelForOption(option)} />
+            ))}
+          </datalist>
           <Input
+            list="production-platform-options"
             value={brief.platform ?? ""}
             onChange={(event) => patchBrief({ platform: event.target.value })}
             placeholder={isThai ? "แพลตฟอร์ม" : "Platform"}
             aria-label={isThai ? "แพลตฟอร์ม" : "Platform"}
           />
-          <Input
-            type="number"
-            min={1}
-            value={brief.durationSeconds ?? ""}
+          <datalist id="production-platform-options">
+            {platformOptions.map((option) => (
+              <option key={option.value} value={option.value}>{labelForOption(option)}</option>
+            ))}
+          </datalist>
+          <select
+            value={currentDuration}
             onChange={(event) => patchBrief({ durationSeconds: Number(event.target.value) || undefined })}
-            placeholder={isThai ? "ความยาววิดีโอ (วินาที)" : "Duration seconds"}
             aria-label={isThai ? "ความยาววิดีโอ" : "Duration seconds"}
-          />
-          <Input
+            className="h-11 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          >
+            <option value="">{isThai ? "เลือกความยาววิดีโอ" : "Select duration"}</option>
+            {hasCustomDuration ? <option value={currentDuration}>{currentDuration}s</option> : null}
+            {durationOptions.map((seconds) => (
+              <option key={seconds} value={seconds}>{seconds}s</option>
+            ))}
+          </select>
+          <select
             value={brief.aspectRatio ?? ""}
-            onChange={(event) => patchBrief({ aspectRatio: event.target.value })}
-            placeholder={isThai ? "อัตราส่วนภาพ" : "Aspect ratio"}
+            onChange={(event) => patchBrief({ aspectRatio: event.target.value || undefined })}
             aria-label={isThai ? "อัตราส่วนภาพ" : "Aspect ratio"}
-          />
-          <Input
+            className="h-11 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          >
+            <option value="">{isThai ? "เลือกอัตราส่วนภาพ" : "Select aspect ratio"}</option>
+            {hasCustomAspectRatio ? <option value={brief.aspectRatio}>{brief.aspectRatio}</option> : null}
+            {aspectRatioOptions.map((ratio) => (
+              <option key={ratio} value={ratio}>{ratio}</option>
+            ))}
+          </select>
+          <select
             value={brief.language ?? ""}
-            onChange={(event) => patchBrief({ language: event.target.value })}
-            placeholder={isThai ? "ภาษา" : "Language"}
+            onChange={(event) => patchBrief({ language: event.target.value || undefined })}
             aria-label={isThai ? "ภาษา" : "Language"}
-          />
+            className="h-11 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          >
+            <option value="">{isThai ? "เลือกภาษา" : "Select language"}</option>
+            {hasCustomLanguage ? <option value={brief.language}>{brief.language}</option> : null}
+            {languageOptions.map((option) => (
+              <option key={option.value} value={option.value}>{labelForOption(option)}</option>
+            ))}
+          </select>
         </div>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
           <Textarea
