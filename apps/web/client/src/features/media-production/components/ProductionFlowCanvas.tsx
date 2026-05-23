@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Background,
   Controls,
@@ -128,6 +128,11 @@ function ProductionFlowCanvasInner({
   const [selectedEdgeKind, setSelectedEdgeKind] = useState<ProductionFlowEdgeKind>("dependency");
   const nodes = useMemo(() => flowNodes.map((node) => toFlowNode(node, selectedNodeId, locale)), [flowNodes, locale, selectedNodeId]);
   const [interactiveNodes, setInteractiveNodes] = useState<Node[]>(nodes);
+  const flowNodePositionSignature = useMemo(
+    () => flowNodes.map((node) => `${node.id}:${node.position?.x ?? 0}:${node.position?.y ?? 0}`).join("|"),
+    [flowNodes],
+  );
+  const previousPositionSignatureRef = useRef(flowNodePositionSignature);
   const selectedFlowNode = useMemo(() => flowNodes.find((node) => node.id === selectedNodeId) ?? null, [flowNodes, selectedNodeId]);
   const recommendedNodeKinds = useMemo(() => nodeKinds.filter((item) => item.adapterStatus !== "deferred").slice(0, 12), []);
   const laterNodeKinds = useMemo(() => nodeKinds.filter((item) => item.adapterStatus === "deferred"), []);
@@ -137,8 +142,17 @@ function ProductionFlowCanvasInner({
   );
 
   useEffect(() => {
-    setInteractiveNodes(nodes);
-  }, [nodes]);
+    const shouldTrustSourcePositions = previousPositionSignatureRef.current !== flowNodePositionSignature;
+    previousPositionSignatureRef.current = flowNodePositionSignature;
+    setInteractiveNodes((currentNodes) => {
+      const currentById = new Map(currentNodes.map((node) => [node.id, node]));
+      return nodes.map((node) => {
+        const currentNode = currentById.get(node.id);
+        if (!currentNode || shouldTrustSourcePositions) return node;
+        return { ...node, position: currentNode.position };
+      });
+    });
+  }, [flowNodePositionSignature, nodes]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setInteractiveNodes((currentNodes) => applyNodeChanges(changes, currentNodes));
