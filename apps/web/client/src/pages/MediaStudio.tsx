@@ -12125,7 +12125,7 @@ export default function MediaStudio() {
       && productionWorkspaceSpace.productionRunId !== "draft"
       && persistedProductionRunIdsRef.current.has(productionWorkspaceSpace.productionRunId),
     );
-    if (!canAutosaveLayout) return;
+    if (!canAutosaveLayout || saveProductionSpaceMutation.isPending || saveProductionCanvasLayoutMutation.isPending) return;
     saveProductionCanvasLayoutMutation.mutate({
       productionRunId: productionWorkspaceSpace.productionRunId,
       expectedVersion: productionWorkspaceSpace.version,
@@ -12135,9 +12135,15 @@ export default function MediaStudio() {
       onSuccess: (saved: any) => {
         if (saved?.space) setProductionSpaceDraft(saved.space as ProductionSpace);
       },
-      onError: (error) => toast.error(error.message),
+      onError: (error) => {
+        if (String(error.message ?? "").includes("space_version_stale")) {
+          void productionSpaceQuery.refetch();
+          return;
+        }
+        toast.error(error.message);
+      },
     });
-  }, [productionWorkspaceSpace, saveProductionCanvasLayoutMutation]);
+  }, [productionSpaceQuery, productionWorkspaceSpace, saveProductionCanvasLayoutMutation, saveProductionSpaceMutation.isPending]);
 
   const addProductionAssetToCanvas = useCallback((asset: ProductionReferenceInput, position?: { x: number; y: number }) => {
     updateProductionSpaceDraft((space) => {

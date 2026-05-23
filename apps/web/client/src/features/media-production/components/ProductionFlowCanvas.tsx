@@ -1,14 +1,16 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Background,
   Controls,
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
+  applyNodeChanges,
   useReactFlow,
   type Connection,
   type Edge,
   type Node,
+  type NodeChange,
   type ReactFlowProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -125,6 +127,7 @@ function ProductionFlowCanvasInner({
   const [listConnectSourceId, setListConnectSourceId] = useState<string | null>(null);
   const [selectedEdgeKind, setSelectedEdgeKind] = useState<ProductionFlowEdgeKind>("dependency");
   const nodes = useMemo(() => flowNodes.map((node) => toFlowNode(node, selectedNodeId, locale)), [flowNodes, locale, selectedNodeId]);
+  const [interactiveNodes, setInteractiveNodes] = useState<Node[]>(nodes);
   const selectedFlowNode = useMemo(() => flowNodes.find((node) => node.id === selectedNodeId) ?? null, [flowNodes, selectedNodeId]);
   const recommendedNodeKinds = useMemo(() => nodeKinds.filter((item) => item.adapterStatus !== "deferred").slice(0, 12), []);
   const laterNodeKinds = useMemo(() => nodeKinds.filter((item) => item.adapterStatus === "deferred"), []);
@@ -132,6 +135,14 @@ function ProductionFlowCanvasInner({
     () => flowEdges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target, label: edge.label ?? edgeKindLabel(edge.kind ?? "dependency", locale) })),
     [flowEdges, locale],
   );
+
+  useEffect(() => {
+    setInteractiveNodes(nodes);
+  }, [nodes]);
+
+  const onNodesChange = useCallback((changes: NodeChange[]) => {
+    setInteractiveNodes((currentNodes) => applyNodeChanges(changes, currentNodes));
+  }, []);
 
   const publishWarning = useCallback(
     (nextWarning: ProductionInvalidEdgeWarning) => {
@@ -303,12 +314,13 @@ function ProductionFlowCanvasInner({
           >
             {nodes.length ? (
               <ReactFlow
-                nodes={nodes}
+                nodes={interactiveNodes}
                 edges={edges}
                 fitView
                 zoomOnScroll={false}
                 panOnScroll={false}
                 preventScrolling={false}
+                onNodesChange={onNodesChange}
                 onConnect={onConnect}
                 onNodeClick={(_event, node) => onSelectNode?.(node.id)}
                 onPaneClick={() => onSelectNode?.(null)}
