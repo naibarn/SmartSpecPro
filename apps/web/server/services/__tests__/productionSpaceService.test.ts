@@ -232,6 +232,38 @@ describe("productionSpaceService", () => {
     expect(sql).not.toMatch(/\bdrop\s+table\b|\btruncate\b|\bdelete\s+from\s+\"?media_production_runs\"?/);
   });
 
+  it("keeps production director base migrations idempotent for partially created tables", () => {
+    const testDir = path.dirname(fileURLToPath(import.meta.url));
+    const migrationPath = path.resolve(testDir, "../../../drizzle/0182_gemini_omni_provider_assets.sql");
+    const hardeningMigrationPath = path.resolve(testDir, "../../../drizzle/0185_production_director_schema_hardening.sql");
+    const sql = fs.readFileSync(migrationPath, "utf8").toLowerCase();
+    const hardeningSql = fs.readFileSync(hardeningMigrationPath, "utf8").toLowerCase();
+    const tables = [
+      "media_provider_assets",
+      "media_production_runs",
+      "media_production_goal_versions",
+      "media_production_plan_versions",
+      "media_production_plan_verifications",
+      "media_production_asset_plans",
+      "media_production_approvals",
+      "media_production_output_projections",
+    ];
+
+    for (const table of tables) {
+      expect(sql).toContain(`create table if not exists "${table}"`);
+      expect(sql).toContain(`alter table "${table}" add column if not exists`);
+      expect(sql).toContain(`update "${table}"`);
+      expect(hardeningSql).toContain(`create table if not exists "${table}"`);
+      expect(hardeningSql).toContain(`alter table "${table}" add column if not exists`);
+      expect(hardeningSql).toContain(`update "${table}"`);
+    }
+    expect(hardeningSql).toContain(`create table if not exists "media_production_spaces"`);
+    expect(hardeningSql).toContain(`alter table "media_production_spaces" add column if not exists`);
+    expect(hardeningSql).toContain(`create unique index if not exists "media_production_spaces_unique"`);
+    expect(sql).not.toMatch(/\bdrop\s+table\b|\btruncate\b|\bdelete\s+from\s+\"?media_production_/);
+    expect(hardeningSql).not.toMatch(/\bdrop\s+table\b|\btruncate\b|\bdelete\s+from\s+\"?media_production_/);
+  });
+
   it("opens legacy runs deterministically without creating duplicate ProductionSpace rows", () => {
     const legacy = {
       productionRunId: "legacy-run-1",
