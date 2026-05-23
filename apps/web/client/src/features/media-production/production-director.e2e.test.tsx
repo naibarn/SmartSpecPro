@@ -396,23 +396,23 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
     expect(onCreateFixturePlan).toHaveBeenCalledTimes(1);
   });
 
-	  it("keeps deferred node catalog entries visible but disabled", () => {
-	    const onAddNode = vi.fn();
-	    render(
-	      <ProductionFlowCanvas
-	        flowNodes={[]}
-	        flowEdges={[]}
-	        contextAssets={[]}
-	        onAddNode={onAddNode}
-	      />
-	    );
+  it("keeps deferred node catalog entries visible as unavailable roadmap items", () => {
+    const onAddNode = vi.fn();
+    render(
+      <ProductionFlowCanvas
+        flowNodes={[]}
+        flowEdges={[]}
+        contextAssets={[]}
+        onAddNode={onAddNode}
+      />
+    );
 
-    const finalRender = screen.getAllByRole("button", { name: /final render/i })[0];
-	    expect(finalRender).toBeDisabled();
-	    expect(screen.getAllByText("Deferred").length).toBeGreaterThan(0);
-	    fireEvent.click(finalRender);
-	    expect(onAddNode).not.toHaveBeenCalled();
-	  });
+    expect(screen.queryByRole("button", { name: /final render/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByText(/unavailable yet/i)[0]);
+    expect(screen.getAllByText(/final render/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/not available/i).length).toBeGreaterThan(0);
+    expect(onAddNode).not.toHaveBeenCalled();
+  });
 
   it("covers list-fallback dependency linking, duplicate-edge warnings, and valid reconnect", () => {
     const onConnectNodes = vi.fn();
@@ -636,7 +636,7 @@ describe("Feature 116 Production Director deterministic evidence gate", () => {
 
     const contextAssetBoard = screen.getByTestId("context-asset-board");
     expect(within(contextAssetBoard).getByText("Normal moodboard frame")).toBeInTheDocument();
-    fireEvent.click(within(contextAssetBoard).getAllByRole("button", { name: /add to canvas/i })[0]);
+    fireEvent.click(within(contextAssetBoard).getAllByRole("button", { name: /use as scene/i })[0]);
     expect(onAssetAddToCanvas).toHaveBeenCalledWith(expect.objectContaining({ id: "asset-normal-1" }));
     expect(onAssetAssignToNode).not.toHaveBeenCalled();
 

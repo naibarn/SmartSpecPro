@@ -225,21 +225,41 @@ export function ProductEvidenceTray({
             );
           })
         ) : productAssets.length ? (
-          productAssets.map((asset) => (
-            <Button
-              key={asset.id}
-              type="button"
-              variant="outline"
-              className="justify-start"
-              onClick={() => onAddProductAsset?.(asset, selectedNodeId)}
-            >
-              <PackageCheck className="mr-2 h-4 w-4 text-emerald-600" />
-              <span className="truncate">{asset.title}</span>
-            </Button>
-          ))
+          <div className="grid gap-2">
+            <div className="rounded-md border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-800">
+              {isThai
+                ? "พบ asset ที่เป็นสินค้าแล้ว กดเพิ่มเข้า node เพื่อใช้เป็นหลักฐานสินค้า หรือเลือก node ก่อนเพื่อผูกเข้ากับ workflow ที่ต้องใช้ภาพสินค้า"
+                : "Product assets are available. Add one to a node as product evidence, or select a node first to bind it to the workflow step that needs product imagery."}
+            </div>
+            {productAssets.map((asset) => (
+              <Button
+                key={asset.id}
+                type="button"
+                variant="outline"
+                className="h-auto justify-start whitespace-normal px-3 py-2 text-left"
+                onClick={() => onAddProductAsset?.(asset, selectedNodeId)}
+              >
+                <PackageCheck className="mr-2 h-4 w-4 shrink-0 text-emerald-600" />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium">{asset.title}</span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {asset.role ?? (isThai ? "หลักฐานสินค้า" : "product evidence")}
+                    {asset.sku ? ` · ${asset.sku}` : ""}
+                  </span>
+                </span>
+              </Button>
+            ))}
+          </div>
         ) : (
           <div className="rounded border border-dashed p-4 text-sm text-muted-foreground">
-            {isThai ? "ยังไม่มี product evidence" : "No product evidence yet."}
+            <div className="font-medium text-slate-700">
+              {isThai ? "ยังไม่มีหลักฐานสินค้า" : "No product evidence yet"}
+            </div>
+            <div className="mt-1 text-xs leading-5">
+              {isThai
+                ? "เพิ่มรูปสินค้าจาก Marketplace หรือเลือก asset ประเภทสินค้าใน Context Assets แล้วกด “ใช้เป็นสินค้า” เพื่อให้ระบบรู้ว่าภาพใดคือสินค้าและใช้ตรวจ claim ได้"
+                : "Add product images from Marketplace, or choose a product asset in Context Assets and click “Use as product” so the system knows what evidence supports product claims."}
+            </div>
           </div>
         )}
       </div>

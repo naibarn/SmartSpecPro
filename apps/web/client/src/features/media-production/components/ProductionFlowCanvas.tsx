@@ -82,6 +82,12 @@ function readableStatus(status: string): string {
   return status.replace(/_/g, " ");
 }
 
+function adapterStatusLabel(status: string, locale?: ProductionLocale): string {
+  if (status === "mvp_enabled") return locale === "th" ? "พร้อม run" : "Run-ready";
+  if (status === "preview_only") return locale === "th" ? "ตั้งค่าได้" : "Config-ready";
+  return locale === "th" ? "ยังไม่เปิดใช้" : "Unavailable";
+}
+
 function toFlowNode(node: ProductionFlowNode, selectedNodeId?: string | null, locale?: ProductionLocale): Node {
   const statusText = node.collapsed ? (locale === "th" ? "ย่อ" : "collapsed") : readableStatus(node.status);
   return {
@@ -134,7 +140,7 @@ function ProductionFlowCanvasInner({
   );
   const previousPositionSignatureRef = useRef(flowNodePositionSignature);
   const selectedFlowNode = useMemo(() => flowNodes.find((node) => node.id === selectedNodeId) ?? null, [flowNodes, selectedNodeId]);
-  const recommendedNodeKinds = useMemo(() => nodeKinds.filter((item) => item.adapterStatus !== "deferred").slice(0, 12), []);
+  const recommendedNodeKinds = useMemo(() => nodeKinds.filter((item) => item.adapterStatus !== "deferred"), []);
   const laterNodeKinds = useMemo(() => nodeKinds.filter((item) => item.adapterStatus === "deferred"), []);
   const edges = useMemo<Edge[]>(
     () => flowEdges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target, label: edge.label ?? edgeKindLabel(edge.kind ?? "dependency", locale) })),
@@ -211,30 +217,51 @@ function ProductionFlowCanvasInner({
           event.dataTransfer.setData("application/x-production-node-kind", item.kind);
           event.dataTransfer.effectAllowed = "copy";
         }}
-        className="flex min-h-12 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-2 text-left text-sm transition-colors hover:border-sky-200 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:bg-slate-50"
+        className="flex min-h-14 items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-2 text-left text-sm transition-colors hover:border-sky-200 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:bg-slate-50"
       >
-        <item.icon className="h-4 w-4 text-sky-600" />
+        <item.icon className="h-4 w-4 shrink-0 text-sky-600" />
           <span className="min-w-0 flex-1">
-            <span className="block truncate">{item.label}</span>
-          <span className="block truncate text-[10px] text-muted-foreground">{item.group}</span>
-          {isDeferred ? <span className="block truncate text-[10px] text-amber-700">{isThai ? "รอ release ถัดไป" : "Deferred"}</span> : null}
+            <span className="block truncate font-medium text-slate-900">{item.label}</span>
+          <span className="block truncate text-[10px] text-muted-foreground">{item.group} · {adapterStatusLabel(item.adapterStatus, locale)}</span>
+          {isDeferred ? <span className="block truncate text-[10px] text-amber-700">{isThai ? "ยังใช้ไม่ได้" : "Not available"}</span> : null}
         </span>
-        {isDeferred ? <Badge variant="outline" className="ml-auto text-[10px]">Later</Badge> : <Plus className="ml-auto h-3.5 w-3.5 text-muted-foreground" />}
+        {isDeferred ? <Badge variant="outline" className="ml-auto shrink-0 text-[10px]">Later</Badge> : <Plus className="ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
       </button>
     );
   };
 
+  const renderDeferredItem = (item: (typeof nodeKinds)[number]) => (
+    <div
+      key={item.kind}
+      title={item.deferredReason}
+      className="rounded border border-slate-200 bg-white px-2 py-1.5 text-xs text-muted-foreground"
+    >
+      <div className="truncate font-medium text-slate-600">{item.label}</div>
+      <div className="truncate text-[10px] text-amber-700">{item.deferredReason ?? (isThai ? "ยังไม่เปิดใช้" : "Not available yet")}</div>
+    </div>
+  );
+
   const drawerContent = (
     <>
-      <div className="text-[10px] font-semibold uppercase tracking-normal text-slate-500">{isThai ? "แนะนำ" : "Recommended"}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-normal text-slate-500">{isThai ? "ใช้ได้ตอนนี้" : "Available now"}</div>
+      <div className="rounded-md border border-sky-100 bg-sky-50 px-2 py-1.5 text-[11px] leading-4 text-sky-900">
+        {isThai
+          ? "รายการด้านล่างคลิกหรือ drag เข้า canvas ได้ทันที ส่วน status บอกว่า run ได้จริงหรือตั้งค่า/ส่งต่อได้"
+          : "Items below can be clicked or dragged into the canvas. Status shows whether a node can run now or is config/handoff-ready."}
+      </div>
       {recommendedNodeKinds.map(renderDrawerItem)}
       {laterNodeKinds.length ? (
-        <details className="rounded-md border border-slate-200 bg-white p-2">
+        <details className="rounded-md border border-slate-200 bg-slate-50 p-2">
           <summary className="cursor-pointer text-xs font-medium text-slate-600">
-            {isThai ? `ภายหลัง (${laterNodeKinds.length})` : `Later (${laterNodeKinds.length})`}
+            {isThai ? `ยังไม่เปิดใช้ (${laterNodeKinds.length})` : `Unavailable yet (${laterNodeKinds.length})`}
           </summary>
-          <div className="mt-2 grid gap-2">
-            {laterNodeKinds.map(renderDrawerItem)}
+          <div className="mt-1 text-[11px] leading-4 text-muted-foreground">
+            {isThai
+              ? "รายการนี้แสดงไว้เพื่อบอก roadmap แต่ยังไม่ควรใช้ในงานจริง"
+              : "These are roadmap placeholders and are not available for production work yet."}
+          </div>
+          <div className="mt-2 grid gap-1.5">
+            {laterNodeKinds.map(renderDeferredItem)}
           </div>
         </details>
       ) : null}

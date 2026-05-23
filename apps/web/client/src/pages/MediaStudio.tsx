@@ -12159,7 +12159,15 @@ export default function MediaStudio() {
               ...space.flowNodes,
               {
                 id: nodeId,
-                kind: asset.kind === "audio_asset" ? "audio_reference" : asset.kind === "source_video" ? "source_video_reference" : asset.kind === "product_image" || asset.kind === "marketplace_product" ? "product_reference" : "scene_reference",
+                kind: asset.kind === "audio_asset" || asset.zone === "audio"
+                  ? "audio_reference"
+                  : asset.kind === "source_video" || asset.zone === "targets"
+                    ? "source_video_reference"
+                    : asset.kind === "product_image" || asset.kind === "marketplace_product" || asset.zone === "products"
+                      ? "product_reference"
+                      : asset.kind === "character_asset" || asset.zone === "cast"
+                        ? "character_reference"
+                        : "scene_reference",
                 title: asset.title,
                 status: asset.kind === "product_image" || asset.kind === "marketplace_product" ? "warning" : "draft",
                 referenceInputs: [asset],
