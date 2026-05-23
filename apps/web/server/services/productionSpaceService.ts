@@ -50,7 +50,11 @@ export function isProductionSpaceStorageUnavailable(error: unknown): boolean {
   const raw = error as { code?: string; cause?: { code?: string; message?: string }; message?: string };
   const code = raw?.code ?? raw?.cause?.code;
   const message = `${raw?.message ?? ""} ${raw?.cause?.message ?? ""}`.toLowerCase();
-  if (!message.includes("media_production_spaces")) return false;
+  const isProductionStorageQuery = [
+    "media_production_runs",
+    "media_production_spaces",
+  ].some((table) => message.includes(table));
+  if (!isProductionStorageQuery) return false;
   return (
     code === "42P01"
     || code === "42703"
@@ -638,26 +642,31 @@ async function getLatestSpaceRow(db: Db, tenantId: string, productionRunId: stri
 }
 
 async function getRun(db: Db, tenantId: string, productionRunId: string) {
-  const [run] = await db
-    .select({
-      id: mediaProductionRuns.id,
-      tenantId: mediaProductionRuns.tenantId,
-      userId: mediaProductionRuns.userId,
-      productionRunId: mediaProductionRuns.productionRunId,
-      status: mediaProductionRuns.status,
-      goal: mediaProductionRuns.goal,
-      productionBible: mediaProductionRuns.productionBible,
-      assetPlan: mediaProductionRuns.assetPlan,
-      createdAt: mediaProductionRuns.createdAt,
-      updatedAt: mediaProductionRuns.updatedAt,
-    })
-    .from(mediaProductionRuns)
-    .where(and(
-      eq(mediaProductionRuns.tenantId, tenantId),
-      eq(mediaProductionRuns.productionRunId, productionRunId),
-    ))
-    .limit(1);
-  return run;
+  try {
+    const [run] = await db
+      .select({
+        id: mediaProductionRuns.id,
+        tenantId: mediaProductionRuns.tenantId,
+        userId: mediaProductionRuns.userId,
+        productionRunId: mediaProductionRuns.productionRunId,
+        status: mediaProductionRuns.status,
+        goal: mediaProductionRuns.goal,
+        productionBible: mediaProductionRuns.productionBible,
+        assetPlan: mediaProductionRuns.assetPlan,
+        createdAt: mediaProductionRuns.createdAt,
+        updatedAt: mediaProductionRuns.updatedAt,
+      })
+      .from(mediaProductionRuns)
+      .where(and(
+        eq(mediaProductionRuns.tenantId, tenantId),
+        eq(mediaProductionRuns.productionRunId, productionRunId),
+      ))
+      .limit(1);
+    return run;
+  } catch (error) {
+    if (!isProductionSpaceStorageUnavailable(error)) throw error;
+    return undefined;
+  }
 }
 
 async function loadProductionAccessContext(db: Db, tenantId: string, productionRunId: string) {
@@ -680,6 +689,9 @@ async function assertProductionRunAccess(
 ) {
   const { run, latest } = await loadProductionAccessContext(db, tenantId, productionRunId);
   if (!run && !latest) return { run, latest, level: "owner" as ProductionAccessLevel };
+  if (!run && latest && Number(latest.userId) === userId) {
+    return { run, latest, level: "owner" as ProductionAccessLevel };
+  }
   const level = assertProductionAccess({
     run,
     space: latest?.space as ProductionSpace | null,

@@ -135,6 +135,7 @@ function buildSpaceRow(space: ProductionSpace, userId = 7) {
 function createDb(options: {
   runUserId?: number;
   spaces?: Array<Record<string, any>>;
+  runsSelectError?: Error;
   spacesSelectError?: Error;
 } = {}) {
   const db = {
@@ -184,6 +185,9 @@ function createDb(options: {
             return Promise.resolve([...db.spaces].sort((a, b) => Number(b.version) - Number(a.version)).slice(0, 1));
           }
           if (selectedTable === mediaProductionRuns) {
+            if (options.runsSelectError) {
+              return Promise.reject(options.runsSelectError);
+            }
             return Promise.resolve(db.runs.slice(0, 1));
           }
           return Promise.resolve([]);
@@ -345,6 +349,28 @@ describe("productionSpaceService", () => {
 
     expect(result).toMatchObject({
       source: "legacy",
+      version: 1,
+      space: { productionRunId: "run-116" },
+    });
+  });
+
+  it("opens the latest ProductionSpace when legacy run storage is not migrated yet", async () => {
+    const db = createDb({
+      runsSelectError: Object.assign(
+        new Error('Failed query: select from "media_production_runs"; relation "media_production_runs" does not exist'),
+        { code: "42P01" },
+      ),
+    });
+
+    const result = await getProductionSpace({
+      db,
+      tenantId: "tenant-1",
+      userId: 7,
+      productionRunId: "run-116",
+    });
+
+    expect(result).toMatchObject({
+      source: "space",
       version: 1,
       space: { productionRunId: "run-116" },
     });
