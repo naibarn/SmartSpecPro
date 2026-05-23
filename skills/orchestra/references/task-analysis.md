@@ -86,6 +86,8 @@ Read `intent-regression-suite.md` whenever a message feels borderline, when you 
 - code-aware product help, onboarding, walkthroughs, tutorials, demo scripts,
   premium help-center content, visual explainers, or video companions generated
   from an existing page/feature/flow
+- engineering RCA, postmortem, bug closeout, or leadership/status communication
+  that needs evidence from code, logs, tests, diffs, or task artifacts
 
 ### Message Patterns That Usually Mean Orchestra
 - “ช่วยวางแผนแล้วทำต่อ” / “ช่วยจัดการงานนี้ให้จบ” / “แตกงานให้หน่อย”
@@ -98,6 +100,8 @@ Read `intent-regression-suite.md` whenever a message feels borderline, when you 
 - “สร้างคู่มือในระบบพร้อมรูปประกอบ”
 - “ทำ script.md + outline.md จาก feature/page จริง”
 - “ทำ onboarding/help center ให้ดูหรูหรา/professional พร้อมภาพและวิดีโอ”
+- “เขียน RCA/postmortem/สรุป root cause/closeout bug”
+- “สรุปให้ management/leadership/PM/release manager” หรือ “ทำ Slack/email/standup update”
 
 ### Message Patterns That Usually Do NOT Mean Orchestra
 - narrow factual Q&A

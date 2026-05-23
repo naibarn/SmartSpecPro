@@ -44,7 +44,7 @@ Interrupt the user only for:
 
 Use this route when:
 - the user names an installed skill or slash-style tool
-- the task is primarily an audit, scanner, generator, analytics query, health check, SEO/content task, security verification, deploy/release workflow, UI enhancement, image prompt, OpenAI-docs question, or skill/plugin maintenance task
+- the task is primarily an audit, scanner, generator, analytics query, health check, SEO/content task, security verification, deploy/release workflow, UI enhancement, image prompt, OpenAI-docs question, engineering postmortem/RCA, leadership/status rewrite, or skill/plugin maintenance task
 - a specialized skill can perform the task more directly than generic agent dispatch
 
 Execution:

@@ -12,10 +12,12 @@ deep-plan-quick
 deep-project
 dep-doctor
 deploy
+engineering-postmortem
 ga4-client
 gpt-image-2
 health-check
 kb-retriever
+leadership-update
 llms-txt-generator
 migration-checker
 og-validator

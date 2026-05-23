@@ -62,6 +62,7 @@ For each round:
    - prior findings and their resolution status
    - gates run since the last change
    - residual risks and skipped checks
+   - the intended goal of the change and any smaller alternative already considered
 2. Run the relevant reviewer set:
    - `reviewer` for code/contract correctness
    - `api-contract-reviewer` for API/client/server/schema drift
@@ -70,6 +71,8 @@ For each round:
    - visual UX, accessibility, responsive, and e2e reviewers for browser-visible UI
    - observability, performance, dependency, CI/release, or i18n reviewers when those
      domains changed
+   - require every reviewer report to include an intent/necessity check and real
+     call-path trace when code behavior is being reviewed
 3. Classify each finding:
    - `MUST_FIX`: CRITICAL, HIGH, or in-scope MEDIUM
    - `VERIFY_ONLY`: no code change needed, but a gate or targeted inspection must prove it

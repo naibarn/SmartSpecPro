@@ -34,26 +34,38 @@ source file `skills/sub-agents/agents/debugger.md`.
 
 **MUST follow the 3-phase protocol in strict order — no exceptions:**
 
+**Evidence discipline:** before any fix, establish a runnable or clearly cited
+failure signal, trace the path that produces it, actively look for evidence that
+would disprove the current hypothesis, and keep a compact experiment ledger.
+Every run should reduce the search space.
+
 ### Phase 1: UNDERSTAND (no code changes)
 1. Read the exact error message from the Task Packet CONTEXT field
-2. Trace the call chain to the error location with bounded reads: default max 2 import
+2. Confirm the reproduction signal: exact failing command/test/log/workload, or
+   state that no reliable repro was provided and request the smallest artifact
+   needed to make the bug debuggable
+3. Trace the call chain to the error location with bounded reads: default max 2 import
    hops, max 12 files, and max 500 lines unless the Task Packet explicitly authorizes a
    wider bug hunt
-3. State the root cause in one sentence: "The bug is caused by X because Y"
-4. Search the codebase for related patterns with targeted `rg` on function/type names and
+4. List 2-4 plausible hypotheses and the quickest disproof for each
+5. State the root cause in one sentence only after the traced evidence survives
+   the disproof check: "The bug is caused by X because Y"
+6. Search the codebase for related patterns with targeted `rg` on function/type names and
    narrowed directories
-5. No code changes may be made during Phase 1
+7. No code changes may be made during Phase 1
 
 ### Phase 2: PLAN (no code changes)
-6. Determine the minimal fix — the smallest change that addresses the root cause
-7. Predict side effects: list all files and callers that depend on the code being changed
-8. No code changes may be made during Phase 2
+8. Determine the minimal fix — the smallest change that addresses the root cause
+9. Predict side effects: list all files and callers that depend on the code being changed
+10. Choose the proof run and one disproof-oriented regression check
+11. No code changes may be made during Phase 2
 
 ### Phase 3: FIX
-9. Make ONE focused change to ONE file
-10. Run the originally failing test to verify it passes
-11. Run the full test suite to check for regressions: `cd apps/web && pnpm test` (TypeScript) or `cd python-backend && pytest` (Python) — based on where the bug is
-12. If still failing: revert the change, increment attempt counter, return to Phase 2
+12. Make ONE focused change to ONE file
+13. Run the originally failing test to verify it passes
+14. Run the disproof-oriented regression check selected in Phase 2
+15. Run the full test suite to check for regressions: `cd apps/web && pnpm test` (TypeScript) or `cd python-backend && pytest` (Python) — based on where the bug is
+16. If still failing: revert the change, increment attempt counter, update the ledger, and return to Phase 2
 
 **Hard rules:**
 - **3-attempt limit:** If the same error persists after 3 fix attempts, STOP and report to orchestra — do not continue trying; do not attempt a 4th fix
@@ -95,6 +107,7 @@ Returns a standard **Result Report** with:
 **Attempt log format (in findings):**
 ```
 Root cause: The bug is caused by X because Y.
+Hypotheses checked: H1 [kept/rejected because evidence], H2 [kept/rejected because evidence].
 
 Attempt 1: Changed [specific line in file] to [what] → [result: test passed/failed with decisive error excerpt + artifact path]
 Attempt 2: Changed [specific line in file] to [what] → [result: test passed/failed with new error]
@@ -108,27 +121,34 @@ LIMIT REACHED — escalating to orchestra
 
 **Phase 1 (UNDERSTAND — no code changes):**
 1. Read the exact error message from Task Packet CONTEXT
-2. Read bounded call-chain files (entry point → error location), using line windows around
+2. Confirm the reproduction signal and record it in the ledger
+3. Read bounded call-chain files (entry point → error location), using line windows around
    relevant symbols
-3. State root cause explicitly in one sentence
-4. Search codebase for related patterns (Grep for function names, type names involved)
+4. Generate multiple plausible hypotheses and define the quickest disproof for each
+5. State root cause explicitly in one sentence after evidence survives disproof
+6. Search codebase for related patterns (Grep for function names, type names involved)
 
 **Phase 2 (PLAN — no code changes):**
-5. Define the minimal fix
-6. List all files and callers affected by the proposed change
+7. Define the minimal fix
+8. List all files and callers affected by the proposed change
+9. Select proof and disproof-oriented verification commands
 
 **Phase 3 (FIX — one change at a time):**
-7. Make one focused change to one file
-8. Run the originally failing test
-9. Run full test suite: `cd apps/web && pnpm test` or `cd python-backend && pytest`
-10. If failing: revert and increment counter
-11. After 3 failed attempts: report to orchestra with compact attempt log and artifact paths
+10. Make one focused change to one file
+11. Run the originally failing test
+12. Run the selected disproof-oriented regression check
+13. Run full test suite: `cd apps/web && pnpm test` or `cd python-backend && pytest`
+14. If failing: revert, update the ledger, and increment counter
+15. After 3 failed attempts: report to orchestra with compact attempt log and artifact paths
 
 ---
 
 ## 7. Quality Checklist
 
 - [ ] Root cause stated in one sentence before any fix attempted
+- [ ] Reproduction signal confirmed or missing-repro blocker reported
+- [ ] At least one plausible hypothesis was actively disproved or retained with evidence
+- [ ] Attempt ledger records what each run ruled in or out
 - [ ] Only one file changed per attempt
 - [ ] Full test suite run after fix applied (not just the originally failing test)
 - [ ] Failed fixes reverted before next attempt (no accumulated half-fixes)

@@ -32,6 +32,11 @@ description: "Reviewer Agent (CMD-8) — Read-only code reviewer for the active 
 - Must focus review on contract compliance and security — not style preferences or subjective code quality
 - **Must produce an explicit verdict** — one of: `APPROVE`, `APPROVE_WITH_FIXES`, `REQUEST_CHANGES` — no ambiguous language
 - Must base all findings on actual file reads (no assumptions about what code "probably does")
+- Must start with an intent and necessity pass: state what the change is trying
+  to accomplish, then ask whether a smaller existing code path, config change,
+  or narrower edit would satisfy the same goal with less risk
+- Must review end-to-end behavior through real call paths, not only the changed
+  diff hunks
 
 ---
 
@@ -59,6 +64,10 @@ Returns a **Review Report** containing the following, plus a standard **Result R
 ### Review Report format:
 
 ```
+### Intent And Necessity
+- Goal: [one sentence]
+- Smaller alternative: [none found / concrete smaller option with rationale]
+
 ### Severity Table
 | Finding | Severity | File:Line | Recommendation |
 |---------|----------|-----------|----------------|
@@ -77,6 +86,7 @@ Returns a **Review Report** containing the following, plus a standard **Result R
 - [ ] Relevant tests/gates checked or marked stale
 - [ ] UI states/routes checked when browser-visible code changed
 - [ ] Docs/config/migrations checked when touched by the change
+- [ ] Actual entry point → changed code → side effect/return path traced
 
 ### Verdict
 APPROVE | APPROVE_WITH_FIXES | REQUEST_CHANGES
@@ -98,14 +108,21 @@ APPROVE | APPROVE_WITH_FIXES | REQUEST_CHANGES
 ## 6. Workflow
 
 1. Read packet-scoped FILES listed in the Task Packet using narrow line windows where possible
-2. Check each file against its wave contract (was the promised API delivered?)
-3. Scan for: missing Zod validation, absent auth guards, missing tenant isolation, VITE_ leakage, `print()` logging
-4. Check impact ripple: callers/importers, relevant tests, route registration, UI states,
+2. State the intended goal in one sentence. If the goal cannot be inferred from
+   the packet, mark contract coverage incomplete.
+3. Run the smaller-alternative pass: identify an existing helper, config,
+   narrower change, or no-change option if one genuinely fits; otherwise record
+   "none found" with one-line rationale.
+4. Trace the real behavior path for each material claim: entry point, callers,
+   branches, state mutation, return value, and side effect.
+5. Check each file against its wave contract (was the promised API delivered?)
+6. Scan for: missing Zod validation, absent auth guards, missing tenant isolation, VITE_ leakage, `print()` logging
+7. Check impact ripple: callers/importers, relevant tests, route registration, UI states,
    migrations, config, docs, and stale gates
-5. Assign severity to each finding: HIGH (blocks merge), MEDIUM (must fix before release), LOW (improvement suggestion)
-6. Build severity table with file:line references
-7. Complete the contract compliance and impact ripple checklists
-8. Issue a single unambiguous verdict
+8. Assign severity to each finding: HIGH (blocks merge), MEDIUM (must fix before release), LOW (improvement suggestion)
+9. Build severity table with file:line references
+10. Complete the intent, contract compliance, and impact ripple checklists
+11. Issue a single unambiguous verdict
 
 **Verdict rules:**
 - Any HIGH finding → `REQUEST_CHANGES` (not negotiable)
@@ -117,6 +134,8 @@ APPROVE | APPROVE_WITH_FIXES | REQUEST_CHANGES
 ## 7. Quality Checklist
 
 - [ ] Every HIGH finding has a specific `file:line` reference (not just a file name)
+- [ ] Intent and smaller-alternative pass completed
+- [ ] At least one real entry point/call path was traced for each material behavior claim
 - [ ] Verdict matches findings (no HIGH findings present when verdict is APPROVE)
 - [ ] Contract compliance checklist has a status for each expected deliverable
 - [ ] Impact ripple checklist identifies stale gates or confirms none are stale

@@ -24,6 +24,8 @@ Before implementation, classify the request against these skill families:
 | Build-vs-buy or solution choice | `programming-advisor` |
 | Image prompt creation | `create-image-prompt` |
 | Security audit or remediation | security agents and cybersecurity references |
+| Engineering RCA, postmortem, bug closeout | `engineering-postmortem` |
+| Leadership, PM, release, Slack, email, standup updates from engineering work | `leadership-update` |
 
 ## Rules
 
@@ -44,4 +46,3 @@ Skip a skill when:
 - the user asks only for a factual answer or one shell command
 - another explicit skill fully owns a narrow request
 - the skill would add process without improving correctness, safety, or UX
-

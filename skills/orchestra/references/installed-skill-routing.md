@@ -86,10 +86,12 @@ or professional learning material from an existing page, feature, or flow.
 | `deep-implement` | implement deep-plan sections | Use after valid deep-plan/deep-plan-quick artifacts. | TDD, code review, and repo gates required. |
 | `dep-doctor` | `/dep`, dependency health, unused/outdated deps | Run dependency doctor or include in security/ship. | Do not remove packages without evidence and user-requested edits. |
 | `deploy` | `/deploy`, deploy, production rollout | Run preflight including ship/security/migrations before deploy. | Explicit confirmation before push/deploy/external side effect. |
+| `engineering-postmortem` | postmortem, post-mortem, RCA, root cause analysis, bug closeout, fix writeup | Use after a bug/regression/incident has reproduction, known root cause, identified fix, and validation evidence. If evidence is missing, route back to debugging/rescue/gates first. | Never invent cause, owner, validation, timeline, or action items; do not post externally without confirmation. |
 | `ga4-client` | `/ga4`, GA4 analytics query | Query GA4 only when env/config is available. | Do not invent metrics; mark missing credentials as skipped. |
 | `gpt-image-2` | image generation, image editing, GPT Image 2, poster/product/UI/diagram prompt | Default image workflow. In Codex, use GPT Image 2 prompt templates and route execution through the host-native Codex image tool/auth; use local OpenAI API scripts only on explicit request or non-Codex hosts. | Never ask for API keys when Codex image tooling is available; confirm before custom `OPENAI_BASE_URL` or local API calls. |
 | `health-check` | `/health`, SSL, uptime, headers | Run URL health, SSL, redirects, and header checks. | Target must be user-owned/authorized. |
 | `kb-retriever` | local knowledge base, `knowledge/`, search local docs, answer from docs/PDF/Excel | Navigate `data_structure.md`, progressively search local corpus, and cite files. | Stay inside authorized knowledge root; no web search unless explicitly requested. |
+| `leadership-update` | leadership update, management update, exec summary, PM/release update, Slack/email/standup/talking points, less technical rewrite | Rewrite technical status, debugging findings, RCA, launch risk, or implementation progress for engineering-aware stakeholders and the requested channel. | Preserve real state and tracking IDs; do not invent metrics, owners, dates, commitments, or customer impact. |
 | `llms-txt-generator` | `/llms-txt`, `llms.txt`, AI crawler file | Generate `llms.txt` and `llms-full.txt`. | Confirm output target when overwriting existing files. |
 | `migration-checker` | `/migration`, ORM migration state | Run before deploy/release or DB changes. | Destructive migrations require backup-first discipline. |
 | `og-validator` | `/og-validator`, Open Graph, social preview | Validate OG tags and image accessibility. | Network target must be authorized. |
@@ -135,6 +137,7 @@ These system skills are installed under `.system` and should be used when their 
 - **Image generation:** `gpt-image-2` by default; use host-native Codex image execution when available.
 - **UI:** `visual-ui-enhancement`, `web-design-engineer`, `visual-diff`, `architecture` when diagrams help.
 - **Help/tutorials:** `web-video-presentation` for `script.md`/`outline.md` and video companions, `gpt-image-2` for premium imagery, `visual-ui-enhancement` for in-product help UI.
+- **Engineering communication:** `engineering-postmortem` for RCA/bug closeout, `leadership-update` for management/PM/release/channel-specific summaries.
 - **Knowledge retrieval:** `kb-retriever` for local knowledge folders and multi-format corpora.
 - **Video/decks:** `web-video-presentation` for narrated, screen-recordable web presentations.
 - **Planning/build:** `brainstorming` for unsettled direction, then `deep-project` for project-scale decomposition, then `deep-plan`/`deep-plan-quick`, then `deep-implement`.
