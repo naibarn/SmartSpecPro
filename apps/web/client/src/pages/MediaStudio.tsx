@@ -3236,6 +3236,7 @@ export default function MediaStudio() {
   const autoGenerateRequestRef = useRef<{ tab: MediaType; prompt: string; model?: string } | null>(null);
   const autoGenerateTriggeredRef = useRef(false);
   const marketplaceStorytellingAppliedRef = useRef<string | null>(null);
+  const persistedProductionRunIdsRef = useRef<Set<string>>(new Set());
   const marketplaceStorytellingParams = useMemo(() => new URLSearchParams(typeof window === "undefined" ? "" : window.location.search), [location]);
   const marketplaceStorytellingRequested = marketplaceStorytellingParams.get("marketplaceStorytelling") === "1";
   const marketplaceStorytellingInsightId = marketplaceStorytellingParams.get("marketplaceInsightId") || marketplaceStorytellingParams.get("insightId") || "";
@@ -11274,6 +11275,12 @@ export default function MediaStudio() {
       refetchOnWindowFocus: false,
     },
   );
+  useEffect(() => {
+    const persistedSpace = (productionSpaceQuery.data as any)?.space as ProductionSpace | undefined;
+    if (persistedSpace?.productionRunId) {
+      persistedProductionRunIdsRef.current.add(persistedSpace.productionRunId);
+    }
+  }, [productionSpaceQuery.data]);
   const productionPlanScenes = getProductionPlanScenes(productionDirector.plan);
   const productionWorkspaceSpace = useMemo<ProductionSpace>(() => {
     if (productionSpaceDraft) return productionSpaceDraft;
@@ -11646,7 +11653,10 @@ export default function MediaStudio() {
         changedFields,
       });
       const savedSpace = (saved as any)?.space as ProductionSpace | undefined;
-      if (savedSpace) setProductionSpaceDraft(savedSpace);
+      if (savedSpace) {
+        persistedProductionRunIdsRef.current.add(savedSpace.productionRunId);
+        setProductionSpaceDraft(savedSpace);
+      }
       if (successMessage) toast.success(successMessage);
       return savedSpace ?? nextSpace;
     } catch (error) {
@@ -12110,7 +12120,12 @@ export default function MediaStudio() {
     setProductionSpaceDraft((current) => current
       ? { ...current, flowNodes: current.flowNodes.map((node) => node.id === nodeId ? { ...node, position } : node) }
       : current);
-    if (!productionWorkspaceSpace.productionRunId || productionWorkspaceSpace.productionRunId === "draft") return;
+    const canAutosaveLayout = Boolean(
+      productionWorkspaceSpace.productionRunId
+      && productionWorkspaceSpace.productionRunId !== "draft"
+      && persistedProductionRunIdsRef.current.has(productionWorkspaceSpace.productionRunId),
+    );
+    if (!canAutosaveLayout) return;
     saveProductionCanvasLayoutMutation.mutate({
       productionRunId: productionWorkspaceSpace.productionRunId,
       expectedVersion: productionWorkspaceSpace.version,
