@@ -1,1 +1,105 @@
-{ "production_goal": { "summary": "Create a product review short", "platform": "tiktok" } }
+{
+  "production_brief": {
+    "title": "Pocket Blender Review Short",
+    "goal_type": "product_review",
+    "audience": "busy college students",
+    "platform": "tiktok",
+    "objective": "Show a compact blender making a smoothie in a dorm room.",
+    "language": "en",
+    "constraints": ["Keep every product claim tied to evidence."]
+  },
+  "context_assets": [
+    {
+      "id": "asset-product-hero",
+      "kind": "product",
+      "label": "Hero product image",
+      "url": "https://cdn.example.test/blender.png",
+      "provenance": { "source": "marketplace_capture", "owner": "tenant" }
+    }
+  ],
+  "product_storyboard_assets": [
+    {
+      "id": "psa-blender-hero",
+      "product_id": "prod-blender",
+      "sku": "BLEND-01",
+      "variant": "mint",
+      "role": "hero",
+      "approval_state": "approved",
+      "fidelity_risk": "low"
+    }
+  ],
+  "marketplace_storytelling_handoff": {
+    "source": "feature_115",
+    "readiness": "ready",
+    "selected_product_ids": ["prod-blender"],
+    "storytelling_notes": ["Lead with portability, then show the smoothie result."]
+  },
+  "product_claim_evidence_map": [
+    {
+      "claim_id": "claim-portable",
+      "claim_text": "Compact enough for a dorm desk.",
+      "claim_type": "physical_attribute",
+      "evidence_ids": ["ev-dimensions"],
+      "user_approval_state": "approved",
+      "risk": "low"
+    }
+  ],
+  "feature_115_readiness": "ready",
+  "feature_115_allowed_next_actions": ["plan_storyboard", "handoff_to_storyboard_review"],
+  "available_tool_capabilities": [
+    {
+      "tool_id": "image-generate",
+      "surface": "image",
+      "supported_node_types": ["image_generate"],
+      "mvp_adapter": true
+    },
+    {
+      "tool_id": "gemini-omni-video",
+      "surface": "video",
+      "supported_node_types": ["image_to_video", "video_generate"],
+      "mvp_adapter": true
+    },
+    {
+      "tool_id": "audio-tts",
+      "surface": "audio",
+      "supported_node_types": ["text_to_speech"],
+      "mvp_adapter": true
+    },
+    {
+      "tool_id": "storyboard-review",
+      "surface": "storyboard_review",
+      "supported_node_types": ["storyboard_review_handoff"],
+      "mvp_adapter": true
+    }
+  ],
+  "provider_capabilities": [
+    {
+      "provider_id": "kie",
+      "model_id": "gemini-omni-video",
+      "supported_node_types": ["image_to_video", "video_generate"],
+      "reference_unit_limit": 7,
+      "source_video_limit": 1,
+      "audio_id_limit": 1
+    }
+  ],
+  "capability_registry": {
+    "registry_version": "116.1",
+    "surfaces": ["production_workspace", "video_shot", "image", "video", "audio", "storyboard_review", "video_edit"],
+    "disabled_adapters": ["music_generate", "sound_effect_generate"]
+  },
+  "budget_policy": {
+    "max_credits": 500,
+    "quality_target": "social_ready",
+    "requires_confirmation_before_spend": true
+  },
+  "downstream_target_requirements": ["storyboard_review", "video_edit"],
+  "duration_and_pacing_policy": {
+    "target_duration_seconds": 18,
+    "platform": "tiktok",
+    "aspect_ratio": "9:16",
+    "pacing": "fast"
+  },
+  "shot_count_guidance": { "min": 2, "max": 4, "preferred": 3 },
+  "locked_shot_ids": [],
+  "locked_node_ids": []
+}

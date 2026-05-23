@@ -61,8 +61,9 @@ Owned files:
 Implementation:
 
 - Add `ProductionSpace` contracts and validators.
-- Add `ProductionShot`, `ProductionFlowNode`, `ProductionFlowEdge`, `ProductionNodeToolBinding`, `ProductionNodeConfigSnapshot`, `ProductionReferenceInput`, `ProductionNodeOutputRef`, `ProductStoryboardAsset`, `ProductClaimEvidenceMap`, `ProductionProductEvidenceManifest`, and downstream result record types.
+- Add `ProductionShot`, `ProductionFlowNode`, `ProductionFlowEdge`, `ProductionNodeToolBinding`, `ProductionNodeConfigSnapshot`, `ProductionReferenceInput`, `ProductionNodeOutputRef`, `ProductStoryboardAsset`, `ProductClaimEvidenceMap`, `ProductionProductEvidenceManifest`, `ProductionPlanningSelection`, `ProductionPlanningContextPack`, full `ProductionNodeCatalogEntry` metadata, and downstream result/import record types.
 - Add graph validation, readiness computation, approval invalidation, idempotency, product evidence validation, handoff payload derivation, and provider capability validation helpers.
+- Add shared catalog enforcement helpers for config snapshot validation and executable-node validation.
 - Extend Gemini Omni capability helpers so Production nodes can validate reference units, source video, character/audio assets, provider payload keys, and pricing branch without duplicating UI logic.
 
 Tests first:
@@ -74,6 +75,9 @@ Tests first:
 - Product evidence/claim mismatch fails.
 - Material node config change invalidates approval.
 - Layout-only change does not invalidate approval.
+- Shared node catalog marks Image, Video, and basic TTS as `mvp_enabled`, while full-matrix nodes are `deferred` and include a deferred reason.
+- Shared catalog enforcement rejects deferred/preview-only executable nodes and adapter/toolSurface mismatches.
+- Handoff payload identity is tenant-scoped.
 
 Exit criteria:
 
@@ -98,11 +102,12 @@ Implementation:
 
 - Add versioned ProductionSpace storage.
 - Keep existing `mediaProductionRuns` as search/status index.
-- Add `getSpace`, `saveSpace`, `saveBrief`, `saveShot`, `getNodeConfig`, `saveNodeConfig`, `saveCanvasLayout`, `validateSpace`, and `adaptLegacyRunToProductionSpace`.
+- Add `getSpace`, `saveSpace`, `saveBrief`, `saveShot`, `getNodeConfig`, `saveNodeConfig`, `saveCanvasLayout`, `validateSpace`, `importDownstreamResult`, and `adaptLegacyRunToProductionSpace`.
 - Return typed conflict responses for stale expected versions.
 - Add compatibility adapter from existing goal/plan/tabSnapshots into a minimal draft ProductionSpace.
 - Update `listRuns` to prefer ProductionSpace thumbnails and summary when present.
 - Add router security tests for every new mutating procedure: unauthenticated, missing tenant, cross-tenant, cross-user, permission-denied, disabled flag, and stale expected version.
+- Harden runtime router schemas for security-sensitive ProductionSpace payloads: node kind/status, shot status, product evidence manifest, access policy, and tool bindings.
 - Add migration/backfill/no-data-loss/rollback/schema-version tests before enabling write-mode migration.
 
 Tests first:
@@ -113,10 +118,15 @@ Tests first:
 - Save node config mutates one node only.
 - Legacy run adapter returns valid draft space.
 - Cross-tenant and cross-user access is rejected for get/save/archive/export/handoff/import/execution.
+- Downstream import rejects stale source versions, appends result records, imports selected takes/timeline/captions/product warning resolutions, and skips locked shot/node configs unless explicitly allowed.
+- Save-to-Node rejects deferred/preview-only/disabled catalog entries and adapter/toolSurface mismatches before writing a new version.
+- Execution scheduling rejects deferred/preview-only/disabled catalog entries and adapter/toolSurface mismatches before credit reservation or provider dispatch.
+- Router authorization matrix covers every mutating procedure for missing tenant and cross-user denial at minimum, with full role matrix before live rollout.
 - Backfill migration preserves legacy run, goal, plan, verification, approval, asset plan, and projection records.
 - Rollback/read-safe mode opens old runs and hides new write actions.
 - Schema-version upgrade preserves brief, shots, nodes, configs, output refs, product evidence, and downstream refs.
 - Project search returns thumbnail/title/summary/status.
+- Additive migration evidence proves `media_production_spaces` does not drop/truncate/delete legacy run/version/projection data before admin backfill is enabled.
 
 Exit criteria:
 
@@ -186,6 +196,7 @@ Tests first:
 - Image/Video/Audio standalone tabs still render.
 - Project search card shows thumbnail/title/summary/status.
 - Save action calls the correct ProductionSpace save path.
+- Planning Skill Selector renders selected skill, model mode, selected/manual model, compatibility, and context-pack summary inside the Production workspace.
 
 Exit criteria:
 
@@ -214,6 +225,7 @@ Implementation:
 Tests first:
 
 - Character asset can be searched and added.
+- Provider/character search results are visible as a first-class Context Asset Board section and can be added by click without drag/drop.
 - Drag and click produce equivalent context asset payload.
 - Product evidence preserves claim/evidence IDs and does not mix product claims.
 - Unresolved product evidence blocks product-related generation/handoff.
@@ -333,7 +345,7 @@ Implementation:
 - Extract pure handoff mapping into a server-safe shared builder.
 - Include schema version, source space version, idempotency key, ordered shots, output refs, audio/caption refs, cue sheet, transitions, QA, warnings, and product manifests.
 - Repeated handoff opens existing downstream target.
-- Result import writes new ProductionSpace version or returns conflict.
+- Result import writes a new ProductionSpace version or returns conflict; stale source versions conflict, selected takes/timeline/captions/product warning resolutions import, and locked shot/node configs are skipped by default.
 - Video Edit handoff must use server-safe `VideoEditorProject` payloads compatible with existing fixtures.
 - Incomplete media either produces safe non-renderable placeholders or disables `Open in Video Edit`.
 - Provider task IDs are never used as clip URLs.
@@ -346,6 +358,7 @@ Tests first:
 - Video Edit builder output matches existing Video Editor project fixture expectations.
 - Disabled target does not mutate state.
 - Stale downstream result import returns conflict.
+- Locked shot/node downstream import does not overwrite configs unless `allowLockedUpdates` is explicitly provided.
 - Handoff UI/UX contract covers preview-only, live-disabled, disabled target, stale source, permission denied, and copy that explains the next recovery action.
 
 Exit criteria:

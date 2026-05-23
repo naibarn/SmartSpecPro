@@ -7,6 +7,7 @@ export interface ProductFormValue {
   priceOriginal: string;
   currency: string;
   discountText: string;
+  commissionRatePercent: string;
   ratingScore: string;
   reviewCountText: string;
   soldCountText: string;
@@ -33,6 +34,7 @@ export function productFormFromExtraction(llm: any): ProductFormValue {
     priceOriginal: llm?.price?.original != null ? String(llm.price.original) : "",
     currency: String(llm?.price?.currency ?? "THB"),
     discountText: String(llm?.price?.discountText ?? ""),
+    commissionRatePercent: llm?.commissionRatePercent != null ? String(llm.commissionRatePercent) : "",
     ratingScore: llm?.rating?.score != null ? String(llm.rating.score) : "",
     reviewCountText: String(llm?.rating?.reviewCountText ?? ""),
     soldCountText: String(llm?.rating?.soldCountText ?? ""),
@@ -78,6 +80,7 @@ export function productConfirmPayload(form: ProductFormValue, imageSelection: {
         currency: form.currency || "THB",
         discountText: form.discountText || null,
       },
+      commissionRatePercent: numberOrNull(form.commissionRatePercent),
       rating: {
         score: numberOrNull(form.ratingScore),
         reviewCountText: form.reviewCountText || null,
@@ -173,6 +176,7 @@ export function ProductExtractedForm({
         <label className={labelClass}>Original price<input className={inputClass} value={value.priceOriginal} onChange={(e) => update("priceOriginal", e.target.value)} /></label>
         <label className={labelClass}>Currency<input className={inputClass} value={value.currency} onChange={(e) => update("currency", e.target.value)} /></label>
         <label className={labelClass}>Discount<input className={inputClass} value={value.discountText} onChange={(e) => update("discountText", e.target.value)} /></label>
+        <label className={labelClass}>Commission rate (%)<input className={inputClass} inputMode="decimal" value={value.commissionRatePercent} onChange={(e) => update("commissionRatePercent", e.target.value)} /></label>
         <label className={labelClass}>Rating score<input className={inputClass} value={value.ratingScore} onChange={(e) => update("ratingScore", e.target.value)} />{fieldMeta("rating")}</label>
         <label className={labelClass}>Review count<input className={inputClass} value={value.reviewCountText} onChange={(e) => update("reviewCountText", e.target.value)} /></label>
         <label className={labelClass}>Sold count<input className={inputClass} value={value.soldCountText} onChange={(e) => update("soldCountText", e.target.value)} />{fieldMeta("soldCount")}</label>

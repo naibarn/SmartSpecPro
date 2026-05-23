@@ -1,16 +1,65 @@
 {
   "skill_name": "media-production-plan-verifier",
   "skill_version": "1.0.0",
-  "contract_version": "1.0.0",
-  "verification_status": "pass",
-  "score": 0.9,
+  "contract_version": "116.1",
+  "verification_status": "warning",
+  "score": 0.91,
+  "story_coherence_score": 0.95,
+  "shot_completeness_score": 0.9,
+  "node_readiness_score": 0.86,
+  "product_truth_score": 1,
+  "product_image_fidelity_score": 0.95,
+  "feature_115_gate_result": {
+    "status": "pass",
+    "readiness": "ready",
+    "allowed_next_actions": ["plan_storyboard", "handoff_to_storyboard_review"]
+  },
+  "provider_feasibility_score": 0.9,
+  "budget_risk": {
+    "level": "low",
+    "requires_credit_confirmation": true,
+    "estimated_credits": 240
+  },
   "blocking_issues": [],
-  "warnings": [],
+  "warnings": [
+    {
+      "code": "needs_user_credit_confirmation",
+      "message": "Approve explicit credit spend before generation.",
+      "severity": "warning",
+      "node_id": "node-video-1"
+    }
+  ],
+  "per_shot_warnings": [
+    {
+      "shot_id": "shot-1",
+      "code": "shot_generation_pending",
+      "message": "Shot is planned but not generated.",
+      "severity": "info"
+    }
+  ],
+  "per_node_warnings": [
+    {
+      "node_id": "node-video-1",
+      "code": "credit_confirmation_required",
+      "message": "Video node may be configured, but generation must wait for explicit confirmation.",
+      "severity": "warning"
+    }
+  ],
+  "product_image_fidelity_warnings": [],
   "missing_decisions": [],
   "recommended_revisions": [],
   "targeted_revision_map": {},
-  "credit_risk_summary": {},
-  "approval_readiness": {},
-  "reviewer_notes": [],
-  "allowed_next_actions": ["approve_plan"]
+  "approval_invalidation_recommendations": [],
+  "credit_risk_summary": {
+    "estimated_credits": 240,
+    "within_budget": true,
+    "save_to_node_spends_credits": false
+  },
+  "approval_readiness": {
+    "status": "warning",
+    "can_approve": true,
+    "reason": "The plan is structurally ready; generation remains gated by credit confirmation."
+  },
+  "reviewer_notes": ["Product evidence is linked to the shot and no raw provider generation is required during planning."],
+  "allowed_next_actions": ["approve_plan", "configure_nodes", "handoff_to_storyboard_review"]
 }

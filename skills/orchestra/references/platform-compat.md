@@ -107,6 +107,10 @@ model override. Use the inherited current/default model for explicit overrides,
 deep-* routes, high-complexity/high-risk work, performance-critical analysis, retry
 escalations, or unsupported override paths. See `model-routing.md`.
 
+In Codex Standard mode, this is an actual `spawn_agent` parameter:
+`model: "gpt-5.3-codex-spark"`. Do not rely only on prompt text or Task Packet
+metadata for model routing.
+
 Inline execution in Standard mode is a last resort. Before using it, the conductor must
 record in `orchestra/progress.md` that agent-tool detection failed or that a dispatch
 attempt failed.

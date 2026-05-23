@@ -5801,6 +5801,31 @@ export const mediaProductionRuns = pgTable("media_production_runs", {
 export type MediaProductionRun = typeof mediaProductionRuns.$inferSelect;
 export type InsertMediaProductionRun = typeof mediaProductionRuns.$inferInsert;
 
+export const mediaProductionSpaces = pgTable("media_production_spaces", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  productionRunId: varchar("productionRunId", { length: 128 }).notNull(),
+  version: integer("version").notNull(),
+  space: jsonb("space").$type<Record<string, any>>().default({}).notNull(),
+  changeKind: varchar("changeKind", { length: 40 }).default("space").notNull(),
+  changedFields: jsonb("changedFields").$type<string[]>().default([]).notNull(),
+  spaceHash: varchar("spaceHash", { length: 128 }).notNull(),
+  status: varchar("status", { length: 40 }).default("goal_draft").notNull(),
+  archivedAt: timestamp("archivedAt", { withTimezone: true }),
+  deletedAt: timestamp("deletedAt", { withTimezone: true }),
+  contractVersion: varchar("contractVersion", { length: 32 }).default("1.0.0").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("media_production_spaces_unique").on(t.tenantId, t.productionRunId, t.version),
+  index("media_production_spaces_run_idx").on(t.tenantId, t.productionRunId, t.createdAt),
+  index("media_production_spaces_user_status_idx").on(t.userId, t.status, t.updatedAt),
+]);
+
+export type MediaProductionSpace = typeof mediaProductionSpaces.$inferSelect;
+export type InsertMediaProductionSpace = typeof mediaProductionSpaces.$inferInsert;
+
 export const mediaProductionGoalVersions = pgTable("media_production_goal_versions", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
   tenantId: varchar("tenantId", { length: 36 }).notNull(),
@@ -11820,6 +11845,7 @@ export const marketplaceProducts = pgTable("marketplace_products", {
   priceOriginal: numeric("priceOriginal", { precision: 12, scale: 2 }),
   currency: varchar("currency", { length: 16 }).default("THB"),
   discountText: varchar("discountText", { length: 64 }),
+  commissionRatePercent: numeric("commissionRatePercent", { precision: 5, scale: 2 }),
   ratingScore: numeric("ratingScore", { precision: 4, scale: 2 }),
   reviewCountText: varchar("reviewCountText", { length: 128 }),
   soldCountText: varchar("soldCountText", { length: 128 }),
@@ -11843,6 +11869,7 @@ export const marketplaceProducts = pgTable("marketplace_products", {
     .on(t.userId, t.platform, t.externalShopId, t.externalProductId)
     .where(sql`"externalShopId" IS NOT NULL AND "externalProductId" IS NOT NULL`),
   check("marketplace_products_price_nonnegative", sql`(${t.priceCurrent} IS NULL OR ${t.priceCurrent} >= 0) AND (${t.priceOriginal} IS NULL OR ${t.priceOriginal} >= 0)`),
+  check("marketplace_products_commission_rate_bounds", sql`${t.commissionRatePercent} IS NULL OR (${t.commissionRatePercent} >= 0 AND ${t.commissionRatePercent} <= 100)`),
   check("marketplace_products_rating_bounds", sql`${t.ratingScore} IS NULL OR (${t.ratingScore} >= 0 AND ${t.ratingScore} <= 5)`),
   check("marketplace_products_sold_count_nonnegative", sql`${t.soldCountNormalized} IS NULL OR ${t.soldCountNormalized} >= 0`),
 ]);
@@ -11874,6 +11901,7 @@ export const marketplaceProductPriceSnapshots = pgTable("marketplace_product_pri
   priceOriginal: numeric("priceOriginal", { precision: 12, scale: 2 }),
   currency: varchar("currency", { length: 16 }).default("THB"),
   discountText: varchar("discountText", { length: 64 }),
+  commissionRatePercent: numeric("commissionRatePercent", { precision: 5, scale: 2 }),
   ratingScore: numeric("ratingScore", { precision: 4, scale: 2 }),
   reviewCountText: varchar("reviewCountText", { length: 128 }),
   reviewCountNormalized: integer("reviewCountNormalized"),
@@ -11884,6 +11912,7 @@ export const marketplaceProductPriceSnapshots = pgTable("marketplace_product_pri
   index("idx_marketplace_product_price_snapshots_product").on(t.productId, t.capturedAt),
   index("idx_marketplace_product_price_snapshots_user").on(t.capturedByUserId, t.capturedAt),
   check("marketplace_price_snapshots_price_nonnegative", sql`(${t.priceCurrent} IS NULL OR ${t.priceCurrent} >= 0) AND (${t.priceOriginal} IS NULL OR ${t.priceOriginal} >= 0)`),
+  check("marketplace_price_snapshots_commission_rate_bounds", sql`${t.commissionRatePercent} IS NULL OR (${t.commissionRatePercent} >= 0 AND ${t.commissionRatePercent} <= 100)`),
   check("marketplace_price_snapshots_sold_count_nonnegative", sql`${t.soldCountNormalized} IS NULL OR ${t.soldCountNormalized} >= 0`),
   check("marketplace_price_snapshots_review_count_nonnegative", sql`${t.reviewCountNormalized} IS NULL OR ${t.reviewCountNormalized} >= 0`),
   check("marketplace_price_snapshots_rating_bounds", sql`${t.ratingScore} IS NULL OR (${t.ratingScore} >= 0 AND ${t.ratingScore} <= 5)`),

@@ -7,6 +7,7 @@ import {
   parseSoldCount,
   parseThaiPrice,
   marketplaceCaptureInsightSyncSchema,
+  marketplaceConfirmProductSchema,
   marketplaceServerInsightGenerationSchema,
   marketplaceServerInsightGenerationResponseSchema,
   marketplaceStorytellingHandoffSchema,
@@ -110,7 +111,7 @@ describe("marketplace capture parsers", () => {
       platform: "tiktok_shop",
       sourceUrl: "https://www.tiktok.com/shop/th/pdp/1735105127894976061",
       capturedAt: new Date().toISOString(),
-      product: { title: "Demo", selectedImageUrls: [] },
+      product: { title: "Demo", selectedImageUrls: [], commissionRatePercent: 12.5 },
       reviews: [],
       comments: [],
       evidence: [{ id: "title:product", type: "title", text: "Demo" }],
@@ -127,6 +128,22 @@ describe("marketplace capture parsers", () => {
       comments: [],
       evidence: [],
       payloadHash: "hash_12345678",
+    })).toThrow();
+  });
+
+  it("validates optional user-entered commission rate percentage", () => {
+    const payload = marketplaceConfirmProductSchema.parse({
+      product: {
+        productName: "Demo product",
+        commissionRatePercent: 12.5,
+      },
+    });
+    expect(payload.product.commissionRatePercent).toBe(12.5);
+    expect(() => marketplaceConfirmProductSchema.parse({
+      product: {
+        productName: "Demo product",
+        commissionRatePercent: 120,
+      },
     })).toThrow();
   });
 

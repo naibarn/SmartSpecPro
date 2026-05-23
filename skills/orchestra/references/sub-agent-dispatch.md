@@ -120,6 +120,11 @@ If the active Task/sub-agent tool exposes a model override field, pass
 `gpt-5.3-codex-spark` for lightweight-default packets. If the tool does not support model
 overrides, keep the metadata in the Task Packet and proceed normally.
 
+Codex enforcement: when using `spawn_agent` for lightweight-default work, the tool
+call MUST include `model: "gpt-5.3-codex-spark"`. A Task Packet that only says
+`model_preference: gpt-5.3-codex-spark` is documentation, not an actual model
+override.
+
 ### Dispatch Metadata
 
 Every wave plan must include dispatch metadata before launch:

@@ -1,1 +1,118 @@
-{ "production_goal": {}, "plan_package": {} }
+{
+  "production_space": {
+    "id": "space-basic-product-review",
+    "version": 1,
+    "brief": {
+      "title": "Pocket Blender Review Short",
+      "goal_type": "product_review",
+      "audience": "busy college students",
+      "platform": "tiktok",
+      "objective": "Show a compact blender making a smoothie in a dorm room."
+    },
+    "shots": [
+      {
+        "id": "shot-1",
+        "order": 1,
+        "title": "Dorm desk hook",
+        "purpose": "Introduce the space constraint and product.",
+        "duration_seconds": 6,
+        "node_ids": ["node-shot-1", "node-image-1", "node-video-1"],
+        "product_asset_ids": ["psa-blender-hero"],
+        "claim_ids": ["claim-portable"],
+        "readiness": "warning"
+      }
+    ],
+    "flowNodes": [
+      {
+        "id": "node-shot-1",
+        "type": "video_shot",
+        "label": "Shot 1",
+        "position": { "x": 0, "y": 0 },
+        "data": {
+          "shotId": "shot-1",
+          "readiness": "warning",
+          "toolBindingId": "binding-shot-1"
+        }
+      },
+      {
+        "id": "node-image-1",
+        "type": "image_generate",
+        "label": "Product insert image",
+        "position": { "x": 260, "y": 0 },
+        "data": {
+          "shotId": "shot-1",
+          "readiness": "ready",
+          "toolBindingId": "binding-image-1",
+          "configSnapshotId": "snap-image-1"
+        }
+      },
+      {
+        "id": "node-video-1",
+        "type": "image_to_video",
+        "label": "Animated product moment",
+        "position": { "x": 520, "y": 0 },
+        "data": {
+          "shotId": "shot-1",
+          "readiness": "warning",
+          "toolBindingId": "binding-video-1",
+          "configSnapshotId": "snap-video-1"
+        }
+      }
+    ],
+    "flowEdges": [
+      {
+        "id": "edge-image-video",
+        "source": "node-image-1",
+        "target": "node-video-1",
+        "label": "image reference",
+        "kind": "asset_dependency"
+      }
+    ],
+    "productEvidenceManifests": [
+      {
+        "shot_id": "shot-1",
+        "product_asset_ids": ["psa-blender-hero"],
+        "claim_ids": ["claim-portable"],
+        "evidence_ids": ["ev-dimensions"],
+        "readiness": "ready"
+      }
+    ],
+    "warnings": [
+      {
+        "code": "needs_user_credit_confirmation",
+        "message": "Video generation must wait for explicit credit confirmation.",
+        "severity": "warning",
+        "shot_id": "shot-1",
+        "node_id": "node-video-1"
+      }
+    ],
+    "budgetSummary": {
+      "status": "within_budget",
+      "estimated_credits": 240,
+      "requires_credit_confirmation": true
+    },
+    "readinessSummary": {
+      "status": "warning",
+      "blocking_issue_count": 0,
+      "warning_count": 1
+    }
+  },
+  "capability_registry": {
+    "registry_version": "116.1",
+    "surfaces": ["production_workspace", "video_shot", "image", "video", "audio", "storyboard_review", "video_edit"],
+    "disabled_adapters": ["music_generate", "sound_effect_generate"]
+  },
+  "provider_capabilities": [
+    {
+      "provider_id": "kie",
+      "model_id": "gemini-omni-video",
+      "supported_node_types": ["image_to_video", "video_generate"],
+      "reference_unit_limit": 7,
+      "source_video_limit": 1,
+      "audio_id_limit": 1
+    }
+  ],
+  "feature_115_readiness": "ready",
+  "feature_115_allowed_next_actions": ["plan_storyboard", "handoff_to_storyboard_review"],
+  "accepted_warnings": ["needs_user_credit_confirmation"]
+}

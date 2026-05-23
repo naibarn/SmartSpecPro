@@ -1,9 +1,20 @@
 import { LocaleToggle } from "@/components/LocaleToggle";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { trpc } from "@/lib/trpc";
-import { ChevronLeft, Download, ExternalLink, Eye, Search, Store, Trash2, TrendingUp, X } from "lucide-react";
+import { AlertTriangle, ChevronLeft, Download, ExternalLink, Eye, Loader2, Search, Store, Trash2, TrendingUp, X } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useLocation } from "wouter";
 
 type PlatformFilter = "all" | "shopee" | "tiktok_shop";
@@ -101,6 +112,16 @@ function copyFor(language: string) {
     deleteProduct: th ? "ลบสินค้า" : "Delete",
     deleteConfirm: th ? "ยืนยันลบสินค้านี้ออกจาก Marketplace Capture หรือไม่?" : "Delete this product from Marketplace Capture?",
     deleteOnlyMine: th ? "ลบได้เฉพาะสินค้าที่คุณเพิ่มเอง" : "Only products you added can be deleted",
+    deleteSuccess: th ? "ลบสินค้าแล้ว" : "Product deleted",
+    deleteError: th ? "ลบสินค้าไม่สำเร็จ" : "Could not delete product",
+    deleteDialogTitle: th ? "ยืนยันการลบสินค้า" : "Delete product?",
+    deleteDialogDescription: th
+      ? "สินค้านี้จะถูกลบออกจาก Marketplace Capture และจะไม่แสดงในรายการแนะนำหรือรายการสินค้าอีก"
+      : "This product will be removed from Marketplace Capture and hidden from recommendations and product lists.",
+    deleteDialogMeta: th ? "รายการที่จะลบ" : "Product to delete",
+    deleteDialogWarning: th ? "การลบนี้ไม่สามารถย้อนกลับจากหน้านี้ได้" : "This action cannot be undone from this page.",
+    cancel: th ? "ยกเลิก" : "Cancel",
+    deleting: th ? "กำลังลบ..." : "Deleting...",
   };
 }
 
@@ -113,6 +134,8 @@ export default function MarketplaceCaptureProducts() {
   const [ownerOnly, setOwnerOnly] = useState(false);
   const [sortMode, setSortMode] = useState<"recommended" | "sold" | "rating" | "updated">("recommended");
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [deletedProductIds, setDeletedProductIds] = useState<Set<string>>(() => new Set());
+  const [productPendingDelete, setProductPendingDelete] = useState<any | null>(null);
   const { i18n } = useScopedTranslation(["common"]);
   const language = i18n.resolvedLanguage || i18n.language || "en";
   const copy = copyFor(language);
@@ -126,25 +149,56 @@ export default function MarketplaceCaptureProducts() {
     { enabled: Boolean(selectedProductId) },
   );
   const deleteProductMutation = trpc.marketplaceCapture.deleteProduct.useMutation({
+    onMutate: async (variables) => {
+      await utils.marketplaceCapture.listProducts.cancel();
+      const listInput = { limit: 100, ownerOnly };
+      const previousProducts = utils.marketplaceCapture.listProducts.getData(listInput);
+      setDeletedProductIds((current) => new Set(current).add(variables.productId));
+      if (selectedProductId === variables.productId) setSelectedProductId(null);
+      utils.marketplaceCapture.listProducts.setData(
+        listInput,
+        (current) => current?.filter((product: any) => product.id !== variables.productId),
+      );
+      return { listInput, previousProducts };
+    },
     onSuccess: async (_, variables) => {
       if (selectedProductId === variables.productId) setSelectedProductId(null);
+      setProductPendingDelete(null);
+      toast.success(copy.deleteSuccess);
       await Promise.all([
         utils.marketplaceCapture.listProducts.invalidate(),
         utils.marketplaceCapture.getProduct.invalidate({ productId: variables.productId }),
         utils.marketplaceCapture.listProductImages.invalidate(),
       ]);
     },
+    onError: (error, variables, context) => {
+      setDeletedProductIds((current) => {
+        const next = new Set(current);
+        next.delete(variables.productId);
+        return next;
+      });
+      if (context?.previousProducts) {
+        utils.marketplaceCapture.listProducts.setData(context.listInput, context.previousProducts);
+      }
+      setProductPendingDelete(null);
+      toast.error(`${copy.deleteError}: ${error.message}`);
+    },
   });
+
+  const visibleProducts = useMemo(
+    () => (products.data ?? []).filter((product: any) => !deletedProductIds.has(product.id)),
+    [deletedProductIds, products.data],
+  );
 
   const categories = useMemo(() => {
     const values = new Set<string>();
-    for (const product of products.data ?? []) values.add(String(productCategory(product)));
+    for (const product of visibleProducts) values.add(String(productCategory(product)));
     return Array.from(values).sort((a, b) => a.localeCompare(b));
-  }, [products.data]);
+  }, [visibleProducts]);
 
   const filteredProducts = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return (products.data ?? [])
+    return visibleProducts
       .filter((product: any) => platform === "all" || product.platform === platform)
       .filter((product: any) => category === "all" || productCategory(product) === category)
       .filter((product: any) => {
@@ -166,20 +220,20 @@ export default function MarketplaceCaptureProducts() {
         if (sortMode === "updated") return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
         return interestScore(b) - interestScore(a);
       });
-  }, [category, health, platform, products.data, query, sortMode]);
+  }, [category, health, platform, query, sortMode, visibleProducts]);
 
   const filteredCaptures = useMemo(() => (captures.data ?? []).filter((capture: any) => platform === "all" || capture.platform === platform), [captures.data, platform]);
   const filteredBatches = useMemo(() => (batches.data ?? []).filter((batch: any) => platform === "all" || batch.platform === platform), [batches.data, platform]);
   const recommendedProducts = filteredProducts.filter((product: any) => isActiveProduct(product)).slice(0, 8);
   const healthCounts = useMemo(() => {
-    const rows = products.data ?? [];
+    const rows = visibleProducts;
     return {
       active: rows.filter((product: any) => isActiveProduct(product)).length,
       stale: rows.filter((product: any) => isStale(product)).length,
       lowRating: rows.filter((product: any) => isLowRating(product)).length,
       inactive: rows.filter((product: any) => product.health?.warnings?.some((warning: any) => warning.code === "sold_not_growing" || warning.code === "low_sold_velocity")).length,
     };
-  }, [products.data]);
+  }, [visibleProducts]);
 
   function downloadJson(name: string, data: unknown) {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -192,7 +246,7 @@ export default function MarketplaceCaptureProducts() {
   }
 
   function downloadCsv(name: string, rows: any[]) {
-    const headers = ["id", "platform", "productName", "category", "sourceUrl", "priceCurrent", "soldCountText", "ratingScore", "reviewCountText", "health", "updatedAt"];
+    const headers = ["id", "platform", "productName", "category", "sourceUrl", "priceCurrent", "commissionRatePercent", "soldCountText", "ratingScore", "reviewCountText", "health", "updatedAt"];
     const csv = [
       headers.join(","),
       ...rows.map((row) => headers.map((header) => JSON.stringify(
@@ -214,18 +268,19 @@ export default function MarketplaceCaptureProducts() {
     window.open(`/marketplace-capture/products/${productId}`, "_blank", "noopener,noreferrer");
   }
 
-  function confirmDeleteProduct(product: any) {
+  function requestDeleteProduct(product: any) {
     if (product.accessType === "group") {
-      window.alert(copy.deleteOnlyMine);
+      toast.error(copy.deleteOnlyMine);
       return;
     }
-    const confirmed = window.confirm([
-      copy.deleteConfirm,
-      "",
-      product.productName ?? product.id,
-    ].join("\n"));
-    if (!confirmed) return;
-    deleteProductMutation.mutate({ productId: product.id });
+    setProductPendingDelete(product);
+  }
+
+  function confirmDeleteProduct() {
+    if (!productPendingDelete) return;
+    const productId = productPendingDelete.id;
+    setProductPendingDelete(null);
+    deleteProductMutation.mutate({ productId });
   }
 
   function productCard(product: any) {
@@ -247,8 +302,8 @@ export default function MarketplaceCaptureProducts() {
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
           <div><div className="text-xs text-slate-500">Price</div><div className="font-medium">{product.priceCurrent ?? "-"} {product.currency ?? "THB"}</div></div>
+          <div><div className="text-xs text-slate-500">Commission</div><div className="font-medium">{product.commissionRatePercent ?? "-"}%</div></div>
           <div><div className="text-xs text-slate-500">Sold</div><div className="font-medium">{formatCompactCount(product.soldCountNormalized, product.soldCountText)}</div></div>
-          <div><div className="text-xs text-slate-500">Rating</div><div className="font-medium">{product.ratingScore ?? "-"}</div></div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded bg-slate-100 px-2 py-1 text-slate-700">{product.platform === "shopee" ? "Shopee" : "TikTok"}</span>
@@ -289,7 +344,7 @@ export default function MarketplaceCaptureProducts() {
             disabled={deleteProductMutation.isPending}
             onClick={(event) => {
               event.stopPropagation();
-              confirmDeleteProduct(product);
+              requestDeleteProduct(product);
             }}
           >
             <Trash2 className="mr-1 h-3.5 w-3.5" />
@@ -301,8 +356,8 @@ export default function MarketplaceCaptureProducts() {
   }
 
   const selectedListProduct = useMemo(
-    () => (products.data ?? []).find((product: any) => product.id === selectedProductId) ?? null,
-    [products.data, selectedProductId],
+    () => visibleProducts.find((product: any) => product.id === selectedProductId) ?? null,
+    [selectedProductId, visibleProducts],
   );
   const selectedData = selectedProductDetail.data as any;
   const panelProduct = selectedData?.product ?? selectedListProduct;
@@ -432,17 +487,18 @@ export default function MarketplaceCaptureProducts() {
       {panelProduct ? (
         <aside className="fixed inset-y-0 right-0 z-30 flex w-full max-w-xl flex-col border-l border-slate-200 bg-white shadow-2xl">
           <div className="flex items-start justify-between gap-3 border-b p-4">
-            <div>
+            <div className="min-w-0 flex-1 pr-2">
               <div className="text-xs font-medium uppercase text-slate-500">{panelProduct.platform === "shopee" ? "Shopee" : "TikTok Shop"}</div>
               <h2 className="mt-1 line-clamp-3 text-lg font-semibold text-slate-950">{panelProduct.productName}</h2>
             </div>
-            <button className="rounded-md p-2 text-slate-500 hover:bg-slate-100" aria-label={copy.close} onClick={() => setSelectedProductId(null)}>
+            <button className="shrink-0 rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm hover:bg-slate-100" aria-label={copy.close} onClick={() => setSelectedProductId(null)}>
               <X className="h-5 w-5" />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="rounded-md bg-slate-50 p-3"><div className="text-xs text-slate-500">Price</div><div className="font-medium">{panelProduct.priceCurrent ?? "-"} {panelProduct.currency ?? "THB"}</div></div>
+              <div className="rounded-md bg-slate-50 p-3"><div className="text-xs text-slate-500">Commission</div><div className="font-medium">{panelProduct.commissionRatePercent ?? "-"}%</div></div>
               <div className="rounded-md bg-slate-50 p-3"><div className="text-xs text-slate-500">Sold</div><div className="font-medium">{formatCompactCount(panelProduct.soldCountNormalized, panelProduct.soldCountText)}</div></div>
               <div className="rounded-md bg-slate-50 p-3"><div className="text-xs text-slate-500">Rating</div><div className="font-medium">{panelProduct.ratingScore ?? "-"}</div></div>
               <div className="rounded-md bg-slate-50 p-3"><div className="text-xs text-slate-500">Reviews</div><div className="font-medium">{formatCompactCount(panelProduct.reviewCountText, panelHistory[0]?.reviewCountNormalized)}</div></div>
@@ -461,7 +517,7 @@ export default function MarketplaceCaptureProducts() {
               <button
                 className="inline-flex items-center rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={deleteProductMutation.isPending}
-                onClick={() => confirmDeleteProduct(panelProduct)}
+                onClick={() => requestDeleteProduct(panelProduct)}
               >
                 <Trash2 className="mr-1 h-4 w-4" />
                 {copy.deleteProduct}
@@ -499,6 +555,67 @@ export default function MarketplaceCaptureProducts() {
           </div>
         </aside>
       ) : null}
+      <AlertDialog
+        open={Boolean(productPendingDelete)}
+        onOpenChange={(open) => {
+          if (!open && !deleteProductMutation.isPending) setProductPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent className="overflow-hidden border-0 bg-white p-0 shadow-2xl sm:max-w-xl">
+          <div className="border-b border-red-100 bg-gradient-to-br from-red-50 via-white to-orange-50 p-6">
+            <AlertDialogHeader className="text-left">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-red-100 bg-white text-red-600 shadow-sm">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <AlertDialogTitle className="text-xl font-semibold tracking-normal text-slate-950">
+                {copy.deleteDialogTitle}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="max-w-md text-sm leading-6 text-slate-600">
+                {copy.deleteDialogDescription}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+          </div>
+
+          <div className="space-y-4 p-6">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+              <div className="text-xs font-medium uppercase text-slate-500">{copy.deleteDialogMeta}</div>
+              <div className="mt-2 line-clamp-3 text-sm font-semibold leading-6 text-slate-950">
+                {productPendingDelete?.productName ?? productPendingDelete?.id}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full bg-white px-2.5 py-1 font-medium text-slate-700 ring-1 ring-slate-200">
+                  {productPendingDelete?.platform === "shopee" ? "Shopee" : "TikTok Shop"}
+                </span>
+                <span className="rounded-full bg-white px-2.5 py-1 font-medium text-slate-700 ring-1 ring-slate-200">
+                  {productPendingDelete?.priceCurrent ?? "-"} {productPendingDelete?.currency ?? "THB"}
+                </span>
+                <span className="rounded-full bg-white px-2.5 py-1 font-medium text-slate-700 ring-1 ring-slate-200">
+                  Sold {formatCompactCount(productPendingDelete?.soldCountNormalized, productPendingDelete?.soldCountText)}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{copy.deleteDialogWarning}</span>
+            </div>
+          </div>
+
+          <AlertDialogFooter className="border-t border-slate-100 bg-slate-50/80 px-6 py-4 sm:justify-between">
+            <AlertDialogCancel className="mt-0 rounded-lg border-slate-200 bg-white px-5 text-slate-700 hover:bg-slate-100">
+              {copy.cancel}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-lg bg-red-600 px-5 text-white shadow-sm hover:bg-red-700 focus:ring-red-300"
+              disabled={deleteProductMutation.isPending}
+              onClick={confirmDeleteProduct}
+            >
+              {deleteProductMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              {deleteProductMutation.isPending ? copy.deleting : copy.deleteProduct}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import {
   buildStorytellingHandoff,
   buildVideoBriefFromProduct,
   createDeterministicProductBrief,
+  createPromptAPISession,
   decideLocalAIProvider,
   defaultLocalAISettings,
   detectChromePromptAPI,
@@ -46,6 +47,7 @@ interface EditableProduct {
   brand: string;
   shopName: string;
   priceCurrentText: string;
+  commissionRateText: string;
   soldCountText: string;
   ratingScoreText: string;
   reviewCountText: string;
@@ -64,10 +66,21 @@ interface EvidenceSelection {
   descriptionScreenshot: boolean;
 }
 
+interface ReviewDraft {
+  editable: EditableProduct;
+  evidence: EvidenceSelection;
+  selectedImages: Record<string, boolean>;
+  heroImageUrl: string;
+  updatedAt: string;
+}
+
 interface ProgressStep {
   label: string;
   status: "pending" | "active" | "done" | "error";
 }
+
+type PanelTab = "capture" | "localAI";
+type ImageFilter = "all" | ImageCandidate["kind"];
 
 interface MarketplaceLiveSnapshot {
   page: PageDetection;
@@ -90,9 +103,10 @@ const DEFAULT_SMARTSPEC_BASE_URL = "https://smartaihub.app";
 const DEVICE_ID_KEY = "deviceId";
 const LOCAL_AI_SETTINGS_KEY = "localAISettings";
 const LOCAL_AI_CACHE_KEY = "localAIInsightCache";
+const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.16";
-const EXTENSION_BUILD_LABEL = "2026-05-19 09:20 +07";
+const EXTENSION_VERSION = "0.1.17";
+const EXTENSION_BUILD_LABEL = "2026-05-23 09:48 +07";
 
 function getLocalAIStatusView(input: {
   capability: LocalAICapability;
@@ -293,6 +307,42 @@ function appendNormalizedCount(raw: string | null | undefined): string {
   return `${value} (${formatFullNumber(normalized)})`;
 }
 
+function parsePercentInput(value: string): number | null {
+  const cleaned = value.replace("%", "").trim();
+  if (!cleaned) return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) && n >= 0 && n <= 100 ? n : null;
+}
+
+function businessMetrics(editable: EditableProduct) {
+  const price = parseNumber(editable.priceCurrentText);
+  const commissionRate = parsePercentInput(editable.commissionRateText);
+  const commissionAmount = price != null && commissionRate != null ? price * commissionRate / 100 : null;
+  return { price, commissionRate, commissionAmount };
+}
+
+function formatMoney(value: number | null): string {
+  return value == null ? "-" : new Intl.NumberFormat("th-TH", { maximumFractionDigits: 2 }).format(value);
+}
+
+function reviewDraftKey(sourceUrl: string) {
+  return `${REVIEW_DRAFT_PREFIX}${sourceUrl}`;
+}
+
+async function loadReviewDraft(sourceUrl: string): Promise<ReviewDraft | null> {
+  const result = await chrome.storage.local.get([reviewDraftKey(sourceUrl)]);
+  const draft = result[reviewDraftKey(sourceUrl)];
+  return draft && typeof draft === "object" ? draft as ReviewDraft : null;
+}
+
+async function saveReviewDraft(sourceUrl: string, draft: ReviewDraft) {
+  await chrome.storage.local.set({ [reviewDraftKey(sourceUrl)]: draft });
+}
+
+async function clearReviewDraft(sourceUrl: string) {
+  await chrome.storage.local.remove([reviewDraftKey(sourceUrl)]);
+}
+
 function parseRating(raw: string | null | undefined): number | null {
   if (!raw) return null;
   const m = raw.match(/[1-5](?:\.\d+)?/);
@@ -375,6 +425,7 @@ function toEditableProduct(product: ProductCapturePayload): EditableProduct {
     brand: "",
     shopName: product.shopName || "",
     priceCurrentText: product.priceCurrentText || "",
+    commissionRateText: product.commissionRatePercent != null ? String(product.commissionRatePercent) : product.commissionRateText || "",
     soldCountText: appendNormalizedCount(product.soldCountText),
     ratingScoreText: product.ratingScoreText || "",
     reviewCountText: appendNormalizedCount(product.reviewCountText),
@@ -388,6 +439,191 @@ function toEditableProduct(product: ProductCapturePayload): EditableProduct {
 
 function selectedImagesFromProduct(product: ProductCapturePayload) {
   return Object.fromEntries(product.imageCandidates.map((img) => [img.url, img.kind === "main" && img.selected !== false]));
+}
+
+function imageDimension(image: ImageCandidate, axis: "width" | "height"): number | null {
+  const direct = Number(image[axis]);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  const metadataValue = Number(image.metadata?.[axis]);
+  return Number.isFinite(metadataValue) && metadataValue > 0 ? metadataValue : null;
+}
+
+function isLowQualityImage(image: ImageCandidate): boolean {
+  const width = imageDimension(image, "width");
+  const height = imageDimension(image, "height");
+  if (width == null || height == null) return false;
+  return Math.min(width, height) < 300 || width * height < 160_000;
+}
+
+function imageQualityLabel(image: ImageCandidate): string {
+  const width = imageDimension(image, "width");
+  const height = imageDimension(image, "height");
+  if (width == null || height == null) return "quality unknown";
+  return `${Math.round(width)}x${Math.round(height)} ${isLowQualityImage(image) ? "low" : "ok"}`;
+}
+
+function fieldEvidenceText(product: ProductCapturePayload | null, field: string): string {
+  const item = product?.fieldEvidence?.[field];
+  if (!item) return "source: manual / not detected";
+  const confidence = `${Math.round(item.confidence * 100)}%`;
+  const normalized = item.normalized != null ? ` | normalized: ${Array.isArray(item.normalized) ? item.normalized.join(" > ") : String(item.normalized)}` : "";
+  return `source: ${item.source} | confidence ${confidence}${normalized}`;
+}
+
+function imageBadges(image: ImageCandidate, heroImageUrl: string): string[] {
+  const badges = new Set<string>();
+  if (image.url === heroImageUrl) badges.add("Hero");
+  if (image.kind === "main") badges.add("Product");
+  if (image.kind === "review") badges.add("Review proof");
+  if (image.kind === "description") badges.add("Description");
+  if (image.kind === "related") badges.add("Related");
+  if (image.kind === "unknown") badges.add("Unknown");
+  if (isLowQualityImage(image) || image.quality === "low" || image.metadata?.quality === "low_resolution") badges.add("Low-res");
+  if (image.metadata?.warning) badges.add(String(image.metadata.warning));
+  return Array.from(badges);
+}
+
+function imageSelectionReason(image: ImageCandidate, heroImageUrl: string): string {
+  const badges = imageBadges(image, heroImageUrl);
+  if (badges.includes("Related")) return "Avoid as hero unless you need related-product context";
+  if (badges.includes("Low-res")) return "Low resolution; may be weak for video or ads";
+  if (badges.includes("Review proof")) return "Useful as proof, not ideal as hero";
+  if (badges.includes("Hero")) return "Selected as downstream hero image";
+  if (badges.includes("Product")) return "Good candidate for catalog/media";
+  return "Verify this is the product before syncing";
+}
+
+function qualityGroups(input: {
+  editable: EditableProduct;
+  selectedImageCount: number;
+  heroImageUrl: string;
+  selectedEvidenceCount: number;
+}) {
+  const { editable, selectedImageCount, heroImageUrl, selectedEvidenceCount } = input;
+  return [
+    {
+      label: "Catalog required",
+      items: [
+        { label: "Name", ok: Boolean(editable.productName.trim()) },
+        { label: "Price", ok: Boolean(editable.priceCurrentText.trim()) },
+        { label: "Category", ok: Boolean(editable.categoryText.trim()) },
+        { label: "Selected image", ok: selectedImageCount > 0 },
+      ],
+    },
+    {
+      label: "Content / Video required",
+      items: [
+        { label: "Hero image", ok: Boolean(heroImageUrl) },
+        { label: "Description", ok: Boolean(editable.descriptionText.trim()) },
+        { label: "Evidence group", ok: selectedEvidenceCount > 0 },
+        { label: "Seller or review signal", ok: Boolean(editable.shopName.trim() || editable.ratingScoreText.trim() || editable.reviewCountText.trim()) },
+      ],
+    },
+    {
+      label: "Business optional",
+      items: [
+        { label: "Commission rate", ok: parsePercentInput(editable.commissionRateText) != null },
+        { label: "Sold count", ok: Boolean(editable.soldCountText.trim()) },
+        { label: "Stock", ok: Boolean(editable.stockText.trim()) },
+        { label: "Variants", ok: Boolean(editable.variantsText.trim()) },
+      ],
+    },
+  ];
+}
+
+function withReviewedImages(product: ProductCapturePayload, selectedImages: Record<string, boolean>, heroImageUrl: string): ImageCandidate[] {
+  return product.imageCandidates.map((img, position) => ({
+    ...img,
+    position,
+    selected: Boolean(selectedImages[img.url]),
+    metadata: {
+      ...img.metadata,
+      evidenceId: img.metadata?.evidenceId || `image:${position + 1}`,
+      selectedByUser: Boolean(selectedImages[img.url]),
+      role: img.url === heroImageUrl ? "hero" : img.kind,
+      quality: isLowQualityImage(img) ? "low_resolution" : "usable",
+      qualityLabel: imageQualityLabel(img),
+    },
+  }));
+}
+
+function buildReviewedProductPayload(input: {
+  product: ProductCapturePayload;
+  editable: EditableProduct;
+  selectedImages: Record<string, boolean>;
+  heroImageUrl: string;
+}): ProductCapturePayload {
+  const { product, editable, selectedImages, heroImageUrl } = input;
+  return {
+    ...product,
+    productName: editable.productName,
+    shopName: editable.shopName,
+    priceCurrentText: editable.priceCurrentText,
+    commissionRatePercent: parsePercentInput(editable.commissionRateText),
+    commissionRateText: editable.commissionRateText,
+    soldCountText: editable.soldCountText,
+    ratingScoreText: editable.ratingScoreText,
+    reviewCountText: editable.reviewCountText,
+    categoryText: editable.categoryText,
+    stockText: editable.stockText,
+    variantsText: editable.variantsText,
+    sellerLocationText: editable.sellerLocationText,
+    descriptionText: editable.descriptionText,
+    imageCandidates: withReviewedImages(product, selectedImages, heroImageUrl),
+    fieldWarnings: [
+      ...(editable.brand ? [] : ["missing_brand"]),
+      ...(editable.priceCurrentText ? [] : ["missing_price"]),
+      ...(editable.categoryText ? [] : ["missing_category"]),
+      ...(editable.descriptionText ? [] : ["missing_description"]),
+      ...(editable.commissionRateText && parsePercentInput(editable.commissionRateText) == null ? ["invalid_commission_rate"] : []),
+    ],
+    fieldEvidence: {
+      ...((product as any).fieldEvidence ?? {}),
+      productName: { text: editable.productName, source: "user_review", confidence: 0.95 },
+      brand: { text: editable.brand, source: "user_review", confidence: editable.brand ? 0.95 : 0.2 },
+      shopName: { text: editable.shopName, source: "user_review", confidence: editable.shopName ? 0.9 : 0.2 },
+      priceCurrentText: { text: editable.priceCurrentText, source: "user_review", confidence: editable.priceCurrentText ? 0.95 : 0.2, normalized: parseNumber(editable.priceCurrentText) },
+      commissionRate: { text: editable.commissionRateText, source: "user_review", confidence: editable.commissionRateText ? 0.95 : 0.2, normalized: parsePercentInput(editable.commissionRateText) },
+      soldCountText: { text: editable.soldCountText, source: "user_review", confidence: editable.soldCountText ? 0.9 : 0.2, normalized: parseSold(editable.soldCountText) },
+      ratingScoreText: { text: editable.ratingScoreText, source: "user_review", confidence: editable.ratingScoreText ? 0.9 : 0.2, normalized: parseRating(editable.ratingScoreText) },
+      reviewCountText: { text: editable.reviewCountText, source: "user_review", confidence: editable.reviewCountText ? 0.9 : 0.2, normalized: parseSold(editable.reviewCountText) },
+      categoryText: { text: editable.categoryText, source: "user_review", confidence: editable.categoryText ? 0.9 : 0.2 },
+      stockText: { text: editable.stockText, source: "user_review", confidence: editable.stockText ? 0.85 : 0.2 },
+      sellerLocationText: { text: editable.sellerLocationText, source: "user_review", confidence: editable.sellerLocationText ? 0.85 : 0.2 },
+      variantsText: { text: editable.variantsText, source: "user_review", confidence: editable.variantsText ? 0.85 : 0.2 },
+      descriptionText: { text: editable.descriptionText.slice(0, 1200), source: "user_review", confidence: editable.descriptionText ? 0.85 : 0.2 },
+    },
+  } as ProductCapturePayload;
+}
+
+function buildDataQualityWarnings(input: {
+  product: ProductCapturePayload | null;
+  editable: EditableProduct;
+  selectedImageCount: number;
+  selectedEvidenceCount: number;
+  lowQualityImageCount: number;
+  selectedProductImages: ImageCandidate[];
+  heroImageUrl: string;
+}): string[] {
+  const { product, editable, selectedImageCount, selectedEvidenceCount, lowQualityImageCount, selectedProductImages, heroImageUrl } = input;
+  if (!product) return [];
+  const heroImage = selectedProductImages.find((image) => image.url === heroImageUrl);
+  const selectedReviewAsHero = heroImage?.kind === "review";
+  return [
+    !editable.productName.trim() ? "ยังไม่มีชื่อสินค้า" : "",
+    !editable.priceCurrentText.trim() ? "ยังไม่มีราคา" : "",
+    editable.commissionRateText.trim() && parsePercentInput(editable.commissionRateText) == null ? "Commission rate ต้องเป็นเปอร์เซ็นต์ 0-100" : "",
+    editable.commissionRateText.trim() && !editable.priceCurrentText.trim() ? "มี commission rate แต่ยังไม่มีราคา จึงคำนวณ commission amount ไม่ได้" : "",
+    !editable.categoryText.trim() ? "ยังไม่มีหมวดหมู่" : "",
+    !editable.descriptionText.trim() ? "ยังไม่มีคำอธิบายสินค้า" : "",
+    editable.soldCountText.trim() && !editable.ratingScoreText.trim() ? "มียอดขายแต่ยังไม่มี rating ควรตรวจสอบก่อนใช้ทำคอนเทนต์" : "",
+    selectedImageCount === 0 ? "ยังไม่ได้เลือกรูปสินค้า" : "",
+    heroImageUrl && !heroImage ? "Hero image ไม่อยู่ในภาพที่เลือก" : "",
+    selectedReviewAsHero ? "Hero image เป็นรูปรีวิว ควรใช้เป็น proof มากกว่าภาพหลัก" : "",
+    selectedEvidenceCount === 0 ? "ยังไม่ได้เลือก evidence ที่จะส่ง" : "",
+    lowQualityImageCount > 0 ? `มีรูปที่ความละเอียดต่ำ ${lowQualityImageCount} รูป อาจไม่คมพอสำหรับวิดีโอ/โฆษณา` : "",
+    product.imageCandidates.length > 80 ? `มีรูปทั้งหมด ${product.imageCandidates.length} รูป แต่แสดงทีละ 80 รูปตาม filter` : "",
+  ].filter(Boolean);
 }
 
 function mergeImageCandidates(existing: ImageCandidate[], incoming: ImageCandidate[]) {
@@ -532,6 +768,7 @@ export default function App() {
   const [tokenInput, setTokenInput] = useState("");
   const [tokenEditorOpen, setTokenEditorOpen] = useState(true);
   const [connectFlowStarted, setConnectFlowStarted] = useState(false);
+  const [activeTab, setActiveTab] = useState<PanelTab>("capture");
   const [page, setPage] = useState<PageDetection | null>(null);
   const [candidates, setCandidates] = useState<CategoryProductCandidate[]>([]);
   const [ignoredUrls, setIgnoredUrls] = useState<Set<string>>(new Set());
@@ -553,7 +790,7 @@ export default function App() {
   const [autoDetectEnabled, setAutoDetectEnabled] = useState(true);
   const [lastObservedAt, setLastObservedAt] = useState("");
   const [lastObserveReason, setLastObserveReason] = useState("");
-  const [editable, setEditable] = useState<EditableProduct>({ productName: "", brand: "", shopName: "", priceCurrentText: "", soldCountText: "", ratingScoreText: "", reviewCountText: "", categoryText: "", stockText: "", variantsText: "", sellerLocationText: "", descriptionText: "" });
+  const [editable, setEditable] = useState<EditableProduct>({ productName: "", brand: "", shopName: "", priceCurrentText: "", commissionRateText: "", soldCountText: "", ratingScoreText: "", reviewCountText: "", categoryText: "", stockText: "", variantsText: "", sellerLocationText: "", descriptionText: "" });
   const [evidence, setEvidence] = useState<EvidenceSelection>({
     domHeader: true,
     domDescription: true,
@@ -562,6 +799,9 @@ export default function App() {
     descriptionScreenshot: true,
   });
   const [selectedImages, setSelectedImages] = useState<Record<string, boolean>>({});
+  const [heroImageUrl, setHeroImageUrl] = useState("");
+  const [imageFilter, setImageFilter] = useState<ImageFilter>("all");
+  const [reviewDraftStatus, setReviewDraftStatus] = useState("");
   const [progress, setProgress] = useState<ProgressStep[]>(CAPTURE_STEPS.map((label) => ({ label, status: "pending" })));
   const [status, setStatus] = useState("Ready");
   const [error, setError] = useState("");
@@ -640,10 +880,24 @@ export default function App() {
 
   function applyProductForReview(nextProduct: ProductCapturePayload) {
     productSourceRef.current = nextProduct.sourceUrl;
+    setReviewDraftStatus("");
     setProduct(nextProduct);
     setLiveProduct(nextProduct);
-    setEditable(toEditableProduct(nextProduct));
-    setSelectedImages(selectedImagesFromProduct(nextProduct));
+    const baseEditable = toEditableProduct(nextProduct);
+    setEditable(baseEditable);
+    const nextSelectedImages = selectedImagesFromProduct(nextProduct);
+    setSelectedImages(nextSelectedImages);
+    setHeroImageUrl(nextProduct.imageCandidates.find((img) => nextSelectedImages[img.url])?.url || "");
+    loadReviewDraft(nextProduct.sourceUrl)
+      .then((draft) => {
+        if (!draft || productSourceRef.current !== nextProduct.sourceUrl) return;
+        setEditable({ ...baseEditable, ...draft.editable });
+        setEvidence(draft.evidence);
+        setSelectedImages({ ...nextSelectedImages, ...draft.selectedImages });
+        setHeroImageUrl(draft.heroImageUrl || nextProduct.imageCandidates.find((img) => nextSelectedImages[img.url])?.url || "");
+        setReviewDraftStatus(`Resumed local draft: ${formatDateTime(draft.updatedAt)}`);
+      })
+      .catch(() => undefined);
     updateProgress("Showing local review", ["Detecting page", "Collecting DOM text"]);
   }
 
@@ -665,6 +919,7 @@ export default function App() {
       }
       return next;
     });
+    setHeroImageUrl((current) => current || nextProduct.imageCandidates.find((img) => img.kind === "main")?.url || "");
   }
 
   function clearDetectedState() {
@@ -675,7 +930,10 @@ export default function App() {
     setProduct(null);
     setLiveProduct(null);
     setSelectedImages({});
-    setEditable({ productName: "", brand: "", shopName: "", priceCurrentText: "", soldCountText: "", ratingScoreText: "", reviewCountText: "", categoryText: "", stockText: "", variantsText: "", sellerLocationText: "", descriptionText: "" });
+    setHeroImageUrl("");
+    setImageFilter("all");
+    setReviewDraftStatus("");
+    setEditable({ productName: "", brand: "", shopName: "", priceCurrentText: "", commissionRateText: "", soldCountText: "", ratingScoreText: "", reviewCountText: "", categoryText: "", stockText: "", variantsText: "", sellerLocationText: "", descriptionText: "" });
   }
 
   function applyLiveSnapshot(snapshot: MarketplaceLiveSnapshot, options: { replace?: boolean } = {}) {
@@ -789,6 +1047,17 @@ export default function App() {
   }, [candidates, filters, ignoredUrls]);
 
   const selectedImageCount = useMemo(() => Object.values(selectedImages).filter(Boolean).length, [selectedImages]);
+  const visibleProductImages = useMemo(() => {
+    if (!product) return [];
+    return product.imageCandidates.filter((img) => imageFilter === "all" || img.kind === imageFilter);
+  }, [product, imageFilter]);
+  const displayedProductImages = visibleProductImages.slice(0, 80);
+  const selectedProductImages = useMemo(() => (
+    product?.imageCandidates.filter((img) => selectedImages[img.url]) ?? []
+  ), [product, selectedImages]);
+  const lowQualitySelectedImages = useMemo(() => (
+    selectedProductImages.filter((img) => isLowQualityImage(img))
+  ), [selectedProductImages]);
   const selectedEvidenceCount = [
     evidence.domHeader,
     evidence.domDescription,
@@ -796,10 +1065,51 @@ export default function App() {
     evidence.headerScreenshot,
     evidence.descriptionScreenshot,
   ].filter(Boolean).length;
+  const businessSummary = useMemo(() => businessMetrics(editable), [editable.priceCurrentText, editable.commissionRateText]);
+  const qualityGroupSummary = useMemo(() => qualityGroups({
+    editable,
+    selectedImageCount,
+    heroImageUrl,
+    selectedEvidenceCount,
+  }), [editable, selectedImageCount, heroImageUrl, selectedEvidenceCount]);
+  const imageKindCounts = useMemo(() => {
+    const counts: Record<string, number> = { main: 0, description: 0, review: 0, related: 0, unknown: 0 };
+    for (const image of product?.imageCandidates ?? []) counts[image.kind] = (counts[image.kind] ?? 0) + 1;
+    return counts;
+  }, [product]);
+  const fieldEvidenceCount = useMemo(() => Object.keys(product?.fieldEvidence ?? {}).length, [product]);
+  const commissionRateInvalid = Boolean(editable.commissionRateText.trim() && parsePercentInput(editable.commissionRateText) == null);
   const queuedCurrentProduct = useMemo(() => {
     if (!product) return null;
     return queue.find((item) => item.url === product.sourceUrl || item.externalProductId === product.externalProductId) ?? null;
   }, [product, queue]);
+  const dataQualityWarnings = useMemo(() => buildDataQualityWarnings({
+    product,
+    editable,
+    selectedImageCount,
+    selectedEvidenceCount,
+    lowQualityImageCount: lowQualitySelectedImages.length,
+    selectedProductImages,
+    heroImageUrl,
+  }), [product, editable, selectedImageCount, selectedEvidenceCount, lowQualitySelectedImages.length, selectedProductImages, heroImageUrl]);
+
+  useEffect(() => {
+    if (!product) return;
+    const timer = window.setTimeout(() => {
+      saveReviewDraft(product.sourceUrl, {
+        editable,
+        evidence,
+        selectedImages,
+        heroImageUrl,
+        updatedAt: new Date().toISOString(),
+      })
+        .then(() => {
+          if (productSourceRef.current === product.sourceUrl) setReviewDraftStatus("Draft saved locally");
+        })
+        .catch(() => undefined);
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [product, editable, evidence, selectedImages, heroImageUrl]);
 
   function updateProgress(activeLabel: string, doneLabels: string[] = []) {
     setProgress(CAPTURE_STEPS.map((label) => ({
@@ -979,13 +1289,16 @@ export default function App() {
   async function uploadAndAnalyze() {
     if (!product) return;
     if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
-    const selected = product.imageCandidates.filter((img) => selectedImages[img.url]).map((img, position) => ({ ...img, position, selected: true }));
+    if (commissionRateInvalid) throw new Error("Commission rate ต้องเป็นเปอร์เซ็นต์ 0-100");
+    const reviewedProduct = buildReviewedProductPayload({ product, editable, selectedImages, heroImageUrl });
+    const selected = reviewedProduct.imageCandidates.filter((img) => img.selected).map((img, position) => ({ ...img, position, selected: true }));
     const confirmed = window.confirm([
       "ยืนยัน upload รายการสินค้านี้หรือไม่?",
       "",
-      `สินค้า: ${editable.productName || product.productName || "Untitled product"}`,
-      `URL: ${product.sourceUrl}`,
+      `สินค้า: ${reviewedProduct.productName || "Untitled product"}`,
+      `URL: ${reviewedProduct.sourceUrl}`,
       `จำนวนภาพที่จะ upload: ${selected.length}`,
+      dataQualityWarnings.length ? `คำเตือนคุณภาพข้อมูล: ${dataQualityWarnings.length} รายการ` : "",
     ].join("\n"));
     if (!confirmed) {
       setStatus("Upload cancelled");
@@ -1016,20 +1329,11 @@ export default function App() {
         htmlBlocks,
         imageCandidates: selected,
         rawPayload: {
-          ...product,
+          ...reviewedProduct,
           imageCandidates: selected,
-          productName: editable.productName,
           brand: editable.brand,
-          shopName: editable.shopName,
-          priceCurrentText: editable.priceCurrentText,
-          soldCountText: editable.soldCountText,
-          ratingScoreText: editable.ratingScoreText,
-          reviewCountText: editable.reviewCountText,
-          categoryText: editable.categoryText,
-          stockText: editable.stockText,
-          variantsText: editable.variantsText,
-          sellerLocationText: editable.sellerLocationText,
-          descriptionText: editable.descriptionText,
+          heroImageUrl,
+          dataQualityWarnings,
         },
       }),
     });
@@ -1082,6 +1386,8 @@ export default function App() {
     setStatus("Preview ready");
     markProgressDone();
     if (queuedCurrentProduct) removeQueue(queuedCurrentProduct.url);
+    await clearReviewDraft(product.sourceUrl).catch(() => undefined);
+    setReviewDraftStatus("");
     chrome.tabs.create({
       url: resolveServerUrl(serverBaseUrl, analyzeJson.previewUrl),
       active: false,
@@ -1091,7 +1397,8 @@ export default function App() {
   async function createLocalProductBrief() {
     if (!product) throw new Error("กรุณา Scan & Review สินค้าก่อน");
     setError("");
-    const source = await sanitizeCaptureForLocalAI(product);
+    const reviewedProduct = buildReviewedProductPayload({ product, editable, selectedImages, heroImageUrl });
+    const source = await sanitizeCaptureForLocalAI(reviewedProduct);
     setSanitizedAIInput(source);
     const cacheKey = `${source.platform}:${source.sourceUrl}:${source.payloadHash}:product_brief:1.0`;
     const cache = await loadLocalAIInsightCache();
@@ -1161,6 +1468,24 @@ export default function App() {
     setStatus("Local insight ready");
   }
 
+  async function downloadLocalAIModel() {
+    setError("");
+    setLocalAIProvider("chrome_prompt_api");
+    setLocalAIState("downloading");
+    setLocalAIProgress(0);
+    setStatus("Downloading Gemini Nano");
+    abortLocalAIRef.current = new AbortController();
+    const session = await createPromptAPISession((progressValue) => {
+      setLocalAIProgress(progressValue);
+      setLocalAIState("downloading");
+    }, abortLocalAIRef.current.signal);
+    session?.destroy?.();
+    abortLocalAIRef.current = null;
+    setLocalAIProgress(null);
+    await refreshLocalAICapability();
+    setStatus("Local AI model ready");
+  }
+
   function cancelLocalAI() {
     abortLocalAIRef.current?.abort();
     abortLocalAIRef.current = null;
@@ -1168,10 +1493,36 @@ export default function App() {
     setStatus("Local AI cancelled");
   }
 
+  function updateStorytellingClaim(claimId: string, action: "approve" | "remove" | "edit") {
+    setStorytellingHandoff((current) => {
+      if (!current) return current;
+      const claims = current.claims.map((claim) => {
+        if (claim.id !== claimId) return claim;
+        if (action === "approve") return { ...claim, status: "user_approved" as const, confidence: Math.max(claim.confidence, 0.8) };
+        if (action === "remove") return { ...claim, status: "removed" as const };
+        const nextText = window.prompt("แก้ claim ก่อนส่งต่อ Storytelling", claim.text)?.trim();
+        return nextText ? { ...claim, text: nextText, status: "user_approved" as const, confidence: Math.max(claim.confidence, 0.75) } : claim;
+      });
+      const activeClaims = claims.filter((claim) => claim.status !== "removed");
+      const blockers = [
+        ...(current.selectedImages.length === 0 ? ["missing_selected_product_image"] : []),
+        ...(current.selectedImages.some((image) => image.fidelity === "mismatch_risk") ? ["low_resolution_or_mismatch_risk_image"] : []),
+        ...(activeClaims.some((claim) => claim.status === "needs_review" || claim.evidenceIds.length === 0) ? ["unsupported_claims_need_review"] : []),
+      ];
+      return {
+        ...current,
+        claims,
+        blockers,
+        readiness: blockers.length === 0 ? "ready_for_storytelling" : "needs_user_review",
+      };
+    });
+  }
+
   async function syncStructuredInsight() {
     if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
     if (!sanitizedAIInput || !productBrief) throw new Error("กรุณาสร้าง Product Brief ก่อน");
     setLocalAIState("syncing");
+    const reviewedProduct = product ? buildReviewedProductPayload({ product, editable, selectedImages, heroImageUrl }) : undefined;
     const supportPayloads = buildSupplementalInsightPayloads(sanitizedAIInput, productBrief);
     const payloads: Array<{ insightType: "product_brief" | "review_insight" | "tiktok_shop_trend" | "combined_opportunity" | "video_brief" | "storytelling_handoff"; payload: unknown }> = [
       { insightType: "product_brief", payload: productBrief },
@@ -1191,7 +1542,7 @@ export default function App() {
           provider: localAIProvider as any,
           source: sanitizedAIInput,
           payload: item.payload,
-          rawCapture: product || undefined,
+          rawCapture: reviewedProduct,
           settings: localAISettings,
         })),
       });
@@ -1289,18 +1640,147 @@ export default function App() {
   const updateFilter = (key: keyof CandidateFilters, value: string | boolean) => setFilters((current) => ({ ...current, [key]: value }));
   const updateEditable = (key: keyof EditableProduct, value: string) => setEditable((current) => ({ ...current, [key]: value }));
   const updateEvidence = (key: keyof EvidenceSelection, value: boolean) => setEvidence((current) => ({ ...current, [key]: value }));
+  const canDownloadLocalAIModel = localAISettings.preferLocalAI && localAICapability.availability === "downloadable";
+  const localAIBusy = ["detecting_ai", "downloading", "analyzing_local", "analyzing_server", "syncing"].includes(localAIState);
+  const tabButtonClass = (tab: PanelTab) => `tab-button${activeTab === tab ? " active" : ""}`;
 
   return (
     <div className="app">
       <div className="row">
         <div>
           <strong>SmartAIHub Capture</strong>
-          <div className="muted">{status}</div>
+          <div className="muted" aria-live="polite" role="status">{status}</div>
           <div className="muted">Extension v{EXTENSION_VERSION} | build {EXTENSION_BUILD_LABEL}</div>
         </div>
         <button className="button" onClick={() => run(detect)}>Detect</button>
       </div>
 
+      <div className="tab-list" role="tablist" aria-label="SmartAIHub panel sections">
+        <button
+          className={tabButtonClass("capture")}
+          role="tab"
+          aria-selected={activeTab === "capture"}
+          onClick={() => setActiveTab("capture")}
+        >
+          Capture
+        </button>
+        <button
+          className={tabButtonClass("localAI")}
+          role="tab"
+          aria-selected={activeTab === "localAI"}
+          onClick={() => setActiveTab("localAI")}
+        >
+          Local AI
+        </button>
+      </div>
+
+      {error ? <div className="section error">{error}</div> : null}
+
+      {activeTab === "localAI" ? (
+      <div className="tab-panel" role="tabpanel" aria-label="Local AI">
+      <div className="section">
+        <strong>Local AI</strong>
+        <div className={`local-ai-card ${localAIStatusView.tone}`}>
+          <div className="local-ai-card-top">
+            <span className="local-ai-badge">{localAIStatusView.label}</span>
+            <span className="local-ai-provider">
+              {localAIProvider === "chrome_prompt_api" ? "Gemini Nano in Chrome" : localAIProvider === "server_ai" ? "SmartSpecPro AI" : "Capture only"}
+            </span>
+          </div>
+          <div className="local-ai-title">{localAIStatusView.headline}</div>
+          <div className="local-ai-copy">{localAIStatusView.description}</div>
+          <div className="local-ai-next">{localAIStatusView.nextAction}</div>
+          {localAIProgress != null ? (
+            <div className="local-ai-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(localAIProgress * 100)} aria-label={`Local AI model download ${Math.round(localAIProgress * 100)} percent`}>
+              <div className="local-ai-progress-bar" style={{ width: `${Math.max(0, Math.min(100, Math.round(localAIProgress * 100)))}%` }} />
+              <span>{Math.round(localAIProgress * 100)}%</span>
+            </div>
+          ) : null}
+          <details className="local-ai-debug">
+            <summary>Technical details</summary>
+            <div>Provider: {localAIProvider}</div>
+            <div>Workflow state: {localAIState}</div>
+            <div>Prompt API: {localAICapability.availability}</div>
+            {localAICapability.reason ? <div>{localAICapability.reason}</div> : null}
+          </details>
+        </div>
+        <div className="grid">
+          <label className="muted">
+            <input
+              type="checkbox"
+              checked={localAISettings.preferLocalAI}
+              onChange={(e) => updateLocalAISetting("preferLocalAI", e.target.checked)}
+            /> Prefer local AI
+          </label>
+          <label className="muted">
+            <input
+              type="checkbox"
+              checked={localAISettings.sendStructuredInsightsOnly}
+              onChange={(e) => updateLocalAISetting("sendStructuredInsightsOnly", e.target.checked)}
+            /> Send structured insights only
+          </label>
+          <label className="muted">
+            <input
+              type="checkbox"
+              checked={localAISettings.enableServerFallback}
+              onChange={(e) => updateLocalAISetting("enableServerFallback", e.target.checked)}
+            /> Server fallback
+          </label>
+          <div className="muted">Raw capture sync: off</div>
+        </div>
+        <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 8 }}>
+          <button className="button" onClick={() => run(refreshLocalAICapability)}>Check Local AI</button>
+          {canDownloadLocalAIModel ? (
+            <button className="button primary" disabled={localAIBusy} onClick={() => run(downloadLocalAIModel)}>Download Gemini Nano</button>
+          ) : null}
+          <button className="button primary" disabled={!product} onClick={() => run(createLocalProductBrief)}>Create Product Brief</button>
+          <button className="button" disabled={!productBrief} onClick={() => run(syncStructuredInsight)}>Send insights</button>
+          <button className="button" disabled={!storytellingHandoff} onClick={() => run(sendToStorytelling)}>Open Storytelling</button>
+          {["downloading", "analyzing_local"].includes(localAIState) ? <button className="button" onClick={cancelLocalAI}>Cancel</button> : null}
+        </div>
+        {productBrief ? (
+          <div className="section">
+            <strong>{productBrief.productName}</strong>
+            <div className="muted">Confidence {Math.round(productBrief.confidence * 100)}% | Evidence {productBrief.evidenceIds.length}</div>
+            <div>{productBrief.shortSummary}</div>
+            {productBrief.keySellingPoints.length > 0 ? <div className="muted">Selling points: {productBrief.keySellingPoints.slice(0, 3).join(" • ")}</div> : null}
+            {productBrief.suggestedHooks.length > 0 ? <div className="muted">Hooks: {productBrief.suggestedHooks.slice(0, 2).join(" • ")}</div> : null}
+          </div>
+        ) : null}
+        {storytellingHandoff ? (
+          <div className="section">
+            <strong>Storytelling readiness: {storytellingHandoff.readiness}</strong>
+            <div className="muted">Journey: {storytellingHandoff.customerJourneyStages.join(" → ")}</div>
+            {storytellingHandoff.blockers.length > 0 ? <div className="warning">Review: {storytellingHandoff.blockers.join(", ")}</div> : null}
+            {storytellingHandoff.blockers.length > 0 ? (
+              <div className="local-ai-review-actions">
+                <button className="button" onClick={() => setActiveTab("capture")}>กลับไปเพิ่ม evidence</button>
+                <button className="button" onClick={() => run(mergeVisibleProductImages)}>ดึงรูปเพิ่ม</button>
+              </div>
+            ) : null}
+            {storytellingHandoff.claims.length > 0 ? (
+              <div className="claim-list">
+                {storytellingHandoff.claims.slice(0, 6).map((claim) => (
+                  <div className="claim-item" key={claim.id}>
+                    <div>{claim.text}</div>
+                    <div className="muted">Status: {claim.status} | Evidence {claim.evidenceIds.length} | Confidence {Math.round(claim.confidence * 100)}%</div>
+                    <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 6 }}>
+                      <button className="button" onClick={() => updateStorytellingClaim(claim.id, "approve")}>Approve</button>
+                      <button className="button" onClick={() => updateStorytellingClaim(claim.id, "edit")}>Edit</button>
+                      <button className="button" onClick={() => updateStorytellingClaim(claim.id, "remove")}>Remove</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      </div>
+      ) : null}
+
+      {activeTab === "capture" ? (
+      <div className="tab-panel" role="tabpanel" aria-label="Capture">
       <div className="section">
         <label className="muted">Base URL</label>
         <input className="input" value={settings.baseUrl} onChange={(e) => setSettings({ ...settings, baseUrl: e.target.value })} />
@@ -1345,8 +1825,6 @@ export default function App() {
         </div>
         <div className="muted">Origin: chrome-extension://{chrome.runtime.id}</div>
       </div>
-
-      {error ? <div className="section error">{error}</div> : null}
 
       <div className="section">
         <strong>Open marketplace</strong>
@@ -1422,86 +1900,11 @@ export default function App() {
       <div className="section">
         <strong>Capture Progress</strong>
         {progress.map((step) => (
-          <div className={`progress ${step.status}`} key={step.label}>
+          <div className={`progress ${step.status}`} key={step.label} aria-current={step.status === "active" ? "step" : undefined}>
             <span>{step.status === "done" ? "✓" : step.status === "active" ? "…" : step.status === "error" ? "!" : "○"}</span>
             <span>{step.label}</span>
           </div>
         ))}
-      </div>
-
-      <div className="section">
-        <strong>Local AI</strong>
-        <div className={`local-ai-card ${localAIStatusView.tone}`}>
-          <div className="local-ai-card-top">
-            <span className="local-ai-badge">{localAIStatusView.label}</span>
-            <span className="local-ai-provider">
-              {localAIProvider === "chrome_prompt_api" ? "Gemini Nano in Chrome" : localAIProvider === "server_ai" ? "SmartSpecPro AI" : "Capture only"}
-            </span>
-          </div>
-          <div className="local-ai-title">{localAIStatusView.headline}</div>
-          <div className="local-ai-copy">{localAIStatusView.description}</div>
-          <div className="local-ai-next">{localAIStatusView.nextAction}</div>
-          {localAIProgress != null ? (
-            <div className="local-ai-progress" aria-label={`Local AI model download ${Math.round(localAIProgress * 100)} percent`}>
-              <div className="local-ai-progress-bar" style={{ width: `${Math.max(0, Math.min(100, Math.round(localAIProgress * 100)))}%` }} />
-              <span>{Math.round(localAIProgress * 100)}%</span>
-            </div>
-          ) : null}
-          <details className="local-ai-debug">
-            <summary>Technical details</summary>
-            <div>Provider: {localAIProvider}</div>
-            <div>Workflow state: {localAIState}</div>
-            <div>Prompt API: {localAICapability.availability}</div>
-            {localAICapability.reason ? <div>{localAICapability.reason}</div> : null}
-          </details>
-        </div>
-        <div className="grid">
-          <label className="muted">
-            <input
-              type="checkbox"
-              checked={localAISettings.preferLocalAI}
-              onChange={(e) => updateLocalAISetting("preferLocalAI", e.target.checked)}
-            /> Prefer local AI
-          </label>
-          <label className="muted">
-            <input
-              type="checkbox"
-              checked={localAISettings.sendStructuredInsightsOnly}
-              onChange={(e) => updateLocalAISetting("sendStructuredInsightsOnly", e.target.checked)}
-            /> Send structured insights only
-          </label>
-          <label className="muted">
-            <input
-              type="checkbox"
-              checked={localAISettings.enableServerFallback}
-              onChange={(e) => updateLocalAISetting("enableServerFallback", e.target.checked)}
-            /> Server fallback
-          </label>
-          <div className="muted">Raw capture sync: off</div>
-        </div>
-        <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap", marginTop: 8 }}>
-          <button className="button" onClick={() => run(refreshLocalAICapability)}>Check Local AI</button>
-          <button className="button primary" disabled={!product} onClick={() => run(createLocalProductBrief)}>Create Product Brief</button>
-          <button className="button" disabled={!productBrief} onClick={() => run(syncStructuredInsight)}>Send insights</button>
-          <button className="button" disabled={!storytellingHandoff} onClick={() => run(sendToStorytelling)}>Open Storytelling</button>
-          {["downloading", "analyzing_local"].includes(localAIState) ? <button className="button" onClick={cancelLocalAI}>Cancel</button> : null}
-        </div>
-        {productBrief ? (
-          <div className="section">
-            <strong>{productBrief.productName}</strong>
-            <div className="muted">Confidence {Math.round(productBrief.confidence * 100)}% | Evidence {productBrief.evidenceIds.length}</div>
-            <div>{productBrief.shortSummary}</div>
-            {productBrief.keySellingPoints.length > 0 ? <div className="muted">Selling points: {productBrief.keySellingPoints.slice(0, 3).join(" • ")}</div> : null}
-            {productBrief.suggestedHooks.length > 0 ? <div className="muted">Hooks: {productBrief.suggestedHooks.slice(0, 2).join(" • ")}</div> : null}
-          </div>
-        ) : null}
-        {storytellingHandoff ? (
-          <div className="section">
-            <strong>Storytelling readiness: {storytellingHandoff.readiness}</strong>
-            <div className="muted">Journey: {storytellingHandoff.customerJourneyStages.join(" → ")}</div>
-            {storytellingHandoff.blockers.length > 0 ? <div className="warning">Review: {storytellingHandoff.blockers.join(", ")}</div> : null}
-          </div>
-        ) : null}
       </div>
 
       {candidates.length > 0 ? (
@@ -1579,30 +1982,76 @@ export default function App() {
             </div>
           ) : null}
           {queuedCurrentProduct ? <div className="section muted">Queued product matched: {queuedCurrentProduct.title}</div> : null}
+          {reviewDraftStatus ? (
+            <div className="draft-row">
+              <span className="muted">{reviewDraftStatus}</span>
+              <button className="button" onClick={() => {
+                if (!product) return;
+                clearReviewDraft(product.sourceUrl)
+                  .then(() => setReviewDraftStatus("Local draft cleared"))
+                  .catch(() => undefined);
+              }}>Clear local draft</button>
+            </div>
+          ) : null}
           <label className="muted">Name</label>
           <input className="input" value={editable.productName} onChange={(e) => updateEditable("productName", e.target.value)} />
+          <div className="field-evidence">{fieldEvidenceText(product, "productName")}</div>
           <label className="muted">Brand</label>
           <input className="input" value={editable.brand} onChange={(e) => updateEditable("brand", e.target.value)} />
+          <div className="field-evidence">{fieldEvidenceText(product, "brand")}</div>
           <label className="muted">Shop</label>
           <input className="input" value={editable.shopName} onChange={(e) => updateEditable("shopName", e.target.value)} />
+          <div className="field-evidence">{fieldEvidenceText(product, "shopName")}</div>
           <label className="muted">Price</label>
           <input className="input" value={editable.priceCurrentText} onChange={(e) => updateEditable("priceCurrentText", e.target.value)} />
+          <div className="field-evidence">{fieldEvidenceText(product, "priceCurrentText")}</div>
+          <label className="muted">Commission rate (%)</label>
+          <input className="input" inputMode="decimal" placeholder="เช่น 8 หรือ 12.5" value={editable.commissionRateText} onChange={(e) => updateEditable("commissionRateText", e.target.value)} />
+          <div className={commissionRateInvalid ? "warning" : "field-evidence"}>
+            {commissionRateInvalid ? "Commission rate ต้องเป็นตัวเลข 0-100" : editable.commissionRateText ? "source: user_review | confidence 95%" : fieldEvidenceText(product, "commissionRate")}
+          </div>
+          <div className="business-preview">
+            <strong>Business preview</strong>
+            <div className="metric-grid">
+              <div className="metric-box">
+                <span>Price</span>
+                <strong>{formatMoney(businessSummary.price)}</strong>
+              </div>
+              <div className="metric-box">
+                <span>Commission</span>
+                <strong>{businessSummary.commissionRate == null ? "-" : `${businessSummary.commissionRate}%`}</strong>
+              </div>
+              <div className="metric-box">
+                <span>Commission amount</span>
+                <strong>{formatMoney(businessSummary.commissionAmount)}</strong>
+              </div>
+            </div>
+            <div className="muted">ยังไม่มี cost ต่อชิ้น จึงยังคำนวณ profit / margin / ROI ไม่ได้</div>
+          </div>
           <label className="muted">Sold</label>
           <input className="input" value={editable.soldCountText} onChange={(e) => updateEditable("soldCountText", e.target.value)} />
+          <div className="field-evidence">{fieldEvidenceText(product, "soldCountText")}</div>
           <label className="muted">Rating</label>
           <input className="input" value={editable.ratingScoreText} onChange={(e) => updateEditable("ratingScoreText", e.target.value)} />
+          <div className="field-evidence">{fieldEvidenceText(product, "ratingScoreText")}</div>
           <label className="muted">Review count</label>
           <input className="input" value={editable.reviewCountText} onChange={(e) => updateEditable("reviewCountText", e.target.value)} />
+          <div className="field-evidence">{fieldEvidenceText(product, "reviewCountText")}</div>
           <label className="muted">Category</label>
           <input className="input" value={editable.categoryText} onChange={(e) => updateEditable("categoryText", e.target.value)} />
+          <div className="field-evidence">{fieldEvidenceText(product, "categoryText")}</div>
           <label className="muted">Stock</label>
           <input className="input" value={editable.stockText} onChange={(e) => updateEditable("stockText", e.target.value)} />
+          <div className="field-evidence">{fieldEvidenceText(product, "stockText")}</div>
           <label className="muted">Seller location</label>
           <input className="input" value={editable.sellerLocationText} onChange={(e) => updateEditable("sellerLocationText", e.target.value)} />
+          <div className="field-evidence">{fieldEvidenceText(product, "sellerLocationText")}</div>
           <label className="muted">Variants</label>
           <textarea className="textarea" value={editable.variantsText} onChange={(e) => updateEditable("variantsText", e.target.value)} />
+          <div className="field-evidence">{fieldEvidenceText(product, "variantsText")}</div>
           <label className="muted">Description</label>
           <textarea className="textarea" value={editable.descriptionText} onChange={(e) => updateEditable("descriptionText", e.target.value)} />
+          <div className="field-evidence">{fieldEvidenceText(product, "descriptionText")}</div>
 
           <strong>Evidence to send</strong>
           <label className="muted"><input type="checkbox" checked={evidence.domHeader} onChange={(e) => updateEvidence("domHeader", e.target.checked)} /> DOM product header</label>
@@ -1622,26 +2071,98 @@ export default function App() {
             <div className="muted">Evidence groups: {selectedEvidenceCount}</div>
           </div>
 
-          <div className="image-toolbar">
-            <div className="muted">Selected images: {selectedImageCount} / {product.imageCandidates.length}</div>
-            <button className="button" onClick={() => run(mergeVisibleProductImages)}>Merge visible images</button>
+          <div className={`section ${dataQualityWarnings.length ? "warning-panel" : "success-panel"}`}>
+            <strong>Data quality checklist</strong>
+            <div className="quality-groups">
+              {qualityGroupSummary.map((group) => (
+                <div className="quality-group" key={group.label}>
+                  <strong>{group.label}</strong>
+                  {group.items.map((item) => (
+                    <span className={`quality-item ${item.ok ? "ok" : "missing"}`} key={`${group.label}:${item.label}`}>
+                      {item.ok ? "OK" : "Need"} {item.label}
+                    </span>
+                  ))}
+                </div>
+              ))}
+            </div>
+            {dataQualityWarnings.length > 0 ? (
+              dataQualityWarnings.map((warning) => <div className="warning" key={warning}>! {warning}</div>)
+            ) : (
+              <div className="muted">พร้อมส่งต่อ: ข้อมูลหลัก รูป และ evidence ถูกเลือกแล้ว</div>
+            )}
           </div>
+
+          <div className="section">
+            <strong>Capture diagnostics</strong>
+            <div className="diagnostics-grid">
+              <div className="muted">URL format: {product.sourceUrlFormat || "unknown"}</div>
+              <div className="muted">External product: {product.externalProductId || "-"}</div>
+              <div className="muted">External shop: {product.externalShopId || "-"}</div>
+              <div className="muted">Field evidence: {fieldEvidenceCount}</div>
+              <div className="muted">Warnings: {dataQualityWarnings.length}</div>
+              <div className="muted">Description chars: {editable.descriptionText.length}</div>
+              <div className="muted">Images main/review/desc: {imageKindCounts.main}/{imageKindCounts.review}/{imageKindCounts.description}</div>
+              <div className="muted">Images related/unknown: {imageKindCounts.related}/{imageKindCounts.unknown}</div>
+              <div className="muted">Low-res selected: {lowQualitySelectedImages.length}</div>
+              <div className="muted">Variants: {editable.variantsText.trim() ? "found" : "missing"}</div>
+              <div className="muted">HTML blocks: {product.htmlBlocks.length}</div>
+              <div className="muted">Raw HTML: {evidence.rawHtmlBlocks ? "selected" : "stripped before upload"}</div>
+            </div>
+          </div>
+
+          <div className="image-toolbar">
+            <div className="muted">
+              Selected images: {selectedImageCount} / {product.imageCandidates.length}
+              {heroImageUrl ? " | Hero selected" : " | No hero"}
+            </div>
+            <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+              {(["all", "main", "description", "review", "related", "unknown"] as ImageFilter[]).map((filter) => (
+                <button className={imageFilter === filter ? "button primary" : "button"} key={filter} onClick={() => setImageFilter(filter)}>
+                  {filter}
+                </button>
+              ))}
+              <button className="button" onClick={() => run(mergeVisibleProductImages)}>Merge visible images</button>
+            </div>
+            <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+              <button className="button" onClick={() => setSelectedImages(Object.fromEntries(product.imageCandidates.map((img) => [img.url, img.kind === "main"])))}>Select main</button>
+              <button className="button" onClick={() => setSelectedImages(Object.fromEntries(product.imageCandidates.map((img) => [img.url, img.kind === "review"])))}>Select review</button>
+              <button className="button" onClick={() => setSelectedImages(Object.fromEntries(visibleProductImages.map((img) => [img.url, true])))}>Select visible filter</button>
+            </div>
+          </div>
+          {visibleProductImages.length > displayedProductImages.length ? (
+            <div className="warning">แสดง {displayedProductImages.length} จาก {visibleProductImages.length} รูปใน filter นี้ เพื่อลดการหน่วงของ panel</div>
+          ) : null}
           <div className="image-picker-grid">
-            {product.imageCandidates.slice(0, 80).map((img) => (
+            {displayedProductImages.map((img) => (
               <label className={`image-option ${selectedImages[img.url] ? "selected" : ""}`} key={img.url}>
-                <input className="image-checkbox" type="checkbox" checked={Boolean(selectedImages[img.url])} onChange={(e) => setSelectedImages((current) => ({ ...current, [img.url]: e.target.checked }))} />
-                <img className="image-thumb" src={img.url} alt="" loading="lazy" />
-                <span className="image-kind">{img.kind}</span>
+                <input className="image-checkbox" type="checkbox" aria-label={`Select ${img.kind} image ${img.position ?? ""}`} checked={Boolean(selectedImages[img.url])} onChange={(e) => setSelectedImages((current) => ({ ...current, [img.url]: e.target.checked }))} />
+                <img className="image-thumb" src={img.url} alt={`${img.kind} product evidence`} loading="lazy" />
+                <span className="image-kind">{img.kind} | {imageQualityLabel(img)}</span>
+                <span className="image-badges">
+                  {imageBadges(img, heroImageUrl).map((badge) => <span className="image-badge" key={badge}>{badge}</span>)}
+                </span>
+                <span className="image-reason">{imageSelectionReason(img, heroImageUrl)}</span>
+                <button className="image-hero-button" type="button" onClick={(event) => {
+                  event.preventDefault();
+                  setHeroImageUrl(img.url);
+                  setSelectedImages((current) => ({ ...current, [img.url]: true }));
+                }}>{heroImageUrl === img.url ? "Hero" : "Set hero"}</button>
+                {isLowQualityImage(img) ? <span className="image-warning">Low resolution</span> : null}
               </label>
             ))}
           </div>
           <div className="row" style={{ justifyContent: "flex-start" }}>
-            <button className="button" onClick={() => setSelectedImages({})}>Select none</button>
-            <button className="button primary" disabled={!editable.productName} onClick={() => run(uploadAndAnalyze)}>
+            <button className="button" onClick={() => {
+              setSelectedImages({});
+              setHeroImageUrl("");
+            }}>Select none</button>
+            <button className="button primary" disabled={!editable.productName || commissionRateInvalid} onClick={() => run(uploadAndAnalyze)}>
               Upload selected
             </button>
           </div>
         </div>
+      ) : null}
+      </div>
       ) : null}
     </div>
   );

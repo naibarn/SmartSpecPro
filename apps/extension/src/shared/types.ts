@@ -13,11 +13,23 @@ export interface ImageCandidate {
   url: string;
   kind: "main" | "description" | "review" | "related" | "unknown";
   source: "dom" | "screenshot" | "manual" | "remote";
+  evidenceId?: string;
+  role?: "primary" | "gallery" | "description" | "review" | "related" | "unknown";
+  quality?: "high" | "medium" | "low" | "unknown";
   position?: number;
   width?: number;
   height?: number;
   selected?: boolean;
   metadata?: Record<string, unknown>;
+}
+
+export interface FieldEvidence {
+  text: string;
+  source: string;
+  confidence: number;
+  selector?: string;
+  normalized?: unknown;
+  warning?: string;
 }
 
 export interface CategoryProductCandidate {
@@ -57,20 +69,33 @@ export interface ProductCapturePayload {
   pageTitle: string;
   productName: string | null;
   priceCurrentText: string | null;
+  priceCurrentValue?: number | null;
   priceOriginalText: string | null;
+  priceOriginalValue?: number | null;
+  currency?: string | null;
   discountText: string | null;
+  discountPercent?: number | null;
+  commissionRatePercent?: number | null;
+  commissionRateText?: string | null;
   ratingScoreText: string | null;
+  ratingScoreValue?: number | null;
   reviewCountText: string | null;
+  reviewCountValue?: number | null;
   soldCountText: string | null;
+  soldCountValue?: number | null;
   shopName: string | null;
   isMall: boolean | null;
   categoryText?: string | null;
+  categoryPath?: string[];
+  brandText?: string | null;
   stockText?: string | null;
   variantsText?: string | null;
   sellerLocationText?: string | null;
   descriptionText: string | null;
   specificationText: string | null;
   imageCandidates: ImageCandidate[];
+  fieldEvidence?: Record<string, FieldEvidence>;
+  fieldWarnings?: string[];
   rawDomText: string;
   htmlBlocks: Array<{ name: string; text: string; outerHTML?: string; metadata?: Record<string, unknown> }>;
 }

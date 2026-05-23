@@ -1,170 +1,81 @@
 # Orchestra Progress
 
-[COMPLETE] wave-1-read-only-subagent-audit — Three read-only subagents returned completeness findings.
-[COMPLETE] wave-2-conductor-integration — Integrated findings and ran planning gates.
-[COMPLETE] wave-3-planning-patch-implementation — Patched Feature 116 planning artifacts to close scheduler, handoff, flags, security/TDD, MVP boundary, migration, and planner-failure UX gaps.
-[COMPLETE] wave-4-verification-review — Planning gates passed and read-only reviewer returned `ready_with_notes` with no blockers.
-[COMPLETE] wave-5-end-to-end-ui-ux-completeness-audit — Four read-only agents completed; overall verdict `not_ready` due to UI/UX and browser evidence blockers.
-[COMPLETE] wave-6-ui-ux-planning-completion — Patched Feature 116 planning artifacts to close all seven Wave 5 UI/UX and browser-evidence blockers.
+[COMPLETED] wave-1-contract-backend — Added shared contracts, downstream import service/router, and targeted tests.
+[COMPLETED] wave-2-frontend-spec — Added planning UI affordances, provider/character search evidence, deferred node catalog UI, and spec/plan alignment.
+[COMPLETED] wave-3-gates-review — Targeted tests and TypeScript check passed.
 
-## Fresh Start Notes
-
-- Existing `orchestra/` directory had no `snapshot.json`; archived under `orchestra/archive/`.
-- SocratiCode status was green and used before targeted shell reads.
-- Worktree had unrelated existing dirty files; this audit does not modify them.
-
-## Wave 1 Results
-
-### Product/spec completeness
-- Status: success
-- Verdict: ready_with_notes
-- Blocking gaps: none
-- Watchpoints: MVP audio scope must stay bounded; warning acceptance needs role/permission detail before live execution; planner malformed-output UX state should be explicit.
-
-### Codebase integration
-- Status: success
-- Verdict: not_ready
-- Blocking gaps:
-  1. Execution scheduler integration is not mapped to existing media job submission, credit reservation/refund, cancellation, polling, and provider task lifecycle.
-  2. Video Edit handoff builder boundary is unresolved between current server insertion and client-side `storyboardVideoProject.ts` conversion helper.
-  3. Feature 116 rollout flags/kill switches need exact flag names, precedence, and phase behavior beyond current F84-F90 flags.
-
-### QA/TDD readiness
-- Status: success
-- Verdict: not_ready
-- Blocking gaps:
-  1. Mutating router tests need explicit cross-tenant, cross-user, unauthorized, forbidden, and permission-denied coverage.
-  2. MVP vs full matrix scope conflict remains between Section 12/16 and `implementation-plan.md` Phase 7 audio workflows.
-  3. Migration/backward-compatibility acceptance needs exact backfill, rollback/no-data-loss, and schema-version upgrade tests.
-
-## Quality Gates
-
-- PASS: `uv run /home/dev/.codex/skills/deep-plan/scripts/checks/check-sections.py --planning-dir specs/feature/116-production-director-node-canvas`
-- PASS: `git diff --check -- specs/feature/116-production-director-node-canvas orchestra`
-- SKIPPED: full app tests, because this was a read-only planning audit with no production code changes.
-
-## Wave 3 Patch Summary
-
-Closed blockers:
-
-1. Execution scheduler integration now maps to existing media generation, task status/cancellation, credit reservation/refund/reconciliation, provider polling/status, and output attachment.
-2. Storyboard Review / Video Edit handoff now requires a server-safe shared builder and forbids importing React/client-only helpers into server routers.
-3. Feature 116 flag truth table and kill-switch precedence are documented.
-4. Mutating router TDD now covers unauthenticated, missing tenant, cross-tenant, cross-user, forbidden/permission-denied, disabled flag, and stale-version cases.
-5. MVP boundary is normalized to Image, Video, and basic TTS adapters only.
-6. Migration/backcompat now includes backfill, rollback/read-safe, no-data-loss, schema-version upgrade, and unknown future schema tests.
-7. Planner failed, partial-output, and schema-invalid UX states are explicit.
-
-Files changed in planning package:
-
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/spec.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/claude-spec.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/claude-research.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/claude-plan.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/claude-plan-tdd.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/implementation-plan.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-01-production-workspace-ux.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-06-node-catalog-and-tool-config.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-09-migration-and-backward-compatibility.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-10-execution-scheduler-and-delivery.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-12-mvp-scope-and-acceptance-traceability.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-14-data-lifecycle-observability-release.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-16-deep-implement-work-packets.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-10-2026-05-22.md`
-
-Wave 3 gates:
-
-- PASS: `uv run /home/dev/.codex/skills/deep-plan/scripts/checks/check-sections.py --planning-dir specs/feature/116-production-director-node-canvas`
-- PASS: `git diff --check -- specs/feature/116-production-director-node-canvas orchestra`
-- PASS: `rg -n "[ \t]+$" specs/feature/116-production-director-node-canvas orchestra -g '!orchestra/archive/**'`
-
-## Wave 4 Review
-
-- Reviewer verdict: `ready_with_notes`
-- Blockers: none
-- Remaining watchpoints:
-  - Confirm exact Feature 116 flag names during code implementation if reusing F84-F90 versus adding narrower controls.
-  - Keep batch execution behind a later flag after run-one-node/run-one-shot ship.
-  - Keep Gemini Omni `audio_ids` fail-safe at one ID until provider docs/admin metadata safely proves a higher limit.
-
-## Wave 5 Scope
-
-User requested a deeper audit that includes UI and UX and verifies the plan is coherent enough to guide users from goal to completed output. SocratiCode status is green.
-
-Advisory worktree state:
-
-- `specs/feature/116-production-director-node-canvas/` is currently untracked in git.
-- Existing orchestra artifacts are modified from prior waves.
-
-## Wave 5 Results
-
-### Product Journey Agent
-- Verdict: ready_with_notes
-- Blockers: none
-- Notes: Journey is coherent from goal to assets, planning, canvas, verification, approval, node config/save, handoff/execution/export. Recommended adding visible journey stepper, clearer disabled/live-deferred copy, non-product blocker recovery copy, export/archive UX copy, and friendly status labels.
-
-### Visual/UI Agent
-- Verdict: not_ready
-- Blockers:
-  1. Missing explicit UI/UX contract per major surface.
-  2. Browser evidence planning is too vague.
-  3. React Flow accessibility and keyboard fallback are under-specified.
-  4. Responsive matrix is incomplete beyond mobile.
-  5. Visual/token/dark-light strategy is absent.
-
-### System Consistency Agent
-- Verdict: ready_with_notes
-- Blockers: none
-- Notes: Plan respects current system boundaries and correctly blocks unsafe live behavior until contracts, flags, persistence, scheduler, and handoff builders exist.
-
-### QA/TDD Agent
-- Verdict: not_ready
-- Blockers:
-  1. Browser evidence is not a required release gate.
-  2. Responsive coverage lacks explicit viewport matrix/evidence.
-  3. Accessibility requirements are not fully executable gates.
-  4. Missing canonical E2E journey proof from goal to output/handoff/no-credit-spend.
-
-## Wave 5 Gates
-
-- PASS: `uv run /home/dev/.codex/skills/deep-plan/scripts/checks/check-sections.py --planning-dir specs/feature/116-production-director-node-canvas`
-- PASS: `git diff --check -- specs/feature/116-production-director-node-canvas orchestra`
-- SKIPPED: app tests/typecheck/browser automation because this wave was a read-only planning audit.
-
-## Wave 6 Patch Summary
-
-Closed all seven Wave 5 planning blockers:
-
-1. Added explicit UI/UX contracts for Production Workspace, React Flow Canvas, Video Shot Workspace, Node Drawer / Node Config Mode, Product Evidence Tray, Handoff/Execution, and Export/Archive/Delete.
-2. Added mandatory browser evidence gate and created `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/implementation/ui-browser-evidence.md`.
-3. Added responsive matrices for 390x844, 768x1024, 1280x800, and 1440x900.
-4. Added executable accessibility gates for keyboard-only journey, focus trap/restore, accessible names, contrast, dark/light readability, reduced motion, and axe/WCAG or documented equivalent.
-5. Added canonical E2E/browser journey proof from goal creation through handoff preview and zero provider-credit spend before generation confirmation.
-6. Added Thai/English UI copy contract for deferred/live-disabled, planner failed/partial/schema-invalid, product blocked, invalid edge, stale conflict, permission denied, export success, and lifecycle confirmations.
-7. Added visual/token strategy based on existing Media Studio/shadcn/dashboard vocabulary.
-
-Files changed in Wave 6:
-
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/spec.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/claude-spec.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/claude-plan.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/claude-plan-tdd.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/implementation-plan.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/implementation/ui-browser-evidence.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-01-production-workspace-ux.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-04-react-flow-canvas.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-06-node-catalog-and-tool-config.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-07-video-shot-workspace.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-10-execution-scheduler-and-delivery.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-12-mvp-scope-and-acceptance-traceability.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-14-data-lifecycle-observability-release.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-15-product-image-storyboard-evidence-bridge.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-16-deep-implement-work-packets.md`
-- `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/reviews/final-completeness-review-round-11-ui-ux-2026-05-22.md`
-
-Wave 6 gates:
-
-- PASS: `uv run /home/dev/.codex/skills/deep-plan/scripts/checks/check-sections.py --planning-dir specs/feature/116-production-director-node-canvas`
-- PASS: `git diff --check -- specs/feature/116-production-director-node-canvas orchestra`
-- PASS: `rg -n "[ \t]+$" specs/feature/116-production-director-node-canvas orchestra -g '!orchestra/archive/**'`
-- SKIPPED: app tests/typecheck/browser automation until implementation, because this wave changes planning artifacts only.
+## Session Notes
+- SocratiCode active/green for /home/dev/projects/SmartSpecPro and used before broad implementation.
+- Worktree was dirty before this session; unrelated/package/script/AGENTS changes are preserved and not reverted.
+- Two read-only explorer agents were dispatched:
+  - backend/test/security: 019e5257-0507-7730-aa28-153f79dc5456
+  - frontend/spec: 019e5257-1ac5-7860-bd3a-23a751abbcee
+- Verification:
+  - `npm --prefix apps/web test -- server/services/__tests__/productionSpaceService.test.ts server/routers/__tests__/mediaProduction.execution.test.ts shared/mediaProduction.test.ts client/src/features/media-production/production-director.e2e.test.tsx` passed: 4 files, 56 tests.
+  - `NODE_OPTIONS='--max-old-space-size=8192' npm --prefix apps/web run check` passed.
+- 2026-05-23 completeness audit:
+  - SocratiCode status green and used before targeted shell reads.
+  - Frontend/spec explorer completed read-only review.
+  - Backend explorer retried on inherited/default model after Spark quota failure and completed read-only review.
+  - `uv run /home/dev/.codex/skills/deep-plan/scripts/checks/check-sections.py --planning-dir specs/feature/116-production-director-node-canvas` passed: 16/16 sections.
+  - `npm --prefix apps/web test -- server/services/__tests__/productionSpaceService.test.ts server/routers/__tests__/mediaProduction.execution.test.ts server/jobs/__tests__/productionExecutionReconciliationJob.test.ts shared/mediaProduction.test.ts shared/geminiOmni.test.ts client/src/features/media-production/production-director.e2e.test.tsx` passed: 6 files, 70 tests.
+  - `NODE_OPTIONS='--max-old-space-size=8192' npm --prefix apps/web run check` passed.
+- 2026-05-23 gap-closure implementation:
+  - Closed backend catalog enforcement for Save-to-Node and execution scheduling.
+  - Closed tenant-scoped handoff idempotency on router/service preview paths.
+  - Hardened Feature 116 runtime router schemas for node kind/status, shot status, product evidence manifest, access policy, and tool binding metadata.
+  - Added full mutating-procedure missing-tenant/cross-user regression coverage plus collaborator read/write/execute role-boundary tests.
+  - Added deterministic legacy adapter and schema read-safety tests.
+  - Added Production execution status panel copy for confirm/progress/failure-retry/reconcile states.
+  - Verification passed:
+    - `uv run /home/dev/.codex/skills/deep-plan/scripts/checks/check-sections.py --planning-dir specs/feature/116-production-director-node-canvas` — 16/16 sections.
+    - `npm --prefix apps/web test -- server/services/__tests__/productionSpaceService.test.ts server/routers/__tests__/mediaProduction.execution.test.ts server/jobs/__tests__/productionExecutionReconciliationJob.test.ts shared/mediaProduction.test.ts shared/geminiOmni.test.ts client/src/features/media-production/production-director.e2e.test.tsx` — 6 files, 78 tests.
+    - `NODE_OPTIONS='--max-old-space-size=8192' npm --prefix apps/web run check` — passed.
+- 2026-05-23 UI/UX review session:
+  - SocratiCode active/green and used before targeted UI discovery.
+  - Classified as medium/low-risk visual-ui-flow read-only review.
+  - Worktree already had many dirty/untracked files from prior implementation; this review will not revert or overwrite unrelated changes.
+  - Planned parallel read-only agents: visual-ux-reviewer, accessibility-reviewer, responsive-reviewer.
+  - Spark dispatch for all three read-only reviewers hit quota limit; retrying the same packets with inherited/default model per model-routing escalation.
+  - Read-only review complete:
+    - visual-ux-reviewer found high-priority command hierarchy, node drawer density, node list duplication, JSON-first config, ambiguous context asset actions, and raw/mixed copy.
+    - accessibility-reviewer found active tab contrast, unannounced warnings/errors, color-only selected states, visual-only progress, and shallow reduced-motion checks.
+    - responsive-reviewer found fixture-heavy browser evidence, missing 360x800/1024x768, unproven touch canvas behavior, nested `lg` density risk, and small mobile touch targets.
+  - Consolidated report written to `orchestra/ui-ux-review-2026-05-23.md`.
+  - Actionable follow-up items added to `orchestra/backlog.md`.
+- 2026-05-23 UI/UX fix pass:
+  - Consolidated Production commands into `ProductionWorkspace`, made Create Plan + Verify the primary action, and moved lifecycle actions into Manage.
+  - Reduced canvas drawer/list density, added selected-node inspector semantics, explicit Context Asset actions, advanced Node Config JSON, human status labels, and stronger Thai/English operator copy.
+  - Hardened accessibility/responsive behavior: aria-live/alert semantics, stepper current state, progressbar semantics, reduced-motion spinners, darker active tabs/actions, mobile touch targets, and React Flow viewport page-scroll handling.
+  - Browser evidence now covers 360x800, 390x844, 768x1024, 1024x768, 1280x800, and 1440x900 across fixture light/dark/reduced-motion plus authenticated `/media-studio` live route layout/overflow/axe/canvas-scroll checks.
+  - Verification passed:
+    - `npm --prefix apps/web test -- client/src/features/media-production/production-director.e2e.test.tsx` — 13/13 tests.
+    - `NODE_OPTIONS='--max-old-space-size=8192' npm --prefix apps/web run check` — passed.
+    - `npm --prefix apps/web run e2e:production-director-browser` — 24/24 tests.
+- 2026-05-23 UI/UX re-review:
+  - SocratiCode active/green and used before targeted file/screenshot inspection.
+  - Latest browser evidence remains `pass` with 18 fixture runs, 6 authenticated live-route runs, and 0 failed runs.
+  - Re-review found no automated gate blockers, but UX still needs follow-up for true empty/no-project state, mobile/tablet canvas priority, node action density, real adapter-specific Node Config fields, provider-result action clarity, and display-label cleanup.
+  - Report written to `orchestra/ui-ux-rereview-2026-05-23.md`.
+- 2026-05-23 UI/UX re-review fix pass:
+  - Implemented every main re-review finding: true no-project state, mobile/tablet canvas priority, collapsed node drawer, compact node list actions, operator-facing Node Config fields, explicit provider-result actions, removed first-asset shortcut, consolidated top workspace actions, and display-label mappers for machine terms.
+  - Hardened canvas/page scroll evidence: React Flow viewport still forwards wheel events to page scroll; virtual graph internals are no longer treated as text overflow in browser evidence while right/left viewport overflow remains blocking.
+  - Product Evidence Tray and canvas containers now guard horizontal overflow with `min-w-0`/`max-w-full`/overflow constraints.
+  - Verification passed:
+    - `NODE_OPTIONS='--max-old-space-size=8192' npm --prefix apps/web run check` — passed.
+    - `npm --prefix apps/web test -- client/src/features/media-production/production-director.e2e.test.tsx` — 14/14 tests.
+    - `npm --prefix apps/web run e2e:production-director-browser` — 24/24 tests; summary `pass`, 18 fixture runs, 6 authenticated live-route runs, 0 failed.
+- 2026-05-23 right-panel media restore:
+  - Fixed Media Studio right-panel fetch isolation so History, Search Library, and Marketplace queries only run when their sidebar tab is active.
+  - Sanitized HTML/502 tRPC responses in the Library tab so raw app-shell HTML is not rendered to operators.
+  - Added browser evidence that clicks all three right-panel tabs on authenticated `/media-studio` and verifies a visible image in History, Library, and Marketplace.
+  - Verification passed:
+    - `NODE_OPTIONS='--max-old-space-size=8192' npm --prefix apps/web run check` — passed.
+    - `npm --prefix apps/web test -- client/src/components/media/LibrarySearchPanel.test.ts client/src/features/media-production/production-director.e2e.test.tsx` — 21/21 tests.
+    - `npm --prefix apps/web run e2e:production-director-browser` — 24/24 tests; summary `pass`, 18 fixture runs, 6 authenticated live-route runs, 0 failed.
+- 2026-05-23 canvas node typography polish:
+  - Adjusted Production Flow canvas node typography so title, node kind, and status are smaller, line-height controlled, and truncated within a stable node width for Thai/English labels.
+  - Verification passed:
+    - `NODE_OPTIONS='--max-old-space-size=8192' npm --prefix apps/web run check` — passed.
+    - `npm --prefix apps/web test -- client/src/features/media-production/production-director.e2e.test.tsx` — 14/14 tests.
+    - `npm --prefix apps/web run e2e:production-director-browser` — 24/24 tests.

@@ -789,6 +789,7 @@ Live planner, live verifier, downstream handoff, and provider execution must not
 - Extract Production UI from `MediaStudio.tsx`.
 - Make Production tab exclusive.
 - Add project header, save/open project, brief panel.
+- Add Planning Skill Selector and Model Context Panel inside the Production workspace shell, backed by `ProductionPlanningSelection`.
 - Keep Image/Video/Audio standalone.
 
 ### Phase 3: Context Assets And Library Search
@@ -831,6 +832,8 @@ Live planner, live verifier, downstream handoff, and provider execution must not
 
 - Render `video_shot` group nodes and child nodes.
 - Add node drawer, edge editing, layout save.
+- Use shared `ProductionNodeCatalogEntry` metadata so full-matrix nodes can be displayed as deferred/disabled without enabling their adapters.
+- Enforce `ProductionNodeCatalogEntry` metadata server-side so deferred, preview-only, disabled, and adapter-mismatched nodes cannot be saved as executable node configs.
 - Add graph validation warnings.
 - Add mobile/list fallback.
 
@@ -846,6 +849,7 @@ Live planner, live verifier, downstream handoff, and provider execution must not
 - Add adapter registry with one adapter per supported node/surface/mode.
 - Add route params: `spaceVersion`, `nodeVersion`, and `configSnapshotId`.
 - Add stale-version conflict handling for `Save to Node`.
+- Reject adapter/toolSurface mismatches and deferred/preview-only/disabled catalog entries before writing node snapshots.
 
 ### Phase 8: Handoff To Storyboard Review And Video Edit (Safe Preview First)
 
@@ -855,6 +859,7 @@ Live planner, live verifier, downstream handoff, and provider execution must not
 - Include per-shot product evidence manifests.
 - Include timeline/cue sheet and transition cues.
 - Build preview/snapshot payloads first.
+- Scope preview and dispatch idempotency keys by tenant.
 - Open existing downstream project/task after handoff only when live handoff flag and Phase 10.5 gates are enabled.
 - Add `ProductionDownstreamResultRecord` import/sync from Storyboard Review and Video Edit for selected takes, shot order, trims, captions, product warning resolution, and manual fidelity approval.
 - Handle stale downstream result imports as conflict or save-as-new-version without overwriting locked shots/nodes.
@@ -864,6 +869,7 @@ Live planner, live verifier, downstream handoff, and provider execution must not
 - Integrate with existing `mediaGenerationService`, media task status/cancellation, credit deduction/refund/reconciliation, and provider polling/status paths.
 - Store Production metadata on generated media tasks.
 - Add readiness-gated run one node / run one shot / run approved batch.
+- Reject deferred/preview-only/disabled catalog entries and adapter/toolSurface mismatches before credit reservation/provider dispatch.
 - Add dependency ordering.
 - Add node/shot/batch cancellation.
 - Add idempotent retry from failed node.
@@ -978,7 +984,8 @@ Live planner, live verifier, downstream handoff, and provider execution must not
 - update role, link claim, link evidence, request more evidence, and relink product image actions preserve ownership and audit-safe metadata.
 - link product claim rejects evidence IDs in claim fields.
 - save shot product usage does not mutate unrelated shots.
-- import downstream result record updates selected takes/timeline/product QA or returns conflict for stale source versions.
+- import downstream result record updates selected takes/timeline/captions/product warning resolution/manual approvals or returns conflict for stale source versions, and skips locked shot/node configs by default.
+- shared node catalog tests prove only Image, Video, and basic TTS are `mvp_enabled`; full-matrix nodes are `deferred`.
 - cross-tenant, cross-user, unauthenticated, forbidden, and permission-denied router cases for every mutating Production procedure.
 - migration backfill converts eligible legacy runs without deleting old records.
 - rollback/read-safe mode keeps legacy runs and standalone Image/Video/Audio workflows usable.

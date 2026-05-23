@@ -1,0 +1,37 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-production-workspace-ux",
+    "section-02-context-assets-library-dnd",
+    "section-03-planning-skill-context-pack",
+    "section-04-react-flow-canvas",
+    "section-05-run-persistence-handoff",
+    "section-06-node-catalog-and-tool-config",
+    "section-07-video-shot-workspace",
+    "section-08-operational-safeguards",
+    "section-09-migration-and-backward-compatibility",
+    "section-10-execution-scheduler-and-delivery",
+    "section-11-timeline-continuity-and-cue-sheet",
+    "section-12-mvp-scope-and-acceptance-traceability",
+    "section-13-node-tool-binding-and-config-integrity",
+    "section-14-data-lifecycle-observability-release",
+    "section-15-product-image-storyboard-evidence-bridge",
+    "section-16-deep-implement-work-packets"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-05-22T10:09:34.808157+00:00"
+}

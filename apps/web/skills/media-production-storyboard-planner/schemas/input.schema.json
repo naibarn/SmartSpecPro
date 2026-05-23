@@ -1,11 +1,213 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["production_goal"],
+  "required": [
+    "production_brief",
+    "context_assets",
+    "product_storyboard_assets",
+    "marketplace_storytelling_handoff",
+    "product_claim_evidence_map",
+    "feature_115_readiness",
+    "feature_115_allowed_next_actions",
+    "available_tool_capabilities",
+    "provider_capabilities",
+    "capability_registry",
+    "duration_and_pacing_policy",
+    "shot_count_guidance"
+  ],
   "properties": {
-    "production_goal": { "type": "object", "additionalProperties": true },
-    "revision_request": { "type": "object", "additionalProperties": true },
-    "locked_sections": { "type": "array", "items": { "type": "string" }, "default": [] }
+    "production_brief": { "$ref": "#/$defs/productionBrief" },
+    "context_assets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/contextAsset" },
+      "default": []
+    },
+    "product_storyboard_assets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/productStoryboardAsset" },
+      "default": []
+    },
+    "marketplace_storytelling_handoff": {
+      "type": "object",
+      "required": ["source", "readiness"],
+      "properties": {
+        "source": { "type": "string" },
+        "readiness": { "type": "string", "enum": ["ready", "ready_with_warnings", "needs_user_review", "insufficient_evidence", "not_applicable"] },
+        "selected_product_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "storytelling_notes": { "type": "array", "items": { "type": "string" }, "default": [] }
+      },
+      "additionalProperties": true
+    },
+    "product_claim_evidence_map": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/productClaimEvidence" },
+      "default": []
+    },
+    "feature_115_readiness": { "type": "string", "enum": ["ready", "ready_with_warnings", "needs_user_review", "insufficient_evidence", "not_applicable"] },
+    "feature_115_allowed_next_actions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "available_tool_capabilities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/toolCapability" },
+      "minItems": 1
+    },
+    "provider_capabilities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/providerCapability" },
+      "default": []
+    },
+    "capability_registry": {
+      "type": "object",
+      "required": ["registry_version", "surfaces"],
+      "properties": {
+        "registry_version": { "type": "string" },
+        "surfaces": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/productionSurface" },
+          "minItems": 1
+        },
+        "disabled_adapters": { "type": "array", "items": { "type": "string" }, "default": [] }
+      },
+      "additionalProperties": true
+    },
+    "budget_policy": {
+      "type": "object",
+      "properties": {
+        "max_credits": { "type": "number", "minimum": 0 },
+        "quality_target": { "type": "string" },
+        "requires_confirmation_before_spend": { "type": "boolean", "default": true }
+      },
+      "additionalProperties": true
+    },
+    "downstream_target_requirements": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["storyboard_review", "video_edit", "image", "video", "audio", "publish_export"] },
+      "default": []
+    },
+    "duration_and_pacing_policy": {
+      "type": "object",
+      "required": ["target_duration_seconds"],
+      "properties": {
+        "target_duration_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "platform": { "type": "string" },
+        "aspect_ratio": { "type": "string" },
+        "pacing": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "shot_count_guidance": {
+      "type": "object",
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "integer", "minimum": 1 },
+        "max": { "type": "integer", "minimum": 1 },
+        "preferred": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "previous_space": { "$ref": "#/$defs/productionSpace" },
+    "locked_shot_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "locked_node_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "revision_request": { "type": "object", "additionalProperties": true }
   },
-  "additionalProperties": true
+  "additionalProperties": false,
+  "$defs": {
+    "productionBrief": {
+      "type": "object",
+      "required": ["title", "goal_type", "audience", "platform", "objective"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "goal_type": { "type": "string" },
+        "audience": { "type": "string" },
+        "platform": { "type": "string" },
+        "objective": { "type": "string" },
+        "language": { "type": "string" },
+        "constraints": { "type": "array", "items": { "type": "string" }, "default": [] }
+      },
+      "additionalProperties": true
+    },
+    "contextAsset": {
+      "type": "object",
+      "required": ["id", "kind", "label", "provenance"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string", "enum": ["character", "product", "scene", "brand", "audio", "source_video", "generated_media", "storyboard_review", "video_edit"] },
+        "label": { "type": "string" },
+        "url": { "type": "string" },
+        "provenance": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": true
+    },
+    "productStoryboardAsset": {
+      "type": "object",
+      "required": ["id", "product_id", "role", "approval_state", "fidelity_risk"],
+      "properties": {
+        "id": { "type": "string" },
+        "product_id": { "type": "string" },
+        "sku": { "type": "string" },
+        "variant": { "type": "string" },
+        "role": { "type": "string" },
+        "approval_state": { "type": "string", "enum": ["approved", "needs_review", "blocked"] },
+        "fidelity_risk": { "type": "string", "enum": ["low", "medium", "high", "blocked"] }
+      },
+      "additionalProperties": true
+    },
+    "productClaimEvidence": {
+      "type": "object",
+      "required": ["claim_id", "claim_text", "claim_type", "evidence_ids", "user_approval_state", "risk"],
+      "properties": {
+        "claim_id": { "type": "string" },
+        "claim_text": { "type": "string" },
+        "claim_type": { "type": "string" },
+        "evidence_ids": { "type": "array", "items": { "type": "string" } },
+        "user_approval_state": { "type": "string", "enum": ["approved", "needs_review", "rejected"] },
+        "risk": { "type": "string", "enum": ["low", "medium", "high", "policy_sensitive"] }
+      },
+      "additionalProperties": true
+    },
+    "toolCapability": {
+      "type": "object",
+      "required": ["tool_id", "surface", "supported_node_types"],
+      "properties": {
+        "tool_id": { "type": "string" },
+        "surface": { "$ref": "#/$defs/productionSurface" },
+        "supported_node_types": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "mvp_adapter": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "providerCapability": {
+      "type": "object",
+      "required": ["provider_id", "model_id", "supported_node_types"],
+      "properties": {
+        "provider_id": { "type": "string" },
+        "model_id": { "type": "string" },
+        "supported_node_types": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "reference_unit_limit": { "type": "integer", "minimum": 0 },
+        "source_video_limit": { "type": "integer", "minimum": 0 },
+        "audio_id_limit": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "productionSurface": {
+      "type": "string",
+      "enum": ["production_workspace", "production_skill", "production_asset_drawer", "production_qa", "production_gate", "production_review", "production_timeline", "video_shot", "image", "video", "audio", "character_wizard", "audio_asset_wizard", "caption_editor", "storyboard_review", "video_edit", "render_surface", "publish_export"]
+    },
+    "productionSpace": {
+      "type": "object",
+      "required": ["id", "version", "brief", "shots", "flowNodes", "flowEdges"],
+      "properties": {
+        "id": { "type": "string" },
+        "version": { "type": "integer", "minimum": 1 },
+        "brief": { "$ref": "#/$defs/productionBrief" },
+        "shots": { "type": "array", "items": { "type": "object" } },
+        "flowNodes": { "type": "array", "items": { "type": "object" } },
+        "flowEdges": { "type": "array", "items": { "type": "object" } }
+      },
+      "additionalProperties": true
+    }
+  }
 }

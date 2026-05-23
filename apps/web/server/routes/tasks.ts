@@ -12,6 +12,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { deliverScheduledMessage, sweepUndeliveredMessages } from "../services/scheduler";
 import { runLibraryKnowledgeRefreshWorker } from "../services/libraryKnowledgeRefreshWorker";
+import { runProductionExecutionReconciliationJob } from "../jobs/productionExecutionReconciliationJob";
 
 const USE_CLOUD_TASKS = () => process.env.USE_CLOUD_TASKS === "true";
 
@@ -258,6 +259,36 @@ export function createTasksRouter(): Router {
       await recordCloudTaskEvent(req, "failed", message);
       if (message === "Expected a positive integer") {
         res.status(400).json({ error: "limit, jobId, and libraryItemId must be positive integers when provided" });
+        return;
+      }
+      res.status(500).json({ error: message });
+    }
+  });
+
+  /**
+   * POST /tasks/production-execution-reconcile
+   *
+   * Called by Cloud Scheduler to reconcile pending Feature 116 provider executions.
+   * Safe to run repeatedly; the job has its own in-flight guard and idempotent
+   * terminal reconciliation paths.
+   */
+  router.post("/production-execution-reconcile", async (req: Request, res: Response) => {
+    try {
+      const tenantLimit = parseOptionalPositiveInt(req.body?.tenantLimit);
+      const spaceLimit = parseOptionalPositiveInt(req.body?.spaceLimit);
+      const result = await runProductionExecutionReconciliationJob({
+        tenantLimit,
+        spaceLimit,
+      });
+
+      await recordCloudTaskEvent(req, result.tenantErrors.length > 0 ? "failed" : "completed");
+      res.status(200).json({ success: true, ...result });
+    } catch (err: any) {
+      const message = err?.message || "Failed to reconcile production executions";
+      console.error("[Tasks] production-execution-reconcile failed:", err);
+      await recordCloudTaskEvent(req, "failed", message);
+      if (message === "Expected a positive integer") {
+        res.status(400).json({ error: "tenantLimit and spaceLimit must be positive integers when provided" });
         return;
       }
       res.status(500).json({ error: message });

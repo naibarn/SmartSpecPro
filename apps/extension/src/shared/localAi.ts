@@ -71,6 +71,7 @@ export interface SanitizedLocalAIInput {
     price?: string;
     originalPrice?: string;
     discount?: string;
+    commissionRatePercent?: number | null;
     rating?: string;
     soldCount?: string;
     description?: string;
@@ -78,6 +79,8 @@ export interface SanitizedLocalAIInput {
     variants?: string;
     stock?: string;
     selectedImageUrls: string[];
+    selectedImages?: Array<Record<string, unknown>>;
+    categoryPath?: string[];
   };
   shop?: {
     name?: string;
@@ -97,6 +100,12 @@ export interface SanitizedLocalAIInput {
   };
   comments: Array<{ id: string; author?: string; text: string; likeCount?: string }>;
   evidence: EvidenceItem[];
+  sourceIds?: {
+    externalProductId?: string | null;
+    externalShopId?: string | null;
+    canonicalSourceUrl?: string | null;
+  };
+  sanitizerVersion?: string;
   payloadHash: string;
 }
 
@@ -228,6 +237,59 @@ function selectedUrls(images: ImageCandidate[]) {
   return images.filter((image) => image.selected !== false && image.kind !== "related").map((image) => image.url).slice(0, 30);
 }
 
+function selectedImageEvidence(images: ImageCandidate[]) {
+  return images
+    .filter((image) => image.selected !== false && image.kind !== "related")
+    .slice(0, 30)
+    .map((image, index) => ({
+      id: cleanText(image.metadata?.evidenceId || image.evidenceId || `image:selected_${index + 1}`, 120),
+      url: image.url,
+      kind: image.kind,
+      role: cleanText(image.metadata?.role || image.role || (index === 0 ? "hero" : image.kind), 80),
+      quality: cleanText(image.metadata?.quality || image.quality || "unknown", 80),
+      qualityLabel: cleanText(image.metadata?.qualityLabel || "", 120) || undefined,
+      width: typeof image.width === "number" ? image.width : undefined,
+      height: typeof image.height === "number" ? image.height : undefined,
+      warning: cleanText(image.metadata?.warning, 240) || undefined,
+    }));
+}
+
+function extractBoundedReviews(product: ProductCapturePayload) {
+  const lines = product.rawDomText.split(/\n+/).map((line) => cleanText(line, 500)).filter(Boolean);
+  const reviews: Array<{ id: string; rating?: number; text: string; variant?: string; createdAtText?: string }> = [];
+  for (let index = 0; index < lines.length && reviews.length < TEXT_LIMITS.reviews; index += 1) {
+    const line = lines[index];
+    const looksReview = /คุณภาพ|การใช้งาน|รีวิว|ความคิดเห็น|จัดส่ง|สินค้า|น่ารัก|ดีมาก|ตรงปก|verified purchase|review/i.test(line);
+    const hasNoise = /ซื้อเลย|เพิ่มลงรถเข็น|รายละเอียดสินค้า|สินค้าแนะนำ|Shopee|TikTok Shop/i.test(line);
+    if (!looksReview || hasNoise || line.length < 12 || line.length > TEXT_LIMITS.reviewText) continue;
+    const nearby = lines.slice(Math.max(0, index - 2), index + 3).join(" ");
+    const rating = Number(nearby.match(/([1-5])\s*(?:ดาว|★|⭐)/i)?.[1]);
+    reviews.push({
+      id: `review:${reviews.length + 1}`,
+      rating: Number.isFinite(rating) ? rating : undefined,
+      text: line,
+      variant: cleanText(nearby.match(/(?:ตัวเลือกสินค้า|variant)\s*[:：]?\s*([^|]{1,80})/i)?.[1], 120) || undefined,
+      createdAtText: cleanText(nearby.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0], 80) || undefined,
+    });
+  }
+  return reviews;
+}
+
+function extractTikTokSignals(product: ProductCapturePayload): SanitizedLocalAIInput["tiktok"] | undefined {
+  if (product.platform !== "tiktok_shop") return undefined;
+  const text = product.rawDomText;
+  const hashtags = Array.from(new Set(Array.from(text.matchAll(/#[\p{L}\p{N}_]+/gu)).map((match) => match[0]).slice(0, 20)));
+  return {
+    caption: cleanText(text.match(/(?:caption|คำบรรยาย)\s*[:：]?\s*([^\n]{1,500})/i)?.[1], 500) || undefined,
+    author: cleanText(text.match(/(?:Sold by|ขายโดย)\s+([^\n\r|]+)/i)?.[1] || product.shopName, 200) || undefined,
+    hashtags,
+    likeCount: cleanText(text.match(/([\d.,]+[kKmM]?)\s*(?:likes?|ถูกใจ)/i)?.[1], 80) || undefined,
+    commentCount: cleanText(text.match(/([\d.,]+[kKmM]?)\s*(?:comments?|ความคิดเห็น)/i)?.[1], 80) || undefined,
+    shareCount: cleanText(text.match(/([\d.,]+[kKmM]?)\s*(?:shares?|แชร์)/i)?.[1], 80) || undefined,
+    saveCount: cleanText(text.match(/([\d.,]+[kKmM]?)\s*(?:saves?|บันทึก)/i)?.[1], 80) || undefined,
+  };
+}
+
 export async function hashLocalAIInput(value: unknown): Promise<string> {
   const encoded = new TextEncoder().encode(JSON.stringify(value));
   const digest = await crypto.subtle.digest("SHA-256", encoded);
@@ -238,14 +300,20 @@ export async function sanitizeCaptureForLocalAI(product: ProductCapturePayload, 
   const evidence: EvidenceItem[] = [];
   addEvidence(evidence, "title", "product", product.productName || product.pageTitle, 0.9);
   addEvidence(evidence, "price", "current", product.priceCurrentText, 0.85);
+  if (product.commissionRatePercent != null) addEvidence(evidence, "metric", "commission_rate", `Commission rate ${product.commissionRatePercent}%`, 0.95);
   addEvidence(evidence, "rating", "score", product.ratingScoreText, 0.75);
   addEvidence(evidence, "metric", "sold", product.soldCountText, 0.75);
   addEvidence(evidence, "description", "product", product.descriptionText, 0.7);
   addEvidence(evidence, "specification", "product", product.specificationText, 0.65);
   addEvidence(evidence, "seller_info", "shop", [product.shopName, product.sellerLocationText].filter(Boolean).join(" | "), 0.7);
-  for (const [index, image] of selectedUrls(product.imageCandidates).entries()) {
-    addEvidence(evidence, "image", `selected_${index + 1}`, image, 0.6);
+  const selectedImageMeta = selectedImageEvidence(product.imageCandidates);
+  for (const image of selectedImageMeta) {
+    addEvidence(evidence, "image", image.id.replace(/^image:/, ""), [image.url, image.kind, image.role, image.qualityLabel].filter(Boolean).join(" | "), image.quality === "low_resolution" ? 0.35 : 0.65);
   }
+  const reviews = extractBoundedReviews(product);
+  for (const review of reviews.slice(0, 12)) addEvidence(evidence, "review", review.id.replace(/^review:/, ""), review.text, review.rating ? 0.75 : 0.55);
+  const tiktok = extractTikTokSignals(product);
+  for (const hashtag of tiktok?.hashtags ?? []) addEvidence(evidence, "hashtag", hashtag.replace(/^#/, ""), hashtag, 0.65);
 
   const base = {
     schemaVersion: "1.0" as const,
@@ -259,22 +327,32 @@ export async function sanitizeCaptureForLocalAI(product: ProductCapturePayload, 
       price: cleanText(product.priceCurrentText, 128) || undefined,
       originalPrice: cleanText(product.priceOriginalText, 128) || undefined,
       discount: cleanText(product.discountText, 64) || undefined,
+      commissionRatePercent: product.commissionRatePercent ?? null,
       rating: cleanText(product.ratingScoreText, 64) || undefined,
       soldCount: cleanText(product.soldCountText, 128) || undefined,
       description: cleanText(product.descriptionText, TEXT_LIMITS.description) || undefined,
       category: cleanText(product.categoryText, 300) || undefined,
+      categoryPath: Array.isArray((product as any).categoryPath) ? (product as any).categoryPath.map((part: unknown) => cleanText(part, 120)).filter(Boolean).slice(0, 8) : undefined,
       variants: cleanText(product.variantsText, 1000) || undefined,
       stock: cleanText(product.stockText, 300) || undefined,
       selectedImageUrls: selectedUrls(product.imageCandidates),
+      selectedImages: selectedImageMeta,
     },
     shop: {
       name: cleanText(product.shopName, 300) || undefined,
       location: cleanText(product.sellerLocationText, 300) || undefined,
       isMall: product.isMall,
     },
-    reviews: [],
+    reviews,
+    tiktok,
     comments: [],
     evidence: evidence.slice(0, TEXT_LIMITS.evidence),
+    sourceIds: {
+      externalProductId: product.externalProductId,
+      externalShopId: product.externalShopId,
+      canonicalSourceUrl: product.canonicalSourceUrl,
+    },
+    sanitizerVersion: "2026-05-23",
   };
   return { ...base, payloadHash: await hashLocalAIInput(base) };
 }
@@ -373,11 +451,14 @@ export function buildVideoBriefFromProduct(productBrief: ProductBrief, source: S
 }
 
 export function buildStorytellingHandoff(productBrief: ProductBrief, videoBrief: VideoBrief, source: SanitizedLocalAIInput): MarketplaceStorytellingHandoff {
-  const selectedImages = source.product.selectedImageUrls.map((url, index) => ({
-    url,
-    role: index === 0 ? "hero" as const : "detail" as const,
-    fidelity: "likely_product" as const,
-  }));
+  const imageMeta = Array.isArray((source.product as any).selectedImages) ? (source.product as any).selectedImages as Array<{ url: string; role?: string; kind?: string; quality?: string }> : [];
+  const fallbackImages: Array<{ url: string; role?: string; kind?: string; quality?: string }> = source.product.selectedImageUrls.map((url, index) => ({ url, role: index === 0 ? "hero" : "detail", kind: index === 0 ? "main" : "description", quality: "unknown" }));
+  const selectedImages = (imageMeta.length > 0 ? imageMeta : fallbackImages)
+    .map((image, index) => ({
+      url: image.url,
+      role: (image.role === "hero" || index === 0 ? "hero" : image.kind === "review" ? "review" : image.kind === "description" ? "detail" : "detail") as "hero" | "detail" | "review" | "proof" | "background",
+      fidelity: (image.quality === "low_resolution" ? "mismatch_risk" : "likely_product") as "confirmed_product" | "likely_product" | "unknown" | "mismatch_risk",
+    }));
   const claims = productBrief.keySellingPoints.slice(0, 8).map((text, index) => ({
     id: `claim:${index + 1}`,
     text,
@@ -387,6 +468,7 @@ export function buildStorytellingHandoff(productBrief: ProductBrief, videoBrief:
   }));
   const blockers = [
     ...(selectedImages.length === 0 ? ["missing_selected_product_image"] : []),
+    ...(selectedImages.some((image) => image.fidelity === "mismatch_risk") ? ["low_resolution_or_mismatch_risk_image"] : []),
     ...(claims.some((claim) => claim.status === "needs_review") ? ["unsupported_claims_need_review"] : []),
   ];
   return {
@@ -601,6 +683,26 @@ export function buildInsightSyncRequest(input: {
   rawCapture?: ProductCapturePayload;
   settings: LocalAISettings;
 }) {
+  const generationRunId = `${input.insightType}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`;
+  const selectedImageQuality = (input.source.product.selectedImages ?? []).map((image) => ({
+    evidenceId: typeof image.id === "string" ? image.id : undefined,
+    url: String(image.url ?? ""),
+    role: typeof image.role === "string" ? image.role : undefined,
+    kind: typeof image.kind === "string" ? image.kind : undefined,
+    quality: typeof image.quality === "string" ? image.quality : undefined,
+    qualityLabel: typeof image.qualityLabel === "string" ? image.qualityLabel : undefined,
+    width: typeof image.width === "number" ? image.width : undefined,
+    height: typeof image.height === "number" ? image.height : undefined,
+    warning: typeof image.warning === "string" ? image.warning : undefined,
+  })).filter((image) => image.url).slice(0, 30);
+  const dataQualityWarnings = Array.isArray((input.rawCapture as any)?.dataQualityWarnings)
+    ? (input.rawCapture as any).dataQualityWarnings.map((item: unknown) => String(item ?? "").trim()).filter(Boolean).slice(0, 50)
+    : [];
+  const sourceIds = {
+    externalProductId: input.rawCapture?.externalProductId ?? input.source.sourceIds?.externalProductId,
+    externalShopId: input.rawCapture?.externalShopId ?? input.source.sourceIds?.externalShopId,
+    canonicalSourceUrl: input.rawCapture?.canonicalSourceUrl ?? input.source.sourceIds?.canonicalSourceUrl,
+  };
   return {
     extensionVersion: input.extensionVersion,
     idempotencyKey: `${input.source.platform}:${input.source.payloadHash}:${input.insightType}:${input.provider}`,
@@ -615,6 +717,15 @@ export function buildInsightSyncRequest(input: {
     },
     insightType: input.insightType,
     provider: input.provider,
+    metadata: {
+      providerDecision: input.provider,
+      sanitizerVersion: input.source.sanitizerVersion ?? "2026-05-23",
+      generationRunId,
+      inputEvidenceIds: input.source.evidence.map((item) => item.id),
+      sourceIds,
+      selectedImageQuality,
+      dataQualityWarnings,
+    },
     payload: input.payload,
     rawCaptureIncluded: false,
     rawCapture: undefined,

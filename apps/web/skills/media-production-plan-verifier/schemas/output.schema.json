@@ -1,22 +1,135 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["skill_name", "skill_version", "contract_version", "verification_status", "score", "blocking_issues", "warnings", "missing_decisions", "recommended_revisions", "targeted_revision_map", "credit_risk_summary", "approval_readiness", "reviewer_notes", "allowed_next_actions"],
+  "required": [
+    "skill_name",
+    "skill_version",
+    "contract_version",
+    "verification_status",
+    "score",
+    "story_coherence_score",
+    "shot_completeness_score",
+    "node_readiness_score",
+    "product_truth_score",
+    "product_image_fidelity_score",
+    "feature_115_gate_result",
+    "provider_feasibility_score",
+    "budget_risk",
+    "blocking_issues",
+    "warnings",
+    "per_shot_warnings",
+    "per_node_warnings",
+    "product_image_fidelity_warnings",
+    "missing_decisions",
+    "recommended_revisions",
+    "targeted_revision_map",
+    "approval_invalidation_recommendations",
+    "credit_risk_summary",
+    "approval_readiness",
+    "reviewer_notes",
+    "allowed_next_actions"
+  ],
   "properties": {
     "skill_name": { "const": "media-production-plan-verifier" },
     "skill_version": { "type": "string" },
     "contract_version": { "type": "string" },
     "verification_status": { "type": "string", "enum": ["pass", "warning", "revise", "human_review", "block"] },
-    "score": { "type": "number" },
-    "blocking_issues": { "type": "array", "items": { "type": "object" } },
-    "warnings": { "type": "array", "items": { "type": "object" } },
+    "score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "story_coherence_score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "shot_completeness_score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "node_readiness_score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "product_truth_score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "product_image_fidelity_score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "feature_115_gate_result": {
+      "type": "object",
+      "required": ["status", "allowed_next_actions"],
+      "properties": {
+        "status": { "type": "string", "enum": ["pass", "warning", "block"] },
+        "readiness": { "type": "string" },
+        "allowed_next_actions": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "provider_feasibility_score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "budget_risk": {
+      "type": "object",
+      "required": ["level", "requires_credit_confirmation"],
+      "properties": {
+        "level": { "type": "string", "enum": ["low", "medium", "high", "blocked"] },
+        "requires_credit_confirmation": { "type": "boolean" },
+        "estimated_credits": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "blocking_issues": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "warnings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "per_shot_warnings": { "type": "array", "items": { "$ref": "#/$defs/shotFinding" } },
+    "per_node_warnings": { "type": "array", "items": { "$ref": "#/$defs/nodeFinding" } },
+    "product_image_fidelity_warnings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
     "missing_decisions": { "type": "array", "items": { "type": "string" } },
-    "recommended_revisions": { "type": "array", "items": { "type": "object" } },
-    "targeted_revision_map": { "type": "object" },
-    "credit_risk_summary": { "type": "object" },
-    "approval_readiness": { "type": "object" },
+    "recommended_revisions": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+    "targeted_revision_map": { "type": "object", "additionalProperties": true },
+    "approval_invalidation_recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["target_id", "reason"],
+        "properties": {
+          "target_id": { "type": "string" },
+          "target_type": { "type": "string", "enum": ["space", "shot", "node", "config_snapshot", "handoff"] },
+          "reason": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "credit_risk_summary": { "type": "object", "additionalProperties": true },
+    "approval_readiness": {
+      "type": "object",
+      "required": ["status", "can_approve"],
+      "properties": {
+        "status": { "type": "string", "enum": ["ready", "warning", "revise", "block"] },
+        "can_approve": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
     "reviewer_notes": { "type": "array", "items": { "type": "string" } },
     "allowed_next_actions": { "type": "array", "items": { "type": "string" } }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "required": ["code", "message", "severity"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "severity": { "type": "string", "enum": ["info", "warning", "blocker"] },
+        "shot_id": { "type": "string" },
+        "node_id": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "shotFinding": {
+      "type": "object",
+      "required": ["shot_id", "code", "message", "severity"],
+      "properties": {
+        "shot_id": { "type": "string" },
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "severity": { "type": "string", "enum": ["info", "warning", "blocker"] }
+      },
+      "additionalProperties": true
+    },
+    "nodeFinding": {
+      "type": "object",
+      "required": ["node_id", "code", "message", "severity"],
+      "properties": {
+        "node_id": { "type": "string" },
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "severity": { "type": "string", "enum": ["info", "warning", "blocker"] }
+      },
+      "additionalProperties": true
+    }
+  }
 }

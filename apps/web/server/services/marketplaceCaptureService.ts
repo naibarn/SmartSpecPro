@@ -214,6 +214,7 @@ export async function saveMarketplaceCaptureDraftEdits(captureId: string, input:
     brand: product.brand ?? null,
     shop: { name: product.shopName ?? null, isMall: product.isMall ?? null },
     price: product.price,
+    commissionRatePercent: product.commissionRatePercent ?? null,
     rating: product.rating,
     description: {
       rawText: product.description.rawText,
@@ -406,6 +407,7 @@ export async function getMarketplaceCaptureAdminOverview() {
       externalProductId: marketplaceProducts.externalProductId,
       productName: marketplaceProducts.productName,
       priceCurrent: marketplaceProducts.priceCurrent,
+      commissionRatePercent: marketplaceProducts.commissionRatePercent,
       ratingScore: marketplaceProducts.ratingScore,
       reviewCountText: marketplaceProducts.reviewCountText,
       soldCountText: marketplaceProducts.soldCountText,

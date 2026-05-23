@@ -133,6 +133,22 @@ export interface GeminiOmniValidationResult {
   issues: GeminiOmniValidationIssue[];
 }
 
+export interface GeminiOmniProductionNodeReference {
+  kind: "source_video" | "reference_image" | "product_image" | "character_asset" | "audio_asset";
+  url?: string;
+  assetId?: string;
+  outputRefId?: string;
+  providerPayloadKey?: "video_list" | "image_urls" | "character_ids" | "audio_ids" | string;
+  referenceUnitWeight?: number;
+}
+
+export interface GeminiOmniProductionNodeCapabilityInput {
+  prompt?: string | null;
+  references: GeminiOmniProductionNodeReference[];
+  duration?: unknown;
+  resolution?: unknown;
+}
+
 const SUPPORTED_DURATIONS = new Set(["4", "6", "8", "10"]);
 const SUPPORTED_RESOLUTIONS = new Set(["720p", "1080p", "4K"]);
 const SAFE_RELATIVE_MEDIA_PREFIXES = ["/uploads/", "/api/storage/files/"] as const;
@@ -341,4 +357,33 @@ export function buildGeminiOmniProviderExtraParams(input: GeminiOmniVideoValidat
     resolution: validation.normalized.resolution,
     gemini_omni_contract_version: GEMINI_OMNI_CONTRACT_VERSION,
   };
+}
+
+export function validateGeminiOmniProductionNodeCapability(input: GeminiOmniProductionNodeCapabilityInput): GeminiOmniValidationResult {
+  const imageUrls: string[] = [];
+  const videoList: GeminiOmniReferenceVideoInput[] = [];
+  const characterIds: string[] = [];
+  const audioIds: string[] = [];
+
+  for (const reference of input.references) {
+    if (reference.kind === "source_video") {
+      videoList.push({ url: reference.url, videoUrl: reference.url });
+    } else if (reference.kind === "reference_image" || reference.kind === "product_image") {
+      if (reference.url) imageUrls.push(reference.url);
+    } else if (reference.kind === "character_asset") {
+      if (reference.assetId) characterIds.push(reference.assetId);
+    } else if (reference.kind === "audio_asset") {
+      if (reference.assetId) audioIds.push(reference.assetId);
+    }
+  }
+
+  return validateGeminiOmniVideoInput({
+    prompt: input.prompt,
+    imageUrls,
+    videoList,
+    characterIds,
+    audioIds,
+    duration: input.duration,
+    resolution: input.resolution,
+  });
 }

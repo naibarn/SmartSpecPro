@@ -68,7 +68,7 @@ export default function AdminMarketplaceCapture() {
                       <th className="px-3 py-2">Product</th>
                       <th className="px-3 py-2">Platform</th>
                       <th className="px-3 py-2">Shop / Item</th>
-                      <th className="px-3 py-2">Price</th>
+                      <th className="px-3 py-2">Price / Commission</th>
                       <th className="px-3 py-2">Rating / Reviews / Sold</th>
                       <th className="px-3 py-2">Updated</th>
                     </tr>
@@ -84,7 +84,7 @@ export default function AdminMarketplaceCapture() {
                         </td>
                         <td className="px-3 py-2">{product.platform}</td>
                         <td className="px-3 py-2">{product.externalShopId ?? "-"} / {product.externalProductId ?? "-"}</td>
-                        <td className="px-3 py-2">{product.priceCurrent ?? "-"}</td>
+                        <td className="px-3 py-2">{product.priceCurrent ?? "-"} / {product.commissionRatePercent ?? "-"}%</td>
                         <td className="px-3 py-2">{product.ratingScore ?? "-"} / {product.reviewCountText ?? "-"} / {product.soldCountText ?? "-"}</td>
                         <td className="px-3 py-2">{fmtDate(product.updatedAt)}</td>
                       </tr>

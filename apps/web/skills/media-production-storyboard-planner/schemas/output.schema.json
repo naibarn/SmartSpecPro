@@ -1,26 +1,306 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["skill_name", "skill_version", "contract_version", "production_goal_summary", "production_bible", "creative_strategy", "storyboard_outline", "scene_timeline", "shot_plan", "asset_requirements", "provider_candidate_plan", "batch_execution_plan", "credit_time_estimate", "risks", "assumptions", "approval_checklist", "revision_targets", "next_actions"],
+  "required": [
+    "skill_name",
+    "skill_version",
+    "contract_version",
+    "production_goal_summary",
+    "production_bible",
+    "creative_strategy",
+    "production_space",
+    "shot_count_estimate",
+    "story_beats",
+    "shots",
+    "shot_sequence",
+    "shot_child_node_plan",
+    "canvas_nodes",
+    "canvas_edges",
+    "node_tool_bindings",
+    "node_config_suggestions",
+    "shot_product_usage",
+    "product_evidence_manifest",
+    "feature_115_import_warnings",
+    "unsupported_tool_requests",
+    "handoff_plan",
+    "credit_and_time_estimate",
+    "budget_summary",
+    "readiness_summary",
+    "warnings",
+    "approval_checklist",
+    "revision_targets",
+    "next_actions"
+  ],
   "properties": {
     "skill_name": { "const": "media-production-storyboard-planner" },
     "skill_version": { "type": "string" },
     "contract_version": { "type": "string" },
-    "production_goal_summary": { "type": "object" },
-    "production_bible": { "type": "object" },
-    "creative_strategy": { "type": "object" },
-    "storyboard_outline": { "type": "array", "items": { "type": "object" } },
-    "scene_timeline": { "type": "array", "items": { "type": "object" } },
-    "shot_plan": { "type": "array", "items": { "type": "object" } },
-    "asset_requirements": { "type": "array", "items": { "type": "object" } },
-    "provider_candidate_plan": { "type": "array", "items": { "type": "object" } },
-    "batch_execution_plan": { "type": "object" },
-    "credit_time_estimate": { "type": "object" },
-    "risks": { "type": "array", "items": { "type": "object" } },
-    "assumptions": { "type": "array", "items": { "type": "string" } },
-    "approval_checklist": { "type": "array", "items": { "type": "object" } },
-    "revision_targets": { "type": "array", "items": { "type": "object" } },
+    "production_goal_summary": { "type": "object", "additionalProperties": true },
+    "production_bible": { "type": "object", "additionalProperties": true },
+    "creative_strategy": { "type": "object", "additionalProperties": true },
+    "production_space": { "$ref": "#/$defs/productionSpace" },
+    "shot_count_estimate": {
+      "type": "object",
+      "required": ["count", "rationale"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 1 },
+        "rationale": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "story_beats": { "type": "array", "items": { "$ref": "#/$defs/storyBeat" } },
+    "shots": { "type": "array", "items": { "$ref": "#/$defs/productionShot" }, "minItems": 1 },
+    "shot_sequence": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "shot_child_node_plan": { "type": "array", "items": { "$ref": "#/$defs/shotChildNodePlan" } },
+    "canvas_nodes": { "type": "array", "items": { "$ref": "#/$defs/productionFlowNode" }, "minItems": 1 },
+    "canvas_edges": { "type": "array", "items": { "$ref": "#/$defs/productionFlowEdge" } },
+    "node_tool_bindings": { "type": "array", "items": { "$ref": "#/$defs/nodeToolBinding" } },
+    "node_config_suggestions": { "type": "array", "items": { "$ref": "#/$defs/nodeConfigSuggestion" } },
+    "shot_product_usage": { "type": "array", "items": { "$ref": "#/$defs/shotProductUsage" } },
+    "product_evidence_manifest": { "type": "array", "items": { "$ref": "#/$defs/productEvidenceManifest" } },
+    "feature_115_import_warnings": { "type": "array", "items": { "$ref": "#/$defs/warning" } },
+    "unsupported_tool_requests": { "type": "array", "items": { "$ref": "#/$defs/warning" } },
+    "handoff_plan": { "type": "object", "additionalProperties": true },
+    "credit_and_time_estimate": { "$ref": "#/$defs/creditAndTimeEstimate" },
+    "budget_summary": { "$ref": "#/$defs/budgetSummary" },
+    "readiness_summary": { "$ref": "#/$defs/readinessSummary" },
+    "warnings": { "type": "array", "items": { "$ref": "#/$defs/warning" } },
+    "approval_checklist": { "type": "array", "items": { "$ref": "#/$defs/approvalItem" } },
+    "revision_targets": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
     "next_actions": { "type": "array", "items": { "type": "string" } }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "productionSpace": {
+      "type": "object",
+      "required": ["id", "version", "brief", "shots", "flowNodes", "flowEdges", "productEvidenceManifests", "warnings", "budgetSummary", "readinessSummary"],
+      "properties": {
+        "id": { "type": "string" },
+        "version": { "type": "integer", "minimum": 1 },
+        "brief": { "type": "object", "additionalProperties": true },
+        "shots": { "type": "array", "items": { "$ref": "#/$defs/productionShot" }, "minItems": 1 },
+        "flowNodes": { "type": "array", "items": { "$ref": "#/$defs/productionFlowNode" }, "minItems": 1 },
+        "flowEdges": { "type": "array", "items": { "$ref": "#/$defs/productionFlowEdge" } },
+        "productEvidenceManifests": { "type": "array", "items": { "$ref": "#/$defs/productEvidenceManifest" } },
+        "warnings": { "type": "array", "items": { "$ref": "#/$defs/warning" } },
+        "budgetSummary": { "$ref": "#/$defs/budgetSummary" },
+        "readinessSummary": { "$ref": "#/$defs/readinessSummary" }
+      },
+      "additionalProperties": true
+    },
+    "productionShot": {
+      "type": "object",
+      "required": ["id", "order", "title", "purpose", "duration_seconds", "node_ids", "readiness"],
+      "properties": {
+        "id": { "type": "string" },
+        "order": { "type": "integer", "minimum": 1 },
+        "title": { "type": "string" },
+        "purpose": { "type": "string" },
+        "duration_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "node_ids": { "type": "array", "items": { "type": "string" } },
+        "product_asset_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "claim_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "readiness": { "type": "string", "enum": ["ready", "warning", "revise", "block"] }
+      },
+      "additionalProperties": true
+    },
+    "productionFlowNode": {
+      "type": "object",
+      "required": ["id", "type", "label", "position", "data"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "label": { "type": "string" },
+        "position": {
+          "type": "object",
+          "required": ["x", "y"],
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" }
+          },
+          "additionalProperties": false
+        },
+        "data": {
+          "type": "object",
+          "required": ["shotId", "readiness"],
+          "properties": {
+            "shotId": { "type": "string" },
+            "readiness": { "type": "string", "enum": ["ready", "warning", "revise", "block"] },
+            "toolBindingId": { "type": "string" },
+            "configSnapshotId": { "type": "string" },
+            "outputRefs": { "type": "array", "items": { "$ref": "#/$defs/nodeOutputRef" }, "default": [] }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "productionFlowEdge": {
+      "type": "object",
+      "required": ["id", "source", "target"],
+      "properties": {
+        "id": { "type": "string" },
+        "source": { "type": "string" },
+        "target": { "type": "string" },
+        "label": { "type": "string" },
+        "kind": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "nodeToolBinding": {
+      "type": "object",
+      "required": ["node_id", "surface", "mode", "adapterId", "canConfigure", "canGenerate", "canSaveToNode", "requiresApprovalBeforeGenerate", "configSchemaVersion", "outputSchemaVersion"],
+      "properties": {
+        "node_id": { "type": "string" },
+        "surface": { "$ref": "#/$defs/productionSurface" },
+        "mode": { "type": "string" },
+        "route": { "type": "string" },
+        "skillId": { "type": "string" },
+        "modelId": { "type": "string" },
+        "adapterId": { "type": "string" },
+        "canConfigure": { "type": "boolean" },
+        "canGenerate": { "type": "boolean" },
+        "canSaveToNode": { "type": "boolean" },
+        "requiresApprovalBeforeGenerate": { "type": "boolean" },
+        "configSchemaVersion": { "type": "string" },
+        "outputSchemaVersion": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "nodeConfigSuggestion": {
+      "type": "object",
+      "required": ["node_id", "surface", "mode", "config_snapshot"],
+      "properties": {
+        "node_id": { "type": "string" },
+        "surface": { "$ref": "#/$defs/productionSurface" },
+        "mode": { "type": "string" },
+        "config_snapshot": {
+          "type": "object",
+          "required": ["id", "nodeId", "nodeVersion", "surface", "mode", "configHash"],
+          "properties": {
+            "id": { "type": "string" },
+            "nodeId": { "type": "string" },
+            "nodeVersion": { "type": "integer", "minimum": 1 },
+            "surface": { "$ref": "#/$defs/productionSurface" },
+            "mode": { "type": "string" },
+            "prompt": { "type": "string" },
+            "referenceAssetIds": { "type": "array", "items": { "type": "string" }, "default": [] },
+            "productEvidenceRefs": { "type": "array", "items": { "type": "object", "additionalProperties": true }, "default": [] },
+            "dynamicFormValues": { "type": "object", "additionalProperties": true },
+            "providerPayloadPreview": { "type": "object", "additionalProperties": true },
+            "configHash": { "type": "string" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "shotChildNodePlan": {
+      "type": "object",
+      "required": ["shot_id", "node_ids"],
+      "properties": {
+        "shot_id": { "type": "string" },
+        "node_ids": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "shotProductUsage": {
+      "type": "object",
+      "required": ["shot_id", "product_asset_ids", "claim_ids", "risk"],
+      "properties": {
+        "shot_id": { "type": "string" },
+        "product_asset_ids": { "type": "array", "items": { "type": "string" } },
+        "claim_ids": { "type": "array", "items": { "type": "string" } },
+        "risk": { "type": "string", "enum": ["low", "medium", "high", "blocked"] }
+      },
+      "additionalProperties": true
+    },
+    "productEvidenceManifest": {
+      "type": "object",
+      "required": ["shot_id", "product_asset_ids", "claim_ids", "evidence_ids", "readiness"],
+      "properties": {
+        "shot_id": { "type": "string" },
+        "product_asset_ids": { "type": "array", "items": { "type": "string" } },
+        "claim_ids": { "type": "array", "items": { "type": "string" } },
+        "evidence_ids": { "type": "array", "items": { "type": "string" } },
+        "readiness": { "type": "string", "enum": ["ready", "ready_with_warnings", "needs_user_review", "insufficient_evidence", "blocked"] }
+      },
+      "additionalProperties": true
+    },
+    "storyBeat": {
+      "type": "object",
+      "required": ["id", "summary"],
+      "properties": {
+        "id": { "type": "string" },
+        "summary": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "warning": {
+      "type": "object",
+      "required": ["code", "message", "severity"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "severity": { "type": "string", "enum": ["info", "warning", "blocker"] },
+        "shot_id": { "type": "string" },
+        "node_id": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "creditAndTimeEstimate": {
+      "type": "object",
+      "required": ["estimated_credits", "estimated_minutes"],
+      "properties": {
+        "estimated_credits": { "type": "number", "minimum": 0 },
+        "estimated_minutes": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "budgetSummary": {
+      "type": "object",
+      "required": ["status", "estimated_credits", "requires_credit_confirmation"],
+      "properties": {
+        "status": { "type": "string", "enum": ["within_budget", "near_limit", "over_budget", "unknown"] },
+        "estimated_credits": { "type": "number", "minimum": 0 },
+        "requires_credit_confirmation": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "readinessSummary": {
+      "type": "object",
+      "required": ["status", "blocking_issue_count", "warning_count"],
+      "properties": {
+        "status": { "type": "string", "enum": ["ready", "warning", "revise", "block"] },
+        "blocking_issue_count": { "type": "integer", "minimum": 0 },
+        "warning_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "approvalItem": {
+      "type": "object",
+      "required": ["id", "label", "status"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "status": { "type": "string", "enum": ["pass", "warning", "block", "pending"] }
+      },
+      "additionalProperties": true
+    },
+    "nodeOutputRef": {
+      "type": "object",
+      "required": ["id", "kind"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string" },
+        "url": { "type": "string" },
+        "configHash": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "productionSurface": {
+      "type": "string",
+      "enum": ["production_workspace", "production_skill", "production_asset_drawer", "production_qa", "production_gate", "production_review", "production_timeline", "video_shot", "image", "video", "audio", "character_wizard", "audio_asset_wizard", "caption_editor", "storyboard_review", "video_edit", "render_surface", "publish_export"]
+    }
+  }
 }

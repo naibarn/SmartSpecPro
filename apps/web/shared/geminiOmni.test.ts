@@ -5,6 +5,7 @@ import {
   getGeminiOmniVoicePreset,
   isGeminiOmniVoicePresetId,
   normalizeGeminiOmniVideoList,
+  validateGeminiOmniProductionNodeCapability,
   validateGeminiOmniVideoInput,
 } from "./geminiOmni";
 
@@ -141,5 +142,29 @@ describe("geminiOmni shared contract", () => {
       tone: "bright",
     });
     expect(GEMINI_OMNI_VOICE_PRESETS.every((preset) => preset.description.length >= 80)).toBe(true);
+  });
+
+  it("validates production node references through the same Gemini Omni provider limits", () => {
+    const result = validateGeminiOmniProductionNodeCapability({
+      prompt: "Cinematic marketplace demo",
+      duration: "8s",
+      resolution: "1080p",
+      references: [
+        { kind: "product_image", url: "https://cdn.example.com/product.png", providerPayloadKey: "image_urls" },
+        { kind: "reference_image", url: "https://cdn.example.com/scene.png", providerPayloadKey: "image_urls" },
+        { kind: "source_video", url: "https://cdn.example.com/source.mp4", providerPayloadKey: "video_list" },
+        { kind: "character_asset", assetId: "char_1", providerPayloadKey: "character_ids" },
+        { kind: "audio_asset", assetId: "audio_1", providerPayloadKey: "audio_ids" },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.normalized).toMatchObject({
+      imageUrls: ["https://cdn.example.com/product.png", "https://cdn.example.com/scene.png"],
+      characterIds: ["char_1"],
+      audioIds: ["audio_1"],
+      hasSourceVideo: true,
+      referenceUnitCount: 5,
+    });
   });
 });

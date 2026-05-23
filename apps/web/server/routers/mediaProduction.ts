@@ -9,6 +9,7 @@ import {
   mediaProductionPlanVerifications,
   mediaProductionPlanVersions,
   mediaProductionRuns,
+  mediaProductionSpaces,
   mediaStudioStoryboardReviews,
   videoEditorProjects,
 } from "../../drizzle/schema";
@@ -16,18 +17,353 @@ import { resolveTenantIdVarchar } from "../services/tenantContext";
 import {
   buildProductionOutputProjectionIdentity,
   buildProductionStableHash,
+  computeProductionSpaceReadiness,
+  deriveProductionHandoffPayload,
   evaluateProductionAssetPlanReadiness,
+  getProductionLayerVersions,
+  getProductionNodeCatalogEntry,
+  isProductionNodeKind,
+  validateProductionSpace,
   validateProductionRunTransition,
+  type ProductStoryboardAsset,
+  type ProductionNodeConfigSnapshot,
+  type ProductionNodeKind,
+  type ProductionNodeOutputRef,
+  type ProductionNodeStatus,
+  type ProductionDownstreamResultImport,
+  type ProductionShotProductUse,
+  type ProductionShot,
+  type ProductionSpace,
   type ProductionAssetPlan,
+  type ProductionGoal,
   type ProductionRunStatus,
 } from "../../shared/mediaProduction";
+import {
+  archiveProductionSpace,
+  cancelProductionExecution,
+  deleteProductionSpace,
+  getProductionNodeConfig,
+  getProductionSpace,
+  importProductionDownstreamResult,
+  previewProductionExecutionPlan,
+  redactProductionSpaceExport,
+  reconcilePendingProductionExecutions,
+  reconcileProductionExecution,
+  reconcileProductionProviderCallback,
+  repairProductionStaleOutputRefs,
+  restoreProductionSpace,
+  saveProductionBrief,
+  saveProductionNodeConfig,
+  saveProductionShot,
+  saveProductionShotProductUse,
+  saveProductionSpace,
+  scheduleProductionExecution,
+  updateProductionProductStoryboardAsset,
+} from "../services/productionSpaceService";
 import { and, desc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
-const productionGoalSchema = z.record(z.any());
-const productionPayloadSchema = z.record(z.any());
+const unknownRecordSchema = z.record(z.string(), z.unknown());
+const productionPayloadSchema = unknownRecordSchema;
+const productionNodeStatusSchema = z.enum([
+  "draft",
+  "needs_config",
+  "ready",
+  "queued",
+  "reserving_credits",
+  "warning",
+  "blocked",
+  "approved",
+  "running",
+  "completed",
+  "qa_running",
+  "qa_passed",
+  "qa_warning",
+  "needs_revision",
+  "failed",
+  "cancelled",
+  "disabled",
+] satisfies [ProductionNodeStatus, ...ProductionNodeStatus[]]);
+const productionNodeKindSchema = z.custom<ProductionNodeKind>(
+  (value) => isProductionNodeKind(value),
+  { message: "Unsupported production node kind" },
+);
+const productionGoalSchema: z.ZodType<ProductionGoal> = z.object({
+  title: z.string().max(256).optional(),
+  summary: z.string().max(20_000),
+  goalType: z.string().max(80).optional(),
+  audience: z.string().max(256).optional(),
+  platform: z.string().max(120).optional(),
+  durationSeconds: z.number().finite().positive().max(86_400).optional(),
+  aspectRatio: z.string().max(80).optional(),
+  language: z.string().max(80).optional(),
+  brandTruth: z.string().max(20_000).optional(),
+  creativeDirection: z.string().max(20_000).optional(),
+  constraintsText: z.string().max(20_000).optional(),
+  productContext: unknownRecordSchema.optional(),
+  characterContext: unknownRecordSchema.optional(),
+  voiceAudioStrategy: unknownRecordSchema.optional(),
+  visualStyle: unknownRecordSchema.optional(),
+  constraints: unknownRecordSchema.optional(),
+  tabSnapshots: unknownRecordSchema.optional(),
+  contractVersion: z.string().max(64).optional(),
+}).passthrough() as unknown as z.ZodType<ProductionGoal>;
+const productionReferenceSchema = z.object({
+  id: z.string().min(1).max(256),
+  kind: z.string().min(1).max(64),
+  title: z.string().min(1).max(512),
+  url: z.string().max(4096).optional(),
+  thumbnailUrl: z.string().max(4096).optional(),
+  assetId: z.string().max(256).optional(),
+  outputRefId: z.string().max(256).optional(),
+  source: z.string().min(1).max(256),
+  provenance: unknownRecordSchema.optional(),
+  providerPayloadKey: z.string().max(256).optional(),
+  referenceUnitWeight: z.number().finite().optional(),
+  zone: z.enum(["cast", "products", "scene_mood", "audio", "generated", "targets"]).optional(),
+  role: z.string().max(120).optional(),
+  locked: z.boolean().optional(),
+  warnings: z.array(z.string().max(1000)).optional(),
+  approvalState: z.enum(["approved", "needs_review", "blocked"]).optional(),
+  sku: z.string().max(256).optional(),
+  variantId: z.string().max(256).optional(),
+}).passthrough();
+const productionNodeConfigSchema: z.ZodType<ProductionNodeConfigSnapshot> = z.object({
+  snapshotId: z.string().min(1).max(256),
+  version: z.number().int().nonnegative(),
+  toolSurface: z.enum(["production", "image", "video", "audio", "storyboard_review", "video_edit"]),
+  adapter: z.enum(["image", "video", "tts", "preview_only", "disabled"]),
+  config: unknownRecordSchema,
+  configHash: z.string().min(1).max(256),
+  manuallyEdited: z.boolean().optional(),
+  createdAt: z.string().max(128).optional(),
+  updatedAt: z.string().max(128).optional(),
+}).passthrough() as unknown as z.ZodType<ProductionNodeConfigSnapshot>;
+const productionNodeToolBindingSchema = z.object({
+  bindingId: z.string().min(1).max(256),
+  nodeKind: productionNodeKindSchema,
+  toolSurface: z.enum(["production", "image", "video", "audio", "storyboard_review", "video_edit"]),
+  adapter: z.enum(["image", "video", "tts", "preview_only", "disabled"]),
+  adapterStatus: z.enum(["mvp_enabled", "preview_only", "deferred"]),
+  requiresConfirmation: z.boolean(),
+  generationCreditRisk: z.enum(["none", "requires_explicit_confirmation"]),
+  supportedInMvp: z.boolean(),
+}).superRefine((binding, ctx) => {
+  const catalogEntry = getProductionNodeCatalogEntry(binding.nodeKind);
+  if (!catalogEntry) return;
+  if (
+    catalogEntry.adapterStatus !== binding.adapterStatus
+    || catalogEntry.toolSurface !== binding.toolSurface
+    || catalogEntry.adapter !== binding.adapter
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Production node tool binding does not match catalog metadata",
+      path: ["adapterStatus"],
+    });
+  }
+});
+const productionOutputRefSchema: z.ZodType<ProductionNodeOutputRef> = z.object({
+  outputRefId: z.string().min(1).max(256),
+  nodeId: z.string().min(1).max(256),
+  kind: z.enum(["image", "video", "audio", "caption", "manifest", "project"]),
+  url: z.string().max(4096).optional(),
+  thumbnailUrl: z.string().max(4096).optional(),
+  storageKey: z.string().max(1024).optional(),
+  libraryItemId: z.string().max(256).optional(),
+  mediaTaskId: z.string().max(256).optional(),
+  mediaId: z.string().max(256).optional(),
+  providerTaskId: z.string().max(256).optional(),
+  configHash: z.string().max(256).optional(),
+  generatedAt: z.string().max(128).optional(),
+  metadata: unknownRecordSchema.optional(),
+}).passthrough() as unknown as z.ZodType<ProductionNodeOutputRef>;
+const productionNodeSchema = z.object({
+  id: z.string().min(1).max(256),
+  kind: productionNodeKindSchema,
+  title: z.string().min(1).max(512),
+	  status: productionNodeStatusSchema,
+	  shotId: z.string().max(256).optional(),
+	  toolBindingId: z.string().max(256).optional(),
+	  toolBinding: productionNodeToolBindingSchema.optional(),
+	  configSnapshot: productionNodeConfigSchema.optional(),
+  referenceInputs: z.array(productionReferenceSchema).optional(),
+  outputRefs: z.array(productionOutputRefSchema).optional(),
+  readinessIssues: z.array(z.string().max(1000)).optional(),
+  estimatedCredits: z.number().finite().nonnegative().optional(),
+  position: z.object({ x: z.number().finite(), y: z.number().finite() }).optional(),
+  locked: z.boolean().optional(),
+  approvedAt: z.string().max(128).optional(),
+  metadata: unknownRecordSchema.optional(),
+  collapsed: z.boolean().optional(),
+});
+const productionShotSchema: z.ZodType<ProductionShot> = z.object({
+  id: z.string().min(1).max(256),
+  title: z.string().min(1).max(512),
+  order: z.number().int().nonnegative(),
+  durationSeconds: z.number().finite().positive().max(86_400).optional(),
+  version: z.number().int().nonnegative().optional(),
+  storyBeat: z.string().max(10_000).optional(),
+  shotType: z.enum(["hook", "problem", "proof", "demo", "transition", "cta", "broll", "interview", "custom"]).optional(),
+  cameraIntent: z.string().max(10_000).optional(),
+  sourceVideoControl: unknownRecordSchema.optional(),
+  characterAssetIds: z.array(z.string().min(1).max(256)).optional(),
+  customerJourneyStage: z.string().max(256).optional(),
+  mustShow: z.array(z.string().max(1000)).optional(),
+  mustAvoid: z.array(z.string().max(1000)).optional(),
+  script: z.string().max(100_000).optional(),
+  visualIntent: z.string().max(20_000).optional(),
+  audioIntent: z.string().max(20_000).optional(),
+  productAssetIds: z.array(z.string().min(1).max(256)).optional(),
+  nodeIds: z.array(z.string().min(1).max(256)),
+  locked: z.boolean().optional(),
+  status: z.enum(["draft", "ready", "blocked", "approved", "completed"]).optional(),
+}) as unknown as z.ZodType<ProductionShot>;
+const productionEdgeSchema = z.object({
+  id: z.string().min(1).max(256),
+  source: z.string().min(1).max(256),
+  target: z.string().min(1).max(256),
+  label: z.string().max(512).optional(),
+  kind: z.enum(["dependency", "reference", "handoff", "qa", "uses_asset", "requires_before", "generates_for", "qa_of", "approval_gate", "handoff_to", "fallback_to"]).optional(),
+}).passthrough();
+const productClaimEvidenceSchema = z.object({
+  claimId: z.string().min(1).max(256),
+  evidenceIds: z.array(z.string().min(1).max(256)),
+  status: z.enum(["approved", "needs_review", "blocked"]),
+  riskLevel: z.enum(["low", "medium", "high"]).optional(),
+});
+const productStoryboardAssetSchema = z.object({
+  id: z.string().min(1).max(256),
+  productId: z.string().min(1).max(256),
+  title: z.string().min(1).max(512),
+  imageUrl: z.string().max(4096).optional(),
+  sku: z.string().max(256).optional(),
+  variantId: z.string().max(256).optional(),
+  approvalState: z.enum(["approved", "needs_review", "blocked"]).optional(),
+  role: z.enum(["hero", "detail", "use_case", "review", "comparison", "background", "packshot", "label_close_up", "texture_detail", "before_after", "cta_end_card"]).optional(),
+  frameStrategy: z.enum(["image_reference", "start_frame", "stop_frame", "start_and_stop", "packshot_insert"]).optional(),
+  requiredVisualAccuracy: z.enum(["standard", "high", "strict"]).optional(),
+  reviewNotes: z.array(z.string().max(1000)).optional(),
+  claimEvidence: z.array(productClaimEvidenceSchema),
+  provenance: unknownRecordSchema.optional(),
+});
+const productionProductEvidenceManifestSchema = z.object({
+  manifestId: z.string().min(1).max(256),
+  products: z.array(productStoryboardAssetSchema),
+  requiredClaimIds: z.array(z.string().min(1).max(256)),
+  status: z.enum(["ready", "warning", "blocked"]),
+  warnings: z.array(z.string().max(1000)),
+});
+const productionSpaceSchema: z.ZodType<ProductionSpace> = z.object({
+  schemaVersion: z.literal("1.0.0"),
+  productionRunId: z.string().min(1).max(256),
+  version: z.number().int().nonnegative(),
+  status: z.enum(["goal_draft", "goal_ready", "plan_generating", "plan_ready_for_review", "plan_verifying", "plan_verification_failed", "plan_needs_revision", "plan_approved", "production_bible_ready", "asset_plan_ready", "asset_generation_running", "asset_qa_failed", "asset_qa_passed", "storyboard_ready", "quality_gate_running", "quality_gate_passed", "quality_gate_needs_revision", "human_review_required", "final_provider_selected", "final_preflight_passed", "final_generating", "final_qa_failed", "final_qa_passed", "revision_running", "completed", "cancelled", "failed"]),
+  brief: productionGoalSchema,
+  shots: z.array(productionShotSchema),
+  flowNodes: z.array(productionNodeSchema),
+  flowEdges: z.array(productionEdgeSchema),
+  contextAssets: z.array(productionReferenceSchema),
+  productEvidenceManifest: productionProductEvidenceManifestSchema.optional(),
+  shotProductUsage: z.array(unknownRecordSchema).optional(),
+  actionAttempts: z.array(unknownRecordSchema).optional(),
+	  auditEvents: z.array(unknownRecordSchema).optional(),
+	  metrics: unknownRecordSchema.optional(),
+	  planningSelection: unknownRecordSchema.optional(),
+	  layerVersions: unknownRecordSchema.optional(),
+  approvalState: unknownRecordSchema.optional(),
+  downstreamResultRecords: z.array(unknownRecordSchema).optional(),
+  cues: z.array(unknownRecordSchema).optional(),
+  warnings: z.array(z.string().max(1000)).optional(),
+  featureFlags: z.record(z.string(), z.boolean()).optional(),
+  accessPolicy: z.object({
+    ownerUserId: z.number().int().positive().optional(),
+    collaborators: z.array(z.object({
+      userId: z.number().int().positive(),
+      level: z.enum(["read", "write", "approve", "execute", "owner"]),
+      canApprove: z.boolean().optional(),
+      canExecute: z.boolean().optional(),
+    })).optional(),
+    approvalRequired: z.boolean().optional(),
+    approvedByUserIds: z.array(z.number().int().positive()).optional(),
+  }).optional(),
+  updatedAt: z.string().max(128).optional(),
+}) as unknown as z.ZodType<ProductionSpace>;
+const productionShotProductUseSchema: z.ZodType<ProductionShotProductUse> = z.object({
+  shotId: z.string().min(1).max(256),
+  productStoryboardAssetIds: z.array(z.string().min(1).max(256)),
+  claimIds: z.array(z.string().min(1).max(256)),
+  evidenceIds: z.array(z.string().min(1).max(256)),
+  customerJourneyStage: z.string().max(256).optional(),
+  frameStrategy: z.enum(["image_reference", "start_frame", "stop_frame", "start_and_stop", "packshot_insert"]).optional(),
+  requiredVisualAccuracy: z.enum(["standard", "high", "strict"]).optional(),
+  mustShow: z.array(z.string().max(1000)).optional(),
+  mustAvoid: z.array(z.string().max(1000)).optional(),
+  qaStatus: z.enum(["pending", "pass", "warning", "blocked"]).optional(),
+  warnings: z.array(z.string().max(1000)).optional(),
+}).passthrough() as unknown as z.ZodType<ProductionShotProductUse>;
+const productionProductPatchSchema: z.ZodType<Partial<ProductStoryboardAsset>> = z.object({
+  role: z.enum(["hero", "detail", "use_case", "review", "comparison", "background", "packshot", "label_close_up", "texture_detail", "before_after", "cta_end_card"]).optional(),
+  frameStrategy: z.enum(["image_reference", "start_frame", "stop_frame", "start_and_stop", "packshot_insert"]).optional(),
+  requiredVisualAccuracy: z.enum(["standard", "high", "strict"]).optional(),
+  claimEvidence: z.array(unknownRecordSchema).optional(),
+  imageUrl: z.string().max(4096).optional(),
+  provenance: unknownRecordSchema.optional(),
+}).passthrough() as unknown as z.ZodType<Partial<ProductStoryboardAsset>>;
 const productionSurfaceSchema = z.enum(["storyboard_review", "video_edit"]);
+const productionExecutionScopeSchema = z.enum(["node", "shot", "batch"]);
+const productionCueSchema = z.object({
+  id: z.string().min(1).max(256),
+  shotId: z.string().min(1).max(256),
+  startSeconds: z.number().finite().nonnegative(),
+  endSeconds: z.number().finite().nonnegative(),
+  kind: z.enum(["shot", "caption", "audio", "transition", "product"]),
+  label: z.string().min(1).max(1000),
+  metadata: unknownRecordSchema.optional(),
+}).passthrough();
+const productionDownstreamResultImportSchema: z.ZodType<ProductionDownstreamResultImport> = z.object({
+  recordId: z.string().min(1).max(256),
+  sourceSpaceVersion: z.number().int().nonnegative(),
+  target: productionSurfaceSchema,
+  selectedTakeRefs: z.array(productionOutputRefSchema).optional(),
+  timelineCueUpdates: z.array(productionCueSchema).optional(),
+  captionUpdates: z.array(productionCueSchema).optional(),
+  productWarningResolutions: z.array(z.object({
+    productAssetId: z.string().min(1).max(256),
+    claimId: z.string().min(1).max(256).optional(),
+    status: z.enum(["approved", "needs_review", "blocked"]),
+    warning: z.string().max(2000).optional(),
+  }).passthrough()).optional(),
+  manualApprovals: z.array(z.object({
+    targetId: z.string().min(1).max(256),
+    targetKind: z.enum(["shot", "node", "product", "cue"]),
+    approved: z.boolean(),
+    note: z.string().max(2000).optional(),
+  }).passthrough()).optional(),
+  warnings: z.array(z.string().max(1000)).optional(),
+  allowLockedUpdates: z.boolean().optional(),
+}).passthrough() as unknown as z.ZodType<ProductionDownstreamResultImport>;
 const stringArraySchema = z.array(z.string().min(1).max(256)).default([]);
+const mediaTaskStatusSchema = z.enum(["pending", "processing", "completed", "failed", "cancelled"]);
+const productionMediaTaskSchema = z.object({
+  id: z.string().min(1).max(256),
+  taskId: z.string().max(256).optional(),
+  celeryTaskId: z.string().max(256).optional(),
+  userId: z.string().max(256),
+  mediaType: z.enum(["image", "video", "audio"]),
+  status: mediaTaskStatusSchema,
+  model: z.string().max(256),
+  prompt: z.string().max(20_000),
+  parameters: unknownRecordSchema.optional(),
+  resultUrl: z.string().max(4096).optional(),
+  resultData: unknownRecordSchema.optional(),
+  errorMessage: z.string().max(4096).optional(),
+  creditsUsed: z.number().finite().nonnegative().optional(),
+  creditsBalance: z.number().finite().optional(),
+  createdAt: z.string().max(128),
+  startedAt: z.string().max(128).optional(),
+  completedAt: z.string().max(128).optional(),
+});
 
 async function getExistingRun(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
@@ -45,6 +381,25 @@ async function getExistingRun(
     ))
     .limit(1);
   return run;
+}
+
+async function assertRunWritableByUser(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  tenantId: string,
+  userId: number,
+  productionRunId: string,
+) {
+  const [run] = await db
+    .select({ userId: mediaProductionRuns.userId })
+    .from(mediaProductionRuns)
+    .where(and(
+      eq(mediaProductionRuns.tenantId, tenantId),
+      eq(mediaProductionRuns.productionRunId, productionRunId),
+    ))
+    .limit(1);
+  if (run && Number(run.userId) !== userId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Production run is owned by another user" });
+  }
 }
 
 async function getNextVersion(
@@ -95,9 +450,574 @@ function extractProductionClips(payload: Record<string, unknown>): Array<Record<
 }
 
 export const mediaProductionRouter = router({
+  getSpace: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      const result = await getProductionSpace({ db, tenantId, userId: ctx.user.id, productionRunId: input.productionRunId });
+      if (!result) return null;
+      return {
+        ...result,
+        validation: validateProductionSpace(result.space),
+        readiness: computeProductionSpaceReadiness(result.space),
+      };
+    }),
+
+  saveSpace: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+      space: productionSpaceSchema,
+      changedFields: stringArraySchema,
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return saveProductionSpace({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+        space: input.space,
+        changedFields: input.changedFields,
+      });
+    }),
+
+  saveBrief: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+      expectedBriefVersion: z.number().int().nonnegative().optional(),
+      brief: productionGoalSchema,
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return saveProductionBrief({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+        expectedBriefVersion: input.expectedBriefVersion,
+        brief: input.brief as any,
+      });
+    }),
+
+  saveShot: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+      expectedShotVersion: z.number().int().nonnegative().optional(),
+      shot: productionShotSchema,
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return saveProductionShot({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+        expectedShotVersion: input.expectedShotVersion,
+        shot: input.shot,
+      });
+    }),
+
+  saveNodeConfig: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+      nodeId: z.string().min(1).max(128),
+      configSnapshot: productionNodeConfigSchema,
+      expectedNodeVersion: z.number().int().nonnegative().optional(),
+      previousConfigSnapshotId: z.string().min(1).max(128).optional(),
+      outputRefs: z.array(productionOutputRefSchema).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return saveProductionNodeConfig({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+        nodeId: input.nodeId,
+        configSnapshot: input.configSnapshot,
+        expectedNodeVersion: input.expectedNodeVersion,
+        previousConfigSnapshotId: input.previousConfigSnapshotId,
+        outputRefs: input.outputRefs as any,
+      });
+    }),
+
+  getNodeConfig: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      nodeId: z.string().min(1).max(128),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return getProductionNodeConfig({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        productionRunId: input.productionRunId,
+        nodeId: input.nodeId,
+      });
+    }),
+
+  archiveSpace: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return archiveProductionSpace({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+      });
+    }),
+
+  restoreSpace: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return restoreProductionSpace({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+      });
+    }),
+
+  deleteSpace: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return deleteProductionSpace({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+      });
+    }),
+
+  saveCanvasLayout: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+      expectedLayoutVersion: z.number().int().nonnegative().optional(),
+      layout: z.record(z.object({ x: z.number(), y: z.number() })),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      const current = await getProductionSpace({ db, tenantId, userId: ctx.user.id, productionRunId: input.productionRunId });
+      if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "Production space not found" });
+      if (current.archivedAt || current.deletedAt) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: current.deletedAt ? "production_space_deleted" : "production_space_archived_read_only",
+        });
+      }
+      const currentLayoutVersion = getProductionLayerVersions(current.space).canvasLayoutVersion;
+      if (input.expectedLayoutVersion !== undefined && input.expectedLayoutVersion !== currentLayoutVersion) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "layout_version_stale",
+          cause: {
+            schemaVersion: "production_conflict_v1",
+            reason: "layout_version_stale",
+            productionRunId: input.productionRunId,
+            expected: { layoutVersion: input.expectedLayoutVersion },
+            current: { layoutVersion: currentLayoutVersion, spaceVersion: current.version },
+            changedFields: ["flowNodes.position"],
+            safePreview: {
+              status: current.space.status,
+              title: current.space.brief.title,
+              updatedAt: current.space.updatedAt,
+              source: current.source,
+              archived: Boolean(current.archivedAt),
+              deleted: Boolean(current.deletedAt),
+              canReloadLatest: true,
+              canSaveAsNewVersion: !current.deletedAt,
+              canAutoMergeLayout: true,
+            },
+          },
+        });
+      }
+      return saveProductionSpace({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+        space: {
+          ...current.space,
+          flowNodes: current.space.flowNodes.map((node) => ({
+            ...node,
+            position: input.layout[node.id] ?? node.position,
+          })),
+        },
+        changeKind: "layout",
+        changedFields: ["flowNodes.position"],
+      });
+    }),
+
+  validateSpace: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      space: productionSpaceSchema.optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      const space = input.space ?? (await getProductionSpace({ db, tenantId, userId: ctx.user.id, productionRunId: input.productionRunId }))?.space;
+      if (!space) throw new TRPCError({ code: "NOT_FOUND", message: "Production space not found" });
+      return {
+        validation: validateProductionSpace(space),
+        readiness: computeProductionSpaceReadiness(space),
+      };
+    }),
+
+  previewHandoff: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      target: productionSurfaceSchema,
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      const current = await getProductionSpace({ db, tenantId, userId: ctx.user.id, productionRunId: input.productionRunId });
+      if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "Production space not found" });
+      if (current.archivedAt || current.deletedAt) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: current.deletedAt ? "production_space_deleted" : "production_space_archived_read_only",
+        });
+      }
+      return deriveProductionHandoffPayload(current.space, input.target, { tenantId });
+    }),
+
+  previewExecutionPlan: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      target: productionSurfaceSchema.optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      const preview = await previewProductionExecutionPlan({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        productionRunId: input.productionRunId,
+        target: input.target,
+      });
+      if (!preview) throw new TRPCError({ code: "NOT_FOUND", message: "Production space not found" });
+      return preview;
+    }),
+
+  importDownstreamResult: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+      result: productionDownstreamResultImportSchema,
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return importProductionDownstreamResult({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+        result: input.result,
+      });
+    }),
+
+  runExecution: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+      scope: productionExecutionScopeSchema,
+      targetId: z.string().min(1).max(128).optional(),
+      confirmed: z.boolean().default(false),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return scheduleProductionExecution({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        userToken: (ctx as any).userToken,
+        publicUrl: (ctx as any).publicUrl,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+        scope: input.scope,
+        targetId: input.targetId,
+        confirmed: input.confirmed,
+      });
+    }),
+
+  cancelExecution: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+      attemptId: z.string().min(1).max(256),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return cancelProductionExecution({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        userToken: (ctx as any).userToken,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+        attemptId: input.attemptId,
+      });
+    }),
+
+  reconcileExecution: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+      attemptId: z.string().min(1).max(256),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return reconcileProductionExecution({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        userToken: (ctx as any).userToken,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+        attemptId: input.attemptId,
+      });
+    }),
+
+  reconcileProviderCallback: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative().optional(),
+      attemptId: z.string().min(1).max(256).optional(),
+      task: productionMediaTaskSchema,
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return reconcileProductionProviderCallback({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+        attemptId: input.attemptId,
+        task: input.task,
+      });
+    }),
+
+  reconcilePendingExecutions: protectedProcedure
+    .input(z.object({
+      limit: z.number().int().positive().max(100).default(25),
+    }).default({ limit: 25 }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return reconcilePendingProductionExecutions({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        userToken: (ctx as any).userToken,
+        limit: input.limit,
+      });
+    }),
+
+  retryExecution: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+      retryOfAttemptId: z.string().min(1).max(256),
+      scope: productionExecutionScopeSchema,
+      targetId: z.string().min(1).max(128).optional(),
+      confirmed: z.boolean().default(false),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return scheduleProductionExecution({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        userToken: (ctx as any).userToken,
+        publicUrl: (ctx as any).publicUrl,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+        scope: input.scope,
+        targetId: input.targetId,
+        confirmed: input.confirmed,
+        retryOfAttemptId: input.retryOfAttemptId,
+      });
+    }),
+
+  saveShotProductUse: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+      shotProductUse: productionShotProductUseSchema,
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return saveProductionShotProductUse({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+        shotProductUse: input.shotProductUse,
+      });
+    }),
+
+  updateProductStoryboardAsset: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+      productAssetId: z.string().min(1).max(128),
+      action: z.enum(["update_role", "link_claim", "link_evidence", "relink_image", "request_more_evidence"]),
+      patch: productionProductPatchSchema,
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return updateProductionProductStoryboardAsset({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+        productAssetId: input.productAssetId,
+        action: input.action,
+        patch: input.patch as any,
+      });
+    }),
+
+  repairStaleOutputRefs: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+      expectedVersion: z.number().int().nonnegative(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      return repairProductionStaleOutputRefs({
+        db,
+        tenantId,
+        userId: ctx.user.id,
+        productionRunId: input.productionRunId,
+        expectedVersion: input.expectedVersion,
+      });
+    }),
+
+  exportSpace: protectedProcedure
+    .input(z.object({
+      productionRunId: z.string().min(1).max(128),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      const current = await getProductionSpace({ db, tenantId, userId: ctx.user.id, productionRunId: input.productionRunId });
+      if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "Production space not found" });
+      if (current.deletedAt) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "production_space_deleted" });
+      return {
+        exportedAt: new Date().toISOString(),
+        productionRunId: input.productionRunId,
+        version: current.version,
+        space: redactProductionSpaceExport(current.space),
+      };
+    }),
+
   listRuns: protectedProcedure
     .input(z.object({
       query: z.string().max(120).optional(),
+      includeArchived: z.boolean().default(false),
+      includeDeleted: z.boolean().default(false),
       limit: z.number().int().min(1).max(100).default(30),
     }).default({ limit: 30 }))
     .query(async ({ ctx, input }) => {
@@ -117,8 +1037,24 @@ export const mediaProductionRouter = router({
         .limit(Math.min(Math.max(input.limit * 3, input.limit), 100));
 
       const query = String(input.query ?? "").trim().toLowerCase();
+      const spaceRows = await db
+        .select()
+        .from(mediaProductionSpaces)
+        .where(and(
+          eq(mediaProductionSpaces.tenantId, tenantId),
+          eq(mediaProductionSpaces.userId, ctx.user.id),
+        ))
+        .orderBy(desc(mediaProductionSpaces.updatedAt))
+        .limit(300);
+      const latestSpaceByRun = new Map<string, any>();
+      for (const row of spaceRows as any[]) {
+        if (!latestSpaceByRun.has(row.productionRunId)) latestSpaceByRun.set(row.productionRunId, row);
+      }
       const mapped = rows.map((run) => {
+        const latestSpace = latestSpaceByRun.get(run.productionRunId);
+        const space = latestSpace?.space as ProductionSpace | undefined;
         const goal = (run.goal && typeof run.goal === "object") ? run.goal as Record<string, any> : {};
+        const brief = space?.brief ?? (goal.productionSpaceBrief && typeof goal.productionSpaceBrief === "object" ? goal.productionSpaceBrief as Record<string, any> : {});
         const tabSnapshots = (goal.tabSnapshots && typeof goal.tabSnapshots === "object")
           ? goal.tabSnapshots as Record<string, any>
           : {};
@@ -129,29 +1065,37 @@ export const mediaProductionRouter = router({
         const planClips = extractProductionClips(run.productionBible ?? {});
         const planPreview = planClips.find((clip: any) => clip?.thumbnailUrl || clip?.url);
         const title = String(
-          goal.title
+          brief.title
+          ?? goal.title
           ?? goal.projectTitle
+          ?? brief.summary
           ?? goal.summary
           ?? run.productionRunId,
         ).trim();
-        const summary = String(goal.summary ?? goal.goalSummary ?? "").trim();
+        const summary = String(brief.summary ?? goal.summary ?? goal.goalSummary ?? "").trim();
         return {
           productionRunId: run.productionRunId,
           title,
           summary,
-          status: run.status,
+          status: space?.status ?? run.status,
+          version: Number(latestSpace?.version ?? space?.version ?? run.planVersion ?? run.goalVersion ?? 0),
           goalVersion: run.goalVersion,
           planVersion: run.planVersion,
           thumbnailUrl: String(mediaPreview?.thumbnailUrl ?? mediaPreview?.url ?? (planPreview as any)?.thumbnailUrl ?? (planPreview as any)?.url ?? "").trim() || null,
-          updatedAt: run.updatedAt,
+          updatedAt: latestSpace?.updatedAt ?? space?.updatedAt ?? run.updatedAt,
           createdAt: run.createdAt,
-          platform: String(goal.platform ?? "").trim() || null,
-          audience: String(goal.audience ?? "").trim() || null,
+          platform: String(brief.platform ?? goal.platform ?? "").trim() || null,
+          audience: String(brief.audience ?? goal.audience ?? "").trim() || null,
+          archivedAt: latestSpace?.archivedAt ?? null,
+          deletedAt: latestSpace?.deletedAt ?? null,
+          lifecycle: latestSpace?.deletedAt ? "deleted" : latestSpace?.archivedAt ? "archived" : "active",
         };
       });
 
       return {
         runs: mapped
+          .filter((run) => input.includeArchived || !run.archivedAt)
+          .filter((run) => input.includeDeleted || !run.deletedAt)
           .filter((run) => !query || [
             run.productionRunId,
             run.title,
@@ -231,6 +1175,7 @@ export const mediaProductionRouter = router({
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
       if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
       const now = new Date();
+      await assertRunWritableByUser(db, tenantId, ctx.user.id, input.productionRunId);
       const existing = await getExistingRun(db, tenantId, ctx.user.id, input.productionRunId);
       if (existing) {
         const transition = validateProductionRunTransition(
@@ -293,6 +1238,7 @@ export const mediaProductionRouter = router({
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
       if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
       const now = new Date();
+      await assertRunWritableByUser(db, tenantId, ctx.user.id, input.productionRunId);
       const existing = await getExistingRun(db, tenantId, ctx.user.id, input.productionRunId);
       let nextRunStatus = input.status as ProductionRunStatus;
       if (existing) {

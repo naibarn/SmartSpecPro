@@ -67,6 +67,7 @@ export default function MarketplaceCaptureProductDetail() {
         </div>
         <dl className="mt-6 grid gap-4 md:grid-cols-2">
           <div><dt className="text-sm font-medium text-slate-500">Price</dt><dd>{item.priceCurrent ?? "-"} {item.currency ?? "THB"}</dd></div>
+          <div><dt className="text-sm font-medium text-slate-500">Commission</dt><dd>{item.commissionRatePercent ?? "-"}%</dd></div>
           <div><dt className="text-sm font-medium text-slate-500">Sold</dt><dd>{formatCount(item.soldCountNormalized, item.soldCountText)}</dd></div>
           <div><dt className="text-sm font-medium text-slate-500">Shop</dt><dd>{item.shopName ?? "-"}</dd></div>
           <div><dt className="text-sm font-medium text-slate-500">Rating</dt><dd>{item.ratingScore ?? "-"}</dd></div>
@@ -82,6 +83,7 @@ export default function MarketplaceCaptureProductDetail() {
                   <tr>
                     <th className="px-3 py-2">Captured at</th>
                     <th className="px-3 py-2">Price</th>
+                    <th className="px-3 py-2">Commission</th>
                     <th className="px-3 py-2">Sold</th>
                     <th className="px-3 py-2">Rating</th>
                     <th className="px-3 py-2">Reviews</th>
@@ -93,6 +95,7 @@ export default function MarketplaceCaptureProductDetail() {
                     <tr key={snapshot.id}>
                       <td className="px-3 py-2">{new Date(snapshot.capturedAt).toLocaleString()}</td>
                       <td className="px-3 py-2">{snapshot.priceCurrent ?? "-"} {snapshot.currency ?? "THB"}</td>
+                      <td className="px-3 py-2">{snapshot.commissionRatePercent ?? "-"}%</td>
                       <td className="px-3 py-2">{formatCount(snapshot.soldCountNormalized, snapshot.soldCountText)}</td>
                       <td className="px-3 py-2">{snapshot.ratingScore ?? "-"}</td>
                       <td className="px-3 py-2">{formatCount(snapshot.reviewCountNormalized, snapshot.reviewCountText)}</td>

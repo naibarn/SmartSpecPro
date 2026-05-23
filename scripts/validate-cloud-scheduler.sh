@@ -98,6 +98,7 @@ validate_job "poll-drive-changes"          "*/15 * * * *"  "/tasks/poll-drive-ch
 validate_job "process-dead-letters"        "0 8 * * *"     "/tasks/process-dead-letters"
 validate_job "cleanup-redis-stale"         "*/5 * * * *"   "/tasks/cleanup-redis-stale"
 validate_job "deliver-scheduled-messages"  "* * * * *"     "/tasks/deliver-scheduled-fallback"
+validate_job "production-execution-reconcile" "* * * * *"   "/_internal/tasks/production-execution-reconcile"
 
 echo ""
 echo "Results: ${PASS}/${TOTAL} passed, ${FAIL} failed"

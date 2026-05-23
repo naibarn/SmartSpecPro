@@ -1,5 +1,5 @@
-import type { ImageCandidate, ProductCapturePayload } from "../../shared/types";
-import { parseShopeeProductUrl } from "../utils/number";
+import type { FieldEvidence, ImageCandidate, ProductCapturePayload } from "../../shared/types";
+import { parseDiscountPercent, parseShopeeProductUrl, parseSoldCount, parseThaiPrice } from "../utils/number";
 
 function textOf(selector: string): string | null {
   const node = document.querySelector<HTMLElement>(selector);
@@ -14,8 +14,41 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function currencyFromPrice(raw: string | null): string | null {
+  if (!raw) return null;
+  if (/฿/.test(raw)) return "THB";
+  if (/\$/.test(raw)) return "USD";
+  return null;
+}
+
+function parseRatingValue(raw: string | null): number | null {
+  if (!raw) return null;
+  const value = Number(raw.match(/[1-5](?:\.\d+)?/)?.[0]);
+  return Number.isFinite(value) ? value : null;
+}
+
+function imageQuality(width?: number, height?: number): ImageCandidate["quality"] {
+  if (width == null || height == null) return "unknown";
+  if (width < 300 || height < 300) return "low";
+  if (width < 700 || height < 700) return "medium";
+  return "high";
+}
+
+function tinyMainImageWarning(candidate: ImageCandidate | undefined): string | undefined {
+  if (!candidate || candidate.kind !== "main" || !candidate.selected) return undefined;
+  if (candidate.width != null && candidate.height != null && (candidate.width < 300 || candidate.height < 300)) {
+    return `Selected main image is small (${candidate.width}x${candidate.height}).`;
+  }
+  return undefined;
+}
+
+function evidence(text: string | null, source: string, confidence: number, options: Partial<FieldEvidence> = {}): FieldEvidence | undefined {
+  if (!text) return undefined;
+  return { text, source, confidence, ...options };
+}
+
 function collectImages(kind: ImageCandidate["kind"], root: ParentNode = document): ImageCandidate[] {
-  const urls = Array.from(root.querySelectorAll<HTMLImageElement>("img[src], img[srcset]"))
+  const candidates = Array.from(root.querySelectorAll<HTMLImageElement>("img[src], img[srcset]"))
     .filter((img) => {
       const rect = img.getBoundingClientRect();
       const url = img.currentSrc || img.src;
@@ -28,10 +61,36 @@ function collectImages(kind: ImageCandidate["kind"], root: ParentNode = document
       const bRect = b.getBoundingClientRect();
       return (bRect.width * bRect.height) - (aRect.width * aRect.height);
     })
-    .map((img) => img.currentSrc || img.src);
-  return uniqueUrls(urls)
+    .map((img) => {
+      const rect = img.getBoundingClientRect();
+      const width = Math.round(rect.width);
+      const height = Math.round(rect.height);
+      return { url: img.currentSrc || img.src, width, height, alt: img.alt };
+    });
+  const byUrl = new Map(candidates.filter((candidate) => /^https?:\/\//.test(candidate.url)).map((candidate) => [candidate.url, candidate]));
+  return uniqueUrls(candidates.map((candidate) => candidate.url))
     .slice(0, kind === "main" ? 20 : 30)
-    .map((url, position) => ({ url, kind, source: "dom", position, selected: kind === "main" && position < 8 }));
+    .map((url, position) => {
+      const image = byUrl.get(url);
+      return {
+        url,
+        kind,
+        source: "dom",
+        evidenceId: `image.${kind}.${position}`,
+        role: kind === "main" ? (position === 0 ? "primary" : "gallery") : kind,
+        quality: imageQuality(image?.width, image?.height),
+        position,
+        width: image?.width,
+        height: image?.height,
+        selected: kind === "main" && position < 8,
+        metadata: {
+          alt: image?.alt || undefined,
+          warning: kind === "main" && position === 0 && image?.width != null && image.height != null && (image.width < 300 || image.height < 300)
+            ? "tiny_main_image"
+            : undefined,
+        },
+      };
+    });
 }
 
 function matchLine(text: string, patterns: RegExp[]): string | null {
@@ -52,32 +111,53 @@ function cleanCategoryPart(value: string): string {
 
 function isCategoryNoise(value: string, productName: string | null): boolean {
   const text = cleanCategoryPart(value);
+  const normalizedProductName = productName ? cleanCategoryPart(productName) : "";
   if (!text) return true;
   if (/^(Shopee|Shopee Home|หมวดหมู่|Category|หน้าหลัก|เปิดร้านค้า|ดาวน์โหลด|ติดตามเรา|ความช่วยเหลือ)$/i.test(text)) return true;
   if (/[฿$]\s?[\d,.]+|รีวิว|ขายแล้ว|จำหน่ายไป|รายงานสินค้า|ซื้อสินค้า|เพิ่มไปยังรถเข็น/i.test(text)) return true;
-  if (productName && (text === productName || productName.includes(text) || text.includes(productName.slice(0, 80)))) return true;
+  if (normalizedProductName && (text === normalizedProductName || text.includes(normalizedProductName.slice(0, 80)))) return true;
   return false;
 }
 
-function formatCategoryParts(parts: string[], productName: string | null): string | null {
-  const unique = Array.from(new Set(parts.map(cleanCategoryPart).filter((part) => !isCategoryNoise(part, productName))));
-  if (unique.length === 0) return null;
-  const category = unique.join(" > ").slice(0, 500);
-  if (/^(?:หมวดหมู่\s*)?Shopee$/i.test(category) || /^หมวดหมู่\s+Shopee$/i.test(category)) return null;
-  return category;
+function formatCategoryPath(parts: string[], productName: string | null): string[] {
+  return Array.from(new Set(parts.map(cleanCategoryPart).filter((part) => !isCategoryNoise(part, productName))))
+    .filter((part) => !/^(?:หมวดหมู่\s*)?Shopee$/i.test(part) && !/^หมวดหมู่\s+Shopee$/i.test(part))
+    .slice(0, 12);
 }
 
-function extractShopeeCategory(productName: string | null, bodyText: string): string | null {
+function categoryFromParts(parts: string[], productName: string | null, source: string) {
+  const path = formatCategoryPath(parts, productName);
+  return path.length > 0 ? { text: path[path.length - 1], path, source } : null;
+}
+
+function extractShopeeCategoryData(productName: string | null, bodyText: string): { text: string; path: string[]; source: string } | null {
   const titleNode = document.querySelector<HTMLElement>("h1");
   const titleTop = titleNode?.getBoundingClientRect().top ?? 420;
-  const breadcrumbParts = Array.from(document.querySelectorAll<HTMLElement>("a[href], [role='link']"))
+  const breadcrumbLinks = Array.from(document.querySelectorAll<HTMLElement>("a[href], [role='link']"))
     .map((el) => ({ text: cleanCategoryPart(el.innerText || el.textContent || ""), rect: el.getBoundingClientRect() }))
     .filter((item) => item.text.length >= 2 && item.text.length <= 120)
-    .filter((item) => item.rect.top >= 50 && item.rect.top <= Math.max(260, titleTop + 80))
-    .filter((item) => !isCategoryNoise(item.text, productName))
-    .map((item) => item.text);
-  const fromBreadcrumb = formatCategoryParts(breadcrumbParts, productName);
-  if (fromBreadcrumb && fromBreadcrumb.includes(" > ")) return fromBreadcrumb;
+    .filter((item) => item.rect.top >= 90 && item.rect.top <= Math.max(260, titleTop + 30));
+  const rows = new Map<number, string[]>();
+  for (const item of breadcrumbLinks) {
+    const rowTop = Math.round(item.rect.top / 8) * 8;
+    rows.set(rowTop, [...(rows.get(rowTop) ?? []), item.text]);
+  }
+  const breadcrumbRow = Array.from(rows.values())
+    .filter((parts) => parts.some((part) => /^Shopee$/i.test(part)) && parts.length >= 3)
+    .sort((a, b) => b.length - a.length)[0];
+  if (breadcrumbRow) {
+    const fromBreadcrumb = categoryFromParts(breadcrumbRow, productName, "dom:breadcrumb");
+    if (fromBreadcrumb) return fromBreadcrumb;
+  }
+
+  const breadcrumbLine = bodyText
+    .split(/\n+/)
+    .map(cleanCategoryPart)
+    .find((line) => /^Shopee\s*[>›]/i.test(line) && line.length <= 500);
+  if (breadcrumbLine) {
+    const fromLine = categoryFromParts(breadcrumbLine.split(/[>›]/), productName, "text:breadcrumb");
+    if (fromLine) return fromLine;
+  }
 
   const lines = bodyText.split(/\n+/).map(cleanCategoryPart).filter(Boolean);
   const labelIndex = lines.findIndex((line) => /^(หมวดหมู่|Category)$/i.test(line));
@@ -87,12 +167,12 @@ function extractShopeeCategory(productName: string | null, bodyText: string): st
       if (/^(คลัง|สินค้า|ส่งจาก|รายละเอียดสินค้า|ข้อมูลจำเพาะ|Description|Stock|Ships from)$/i.test(line)) break;
       specParts.push(line);
     }
-    const fromSpec = formatCategoryParts(specParts, productName);
+    const fromSpec = categoryFromParts(specParts, productName, "text:category_label");
     if (fromSpec) return fromSpec;
   }
 
   const inline = bodyText.match(/(?:หมวดหมู่|Category)\s*[:：]?\s*([^\n\r]{1,240})/i)?.[1] ?? null;
-  return inline ? formatCategoryParts(inline.split(/[>›]/), productName) : null;
+  return inline ? categoryFromParts(inline.split(/[>›]/), productName, "text:category_inline") : null;
 }
 
 const VARIANT_LABEL_PATTERN = /^(แพ็ค|แพค|ตัวเลือก|สี|ขนาด|ความจุ|แบบ|รุ่น|กลิ่น|รส|color|size|capacity|option|variant)(?:\s*[:：]\s*(.*)|\s*)$/i;
@@ -261,32 +341,49 @@ function collectReviewImages(): ImageCandidate[] {
     .sort((left, right) => (left.rect.top - right.rect.top) || (left.text.length - right.text.length))
     .slice(0, 16)
     .map((item) => item.el);
-  const urls: string[] = [];
+  const candidates: Array<{ url: string; width: number; height: number }> = [];
   for (const root of reviewRoots) {
     for (const img of Array.from(root.querySelectorAll<HTMLImageElement>("img[src], img[srcset]"))) {
       const rect = img.getBoundingClientRect();
       const url = img.currentSrc || img.src;
       if (rect.width >= 40 && rect.height >= 40 && !/avatar|profile|sprite|logo|icon/i.test(url)) {
-        urls.push(url);
+        candidates.push({ url, width: Math.round(rect.width), height: Math.round(rect.height) });
       }
     }
     for (const video of Array.from(root.querySelectorAll<HTMLVideoElement>("video[poster]"))) {
       const rect = video.getBoundingClientRect();
       const url = video.poster;
-      if (rect.width >= 40 && rect.height >= 40 && /^https?:\/\//.test(url)) urls.push(url);
+      if (rect.width >= 40 && rect.height >= 40 && /^https?:\/\//.test(url)) {
+        candidates.push({ url, width: Math.round(rect.width), height: Math.round(rect.height) });
+      }
     }
     for (const el of Array.from(root.querySelectorAll<HTMLElement>("[style*='background']"))) {
       const rect = el.getBoundingClientRect();
       const bg = window.getComputedStyle(el).backgroundImage;
       const url = bg.match(/url\(["']?(https?:\/\/[^"')]+)["']?\)/)?.[1];
       if (url && rect.width >= 40 && rect.height >= 40 && !/avatar|profile|sprite|logo|icon/i.test(url)) {
-        urls.push(url);
+        candidates.push({ url, width: Math.round(rect.width), height: Math.round(rect.height) });
       }
     }
   }
-  return uniqueUrls(urls)
+  const byUrl = new Map(candidates.map((candidate) => [candidate.url, candidate]));
+  return uniqueUrls(candidates.map((candidate) => candidate.url))
     .slice(0, 30)
-    .map((url, position) => ({ url, kind: "review", source: "dom", position, selected: false }));
+    .map((url, position) => {
+      const image = byUrl.get(url);
+      return {
+        url,
+        kind: "review",
+        source: "dom",
+        evidenceId: `image.review.${position}`,
+        role: "review",
+        quality: imageQuality(image?.width, image?.height),
+        position,
+        width: image?.width,
+        height: image?.height,
+        selected: false,
+      };
+    });
 }
 
 async function collectThumbnailImages(): Promise<ImageCandidate[]> {
@@ -296,22 +393,45 @@ async function collectThumbnailImages(): Promise<ImageCandidate[]> {
       return rect.width >= 36 && rect.width <= 140 && rect.height >= 36 && rect.height <= 140 && rect.top < window.innerHeight * 1.2;
     })
     .slice(0, 16);
-  const urls: string[] = [];
+  const candidates: Array<{ url: string; width: number; height: number }> = [];
   for (const img of thumbImages) {
     img.scrollIntoView({ block: "center", inline: "center" });
     img.click();
     await delay(350);
-    urls.push(...Array.from(document.querySelectorAll<HTMLImageElement>("img[src], img[srcset]"))
+    candidates.push(...Array.from(document.querySelectorAll<HTMLImageElement>("img[src], img[srcset]"))
       .filter((candidate) => {
         const rect = candidate.getBoundingClientRect();
         return rect.width >= 180 && rect.height >= 180 && rect.top < window.innerHeight * 1.25;
       })
-      .map((candidate) => candidate.currentSrc || candidate.src));
+      .map((candidate) => {
+        const rect = candidate.getBoundingClientRect();
+        return { url: candidate.currentSrc || candidate.src, width: Math.round(rect.width), height: Math.round(rect.height) };
+      }));
   }
-  return uniqueUrls(urls)
+  const byUrl = new Map(candidates.map((candidate) => [candidate.url, candidate]));
+  return uniqueUrls(candidates.map((candidate) => candidate.url))
     .filter((url) => !/sprite|logo|avatar|icon/i.test(url))
     .slice(0, 20)
-    .map((url, position) => ({ url, kind: "main", source: "dom", position, selected: position < 8 }));
+    .map((url, position) => {
+      const image = byUrl.get(url);
+      return {
+        url,
+        kind: "main",
+        source: "dom",
+        evidenceId: `image.main.${position}`,
+        role: position === 0 ? "primary" : "gallery",
+        quality: imageQuality(image?.width, image?.height),
+        position,
+        width: image?.width,
+        height: image?.height,
+        selected: position < 8,
+        metadata: {
+          warning: position === 0 && image?.width != null && image.height != null && (image.width < 300 || image.height < 300)
+            ? "tiny_main_image"
+            : undefined,
+        },
+      };
+    });
 }
 
 export async function scanShopeeProductPage(options: { interactive?: boolean } = {}): Promise<ProductCapturePayload> {
@@ -327,7 +447,8 @@ export async function scanShopeeProductPage(options: { interactive?: boolean } =
   const reviewCount = extractShopeeReviewCount(bodyText);
   const stockText = matchLine(bodyText, [/(?:คลัง|สต็อก|stock)\s*[:：]?\s*[^\n\r]{1,80}/i, /(?:เหลือ|available)\s*\d+[^\n\r]{0,40}/i]);
   const sellerLocationText = matchLine(bodyText, [/(?:ส่งจาก|ships from|location)\s*[:：]?\s*[^\n\r]{1,120}/i]);
-  const categoryText = extractShopeeCategory(title, bodyText);
+  const categoryData = extractShopeeCategoryData(title, bodyText);
+  const categoryText = categoryData?.text ?? null;
   const variantsText = collectVariantText();
   const thumbnailImages = interactive ? await collectThumbnailImages() : [];
   const descriptionNode = findShopeeDescriptionNode();
@@ -340,15 +461,48 @@ export async function scanShopeeProductPage(options: { interactive?: boolean } =
   const imageCandidates = uniqueImageCandidates([
     ...mainImages,
     ...Array.from(descriptionNode?.querySelectorAll<HTMLImageElement>("img[src], img[srcset]") ?? [])
-      .map((img, position) => ({
-        url: img.currentSrc || img.src,
-        kind: "description" as const,
-        source: "dom" as const,
-        position,
-        selected: false,
-      })),
+      .map((img, position) => {
+        const rect = img.getBoundingClientRect();
+        const width = Math.round(rect.width);
+        const height = Math.round(rect.height);
+        return {
+          url: img.currentSrc || img.src,
+          kind: "description" as const,
+          source: "dom" as const,
+          evidenceId: `image.description.${position}`,
+          role: "description" as const,
+          quality: imageQuality(width, height),
+          position,
+          width,
+          height,
+          selected: false,
+          metadata: { alt: img.alt || undefined },
+        };
+      }),
     ...collectReviewImages(),
   ]);
+  const priceCurrentValue = parseThaiPrice(price);
+  const priceOriginalText = null;
+  const priceOriginalValue = parseThaiPrice(priceOriginalText);
+  const discountPercent = parseDiscountPercent(discount);
+  const ratingScoreValue = parseRatingValue(rating);
+  const reviewCountValue = parseSoldCount(reviewCount);
+  const soldCountValue = parseSoldCount(sold);
+  const selectedMainImage = imageCandidates.find((candidate) => candidate.kind === "main" && candidate.selected);
+  const fieldWarnings = [tinyMainImageWarning(selectedMainImage)].filter(Boolean) as string[];
+  const fieldEvidence = Object.fromEntries(Object.entries({
+    productName: evidence(title, "dom:h1", 0.9, { selector: "h1" }),
+    priceCurrentText: evidence(price, "text:price_regex", 0.76, { normalized: priceCurrentValue }),
+    discountText: evidence(discount, "text:discount_regex", 0.74, { normalized: discountPercent }),
+    ratingScoreText: evidence(rating, "text:rating_context", 0.72, { normalized: ratingScoreValue }),
+    reviewCountText: evidence(reviewCount, "text:review_context", 0.72, { normalized: reviewCountValue }),
+    soldCountText: evidence(sold, "text:sold_context", 0.7, { normalized: soldCountValue }),
+    categoryText: evidence(categoryText, categoryData?.source ?? "text:category", 0.72, { normalized: categoryData?.path }),
+    stockText: evidence(stockText, "text:stock_context", 0.62),
+    sellerLocationText: evidence(sellerLocationText, "text:seller_location_context", 0.62),
+    variantsText: evidence(variantsText, "dom:variant_section", 0.62),
+    descriptionText: evidence(descriptionText, descriptionNode ? "dom:description_section" : "text:description_context", descriptionNode ? 0.76 : 0.58),
+  }).filter(([, value]) => value)) as Record<string, FieldEvidence>;
 
   return {
     platform: "shopee",
@@ -363,20 +517,31 @@ export async function scanShopeeProductPage(options: { interactive?: boolean } =
     pageTitle: document.title,
     productName: title,
     priceCurrentText: price,
-    priceOriginalText: null,
+    priceCurrentValue,
+    priceOriginalText,
+    priceOriginalValue,
+    currency: currencyFromPrice(price),
     discountText: discount,
+    discountPercent,
     ratingScoreText: rating,
+    ratingScoreValue,
     reviewCountText: reviewCount,
+    reviewCountValue,
     soldCountText: sold,
+    soldCountValue,
     shopName: null,
     isMall: /mall|official|ร้านแนะนำ|preferred/i.test(bodyText),
     categoryText,
+    categoryPath: categoryData?.path,
+    brandText: null,
     stockText,
     variantsText,
     sellerLocationText,
     descriptionText,
     specificationText: null,
     imageCandidates,
+    fieldEvidence,
+    fieldWarnings,
     rawDomText: bodyText,
     htmlBlocks: [
       { name: "product_header", text: bodyText.slice(0, 12_000), outerHTML: document.body.innerHTML.slice(0, 20_000), metadata: { shopeeUrl } },

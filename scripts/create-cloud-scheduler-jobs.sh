@@ -1,31 +1,35 @@
 #!/usr/bin/env bash
 # Creates all Cloud Scheduler jobs for periodic tasks.
 #
-# Usage: ./scripts/create-cloud-scheduler-jobs.sh <GCP_PROJECT_ID> <GCP_REGION> <PYTHON_SERVICE_URL>
+# Usage: ./scripts/create-cloud-scheduler-jobs.sh <GCP_PROJECT_ID> <GCP_REGION> <PYTHON_SERVICE_URL> [NODE_SERVICE_URL]
 #
 # Example:
-#   ./scripts/create-cloud-scheduler-jobs.sh smartspec-prod us-central1 https://python-orchestrator-xxxxx.run.app
+#   ./scripts/create-cloud-scheduler-jobs.sh smartspec-prod us-central1 https://python-orchestrator-xxxxx.run.app https://web-xxxxx.run.app
 #
 # Each job enqueues into the periodic-tasks Cloud Tasks queue by POSTing
-# to the Python Cloud Run Service's handler endpoint.
+# to the Python Cloud Run Service's handler endpoint. Node-side internal tasks
+# use NODE_SERVICE_URL when provided; otherwise they default to PYTHON_SERVICE_URL
+# for monolith deployments.
 
 set -euo pipefail
 
 if [ $# -lt 3 ]; then
-  echo "Usage: $0 <GCP_PROJECT_ID> <GCP_REGION> <PYTHON_SERVICE_URL>"
-  echo "Example: $0 smartspec-prod us-central1 https://python-orchestrator-xxxxx.run.app"
+  echo "Usage: $0 <GCP_PROJECT_ID> <GCP_REGION> <PYTHON_SERVICE_URL> [NODE_SERVICE_URL]"
+  echo "Example: $0 smartspec-prod us-central1 https://python-orchestrator-xxxxx.run.app https://web-xxxxx.run.app"
   exit 1
 fi
 
 GCP_PROJECT="$1"
 GCP_REGION="$2"
 PYTHON_SERVICE_URL="$3"
+NODE_SERVICE_URL="${4:-$PYTHON_SERVICE_URL}"
 SA_EMAIL="cloud-scheduler@${GCP_PROJECT}.iam.gserviceaccount.com"
 
 echo "Creating Cloud Scheduler jobs..."
 echo "  Project:     ${GCP_PROJECT}"
 echo "  Region:      ${GCP_REGION}"
-echo "  Service URL: ${PYTHON_SERVICE_URL}"
+echo "  Python URL:  ${PYTHON_SERVICE_URL}"
+echo "  Node URL:    ${NODE_SERVICE_URL}"
 echo "  SA Email:    ${SA_EMAIL}"
 echo ""
 
@@ -34,8 +38,9 @@ create_job() {
   local schedule="$2"
   local handler_path="$3"
   local description="$4"
+  local service_url="${5:-$PYTHON_SERVICE_URL}"
 
-  echo "Creating job: ${job_name} (${schedule}) -> ${handler_path}"
+  echo "Creating job: ${job_name} (${schedule}) -> ${service_url}${handler_path}"
 
   # Delete existing job if it exists (for idempotent re-runs)
   gcloud scheduler jobs delete "${job_name}" \
@@ -47,12 +52,12 @@ create_job() {
     --project="${GCP_PROJECT}" \
     --location="${GCP_REGION}" \
     --schedule="${schedule}" \
-    --uri="${PYTHON_SERVICE_URL}${handler_path}" \
+    --uri="${service_url}${handler_path}" \
     --http-method=POST \
     --headers="Content-Type=application/json" \
     --message-body='{}' \
     --oidc-service-account-email="${SA_EMAIL}" \
-    --oidc-token-audience="${PYTHON_SERVICE_URL}" \
+    --oidc-token-audience="${service_url}" \
     --time-zone="UTC" \
     --attempt-deadline="600s" \
     --description="${description}"
@@ -122,6 +127,12 @@ create_job "deliver-scheduled-messages" \
   "/tasks/deliver-scheduled-fallback" \
   "Every minute. Fallback for BullMQ scheduled message migration."
 
+create_job "production-execution-reconcile" \
+  "* * * * *" \
+  "/_internal/tasks/production-execution-reconcile" \
+  "Every minute. Reconciles pending Feature 116 provider executions and credit ledger terminal states." \
+  "${NODE_SERVICE_URL}"
+
 echo ""
-echo "All 12 Cloud Scheduler jobs created successfully."
+echo "All 13 Cloud Scheduler jobs created successfully."
 echo "Verify with: gcloud scheduler jobs list --project=${GCP_PROJECT} --location=${GCP_REGION}"

@@ -100,6 +100,13 @@ Schema-version upgrade tests:
 - unknown future schema version returns a safe unsupported-version state rather than attempting destructive downgrade;
 - incompatible old schema fields are preserved in metadata for manual recovery when they cannot be mapped.
 
+MVP migration completion rule:
+
+- MVP release may ship with additive `media_production_spaces` storage plus deterministic legacy read adapter;
+- admin/backfill and on-save migration remain disabled until the backfill mode has explicit operational owner approval;
+- full-spec completion requires tests for deterministic adapter reads, additive/no-drop migration SQL, v1 schema upgrade preservation, and future-schema safe refusal;
+- future-schema refusal must preserve the original payload for manual recovery and must never downgrade destructively.
+
 ## Acceptance
 
 - Existing interim Production runs open in the new Production UI.
@@ -107,4 +114,5 @@ Schema-version upgrade tests:
 - Old runs with planner output can produce initial shots where possible.
 - Saving an adapted old run creates a new ProductionSpace version without deleting old versions.
 - Disabling the feature flag does not break Image/Video/Audio or existing Gemini Omni asset workflows.
+- Additive migration, deterministic legacy read adapter, and schema-version read-safety tests pass before MVP release.
 - Backfill, rollback, no-data-loss, and schema-version upgrade tests pass before admin/backfill migration is enabled.

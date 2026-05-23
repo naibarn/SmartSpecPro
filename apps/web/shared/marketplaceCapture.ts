@@ -109,6 +109,7 @@ export const sanitizedLocalAIInputSchema = z.object({
     price: z.string().max(128).optional(),
     originalPrice: z.string().max(128).optional(),
     discount: z.string().max(64).optional(),
+    commissionRatePercent: z.number().min(0).max(100).nullable().optional(),
     rating: z.string().max(64).optional(),
     soldCount: z.string().max(128).optional(),
     description: z.string().max(MARKETPLACE_CAPTURE_LIMITS.localAIDescriptionChars).optional(),
@@ -156,6 +157,30 @@ const sourceRefSchema = z.object({
 });
 
 const boundedStringArray = (maxItems = 12, maxChars = 220) => z.array(z.string().max(maxChars)).max(maxItems).default([]);
+
+const marketplaceInsightSyncMetadataSchema = z.object({
+  providerDecision: z.enum(localAIProviders).optional(),
+  sanitizerVersion: z.string().max(40).optional(),
+  generationRunId: z.string().max(120).optional(),
+  inputEvidenceIds: z.array(z.string().max(120)).max(120).default([]),
+  sourceIds: z.object({
+    externalProductId: z.string().max(120).nullable().optional(),
+    externalShopId: z.string().max(120).nullable().optional(),
+    canonicalSourceUrl: z.string().url().nullable().optional(),
+  }).optional(),
+  selectedImageQuality: z.array(z.object({
+    evidenceId: z.string().max(120).optional(),
+    url: z.string().max(4096),
+    role: z.string().max(80).optional(),
+    kind: z.string().max(80).optional(),
+    quality: z.string().max(80).optional(),
+    qualityLabel: z.string().max(120).optional(),
+    width: z.number().min(0).max(20_000).optional(),
+    height: z.number().min(0).max(20_000).optional(),
+    warning: z.string().max(240).optional(),
+  })).max(30).default([]),
+  dataQualityWarnings: z.array(z.string().max(300)).max(50).default([]),
+}).default({});
 
 export const productBriefSchema = z.object({
   schemaVersion: z.literal("1.0"),
@@ -308,6 +333,7 @@ export const marketplaceCaptureInsightSyncSchema = z.object({
   provider: z.enum(localAIProviders),
   status: z.enum(marketplaceInsightStatuses).optional().default("ready"),
   parentInsightIds: z.array(z.string().max(64)).max(20).optional().default([]),
+  metadata: marketplaceInsightSyncMetadataSchema.optional().default({}),
   payload: z.unknown(),
   rawCaptureIncluded: z.boolean().default(false),
   rawCapture: z.unknown().optional(),
@@ -442,6 +468,7 @@ export const marketplaceConfirmProductSchema = z.object({
       currency: z.string().max(16).optional().default("THB"),
       discountText: z.string().max(64).nullable().optional(),
     }).optional().default({}),
+    commissionRatePercent: z.number().min(0).max(100).nullable().optional(),
     rating: z.object({
       score: z.number().min(0).max(5).nullable().optional(),
       reviewCountText: z.string().max(128).nullable().optional(),

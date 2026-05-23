@@ -12,6 +12,18 @@ model_preference: gpt-5.3-codex-spark
 model_reason: lightweight-default
 ```
 
+In Codex, this metadata MUST be enforced by passing the actual sub-agent tool
+override:
+
+```json
+{ "model": "gpt-5.3-codex-spark" }
+```
+
+Task Packet metadata alone is not sufficient. If the conductor calls a Codex
+`spawn_agent`/sub-agent tool for lightweight-default work and omits the `model`
+field, the sub-agent inherits the parent/default model and the Spark routing
+policy has not been applied.
+
 This applies by default to:
 
 - read-only exploration with a narrow question
@@ -57,8 +69,11 @@ model_reason: lightweight-default | explicit-user-request | high-complexity | hi
 ```
 
 When the active sub-agent tool has a model override field, map
-`model_preference: gpt-5.3-codex-spark` to that override. When it does not, keep the
-metadata in the Task Packet so the routing decision remains auditable.
+`model_preference: gpt-5.3-codex-spark` to that override. In Codex this means the
+tool call must include `model: "gpt-5.3-codex-spark"` for lightweight-default
+dispatches. When the active tool does not support model overrides, keep the
+metadata in the Task Packet so the routing decision remains auditable and record
+the limitation in `orchestra/progress.md`.
 
 ## Inline Fallback
 

@@ -1,4 +1,3 @@
-import { jsxLocPlugin } from "@builder.io/vite-plugin-jsx-loc";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import fs from "node:fs";
@@ -9,7 +8,7 @@ import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime()];
+const plugins = [react(), tailwindcss(), vitePluginManusRuntime()];
 const require = createRequire(import.meta.url);
 const reactPath = path.dirname(require.resolve("react/package.json"));
 const reactDomPath = path.dirname(require.resolve("react-dom/package.json"));

@@ -117,6 +117,10 @@ import {
   initializeBrowserAutomationClaimReconcilerJob,
   shutdownBrowserAutomationClaimReconcilerJob,
 } from "../jobs/browserAutomationClaimReconciler";
+import {
+  initializeProductionExecutionReconciliationJob,
+  shutdownProductionExecutionReconciliationJob,
+} from "../jobs/productionExecutionReconciliationJob";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { startHistoryCollection } from "../services/llmQueue";
 import { recoverActiveRunsOnStartup } from "../services/runEngine";
@@ -1697,6 +1701,12 @@ async function main() {
   }
 
   try {
+    await initializeProductionExecutionReconciliationJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize production execution reconciler job:", error);
+  }
+
+  try {
     const { startAutoTeamRecoverySweep } = await import("../services/autoTeamRecoveryService");
     startAutoTeamRecoverySweep();
   } catch (error) {
@@ -1816,6 +1826,7 @@ process.on("SIGTERM", async () => {
   await shutdownWorkpackScheduleJob().catch(() => {});
   await shutdownRoleRoutineSchedulerJob().catch(() => {});
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
+  await Promise.resolve(shutdownProductionExecutionReconciliationJob()).catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
 
@@ -1879,6 +1890,7 @@ process.on("SIGINT", async () => {
   await shutdownWorkpackScheduleJob().catch(() => {});
   await shutdownRoleRoutineSchedulerJob().catch(() => {});
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
+  await Promise.resolve(shutdownProductionExecutionReconciliationJob()).catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
   await Promise.all(

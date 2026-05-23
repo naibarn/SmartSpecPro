@@ -19,6 +19,10 @@ function money(value: number | null | undefined): string | null {
   return typeof value === "number" && Number.isFinite(value) ? value.toFixed(2) : null;
 }
 
+function percent(value: number | null | undefined): string | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100 ? value.toFixed(2) : null;
+}
+
 function countText(value: number | null | undefined, fallback: string | null | undefined): string | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
@@ -210,6 +214,7 @@ async function insertMetricSnapshot(productId: string, captureId: string, produc
     priceOriginal: money(product.price.original),
     currency: product.price.currency ?? "THB",
     discountText: product.price.discountText ?? null,
+    commissionRatePercent: percent(product.commissionRatePercent),
     ratingScore: money(product.rating.score),
     reviewCountText,
     reviewCountNormalized,
@@ -241,6 +246,7 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
           priceOriginal: money(product.price.original),
           currency: product.price.currency ?? existing.currency ?? "THB",
           discountText: product.price.discountText ?? existing.discountText,
+          commissionRatePercent: percent(product.commissionRatePercent) ?? existing.commissionRatePercent,
           sourceUrl: capture.sourceUrl,
           captureId,
           ratingScore: money(product.rating.score),
@@ -297,6 +303,7 @@ export async function confirmMarketplaceCapture(captureId: string, input: unknow
     priceOriginal: money(product.price.original),
     currency: product.price.currency ?? "THB",
     discountText: product.price.discountText ?? null,
+    commissionRatePercent: percent(product.commissionRatePercent),
     ratingScore: money(product.rating.score),
     reviewCountText,
     soldCountText,

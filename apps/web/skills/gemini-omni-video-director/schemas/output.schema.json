@@ -36,8 +36,153 @@
     "scene_timeline": { "type": "array", "items": { "type": "object" } },
     "continuity_graph": { "type": "object", "additionalProperties": true },
     "prompt_sequence": { "type": "array", "items": { "type": "object", "required": ["clip_id", "final_prompt"], "properties": { "clip_id": { "type": "string" }, "final_prompt": { "type": "string" } }, "additionalProperties": true } },
-    "reference_plan": { "type": "object", "additionalProperties": true },
-    "provider_plan": { "type": "object", "additionalProperties": true },
+    "reference_plan": {
+      "type": "object",
+      "properties": {
+        "source_video": {
+          "type": "object",
+          "properties": {
+            "label": { "type": "string" },
+            "asset_id": { "type": "string" },
+            "output_ref_id": { "type": "string" },
+            "trim": {
+              "type": "object",
+              "properties": {
+                "start_seconds": { "type": "number", "minimum": 0 },
+                "end_seconds": { "type": "number", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "pricing_branch": { "type": "string", "enum": ["with-video", "without-video"] },
+            "reference_unit_weight": { "type": "number", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "reference_images": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label"],
+            "properties": {
+              "label": { "type": "string" },
+              "asset_id": { "type": "string" },
+              "output_ref_id": { "type": "string" },
+              "url": { "type": "string" },
+              "reference_unit_weight": { "type": "number", "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "character_assets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label"],
+            "properties": {
+              "label": { "type": "string" },
+              "asset_id": { "type": "string" },
+              "reference_unit_weight": { "type": "number", "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "audio_assets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label"],
+            "properties": {
+              "label": { "type": "string" },
+              "asset_id": { "type": "string" },
+              "reference_unit_weight": { "type": "number", "minimum": 0 },
+              "limit_warning": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "debug": {
+          "type": "object",
+          "description": "Raw provider payload keys are allowed only here for schema or debug review.",
+          "additionalProperties": true
+        },
+        "schema": {
+          "type": "object",
+          "description": "Provider schema metadata may name raw provider keys for validation.",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "provider_plan": {
+      "type": "object",
+      "properties": {
+        "provider_id": { "type": "string" },
+        "model_id": { "type": "string" },
+        "capability_summary": { "type": "string" },
+        "friendly_reference_plan": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "kind"],
+            "properties": {
+              "label": { "type": "string" },
+              "kind": { "type": "string", "enum": ["reference_image", "product_image", "character_asset", "audio_asset", "source_video", "generated_output"] },
+              "asset_id": { "type": "string" },
+              "output_ref_id": { "type": "string" },
+              "reference_unit_weight": { "type": "number", "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "default": []
+        },
+        "reference_unit_summary": {
+          "type": "object",
+          "properties": {
+            "used": { "type": "integer", "minimum": 0 },
+            "limit": { "type": "integer", "minimum": 0 },
+            "source_video_count": { "type": "integer", "minimum": 0 },
+            "character_asset_count": { "type": "integer", "minimum": 0 },
+            "audio_asset_count": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "pricing_branch": { "type": "string", "enum": ["with-video", "without-video", "unknown"] },
+        "debug": {
+          "type": "object",
+          "description": "Raw provider payload keys are allowed only here for schema or debug review.",
+          "additionalProperties": true
+        },
+        "schema": {
+          "type": "object",
+          "description": "Provider schema metadata may name raw provider keys for validation.",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "production_node_output_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "node_id", "kind"],
+        "properties": {
+          "id": { "type": "string" },
+          "node_id": { "type": "string" },
+          "shot_id": { "type": "string" },
+          "kind": { "type": "string", "enum": ["video", "image", "audio", "caption", "provider_task", "metadata"] },
+          "url": { "type": "string" },
+          "provider_task_id": { "type": "string" },
+          "config_snapshot_id": { "type": "string" },
+          "config_hash": { "type": "string" },
+          "created_from_production_space_id": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "default": []
+    },
     "pricing_hint": { "type": "object", "additionalProperties": true },
     "qa_handoff": { "type": "object", "additionalProperties": true },
     "warnings": { "type": "array", "items": { "type": "string" } },

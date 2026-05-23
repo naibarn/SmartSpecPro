@@ -1,69 +1,145 @@
 # Orchestra Plan
 
 ## Task
-Review the completeness of the Feature 116 Production Director plan using sub-agents.
+Close the important Feature 116 Production Director implementation gaps found in the audit and update the spec/plans so MVP vs full-scope acceptance is aligned.
 
 ## Classification
-- scope: medium
-- risk: low
-- affected_domains: planning artifacts, product/UX plan, codebase integration map, test/implementation readiness
-- estimated_file_count: 30+
-- chosen_route: multi-agent-waves
-- task_summary: Read-only multi-perspective completeness audit of `specs/feature/116-production-director-node-canvas`.
+- scope: large
+- risk: high
+- affected_domains: shared contracts, backend tRPC/services, tenant/permission tests, frontend Production UI, feature specs/plans, verification evidence
+- estimated_file_count: 12
+- chosen_route: multi-agent-waves with security-gate overlay
+- task_summary: Add downstream import contract/route coverage, strengthen release-gate tests and UI planning affordances, and reconcile Feature 116 spec/plan artifacts.
 - bug_route: false
-
-## Task Classification
-- Scope: medium
-- Risk: low
-- Affected domains: Planning artifacts, Product UX, Architecture/codebase integration, QA/TDD readiness
-- Estimated file count: 30+
-- Chosen route: multi-agent-waves
-- Bug route: false
-- Classification notes: The user explicitly requested subagents and the plan spans many planning files, sections, reviews, and implementation touchpoints. This is read-only planning review, so risk is low.
+- parallel_default: true
+- planned_agents: backend-test-security explorer, frontend-spec explorer, conductor implementation/integration
+- dispatch_preference: parallel read-only explorers plus conductor-owned implementation
 
 ## Activation Decision
-- Matched skill: orchestra, explicitly requested.
-- SocratiCode status: active and green for `/home/dev/projects/SmartSpecPro`.
-- Fallback: none needed.
+- Explicit skill requested: orchestra.
+- Intent signals: "ปรับปรุงแก้ไขช่องว่างที่สำคัญทั้งหมด", "แก้ไข spec", "แก้ไขแผนให้สอดคล้อง" indicate multi-step cross-domain implementation and planning alignment.
+- SocratiCode status: active/green and used before targeted reads.
 
 ## Impact Preflight
-- Directly reviewed area: `/home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas`.
-- Directly changed files: orchestra session artifacts only.
-- Dependent files/tests to verify: deep-plan section checker for the planning directory; whitespace check for the planning directory and orchestra artifacts.
-- Risk-sensitive surfaces: planning mentions future tRPC procedures, migrations, tenant/user ownership, provider execution, credit reservation, Storyboard Review, Video Edit, and product evidence gates. No production code is modified in this audit.
-- Confidence: medium-high. SocratiCode found the canonical plan, section reviews, and current implementation touchpoints; subagents will independently check completeness.
+- Directly changed candidates:
+  - /home/dev/projects/SmartSpecPro/apps/web/shared/mediaProduction.ts
+  - /home/dev/projects/SmartSpecPro/apps/web/server/services/productionSpaceService.ts
+  - /home/dev/projects/SmartSpecPro/apps/web/server/routers/mediaProduction.ts
+  - /home/dev/projects/SmartSpecPro/apps/web/server/services/__tests__/productionSpaceService.test.ts
+  - /home/dev/projects/SmartSpecPro/apps/web/server/routers/__tests__/mediaProduction.execution.test.ts
+  - /home/dev/projects/SmartSpecPro/apps/web/shared/mediaProduction.test.ts
+  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/ProductionWorkspace.tsx
+  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/ContextAssetBoard.tsx
+  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/ProductionFlowCanvas.tsx
+  - /home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/spec.md
+  - /home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-12-mvp-scope-and-acceptance-traceability.md
+  - /home/dev/projects/SmartSpecPro/specs/feature/116-production-director-node-canvas/sections/section-16-deep-implement-work-packets.md
+- SocratiCode impact:
+  - shared mediaProduction.ts impacts productionLegacyCompatibilityService.ts and shared tests.
+  - mediaProduction router has no static callers, but it is a public tRPC surface and security-sensitive.
+- Risk-sensitive surfaces:
+  - tRPC procedure additions and router tests.
+  - tenant/user ownership and collaborator permissions.
+  - downstream import should not overwrite locked shots/node configs.
+  - export redaction must continue excluding sensitive data.
+- Parallelizable workstreams:
+  - backend/test/security read-only analysis.
+  - frontend/spec read-only analysis.
+  - conductor implementation over shared/backend, then UI/spec integration.
+- Sequential workstreams:
+  - shared contract changes before router/service/UI consumers.
+  - backend import service before router and tests.
+  - UI consumes shared contract after contract settles.
+  - spec/plan alignment after implementation shape is known.
+- Confidence: medium-high. Unknowns are limited to existing test helper behavior and exact compile fallout.
 
 ## Wave Plan
 
-### Wave 1: Read-only subagent completeness audit
-- Product/spec completeness agent: verify product behavior, UX states, MVP boundary, acceptance traceability, and unresolved decisions.
-- Codebase integration agent: verify that plan touchpoints map to existing code and migration/handoff risks are captured.
-- QA/TDD readiness agent: verify section manifest, implementation packets, TDD coverage, gates, and missing implementation blockers.
+### Wave 1: Contract + Backend Foundation
+- Add downstream import input/result contracts.
+- Add first-class planning selector/context pack and deferred node catalog metadata.
+- Implement downstream import service and tRPC procedure.
+- Add service/router tests for conflict, locked configs, and access guard paths.
 
-### Wave 2: Conductor integration
-- Integrate agent reports, run available planning gates, record findings, and produce final completeness verdict.
+### Wave 2: Frontend + Spec Alignment
+- Expose project header search/open/new affordances and planning skill/model panel.
+- Make context asset board clearly support character/provider search.
+- Add deferred/full node catalog metadata in UI without enabling full adapters.
+- Update spec/Section 12/Section 16/implementation plan notes to align MVP vs full scope.
 
-### Wave 3: Planning Patch Implementation
-- Patch Feature 116 planning artifacts to address all audit blockers and recommended watchpoints.
-- Scope: planning docs only; no production code changes.
-- Files updated: Feature 116 spec/deep-plan docs, implementation plan, section files, TDD plan, and final review note.
+### Wave 3: Gates + Convergence
+- Run targeted Feature 116 tests.
+- Run TypeScript check if feasible.
+- Run post-completion review convergence and security-sensitive route review.
 
-### Wave 4: Verification Review
-- Run deep-plan section checker.
-- Run whitespace checks for planning/orchestra files.
-- Dispatch a read-only reviewer to confirm blockers are closed.
+---
 
-### Wave 5: End-to-End UI/UX Completeness Audit
-- Product Journey Agent: verify that the plan gets a user from goal creation to finished output with understandable steps, recovery, and decisions.
-- Visual/UI Agent: verify visual hierarchy, component map, UI states, responsive behavior, accessibility, dark/light/token expectations, and browser evidence requirements.
-- System Consistency Agent: verify the UI/UX plan stays consistent with backend/router/services/flags/media-generation boundaries.
-- QA/TDD Agent: verify UI/UX and system acceptance criteria map to concrete tests/gates.
+## UI/UX Review Session — 2026-05-23
 
-Route: read-only multi-agent review. No production code changes in this wave.
+### Task
+Audit remaining visual quality, standards consistency, and UX gaps in the Feature 116 Production Director / Media Studio UI after the latest canvas and layout polish.
 
-### Wave 6: UI/UX Planning Completion
-- Patch the seven Wave 5 blockers directly into Feature 116 planning artifacts.
-- Scope: planning artifacts only; no production code changes.
-- Risk: low.
-- Route: conductor-owned direct patch wave, because the work touches shared planning files and does not require parallel writers.
-- Completion criteria: explicit surface UI/UX contracts, browser evidence artifact, responsive matrices, executable accessibility gates, canonical E2E journey proof, UI copy contract, visual/token strategy, and updated deep-implement packets.
+### Classification
+- scope: medium
+- risk: low
+- affected_domains: frontend React UI, Tailwind/shadcn styling, responsive browser evidence, accessibility evidence
+- estimated_file_count: 6
+- chosen_route: visual-ui-flow
+- task_summary: Review the Production Director UI for remaining visual polish, UX consistency, responsive, accessibility, and canvas workflow gaps.
+- bug_route: false
+- parallel_default: true
+- planned_agents: visual-ux-reviewer, accessibility-reviewer, responsive-reviewer
+- dispatch_preference: parallel read-only reviewer agents plus conductor browser/code evidence integration
+
+### Impact Preflight
+- SocratiCode status: active/green and used before targeted shell reads.
+- Direct review targets:
+  - /home/dev/projects/SmartSpecPro/apps/web/client/src/pages/MediaStudio.tsx
+  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/ProductionWorkspace.tsx
+  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/ProductionFlowCanvas.tsx
+  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/ContextAssetBoard.tsx
+  - /home/dev/projects/SmartSpecPro/apps/web/client/src/features/media-production/components/NodeConfigPanel.tsx
+  - /home/dev/projects/SmartSpecPro/apps/web/tests/e2e/production-director-browser.spec.ts
+- Risk-sensitive surfaces: none for read-only review; no auth, server, DB, or provider-credit behavior changes planned in this review pass.
+- Parallelizable workstreams:
+  - Visual hierarchy / workflow clarity review.
+  - Accessibility / focus / labeling review.
+  - Responsive / overflow / canvas scroll review.
+- Sequential workstreams:
+  - Browser evidence command after reviewers and local code inspection, so final findings can reference current runtime artifacts.
+- Confidence: medium-high. Unknowns are limited to whether the deterministic browser fixture fully reflects the live route visual density.
+
+### UI/UX Contract
+- Target User / JTBD: media operator creating an AI production plan, reviewing node flow, configuring nodes, and moving safely to downstream media tools without spending generation credits early.
+- Surface Inventory: Media Studio header/tab shell; Production workspace project header; planning/model context panel; journey/forms/metrics; React Flow canvas/drawer/list fallback; Node Config panel; Context Asset/Product Evidence surfaces; History/Library side rail interaction with the workspace.
+- Component Map: ProductionWorkspace owns page composition and task actions; ProductionFlowCanvas owns canvas, drawer, node list fallback, and edge mode; ContextAssetBoard owns reference/search attachment; NodeConfigPanel owns node field editing and save-to-node workflow.
+- State Matrix: loading, empty, planner failed, partial, schema invalid, conflict, permission denied, disabled/deferred, selected, hover, focus states must remain visible and non-color-only where practical.
+- Responsive Matrix: required mobile 390x844, tablet 768x1024, desktop 1440x900; extended dense/canvas viewports 360x800, 1024x768, 1280x800.
+- Accessibility Acceptance: keyboard path reaches title, goal, primary actions, canvas list fallback, node actions, config panel, and browser evidence icon controls; focus is visible; labels/accessible names are present; dark/light readability and reduced motion are verified where tests support them.
+- Visual Direction: Enterprise Calm / Technical Precision; dense operational UI, restrained surfaces, semantic tokens where possible, one clear primary action per state, no marketing hero treatment.
+- Copy Contract: Thai/English labels should stay concise and action-oriented; internal/provider framework details should be hidden from normal users; warnings must state user action where possible.
+- Browser Evidence Required: `npm --prefix apps/web run e2e:production-director-browser` plus component gate if code changes follow.
+
+### Wave Plan
+- Wave 1: Parallel read-only review agents for visual UX, accessibility, and responsive/canvas behavior.
+- Wave 2: Conductor integrates agent findings with targeted code inspection and browser evidence artifacts.
+- Wave 3: Produce severity-ranked UI/UX review report and backlog-ready recommendations; no code edits unless user requests a fix pass.
+
+---
+
+## UI/UX Fix Pass — 2026-05-23
+
+### Task
+Implement the UI/UX review recommendations for Feature 116 Production Director and align browser evidence/spec notes with the completed fixes.
+
+### Completed Waves
+- Wave 1: Workspace command hierarchy and copy cleanup in `MediaStudio.tsx` / `ProductionWorkspace.tsx`.
+- Wave 2: Canvas, node drawer/list, Context Asset, and Node Config UX/accessibility improvements.
+- Wave 3: Browser evidence expansion for 360x800 and 1024x768 plus scoped live-route axe/layout/canvas-scroll gates.
+- Wave 4: Verification and documentation alignment.
+
+### Acceptance
+- Production surface keeps one clear primary action, lifecycle actions are secondary/overflow, and project picker is no longer a duplicate command panel.
+- Canvas viewport does not trap page scrolling, including authenticated `/media-studio` route evidence.
+- Raw JSON node config is advanced-only, while operator-facing settings remain visible.
+- Browser evidence passes 24/24 across fixture and live-route coverage.

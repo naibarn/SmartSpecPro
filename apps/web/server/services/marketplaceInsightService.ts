@@ -234,7 +234,7 @@ export async function syncMarketplaceInsight(input: unknown, auth: MarketplaceIn
     };
   }
 
-  const normalizedPayload = normalizeInsightPayloadForPersistence(parsed.payload, parsed.insightType);
+  const normalizedPayload = normalizeInsightPayloadForPersistence(parsed.payload, parsed.insightType, parsed.metadata);
 
   const values = {
     tenantId: auth.tenantId ?? null,
@@ -351,9 +351,18 @@ export async function applyMarketplaceClaimResolution(input: unknown, auth: Mark
   };
 }
 
-function normalizeInsightPayloadForPersistence(payload: unknown, insightType: string): Record<string, unknown> {
+function attachSyncMetadata(payload: Record<string, unknown>, metadata: MarketplaceCaptureInsightSyncInput["metadata"]) {
+  const hasUsefulMetadata = metadata
+    && (metadata.inputEvidenceIds.length > 0
+      || metadata.selectedImageQuality.length > 0
+      || metadata.dataQualityWarnings.length > 0
+      || Boolean(metadata.providerDecision || metadata.sanitizerVersion || metadata.generationRunId || metadata.sourceIds));
+  return hasUsefulMetadata ? { ...payload, __syncMetadata: metadata } : payload;
+}
+
+function normalizeInsightPayloadForPersistence(payload: unknown, insightType: string, metadata: MarketplaceCaptureInsightSyncInput["metadata"]): Record<string, unknown> {
   const value = payload && typeof payload === "object" ? { ...(payload as Record<string, any>) } : {};
-  if (insightType !== "storytelling_handoff") return value;
+  if (insightType !== "storytelling_handoff") return attachSyncMetadata(value, metadata);
   const parsed = marketplaceStorytellingHandoffSchema.parse(value);
   const unsafeClaim = parsed.claims.some((claim) => !["supported", "user_approved"].includes(claim.status) || claim.evidenceIds.length === 0);
   const unsafeImage = parsed.selectedImages.some((image) => image.fidelity === "mismatch_risk");
@@ -366,11 +375,11 @@ function normalizeInsightPayloadForPersistence(payload: unknown, insightType: st
     : parsed.readiness === "ready_for_storytelling"
       ? "needs_user_review"
       : parsed.readiness;
-  return {
+  return attachSyncMetadata({
     ...parsed,
     readiness,
     blockers: Array.from(blockers),
-  };
+  }, metadata);
 }
 
 export async function buildBasicStorytellingHandoffFromCapture(captureId: string, auth: MarketplaceInsightAuth) {

@@ -149,6 +149,9 @@ export async function analyzeMarketplaceCapture(captureId: string, input: unknow
       discountPercent: parseDiscountPercent(discountText),
       rawText: priceRaw || null,
     },
+    commissionRatePercent: typeof raw.commissionRatePercent === "number" && raw.commissionRatePercent >= 0 && raw.commissionRatePercent <= 100
+      ? raw.commissionRatePercent
+      : null,
     rating: {
       score: Number.isFinite(ratingScore) ? ratingScore : null,
       reviewCountText: raw.reviewCountText ?? null,

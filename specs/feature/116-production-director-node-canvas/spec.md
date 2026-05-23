@@ -4,6 +4,10 @@
 
 Draft for implementation.
 
+Implementation alignment note, 2026-05-23: MVP completion and full-spec completion are separate. The first release gate enables the Production workspace, planning skill/model context, Image/Video/basic TTS node config handoff, safe handoff previews, and downstream result import contracts. The full node matrix remains represented in shared catalog metadata but disabled/deferred until later release gates explicitly promote each adapter.
+
+Completion hardening note, 2026-05-23: MVP adapter boundaries are enforced on both client and server. Production router/service code must reject deferred, preview-only, disabled, or adapter-mismatched nodes during `Save to Node` and execution scheduling. Handoff payload idempotency is tenant-scoped, and security-sensitive ProductionSpace router fields use allowlisted runtime schemas.
+
 ## Summary
 
 Rework Media Studio Production Director into a true planning workspace, not a fourth media-generation form.
@@ -218,6 +222,16 @@ The selector should list skills tagged or configured as:
 - `provider_director_planning`.
 
 The default can be `media-production-storyboard-planner`.
+
+The MVP selector must persist and render:
+
+- `skillId`, `skillSlug`, display title, and planning tags;
+- model mode: `auto` or `manual`;
+- selected model only when manual mode is active;
+- compatibility state: `compatible`, `warning`, or `blocked`;
+- context-pack summary: goal hash, asset count, product evidence status, shot count, desired downstream targets, capability ids, and budget notes.
+
+The planner request must use the selected skill id and selected/manual model. Planning and verification may spend LLM credits, but they must not reserve provider-generation credits.
 
 Each skill card should show:
 
@@ -1053,6 +1067,8 @@ Replace the current interim behavior:
 - Keep Storyboard Review / Video Edit projection.
 - Keep Gemini Omni and Seedance 2 as provider candidates, not hard-coded assumptions.
 
+The MVP migration posture is additive. Creating `media_production_spaces` must not drop, truncate, or rewrite legacy `mediaProductionRuns`, goal versions, plan versions, verification records, approvals, asset plans, output projections, Storyboard Review records, or Video Edit projects. Admin/backfill migration remains a separate release gate unless explicitly promoted.
+
 ## Accessibility and UX Requirements
 
 - All node actions must be keyboard reachable.
@@ -1141,6 +1157,8 @@ The artifact must include commands, screenshots/traces or manual notes, required
 - Image and Video node config snapshots preserve structured product refs and frame strategy, not only prompt text.
 - Storyboard Review / Video Edit result sync can update selected takes, timeline, captions, and product QA state without overwriting locked node configs.
 - Storyboard Review / Video Edit result records include source surface, downstream project/task IDs, source ProductionSpace version, changed shots, product QA deltas, conflict policy, and import outcome.
+- Downstream imports reject stale source-space versions, append a new ProductionSpace version, record selected takes/timeline/caption/product-warning/manual-approval deltas, and skip locked shot/node configs unless explicitly allowed.
+- The shared node catalog includes full matrix node kinds, but only Image, Video, and basic TTS adapters are `mvp_enabled`; deferred nodes remain disabled in UI and cannot be added/run before their later gates.
 - No provider-generation credit reservation occurs during planning/verifier steps.
 - Approved canvas can project to Storyboard Review.
 - Approved canvas can project to Video Edit.

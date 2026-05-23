@@ -40,6 +40,23 @@ if [ "$POLICY_COUNT" -lt 5 ]; then
   ERRORS=$((ERRORS + 1))
 fi
 
+required_policy() {
+  local display_name="$1"
+  local policy
+  policy=$(gcloud alpha monitoring policies list --filter="displayName='${display_name}'" --format="value(name)" 2>/dev/null || echo "")
+  if [ -n "$policy" ]; then
+    echo "OK: ${display_name} alert policy found"
+  else
+    echo "MISSING: ${display_name} alert policy"
+    ERRORS=$((ERRORS + 1))
+  fi
+}
+
+required_policy "SmartSpec Feature 116 Provider Callback Miss Rate"
+required_policy "SmartSpec Feature 116 Pending Execution Backlog"
+required_policy "SmartSpec Feature 116 Credit Ledger Mismatch"
+required_policy "SmartSpec Feature 116 Cloud Task Failures"
+
 echo ""
 
 # Check notification channels
