@@ -45,6 +45,21 @@ type ProductionSpaceLifecycleResult = {
   archivedAt: string | null;
   deletedAt: string | null;
 };
+
+export function isProductionSpaceStorageUnavailable(error: unknown): boolean {
+  const raw = error as { code?: string; cause?: { code?: string; message?: string }; message?: string };
+  const code = raw?.code ?? raw?.cause?.code;
+  const message = `${raw?.message ?? ""} ${raw?.cause?.message ?? ""}`.toLowerCase();
+  if (!message.includes("media_production_spaces")) return false;
+  return (
+    code === "42P01"
+    || code === "42703"
+    || message.includes("does not exist")
+    || message.includes("failed query")
+    || message.includes("column")
+    || message.includes("relation")
+  );
+}
 type ProductionCreditLedger = {
   reserve(input: {
     userId: number;
@@ -635,10 +650,13 @@ async function getRun(db: Db, tenantId: string, productionRunId: string) {
 }
 
 async function loadProductionAccessContext(db: Db, tenantId: string, productionRunId: string) {
-  const [run, latest] = await Promise.all([
-    getRun(db, tenantId, productionRunId),
-    getLatestSpaceRow(db, tenantId, productionRunId),
-  ]);
+  const run = await getRun(db, tenantId, productionRunId);
+  let latest;
+  try {
+    latest = await getLatestSpaceRow(db, tenantId, productionRunId);
+  } catch (error) {
+    if (!isProductionSpaceStorageUnavailable(error)) throw error;
+  }
   return { run, latest };
 }
 
@@ -1643,12 +1661,24 @@ export async function reconcilePendingProductionExecutions(params: {
 }> {
   const mediaDispatcher = params.mediaDispatcher ?? defaultMediaDispatcher;
   const creditLedger = params.creditLedger ?? defaultCreditLedger;
-  const rows = await params.db
-    .select()
-    .from(mediaProductionSpaces)
-    .where(eq(mediaProductionSpaces.tenantId, params.tenantId))
-    .orderBy(desc(mediaProductionSpaces.updatedAt))
-    .limit(params.limit ?? 25);
+  let rows: any[];
+  try {
+    rows = await params.db
+      .select()
+      .from(mediaProductionSpaces)
+      .where(eq(mediaProductionSpaces.tenantId, params.tenantId))
+      .orderBy(desc(mediaProductionSpaces.updatedAt))
+      .limit(params.limit ?? 25);
+  } catch (error) {
+    if (!isProductionSpaceStorageUnavailable(error)) throw error;
+    return {
+      scannedSpaces: 0,
+      pendingAttempts: 0,
+      reconciledAttempts: 0,
+      skippedAttempts: 0,
+      alerts: [],
+    };
+  }
   let pendingAttempts = 0;
   let reconciledAttempts = 0;
   let skippedAttempts = 0;

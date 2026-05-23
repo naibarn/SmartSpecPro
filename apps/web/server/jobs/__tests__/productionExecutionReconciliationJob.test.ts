@@ -4,10 +4,12 @@ const {
   mockGetDb,
   mockReconcilePendingProductionExecutions,
   mockSignBearerToken,
+  selectErrorsQueue,
   selectRowsQueue,
   db,
   resetHarness,
 } = vi.hoisted(() => {
+  const selectErrorsQueue: any[] = [];
   const selectRowsQueue: any[][] = [];
   const db = {
     select: vi.fn().mockImplementation(() => ({
@@ -15,19 +17,26 @@ const {
         const query: any = {};
         query.where = vi.fn().mockReturnValue(query);
         query.orderBy = vi.fn().mockReturnValue(query);
-        query.limit = vi.fn().mockResolvedValue(selectRowsQueue.shift() ?? []);
+        query.limit = vi.fn().mockImplementation(() => {
+          if (selectErrorsQueue.length > 0) {
+            return Promise.reject(selectErrorsQueue.shift());
+          }
+          return Promise.resolve(selectRowsQueue.shift() ?? []);
+        });
         return query;
       }),
     })),
   } as any;
 
   return {
+    selectErrorsQueue,
     selectRowsQueue,
     db,
     mockGetDb: vi.fn(() => db),
     mockReconcilePendingProductionExecutions: vi.fn(),
     mockSignBearerToken: vi.fn(() => "production-reconcile-token"),
     resetHarness: () => {
+      selectErrorsQueue.length = 0;
       selectRowsQueue.length = 0;
       db.select.mockClear();
       mockGetDb.mockClear();
@@ -46,6 +55,10 @@ vi.mock("../../_core/tokens", () => ({
 }));
 
 vi.mock("../../services/productionSpaceService", () => ({
+  isProductionSpaceStorageUnavailable: (error: unknown) => {
+    const raw = error as { code?: string; message?: string };
+    return raw?.code === "42P01" && String(raw?.message ?? "").includes("media_production_spaces");
+  },
   reconcilePendingProductionExecutions: mockReconcilePendingProductionExecutions,
 }));
 
@@ -139,6 +152,27 @@ describe("productionExecutionReconciliationJob", () => {
 
     expect(second.tenantsScanned).toBe(0);
     expect(firstSummary.tenantsScanned).toBe(1);
+  });
+
+  it("skips quietly when ProductionSpace storage is not migrated yet", async () => {
+    const { runProductionExecutionReconciliationJob } = await import("../productionExecutionReconciliationJob");
+    selectErrorsQueue.push(Object.assign(
+      new Error('relation "media_production_spaces" does not exist'),
+      { code: "42P01" },
+    ));
+
+    const summary = await runProductionExecutionReconciliationJob();
+
+    expect(summary).toEqual({
+      tenantsScanned: 0,
+      scannedSpaces: 0,
+      pendingAttempts: 0,
+      reconciledAttempts: 0,
+      skippedAttempts: 0,
+      alerts: [],
+      tenantErrors: [],
+    });
+    expect(mockReconcilePendingProductionExecutions).not.toHaveBeenCalled();
   });
 
   it("does not start an in-process interval when Cloud Tasks owns scheduling", async () => {

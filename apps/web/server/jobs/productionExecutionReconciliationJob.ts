@@ -4,7 +4,10 @@ import { and, desc, inArray, isNull } from "drizzle-orm";
 import { signBearerToken } from "../_core/tokens";
 import { getDb } from "../db";
 import { mediaProductionSpaces } from "../../drizzle/schema";
-import { reconcilePendingProductionExecutions } from "../services/productionSpaceService";
+import {
+  isProductionSpaceStorageUnavailable,
+  reconcilePendingProductionExecutions,
+} from "../services/productionSpaceService";
 
 const DEFAULT_INTERVAL_MS = 30_000;
 const DEFAULT_TENANT_LIMIT = 50;
@@ -99,19 +102,33 @@ export async function runProductionExecutionReconciliationJob(options: {
       };
     }
 
-    const rows = await db
-      .select({ tenantId: mediaProductionSpaces.tenantId })
-      .from(mediaProductionSpaces)
-      .where(
-        and(
-          inArray(mediaProductionSpaces.status, [...ACTIVE_PRODUCTION_STATUSES]),
-          isNull(mediaProductionSpaces.deletedAt),
-        ),
-      )
-      .orderBy(desc(mediaProductionSpaces.updatedAt))
-      .limit((options.tenantLimit ?? DEFAULT_TENANT_LIMIT) * 10);
+    let rows: Array<{ tenantId: string }>;
+    try {
+      rows = await db
+        .select({ tenantId: mediaProductionSpaces.tenantId })
+        .from(mediaProductionSpaces)
+        .where(
+          and(
+            inArray(mediaProductionSpaces.status, [...ACTIVE_PRODUCTION_STATUSES]),
+            isNull(mediaProductionSpaces.deletedAt),
+          ),
+        )
+        .orderBy(desc(mediaProductionSpaces.updatedAt))
+        .limit((options.tenantLimit ?? DEFAULT_TENANT_LIMIT) * 10);
+    } catch (error) {
+      if (!isProductionSpaceStorageUnavailable(error)) throw error;
+      return {
+        tenantsScanned: 0,
+        scannedSpaces: 0,
+        pendingAttempts: 0,
+        reconciledAttempts: 0,
+        skippedAttempts: 0,
+        alerts: [],
+        tenantErrors: [],
+      };
+    }
 
-    const tenantIds = Array.from(new Set((rows as Array<{ tenantId: string }>).map((row) => row.tenantId)))
+    const tenantIds = Array.from(new Set(rows.map((row) => row.tenantId)))
       .slice(0, options.tenantLimit ?? DEFAULT_TENANT_LIMIT);
 
     let scannedSpaces = 0;

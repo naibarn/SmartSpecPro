@@ -9,6 +9,7 @@ import {
   cancelProductionExecution,
   deleteProductionSpace,
   getProductionNodeConfig,
+  getProductionSpace,
   importProductionDownstreamResult,
   repairProductionStaleOutputRefs,
   reconcilePendingProductionExecutions,
@@ -134,6 +135,7 @@ function buildSpaceRow(space: ProductionSpace, userId = 7) {
 function createDb(options: {
   runUserId?: number;
   spaces?: Array<Record<string, any>>;
+  spacesSelectError?: Error;
 } = {}) {
   const db = {
     runs: [{
@@ -176,6 +178,9 @@ function createDb(options: {
         },
         limit() {
           if (selectedTable === mediaProductionSpaces) {
+            if (options.spacesSelectError) {
+              return Promise.reject(options.spacesSelectError);
+            }
             return Promise.resolve([...db.spaces].sort((a, b) => Number(b.version) - Number(a.version)).slice(0, 1));
           }
           if (selectedTable === mediaProductionRuns) {
@@ -222,6 +227,7 @@ describe("productionSpaceService", () => {
     expect(sql).toContain("\"productionrunid\" varchar");
     expect(sql).toContain("\"tenantid\" varchar");
     expect(sql).toContain("\"space\" jsonb");
+    expect(sql).toContain("alter table \"media_production_spaces\" add column if not exists \"productionrunid\"");
     expect(sql).toContain("create index if not exists");
     expect(sql).not.toMatch(/\bdrop\s+table\b|\btruncate\b|\bdelete\s+from\s+\"?media_production_runs\"?/);
   });
@@ -287,6 +293,28 @@ describe("productionSpaceService", () => {
       reason: "unsupported_future_schema",
       schemaVersion: "9.0.0",
       preservedInput: future,
+    });
+  });
+
+  it("falls back to the legacy run when ProductionSpace storage is not migrated yet", async () => {
+    const db = createDb({
+      spacesSelectError: Object.assign(
+        new Error('Failed query: select from "media_production_spaces"; relation "media_production_spaces" does not exist'),
+        { code: "42P01" },
+      ),
+    });
+
+    const result = await getProductionSpace({
+      db,
+      tenantId: "tenant-1",
+      userId: 7,
+      productionRunId: "run-116",
+    });
+
+    expect(result).toMatchObject({
+      source: "legacy",
+      version: 1,
+      space: { productionRunId: "run-116" },
     });
   });
 
