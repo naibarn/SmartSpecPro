@@ -45,6 +45,7 @@ import {
   getProductionNodeConfig,
   getProductionSpace,
   importProductionDownstreamResult,
+  isProductionSpaceStorageUnavailable,
   previewProductionExecutionPlan,
   redactProductionSpaceExport,
   reconcilePendingProductionExecutions,
@@ -372,7 +373,18 @@ async function getExistingRun(
   productionRunId: string,
 ) {
   const [run] = await db
-    .select()
+    .select({
+      id: mediaProductionRuns.id,
+      tenantId: mediaProductionRuns.tenantId,
+      userId: mediaProductionRuns.userId,
+      productionRunId: mediaProductionRuns.productionRunId,
+      status: mediaProductionRuns.status,
+      goal: mediaProductionRuns.goal,
+      productionBible: mediaProductionRuns.productionBible,
+      assetPlan: mediaProductionRuns.assetPlan,
+      createdAt: mediaProductionRuns.createdAt,
+      updatedAt: mediaProductionRuns.updatedAt,
+    })
     .from(mediaProductionRuns)
     .where(and(
       eq(mediaProductionRuns.tenantId, tenantId),
@@ -1027,7 +1039,18 @@ export const mediaProductionRouter = router({
       if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
 
       const rows = await db
-        .select()
+        .select({
+          id: mediaProductionRuns.id,
+          tenantId: mediaProductionRuns.tenantId,
+          userId: mediaProductionRuns.userId,
+          productionRunId: mediaProductionRuns.productionRunId,
+          status: mediaProductionRuns.status,
+          goal: mediaProductionRuns.goal,
+          productionBible: mediaProductionRuns.productionBible,
+          assetPlan: mediaProductionRuns.assetPlan,
+          createdAt: mediaProductionRuns.createdAt,
+          updatedAt: mediaProductionRuns.updatedAt,
+        })
         .from(mediaProductionRuns)
         .where(and(
           eq(mediaProductionRuns.tenantId, tenantId),
@@ -1037,15 +1060,20 @@ export const mediaProductionRouter = router({
         .limit(Math.min(Math.max(input.limit * 3, input.limit), 100));
 
       const query = String(input.query ?? "").trim().toLowerCase();
-      const spaceRows = await db
-        .select()
-        .from(mediaProductionSpaces)
-        .where(and(
-          eq(mediaProductionSpaces.tenantId, tenantId),
-          eq(mediaProductionSpaces.userId, ctx.user.id),
-        ))
-        .orderBy(desc(mediaProductionSpaces.updatedAt))
-        .limit(300);
+      let spaceRows: any[] = [];
+      try {
+        spaceRows = await db
+          .select()
+          .from(mediaProductionSpaces)
+          .where(and(
+            eq(mediaProductionSpaces.tenantId, tenantId),
+            eq(mediaProductionSpaces.userId, ctx.user.id),
+          ))
+          .orderBy(desc(mediaProductionSpaces.updatedAt))
+          .limit(300);
+      } catch (error) {
+        if (!isProductionSpaceStorageUnavailable(error)) throw error;
+      }
       const latestSpaceByRun = new Map<string, any>();
       for (const row of spaceRows as any[]) {
         if (!latestSpaceByRun.has(row.productionRunId)) latestSpaceByRun.set(row.productionRunId, row);
@@ -1078,9 +1106,9 @@ export const mediaProductionRouter = router({
           title,
           summary,
           status: space?.status ?? run.status,
-          version: Number(latestSpace?.version ?? space?.version ?? run.planVersion ?? run.goalVersion ?? 0),
-          goalVersion: run.goalVersion,
-          planVersion: run.planVersion,
+          version: Number(latestSpace?.version ?? space?.version ?? (run as any).planVersion ?? (run as any).goalVersion ?? 0),
+          goalVersion: (run as any).goalVersion ?? null,
+          planVersion: (run as any).planVersion ?? null,
           thumbnailUrl: String(mediaPreview?.thumbnailUrl ?? mediaPreview?.url ?? (planPreview as any)?.thumbnailUrl ?? (planPreview as any)?.url ?? "").trim() || null,
           updatedAt: latestSpace?.updatedAt ?? space?.updatedAt ?? run.updatedAt,
           createdAt: run.createdAt,
@@ -1281,7 +1309,7 @@ export const mediaProductionRouter = router({
           productionRunId: input.productionRunId,
           status: nextRunStatus,
           goalVersion: version,
-          planVersion: existing?.planVersion ?? 0,
+          planVersion: (existing as any)?.planVersion ?? 0,
           goal: input.goal,
           contractVersion: input.contractVersion,
           createdAt: now,
@@ -1612,7 +1640,7 @@ export const mediaProductionRouter = router({
           productionRunId: input.productionRunId,
           sourceSurface: "media_production",
           storyBible: run.productionBible,
-          qualityGateSummary: run.qualityGateSummary,
+          qualityGateSummary: (run as any).qualityGateSummary ?? {},
           tasks: clips,
           output: input.output,
           updatedAt: Date.now(),
@@ -1637,7 +1665,7 @@ export const mediaProductionRouter = router({
           productionRunId: input.productionRunId,
           sourceSurface: "media_production",
           storyBible: run.productionBible,
-          qualityGateSummary: run.qualityGateSummary,
+          qualityGateSummary: (run as any).qualityGateSummary ?? {},
           clips,
           output: input.output,
           updatedAt: Date.now(),

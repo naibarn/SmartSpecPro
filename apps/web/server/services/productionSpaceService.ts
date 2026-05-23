@@ -639,7 +639,18 @@ async function getLatestSpaceRow(db: Db, tenantId: string, productionRunId: stri
 
 async function getRun(db: Db, tenantId: string, productionRunId: string) {
   const [run] = await db
-    .select()
+    .select({
+      id: mediaProductionRuns.id,
+      tenantId: mediaProductionRuns.tenantId,
+      userId: mediaProductionRuns.userId,
+      productionRunId: mediaProductionRuns.productionRunId,
+      status: mediaProductionRuns.status,
+      goal: mediaProductionRuns.goal,
+      productionBible: mediaProductionRuns.productionBible,
+      assetPlan: mediaProductionRuns.assetPlan,
+      createdAt: mediaProductionRuns.createdAt,
+      updatedAt: mediaProductionRuns.updatedAt,
+    })
     .from(mediaProductionRuns)
     .where(and(
       eq(mediaProductionRuns.tenantId, tenantId),

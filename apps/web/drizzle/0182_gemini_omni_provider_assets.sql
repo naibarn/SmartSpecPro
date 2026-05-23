@@ -55,6 +55,36 @@ CREATE TABLE IF NOT EXISTS "media_production_runs" (
   "updatedAt" timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE "media_production_runs" ADD COLUMN IF NOT EXISTS "id" bigserial;
+ALTER TABLE "media_production_runs" ADD COLUMN IF NOT EXISTS "tenantId" varchar(36);
+ALTER TABLE "media_production_runs" ADD COLUMN IF NOT EXISTS "userId" integer;
+ALTER TABLE "media_production_runs" ADD COLUMN IF NOT EXISTS "productionRunId" varchar(128);
+ALTER TABLE "media_production_runs" ADD COLUMN IF NOT EXISTS "status" varchar(40) DEFAULT 'goal_draft';
+ALTER TABLE "media_production_runs" ADD COLUMN IF NOT EXISTS "goalVersion" integer DEFAULT 1;
+ALTER TABLE "media_production_runs" ADD COLUMN IF NOT EXISTS "planVersion" integer DEFAULT 0;
+ALTER TABLE "media_production_runs" ADD COLUMN IF NOT EXISTS "goal" jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE "media_production_runs" ADD COLUMN IF NOT EXISTS "productionBible" jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE "media_production_runs" ADD COLUMN IF NOT EXISTS "assetPlan" jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE "media_production_runs" ADD COLUMN IF NOT EXISTS "qualityGateSummary" jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE "media_production_runs" ADD COLUMN IF NOT EXISTS "budgetSummary" jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE "media_production_runs" ADD COLUMN IF NOT EXISTS "contractVersion" varchar(32) DEFAULT '1.0.0';
+ALTER TABLE "media_production_runs" ADD COLUMN IF NOT EXISTS "createdAt" timestamptz DEFAULT now();
+ALTER TABLE "media_production_runs" ADD COLUMN IF NOT EXISTS "updatedAt" timestamptz DEFAULT now();
+
+UPDATE "media_production_runs"
+SET
+  "status" = COALESCE("status", 'goal_draft'),
+  "goalVersion" = COALESCE("goalVersion", 1),
+  "planVersion" = COALESCE("planVersion", 0),
+  "goal" = COALESCE("goal", '{}'::jsonb),
+  "productionBible" = COALESCE("productionBible", '{}'::jsonb),
+  "assetPlan" = COALESCE("assetPlan", '{}'::jsonb),
+  "qualityGateSummary" = COALESCE("qualityGateSummary", '{}'::jsonb),
+  "budgetSummary" = COALESCE("budgetSummary", '{}'::jsonb),
+  "contractVersion" = COALESCE("contractVersion", '1.0.0'),
+  "createdAt" = COALESCE("createdAt", now()),
+  "updatedAt" = COALESCE("updatedAt", now());
+
 CREATE UNIQUE INDEX IF NOT EXISTS "media_production_runs_identity_unique"
   ON "media_production_runs" ("tenantId", "productionRunId");
 
